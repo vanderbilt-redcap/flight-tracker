@@ -1,0 +1,39 @@
+<h3>Solving Situations</h3>
+
+<p>This section will teach you how to organize your search for solutions to a given question. Some problems are more <b>administrative and managerial</b> – like filling out a report. Other problems are more geared around <b>investigative and research</b> questions – an attempt to dig more deeply until you find the root cause(s) of an issue.</p>
+
+<p>If you are new to this software, we recommend reading the <i>Orientation</i> items on the front page. This will provide you with a “bird’s eye” view before diving into certain topics more deeply.</p>
+
+<p>For administrative and managerial questions, you must find the appropriate source(s) of the information and understand the validity of that information. Sometimes you have to aggregate data from more than one source in order to find out the answer to your question. Other questions will require you to dig into REDCap to find the right answer. A final group of questions can be answered just by using the interface properly. Reading the help documentation will provide you with the necessary knowledge of what’s possible and how it’s possible to achieve.</p>
+
+<p>For investigative and research questions, you can formulate the appropriate scope of the query. The question generally takes the form of a research question.</p>
+
+<p><img src='img/situations1.png' alt='Cohorts / Filtering'></p>
+
+<p>After you formulate your question, you need to see what data you can collect on the question and in what timeframe. We have found that using a continually running database of scholars to dip into is easier than starting from scratch with each question. We then use the interface in the <b>Cohorts / Filtering</b> menu to form your cohort and control groups. (See <a href='launchHelp("cohortDesign.html");'>Designing Cohorts</a>.)</p>
+
+<p>The <b>Dashboards</b> provide general information about the population or about each cohort. There are many dashboards that provide various types of information at a glance, rather than requiring the building a report. Available dashboards include:</p>
+<ul>
+<li>Overall Summary, including number in database, K-to-R conversion percentage, and number who left the institution.</li>
+<li>Grants, listed by category into which they are placed. See <a href='launchHelp("useCaseBins.html");'>Organizing Grants into Types</a>.</li>
+<li>Grant Budgets, measured by category. Please note that these financial figures are supplied by external data sources and may contain errors. Any needs for precise information (i.e., a ledger) should be kept track of by your institution internally.</li>
+<li>Publications, delineated by different variables. Variables include Category (is original research? Y/N), Year, Journal, PubMed Publication Type, and associated MESH Terms.</li>
+<li>Emails, containing the response rates on your emailed survey requests.</li>
+<li>Demographics, showing how complete your data are in each field. General fields include race, gender, ethnicity, and date of birth; fields of special interest to us include education and training, academic rank, other institutional involvement, and promotions. (See <a href='launchHelp("missingness.html");'>Missingness Report</a>.)</li>
+<li>Dates when the overnight scripts have been last run. This information is also available on your front page.</li>
+<li>Resources, recording participation at each resource or other event you track. This can include grant writing courses, seminars, mock study sections, or other resource usage for your scholars.</li>
+<li>Cohorts, with all of the above dashboard information for one specific cohort that you set up.</li>
+</ul>
+
+<p><img src='img/situations2.png' alt='REDCap Export interface'></p>
+
+<p>Finally, if none of these analytical tools meet your needs, congratulations! I hope that your data and questions are rich enough to require such deeper analysis. You can export the data directly from REDCap into a spreadsheet program (through a Comma-Separated Values sheet [CSV] into a program like Microsoft Excel or Google Sheets) or into a statistics package (like R, SAS, or STATA). Go to the REDCap menu, and select the <b>Export Data</b> or <b>View Reports</b> item.
+
+<p>You can make a report to export a subset of information. By far the most important variables are from the <b>Summary</b> form and begin with the prefix <code>summary_</code>. These contain a calculated summary of each scholar’s demographic information and each scholar’s fifteen most recent grants. These variables provide you with the best snapshot of information about demographics and grants.</p>
+
+<p>In addition, the Citation form contains the information about each publication. These fields begin with the prefix citation_ and include information from PubMed and iCite, a project by the NIH to provide metrics on publications.</p>
+
+<p><img src='img/situations3.png' alt='REDCap’s Create a New Report image'></p>
+
+<p>If you want to dive deeper into real data values (and not just summaries), you can go to the REDCap menu’s Data Dictionary item, export the data dictionary, and see what variables you would like to use. Then you can go to the REDCap menu’s Create a New Report item. (More information about making REDCap reports is available from the <a href='https://rocket.app.vumc.org/index.php?doc_id=24008' target='_NEW'>REDCap User Guide</a> and the <a href='launchHelp("REDCapFAQReports");'>REDCap FAQ</a>.) Fill the REDCap report with the variables you wish to view. Then you can view them in REDCap or export them to another program.</p>
+

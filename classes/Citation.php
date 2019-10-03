@@ -1,0 +1,708 @@
+<?php
+
+namespace Vanderbilt\CareerDevLibrary;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+
+# This class handles publication data from PubMed, the VICTR fetch routine, and surveys.
+# It also provides HTML for data-wrangling the publication data
+
+require_once(dirname(__FILE__)."/Upload.php");
+require_once(dirname(__FILE__)."/Download.php");
+require_once(dirname(__FILE__)."/Scholar.php");
+require_once(dirname(__FILE__)."/Links.php");
+require_once(dirname(__FILE__)."/iCite.php");
+require_once(dirname(__FILE__)."/../CareerDev.php");
+
+class CitationCollection {
+	# type = [ Final, New, Omit ]
+	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $choices = array()) {
+		$this->token = $token;
+		$this->server = $server;
+		$this->citations = array();
+		if (empty($redcapData)) {
+			$redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, array($recordId));
+		}
+		foreach ($redcapData as $row) {
+			if (($row['redcap_repeat_instrument'] == "citation") && ($row['record_id'] == $recordId)) {
+				$c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $choices);
+				if ($c->getType() == $type) {
+					array_push($this->citations, $c);
+				}
+			}
+		}
+	}
+
+	# citationClass is notDone, included, or omitted
+	public function toHTML($citationClass) {
+		$html = "";
+		$i = 0;
+		if (count($this->getCitations()) == 0) {
+			$html .= "<p class='centered'>None to date.</p>\n";
+		} else {
+			foreach ($this->getCitations() as $citation) {
+				$html .= $citation->toHTML($citationClass);
+				$i++;
+			}
+		}
+		return $html;
+	}
+
+	public function has($pmid) {
+		$allPMIDs = $this->getIds();
+		return in_array($pmid, $allPMIDs);
+	}
+
+	public function getIds() {
+		$ids = array();
+		$citations = $this->getCitations();
+		foreach ($citations as $citation) {
+			$pmid = $citation->getPMID();
+			if (!in_array($pmid, $ids)) {
+				array_push($ids, $pmid);
+			}
+		}
+		return $ids;
+	}
+
+	public function getCitations() {
+		$this->sortCitations();
+		return $this->citations;
+	}
+
+	private static function sortArrays($unorderedArys, $field) {
+		$keys = array();
+		foreach ($unorderedArys as $ary) {
+			array_push($keys, $ary[$field]);
+		}
+		rsort($keys);
+
+		if (count($keys) != count($unorderedArys)) {
+			throw new Exception("keys (".count($keys).") != unorderedArys (".count($unorderedArys).")");
+		}
+
+		$ordered = array();
+		foreach ($keys as $key) {
+			$found = FALSE;
+			foreach ($unorderedArys as $i => $ary) {
+				if ($ary[$field] == $key) {
+					array_push($ordered, $ary);
+					unset($unorderedArys[$i]);
+					$found = TRUE;
+					break;
+				}
+			}
+			if (!$found) {
+				throw new Exception($key." not found in ".json_encode($unorderedArys));
+			}
+		}
+
+		if (count($keys) != count($ordered)) {
+			throw new Exception("keys (".count($keys).") != ordered (".count($ordered).")");
+		}
+
+		return $ordered;
+	}
+
+	public function sortCitations() {
+		$unsorted = array();
+		foreach ($this->citations as $citation) {
+			array_push($unsorted, array(
+							"citation" => $citation,
+							"timestamp" => $citation->getTimestamp(),
+							));
+		}
+		$sorted = self::sortArrays($unsorted, "timestamp");
+		if (count($unsorted) != count($sorted)) {
+			throw new Exception("Unsorted (".count($unsorted).") != sorted (".count($sorted).")");
+		}
+
+		$this->citations = array();
+		foreach ($sorted as $ary) {
+			array_push($this->citations, $ary['citation']);
+		}
+	}
+
+	public function addCitation($citation) {
+		if (get_class($citation) == "Citation") {
+			array_push($this->citations, $citation);
+		} else {
+			throw new \Exception("addCitation tries to add a citation of class ".get_class($citation).", instead of class Citation!");
+		}
+	}
+
+	public function getCitationsAsString($hasLink = FALSE) {
+		$str = "";
+		foreach ($this->getCitations() as $citation) {
+			if ($str != "") {
+				$str .= "\n";
+			}
+			if ($hasLink) {
+				$str .= $citation->getCitation();
+			} else {
+				$str .= $citation->getCitationWithLink();
+			}
+		}
+		return $str;
+	}
+
+	public function getCount() {
+		return count($this->citations);
+	}
+
+	private $citations = array();
+	private $token = "";
+	private $server = "";
+}
+
+class Citation {
+	public function __construct($token, $server, $recordId, $instance, $row = array(), $choices = array()) {
+		$this->recordId = $recordId;
+		$this->instance = $instance;
+		$this->token = $token;
+		$this->server = $server;
+		$this->origRow = $row;
+
+		if (isset($choices["citation_source"])) {
+			$this->sourceChoices = $choices["citation_source"];
+		} else {
+			$this->sourceChoices = array();
+		}
+
+		$this->readData();
+	}
+
+	public static function getImageSize() {
+		return 26;
+	}
+
+	public static function findMaxInstance($token, $server, $recordId, $redcapData = array()) {
+		if (empty($redcapData)) {
+			$redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, array($recordId));
+		}
+		$maxInstance = 0;
+		$instrument = "citation";
+		foreach ($redcapData as $row) {
+			if (($row['redcap_repeat_instrument'] == $instrument) && ($recordId == $row['record_id'])) {
+				$instance = $row['redcap_repeat_instance'];
+				if ($instance > $maxInstance) {
+					$maxInstance = $instance;
+				} 
+			}
+		}
+		return $maxInstance;
+
+	}
+
+	# citationClass is notDone, included, or omitted
+	public function toHTML($citationClass) {
+		if ($citationClass == "notDone") {
+			$checkboxClass = "checked";
+		} else if ($citationClass == "included") {
+			$checkboxClass = "readonly";
+		} else if ($citationClass == "omitted") {
+			$checkboxClass = "unchecked";
+		} else {
+			throw new \Exception("Unknown citationClass $citationClass");
+		}
+
+		$html = "";
+		$source = $this->getSource();
+		if ($source) {
+			$source = "<b>" . $source . "</b>: ";
+		}
+		$id = $this->getUniqueID();
+		$pmid = $this->getPMID();
+		$html .= "<div class='citation $citationClass' id='citation_".$citationClass."$id'>";
+		$html .= "<div class='citationCategories'><span class='tooltiptext'>".$this->makeTooltip()."</span>".$this->getCategory()."</div>";
+		$html .= self::makeCheckbox($id, $checkboxClass)." ".$source.$this->getCitationWithLink();
+		$html .= "</div>\n";
+		return $html;
+	}
+
+	private function changeTextColorOfLink($str, $color) {
+		if (preg_match("/<a /", $str)) {
+			if (preg_match("/style\s*=\s*['\"]/", $str, $matches)) {
+				$match = $matches[0];
+				$str = str_replace($match, $match."color: $color; ", $str);
+			} else {
+				$str = preg_replace("/<a /", "<a style='color: $color;' ", $str);
+			}
+		}
+		return $str;
+	}
+
+	private function makeTooltip() {
+		$html = "";
+
+		$pubTypes = $this->getPubTypes();
+		$meshTerms = $this->getMESHTerms();
+
+		if (count($pubTypes) > 0) {
+			$html .= "<b>".self::changeTextColorOfLink(Links::makeLink("https://www.pubmed.gov", "PubMed"), "white")." Publication Types</b><br>".implode("<br>", $this->getPubTypes())."<br><br>";
+		}
+		if (count($meshTerms) > 0) {
+			$html .= "<b>".self::changeTextColorOfLink(Links::makeLink("https://www.ncbi.nlm.nih.gov/mesh", "MESH Terms"), "white")."</b><br>".implode("<br>", $this->getMESHTerms())."<br><br>";
+		}
+		$cat = $this->getCategory();
+		if ($cat == "Uncategorized") {
+			$cat = "Currently $cat; may be automatically updated in the future";
+		}
+		$html .= "<b>".self::changeTextColorOfLink(Links::makeLink("https://icite.od.nih.gov", "iCite"), "white")." Category</b><br>$cat<br><br>";
+
+		return $html;
+	}
+
+	# img is unchecked, checked, or readonly
+	private static function makeCheckbox($id, $img) {
+		$imgFile = "wrangler/".$img.".png";
+		$size = self::getImageSize()."px";
+		$js = "if ($(this).attr(\"src\").match(/unchecked/)) { $(\"#$id\").val(\"include\"); $(this).attr(\"src\", \"".CareerDev::link("wrangler/checked.png")."\"); } else { $(\"#$id\").val(\"exclude\"); $(this).attr(\"src\", \"".CareerDev::link("wrangler/unchecked.png")."\"); }";
+		if ($img == "unchecked") {
+			$value = "exclude";
+		} else if ($img == "checked") {
+			$value = "include";
+		} else {
+			$value = "";
+		}
+		$input = "<input type='hidden' id='$id' value='$value'>";
+		if (($img == "unchecked") || ($img == "checked")) {
+			return "<img src='".CareerDev::link($imgFile)."' onclick='$js' style='width: $size; height: $size;' align='left'>".$input;
+		}
+		if ($img == "readonly") {
+			return "<img src='".CareerDev::link($imgFile)."' style='width: $size; height: $size;' align='left'>";
+		}
+		return "";
+	}
+
+
+
+	public function hasChanged() {
+		if (empty($this->origRow) && !empty($this->data)) {
+			return TRUE;
+		}
+		foreach ($this->origRow as $field => $value) {
+			$shortField = self::shortenField($field);
+			if ($this->getVariable($shortField) != $value) {
+				return TRUE;
+			}
+		}
+		return FALSE;
+	}
+
+	private function resetOrigRow() {
+		$this->origRow = array();
+		foreach ($this->data as $field => $value) {
+			$this->origRow["citation_".$field] = $value;
+		}
+	}
+
+	private function resetData() {
+		$this->data = array();
+	}
+
+	private static function shortenField($field) {
+		return preg_replace("/^citation_/", "", $field);
+	}
+
+	public static function getNumericMonth($mon) {
+		$month = "";
+		if (!$mon) {
+			$month = "01";
+		}
+		if (is_numeric($mon)) {
+			$month = $mon;
+			if ($month < 10) {
+				$month = "0".intval($month);
+			}
+		} else {
+			$months = array("Jan" => "01", "Feb" => "02", "Mar" => "03", "Apr" => "04", "May" => "05", "Jun" => "06", "Jul" => "07", "Aug" => "08", "Sep" => "09", "Oct" => "10", "Nov" => "11", "Dec" => "12");
+			if (isset($months[$mon])) {
+				$month = $months[$mon];
+			}
+		}
+		if (!$month) {
+			throw new \Exception("Could not convert $mon into month!");
+		}
+		return $month;
+	}
+
+	public static function createCitationFromText($text, $recordId) {
+		if (!$text) {
+			return 0;
+		}
+		$nodes = preg_split("/[\.\?]\s+/", $text);
+		$date = "";
+		$i = 0;
+		$issue = "";
+		while (!$date && $i < count($nodes)) {
+			if (preg_match("/;/", $nodes[$i]) && preg_match("/\d\d\d\d.*;/", $nodes[$i])) {
+				$a = preg_split("/;/", $nodes[$i]);
+				$date = $a[0];
+				$issue = $a[1];
+			}
+			$i++;
+		}
+		if ($date) {
+			$dateNodes = preg_split("/\s+/", $date);
+	
+			$year = $dateNodes[0];
+			$month = "";
+			$day = "";
+
+			if (count($dateNodes) == 1) {
+				$month = "01";
+			} else {
+				$month = Citation::getNumericMonth($dateNodes[1]);
+			}
+	
+			if (count($dateNodes) <= 2) {
+				$day = "01";
+			} else {
+				$day = $dateNodes[2];
+				if ($day < 10) {
+					$day = "0".intval($day);
+				}
+			}
+			return strtotime($year."-".$month."-".$day);
+		} else {
+			return 0;
+		}
+	}
+
+	public function readData() {
+		if (empty($this->origRow)) {
+			$this->downloadData();
+		} else {
+			$this->resetData();
+			foreach ($this->origRow as $field => $value) {
+				$shortField = self::shortenField($field);
+				$this->setVariable($shortField, $value);
+			}
+		}
+	}
+
+	private function downloadData() { 
+		$redcapData = Download::fieldsForRecords($this->token, $this->server, CareerDev::$citationFields, array($this->getRecordId()));
+		foreach ($redcapData as $row) {
+			if (($row['record_id'] == $this->getRecordId()) && ($row['redcap_repeat_instrument'] == "citation") && ($row['redcap_repeat_instance'] == $this->getInstance())) {
+				foreach ($row as $field => $value) {
+					$shortField = self::shortenField($field);
+					$this->setVariable($shortField, $value);
+				}
+				$this->origRow = $row;
+				break;
+			}
+		}
+	}
+
+	public function getVariable($var) {
+		$var = strtolower(preg_replace("/^citation_/", "", $var));
+		if (isset($this->data[$var])) {
+			return $this->data[$var];
+		}
+		return "";
+	}
+
+	private function setVariable($var, $val) {
+		$this->data[$var] = $val;
+	}
+
+	public function getID() {
+		return $this->getPMID();
+	}
+
+	public function getUniqueID() {
+		return "PMID".$this->getPMID();
+	}
+
+	public function getPMID() {
+		return $this->getVariable("pmid");
+	}
+
+	public function getPMC() {
+		return $this->getVariable("pmc");
+	}
+
+	public static function explodeList($str) {
+		if ($str) {
+			return explode("; ", $str);
+		} else {
+			return array();
+		}
+	}
+
+	public function getPubTypes() {
+		$str = $this->getVariable("pub_types");
+		return self::explodeList($str);
+	}
+
+	public function getMESHTerms() {
+		$str = $this->getVariable("mesh_terms");
+		return self::explodeList($str);
+	}
+
+	public function getType() {
+		$include = $this->getVariable("include");
+		if ($include === "") {
+			return "New";
+		} else if ($include === "0") {
+			return "Omit";
+		} else {
+			return "Final";
+		}
+	}
+
+	private function getDate() {
+		$year = $this->getVariable("year");
+		$month = $this->getVariable("month");
+		$day = $this->getVariable("day");
+
+		$translateMonth = array(
+					1 => "January",
+					2 => "February",
+					3 => "March",
+					4 => "April",
+					5 => "May",
+					6 => "June",
+					7 => "July",
+					8 => "August",
+					9 => "Septemeber",
+					10 => "October",
+					11 => "November",
+					12 => "December",
+					);
+		$date = "";
+
+		if ($year) {
+			if (is_numeric($year) && ($year < 100)) {
+				$year += 2000;
+			}
+			$date .= $year;
+		}
+
+		if ($month) {
+			if (is_numeric($month)) {
+				$month = $translateMonth[intval($month)];
+			}
+			if ($date) {
+				$date .= " ";
+			}
+			$date .= $month;
+		}
+
+		if ($day) {
+			if ($date) {
+				$date .= " ";
+			}
+			$date .= $day;
+		}
+
+		return $date;
+	}
+
+	private function getIssueAndPages() {
+		$vol = $this->getVariable("volume");
+		$issue = $this->getVariable("issue");
+		$pages = $this->getVariable("pages");
+
+		$str = "";
+		if ($vol) {
+			$str .= $vol;
+		}
+		if ($issue) {
+			$str .= "(".$issue.")";
+		}
+		if ($pages) {
+			$str .= ":".$pages;
+		}
+
+		return $str;
+	}
+
+	public function getCitation() {
+		$citation = $this->getVariable("authors").". ".$this->getVariable("title").". ".$this->getVariable("journal").". ".$this->getDate()."; ".$this->getIssueAndPages();
+		$doi = $this->getVariable("doi");
+		if ($doi) {
+			$citation .= " doi:".$doi.".";
+		}
+		return $citation;
+	}
+
+	public function getCitationWithLink() {
+		global $pid, $event_id;
+
+		$base = $this->getCitation();
+
+		$doi = $this->getVariable("doi");
+		if ($doi) {
+			$baseWithDOILink = str_replace("doi:".$doi, Links::makeLink("https://www.doi.org/".$doi, "doi:".$doi), $base);
+		} else {
+			$baseWithDOILink = $base;
+		}
+
+		if ($this->getPMID() && !preg_match("/PMID\d/", $baseWithDOILink)) {
+			$baseWithPMID = $baseWithDOILink." PubMed PMID: ".$this->getPMID();
+		} else {
+			$baseWithPMID = $baseWithDOILink;
+		}
+
+		if ($this->getInstance() && $this->getRecordId()) {
+			$baseWithREDCap = $baseWithPMID." ".Links::makePublicationsLink($pid, $this->getRecordId(), $event_id, "REDCap", $this->getInstance());
+		} else {
+			$baseWithREDCap = $baseWithPMID;
+		}
+
+		if ($this->getPMC() && !preg_match("/PMC\d/", $baseWithREDCap)) {
+			if (preg_match("/PMC/", $this->getPMC())) {
+				$baseWithPMC = $baseWithREDCap." ".$this->getPMC().".";
+			} else {
+				$baseWithPMC = $baseWithREDCap." PMC".$this->getPMC().".";
+			}
+		} else {
+			$baseWithPMC = $baseWithREDCap;
+		}
+
+		$baseWithPMCLink = preg_replace("/PMC{$this->pmcid}/", Links::makeLink($this->getPMCURL(), "PMC".$this->getPMC()), $baseWithPMC);
+		$baseWithLinks = preg_replace("/PubMed PMID:\s*".$this->getPMID()."/", Links::makeLink($this->getURL(), "PubMed PMID: ".$this->getPMID()), $baseWithPMCLink);
+
+		return $baseWithLinks;
+	}
+
+	public function getPMCURL() {
+		return "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC".$this->getPMC();
+	}
+
+	public function getURL() {
+		return "https://www.ncbi.nlm.nih.gov/pubmed/?term=".$this->getPMID();
+	}
+
+	public function isResearch() {
+		return $this->isResearchArticle();
+	}
+
+	public function isResearchArticle() {
+		return ($this->getCategory() == "Original Research");
+	}
+
+	public function isIncluded() {
+		return $this->getVariable("include");
+	}
+
+	private function writeToDB() {
+		$row = array(
+				"record_id" => $this->getRecordId(),
+				"redcap_repeat_instrument" => "citation",
+				"redcap_repeat_instance" => $this->getInstance(),
+				);
+		foreach ($this->data as $field => $value) {
+			$row['citation_'.$field] = $value;
+		}
+		$row['citation_complete'] = '2';
+		Upload::oneRow($row, $this->token, $this->server);
+	}
+
+	public function includePub() {
+		$this->isIncluded = TRUE;
+		$this->setVariable("include", "1");
+		$this->writeToDB();
+	}
+
+	public function omit() {
+		$this->setVariable("include", "0");
+		$this->writeToDB();
+	}
+
+	public function getCategory() {
+		$override = $this->getVariable("is_research_override");
+		if ($override !== "") {
+			if ($override == "1") {
+				return "Original Research";
+			} else if ($override == "2") {
+				return "Not Original Research";
+			}
+		}
+		$val = $this->getVariable("is_research");
+		if ($val == "1") {
+			return "Original Research";
+		} else if ($val === "0") {
+			return "Not Original Research";
+		} else {
+			return "Uncategorized";
+		}
+	}
+
+	public static function getCategories() {
+		return array("Original Research", "Not Original Research", "Uncategorized");
+	}
+
+	public function getTimestamp() {
+		$date = $this->getDate();
+		if ($date) {
+			$dateNodes = preg_split("/\s+/", $date);
+			$year = $dateNodes[0];
+			$months = array("Jan" => "01", "Feb" => "02", "Mar" => "03", "Apr" => "04", "May" => "05", "Jun" => "06", "Jul" => "07", "Aug" => "08", "Sep" => "09", "Oct" => "10", "Nov" => "11", "Dec" => "12");
+
+			if (count($dateNodes) == 1) {
+				$month = "01";
+			} else if (is_numeric($dateNodes[1])) {
+				$month = $dateNodes[1];
+				if ($month < 10) {
+					$month = "0".intval($month);
+				}
+			} else if (isset($months[$dateNodes[1]])) {
+				$month = $months[$dateNodes[1]];
+			} else {
+				$month = "01";
+			}
+	
+			if (count($dateNodes) <= 2) {
+				$day = "01";
+			} else {
+				$day = $dateNodes[2];
+				if ($day < 10) {
+					$day = "0".intval($day);
+				}
+			}
+			return strtotime($year."-".$month."-".$day);
+		} else {
+			return 0;
+		}
+	}
+
+	public function getSource() {
+		$src = $this->getVariable("source");
+		if (isset($this->sourceChoices[$src])) {
+			return $this->sourceChoices[$src];
+		} else {
+			if (!$this->sourceChoices && empty($this->sourceChoices)) {
+				$metadata = Download::metadata($token, $server);
+				$choices = Scholar::getChoices($metadata);
+				if (isset($choices["citation_source"])) {
+					$this->sourceChoices = $choices["citation_source"];
+				}
+			}
+			if (isset($this->sourceChoices[$src])) {
+				return $this->sourceChoices[$src];
+			} else {
+				return $src;
+			}
+		}
+	}
+
+	public function getRecordId() {
+		return $this->recordId;
+	}
+
+	public function getInstance() {
+		return $this->instance;
+	}
+
+	private $data = array();
+	private $origRow = array();
+	private $recordId = 0;
+	private $instance = 0;
+	private $token = "";
+	private $server = "";
+	private $sourceChoices = array();
+}
+

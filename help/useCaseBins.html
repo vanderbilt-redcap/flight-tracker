@@ -1,0 +1,20 @@
+<h3>Use Case: Organizing Grants into Types</h3>
+
+<p><b>Situation</b>: You are asked to report grant funding outcomes for trainees who have completed your program.</p>
+
+<p><b>Solution</b>: To accomplish this task, there are some concepts to understand and two steps to take. First, the concepts. Because grants come in many shapes and sizes, grants are placed into “bins” or “types” to understand them. The script that runs overnight automatically accomplishes this organization.  The bins are specified in <a href='launchHelp("grantWrangler.html");'>Manual Curation: Grant Wrangler</a>.</p>
+
+<p class='smaller blockquote'>The details of the algorithm are specified in the <a href='launchHelp("Codebook");'>CodeBook</a>.</p>
+
+<p>The first step is to isolate a cohort. Because these scholars consist of those who have completed your program, Internal Ks and K12s/KL2s are eligible. Go to the <b>Cohorts / Filtering</b> menu and select <b>Add a New Cohort</b>. We can title this cohort “Program Graduates.” We will combine two filters:</p>
+<ol>
+<li>Filter Type is <b>Grant</b>. Variable is <b>Award Type</b>. It “Has” <b>Internal K</b>. When you are done, click <b>Add Row</b>.
+<li>Filter Type is <b>Grant</b>. Variable is <b>Award Type</b>. It “Has” <b>K12/KL2</b>. When you are done, click <b>Add Row</b>.
+</ol>
+
+<p>Finally, change the AND to an <b>OR</b> because we want either one of these outcomes, not both. Then click <b>Commit Filter</b>.</p>
+
+<p><img src='img/useCaseBins.png' alt='Picture of Add a New Cohort'></p>
+
+<p>In the second step, we will see the results. On the left navigation menu, click <b>View Cohort Metrics</b>. Then select our new group from the dropdown – <b>Program Graduates</b>. You will be taken to a <b>Dashboard</b> that will tell you the conversion statistics for this cohort. From there, you can use these numbers to calculate or report any specifics that are required by your requestor.</p>
+

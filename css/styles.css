@@ -1,0 +1,131 @@
+.form-signin {
+	max-width: 600px;
+	margin: 0 auto;
+}
+.form-signin .form-signin-heading,
+.form-signin .checkbox {
+	margin-bottom: 10px;
+}
+.form-signin .checkbox {
+	font-weight: normal;
+}
+.form-signin .form-control {
+	position: relative;
+	height: auto;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+	padding: 10px;
+	font-size: 16px;
+}
+.form-signin .form-control:focus {
+	z-index: 2;
+}
+.form-signin input[type="text"] {
+	margin-bottom: 10px;
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+}
+
+.header {
+	text-align: center;
+	margin-bottom: 20px;
+}
+.header h2 {
+	margin-top: 0;
+	font-size: 30px;
+	color: #0c74a9;
+}
+
+.title {
+	padding: 40px 15px;
+	text-align: center;
+}
+
+.errorText {
+	padding: 10px 15px;
+	text-align: center;
+	font-weight: bold;
+	color: red;
+}
+
+.windows {
+	width: 95%;
+	border-top:1px solid #333;
+	border-right:1px solid #333;
+	border-collapse:collapse;
+}
+.windows th, .windows td {
+	color:#000;
+	border-bottom:1px solid #333;
+	border-left:1px solid #333;
+    border-right:1px solid #333;
+    border-top:1px solid #333;
+	padding: .5em 1em;
+	text-align:center;
+}
+.windows th {
+	background-color: #e5e5e5;
+	font-weight: bold;
+}
+
+/*table tbody tr td, table thead tr th {*/
+    /*border: 1px solid black;*/
+    /*text-align: center;*/
+    /*padding: 5px;*/
+/*}*/
+
+a.override-link {
+    color:#0000ff;
+}
+
+a.underline-link {
+    border-bottom: 3px solid #b4e7f8;
+    box-shadow: inset 0 -5px 0 #b4e7f8;
+    color: inherit;
+    -webkit-transition: background .15s cubic-bezier(.33,.66,.66,1);
+    transition: background .15s cubic-bezier(.33,.66,.66,1);
+}
+
+a.underline-link:hover {
+    text-decoration: none;
+    background: #b4e7f8;
+}
+
+td.td-link, th.td-link {
+    cursor:pointer;
+}
+
+th.header {
+    background-image: url(sort.gif);
+    background-repeat: no-repeat;
+    background-position: center left;
+    padding-left:10px;
+    cursor:pointer;
+}
+th.headerSortDown {
+    background-image: url(sort_desc.gif);
+}
+th.headerSortUp {
+    background-image: url(sort_asc.gif);
+}
+td.grant-name-td {
+    text-align:left;
+}
+td.task-name-td {
+    text-align:left;
+}
+
+.autocomplete-w1 { background:url(../images/shadow.png) no-repeat bottom right; position:absolute; top:0px; left:0px; margin:8px 0 0 6px;
+    /* IE7 fix: */ *width: 500px;
+    /* IE6 fix: */ _background:none; _margin:0;
+}
+.autocomplete { border:1px solid #999; background:#FFF; cursor:default; text-align:left; max-height:350px; overflow:auto; margin:-6px 6px 6px -6px;
+    /* IE6 specific: */  _margin:0; _overflow-x:hidden;
+}
+.autocomplete .selected { background:#F0F0F0; }
+.autocomplete div { padding:2px 5px; white-space:nowrap; cursor:pointer;cursor:hand }
+.autocomplete strong { color:#3399FF; }
+.autocomplete b { font-size: 14px; }
+.autocomplete span { font-weight:bold;font-size: 13px; }
+.autocomplete i { color:#777; }

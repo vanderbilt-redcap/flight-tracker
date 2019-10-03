@@ -1,0 +1,48 @@
+{
+	"name": "Flight Tracker for Scholars",
+
+	"namespace": "Vanderbilt\\FlightTrackerExternalModule",
+
+	"description": "This module tracks a group of faculty's career development by charting publications and grants over time.",
+
+	"authors": [
+		{
+			"name": "Scott J. Pearson",
+			"email": "datacore@vumc.org",
+			"institution": "Vanderbilt University Medical Center"
+		}
+	],
+
+	
+	"permissions": [
+			"hook_data_entry_form",
+			"hook_every_page_before_render",
+			"hook_every_page_top",
+			"hook_survey_page"
+	],
+
+	"links": {
+		"project": [
+			{
+				"name": "Flight Tracker",
+				"icon": "report",
+				"url": "index.php"
+			}
+		]
+	},
+
+	"crons": [
+		{
+			"cron_name": "flight_tracker_cron",
+			"cron_description": "Flight Tracker Cron",
+			"method": "cron",
+			"cron_hour": "00",
+			"cron_minute": "00"
+		}
+	],
+
+	"framework-version": 3,
+
+	"project-settings": [
+	]
+}

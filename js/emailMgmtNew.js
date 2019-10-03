@@ -1,0 +1,177 @@
+function updateAll(ob, pid, post) {
+	var id = $(ob).attr('id');
+	console.log("updateAll with "+id);
+	if (id) {
+		if ($(ob).attr('type') != "checkbox") {
+			// only use post variable if not a checkbox
+			if ($('[name=recipient][value=filtered_group]').is(':checked')) {
+				$('#filter').show();
+				$('#checklist').hide();
+				if ($(ob).hasClass('who_to')) {
+					updateNames(pid, post);
+				}
+			} else {
+				$('#filter').hide();
+				$('#checklist').show();
+				updateNames(pid, post);
+			}
+		}
+
+		if (id != 'test_to') {
+			$('#test').hide();
+		}
+	}
+}
+
+function updateNames(pid, existingPost) {
+	var post = {};
+	var selector = "";
+	if ($('#filter').is(':visible')) {
+		selector = '#filter';
+		if ($('[name=filter]:checked').val() == "some") {
+			$('#filterItems').slideDown();
+		} else {
+			$('#filterItems').hide();
+		}
+		if ($('[name=survey_complete]:checked').val() == "yes") {
+			$('#whenCompleted').slideDown();
+		} else {
+			$('#whenCompleted').hide();
+		}
+		if ($('[name=max][value=limited]').is(':checked')) {
+			$('#numEmails').slideDown();
+		} else {
+			$('#numEmails').hide();
+		}
+
+		post['filter'] = $('[name=filter]:checked').val();
+		if ($('[name=survey_complete]').is(':visible')) {
+			if ($('[name=survey_complete]:checked').val() == "yes") {
+				post['last_complete'] = $('[name=last_complete_months]').val();
+			} else {
+				post['none_complete'] = true;
+			}
+		}
+		if ($('[name=max_emails]').is(':visible')) {
+			if ($('[name=max_emails]').val() !== '') {
+				post['max_emails'] = $('[name=max_emails]').val();
+			}
+		}
+		if ($('[name=r01_or_equiv]').is(':visible')) {
+			post['converted'] = $('[name=r01_or_equiv]:checked').val();
+		}
+
+	} else if ($('#checklist').is(':visible')) {
+		selector = '#checklist';
+		post['recipient'] = 'individuals';
+	}
+
+	if (selector) {
+		$(selector+' .namesCount').html("");
+		$(selector+' .namesFiltered').html("Retrieving Names...");
+		console.log(JSON.stringify(post));
+		$.post(getPageUrl("emailMgmt/getNames.php"), post, function(html) {
+			$(selector+' .namesCount').html(" ("+getHTMLLines(html)+")");
+			if (selector.match(/checklist/)) {
+				html = transformIntoCheckboxes(html, existingPost);
+			}
+			$(selector+' .namesFiltered').html(html);
+			addCheckboxHandlers(pid);
+		});
+	}
+}
+
+function transformIntoCheckboxes(html, post) {
+	var ary = html.split(/<br>/);
+	var ary2 = [];
+	for (var i=0; i < ary.length; i++) {
+		var item = ary[i];
+		if (item.match(/;/)) {
+			var a = item.split(/;/);
+			var name = a[0];
+			var email = a[1];
+			var check = "";
+			if (post[email]) {
+				check = " checked";
+			}
+
+			if (email) {
+				item = "<span class='nobreak'><input type='checkbox' id='"+email+"' name='"+email+"'"+check+"> <label for='"+email+"'>"+name+"</label></span>";
+			} else {
+				item = "";
+			}
+		}
+		if (item) {
+			ary2.push(item);
+		}
+	}
+	return "<div class='wrapTightly centered' style='text-align: left;'>"+ary2.join("<br>")+"</div>";
+}
+
+function getHTMLLines(html) {
+	if (html == "No names match your description.") {
+		return 0;
+	}
+	var ary = html.split(/<br>/);
+	return ary.length;
+}
+
+function isEmail(email) {
+	if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+		return true;
+	}
+	return false;
+}
+
+function sendTestEmails(pid, selectName, selectValue) {
+	var to = $('#test_to').val();
+	if (isEmail(to)) {
+		var post = {};
+		post['to'] = to;
+		post[selectName] = selectValue;
+		presentScreen("Preparing Messages...");
+		$.post(getPageUrl("emailMgmt/makeMessages.php"), post, function(json) {
+			presentScreen("Sending Messages...");
+			$.post(getPageUrl("emailMgmt/sendTest.php"), { messages: json }, function(str) {
+				clearScreen();
+				if (!$('#note').hasClass("green")) {
+					$('#note').addClass("green");
+				}
+				$('#note').html("Test emails sent "+str);
+				$('#test').hide();
+			});
+		});
+	} else {
+		alert(to+" is not formatted properly for an email address. Emails not sent.");
+	}
+}
+
+function insertName() {
+	var name = "[name]";
+	appendToMessage(name);
+}
+
+function insertSurveyLink(selectId) {
+	var form = $('#'+selectId+' option:selected').val();
+	if (form) {
+		var surveyLink = "[survey_link_"+form+"]";
+		appendToMessage(surveyLink);
+	} else {
+		alert("You must specify a survey in order to insert a link.");
+	}
+}
+
+// append at cursor
+function appendToMessage(str) {
+	var range = quill.getSelection();
+	if (range && range.index) {
+		quill.insertText(range.index, str);
+	} else {
+		quill.insertText(0, str);
+	}
+}
+
+function addCheckboxHandlers(pid) {
+	// no post variables in updateAll - because not used
+	$('input[type=checkbox]').on('change', function() { updateAll(this, pid); });
+}

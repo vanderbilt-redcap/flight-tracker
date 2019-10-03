@@ -1,0 +1,26 @@
+<h3>Adding New Data Sources</h3>
+
+<p>This process requires a computer programmer proficient in PHP. They would need the application to access the new data source on the application’s nightly <b>cron</b> to run an overnight process. There exist some core classes that can help with the data processing (both as a template and as a resource). These are in the module’s <code>classes/</code> directory.</p>
+
+<p>The following steps would need to be taken:</p>
+
+<ol>
+<li>Access to the data source needs to be established through a PHP script.</li>
+<li>Data structures would need to be added to the REDCap form.</li>
+<li>The data would need to be transformed into the REDCap data structures and saved in the appropriate records in REDCap. (This requires name matching.)</li>
+<li>The software process would need to be tested and debugged.</li>
+<li>The software needs to be added to the list of crons specified in <code>small_base.php</code>.</li>
+</ol>
+
+<p>This data source could provide any of the following or something else:</p>
+
+<ul>
+<li>Demographic information</li>
+<li>Information about career advancement (promotions)</li>
+<li>Grant information</li>
+<li>Financial information</li>
+<li>Publication information</li>
+</ul>
+
+<p>This entire process would need to require some give-and-take initially between programmers. As the application matures, this process should be refined into an easier process.</p>
+

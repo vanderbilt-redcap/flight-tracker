@@ -1,0 +1,25 @@
+<h3>Manual Curation: Publication Wrangler</h3>
+
+<p>Publications are automatically downloaded for a given scholar from PubMed and from <a href='https://icite.od.nih.gov/'>iCite (a project on publication metrics from the NIH)</a> every week. It uses the institution field to match the scholar’s name more accurately. However, it is a known problem that a name is not always a unique identifier, even within an institution. This <b>disambiguation problem</b> requires each publication to be manually verified as matched to a scholar. This is the (only) job of the Publication Wrangler.</p>
+
+<p><img src='img/pubWrangler1.png' alt='Publication Wrangler interface'></p>
+
+<p>The interface is built so that each citation is listed along with whether iCite considers it Original Research (i.e., peer-reviewed original research) or Not Original Research (i.e., a review or a letter to the editor). iCite information will be downloaded afresh weekly as these data can change slightly over time. If iCite information is unavailable, these fields will be blank; this happens mainly for recent papers and for papers published earlier than 1995 (as of the time of this writing - June 2019).</p> 
+
+<p>You can look for the following criteria to see whether the citation is matched with the correct scholar. (In our experience, the answer is usually yes, but not always.)</p>
+<ul>
+<li>The title and/or journal of the paper is in the author’s field of interest. For instance, a nephrologist (kidney researcher) might publish all of her/his works on the kidney or on a related field. Therefore, an article on the H1N1 flu is suspect.</li>
+<li>The dates of the paper make sense. If, say, all of a scholar’s writings are published after 2015, an article from 2005 is suspect.</li>
+</ul>
+<p>The goal is to match or unmatch almost all of the papers from the citations alone. Thus, only a select few might need detailed inspection by looking up the original research paper. This speeds up the process.</p>
+
+<p>Each citation has its information (citation data from PubMed and metrics from iCite) stored on the <b>Citation</b> form. The variable <code>citation_included</code> stores the result of the Publication Wrangler. Its value is:</p>
+<ul>
+<li>1 (Yes/Checked) if the publication’s authorship has been matched with the scholar.</li>
+<li>0 (No/Unchecked) if the publication’s authorship is incorrect (i.e., rejecting a match).</li>
+<li>[BLANK] if the publication wrangling has not taken place.</li>
+</ul>
+<p>You can filter for <code>citation_included = 1</code> to get all of the citations for a scholar in a REDCap report.</p>
+
+<p>At first, verifying the publications will take some time. Once the initial uptake is completed, only new publications will need to be matched. This process will be fairly quick and can happen once a month or so.</p>
+

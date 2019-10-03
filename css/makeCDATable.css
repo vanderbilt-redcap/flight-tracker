@@ -1,0 +1,54 @@
+h3,h4 { margin: 2px; }
+.record { vertical-align: middle; font-size: 12px; text-align: center; }
+.dates { font-size: 14px; text-align: center; }
+.sideHeader { font-size: 12px; }
+.name { font-size: 18px; text-align: center; font-weight: bold; }
+.date { font-size: 14px; text-align: center; }
+.small_date { font-size: 10px; text-align: center; }
+.source { font-size: 12px; text-align: center; }
+.type { font-size: 16px; font-weight: bold; text-align: center; }
+.awardno { font-size: 11px; text-align: center; }
+.awardno_large { width: 100%; font-size: 13px; text-align: center; }
+.small{ font-size: 11px; }
+.age { font-size: 14px; text-align: center; }
+.description { font-size: 14px; text-align: center; }
+.cell { width: 175px; max-width: 175px; border-radius: 4px; padding: 6px; vertical-align: middle; }
+.legendCell { width: 100px; max-width: 100px; border-radius: 4px; padding: 6px; vertical-align: middle; }
+td.spacer { width: 25px; }
+div.spacerYears { font-size: 16px; text-align: center; }
+div.spacerYear { font-size: 11px; text-align: center; }
+.link { vertical-align: middle; padding-top: 4px; font-size: 13px; text-align: center; color: black; }
+.mechanism { vertical-align: middle; font-size: 13px; text-align: center; color: black; }
+.budget { vertical-align: middle; font-size: 13px; text-align: center; color: black; }
+.genericAward { background-color: #ffffff; }
+.internalK { background-color: #eeeeee; }
+.k12kl2 { background-color: #cccccc; }
+.individualK { background-color: #aaaaaa; }
+.kEquivalent { background-color: #aaaaaa; }
+.r01 { background-color: #ffd545; }
+.rEquivalent { background-color: #ffd545; }
+.k99r00{ background-color: #ffedaf; }
+.trainingAdmin { background-color: #ffd545; }
+.fellowship { background-color: #dddddd; }
+.leftBox { background-color: #9fdcf8; width: 225px; min-width: 225px; max-width: 225px; }
+a { color: black; }
+table { margin-left:auto; margin-right:auto; }
+.red { color: red; }
+.centered { text-align: center; }
+.header { font-size: 24px; font-weight: bold; font-style: italic; }
+.smaller { font-size: 12px; }
+div.spacer { font-size: 7px; text-align: center; }
+
+/* Tooltip container */
+.tooltip { text-decoration: none; position: relative; text-align: center; border: 1px dotted black; border-radius: 6px; }
+
+/* Tooltip text */
+.tooltip .tooltiptext { visibility: hidden; width: 250px; background-color: #555; color: #fff; text-align: center; padding: 5px 0; border-radius: 6px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -125px; opacity: 0; transition: opacity 0.3s; font-size: 14px; }
+.tooltip .tooltiptext a { color: #fff; }
+.timeline { height: 600px; width: 100%; }
+
+/* Tooltip arrow */
+.tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #555 transparent transparent transparent; }
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
