@@ -8,19 +8,51 @@ require_once(dirname(__FILE__)."/Grant.php");
 # performs 1:1 case-insensitive comparisons
 
 class GrantLexicalTranslator {
-	public function __construct($token, $server, $module) {
-		$this->module = $module;
+	public function __construct($token, $server, $moduleOrMetadata) {
+		if (is_array($moduleOrMetadata)) {
+			$this->module = NULL;
+			$this->metadata = $moduleOrMetadata;
+		} else {
+			$this->module = $moduleOrMetadata;
+			$this->metadata = NULL;
+		}
 		$this->token = $token;
 		$this->server = $server;
 		$this->settingName = "lexical_translations";
 		$this->data = array();
+		$this->hijackedField = "identifier_last_name";
 		if ($this->module) {
 			$this->data = $this->module->getSystemSetting($this->settingName);
+		} else if ($this->metadata) {
+			foreach ($this->metadata as $row) {
+				if ($row['field_name'] == $this->hijackedField) {
+					$json = $row['field_annotation'];
+					if ($json) {
+						$data = json_decode($json, true);
+						if ($data) {
+							$this->data = $data;
+						} else {
+							throw new \Exception("Could not read translations from JSON: '$json'");
+						}
+					}
+				}
+			}
 		}
 	}
 
 	public function loadData($data) {
 		$this->data = $data;
+		if ($this->metadata) {
+			$newMetadata = array();
+			foreach ($this->metadata as $row) {
+				if ($row['field_name'] == $this->hijackedField) {
+					$json = json_encode($data);
+					$row['field_annotation'] = $json;
+				}
+				array_push($newMetadata, $row);
+			}
+			$this->metadata = $newMetadata;
+		}
 		$this->writeData();
 	}
 
@@ -50,6 +82,8 @@ class GrantLexicalTranslator {
 	private function writeData() {
 		if ($this->module) {
 			$this->module->setSystemSetting($this->settingName, $this->data);
+		} else if ($this->metadata) {
+			$feedback = Upload::metadata($this->metadata, $this->token, $this->server);
 		} else {
 			throw new \Exception("No module loaded. Could not write lexical-translation data!");
 		}
@@ -207,6 +241,8 @@ class GrantLexicalTranslator {
 	}
 
 	private $module;
+	private $metadata;
+	private $hijackedField;
 	private $token;
 	private $server;
 	private $settingName;

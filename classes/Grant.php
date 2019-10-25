@@ -1253,7 +1253,6 @@ class Grant {
 				if ($projStart && $projEnd) {
 					# 3 years
 					$yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
-					# definition from cancer.gov, not NIH: 125K per year for 3+ years
 					if (($yearspan >= 3) && ($specs['direct_budget'] / $yearspan > 250000)) {
 						if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
 							// error_log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600)));

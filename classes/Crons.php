@@ -70,8 +70,8 @@ class CronManager {
 		$date = date(self::getDateFormat());
 		$keys = array($date, $dayOfWeek);     // in order that they will run
 
-		echo "CRONS RUN AT ".date("Y-m-d h:i:s")." FOR PID ".$this->pid."\n";
 		error_log("CRONS RUN AT ".date("Y-m-d h:i:s")." FOR PID ".$this->pid);
+		error_log("adminEmail ".$adminEmail);
 		$run = array();
 		$toRun = array();
 		foreach ($keys as $key) {
@@ -81,10 +81,8 @@ class CronManager {
 				}
 			}
 		}
-		echo "Running ".count($toRun)." crons for ".json_encode($keys)."\n";
 		error_log("Running ".count($toRun)." crons for ".json_encode($keys));
 		foreach ($toRun as $cronjob) {
-			echo "Running ".$cronjob->getTitle()."\n";
 			error_log("Running ".$cronjob->getTitle());
 			$run[$cronjob->getTitle()] = array("text" => "Attempted", "ts" => self::getTimestamp());
 			try {
@@ -93,7 +91,6 @@ class CronManager {
 			} catch(\Exception $e) {
 				\REDCap::email($adminEmail, "noreply@vumc.org", PROGRAM_NAME." Cron Error", $cronjob->getTitle()."<br><br>".$e->getMessage()."<br>".json_encode($e->getTrace()));
 				error_log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".json_encode($e->getTrace()));
-				echo "Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".json_encode($e->getTrace())."\n";
 			}
 		}
 		if (count($toRun) > 0) {

@@ -1,3 +1,19 @@
+<?php
+
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Download;
+
+require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../classes/Links.php");
+require_once(dirname(__FILE__)."/../classes/Download.php");
+
+if (isset($_GET['csv'])) {
+	require_once(dirname(__FILE__)."/../small_base.php");
+} else {
+	require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+?>
+
 <style>
 .red { color: red; font-weight: bold; }
 .green { color: green; font-weight: bold; }
@@ -10,14 +26,9 @@ h1,h2,h3,h4 { margin-top: 6px; margin-bottom: 6px; text-align: center; }
 table { border-collapse: collapse; }
 th.name { min-width: 300px; }
 </style>
+
 <?php
-
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Links;
-
-require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
+}
 
 $start = 1;
 $pull = 1000;
@@ -33,10 +44,9 @@ $_GLOBALS['allGreen'] = $allGreen;
 $_GLOBALS['skip'] = $skip;
 
 # return array
-function filterFields($fields, $token, $server) {
+function filterFields($fields, $metadata) {
 	$filtered = array();
 
-	$metadata = Download::metadata($token, $server);
 	$metadataFields = array();
 	foreach ($metadata as $row) {
 		array_push($metadataFields, $row['field_name']);
@@ -55,6 +65,7 @@ function generateDataColumns($recordData) {
 	global $pid;
 	global $allGreen, $skip;
 	$cols = array();
+	$data = array();
 
 	$row = $recordData[0];
 
@@ -207,8 +218,24 @@ function generateDataColumns($recordData) {
 				$col = "<td title='{$tooltips[$field]}'><span class='{$colors[$field]}'>";
 				$col .= $date; // . " (".$colorValues[$field].")";
 				$col .= "</span></td>";
+				switch($colors[$field]) {
+					case "green":
+						$data[] = "Self-Reported";
+						break;
+					case "purple":
+						$data[] = "Manual";
+						break;
+					case "yellow":
+						$data[] = "Computer";
+						break;
+					case "red":
+					default:
+						$data[] = "";
+						break;
+				}
 			} else {
 				$col = "<td><span class='red'>Missing</span></td>";
+				$data[] = "";
 				$nones++;
 			}
 			$cols[] = $col;
@@ -216,56 +243,99 @@ function generateDataColumns($recordData) {
 	}
 
 	return array(
+			"cols" => $data,
 			"text" => implode("", $cols),
 			"missingCells" => $nones,
 			"missingRecords" => (($nones > 0) ? 1 : 0),
 			);
 }
 
+$metadata = Download::metadata($token, $server);
+
+$records = array();
+for ($i = $start; $i < $start + $pull; $i++) {
+	$records[] = $i;
+}
+
+$fields = array(
+		"identifier_email" => "Email",
+		"summary_survey" => "Survey?",
+		"summary_left_vanderbilt" => "Left VU/VUMC",
+		"summary_degrees" => "Degrees",
+		"summary_gender" => "Gender",
+		"summary_race_ethnicity" => "Race / Ethnicity",
+		"summary_dob" => "DOB",
+		"summary_citizenship" => "Citizen?",
+		"summary_current_division" => "Division",
+		"summary_current_rank" => "Rank",
+		"summary_current_start" => "Position Start",
+		"summary_current_tenure" => "Tenure",
+		);
+$addlFields = array();
+foreach ($fields as $field => $title) {
+	array_push($addlFields, $field);
+	if ($field == "summary_race_ethnicity") {
+		$field = "summary_race";
+		$addlFields[] = $field."_sourcetype";
+		$addlFields[] = $field."_source";
+		$field = "summary_ethnicity";
+		$addlFields[] = $field."_sourcetype";
+		$addlFields[] = $field."_source";
+	} else {
+		$addlFields[] = $field."_sourcetype";
+		$addlFields[] = $field."_source";
+	}
+}
+$nameFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_left_date");
+$shortSummaryFields = array_unique(array_merge($nameFields, $addlFields));
+$filteredSummaryFields = filterFields($shortSummaryFields, $metadata);
+
+$redcapData = \Vanderbilt\FlightTrackerExternalModule\alphabetizeREDCapData(Download::getFilteredRedcapData($token, $server, $nameFields, $_GET['cohort'], $metadata));
+
+if (isset($_GET['csv'])) {
+	$cohort = "";
+	if ($_GET['cohort']) {
+		$cohort = "_".$_GET['cohort'];
+	}
+	$filename = "missingness".$cohort.".csv";
+	header("Pragma: public");
+	header("Expires: 0");
+	header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+	header("Cache-Control: private",false);
+	header("Content-Type: application/octet-stream");
+	header("Content-Disposition: attachment; filename=\"$filename\";" );
+	header("Content-Transfer-Encoding: binary");
+
+	$fp = fopen('php://output', 'w');
+	$headers = array("Record ID", "First Name", "Last Name",);
+	foreach ($fields as $field => $title) {
+		if (!in_array($field, $skip)) {
+			$headers[] = $title;
+		}
+	}
+	fputcsv($fp, $headers);
+	foreach ($redcapData as $row) {
+		$recordId = $row['record_id'];
+		$csvRow = array($recordId, $row['identifier_first_name'], $row['identifier_last_name']);
+		$recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($recordId));
+		$ary = generateDataColumns($recordData);
+		$csvRow = array_merge($csvRow, $ary['cols']);
+		fputcsv($fp, $csvRow);
+	}
+	fclose($fp);
+	exit();
+} else {
 	echo "<h1>State of Missing Data</h1>";
 	$spacing = "&nbsp;&nbsp;&nbsp;&nbsp;";
 	echo "<h4><span class='green'>Green = Self-Reported</span>$spacing<span class='yellow'>Yellow = Computer-Reported</span>$spacing<span class='purple'>Purple = Manual Entry</span>$spacing<span class='red'>Red = Missing</span></h4>";
-	echo "<h3>Dates signify last change in REDCap</h3>";
 
-	$records = array();
-	for ($i = $start; $i < $start + $pull; $i++) {
-		$records[] = $i;
+	echo "<p class='centered'>".\Vanderbilt\FlightTrackerExternalModule\getCohortSelect($token, $server, $pid, $metadata)."<br>\n";
+	$url = CareerDev::link("/tablesAndLists/missingness.php")."&csv";
+	if ($_GET['cohort']) {
+		$url .= "&cohort=".$_GET['cohort'];
 	}
-	
-	$fields = array(
-			"identifier_email" => "Email",
-			"summary_survey" => "Survey?",
-			"summary_left_vanderbilt" => "Left VU/VUMC",
-			"summary_degrees" => "Degrees",
-			"summary_gender" => "Gender",
-			"summary_race_ethnicity" => "Race / Ethnicity",
-			"summary_dob" => "DOB",
-			"summary_citizenship" => "Citizen?",
-			"summary_current_division" => "Division",
-			"summary_current_rank" => "Rank",
-			"summary_current_start" => "Position Start",
-			"summary_current_tenure" => "Tenure",
-			);
-	$addlFields = array();
-	foreach ($fields as $field => $title) {
-		array_push($addlFields, $field);
-		if ($field == "summary_race_ethnicity") {
-			$field = "summary_race";
-			$addlFields[] = $field."_sourcetype";
-			$addlFields[] = $field."_source";
-			$field = "summary_ethnicity";
-			$addlFields[] = $field."_sourcetype";
-			$addlFields[] = $field."_source";
-		} else {
-			$addlFields[] = $field."_sourcetype";
-			$addlFields[] = $field."_source";
-		}
-	}
-	$nameFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_left_date");
-	$shortSummaryFields = array_unique(array_merge($nameFields, $addlFields));
-	$filteredSummaryFields = filterFields($shortSummaryFields, $token, $server);
+	echo "<a href='$url'>Export to CSV</a></p>\n";
 
-	$redcapData = \Vanderbilt\FlightTrackerExternalModule\alphabetizeREDCapData(Download::fields($token, $server, $nameFields));
 	$headers = "";
 	$headers .= "<tr><th class='name'>Name</th>";
 	foreach ($fields as $field => $title) {
@@ -309,6 +379,7 @@ function generateDataColumns($recordData) {
 
 	echo "<h4>$missingCells missing items across $missingRecords records</h4>";
 	echo $html;
+}
 ?>
 <script>
 $(document).ready(function() {

@@ -194,7 +194,7 @@ function processLines($lines, $recordId) {
 					$disadvantaged = "";
 				}
 				if (preg_match("/N/i", $nodes[11])) {
-					$disabled = 0;
+					$disabled = 2;
 				} else if (preg_match("/Y/i", $nodes[11])) {
 					$disabled = 1;
 				} else {
@@ -211,6 +211,9 @@ function processLines($lines, $recordId) {
 				} else {
 					$citizenship = "";
 				}
+				if ($nodes[13]) {
+					$mentor = $nodes[13];
+				}
 				$uploadRow["imported_dob"] = $dob;
 				$uploadRow["imported_gender"] = $gender;
 				$uploadRow["imported_race"] = $race;
@@ -218,6 +221,7 @@ function processLines($lines, $recordId) {
 				$uploadRow["imported_disadvantaged"] = $disadvantaged;
 				$uploadRow["imported_disabled"] = $disabled;
 				$uploadRow["imported_citizenship"] = $citizenship;
+				$uploadRow["imported_mentor"] = $mentor;
 			}
 			$upload[] = $uploadRow;
 			$recordId++;

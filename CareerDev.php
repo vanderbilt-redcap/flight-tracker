@@ -171,15 +171,18 @@ class CareerDev {
 	# gets the pid of a token if a PID context is applicable
 	# returns current PID if no token is specified and if using the current server
 	# otherwise returns empty string
-	public static function getPidFromToken($token = "") {
-		global $pid, $server, $info;
-		if (!$token) {
+	public static function getPidFromToken($localToken = "") {
+		global $pid, $token, $server, $info;
+		if (!$localToken) {
 			if (strpos($server, SERVER_NAME) !== FALSE) {
 				return $pid;
 			}
 		}
+		if ($localToken == $token) {
+			return $pid;
+		}
 		foreach ($info as $key => $row) {
-			if (($row['token'] == $token) && (strpos($row['server'], SERVER_NAME) !== FALSE)) {
+			if (($row['token'] == $localToken) && (strpos($row['server'], SERVER_NAME) !== FALSE)) {
 				return $row['pid'];
 			}
 		}
@@ -308,6 +311,10 @@ class CareerDev {
 		return array_keys(self::getMenuBackgrounds());
 	}
 
+	public static function isVanderbilt() {
+		return preg_match("/vanderbilt.edu/", SERVER_NAME);
+	}
+
 	public static function getMenu($menuName) {
 		global $pid;
 		$r = self::getREDCapDir();
@@ -369,12 +376,16 @@ class CareerDev {
 					"Search Grants" => self::link("/search/index.php"),
 					"Search Publications" => self::link("/search/publications.php"),
 					"Configure Application" => self::link("/config.php"),
+					"Configure Summaries" => self::link("/config.php")."&order",
 					"Custom Programming" => self::link("/changes/README.md"),
 					);
 			if (self::isViDERInstalledForProject()) {
 				$ary["ViDER Visualizations"] = ExternalModules::getUrl("vider", "index.php")."&pid=".$pid;
 			} else if (self::isViDERInstalledForSystem()) {
 				$ary["Enable ViDER Visualizations"] = $r."/ExternalModules/manager/project.php?pid=".$pid;
+			}
+			if (self::isVanderbilt()) {
+				$ary["Sync VUNet List to COEUS"] = self::link("/syncVUNet.php");
 			}
 			return $ary;
 		}

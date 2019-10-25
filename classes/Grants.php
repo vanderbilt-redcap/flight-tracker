@@ -32,7 +32,11 @@ class Grants {
 			$tempHolder[$row['field_name']] = $row;
 		}
 		$this->metadata = $tempHolder;
-		$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, CareerDev::getModule());
+		if ($module = CareerDev::getModule()) {
+			$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, CareerDev::getModule());
+		} else {
+			$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, $metadata);
+		}
 	}
 
 	public function getNumberOfGrants_test($tester) {

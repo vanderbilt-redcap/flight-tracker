@@ -25,8 +25,12 @@ class Download {
 		}
 		return $indexedRedcapData;
 	}
-
 	public static function getIndexedRedcapData($token, $server, $fields, $cohort = "", $metadata = array()) {
+		$redcapData = self::getFilteredRedcapData($token, $server, $fields, $cohort, $metadata);
+		return self::indexREDCapData($redcapData);
+	}
+
+	public static function getFilteredRedcapData($token, $server, $fields, $cohort = "", $metadata = array()) {
 		if ($token && $server && $fields && !empty($fields)) {
 			if ($cohort) {
 				$records = self::cohortRecordIds($token, $server, $metadata, $cohort);
@@ -36,7 +40,7 @@ class Download {
 			}
 
 			$redcapData = self::fieldsForRecords($token, $server, $fields, $records);
-			return self::indexREDCapData($redcapData);
+			return $redcapData;
 		}
 		return array();
 	}
@@ -52,7 +56,8 @@ class Download {
 		if (!empty($fields)) {
 			$data['fields'] = $fields;
 		}
-		return self::sendToServer($server, $data);
+		$rows = self::sendToServer($server, $data);
+		return $rows;
 	}
 
 	public static function getProjectSettings($token, $server) {
@@ -115,28 +120,53 @@ class Download {
 		return $ids;
 	}
 
-	public static function vunets($token, $server) {
-		$data = array(
-			'token' => $token,
-			'content' => 'record',
-			'format' => 'json',
-			'type' => 'flat',
-			'rawOrLabel' => 'raw',
-			'fields' => array("record_id", "identifier_vunet"),
-			'rawOrLabelHeaders' => 'raw',
-			'exportCheckboxLabel' => 'false',
-			'exportSurveyFields' => 'false',
-			'exportDataAccessGroups' => 'false',
-			'returnFormat' => 'json'
-		);
-		$redcapData = self::sendToServer($server, $data);
-		$ids = array();
-		foreach ($redcapData as $row) {
-			if ($row['identifier_vunet']) {
-				$ids[$row['record_id']] = $row['identifier_vunet'];
+	public static function userids($token, $server, $metadata = array()) {
+		return self::vunets($token, $server, $metadata);
+	}
+
+	public static function vunets($token, $server, $metadata = array()) {
+		$possibleFields = array("identifier_vunet", "identifier_userid");
+		if (empty($metadata)) {
+			$metadata = self::metadata($token, $server);
+		}
+
+		$userIdField = "";
+		foreach ($possibleFields as $field) {
+			foreach ($metadata as $row) {
+				if ($row['field_name'] == $field) {
+					$userIdField = $field;
+					break;  // inner
+				}
+			}
+			if ($userIdField) {
+				break; // outer
 			}
 		}
-		return $ids;
+
+		if ($userIdField) {
+			$data = array(
+				'token' => $token,
+				'content' => 'record',
+				'format' => 'json',
+				'type' => 'flat',
+				'rawOrLabel' => 'raw',
+				'fields' => array("record_id", $userIdField),
+				'rawOrLabelHeaders' => 'raw',
+				'exportCheckboxLabel' => 'false',
+				'exportSurveyFields' => 'false',
+				'exportDataAccessGroups' => 'false',
+				'returnFormat' => 'json'
+			);
+			$redcapData = self::sendToServer($server, $data);
+			$ids = array();
+			foreach ($redcapData as $row) {
+				if ($row['identifier_vunet']) {
+					$ids[$row['record_id']] = $row[$userIdField];
+				}
+			}
+			return $ids;
+		}
+		return array();
 	}
 
 	public static function formForRecords($token, $server, $formName, $records) {
@@ -356,7 +386,11 @@ class Download {
 
 	public static function cohortRecordIds($token, $server, $metadata, $cohort) {
 		$filter = new Filter($token, $server, $metadata);
-		$cohorts = new Cohorts($token, $server, CareerDev::getModule());
+		if ($module = CareerDev::getModule()) {
+			$cohorts = new Cohorts($token, $server, $module);
+		} else {
+			$cohorts = new Cohorts($token, $server, $metadata);
+		}
 		$cohortNames = $cohorts->getCohortNames();
 		if (in_array($cohort, $cohortNames)) {
 			$config = $cohorts->getCohort($cohort);

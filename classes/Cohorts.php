@@ -6,10 +6,17 @@ require_once(dirname(__FILE__)."/Upload.php");
 require_once(dirname(__FILE__)."/CohortConfig.php");
 
 class Cohorts {
-	public function __construct($token, $server, $module) {
+	public function __construct($token, $server, $moduleOrMetadata) {
 		$this->token = $token;
 		$this->server = $server;
-		$this->module = $module;
+		$this->hijackedField = "identifier_first_name";
+		if (is_array($moduleOrMetadata)) {
+			$this->metadata = $moduleOrMetadata;
+			$this->module = NULL;
+		} else {
+			$this->module = $moduleOrMetadata;
+			$this->metadata = array();
+		}
 
 		$this->settingName = "configs";
 		$this->configs = $this->getConfigs();
@@ -20,6 +27,20 @@ class Cohorts {
 			$configs = $this->module->getProjectSetting($this->settingName); 
 			if ($configs) {
 				return $configs;
+			}
+		} else if ($this->metadata) {
+			foreach ($this->metadata as $row) {
+				if ($row['field_name'] == $this->hijackedField) {
+					$json = $row['field_annotation'];
+					if ($json) {
+						$configs = json_decode($json, true);
+						if ($configs) {
+							return $configs;
+						} else {
+							throw new \Exception("Could not decode config JSON: '".$json."'");
+						}
+					}
+				}
 			}
 		}
 		return array();
@@ -92,6 +113,18 @@ class Cohorts {
 	private function save() {
 		if ($this->module) {
 			$this->module->setProjectSetting($this->settingName, $this->configs);
+		} else if ($this->metadata) {
+			$json = json_encode($this->configs);
+			$newMetadata = array();
+			foreach ($this->metadata as $row) {
+				if ($row['field_name'] == $this->hijackedField) {
+					$row['field_annotation'] = $json;
+				}
+				array_push($newMetadata, $row);
+			}
+			$this->metadata = $newMetadata;
+			$feedback = Upload::metadata($newMetadata, $this->token, $this->server);
+			error_log("Config save: ".json_encode($feedback));
 		}
 	}
 
@@ -99,5 +132,7 @@ class Cohorts {
 	private $token;
 	private $server;
 	private $module;
+	private $metadata;
+	private $hijackedField;
 	private $configs;
 }

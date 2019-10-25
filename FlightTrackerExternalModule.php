@@ -5,10 +5,12 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 use ExternalModules\AbstractExternalModule;
 use ExternalModules\ExternalModules;
 use Vanderbilt\CareerDevLibrary\CronManager;
+use Vanderbilt\CareerDevLibrary\EmailManager;
 use Vanderbilt\CareerDevLibrary\NavigationBar;
 
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/classes/Crons.php");
+require_once(dirname(__FILE__)."/classes/EmailManager.php");
 require_once(dirname(__FILE__)."/classes/NavigationBar.php");
 require_once(dirname(__FILE__)."/cronLoad.php");
 
@@ -26,16 +28,32 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$this->setProjectSetting("run_tonight", TRUE);
 	}
 
+	function emails() {
+		$this->setupApplication();
+		$pids = $this->framework->getProjectsWithModuleEnabled();
+		error_log($this->getName()." sending emails for pids ".json_encode($pids));
+		echo $this->getName()." sending emails for pids ".json_encode($pids)."\n";
+		foreach ($pids as $pid) {
+			$token = $this->getProjectSetting("token", $pid);
+			$server = $this->getProjectSetting("server", $pid);
+			$tokenName = $this->getProjectSetting("tokenName", $pid);
+			error_log("Sending emails for $tokenName (pid $pid)");
+			echo "Sending emails for $tokenName (pid $pid)\n";
+			$mgr = new EmailManager($token, $server, $pid, $this);
+			$mgr->sendRelevantEmails();
+		}
+	}
+
 	function cron() {
 		$this->setupApplication();
 		$pids = $this->framework->getProjectsWithModuleEnabled();
-		echo $this->getName()." running for pids ".json_encode($pids)."\n";
+		error_log($this->getName()." running for pids ".json_encode($pids));
 		foreach ($pids as $pid) {
 			$token = $this->getProjectSetting("token", $pid);
 			$server = $this->getProjectSetting("server", $pid);
 			$tokenName = $this->getProjectSetting("tokenName", $pid);
 			$adminEmail = $this->getProjectSetting("admin_email", $pid);
-			echo "Using $tokenName $adminEmail\n";
+			error_log("Using $tokenName $adminEmail");
 			CareerDev::setPid($pid);
 			if ($token && $server) {
 				$mgr = new CronManager($token, $server, $pid);
@@ -46,9 +64,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 					echo $this->getName().": Loading crons for pid $pid\n";
 					loadCrons($mgr, FALSE, $token, $server);
 				}
-				echo $this->getName().": Running crons for pid $pid\n";
+				error_log($this->getName().": Running crons for pid $pid");
 				$mgr->run($adminEmail, $tokenName);
-				echo $this->getName().": cron run complete for pid $pid\n";
+				error_log($this->getName().": cron run complete for pid $pid");
 			} else {
 				# should never happen
 				throw new \Exception($this->getName().": Could not find token and server for pid $pid!"); 
@@ -143,7 +161,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$str .= "</style>\n";
 	
 		if (!CareerDev::isFAQ() && isset($_SESSION['showHelp']) && $_SESSION['showHelp']) {
-			$str .= "<script>$(document).ready(function() { showHelp('".CareerDev::getHelpLink()."', '".$_SERVER['PHP_SELF']."'); });</script>\n";
+			$currPage = $_GET['page'].".php";
+			$str .= "<script>$(document).ready(function() { showHelp('".CareerDev::getHelpLink()."', '".$currPage."'); });</script>\n";
 		}
 	
 		$str .= "<div class='topHeaderWrapper'>\n";

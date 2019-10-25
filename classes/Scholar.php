@@ -10,6 +10,7 @@ require_once(dirname(__FILE__)."/../Application.php");
 
 define("INTERNAL_K_LENGTH", 3);
 define("EXTERNAL_K_LENGTH", 5);
+define("SOURCETYPE_FIELD", "additional_source_types");
 
 class Scholar {
 	public function __construct($token, $server, $metadata = array()) {
@@ -20,6 +21,33 @@ class Scholar {
 		} else {
 			$this->metadata = $metadata;
 		}
+	}
+
+	public static function addSourceType($module, $code, $sourceType) {
+		if ($module) {
+			$data = $module->getProjectSetting(SOURCETYPE_FIELD);
+			if (!$data) {
+				$data = array();
+			}
+			if (!isset($data[$sourceType])) {
+				$data[$sourceType] = array();
+			}
+			array_push($data[$sourceType], $code);
+			$module->setProjectSetting(SOURCETYPE_FIELD, $data);
+			return TRUE;
+		}
+		return FALSE;
+	}
+
+	public static function getAdditionalSourceTypes($module, $sourceType) {
+		if ($module) { 
+			$data = $module->getProjectSetting(SOURCETYPE_FIELD);
+			if (!$data || !isset($data[$sourceType])) {
+				return array();
+			}
+			return $data[$sourceType];
+		}
+		return array();
 	}
 
 	public static function getChoices($metadata) {
@@ -552,8 +580,8 @@ class Scholar {
 				return new Result($value, "scholars");
 			}
 		}
-		if ($normativeRow['import_institution']) {
-			$value = $normativeRow['import_institution'];
+		if ($normativeRow['imported_institution']) {
+			$value = $normativeRow['imported_institution'];
 			if (!in_array(strtolower($value), $currentInstitutions)) {
 				return new Result($value, "manual");
 			}
@@ -657,18 +685,187 @@ class Scholar {
 		return $transform[$num];
 	}
 
+	public function getOrder($defaultOrder, $field) {
+		foreach ($this->metadata as $row) {
+			if (($row['field_name'] == $field) && ($row['field_annotation'] != "")) {
+				$newOrder = json_decode($row['field_annotation'], TRUE); 
+				if ($newOrder) {
+					$newVars = array();
+					switch($field) {
+						case "summary_degrees":
+							foreach ($newOrder as $newField => $newSource) {
+								if ($newField != $newSource) {
+									$newVars[$newField] = $newSource;
+								} else {
+									foreach ($defaultOrder as $ary) {
+										$newAry = array();
+										foreach ($ary as $field => $source) {
+											if ($source == $newSource) {
+												$newAry[$field] = $source;
+											}
+										}
+										if (!empty($newAry)) {
+											array_push($newVars, $newAry);
+										}
+									}
+								}
+							}
+							break;
+						case "summary_race_ethnicity":
+							# $type is in (race, ethnicity)
+							$possibleTypes = array("race", "ethnicity");
+							foreach ($newOrder as $type => $ary) {
+								if (in_array($type, $possibleTypes)) {
+									$newVars[$type] = array();
+									foreach ($ary as $newField => $newSource) {
+										if ($newField != $newSource) {
+											$newVars[$type][$newField] = $newSource;
+										} else {
+											if ($defaultOrder[$type]) {
+												foreach ($defaultOrder[$type] as $field => $source) {
+													if ($source == $newSource) {
+														$newVars[$type][$field] = $source;
+													}
+												}
+											}
+										}
+									}
+								} else {
+									throw new \Exception("Encountered type '$type', which is not allowed in order");
+								}
+							}
+							break;
+						default:
+							foreach ($newOrder as $newField => $newSource) {
+								if ($newField != $newSource) {
+									$newVars[$newField] = $newSource;
+								} else {
+									foreach ($defaultOrder as $field => $source) {
+										if ($source == $newSource) {
+											$newVars[$field] = $source;
+										}
+									}
+								}
+							}
+							break;
+					}
+					return $newVars;
+				}
+			}
+		}
+		return $defaultOrder;
+	}
+
+	# to get all, make $field == "all"
+	public static function getDefaultOrder($field) {
+		$orders = array();
+		$orders["summary_degrees"] = array(
+							array("override_degrees" => "manual"),
+							array("followup_degree" => "followup"),
+							array("check_degree1" => "scholars", "check_degree2" => "scholars", "check_degree3" => "scholars", "check_degree4" => "scholars", "check_degree5" => "scholars"),
+							array("vfrs_graduate_degree" => "vfrs", "vfrs_degree2" => "vfrs", "vfrs_degree3" => "vfrs", "vfrs_degree4" => "vfrs", "vfrs_degree5" => "vfrs", "vfrs_please_select_your_degree" => "vfrs"),
+							array("newman_new_degree1" => "new2017", "newman_new_degree2" => "new2017", "newman_new_degree3" => "new2017"),
+							array("newman_data_degree1" => "data", "newman_data_degree2" => "data", "newman_data_degree3" => "data"),
+							array("newman_demographics_degrees" => "demographics"),
+							array("newman_sheet2_degree1" => "sheet2", "newman_sheet2_degree2" => "sheet2", "newman_sheet2_degree3" => "sheet2"),
+							);
+		$orders["summary_primary_dept"] = array(
+							"override_department1" => "manual",
+							"check_primary_dept" => "scholars",
+							"vfrs_department" => "vfrs",
+							"newman_new_department" => "new2017",
+							"newman_demographics_department1" => "demographics",
+							"newman_data_department1" => "data",
+							"newman_sheet2_department1" => "sheet2",
+							);
+		$orders["summary_gender"] = array(
+							"override_gender" => "manual",
+							"check_gender" => "scholars",
+							"vfrs_gender" => "vfrs",
+							"imported_gender" => "manual",
+							"newman_new_gender" => "new2017",
+							"newman_demographics_gender" => "demographics",
+							"newman_data_gender" => "data",
+							"newman_nonrespondents_gender" => "nonrespondents",
+							);
+		$orders["summary_race_ethnicity"] = array();
+		$orders["summary_race_ethnicity"]["race"] = array(
+									"override_race" => "manual",
+									"check_race" => "scholars",
+									"vfrs_race" => "vfrs",
+									"imported_race" => "manual",
+									"newman_new_race" => "new2017",
+									"newman_demographics_race" => "demographics",
+									"newman_data_race" => "data",
+									"newman_nonrespondents_race" => "nonrespondents",
+									);
+		$orders["summary_race_ethnicity"]["ethnicity"] = array(
+									"override_ethnicity" => "manual",
+									"check_ethnicity" => "scholars",
+									"vfrs_ethnicity" => "vfrs",
+									"imported_ethnicity" => "manual",
+									"newman_new_ethnicity" => "new2017",
+									"newman_demographics_ethnicity" => "demographics",
+									"newman_data_ethnicity" => "data",
+									"newman_nonrespondents_ethnicity" => "nonrespondents",
+									);
+		$orders["summary_dob"] = array(
+						"check_date_of_birth" => "scholars",
+						"vfrs_date_of_birth" => "vfrs",
+						"imported_dob" => "manual",
+						"newman_new_date_of_birth" => "new2017",
+						"newman_demographics_date_of_birth" => "demographics",
+						"newman_data_date_of_birth" => "data",
+						"newman_nonrespondents_date_of_birth" => "nonrespondents",
+						);
+		$orders["summary_citizenship"] = array(
+							"followup_citizenship" => "followup",
+							"check_citizenship" => "scholars",
+							"imported_citizenship" => "manual",
+							);
+		$orders["identifier_institution"] = array(
+								"identifier_institution" => "manual",
+								"imported_institution" => "manual",
+								"check_institution" => "scholars",
+								);
+		$orders["summary_current_division"] = array(
+								"followup_division" => "followup",
+								"check_division" => "scholars",
+								);
+		$orders["summary_current_rank"] = array(
+							"promotion_rank" => "manual",
+							"override_rank" => "manual",
+							"followup_academic_rank" => "followup",
+							"check_academic_rank" => "scholars",
+							"newman_new_rank" => "new2017",
+							);
+		$orders["summary_current_start"] = array(
+							"promotion_in_effect" => "manual",
+							"followup_academic_rank_dt" => "followup",
+							"check_academic_rank_dt" => "scholars",
+							);
+		$orders["summary_current_tenure"] = array(
+								"followup_tenure_status" => "followup",
+								"check_tenure_status" => "scholars",
+								);
+		$orders["summary_mentor"] = array(
+							"imported_mentor" => "manual",
+							"followup_primary_mentor" => "followup",
+							"check_primary_mentor" => "scholars",
+							);
+
+		if (isset($orders[$field])) {
+			return $orders[$field];
+		} else if ($field == "all") {
+			return $orders;
+		}
+		return array();
+	}
+
 	private function getDegrees($rows) {
 		# move over and then down
-		$order = array(
-				array("override_degrees" => "manual"),
-				array("followup_degree" => "followup"),
-				array("check_degree1" => "scholars", "check_degree2" => "scholars", "check_degree3" => "scholars", "check_degree4" => "scholars", "check_degree5" => "scholars"),
-				array("vfrs_graduate_degree" => "vfrs", "vfrs_degree2" => "vfrs", "vfrs_degree3" => "vfrs", "vfrs_degree4" => "vfrs", "vfrs_degree5" => "vfrs", "vfrs_please_select_your_degree" => "vfrs"),
-				array("newman_new_degree1" => "new2017", "newman_new_degree2" => "new2017", "newman_new_degree3" => "new2017"),
-				array("newman_data_degree1" => "data", "newman_data_degree2" => "data", "newman_data_degree3" => "data"),
-				array("newman_demographics_degrees" => "demographics"),
-				array("newman_sheet2_degree1" => "sheet2", "newman_sheet2_degree2" => "sheet2", "newman_sheet2_degree3" => "sheet2"),
-				);
+		$order = self::getDefaultOrder("summary_degrees");
+		$order = $this->getOrder($order, "summary_degrees");
 
 		$normativeRow = self::getNormativeRow($rows);
 		$followupRows = self::selectFollowupRows($rows);
@@ -749,15 +946,8 @@ class Scholar {
 	}
 
 	private function getPrimaryDepartment($rows) {
-		$vars = array(
-				"override_department1" => "manual",
-				"check_primary_dept" => "scholars",
-				"vfrs_department" => "vfrs",
-				"newman_new_department" => "new2017",
-				"newman_demographics_department1" => "demographics",
-				"newman_data_department1" => "data",
-				"newman_sheet2_department1" => "sheet2",
-				);
+		$vars = self::getDefaultOrder("summary_primary_dept");
+		$vars = $this->getOrder($vars, "summary_primary_dept");
 		$result = self::searchRowsForVars($rows, $vars);
 		$value = $result->getValue();
 		if ($result->getSource() == "vfrs") {
@@ -821,16 +1011,8 @@ class Scholar {
 	}
 
 	private function getGender($rows) {
-		$vars = array(
-				"override_gender" => "manual",
-				"check_gender" => "scholars",
-				"vfrs_gender" => "vfrs",
-				"import_gender" => "manual",
-				"newman_new_gender" => "new2017",
-				"newman_demographics_gender" => "demographics",
-				"newman_data_gender" => "data",
-				"newman_nonrespondents_gender" => "nonrespondents",
-				);
+		$vars = self::getDefaultOrder("summary_gender");
+		$vars = $this->getOrder($vars, "summary_gender");
 		$result = self::searchRowsForVars($rows, $vars);
 
 		# must reverse for certain sources
@@ -853,31 +1035,13 @@ class Scholar {
 
 	# returns array of 3 (overall classification, race source, ethnicity source)
 	private function getRaceEthnicity($rows) {
-		$orderRace = array(
-					"override_race" => "manual",
-					"check_race" => "scholars",
-					"vfrs_race" => "vfrs",
-					"import_race" => "manual",
-					"newman_new_race" => "new2017",
-					"newman_demographics_race" => "demographics",
-					"newman_data_race" => "data",
-					"newman_nonrespondents_race" => "nonrespondents",
-					);
-		$orderEth = array(
-					"override_ethnicity" => "manual",
-					"check_ethnicity" => "scholars",
-					"vfrs_ethnicity" => "vfrs",
-					"import_ethnicity" => "manual",
-					"newman_new_ethnicity" => "new2017",
-					"newman_demographics_ethnicity" => "demographics",
-					"newman_data_ethnicity" => "data",
-					"newman_nonrespondents_ethnicity" => "nonrespondents",
-					);
+		$order = self::getDefaultOrder("summary_race_ethnicity");
+		$order = $this->getOrder($order, "summary_race_ethnicity");
 		$normativeRow = self::getNormativeRow($rows);
 
 		$race = "";
 		$raceSource = "";
-		foreach ($orderRace as $variable => $source) {
+		foreach ($order["race"] as $variable => $source) {
 			if (($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 8)) {
 				$race = $normativeRow[$variable];
 				$raceSource = $source;
@@ -889,7 +1053,7 @@ class Scholar {
 		}
 		$eth = "";
 		$ethSource = "";
-		foreach ($orderEth as $variable => $source) {
+		foreach ($order["ethnicity"] as $variable => $source) {
 			if (($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 4)) {
 				$eth = $normativeRow[$variable];
 				$ethSource = $source;
@@ -944,15 +1108,8 @@ class Scholar {
 
 	# finds date-of-birth
 	private function getDOB($rows) {
-		$vars = array(
-				"check_date_of_birth" => "scholars",
-				"vfrs_date_of_birth" => "vfrs",
-				"import_dob" => "manual",
-				"newman_new_date_of_birth" => "new2017",
-				"newman_demographics_date_of_birth" => "demographics",
-				"newman_data_date_of_birth" => "data",
-				"newman_nonrespondents_date_of_birth" => "nonrespondents",
-				);
+		$vars = self::getDefaultOrder("summary_dob");
+		$vars = $this->getOrder($vars, "summary_dob");
 		$result = self::searchRowsForVars($rows, $vars);
 		$date = $result->getValue();
 		if ($date) {
@@ -963,11 +1120,8 @@ class Scholar {
 	}
 
 	private function getCitizenship($rows) {
-		$vars = array(
-				"followup_citizenship" => "followup",
-				"check_citizenship" => "scholars",
-				"import_citizenship" => "manual",
-				);
+		$vars = self::getDefaultOrder("summary_citizenship");
+		$vars = $this->getOrder($vars, "summary_citizenship");
 		return self::searchRowsForVars($rows, $vars);
 	}
 
@@ -1048,11 +1202,8 @@ class Scholar {
 	}
 
 	private function getInstitution($rows) {
-		$vars = array(
-				"identifier_institution" => "manual",
-				"import_institution" => "manual",
-				"check_institution" => "scholars",
-				);
+		$vars = self::getDefaultOrder("identifier_institution");
+		$vars = $this->getOrder($vars, "identifier_institution");
 		$result = self::searchRowsForVars($rows, $vars);
 		$value = $result->getValue();
 		$source = $result->getSource();
@@ -1082,39 +1233,27 @@ class Scholar {
 	}
 
 	private function getCurrentDivision($rows) {
-		$vars = array(
-				"followup_division" => "followup",
-				"check_division" => "scholars",
-				);
+		$vars = self::getDefaultOrder("summary_current_division");
+		$vars = $this->getOrder($vars, "summary_current_division");
 		return self::searchRowsForVars($rows, $vars);
 	}
 
 	private function getCurrentRank($rows) {
-		$vars = array(
-				"promotion_rank" => "manual",
-				"override_rank" => "manual",
-				"followup_academic_rank" => "followup",
-				"check_academic_rank" => "scholars",
-				"newman_new_rank" => "new2017",
-				);
+		$vars = self::getDefaultOrder("summary_current_rank");
+		$vars = $this->getOrder($vars, "summary_current_rank");
 		$result = self::searchRowsForVars($rows, $vars, TRUE);
 		return $result;
 	}
 
 	private function getCurrentAppointmentStart($rows) {
-		$vars = array(
-				"promotion_in_effect" => "manual",
-				"followup_academic_rank_dt" => "followup",
-				"check_academic_rank_dt" => "scholars",
-				);
+		$vars = self::getDefaultOrder("summary_current_start");
+		$vars = $this->getOrder($vars, "summary_current_start");
 		return self::searchRowsForVars($rows, $vars);
 	}
 
 	private function getTenureStatus($rows) {
-		$vars = array(
-				"followup_tenure_status" => "followup",
-				"check_tenure_status" => "scholars",
-				);
+		$vars = self::getDefaultOrder("summary_current_tenure");
+		$vars = $this->getOrder($vars, "summary_current_tenure");
 		return self::searchRowsForVars($rows, $vars);
 	}
 
@@ -1259,9 +1398,9 @@ class Result {
 
 		if ($source == "") {
 			$sourcetype = "";
-		} else if (in_array($source, $selfReported)) {
+		} else if (in_array($source, $selfReported) || in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "1"))) {
 			$sourcetype = "1";
-		} else if (in_array($source, $newman)) {
+		} else if (in_array($source, $newman) || in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "2"))) {
 			$sourcetype = "2";
 		} else {
 			$sourcetype = "0";

@@ -107,7 +107,7 @@ input[type=submit] { font-size: 18px; }
 		</form>
 	</div>
 
-	<div style='margin: 50px 0px 0px 0px;' class='blueBorder translucentBG'>
+	<div style='margin: 50px 0px 0px 0px; padding: 4px;' class='blueBorder translucentBG'>
 		<h3><i class='fa fa-door-open'></i> Orientation</h3>
 		<p class='centered'><a href='<?= CareerDev::link("help/intro.php") ?>'>Video Introduction to Flight Tracker</a></p>
 		<p class='centered'><a href='<?= CareerDev::link("help/why.php") ?>'>Why Use Flight Tracker?</a></p>
@@ -116,9 +116,9 @@ input[type=submit] { font-size: 18px; }
 		<h3><i class='fa fa-globe-americas'></i> Consortium</h3>
 		<p class='centered'><a href='<?= CareerDev::link("community.php") ?>'>About the Consortium</a></p>
 		<h4 class='nomargin'>Weekly Technical Support</h4>
-		<p class='centered' style='margin-top: 0px;'>Held via <?= makeHangoutIcon() ?> <a href='https://hangouts.google.com/group/p16QNyQU5GUt1NZh8'>Google Hangouts</a> on Wednesdays at noon Central Time.</p>
+		<p class='centered' style='margin-top: 0px;'>Held on Wednesdays at noon Central Time. Email <a href='mailto:scott.j.pearson@vumc.org'>Scott Pearson</a> for an invitation.</p>
 		<h4 class='nomargin'>Monthly Planning Meetings</h4>
-		<p class='centered' style='margin-top: 0px;'>Next meeting at <?= makeHangoutIcon() ?> <a href='https://hangouts.google.com/group/F4CaBs8tYRg5gsxk7'>Google Hangouts</a> at November 6 at 1pm CT (2pm ET, 11am PT). (<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'>View agenda</a>.)</p>
+		<p class='centered' style='margin-top: 0px;'>Next meeting at November 6 at 1pm CT (2pm ET, 11am PT). Email <a href='mailto:scott.j.pearson@vumc.org'>Scott Pearson</a> for an invitation. (<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'>View agenda</a>.)</p>
 	</div>
 	<?= $bottomPadding ?>
 </div>

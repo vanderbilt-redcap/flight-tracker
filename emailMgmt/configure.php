@@ -145,7 +145,7 @@ $(document).ready(function() {
 				</p>
 				<div id='filterItems' style='display: none;'>
 					<p class='centered'>Filter: Have Any Surveys Been Completed?<br>
-						<input class='who_to' type='radio' name='survey_complete' id='survey_no' value='no' <?= $surveyCompleteNo ?>><label for='survey_no'> No</label><?= $spacing ?><input class='who_to' type='radio' name='survey_complete' id='survey_yes' value='yes' <?= $surveyCompleteYes ?>><label for='survey_yes'> Yes</label>
+						<input class='who_to' type='radio' name='survey_complete' id='survey_no' value='no' <?= $surveyCompleteNo ?>><label for='survey_no'> No</label><?= $spacing ?><input class='who_to' type='radio' name='survey_complete' id='survey_yes' value='yes' <?= $surveyCompleteYes ?>><label for='survey_yes'> Yes (see next question)</label>
 					</p>
 					<p class='centered' id='whenCompleted' style='display: none;'>Filter: The Scholar Hasn't Filled Out a Survey in Last:<br>
 						<input class='who_to' type='text' style='width: 50px;' name='last_complete_months' value='<?= $_POST['last_complete_months'] ? $_POST['last_complete_months'] : 12 ?>'> Months

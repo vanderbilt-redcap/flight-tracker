@@ -15,7 +15,6 @@ class CohortConfig {
 			$this->config = $configAry;
 		} else {
 			$this->config = array(
-						"combiner" => "AND",
 						"rows" => array(),
 						);
 		}
@@ -152,7 +151,83 @@ class CohortConfig {
 
 	public function isIn($rows, $filter) {
 		$combiner = $this->getCombiner();
-		if ($combiner == "AND") {
+		if ($combiner == "") {
+			# combiners are in each row
+			if (count($this->getRows()) == 1) {
+				$row = $this->getRows()[0];
+				return self::evaluateRow($row, $rows, $filter);
+			} else {
+				# 1. evaluate rows
+				$postStep1 = array();
+				foreach ($this->getRows() as $row) {
+					$evaluatedRow = array();
+					$evaluatedRow['value'] = self::evaluateRow($row, $rows, $filter);
+					if ($row['combiner']) {
+						$evaluatedRow['combiner'] = $row['combiner'];
+					}
+					array_push($postStep1, $evaluatedRow);
+				}
+
+				# 2. evaluate XORs
+				$postStep2 = array();
+				$previous = NULL;
+				foreach ($postStep1 as $evalRow) {
+					if (!$previous) {
+						$previous = $evalRow;
+					} else if ($evalRow['combiner'] == "XOR") {
+						$newEvalRow = array();
+						$newEvalRow['combiner'] = $previous['combiner'];
+						$cnt = 0;
+						if ($previous['value']) {
+							$cnt++;
+						}
+						if ($evalRow['value']) {
+							$cnt++; }
+						if ($cnt == 1) {
+							$newEvalRow['value'] = TRUE;
+						} else {
+							$newEvalRow['value'] = FALSE;
+						}
+						$previous = $newEvalRow;
+					} else {
+						array_push($postStep2, $previous);
+						$previous = $evalRow;
+					}
+				}
+				if ($previous) {
+					array_push($postStep2, $previous);
+				}
+
+				# 3. evaluate ANDs
+				$postStep3 = array();
+				$previous = NULL;
+				foreach ($postStep2 as $evalRow) {
+					if (!$previous) {
+						$previous = $evalRow;
+					} else if ($evalRow['combiner'] == "AND") {
+						$newEvalRow = array();
+						$newEvalRow['combiner'] = $previous['combiner'];
+						$newEvalRow['value'] = ($previous['value'] && $evalRow['value']);
+						$previous = $newEvalRow;
+					} else {
+						array_push($postStep3, $previous);
+						$previous = $evalRow;
+					}
+				}
+				if ($previous) {
+					array_push($postStep3, $previous);
+				}
+
+				# 4. evaluate ORs
+				foreach ($postStep3 as $evalRow) {
+					if ($evalRow['value']) {
+						return TRUE;
+					}
+				}
+				return FALSE;
+			}
+		} else if ($combiner == "AND") {
+			# old system - combiner is universal
 			foreach ($this->getRows() as $row) {
 				if (!self::evaluateRow($row, $rows, $filter)) {
 					return FALSE;
@@ -160,6 +235,7 @@ class CohortConfig {
 			}
 			return TRUE;
 		} else if ($combiner == "OR") {
+			# old system - combiner is universal
 			foreach ($this->getRows() as $row) {
 				if (self::evaluateRow($row, $rows, $filter)) {
 					return TRUE;
@@ -167,6 +243,7 @@ class CohortConfig {
 			}
 			return FALSE;
 		} else if ($combiner == "XOR") {
+			# old system - combiner is universal
 			$count = 0;
 			foreach ($this->getRows() as $row) {
 				if (self::evaluateRow($row, $rows, $filter)) {
@@ -178,6 +255,7 @@ class CohortConfig {
 			}
 			return FALSE;
 		}
+		throw new \Exception("Improper combiner: '$combiner'");
 	}
 
 	public function getFields() {
@@ -215,6 +293,19 @@ class CohortConfig {
 				}
 				return TRUE;
 			}
+		} else if (isset($ary['rows'])) {
+			$first = TRUE;
+			foreach ($ary['rows'] as $row) {
+				if (!self::isValidRow($row)) {
+					return FALSE;
+				}
+				if ($first) {
+					$first = FALSE;
+				} else if (!isset($row['combiner']) || !in_array($row['combiner'], self::getAllowedCombiners())) {
+					return FALSE;
+				}
+			}
+			return TRUE;
 		}
 		return FALSE;
 	}
@@ -256,9 +347,10 @@ class CohortConfig {
 		$allowed = self::getAllowedCombiners();
 		if (in_array($cbx, $allowed)) {
 			$this->config['combiner'] = $cbx;
-		} else {
-			throw new \Exception("Illegal combiner $cbx. Try one from ".json_encode($allowed));
+		} else if ($cbx != "") {
+			throw new \Exception("Illegal combiner '$cbx'. Try one from ".json_encode($allowed));
 		}
+		# blank combiners allowed
 	}
 
 	public function getCombiner() {
@@ -288,7 +380,6 @@ class CohortConfig {
 	}
 
 	public function getHTML($metadata) {
-		$html = "";
 		$html .= "<table style='margin-left: auto; margin-right: auto;'>\n";
 
 		$choices = Scholar::getChoices($metadata);
@@ -312,7 +403,13 @@ class CohortConfig {
 				$html .= "<td></td>\n";
 				$firstRow = FALSE;
 			} else {
-				$html .= "<td>".$this->getCombiner()."</td>";
+				if ($row['combiner'] && ($this->getCombiner() == "")) {
+					$html .= "<td>".$row['combiner']."</td>";
+				} else if ($this->getCombiner()) {
+					$html .= "<td>".$this->getCombiner()."</td>";
+				} else {
+					throw new \Exception("Could not find combiner for row ".json_encode($row));
+				}
 			}
 			$usesContains = FALSE;
 			foreach ($fieldsInOrder as $field) {

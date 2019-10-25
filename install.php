@@ -20,13 +20,17 @@ if (isset($_POST['departments']) && isset($_POST['resources'])) {
 		$installCoeus = CareerDev::getSetting("hasCoeus");
 		$institutions = CareerDev::getInstitutions();
 		displayInstallHeaders($module, $token, $server, $pid, $tokenName);
-		$lists = array(
-				"departments" => $_POST['departments'],
-				"resources" => $_POST['resources'],
-				"institutions" => implode("\n", $institutions),
-				);
-		$feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $lists, $installCoeus);
-		redirectToAddScholars();
+		if ($_POST['resources'] && $_POST['departments']) {
+			$lists = array(
+					"departments" => $_POST['departments'],
+					"resources" => $_POST['resources'],
+					"institutions" => implode("\n", $institutions),
+					);
+			$feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $lists, $installCoeus);
+			redirectToAddScholars();
+		} else {
+			echo "<p class='red centered'>You must supply at least one resource and one department!</p>\n";
+		}
 	} else {
 		throw new \Exception("Could not find module!");
 	}

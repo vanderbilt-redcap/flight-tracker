@@ -100,7 +100,13 @@ class VICTRPubMedConnection extends OracleConnection {
 
 class COEUSConnection extends OracleConnection {
 	public function __construct() {
-		require(dirname(__FILE__)."/../coeusDB.php");
+		$file = dirname(__FILE__)."/../coeusDB.php";
+		if (file_exists($file)) {
+			require($file);
+		} else {
+			$file = dirname(__FILE__)."/../../../plugins/career_dev/coeusDB.php");
+			require($file);
+		}
 		$this->userid = $userid;
 		$this->passwd = $passwd;
 		$this->server = $serverAddress;

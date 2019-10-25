@@ -1,6 +1,6 @@
 <style>
 td.grants { vertical-align: top; padding: 5px; }
-.red { color: red; }
+.blue { color: black; }
 .smaller { font-size: 12px; }
 .centered { text-align: center; }
 .label { margin-top: 3px; margin-bottom: 3px; }
@@ -98,7 +98,7 @@ echo "<h2>{$name['identifier_first_name']} {$name['identifier_last_name']}</h2>\
 // echo "<h3 id='conflicts'></h3>\n";
 echo "<table style='border: 1px dotted #888888; margin-left: auto; margin-right: auto;'>\n";
 echo "<tr><td colspan='2' class='centered grants'><b>Legend</b></td></tr>\n";
-echo "<tr><td class='green grants'>Grant In Use</td><td class='red grants'>Conflict with Grant In Use</td></tr>\n";
+echo "<tr><td class='green grants'>Grant In Use</td><td class='blue grants'>Conflict with Grant In Use</td></tr>\n";
 echo "</table>\n";
 
 $vars = array(
@@ -164,7 +164,7 @@ foreach (Grants::getSourceOrderWithLabels() as $src => $label) {
 								}
 							}
 							if (!$matchesOneGrant && $baseAwardNumbersSame) {
-								$span = "<span class='red'>";
+								$span = "<span class='blue'>";
 								$closeSpan = "</span>";
 								$conflicts++;
 							}

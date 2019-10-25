@@ -361,16 +361,9 @@ class Filter {
 				);
 	}
 
-	public function getHTML() {
-		$num = self::getMaxNumberOfVariables();
+	private function makeCombinerSelect($i) {
 		$html = "";
-
-		$html .= "<table style='margin-left: auto; margin-right: auto;'><tr>\n";
-		$html .= "<td>\n";
-		$html .= "<b style='font-size: 16px;'>Title:</b> <input type='text' id='title' onblur='checkForDuplicates(\"#title\"); return false;'>\n";
-		$html .= "</td>\n";
-		$html .= "<td>\n";
-		$html .= "<select id='combination' onchange='changeCombine($(this).val());'>\n";
+		$html .= "<select id='combination$i'>\n";
 		$allowedCombiners = CohortConfig::getAllowedCombiners();
 		$firstCombiner = TRUE;
 		foreach ($allowedCombiners as $combiner) {
@@ -382,8 +375,18 @@ class Filter {
 			}
 		}
 		$html .= "</select>\n";
-		$html .= "</td>\n";
-		$html .= "</tr></table>\n";
+
+		return $html;
+	}
+
+	public function getHTML() {
+		$num = self::getMaxNumberOfVariables();
+		$html = "";
+
+		$html .= "<p class='centered' style='font-size: 16px;'>\n";
+		$html .= "<b>Title</b>: <input type='text' id='title' onblur='checkForDuplicates(\"#title\"); return false;'><br>\n";
+		$html .= "<b>Precedence Rules</b>: XOR &gt; AND &gt; OR\n";
+		$html .= "</p>\n";
 
 		$html .= "<br><br>\n";
 
@@ -399,13 +402,17 @@ class Filter {
 		$html .= "\t\talert('No title specified!')\n";
 		$html .= "\t} else {\n";
 		$html .= "\t\tvar config = {};\n";
-		$html .= "\t\tconfig['combiner'] = $('#combination').val();\n";
+		# the below line is the original configuration; must be able to parse in order to maintain backwards-compatibility
+		// $html .= "\t\tconfig['combiner'] = $('#combination').val();\n";
 		$html .= "\t\tconfig['rows'] = [];\n";
 		$html .= "\t\tfor (var i = 1; i <= ".$num."; i++) {\n";
 		$html .= "\t\t\tif (($('#type'+i).val() != '') && ($('#variable'+i).val() != '')) {\n";
 		$html .= "\t\t\t\tvar row = {};\n";
 		$html .= "\t\t\t\trow['type'] = $('#type'+i).val();\n";
 		$html .= "\t\t\t\trow['variable'] = $('#variable'+i).val();\n";
+		$html .= "\t\t\t\tif ((i > 1) && $('#combination'+i).is(':visible')) {\n";
+		$html .= "\t\t\t\t\trow['combiner'] = $('#combination'+i).val();\n";
+		$html .= "\t\t\t\t}\n";
 		$html .= "\t\t\t\tif ($('#choice'+i).val()) {\n";
 		$html .= "\t\t\t\t\trow['choice'] = $('#choice'+i).val();\n";
 		$html .= "\t\t\t\t\trow['comparison'] = $('#comparison'+i).val();\n";
@@ -448,9 +455,9 @@ class Filter {
 		$html .= "\t\t$(selector).removeClass('red');\n";
 		$html .= "\t}\n";
 		$html .= "}\n";
-		$html .= "function changeCombine(val) {\n";
-		$html .= "\t$('.combinator').html(val);\n";
-		$html .= "}\n";
+		// $html .= "function changeCombine(val) {\n";
+		// $html .= "\t$('.combinator').html(val);\n";
+		// $html .= "}\n";
 		$html .= "function add(selector, i) {\n";
 		$html .= "\t$(selector).prop('disabled', true);\n";
 		$html .= "\t$('#filter'+(parseInt(i)+1)).show();\n";
@@ -537,7 +544,6 @@ class Filter {
 				$html .= "\t\t\tnextSelector = '#choice'+i;\n";
 				$html .= "\t\t\t$('#value'+i).hide();\n";
 				$html .= "\t\t\t$('#button'+i).hide();\n";
-				$html .= "\t\t\tif (i == 1) { $('#commitButton').show(); }\n";
 				$html .= "\t\t\tcomparisons = ".json_encode(self::getContainsSettings()).";\n";
 			} else {
 				# number, string, or date
@@ -628,7 +634,7 @@ class Filter {
 			$html .= "</td>\n";
 			$html .= "</tr>\n";
 			if ($i != $num) {
-				$html .= "<tr><td class='cells' colspan='5'><div id='combiner".($i+1)."' class='combinator' style='display: none;'>AND</div></td></tr>\n";
+				$html .= "<tr><td class='cells' colspan='5'><div id='combiner".($i+1)."' class='combinator' style='display: none;'>".self::makeCombinerSelect($i+1)."</div></td></tr>\n";
 			} else {
 				$html .= "<tr><td colspan='5' class='centered'><button onclick='commit(); return false;' id='commitButton' style='display: none;' class='biggerButton'>Commit Filter</button></td></tr>\n";
 			}

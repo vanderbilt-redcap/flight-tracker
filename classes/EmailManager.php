@@ -12,10 +12,23 @@ class EmailManager {
 		$this->server = $server;
 		$this->pid = $pid;
 		$this->metadata = $metadata;
+		$this->hijackedField = "";
+
+		$possibleFields = array("identifier_vunet", "identifier_userid");
+		foreach ($this->metadata as $row) {
+			if (in_array($row['field_name'], $possibleFields)) {
+				$this->hijackedField = $row['field_name'];
+				break;
+			}
+		}
 
 		$this->settingName = "prior_emails";
 		$this->module = $module;
-		$this->data = self::loadData($this->settingName, $this->module);
+		if ($module) {
+			$this->data = self::loadData($this->settingName, $this->module, $this->hijackedField, $this->pid);
+		} else {
+			$this->data = self::loadData($this->settingName, $this->metadata, $this->hijackedField, $this->pid);
+		}
 	}
 
 	public static function getFormat() {
@@ -49,7 +62,7 @@ class EmailManager {
 		if (!is_array($messages)) {
 			$messages = json_decode($messages, TRUE);
 		}
-		if ($messages) {
+		if ($messages !== NULL) {
 			foreach ($messages as $name => $types) {
 				foreach ($types as $type => $emailData) {
 					$this->sendPreparedEmail($emailData, $isTest);
@@ -175,7 +188,8 @@ class EmailManager {
 
 		foreach ($mssgs as $recordId => $mssg) {
 			error_log(date("Y-m-d h:i:s")." $recordId: EmailManager sending to {$to[$recordId]}; from $from; {$subjects[$recordId]}");
-			\REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
+			echo date("Y-m-d h:i:s")." $recordId: EmailManager sending to {$to[$recordId]}; from $from; {$subjects[$recordId]}\n";
+			// \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
 			usleep(200000); // wait 0.2 seconds for other items to process
 		}
 		$records = array_keys($mssgs);
@@ -288,10 +302,13 @@ class EmailManager {
 		$pid = $this->pid;
 		$sql = "SELECT form_name, title FROM redcap_surveys WHERE project_id = '".$pid."'";
 		$q = db_query($sql);
+
+		$currentInstruments = \REDCap::getInstrumentNames();
+
 		$forms = array();
 		while ($row = db_fetch_assoc($q)) {
-			# filter out original survey; this is a REDCap bug
-			if ($row['form_name'] !== "check_professional_characteristics") {
+			# filter out surveys which aren't live
+			if (isset($currentInstruments[$row['form_name']])) {
 				$forms[$row['form_name']] = $row['title'];
 			}
 		}
@@ -553,19 +570,45 @@ class EmailManager {
 		$settingName = $this->settingName;
 		if ($this->module) {
 			return $this->module->setProjectSetting($settingName, $this->data);
+		} else if ($this->metadata) {
+			$json = json_encode($this->data);
+			$newMetadata = array();
+			foreach ($this->metadata as $row) {
+				if ($row['field_name'] == $this->hijackedField) {
+					$row['field_annotation'] = $json;
+				}
+				array_push($newMetadata, $row);
+			}
+			$this->metadata = $newMetadata;
+			$feedback = Upload::metadata($newMetadata, $this->token, $this->server);
+			error_log("Email Manager save: ".json_encode($feedback));
 		} else {
 			throw new \Exception("Could not save settings to $settingName! No module available!");
 		}
 	}
 
-	private static function loadData($settingName, $module) {
-		if ($module) {
-			$setting = $module->getProjectSetting($settingName);
+	private static function loadData($settingName, $moduleOrMetadata, $hijackedField, $pid) {
+		if ($moduleOrMetadata && !is_array($moduleOrMetadata)) {
+			$setting = $moduleOrMetadata->getProjectSetting($settingName, $pid);
 			if ($setting) {
 				return $setting;
 			} else {
 				return array();
 			}
+		} else if ($moduleOrMetadata && is_array($moduleOrMetadata)) {
+			foreach ($moduleOrMetadata as $row) {
+				if ($row['field_name'] == $hijackedField) {
+					$json = $row['field_annotation'];
+					if ($json) {
+						$setting = json_decode($json, true);
+						if ($setting) {
+							return $setting;
+						}
+					}
+					return array();
+				}
+			}
+			throw new \Exception("Could not find field in metadata: '".$hijackedField."'");
 		} else {
 			throw new \Exception("Could not load value from $settingName! No module available!");
 		}
@@ -598,6 +641,7 @@ class EmailManager {
 	private $server;
 	private $pid;
 	private $metadata;
+	private $hijackedField;
 	private $module;
 	private $settingName;
 	protected $data;

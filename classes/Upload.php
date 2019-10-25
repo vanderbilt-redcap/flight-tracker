@@ -232,7 +232,7 @@ class Upload {
 			}
 			error_log("Upload::rows returning $output in ".($time3 - $time2)." seconds");
 			self::testFeedback($feedback, $rows);
-			self::combineFeedback($allFeedback, $feedback);
+			$allFeedback = self::combineFeedback($allFeedback, $feedback);
 		}
 		return $allFeedback;
 	}

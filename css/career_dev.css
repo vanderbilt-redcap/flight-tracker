@@ -110,3 +110,5 @@ canvas { background-color: white; margin-top: 25px; }
 .recessed { color: #888; }
 .larger { font-size: 16px; }
 textarea.config { width: 600px; height: 400px; }
+ul.nobullets { padding-inline-start: 0px; }
+li.nobullets { padding: 8px; list-style: none; }
