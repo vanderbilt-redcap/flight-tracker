@@ -104,7 +104,7 @@ class COEUSConnection extends OracleConnection {
 		if (file_exists($file)) {
 			require($file);
 		} else {
-			$file = dirname(__FILE__)."/../../../plugins/career_dev/coeusDB.php");
+			$file = dirname(__FILE__)."/../../../plugins/career_dev/coeusDB.php";
 			require($file);
 		}
 		$this->userid = $userid;
