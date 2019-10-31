@@ -57,6 +57,7 @@ if (count($_POST) >= 1) {
 
 		echo "</div>\n";
 		echo "<div id='content'>\n";
+		echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
 	}
 
 	if (isset($_GET['mssg'])) {

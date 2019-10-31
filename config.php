@@ -75,6 +75,7 @@ if (isset($_GET['uploadOrder'])) {
 <?php
 }
 	echo "<h1>Configure ".CareerDev::getProgramName()."</h1>\n";
+	echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
 
 if (count($_POST) > 0) {
 	if (isset($_GET['order'])) {

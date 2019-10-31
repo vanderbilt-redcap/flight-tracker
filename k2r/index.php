@@ -38,6 +38,8 @@ li.k2r { font-weight: normal; font-size: 13px; }
 <div id='main'>
 <h1>K2R Conversion Calculator</h1>
 <?php
+echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
+
 $ind_ks = array(3, 4);
 $_GLOBAL['ind_ks'] = $ind_ks;
 $int_ks = array(1, 2);

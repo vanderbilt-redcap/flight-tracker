@@ -8,19 +8,27 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function isREDCap() {
-		$currPage = $_SERVER['PHP_SELF'];
-		if (strpos($currPage, "ExternalModules") !== FALSE) {
+		$rootPage = $_SERVER['PHP_SELF'];
+		if (strpos($rootPage, "ExternalModules") !== FALSE) {
 			return FALSE;
 		}
-		if (strpos($currPage, APP_PATH_WEBROOT) === FALSE) {
+		if (strpos($rootPage, APP_PATH_WEBROOT) === FALSE) {
 			return FALSE;
 		}
 		return TRUE;
 	}
 
+	public static function isHelpOn() {
+		return (isset($_SESSION['showHelp']) && $_SESSION['showHelp']);
+	}
+
+	public static function getCurrPage() {
+		return $_GET['page'].".php";
+	}
+
 	public static function isFAQ() {
-		$currPage = basename($_SERVER['PHP_SELF']);
-		$faqs = array("faq.php", "how.php", "why.php");
+		$currPage = self::getCurrPage();
+		$faqs = array("help/faq.php", "help/how.php", "help/why.php");
 		if (in_array($currPage, $faqs)) {
 			return TRUE;
 		}
@@ -409,7 +417,7 @@ class CareerDev {
 					);
 		}
 		if ($menuName == "Help") {
-			$currPage = $_GET['page'].".php";
+			$currPage = self::getCurrPage();
 			return array(
 					"Toggle Help" => "toggleHelp(\"".self::getHelpLink()."\", \"".self::getHelpHiderLink()."\", \"$currPage\");",
 					"Flight Tracker Consortium" => self::link("/community.php"),

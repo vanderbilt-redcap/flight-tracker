@@ -221,7 +221,7 @@ class CareerDevHelp {
 					"Missingness Report" => array("missingness.html"),
 					);
 		$help["Wrangle"] = array(
-					"Grant Wrangler" => array("grantWrangler.html"),
+					"Grant Wrangler" => array("grantWrangler.html", "bins.html"),
 					"Publication Wrangler" => array("pubWrangler.html"),
 					"Add a Custom Grant" => array("addNewGrants.html"),
 					"Add Custom Grants by Bulk" => array("addNewGrants.html"),
@@ -238,7 +238,7 @@ class CareerDevHelp {
 					"Mentor Performance" => array("useCaseMentors.html"),
 					);
 		$help["Cohorts / Filters"] = array(
-							"Add a New Cohort" => array("cohortDesign.html", "useCaseStats.html", "useCaseGrantsAndPubs.html"),
+							"Add a New Cohort" => array("cohortDesign.html", "useCaseStats.html", "useCaseGrantsAndPubs.html", "bins.html"),
 							"View Cohort Metrics" => array("useCaseCohortMetrics.html"),
 							);
 		$help["Resources"] = array(

@@ -38,6 +38,7 @@ if (isset($_POST['title'])) {
 	echo "<p class='centered'>".implode("<br>", $cohortTitles)."</p>\n";
 
 	echo "<h1>Add a Cohort</h1>\n";
+	echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
 	$filter = new Filter($token, $server, $metadata);
 	echo $filter->getHTML();
 	echo "</div>\n";

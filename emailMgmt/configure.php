@@ -190,7 +190,7 @@ $(document).ready(function() {
 		} else {
 			$mssg = "";
 		}
-		echo "<div id='message' style='background-color: white; z-index: -1;'>$mssg</div>\n";
+		echo "<div id='message' style='background-color: white; z-index: 1;'>$mssg</div>\n";
 		echo "<input type='hidden' name='message' value=''>\n";
 
 if ($currSettingName) {

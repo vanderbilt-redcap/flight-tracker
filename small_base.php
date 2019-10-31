@@ -1364,6 +1364,13 @@ function makeREDCapList($text, $otherItem = FALSE) {
 }
 
 
+function isHelpOn() {
+	return  (isset($_SESSION['showHelp']) && $_SESSION['showHelp']);
+}
+
+function makeHelpLink() {
+	return "<p class='smaller centered'>This page is complex. <a href='javascript:;' onclick='showHelp(\"".CareerDev::getHelpLink()."\", \"".CareerDev::getCurrPage()."\"); $(this).parent().hide();'>Click here to show help.</a></p>\n";
+}
 
 
 require_once(dirname(__FILE__)."/cronLoad.php");

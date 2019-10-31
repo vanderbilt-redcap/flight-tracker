@@ -60,7 +60,15 @@ abstract class OracleConnection {
 
 class VICTRPubMedConnection extends OracleConnection {
 	public function __construct() {
-		require(dirname(__FILE__)."/../victrPubMedDB.php");
+		$file = dirname(__FILE__)."/../victrPubMedDB.php";
+		if (file_exists($file)) {
+			require($file);
+		}
+		$file = dirname(__FILE__)."/../../../plugins/career_dev/victrPubMedDB.php";
+		if (file_exists($file)) {
+			require($file);
+		}
+
 		$this->userid = $userid;
 		$this->passwd = $passwd;
 		$this->server = $serverAddress;

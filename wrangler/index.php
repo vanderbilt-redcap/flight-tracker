@@ -654,7 +654,7 @@ foreach ($redcapData as $row) {
 		}
 
 		if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
-
+			echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
 			echo "<h2>{$record}: {$row['identifier_first_name']} {$row['identifier_last_name']}</h2>";
 		}
 

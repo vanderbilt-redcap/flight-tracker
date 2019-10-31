@@ -11,6 +11,7 @@ require_once(dirname(__FILE__)."/CareerDev.php");
 
 echo "<h1>Lexical Translation for Grants</h1>\n";
 echo "<h2>Manage Grants Specific to ".INSTITUTION."</h2>\n";
+echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
 
 echo "<p class='centered'>Items at the top take priority. <a href='".CareerDev::link("lexicalOrder.php")."'>Reorder here</a>.</p>\n";
 

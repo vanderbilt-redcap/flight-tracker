@@ -323,6 +323,8 @@ class CohortConfig {
 		}
 		if ($row['type'] == "resources") {
 			return TRUE;
+		} else if (is_array($row['variable'])) {
+			return TRUE;
 		} else if (in_array($row['variable'], $allowedVariables)) {
 			if ($row['choice'] || ($row['comparison'] && $row['value'])) {
 				return TRUE;
@@ -330,7 +332,7 @@ class CohortConfig {
 				throw new \Exception("Cannot find choice or comparison or value in ".json_encode($row));
 			}
 		} else {
-			throw new \Exception("Cannot find variable in ".json_encode($allowedVariables));
+			throw new \Exception("Cannot find variable '{$row['variable']}' in ".json_encode($allowedVariables));
 		}
 		return FALSE;
 	}

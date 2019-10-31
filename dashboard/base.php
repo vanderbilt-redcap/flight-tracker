@@ -202,11 +202,10 @@ function displayDashboardHeader($target, $otherTarget, $pid, $cohort = "", $meta
 				"$prefix&page=dashboard%2FpublicationsByMESHTerms" => "By MESH Terms",
 				"$prefix&page=dashboard%2FpublicationsByMetrics" => "Miscellaneous Metrics",
 				);
-	$currPage = $_GET['page'];
 
 	$html .= "<div class='subnav'>\n";
 	$html .= "<a class='yellow' href='".CareerDev::link("dashboard/overall.php")."&layout=$target$cohortUrl'>Overall Summary</a>\n";
-	$html .= "<a class='yellow' href='".CareerDev::link($currPage.".php")."&layout=$otherTarget$cohortUrl'>Switch Layouts</a>\n";
+	$html .= "<a class='yellow' href='".CareerDev::link(CareerDev::getCurrPage())."&layout=$otherTarget$cohortUrl'>Switch Layouts</a>\n";
 
 	$html .= "<a class='green' href='".CareerDev::link("dashboard/grants.php")."&layout=$target$cohortUrl'>Grants</a>\n";
 	$html .= "<a class='green' href='".CareerDev::link("dashboard/grantBudgets.php")."&layout=$target$cohortUrl'>Grant Budgets</a>\n";
@@ -216,7 +215,7 @@ function displayDashboardHeader($target, $otherTarget, $pid, $cohort = "", $meta
 	$html .= "<option value=''>---SELECT---</option>\n";
 	foreach ($pubChoices as $page => $label) {
 		$sel = "";
-		if (preg_match("/".$currPage."/", $page)) {
+		if (preg_match("/".$_GET['page']."/", $page)) {
 			$sel = " selected";
 		}
 		$html .= "<option value='$page'$sel>$label</option>\n";

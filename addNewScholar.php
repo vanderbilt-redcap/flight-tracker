@@ -2,6 +2,9 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Upload;
+
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
@@ -47,6 +50,14 @@ if (checkPOSTKeys(array_values($fields))) {
 	echo "</table>\n";
 	echo "<p class='centered'><input type='submit' value='Add New Scholar'></p>\n";
 	echo "</form>\n";
+
+	echo "<h2>Add Scholars in Bulk</h2>\n";
+	echo "<p class='centered>Supply a CSV Spreadsheet with the specified fields in <a href='".CareerDev::link("newFaculty.php")."'>this example</a>.</p>\n";
+	echo "<form enctype='multipart/form-data' method='POST' action='".CareerDev::link("add.php")."'>\n";
+	echo "<p class='centered'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />\n";
+	echo "CSV Upload: <input type='file' name='csv'><br>\n";
+	echo "<button>Process File</button>\n";
+	echo "</p></form>\n";
 }
 
 function checkPOSTKeys($keys) {

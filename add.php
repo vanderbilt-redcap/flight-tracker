@@ -69,7 +69,7 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 		echo "<p class='red centered'>{$_GET['mssg']}</p>";
 	}
 
-	$timespan = 5;
+	$timespan = 3;
 	echo "<h1>Adding New Scholars</h1>";
 	echo "<div style='margin: 0 auto; max-width: 800px'>";
 	echo "<p class='centered'>".count($upload).(count($upload) == 1 ? " person" : " people")." added.</p>";

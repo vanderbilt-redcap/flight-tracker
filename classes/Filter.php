@@ -63,6 +63,15 @@ class Filter {
 	}
 
 	# function used in dynamic variable
+	public function calc_sponsorno($type, $rows = array()) {
+		if ($type == GET_CHOICES) {
+			return new CalcSettings("string");
+		} else if ($type == GET_VALUE) {
+			return $this->getSponsorNumbers($rows);
+		}
+	}
+
+	# function used in dynamic variable
 	public function calc_award_type($type, $rows = array()) {
 		if ($type == GET_CHOICES) {
 			$choicesHash = Grant::getReverseAwardTypes();
@@ -266,6 +275,21 @@ class Filter {
 		return $scholar->getEmploymentStatus();
 	}
 
+	private function getSponsorNumbers($rows) {
+		$numbers = array();
+		foreach ($rows as $row) {
+			for ($i = 1; $i < MAX_GRANTS; $i++) {
+				$field = "summary_award_sponsorno_".$i;
+				if ($row[$field]) {
+					if (!in_array($row[$field], $numbers)) {
+						array_push($numbers, $row[$field]);
+					}
+				}	
+			}
+		}
+		return $numbers;
+	}
+
 	private function getAwardTypes($rows) {
 		$types = array();
 		foreach ($rows as $row) {
@@ -318,6 +342,8 @@ class Filter {
 		$ary = array(
 				"calc_award_type" => "Award Type",
 				"summary_award_type_1" => "First Award Type",
+				"summary_award_sponsorno_1" => "First Award Sponsor Number",
+				"calc_sponsorno" => "Any Award Sponsor Number",
 				"calc_activity_code" => "Activity Code",
 				"summary_first_any_k" => "First Any K",
 				"summary_last_any_k" => "Last Any K",
@@ -351,7 +377,7 @@ class Filter {
 	}
 
 	public static function getMaxNumberOfVariables() {
-		return 5;
+		return 15;
 	}
 
 	public static function getContainsSettings() {
@@ -514,14 +540,7 @@ class Filter {
 					$html .= "\t\t\t$('#button'+i).hide();\n";
 					$html .= "\t\t\tcomparisons = ".json_encode(self::getContainsSettings()).";\n";
 				} else if (in_array($calcSettingsType, array_merge($dateChoices, $textChoices))) {
-					$inputType = "";
-					if ($calcSettingsType == "string") {
-						$inputType = "text";
-					} else if ($calcSettingsType == "number") {
-						$inputType = "number";
-					} else {
-						$inputType = "date";
-					}
+					$inputType = CalcSettings::transformToInputType($calcSettingsType);
 					if ($inputType) {
 						$html .= "\t\t\t$('#value'+i).prop('type', '$inputType');\n";
 					}
@@ -548,7 +567,8 @@ class Filter {
 			} else {
 				# number, string, or date
 				$calcSettingsType = CalcSettings::getTypeFromMetadata($var, $this->metadata);
-				if ($calcSettingsType) {
+				$inputType = CalcSettings::transformToInputType($calcSettingsType);
+				if ($calcSettingsType && $inputType) {
 					$calcSettings = new CalcSettings($calcSettingsType);
 					$html .= "\t\t\toptions = false;\n";
 					$html .= "\t\t\tnextSelector = '#value'+i;\n";
@@ -557,6 +577,7 @@ class Filter {
 					$html .= "\t\t\t$('#button'+i).show();\n";
 					$html .= "\t\t\tif (i == 1) { $('#commitButton').show(); }\n";
 					$html .= "\t\t\tcomparisons = ".json_encode($calcSettings->getComparisons()).";\n";
+					$html .= "\t\t\t$('#value'+i).prop('type', '$inputType');\n";
 				}
 			}
 			$html .= "\t\t}\n";
@@ -718,6 +739,18 @@ class CalcSettings {
 
 	public static function getValidTypes() {
 		return array("choices", "string", "number", "date");
+	}
+
+	public static function transformToInputType($calcSettingsType) {
+		switch($calcSettingsType) {
+			case "string":
+				return "text";
+			case "number":
+				return "number";
+			case "date":
+				return "date";
+		}
+		return "";
 	}
 
 	public static function getTypeFromMetadata($field, $metadata) {

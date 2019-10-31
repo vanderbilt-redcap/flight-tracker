@@ -65,7 +65,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 					loadCrons($mgr, FALSE, $token, $server);
 				}
 				error_log($this->getName().": Running crons for pid $pid");
-				$mgr->run($adminEmail, $tokenName);
+				$mgr->run($adminEmail, $tokenName, $pid);
 				error_log($this->getName().": cron run complete for pid $pid");
 			} else {
 				# should never happen
@@ -160,8 +160,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$str .= "p.recessed,div.recessed { margin: 2px; }\n";
 		$str .= "</style>\n";
 	
-		if (!CareerDev::isFAQ() && isset($_SESSION['showHelp']) && $_SESSION['showHelp']) {
-			$currPage = $_GET['page'].".php";
+		if (!CareerDev::isFAQ() && CareerDev::isHelpOn()) {
+			$currPage = CareerDev::getCurrPage();
 			$str .= "<script>$(document).ready(function() { showHelp('".CareerDev::getHelpLink()."', '".$currPage."'); });</script>\n";
 		}
 	

@@ -216,7 +216,7 @@ function makeIntroPage($projectId) {
 	}
 
 	$html = "";
-	$html .= "<p class='small centered recessed'>(Not expecting this page? <a class='recessed' href='".APP_PATH_WEBROOT_FULL."external_modules/manager/project.php?pid=$projectId'>Click Here</a> to Disable Flight Tracker)</p>\n";
+	$html .= "<p class='small centered recessed'>(Not expecting this page? <a class='recessed' href='".APP_PATH_EXTMOD."manager/project.php?pid=$projectId'>Click Here</a> to Disable Flight Tracker)</p>\n";
 	$html .= "<style>\n";
 	$html .= getCSS();
 	$html .= "</style>\n";
