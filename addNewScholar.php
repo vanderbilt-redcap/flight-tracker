@@ -39,7 +39,7 @@ if (checkPOSTKeys(array_values($fields))) {
 } else {
 	echo "<h1>Add a New Scholar</h1>\n";
 
-	echo "<form action='addNewScholar.php?pid=$pid' method='POST'>\n";
+	echo "<form action='<?= CareerDev::link("addNewScholar.php") ?>' method='POST'>\n";
 	echo "<table style='margin:0px auto;'>\n";
 	foreach ($fields as $label => $var) {
 		echo "<tr>\n";
