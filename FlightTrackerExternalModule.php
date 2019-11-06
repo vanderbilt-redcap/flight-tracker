@@ -56,6 +56,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			error_log("Using $tokenName $adminEmail");
 			CareerDev::setPid($pid);
 			if ($token && $server) {
+				# only have token and server in initialized projects
 				$mgr = new CronManager($token, $server, $pid);
 				if ($this->getProjectSetting("run_tonight", $pid)) {
 					$this->setProjectSetting("run_tonight", FALSE, $pid);
@@ -67,9 +68,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 				error_log($this->getName().": Running crons for pid $pid");
 				$mgr->run($adminEmail, $tokenName, $pid);
 				error_log($this->getName().": cron run complete for pid $pid");
-			} else {
-				# should never happen
-				throw new \Exception($this->getName().": Could not find token and server for pid $pid!"); 
 			}
 		}
 	}

@@ -101,7 +101,7 @@ if (count($_POST) > 0) {
 					}
 					$i++;
 				}
-				$res = Scholar::addSourceType(CareerDev::getModule(), $code, $type);
+				$res = Scholar::addSourceType(CareerDev::getModule(), $code, $type, $pid);
 				if ($res) {
 					$feedback = Upload::metadata($metadata, $token, $server);
 					echo "<p class='green centered'>$rowsAffected fields affected.</p>\n";

@@ -13,9 +13,10 @@ define("EXTERNAL_K_LENGTH", 5);
 define("SOURCETYPE_FIELD", "additional_source_types");
 
 class Scholar {
-	public function __construct($token, $server, $metadata = array()) {
+	public function __construct($token, $server, $metadata = array(), $pid = "") {
 		$this->token = $token;
 		$this->server = $server;
+		$this->pid = $pid;
 		if (empty($metadata)) {
 			$this->metadata = Download::metadata($token, $server);
 		} else {
@@ -23,9 +24,9 @@ class Scholar {
 		}
 	}
 
-	public static function addSourceType($module, $code, $sourceType) {
+	public static function addSourceType($module, $code, $sourceType, $pid) {
 		if ($module) {
-			$data = $module->getProjectSetting(SOURCETYPE_FIELD);
+			$data = $module->getProjectSettine(SOURCETYPE_FIELD, $pid);
 			if (!$data) {
 				$data = array();
 			}
@@ -33,15 +34,15 @@ class Scholar {
 				$data[$sourceType] = array();
 			}
 			array_push($data[$sourceType], $code);
-			$module->setProjectSetting(SOURCETYPE_FIELD, $data);
+			$module->setProjectSetting(SOURCETYPE_FIELD, $data, $pid);
 			return TRUE;
 		}
 		return FALSE;
 	}
 
-	public static function getAdditionalSourceTypes($module, $sourceType) {
+	public static function getAdditionalSourceTypes($module, $sourceType, $pid) {
 		if ($module) { 
-			$data = $module->getProjectSetting(SOURCETYPE_FIELD);
+			$data = $module->getProjectSetting(SOURCETYPE_FIELD, $pid);
 			if (!$data || !isset($data[$sourceType])) {
 				return array();
 			}
@@ -503,7 +504,7 @@ class Scholar {
 	private function calculateCOEUSName($rows) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "coeus") {
-				new Result($row['coeus_person_name'], "");
+				new Result($row['coeus_person_name'], "", "", "", $this->pid);
 			}
 		}
 		return new Result("", "");
@@ -513,11 +514,11 @@ class Scholar {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "scholars") {
 				if ($row['check_name_first'] || $row['check_name_last']) {
-					return new Result(1, ""); // YES
+					return new Result(1, "", "", "", $this->pid); // YES
 				}
 			}
 		}
-		return new Result(0, ""); // NO
+		return new Result(0, "", "", "", $this->pid); // NO
 	}
 
 	private static function getNormativeRow($rows) {
@@ -529,7 +530,7 @@ class Scholar {
 		return array();
 	}
 
-	private static function getResultForPrefices($prefices, $row, $suffix) {
+	private static function getResultForPrefices($prefices, $row, $suffix, $pid = "") {
 		foreach ($prefices as $prefix => $type) {
 			$variable = $prefix."_institution";
 			$variable_date = $prefix.$suffix;
@@ -538,7 +539,7 @@ class Scholar {
 				isset($row[$variable_date]) &&
 				($row[$variable_date] != "")) {
 
-				return new Result($row[$variable_date], $type);
+				return new Result($row[$variable_date], $type, "", "", $pid);
 			}
 		}
 		return new Result("", "");
@@ -565,7 +566,7 @@ class Scholar {
 					$value = $row[$followupInstitutionField."_oth"];
 				}
 				if (!in_array(strtolower($value), $currentInstitutions)) {
-					return new Result($value, "followup");
+					return new Result($value, "followup", "", "", $this->pid);
 				}
 			}
 		}
@@ -577,16 +578,16 @@ class Scholar {
 				$value = $row[$checkInstitutionField."_oth"];
 			}
 			if (!in_array(strtolower($value), $currentInstitutions)) {
-				return new Result($value, "scholars");
+				return new Result($value, "scholars", "", "", $this->pid);
 			}
 		}
 		if ($normativeRow['imported_institution']) {
 			$value = $normativeRow['imported_institution'];
 			if (!in_array(strtolower($value), $currentInstitutions)) {
-				return new Result($value, "manual");
+				return new Result($value, "manual", "", "", $this->pid);
 			}
 		}
-		return new Result($normativeRow['identifier_institution'], $normativeRow['identifier_institution_source']);
+		return new Result($normativeRow['identifier_institution'], $normativeRow['identifier_institution_source'], "", "", $this->pid);
 	}
 
 	# returns an array of (variableName, variableType) for when they left VUMC
@@ -607,7 +608,7 @@ class Scholar {
 						"followup_prev5" => "followup",
 					);
 			if ($row[$followupInstitutionField] != $institutionCurrent) {
-				$res = self::getResultForPrefices($prefices, $row, $suffix);
+				$res = self::getResultForPrefices($prefices, $row, $suffix, $this->pid);
 				if ($res->getValue()) {
 					return $res;
 				}
@@ -623,13 +624,13 @@ class Scholar {
 						"check_prev4" => "scholars",
 						"check_prev5" => "scholars",
 					);
-			$res = self::getResultForPrefices($prefices, $normativeRow, $suffix);
+			$res = self::getResultForPrefices($prefices, $normativeRow, $suffix, $this->pid);
 			if ($res->getValue()) {
 				return $res;
 			}
 		}
 
-		return new Result($normativeRow['identifier_left_date'], $normativeRow['identifier_left_date_source'], $normativeRow['identifier_left_date_sourcetype']);
+		return new Result($normativeRow['identifier_left_date'], $normativeRow['identifier_left_date_source'], $normativeRow['identifier_left_date_sourcetype'], "", $this->pid);
 	}
 
 	# key = instance; value = REDCap data row
@@ -942,19 +943,19 @@ class Scholar {
 
 		$newValue = self::translateFirstDegree($value);
 		$newSource = "";
-		return new Result($newValue, $newSource);
+		return new Result($newValue, $newSource, "", "", $this->pid);
 	}
 
 	private function getPrimaryDepartment($rows) {
 		$vars = self::getDefaultOrder("summary_primary_dept");
 		$vars = $this->getOrder($vars, "summary_primary_dept");
-		$result = self::searchRowsForVars($rows, $vars);
+		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 		$value = $result->getValue();
 		if ($result->getSource() == "vfrs") {
 			$value = self::transferVFRSDepartment($value);
 		}
 
-		return new Result($value, $result->getSource());
+		return new Result($value, $result->getSource(), "", "", $this->pid);
 	}
 
 	# VFRS did not use the 6-digit classification, so we must translate
@@ -1013,7 +1014,7 @@ class Scholar {
 	private function getGender($rows) {
 		$vars = self::getDefaultOrder("summary_gender");
 		$vars = $this->getOrder($vars, "summary_gender");
-		$result = self::searchRowsForVars($rows, $vars);
+		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 
 		# must reverse for certain sources
 		$tradOrder = array("manual", "scholars", "followup");
@@ -1024,9 +1025,9 @@ class Scholar {
 			$source = $result->getSource();
 			$value = $result->getValue();
 			if ($value == 1) {  # Male
-				return new Result(2, $source);
+				return new Result(2, $source, "", "", $this->pid);
 			} else if ($value == 2) {   # Female
-				return new Result(1, $source);
+				return new Result(1, $source, "", "", $this->pid);
 			}
 			# forget no-reports and others
 		}
@@ -1083,7 +1084,7 @@ class Scholar {
 		if ($val === "") {
 			$val = 6;  # other
 		}
-		return new RaceEthnicityResult($val, $raceSource, $ethSource);
+		return new RaceEthnicityResult($val, $raceSource, $ethSource, $this->pid);
 	}
 
 	# convert date
@@ -1110,19 +1111,19 @@ class Scholar {
 	private function getDOB($rows) {
 		$vars = self::getDefaultOrder("summary_dob");
 		$vars = $this->getOrder($vars, "summary_dob");
-		$result = self::searchRowsForVars($rows, $vars);
+		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 		$date = $result->getValue();
 		if ($date) {
 			$date = self::convertToYYYYMMDD($date);
 		}
 
-		return new Result($date, $result->getSource());
+		return new Result($date, $result->getSource(), "", "", $this->pid);
 	}
 
 	private function getCitizenship($rows) {
 		$vars = self::getDefaultOrder("summary_citizenship");
 		$vars = $this->getOrder($vars, "summary_citizenship");
-		return self::searchRowsForVars($rows, $vars);
+		return self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 	}
 
 	private static function getDateFieldForSource($source, $field) {
@@ -1145,7 +1146,7 @@ class Scholar {
 	}
 
 	# $vars is listed in order of priority; key = variable, value = data source
-	private static function searchRowsForVars($rows, $vars, $byLatest = FALSE) {
+	private static function searchRowsForVars($rows, $vars, $byLatest = FALSE, $pid = "") {
 		$result = new Result("", "");
 		foreach ($vars as $var => $source) {
 			$ary = array("", "");
@@ -1166,10 +1167,10 @@ class Scholar {
 							$currTs = strtotime($date);
 							if ($currTs > $latestTs) {
 								$latestTs = $currTs;
-								$result = new Result($row[$var], $source, "", $date);
+								$result = new Result($row[$var], $source, "", $date, $pid);
 							}
 						} else if (!$latestTs) {
-							$result = new Result($row[$var], $source);
+							$result = new Result($row[$var], $source, "", "", $pid);
 							$latestTs = 1; // nominally low value
 						}
 					} else {
@@ -1177,11 +1178,11 @@ class Scholar {
 							# get earliest instance - i.e., lowest repeat_instance
 							if (!$aryInstance
 								|| ($aryInstance > $row['redcap_repeat_instance'])) {
-								$result = new Result($row[$var], $source, "", $date);
+								$result = new Result($row[$var], $source, "", $date, $pid);
 								$aryInstance = $row['redcap_repeat_instance'];
 							}
 						} else {
-							return new Result($row[$var], $source, "", $date);
+							return new Result($row[$var], $source, "", $date, $pid);
 						}
 					}
 				}
@@ -1204,14 +1205,14 @@ class Scholar {
 	private function getInstitution($rows) {
 		$vars = self::getDefaultOrder("identifier_institution");
 		$vars = $this->getOrder($vars, "identifier_institution");
-		$result = self::searchRowsForVars($rows, $vars);
+		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 		$value = $result->getValue();
 		$source = $result->getSource();
 
 		if ($value == "1") {
-			return new Result("Vanderbilt", $source);
+			return new Result("Vanderbilt", $source, "", "", $this->pid);
 		} else if ($value == "2") {
-			return new Result("Meharry", $source);
+			return new Result("Meharry", $source, "", "", $this->pid);
 		} else if ($value == "") {
 			return new Result("", ""); 
 		} else if (is_numeric($value)) {
@@ -1219,42 +1220,42 @@ class Scholar {
 			$otherVars = array(
 					"check_institution_oth" => "scholars",
 					);
-			$otherResult = self::searchRowsForVars($rows, $otherVars);
+			$otherResult = self::searchRowsForVars($rows, $otherVars, FALSE, $this->pid);
 			if (!$otherResult->getValue()) {
 				$otherValue = "Other";
 				$otherSource = $source;
-				return new Result($otherValue, $otherSource);
+				return new Result($otherValue, $otherSource, "", "", $this->pid);
 			} else {
 				return $otherResult;
 			}
 		} else {
-			return new Result($value, $source);
+			return new Result($value, $source, "", "", $this->pid);
 		}
 	}
 
 	private function getCurrentDivision($rows) {
 		$vars = self::getDefaultOrder("summary_current_division");
 		$vars = $this->getOrder($vars, "summary_current_division");
-		return self::searchRowsForVars($rows, $vars);
+		return self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 	}
 
 	private function getCurrentRank($rows) {
 		$vars = self::getDefaultOrder("summary_current_rank");
 		$vars = $this->getOrder($vars, "summary_current_rank");
-		$result = self::searchRowsForVars($rows, $vars, TRUE);
+		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
 		return $result;
 	}
 
 	private function getCurrentAppointmentStart($rows) {
 		$vars = self::getDefaultOrder("summary_current_start");
 		$vars = $this->getOrder($vars, "summary_current_start");
-		return self::searchRowsForVars($rows, $vars);
+		return self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 	}
 
 	private function getTenureStatus($rows) {
 		$vars = self::getDefaultOrder("summary_current_tenure");
 		$vars = $this->getOrder($vars, "summary_current_tenure");
-		return self::searchRowsForVars($rows, $vars);
+		return self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 	}
 
 	private static function isNormativeRow($row) {
@@ -1366,11 +1367,12 @@ class Scholar {
 }
 
 class Result {
-	public function __construct($value, $source, $sourceType = "", $date = "") {
+	public function __construct($value, $source, $sourceType = "", $date = "", $pid = "") {
 		$this->value = $value;
 		$this->source = $source;
 		$this->sourceType = $sourceType;
 		$this->date = $date;
+		$this->pid = $pid;
 	}
 
 	public function getValue() {
@@ -1383,7 +1385,7 @@ class Result {
 
 	public function getSourceType() {
 		if (!$this->sourceType) {
-			$this->sourceType = self::calculateSourceType($this->source);
+			$this->sourceType = self::calculateSourceType($this->source, $this->pid);
 		}
 		return $this->sourceType;
 	}
@@ -1392,15 +1394,15 @@ class Result {
 		return $this->date;
 	}
 
-	protected static function calculateSourceType($source) {
+	protected static function calculateSourceType($source, $pid = "") {
 		$selfReported = array("scholars", "followup", "vfrs");
 		$newman = array( "data", "sheet2", "demographics", "new2017", "k12", "nonrespondents", "manual" );
 
 		if ($source == "") {
 			$sourcetype = "";
-		} else if (in_array($source, $selfReported) || in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "1"))) {
+		} else if (in_array($source, $selfReported) || in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "1", $pid))) {
 			$sourcetype = "1";
-		} else if (in_array($source, $newman) || in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "2"))) {
+		} else if (in_array($source, $newman) || in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "2", $pid))) {
 			$sourcetype = "2";
 		} else {
 			$sourcetype = "0";
@@ -1413,13 +1415,15 @@ class Result {
 	protected $source;
 	protected $sourceType;
 	protected $date;
+	protected $pid;
 }
 
 class RaceEthnicityResult extends Result {
-	public function __construct($value, $raceSource, $ethnicitySource) {
+	public function __construct($value, $raceSource, $ethnicitySource, $pid = "") {
 		$this->value = $value;
 		$this->raceSource = $raceSource;
 		$this->ethnicitySource = $ethnicitySource;
+		$this->pid = $pid;
 	}
 
 	public function getRaceSource() {
@@ -1431,11 +1435,11 @@ class RaceEthnicityResult extends Result {
 	}
 
 	public function getRaceSourceType() {
-		return self::calculateSourceType($this->raceSource);
+		return self::calculateSourceType($this->raceSource, $this->pid);
 	}
 
 	public function getEthnicitySourceType() {
-		return self::calculateSourceType($this->ethnicitySource);
+		return self::calculateSourceType($this->ethnicitySource, $this->pid);
 	}
 
 	private $raceSource;

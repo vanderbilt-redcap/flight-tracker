@@ -81,7 +81,7 @@ class CronManager {
 				}
 			}
 		}
-		error_log("Running ".count($toRun)." crons for ".json_encode($keys));
+		error_log("Running ".count($toRun)." crons for pid ".$this->pid." with keys ".json_encode($keys));
 		foreach ($toRun as $cronjob) {
 			error_log("Running ".$cronjob->getTitle());
 			$run[$cronjob->getTitle()] = array("text" => "Attempted", "ts" => self::getTimestamp());

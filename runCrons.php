@@ -9,5 +9,5 @@ if (isset($argv[2]) && ($argv[2] = "special")) {
 	$specialOnly = TRUE;
 }
 loadCrons($manager, $specialOnly);
-error_log($manager->getNumberOfCrons()." total crons loaded");
+error_log($manager->getNumberOfCrons()." total crons loaded in");
 $manager->run($adminEmail, $tokenName, $pid);

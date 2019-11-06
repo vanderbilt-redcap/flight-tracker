@@ -42,7 +42,7 @@ if (isset($_POST['toImport']) && isset($_POST['record'])) {
 	if (!$outputData['error'] && !$outputData['errors']) {
 		echo "<p class='green centered shadow note'>";
 		if (isset($outputData['count']) || isset($outputData['item_count'])) {
-			echo "<span style='color: red;'>Upload Success!</span> ";
+			echo "Upload Success!";
 		}
 		echo "</p>\n";
 	} else {

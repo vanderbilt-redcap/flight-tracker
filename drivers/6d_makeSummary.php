@@ -21,7 +21,8 @@ define("NOAUTH", true);
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 function getLockFile() {
-	return APP_PATH_TEMP."6_makeSummary.lock";
+	global $pid;
+	return APP_PATH_TEMP."6_makeSummary.$pid.lock";
 }
 
 function lock() {
@@ -77,7 +78,7 @@ function makeSummary($token, $server, $pid, $selectRecord = "") {
 	
 		# update rows with new data
 		$time1 = microtime(TRUE);
-		$scholar = new Scholar($token, $server, $metadata);
+		$scholar = new Scholar($token, $server, $metadata, $pid);
 		$scholar->downloadAndSetup($recordId);
 		$scholar->setGrants($grants);   // save compute time
 		$scholar->process();
