@@ -30,8 +30,8 @@ class LdapLookup {
 	const DEPT_NUMBER_KEY = "vanderbiltpersonhrdeptnumber";
 	const DEPT_NAME_KEY = "vanderbiltpersonhrdeptname";
 
-	private static $ldapConn;
-	private static $ldapBind;
+	private static $ldapConns;
+	private static $ldapBinds;
 
 	/**
 	 * @param $values array of strings
@@ -57,6 +57,7 @@ class LdapLookup {
 		}
 
 		$sr = NULL;
+		$allData = array();
 		if (!empty($searchTerms)) {
 			## Search LDAP for any user matching the vunet ID
 			$char = "|";
@@ -64,26 +65,54 @@ class LdapLookup {
 				$char = "&";
 			}
 			$searchFilter = "($char".implode("", $searchTerms).")";
-			$sr = ldap_search(self::$ldapConn, "ou=people,dc=vanderbilt,dc=edu", $searchFilter);
+			foreach (self::$ldapConns as $ldapConn) {
+				$sr = ldap_search($ldapConn, "ou=people,dc=vanderbilt,dc=edu", $searchFilter);
+				if ($sr) {
+					$data = ldap_get_entries($ldapConn, $results[$i]);
+					if ($oneLine) {
+						for($i = 0; $i < count($data); $i++) {
+							return $data[$i];
+						}       
+					} else {
+						$allData = self::mergeAndDiscardDups($allData, $data);
+					}       
+				} else if(ldap_error($ldapConn) != "") {
+					echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
+					throw new Exception(ldap_error($ldapConn)." ".$searchFilter);
+				}       
+			}       
 		}
+		return $allData;
+	}
 
-		if ($sr) {
-			$data = ldap_get_entries(self::$ldapConn, $sr);
-			if ($oneLine) {
-				for($i = 0; $i < count($data); $i++) {
-					return $data[$i];
+	/**
+	  * @param $data1 array
+	  * @param $data2 array
+	  * @return array
+	  */
+	private static function mergeAndDiscardDups($data1, $data2) {
+		$sources = array($data1, $data2);
+
+		$deDuped = array();
+		foreach ($sources as $source) {
+			for ($i = 0; $i < $source['count']; $i++) {
+				$entry = $source[$i];
+				$currUID = self::getUID($entry);
+				$add = TRUE;
+				foreach ($deDuped as $existingEntry) {
+					if ($currUID && (self::getUID($existingEntry) == $currUID)) {
+						$add = FALSE;
+						break;
+					}
 				}
-			} else {
-				return $data;
+				if ($add) {
+					array_push($deDuped, $entry);
+				}
 			}
 		}
-		else {
-			if(ldap_error(self::$ldapConn) != "") {
-				echo "<pre>";var_dump(ldap_error(self::$ldapConn));echo "</pre><br /><Br />";
-				throw new Exception(ldap_error(self::$ldapConn)." ".$searchFilter);
-			}
-		}
-		return false;
+		$deDuped['count'] = count($deDuped);
+
+		return $deDuped;
 	}
 
 	/**
@@ -93,29 +122,31 @@ class LdapLookup {
 	 * @return array|bool
 	 * @throws Exception
 	 */
-	public static function lookupUserDetailsByKey($value,$key,$oneLine=true) {
-		self::initialize();
+	public static function lookupUserDetailsByKey($value,$key,$oneLine=true,$includeVU=false) {
+		self::initialize($includeVU);
 
 		## Search LDAP for any user matching the vunet ID
-		$sr = ldap_search(self::$ldapConn, "ou=people,dc=vanderbilt,dc=edu", "(".$key."=".$value.")");
+		$allData = array();
+		foreach (self::$ldapConns as $ldapConn) {
+			$sr = ldap_search($ldapConn, "ou=people,dc=vanderbilt,dc=edu", "(".$key."=".$value.")");
 
-		if ($sr) {
-			$data = ldap_get_entries(self::$ldapConn, $sr);
-			if ($oneLine) {
-				for ($i=0; $i < count($data); $i++) {
-					return $data[$i];
+			if ($sr) {
+				$data = ldap_get_entries($ldapConn, $sr);
+				if ($oneLine) {
+					for ($i=0; $i < count($data); $i++) {
+						return $data[$i];
+					}
+				} else {
+					$allData = self::mergeAndDiscardDups($allData, $data);
 				}
 			} else {
-				return $data;
+				if(ldap_error($ldapConn) != "") {
+					echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
+					throw new Exception(ldap_error($ldapConn));
+				}
 			}
 		}
-		else {
-			if(ldap_error(self::$ldapConn) != "") {
-				echo "<pre>";var_dump(ldap_error(self::$ldapConn));echo "</pre><br /><Br />";
-				throw new Exception(ldap_error(self::$ldapConn));
-			}
-		}
-		return false;
+		return $allData;
 	}
 
 	public static function lookupUserDetailsByVunet($vunet) {
@@ -129,32 +160,41 @@ class LdapLookup {
 		return self::lookupUserDetailsByKey($personId,self::PERSON_ID_KEY);
 	}
 
-	public static function lookupUsersByNameFragment($nameFragment) {
-		self::initialize();
+	public static function lookupUsersByNameFragment($nameFragment, $includeVU = false) {
+		self::initialize($includeVU);
 
 		## Search LDAP for any user matching the $nameFragment on vunet, surname or givenname
-		$sr = ldap_search(self::$ldapConn, "ou=people,dc=vanderbilt,dc=edu", "(|(uid=$nameFragment*)(sn=$nameFragment*)(givenname=$nameFragment*))");
+		$allData = array();
+		foreach (self::$ldapConns as $ldapConn) {
+			$sr = ldap_search($ldapConn, "ou=people,dc=vanderbilt,dc=edu", "(|(uid=$nameFragment*)(sn=$nameFragment*)(givenname=$nameFragment*))");
 
-		if ($sr) {
-			$data = ldap_get_entries(self::$ldapConn, $sr);
-
-			return $data;
+			if ($sr) {
+				$data = ldap_get_entries($ldapConn, $sr);
+				$allData = self::mergeAndDiscardDups($allData, $data);
+			} else {
+				echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
+			}
 		}
-		else {
-			echo "<pre>";var_dump(ldap_error(self::$ldapConn));echo "</pre><br /><Br />";
-		}
-		return false;
+		return $allData;
 	}
 
-
-	public static function initialize() {
-		if(!self::$ldapBind) {
+	public static function initialize($includeVU = FALSE) {
+		if(!self::$ldapBinds) {
 			include "/app001/credentials/con_redcap_ldap_user.php";
 
-			self::$ldapConn = ldap_connect("ldaps://ldap.vunetid.vanderbilt.edu");
+			self::$ldapConns = array();
+			array_push(self::$ldapConns, ldap_connect("ldaps://ldap.vunetid.mc.vanderbilt.edu"));
+			if ($includeVU) {
+				array_push(self::$ldapConns, ldap_connect("ldaps://ldap.vunetid.vanderbilt.edu"));
+			}
 
-			// Bind to LDAP server
-			self::$ldapBind = ldap_bind(self::$ldapConn, "uid=".$ldapuser.",ou=special users,dc=vanderbilt,dc=edu", $ldappass);
+			# assume same userid/password
+			# Bind to LDAP server
+			self::$ldapBinds = array();
+			for ($i = 0; $i < count(self::$ldapConns); $i++) {
+				self::$ldapBinds[$i] = ldap_bind(self::$ldapConns[$i], "uid=".$ldapuser.",ou=special users,dc=vanderbilt,dc=edu", $ldappass);
+			}
+
 
 			unset($ldapuser);
 			unset($ldappass);

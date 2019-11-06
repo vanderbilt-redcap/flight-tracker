@@ -311,7 +311,7 @@ class Grants {
 					$gs = $gf->getGrants();
 					foreach ($gs as $g) {
 						# combine all grants into one unordered list
-						// error_log("Prospective grant ".json_encode($g->toArray()));
+						error_log("Prospective grant ".json_encode($g->toArray()));
 						$this->nativeGrants[] = $g;
 					}
 				}
@@ -480,9 +480,9 @@ class Grants {
 				$awardsBySource[$awardNo] = self::combineGrants($grants);
 			}
 		}
-		// error_log("combineBySource. ".count($awardsBySource)." awardsBySource");
+		error_log("combineBySource. ".count($awardsBySource)." awardsBySource");
 		foreach ($awardsBySource as $awardNo => $grants) {
-			// error_log("combineBySource: ".$awardNo." with ".count($grants));
+			error_log("combineBySource: ".$awardNo." with ".count($grants));
 		}
 		return $awardsBySource;
 	}
@@ -655,7 +655,7 @@ class Grants {
 		# 5. order grants
 		$awardsByStart = self::orderGrantsByStart($awardsBySource);
 		foreach ($awardsByStart as $awardNo => $grant) {
-			// error_log("5. awardsByStart: ".$awardNo);
+			error_log("5. awardsByStart: ".$awardNo);
 		}
 
 		# 6. remove duplicates by sources; most-preferred by sourceOrder
@@ -690,14 +690,14 @@ class Grants {
 			}
 		}
 		foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
-			// error_log("6. ".$baseNumber." ".$grant->getVariable("type"));
+			error_log("6. ".$baseNumber." ".$grant->getVariable("type"));
 		}
 
 		# 7. remove N/A's
 		foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
 			if ($grant->getVariable("type") == "N/A") {
-				// error_log("Removing ".json_encode($grant->toArray()));
-				// error_log("7. Removing because N/A ".$baseNumber);
+				error_log("Removing ".json_encode($grant->toArray()));
+				error_log("7. Removing because N/A ".$baseNumber);
 				unset($awardsByBaseAwardNumber[$baseNumber]);
 			}
 		}
@@ -714,14 +714,14 @@ class Grants {
 				if (($prevGrant) && ($prevGrant->getVariable('start') == $grant->getVariable('start')) && ($prevGrant->getVariable('type') == $grant->getVariable('type'))) {
 					foreach (array_reverse($sourceOrder) as $source) {
 						if ($prevGrant->getVariable("source") == $source) {
-							// error_log("8a. Removing ".$baseNumber);
+							error_log("8a. Removing ".$baseNumber);
 							$clean = FALSE;
 							unset($awardsByBaseAwardNumber[$prevBaseNumber]);
 							$prevGrant = $grant;
 							$prevBaseNumber = $baseNumber;
 							break; // sourceOrder loop
 						} else if ($grant->getVariable("source") == $source) {
-							// error_log("8b. Removing ".$baseNumber);
+							error_log("8b. Removing ".$baseNumber);
 							$clean = FALSE;
 							unset($awardsByBaseAwardNumber[$baseNumber]);
 							break; // sourceOrder loop
@@ -855,7 +855,7 @@ class Grants {
 
 						$currBudget = $currGrant->getVariable("budget");
 						$grantBudget = $basisGrant->getVariable("budget");
-						// error_log("combineGrants: ".$basisGrant->getBaseNumber()." (".$currGrant->getNumber()." from ".$currGrant->getVariable("source").") Adding ".$currBudget." to ".$grantBudget." = ".Grant::convertToMoney($grantBudget + $currBudget));
+						error_log("combineGrants: ".$basisGrant->getBaseNumber()." (".$currGrant->getNumber()." from ".$currGrant->getVariable("source").") Adding ".$currBudget." to ".$grantBudget." = ".Grant::convertToMoney($grantBudget + $currBudget));
 						$basisGrant->setVariable("budget", Grant::convertToMoney($grantBudget + $currBudget));
 					}
 				}

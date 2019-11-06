@@ -784,6 +784,7 @@ class Scholar {
 							"check_gender" => "scholars",
 							"vfrs_gender" => "vfrs",
 							"imported_gender" => "manual",
+							"override_gender" => "manual",
 							"newman_new_gender" => "new2017",
 							"newman_demographics_gender" => "demographics",
 							"newman_data_gender" => "data",
@@ -814,6 +815,7 @@ class Scholar {
 						"check_date_of_birth" => "scholars",
 						"vfrs_date_of_birth" => "vfrs",
 						"imported_dob" => "manual",
+						"override_dob" => "manual",
 						"newman_new_date_of_birth" => "new2017",
 						"newman_demographics_date_of_birth" => "demographics",
 						"newman_data_date_of_birth" => "data",
@@ -823,6 +825,7 @@ class Scholar {
 							"followup_citizenship" => "followup",
 							"check_citizenship" => "scholars",
 							"imported_citizenship" => "manual",
+							"override_citizenship" => "manual",
 							);
 		$orders["identifier_institution"] = array(
 								"identifier_institution" => "manual",
@@ -832,6 +835,7 @@ class Scholar {
 		$orders["summary_current_division"] = array(
 								"followup_division" => "followup",
 								"check_division" => "scholars",
+								"override_division" => "manual",
 								);
 		$orders["summary_current_rank"] = array(
 							"promotion_rank" => "manual",
@@ -844,13 +848,16 @@ class Scholar {
 							"promotion_in_effect" => "manual",
 							"followup_academic_rank_dt" => "followup",
 							"check_academic_rank_dt" => "scholars",
+							"override_position_start" => "manual",
 							);
 		$orders["summary_current_tenure"] = array(
 								"followup_tenure_status" => "followup",
 								"check_tenure_status" => "scholars",
+								"override_tenure" => "manual",
 								);
 		$orders["summary_mentor"] = array(
 							"imported_mentor" => "manual",
+							"override_mentor" => "manual",
 							"followup_primary_mentor" => "followup",
 							"check_primary_mentor" => "scholars",
 							);
