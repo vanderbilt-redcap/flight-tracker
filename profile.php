@@ -19,7 +19,12 @@ require_once(dirname(__FILE__)."/classes/Publications.php");
 if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 	$record = $_GET['record'];
 } else {
-	$record = 1;
+        $recordIds = Download::recordIds($token, $server);
+	if (count($recordIds) > 0) {
+        	$record = $recordIds[0];
+	} else {
+		$record = 1;
+	}
 }
 
 $nextRecord = \Vanderbilt\FlightTrackerExternalModule\getNextRecord($record);
