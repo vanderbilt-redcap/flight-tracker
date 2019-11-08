@@ -1,12 +1,10 @@
 <?php
 
 namespace Vanderbilt\CareerDevLibrary;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-
 
 require_once(dirname(__FILE__)."/Filter.php");
 require_once(dirname(__FILE__)."/Scholar.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 class CohortConfig {
 	public function __construct($name, $configAry = array()) {
@@ -263,7 +261,7 @@ class CohortConfig {
 		foreach ($this->getRows() as $row) {
 			if ($row['type'] != "resources") {
 				if (preg_match("/^calc_/", $row['variable'])) {
-					foreach (array_merge(CareerDev::$summaryFields, CareerDev::$citationFields) as $field) {
+					foreach (array_merge(Application::$summaryFields, Application::$citationFields) as $field) {
 						if (!in_array($field, $fields)) {
 							array_push($fields, $field);
 						}

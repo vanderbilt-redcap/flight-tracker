@@ -3,13 +3,11 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-
 # This file compiles all of the grants from various data sources and compiles them into an ordered list of grants.
 # It should remove duplicate grants as well.
 # Unit-testable.
 
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/Grant.php");
@@ -32,8 +30,8 @@ class Grants {
 			$tempHolder[$row['field_name']] = $row;
 		}
 		$this->metadata = $tempHolder;
-		if ($module = CareerDev::getModule()) {
-			$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, CareerDev::getModule());
+		if ($module = Application::getModule()) {
+			$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule());
 		} else {
 			$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, $metadata);
 		}

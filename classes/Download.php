@@ -1,14 +1,11 @@
 <?php
 
 namespace Vanderbilt\CareerDevLibrary;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-
 
 # This class handles commonly occuring downloads from the REDCap API.
 
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/Filter.php");
 require_once(dirname(__FILE__)."/CohortConfig.php");
 require_once(dirname(__FILE__)."/Cohorts.php");
@@ -386,7 +383,7 @@ class Download {
 
 	public static function cohortRecordIds($token, $server, $metadata, $cohort) {
 		$filter = new Filter($token, $server, $metadata);
-		if ($module = CareerDev::getModule()) {
+		if ($module = Application::getModule()) {
 			$cohorts = new Cohorts($token, $server, $module);
 		} else {
 			$cohorts = new Cohorts($token, $server, $metadata);

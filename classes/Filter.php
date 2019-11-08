@@ -2,9 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Cohorts.php");
 require_once(dirname(__FILE__)."/CohortConfig.php");
 require_once(dirname(__FILE__)."/Scholar.php");
@@ -26,7 +24,7 @@ class Filter {
 	public function calc_employment($type, $rows = array()) {
 		$func = "getEmploymentStatus";
 		if ($type == GET_CHOICES) {
-			$fields = array_unique(array_merge(CareerDev::$institutionFields, array("identifier_last_name", "identifier_first_name")));
+			$fields = array_unique(array_merge(Application::$institutionFields, array("identifier_last_name", "identifier_first_name")));
 			$bigCalcSettings = $this->getCalcSettingsChoicesFromData($fields, $func);
 
 			$summedChoices = array();
@@ -416,7 +414,7 @@ class Filter {
 
 		$html .= "<br><br>\n";
 
-		$cohorts = new Cohorts($this->token, $this->server, CareerDev::getModule());
+		$cohorts = new Cohorts($this->token, $this->server, Application::getModule());
 
 		$workshopChoices = $this->getChoices('resources_resource');
 		$blankOption = array("" => "---SELECT---");
@@ -454,11 +452,11 @@ class Filter {
 		$html .= "\t\t}\n";
 		$html .= "\t\tif (config['rows'].length > 0) {\n";
 		$html .= "\t\t\tpresentScreen('Saving...');\n";
-		$html .= "\t\t\t$.post('".CareerDev::link("cohorts/addCohort.php")."', { title: title, config: config }, function(data) {\n";
+		$html .= "\t\t\t$.post('".Application::link("cohorts/addCohort.php")."', { title: title, config: config }, function(data) {\n";
 		$html .= "\t\t\t\tclearScreen();\n";
 		$html .= "\t\t\t\tif (data.match(/success/)) {\n";
 		$html .= "\t\t\t\t\tvar mssg = 'Upload successful!';\n";
-		$html .= "\t\t\t\t\twindow.location.href = '".CareerDev::link("cohorts/viewCohort.php")."&title='+encodeURI(title)+'&mssg='+encodeURI(mssg);\n";
+		$html .= "\t\t\t\t\twindow.location.href = '".Application::link("cohorts/viewCohort.php")."&title='+encodeURI(title)+'&mssg='+encodeURI(mssg);\n";
 		$html .= "\t\t\t\t} else {\n";
 		$html .= "\t\t\t\t\talert(data);\n";
 		$html .= "\t\t\t\t}\n";

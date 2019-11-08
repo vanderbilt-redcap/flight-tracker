@@ -1,7 +1,6 @@
 <?php
 
 namespace Vanderbilt\CareerDevLibrary;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 # This class handles publication data from PubMed, the VICTR fetch routine, and surveys.
 # It also provides HTML for data-wrangling the publication data
@@ -11,7 +10,7 @@ require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Scholar.php");
 require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/iCite.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 class CitationCollection {
 	# type = [ Final, New, Omit ]
@@ -20,7 +19,7 @@ class CitationCollection {
 		$this->server = $server;
 		$this->citations = array();
 		if (empty($redcapData)) {
-			$redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, array($recordId));
+			$redcapData = Download::fieldsForRecords($token, $server, Application::$citationFields, array($recordId));
 		}
 		foreach ($redcapData as $row) {
 			if (($row['redcap_repeat_instrument'] == "citation") && ($row['record_id'] == $recordId)) {
@@ -177,7 +176,7 @@ class Citation {
 
 	public static function findMaxInstance($token, $server, $recordId, $redcapData = array()) {
 		if (empty($redcapData)) {
-			$redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, array($recordId));
+			$redcapData = Download::fieldsForRecords($token, $server, Application::$citationFields, array($recordId));
 		}
 		$maxInstance = 0;
 		$instrument = "citation";
@@ -256,7 +255,7 @@ class Citation {
 	private static function makeCheckbox($id, $img) {
 		$imgFile = "wrangler/".$img.".png";
 		$size = self::getImageSize()."px";
-		$js = "if ($(this).attr(\"src\").match(/unchecked/)) { $(\"#$id\").val(\"include\"); $(this).attr(\"src\", \"".CareerDev::link("wrangler/checked.png")."\"); } else { $(\"#$id\").val(\"exclude\"); $(this).attr(\"src\", \"".CareerDev::link("wrangler/unchecked.png")."\"); }";
+		$js = "if ($(this).attr(\"src\").match(/unchecked/)) { $(\"#$id\").val(\"include\"); $(this).attr(\"src\", \"".Application::link("wrangler/checked.png")."\"); } else { $(\"#$id\").val(\"exclude\"); $(this).attr(\"src\", \"".Application::link("wrangler/unchecked.png")."\"); }";
 		if ($img == "unchecked") {
 			$value = "exclude";
 		} else if ($img == "checked") {
@@ -266,10 +265,10 @@ class Citation {
 		}
 		$input = "<input type='hidden' id='$id' value='$value'>";
 		if (($img == "unchecked") || ($img == "checked")) {
-			return "<img src='".CareerDev::link($imgFile)."' onclick='$js' style='width: $size; height: $size;' align='left'>".$input;
+			return "<img src='".Application::link($imgFile)."' onclick='$js' style='width: $size; height: $size;' align='left'>".$input;
 		}
 		if ($img == "readonly") {
-			return "<img src='".CareerDev::link($imgFile)."' style='width: $size; height: $size;' align='left'>";
+			return "<img src='".Application::link($imgFile)."' style='width: $size; height: $size;' align='left'>";
 		}
 		return "";
 	}
@@ -382,7 +381,7 @@ class Citation {
 	}
 
 	private function downloadData() { 
-		$redcapData = Download::fieldsForRecords($this->token, $this->server, CareerDev::$citationFields, array($this->getRecordId()));
+		$redcapData = Download::fieldsForRecords($this->token, $this->server, Application::$citationFields, array($this->getRecordId()));
 		foreach ($redcapData as $row) {
 			if (($row['record_id'] == $this->getRecordId()) && ($row['redcap_repeat_instrument'] == "citation") && ($row['redcap_repeat_instance'] == $this->getInstance())) {
 				foreach ($row as $field => $value) {
