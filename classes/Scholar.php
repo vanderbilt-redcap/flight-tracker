@@ -192,13 +192,13 @@ class Scholar {
 				if ($row['identifier_left_date']) {
 					$date = " on ".$row['identifier_left_date'];
 				}
-				return "Left ".INSTITUTION.$institution.$date;
+				return "Left ".Application::getInstitution().$institution.$date;
 			}
 		} else if ($row['identifier_left_date']) {
 			$date = " on ".$row['identifier_left_date'];
-			return "Left ".INSTITUTION.$date;
+			return "Left ".Application::getInstitution().$date;
 		}
-		return "Employed at ".INSTITUTION;
+		return "Employed at ".Application::getInstitution();
 	}
 
 	public function getDegreesText() {
@@ -535,7 +535,7 @@ class Scholar {
 			$variable = $prefix."_institution";
 			$variable_date = $prefix.$suffix;
 			if (isset($row[$variable]) &&
-				(preg_match("/".strtolower(INSTITUTION)."/", strtolower($row[$variable])) || preg_match("/vumc/", strtolower($row[$variable]))) &&
+				(preg_match("/".strtolower(Application::getInstitution())."/", strtolower($row[$variable])) || preg_match("/vumc/", strtolower($row[$variable]))) &&
 				isset($row[$variable_date]) &&
 				($row[$variable_date] != "")) {
 

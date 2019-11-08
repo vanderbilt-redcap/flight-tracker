@@ -67,9 +67,14 @@ class Download {
 		return self::sendToServer($server, $data);
 	}
 
+	public static function isCurrentServer($server) {
+		$currServer = $_SERVER['SERVER_NAME'];
+		return (strpos(strtolower($server), strtolower($currServer)) !== FALSE);
+	}
+
 	private static function sendToServer($server, $data) {
 		$pid = Application::getPID($data['token']);
-		if (($pid) && ($data['content'] == "record") && !isset($data['forms'])) {
+		if (($pid) && ($data['content'] == "record") && !isset($data['forms']) && self::isCurrentServer($server)) {
 			$output = \REDCap::getData($pid, "json", $data['records'], $data['fields']); 
 		} else {
 			$ch = curl_init();

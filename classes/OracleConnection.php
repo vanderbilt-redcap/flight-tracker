@@ -62,11 +62,16 @@ class VICTRPubMedConnection extends OracleConnection {
 	public function __construct() {
 		$file = dirname(__FILE__)."/../victrPubMedDB.php";
 		if (file_exists($file)) {
+			error_log("Using $file");
 			require($file);
-		}
-		$file = dirname(__FILE__)."/../../../plugins/career_dev/victrPubMedDB.php";
-		if (file_exists($file)) {
-			require($file);
+		} else {
+			$file = dirname(__FILE__)."/../../../plugins/career_dev/victrPubMedDB.php";
+			if (file_exists($file)) {
+				error_log("Using $file");
+				require($file);
+			} else {
+				error_log("Could not find files!");
+			}
 		}
 
 		$this->userid = $userid;

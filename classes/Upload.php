@@ -207,12 +207,14 @@ class Upload {
 				'returnContent' => 'count',
 				'returnFormat' => 'json'
 				);
-			if ($pid) {
+			if ($pid && Download::isCurrentServer($server)) {
+				$method = "saveData";
 				$time2 = microtime(TRUE);
 				$feedback = \REDCap::saveData($pid, "json", $data['data'], $data['overwriteBehavior']);
 				$time3 = microtime(TRUE);
 				$output = json_encode($feedback);
 			} else {
+				$method = "API";
 				$ch = curl_init();
 				curl_setopt($ch, CURLOPT_URL, $server);
 				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -230,7 +232,7 @@ class Upload {
 				$time3 = microtime(TRUE);
 				$feedback = json_decode($output, true);
 			}
-			error_log("Upload::rows returning $output in ".($time3 - $time2)." seconds");
+			error_log("Upload::rows $method returning $output in ".($time3 - $time2)." seconds");
 			self::testFeedback($feedback, $rows);
 			$allFeedback = self::combineFeedback($allFeedback, $feedback);
 		}

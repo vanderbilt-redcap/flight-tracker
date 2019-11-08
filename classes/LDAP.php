@@ -6,12 +6,51 @@ namespace Vanderbilt\CareerDevLibrary;
 class LDAP {
 	public static function getLDAPByMultiple($types, $values)
 	{
-		return LdapLookup::lookupUserDetailsByKeys($values, $types, true, false);
+		return LdapLookup::lookupUserDetailsByKeys($values, $types, true, false, true);
 	}
 
 	public static function getLDAP($type, $value)
 	{
-		return LdapLookup::lookupUserDetailsByKeys(array($value), array($type), true, false);
+		return self::getLDAPByMultiple(array($type), array($value));
+	}
+
+	public static function getFields() {
+		return array(
+				"modifytimestamp",
+				"modifiersname",
+				"departmentnumber",
+				"edupersonaffiliation",
+				"vanderbiltpersonhrdeptname",
+				"vanderbiltpersonhrdeptnumber",
+				"vanderbiltpersonlastepwchgdate",
+				"o",
+				"vanderbiltpersoncommonid",
+				"displayname",
+				"uid",
+				"edupersonprincipalname",
+				"creatorsname",
+				"createtimestamp",
+				"vanderbiltpersonsecurity",
+				"givenname",
+				"sn",
+				"objectclass",
+				"uidnumber",
+				"gidnumber",
+				"homedirectory",
+				"mail",
+				"vanderbiltpersonepinumber",
+				"vanderbiltpersonstudentid",
+				"vanderbiltpersonemployeeid",
+				"cn",
+				"vanderbiltpersonjobstatus",
+				"vanderbiltpersonhrdepttype",
+				"vanderbiltpersonactiveemployee",
+				"vanderbiltpersonactivestudent",
+				"vanderbiltpersonemployeeclass",
+				"edupersonprimaryaffiliation",
+				"telephonenumber",
+				"loginshell",
+				);
 	}
 }
 
@@ -41,8 +80,8 @@ class LdapLookup {
 	 * @return array|bool
 	 * @throws Exception
 	 */
-	public static function lookupUserDetailsByKeys($values,$keys,$and,$oneLine = true) {
-		self::initialize();
+	public static function lookupUserDetailsByKeys($values,$keys,$and,$oneLine = true, $includeVU = false) {
+		self::initialize($includeVU);
 
 		$cnt = count($keys);
 		if ($cnt > count($values)) {
@@ -68,7 +107,7 @@ class LdapLookup {
 			foreach (self::$ldapConns as $ldapConn) {
 				$sr = ldap_search($ldapConn, "ou=people,dc=vanderbilt,dc=edu", $searchFilter);
 				if ($sr) {
-					$data = ldap_get_entries($ldapConn, $results[$i]);
+					$data = ldap_get_entries($ldapConn, $sr);
 					if ($oneLine) {
 						for($i = 0; $i < count($data); $i++) {
 							return $data[$i];
@@ -95,7 +134,7 @@ class LdapLookup {
 
 		$deDuped = array();
 		foreach ($sources as $source) {
-			if (isset($source['count'])) {
+			if (!empty($source) && isset($source['count'])) {
 				for ($i = 0; $i < $source['count']; $i++) {
 					$entry = $source[$i];
 					$currUID = self::getUID($entry);
@@ -110,14 +149,28 @@ class LdapLookup {
 						array_push($deDuped, $entry);
 					}
 				}
-			} else {
-				throw new \Exception("Could not find a count");
 			}
 		}
 		$deDuped['count'] = count($deDuped);
 
 		return $deDuped;
 	}
+
+	/**
+	  * @param $entry array
+	  * returns string
+	  */
+	private static function getUID($entry) {
+		foreach ($entry as $var => $results) {
+			if ($var == "uid") {
+				for ($i = 0; $i < $results['count']; $i++) {
+					return $results[$i];
+				}
+			}
+		}
+		return "";
+	}
+
 
 	/**
 	 * @param $value string

@@ -14,6 +14,14 @@ class Application {
 	public static function getInstitutions() {
 		return CareerDev::getInstitutions();
 	}
+	public static function getInstitution() {
+		$insts = self::getInstitutions();
+		if (count($insts) > 0) {
+			return $insts[0];
+		}
+		return "";
+	}
+
 	public static function getModule() {
 		return CareerDev::getModule();
 	}
