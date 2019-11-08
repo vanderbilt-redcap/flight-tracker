@@ -95,19 +95,23 @@ class LdapLookup {
 
 		$deDuped = array();
 		foreach ($sources as $source) {
-			for ($i = 0; $i < $source['count']; $i++) {
-				$entry = $source[$i];
-				$currUID = self::getUID($entry);
-				$add = TRUE;
-				foreach ($deDuped as $existingEntry) {
-					if ($currUID && (self::getUID($existingEntry) == $currUID)) {
-						$add = FALSE;
-						break;
+			if (isset($source['count'])) {
+				for ($i = 0; $i < $source['count']; $i++) {
+					$entry = $source[$i];
+					$currUID = self::getUID($entry);
+					$add = TRUE;
+					foreach ($deDuped as $existingEntry) {
+						if ($currUID && (self::getUID($existingEntry) == $currUID)) {
+							$add = FALSE;
+							break;
+						}
+					}
+					if ($add) {
+						array_push($deDuped, $entry);
 					}
 				}
-				if ($add) {
-					array_push($deDuped, $entry);
-				}
+			} else {
+				throw new \Exception("Could not find a count");
 			}
 		}
 		$deDuped['count'] = count($deDuped);
