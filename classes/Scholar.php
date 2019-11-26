@@ -1401,7 +1401,7 @@ class Result {
 		return $this->date;
 	}
 
-	protected static function calculateSourceType($source, $pid = "") {
+	public static function calculateSourceType($source, $pid = "") {
 		$selfReported = array("scholars", "followup", "vfrs");
 		$newman = array( "data", "sheet2", "demographics", "new2017", "k12", "nonrespondents", "manual" );
 

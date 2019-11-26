@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
+require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
@@ -17,7 +18,7 @@ if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 	$url .= "&headers=false";
 }
 
-if (isset($_GET['record'])) {
+if ($_GET['record']) {
 	$record = $_GET['record'];
 } else {
 	$record = getNextRecordWithData($token, $server, 0);

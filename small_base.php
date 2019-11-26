@@ -638,6 +638,17 @@ function json_encode_with_spaces($data) {
 	return $str;
 }
 
+function YMD2MDY($ymd) {
+	$nodes = preg_split("/[\/\-]/", $ymd);
+	if (count($nodes) == 3) {
+		$year = $nodes[0];
+		$month = $nodes[1];
+		$day = $nodes[2];
+		return $month."-".$day."-".$year;
+	}
+	return "";
+}
+
 function MDY2YMD($mdy) {
 	$nodes = preg_split("/[\/\-]/", $mdy);
 	if (count($nodes) == 3) {
@@ -1371,6 +1382,55 @@ function isHelpOn() {
 function makeHelpLink() {
 	return "<p class='smaller centered'>This page is complex. <a href='javascript:;' onclick='showHelp(\"".CareerDev::getHelpLink()."\", \"".CareerDev::getCurrPage()."\"); $(this).parent().hide();'>Click here to show help.</a></p>\n";
 }
+
+function getFieldsOfType($metadata, $fieldType, $validationType = "") {
+	$fields = array();
+	foreach ($metadata as $row) {
+		if ($row['field_type'] == $fieldType) {
+			if (!$validationType || ($validationType == $row['text_validation_type_or_show_slider_number'])) {
+				array_push($fields, $row['field_name']);
+			}
+		}
+	}
+	return $fields;
+}
+
+function findMaxInstance($data, $instrument) {
+	$max = 0;
+	foreach ($data as $row) {
+		if (($row['redcap_repeat_instrument'] == $instrument) && ($row['redcap_repeat_instance'] > $max)) {
+			$max = $row['redcap_repeat_instance'];
+		}
+	}
+	return $max;
+}
+
+function getMetadataRow($field, $metadata) {
+	foreach ($metadata as $row) {
+		if ($row['field_name'] == $field) {
+			return $row;
+		}
+	}
+	return array();
+}
+
+# return array
+function filterFields($fields, $metadata) {
+	$filtered = array();
+
+	$metadataFields = array();
+	foreach ($metadata as $row) {
+		array_push($metadataFields, $row['field_name']);
+	}
+
+	foreach ($fields as $field) {
+		if (in_array($field, $metadataFields)) {
+			array_push($filtered, $field);
+		}
+	}
+	return $filtered;
+}
+
 
 
 require_once(dirname(__FILE__)."/cronLoad.php");

@@ -11,7 +11,7 @@ $bottomPadding = "<br><br><br><br><br>\n";
 ?>
 <html>
 <head>
-<title>Flight Tracker Dashboard</title>
+<title>Flight Tracker <?= CareerDev::getVersion() ?> Dashboard</title>
 </head>
 <body>
 <style>
@@ -22,12 +22,19 @@ td { vertical-align: top; padding: 8px; }
 input[type=text] { font-size: 18px; width: 300px; }
 input[type=submit] { font-size: 18px; }
 </style>
+<script>
+$(document).ready(function() {
+	checkMetadata(<?= time() ?>);
+});
+</script>
 
 <h1 style='margin-bottom: 0;'>Flight Tracker Central</h1>
 <h4 class='nomargin'>Watch Your Scholars Fly</h4>
 <h5>from <a href='https://edgeforscholars.org'>Edge for Scholars</a></h5>
 
 <h2><?= $tokenName ?></h2>
+
+<div class='centered' id='metadataWarning'></div>
 
 <div style='float: left; width: 50%;'>
 <?php
@@ -116,7 +123,7 @@ input[type=submit] { font-size: 18px; }
 		<h3><i class='fa fa-globe-americas'></i> Consortium</h3>
 		<p class='centered'><a href='<?= CareerDev::link("community.php") ?>'>About the Consortium</a></p>
 		<h4 class='nomargin'>Monthly Planning Meetings</h4>
-		<p class='centered' style='margin-top: 0px;'>Next meeting at November 6 at 1pm CT (2pm ET, 11am PT). Email <a href='mailto:scott.j.pearson@vumc.org'>Scott Pearson</a> for an invitation. (<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'>View agenda</a>.)</p>
+		<p class='centered' style='margin-top: 0px;'>Next meeting at <?= findNextMeeting() ?>, at 1pm CT (2pm ET, 11am PT). Email <a href='mailto:scott.j.pearson@vumc.org'>Scott Pearson</a> for an invitation. (<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'>View agenda</a>.)</p>
 	</div>
 	<?= $bottomPadding ?>
 </div>
@@ -126,6 +133,31 @@ input[type=submit] { font-size: 18px; }
 </html>
 
 <?php
+
+function findNextMeeting() {
+	$month = date("m");
+	$year = date("Y");
+	$day = 1;
+	$ts = strtotime("$year-$month-$day");
+	while (date("N", $ts) != 3) {
+		$ts += 24 * 3600;
+	} 
+	if (time() > $ts) {
+		# in past
+		if ($month == 12) {
+			$month = "01";
+			$year++;
+		} else {
+			$month++;
+		}
+		$day = 1;
+		$ts = strtotime("$year-$month-$day");
+		while (date("N", $ts) != 3) {
+			$ts += 24 * 3600;
+		} 
+	}
+	return date("l, F j", $ts);
+}
 
 function makeHangoutIcon() {
 	$html = "<img src='".CareerDev::link("img/hangout.png")."' style='height: 16px; width: 14px;'>";

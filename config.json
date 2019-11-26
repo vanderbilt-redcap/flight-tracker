@@ -18,6 +18,7 @@
 			"hook_data_entry_form",
 			"hook_every_page_before_render",
 			"hook_every_page_top",
+			"hook_save_record",
 			"hook_survey_page"
 	],
 

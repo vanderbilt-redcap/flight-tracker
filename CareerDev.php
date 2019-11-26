@@ -7,6 +7,10 @@ use ExternalModules\ExternalModules;
 class CareerDev {
 	public static $passedModule = NULL;
 
+	public static function getVersion() {
+		return "2.4.0";
+	}
+
 	public static function isREDCap() {
 		$rootPage = $_SERVER['PHP_SELF'];
 		if (strpos($rootPage, "ExternalModules") !== FALSE) {
@@ -646,9 +650,6 @@ class CareerDev {
 						"followup_prev5_academic_rank_oth",
 						"followup_prev5_academic_rank_stdt",
 						"followup_prev5_academic_rank_enddt",
-						"followup_prior_pubs",
-						"followup_modified_pubs",
-						"followup_new_pubs",
 						"followup_grant1_d",
 						"followup_grant1_title",
 						"followup_grant1_number",

@@ -15,11 +15,16 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 	if (!$server) { global $server; }
 
 	if ($specialOnly) {
-		$manager->addCron("drivers/11_vfrs.php", "updateVFRS", date("Y-m-d"));
+		$manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", date("Y-m-d"));
+		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", date("Y-m-d"));
+		$manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", date("Y-m-d"));
+		$manager->addCron("publications/getAllPubs_func.php", "getPubs", date("Y-m-d"));
+		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", date("Y-m-d"));
 	} else if ($token && $server) {
 		$has = checkMetadataForFields($token, $server);
 
 		$manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
+		$manager->addCron("publications/getAllPubs_func.php", "getPubs", "2019-11-26");
 		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", "Tuesday");
 		if ($has['coeus']) {
 			$manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", "Thursday");

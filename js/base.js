@@ -579,3 +579,30 @@ function startTonight() {
 		}
 	});
 }
+
+function installMetadata(fields) {
+	var url = getPageUrl("metadata.php");
+	$("#metadataWarning").removeClass("red");
+	$("#metadataWarning").addClass("yellow");
+	$("#metadataWarning").html("Installing...");
+	$.post(url, { process: "install", fields: fields }, function(data) {
+		console.log(JSON.stringify(data));
+		$("#metadataWarning").removeClass("yellow");
+		$("#metadataWarning").addClass("green");
+		$("#metadataWarning").html("Installation Complete!");
+		setTimeout(function() {
+			$("#metadataWarning").fadeOut(500);
+		}, 3000);
+	});
+}
+
+function checkMetadata(phpTs) {
+	var url = getPageUrl("metadata.php");
+	$.post(url, { process: "check", timestamp: phpTs }, function(html) {
+		if (html) {
+			$('#metadataWarning').addClass("red");
+			$('#metadataWarning').html(html);
+		}
+	});
+}
+

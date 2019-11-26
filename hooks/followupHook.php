@@ -22,6 +22,7 @@ $(document).ready(function() {
 
 <?php
 
+require_once(dirname(__FILE__)."/surveyHook.php");
 require_once(dirname(__FILE__)."/../classes/Grants.php");
 require_once(dirname(__FILE__)."/../classes/Grant.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
@@ -33,27 +34,9 @@ $GLOBALS['data'] = Download::record($token, $server, array($record));
 $metadata = Download::metadata($token, $server);
 $choices = Scholar::getChoices($metadata);
 
-$grants = new Grants($token, $server, $pid, $metadata);
+$grants = new Grants($token, $server, $metadata);
 $grants->setRows($GLOBALS['data']);
 $grants->compileGrants();
-
-$pubs = new Publications($token, $server, $pid, $metadata);
-$pubs->setRows($GLOBALS['data']);
-
-# from YMD
-function makeMMDDYYYY($d) {
-	if ($d == "") {
-		return $d;
-	}
-	$nodes = preg_split("/[\-\/]/", $d);
-	if (count($nodes) == 2) {
-		# mm/yyyy
-		return $nodes[0]."-01-".$nodes[1];
-	} else if (count($nodes) == 3) {
-		return $nodes[1]."-".$nodes[2]."-".$nodes[0]; 
-	}
-	return $d;
-}
 
 # finds the value of a field
 # fields is a prioritized list of fields to look through
@@ -127,51 +110,40 @@ function getCitizenship($value) {
 	}
 	return "";
 }
-
-# YYYY-MM-DD to MM-DD-YYYY for better user experience
-function YMD2MDY($d) {
-	$nodes = preg_split("/[\/\-]/", $d);
-	$toReturn = $nodes[1]."-".$nodes[2]."-".$nodes[0];
-	if ($toReturn == "--") {
-		return "";
-	}
-	return $toReturn;
-}
 ?>
 <script>
 $(document).ready(function() {
 	function presetValue(name, value) {
-		if ($('[name='+name+']').is("textarea")) {
-			$('[name='+name+']').html(value);
-		} else if (($('[name="'+name+'"]').val() == "") && (value != "")) {
+		if (($('[name="'+name+'"]').val() == "") && (value != "")) {
 			$('[name="'+name+'"]').val(value);
 			$('[name="'+name+'___radio"][value="'+value+'"]').attr('checked', true);
 		}
 	}
 
-	presetValue("followup_name_first", "<?php echo find('identifier_first_name', 'check_name_first'); ?>");
-	presetValue("followup_name_middle", "<?php echo find('identifier_middle'); ?>");
-	presetValue("followup_name_last", "<?php echo find('identifier_last_name'); ?>");
-	presetValue("followup_email", "<?php echo find('identifier_email'); ?>");
-	presetValue("followup_primary_mentor", "<?php echo find('summary_mentor'); ?>");
+ 	presetValue("followup_orcid_id", "<?php echo find(array('followup_orcid_id', 'check_orcid_id')); ?>");
+ 	presetValue("followup_name_first", "<?php echo find(array('identifier_first_name', 'followup_name_first', 'check_name_first')); ?>");
+ 	presetValue("followup_name_middle", "<?php echo find(array('newman_data_middle_name', 'followup_name_middle', 'check_name_middle')); ?>");
+ 	presetValue("followup_name_last", "<?php echo find(array('identifier_last_name', 'followup_name_last', 'check_name_last')); ?>");
+ 	presetValue("followup_email", "<?php echo find(array('identifier_email', 'followup_email', 'check_email')); ?>");
+ 	presetValue("followup_primary_mentor", "<?php echo find(array('followup_primary_mentor', 'check_primary_mentor')); ?>");
 
-	presetValue('followup_primary_dept', '<?php echo find('summary_primary_dept'); ?>');
+	presetValue('followup_primary_dept', '<?php echo find(array('followup_primary_dept', 'summary_primary_dept', 'check_primary_dept')); ?>');
 	presetValue('followup_academic_rank', '<?php
-        $vfrs = find('vfrs_current_appointment');
-        if ($vfrs != '') {
-            $translate = array(
-                            1 => 3,
-                            2 => 4,
-                            3 => 3,
-                            4 => 5,
-                            5 => 8,
-                            );
-            echo $translate[$vfrs];
-        } else {
-            echo find('summary_current_rank');
-        }
+	$vfrs = find('vfrs_current_appointment');
+	if ($vfrs != '') {
+		$translate = array(
+					1 => 3,
+					2 => 4,
+					3 => 3,
+					4 => 5,
+					5 => 8,
+					);
+		echo $translate[$vfrs];
+	} else {
+		echo find(array('followup_academic_rank', 'check_academic_rank'));
+	}
     ?>');
-	presetValue('followup_division', '<?php echo find(array('check_division', 'vfrs_division', 'newman_data_division', 'newman_sheet2_division')); ?>');
+	presetValue('followup_division', '<?php echo find(array('followup_division', 'check_division', 'identifier_starting_division')); ?>');
 
 <?php
 # Get rid of my extra verbiage
@@ -205,9 +177,9 @@ function getTenureStatus($value) {
 			if ($j == 1) {
 				echo "	presetValue('followup_grant0_another', '1');\n";
 			}
-			echo "	presetValue('followup_grant{$j}_start', '".makeMMDDYYYY($grant->getVariable("start"))."');\n";
+			echo "	presetValue('followup_grant{$j}_start', '".YMD2MDY($grant->getVariable("start"))."');\n";
 			if ($endDate) {
-				echo "	presetValue('followup_grant{$j}_end', '".makeMMDDYYYY($grant->getVariable("end"))."');\n";
+				echo "	presetValue('followup_grant{$j}_end', '".YMD2MDY($grant->getVariable("end"))."');\n";
 			}
 			echo "	presetValue('followup_grant{$j}_number', '".filterSponsorNumber($grant->getBaseNumber())."');\n";
 			echo "	presetValue('followup_grant{$j}_title', '".preg_replace("/'/", "\\'", $grant->getVariable("title"))."');\n";
@@ -222,12 +194,9 @@ function getTenureStatus($value) {
 	}
 	# make .*_d-tr td background
 	# also .*_d\d+
-	// publications
-	$pubsWithinLastYear = $pubs->getPubsInRange($priorTs, FALSE, "All");
 ?>
-	presetValue('followup_prior_pubs', <?= json_encode(implode("\n\n", $pubsWithinLastYear)) ?>);
 	presetValue('followup_institution', '1');
-	presetValue('followup_academic_rank_dt', '<?php echo makeMMDDYYYY(find('vfrs_current_appointment')); ?>');
+	presetValue('followup_academic_rank_dt', '<?php echo YMD2MDY(find('vfrs_current_appointment')); ?>');
 	presetValue('followup_tenure_status', <?php echo getTenureStatus(find('vfrs_tenure')); ?>);
 
 	doBranching();

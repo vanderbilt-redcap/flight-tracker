@@ -90,7 +90,7 @@ foreach ($orders as $field => $defaultOrder) {
 	}
 }
 
-$filteredSummaryFields = filterFields($shortSummaryFields, $metadata);
+$filteredSummaryFields = \Vanderbilt\FlightTrackerExternalModule\filterFields($shortSummaryFields, $metadata);
 
 foreach ($records as $record) {
 	$recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($record));
@@ -136,7 +136,7 @@ function generateWorksheetColumns($data, $orders, $metadata) {
 			continue;
 		}
 		$order = $scholar->getOrder($defaultOrder, $field);
-		$metadataRow = getMetadataRow($field, $metadata);
+		$metadataRow = \Vanderbilt\FlightTrackerExternalModule\getMetadataRow($field, $metadata);
 		$fieldLabel = $metadataRow['field_label'];
 		if ($field == "summary_degrees") {
 			if (!findValue($field, $data)) {
@@ -180,7 +180,7 @@ function generateWorksheetColumns($data, $orders, $metadata) {
 					$value = $choices[$field][$value];
 				}
 				if ($metadataRow['text_validation_type_or_show_slider_number'] == "date_ymd") {
-					$value = YMD2MDY($value);
+					$value = \Vanderbilt\FlightTrackerExternalModule\YMD2MDY($value);
 				}
 			}
 			if (!$value) {

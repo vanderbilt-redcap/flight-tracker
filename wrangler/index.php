@@ -183,9 +183,15 @@ function getNextRecordWithNewData() {
 		$data = Download::fieldsForRecords($token, $server, $myFields, $pullRecords);
 		$normativeRow = array();
 		foreach ($data as $row) {
-			if (($record < $row['record_id']) && ($row['redcap_repeat_instrument'] === "")) {
+			if ($includeCurrentRecord) {
+				$isEligibleRecord = ($record <= $row['record_id']);
+			} else {
+				$isEligibleRecord = ($record < $row['record_id']);
+			}
+
+			if ($isEligibleRecord && ($row['redcap_repeat_instrument'] === "")) {
 				$normativeRow = $row;
-			} else if ($record < $row['record_id']) {
+			} else if ($isEligibleRecord) {
 				$minAgeUpdate = getMinAgeOfUpdate($row);
 				$minAgeGrant = getMinAgeOfGrants($row, $grantAgeFields);
 				if ((($minAgeUpdate <= $daysForNew) && ($minAgeGrant <= $daysForNew))
@@ -194,12 +200,18 @@ function getNextRecordWithNewData() {
 					foreach ($listOfAwards as $key => $specs) {
 						$specsMinAge = getMinAgeOfUpdate($specs);
 						if ($specsMinAge <= $daysForNew) {
-							return $row['record_id'];
+							$baseAwardNo = $specs['base_award_no'];
+							$numberOfSimilarAwards = findNumberOfSimilarAwards($baseAwardNo, $key, $listOfAwards);
+							if ($numberOfSimilarAwards == 0) {
+								# new base award number
+								return $row['record_id'];
+							}
 						}
 					}
 				}
 			}
 		}
+		$i += count($pullRecords);
 	}
 	return "";
 }
@@ -307,6 +319,16 @@ function transformAward($ary, $takeovers, $i = -1, $selectName = "") {
 	return "<table style='width: 100%;'><tr class='$backgroundClass'>".implode("</tr><tr class='$backgroundClass'>", $elems)."</tr></table>";
 }
 
+function findNumberOfSimilarAwards($baseAwardNo, $originalKey, $listOfAwards) {
+	$numberOfSimilarAwards = 0;
+	foreach ($listOfAwards as $key => $specs) {
+		if (($key != $originalKey) && ($specs['base_award_no'] == $baseAwardNo)) {
+			$numberOfSimilarAwards++;
+		}
+	}
+	return $numberOfSimilarAwards;
+}
+
 $links = array();
 
 # used in JavaScript
@@ -341,9 +363,9 @@ foreach ($redcapData as $row) {
 	}
 }
 if (isset($_GET['new'])) {
-	$nextNewRecord = getNextRecordWithNewData();
+	$nextNewRecord = getNextRecordWithNewData(FALSE);
 	if ($nextNewRecord && ($nextNewRecord > $record)) {
-		$links[] = "<a class='purple' href='".$url."&record=".($nextNewRecord)."&new=$daysForNew'>View Next Record with 'New' Grants</a>";
+		$links[] = "<a class='purple' href='".$url."&record=$nextNewRecord&new=$daysForNew'>View Next Record with 'New' Grants</a>";
 	}
 }
 
@@ -352,7 +374,11 @@ array_push($links, Links::makeCustomGrantLink($_GET['pid'], $record, $eventIds[$
 if (isset($_GET['new'])) {
 	array_push($links, "<a class='orange' href='".$url."&record=$record'>See All Grants Here</a>");
 } else if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
-	array_push($links, "<a class='orange' href='".$url."&record=$record&new=$daysForNew'>See New Grants Only Here</a>");
+	$nextNewRecord = getNextRecordWithNewData(TRUE);
+	if ($nextNewRecord) {
+		array_push($links, "<a class='orange' href='$url&record=$nextNewRecord&new=$daysForNew'>See Only New Grants Here</a>");
+	}
+
 }
 
 if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) { 

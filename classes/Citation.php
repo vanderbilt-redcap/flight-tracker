@@ -46,6 +46,19 @@ class CitationCollection {
 		return $html;
 	}
 
+	# for book-keeping purposes only; does not write to DB
+	public function removePMID($pmid) {
+		if ($this->has($pmid)) {
+			$newCitations = array();
+			foreach ($this->getCitations() as $citation) {
+				if ($citation->getPMID() != $pmid) {
+					array_push($newCitations, $citation);
+				}
+			}
+			$this->citations = $newCitations;
+		}
+	}
+
 	public function has($pmid) {
 		$allPMIDs = $this->getIds();
 		return in_array($pmid, $allPMIDs);
@@ -527,14 +540,14 @@ class Citation {
 		return $citation;
 	}
 
-	public function getCitationWithLink() {
+	public function getCitationWithLink($includeREDCapLink = TRUE, $newTarget = FALSE) {
 		global $pid, $event_id;
 
 		$base = $this->getCitation();
 
 		$doi = $this->getVariable("doi");
 		if ($doi) {
-			$baseWithDOILink = str_replace("doi:".$doi, Links::makeLink("https://www.doi.org/".$doi, "doi:".$doi), $base);
+			$baseWithDOILink = str_replace("doi:".$doi, Links::makeLink("https://www.doi.org/".$doi, "doi:".$doi, TRUE), $base);
 		} else {
 			$baseWithDOILink = $base;
 		}
@@ -545,8 +558,8 @@ class Citation {
 			$baseWithPMID = $baseWithDOILink;
 		}
 
-		if ($this->getInstance() && $this->getRecordId()) {
-			$baseWithREDCap = $baseWithPMID." ".Links::makePublicationsLink($pid, $this->getRecordId(), $event_id, "REDCap", $this->getInstance());
+		if ($includeREDCapLink && $this->getInstance() && $this->getRecordId()) {
+			$baseWithREDCap = $baseWithPMID." ".Links::makePublicationsLink($pid, $this->getRecordId(), $event_id, "REDCap", $this->getInstance(), TRUE);
 		} else {
 			$baseWithREDCap = $baseWithPMID;
 		}
@@ -562,7 +575,7 @@ class Citation {
 		}
 
 		$baseWithPMCLink = preg_replace("/PMC{$this->pmcid}/", Links::makeLink($this->getPMCURL(), "PMC".$this->getPMC()), $baseWithPMC);
-		$baseWithLinks = preg_replace("/PubMed PMID:\s*".$this->getPMID()."/", Links::makeLink($this->getURL(), "PubMed PMID: ".$this->getPMID()), $baseWithPMCLink);
+		$baseWithLinks = preg_replace("/PubMed PMID:\s*".$this->getPMID()."/", Links::makeLink($this->getURL(), "PubMed PMID: ".$this->getPMID(), $newTarget), $baseWithPMCLink);
 
 		return $baseWithLinks;
 	}
@@ -600,8 +613,12 @@ class Citation {
 		Upload::oneRow($row, $this->token, $this->server);
 	}
 
+	public function stageForReview() {
+		$this->setVariable("include", "");
+		$this->writeToDB();
+	}
+
 	public function includePub() {
-		$this->isIncluded = TRUE;
 		$this->setVariable("include", "1");
 		$this->writeToDB();
 	}

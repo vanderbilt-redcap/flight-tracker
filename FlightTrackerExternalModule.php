@@ -116,6 +116,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		}
 	}
 
+	function hook_save_record($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
+		require_once(dirname(__FILE__)."/hooks/saveHook.php");
+	}
+
 	function hook_survey_page($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
 		$this->setupApplication();
 		if ($instrument == "summary") {

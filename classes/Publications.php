@@ -65,8 +65,17 @@ class Publications {
 
 		$this->process();
 		$this->goodCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Final", $this->rows, $this->choices);
-		$this->omissions = new CitationCollection($this->recordId, $this->token, $this->server, "Omit", $this->rows, $this->choices);
 		$this->input = new CitationCollection($this->recordId, $this->token, $this->server, "New", $this->rows, $this->choices);
+		$this->omissions = new CitationCollection($this->recordId, $this->token, $this->server, "Omit", $this->rows, $this->choices);
+		foreach ($this->omissions->getCitations() as $citation) {
+			$pmid = $citation->getPMID();
+			if ($this->input->has($pmid)) {
+				$this->omissions->removePMID($pmid);
+			}
+			if ($this->goodCitations->has($pmid)) {
+				$this->omissions->removePMID($pmid);
+			}
+		}
 	}
 
 	public function getPubsInLastYear() {
@@ -159,6 +168,14 @@ class Publications {
 	public static function downloadPMID($pmid) {
 		$output = self::pullFromEFetch($pmid);
 		$xml = simplexml_load_string(utf8_encode($output));
+		$numRetries = 5;
+		$i = 0;
+		while (!$xml && ($numRetries > $i)) {
+			sleep(5);
+			$output = self::pullFromEFetch($pmid);
+			$xml = simplexml_load_string(utf8_encode($output));
+			$i++;
+		}
 		if (!$xml) {
 			throw new Exception("Error: Cannot create object ".$output);
 		}

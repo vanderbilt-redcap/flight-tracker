@@ -1,51 +1,30 @@
 <?php
 
-namespace Vanderbilt\FlightTrackerExternalModule;
-
-use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Grant;
-use \Vanderbilt\CareerDevLibrary\CitationCollection;
-use \Vanderbilt\CareerDevLibrary\Scholar;
 
 require_once(dirname(__FILE__)."/../small_base.php");
-
 require_once(dirname(__FILE__)."/../classes/Grants.php");
 require_once(dirname(__FILE__)."/../classes/Grant.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Citation.php");
-require_once(dirname(__FILE__)."/../classes/Scholar.php");
+require_once(dirname(__FILE__)."/surveyHook.php");
 
-# This is the hook used for the initial survey. It is referenced in the base FlightTrackerExternalModule class.
+# This is the hook used for the scholars' survey. It is referenced in the hooks file.
 
 ?>
 <script>
 $(document).ready(function() {
-	$('.requiredlabel').html("* required field");
-	showEraseValuePrompt = 0;    // for evalLogic prompt to erase values
+    $('.requiredlabel').html("* required field");
+    showEraseValuePrompt = 0;    // for evalLogic prompt to erase values
 });
 </script>
 
 <?php
-$GLOBALS['data'] = Download::record($token, $server, array($record));
-$metadata = Download::metadata($token, $server);
-$choices = Scholar::getChoices($metadata);
+$json = \REDCap::getData($project_id, 'json', array($record));
+$GLOBALS['data'] = json_decode($json, true); 
 
-$pubs = new Publications($token, $server, $pid);
-$pubs->setRows($GLOBALS['data']);
-
-$grants = new Grants($token, $server, $pid);
+$grants = new Grants($token, $server);
 $grants->setRows($GLOBALS['data']);
 $grants->compileGrants();
-
-# from YMD
-function makeMMDDYYYY($d) {
-	if ($d == "") {
-		return $d;
-	}
-	$nodes = preg_split("/[\-\/]/", $d);
-	return $nodes[1]."-".$nodes[2]."-".$nodes[0]; 
-}
 
 # finds the value of a field
 # fields is a prioritized list of fields to look through
@@ -110,17 +89,18 @@ function findCOEUSEntry($sponsorNoField, $coeusField) {
 	return "";
 }
 
-function getInstitution($value, $fieldChoices) {
-	foreach ($fieldChoices as $idx => $institution) {
-		if (preg_match("/$institution/i", $value)) {
-			return $idx;
-		}
+function getInstitution($value) {
+	# Scholar's: 1, Vanderbilt | 2, Meharry | 5, Other
+	# VFRS: 1, Yes. I am at Vanderbilt | 2, Yes. I am at Meharry | 3, No, I am not yet at Vanderbilt or Meharry
+	switch($value) {
+		case 1:
+			return 1;
+		case 2:
+			return 2;
+		case 3:
+			return 5;
 	}
-	if ($value) {
-		# Other
-		return 5;
-	}
-	return "";
+	return 1;    // default is at VUMC
 }
 
 function getDisadvantaged($value) {
@@ -142,17 +122,6 @@ function getDisability($value) {
 	}
 	return "";
 }
-
-# returns the citizenship autofill
-# YYYY-MM-DD to MM-DD-YYYY for better user experience
-function YMD2MDY($d) {
-	$nodes = preg_split("/[\/\-]/", $d);
-	$toReturn = $nodes[1]."-".$nodes[2]."-".$nodes[0];
-    if ($toReturn == "--") {
-	return "";
-    }
-    return $toReturn;
-}
 ?>
 <script>
 $(document).ready(function() {
@@ -167,7 +136,7 @@ $(document).ready(function() {
 	presetValue("check_name_middle", "<?php echo find('identifier_middle'); ?>");
 	presetValue("check_name_last", "<?php echo find('identifier_last_name'); ?>");
 	presetValue("check_email", "<?php echo find('identifier_email'); ?>");
-	presetValue("check_date_of_birth", "<?php echo YMD2MDY(find('summary_dob')); ?>");
+	presetValue("check_date_of_birth", "<?php echo \Vanderbilt\FlightTrackerExternalModule\YMD2MDY(find('summary_dob')); ?>");
 	$('#check_date_of_birth-tr td .ui-button').hide();
 	presetValue("check_gender", "<?php echo find('summary_gender'); ?>");
     <?php
@@ -193,11 +162,9 @@ $(document).ready(function() {
 	    echo "  presetValue('check_ethnicity', '{$ethnTranslate[$re]}');\n";
 	}
     ?>
-	presetValue("check_citizenship", "<?php echo find('summary_citizenship') ?>");
-	presetValue("check_disadvantaged", "<?php echo getDisadvantaged(find('vfrs_disadvantaged_the_criteria')); ?>");
-	presetValue("check_disability", "<?php echo getDisability(find('vfrs_disability_those_with_phys')); ?>");
+	presetValue("check_citizenship", "<?php echo find('summary_citizenship'); ?>");
 	presetValue("check_primary_mentor", "<?php echo find('summary_mentor'); ?>");
-	presetValue("check_institution", "<?php echo getInstitution(find('identifier_institution'), $choices['check_institution']); ?>");
+	presetValue("check_institution", "<?php echo getInstitution(find('identifier_institution', 'check_institution')); ?>");
 
 <?php
 	if (find("vfrs_graduate_degree")) {
@@ -365,8 +332,7 @@ $(document).ready(function() {
 ?>
 
 	presetValue('check_primary_dept', '<?php echo find('summary_primary_dept'); ?>');
-	presetValue('check_academic_rank', '<?= find('summary_current_rank') ?>');
-	presetValue('check_division', '<?php echo find(array('vfrs_division', 'newman_data_division', 'newman_sheet2_division')); ?>');
+	presetValue('check_division', '<?php echo find(array('identifier_starting_division')); ?>');
 
 <?php
 # Get rid of my extra verbiage
@@ -381,8 +347,8 @@ function filterSponsorNumber($name) {
 	$i = 1;
 	foreach ($grants->getGrants("compiled") as $grant) {
 		if ($i <= MAX_GRANTS) {
-			echo "	presetValue('check_grant{$i}_start', '".makeMMDDYYYY($grant->getVariable("start"))."');\n";
-			echo "	presetValue('check_grant{$i}_end', '".makeMMDDYYYY($grant->getVariable("end"))."');\n";
+			echo "	presetValue('check_grant{$i}_start', '".\Vanderbilt\FlightTrackerExternalModule\YMD2MDY($grant->getVariable("start"))."');\n";
+			echo "	presetValue('check_grant{$i}_end', '".\Vanderbilt\FlightTrackerExternalModule\YMD2MDY($grant->getVariable("end"))."');\n";
 			echo "	presetValue('check_grant{$i}_number', '".filterSponsorNumber($grant->getBaseNumber())."');\n";
 			echo "	presetValue('check_grant{$i}_title', '".preg_replace("/'/", "\\'", $grant->getVariable("title"))."');\n";
 			echo "	presetValue('check_grant{$i}_org', '".$grant->getVariable("sponsor")."');\n";
@@ -396,12 +362,7 @@ function filterSponsorNumber($name) {
 	}
 	# make .*_d-tr td background
 	# also .*_d\d+
-
-	// publications
-	$pubsToDisplay = $pubs->getCitationCollection("All")->getCitationsAsString();
 ?>
-	presetValue('check_prior_pubs', <?= json_encode(implode("\n\n", $pubsToDisplay)) ?>);
-
 	doBranching();
 	$('[name="check_name_first"]').blur();
 });

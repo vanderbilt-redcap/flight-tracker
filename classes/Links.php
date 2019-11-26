@@ -164,8 +164,8 @@ class Links {
 		return self::makeRepeatingFormLink($pid, $recordId, $event_id, $text, "coeus", $instance);
 	}
 
-	public static function makePublicationsLink($pid, $recordId, $event_id, $text, $instance = 1) {
-		return self::makeFormLink($pid, $recordId, $event_id, $text, "citation", $instance);
+	public static function makePublicationsLink($pid, $recordId, $event_id, $text, $instance = 1, $newTarget = FALSE) {
+		return self::makeFormLink($pid, $recordId, $event_id, $text, "citation", $instance, "", $newTarget);
 	}
 
 	public static function makeRepeatingFormLink($pid, $recordId, $event_id, $text, $form, $instance = 1, $linkClass = "") {
@@ -181,8 +181,8 @@ class Links {
 		return $url;
 	}
 
-	public static function makeFormLink($pid, $recordId, $event_id, $text, $form, $instance = 1, $linkClass = "") {
+	public static function makeFormLink($pid, $recordId, $event_id, $text, $form, $instance = 1, $linkClass = "", $newTarget = FALSE) {
 		$url = self::makeFormUrl($pid, $recordId, $event_id, $form, $instance);
-		return self::makeLink($url, $text, FALSE, $linkClass);
+		return self::makeLink($url, $text, $newTarget, $linkClass);
 	}
 }

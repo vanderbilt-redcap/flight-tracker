@@ -100,6 +100,7 @@ class CronManager {
 				$ts = $mssgAry['ts'];
 				$text .= $title."<br>".$mssg."<br>".$ts."<br><br>";
 			}
+			error_log("Sending ".PROGRAM_NAME." email for pid ".$this->pid." to $adminEmail");
 			\REDCap::email($adminEmail, "noreply@vumc.org", PROGRAM_NAME." Cron Report", $text);
 		}
 	}

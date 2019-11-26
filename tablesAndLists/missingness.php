@@ -43,23 +43,6 @@ $skip = array("summary_left_vanderbilt", "summary_survey");
 $_GLOBALS['allGreen'] = $allGreen;
 $_GLOBALS['skip'] = $skip;
 
-# return array
-function filterFields($fields, $metadata) {
-	$filtered = array();
-
-	$metadataFields = array();
-	foreach ($metadata as $row) {
-		array_push($metadataFields, $row['field_name']);
-	}
-
-	foreach ($fields as $field) {
-		if (in_array($field, $metadataFields)) {
-			array_push($filtered, $field);
-		}
-	}
-	return $filtered;
-}
-
 # returns string
 function generateDataColumns($recordData) {
 	global $pid;
@@ -288,7 +271,7 @@ foreach ($fields as $field => $title) {
 }
 $nameFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_left_date");
 $shortSummaryFields = array_unique(array_merge($nameFields, $addlFields));
-$filteredSummaryFields = filterFields($shortSummaryFields, $metadata);
+$filteredSummaryFields = \Vanderbilt\FlightTrackerExternalModule\filterFields($shortSummaryFields, $metadata);
 
 $redcapData = \Vanderbilt\FlightTrackerExternalModule\alphabetizeREDCapData(Download::getFilteredRedcapData($token, $server, $nameFields, $_GET['cohort'], $metadata));
 
@@ -329,12 +312,16 @@ if (isset($_GET['csv'])) {
 	$spacing = "&nbsp;&nbsp;&nbsp;&nbsp;";
 	echo "<h4><span class='green'>Green = Self-Reported</span>$spacing<span class='yellow'>Yellow = Computer-Reported</span>$spacing<span class='purple'>Purple = Manual Entry</span>$spacing<span class='red'>Red = Missing</span></h4>";
 
-	echo "<p class='centered'>".\Vanderbilt\FlightTrackerExternalModule\getCohortSelect($token, $server, $pid, $metadata)."<br>\n";
-	$url = CareerDev::link("/tablesAndLists/missingness.php")."&csv";
+	echo "<p class='centered'>".\Vanderbilt\FlightTrackerExternalModule\getCohortSelect($token, $server, $pid, $metadata)."\n";
+	$csvUrl = CareerDev::link("/tablesAndLists/missingness.php")."&csv";
+	$worksheetUrl = CareerDev::link("/tablesAndLists/missingnessWorksheet.php");
 	if ($_GET['cohort']) {
-		$url .= "&cohort=".$_GET['cohort'];
+		$csvUrl .= "&cohort=".$_GET['cohort'];
+		$worksheetUrl .= "&cohort=".$_GET['cohort'];
 	}
-	echo "<a href='$url'>Export to CSV</a></p>\n";
+	echo "<br>".Links::makeLink($csvUrl, "Export to CSV")."\n";
+	echo "<br>".Links::makeLink($worksheetUrl, "View All Missingness Worksheets")."\n";
+	echo "</p>\n";
 
 	$headers = "";
 	$headers .= "<tr><th class='name'>Name</th>";
@@ -361,15 +348,18 @@ if (isset($_GET['csv'])) {
 	$missingRecords = 0;
 	foreach ($redcapData as $row) {
 		$recordId = $row['record_id'];
+		$recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($recordId));
+		$ary = generateDataColumns($recordData);
 		$html .= "<tr>";
 		$html .= "<th>";
-		$html .= Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name']);
+		$html .= Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name'])."<br>";
+		if ($ary['missingCells'] > 0) {
+			$html .= "<span style='font-size: 12px;'>".Links::makeLink(CareerDev::link("tablesAndLists/missingnessWorksheet.php")."&record=".$row['record_id'], "(Missingness Worksheet)")."</span>";
+		}
 		if ($row['identifier_left_date']) {
 			$html .= "<br>Left: ".$row['identifier_left_date'];
 		}
 		$html .= "</th>";
-		$recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($recordId));
-		$ary = generateDataColumns($recordData);
 		$html .= $ary['text'];
 		$missingCells += $ary['missingCells'];
 		$missingRecords += $ary['missingRecords'];

@@ -48,14 +48,7 @@ function getExPORTERInstance($recordId, $redcapData, $upload, $uploadLine) {
 	foreach ($redcapData as $row) {
 		if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "exporter") && ($maxInstance < $row['redcap_repeat_instance'])) {
 			$maxInstance = $row['redcap_repeat_instance'];
-			$same = TRUE;
-			foreach ($uploadLine as $field => $value) {
-				if (($field != "exporter_last_update") && ($row[$field] != $value)) {
-					$same = FALSE;
-					break;
-				}
-			}
-			if ($same) {
+			if ($uploadLine['exporter_application_id'] == $row['exporter_application_id']) {
 				return array($row['redcap_repeat_instance'], FALSE);
 			}
 		}
