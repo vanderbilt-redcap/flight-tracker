@@ -32,6 +32,7 @@ use \Vanderbilt\CareerDevLibrary\iCite;
 
 require_once(dirname(__FILE__)."/classes/Publications.php");
 require_once(dirname(__FILE__)."/classes/Grants.php");
+require_once(dirname(__FILE__)."/classes/EmailManager.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
 require_once(dirname(__FILE__)."/classes/NavigationBar.php");
@@ -1340,7 +1341,7 @@ function addLists($token, $server, $lists, $installCoeus = FALSE, $metadata = FA
 	$newMetadata = array();
 	foreach ($metadata as $row) {
 		$isCoeusRow = preg_match("/^coeus_/", $row['field_name']);
-		if ($installCoeus && $isCoeusRow || !$isCoeusRow) {
+		if (($installCoeus && $isCoeusRow || !$isCoeusRow) && !preg_match("/___delete/", $row['field_name'])) {
 			foreach ($fields as $type => $relevantFields) {
 				if (in_array($row['field_name'], $relevantFields) && isset($lists[$type])) {
 					$row['select_choices_or_calculations'] = $lists[$type];
@@ -1429,6 +1430,52 @@ function filterFields($fields, $metadata) {
 		}
 	}
 	return $filtered;
+}
+
+function queueUpInitialEmail($record) {
+	global $token, $server, $pid;
+
+	$dateToEmail1 = date("Y-m-d", 14 * 24 * 3600 + time())." 09:15:00";
+	$dateToEmail2 = date("Y-m-d", 28 * 24 * 3600 + time())." 09:15:00";
+	$recordData = Download::records($token, $server, array($record));
+	$name = "";
+	$email = "";
+	foreach ($recordData as $row) {
+		if ($row['identifier_last_name']) {
+			if (!$name) {
+				if ($row['identifier_first_name']) {
+					$name = $row['identifier_first_name']." ".$row['identifier_last_name'];
+				} else {
+					$name = "Dr. ".$row['identifier_last_name'];
+				}
+			}
+		}
+		if (!$email) {
+			$email = $row['identifier_email'];
+		}
+	}
+	if ($name && $email) {
+		$metadata = Download::metadata($token, $server);
+		$emailManager = new EmailManager($token, $server, $pid, NULL, $metadata);
+		$settingName = CareerDev::getEmailName($record);
+		if (!$emailManager->hasItem($settingName)) {
+			$message = CareerDev::getSetting("init_message");
+			$from = CareerDev::getSetting("init_from");
+			$subject = CareerDev::getSetting("init_subject");
+			if ($message && $from && $subject) {
+				$emailSetting = EmailManager::getBlankSetting();
+				$emailSetting["who"]["individuals"] = $email;
+				$emailSetting["who"]["from"] = $from;
+				$emailSetting["what"]["message"] = $message;
+				$emailSetting["what"]["subject"] = $subject;
+				$emailSetting["when"]["initial_time"] = $dateToEmail1;
+				$emailSetting["when"]["followup_time"] = $dateToEmail2;
+				$feedback = $emailManager->saveSetting($settingName, $emailSetting);
+			}
+		}
+	} else {
+		throw new \Exception("Could not queue up initial email because the name and email are not specified!");
+	}
 }
 
 

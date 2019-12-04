@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.4.0";
+		return "2.4.1";
 	}
 
 	public static function isREDCap() {
