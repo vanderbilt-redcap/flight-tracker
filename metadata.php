@@ -19,8 +19,8 @@ if ($_POST['process'] == "check") {
 		$lastCheckTs = 0;
 	}
 
-	# check a maximum of once an hour
-	if ($ts > $lastCheckTs + 3600) {
+	# check a maximum of once every 5 minutes
+	if ($ts > $lastCheckTs + 5 * 60) {
 		$fp = fopen($filename, "r");
 		$json = "";
 		while ($line = fgets($fp)) {
@@ -45,7 +45,7 @@ if ($_POST['process'] == "check") {
 		foreach ($fieldList["file"] as $field) {
 			if (!in_array($field, $fieldList["REDCap"])) {
 				array_push($missing, $field);
-				if (!preg_match("/___delete$/", $field)) {
+				if (!preg_match("/___delete$/", $field) && !preg_match("/^coeus_/", $field)) {
 					array_push($additions, $field);
 				}
 			}
@@ -53,7 +53,8 @@ if ($_POST['process'] == "check") {
 
 		CareerDev::setSetting($lastCheckField, time());
 		if (count($additions) > 0) {
-			echo "An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(".json_encode($missing).");'>Click here to install.</a> ".json_encode($missing);
+			echo "<script>var missing = ".json_encode($missing).";</script>\n";
+			echo "An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a>";
 		}
 	}
 } else if ($_POST['process'] == "install") {

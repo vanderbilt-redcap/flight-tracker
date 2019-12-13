@@ -8,8 +8,16 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.4.1";
+		return "2.5.0";
 	}
+
+        public static function getIntroductoryFromEmail() {
+                return self::getSetting("introductory_from");;
+        }
+
+        public static function getEmailName($record) {
+                return "initial_survey_$record";
+        }
 
 	public static function isREDCap() {
 		$rootPage = $_SERVER['PHP_SELF'];
@@ -352,6 +360,7 @@ class CareerDev {
 					"Add a New Scholar" => self::link("/addNewScholar.php"),
 					"Scholar Profiles" => self::link("/profile.php"),
 					"Configure an Email" => self::link("/emailMgmt/configure.php"),
+					"View Email Log" => self::link("/emailMgmt/log.php"),
 					// "Survey/Email Management" => self::link("/emailMgmt/index.php"),
 					// "Manage Email Texts" => self::link("/emailMgmt/text.php"),
 					"Add a New Survey" => self::link("/emailMgmt/add.php"),

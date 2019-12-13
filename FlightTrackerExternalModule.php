@@ -225,7 +225,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         	$bool = !self::isAJAXPage() && !self::isAPITokenPage() && !self::isUserRightsPage() && !self::isExternalModulePage() && ($_GET['page'] != "install");
         	if ($_GET['pid']) {
                 	# project context
-                	$bool = $bool && self::hasAppropriateRights(USERID);
+                	$bool = $bool && self::hasAppropriateRights(USERID, $_GET['pid']);
         	}
         	return $bool;
 	}
@@ -280,9 +280,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         	return \ExternalModules\ExternalModules::getProjectSetting("flightTracker", $pid, \ExternalModules\ExternalModules::KEY_ENABLED);
 	}
 
-	private static function hasAppropriateRights($userid) {
-        	$rights = \REDCap::getUserRights($userid);
-        	return $rights[$userid]['design'];
+	private static function hasAppropriateRights($userid, $pid) {
+		$sql = "SELECT design FROM redcap_user_rights WHERE project_id = '".db_real_escape_string($pid)."' AND username = '".db_real_escape_string($userid)."'"; 
+		$q =  db_query($sql);
+		if ($row = db_fetch_assoc($q)) {
+			return $row['design'];
+		}
+        	return FALSE;
 	}
 
 	private $prefix = "flightTracker";

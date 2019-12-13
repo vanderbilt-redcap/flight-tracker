@@ -14,6 +14,11 @@ class Application {
 	public static function getInstitutions() {
 		return CareerDev::getInstitutions();
 	}
+
+	public static function getEmailName($record) {
+		return CareerDev::getEmailName($record);
+	}
+
 	public static function getInstitution() {
 		$insts = self::getInstitutions();
 		if (count($insts) > 0) {

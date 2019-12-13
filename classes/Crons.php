@@ -2,7 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+// require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 class CronManager {
 	public function __construct($token, $server, $pid) {
@@ -89,6 +89,12 @@ class CronManager {
 				$cronjob->run($this->token, $this->server, $this->pid);
 				$run[$cronjob->getTitle()] = array("text" => "Succeeded", "ts" => self::getTimestamp());
 			} catch(\Exception $e) {
+				if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
+					require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+				}
+				if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
+					throw new \Exception("Could not instantiate REDCap class!");
+				}
 				\REDCap::email($adminEmail, "noreply@vumc.org", PROGRAM_NAME." Cron Error", $cronjob->getTitle()."<br><br>".$e->getMessage()."<br>".json_encode($e->getTrace()));
 				error_log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".json_encode($e->getTrace()));
 			}
@@ -100,6 +106,12 @@ class CronManager {
 				$ts = $mssgAry['ts'];
 				$text .= $title."<br>".$mssg."<br>".$ts."<br><br>";
 			}
+			if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
+				require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+			} 
+			if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
+				throw new \Exception("Could not instantiate REDCap class!");
+			} 
 			error_log("Sending ".PROGRAM_NAME." email for pid ".$this->pid." to $adminEmail");
 			\REDCap::email($adminEmail, "noreply@vumc.org", PROGRAM_NAME." Cron Report", $text);
 		}

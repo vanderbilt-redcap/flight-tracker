@@ -1,24 +1,30 @@
 function updateAll(ob, pid, post) {
+	var testField = 'test_to';
 	var id = $(ob).attr('id');
-	console.log("updateAll with "+id);
-	if (id) {
+	var name = $(ob).attr('name');
+	console.log("updateAll with id "+id+" and name "+name);
+	if (id || name) {
 		if ($(ob).attr('type') != "checkbox") {
 			// only use post variable if not a checkbox
 			if ($('[name=recipient][value=filtered_group]').is(':checked')) {
 				$('#filter').show();
 				$('#checklist').hide();
-				if ($(ob).hasClass('who_to')) {
+				if (($(ob).hasClass('who_to')) && (id != testField)) {
 					updateNames(pid, post);
 				}
 			} else {
 				$('#filter').hide();
 				$('#checklist').show();
-				updateNames(pid, post);
+				if (id != testField) {
+					updateNames(pid, post);
+				}
 			}
 		}
 
-		if (id != 'test_to') {
+		if (id != testField) {
 			$('#test').hide();
+			$('#enableEmail').hide();
+			$('#save').show();
 		}
 	}
 }
@@ -43,6 +49,11 @@ function updateNames(pid, existingPost) {
 		} else {
 			$('#numEmails').hide();
 		}
+		if ($('[name=newRecords][value=new]').is(':checked')) {
+			$('#newRecordsSinceDisplay').slideDown();
+		} else {
+			$('#newRecordsSinceDisplay').hide();
+		}
 
 		post['filter'] = $('[name=filter]:checked').val();
 		if ($('[name=survey_complete]').is(':visible')) {
@@ -52,9 +63,9 @@ function updateNames(pid, existingPost) {
 				post['none_complete'] = true;
 			}
 		}
-		if ($('[name=max_emails]').is(':visible')) {
-			if ($('[name=max_emails]').val() !== '') {
-				post['max_emails'] = $('[name=max_emails]').val();
+		if ($('[name=new_records_since]').is(':visible')) {
+			if ($('[name=new_records_since]').val() !== '') {
+				post['new_records_since'] = $('[name=new_records_since]').val();
 			}
 		}
 		if ($('[name=r01_or_equiv]').is(':visible')) {
@@ -69,9 +80,12 @@ function updateNames(pid, existingPost) {
 	if (selector) {
 		$(selector+' .namesCount').html("");
 		$(selector+' .namesFiltered').html("Retrieving Names...");
-		console.log(JSON.stringify(post));
-		$.post(getPageUrl("emailMgmt/getNames.php"), post, function(html) {
-			$(selector+' .namesCount').html(" ("+getHTMLLines(html)+")");
+		$.post(getPageUrl("/emailMgmt/getNames.php"), post, function(html) {
+			if (html != "No names match your description.") {
+				$(selector+' .namesCount').html(" ("+getHTMLLines(html)+")");
+			} else {
+				$(selector+' .namesCount').html("");
+			}
 			if (selector.match(/checklist/)) {
 				html = transformIntoCheckboxes(html, existingPost);
 			}
@@ -81,6 +95,10 @@ function updateNames(pid, existingPost) {
 	}
 }
 
+function makeEmailIntoID(email) {
+	return email.replace(/\@/, "_at_");
+} 
+
 function transformIntoCheckboxes(html, post) {
 	var ary = html.split(/<br>/);
 	var ary2 = [];
@@ -89,7 +107,7 @@ function transformIntoCheckboxes(html, post) {
 		if (item.match(/;/)) {
 			var a = item.split(/;/);
 			var name = a[0];
-			var email = a[1];
+			var email = makeEmailIntoID(a[1]);
 			var check = "";
 			if (post[email]) {
 				check = " checked";
@@ -109,9 +127,6 @@ function transformIntoCheckboxes(html, post) {
 }
 
 function getHTMLLines(html) {
-	if (html == "No names match your description.") {
-		return 0;
-	}
 	var ary = html.split(/<br>/);
 	return ary.length;
 }
@@ -130,20 +145,27 @@ function sendTestEmails(pid, selectName, selectValue) {
 		post['to'] = to;
 		post[selectName] = selectValue;
 		presentScreen("Preparing Messages...");
-		$.post(getPageUrl("emailMgmt/makeMessages.php"), post, function(json) {
+		$.post(getPageUrl("/emailMgmt/makeMessages.php"), post, function(json) {
+			console.log("makeMessages: "+JSON.stringify(json));
 			presentScreen("Sending Messages...");
-			$.post(getPageUrl("emailMgmt/sendTest.php"), { messages: json }, function(str) {
+			$.post(getPageUrl("/emailMgmt/sendTest.php"), { messages: json }, function(str) {
+				console.log(str);
 				clearScreen();
 				if (!$('#note').hasClass("green")) {
 					$('#note').addClass("green");
 				}
 				$('#note').html("Test emails sent "+str);
-				$('#test').hide();
+				$("#enableEmail").slideDown();
 			});
 		});
 	} else {
 		alert(to+" is not formatted properly for an email address. Emails not sent.");
 	}
+}
+
+function insertLastName() {
+	var name = "[last_name]";
+	appendToMessage(name);
 }
 
 function insertName() {
@@ -174,4 +196,12 @@ function appendToMessage(str) {
 function addCheckboxHandlers(pid) {
 	// no post variables in updateAll - because not used
 	$('input[type=checkbox]').on('change', function() { updateAll(this, pid); });
+}
+
+function disableEmailSetting() {
+	$("[name=enabled]").val("false");
+}
+
+function enableEmailSetting() {
+	$("[name=enabled]").val("true");
 }

@@ -138,7 +138,7 @@ function getAwardNumber($row) {
 # input all REDCap Data
 # returns next record with new data
 # else returns ""
-function getNextRecordWithNewData() {
+function getNextRecordWithNewData($includeCurrentRecord) {
 	global $daysForNew, $token, $server;
 
 	$calculateFields = array(
@@ -199,13 +199,9 @@ function getNextRecordWithNewData() {
 					$listOfAwards = json_decode($normativeRow['summary_calculate_list_of_awards'], true);
 					foreach ($listOfAwards as $key => $specs) {
 						$specsMinAge = getMinAgeOfUpdate($specs);
-						if ($specsMinAge <= $daysForNew) {
-							$baseAwardNo = $specs['base_award_no'];
-							$numberOfSimilarAwards = findNumberOfSimilarAwards($baseAwardNo, $key, $listOfAwards);
-							if ($numberOfSimilarAwards == 0) {
-								# new base award number
-								return $row['record_id'];
-							}
+						$grantAge = getAgeOfGrant($specs);    // ensure that not in the distant past
+						if (($specsMinAge <= $daysForNew) && ($grantAge <= $daysForNew) && (findNumberOfSimilarAwards($specs['base_award_no'], $idx, $listOfAwards) == 0)) {
+							return $row['record_id'];
 						}
 					}
 				}
@@ -216,7 +212,19 @@ function getNextRecordWithNewData() {
 	return "";
 }
 
-# gets the minimum age of all last updates in the current row
+# gets the minimum age of grant in the current award
+# returns number of days since the most recent update
+function getAgeOfGrant($award) {
+	if ($award['end_date']) {
+		$ts = strtotime($award['end_date']);
+		if ($ts) {
+			return floor((time() - $ts) / (3600 * 24)) + 1;
+		}
+	}
+	return 1000000;
+}
+
+# gets the minimum age of all grants in the current row
 # returns number of days since the most recent update
 function getMinAgeOfGrants($row, $grantAgeFields) {
 	$minDays = 1000000;
@@ -248,7 +256,7 @@ function getMinAgeOfUpdate($row) {
 	return $minDays;
 }
 
-function isOkToShow($ary) {
+function isOkToShow($ary, $idxOfCurrentAward, $listOfAwards) {
 	global $daysForNew;
 
 	if (isset($_GET['new'])) {
@@ -268,7 +276,7 @@ function isOkToShow($ary) {
 		$dEnd = $ary['end_date'];
 		$newDaysLast = floor((time() - strtotime($dLast)) / (24 * 3600));
 		$newDaysEnd = floor((time() - strtotime($dEnd)) / (24 * 3600));
-		if (($newDaysLast <= $daysForNew) && ($newDaysEnd <= $daysForNew)) {
+		if (($newDaysLast <= $daysForNew) && ($newDaysEnd <= $daysForNew) && (findNumberOfSimilarAwards($ary['base_award_no'], $idxOfCurrentAward, $listOfAwards) == 0)) {
 			return true;
 		} else {
 			return false;
@@ -746,9 +754,9 @@ foreach ($redcapData as $row) {
 		$awardsSeen = array();
 		$awardTypes = \Vanderbilt\FlightTrackerExternalModule\getAwardTypes();
 		foreach ($awardTypes as $type => $num) {
-			foreach ($listOfAwards as $award) {
+			foreach ($listOfAwards as $idx => $award) {
 				if ($award['redcap_type'] == $type) {
-					if (isOkToShow($award)) {
+					if (isOkToShow($award, $idx, $listOfAwards)) {
 						$seenStatement = "";
 						if ($awardsSeen[generateAwardIndex($award['sponsor_award_no'], $award['sponsor'])]) {
 							$seenStatement = " (duplicate)";

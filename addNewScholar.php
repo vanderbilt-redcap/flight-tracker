@@ -31,6 +31,7 @@ if (checkPOSTKeys(array_values($fields))) {
 		$uploadRow[$field] = $_POST[$field];
 	}
 	$feedback = Upload::oneRow($uploadRow, $token, $server);
+	\Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($recordId);
 	if ($feedback['error']) {
 		echo "<div class='red padded'>ERROR! ".$feedback['error']."</div>\n";
 	} else {
@@ -44,7 +45,7 @@ if (checkPOSTKeys(array_values($fields))) {
 	foreach ($fields as $label => $var) {
 		echo "<tr>\n";
 		echo "<td style='text-align: right; padding-right: 5px;'>$label:</td>\n";
-		echo "<td padding-left: 5px;'><input type='text' name='$var'></td>\n";
+		echo "<td padding-left: 5px;'><input type='text' name='$var' style='width: 250px;'></td>\n";
 		echo "</tr>\n";
 	}
 	echo "</table>\n";
@@ -52,7 +53,7 @@ if (checkPOSTKeys(array_values($fields))) {
 	echo "</form>\n";
 
 	echo "<h2>Add Scholars in Bulk</h2>\n";
-	echo "<p class='centered>Supply a CSV Spreadsheet with the specified fields in <a href='".CareerDev::link("newFaculty.php")."'>this example</a>.</p>\n";
+	echo "<p class='centered'>Supply a CSV Spreadsheet with the specified fields in <a href='".CareerDev::link("newFaculty.php")."'>this example</a>.</p>\n";
 	echo "<form enctype='multipart/form-data' method='POST' action='".CareerDev::link("add.php")."'>\n";
 	echo "<p class='centered'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />\n";
 	echo "CSV Upload: <input type='file' name='csv'><br>\n";

@@ -10,9 +10,7 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/GrantLexicalTranslator.php");
 require_once(dirname(__FILE__)."/Links.php");
-require_once(APP_PATH_DOCROOT.'/ProjectGeneral/math_functions.php');
 
-define('MAX_GRANTS', 15);
 class Grant {
 	public function __construct($lexicalTranslator) {
 		$this->translator = $lexicalTranslator;

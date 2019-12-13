@@ -1,15 +1,23 @@
 <?php
 
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\EmailManager;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/EmailManager.php");
+require_once(dirname(__FILE__)."/../classes/Download.php");
 
 $who = $_POST;
 
-$mgr = new EmailManager($token, $server, $pid, CareerDev::getModule());
+$module = CareerDev::getModule();
+$metadata = array();
+if (!$module) {
+	$metadata = Download::metadata($token, $server);
+}
+
+$mgr = new EmailManager($token, $server, $pid, $module, $metadata);
 $names = $mgr->getNames($who);
 if (empty($names)) {
 	echo "No names match your description.";

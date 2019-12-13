@@ -3,6 +3,7 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Upload.php");
 
@@ -31,14 +32,25 @@ class EmailManager {
 		}
 	}
 
+	public static function isEmailAddress($str) {
+		if (preg_match("/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/", $str)) {
+			return TRUE;
+		}
+		return FALSE;
+	}
+
 	public static function getFormat() {
-		return "m-d-Y H:i A";
+		return "m-d-Y H:i";
 	}
 
 	public function deleteEmail($name) {
 		if (isset($this->data[$name])) {
 			unset($this->data[$name]);
 		}
+	}
+
+	public function hasItem($name) {
+		return isset($this->data[$name]);
 	}
 
 	public function getItem($name) {
@@ -49,7 +61,7 @@ class EmailManager {
 	}
 
 	public static function getBlankSetting() {
-		return array("who" => array(), "what" => array(), "when" => array());
+		return array("who" => array(), "what" => array(), "when" => array(), "enabled" => FALSE);
 	}
 
 	# default is all names and to the actual 'to' emails
@@ -109,23 +121,29 @@ class EmailManager {
 		$results = array();
 		foreach ($this->data as $name => $emailSetting) {
 			if (in_array($name, $names) || empty($names)) {
-				$results[$name] = array();
-				$when = $emailSetting["when"];
-				$sent = $emailSetting["sent"];
-				foreach ($when as $type => $datetime) {
-					$ts = self::transformToTS($datetime);
-					$result = FALSE;
-					if ($to) {
-						# This is a test email because a $to is specified
-						$result = $this->$func($emailSetting, $to);
-					} else {
-						if (self::afterAllTimestamps($ts, $sent) && ($ts > time())) {
-							$result = $this->$func($emailSetting);
+				if ($emailSetting['enabled'] || ($func == "prepareEmail")) {
+					$results[$name] = array();
+					$when = $emailSetting["when"];
+					$sent = $emailSetting["sent"];
+					foreach ($when as $type => $datetime) {
+						$ts = self::transformToTS($datetime);
+						$result = FALSE;
+						if ($to) {
+							# This is a test email because a $to is specified
+							if ($type == "initial_time") {
+								$result = $this->$func($emailSetting, $name, $to);
+							}
+						} else {
+							if (self::afterAllTimestamps($ts, $sent) && ($ts < time())) {
+								$result = $this->$func($emailSetting, $name);
+							}
+						}
+						if ($result) {
+							$results[$name][$type] = $result;
 						}
 					}
-					if ($result) {
-						$results[$name][$type] = $result;
-					}
+				} else {
+					// echo "$name is not enabled: ".json_encode($emailSetting)."\n";
 				}
 			}
 		}
@@ -173,8 +191,8 @@ class EmailManager {
 	}
 
 	# returns records of emails
-	private function sendEmail($emailSetting, $toField = "who") {
-		$emailData = $this->prepareEmail($emailSetting, $toField);
+	private function sendEmail($emailSetting, $settingName, $toField = "who") {
+		$emailData = $this->prepareEmail($emailSetting, $settingName, $toField);
 		return $this->sendPreparedEmail($emailData, ($toField != "who"));
 	}
 
@@ -187,29 +205,67 @@ class EmailManager {
 		$subjects = $emailData["subjects"];
 
 		foreach ($mssgs as $recordId => $mssg) {
-			error_log(date("Y-m-d h:i:s")." $recordId: EmailManager sending to {$to[$recordId]}; from $from; {$subjects[$recordId]}");
-			echo date("Y-m-d h:i:s")." $recordId: EmailManager sending to {$to[$recordId]}; from $from; {$subjects[$recordId]}\n";
-			// \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
+			error_log(date("Y-m-d h:i:s")." $recordId: EmailManager sending $name to {$to[$recordId]}; from $from; {$subjects[$recordId]}");
+			if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
+				require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+			}
+			if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
+				throw new \Exception("Could not find REDCap class!");
+			}
+
+			\REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
 			usleep(200000); // wait 0.2 seconds for other items to process
 		}
 		$records = array_keys($mssgs);
 		if (!$isTest) {
-			if (!isset($this->data[$name]['who']['sent'])) {
-				$this->data[$name]['who']['sent'] = array();
+			if (!isset($this->data[$name]['sent'])) {
+				$this->data[$name]['sent'] = array();
 			}
-			$sentAry = array("ts" => time(), "records" => $records);
-			array_push($this->data[$name]['who']['sent'], $sentAry);
+			if ($records) {
+				$sentAry = array("ts" => time(), "records" => $records);
+				array_push($this->data[$name]['sent'], $sentAry);
+				$this->saveData();
+			}
 		}
 		return $records;
 	}
 
-	private function prepareEmail($emailSetting, $toField = "who") {
+	# returns array of sent items for given $settingName
+	# each array contains a field for 'ts' and the 'records' (ids) communicated with
+	# if $settingName == "all", returns indexed array of all settings
+	public function getSentEmails($settingName = "all") {
+		if ($settingName = "all") {
+			$sentAry = array();
+			foreach ($this->data as $name => $setting) {
+				if ($setting['sent']) {
+					$sentAry[$name] = $setting['sent'];
+				}
+			}
+			return $sentAry; 
+		} else if ($this->data[$settingName] && $this->data[$settingName]['sent']) {
+			return $this->data[$settingName]['sent'];
+		}
+		return array();
+	}
+
+	private function getLastNames($recordIds) {
+		$allLastNames = Download::lastnames($this->token, $this->server);
+		$filteredLastNames = array();
+		foreach ($recordIds as $recordId) {
+			$filteredLastNames[$recordId] = $allLastNames[$recordId];
+		}
+		return $filteredLastNames;
+	}
+
+	private function prepareEmail($emailSetting, $settingName, $toField = "who") {
 		$data = array();
 		$rows = $this->getRows($emailSetting["who"]);
 		$emails = self::processEmails($rows);
 		$names = self::processNames($rows);
+		$lastNames = $this->getLastNames(array_keys($rows));
 		$subject = self::getSubject($emailSetting["what"]);
-		$data['mssgs'] = $this->getMessages($emailSetting["what"], array_keys($rows), $names);
+		$data['name'] = $settingName;
+		$data['mssgs'] = $this->getMessages($emailSetting["what"], array_keys($rows), $names, $lastNames);
 		$data['subjects'] = array();
 		$data['to'] = array();
 		if ($toField == "who") {
@@ -229,7 +285,25 @@ class EmailManager {
 	}
 
 	public function getSettingsNames() {
-		return array_keys($this->data);
+		$allEmailKeys = array_keys($this->data);
+		if (method_exists("Application", "getEmailName")) {
+			$allRecords = Download::recordIds($this->token, $this->server);
+			$unmatchedKeys = array();
+			foreach ($allEmailKeys as $key) {
+				$keyFound = FALSE;
+				foreach ($allRecords as $recordId) {
+					if ($key == Application::getEmailName($recordId)) {
+						$keyFound = TRUE;
+					}
+				}
+				if (!$keyFound) {
+					array_push($unmatchedKeys, $key);
+				}
+			}
+			return $unmatchedKeys;
+		} else {
+			return $allEmailKeys;
+		}
 	}
 
 	public function getNames($who) {
@@ -242,7 +316,37 @@ class EmailManager {
 		return self::processEmails($rows);
 	}
 
-	private function getMessages($what, $recordIds, $names) {
+	private static function getSurveyLinks($pid, $records, $instrument, $maxInstances = array()) {
+		$newInstances = array();
+		foreach ($records as $recordId) {
+			if ($maxInstances[$recordId]) {
+				$newInstances[$recordId] = $maxInstances[$recordId] + 1;
+			} else {
+				$newInstances[$recordId] = 1;
+			}
+		}
+		$data = array(
+				"records" => $records,
+				"instrument" => $instrument,
+				"instances" => $newInstances,
+				);
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, Application::link("emailMgmt/makeSurveyLinks.php"));
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_VERBOSE, 0);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+		$output = curl_exec($ch);
+		curl_close($ch);
+		return json_decode($output, TRUE);
+	}
+
+	private function getMessages($what, $recordIds, $names, $lastNames) {
 		$token = $this->token;
 		$server = $this->server;
 
@@ -255,33 +359,73 @@ class EmailManager {
 
 		$repeatingForms = $this->getRepeatingForms();
 
+		$fields = array("record_id", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv");
+		$surveys = $this->getSurveys();
+		foreach ($surveys as $form => $title) {
+			array_push($fields, $form."_complete");
+			array_push($fields, self::getDateField($form));
+		}
+
+		# structure data
+		$redcapData = Download::fields($this->token, $this->server, $fields);
+
+		$mssgFrags = preg_split("/[\[\]]/", $mssg);
+		$formRecords = array();
+		foreach ($mssgFrags as $fragment) {
+			if (preg_match("/^survey_link_(.+)$/", $fragment, $matches)) {
+				$formName = $matches[1];
+				if (!isset($formRecords[$formName])) {
+					$formRecords[$formName] = array();
+				}
+				foreach ($recordIds as $recordId) {
+					array_push($formRecords[$formName], $recordId);
+				}
+			}
+		}
+		$surveyLinks = array();
+		$maxInstances = array();
+		foreach ($formRecords as $formName => $records) {
+			if (in_array($formName, $repeatingForms)) {
+				$maxInstances[$formName] = array();
+				foreach ($records as $recordId) {
+					$maxInstances[$formName][$recordId] = 0;
+					foreach ($redcapData as $row) {
+						if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == $formName) && ($row['redcap_repeat_instance'] > $maxInstances[$formName][$recordId])) {
+							$maxInstances[$formName][$recordId] = $row['redcap_repeat_instance'];
+						}
+					}
+				}
+			}
+
+			if (in_array($formName, $repeatingForms)) {
+				$surveyLinks[$formName] = self::getSurveyLinks($this->pid, $records, $formName, $maxInstances[$formName]);
+			} else {
+				$surveyLinks[$formName] = self::getSurveyLinks($this->pid, $records, $formName);
+			}
+		}
 		foreach ($recordIds as $recordId) {
 			while (preg_match("/\[survey_link_(.+?)\]/", $mssgs[$recordId], $matches)) {
 				$formName = $matches[1];
-				if (in_array($formName, $repeatingForms)) {
-					$redcapData = Download::formForRecords($token, $server, $formName, array($recordId));
-					error_log("Got REDCap data for record $recordId and form $formName: ".count($redcapData)." rows");
-					$maxInstance = 0;
-					foreach ($redcapData as $row) {
-						if (($row['redcap_repeat_instrument'] == $formName) && ($row['redcap_repeat_instance'] > $maxInstance)) {
-							$maxInstance = $row['redcap_repeat_instance'];
-						}
-					}
-					$surveyLink = \REDCap::getSurveyLink($recordId, $formName, NULL, ($maxInstance + 1));
-				} else {
-					$surveyLink = \REDCap::getSurveyLink($recordId, $formName);
+				$surveyLink = FALSE;
+				if ($surveyLinks[$formName] && $surveyLinks[$formName][$recordId]) {
+					$surveyLink = $surveyLinks[$formName][$recordId];
 				}
 
-				error_log("$recordId: Got $formName's surveyLink: $surveyLink");
-				if ($surveyLink) {
-					$mssgs[$recordId] = str_replace("[survey_link_".$formName."]", $surveyLink, $mssgs[$recordId]);
-				}
+				$mssgs[$recordId] = str_replace("[survey_link_".$formName."]", $surveyLink, $mssgs[$recordId]);
 			}
 			if (preg_match("/\[name\]/", $mssgs[$recordId])) {
 				if ($names[$recordId]) {
 					$mssgs[$recordId] = str_replace("[name]", $names[$recordId], $mssgs[$recordId]);
 				}
 			}
+			if (preg_match("/\[last_name\]/", $mssgs[$recordId])) {
+				if ($lastNames[$recordId]) {
+					$mssgs[$recordId] = str_replace("[last_name]", $lastNames[$recordId], $mssgs[$recordId]);
+				}
+			}
+			$mssgs[$recordId] = str_replace("<p><br></p>", "<br>", $mssgs[$recordId]);
+			$mssgs[$recordId] = str_replace("</p><p>", "<br>", $mssgs[$recordId]);
+			$mssgs[$recordId] = str_replace("<br><br><br>", "<br><br>", $mssgs[$recordId]);
 		}
 
 		return $mssgs;
@@ -300,8 +444,15 @@ class EmailManager {
 
 	private function getSurveys() {
 		$pid = $this->pid;
+		if (!function_exists("db_query")) {
+			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+		}
 		$sql = "SELECT form_name, title FROM redcap_surveys WHERE project_id = '".$pid."'";
 		$q = db_query($sql);
+		if ($error = db_error()) {
+			error_log("ERROR: ".$error);
+			throw new \Exception("ERROR: ".$error);
+		}
 
 		$currentInstruments = \REDCap::getInstrumentNames();
 
@@ -317,6 +468,10 @@ class EmailManager {
 
 	private function getRepeatingForms() {
 		$pid = $this->pid;
+
+		if (!function_exists("db_query")) {
+			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+		}
 
 		$sql = "SELECT DISTINCT(r.form_name) AS form_name FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) INNER JOIN redcap_events_repeat AS r ON (m.event_id = r.event_id) WHERE a.project_id = '$pid'";
 		$q = db_query($sql);
@@ -445,7 +600,37 @@ class EmailManager {
 				}
 			}
 
+			$created = array();
 			$queue = array_keys($identifiers);
+			$filterFields = array(
+						"department",
+						"role",
+						"building",
+						"grad_teaching",
+						"med_student_teaching",
+						"undergrad_teaching",
+						"imph_pi",
+						"other_pi",
+						"imph_coi",
+						);
+			$fieldsToDownload = array();
+			$filtersToApply = array();
+			foreach ($filterFields as $whoFilterField) {
+				if (isset($who[$whoFilterField])) {
+					$redcapField = self::getFieldAssociatedWithFilter($whoFilterField);
+					array_push($fieldsToDownload, $redcapField);
+					array_push($filtersToApply, $whoFilterField);
+				}
+			}
+			if (!empty($fieldsToDownload)) {
+				array_push($fieldsToDownload, "record_id");
+				$filterREDCapData = Download::fields($this->token, $this->server, $fieldsToDownload);
+				foreach ($filtersToApply as $filter) {
+					$redcapField = self::getFieldAssociatedWithFilter($filter);
+					$queue = self::filterForField($redcapField, $who[$filter], $filterREDCapData, $queue);
+				}
+				
+			}
 			if ($who['last_complete']) {
 				$queue = self::filterForMonths($who['last_complete'], $lastUpdate, $queue);
 			}
@@ -455,15 +640,19 @@ class EmailManager {
 			if ($who['converted']) {
 				$queue = self::filterForConverted($who['converted'], $converted, $queue);
 			}
-			if ($who['max_emails']) {
-				$created = array();
+			if ($who['max_emails'] || $who['new_records_since']) {
 				foreach ($queue as $recordId) {
 					$createDate = self::findRecordCreateDate($this->pid, $recordId);
 					if ($createDate) {
 						$created[$recordId] = strtotime($createDate);
 					}
 				}
+			}
+			if ($who['max_emails']) {
 				$queue = $this->filterForMaxEmails($who['max_emails'], $created, $queue);
+			}
+			if ($who['new_records_since']) {
+				$queue = self::filterForNewRecordsSince($who['new_records_since'], $created, $queue);
 			}
 
 			# build row of names and emails
@@ -475,6 +664,54 @@ class EmailManager {
 		}
 	}
 
+	public static function getFieldAssociatedWithFilter($whoFilter) {
+		switch($whoFilter) {
+			case "department":
+				return "identifier_department";
+			case "role":
+				return "survey_role";
+			case "building":
+				return "survey_building";
+			case "grad_teaching":
+				return "survey_graduate_students";
+			case "med_student_teaching":
+				return "survey_medical_students";
+			case "undergrad_teaching":
+				return "survey_undergraduate_students";
+			case "imph_pi":
+				return "tracker_active_imph_pi";
+			case "other_pi":
+				return "tracker_active_other_pi";
+			case "imph_coi":
+				return "tracker_active_imph_coi";
+			default:
+				return "";
+		}
+	}
+
+	private static function filterForNewRecordsSince($sinceMonths, $created, $queue) {
+		$sinceTs = time();
+		for ($i = 0; $i < $sinceMonths; $i++) {
+			$month = date("n", $sinceTs);
+			$year = date("Y", $sinceTs);
+			$month--;
+			if ($month <= 0) {
+				$month = 12;
+				$year--;
+			}
+			$sinceTs = strtotime("$year-$month-01");
+		}
+
+		$newQueue = array();
+		foreach ($queue as $recordId) {
+			$createdTs = $created[$recordId];
+			if ($createdTs > $sinceTs) {
+				array_push($newQueue, $recordId);
+			}
+		}
+		return $newQueue;
+	}
+
 	# not static because requires access to sent dates in $this->data
 	private function filterForMaxEmails($maxEmails, $created, $queue) {
 		$newQueue = array();
@@ -483,8 +720,8 @@ class EmailManager {
 			$numEmailsSent = 0;
 			foreach ($this->data as $name => $emailSetting) {
 				# must have been applicable for email
-				if ($emailSetting['who'] && $emailSetting['who']['sent']) {
-					foreach ($emailSetting['who']['sent'] as $sentAry) {
+				if ($emailSetting['sent']) {
+					foreach ($emailSetting['sent'] as $sentAry) {
 						# must be a prior email after the record was created
 						// array_push($newQueue, $recordId." ".json_encode($sentAry)." ".$createdTs);
 						$ts = $sentAry['ts'];
@@ -568,10 +805,11 @@ class EmailManager {
 
 	private function saveData() {
 		$settingName = $this->settingName;
+		$data = self::cleanUpEmails($this->data, $this->token, $this->server);
 		if ($this->module) {
-			return $this->module->setProjectSetting($settingName, $this->data);
+			return $this->module->setProjectSetting($settingName, $data);
 		} else if ($this->metadata) {
-			$json = json_encode($this->data);
+			$json = json_encode($data);
 			$newMetadata = array();
 			foreach ($this->metadata as $row) {
 				if ($row['field_name'] == $this->hijackedField) {
@@ -585,6 +823,41 @@ class EmailManager {
 		} else {
 			throw new \Exception("Could not save settings to $settingName! No module available!");
 		}
+	}
+
+	private static function cleanUpEmails($data, $token, $server) {
+		$recordIds = Download::recordIds($token, $server);
+		$cleanedData = array();
+		$currTime = time();
+		foreach ($data as $key => $setting) {
+			$include = TRUE;
+			$when = $setting["when"];
+			$sent = $setting["sent"];
+			foreach ($recordIds as $recordId) {
+				if ((Application::getEmailName($recordId) == $key)
+					&& self::afterAllTimestamps($currTime, $sent)
+					&& self::afterAllTimestamps($currTime, $when)
+					&& self::areAllSent($when, $sent)) {
+
+					$include = FALSE;
+					break;
+				}
+			}
+			if ($include) {
+				$cleanedData[$key] = $setting;
+			}
+		}
+		return $cleanedData;
+	}
+
+	private static function areAllSent($when, $sent) {
+		foreach ($when as $type => $datetime) {
+			$ts = self::transformToTS($datetime); 
+			if (self::afterAllTimestamps($ts, $sent)) {
+				return FALSE;
+			}
+		}
+		return TRUE;
 	}
 
 	private static function loadData($settingName, $moduleOrMetadata, $hijackedField, $pid) {
@@ -615,13 +888,24 @@ class EmailManager {
 	}
 
 	public static function findRecordCreateDate($pid, $record) {
-		$sql = "SELECT ts FROM redcap_log_event WHERE project_id = '".$pid."' AND pk='".db_real_escape_string($record)."' AND event='INSERT' ORDER BY ts ASC LIMIT 1";
+		$logEventTable = method_exists('\REDCap', 'getLogEventTable') ? \REDCap::getLogEventTable($project_id) : "redcap_log_event";
+		if (!function_exists("db_query")) {
+			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+		}
+		$sql = "SELECT ts FROM $logEventTable WHERE project_id = '".$pid."' AND pk='".db_real_escape_string($record)."' AND event='INSERT' ORDER BY log_event_id";
 		$q = db_query($sql);
 		if ($error = db_error()) {
 			throw new \Exception("ERROR: ".$error);
 		}
+		$allTimestamps = array();
 		while ($row = db_fetch_assoc($q)) {
+			array_push($allTimestamps, $row['ts']);
+		}
+		asort($allTimestamps);
+
+		if (count($allTimestamps) > 0) {
 			$nodes = array();
+			$ts = $allTimestamps[0];
 			$i = 0;
 			$len = 2;
 			while ($i < strlen($ts)) {
@@ -635,6 +919,18 @@ class EmailManager {
 			}
 		}
 		return FALSE;
+	}
+
+	private static function filterForField($field, $value, $redcapData, $queue) {
+		$newQueue = array();
+		foreach ($queue as $recordId) {
+			foreach ($redcapData as $row) {
+				if (($recordId == $row['record_id']) && ($row[$field] === $value)) {
+					array_push($newQueue, $recordId);
+				}
+			}
+		}
+		return $newQueue;
 	}
 
 	private $token;

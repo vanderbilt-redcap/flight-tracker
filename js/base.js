@@ -305,17 +305,20 @@ function refresh() {
 // page is blank if current page is requested
 function getPageUrl(page) {
 	var params = getUrlVars();
-	var url = "?pid="+params['pid'];
-	if (page) {
-		page = page.replace(/\.php$/, "");
-		url += "&page="+encodeURIComponent(page);
-	} else if (params['page']) {
-		url += "&page="+encodeURIComponent(params['page']);
+	if (params['page']) {
+		var url = "?pid="+params['pid'];
+		if (page) {
+			page = page.replace(/\.php$/, "");
+			url += "&page="+encodeURIComponent(page);
+		} else if (params['page']) {
+			url += "&page="+encodeURIComponent(params['page']);
+		}
+		if (params['prefix']) {
+			url += "&prefix="+encodeURIComponent(params['prefix']);
+		}
+		return url;
 	}
-	if (params['prefix']) {
-		url += "&prefix="+encodeURIComponent(params['prefix']);
-	}
-	return url;
+	return page;
 }
 
 function getHeaders() {
@@ -498,7 +501,7 @@ function submitOrder(selector, resultsSelector) {
 		keys.push(id);
 	});
 	if (keys.length > 0) {
-		$.post(getPageUrl(), { keys: JSON.stringify(keys) }, function(data) {
+		$.post(getPageUrl("lexicallyReorder.php"), { keys: JSON.stringify(keys) }, function(data) {
 			console.log("Done");
 			console.log(data);
 			$(resultsSelector).html(data);

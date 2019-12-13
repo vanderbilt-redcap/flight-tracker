@@ -420,6 +420,12 @@ function makeSettings($module) {
 	array_push($ary["Installation Variables"], makeSetting("departments", "textarea", "Department Names"));
 	array_push($ary["Installation Variables"], makeSetting("resources", "textarea", "Resources"));
 
+	$ary["Automated Emails"] = array();
+	array_push($ary["Automated Emails"], makeHelperText("An initial email can automatically be sent out during the first month after the new record is added to the database. If you desire to use this feature, please complete the following fields."));
+	array_push($ary["Automated Emails"], makeSetting("init_from", "text", "Initial Email From Address"));
+	array_push($ary["Automated Emails"], makeSetting("init_subject", "text", "Initial Email Subject"));
+	array_push($ary["Automated Emails"], makeSetting("init_message", "textarea", "Initial Email Message"));
+
 	$html = "";
 	if ($module) {
 		$html .= "<form method='POST' action='".$module->getUrl("config.php")."'>\n";
@@ -435,6 +441,10 @@ function makeSettings($module) {
 		throw new \Exception("Could not find module!");
 	}
 	return $html;
+}
+
+function makeHelperText($str) {
+	return "<tr><td colspan='2' class='centered'>".$str."</td></tr>";
 }
 
 function makeSetting($var, $type, $label, $default = "") {

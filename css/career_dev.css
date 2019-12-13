@@ -78,10 +78,10 @@ tr.extraPaddedRow td,th { padding: 15px; }
 .grey { background-color: #dddddd; }
 .sticky { position: fixed; top: 0; z-index: 1; }
 .padded { padding: 10px; }
-#content { margin-left: 230px; }   /* coordinated with .subnav */
+#content { margin-left: 225px; }   /* coordinated with .subnav */
 .subnav { margin: 0; padding: 0; position: fixed; top: 125px; width: 225px; height: 100%; font-family: 'Museo Sans', sans-serif !important; text-align: center; background-color: transparent; overflow: auto; }    /* coordinated with #content and .w3-bar .topHeader */
 .topHeader { background-color: white; height: 50px; top: 0px; width: 100%; }    /* coordinated with .w3-bar */
-textarea.full { font-size: 16px; width: 800px; height: 400px; }
+textarea.full { width: 800px; height: 400px; }
 .subnav a { float: left; color: black; text-align: center; padding: 6px 4px; width: 100%; text-decoration: none; font-weight: bold; font-size: 16px; }
 .subnav a:hover { background-color: white; color: black; animation-name: colorFade; animation-duration: 2s; }
 @keyframes colorFade {
@@ -104,11 +104,6 @@ td.oneThird { width: 33%; vertical-align: top; border-left: 5px solid black; bor
 .namesFiltered { height: 400px; width: 100%; overflow: scroll; background-color: rgba(255, 255, 255, 0.7); text-align: center; }
 .nobreak { white-space: nowrap; }
 canvas { background-color: white; margin-top: 25px; }
-.centeredMinus50 { width: calc(50% - 50px); margin: 0px 25px; }
-.translucentBG { background-color: rgba(255, 255, 255, 0.7); }
-.note { width: 300px; margin-left: auto; margin-right: auto; padding: 10px; border-radius: 10px; font-size: 20px; }
-.recessed { color: #888; }
-.larger { font-size: 16px; }
-textarea.config { width: 600px; height: 400px; }
-ul.nobullets { padding-inline-start: 0px; }
-li.nobullets { padding: 8px; list-style: none; }
+li.nobullets { list-style: none; }
+.nowrap { white-space: nowrap; }
+.centeredMinus50 { text-align: center; width: 50%; }

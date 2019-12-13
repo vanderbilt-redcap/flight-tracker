@@ -5,7 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 # This class handles commonly occuring downloads from the REDCap API.
 
-require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+// require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
 
@@ -47,10 +47,10 @@ class Upload {
 	}
 
 	private static function testFeedback($feedback, $rows) {
-		if ($feedback['error']) {
+		if (isset($feedback['error']) && $feedback['error']) {
 			throw new \Exception($feedback['error']."\n".json_encode($rows));
 		}
-		if ($feedback['errors']) {
+		if (isset($feedback['errors']) && $feedback['errors']) {
 			throw new \Exception(implode("; ", $feedback['errors'])."\n".json_encode($rows));
 		}
 		return TRUE;
@@ -146,7 +146,7 @@ class Upload {
 
 	private static function combineFeedback($priorFeedback, $currFeedback) {
 		foreach ($currFeedback as $key => $value) {
-			if (!$priorFeedback[$key]) {
+			if (!isset($priorFeedback[$key]) || !$priorFeedback[$key]) {
 				$priorFeedback[$key] = $value;
 			} else if (is_numeric($value) && is_numeric($priorFeedback[$key])) {
 				$priorFeedback[$key] = $priorFeedback[$key] + $value;
@@ -207,7 +207,7 @@ class Upload {
 				'returnContent' => 'count',
 				'returnFormat' => 'json'
 				);
-			if ($pid && Download::isCurrentServer($server)) {
+			if ($pid && method_exists('\REDCap', 'saveData')) {
 				$method = "saveData";
 				$time2 = microtime(TRUE);
 				$feedback = \REDCap::saveData($pid, "json", $data['data'], $data['overwriteBehavior']);

@@ -39,7 +39,7 @@ $html = "";
 $html .= "<script src='".Application::link("js/base.js")."'></script>\n";
 $html .= "<h3 class='header toolbar'><font size='+1'>Publications</font></h3>\n";
 
-$html .= "<h4 style='$headerStyle'><span id='notDoneCount'>".$notDone->getCount()."</span> Citations to Review (Checked = Accepted)</h4>\n";
+$html .= "<h4 style='$headerStyle'><span id='notDoneCount'>".$notDone->getCount()."</span> Citations to Review (Check to Confirm as Your Paper)</h4>\n";
 if ($notDone->getCount() > 0) {
 	$html .= makeCheckboxes($notDone, "unchecked", "notDone");
 } else {

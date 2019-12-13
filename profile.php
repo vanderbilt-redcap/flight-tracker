@@ -57,7 +57,7 @@ if ($email) {
 }
 $status = $scholar->getEmploymentStatus();
 if (preg_match("/^\d\d\d\d-\d+-\d+$/", $status)) {
-	$status = "Left ".INSTITUTION." on ".ymd2mdy($status);
+	$status = "Left ".INSTITUTION." on ".\Vanderbilt\FlightTrackerExternalModule\YMD2MDY($status);
 }
 $institution = $scholar->getInstitutionText();
 $degrees = $scholar->getDegreesText();
@@ -239,14 +239,6 @@ function getSearchForProfile() {
 
 function getSelectRecordForProfile() {
 	return Publications::getSelectRecord();
-}
-
-function ymd2mdy($d) {
-	$nodes = preg_split("/\-/", $d);
-	if (count($nodes) == 3) {
-		return $nodes[1]."-".$nodes[2]."-".$nodes[0];
-	}
-	return $d;
 }
 
 function printList($list) {

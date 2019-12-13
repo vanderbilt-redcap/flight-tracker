@@ -1250,10 +1250,10 @@ function findEligibleAward($row) {
 	$extKs = array(3, 4);
 	for ($i = 1; $i <= 15; $i++) {
 		if (in_array($row['summary_award_type_'.$i], $extKs)) {
-			$diff = datediff(date("Y-m-d"), $row['summary_award_date_'.$i], "y");
+			$diff = Grants::datediff(date("Y-m-d"), $row['summary_award_date_'.$i], "y");
 			$intendedYearSpan = 5;
 			if ($row['summary_award_end_date_'.$i]) {
-				$intendedYearSpan = datediff($row['summary_award_end_date_'.$i], $row['summary_award_date_'.$i], "y");
+				$intendedYearSpan = Grants::datediff($row['summary_award_end_date_'.$i], $row['summary_award_date_'.$i], "y");
 			}
 			if ($diff <= $intendedYearSpan) {
 				return $i;
@@ -1264,10 +1264,10 @@ function findEligibleAward($row) {
 	$intKs = array(1, 2);
 	for ($i = 1; $i <= 15; $i++) {
 		if (in_array($row['summary_award_type_'.$i], $intKs)) {
-			$diff = datediff(date("Y-m-d"), $row['summary_award_date_'.$i], "y");
+			$diff = Grants::datediff(date("Y-m-d"), $row['summary_award_date_'.$i], "y");
 			$intendedYearSpan = 3;
 			if ($row['summary_award_end_date_'.$i]) {
-				$intendedYearSpan = datediff($row['summary_award_end_date_'.$i], $row['summary_award_date_'.$i], "y");
+				$intendedYearSpan = Grants::datediff($row['summary_award_end_date_'.$i], $row['summary_award_date_'.$i], "y");
 			}
 			if ($diff <= $intendedYearSpan) {
 				return $i;

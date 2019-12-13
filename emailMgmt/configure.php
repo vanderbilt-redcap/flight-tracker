@@ -10,51 +10,35 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 
 $realPost = getRealInput('POST');
+$metadata = Download::metadata($token, $server);  // must load on save and reload after save
+$hasErrors = FALSE;
 if (count($_POST) > 0) {
 	# saveSetting evokes a separate $mgr instance; must do first so that save will take effect
-        $mgr = new EmailManager($token, $server, $pid, CareerDev::getModule());
+        $mgr = new EmailManager($token, $server, $pid, CareerDev::getModule(), $metadata);
 	list($message, $settingName, $emailSetting) = translatePostToEmailSetting($realPost);
 	if (($emailSetting == EmailManager::getBlankSetting())) {
 		$html = "Some settings were left unfilled. Please check your configuration again. ".$message;
 		$noteClass = "red";
+		$hasErrors = TRUE;
 	} else {
         	$feedback = $mgr->saveSetting($settingName, $emailSetting);
 		if ($feedback['error']) {
 			$html = "Error! ".$feedback['error'];
 			$noteClass = "red";
+			$hasErrors = TRUE;
 		} else if ($feedback['errors']) {
 			$html = "Errors! ".implode("; ", $feedback['errors']);
 			$noteClass = "red";
+			$hasErrors = TRUE;
 		} else {
 			$html = "Save successful. You may make modifications or scroll down to the bottom in order to test.";
 			$noteClass = "green";
 		}
 	}
 	echo "<div id='note' class='$noteClass centered padded'>$html</div>\n";
+	$metadata = Download::metadata($token, $server);  // must load on save and reload after save
 }
 
-# defaults
-$indivs = ""; $filteredGroup = "checked";
-$all = "checked"; $some = "";
-$surveyCompleteNo = "checked"; $surveyCompleteYes = "";
-$r01No = ""; $r01Yes = ""; $r01Agnostic = "checked";
-if ($_POST['recipient'] == "individuals") {
-	$indivs = "checked"; $filteredGroup = "";
-} else if ($_POST['recipient'] == "filtered_group") {
-	if ($_POST['filter'] == "some") {
-		$all = ""; $some = "checked";
-		if ($_POST['survey_complete'] == "yes") {
-			$surveyCompleteNo = ""; $surveyCompleteYes = "checked";
-		}
-		if ($_POST['r01_or_equiv'] == "yes") {
-			$r01No = ""; $r01Yes = "checked"; $r01Agnostic = "";
-		} else if ($_POST['r01_or_equiv'] == "no") {
-			$r01No = "checked"; $r01Yes = ""; $r01Agnostic = "";
-		}
-	}
-}
-
-$metadata = Download::metadata($token, $server);
 $mgr = new EmailManager($token, $server, $pid, CareerDev::getModule(), $metadata);
 
 $selectName = \Vanderbilt\FlightTrackerExternalModule\getFieldForCurrentEmailSetting();
@@ -69,19 +53,91 @@ if ($_POST['name']) {
 	$currSettingName = $_GET[$selectName];
 }
 $currSetting = $mgr->getItem($currSettingName);
+
+$isReadonly = "";
+$isDisabled= "";
+if ($currSetting['enabled']) {
+	$isDisabled = " disabled";
+	$isReadonly = " readonly";
+}
+
+# defaults
+$indivs = "$isDisabled"; $filteredGroup = "checked";
+$all = "checked"; $some = "$isDisabled";
+$surveyCompleteNo = "checked"; $surveyCompleteYes = "$isDisabled";
+$lastCompleteMonths = 12; $maxEmails = 5; $newRecordsSince = 6;
+$maxSpecified = "$isDisabled"; $newRecordsSinceSpecified = "$isDisabled";
+$r01No = "$isDisabled"; $r01Yes = "$isDisabled"; $r01Agnostic = "checked";
+if ($_POST['recipient'] == "individuals") {
+	$indivs = "checked"; $filteredGroup = "$isDisabled";
+} else if ($_POST['recipient'] == "filtered_group") {
+	if ($_POST['filter'] == "some") {
+		$all = "$isDisabled"; $some = "checked";
+		if ($_POST['survey_complete'] == "yes") {
+			$surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "checked";
+			if ($_POST['last_complete_months']) {
+				$lastCompleteMonths = $_POST['last_complete_months'];
+			}
+		}
+		if ($_POST['r01_or_equiv'] == "yes") {
+			$r01No = "$isDisabled"; $r01Yes = "checked"; $r01Agnostic = "$isDisabled";
+		} else if ($_POST['r01_or_equiv'] == "no") {
+			$r01No = "checked"; $r01Yes = "$isDisabled"; $r01Agnostic = "$isDisabled";
+		}
+		if ($_POST['max_emails']) {
+			$maxEmails = $_POST['max_emails'];
+			$maxSpecified = "checked";
+		}
+		if ($_POST['new_records_since']) {
+			$newRecordsSince = $_POST['new_records_since'];
+			$newRecordsSinceSpecified = "checked";
+		}
+	}
+}
+
 if ($currSetting["who"]["individuals"]) {
 	$indivs = "checked"; $filteredGroup = "";
 	$listOfEmailsToCheck = preg_split("/,/", $currSetting["who"]["individuals"]);
 	foreach ($listOfEmailsToCheck as $email) {
 		$realPost[$email] = "1";
 	}
+} else if ($currSetting["who"]["filter"]) {
+	switch($currSetting["who"]["filter"]) {
+		case "some":
+			$all = "$isDisabled";
+			$some = "checked";
+			break;
+		case "all":
+			$all = "checked";
+			$some = "$isDisabled";
+			break;
+		default:
+			# go with POST
+			break;
+	}
+	if ($currSetting["who"]["none_complete"]) {
+		$surveyCompleteNo = "checked";
+		$surveyCompleteYes = "$isDisabled";
+	} else if ($currSetting["who"]["last_complete"]) {
+		$surveyCompleteNo = "$isDisabled";
+		$surveyCompleteYes = "checked";
+		$lastCompleteMonths = $currSetting["who"]["last_complete"];
+	}
+	if ($currSetting["who"]["max_emails"]) {
+		$maxEmails = $currSetting["who"]["max_emails"];
+		$maxSpecified = "checked";
+	}
+	if ($currSetting["who"]["new_records_since"]) {
+		$newRecordsSince = $currSetting["who"]["new_records_since"];
+		$newRecordsSinceSpecified = "checked";
+	}
 }
 
 ?>
-<link href="<?= CareerDev::link("/css/quill.snow.css") ?>") rel="stylesheet">
+<link href="<?= CareerDev::link("/css/quill.snow.css") ?>" rel="stylesheet">
 <script src="<?= CareerDev::link("/js/quill.js") ?>"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="stylesheet" href="<?= CareerDev::link("/css/flatpickr.min.css") ?>">
+<script src="<?= CareerDev::link("/js/flatpickr.js") ?>"></script>
 
 <script>
 var messages = <?= json_encode($messages) ?>;
@@ -91,6 +147,8 @@ $(document).ready(function() {
 		var val = $('#<?= $selectName ?> option:selected').val();
 		if (val) {
 			window.location = '?pid=<?= $pid ?>&<?= $selectName ?>='+val;
+		} else {
+			window.location = '?pid=<?= $pid ?>';
 		}
 	});
 	$('#<?= $messageSelectName ?>').change(function() {
@@ -101,10 +159,26 @@ $(document).ready(function() {
 	});
 	$('input').on('change', function() { updateAll(this, '<?= $pid ?>', <?= json_encode($realPost) ?>); });
 	$("form").on("submit",function(){
-		$("[name=message]").val($("#message .ql-editor").html());
+		if ($("#message .ql-editor").length > 0) {
+			$("[name=message]").val($("#message .ql-editor").html());
+		} else {
+			$("[name=message]").val($("#message").html());
+		}
 	});
+	if (typeof quill != "undefined") {
+		quill.on("text-change", function(delta, oldDelta, source) {
+			updateAll($("#message .ql-editor"), '<?= $pid ?>', <?= json_encode($realPost) ?>);
+		});
+	}
+
 	updateNames('<?= $pid ?>', <?= json_encode($realPost) ?>);
-	$(".datetime").flatpickr({ enableTime: true, dateFormat: '<?= EmailManager::getFormat() ?>' });
+<?php
+
+	if (!$isDisabled) {
+		echo "$('.datetime').flatpickr({ enableTime: true, dateFormat: '".EmailManager::getFormat()."' });\n";
+	}
+
+?>
 	$(".datetime").on('change', function() { var name = $(this).attr('name'); $('input[type=hidden][name='+name+']').val($(this).val()+'M'); });
 });
 </script>
@@ -117,10 +191,10 @@ $(document).ready(function() {
 
 <h1>Send an Email</h1>
 
-<form action='<?= CareerDev::link("configure.php") ?>' method='POST'>
+<form action='<?= CareerDev::link("/emailMgmt/configure.php") ?>' method='POST'>
 	<h2 class='orange'>Specify Email Name</h2>
 	<table class='centered' style='margin-bottom: 16px;'><tr>
-		<td class='centered'>Email Name:<br><input type='text' name='name' class='long' value='<?= $currSettingName ?>'></td>
+		<td class='centered'>Email Name:<br><input type='text' id='name' name='name' class='long' value='<?= $currSettingName ?>'></td>
 		<td class='centered'>--OR--</td>
 		<td class='centered'>Load Existing Email:<br><?= $mgr->getSelectForExistingNames($selectName, $currSettingName) ?></td>
 	</tr></table>
@@ -129,11 +203,11 @@ $(document).ready(function() {
 	<tr><td class='oneThird'>
 		<h2 class='green'>Who?</h2>
 			<h3 class='green'>From Email Address</h3>
-			<p class='centered'><input type='text' name='from' class='long' value='<?= $_POST['from'] ? $_POST['from'] : $currSetting['who']['from'] ?>'></p>
+			<p class='centered'><input <?= $isReadonly ?> type='text' id='from' name='from' class='long' value='<?= $_POST['from'] ? $_POST['from'] : $currSetting['who']['from'] ?>'></p>
 
 			<h3 class='green'>To (Recipients)</h3>
 			<p class='centered'>Who Do You Want to Receive Your Email?<br>
-				<input class='who_to' type='radio' name='recipient' id='individuals' value='individuals' <?= $indivs ?>><label for='individuals'> Individual(s)</label><?= $spacing ?><input type='radio' class='who_to' name='recipient' id='filtered_group' value='filtered_group' <?= $filteredGroup ?>><label for='filtered_group'> Filtered Group</label>
+				<span class='nowrap'><input class='who_to' type='radio' name='recipient' id='individuals' value='individuals' <?= $indivs ?>><label for='individuals'> Individual(s)</label></span><?= $spacing ?><span class='nowrap'><input type='radio' class='who_to' name='recipient' id='filtered_group' value='filtered_group' <?= $filteredGroup ?>><label for='filtered_group'> Filtered Group</label></span>
 			</p>
 			<div id='checklist' <?php if ($indivs != "checked") { echo "style='display: none;'"; } ?>>
 				<h4 style='margin-bottom: 0;'>List of Names<span class='namesCount'></span></h4>
@@ -141,25 +215,32 @@ $(document).ready(function() {
 			</div>
 			<div id='filter' <?php if ($filteredGroup != "checked") { echo "style='display: none;'"; } ?>>
 				<p class='centered' id='filter_scope'>Do You Want to Email All or Some Scholars?<br>
-					<input class='who_to' type='radio' name='filter' id='all' value='all' <?= $all ?>><label for='all'> All</label><?= $spacing ?><input type='radio' class='who_to' name='filter' id='some' value='some' <?= $some ?>><label for='some'> Some</label>
+					<span class='nowrap'><input class='who_to' type='radio' name='filter' id='all' value='all' <?= $all ?>><label for='all'> All</label></span><?= $spacing ?><span class='nowrap'><input type='radio' class='who_to' name='filter' id='some' value='some' <?= $some ?>><label for='some'> Some</label></span>
 				</p>
 				<div id='filterItems' style='display: none;'>
 					<p class='centered'>Filter: Have Any Surveys Been Completed?<br>
-						<input class='who_to' type='radio' name='survey_complete' id='survey_no' value='no' <?= $surveyCompleteNo ?>><label for='survey_no'> No</label><?= $spacing ?><input class='who_to' type='radio' name='survey_complete' id='survey_yes' value='yes' <?= $surveyCompleteYes ?>><label for='survey_yes'> Yes (see next question)</label>
+						<span class='nowrap'><input class='who_to' type='radio' name='survey_complete' id='survey_no' value='no' <?= $surveyCompleteNo ?>><label for='survey_no'> No</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='survey_complete' id='survey_yes' value='yes' <?= $surveyCompleteYes ?>><label for='survey_yes'> Yes</label></span>
 					</p>
 					<p class='centered' id='whenCompleted' style='display: none;'>Filter: The Scholar Hasn't Filled Out a Survey in Last:<br>
-						<input class='who_to' type='text' style='width: 50px;' name='last_complete_months' value='<?= $_POST['last_complete_months'] ? $_POST['last_complete_months'] : 12 ?>'> Months
+						<input class='who_to' type='text' style='width: 50px;' id='last_complete_months' name='last_complete_months' value='<?= $lastCompleteMonths ?>' <?= $isReadonly ?>> Months
 					</p>
 
 					<p class='centered'>Filter: What Are the Maximum Number of Emails (Including Follow-Ups) a Scholar Can Receive?<br>
-						<input class='who_to' type='radio' name='max' id='max_unlimited' value='unlimited' <?= $_POST['max_emails'] ? "" : "checked" ?>><label for='max_unlimited'> Unlimited<?= $spacing ?><input class='who_to' type='radio' name='max' id='max_number' value='limited' <?= $_POST['max_emails'] ? "checked" : "" ?>><label for='max_number'> Limited to Number</label>
+						<span class='nowrap'><input class='who_to' type='radio' name='max' id='max_unlimited' value='unlimited' <?= ($maxSpecified == "checked" ? $isDisabled : "checked") ?>><label for='max_unlimited'> Unlimited</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='max' id='max_number' value='limited' <?= $maxSpecified ?>><label for='max_number'> Limited to Number</label></span>
 						<p class='centered' id='numEmails' style='display: none;'>
-							<input class='who_to' type='text' style='width: 50px;' id='max_emails' name='max_emails' value='<?= $_POST['max_emails'] ? $_POST['max_emails'] : "5" ?>'> Emails
+							<input class='who_to' type='text' style='width: 50px;' id='max_emails' name='max_emails' value='<?= $maxEmails ?>' <?= $isReadonly ?>> Emails
+						</p>
+					</p>
+
+					<p class='centered'>Filter: Include Only New Records Since a Certain Date?<br>
+						<span class='nowrap'><input class='who_to' type='radio' name='newRecords' id='new_records_all' value='all' <?= $newRecordsSinceSpecified == "checked" ? $isDisabled : "checked" ?>><label for='new_records_all'> All Relevant Records</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='newRecords' id='new_records_only' value='new' <?= $newRecordsSinceSpecified ?>><label for='new_records_only'> Only Newer Records</label></span>
+						<p class='centered' id='newRecordsSinceDisplay' style='display: none;'>Filter: Include Only New Records Created in the Last
+							<input <?= $isReadonly ?> class='who_to' type='number' style='width: 50px;' id='new_records_since' name='new_records_since' value='<?= $newRecordsSince ?>'> Months
 						</p>
 					</p>
 
 					<p class='centered'>Filter: Has the Scholar Received an R01-or-Equivalent Grant?<br>
-						<input class='who_to' type='radio' name='r01_or_equiv' id='r01_no' value='no' <?= $r01No ?>><label for='r01_no'> No</label><?= $spacing ?><input class='who_to' type='radio' name='r01_or_equiv' id='r01_yes' value='yes' <?= $r01Yes ?>><label for='r01_yes'> Yes</label><?= $spacing ?><input class='who_to' type='radio' name='r01_or_equiv' id='r01_agnostic' value='agnostic' <?= $r01Agnostic ?>><label for='r01_agnostic'> Doesn't Matter</label>
+						<span class='nowrap'><input class='who_to' type='radio' name='r01_or_equiv' id='r01_no' value='no' <?= $r01No ?>><label for='r01_no'> No, Only K</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='r01_or_equiv' id='r01_yes' value='yes' <?= $r01Yes ?>><label for='r01_yes'> Yes</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='r01_or_equiv' id='r01_agnostic' value='agnostic' <?= $r01Agnostic ?>><label for='r01_agnostic'> Doesn't Matter</label></span>
 					</p>
 				</div>
 
@@ -174,13 +255,14 @@ $(document).ready(function() {
 <?php
 		$surveySelectId = "survey";
 		echo "<h3 class='yellow'>Format Message</h3>\n";
-		echo "<p class='centered'>Subject: <input type='text' class='long' name='subject' value='".($_POST['subject'] ? $_POST['subject'] : $currSetting['what']['subject'])."'></p>\n";
+		echo "<p class='centered'>Subject: <input $isReadonly type='text' id='subject' class='long' name='subject' value='".($_POST['subject'] ? $_POST['subject'] : $currSetting['what']['subject'])."'></p>\n";
 		echo "<div style='text-align: center; margin: 16px 0px;'>\n";
 		echo "<div style='display: inline-block;'>".$mgr->getSurveySelect($surveySelectId)."<br>\n";
-		echo "<button onclick='insertSurveyLink(\"$surveySelectId\"); return false;'>Insert Survey Link</button></div>\n";
-		echo "<div style='display: inline-block;'><button onclick='insertName(); return false;'>Insert Name</button></div>\n";
+		echo "<button $isDisabled onclick='insertSurveyLink(\"$surveySelectId\"); return false;'>Insert Survey Link</button></div>\n";
+		echo "<div style='display: inline-block;'><button $isDisabled onclick='insertName(); return false;'>Insert Name</button></div>\n";
+		echo "<div style='display: inline-block;'><button $isDisabled onclick='insertLastName(); return false;'>Insert Last Name</button></div>\n";
 		echo "</div>\n";
-		if (!empty($messages)) {
+		if (!empty($messages) && !$isDisabled) {
 			echo "<div style='text-align: center; margin: 16px 0px;'>Load Prior Message:<br>".$mgr->getSelectForExistingNames($messageSelectName)."</div>\n";
 		}
 		if ($_POST['message']) {
@@ -190,38 +272,60 @@ $(document).ready(function() {
 		} else {
 			$mssg = "";
 		}
-		echo "<div id='message' style='background-color: white; z-index: 1;'>$mssg</div>\n";
+		echo "<div id='message' style='background-color: white; z-index: 1;".($isReadonly ? " padding: 8px; font-size: 12px;" : "")."'>$mssg</div>\n";
 		echo "<input type='hidden' name='message' value=''>\n";
 
-if ($currSettingName) {
-	echo "<div class='yellow padded' style='margin-top: 100px;' id='test'>\n";
-	echo "<h2 class='yellow'>Test Your Email</h2>\n";
-	echo "<p class='centered'><span class='tooltip'>Your Email Address<span class='tooltiptext'>You will receive one email per every recipient.</span></span>: <input type='text' id='test_to'></p>\n";
-	echo "<p class='centered'><button onclick='sendTestEmails(\"$pid\", \"$selectName\", \"$currSettingName\");'>Test Saved Email</button></p>\n";
-	echo "</div>\n";
-}
+$emailWarning = "<p class='centered'>Emails are sent in batches every 15 minutes. You may have to wait until the closest 15-minute interval for them to be sent.</p>"; 
 
 ?>
 	</td>
 	<td class='oneThird'>
 
 		<h2 class='purple'>When?</h2>
+			<?= $emailWarning ?>
 			<h3 class='purple'>Initial Email</h3>
-			<?= makeDateTime("initial_time", $currSetting['when']) ?>
+			<?= makeDateTime("initial_time", $currSetting['when'], $isReadonly) ?>
 
-			<h3 class='purple'>Follow-Up Email (Optional; Only to Non-Respondents)</h3>
-			<?= makeDateTime("followup_time", $currSetting['when']) ?>
+			<h3 class='purple'>Follow-Up Email (Optional; Only to Non-Respondants)</h3>
+			<?= makeDateTime("followup_time", $currSetting['when'], $isReadonly) ?>
 
 <?php
-		// save/update
-		if ($currSetting == EmailManager::getBlankSetting()) {
-			$saveText = "Add Email Setting";
+		if (($currSetting != EmailManager::getBlankSetting()) && !$currSetting['enabled']) {
+			$testStyle = "";
+			$intro = "Re-";
 		} else {
-			$saveText = "Update Email Setting";
+			$testStyle = " display: none;";
 		}
-		echo "<div style='margin-top: 100px;' class='blue padded'>\n";
-		echo "<h2 class='blue'>$saveText</h2>\n";
-		echo "<p class='centered'><button>$saveText</button></p>\n";
+		if ($hasErrors) {
+			$testStyle = " display: none;";
+		}
+		echo "<div style='margin-top: 50px;' id='status' class='blue padded'>\n";
+		if ($currSetting['enabled']) {
+			echo "<h2 class='blue'>Current Status: Activated</h2>\n";
+			echo "<p class='centered'><button onclick='disableEmailSetting(); return true;'>Modify Email</button></p>\n";   // button should resubmit entire page
+			$stageText = "Update &amp; Re-Stage to Test";
+			$stageStyle = " display: none;";
+		} else {
+			echo "<h2 class='blue'>Current Status: Not Activated</h2>\n";
+			$stageText = $intro."Stage to Test";
+			$stageStyle = "";
+		}
+		echo "</div>\n";
+		echo "<div style='margin-top: 50px;$stageStyle' id='save' class='blue padded'>\n";
+		echo "<h2 class='blue'>Advance Process</h2>\n";
+		echo "<input type='hidden' name='enabled' value='".($currSetting['enabled'] ? "true" : "false")."'>\n";
+		echo "<h3 class='blue'>Step 1 of 3</h3>\n";
+		echo "<p class='centered'><button>$stageText</button></p>\n";
+		echo "<div class='padded' style='$testStyle' id='test'>\n";
+		echo "<h3 class='blue'>Step 2 of 3</h3>\n";
+		echo "<p class='centered'>You will receive one email per every recipient.</p>\n";
+		echo "<p class='centered'>Your Email Address: <input type='text' id='test_to'></p>\n";
+		echo "<p class='centered'><button onclick='sendTestEmails(\"$pid\", \"$selectName\", \"$currSettingName\"); return false;'>Test Email Setting</button></p>\n";
+		echo "</div>\n";
+		echo "<div id='enableEmail' style='display: none;' class='padded'>\n";
+		echo "<h3 class='blue'>Step 3 of 3</h3>\n";
+		echo "<p class='centered'><button onclick='enableEmailSetting(); return true;'>Activate Emails &amp; Enqueue to Send</button></p>\n";    // should resubmit entire page
+		echo "</div>\n";
 		echo "</div>\n";
 ?>
 	</td>
@@ -229,13 +333,12 @@ if ($currSettingName) {
 	</table>
 </form>
 
-<script>
-var quill = new Quill('#message', {
-        theme: 'snow'
-});
-</script>
-
 <?php
+
+if (!$isDisabled) {
+	echo "<script>var quill = new Quill('#message', { theme: 'snow' });</script>\n";
+}
+
 function translatePostToEmailSetting($post) {
 	$emailSetting = EmailManager::getBlankSetting();
 
@@ -246,23 +349,29 @@ function translatePostToEmailSetting($post) {
 		return array("A name for the setting was not specified", "", EmailManager::getBlankSetting());
 	}
 
+	if ($post['enabled'] == "true") {
+		$emailSetting["enabled"] = TRUE;
+	}
+
 	# WHO
 	if ($post['recipient']) {
-		$checkedEmails = array();
-		foreach ($post as $key => $value) {
-			if ($value && isEmailAddress($key)) {
-				array_push($checkedEmails, $key);
+		if ($post['recipient'] == 'individuals') {
+			$checkedEmails = array();
+			foreach ($post as $key => $value) {
+				if ($value && isEmailAddress($key)) {
+					array_push($checkedEmails, $key);
+				}
 			}
-		}
-		if (!empty($checkedEmails)) {
-			$emailSetting["who"]["individuals"] = implode(",", $checkedEmails);
-		} else {
-			return array("No individuals are checked ".json_encode($post), "", EmailManager::getBlankSetting());
+			if (!empty($checkedEmails)) {
+				$emailSetting["who"]["individuals"] = implode(",", $checkedEmails);
+			} else {
+				return array("No individuals are checked", "", EmailManager::getBlankSetting());
+			}
 		}
 	} else {
 		return array("No recipient is specified", "", EmailManager::getBlankSetting());
 	}
-	if ($post['recipient'] == "filter") {
+	if ($post['recipient'] == "filtered_group") {
 		if ($post['filter']) {
 			$emailSetting["who"]["filter"] = $post["filter"];
 		} else {
@@ -280,6 +389,9 @@ function translatePostToEmailSetting($post) {
 		}
 		if ($post["max_emails"]) {
 			$emailSetting["who"]["max_emails"] = $post["max_emails"];
+		}
+		if ($post["new_records_since"]) {
+			$emailSetting["who"]["new_records_since"] = $post["new_records_since"];
 		}
 		if ($post["r01_or_equiv"]) {
 			$emailSetting["who"]["converted"] = $post["r01_or_equiv"];
@@ -312,19 +424,16 @@ function translatePostToEmailSetting($post) {
 	return array("", $settingName, $emailSetting);
 }
 
-function makeDateTime($field, $when) {
-	$displayValue = "";
-	$hiddenValue = "";
+function makeDateTime($field, $when, $isReadonly = "") {
+	$value = "";
 	if ($_POST[$field]) {
-		$hiddenValue = $_POST[$field];
+		$value = $_POST[$field];
 	} else if ($when[$field]) {
-		$hiddenValue = $when[$field];
+		$value = $when[$field];
 	}
-	$displayValue = preg_replace("/M$/", "", $hiddenValue);
 
 	$html = "";
-	$html .= "<input type='hidden' name='$field' value='$hiddenValue'>\n";
-	$html .= "<p class='centered'><input type='text' class='datetime' name='$field' value='$displayValue'></p>";
+	$html .= "<p class='centered'><input $isReadonly type='text' id='$field' class='datetime' name='$field' value='$value'></p>";
 
 	return $html;
 }

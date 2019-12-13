@@ -29,6 +29,7 @@ $(document).ready(function() {
 </script>
 
 <h1 style='margin-bottom: 0;'>Flight Tracker Central</h1>
+<h3 class='nomargin' style='background-color: transparent;'>v<?= CareerDev::getVersion() ?></h3>
 <h4 class='nomargin'>Watch Your Scholars Fly</h4>
 <h5>from <a href='https://edgeforscholars.org'>Edge for Scholars</a></h5>
 
@@ -155,6 +156,12 @@ function findNextMeeting() {
 		while (date("N", $ts) != 3) {
 			$ts += 24 * 3600;
 		} 
+		if (($month == 1) && ($day == 1)) {
+			$ts += 7 * 24 * 3600;
+		}
+		if (($month == 7) && ($day == 4)) {
+			$ts += 7 * 24 * 3600;
+		}
 	}
 	return date("l, F j", $ts);
 }

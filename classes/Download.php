@@ -4,7 +4,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 # This class handles commonly occuring downloads from the REDCap API.
 
-require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+// require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Filter.php");
 require_once(dirname(__FILE__)."/CohortConfig.php");
@@ -74,7 +74,7 @@ class Download {
 
 	private static function sendToServer($server, $data) {
 		$pid = Application::getPID($data['token']);
-		if (($pid) && ($data['content'] == "record") && !isset($data['forms']) && self::isCurrentServer($server)) {
+		if (($pid) && ($data['content'] == "record") && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
 			$output = \REDCap::getData($pid, "json", $data['records'], $data['fields']); 
 		} else {
 			$ch = curl_init();
@@ -92,7 +92,7 @@ class Download {
 			curl_close($ch);
 		}
 		$redcapData = json_decode($output, true);
-		if ($redcapData['error']) {
+		if (isset($redcapData['error']) && !empty($redcapData['error'])) {
 			throw new \Exception("Download Exception: ".$redcapData['error']);
 		}
 		return $redcapData;

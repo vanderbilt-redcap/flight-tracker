@@ -8,7 +8,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 # This class handles links within the code. It puts in the appropriate prefix to relative links as well.
 # All methods are static. No need to instatiate this class.
 
-require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+// require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
 class Links {

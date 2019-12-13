@@ -13,7 +13,6 @@ require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/Grant.php");
 require_once(dirname(__FILE__)."/GrantFactory.php");
 require_once(dirname(__FILE__)."/GrantLexicalTranslator.php");
-require_once(APP_PATH_DOCROOT.'/ProjectGeneral/math_functions.php');
 
 define('MAX_GRANTS', 15);
 class Grants {
@@ -454,7 +453,7 @@ class Grants {
 					array_push($newAwards, $grant);
 				}
 			} else {
-				$grant = $grants;     // just one grant; misnamed so correcting misnomer
+				$grant = $grants;	 // just one grant; misnamed so correcting misnomer
 				array_push($newAwards, $grant);
 			}
 		}
@@ -555,7 +554,7 @@ class Grants {
 				);
 
 		# 0. Initialize
-		$this->changes = array();    // the changes requested by the Grant Wrangler
+		$this->changes = array();	// the changes requested by the Grant Wrangler
 		$sourceOrder = self::getSourceOrder();
 		$awardsBySource = array();	// a list of the awards used, ordered by source
 		$awardTimestamps = array();	// the starting date/times
@@ -1101,15 +1100,145 @@ class Grants {
 		return 0;
 	}
 
+	public static function datediff($d1, $d2, $unit=null, $returnSigned=false, $returnSigned2=false)
+	{
+		global $missingDataCodes;
+		// Make sure Units are provided and that dates are trimmed
+		if ($unit == null) return NAN;
+		$d1 = trim($d1);
+		$d2 = trim($d2);
+		// Missing data codes
+		if (isset($missingDataCodes) && !empty($missingDataCodes)) {
+			if ($d1 != '' && isset($missingDataCodes[$d1])) $d1 = '';
+			if ($d2 != '' && isset($missingDataCodes[$d2])) $d2 = '';
+		}
+		// If ymd, mdy, or dmy is used as the 4th parameter, then assume user is using Calculated field syntax
+		// and assume that returnSignedValue is the 5th parameter.
+		if (in_array(strtolower(trim($returnSigned)), array('ymd', 'dmy', 'mdy'))) {
+			$returnSigned = $returnSigned2;
+		}
+		// Initialize parameters first
+		if (strtolower($d1) === "today") $d1 = TODAY; elseif (strtolower($d1) === "now") $d1 = NOW;
+		if (strtolower($d2) === "today") $d2 = TODAY; elseif (strtolower($d2) === "now") $d2 = NOW;
+		$d1isToday = ($d1 == TODAY);
+		$d2isToday = ($d2 == TODAY);
+		$d1isNow = ($d1 == NOW);
+		$d2isNow = ($d2 == NOW);
+		$returnSigned = ($returnSigned === true || $returnSigned === 'true');
+		// Determine data type of field ("date", "time", "datetime", or "datetime_seconds")
+		$format_checkfield = ($d1isToday ? $d2 : $d1);
+		$numcolons = substr_count($format_checkfield, ":");
+		if ($numcolons == 1) {
+			if (strpos($format_checkfield, "-") !== false) {
+				$datatype = "datetime";
+			} else {
+				$datatype = "time";
+			}
+		} else if ($numcolons > 1) {
+			$datatype = "datetime_seconds";
+		} else {
+			$datatype = "date";
+		}
+		// TIME only
+		if ($datatype == "time" && !$d1isToday && !$d2isToday) {
+			if ($d1isNow) {
+				$d2 = "$d2:00";
+				$d1 = substr($d1, -8);
+			} elseif ($d2isNow) {
+				$d1 = "$d1:00";
+				$d2 = substr($d2, -8);
+			}
+			// Return in specified units
+			return secondDiff(timeToSeconds($d1),timeToSeconds($d2),$unit,$returnSigned);
+		}
+		// DATE, DATETIME, or DATETIME_SECONDS
+		// If using 'today' for either date, then set format accordingly
+		if ($d1isToday) {
+			if ($datatype == "time") {
+				return NAN;
+			} else {
+				$d2 = substr($d2, 0, 10);
+			}
+		} elseif ($d2isToday) {
+			if ($datatype == "time") {
+				return NAN;
+			} else {
+				$d1 = substr($d1, 0, 10);
+			}
+		}
+		// If a date[time][_seconds] field, then ensure it has dashes
+		if (substr($datatype, 0, 4) == "date" && (strpos($d1, "-") === false || strpos($d2, "-") === false)) {
+			return NAN;
+		}
+		// Make sure the date/time values aren't empty
+		if ($d1 == "" || $d2 == "" || $d1 == null || $d2 == null) {
+			return NAN;
+		}
+		// Make sure both values are same length/datatype
+		if (strlen($d1) != strlen($d2)) {
+			if (strlen($d1) > strlen($d2) && $d2 != '') {
+				if (strlen($d1) == 16) {
+					if (strlen($d2) == 10) $d2 .= " 00:00";
+					$datatype = "datetime";
+				} else if (strlen($d1) == 19) {
+					if (strlen($d2) == 10) $d2 .= " 00:00";
+					else if (strlen($d2) == 16) $d2 .= ":00";
+					$datatype = "datetime_seconds";
+				}
+			} else if (strlen($d2) > strlen($d1) && $d1 != '') {
+				if (strlen($d2) == 16) {
+					if (strlen($d1) == 10) $d1 .= " 00:00";
+					$datatype = "datetime";
+				} else if (strlen($d2) == 19) {
+					if (strlen($d1) == 10) $d1 .= " 00:00";
+					else if (strlen($d1) == 16) $d1 .= ":00";
+					$datatype = "datetime_seconds";
+				}
+			}
+		}
+		// Separate time if datetime or datetime_seconds
+		$d1b = explode(" ", $d1);
+		$d2b = explode(" ", $d2);
+		// Split into date and time (in units of seconds)
+		$d1 = $d1b[0];
+		$d2 = $d2b[0];
+		$d1sec = (!empty($d1b[1])) ? timeToSeconds($d1b[1]) : 0;
+		$d2sec = (!empty($d2b[1])) ? timeToSeconds($d2b[1]) : 0;
+		// Separate pieces of date component
+		$dt1 = explode("-", $d1);
+		$dt2 = explode("-", $d2);
+		// Convert the dates to seconds (conversion varies due to dateformat)
+		$dat1 = mktime(0,0,0,$dt1[1],$dt1[2],$dt1[0]) + $d1sec;
+		$dat2 = mktime(0,0,0,$dt2[1],$dt2[2],$dt2[0]) + $d2sec;
+		// Get the difference in seconds
+		$sec = $dat2 - $dat1;
+		if (!$returnSigned) $sec = abs($sec);
+		// Return in specified units
+		if ($unit == "s") {
+			return $sec;
+		} else if ($unit == "m") {
+			return $sec/60;
+		} else if ($unit == "h") {
+			return $sec/3600;
+		} else if ($unit == "d") {
+			return ($datatype == "date" ? round($sec/86400) : $sec/86400);
+		} else if ($unit == "M") {
+			return $sec/2630016; // Use 1 month = 30.44 days
+		} else if ($unit == "y") {
+			return $sec/31556952; // Use 1 year = 365.2425 days
+		}
+		return NAN;
+	}
+
 	# converted to R01/R01-equivalent in $row for $typeOfK ("any" vs. "external")
 	# return value:
-	#	       1, Converted K to R01-or-Equivalent While on K
-	#	       2, Converted K to R01-or-Equivalent Not While on K
-	#	       3, Still On K; No R01-or-Equivalent
-	#	       4, Not On K; No R01-or-Equivalent
-	#	       5, No K, but R01-or-Equivalent
-	#	       6, No K; No R01-or-Equivalent
-	#              7, Used K99/R00
+	#		   1, Converted K to R01-or-Equivalent While on K
+	#		   2, Converted K to R01-or-Equivalent Not While on K
+	#		   3, Still On K; No R01-or-Equivalent
+	#		   4, Not On K; No R01-or-Equivalent
+	#		   5, No K, but R01-or-Equivalent
+	#		   6, No K; No R01-or-Equivalent
+	#			  7, Used K99/R00
 	private static function converted($row, $typeOfK) {
 		for ($i = 1; $i <= MAX_GRANTS; $i++) {
 			if ($row['summary_award_type_'.$i] == 9) {
@@ -1127,14 +1256,14 @@ class Grants {
 			}
 			if ($row['summary_'.$prefix.'_external_k'] == $row['summary_'.$prefix.'_any_k']) {
 				$intendedYearSpan = self::findYearSpan("External K");
-				if (datediff($row['summary_'.$typeOfK.'_k'], $row['summary_first_r01_or_equiv'], "y") <= $intendedYearSpan) {
+				if (self::datediff($row['summary_'.$typeOfK.'_k'], $row['summary_first_r01_or_equiv'], "y") <= $intendedYearSpan) {
 					$value = 1;
 				} else {
 					$value = 2;
 				}
 			} else {
 				$intendedYearSpan = self::findYearSpan("Internal K");
-				if (datediff($row['summary_'.$typeOfK.'_k'], $row['summary_first_r01_or_equiv'], "y") <= $intendedYearSpan) {
+				if (self::datediff($row['summary_'.$typeOfK.'_k'], $row['summary_first_r01_or_equiv'], "y") <= $intendedYearSpan) {
 					$value = 1;
 				} else {
 					$value = 2;
@@ -1146,7 +1275,7 @@ class Grants {
 			} else {
 				$prefix = "first";
 			}
-			$diffToToday = datediff($row['summary_'.$typeOfK.'_k'], date('Y-m-d'), "y");
+			$diffToToday = self::datediff($row['summary_'.$typeOfK.'_k'], date('Y-m-d'), "y");
 			// error_log($typeOfK.": ".$diffToToday);
 			if ($row["summary_".$prefix."_external_k"] == $row["summary_".$prefix."_any_k"]) {
 				$intendedYearSpan = self::findYearSpan("External K");

@@ -1,7 +1,7 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -229,9 +229,11 @@ function getAverages($data, $kLength, $orderK, $kType) {
 	return $avgs;
 }
 
+$metadata = Download::metadata($token, $server);
+
 if (isset($_POST['average']) || isset($_POST['list'])) {
 	$myFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_institution", "identifier_left_date");
-	$redcapData = Download::fields($token, $server, array_unique(array_merge(CareerDev::$summaryFields, $myFields)));
+	$redcapData = Download::getFilteredREDCapData($token, $server, array_unique(array_merge($summaryFields, $myFields)), $_GET['cohort'], $metadata);
 
 	if (isset($_POST['average'])) {
 		$kLength = '';
@@ -240,7 +242,11 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 		}
 		$avgs = getAverages($redcapData, $kLength, $_POST['k_number'], $_POST['k_type']);
 
-		echo "<h2>Society Averages</h2>";
+		if ($_GET['cohort']) {
+			echo "<h2>Cohort {$_GET['cohort']} Averages</h2>";
+		} else {
+			echo "<h2>Entire Population Averages</h2>";
+		}
 		echo "<table class='centered'>";
 		echo "<tr><th>Average K-To-R Conversian Rate<br>({$options[$_POST['k_type']]})";
 		echo "<ul class='k2r'>";
@@ -274,7 +280,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 			echo "Individual-K / K-Equivalent lasts $indKLength years.<br>";
 			echo "Internal-K / K12 / KL2 lasts $intKLength years.</p>"; 
 			if ($showNames) {
-				echo "<table class='centered'>";
+				echo "<table class='centered'>\n";
 				$lines = array();
 				foreach ($kAwardees as $recordId => $name) {
 					array_push($lines, "<tr>");
@@ -288,10 +294,15 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 		}
 	}
 } else {
+	$cohortParams = "";
+	if ($_GET['cohort']) {
+		$cohortParams = "&cohort=".$_GET['cohort'];
+	}
 ?>
 
-<form action='<?= CareerDev::link("k2r/index.php") ?>' method='POST'>
+<form action='<?= CareerDev::link("/k2r/index.php").$cohortParams ?>' method='POST'>
 <h2>Conversion Rate</h2>
+<p class='centered'>Select Cohort (optional):<br><?= \Vanderbilt\FlightTrackerExternalModule\getCohortSelect($token, $server, $pid, $metadata) ?></p>
 <p class='centered'>Exclude those within <input type='text' name='k' value='5'> years of receipt of most recent K who have not converted<br>
 <span class='small'>(leave blank if you want <b>all</b> conversions)</span></p>
 <p class='centered'>Type of K: <select name='k_type'>
@@ -313,7 +324,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 <p class='centered'><input type='submit' name='average' value='Calculate'></p>
 </form>
 <hr>
-<form action='<?= CareerDev::link("k2r/index.php") ?>' method='POST'>
+<form action='<?= CareerDev::link("/k2r/index.php").$cohortParams ?>' method='POST'>
 <h2>Who is on a K Award?</h2>
 <p class='centered'>Length of Internal-K / K12 / KL2 Award: <input type='text' name='internal_k' value='3'> years</p>
 <p class='centered'>Length of Individual-K / K-Equivalent Award: <input type='text' name='individual_k' value='5'> years</p>

@@ -84,6 +84,9 @@ if ($_FILES['bulk']) {
 			echo "</div>\n";
 		} else {
 			$feedback = Upload::rows($upload, $token, $server);
+			foreach (getRecordsFromREDCapData($upload) as $recordId) {
+				\Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($recordId);
+			}
 			if ($feedback['error'])	{
 				echo "<p class='red padded'>ERROR! ".$feedback['error']."</p>\n";
 			} else {
@@ -244,4 +247,14 @@ function translateRoleIntoIndex($role) {
 		return $choices[$role];
 	}
 	return "";
+}
+
+function getRecordsFromREDCapData($redcapData) {
+	$records = array();
+	foreach ($redcapData as $row) {
+		if (!in_array($row['record_id'], $records)) {
+			array_push($records, $row['record_id']);
+		}
+	}
+	return $records;
 }
