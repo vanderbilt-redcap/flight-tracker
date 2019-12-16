@@ -76,6 +76,18 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		CareerDev::$passedModule = $this;
 	}
 
+	function redcap_module_link_check_display($project_id, $link) {
+		if (SUPER_USER) {
+			return $link;
+		}
+
+		if (!empty($project_id) && self::hasAppropriateRights(USERID, $project_id)) {
+			return $link;
+		}
+
+		return null;
+	}
+
 	function hook_every_page_before_render($project_id) {
 		$this->setupApplication();
 		if (PAGE == "DataExport/index.php") {
@@ -222,62 +234,62 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	public function canRedirectToInstall() {
-        	$bool = !self::isAJAXPage() && !self::isAPITokenPage() && !self::isUserRightsPage() && !self::isExternalModulePage() && ($_GET['page'] != "install");
-        	if ($_GET['pid']) {
-                	# project context
-                	$bool = $bool && self::hasAppropriateRights(USERID, $_GET['pid']);
-        	}
-        	return $bool;
+		$bool = !self::isAJAXPage() && !self::isAPITokenPage() && !self::isUserRightsPage() && !self::isExternalModulePage() && ($_GET['page'] != "install");
+		if ($_GET['pid']) {
+			# project context
+			$bool = $bool && self::hasAppropriateRights(USERID, $_GET['pid']);
+		}
+		return $bool;
 	}
 
 	private static function isAJAXPage() {
-        	$page = $_SERVER['PHP_SELF'];
-        	if (preg_match("/ajax/", $page)) {
-                	return TRUE;
-        	}
-        	if (preg_match("/index.php/", $page) && isset($_GET['route'])) {
-                	return TRUE;
-        	}
-        	return FALSE;
+		$page = $_SERVER['PHP_SELF'];
+		if (preg_match("/ajax/", $page)) {
+			return TRUE;
+		}
+		if (preg_match("/index.php/", $page) && isset($_GET['route'])) {
+			return TRUE;
+		}
+		return FALSE;
 	}
 
 	private static function isAPITokenPage() {
-        	$page = $_SERVER['PHP_SELF'];
-        	$tokenPages = array("project_api_ajax.php", "project_api.php");
-        	if (preg_match("/API/", $page)) {
-                	foreach ($tokenPages as $tokenPage) {
-                        	if (preg_match("/$tokenPage/", $page)) {
-                                	return TRUE;
-                        	}
-                	}
-        	}
-        	if (preg_match("/plugins/", $page)) {
-                	return TRUE;
-        	}
-        	return FALSE;
+		$page = $_SERVER['PHP_SELF'];
+		$tokenPages = array("project_api_ajax.php", "project_api.php");
+		if (preg_match("/API/", $page)) {
+			foreach ($tokenPages as $tokenPage) {
+				if (preg_match("/$tokenPage/", $page)) {
+					return TRUE;
+				}
+			}
+		}
+		if (preg_match("/plugins/", $page)) {
+			return TRUE;
+		}
+		return FALSE;
 	}
 
 	private static function isUserRightsPage() {
-        	$page = $_SERVER['PHP_SELF'];
-        	if (preg_match("/\/UserRights\//", $page)) {
-                	return TRUE;
-        	}
-        	return FALSE;
+		$page = $_SERVER['PHP_SELF'];
+		if (preg_match("/\/UserRights\//", $page)) {
+			return TRUE;
+		}
+		return FALSE;
 	}
 
 	private static function isExternalModulePage() {
-        	$page = $_SERVER['PHP_SELF'];
-        	if (preg_match("/external_modules\/manager\/project.php/", $page)) {
-                	return TRUE;
-        	}
-        	if (preg_match("/external_modules\/manager\/ajax\//", $page)) {
-                	return TRUE;
-        	}
-        	return FALSE;
+		$page = $_SERVER['PHP_SELF'];
+		if (preg_match("/external_modules\/manager\/project.php/", $page)) {
+			return TRUE;
+		}
+		if (preg_match("/external_modules\/manager\/ajax\//", $page)) {
+			return TRUE;
+		}
+		return FALSE;
 	}
 
 	private static function isModuleEnabled($pid) {
-        	return \ExternalModules\ExternalModules::getProjectSetting("flightTracker", $pid, \ExternalModules\ExternalModules::KEY_ENABLED);
+		return \ExternalModules\ExternalModules::getProjectSetting("flightTracker", $pid, \ExternalModules\ExternalModules::KEY_ENABLED);
 	}
 
 	private static function hasAppropriateRights($userid, $pid) {
@@ -286,7 +298,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		if ($row = db_fetch_assoc($q)) {
 			return $row['design'];
 		}
-        	return FALSE;
+		return FALSE;
 	}
 
 	private $prefix = "flightTracker";
