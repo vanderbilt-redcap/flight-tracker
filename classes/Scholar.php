@@ -24,6 +24,23 @@ class Scholar {
 		}
 	}
 
+	# for identifier_left_job_category
+	public static function isOutsideAcademe($jobCategory) {
+		$outside = array(3, 4, 6);
+		if (in_array($jobCategory, $outside)) {
+			return TRUE;
+		}
+		return FALSE;
+	}
+
+	public static function isDependentOnAcademia($field) {
+		$dependent = array("summary_current_division", "summary_current_rank", "summary_current_tenure", );
+		if (in_array($field, $dependent)) {
+			return TRUE;
+		}
+		return FALSE;
+	}
+
 	public static function addSourceType($module, $code, $sourceType, $pid) {
 		if ($module) {
 			$data = $module->getProjectSettine(SOURCETYPE_FIELD, $pid);

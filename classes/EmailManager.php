@@ -94,10 +94,6 @@ class EmailManager {
 	}
 
 	private function transformToTS($datetime) {
-		if (!preg_match("/[Mm]$/", $datetime)) {
-			$datetime = $datetime."M";
-		}
-
 		if (preg_match("/^\d+-\d+-\d\d\d\d/", $datetime, $matches)) {
 			# assume MDY
 			$match = $matches[0];
@@ -131,11 +127,11 @@ class EmailManager {
 						if ($to) {
 							# This is a test email because a $to is specified
 							if ($type == "initial_time") {
-								$result = $this->$func($emailSetting, $name, $to);
+								$result = $this->$func($emailSetting, $name, $type, $to);
 							}
 						} else {
-							if (self::afterAllTimestamps($ts, $sent) && ($ts < time())) {
-								$result = $this->$func($emailSetting, $name);
+							if (self::afterAllTimestamps($ts, $sent) && self::within15MinutesAfter($ts, $_SERVER["REQUEST_TIME_FLOAT"])) {
+								$result = $this->$func($emailSetting, $name, $type);
 							}
 						}
 						if ($result) {
@@ -148,6 +144,10 @@ class EmailManager {
 			}
 		}
 		return $results;
+	}
+
+	private static function within15MinutesAfter($proposedTs, $currTs) {
+		return ($currTs <= $proposedTs) && ($currTs + 15 * 60 > $proposedTs);
 	}
 
 	public function saveSetting($name, $emailSetting) {
@@ -191,8 +191,8 @@ class EmailManager {
 	}
 
 	# returns records of emails
-	private function sendEmail($emailSetting, $settingName, $toField = "who") {
-		$emailData = $this->prepareEmail($emailSetting, $settingName, $toField);
+	private function sendEmail($emailSetting, $settingName, $whenType, $toField = "who") {
+		$emailData = $this->prepareEmail($emailSetting, $settingName, $whenType, $toField);
 		return $this->sendPreparedEmail($emailData, ($toField != "who"));
 	}
 
@@ -205,7 +205,7 @@ class EmailManager {
 		$subjects = $emailData["subjects"];
 
 		foreach ($mssgs as $recordId => $mssg) {
-			error_log(date("Y-m-d h:i:s")." $recordId: EmailManager sending $name to {$to[$recordId]}; from $from; {$subjects[$recordId]}");
+			error_log(date("Y-m-d H:i:s")." $recordId: EmailManager sending $name to {$to[$recordId]}; from $from; {$subjects[$recordId]}");
 			if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
 				require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 			}
@@ -257,9 +257,23 @@ class EmailManager {
 		return $filteredLastNames;
 	}
 
-	private function prepareEmail($emailSetting, $settingName, $toField = "who") {
+	private function getForms($what) {
+		$forms = array();
+		if (isset($what["message"])) {
+			$mssg = $what["message"];
+			$surveys = $this->getSurveys();
+			foreach ($surveys as $survey) {
+				if (preg_match("/\[survey_link_$survey\]/", $mssg)) {
+					array_push($forms, $survey);
+				}
+			}
+		}
+		return $forms;
+	}
+
+	private function prepareEmail($emailSetting, $settingName, $whenType, $toField = "who") {
 		$data = array();
-		$rows = $this->getRows($emailSetting["who"]);
+		$rows = $this->getRows($who, $whenType, $this->getForms($emailSetting["what"]));
 		$emails = self::processEmails($rows);
 		$names = self::processNames($rows);
 		$lastNames = $this->getLastNames(array_keys($rows));
@@ -516,7 +530,7 @@ class EmailManager {
 		return $form."_date";
 	}
 
-	private function getRows($who) {
+	private function getRows($who, $whenType = "", $when = array(), $what = array()) {
 		if (($who['filter'] == "all") || ($who['recipient'] == "individuals")) {
 			# get all names, either when specifying that the recipients are individual emails or if this is a mass email to all
 			$emails = Download::emails($this->token, $this->server);
@@ -654,6 +668,9 @@ class EmailManager {
 			if ($who['new_records_since']) {
 				$queue = self::filterForNewRecordsSince($who['new_records_since'], $created, $queue);
 			}
+			if ($whenType == "followup_time") {
+				$queue = self::filterOutSurveysCompleted($this->getForms($what), $when, $complete, $lastUpdate, $queue);
+			}
 
 			# build row of names and emails
 			$rows = array();
@@ -662,6 +679,43 @@ class EmailManager {
 			}
 			return $rows;
 		}
+	}
+
+	private static function filterOutSurveysCompleted($usedForms, $when, $complete, $lastUpdate, $queue) {
+		if (!empty($when) && !empty($usedForms)) {
+			$whenTs = array();
+			foreach ($when as $type => $datetime) {
+				$whenTs[$type] = self::transformToTS($datetime);
+			}
+			$newQueue = array();
+			foreach ($queue as $recordId) {
+				$recentlyFilledOut = FALSE;
+				$formsComplete = array();
+				if (isset($complete[$recordId])) {
+					$formsComplete = $complete[$recordId];
+				}
+				foreach ($usedForms as $form) {
+					if (in_array($form, $formsComplete) && isset($lastUpdate[$recordId]) && isset($lastUpdate[$recordId][$form])) {
+						# push forward to end of day to correct for below comparison
+						$ts = $lastUpdate[$recordId][$form] + 24 * 3600;
+						foreach ($whenTs as $type => $emailTs) {
+							if ($ts > $emailTs) {
+								$recentlyFilledOut = TRUE;
+								break;
+							}
+						}
+					}
+					if ($recentlyFilledOut) {
+						break;
+					}
+				}
+				if (!$recentlyFilledOut) {
+					array_push($newQueue, $recordId);
+				}
+			}
+			return $newQueue;
+		}
+		return $queue;
 	}
 
 	public static function getFieldAssociatedWithFilter($whoFilter) {

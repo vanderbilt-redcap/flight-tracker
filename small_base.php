@@ -1478,6 +1478,124 @@ function queueUpInitialEmail($record) {
 	}
 }
 
+function cleanOutJSONs($metadata) {
+	$fieldsToClean = array("identifier_vunet", "identifier_first_name");
+	for ($i = 0; $i < count($metadata); $i++) {
+		if (in_array($metadata[$i]['field_name'], $fieldsToClean)) {
+			$metadata[$i]['field_annotation'] = "[]";
+		}
+	}
+	return $metadata;
+}
+
+function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer) {
+	$data = array(
+		'token' => $srcToken,
+		'content' => 'repeatingFormsEvents',
+		'format' => 'json',
+		'returnFormat' => 'json'
+	);
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, $srcServer);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+	curl_setopt($ch, CURLOPT_VERBOSE, 0);
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+	$output = curl_exec($ch);
+	curl_close($ch);
+
+	$data = array(
+		'token' => $destToken,
+		'content' => 'repeatingFormsEvents',
+		'format' => 'json',
+		'data' => $output,
+		'returnFormat' => 'json'
+	);
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, $destServer);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+	curl_setopt($ch, CURLOPT_VERBOSE, 0);
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+	$output = curl_exec($ch);
+	curl_close($ch);
+	return json_decode($output, TRUE);
+}
+
+function deleteRecords($token, $server, $records) {
+	$data = array(
+		'token' => $token,
+		'action' => 'delete',
+		'content' => 'record',
+		'records' => $records
+	);
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, $server);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+	curl_setopt($ch, CURLOPT_VERBOSE, 0);
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+	$output = curl_exec($ch);
+	curl_close($ch);
+
+	return json_decode($output, TRUE);
+}
+
+function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
+	$allFeedback = array();
+	$destRecords = Download::recordIds($destToken, $server);
+	if (!empty($destRecords)) {
+		$feedback = deleteRecords($destToken, $server, $destRecords);
+		$output = json_encode($feedback);
+		error_log("Delete project: ".count($destRecords)." records: $output");
+		array_push($allFeedback, $feedback);
+	}
+
+	resetRepeatingInstruments($srcToken, $server, $destToken, $server);
+
+	$feedback = Upload::metadata(cleanOutJSONs($metadata), $destToken, $server);
+	$calcFields = getFieldsOfType($metadata, "calc");
+	$timeFields = getFieldsOfType($metadata, "text", "datetime_ymd");
+
+	$records = Download::cohortRecordIds($srcToken, $server, $metadata, $cohort);
+	foreach ($records as $record) {
+		$recordData = Download::records($srcToken, $server, array($record));
+		$newRecordData = array();
+		foreach ($recordData as $row) {
+			$newRow = array();
+			foreach ($row as $field => $value) {
+				if (!in_array($field, $calcFields) && !in_array($field, $timeFields)) {
+					$newRow[$field] = $value;
+				}
+			}
+			if (!empty($newRow)) {
+				array_push($newRecordData, $newRow);
+			}
+		}
+		if (!empty($newRecordData)) {
+			$feedback = Upload::rows($newRecordData, $destToken, $server);
+			error_log("Copy project: Record $record: ".json_encode($feedback));
+			array_push($allFeedback, $feedback);
+		}
+	}
+	return $allFeedback;
+}
+
 
 
 require_once(dirname(__FILE__)."/cronLoad.php");

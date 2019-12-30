@@ -177,6 +177,14 @@ function generateDataColumns($recordData) {
 						if ($row[$field]) {
 							# manual - no computed sourcetype
 							$colors[$field] = "purple";
+						} else if (Scholar::isDependentOnAcademia($field)) {
+							if (Scholar::isOutsideAcademe($row['identifier_left_job_category'])) {
+								$values[$field] = "N/A";
+								$colors[$field] = "grey";
+							} else {
+								$values[$field] = "Absent";
+								$colors[$field] = "red";
+							}
 						} else {
 							$values[$field] = "Absent";
 							$colors[$field] = "red";
@@ -269,7 +277,7 @@ foreach ($fields as $field => $title) {
 		$addlFields[] = $field."_source";
 	}
 }
-$nameFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_left_date");
+$nameFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_left_date", "identifier_left_job_category");
 $shortSummaryFields = array_unique(array_merge($nameFields, $addlFields));
 $filteredSummaryFields = \Vanderbilt\FlightTrackerExternalModule\filterFields($shortSummaryFields, $metadata);
 

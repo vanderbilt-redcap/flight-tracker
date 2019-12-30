@@ -88,7 +88,7 @@ class FollowupGrantFactory extends GrantFactory {
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
 				$grant->setVariable('start', $row['followup_grant'.$i.'_start']);
 				$grant->setVariable('end', $row['followup_grant'.$i.'_end']);
-				$grant->setVariable('source', "scholars");
+				$grant->setVariable('source', "followup");
 				$costs = Grant::removeCommas($row['followup_grant'.$i.'_costs']);
 				$grant->setVariable('budget', Grants::totalCostsFromDirect($costs, $awardno, $row['followup_grant'.$i.'_start']));
 				// $grant->setVariable('fAndA', Grants::getFAndA($awardno, $row['followup_grant'.$i.'_start']));

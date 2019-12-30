@@ -32,13 +32,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$this->setupApplication();
 		$pids = $this->framework->getProjectsWithModuleEnabled();
 		error_log($this->getName()." sending emails for pids ".json_encode($pids));
-		echo $this->getName()." sending emails for pids ".json_encode($pids)."\n";
 		foreach ($pids as $pid) {
 			$token = $this->getProjectSetting("token", $pid);
 			$server = $this->getProjectSetting("server", $pid);
 			$tokenName = $this->getProjectSetting("tokenName", $pid);
 			error_log("Sending emails for $tokenName (pid $pid)");
-			echo "Sending emails for $tokenName (pid $pid)\n";
 			$mgr = new EmailManager($token, $server, $pid, $this);
 			$mgr->sendRelevantEmails();
 		}

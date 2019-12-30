@@ -1280,8 +1280,6 @@ class Grant {
 			return "R01 Equivalent";
 		} else if (preg_match("/^\d?IK2[BC]X/", $awardNo)) {
 			return "K Equivalent";
-		} else if (preg_match("/^\d?P30/", $awardNo)) {
-			return "R01 Equivalent";
 		} else if (preg_match("/^\d?R37/", $awardNo)) {
 			return "R01 Equivalent";
 		} else if (preg_match("/Internal K/", $awardNo)) {

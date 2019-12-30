@@ -76,7 +76,7 @@ foreach ($fields as $field) {
 		$addlFields[] = $field."_source";
 	}
 }
-$nameFields = array("record_id", "identifier_last_name", "identifier_first_name");
+$nameFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_left_job_category");
 $shortSummaryFields = array_unique(array_merge($nameFields, $addlFields));
 
 $orders = Scholar::getDefaultOrder("all");
@@ -135,6 +135,11 @@ function generateWorksheetColumns($data, $orders, $metadata) {
 		if (in_array($field, $skip)) {
 			continue;
 		}
+		$jobCategory = findValue("identifier_left_job_category", $data);
+		if (Scholar::isDependentOnAcademia($field) && Scholar::isOutsideAcademe($jobCategory)) {
+			continue;
+		}
+
 		$order = $scholar->getOrder($defaultOrder, $field);
 		$metadataRow = \Vanderbilt\FlightTrackerExternalModule\getMetadataRow($field, $metadata);
 		$fieldLabel = $metadataRow['field_label'];

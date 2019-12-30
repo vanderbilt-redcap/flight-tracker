@@ -1,6 +1,13 @@
 <?php
 
+use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\Download;
+
+require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../small_base.php");
+require_once(dirname(__FILE__)."/../classes/Upload.php");
+require_once(dirname(__FILE__)."/../classes/Download.php");
+require_once(APP_PATH_DOCROOT."Classes/Records.php");
 
 # This script copies the master project to a test project
 
@@ -16,12 +23,6 @@ if ($argv[1] == "prodtest") {
 } else if ($argv[1] == "backup") {
 	$info['test']['token'] = $info['prod']['token'];
 	$info['test']['server'] = $info['prod']['server'];
-
-	// $info['prod']['token'] = "2C91720C83191C9AB471CBDE0D404094";
-	// $info['prod']['token'] = "EF5C8DAF7632F8AEFD7C606B841A2D80";
-	// $info['prod']['token'] = "52E9090FA1E19EE7FE2656D6B13AEA22";
-	// $info['prod']['token'] = "43EB01029FB59E0DAFC893B3EA9BC265";
-	$info['prod']['token'] = "4CE353DA1F2348C4D09F4D1826709782";
 }
 
 $selectRecord = "";
@@ -33,152 +34,39 @@ echo "DESTINATION: ".$info['test']['server']."\n";
 echo "DESTINATION: ".$info['test']['token']."\n";
 echo "\n";
 
-# get source's metadata
-$data = array(
-    'token' => $info['prod']['token'],
-    'content' => 'metadata',
-    'format' => 'json',
-    'returnFormat' => 'json'
-);
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $info['prod']['server']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_VERBOSE, 0);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-$output = curl_exec($ch);
-curl_close($ch);
+$feedback = resetRepeatingInstruments($info['prod']['token'], $info['prod']['server'], $info['test']['token'], $info['test']['server']);
+$output = json_encode($feedback);
+echo "Copied repeating instruments: ".$output."\n";
 
-$metadata = json_decode($output, true);
+# get source's metadata
+$metadata = Download::metadata($info['prod']['token'], $info['prod']['server']);
 echo "Downloaded metadata ".count($metadata)."\n";
 
 # upload to test's metadata
-$data = array(
-    'token' => $info['test']['token'],
-    'content' => 'metadata',
-    'format' => 'json',
-    'data' => json_encode($metadata),
-    'returnFormat' => 'json'
-);
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $info['test']['server']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_VERBOSE, 0);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-$output = curl_exec($ch);
-curl_close($ch);
-
+$feedback = Upload::metadata($info['test']['token'], $info['test']['server']);
+$output = json_encode($feedback);
 echo "Uploaded metadata $output\n";
 
 # get source's record id's
-$data = array(
-    'token' => $info['prod']['token'],
-    'content' => 'record',
-    'format' => 'json',
-    'type' => 'flat',
-    'fields' => array("record_id"),
-    'rawOrLabel' => 'raw',
-    'rawOrLabelHeaders' => 'raw',
-    'exportCheckboxLabel' => 'false',
-    'exportSurveyFields' => 'false',
-    'exportDataAccessGroups' => 'false',
-    'returnFormat' => 'json'
-);
+$prodRecords = Download::recordIds($info['prod']['token'], $info['prod']['server']);
 if ($selectRecord) {
-	$data['records'] = array($selectRecord);
-}
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $info['prod']['server']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_VERBOSE, 0);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-$output = curl_exec($ch);
-curl_close($ch);
-$prodData = json_decode($output, true);
-$prodRecords = array();
-foreach ($prodData as $row) {
-	if (!in_array($row['record_id'], $prodRecords)) {
-		$prodRecords[] = $row['record_id'];
+	if (in_array($selectRecord, $prodRecords)) {
+		$prodRecords = array($selectRecord);
+	} else {
+		$prodRecords = array();
 	}
 }
 
 # get count of test records
-$data = array(
-    'token' => $info['test']['token'],
-    'content' => 'record',
-    'format' => 'json',
-    'type' => 'flat',
-    'fields' => array("record_id"),
-    'rawOrLabel' => 'raw',
-    'rawOrLabelHeaders' => 'raw',
-    'exportCheckboxLabel' => 'false',
-    'exportSurveyFields' => 'false',
-    'exportDataAccessGroups' => 'false',
-    'returnFormat' => 'json'
-);
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $info['test']['server']);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_VERBOSE, 0);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-$output = curl_exec($ch);
-curl_close($ch);
-$testData = json_decode($output, true);
-$testRecords = array();
-foreach ($testData as $row) {
-	if (!in_array($row['record_id'], $testRecords)) {
-		$testRecords[] = $row['record_id'];
-	}
-}
+$testRecords = Download::recordIds($info['test']['token'], $info['test']['server']);
 
 echo "List of ".count($prodRecords)." on prod and ".count($testRecords)." on test\n";
 
 # delete from test
 if ((count($testRecords) > 0) && (!$selectRecord)) {
 	echo "Deleting records on test...\n";
-	
-	$data = array(
-		'token' => $info['test']['token'],
-		'action' => 'delete',
-		'records' => $testRecords,
-		'content' => 'record'
-	);
-	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL, $info['test']['server']);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-	curl_setopt($ch, CURLOPT_VERBOSE, 0);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-	$output = curl_exec($ch);
-	curl_close($ch);
+	$feedback = deleteRecords($info['test']['token'], $info['test']['server']);
+	$output = json_encode($feedback);
 	echo "Deleted records on test: $output\n";
 }
 
@@ -200,33 +88,7 @@ for ($i = 0; $i < count($prodRecords); $i += $pullSize) {
 	}
 	if (($count != '50') || ($i === 0)) {
 		echo "$i. Download ".$n." of $totalPulls\n";
-		$data = array(
-			'token' => $info['prod']['token'],
-			'content' => 'record',
-			'format' => 'json',
-			'type' => 'flat',
-			'records' => $records,
-			'rawOrLabel' => 'raw',
-			'rawOrLabelHeaders' => 'raw',
-			'exportCheckboxLabel' => 'false',
-			'exportSurveyFields' => 'false',
-			'exportDataAccessGroups' => 'false',
-			'returnFormat' => 'json'
-		);
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $info['prod']['server']);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, 0);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-		$output = curl_exec($ch);
-		curl_close($ch);
-		$pullData = json_decode($output, true);
+		$pullData = Download::records($info['prod']['token'], $info['prod']['server'], $records);
 		echo "$i. Downloaded ".count($pullData)." rows\n";
 
 		$skip = array("followup_complete");
@@ -241,30 +103,8 @@ for ($i = 0; $i < count($prodRecords); $i += $pullSize) {
 			array_push($pushData, $pushRow);
 		}
 
-		$data = array(
-			'token' => $info['test']['token'],
-			'content' => 'record',
-			'format' => 'json',
-			'type' => 'flat',
-			'overwriteBehavior' => 'normal',
-			'data' => json_encode($pushData),
-			'returnContent' => 'count',
-			'returnFormat' => 'json'
-		);
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $info['test']['server']);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, 0);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-		$output = curl_exec($ch);
-		echo "$i. Upload ".$n." of $totalPulls: $output\n";
-		error_log("$i. Upload ".$n." of $totalPulls: $output");
-		curl_close($ch);
+		$feedback = Upload::rows($pushData, $info['test']['token'], $info['test']['server']);
+		error_log("$i. Upload ".$n." of $totalPulls: ".json_encode($feedback));
 	}
 } 
+Records::addRecordToRecordListCache();

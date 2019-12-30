@@ -36,18 +36,20 @@ if ($_POST['process'] == "check") {
 		foreach ($metadata as $type => $metadataRows) {
 			$fieldList[$type] = array();
 			foreach ($metadataRows as $row) {
-				array_push($fieldList[$type], $row['field_name']);
+				$fieldList[$type][$row['field_name']] = $row['select_choices_or_calculations'];
 			}
 		}
 
 		$missing = array();
 		$additions = array();
-		foreach ($fieldList["file"] as $field) {
-			if (!in_array($field, $fieldList["REDCap"])) {
+		foreach ($fieldList["file"] as $field => $choiceStr) {
+			if (!isset($fieldList["REDCap"][$field])) {
 				array_push($missing, $field);
 				if (!preg_match("/___delete$/", $field) && !preg_match("/^coeus_/", $field)) {
 					array_push($additions, $field);
 				}
+			} else if ($choiceStr && $fieldList["REDCap"][$field] && ($choiceStr != $fieldList["REDCap"][$field])) {
+				array_push($missing, $field);
 			}
 		}
 
@@ -105,21 +107,25 @@ function mergeMetadata($existingMetadata, $newMetadata, $fields) {
 	$selectedRows = getFields($newMetadata, $fields);
 	foreach ($selectedRows as $newRow) {
 		if (!in_array($newRow['field_name'], $fieldsToDelete)) {
-			$prior = "record_id";
+			$priorRowField = "record_id";
 			foreach ($newMetadata as $row) {
 				if ($row['field_name'] == $newRow['field_name']) {
 					break;
 				} else {
-					$prior = $row['field_name'];
+					$priorRowField = $row['field_name'];
 				}
 			}
 			$tempMetadata = array();
+			$priorNewRowField = "";
 			foreach ($existingMetadata as $row) {
 				if (!preg_match("/___delete$/", $row['field_name']) && !in_array($row['field_name'], $fieldsToDelete)) {
-					array_push($tempMetadata, $row);
+					if ($priorNewRowField != $row['field_name']) {
+						array_push($tempMetadata, $row);
+					}
 				}
-				if (($prior == $row['field_name']) && !preg_match("/___delete$/", $newRow['field_name'])) {
+				if (($priorRowField == $row['field_name']) && !preg_match("/___delete$/", $newRow['field_name'])) {
 					array_push($tempMetadata, $newRow);
+					$priorNewRowField = $newRow['field_name'];
 				}
 			}
 			$existingMetadata = $tempMetadata;

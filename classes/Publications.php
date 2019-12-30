@@ -274,16 +274,16 @@ class Publications {
 			}
 			$output = self::pullFromEFetch($pmidsToPull);
 			$mssg = json_decode($output, true);
-			$tries = 1;
+			$tries = 0;
 			$maxTries = 10;
 			$numSecs = 60;
 			while ($mssg && $mssg['error'] && ($tries < $maxTries)) {
+				$tries++;
 				Publications::throttleDown($numSecs);
 				$output = self::pullFromEFetch($pmidsToPull);
 				$mssg = json_decode($output, true);
-				$tries++;
 			}
-			if ($tries >= $maxTries) {
+			if ($mssg && ($tries >= $maxTries)) {
 				throw new \Exception("Cannot pull from eFetch! Attempted $tries times. ".$output);
 			}
 
