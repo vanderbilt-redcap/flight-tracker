@@ -43,7 +43,7 @@ $metadata = Download::metadata($info['prod']['token'], $info['prod']['server']);
 echo "Downloaded metadata ".count($metadata)."\n";
 
 # upload to test's metadata
-$feedback = Upload::metadata($info['test']['token'], $info['test']['server']);
+$feedback = Upload::metadata($metadata, $info['test']['token'], $info['test']['server']);
 $output = json_encode($feedback);
 echo "Uploaded metadata $output\n";
 

@@ -254,7 +254,7 @@ class Download {
 		$redcapData = self::sendToServer($server, $data);
 		$ordered = array();
 		foreach ($redcapData as $row) {
-			$ordered[$row['identifier_last_name'].", ".$row['identifier_first_name']] = $row;
+			$ordered[$row['identifier_last_name'].", ".$row['identifier_first_name']." ".$row['record_id']] = $row;
 		}
 		ksort($ordered);
 

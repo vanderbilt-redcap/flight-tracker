@@ -43,10 +43,10 @@
 		},
 		{
 			"cron_name": "flight_tracker_emails",
-			"cron_description": "Flight Tracker Emails; runs every 15 minutes",
+			"cron_description": "Flight Tracker Emails; runs every minute",
 			"method": "emails",
-			"cron_frequency": "900",
-			"cron_max_run_time": "60"
+			"cron_frequency": "60",
+			"cron_max_run_time": "600"
 		}
 	],
 

@@ -43,7 +43,7 @@ class Scholar {
 
 	public static function addSourceType($module, $code, $sourceType, $pid) {
 		if ($module) {
-			$data = $module->getProjectSettine(SOURCETYPE_FIELD, $pid);
+			$data = $module->getProjectSetting(SOURCETYPE_FIELD, $pid);
 			if (!$data) {
 				$data = array();
 			}

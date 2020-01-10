@@ -75,7 +75,6 @@ if (isset($_GET['uploadOrder'])) {
 <?php
 }
 	echo "<h1>Configure ".CareerDev::getProgramName()."</h1>\n";
-	echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
 
 if (count($_POST) > 0) {
 	if (isset($_GET['order'])) {
@@ -115,8 +114,8 @@ if (count($_POST) > 0) {
 			echo "<p class='red centered'>You must specify the text, a value for its code, and a type.</p>\n";
 		}
 	} else {
+		$lists = array();
 		foreach ($_POST as $key => $value) {
-			$lists = array();
 			if (($key == "departments") || ($key == "resources")) {
 				$lists[$key] = $value;
 			} else {
@@ -272,11 +271,12 @@ function makeOrder($metadata = array()) {
 	$html .= "<p class='centered'>To add a new data source, you must create a code for it (no spaces [like <code>initial_survey</code>], then name it, and then select its type (computer-generated, self-reported, or manually entered). It will appear in existing data sources only when it is assigned to a field in the Source-of-Truth configuration below.</p>\n";
 	$html .= "</td></tr>\n";
 	$html .= "<tr>\n";
-	$html .= "<td style='vertical-align: top;'>\n";
-	$html .= "<h3>Data Sources in Use</h3>\n";
+	$html .= "<td style='vertical-align: top; width: 50%;'>\n";
+	$html .= "<h3>Default Data Sources</h3>\n";
+	$html .= "<p class='centered'>These are included by Flight Tracker by default. Custom data sources are shown in the dropdowns for a <b>New Source</b> below.</p>\n";
 	$html .= implode("<br>\n", $existingChoicesTexts);
 	$html .= "</td>\n";
-	$html .= "<td style='vertical-align: top;'><form method='POST' action='".CareerDev::link("config.php")."&order'>\n";
+	$html .= "<td style='vertical-align: top; width: 50%;'><form method='POST' action='".CareerDev::link("config.php")."&order'>\n";
 	$html .= "<h3>Add a Custom Data Source</h3>\n";
 	$html .= "<p class='centered'>Code: <input type='text' name='code' value=''><br>\n";
 	$html .= "Name: <input type='text' name='text' value=''><br>\n";
@@ -419,6 +419,7 @@ function makeSettings($module) {
 	array_push($ary["Installation Variables"], makeSetting("cities", "text", "City or Cities"));
 	array_push($ary["Installation Variables"], makeSetting("departments", "textarea", "Department Names"));
 	array_push($ary["Installation Variables"], makeSetting("resources", "textarea", "Resources"));
+	array_push($ary["Installation Variables"], makeSetting("send_error_logs", "yesno", "Report Fatal Errors to Development Team?"));
 
 	$ary["Automated Emails"] = array();
 	array_push($ary["Automated Emails"], makeHelperText("An initial email can automatically be sent out during the first month after the new record is added to the database. If you desire to use this feature, please complete the following fields."));
@@ -450,6 +451,7 @@ function makeHelperText($str) {
 function makeSetting($var, $type, $label, $default = "") {
 	$value = CareerDev::getSetting($var);
 	$html = "";
+	$spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 	if (($type == "text") || ($type == "number")) {
 		$html .= "<tr>";
 		$html .= "<td style='text-align: right;'>";
@@ -460,8 +462,26 @@ function makeSetting($var, $type, $label, $default = "") {
 				$value = $default;
 			}
 		}
-		$html .= "</td><td>";
+		$html .= "</td><td style='text-align: left;'>";
 		$html .= "<input type='$type' name='$var' value='$value'>\n";
+		$html .= "</td>";
+		$html .= "</tr>";
+	} else if ($type == "yesno") {
+		if ($value == "0") {
+			$selected0 = " selected";
+			$selected1 = "";
+		} else {
+			$selected0 = "";
+			$selected1 = " selected";
+		}
+
+		$html .= "<tr>";
+		$html .= "<td style='text-align: right;'>";
+		$html .= $label;
+		$html .= "</td><td style='text-align: left;'>";
+		$html .= "<input type='radio' name='$var' id='$var"."___0' value='0'$selected0><label for='$var"."___0'> No</label>\n";
+		$html .= $spacing;
+		$html .= "<input type='radio' name='$var' id='$var"."___1' value='1'$selected1><label for='$var"."___1'> Yes</label>\n";
 		$html .= "</td>";
 		$html .= "</tr>";
 	} else if ($type == "textarea") {

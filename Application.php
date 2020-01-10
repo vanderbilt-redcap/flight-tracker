@@ -11,6 +11,10 @@ class Application {
 		return CareerDev::getPID($token);
 	}
 
+	public static function getFeedbackEmail() {
+		return "scott.j.pearson@vumc.org";
+	}
+
 	public static function getInstitutions() {
 		return CareerDev::getInstitutions();
 	}
@@ -32,6 +36,10 @@ class Application {
 	}
 	public static function link($loc) {
 		return CareerDev::link($loc);
+	}
+
+	public static function getSetting($field) {
+		return CareerDev::getSetting($field);
 	}
 
 	public static $institutionFields = array(

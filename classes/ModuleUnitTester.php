@@ -109,7 +109,7 @@ class ModuleUnitTester
 	public function assertNotBlank($str) {
 		$bool = ($str !== "");
 		if ($bool) {
-			$this->currResults[$this->count] = "assertNotBlank TRUE";
+			$this->currResults[$this->count] = "assertNotBlank TRUE '$str'";
 		} else {
 			$this->currResults[$this->count] = "assertNotBlank FALSE: '$str' is blank";
 		}

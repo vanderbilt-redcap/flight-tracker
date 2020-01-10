@@ -66,8 +66,34 @@ class EmailManager {
 
 	# default is all names and to the actual 'to' emails
 	# $to, if specified, denotes a test email
+	# prepares one email per recipient per setting-name specified (in other words, prepares many emails)
 	public function prepareRelevantEmails($to = "", $names = array()) {
 		return $this->enqueueRelevantEmails($to, $names, "prepareEmail");
+	}
+
+	# names contain the names of the email setting(s) to test
+	# prepares one email per setting-name specified
+	public function prepareSummaryTestEmail($to, $names) {
+		if (!is_array($names)) {
+			$names = array($names);
+		}
+		$func = "prepareOneEmail";
+
+		$results = array();
+		foreach ($this->data as $name => $emailSetting) {
+			if (in_array($name, $names) || empty($names)) {
+				$results[$name] = array();
+				$when = $emailSetting["when"];
+				foreach ($when as $type => $datetime) {
+					if ($type == "initial_time") {
+						$ts = self::transformToTS($datetime);
+						$result = $this->$func($emailSetting, $name, $type, $to);
+						$results[$name][$type] = $result;
+					}
+				}
+			}
+		}
+		return $results;
 	}
 
 	public function sendPreparedEmails($messages, $isTest = FALSE) {
@@ -110,11 +136,14 @@ class EmailManager {
 		return $ts;
 	}
 
-	private function enqueueRelevantEmails($to = "", $names = array(), $func = "sendEmail") {
+	private function enqueueRelevantEmails($to = "", $names = array(), $func = "sendEmail", $currTime = FALSE) {
 		if (!is_array($names)) {
 			$names = array($names);
 		}
 		$results = array();
+		if (!$currTime) {
+			$currTime = time();
+		}
 		foreach ($this->data as $name => $emailSetting) {
 			if (in_array($name, $names) || empty($names)) {
 				if ($emailSetting['enabled'] || ($func == "prepareEmail")) {
@@ -130,7 +159,7 @@ class EmailManager {
 								$result = $this->$func($emailSetting, $name, $type, $to);
 							}
 						} else {
-							if (self::afterAllTimestamps($ts, $sent) && self::within15MinutesAfter($ts, $_SERVER["REQUEST_TIME_FLOAT"])) {
+							if (date("Y-m-d H:i", $ts) == date("Y-m-d H:i", $_SERVER['REQUEST_TIME_FLOAT'])) {
 								$result = $this->$func($emailSetting, $name, $type);
 							}
 						}
@@ -271,6 +300,20 @@ class EmailManager {
 		return $forms;
 	}
 
+	private function prepareOneEmail($emailSetting, $settingName, $whenType, $toField = "who") {
+		$data = $this->prepareEmail($emailSetting, $settingName, $whenType, $toField);
+		$numMssgs = count($data['mssgs']);
+		if ($numMssgs > 0) {
+			$recordId = reset(array_keys($data['mssgs']));
+		}
+		if ($recordId) {
+			$data['mssgs'] = array($recordId => $data['mssgs'][$recordId]);
+			$data['subjects'] = array($recordId => "Sample Email (of $numMssgs total): ".$data['subjects'][$recordId]);
+			$data['to'] = array($recordId => $data['to'][$recordId]);
+		}
+		return $data;
+	}
+
 	private function prepareEmail($emailSetting, $settingName, $whenType, $toField = "who") {
 		$data = array();
 		$rows = $this->getRows($who, $whenType, $this->getForms($emailSetting["what"]));
@@ -345,7 +388,8 @@ class EmailManager {
 				"instances" => $newInstances,
 				);
 		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, Application::link("emailMgmt/makeSurveyLinks.php"));
+		$url = Application::link("emailMgmt/makeSurveyLinks.php");
+		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch, CURLOPT_VERBOSE, 0);
@@ -357,7 +401,11 @@ class EmailManager {
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = curl_exec($ch);
 		curl_close($ch);
-		return json_decode($output, TRUE);
+		if ($returnList = json_decode($output, TRUE)) {
+			return $returnList;
+		} else {
+			return $output;
+		}
 	}
 
 	private function getMessages($what, $recordIds, $names, $lastNames) {
@@ -437,8 +485,8 @@ class EmailManager {
 					$mssgs[$recordId] = str_replace("[last_name]", $lastNames[$recordId], $mssgs[$recordId]);
 				}
 			}
-			$mssgs[$recordId] = str_replace("<p><br></p>", "<br>", $mssgs[$recordId]);
 			$mssgs[$recordId] = str_replace("</p><p>", "<br>", $mssgs[$recordId]);
+			$mssgs[$recordId] = str_replace("<p><br></p>", "<br>", $mssgs[$recordId]);
 			$mssgs[$recordId] = str_replace("<br><br><br>", "<br><br>", $mssgs[$recordId]);
 		}
 
@@ -617,7 +665,11 @@ class EmailManager {
 			$created = array();
 			$queue = array_keys($identifiers);
 			$filterFields = array(
+						"affiliations",
+						"primary_affiliation",
 						"department",
+						"paf",
+						"research_admin",
 						"role",
 						"building",
 						"grad_teaching",
@@ -720,12 +772,20 @@ class EmailManager {
 
 	public static function getFieldAssociatedWithFilter($whoFilter) {
 		switch($whoFilter) {
+			case "affiliations":
+				return "summary_affiliations";
+			case "primary_affiliation":
+				return "summary_primary_affiliation";
 			case "department":
-				return "identifier_department";
+				return "summary_department";
+			case "paf":
+				return "summary_paf";
+			case "research_admin":
+				return "summary_research_admin";
 			case "role":
-				return "survey_role";
+				return "summary_role";
 			case "building":
-				return "survey_building";
+				return "summary_building";
 			case "grad_teaching":
 				return "survey_graduate_students";
 			case "med_student_teaching":
@@ -979,12 +1039,202 @@ class EmailManager {
 		$newQueue = array();
 		foreach ($queue as $recordId) {
 			foreach ($redcapData as $row) {
-				if (($recordId == $row['record_id']) && ($row[$field] === $value)) {
-					array_push($newQueue, $recordId);
+				if (is_array($value)) {
+					if (empty($value)) {
+						# select all
+						array_push($newQueue, $recordId);
+					} else if (($recordId == $row['record_id']) && in_array($row[$field], $value)) {
+						array_push($newQueue, $recordId);
+					}
+				} else {
+					if (($recordId == $row['record_id']) && ($row[$field] === $value)) {
+						array_push($newQueue, $recordId);
+					}
 				}
 			}
 		}
 		return $newQueue;
+	}
+
+	private function setupTestData() {
+		$emailSetting = self::getBlankSetting();
+
+		$surveys = $this->getSurveys();
+		$firstSurvey = "";
+		foreach ($surveys as $form => $title) {
+			$firstSurvey = $form;
+		}
+
+		$oneDayLater = date("Y-m-d H:i", time() + 24 * 3600);
+
+		$testEmailAddress = "scott.j.pearson@vumc.org";
+		$emailSetting["who"]["individuals"] = array($testEmailAddress);
+		$emailSetting["who"]["from"] = $testEmailAddress;
+		$emailSetting["what"]["message"] = "Last Name: [last_name]<br>Full Name: [name]<br>Link: [survey_link_$firstSurvey]"; 
+		$emailSetting["what"]["subject"] = "Test Subject";
+		$emailSetting["when"]["initial_time"] = $oneDayLater;
+
+		$this->data = array();
+		$this->data['test'] = $emailSetting;
+	}
+
+	public function prepareEmail_test($tester) {
+		// function prepareEmail($emailSetting, $settingName, $whenType, $toField = "who")
+		$this->setupTestData();
+		$settingName = "test";
+		$emailData = $this->prepareEmail($this->data[$settingName], $settingName, "initial_time"); 
+		$emailMessages = $emailData["mssgs"];
+		$tester->assertNotEqual(count($emailMessages), 0);
+		$tester->assertTrue(isset($emailData["from"]), "from ".json_encode($emailData["from"]));
+		$this->checkEmailData($tester, $emailData, "prepareEmail_test");
+	}
+
+	public function checkEmailMessages($tester, $emailMessages, $referringFunc) {
+		$res = array(
+				"/^Last Name: [^\[]+/",
+				"/^Full Name: [^\[]+/",
+				"/^Link: [^\[]+/",
+				);
+		foreach ($emailMessages as $recordId => $mssg) {
+			$lines = preg_split("/<br>/", $mssg);
+			foreach ($res as $re) {
+				$found = FALSE;
+				foreach ($lines as $line) {
+					if (preg_match($re, $line)) {
+						$found = TRUE;
+						break;
+					}
+				}
+				$tester->assertTrue($found, "Record $recordId: ".$re." ".implode("-BR-", $lines)." ".$referringFunc);
+			}
+		}
+	}
+
+	# calls checkEmailMessages
+	public function checkEmailData($tester, $emailData, $referringFunc) {
+		$tester->assertEqual(array_keys($emailData["mssgs"]), array_keys($emailData["to"]));
+		$tester->assertEqual(array_keys($emailData["mssgs"]), array_keys($emailData["subjects"]));
+		$this->checkEmailMessages($tester, $emailData["mssgs"], $referringFunc);
+		foreach ($emailData["mssgs"] as $recordId => $mssg) {
+			$tester->assertTrue(isset($emailData["subjects"][$recordId]), "Record $recordId subject $referringFunc");
+			$tester->assertTrue(isset($emailData["to"][$recordId]), "Record $recordId to $referringFunc");
+		} 
+	}
+
+	public function prepareOneEmail_test($tester) {
+		// function prepareOneEmail($emailSetting, $settingName, $whenType, $toField = "who")
+		$this->setupTestData();
+		$settingName = "test";
+		$emailData = $this->prepareOneEmail($this->data[$settingName], $settingName, "initial_time"); 
+		$tester->assertEqual(count($emailData["subjects"]), 1);
+		$tester->assertEqual(count($emailData["to"]), 1);
+		$tester->assertEqual(count($emailData["mssgs"]), 1);
+		$this->checkEmailData($tester, $emailData, "prepareOneEmail_test");
+	}
+
+	public function getMessages_test($tester) {
+		// function getMessages($what, $recordIds, $names, $lastNames)
+		$this->setupTestData();
+		$settingName = "test";
+		$emailSetting = $this->data[$settingName];
+		$recordIds = Download::recordIds($this->token, $this->server);
+		$names = Download::names($this->token, $this->server);
+		$lastNames = Download::lastnames($this->token, $this->server);
+		$tester->assertEqual(count($names), count($lastNames));
+		$tester->assertEqual(count($names), count($recordIds));
+		$messages = $this->getMessages($emailSetting["what"], $recordIds, $names, $lastNames);
+		$tester->assertEqual(count($messages), count($recordIds));
+
+		$this->checkEmailMessages($tester, $messages, "getMessages_test");
+
+		$firstRecordId = array($recordIds[0]);
+		$messages2 = $this->getMessages($emailSetting["what"], $firstRecordId, $names, $lastNames);
+		$tester->assertEqual(count($messages2), count($firstRecordId));
+	}
+
+	public function enqueueRelevantEmails_test($tester) {
+		// function enqueueRelevantEmails($to = "", $names = array(), $func = "sendEmail", $currTime = FALSE)
+		$this->setupTestData();
+		$settingName = "test";
+		$invalidSettingName = "invalid_name";
+		$testEmail = "scott.j.pearson@vumc.org";
+
+		$testResults = $this->enqueueRelevantEmails($testEmail, array($settingName), "prepareEmail");
+		$incorrectResults = $this->enqueueRelevantEmails($testEmail, array($invalidSettingName), "prepareEmail");
+
+		$tester->assertTrue(isset($testResults[$settingName]), "$settingName is/isn't set!");
+		$tester->assertTrue(isset($testResults[$settingName]["initial_time"]), "$settingName's initial_time is/isn't set!");
+		$tester->assertTrue(!isset($incorrectResults[$invalidSettingName]), "$invalidSettingName is/isn't improperly set! ".json_encode($incorrectResults));
+
+		# test timing feature
+		$settingTs = strtotime($this->data[$settingName]["when"]["initial_time"]);
+		$inOneMinuteTs = strtotime($settingName["when"]["initial_time"]) + 60;
+		$inFiveMinutesTs = strtotime($settingName["when"]["initial_time"]) + 300;
+		$nowResults = $this->enqueueRelevantEmails("", array($settingName), "prepareEmail", time());
+		$launchResults = $this->enqueueRelevantEmails("", array($settingName), "prepareEmail", $settingTs);
+		$oneMinResults = $this->enqueueRelevantEmails("", array($settingName), "prepareEmail", $inOneMinuteTs);
+		$fiveMinsResults = $this->enqueueRelevantEmails("", array($settingName), "prepareEmail", $inFiveMinutesTs);
+		$tester->assertTrue(isset($nowResults[$settingName]), "results for now!");
+		$tester->assertTrue(isset($launchResults[$settingName]), "results for launch time!");
+		$tester->assertTrue(empty($oneMinResults[$settingName]), "results for launch time + one minute! ".json_encode($oneMinResults));
+		$tester->assertTrue(empty($fiveMinsResults[$settingName]), "results for launch time + five minutes! ".json_encode($fiveMinsResults));
+
+		sleep(60);
+		$nowResults = $this->enqueueRelevantEmails("", array($settingName), "prepareEmail", time());
+		$launchResults = $this->enqueueRelevantEmails("", array($settingName), "prepareEmail", $settingTs);
+		$inOneMinuteResults = $this->enqueueRelevantEmails("", array($settingName), "prepareEmail", $inOneMinuteTs);
+		$inFiveMinsResults = $this->enqueueRelevantEmails("", array($settingName), "prepareEmail", $inFiveMinutesTs);
+		$tester->assertTrue(isset($nowResults[$settingName]), "results for now!");
+		$tester->assertTrue(isset($launchResults[$settingName]), "results for launch time!");
+		$tester->assertTrue(empty($inOneMinuteResults[$settingName]), "results for launch time + 1 minute! ".json_encode($inOneMinuteResults));
+		$tester->assertTrue(empty($inFiveMinsResults[$settingName]), "results for launch time + 5 minutes! ".json_encode($inFiveMinsResults));
+	}
+
+	public function getSurveyLinks_test($tester) {
+		// static function getSurveyLinks($pid, $records, $instrument, $maxInstances = array())
+		$repeating = $this->getRepeatingForms();
+		$recordIds = Download::recordIds($this->token, $this->server);
+		$tester->assertNotBlank(Application::link("emailMgmt/makeSurveyLinks.php"));
+		foreach ($this->getSurveys() as $survey => $title) {
+			if (in_array($survey, $repeating)) {
+				$fields = array("record_id", $survey."_complete");
+				$redcapData = Download::fields($this->token, $this->server, $fields);
+				$maxInstances = array();
+				foreach ($redcapData as $row) {
+					if (!isset($maxInstances[$row['record_id']])) {
+						$maxInstances[$row['record_id']] = 0;
+					}
+					if ($row['redcap_repeat_instance'] > $maxInstances[$row['record_id']]) {
+						$maxInstances[$row['record_id']] = $row['redcap_repeat_instance'];
+					}
+				}
+				$links = self::getSurveyLinks($this->pid, $recordIds, $survey, $maxInstances);
+			} else {
+				$links = self::getSurveyLinks($this->pid, $recordIds, $survey); 
+			}
+			foreach ($recordIds as $recordId) {
+				$tester->assertTrue(isset($links[$recordId]), "Link is not set for Record $recordId ".json_encode($links));
+				$tester->assertTrue($links[$recordId] !== "", "Link is blank for Record $recordId");
+			}
+		}
+	}
+
+	public function getRepeatingForms_test($tester) {
+		$forms = $this->getRepeatingForms();
+		$instruments = \REDCap::getInstrumentNames();
+		foreach ($forms as $form) {
+			$tester->assertIn($form, array_keys($instruments));
+		}
+	}
+
+	public function getSurveys_test($tester) {
+		$instruments = \REDCap::getInstrumentNames();
+		$surveys = $this->getSurveys();
+		$tester->assertTrue(count($surveys) > 0, "Number of surveys > 0 ".json_encode($surveys));
+		$tester->assertTrue(count($instruments) >= count($surveys), "Number of instruments >= number of surveys");
+		foreach ($surveys as $survey => $title) {
+			$tester->assertIn($survey, array_keys($instruments));
+		}
 	}
 
 	private $token;

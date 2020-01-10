@@ -3,6 +3,7 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 // require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 class CronManager {
 	public function __construct($token, $server, $pid) {
@@ -65,6 +66,25 @@ class CronManager {
 		return "Y-m-d";
 	}
 
+	public static function reportCronErrors() {
+		if ($module = Application::getModule()) {
+			$adminEmail = Application::getSetting("admin_email");
+			$sendErrorLogs = Application::getSetting("send_error_logs");
+			$error = error_get_last();
+
+			$message = "Your cron job failed with the following error message:<br>";
+			$message .= 'Error Message: ' . $error['message'] . "<br>";
+			$message .= 'File: ' . $error['file'] . "<br>";
+			$message .= 'Line: ' . $error['line'] . "<br>";
+
+			if ($sendErrorLogs) {
+				$adminEmail .= ",".Application::getFeedbackEmail();
+			}
+
+			\REDCap::email($adminEmail, "noreply@vumc.org",  PROGRAM_NAME." Cron Improper Shutdown", $message);
+		}
+	}
+
 	public function run($adminEmail = "", $tokenName = "") {
 		$dayOfWeek = date("l");
 		$date = date(self::getDateFormat());
@@ -81,6 +101,9 @@ class CronManager {
 				}
 			}
 		}
+
+		register_shutdown_function("CronManager::reportCronErrors");
+
 		error_log("Running ".count($toRun)." crons for pid ".$this->pid." with keys ".json_encode($keys));
 		foreach ($toRun as $cronjob) {
 			error_log("Running ".$cronjob->getTitle());
@@ -95,6 +118,12 @@ class CronManager {
 				if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
 					throw new \Exception("Could not instantiate REDCap class!");
 				}
+
+				$sendErrorLogs = Application::getSetting("send_error_logs");
+				if ($sendErrorLogs) {
+					$adminEmail .= ",".Application::getFeedbackEmail();
+				}
+
 				\REDCap::email($adminEmail, "noreply@vumc.org", PROGRAM_NAME." Cron Error", $cronjob->getTitle()."<br><br>".$e->getMessage()."<br>".json_encode($e->getTrace()));
 				error_log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".json_encode($e->getTrace()));
 			}

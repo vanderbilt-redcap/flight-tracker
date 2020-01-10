@@ -275,7 +275,7 @@ $(document).ready(function() {
 		echo "<div id='message' style='background-color: white; z-index: 1;".($isReadonly ? " padding: 8px; font-size: 12px;" : "")."'>$mssg</div>\n";
 		echo "<input type='hidden' name='message' value=''>\n";
 
-$emailWarning = "<p class='centered'>Emails are sent in batches every 15 minutes. You may have to wait until the closest 15-minute interval for them to be sent.</p>"; 
+$emailWarning = "<p class='centered'>Emails are sent in batches. Times are approximate.</p>"; 
 
 ?>
 	</td>

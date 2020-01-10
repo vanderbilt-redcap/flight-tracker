@@ -30,7 +30,7 @@ require_once(dirname(__FILE__)."/../classes/Citation.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Scholar.php");
 
-$GLOBALS['data'] = Download::record($token, $server, array($record));
+$GLOBALS['data'] = Download::records($token, $server, array($record));
 $metadata = Download::metadata($token, $server);
 $choices = Scholar::getChoices($metadata);
 

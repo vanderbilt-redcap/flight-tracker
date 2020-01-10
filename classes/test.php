@@ -23,7 +23,7 @@
 			$myClass = preg_replace("/.php$/i", "", $file);
 
 			try {
-				$obj = new $myClass($token, $server);
+				$obj = new $myClass($token, $server, $pid);
 			} catch (Exception $e) {
 				echo $e->getMessage()."<br>";
 			}
