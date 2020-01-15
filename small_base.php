@@ -1372,6 +1372,9 @@ function makeREDCapList($text, $otherItem = FALSE) {
 	if ($otherItem) {
 		$newList[] = $otherItem.",Other";
 	}
+	if (empty($newList)) {
+		$newList[] = "999999,No Resource";
+	}
 	return implode("|", $newList);
 }
 

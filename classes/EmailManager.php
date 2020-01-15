@@ -774,6 +774,8 @@ class EmailManager {
 		switch($whoFilter) {
 			case "affiliations":
 				return "summary_affiliations";
+			case "teams":
+				return "summary_teams";
 			case "primary_affiliation":
 				return "summary_primary_affiliation";
 			case "department":

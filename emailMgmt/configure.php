@@ -9,6 +9,7 @@ require_once(dirname(__FILE__)."/../classes/EmailManager.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 
+$allowFollowups = FALSE;
 $realPost = getRealInput('POST');
 $metadata = Download::metadata($token, $server);  // must load on save and reload after save
 $hasErrors = FALSE;
@@ -275,7 +276,7 @@ $(document).ready(function() {
 		echo "<div id='message' style='background-color: white; z-index: 1;".($isReadonly ? " padding: 8px; font-size: 12px;" : "")."'>$mssg</div>\n";
 		echo "<input type='hidden' name='message' value=''>\n";
 
-$emailWarning = "<p class='centered'>Emails are sent in batches. Times are approximate.</p>"; 
+		$emailWarning = "<p class='centered'>Emails are sent in batches. Times are approximate.</p>"; 
 
 ?>
 	</td>
@@ -283,13 +284,16 @@ $emailWarning = "<p class='centered'>Emails are sent in batches. Times are appro
 
 		<h2 class='purple'>When?</h2>
 			<?= $emailWarning ?>
-			<h3 class='purple'>Initial Email</h3>
+			<h3 class='purple'>Schedule Email</h3>
 			<?= makeDateTime("initial_time", $currSetting['when'], $isReadonly) ?>
 
-			<h3 class='purple'>Follow-Up Email (Optional; Only to Non-Respondants)</h3>
-			<?= makeDateTime("followup_time", $currSetting['when'], $isReadonly) ?>
 
 <?php
+		if ($allowFollowups) {
+			echo "<h3 class='purple'>Follow-Up Email (Optional; Only to Non-Respondants)</h3>\n";
+			echo makeDateTime("followup_time", $currSetting['when'], $isReadonly)."\n";
+		}
+
 		if (($currSetting != EmailManager::getBlankSetting()) && !$currSetting['enabled']) {
 			$testStyle = "";
 			$intro = "Re-";

@@ -853,6 +853,7 @@ class Scholar {
 								"followup_division" => "followup",
 								"check_division" => "scholars",
 								"override_division" => "manual",
+								"vfrs_division" => "vfrs",
 								);
 		$orders["summary_current_rank"] = array(
 							"promotion_rank" => "manual",
@@ -866,6 +867,7 @@ class Scholar {
 							"followup_academic_rank_dt" => "followup",
 							"check_academic_rank_dt" => "scholars",
 							"override_position_start" => "manual",
+							"vfrs_when_did_this_appointment" => "vfrs",
 							);
 		$orders["summary_current_tenure"] = array(
 								"followup_tenure_status" => "followup",
@@ -1191,10 +1193,10 @@ class Scholar {
 							$currTs = strtotime($date);
 							if ($currTs > $latestTs) {
 								$latestTs = $currTs;
-								$result = new Result($row[$var], $source, "", $date, $pid);
+								$result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
 							}
 						} else if (!$latestTs) {
-							$result = new Result($row[$var], $source, "", "", $pid);
+							$result = new Result(self::transformIfDate($row[$var]), $source, "", "", $pid);
 							$latestTs = 1; // nominally low value
 						}
 					} else {
@@ -1202,11 +1204,11 @@ class Scholar {
 							# get earliest instance - i.e., lowest repeat_instance
 							if (!$aryInstance
 								|| ($aryInstance > $row['redcap_repeat_instance'])) {
-								$result = new Result($row[$var], $source, "", $date, $pid);
+								$result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
 								$aryInstance = $row['redcap_repeat_instance'];
 							}
 						} else {
-							return new Result($row[$var], $source, "", $date, $pid);
+							return new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
 						}
 					}
 				}
@@ -1219,6 +1221,21 @@ class Scholar {
 			return $result;
 		}
 		return new Result("", "");
+	}
+
+	private static function transformIfDate($value) {
+		if (preg_match("/^(\d+)[\/\-](\d\d\d\d)$/", $value, $matches)) {
+			# MM/YYYY
+			$month = $matches[1];
+			$year = $matches[2];
+			$day = "01";
+			return $year."-".$month."-".$day;
+			
+		} else if (preg_match("/^\d+[\/\-]\d+[\/\-]\d\d\d\d$/", $value)) {
+			# MM/DD/YYYY
+			return self::convertToYYYYMMDD($value);
+		}
+		return $value;
 	}
 
 	public function getInstitutionText() {

@@ -276,7 +276,7 @@ class Publications {
 			$mssg = json_decode($output, true);
 			$tries = 0;
 			$maxTries = 10;
-			$numSecs = 60;
+			$numSecs = 300; // five minutes? 60;
 			while ($mssg && $mssg['error'] && ($tries < $maxTries)) {
 				$tries++;
 				Publications::throttleDown($numSecs);
