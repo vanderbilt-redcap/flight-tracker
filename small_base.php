@@ -1472,7 +1472,6 @@ function queueUpInitialEmail($record) {
 				$emailSetting["what"]["message"] = $message;
 				$emailSetting["what"]["subject"] = $subject;
 				$emailSetting["when"]["initial_time"] = $dateToEmail1;
-				$emailSetting["when"]["followup_time"] = $dateToEmail2;
 				$feedback = $emailManager->saveSetting($settingName, $emailSetting);
 			}
 		}
