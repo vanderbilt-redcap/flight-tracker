@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.5.5";
+		return "2.5.6";
 	}
 
         public static function getIntroductoryFromEmail() {
@@ -359,8 +359,8 @@ class CareerDev {
 			return array(
 					"Add a New Scholar" => self::link("/addNewScholar.php"),
 					"Scholar Profiles" => self::link("/profile.php"),
-					"Configure an Email" => self::link("/emailMgmt/configure.php"),
-					"View Email Log" => self::link("/emailMgmt/log.php"),
+					// DISABLED "Configure an Email" => self::link("/emailMgmt/configure.php"),
+					// DISABLED "View Email Log" => self::link("/emailMgmt/log.php"),
 					// "Survey/Email Management" => self::link("/emailMgmt/index.php"),
 					// "Manage Email Texts" => self::link("/emailMgmt/text.php"),
 					"Add a New Survey" => self::link("/emailMgmt/add.php"),

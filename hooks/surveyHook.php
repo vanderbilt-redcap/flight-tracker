@@ -88,6 +88,11 @@ $(document).ready(function() {
 	$('#<?= $prefix ?>_not_addressed_pubs-tr').after("<tr><td colspan='3' id='publications_wrangler' style='padding-bottom: 8px;'></td></tr>");
 	$('#publications_wrangler').html(html);
 	$('#publications_wrangler').show();
+	if ($('#surveyinstructions').length > 0) {
+		$('#surveyinstructions').prepend('<img align="right" src="<?= Application::link("img/flight_tracker_logo_small.png") ?>">');
+	} else {
+		$('#surveytitlelogo').append('<img src="<?= Application::link("img/flight_tracker_logo_small.png") ?>"><br>');
+	}
 });
 </script>
 <?php

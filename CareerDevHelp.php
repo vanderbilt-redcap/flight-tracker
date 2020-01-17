@@ -229,7 +229,7 @@ class CareerDevHelp {
 		$help["Scholars"] = array(
 						"Scholar Profiles" => array("useCaseProfiles.html", "useCasePubs.html"),
 						"Add a New Scholar" => array("addScholars.html"),
-						"Email Management" => array("emailMgmt.html"),
+						"Configure an Email" => array("emailMgmt.html"),
 						);
 		$help["Dashboards"] = array(
 						"Resources" => array("useCaseResources.html"),

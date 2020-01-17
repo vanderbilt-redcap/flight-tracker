@@ -50,7 +50,7 @@ $(document).ready(function() {
 		echo "<li><b>Manually Start Collection Tonight:</b> If you want to start collecting all of your data <i>tonight</i>, <a href='javascript:;' onclick='startTonight(".$_GET['pid'].");'>click here</a>.</li>\n";
 		echo "<li><b>Menus</b> - In the meantime, explore by clicking around the menus above to see the wide array of viewing options.</li>\n";
 		echo "<li><b>Help Menu</b> - The <i>Toggle Help</i> item will show if there are any relevant help topics on your current page. The <i>Brand Your Project</i> item will allow you to put your own logo in the upper-right corner.</li>\n";
-		echo "<li><b>Emails</b> - If you wish to email your scholars an initial survey, click on <i>Scholars &rarr; Configure an Email</i>. It's recommended to wait a week or two for your data to populate until you email your scholars.</li>\n";
+		// DISABLED echo "<li><b>Emails</b> - If you wish to email your scholars an initial survey, click on <i>Scholars &rarr; Configure an Email</i>. It's recommended to wait a week or two for your data to populate until you email your scholars.</li>\n";
 		echo "<li><b>Orientation</b> - Check out the tutorials in the <i>Orientation</i> box on the lower-right.</li>\n";
 		echo "<li><b>Feedback</b> - We want to hear from you! Click on <i>Help &rarr; Feedback</i>. We can improve this software only if you let us know your thoughts!</li>\n";
 		echo "<li><b>Internal Grants</b> - Many institutions have custom grants with custom names. You can enter these as <a href='".CareerDev::link("customGrants")."'>Custom Grants</a> and build the application to categorize them properly via the <a href='".CareerDev::link("lexicalTranslator.php")."'>Lexical Translator</a>.</li>\n";

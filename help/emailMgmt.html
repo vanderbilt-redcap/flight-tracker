@@ -1,40 +1,24 @@
-<h3>Configuring Emails
+<h3>Managing Group Emails</h3>
 
-<p>Flight Tracker allows you to configure emails for certain audiences within your group of scholars and to include links to REDCap Surveys. Emails will be sent at a certain time individually, with optional name fields to customize the email for the individual scholar.</p>
+<p>On occasion, administrators need to contact a group of scholars. Other times, administrators need to send a survey to collect information such as demographics, but they don't want to over-survey their scholars.</p>
 
-<p><img src='img/emailMgmt1.png' alt='email configuration page'></p>
+<p><img src='img/emailMgmt1.png' alt='Email Management interface'></p>
 
-<h4>Specify Email Name</h4>
-<p>You must name your email with a unique name. You can pre-load information from prior emails by selecting it from the dropdown.</p>
+<p>Flight Tracker offers some basic filters to achieve this. The left-hand column contains the information about the <b>Who?</b> The first question deals with whether you want to apply a filter or manually check off individual names from a list.</p>
 
-<h4>Who?</h4>
-<p>The <b>From Email Address</b> must be specified. An example would by <code>joe.user@vumc.org</code>.</p>
+<p>A filter will present you with a list of questions to answer. To avoid “over-surveying,” many of these questions deal with how often you have surveyed a given scholar. Another set of filters groups scholars by grant status, such as one that includes only those currently on a K grant,  or those who have not yet converted to an R01-or -equivalent grant regardless of whether they currently have a K or not.</p>
 
-<p>In addition, by answering a few questions about your intended audience (i.e., the <b>To</b>), you can filter your list of scholars to only those who fit certain characteristics. Factors to filter are as follows:</p>
+<p>The list of names currently a part of your group will show. The system will recalculate the list <b>at the scheduled time of the email</b> to ensure even scholars who have newly become part of that group are included.</p>
 
-<ul>
-<li><b>Individual(s) vs. Filtered Group</b>: Selecting <i>Individual(s)</i> will provide you with checkboxes for each individual so as to select the scholars; selecting a <i>Filtered Group</i> will allow you to specify characteristics of a group.
-<li><b>All vs. Some</b>: Selecting <i>All</i> scholars will email your entire population. Selecting <i>Some</i> scholars will provide a few more questions.
-<li><b>Have Any Surveys Been Completed?</b> Selecting <i>No</i> will only email scholars who have never completed a survey. Selecting <i>Yes</i> will provide another question.
-<ul><li><b>The Scholar Hasn’t Filled Out a Survey in Last X Months</b>: You can provide this number. It must be a whole number. This allows you to screen out people who have recently communicated.</li></ul>
-<li><b>What are the Maximum Number of Emails a Scholar Can Receive?</b> Selecting <i>Unlimited</i> will select everyone. Selecting <i>Limit to Number</i> will provide you with a follow-up question.</li>
-<ul><li><b>X Emails</b>: You can provide this number. It must be a whole number. Those who have received this number of emails will not receive another email.</li></ul>
-<li><b>Has the Scholar Received an R01-or-Equivalent Grant?</b> Selecting <i>No</i> will allow you to address all scholars on the K phase of their career. Selecting <i>Yes</i> will allow you to address all scholars who are on the R phase (i.e., converted) of their career. Selecting <i>Doesn’t Matter</i> will address everyone.</li>
-</ul>
+<p>The <b>What?</b> section consists of an email subject and an email message. The following fields can be piped into a message from your data: name, last name, and a personalized link to a survey.</p>
 
-<h4>What?</h4>
-<p>The <b>Subject</b> specifies the subject of the email.</p>
+<p>The <b>When?</b> section allows you to schedule your email. This time is approximate as REDCap will send the emails after all of its other tasks have completed. Most times, this process only delays a send by a few seconds.</p>
 
-<p>There is a box with rich-text formatting for you to type in the body of the email. You can insert the following fields:</p>
+<p>You will have to <b>Advance the Process</b> by staging the email in order to test it. This process consists of three steps.</p>
 
-<ul>
-<li>A <b>Survey Link</b> to a particular survey. Any REDCap survey in the project can be linked, including the ones you add yourself. <i>It is recommended to send out one email per survey.</i></li>
-<li>The <b>Name</b> (full first name and last name) of the scholar</li>
-</ul>
-
-<h4>When?</h4>
-<p>The <b>Initial Email</b> time can be selected. We have our best response rates on Tuesdays, Wednesdays, and Thursdays. This will automatically queue the mass email up.</p>
-
-<p>If desired, a <b>Follow-Up Email</b> can be scheduled to send to non-respondents. Those who have not responded will receive an email with identical text to the first. Those who have responded will not receive any more communication.</p>
-
+<ol>
+<li>The first step saves the email in order to stage it.</li>
+<li>The second step sends a group of emails to you (or some other email address) in order to test it. Because customized name and survey-link fields can be used, one email per participant on the list will be sent to you. (Be prepared for a lot of emails if your list is long.) We suggest testing the links in five-to-ten percent of the emails to ensure that the links and the data-piping are working as expected.</li>
+<li>After the emails have been tested, you can press <b>Activate Emails & Enqueue to Send</b>. This enables the email to be processed. <b>If you do not complete this step, your email will not be sent!</b></li>
+</ol>
 

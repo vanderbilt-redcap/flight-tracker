@@ -42,6 +42,19 @@ class Download {
 		return array();
 	}
 
+	# if $forms is empty, download all forms
+	public static function formMetadata($token, $server, $forms = array()) {
+		$metadata = self::metadata($token, $server);
+
+		$filtered = array();
+		foreach ($metadata as $row) {
+			if (empty($forms) || in_array($row['form_name'], $forms)) {
+				array_push($filtered, $row);
+			}
+		}
+		return $filtered;
+	}
+
 	public static function metadata($token, $server, $fields = array()) {
 		error_log("Download::metadata");
 		$data = array(

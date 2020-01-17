@@ -1598,6 +1598,13 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
 	return $allFeedback;
 }
 
-
+function getQuestionsForForm($token, $server, $form) {
+	$formMetadata = Download::formMetadata($token, $server, array($form));
+	$labels = array();
+	foreach ($formMetadata as $row) {
+		array_push($labels, $row['field_label']);
+	}
+	return $labels;
+}
 
 require_once(dirname(__FILE__)."/cronLoad.php");
