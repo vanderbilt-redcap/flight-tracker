@@ -11,6 +11,7 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/Grants.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 abstract class GrantFactory {
 	public function __construct($name, $lexicalTranslator) {
@@ -131,18 +132,11 @@ class NewmanGrantFactory extends GrantFactory {
 		return $yearOfNewTs.$restOfTs;
 	}
 
-	private static function getInternalKLength() {
-		return 3;
-	}
-
-	private static function getExternalKLength() {
-		return 5;
-	}
-
 	private function processNewmanData($row) {
 		global $pid, $event_id;
-		$internalKAwardLength = self::getInternalKLength();
-		$externalKAwardLength = self::getExternalKLength();
+		$internalKAwardLength = Application::getInternalKLength();
+		$externalKAwardLength = Application::getIndividualKLength();
+		$k12kl2AwardLength = Application::getK12KL2Length();
 
 		$ary = array();
 		$date1 = "";
@@ -155,23 +149,37 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
 				$grant->setVariable('pi_flag', "Y");
 				$grant->setVariable('start', $date1);
-				$grant->setVariable('end', self::addYearsToDate($date1, $internalKAwardLength));
 				$grant->setVariable('budget', 0);
 				$grant->setVariable('direct_budget', 0);
 				$grant->setVariable('source', "data");
 				$grant->setVariable('sponsor_type', $type);
 				$grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=data", "See Grant"));
+
+				$include = FALSE;
+				$isk12kl2 = FALSE;
 				if (preg_match("/K12/", $type) || preg_match("/KL2/", $type)) {
 					$grant->setNumber($type);
+					$include = TRUE;
+					$isk12kl2 = TRUE;
 				} else {
 					if ($type) {
 						$grant->setNumber($type);
+						$include = TRUE;
 					} else {
-						$grant->setNumber("Internal K - Rec. {$row['record_id']}");
+						$grant->setNumber("K12/KL2 - Rec. {$row['record_id']}");
+						$include = FALSE;
+						$isk12kl2 = TRUE;
 					}
 				}
-				$grant->putInBins();
-				array_push($this->grants, $grant);
+				if ($isk12kl2) {
+					$grant->setVariable('end', self::addYearsToDate($date1, $k12kl2AwardLength));
+				} else {
+					$grant->setVariable('end', self::addYearsToDate($date1, $internalKAwardLength));
+				}
+				if ($include) {
+					$grant->putInBins();
+					array_push($this->grants, $grant);
+				}
 			}
 		}
 	
@@ -269,8 +277,9 @@ class NewmanGrantFactory extends GrantFactory {
 	private function processSheet2($row) {
 		global $pid, $event_id;
 
-		$internalKAwardLength = self::getInternalKLength();
-		$externalKAwardLength = self::getExternalKLength();
+		$internalKAwardLength = Application::getInternalKLength();
+		$k12kl2AwardLength = Application::getK12KL2Length();
+		$externalKAwardLength = Application::getIndividualKLength();
 
 		$internalKDate = "";
 		if (!preg_match("/none/", $row['newman_sheet2_institutional_k_start'])) {
@@ -281,24 +290,39 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant = new Grant($this->lexicalTranslator);
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
 				$grant->setVariable('start', $internalKDate);
-				$grant->setVariable('end', self::addYearsToDate($internalKDate, $internalKAwardLength));
 				$grant->setVariable('source', "sheet2");
 				$grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=sheet2", "See Grant"));
 				$grant->setVariable('budget', 0);
 				$grant->setVariable('direct_budget', 0);
 				$grant->setVariable('sponsor_type', $type);
+
+				$include = FALSE;
+				$isk12kl2 = FALSE;
 				if (preg_match("/K12/", $type) || preg_match("/KL2/", $type)) {
 					$grant->setNumber($type);
+					$include = TRUE;
+					$isk12kl2 = TRUE;
 				} else {
 					if ($specs['sponsor_type']) {
 						$grant->setNumber($type);
+						$include = TRUE;
+						$isk12kl2 = FALSE;
 					} else {
-						$grant->setNumber("Internal K - Rec. {$row['record_id']}");
+						$grant->setNumber("K12/KL2 - Rec. {$row['record_id']}");
+						$include = FALSE;
+						$isk12kl2 = TRUE;
 					}
 				}
-				$grant->setVariable('pi_flag', "Y");
-				$grant->putInBins();
-				array_push($this->grants, $grant);
+				if ($isk12kl2) {
+					$grant->setVariable('end', self::addYearsToDate($internalKDate, $k12kl2AwardLength));
+				} else {
+					$grant->setVariable('end', self::addYearsToDate($internalKDate, $internalKAwardLength));
+				}
+				if ($include) {
+					$grant->setVariable('pi_flag', "Y");
+					$grant->putInBins();
+					array_push($this->grants, $grant);
+				}
 			}
 		}
 
@@ -364,8 +388,9 @@ class NewmanGrantFactory extends GrantFactory {
 		global $pid, $event_id;
 		$internalKDate = "";
 
-		$internalKAwardLength = self::getInternalKLength();
-		$externalKAwardLength = self::getExternalKLength();
+		$internalKAwardLength = Application::getInternalKLength();
+		$externalKAwardLength = Application::getIndividualKLength();
+		$k12kl2AwardLength = Application::getK12KL2Length();
 
 		if (!preg_match("/none/", $row['newman_new_first_institutional_k_award'])) {
 			$internalKDate = $row['newman_new_first_institutional_k_award'];
@@ -374,21 +399,39 @@ class NewmanGrantFactory extends GrantFactory {
 			$grant = new Grant($this->lexicalTranslator);
 			$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
 			$grant->setVariable('start', $internalKDate);
-			$grant->setVariable('end', self::addYearsToDate($internalKDate, $internalKAwardLength));
 			$grant->setVariable('source', "new2017");
 			$grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=new_2017", "See Grant"));
 			$grant->setVariable('budget', 0);
 			$grant->setVariable('direct_budget', 0);
 			$sponsorType = $row["newman_new_current_program_funding"];
 			$grant->setVariable('sponsor_type', $sponsorType);
+
+			$include = FALSE;
+			$isk12kl2 = FALSE;
 			if ($sponsorType) {
 				$grant->setNumber($sponsorType);
+				$include = TRUE;
+				if (preg_match("/K12/", $sponsorType) || preg_match("/KL2/", $sponsorType)) {
+					$isk12kl2 = TRUE;
+				} else {
+					$isk12kl2 = FALSE;
+				}
 			} else {
-				$grant->setNumber("Internal K - Rec. {$row['record_id']}");
+				$grant->setNumber("K12/KL2 - Rec. {$row['record_id']}");
+				$include = FALSE;
+				$isk12kl2 = TRUE;
 			}
-			$grant->setVariable('pi_flag', "Y");
-			$grant->putInBins();
-			array_push($this->grants, $grant);
+
+			if ($isk12kl2) {
+				$grant->setVariable('end', self::addYearsToDate($internalKDate, $k12kl2AwardLength));
+			} else {
+				$grant->setVariable('end', self::addYearsToDate($internalKDate, $internalKAwardLength));
+			}
+			if ($include) {
+				$grant->setVariable('pi_flag', "Y");
+				$grant->putInBins();
+				array_push($this->grants, $grant);
+			}
 		}
 	
 		$noninstDate = "";

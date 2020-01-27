@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+require_once(dirname(__FILE__)."/../Application.php");
 
 # This class runs unit-testing across a class. It runs all methods within the class that are suffixed with _test.
 # The UnitTester class is passed as the first argument to these _test methods. The UnitTester instance will run
@@ -84,7 +85,7 @@ class UnitTester
 	public function assertNotNull($obj) {
 		$bool = ($obj !== NULL);
 		if ($bool) {
-			$this->currResults[$this->count] = $this->tag."assertNotNull TRUE"; 
+			$this->currResults[$this->count] = $this->tag."assertNotNull TRUE $obj"; 
 		} else {
 			$this->currResults[$this->count] = $this->tag."assertNotNull FALSE: $obj is NULL"; 
 		}
@@ -96,7 +97,7 @@ class UnitTester
 	public function assertEqual($a, $b) {
 		$bool = ($a == $b);
 		if ($bool) {
-			$this->currResults[$this->count] = $this->tag."assertEqual TRUE"; 
+			$this->currResults[$this->count] = $this->tag."assertEqual TRUE $a"; 
 		} else {
 			$this->currResults[$this->count] = $this->tag."assertEqual FALSE: $a != $b"; 
 		}
@@ -108,7 +109,7 @@ class UnitTester
 	public function assertTripleEqual($a, $b) {
 		$bool = ($a === $b);
 		if ($bool) {
-			$this->currResults[$this->count] = $this->tag."assertTripleEqual TRUE"; 
+			$this->currResults[$this->count] = $this->tag."assertTripleEqual TRUE $a"; 
 		} else {
 			$this->currResults[$this->count] = $this->tag."assertTripleEqual FALSE: $a !== $b"; 
 		}

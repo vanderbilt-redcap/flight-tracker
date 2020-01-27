@@ -4,6 +4,7 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/Grant.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 # performs 1:1 case-insensitive comparisons
 
@@ -60,11 +61,11 @@ class GrantLexicalTranslator {
 		$awardNoLc = strtolower($awardNo);
 		foreach ($this->data as $key => $value) {
 			if (strpos($awardNoLc, strtolower($key)) !== FALSE) {
-				// error_log("Returning $value ($key) for $awardNo");
+				// Application::log("Returning $value ($key) for $awardNo");
 				return $value;
 			}
 		}
-		// error_log("Returning blank for $awardNo");
+		// Application::log("Returning blank for $awardNo");
 		return "";
 	}
 

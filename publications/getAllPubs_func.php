@@ -53,7 +53,7 @@ function getPubs($token, $server, $pid) {
 		binREDCapRows($redcapData, $citationIds);
 	}
 	foreach ($citationIds as $type => $typeCitationIds) {
-		error_log("citationIds[$type] has ".count($typeCitationIds));
+		CareerDev::log("citationIds[$type] has ".count($typeCitationIds));
 		echo "citationIds[$type] has ".count($typeCitationIds)."\n";
 	}
 	unset($redcapData);
@@ -99,7 +99,7 @@ function removeDuplicates($token, $server, $rows, $recordId) {
 			$pmid = $row['citation_pmid'];
 			if (in_array($pmid, $alreadySeen)) {
 				$instance = $row['redcap_repeat_instance'];
-				error_log("Duplicate in record $recordId (instance $instance)!");
+				CareerDev::log("Duplicate in record $recordId (instance $instance)!");
 				echo "Duplicate in record $recordId (instance $instance)!\n";
 				$uploadRow = array(
 							"record_id" => $row['record_id'],
@@ -118,7 +118,7 @@ function removeDuplicates($token, $server, $rows, $recordId) {
 function processUncategorizedRow($token, $server, $row) {
 	$pmid = $row['citation_pmid'];
 	if ($pmid) {
-		error_log("Uncategorized row: {$row['record_id']}:{$row['redcap_repeat_instance']} $pmid");
+		CareerDev::log("Uncategorized row: {$row['record_id']}:{$row['redcap_repeat_instance']} $pmid");
 		echo "Uncategorized row: {$row['record_id']}:{$row['redcap_repeat_instance']} $pmid\n";
 		$iCite = new iCite($pmid);
 		if ($iCite->getVariable("is_research_article")) {
@@ -161,9 +161,9 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server) {
 		$pubmedData = $pubmedConnect->getData();
 		$pubmedConnect->close();
 
-		error_log(count($pubmedData['outcomepubs'])." Pubs entries downloaded");
-		error_log(count($pubmedData['outcomepubmatches'])." PubMatches entries downloaded");
-		error_log(count($pubmedData['pubmed_publications'])." PubMedPubs entries downloaded");
+		CareerDev::log(count($pubmedData['outcomepubs'])." Pubs entries downloaded");
+		CareerDev::log(count($pubmedData['outcomepubmatches'])." PubMatches entries downloaded");
+		CareerDev::log(count($pubmedData['pubmed_publications'])." PubMedPubs entries downloaded");
 		echo count($pubmedData['outcomepubs'])." Pubs entries downloaded\n";
 		echo count($pubmedData['outcomepubmatches'])." PubMatches entries downloaded\n";
 		echo count($pubmedData['pubmed_publications'])." PubMedPubs entries downloaded\n";
@@ -206,7 +206,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server) {
 	$batchSize = 200;
 	foreach ($pubmedData['outcomepubs'] as $row) {
 		if ($i % $batchSize === 0) {
-			error_log("Looking at row $i of $iTotal: ".json_encode($row));
+			CareerDev::log("Looking at row $i of $iTotal: ".json_encode($row));
 			echo "Looking at row $i of $iTotal: ".json_encode($row)."\n";
 			if (!empty($upload)) {
 				upload($upload, $token, $server);
@@ -235,11 +235,11 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server) {
 					}
 					array_push($citationIds['Final'][$recordId], $newCitationId);
 				} else {
-					error_log("$i/$iTotal. Skipping because matched: ".$row['USR_VUNET']." PMID: ".$newCitationId);
+					CareerDev::log("$i/$iTotal. Skipping because matched: ".$row['USR_VUNET']." PMID: ".$newCitationId);
 					echo "$i/$iTotal. Skipping because matched: ".$row['USR_VUNET']." PMID: ".$newCitationId."\n";
 				}
 			} else {
-				error_log("Count not find record for vunet ".$row['USR_VUNET']);
+				CareerDev::log("Count not find record for vunet ".$row['USR_VUNET']);
 				echo "Count not find record for vunet ".$row['USR_VUNET']."\n";
 			}
 		}
@@ -292,10 +292,10 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server) {
 							$firstName .= "+".$middle;
 						}
 						$institution = preg_replace("/\s+/", "+", $institution);
-						error_log("Searching $lastName $firstName at $institution");
+						CareerDev::log("Searching $lastName $firstName at $institution");
 						echo "Searching $lastName $firstName at $institution\n";
 						$url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=100000&retmode=json&term=".$firstName."+".$lastName."+%5Bau%5D+AND+".strtolower($institution)."%5Bad%5D";
-						error_log($url);
+						CareerDev::log($url);
 						echo $url."\n";
 						$ch = curl_init();
 						curl_setopt($ch, CURLOPT_URL, $url);
@@ -331,7 +331,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server) {
 				}
 			}
 		}
-		error_log("$recordId at ".count($pmids)." PMIDs");
+		CareerDev::log("$recordId at ".count($pmids)." PMIDs");
 		echo "$recordId at ".count($pmids)." PMIDs\n";
 
 
@@ -348,7 +348,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server) {
 }
 
 function upload($upload, $token, $server) {
-	error_log("In function upload with ".count($upload)." rows");
+	CareerDev::log("In function upload with ".count($upload)." rows");
 	echo "In function upload with ".count($upload)." rows\n";
 	$uploadSize = 1;
 	$j = 0;
@@ -397,7 +397,7 @@ function binREDCapRows($redcapData, &$citationIds) {
 			}
 
 			if ($type) {
-				// error_log("Pushing {$row['citation_pmid']} to $type:$recordId");
+				// CareerDev::log("Pushing {$row['citation_pmid']} to $type:$recordId");
 				array_push($citationIds[$type][$recordId], $row['citation_pmid']);
 			} else {
 				throw new \Exception("Could not find type for record {$recordId}.");
@@ -417,7 +417,7 @@ function inCitationIds($citationIds, $pmid, $recordId) {
 
 function clearAllCitations($pid, $records) {
 	foreach ($records as $record) {
-		error_log("Clearing record $record in $pid");
+		CareerDev::log("Clearing record $record in $pid");
 		echo "Clearing record $record in $pid\n";
 		$sql = "DELETE FROM redcap_data WHERE field_name LIKE 'citation_%' AND project_id = '".db_real_escape_string($pid)."' AND record = '".db_real_escape_string($record)."'";
 		db_query($sql);

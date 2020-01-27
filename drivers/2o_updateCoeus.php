@@ -17,14 +17,14 @@ define("NOAUTH", "true");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 	
 function processCoeus($token, $server, $pid) {
-	error_log("Step 1");
+	CareerDev::log("Step 1");
 	pullCoeus($token, $server, $pid);
-	error_log("Step 1 done");
-	error_log("Step 2");
+	CareerDev::log("Step 1 done");
+	CareerDev::log("Step 2");
 	processFiles($token, $server, $pid);
-	error_log("Step 2 done");
+	CareerDev::log("Step 2 done");
 	updateCoeus($token, $server, $pid);
-	error_log("Step 3 done");
+	CareerDev::log("Step 3 done");
 }
 
 function updateCoeus($token, $server, $pid) {
@@ -35,9 +35,9 @@ function updateCoeus($token, $server, $pid) {
 	# combines some repeated code from 2a and others. It's not entirely important to centralize one copy of this
 	# code as most of this code is the only reliable copy of it. 2a and others were used only in the past.
 
-	error_log(date("Y-m-d"));
-	error_log("SERVER: ".$server);
-	error_log("TOKEN: ".$token);
+	CareerDev::log(date("Y-m-d"));
+	CareerDev::log("SERVER: ".$server);
+	CareerDev::log("TOKEN: ".$token);
 	
 	$refreshHaroldMoses = true;
 	
@@ -58,17 +58,17 @@ function updateCoeus($token, $server, $pid) {
 			array_push($pullRecordIds, $allRecordIds[$j]);
 		}
 		$redcapData = Download::records($token, $server, $pullRecordIds);
-		error_log($pullNumber." Got project data (".count($redcapData).") for pull ".$pullNumber." of ".$numPulls);
+		CareerDev::log($pullNumber." Got project data (".count($redcapData).") for pull ".$pullNumber." of ".$numPulls);
 
 		if (!$noChange) {
-			error_log($pullNumber." make dated backup of original data");
+			CareerDev::log($pullNumber." make dated backup of original data");
 			// $fp = fopen("/app001/www-logs/career_dev/backup.".date("Ymd-his").".json", "a");
 			// foreach ($redcapData as $row) {
 				// fwrite($fp, json_encode($row)."\n");
 			// }
 			// fclose($fp);
 		} else {
-			error_log($pullNumber." Skipping backup");
+			CareerDev::log($pullNumber." Skipping backup");
 		}
 
 		$initialCounts = getCoeusRowCount($redcapData);
@@ -128,7 +128,7 @@ function updateCoeus($token, $server, $pid) {
 					if ($awardNo && $awardSeq) {
 						$awards[$awardNo."___".$awardSeq] = array("prefix" => $form, "award_no" => $awardNo, "award_seq" => $awardSeq, "DATA" => json_encode($row));
 					} else {
-						error_log($pullNumber." Does not have award_no $awardNo and award_seq $awardSeq");
+						CareerDev::log($pullNumber." Does not have award_no $awardNo and award_seq $awardSeq");
 					}
 				} else {
 					$personName = $row['coeus_person_name'];
@@ -157,7 +157,7 @@ function updateCoeus($token, $server, $pid) {
 			}
 		}
 		unset($awards);
-		error_log($pullNumber." Uploading COEUS Information");
+		CareerDev::log($pullNumber." Uploading COEUS Information");
 
 		# match
 		$skip = array("vfrs", "coeus");
@@ -187,9 +187,9 @@ function updateCoeus($token, $server, $pid) {
 						}
 					}
 					if (!$proceed) {
-						// error_log($pullNumber." $prefix DUPLICATE at $firstName1 $firstName2 $lastName1 $lastName2");
+						// CareerDev::log($pullNumber." $prefix DUPLICATE at $firstName1 $firstName2 $lastName1 $lastName2");
 					} else if (skip($firstName1, $lastName1)) {
-						// error_log($pullNumber." $prefix SKIP at $firstName1 $lastName1");
+						// CareerDev::log($pullNumber." $prefix SKIP at $firstName1 $lastName1");
 					} else {
 						foreach ($names as $prefix2 => $rows2) {
 							if ($prefix2 == "coeus") {
@@ -204,7 +204,7 @@ function updateCoeus($token, $server, $pid) {
 											$uploadTypes[] = "coeus";
 										}
 									} else {
-										error_log($pullNumber." Skipping {$uploadRow['coeus_person_name']}");
+										CareerDev::log($pullNumber." Skipping {$uploadRow['coeus_person_name']}");
 									}
 								}
 							}
@@ -212,7 +212,7 @@ function updateCoeus($token, $server, $pid) {
 	
 						if ((count($upload) < count($coeus[$row['record_id']]))) {
 							if ($refreshHaroldMoses && (strtolower($lastName1) == "moses") && (strtolower($firstName1) == "harold")) {
-								error_log($pullNumber." Refreshing Harold Moses by not uploading");
+								CareerDev::log($pullNumber." Refreshing Harold Moses by not uploading");
 							} else {
 								// Rule: Only add, never subtract
 								$restored[$row['record_id']] = count($upload);
@@ -243,11 +243,11 @@ function updateCoeus($token, $server, $pid) {
 			}
 		
 			if (count($queue) > 0) {
-				// error_log(json_encode($queue)."");
+				// CareerDev::log(json_encode($queue)."");
 				$feedback = Upload::rows($queue, $token, $server);
 				$output = json_encode($feedback);
 
-				error_log($pullNumber." Upload ".count($queue)." rows: $output");
+				CareerDev::log($pullNumber." Upload ".count($queue)." rows: $output");
 
 				$uploadedNames = array();
 				foreach ($queue as $row) {
@@ -255,21 +255,21 @@ function updateCoeus($token, $server, $pid) {
 						$uploadedNames[] = $row['coeus_person_name'];
 					}
 				}
-				error_log($pullNumber." uploadedNames: ".json_encode($uploadedNames)."");
+				CareerDev::log($pullNumber." uploadedNames: ".json_encode($uploadedNames)."");
 
 				$queue = array();
 			}
-			error_log($pullNumber." $numRows rows uploaded into ".count($records)." records");
+			CareerDev::log($pullNumber." $numRows rows uploaded into ".count($records)." records");
 		}
 	}
 
-	error_log($pullNumber." ".count($unmatchedInvestigators)." unmatched investigators");
+	CareerDev::log($pullNumber." ".count($unmatchedInvestigators)." unmatched investigators");
 	$fp = fopen("/app001/www/redcap/plugins/career_dev/unmatched.investigator.json", "a");
 	foreach($unmatchedInvestigators as $code => $row) {
 		fwrite($fp, json_encode($row)."\n");
 	}
 	fclose($fp);
-	error_log($pullNumber." ".count($unmatchedAwards)." unmatched awards");
+	CareerDev::log($pullNumber." ".count($unmatchedAwards)." unmatched awards");
 	$fp = fopen("/app001/www/redcap/plugins/career_dev/unmatched.award.json", "w");
 	foreach($unmatchedAwards as $code => $row) {
 		fwrite($fp, json_encode($row)."\n");
@@ -287,25 +287,25 @@ function updateCoeus($token, $server, $pid) {
 			$finalNames[$row['record_id']] = $row["identifier_first_name"]." ".$row['identifier_last_name'];
 		}
 	}
-	error_log($pullNumber." COEUS Updated on CareerDev");
-	error_log($pullNumber." ".count($unmatchedAwards)." unmatched awards");
-	error_log($pullNumber." ".count($unmatchedInvestigators)." unmatched investigators");
-	error_log($pullNumber." COUNTS INCREASED");
+	CareerDev::log($pullNumber." COEUS Updated on CareerDev");
+	CareerDev::log($pullNumber." ".count($unmatchedAwards)." unmatched awards");
+	CareerDev::log($pullNumber." ".count($unmatchedInvestigators)." unmatched investigators");
+	CareerDev::log($pullNumber." COUNTS INCREASED");
 	foreach ($initialCounts as $recordId => $initialCount) {
 		if (!$noChange && ($initialCount < $finalCounts[$recordId])) {
-			error_log($pullNumber." ".Links::makeDataWranglingLink(66635, $finalNames[$recordId], $recordId)." changed from $initialCount to {$finalCounts[$recordId]}");
+			CareerDev::log($pullNumber." ".Links::makeDataWranglingLink(66635, $finalNames[$recordId], $recordId)." changed from $initialCount to {$finalCounts[$recordId]}");
 		} else if ($noChange && ($initialCount < $imaginaryCounts[$recordId])) {
-			error_log($pullNumber." ".Links::makeDataWranglingLink(66635, $finalNames[$recordId], $recordId)." changed from $initialCount to {$imaginaryCounts[$recordId]}");
+			CareerDev::log($pullNumber." ".Links::makeDataWranglingLink(66635, $finalNames[$recordId], $recordId)." changed from $initialCount to {$imaginaryCounts[$recordId]}");
 		}
 	}
-	error_log($pullNumber." PRESERVED OLD DATA (New data < Old data)");
+	CareerDev::log($pullNumber." PRESERVED OLD DATA (New data < Old data)");
 	foreach ($initialCounts as $recordId => $initialCount) {
 		if (isset($restored[$recordId])) {
-			error_log($pullNumber." ".Links::makeDataWranglingLink(66635, $finalNames[$recordId], $recordId, TRUE)." remained at $initialCount (new: {$restored[$recordId]})");
+			CareerDev::log($pullNumber." ".Links::makeDataWranglingLink(66635, $finalNames[$recordId], $recordId, TRUE)." remained at $initialCount (new: {$restored[$recordId]})");
 		}
 	}
 	if (empty($initialCounts)) {
-		error_log($pullNumber." No new data is available.");
+		CareerDev::log($pullNumber." No new data is available.");
 	}
 	
 	CareerDev::saveCurrentDate("Last COEUS Download");
@@ -534,14 +534,14 @@ function combineRows($row, $row2) {
 			$combinedData[$field] = $value;
 		}
 	} else {
-		error_log("Error decoding ".json_encode($row2)."");
+		CareerDev::log("Error decoding ".json_encode($row2)."");
 	}
 	if ($rowData) {
 		foreach ($rowData as $field => $value) {
 			$combinedData[$field] = $value;
 		}
 	} else {
-		error_log("Error decoding ".json_encode($row)."");
+		CareerDev::log("Error decoding ".json_encode($row)."");
 	}
 
 	$combined['prefix'] = array();

@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+require_once(dirname(__FILE__)."/../Application.php");
 
 class LDAP {
 	public static function getLDAPByMultiple($types, $values)

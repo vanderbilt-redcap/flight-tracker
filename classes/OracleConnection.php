@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+require_once(dirname(__FILE__)."/../Application.php");
 
 abstract class OracleConnection {
 	public function connect() {
@@ -9,8 +10,8 @@ abstract class OracleConnection {
 		if (!$this->connection) {
 			throw new \Exception("Unable to connect: ".$this->getUserId()." ".$this->getServer()." ".json_encode(oci_error()));
 		}
-		error_log("Has connection to ".$this->getUserId()." ".$this->getPassword()." ".$this->getServer());
-		error_log("oci_error: ".json_encode(oci_error()));
+		Application::log("Has connection to ".$this->getUserId()." ".$this->getPassword()." ".$this->getServer());
+		Application::log("oci_error: ".json_encode(oci_error()));
 	}
 
 	# returns the data in an array
@@ -19,8 +20,8 @@ abstract class OracleConnection {
 		if (!$this->connection) {
 			throw new \Exception("Unable to connect! ".json_encode(oci_error()));
 		}
-		error_log("Has connection to ".$this->getServer());
-		error_log("oci_error: ".json_encode(oci_error()));
+		Application::log("Has connection to ".$this->getServer());
+		Application::log("oci_error: ".json_encode(oci_error()));
 
 		$stmt = oci_parse($this->connection, $sql);
 		if (!$stmt) {
@@ -28,7 +29,7 @@ abstract class OracleConnection {
 		}
 
 		$result = oci_execute($stmt);
-		error_log("Statement returned ".oci_num_rows($stmt)." rows");
+		Application::log("Statement returned ".oci_num_rows($stmt)." rows");
 		if (!$result) {
 			throw new \Exception("Unable to execute statement. ".json_encode(oci_error($stmt)));
 		}
@@ -62,15 +63,15 @@ class VICTRPubMedConnection extends OracleConnection {
 	public function __construct() {
 		$file = dirname(__FILE__)."/../victrPubMedDB.php";
 		if (file_exists($file)) {
-			error_log("Using $file");
+			Application::log("Using $file");
 			require($file);
 		} else {
 			$file = dirname(__FILE__)."/../../../plugins/career_dev/victrPubMedDB.php";
 			if (file_exists($file)) {
-				error_log("Using $file");
+				Application::log("Using $file");
 				require($file);
 			} else {
-				error_log("Could not find files!");
+				Application::log("Could not find files!");
 			}
 		}
 

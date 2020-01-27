@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.5.6";
+		return "2.6.0";
 	}
 
         public static function getIntroductoryFromEmail() {
@@ -18,6 +18,24 @@ class CareerDev {
         public static function getEmailName($record) {
                 return "initial_survey_$record";
         }
+
+	public static function log($mssg, $pid = FALSE) {
+		$module = self::getModule();
+		if ($module) {
+			if (!$pid) {
+				$pid = self::getPid();
+			}
+			if ($pid) {
+				$params = array("project_id" => $pid);
+				$module->log($mssg, $params);
+				error_log($pid.": ".$mssg);
+			} else {
+				error_log($mssg);
+			}
+		} else {
+			error_log($mssg);
+		}
+	}
 
 	public static function isREDCap() {
 		$rootPage = $_SERVER['PHP_SELF'];
@@ -55,10 +73,14 @@ class CareerDev {
 		if ($token) {
 			return self::getPidFromToken($token);
 		}
+		if (self::$pid) {
+			return self::$pid;
+		}
 		if ($_GET['pid']) {
+			# least reliable because REDCap can sometimes change this value in other crons
 			return $_GET['pid'];
 		}
-		return self::$pid;
+		return NULL;
 	}
 
 	public static function getGeneralSettingName() {
@@ -398,6 +420,7 @@ class CareerDev {
 					"Search Publications" => self::link("/search/publications.php"),
 					"Configure Application" => self::link("/config.php"),
 					"Configure Summaries" => self::link("/config.php")."&order",
+					"Logging" => self::link("/log/index.php"),
 					"Custom Programming" => self::link("/changes/README.md"),
 					);
 			if (self::isViDERInstalledForProject()) {
@@ -1451,5 +1474,5 @@ class CareerDev {
 						"summary_calculate_to_import",
 						);
 
-	private static $pid = NULL;
+	private static $pid = "";
 }

@@ -1462,6 +1462,13 @@ function queueUpInitialEmail($record) {
 		$emailManager = new EmailManager($token, $server, $pid, NULL, $metadata);
 		$settingName = CareerDev::getEmailName($record);
 		if (!$emailManager->hasItem($settingName)) {
+                        $links = EmailManager::getSurveyLinks($pid, array($record), "initial_survey");
+                        if ($isset($links[$record])) {
+                                $link = $links[$record];
+                        } else {
+                                $link = "";
+                                throw new \Exception("Could not make initial survey link for $name!");
+                        }
 			$message = CareerDev::getSetting("init_message");
 			$from = CareerDev::getSetting("init_from");
 			$subject = CareerDev::getSetting("init_subject");
@@ -1535,27 +1542,30 @@ function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServe
 }
 
 function deleteRecords($token, $server, $records) {
-	$data = array(
-		'token' => $token,
-		'action' => 'delete',
-		'content' => 'record',
-		'records' => $records
-	);
-	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL, $server);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-	curl_setopt($ch, CURLOPT_VERBOSE, 0);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-	$output = curl_exec($ch);
-	curl_close($ch);
+	if (!empty($records)) {
+		$data = array(
+			'token' => $token,
+			'action' => 'delete',
+			'content' => 'record',
+			'records' => $records
+		);
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $server);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_VERBOSE, 0);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+		$output = curl_exec($ch);
+		curl_close($ch);
 
-	return json_decode($output, TRUE);
+		return json_decode($output, TRUE);
+	}
+	return array();
 }
 
 function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
@@ -1564,7 +1574,7 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
 	if (!empty($destRecords)) {
 		$feedback = deleteRecords($destToken, $server, $destRecords);
 		$output = json_encode($feedback);
-		error_log("Delete project: ".count($destRecords)." records: $output");
+		CareerDev::log("Delete project: ".count($destRecords)." records: $output");
 		array_push($allFeedback, $feedback);
 	}
 
@@ -1591,7 +1601,7 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
 		}
 		if (!empty($newRecordData)) {
 			$feedback = Upload::rows($newRecordData, $destToken, $server);
-			error_log("Copy project: Record $record: ".json_encode($feedback));
+			CareerDev::log("Copy project: Record $record: ".json_encode($feedback));
 			array_push($allFeedback, $feedback);
 		}
 	}

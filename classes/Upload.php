@@ -12,7 +12,7 @@ require_once(dirname(__FILE__)."/Download.php");
 class Upload {
 	public static function metadata($metadata, $token, $server) {
 		if (!is_array($metadata)) {
-			error_log("Upload::metadata: first parameter should be array");
+			Application::log("Upload::metadata: first parameter should be array");
 			die();
 		}
 		if (!$token || !$server) {
@@ -42,7 +42,7 @@ class Upload {
 		$feedback = json_decode($output, TRUE);
 		self::testFeedback($feedback, $metadata);
 
-		error_log("Upload::metadata returning $output");
+		Application::log("Upload::metadata returning $output");
 		return $feedback;
 	}
 
@@ -84,7 +84,7 @@ class Upload {
 		$feedback = json_decode($output, TRUE);
 		self::testFeedback($feedback, $redcapData);
 
-		error_log("Upload::projectSettings returning $output");
+		Application::log("Upload::projectSettings returning $output");
 		return $feedback;
 	}
 
@@ -129,7 +129,7 @@ class Upload {
 
 	public static function oneRow($row, $token, $server) {
 		if (!is_array($row)) {
-			error_log("Upload::oneRow: first parameter should be array");
+			Application::log("Upload::oneRow: first parameter should be array");
 			die();
 		}
 		return self::rows(array($row), $token, $server);
@@ -157,24 +157,24 @@ class Upload {
 
 	public static function rows($rows, $token, $server) {
 		if (!is_array($rows)) {
-			error_log("Upload::rows: first parameter should be array");
-			echo "Upload::rows: first parameter should be array!\n";
+			Application::log("Upload::rows: first parameter should be array (= '$rows')");
+			echo "Upload::rows: first parameter should be array (= '$rows')!\n";
 			die();
 		}
 		if (strlen($token) != 32) {
-			error_log("Upload::rows: second parameter should be token");
-			echo "Upload::rows: second parameter should be token\n";
+			Application::log("Upload::rows: second parameter should be token (= '$token')");
+			echo "Upload::rows: second parameter should be token (= '$token')\n";
 			die();
 		}
 		if (empty($rows)) {
-			error_log("WARNING! Upload::rows input is empty!");
+			Application::log("WARNING! Upload::rows input is empty!");
 			echo "WARNING! Upload::rows input is empty!\n";
 			return "";
 		}
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
-		error_log("Upload::rows uploading ".count($rows)." rows");
+		Application::log("Upload::rows uploading ".count($rows)." rows");
 		if (count($rows) > self::getRowLimit()) {
 			$rowsOfRows = array();
 			$i = 0;
@@ -232,7 +232,11 @@ class Upload {
 				$time3 = microtime(TRUE);
 				$feedback = json_decode($output, true);
 			}
-			error_log("Upload::rows $method returning $output in ".($time3 - $time2)." seconds");
+			if ($method == "saveData") {
+				Application::log("Upload::rows $method for pid $pid returning $output in ".($time3 - $time2)." seconds");
+			} else {
+				Application::log("Upload::rows $method returning $output in ".($time3 - $time2)." seconds");
+			}
 			self::testFeedback($feedback, $rows);
 			$allFeedback = self::combineFeedback($allFeedback, $feedback);
 		}

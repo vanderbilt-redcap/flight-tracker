@@ -110,7 +110,7 @@ class Filter {
 		} else if ($type == GET_VALUE) {
 			$cats = $this->getPubCategories($rows);
 			if (!empty($cats)) {
-				error_log("career_dev: calc_pub_category: ".json_encode($cats));
+				Application::log("career_dev: calc_pub_category: ".json_encode($cats));
 			}
 			return $cats;
 		}
@@ -222,8 +222,8 @@ class Filter {
 			}
 		}
 		if (!empty($cits)) {
-			error_log("career_dev: $recordId Searching through ".count($cits)." citations");
-			error_log("career_dev: $recordId returning ".json_encode($categories));
+			Application::log("career_dev: $recordId Searching through ".count($cits)." citations");
+			Application::log("career_dev: $recordId returning ".json_encode($categories));
 		}
 		return $categories;
 	}

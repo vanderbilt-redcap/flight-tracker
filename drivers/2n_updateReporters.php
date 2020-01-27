@@ -35,7 +35,7 @@ function isNewItem($oldReporters, $item, $recordId) {
 	foreach ($oldReporters as $row) {
 		if (isset($item['projectNumber'])) {
 			if (($recordId == $row['record_id']) && ($item['projectNumber'] == $row['reporter_projectnumber']) && ($item['fy'] == $row['reporter_fy'])) {
-				error_log("$recordId skipped entry because match on {$item['projectNumber']}, {$item['fy']}");
+				CareerDev::log("$recordId skipped entry because match on {$item['projectNumber']}, {$item['fy']}");
 				return false;
 			}
 		}
@@ -45,7 +45,7 @@ function isNewItem($oldReporters, $item, $recordId) {
 
 function updateReporter($token, $server, $pid) {
 	# clear out old data
-	error_log("Clearing out old data");
+	CareerDev::log("Clearing out old data");
 	echo "Clearing out old data\n";
 	$recordIds = Download::recordIds($token, $server);
 
@@ -126,7 +126,7 @@ function updateReporter($token, $server, $pid) {
 					$try = 0;
 				}
 				$url = "https://api.federalreporter.nih.gov".$query."&offset=".($max + 1);
-				error_log($url);
+				CareerDev::log($url);
 				echo $url."\n";
 				$ch = curl_init();
 				curl_setopt($ch, CURLOPT_URL, $url);
@@ -139,7 +139,7 @@ function updateReporter($token, $server, $pid) {
 				curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 				$output = curl_exec($ch);
 				curl_close($ch);
-				// error_log($output);
+				// CareerDev::log($output);
 
 				$myData = json_decode($output, true);
 				if ($myData && $myData['items']) {
@@ -152,10 +152,10 @@ function updateReporter($token, $server, $pid) {
 				} else {
 					$myData = array("totalCount" => 0, "limit" => 0, "offset" => 0);
 				}
-				error_log($myName." (".$lastName.") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}");
+				CareerDev::log($myName." (".$lastName.") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}");
 				echo $myName." (".$lastName.") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}\n";
 			} while (($myData['totalCount'] > $myData['limit'] + $myData['offset']) || (($myData['offset'] == 0) && ($try < 5)));
-			error_log("{$row['record_id']}: $lastName currData ".count($currData));
+			CareerDev::log("{$row['record_id']}: $lastName currData ".count($currData));
 			echo "{$row['record_id']}: $lastName currData ".count($currData)."\n";
 
 			# dissect current data; must have first name to include
@@ -192,7 +192,7 @@ function updateReporter($token, $server, $pid) {
 								if (preg_match("/".strtoupper($myFirstName)."/", $itemFirstName) && (preg_match("/$institution/i", $item['orgName']))) {
 									if ((strtoupper($myFirstName) != "HAROLD") || (strtoupper($lastName) != "MOSES") || !preg_match("/HAROLD L/")) {
 										# Hack: exclude HAROLD L MOSES since HAROLD MOSES JR is valid
-										error_log("Including $itemFirstName {$item['orgName']}");
+										CareerDev::log("Including $itemFirstName {$item['orgName']}");
 										echo "Including $itemFirstName {$item['orgName']}\n";
 										$included[] = $item;
 										$found = true;
@@ -212,7 +212,7 @@ function updateReporter($token, $server, $pid) {
 					}
 				}
 			}
-			error_log("{$row['record_id']}: $firstName $lastName included ".count($included));
+			CareerDev::log("{$row['record_id']}: $firstName $lastName included ".count($included));
 			echo "{$row['record_id']}: $firstName $lastName included ".count($included)."\n";
 			// echo "itemNames: ".json_encode($pis)."\n";
 		}
@@ -250,7 +250,7 @@ function updateReporter($token, $server, $pid) {
 				$notUpload[] = $item;
 			}
 		}
-		error_log($row['record_id']." ".count($upload)." rows to upload; skipped ".count($notUpload)." rows from original of ".getReporterCount($oldReporters, $row['record_id']));
+		CareerDev::log($row['record_id']." ".count($upload)." rows to upload; skipped ".count($notUpload)." rows from original of ".getReporterCount($oldReporters, $row['record_id']));
 		echo $row['record_id']." ".count($upload)." rows to upload; skipped ".count($notUpload)." rows from original of ".getReporterCount($oldReporters, $row['record_id'])."\n";
 	
 		foreach ($upload as $uploadRow) {
@@ -264,7 +264,7 @@ function updateReporter($token, $server, $pid) {
 		if (!empty($upload)) {
 			$feedback = Upload::rows($upload, $token, $server);
 			$output = json_encode($feedback);
-			error_log("Upload $firstName $lastName ({$row['record_id']}): ".$output);
+			CareerDev::log("Upload $firstName $lastName ({$row['record_id']}): ".$output);
 			echo "Upload $firstName $lastName ({$row['record_id']}): ".$output."\n";
 		}
 	}

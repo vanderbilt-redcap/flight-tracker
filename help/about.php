@@ -28,5 +28,7 @@ Eric Austin, MD<br>
 Rebecca Helton<br>
 Scott J. Pearson<br>
 Patrick Newman<br>
+Chad Lightner<br>
+Melissa Krasnove<br>
 Helen Bird<br>
 Adrienne Babcock</p>

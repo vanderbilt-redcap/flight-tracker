@@ -12,6 +12,7 @@ require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/iCite.php");
 require_once(dirname(__FILE__)."/Citation.php");
 require_once(dirname(__FILE__)."/Scholar.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 class Publications {
 	public function __construct($token, $server, $metadata = array()) {

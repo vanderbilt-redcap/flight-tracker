@@ -4,6 +4,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/Upload.php");
 require_once(dirname(__FILE__)."/CohortConfig.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 class Cohorts {
 	public function __construct($token, $server, $moduleOrMetadata) {
@@ -124,7 +125,7 @@ class Cohorts {
 			}
 			$this->metadata = $newMetadata;
 			$feedback = Upload::metadata($newMetadata, $this->token, $this->server);
-			error_log("Config save: ".json_encode($feedback));
+			Application::log("Config save: ".json_encode($feedback));
 		}
 	}
 

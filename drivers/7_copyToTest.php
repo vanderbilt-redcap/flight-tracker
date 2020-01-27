@@ -7,7 +7,6 @@ require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(APP_PATH_DOCROOT."Classes/Records.php");
 
 # This script copies the master project to a test project
 
@@ -107,4 +106,3 @@ for ($i = 0; $i < count($prodRecords); $i += $pullSize) {
 		error_log("$i. Upload ".$n." of $totalPulls: ".json_encode($feedback));
 	}
 } 
-Records::addRecordToRecordListCache();

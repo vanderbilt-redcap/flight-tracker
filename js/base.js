@@ -609,3 +609,9 @@ function checkMetadata(phpTs) {
 	});
 }
 
+function submitLogs(url) {
+	$.post(url, {}, function(data) {
+		console.log(data);
+		alert("Emailed logs to Developers");
+	});
+}

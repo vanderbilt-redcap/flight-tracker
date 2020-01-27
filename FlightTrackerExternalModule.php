@@ -31,12 +31,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	function emails() {
 		// $this->setupApplication();
 		// $pids = $this->framework->getProjectsWithModuleEnabled();
-		// error_log($this->getName()." sending emails for pids ".json_encode($pids));
+		// CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		// foreach ($pids as $pid) {
 			// $token = $this->getProjectSetting("token", $pid);
 			// $server = $this->getProjectSetting("server", $pid);
 			// $tokenName = $this->getProjectSetting("tokenName", $pid);
-			// error_log("Sending emails for $tokenName (pid $pid)");
+			// CareerDev::log("Sending emails for $tokenName (pid $pid)");
 			// $mgr = new EmailManager($token, $server, $pid, $this);
 			// $mgr->sendRelevantEmails();
 		// }
@@ -45,14 +45,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	function cron() {
 		$this->setupApplication();
 		$pids = $this->framework->getProjectsWithModuleEnabled();
-		error_log($this->getName()." running for pids ".json_encode($pids));
+		CareerDev::log($this->getName()." running for pids ".json_encode($pids));
 		foreach ($pids as $pid) {
 			$token = $this->getProjectSetting("token", $pid);
 			$server = $this->getProjectSetting("server", $pid);
 			$tokenName = $this->getProjectSetting("tokenName", $pid);
 			$adminEmail = $this->getProjectSetting("admin_email", $pid);
-			error_log("Using $tokenName $adminEmail");
 			CareerDev::setPid($pid);
+			CareerDev::log("Using $tokenName $token $server $adminEmail", $pid);
 			if ($token && $server) {
 				# only have token and server in initialized projects
 				$mgr = new CronManager($token, $server, $pid);
@@ -60,13 +60,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 					$this->setProjectSetting("run_tonight", FALSE, $pid);
 					loadInitialCrons($mgr, FALSE, $token, $server); 
 				} else {
-					echo $this->getName().": Loading crons for pid $pid\n";
+					echo $this->getName().": Loading crons for pid $pid and '$token'\n";
 					loadCrons($mgr, FALSE, $token, $server);
 				}
-				error_log($this->getName().": Running crons for pid $pid");
+				CareerDev::log($this->getName().": Running crons for pid $pid", $pid);
 				$mgr->run($adminEmail, $tokenName, $pid);
-				error_log($this->getName().": cron run complete for pid $pid");
+				CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
 			}
+			# else project has not finished initialization
 		}
 	}
 

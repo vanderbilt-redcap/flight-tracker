@@ -8,8 +8,6 @@ require_once(dirname(__FILE__)."/Upload.php");
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
-define("INTERNAL_K_LENGTH", 3);
-define("EXTERNAL_K_LENGTH", 5);
 define("SOURCETYPE_FIELD", "additional_source_types");
 
 class Scholar {
@@ -102,10 +100,19 @@ class Scholar {
 	}
 
 	public static function getKLength($type) {
+		Application::log("Getting K Length for $type");
 		if ($type == "Internal") {
-			return INTERNAL_K_LENGTH;
+			return Application::getInternalKLength();
+		} else if ($type == 1) {
+			return Application::getInternalKLength();
+		} else if ($type == "K12/KL2") {
+			return Application::getK12KL2Length();
+		} else if ($type == 2) {
+			return Application::getK12KL2Length();
 		} else if ($type == "External") {
-			return EXTERNAL_K_LENGTH;
+			return Application::getIndividualKLength();
+		} else if (($type == 3) || ($type == 4)) {
+			return Application::getIndividualKLength();
 		}
 		return 0;
 	}
@@ -385,11 +392,33 @@ class Scholar {
 		return FALSE;
 	}
 
+	private function isLastKK12KL2() {
+		$k12kl2Type = 2;
+		if ($this->isLastKExternal()) {
+			return FALSE;
+		} else {
+			$grantAry = $this->grants->getGrants("native");
+			if (empty($grantAry)) {
+				$grantAry = $this->grants->getGrants("prior");
+			}
+			$lastKType = FALSE;
+			foreach ($grantAry as $grant) {
+				$type = $grant->getVariable("type");
+				if (in_array($type, $ksInside)) {
+					$lastKType = $type;
+				}
+			}
+			return ($lastKType == $k12Kl2Type);
+		}
+	}
+
 	private static function calculateKLengthInSeconds($type = "Internal") {
 		if ($type == "Internal") {
-			return INTERNAL_K_LENGTH * 365 * 24 * 3600;
+			return Application::getInternalKLength() * 365 * 24 * 3600;
+		} else if (($type == "K12KL2") || ($type == "K12/KL2")) {
+			return Application::getK12KL2Length() * 365 * 24 * 3600;
 		} else if ($type == "External") {
-			return EXTERNAL_K_LENGTH * 365 * 24 * 3600;
+			return Application::getIndividualKLength() * 365 * 24 * 3600;
 		}
 		return 0;
 	}
@@ -473,7 +502,12 @@ class Scholar {
 							return "Converted while on K";
 						}
 					} else {
-						if ($rTime > $lastTime + self::calculateKLengthInSeconds("Internal")) {
+						if ($this->isLastKK12KL2()) {
+							$kLength = self::calculateKLengthInSeconds("K12/KL2");
+						} else {
+							$kLength = self::calculateKLengthInSeconds("Internal");
+						}
+						if ($rTime > $lastTime + $kLength) {
 							return "Converted while not on K";
 						} else {
 							return "Converted while on K";
@@ -488,7 +522,12 @@ class Scholar {
 							return "Not Eligible";
 						}
 					} else {
-						if (time() > $lastTime + self::calculateKLengthInSeconds("Internal")) {
+						if ($this->isLastKK12KL2()) {
+							$kLength = self::calculateKLengthInSeconds("K12/KL2");
+						} else {
+							$kLength = self::calculateKLengthInSeconds("Internal");
+						}
+						if (time() > $lastTime + $kLength) {
 							return "Not Converted";
 						} else {
 							return "Not Eligible";

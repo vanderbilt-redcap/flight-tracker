@@ -70,7 +70,7 @@ function getExPORTERInstance($recordId, $redcapData, $upload, $uploadLine) {
 function downloadURL($file) {
 	$csvfile = preg_replace("/.zip/", ".csv", $file);
 	if (!file_exists(APP_PATH_TEMP.$csvfile)) {
-		error_log("Downloading $file...");
+		CareerDev::log("Downloading $file...");
 
 		$url = "https://exporter.nih.gov/CSVs/final/".$file;
 		$ch = curl_init();
@@ -87,7 +87,7 @@ function downloadURL($file) {
 		curl_close($ch);
 
 		if ($resp == 200) {
-			error_log("Unzipping $file...");
+			CareerDev::log("Unzipping $file...");
 			$fp = fopen(APP_PATH_TEMP.$file, "w");
 			fwrite($fp, $zip);
 			fclose($fp);
@@ -153,7 +153,7 @@ function updateExPORTER($token, $server, $pid) {
 	}
 
 
-	error_log("Downloading REDCap");
+	CareerDev::log("Downloading REDCap");
 	echo "Downloading REDCap\n";
 
 	$redcapData = array();
@@ -179,7 +179,7 @@ function updateExPORTER($token, $server, $pid) {
 	$upload = array();
 	$newUploads = array();		// new records
 	foreach ($files as $file => $year) {
-		error_log("Reading $file");
+		CareerDev::log("Reading $file");
 		echo "Reading $file\n";
                 $fp = fopen($file, "r");
                 $file2 = $file.".new";
@@ -251,7 +251,7 @@ function updateExPORTER($token, $server, $pid) {
 							list($uploadLine["redcap_repeat_instance"], $isNew) = getExPORTERInstance($recordId, $redcapData[$recordId], $upload, $uploadLineHoldingQueue);
 							if ($isNew) {
 								$uploadLine = array_merge($uploadLine, $uploadLineHoldingQueue);
-								error_log("Matched name {$recordId} {$firstNames[$k]} {$lastNames[$k]} = {$uploadLine['exporter_pi_names']}");
+								CareerDev::log("Matched name {$recordId} {$firstNames[$k]} {$lastNames[$k]} = {$uploadLine['exporter_pi_names']}");
 								echo "Matched name {$recordId} {$firstNames[$k]} {$lastNames[$k]} = {$uploadLine['exporter_pi_names']}\n";
 								$upload[] = $uploadLine;
 							}
@@ -284,7 +284,7 @@ function updateExPORTER($token, $server, $pid) {
 			}
 			$i++;
 		}
-		error_log("Inspected $i lines");
+		CareerDev::log("Inspected $i lines");
 		echo "Inspected $i lines\n";
 		fclose($fp);
 	}
@@ -303,7 +303,7 @@ function updateExPORTER($token, $server, $pid) {
 		list($uploadLine["redcap_repeat_instance"], $isNew) = getExPORTERInstance($recordId, $redcapData, $upload, $uploadLineHoldingQueue);
 		$uploadLine = array_merge($uploadLine, $uploadLineHoldingQueue);
 	
-		error_log("Found new name {$maxRecordId} {$fullName} --> {$uploadLine['exporter_full_project_num']}");
+		CareerDev::log("Found new name {$maxRecordId} {$fullName} --> {$uploadLine['exporter_full_project_num']}");
 		echo "Found new name {$maxRecordId} {$fullName} --> {$uploadLine['exporter_full_project_num']}\n";
 	
 		list($firstName, $lastName) = preg_split("/\s/", $fullName);
@@ -311,11 +311,13 @@ function updateExPORTER($token, $server, $pid) {
 		$upload[] = $uploadLine;
 	}
 	
-	error_log(count($upload)." rows");
+	CareerDev::log(count($upload)." rows");
 	echo count($upload)." rows\n";
-	$feedback = Upload::rows($upload, $token, $server);
-	error_log(json_encode($feedback));
-	echo json_encode($feedback)."\n";
+	if (!empty($upload)) {
+		$feedback = Upload::rows($upload, $token, $server);
+		CareerDev::log(json_encode($feedback));
+		echo json_encode($feedback)."\n";
+	}
 
 	// $mssg = "NIH Exporter run\n\n".count($upload)." rows\n".$output."\n\n";
 	// \REDCap::email($adminEmail, "no-reply@vanderbilt.edu", "CareerDev NIH Exporter", $mssg);

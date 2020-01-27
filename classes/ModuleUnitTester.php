@@ -1,6 +1,8 @@
 <?php
+
 namespace Vanderbilt\ModuleUnitTester;
 
+require_once(dirname(__FILE__)."/../Application.php");
 
 use Vanderbilt\CareerDevLibrary;
 use ExternalModules\AbstractExternalModule;

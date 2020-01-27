@@ -41,7 +41,7 @@
 		echo "<h3>$test</h3>\n";
 		foreach ($ary['results'] as $result) {
 			if (preg_match("/FALSE/i", $result)) {
-				echo "<span style='color: red;'>$result</span><br>\n";
+				echo "<span style='color: red;'>ERROR: $result</span><br>\n";
 			} else if (preg_match("/TRUE/i", $result)) {
 				echo "$result<br>\n";
 			}

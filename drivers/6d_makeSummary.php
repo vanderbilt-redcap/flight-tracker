@@ -46,10 +46,14 @@ function unlock() {
 function makeSummary($token, $server, $pid, $selectRecord = "") {
 	lock();
 
+	if (!$token || !$server) {
+		throw new \Exception("6d makeSummary could not find token '$token' or server '$server'");
+	}
+
 	$GLOBALS['selectRecord'] = "";
 
 	$metadata = Download::metadata($token, $server);
-	error_log("6d CareerDev downloaded metadata: ".count($metadata));
+	CareerDev::log("6d CareerDev downloaded metadata: ".count($metadata));
 
 	# done in batches of 1 records
 	if (!$selectRecord) {
@@ -62,7 +66,7 @@ function makeSummary($token, $server, $pid, $selectRecord = "") {
 		$time1 = microtime(TRUE);
 		$rows = Download::records($token, $server, array($recordId));
 		$time2 = microtime(TRUE);
-		// error_log("6d CareerDev downloading $recordId took ".($time2 - $time1));
+		// CareerDev::log("6d CareerDev downloading $recordId took ".($time2 - $time1));
 		// echo "6d CareerDev downloading $recordId took ".($time2 - $time1)."\n";
 	
 		$time1 = microtime(TRUE);
@@ -71,7 +75,7 @@ function makeSummary($token, $server, $pid, $selectRecord = "") {
 		$grants->compileGrants();
 		$result = $grants->uploadGrants();
 		$time2 = microtime(TRUE);
-		// error_log("6d CareerDev processing grants $recordId took ".($time2 - $time1));
+		// CareerDev::log("6d CareerDev processing grants $recordId took ".($time2 - $time1));
 		// echo "6d CareerDev processing grants $recordId took ".($time2 - $time1)."\n";
 		$myErrors = Upload::isolateErrors($result);
 		$errors = array_merge($errors, $myErrors);
@@ -84,7 +88,7 @@ function makeSummary($token, $server, $pid, $selectRecord = "") {
 		$scholar->process();
 		$result = $scholar->upload();
 		$time2 = microtime(TRUE);
-		// error_log("6d CareerDev processing scholar $recordId took ".($time2 - $time1));
+		// CareerDev::log("6d CareerDev processing scholar $recordId took ".($time2 - $time1));
 		// echo "6d CareerDev processing scholar $recordId took ".($time2 - $time1)."\n";
 		$myErrors = Upload::isolateErrors($result);
 		$errors = array_merge($errors, $myErrors);
@@ -94,7 +98,7 @@ function makeSummary($token, $server, $pid, $selectRecord = "") {
 		$pubs->setRows($rows);
 		$result = $pubs->uploadSummary();
 		$time2 = microtime(TRUE);
-		// error_log("6d CareerDev processing publications $recordId took ".($time2 - $time1));
+		// CareerDev::log("6d CareerDev processing publications $recordId took ".($time2 - $time1));
 		// echo "6d CareerDev processing publications $recordId took ".($time2 - $time1)."\n";
 		$myErrors = Upload::isolateErrors($result);
 		$errors = array_merge($errors, $myErrors);

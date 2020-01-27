@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+require_once(dirname(__FILE__)."/../Application.php");
 
 class iCite {
 	public function __construct($pmid) {
@@ -22,13 +23,13 @@ class iCite {
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 		$json = curl_exec($ch);
 		curl_close($ch);
-		error_log("iCite ".$url);
+		Application::log("iCite ".$url);
 
 		$data = json_decode($json, true);
 		if (!$data || !$data['data'] || count($data['data']) == 0) {
 			return array();
 		}
-		// error_log(json_encode($data['data'][0]));
+		// Application::log(json_encode($data['data'][0]));
 		return $data['data'][0];
 	}
 

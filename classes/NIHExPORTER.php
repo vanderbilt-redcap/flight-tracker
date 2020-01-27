@@ -2,6 +2,8 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+require_once(dirname(__FILE__)."/../Application.php");
+
 define("APP_PATH_TEMP", "/Users/pearsosj/xampp/htdocs/redcap/temp/");
 define("DATA_DIRECTORY", "filterData/");
 define("INTERMEDIATE_1", "R01AndEquivsList.txt");
@@ -79,7 +81,7 @@ class NIHExPORTER {
 						$pi = preg_replace("/ \(contact\)\s*;?$/", "", $pi);
 						$pi = preg_replace("/\s*;$/", "", $pi);
 						if ($pi && !in_array($pi, $allPIs)) {
-							error_log("Found PI: $pi");
+							Application::log("Found PI: $pi");
 							array_push($allPIs, array("PI" => $pi, "IC" => $IC, "Title" => $title));
 						}
 					}
@@ -362,7 +364,7 @@ class NIHExPORTER {
 					for ($i = 0; $i < count($row); $i++) {
 						if ($headers[$i] == $col) {
 							if ($row[$i] && preg_match("/".strtoupper($nameRow['first_name'])."/", $row[$i]) && preg_match("/".strtoupper($nameRow['last_name'])."/", $row[$i])) {
-								// error_log("Matched ".json_encode($nameRow));
+								// Application::log("Matched ".json_encode($nameRow));
 								$matched = TRUE;
 							}
 						}
@@ -414,7 +416,7 @@ class NIHExPORTER {
 	private static function parseFile($file) {
 		$data = array();
 		$fp = fopen($file, "r");
-		error_log("Parsing ".$file);
+		Application::log("Parsing ".$file);
 		$lineCount = 0;
 		while ($str = fgets($fp)) {
 			$str = str_replace('\\","', '","', $str);
@@ -535,7 +537,7 @@ class NIHExPORTER {
 	private static function downloadURL($file) {
 		$csvfile = preg_replace("/.zip/", ".csv", $file);
 		if (!file_exists(APP_PATH_TEMP.$csvfile)) {
-			error_log("Downloading $file...");
+			Application::log("Downloading $file...");
 	
 			$url = "https://exporter.nih.gov/CSVs/final/".$file;
 			$ch = curl_init();
@@ -552,7 +554,7 @@ class NIHExPORTER {
 			curl_close($ch);
 
 			if ($resp == 200) {
-				error_log("Unzipping $file...");
+				Application::log("Unzipping $file...");
 				$fp = fopen(APP_PATH_TEMP.$file, "w");
 				fwrite($fp, $zip);
 				fclose($fp);

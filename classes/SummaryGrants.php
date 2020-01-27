@@ -3,6 +3,7 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/Grants.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 # The Grants class is an abstraction based upon the hard-data procured in the Grant sources.
 # This takes the Grants class as input and outputs how much each scholar receives in a calendar year.

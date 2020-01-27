@@ -15,6 +15,10 @@ class Application {
 		return "scott.j.pearson@vumc.org";
 	}
 
+	public static function log($mssg) {
+		CareerDev::log($mssg);
+	}
+
 	public static function getInstitutions() {
 		return CareerDev::getInstitutions();
 	}
@@ -41,6 +45,18 @@ class Application {
 	public static function getSetting($field) {
 		return CareerDev::getSetting($field);
 	}
+
+        public static function getInternalKLength() {
+                return CareerDev::getInternalKLength();
+        }
+
+        public static function getK12KL2Length() {
+                return CareerDev::getK12KL2Length();
+        }
+
+        public static function getIndividualKLength() {
+                return CareerDev::getIndividualKLength();
+        }
 
 	public static $institutionFields = array(
 						"record_id",

@@ -2,6 +2,8 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+require_once(dirname(__FILE__)."/../Application.php");
+
 define("APP_PATH_TEMP", "/Users/pearsosj/xampp/htdocs/redcap/temp/");
 define("DATA_DIRECTORY", "filterData");
 define("INTERMEDIATE_1_FED", "R01AndEquivsList_Fed.txt");
@@ -79,7 +81,7 @@ class FederalExPORTER {
 						$pi = preg_replace("/ \(contact\)\s*;?$/", "", $pi);
 						$pi = preg_replace("/\s*;$/", "", $pi);
 						if ($pi && !in_array($pi, $allPIs)) {
-							error_log("Found PI: $pi");
+							Application::log("Found PI: $pi");
 							array_push($allPIs, array("PI" => $pi, "IC" => $IC, "Title" => $title));
 						}
 					}
@@ -366,7 +368,7 @@ class FederalExPORTER {
 					for ($i = 0; $i < count($row); $i++) {
 						if (in_array($headers[$i], $cols)) {
 							if ($row[$i] && preg_match("/".strtoupper($nameRow['first_name'])."/", $row[$i]) && preg_match("/".strtoupper($nameRow['last_name'])."/", $row[$i])) {
-								// error_log("Matched ".json_encode($nameRow));
+								// Application::log("Matched ".json_encode($nameRow));
 								$matched = TRUE;
 							}
 						}
@@ -418,7 +420,7 @@ class FederalExPORTER {
 	private static function parseFile($file) {
 		$data = array();
 		$fp = fopen($file, "r");
-		error_log("Parsing ".$file);
+		Application::log("Parsing ".$file);
 		$lineCount = 0;
 		while ($str = fgets($fp)) {
 			$str = str_replace('\\","', '","', $str);
@@ -534,7 +536,7 @@ class FederalExPORTER {
 		$csvfile = preg_replace("/.zip/", ".federal.csv", $file);
 		$federalFile = preg_replace("/.zip/", ".federal.zip", $file);
 		if (!file_exists(APP_PATH_TEMP.$csvfile)) {
-			error_log("Downloading $file...");
+			Application::log("Downloading $file...");
 
 			$url = "https://federalreporter.nih.gov/FileDownload/DownloadFile?fileToDownload=".$file;
 			$ch = curl_init();
@@ -551,7 +553,7 @@ class FederalExPORTER {
 			curl_close($ch);
 
 			if (($resp == 200) && (!preg_match("/Not found/", $zip))) {
-				error_log("Unzipping $file to ".APP_PATH_TEMP.$federalFile."...");
+				Application::log("Unzipping $file to ".APP_PATH_TEMP.$federalFile."...");
 				$fp = fopen(APP_PATH_TEMP.$federalFile, "w");
 				fwrite($fp, $zip);
 				fclose($fp);
@@ -559,7 +561,7 @@ class FederalExPORTER {
 
 				$za = new ZipArchive;
 				if ($za->open(APP_PATH_TEMP.$federalFile)) {
-					error_log("Opened ".APP_PATH_TEMP.$federalFile);
+					Application::log("Opened ".APP_PATH_TEMP.$federalFile);
 					$za->extractTo(APP_PATH_TEMP);
 					$za->close();
 					unset($za);

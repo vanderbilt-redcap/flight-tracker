@@ -56,7 +56,7 @@ class Download {
 	}
 
 	public static function metadata($token, $server, $fields = array()) {
-		error_log("Download::metadata");
+		Application::log("Download::metadata");
 		$data = array(
 			'token' => $token,
 			'content' => 'metadata',
@@ -279,7 +279,7 @@ class Download {
 	}
 
 	public static function recordIds($token, $server) {
-		error_log("Download::recordIds");
+		Application::log("Download::recordIds");
 		$data = array(
 			'token' => $token,
 			'content' => 'record',
@@ -304,12 +304,12 @@ class Download {
 	public static function fieldsWithConfig($token, $server, $metadata, $fields, $config) {
 		$filter = new Filter($token, $server, $metadata);
 		$records = $filter->getRecords($config);
-		error_log("Download::fieldsWithFilter ".count($records)." records; ".count($fields)." fields");
+		Application::log("Download::fieldsWithFilter ".count($records)." records; ".count($fields)." fields");
 		return Download::fieldsForRecords($token, $server, $fields, $records);
 	}
 
 	public static function fields($token, $server, $fields) {
-		error_log("Download::fields ".count($fields)." fields");
+		Application::log("Download::fields ".count($fields)." fields");
 		$data = array(
 			'token' => $token,
 			'content' => 'record',
@@ -359,7 +359,7 @@ class Download {
 	}
 
 	public static function fieldsForRecords($token, $server, $fields, $records) {
-		error_log("Download::fieldsForRecords ".count($fields)." fields with ".json_encode($records));
+		Application::log("Download::fieldsForRecords ".count($fields)." fields with ".json_encode($records));
 		$data = array(
 			'token' => $token,
 			'content' => 'record',
@@ -382,7 +382,7 @@ class Download {
 			# assume recordIds was meant if $records null
 			return Download::recordIds($token, $server);
 		}
-		error_log("Download::records ".json_encode($records));
+		Application::log("Download::records ".json_encode($records));
 		$data = array(
 			'token' => $token,
 			'content' => 'record',

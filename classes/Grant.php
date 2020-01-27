@@ -10,6 +10,7 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/GrantLexicalTranslator.php");
 require_once(dirname(__FILE__)."/Links.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 class Grant {
 	public function __construct($lexicalTranslator) {
@@ -1210,12 +1211,12 @@ class Grant {
 		$specs = $this->specs;
 		$awardNo = $this->getNumber();
 
-		// error_log($awardNo.": First Pass");
+		// Application::log($awardNo.": First Pass");
 		if ($type = $this->lexicallyTranslate($awardNo)) {
 			return $type;
 		}
 
-		// error_log($awardNo.": Second Pass");
+		// Application::log($awardNo.": Second Pass");
 		$trainingGrantSources = array("coeus", "reporter", "exporter");
 		if (($awardNo == "") || preg_match("/\b000\b/", $awardNo)) {
 			return "N/A";
@@ -1253,23 +1254,23 @@ class Grant {
 					$yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
 					if (($yearspan >= 3) && ($specs['direct_budget'] / $yearspan > 250000)) {
 						if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
-							// error_log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600)));
+							// Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600)));
 							return "R01 Equivalent";
 						} else {
-							// error_log($awardNo.": Second Pass - exit D");
+							// Application::log($awardNo.": Second Pass - exit D");
 						}
 					} else {
-						// error_log($awardNo.": Second Pass - exit C");
+						// Application::log($awardNo.": Second Pass - exit C");
 					}
 				} else {
-					// error_log($awardNo.": Second Pass - exit B");
+					// Application::log($awardNo.": Second Pass - exit B");
 				}
 			} else {
-				// error_log($awardNo.": Second Pass - exit A");
+				// Application::log($awardNo.": Second Pass - exit A");
 			}
 		}
 
-		// error_log($awardNo.": Third Pass");
+		// Application::log($awardNo.": Third Pass");
 		if (preg_match("/^[Kk]23 - /", $awardNo)) {
 			return "Individual K";
 		} else if (preg_match("/^\d?[Kk]24/", $awardNo)) {
@@ -1284,6 +1285,8 @@ class Grant {
 			return "R01 Equivalent";
 		} else if (preg_match("/Internal K/", $awardNo)) {
 			return "Internal K";
+		} else if (preg_match("/K12\/KL2/", $awardNo)) {
+			return "K12/KL2";
 		} else if (preg_match("/Individual K/", $awardNo)) {
 			return "Individual K";
 		} else if (preg_match("/^\d?[Kk]99/", $awardNo)) {
@@ -1301,8 +1304,8 @@ class Grant {
 			}
 		}
 
-		// error_log($awardNo.": Final Pass");
-		// error_log($awardNo.": ".json_encode($specs));
+		// Application::log($awardNo.": Final Pass");
+		// Application::log($awardNo.": ".json_encode($specs));
 		return "N/A";
 	}
 
