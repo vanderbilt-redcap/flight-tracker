@@ -121,6 +121,11 @@ class Scholar {
 		$this->grants = $grants;
 	}
 
+	public function getORCID() {
+		$row = self::getNormativeRow($this->rows);
+		return $row['identifier_orcid'];
+	}
+
 	public function getEmail() {
 		$row = self::getNormativeRow($this->rows);
 		return $row['identifier_email'];
@@ -825,6 +830,10 @@ class Scholar {
 							array("newman_data_degree1" => "data", "newman_data_degree2" => "data", "newman_data_degree3" => "data"),
 							array("newman_demographics_degrees" => "demographics"),
 							array("newman_sheet2_degree1" => "sheet2", "newman_sheet2_degree2" => "sheet2", "newman_sheet2_degree3" => "sheet2"),
+							);
+		$orders["identifier_orcid"] = array(
+							"check_orcid_id" => "scholars",
+							"followup_orcid_id" => "followup",
 							);
 		$orders["summary_primary_dept"] = array(
 							"override_department1" => "manual",

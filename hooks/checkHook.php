@@ -333,6 +333,7 @@ $(document).ready(function() {
 
 	presetValue('check_primary_dept', '<?php echo find('summary_primary_dept'); ?>');
 	presetValue('check_division', '<?php echo find(array('identifier_starting_division')); ?>');
+	presetValue("check_orcid_id", "<?php echo find(array('identifier_orcid')); ?>");
 
 <?php
 # Get rid of my extra verbiage

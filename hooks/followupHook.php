@@ -120,7 +120,7 @@ $(document).ready(function() {
 		}
 	}
 
- 	presetValue("followup_orcid_id", "<?php echo find(array('followup_orcid_id', 'check_orcid_id')); ?>");
+ 	presetValue("followup_orcid_id", "<?php echo find(array('identifier_orcid', 'followup_orcid_id', 'check_orcid_id')); ?>");
  	presetValue("followup_name_first", "<?php echo find(array('identifier_first_name', 'followup_name_first', 'check_name_first')); ?>");
  	presetValue("followup_name_middle", "<?php echo find(array('newman_data_middle_name', 'followup_name_middle', 'check_name_middle')); ?>");
  	presetValue("followup_name_last", "<?php echo find(array('identifier_last_name', 'followup_name_last', 'check_name_last')); ?>");

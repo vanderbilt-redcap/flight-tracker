@@ -247,7 +247,7 @@ class EmailManager {
 				throw new \Exception("Could not find REDCap class!");
 			}
 
-			// \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
+			\REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
 			usleep(200000); // wait 0.2 seconds for other items to process
 		}
 		$records = array_keys($mssgs);
