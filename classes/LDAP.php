@@ -15,6 +15,33 @@ class LDAP {
 		return self::getLDAPByMultiple(array($type), array($value));
 	}
 
+	public static function getVUNet($first, $last) {
+		$key = array("givenname" => $first, "sn" => $last); 
+		$info = self::getLDAPByMultiple(array_keys($key), array_values($key));
+		return self::findField($info, "uid");
+	}
+
+	# $info is line from getLDAP
+	# returns the first line in $info with the field $field
+	public static function findField($info, $field) {
+		$separator = ";";
+		for ($i = 0; $i < $info['count']; $i++) {
+			$line = $info[$i];
+			foreach ($line as $var => $results) {
+				if ($var == $field) {
+					if (isset($results['count'])) {
+						$r = array();
+						for ($j = 0; $j < $results['count']; $j++) {
+							array_push($r, $results[$j]);
+						}
+						return implode($separator." ", $r);
+					}
+				}
+			}
+		}
+		return "";
+	}
+
 	public static function getFields() {
 		return array(
 				"modifytimestamp",

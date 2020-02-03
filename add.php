@@ -70,9 +70,9 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 	}
 
 	$timespan = 3;
-	echo "<h1>Adding New Scholars</h1>";
+	echo "<h1>Adding New Scholars or Modifying Existing Scholars</h1>";
 	echo "<div style='margin: 0 auto; max-width: 800px'>";
-	echo "<p class='centered'>".count($upload).(count($upload) == 1 ? " person" : " people")." added.</p>";
+	echo "<p class='centered'>".count($upload).(count($upload) == 1 ? " person" : " people")." added/modified.</p>";
 	echo "<p class='centered'>Going to Flight Tracker Central in ".$timespan." seconds...</p>";
 	echo "<script>\n";
 	echo "$(document).ready(function() {\n";
@@ -92,7 +92,7 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 	button { font-size: 20px; color: white; background-color: black; }
 	</style>
 
-	<h1>Adding New Scholars to Flight Tracker</h1>
+	<h1>Adding New Scholars or Modifying Existing Scholars for <?= PROGRAM_NAME ?></h1>
 	<div style='margin: 0 auto; max-width: 800px;'>
 		<p class='centered' id='prompt'><a href='javascript:;' onclick="$('#explanations').show(); $('#prompt').hide();">Click to show detailed instructions</a></p>
 		<div id='explanations' style='display: none;'>
@@ -120,14 +120,21 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 <?php
 }
 
-function processLines($lines, $recordId) {
+function processLines($lines, $nextRecordId) {
 	$upload = array();
+	$lineNum = 1;
 	foreach ($lines as $nodes) {
 		if (count($nodes) >= 6) {
 			$firstName = $nodes[0];
 			$middle = $nodes[2];
 			$lastName = $nodes[3];
 			$preferred = $nodes[1];
+			$recordId = \Vanderbilt\FlightTrackerExternalModule\matchName($firstName, $lastName); 
+			if (!$recordId) {
+				#new
+				$recordId = $nextRecordId;
+				$nextRecordId++;
+			}
 			if ($preferred && ($preferred != $firstName)) {
 				$firstName .= " (".$preferred.")";
 			}
@@ -143,20 +150,28 @@ function processLines($lines, $recordId) {
 					$gender = 1;
 				} else if (preg_match("/^male/i", $nodes[6])) {
 					$gender = 2;
-				} else {
+				} else if ($nodes[6] == "") {
 					$gender = "";
+				} else {
+					echo "<p>The gender column contains an invalid value ({$nodes[6]}). Import not successful.</p>";
+					throw new \Exception("The gender column contains an invalid value ({$nodes[6]}). Import not successful.");
 				}
 				if ($nodes[7]) {
 					$dobNodes = preg_split("/[\-\/]/", $nodes[7]);
 					# assume MDY
-					if ($dobNodes[2] < 100) {
-						if ($dobNodes[2] > 20) {
-							$dobNodes[2] += 1900;
-						} else {
-							$dobNodes[2] += 2000;
+					if (count($dobNodes) == 3) {
+						if ($dobNodes[2] < 100) {
+							if ($dobNodes[2] > 20) {
+								$dobNodes[2] += 1900;
+							} else {
+								$dobNodes[2] += 2000;
+							}
 						}
+						$dob = $dobNodes[2]."-".$dobNodes[0]."-".$dobNodes[1];
+					} else {
+						echo "<p>The date-of-birth column contains an invalid value ({$nodes[7]}). Import not successful.</p>";
+						throw new \Exception("The date-of-birth column contains an invalid value ({$nodes[7]}). Import not successful.");
 					}
-					$dob = $dobNodes[2]."-".$dobNodes[0]."-".$dobNodes[1];
 				} else {
 					$dob = "";
 				}
@@ -174,24 +189,33 @@ function processLines($lines, $recordId) {
 					$race = 6;
 				} else if (preg_match("/Other/i", $nodes[8])) {
 					$race = 7;
+				} else if ($nodes[8] == "") {
+					$race = "";
 				} else {
-					$race = '';
+					echo "<p>The race column contains an invalid value ({$nodes[8]}). Import not successful.</p>";
+					throw new \Exception("The race column contains an invalid value ({$nodes[8]}). Import not successful.");
 				}
 				if (preg_match("/Non-Hispanic/i", $nodes[9])) {
 					$ethnicity = 2;
 				} else if (preg_match("/Hispanic/i", $nodes[9])) {
 					$ethnicity = 1;
-				} else {
+				} else if ($nodes[9] == "") {
 					$ethnicity = "";
+				} else {
+					echo "<p>The ethnicity column contains an invalid value ({$nodes[9]}). Import not successful.</p>";
+					throw new \Exception("The ethnicity column contains an invalid value ({$nodes[9]}). Import not successful.");
 				}
-				if (preg_match("/Prefer Not To Answer/i", $nodes[11])) {
+				if (preg_match("/Prefer Not To Answer/i", $nodes[10])) {
 					$disadvantaged = 3;
 				} else if (preg_match("/N/i", $nodes[10])) {
 					$disadvantaged = 2;
 				} else if (preg_match("/Y/i", $nodes[10])) {
 					$disadvantaged = 1;
-				} else {
+				} else if ($nodes[10] == "") {
 					$disadvantaged = "";
+				} else {
+					echo "<p>The disadvantaged column contains an invalid value ({$nodes[10]}). Import not successful.</p>";
+					throw new \Exception("The disadvantaged column contains an invalid value ({$nodes[10]}). Import not successful.");
 				}
 				if (preg_match("/N/i", $nodes[11])) {
 					$disabled = 2;
@@ -208,11 +232,16 @@ function processLines($lines, $recordId) {
 					$citizenship = 3;
 				} else if (preg_match("/Temporary Visa/i", $nodes[12])) {
 					$citizenship = 4;
-				} else {
+				} else if ($nodes[12] == "") {
 					$citizenship = "";
+				} else {
+					echo "<p>The citizenship column contains an invalid value ({$nodes[12]}). Import not successful.</p>";
+					throw new \Exception("The citizenship column contains an invalid value ({$nodes[12]}). Import not successful.");
 				}
 				if ($nodes[13]) {
 					$mentor = $nodes[13];
+				} else {
+					$mentor = "";
 				}
 				$uploadRow["imported_dob"] = $dob;
 				$uploadRow["imported_gender"] = $gender;
@@ -224,8 +253,8 @@ function processLines($lines, $recordId) {
 				$uploadRow["imported_mentor"] = $mentor;
 			}
 			$upload[] = $uploadRow;
-			$recordId++;
 		}
+		$lineNum++;
 	}
 	return array($upload, $emails);
 }

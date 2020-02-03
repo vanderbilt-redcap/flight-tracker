@@ -125,7 +125,7 @@ if (count($_POST) > 0) {
 		$lists["institutions"] = implode("\n", CareerDev::getInstitutions());
 		$metadata = Download::metadata($token, $server);
 		\Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $lists, CareerDev::getSetting("hasCoeus"), $metadata);
-		echo "<p class='centered green'>Saved ".count($_POST)." settings</p>\n";
+		echo "<p class='centered green'>Saved ".json_encode($_POST)." settings</p>\n";
 	}
 }
 
@@ -468,11 +468,11 @@ function makeSetting($var, $type, $label, $default = "") {
 		$html .= "</tr>";
 	} else if ($type == "yesno") {
 		if ($value == "0") {
-			$selected0 = " selected";
+			$selected0 = " checked";
 			$selected1 = "";
 		} else {
 			$selected0 = "";
-			$selected1 = " selected";
+			$selected1 = " checked";
 		}
 
 		$html .= "<tr>";

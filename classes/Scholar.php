@@ -849,7 +849,6 @@ class Scholar {
 							"check_gender" => "scholars",
 							"vfrs_gender" => "vfrs",
 							"imported_gender" => "manual",
-							"override_gender" => "manual",
 							"newman_new_gender" => "new2017",
 							"newman_demographics_gender" => "demographics",
 							"newman_data_gender" => "data",
@@ -879,8 +878,8 @@ class Scholar {
 		$orders["summary_dob"] = array(
 						"check_date_of_birth" => "scholars",
 						"vfrs_date_of_birth" => "vfrs",
-						"imported_dob" => "manual",
 						"override_dob" => "manual",
+						"imported_dob" => "manual",
 						"newman_new_date_of_birth" => "new2017",
 						"newman_demographics_date_of_birth" => "demographics",
 						"newman_data_date_of_birth" => "data",
@@ -889,8 +888,8 @@ class Scholar {
 		$orders["summary_citizenship"] = array(
 							"followup_citizenship" => "followup",
 							"check_citizenship" => "scholars",
-							"imported_citizenship" => "manual",
 							"override_citizenship" => "manual",
+							"imported_citizenship" => "manual",
 							);
 		$orders["identifier_institution"] = array(
 								"identifier_institution" => "manual",
@@ -901,11 +900,13 @@ class Scholar {
 								"followup_division" => "followup",
 								"check_division" => "scholars",
 								"override_division" => "manual",
+								"imported_division" => "manual",
 								"vfrs_division" => "vfrs",
 								);
 		$orders["summary_current_rank"] = array(
 							"promotion_rank" => "manual",
 							"override_rank" => "manual",
+							"imported_rank" => "manual",
 							"followup_academic_rank" => "followup",
 							"check_academic_rank" => "scholars",
 							"newman_new_rank" => "new2017",
@@ -915,16 +916,18 @@ class Scholar {
 							"followup_academic_rank_dt" => "followup",
 							"check_academic_rank_dt" => "scholars",
 							"override_position_start" => "manual",
+							"imported_position_start" => "manual",
 							"vfrs_when_did_this_appointment" => "vfrs",
 							);
 		$orders["summary_current_tenure"] = array(
 								"followup_tenure_status" => "followup",
 								"check_tenure_status" => "scholars",
 								"override_tenure" => "manual",
+								"imported_tenure" => "manual",
 								);
 		$orders["summary_mentor"] = array(
-							"imported_mentor" => "manual",
 							"override_mentor" => "manual",
+							"imported_mentor" => "manual",
 							"followup_primary_mentor" => "followup",
 							"check_primary_mentor" => "scholars",
 							);
@@ -1207,7 +1210,7 @@ class Scholar {
 			case "manual":
 				if (preg_match("/^promotion_/", $field)) {
 					return "promotion_date";
-				} else if (preg_match("/^override_", $field)) {
+				} else if (preg_match("/^override_/", $field)) {
 					return $field."_time";
 				}
 				return "";

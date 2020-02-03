@@ -123,7 +123,7 @@ function transformIntoCheckboxes(html, post) {
 			ary2.push(item);
 		}
 	}
-	return "<div class='wrapTightly centered' style='text-align: left;'>"+ary2.join("<br>")+"</div>";
+	return "<div class='wrapTightly' style='text-align: left;'>"+ary2.join("<br>")+"</div>";
 }
 
 function getHTMLLines(html) {

@@ -37,6 +37,21 @@ $(document).ready(function() {
 
 <div class='centered' id='metadataWarning'></div>
 
+<?php
+	################ Overhead with External Module
+	$module = CareerDev::getModule();
+	if ($module) {
+		$fourWeeksPrior = time() - 28 * 24 * 3600;
+		$module->removeLogs("timestamp < ".date("Y-m-d", $fourWeeksPrior));
+		$hours = 12;    // 12 hours prior
+		$maxTimeAllowed = time() - $hours * 3600;
+		$lockInfo = $module->getSystemSetting(\ExternalModules\ExternalModules::KEY_RESERVED_IS_CRON_RUNNING);
+		if ($lockInfo['time'] > $maxTimeAllowed) {
+			echo "<div class='centered red'>Your cron has not completed within $hours hours. Your cron most likely needs to be reset. Please <a href='".CareerDev::link("reset_cron.php")."'>click here to do so</a>.</div>\n";
+		}
+	}
+?>
+
 <div style='float: left; width: 50%;'>
 <?php
 	echo "<table style='margin: 0px auto 0px auto; border-radius: 10px;' class='blue'>\n";

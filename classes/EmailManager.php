@@ -747,6 +747,8 @@ class EmailManager {
 				$rows[$recordId] = $identifiers[$recordId];
 			}
 			return $rows;
+		} else if (empty($who)) {
+			return array();
 		} else {
 			throw new \Exception("Could not interpret who: ".json_encode($who));
 		}

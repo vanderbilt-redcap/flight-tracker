@@ -51,8 +51,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			$server = $this->getProjectSetting("server", $pid);
 			$tokenName = $this->getProjectSetting("tokenName", $pid);
 			$adminEmail = $this->getProjectSetting("admin_email", $pid);
+			$GLOBALS['namesForMatch'] = array();
 			CareerDev::setPid($pid);
-			CareerDev::log("Using $tokenName $token $server $adminEmail", $pid);
+			CareerDev::log("Using $tokenName $adminEmail", $pid);
 			if ($token && $server) {
 				# only have token and server in initialized projects
 				$mgr = new CronManager($token, $server, $pid);
