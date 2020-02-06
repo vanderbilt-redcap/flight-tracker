@@ -53,6 +53,30 @@ class UnitTester
 		return $bool;
 	}
 
+	public function assertEmpty($ary) {
+		$bool = empty($ary);
+		if ($bool) {
+			$this->currResults[$this->count] = $this->tag."assertEmpty TRUE"; 
+		} else {
+			$this->currResults[$this->count] = $this->tag."assertEmpty FALSE: ".json_encode($ary); 
+		}
+		$this->count++;
+		$this->tag = "";
+		return $bool;
+	}
+
+	public function assertNotEmpty($ary) {
+		$bool = !empty($ary);
+		if ($bool) {
+			$this->currResults[$this->count] = $this->tag."assertNotEmpty TRUE ".count($ary)." items"; 
+		} else {
+			$this->currResults[$this->count] = $this->tag."assertNotEmpty FALSE"; 
+		}
+		$this->count++;
+		$this->tag = "";
+		return $bool;
+	}
+
 	public function assertNotIn($a, $ary) {
 		$bool = !in_array($a, $ary);
 		if ($bool) {
@@ -167,6 +191,18 @@ class UnitTester
 		return $bool;
 	}
 
+	# the test pages key in on FALSE, so don't rename to assertFalse
+	public function assertNotTrue($bool, $label = "") {
+		if (!$bool) {
+			$this->currResults[$this->count] = $this->tag."assertNotTrue $label TRUE";
+		} else {
+			$this->currResults[$this->count] = $this->tag."assertNotTrue $label FALSE"; 
+		}
+		$this->count++;
+		$this->tag = "";
+		return !$bool;
+	}
+
 	public function assertTrue($bool, $label = "") {
 		if ($bool) {
 			$this->currResults[$this->count] = $this->tag."assertTrue $label TRUE";
@@ -231,7 +267,12 @@ class UnitTester
 				if (preg_match($re, $method)) {
 					$this->currMethod = $method;
 					$this->count = 1;
+
+					$origPost = $_POST;
+					$origGet = $_GET;
 					$obj->$method($this);
+					$_POST = $origPost;
+					$_GET = $origGet;
 				}
 				if ($this->currMethod != "") {
 					$ary = array(

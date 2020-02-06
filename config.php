@@ -15,55 +15,7 @@ define('MAX_DEGREE_SOURCES', 5);
 if (isset($_GET['uploadOrder'])) {
 	require_once(dirname(__FILE__)."/small_base.php");
 
-	$metadata = Download::metadata($token, $server);
-	$scholar = new Scholar($token, $server, $pid, $metadata);
-
-	$config = json_decode($_POST['config'], TRUE);
-	$order = json_decode($_POST['order'], TRUE);
-	if ($config && $order) {
-		foreach ($config as $fieldForOrder => $sources) {
-			# have to do this because JS does not ensure order
-			$newSources = array();
-			foreach ($order[$fieldForOrder] as $field) {
-				$source = $sources[$field];
-				$newSources[$field] = $source;
-			}
-			switch($fieldForOrder) {
-				case "summary_race_ethnicity".getDelim()."ethnicity":
-				case "summary_race_ethnicity".getDelim()."race":
-					$type = str_replace("summary_race_ethnicity".getDelim(), "", $fieldForOrder);
-					$i = 0;
-					foreach ($metadata as $row) {
-						if ($row['field_name'] == "summary_race_ethnicity") {
-							$modifiedSources = array();
-							if ($row['field_annotation']) {
-								 $modifiedSources = json_decode($row['field_annotation'], TRUE);
-							}
-							$modifiedSources[$type] = $newSources;
-							$metadata[$i]['field_annotation'] = json_encode($modifiedSources);
-							break;
-						}
-						$i++;
-					}
-					break;
-				case "summary_degrees":
-				default:
-					$i = 0;
-					foreach ($metadata as $row) {
-						if ($row['field_name'] == $fieldForOrder) {
-							$metadata[$i]['field_annotation'] = json_encode($newSources);
-							break;
-						}
-						$i++;
-					}
-					break;
-			}
-		}
-		$feedback = Upload::metadata($metadata, $token, $server);
-		echo json_encode($feedback);
-	} else {
-		throw new \Exception("Improper config or order!");
-	}
+	\Vanderbilt\FlightTrackerExternalModule\uploadOrderToMetadata($token, $server, $_POST);
 	exit();
 } else {
 	require_once(dirname(__FILE__)."/charts/baseWeb.php");
@@ -174,14 +126,10 @@ function getExistingChoicesTexts($existingChoices, $scholar, $allFields) {
 	return $texts;
 }
 
-# coordinated with config.js's getDelim function
-function getDelim() {
-	return "|";
-}
-
 function makeOrder($metadata = array()) {
 	global $token, $server, $pid;
 	$exampleField = getExampleField();
+
 
 	if (empty($metadata)) {
 		$metadata = Download::metadata($token, $server, $pid);
@@ -192,70 +140,12 @@ function makeOrder($metadata = array()) {
 
 	$allFields = getFieldNames($metadata);
 
-	$delim = getDelim();
-	$sources = array();
-	$sourceTypes = array();
 	$fieldLabels = array();
 	foreach ($orders as $fieldForOrder => $order) {
-		$newOrder = $scholar->getOrder($order, $fieldForOrder);
-		foreach ($newOrder as $field => $source) {
-			if (!isset($sources[$fieldForOrder])) {
-				$sources[$fieldForOrder] = array();
-				$sourceTypes[$fieldForOrder] = array();
-				$fieldLabels[$fieldForOrder] = findFieldLabel($fieldForOrder, $metadata);
-			}
-			if (is_array($source)) {
-				$sourceRow = $source;
-				if (is_numeric($field)) {
-					# summary_degrees
-					$rowFields = array();
-					$sourceType = "custom";
-					$foundRowSource = "";
-					foreach ($sourceRow as $rowSourceField => $rowSource) {
-						if (in_array($rowSourceField, $allFields)) { 
-							array_push($rowFields, $rowSourceField);
-							$foundRowSource = $rowSource;
-							if (isset($order[$field]) && isset($order[$field][$rowSourceField])) {
-								$sourceType = "original";
-							}
-						}
-					}
-					if ($foundRowSource) {
-						$delimRowFields = implode($delim, $rowFields);
-						$sources[$fieldForOrder][$delimRowFields] = $foundRowSource;
-						$sourceTypes[$fieldForOrder][$delimRowFields] = $sourceType;
-					}
-				} else {
-					# race/ethnicity
-					$type = $field;
-					$sources[$fieldForOrder][$type] = array();
-					foreach ($sourceRow as $field => $source) {
-						if (in_array($field, $allFields)) { 
-							$sources[$fieldForOrder][$type][$field] = $source;
-							$sourceType = "custom";
-							if (isset($order[$type]) && isset($order[$type][$field])) {
-								$sourceType = "original";
-							}
-							if (!isset($sourceTypes[$fieldForOrder][$type])) {
-								$sourceTypes[$fieldForOrder][$type] = array();
-							}
-							$sourceTypes[$fieldForOrder][$type][$field] = $sourceType;
-						}
-					}
-				}
-			} else {
-				if (in_array($field, $allFields)) { 
-					$sources[$fieldForOrder][$field] = $source;
-					$sourceType = "custom";
-					if (isset($order[$field])) {
-						$sourceType = "original";
-					}
-					$sourceTypes[$fieldForOrder][$field] = $sourceType;
-				}
-			}
-		}
+		$fieldLabels[$fieldForOrder] = findFieldLabel($fieldForOrder, $metadata);
 	}
 
+	list($sources, $sourceTypes) = \Vanderbilt\FlightTrackerExternalModule\produceSourcesAndTypes($scholar, $metadata);
 	$existingChoicesTexts = getExistingChoicesTexts($choices[$exampleField], $scholar, $allFields);
 
 	$button = "<p class='centered'><button onclick='commitOrder(); return false;'>Commit All Changes</button></p>\n";

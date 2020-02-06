@@ -1462,13 +1462,13 @@ function queueUpInitialEmail($record) {
 		$emailManager = new EmailManager($token, $server, $pid, NULL, $metadata);
 		$settingName = CareerDev::getEmailName($record);
 		if (!$emailManager->hasItem($settingName)) {
-                        $links = EmailManager::getSurveyLinks($pid, array($record), "initial_survey");
-                        if ($isset($links[$record])) {
-                                $link = $links[$record];
-                        } else {
-                                $link = "";
-                                throw new \Exception("Could not make initial survey link for $name!");
-                        }
+			$links = EmailManager::getSurveyLinks($pid, array($record), "initial_survey");
+			if ($isset($links[$record])) {
+				$link = $links[$record];
+			} else {
+				$link = "";
+				throw new \Exception("Could not make initial survey link for $name!");
+			}
 			$message = CareerDev::getSetting("init_message");
 			$from = CareerDev::getSetting("init_from");
 			$subject = CareerDev::getSetting("init_subject");
@@ -1615,6 +1615,133 @@ function getQuestionsForForm($token, $server, $form) {
 		array_push($labels, $row['field_label']);
 	}
 	return $labels;
+}
+
+# coordinated with config.js's getDelim function
+function getUploadDelim() {
+	return "|";
+}
+
+function uploadOrderToMetadata($token, $server, $post) {
+	$metadata = Download::metadata($token, $server);
+
+	$metadata = produceNewOrderForMetadata($post, $metadata);
+	$feedback = Upload::metadata($metadata, $token, $server);
+	return $feedback;
+}
+
+function produceNewOrderForMetadata($post, $metadata) {
+	$config = json_decode($post['config'], TRUE);
+	$order = json_decode($post['order'], TRUE);
+	if ($config && $order) {
+		foreach ($config as $fieldForOrder => $sources) {
+			# have to do this because JS does not ensure order
+			$newSources = array();
+			foreach ($order[$fieldForOrder] as $field) {
+				$source = $sources[$field];
+				$newSources[$field] = $source;
+			}
+			switch($fieldForOrder) {
+				case "summary_race_ethnicity".getUploadDelim()."ethnicity":
+				case "summary_race_ethnicity".getUploadDelim()."race":
+					$type = str_replace("summary_race_ethnicity".getUploadDelim(), "", $fieldForOrder);
+					$i = 0;
+					foreach ($metadata as $row) {
+						if ($row['field_name'] == "summary_race_ethnicity") {
+							$modifiedSources = array();
+							if ($row['field_annotation']) {
+								 $modifiedSources = json_decode($row['field_annotation'], TRUE);
+							}
+							$modifiedSources[$type] = $newSources;
+							$metadata[$i]['field_annotation'] = json_encode($modifiedSources);
+							break;
+						}
+						$i++;
+					}
+					break;
+				case "summary_degrees":
+				default:
+					$i = 0;
+					foreach ($metadata as $row) {
+						if ($row['field_name'] == $fieldForOrder) {
+							$metadata[$i]['field_annotation'] = json_encode($newSources);
+							break;
+						}
+						$i++;
+					}
+					break;
+			}
+		}
+	} else {
+		throw new \Exception("Improper config or order!");
+	}
+	return $metadata;
+}
+
+function produceSourcesAndTypes($scholar, $metadata) {
+	$orders = Scholar::getDefaultOrder("all");
+	$sources = array();
+	$sourceTypes = array();
+	$delim = getUploadDelim();
+	foreach ($orders as $fieldForOrder => $order) {
+		$newOrder = $scholar->getOrder($order, $fieldForOrder);
+		foreach ($newOrder as $field => $source) {
+			if (!isset($sources[$fieldForOrder])) {
+				$sources[$fieldForOrder] = array();
+				$sourceTypes[$fieldForOrder] = array();
+			}
+			if (is_array($source)) {
+				$sourceRow = $source;
+				if (is_numeric($field)) {
+					# summary_degrees
+					$rowFields = array();
+					$sourceType = "custom";
+					$foundRowSource = "";
+					foreach ($sourceRow as $rowSourceField => $rowSource) {
+						if (in_array($rowSourceField, $allFields)) {
+							array_push($rowFields, $rowSourceField);
+							$foundRowSource = $rowSource;
+							if (isset($order[$field]) && isset($order[$field][$rowSourceField])) {
+								$sourceType = "original";
+							}
+						}
+					}
+					if ($foundRowSource) {
+						$delimRowFields = implode($delim, $rowFields);
+						$sources[$fieldForOrder][$delimRowFields] = $foundRowSource;
+						$sourceTypes[$fieldForOrder][$delimRowFields] = $sourceType;
+					}
+				} else {
+					# race/ethnicity
+					$type = $field;
+					$sources[$fieldForOrder][$type] = array();
+					foreach ($sourceRow as $field => $source) {
+						if (in_array($field, $allFields)) {
+							$sources[$fieldForOrder][$type][$field] = $source;
+							$sourceType = "custom";
+							if (isset($order[$type]) && isset($order[$type][$field])) {
+								$sourceType = "original";
+							}
+							if (!isset($sourceTypes[$fieldForOrder][$type])) {
+								$sourceTypes[$fieldForOrder][$type] = array();
+							}
+							$sourceTypes[$fieldForOrder][$type][$field] = $sourceType;
+						}
+					}
+				}
+			} else {
+				if (in_array($field, $allFields)) {
+					$sources[$fieldForOrder][$field] = $source;
+					$sourceType = "custom";
+					if (isset($order[$field])) {
+						$sourceType = "original";
+					}
+					$sourceTypes[$fieldForOrder][$field] = $sourceType;
+				}
+			}
+		}
+	}
+	return array($sources, $sourceTypes);
 }
 
 require_once(dirname(__FILE__)."/cronLoad.php");

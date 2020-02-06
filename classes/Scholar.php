@@ -290,8 +290,29 @@ class Scholar {
 		$this->setRows($rows);
 	}
 
+	public static function hasDemographics($rows) {
+		$fields = self::getDemographicFields();
+		$has = array();
+		foreach ($fields as $field => $func) {
+			$has[$field] = FALSE;
+		}
+		foreach ($fields as $field => $func) {
+			foreach ($rows as $row) {
+				if (isset($row[$field])) {
+					$has[$field] = TRUE;
+				}
+			}
+		}
+		foreach ($has as $field => $b) {
+			if (!$b) {
+				return FALSE;
+			}
+		}
+		return TRUE;
+	}
+
 	public function process() {
-		if ((count($this->rows) == 1) && ($this->rows[0]['redcap_repeat_instrument'] == "")) {
+		if ((count($this->rows) == 1) && self::hasDemographics($this->rows) && ($this->rows[0]['redcap_repeat_instrument'] == "")) {
 			$this->loadDemographics();
 		} else {
 			$this->processDemographics();
@@ -309,7 +330,7 @@ class Scholar {
 		$this->downloadAndSetup($record);
 	}
 
-	private function makeUploadRow() {
+	public function makeUploadRow() {
 		$uploadRow = array(
 					"record_id" => $this->recordId,
 					"redcap_repeat_instrument" => "",
@@ -1088,7 +1109,7 @@ class Scholar {
 		return "";
 	}
 
-	private function getGender($rows) {
+	public function getGender($rows) {
 		$vars = self::getDefaultOrder("summary_gender");
 		$vars = $this->getOrder($vars, "summary_gender");
 		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
@@ -1112,7 +1133,7 @@ class Scholar {
 	}
 
 	# returns array of 3 (overall classification, race source, ethnicity source)
-	private function getRaceEthnicity($rows) {
+	public function getRaceEthnicity($rows) {
 		$order = self::getDefaultOrder("summary_race_ethnicity");
 		$order = $this->getOrder($order, "summary_race_ethnicity");
 		$normativeRow = self::getNormativeRow($rows);
@@ -1120,7 +1141,7 @@ class Scholar {
 		$race = "";
 		$raceSource = "";
 		foreach ($order["race"] as $variable => $source) {
-			if (($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 8)) {
+			if (isset($normativeRow[$variable]) && ($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 8)) {
 				$race = $normativeRow[$variable];
 				$raceSource = $source;
 				break;
@@ -1132,7 +1153,7 @@ class Scholar {
 		$eth = "";
 		$ethSource = "";
 		foreach ($order["ethnicity"] as $variable => $source) {
-			if (($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 4)) {
+			if (isset($normativeRow[$variable]) && ($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 4)) {
 				$eth = $normativeRow[$variable];
 				$ethSource = $source;
 				break;
@@ -1185,7 +1206,7 @@ class Scholar {
 	}
 
 	# finds date-of-birth
-	private function getDOB($rows) {
+	public function getDOB($rows) {
 		$vars = self::getDefaultOrder("summary_dob");
 		$vars = $this->getOrder($vars, "summary_dob");
 		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
@@ -1197,7 +1218,7 @@ class Scholar {
 		return new Result($date, $result->getSource(), "", "", $this->pid);
 	}
 
-	private function getCitizenship($rows) {
+	public function getCitizenship($rows) {
 		$vars = self::getDefaultOrder("summary_citizenship");
 		$vars = $this->getOrder($vars, "summary_citizenship");
 		return self::searchRowsForVars($rows, $vars, FALSE, $this->pid);

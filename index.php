@@ -43,10 +43,11 @@ $(document).ready(function() {
 	if ($module) {
 		$fourWeeksPrior = time() - 28 * 24 * 3600;
 		$module->removeLogs("timestamp < ".date("Y-m-d", $fourWeeksPrior));
+
 		$hours = 12;    // 12 hours prior
-		$maxTimeAllowed = time() - $hours * 3600;
+		$priorTs = time() - $hours * 3600;
 		$lockInfo = $module->getSystemSetting(\ExternalModules\ExternalModules::KEY_RESERVED_IS_CRON_RUNNING);
-		if ($lockInfo['time'] > $maxTimeAllowed) {
+		if ($lockInfo['time'] < $priorTs) {
 			echo "<div class='centered red'>Your cron has not completed within $hours hours. Your cron most likely needs to be reset. Please <a href='".CareerDev::link("reset_cron.php")."'>click here to do so</a>.</div>\n";
 		}
 	}
@@ -136,6 +137,7 @@ $(document).ready(function() {
 		<p class='centered'><a href='<?= CareerDev::link("help/why.php") ?>'>Why Use Flight Tracker?</a></p>
 		<p class='centered'><a href='<?= CareerDev::link("help/how.php") ?>'>How to Use Flight Tracker?</a></p>
 		<p class='centered'><a href='javascript:;' onclick='toggleHelp("<?= CareerDev::getHelpLink() ?>", "<?= CareerDev::getHelpHiderLink() ?>", "index.php");'>Enable Help on All Pages</a></p>
+		<p class='centered'><a href='https://github.com/scottjpearson/flight-tracker/releases'>Release Notes</a></p>
 		<h3><i class='fa fa-globe-americas'></i> Consortium</h3>
 		<p class='centered'><a href='<?= CareerDev::link("community.php") ?>'>About the Consortium</a></p>
 		<h4 class='nomargin'>Monthly Planning Meetings</h4>

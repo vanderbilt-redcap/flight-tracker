@@ -41,7 +41,7 @@ function makeLI(fieldID, sourceTypeForField, sourceName, fieldText) {
 function addCustomField(ob) {
 	var ul = $(ob).parent().parent().find("ul");
 	var p = $(ob).parent();
-	var source = p.find(".newSortableSource");
+	var source = p.find(".newSortableSource :selected");
 	var fields = p.find(".newSortableField");
 	if ($(fields).length == 1) {
 		if (($(fields).val() !== "") && ($(source).val() !== "")) {
@@ -55,7 +55,7 @@ function addCustomField(ob) {
 		for (var i=1; i <= maxDegrees; i++) {
 			var field = p.find(".newSortableField[index="+i+"]");
 			if (($(field).val() !== "") && ($(source).val() !== "")) {
-				selectedFields.push(field);
+				selectedFields.push(field.val());
 			}
 		}
 		var fieldID = selectedFields.join(getDelim());

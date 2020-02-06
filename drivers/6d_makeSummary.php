@@ -43,7 +43,8 @@ function unlock() {
 	unlink($lockFile);
 }
 
-function makeSummary($token, $server, $pid, $selectRecord = "") {
+# $allRecordRows is for testing purposes only
+function makeSummary($token, $server, $pid, $selectRecord = "", $allRecordRows = array()) {
 	lock();
 
 	if (!$token || !$server) {
@@ -62,9 +63,20 @@ function makeSummary($token, $server, $pid, $selectRecord = "") {
 		$records = array($selectRecord);
 	}
 	$errors = array();
+	$returnREDCapData = array();
 	foreach ($records as $recordId) {
 		$time1 = microtime(TRUE);
-		$rows = Download::records($token, $server, array($recordId));
+		$rows = array();
+		$realRecord = FALSE;
+		foreach ($allRecordRows as $row) {
+			if ($row['record_id'] == $recordId) {
+				array_push($rows, $row);
+			}
+		}
+		if (empty($rows)) {
+			$rows = Download::records($token, $server, array($recordId));
+			$realRecord = TRUE;
+		}
 		$time2 = microtime(TRUE);
 		// CareerDev::log("6d CareerDev downloading $recordId took ".($time2 - $time1));
 		// echo "6d CareerDev downloading $recordId took ".($time2 - $time1)."\n";
@@ -73,20 +85,34 @@ function makeSummary($token, $server, $pid, $selectRecord = "") {
 		$grants = new Grants($token, $server, $metadata);
 		$grants->setRows($rows);
 		$grants->compileGrants();
-		$result = $grants->uploadGrants();
+		if ($realRecord) {
+			$result = $grants->uploadGrants();
+			$myErrors = Upload::isolateErrors($result);
+			$errors = array_merge($errors, $myErrors);
+		} else {
+			$row = $grants->makeUploadRow();
+			array_push($returnREDCapData, $row);
+		}
 		$time2 = microtime(TRUE);
 		// CareerDev::log("6d CareerDev processing grants $recordId took ".($time2 - $time1));
 		// echo "6d CareerDev processing grants $recordId took ".($time2 - $time1)."\n";
-		$myErrors = Upload::isolateErrors($result);
-		$errors = array_merge($errors, $myErrors);
 	
 		# update rows with new data
 		$time1 = microtime(TRUE);
 		$scholar = new Scholar($token, $server, $metadata, $pid);
-		$scholar->downloadAndSetup($recordId);
 		$scholar->setGrants($grants);   // save compute time
+		if ($realRecord) {
+			$scholar->downloadAndSetup($recordId);
+		} else {
+			$scholar->setRows($rows);
+		}
 		$scholar->process();
-		$result = $scholar->upload();
+		if ($realRecord) {
+			$result = $scholar->upload();
+		} else {
+			$row = $scholar->makeUploadRow();
+			array_push($returnREDCapData, $row);
+		}
 		$time2 = microtime(TRUE);
 		// CareerDev::log("6d CareerDev processing scholar $recordId took ".($time2 - $time1));
 		// echo "6d CareerDev processing scholar $recordId took ".($time2 - $time1)."\n";
@@ -96,7 +122,9 @@ function makeSummary($token, $server, $pid, $selectRecord = "") {
 		$time1 = microtime(TRUE);
 		$pubs = new Publications($token, $server, $metadata);
 		$pubs->setRows($rows);
-		$result = $pubs->uploadSummary();
+		if ($realRecord) {
+			$result = $pubs->uploadSummary();
+		}
 		$time2 = microtime(TRUE);
 		// CareerDev::log("6d CareerDev processing publications $recordId took ".($time2 - $time1));
 		// echo "6d CareerDev processing publications $recordId took ".($time2 - $time1)."\n";
@@ -111,4 +139,47 @@ function makeSummary($token, $server, $pid, $selectRecord = "") {
 	unlock();
 
 	CareerDev::saveCurrentDate("Last Summary of Data");
+	if (!empty($allRecordRows)) {
+		return mergeNormativeRows($returnREDCapData);
+	}
+}
+
+function mergeNormativeRows($unmerged) {
+	$newData = array();
+	$normativeRows = array();
+	$pk = "record_id";
+	$repeatFields = array("redcap_repeat_instrument", "redcap_repeat_instance");
+	foreach ($unmerged as $row) {
+		if ($row['redcap_repeat_instrument'] != "") {
+			array_push($newData, $row);
+		} else {
+			$recordId = FALSE;
+			foreach ($row as $field => $value) {
+				if ($field == $pk) {
+					$recordId = $row[$pk]; 
+				}
+			}
+			if (!$recordId) {
+				throw new \Exception("Row does not have $pk: ".json_encode($row));
+			}
+			if (!isset($normativeRows[$recordId])) {
+				$normativeRows[$recordId] = array();
+				foreach ($repeatFields as $repeatField) {
+					$normativeRows[$recordId][$repeatField] = "";
+				}
+			}
+
+			foreach ($row as $field => $value) {
+				if ($value && !in_array($field, $repeatFields)) {
+					if (!isset($normativeRow[$field])) {
+						$normativeRows[$recordId][$field] = $value;
+					} else {
+						throw new \Exception("$field is repeated with values in normativeRow!");
+					}
+				}
+			}
+		}
+	}
+	$newData = array_merge(array_values($normativeRows), $newData);
+	return $newData;
 }

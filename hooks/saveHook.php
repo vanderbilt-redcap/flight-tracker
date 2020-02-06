@@ -21,7 +21,7 @@ if ($instrument == "identifiers") {
 		if ($row = db_fetch_assoc($q)) {
 			if ($row['field_name'] == "identifiers_complete") {
 				# new record => only identifiers form filled out
-				queueUpInitialEmail($record);
+				\Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($record);
 			}
 		}
 	}

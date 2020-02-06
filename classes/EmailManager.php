@@ -158,7 +158,7 @@ class EmailManager {
 								$result = $this->$func($emailSetting, $name, $type, $to);
 							}
 						} else {
-							if (date("Y-m-d H:i", $ts) == date("Y-m-d H:i", $_SERVER['REQUEST_TIME_FLOAT'])) {
+							if ($this->isReadyToSend($ts, $_SERVER['REQUEST_TIME_FLOAT'])) {
 								$result = $this->$func($emailSetting, $name, $type);
 							}
 						}
@@ -175,6 +175,10 @@ class EmailManager {
 			}
 		}
 		return $results;
+	}
+
+	public function isReadyToSend($ts1, $ts2) {
+		return (date("Y-m-d H:i", $ts1) == date("Y-m-d H:i", $ts2));
 	}
 
 	private static function within15MinutesAfter($proposedTs, $currTs) {
@@ -247,7 +251,7 @@ class EmailManager {
 				throw new \Exception("Could not find REDCap class!");
 			}
 
-			\REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
+			// \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
 			usleep(200000); // wait 0.2 seconds for other items to process
 		}
 		$records = array_keys($mssgs);
@@ -589,7 +593,7 @@ class EmailManager {
 		return $form."_date";
 	}
 
-	private function getRows($who, $whenType = "", $when = array(), $what = array()) {
+	public function getRows($who, $whenType = "", $when = array(), $what = array()) {
 		if (($who['filter'] == "all") || ($who['recipient'] == "individuals")) {
 			# get all names, either when specifying that the recipients are individual emails or if this is a mass email to all
 			$emails = Download::emails($this->token, $this->server);
@@ -1079,7 +1083,7 @@ class EmailManager {
 		return $newQueue;
 	}
 
-	private function loadRealData() {
+	public function loadRealData() {
 		if ($this->module) {
 			$this->data = self::loadData($this->settingName, $this->module, $this->hijackedField, $this->pid);
 		} else {
