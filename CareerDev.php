@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.8.1";
+		return "2.8.2";
 	}
 
         public static function getIntroductoryFromEmail() {
