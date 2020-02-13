@@ -142,6 +142,18 @@ class UnitTester
 		return $bool;
 	}
 	
+	public function assertNotZero($a) {
+		$bool = ($a != 0);
+		if ($bool) {
+			$this->currResults[$this->count] = $this->tag."assertNotZero TRUE $a"; 
+		} else {
+			$this->currResults[$this->count] = $this->tag."assertNotZero FALSE"; 
+		}
+		$this->count++;
+		$this->tag = "";
+		return $bool;
+	}
+	
 	public function assertNotEqual($a, $b) {
 		$bool = ($a != $b);
 		if ($bool) {
@@ -178,6 +190,30 @@ class UnitTester
 		return $bool;
 	}
 
+	public function assertLessThan($a, $b) {
+		$bool = ($a < $b);
+		if ($bool) {
+			$this->currResults[$this->count] = $this->tag."assertLessThan TRUE $a < $b";
+		} else {
+			$this->currResults[$this->count] = $this->tag."assertLessThan FALSE: $a is not < $b"; 
+		}
+		$this->count++;
+		$this->tag = "";
+		return $bool;
+	}
+
+	public function assertGreaterThan($a, $b) {
+		$bool = ($a > $b);
+		if ($bool) {
+			$this->currResults[$this->count] = $this->tag."assertGreaterThan TRUE $a > $b";
+		} else {
+			$this->currResults[$this->count] = $this->tag."assertGreaterThan FALSE: $a is not > $b"; 
+		}
+		$this->count++;
+		$this->tag = "";
+		return $bool;
+	}
+
 	public function assertNotBlank($str) {
 		$bool = ($str !== "");
 		if ($bool) {
@@ -186,7 +222,6 @@ class UnitTester
 			$this->currResults[$this->count] = $this->tag."assertNotBlank FALSE: '".htmlspecialchars($str)."' is blank"; 
 		}
 		$this->count++;
-		$this->tag = "";
 		$this->tag = "";
 		return $bool;
 	}

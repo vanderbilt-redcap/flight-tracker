@@ -47,7 +47,7 @@ $(document).ready(function() {
 		$hours = 12;    // 12 hours prior
 		$priorTs = time() - $hours * 3600;
 		$lockInfo = $module->getSystemSetting(\ExternalModules\ExternalModules::KEY_RESERVED_IS_CRON_RUNNING);
-		if ($lockInfo['time'] < $priorTs) {
+		if ($lockInfo && ($lockInfo['time'] < $priorTs)) {
 			echo "<div class='centered red'>Your cron has not completed within $hours hours. Your cron most likely needs to be reset. Please <a href='".CareerDev::link("reset_cron.php")."'>click here to do so</a>.</div>\n";
 		}
 	}

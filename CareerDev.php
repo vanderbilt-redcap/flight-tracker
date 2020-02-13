@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.8.2";
+		return "2.9.0";
 	}
 
         public static function getIntroductoryFromEmail() {
@@ -176,7 +176,7 @@ class CareerDev {
 
 	public static function getREDCapDir() {
 		if (APP_PATH_WEBROOT) {
-			# get rid of training /'s per convention
+			# get rid of trailing /'s per convention
 			return preg_replace("/\/$/", "", APP_PATH_WEBROOT);
 		}
 		return "/redcap_v8.0.0";
@@ -187,17 +187,24 @@ class CareerDev {
 	}
 
 	public static function getInstitutions() {
-		$primaryInst = self::getSetting("short_institution");
-		$otherInsts = preg_split("/,\s*/", self::getSetting("other_institutions"));
+		$shortInst = self::getShortInstitution();
+		$longInst = self::getInstitution();
+
 		$institutions = array();
-		if ($primaryInst) {
-			array_push($institutions, $primaryInst);
+		if (preg_match("/".strtolower($shortInst)."/", $longInst)) {
+			array_push($institutions, $shortInst);
+			array_push($institutions, $longInst);
+		} else {
+			array_push($institutions, $longInst);
 		}
+
+		$otherInsts = preg_split("/,\s*/", self::getSetting("other_institutions"));
 		foreach ($otherInsts as $otherInst) {
-			if ($otherInst) {
+			if ($otherInst && !in_array($otherInst, $institutions)) {
 				array_push($institutions, $otherInst);
 			}
 		}
+
 		return $institutions;
 	}
 
@@ -386,7 +393,9 @@ class CareerDev {
 					// "Survey/Email Management" => self::link("/emailMgmt/index.php"),
 					// "Manage Email Texts" => self::link("/emailMgmt/text.php"),
 					"Add a New Survey" => self::link("/emailMgmt/add.php"),
-					"List of Nonrespondents" => self::link("/emailMgmt/noSurvey.php"),
+					// "List of Nonrespondents" => self::link("/emailMgmt/noSurvey.php"),
+					"Survey Responses" => self::link("/surveyResponses.php"),
+					"Import Data" => self::link("/import.php"),
 					);
 		}
 		if ($menuName == "Dashboards") {

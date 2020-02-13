@@ -544,23 +544,7 @@ class EmailManager {
 	}
 
 	private function getRepeatingForms() {
-		$pid = $this->pid;
-
-		if (!function_exists("db_query")) {
-			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-		}
-
-		$sql = "SELECT DISTINCT(r.form_name) AS form_name FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) INNER JOIN redcap_events_repeat AS r ON (m.event_id = r.event_id) WHERE a.project_id = '$pid'";
-		$q = db_query($sql);
-		if ($error = db_error()) {
-			Application::log("ERROR: ".$error);
-			throw new \Exception("ERROR: ".$error);
-		}
-		$repeatingForms = array();
-		while ($row = db_fetch_assoc($q)) {
-			array_push($repeatingForms, $row['form_name']);
-		}
-		return $repeatingForms;
+		return Scholar::getRepeatingForms($this->pid);
 	}
 
 	private static function processEmails($rows) {

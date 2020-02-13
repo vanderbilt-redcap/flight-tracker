@@ -27,6 +27,36 @@ class Download {
 		return self::indexREDCapData($redcapData);
 	}
 
+	public static function getMaxInstanceForRepeatingForm($token, $server, $formName, $recordId) {
+		if ($formName == "") {
+			# normative row
+			return "";
+		}
+
+		$allRepeatingForms = Scholar::getRepeatingForms(Application::getPID($token));
+		if (!in_array($formName, $allRepeatingForms)) {
+			# not repeating form => on normative row
+			return "";
+		}
+
+		$recordIds = self::recordIds($token, $server);
+		if (!in_array($recordId, $recordIds)) {
+			# new record
+			return 0;
+		}
+
+		$redcapData = self::formForRecords($token, $server, $formName, array($recordId));
+		$max = 0;
+		foreach ($redcapData as $row) {
+			if (isset($row['redcap_repeat_instance']) && isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == $formName)) {
+				if ($row['redcap_repeat_instance'] > $max) {
+					$max = $row['redcap_repeat_instance'];
+				}
+			}
+		}
+		return $max;
+	}
+
 	public static function getFilteredRedcapData($token, $server, $fields, $cohort = "", $metadata = array()) {
 		if ($token && $server && $fields && !empty($fields)) {
 			if ($cohort) {

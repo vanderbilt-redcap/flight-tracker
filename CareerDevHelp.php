@@ -191,7 +191,7 @@ class CareerDevHelp {
 	# different format than getHelpHash -- $title => array of files
 	private static function getHowHelpHash() {
 		$help = array(
-				"Setting Up a Database" => array(),
+				"Setting Up a Database" => array("changes.html"),
 				"Adding New Scholars" => array("addScholars.html"),
 				"Email Management" => array("emailMgmt.html"),
 				"Solving Situations" => array("situations.html"),
@@ -209,7 +209,7 @@ class CareerDevHelp {
 	private static function getHelpHash() {
 		$help = array();
 		$help[""] = array(
-					"Front Page" => array("useCaseSearches.html"),
+					"Front Page" => array("useCaseSearches.html", "changes.html"),
 					);
 		$help["General"] = array(
 					"K2R Conversion Calculator" => array("useCaseConversion.html"),

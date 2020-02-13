@@ -8,6 +8,7 @@ namespace Vanderbilt\CareerDevLibrary;
 // require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
+require_once(dirname(__FILE__)."/NameMatcher.php");
 
 class Upload {
 	public static function metadata($metadata, $token, $server) {
@@ -241,5 +242,175 @@ class Upload {
 			$allFeedback = self::combineFeedback($allFeedback, $feedback);
 		}
 		return $allFeedback;
+	}
+
+	# returns array($upload, $errors, $newCounts)
+	public static function prepareFromCSV($headers, $lines, $token, $server, $pid, $metadata = array()) {
+		if (empty($metadata)) {
+			$metadata = Download::metadata($token, $server);
+		}
+
+		$errors = array();
+		$upload = array();
+		$newCounts = array("new" => 0, "existing" => 0);
+
+		$headerPrefices = array();
+		if ($headers[0] == "record_id") {
+			array_push($headerPrefices, "record_id");
+		} else if (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {
+			array_push($headerPrefices, "identifier_last_name");
+			array_push($headerPrefices, "identifier_first_name");
+		} else if (($headers[0] == "identifier_first_name") && ($headers[1] == "identifier_last_name")) {
+			array_push($headerPrefices, "identifier_first_name");
+			array_push($headerPrefices, "identifier_last_name");
+		} else {
+			array_push($errors, "The first column's header must be record_id, identifier_first_name, or identifier_last_name. If the first column is a name field, the second field must be the other name field (identifier_last_name or identifier_first_name). Your first two columns are: {$headers[0]} and {$headers[1]}.");
+		}
+
+		$invalidHeaders = self::getInvalidHeaders($headers, $metadata);
+		if (!empty($invalidHeaders)) {
+			array_push($errors, "The following fields either are not valid fields or are duplicates: ".implode(", ", $invalidHeaders));
+		} else {
+			$repeatForms = self::getRepeatFormsFromList($headers, $headerPrefices, $metadata, $pid);
+			if (count($repeatForms) == 1) {
+				$recordIds = Download::recordIds($token, $server);
+				$max = 0;
+				foreach ($recordIds as $recordId) {
+					if ($recordId > $max) {
+						$max = $recordId;
+					}
+				}
+	
+				foreach ($lines as $i => $line) {
+					if (self::isValidCSVLine($headers, $line)) {
+						list($recordId, $newErrors) = self::getRecordIdForCSVLine($headers, $line);
+						$errors = array_merge($errors, $newErrors);
+						if ($recordId) {
+							$newCounts['existing']++;
+						} else {
+							$newCounts['new']++;
+							$recordId = $max + 1;
+							$max++;
+						}
+	
+						$uploadRow = array("record_id" => $recordId);
+						$formName = $repeatForms[0];
+						$maxInstance = "";
+						if ($formName != "") {
+							$maxInstance = Download::getMaxInstanceForRepeatingForm($token, $server, $formName, $recordId); 
+							$maxInstance++;
+						}
+						$uploadRow['redcap_repeat_instrument'] = $formName;
+						$uploadRow['redcap_repeat_instance'] = $maxInstance;
+
+						if (count($headers) == count($line)) {
+							$j = 0;
+							foreach ($headers as $header) {
+								if (!in_array($header, $headerPrefices)) {
+									$uploadRow[$header] = $line[$j];
+								}
+								$j++;
+							}
+							array_push($upload, $uploadRow);
+						} else {
+							array_push($errors, "On data line $i, the number of elements does not equal the number of headers (".count($headers).")");
+						}
+					}    // no else because errors are already supplied
+				}
+			} else if (count($repeatForms) == 0) {
+				array_push($errors, "No data are specified in the table.");
+			} else {
+				array_push($errors, "More than one repeating form is specified on the same row: ".implode(", ", $repeatForms));
+			}
+		}
+		return array($upload, $errors, $newCounts);
+	}
+
+	private static function getRepeatFormsFromList($headers, $headerPrefices, $metadata, $pid) {
+		$repeatFormsInList = array();
+		$allRepeatForms = Scholar::getRepeatingForms($pid);
+		foreach ($headers as $header) {
+			if (!in_array($header, $headerPrefices)) {
+				foreach ($metadata as $row) {
+					if ($row['field_name'] == $header) {
+						if (in_array($row['form_name'], $allRepeatForms)) {
+							if (!in_array($row['form_name'], $repeatFormsInList)) {
+								array_push($repeatFormsInList, $row['form_name']);
+							}
+						} else {
+							array_push($repeatFormsInList, "");   // normative row
+						}
+					}
+				}
+			}
+		}
+		return $repeatFormsInList;
+	}
+
+	private static function getInvalidHeaders($headers, $metadata) {
+		$invalid = array();
+		$found = array();
+		foreach ($headers as $header) {
+			$foundHeader = FALSE;
+			foreach ($metadata as $row) {
+				if ($row['field_name'] == $header) {
+					$foundHeader = TRUE;
+					break;
+				}
+			}
+			if (!$foundHeader) {
+				array_push($invalid, $header);
+			} else if (!in_array($header, $found)) {
+				array_push($found, $header);
+			} else {
+				# duplicate
+				array_push($invalid, $header);
+			}
+		}
+		return $invalid;
+	}
+
+	public static function isValidCSVLine($headers, $line) {
+		if (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {
+			if ($line[0] && $line[1]) {
+				return TRUE;
+			}
+		} else if (($headers[1] == "identifier_last_name") && ($headers[0] == "identifier_first_name")) {
+			if ($line[0] && $line[1]) {
+				return TRUE;
+			}
+		} else if ($headers[0] == "record_id") {
+			if ($line[0]) {
+				return TRUE;
+			}
+		}
+		return FALSE;
+	}
+
+	public static function getRecordIdForCSVLine($headers, $line) {
+		$recordId = FALSE;
+		$errors = array();
+		if (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {
+			if ($line[0] && $line[1]) {
+				$recordId = NameMatcher::matchName($line[1], $line[0]);
+			} else {
+				array_push($errors, "On data line $i, you must supply a first and last name.");
+			}
+		} else if (($headers[1] == "identifier_last_name") && ($headers[0] == "identifier_first_name")) {
+			if ($line[0] && $line[1]) {
+				$recordId = NameMatcher::matchName($line[0], $line[1]);
+			} else {
+				array_push($errors, "On data line $i, you must supply a first and last name.");
+			}
+		} else if ($headers[0] == "record_id") {
+			if (is_numeric($line[0])) {
+				$recordId = $line[0];
+			} else {
+				array_push($errors, "On data line $i, the record id must be numeric. It is {$line[0]}.");
+			}
+		} else {
+			array_push($errors, "Headers not valid: {$headers[0]}, {$headers[1]}");
+		}
+		return array($recordId, $errors);
 	}
 }

@@ -31,6 +31,24 @@ class Scholar {
 		return FALSE;
 	}
 
+	public static function getRepeatingForms($pid) {
+		if (!function_exists("db_query")) {
+			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+		}
+
+		$sql = "SELECT DISTINCT(r.form_name) AS form_name FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) INNER JOIN redcap_events_repeat AS r ON (m.event_id = r.event_id) WHERE a.project_id = '$pid'";
+		$q = db_query($sql);
+		if ($error = db_error()) {
+			Application::log("ERROR: ".$error);
+			throw new \Exception("ERROR: ".$error);
+		}
+		$repeatingForms = array();
+		while ($row = db_fetch_assoc($q)) {
+			array_push($repeatingForms, $row['form_name']);
+		}
+		return $repeatingForms;
+	}
+
 	public static function isDependentOnAcademia($field) {
 		$dependent = array("summary_current_division", "summary_current_rank", "summary_current_tenure", );
 		if (in_array($field, $dependent)) {
@@ -918,6 +936,7 @@ class Scholar {
 								"check_institution" => "scholars",
 								);
 		$orders["summary_current_division"] = array(
+								"identifier_left_division" => "manual",
 								"followup_division" => "followup",
 								"check_division" => "scholars",
 								"override_division" => "manual",
@@ -931,6 +950,7 @@ class Scholar {
 							"followup_academic_rank" => "followup",
 							"check_academic_rank" => "scholars",
 							"newman_new_rank" => "new2017",
+							"newman_demographics_academic_rank" => "demographics",
 							);
 		$orders["summary_current_start"] = array(
 							"promotion_in_effect" => "manual",
@@ -1162,9 +1182,17 @@ class Scholar {
 		$val = "";
 		if ($race == 2) {   # Asian
 			$val = 5;
+			return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
 		}
 		if ($eth == "") {
-			return new RaceEthnicityResult("", "", "");
+			if ($race == 5) { # White
+				$val = 7;
+			} else if ($race == 4) { # Black
+				$val = 8;
+			}
+			if ($val) {
+				return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
+			}
 		}
 		if ($eth == 1) { # Hispanic
 			if ($race == 5) { # White
@@ -1221,7 +1249,50 @@ class Scholar {
 	public function getCitizenship($rows) {
 		$vars = self::getDefaultOrder("summary_citizenship");
 		$vars = $this->getOrder($vars, "summary_citizenship");
-		return self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		if ($result->getValue() == "") {
+			$selectChoices = array(
+						"vfrs_citizenship" => "vfrs",
+						);
+			foreach ($selectChoices as $field => $fieldSource) {
+				if ($fieldSource == "vfrs") {
+					foreach ($rows as $row) {
+						if (isset($row[$field]) && ($row[$field])) {
+							$fieldValue = trim(strtolower($row[$field]));
+							if ($fieldValue == "1") {
+								# U.S. citizen, source unknown
+								return new Result('5', $fieldSource, "", "", $this->pid);
+							} else if ($fieldValue) {
+								# Non U.S. citizen, status unknown
+								return new Result('6', $fieldSource, "", "", $this->pid);
+							}
+						}
+					}
+				}
+			}
+
+			$usValues = array("us", "u.s.", "united states", "usa", "u.s.a.");    // lower case
+			$textSources = array(
+						"newman_demographics_citizenship" => "demographics",
+						);
+			foreach ($textSources as $field => $fieldSource) {
+				if ($fieldSource == "demographics") {
+					foreach ($rows as $row) {
+						if (isset($row[$field]) && ($row[$field])) {
+							$fieldValue = trim(strtolower($row[$field]));
+							if (in_array($fieldValue, $usValues)) {
+								# U.S. citizen, source unknown
+								return new Result('5', $fieldSource, "", "", $this->pid);
+							} else if ($fieldValue) {
+								# Non U.S. citizen, status unknown
+								return new Result('6', $fieldSource, "", "", $this->pid);
+							}
+						}
+					}
+				}
+			}
+		}
+		return $result;
 	}
 
 	private static function getDateFieldForSource($source, $field) {
@@ -1349,13 +1420,60 @@ class Scholar {
 	private function getCurrentDivision($rows) {
 		$vars = self::getDefaultOrder("summary_current_division");
 		$vars = $this->getOrder($vars, "summary_current_division");
-		return self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		if ($result->getValue() == "") {
+			$deptName = $this->getPrimaryDepartmentText();
+			$nodes = preg_split("/\//", $deptName);
+			if (count($nodes) == 2) {
+				$deptResult = $this->getPrimaryDepartment($rows);
+				return new Result($nodes[1], $deptResult->getSource(), "", "", $this->pid);
+			}
+		}
+		return $result;
 	}
 
 	private function getCurrentRank($rows) {
 		$vars = self::getDefaultOrder("summary_current_rank");
 		$vars = $this->getOrder($vars, "summary_current_rank");
 		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+		if (!$result->getValue()) {
+			$otherFields = array(
+						"vfrs_current_appointment" => "vfrs",
+						);
+			foreach ($otherFields as $field => $fieldSource) {
+				if ($fieldSource == "vfrs") {
+					foreach ($rows as $row) {
+						if (isset($row[$field]) && ($row[$field] != "")) {
+							# VFRS: 1, Research Instructor|2, Research Assistant Professor|3, Instructor|4, Assistant Professor|5, Other
+							# Summary: 1, Research Fellow | 2, Clinical Fellow | 3, Instructor | 4, Research Assistant Professor | 5, Assistant Professor | 6, Associate Professor | 7, Professor | 8, Other
+							switch($row[$field]) {
+								case 1:
+									$val = 3;
+									break;
+								case 2:
+									$val = 4;
+									break;
+								case 3:
+									$val = 3;
+									break;
+								case 4:
+									$val = 5;
+									break;
+								case 5:
+									$val = 8;
+									break;
+								default:
+									$val = "";
+									break;
+							}
+							if ($val) {
+								return new Result($val, $fieldSource, "", "", $this->pid);
+							}
+						}
+					}
+				}
+			}
+		}
 		return $result;
 	}
 
@@ -1368,7 +1486,20 @@ class Scholar {
 	private function getTenureStatus($rows) {
 		$vars = self::getDefaultOrder("summary_current_tenure");
 		$vars = $this->getOrder($vars, "summary_current_tenure");
-		return self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		if ($result->getValue() == "") {
+			$otherFields = array(
+						"vfrs_tenure" => "vfrs",
+						);
+			foreach ($otherFields as $field => $fieldSource) {
+				foreach ($rows as $row) {
+					if (isset($row[$field]) && ($row[$field] != "")) {
+						return new Result($row[$field], $fieldSource, "", "", $this->pid);
+					}
+				}
+			} 
+		}
+		return $result;
 	}
 
 	private static function isNormativeRow($row) {

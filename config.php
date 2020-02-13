@@ -303,7 +303,7 @@ function makeSettings($module) {
 	array_push($ary["Installation Variables"], makeSetting("event_id", "text", "Event ID"));
 	array_push($ary["Installation Variables"], makeSetting("pid", "text", "Project ID"));
 	array_push($ary["Installation Variables"], makeSetting("server", "text", "Server API Address"));
-	array_push($ary["Installation Variables"], makeSetting("admin_email", "text", "Administrative Email(s); comma-separated"));
+	array_push($ary["Installation Variables"], makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated"));
 	array_push($ary["Installation Variables"], makeSetting("tokenName", "text", "Project Name"));
 	array_push($ary["Installation Variables"], makeSetting("timezone", "text", "Timezone"));
 	array_push($ary["Installation Variables"], makeSetting("cities", "text", "City or Cities"));

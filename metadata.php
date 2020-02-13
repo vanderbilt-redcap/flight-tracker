@@ -19,8 +19,8 @@ if ($_POST['process'] == "check") {
 		$lastCheckTs = 0;
 	}
 
-	# check a maximum of once every 5 minutes
-	if ($ts > $lastCheckTs + 5 * 60) {
+	# check a maximum of once every 30 seconds 
+	if ($ts > $lastCheckTs + 30) {
 		$fp = fopen($filename, "r");
 		$json = "";
 		while ($line = fgets($fp)) {

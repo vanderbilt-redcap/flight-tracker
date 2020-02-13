@@ -242,6 +242,7 @@ function makeIntroPage($projectId) {
 	$html .= "<h2>What You'll Need</h2>\n";
 	$html .= "<ol>\n";
 	$html .= "<li>Ten minutes (or less)</li>\n";
+	$html .= "<li>Your REDCap Administrator handy via email or phone.</li>\n";
 	$html .= "<li>A <a href='".APP_PATH_WEBROOT."API/project_api.php?pid=".$projectId."'>REDCap API Token</a> (32 characters) to this project. (You may need to contact your REDCap Administrator to generate this for you.)</li>\n";
 	$html .= "<li>Basic configuration information (see below)</li>\n";
 	$html .= "<li>A list of primary academic departments for all institutions represented - at the very least, those that your scholars are part of</li>\n";

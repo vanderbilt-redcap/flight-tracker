@@ -1,5 +1,16 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 
+<style>
+body { font-family: Arial, Helvetica, sans-serif; }
+.red { background-color: #ffc3c4; }
+.green { background-color: #caffc3; }
+.yellow { background-color: #fffde2; }
+.blue { background-color: #d5ddf6; }
+.purple { background-color: #f4c3ff; }
+.orange { background-color: #ffcd85; }
+.grey { background-color: #dddddd; }
+</style>
+
 <?php
 	require_once(dirname(__FILE__)."/../small_base.php");
 	require_once(dirname(__FILE__)."/UnitTester.php");
@@ -23,6 +34,7 @@
 		}
 	}
 
+	$html = "";
 	$numTests = 0;
 	$numResults = 0;
 	foreach ($files as $file) {
@@ -31,12 +43,12 @@
 			$myClass = preg_replace("/\.php$/i", "", $file);
 
 			if (class_exists("\\Vanderbilt\\CareerDevLibrary\\$myClass")) {
-				echo "<h2 class='blue'>Examining $file</h2>\n";
+				$html .= "<h3 class='blue'>Examining $file</h3>\n";
 				try {
 					$classWithNamespace = "\\Vanderbilt\\CareerDevLibrary\\".$myClass;
 					$obj = new $classWithNamespace($token, $server, $pid);
 				} catch (Exception $e) {
-					echo $e->getMessage()."<br>";
+					$html .= $e->getMessage()."<br>";
 				}
 				$tester = new \Vanderbilt\CareerDevLibrary\UnitTester();
 				$tester->analyze($obj);
@@ -47,33 +59,35 @@
 					$numBadResults += count($ary);
 				}
 				if ($numBadResults > 0) {
-					echo "<h4 class='red'>$numBadResults Failures</h4>\n";
-					echo "<div id='$myClass"."_results'>";
+					$html .= "<h4 class='red'>$numBadResults Failures</h4>\n";
+					$html .= "<div id='$myClass"."_results'>";
 				} else {
-					echo "<h4 class='green' onclick='$(\"#$myClass"."_results\").show();'>All Passed</h4>\n";
-					echo "<div id='$myClass"."_results'>";
+					$html .= "<h4 class='green' onclick='$(\"#$myClass"."_results\").show();'>All Passed</h4>\n";
+					$html .= "<div id='$myClass"."_results'>";
 				}
 	
 				$results = $tester->getResults();
 				$numTests += count($results);
 				foreach ($results as $test => $ary) {
-					echo "<h3>$test</h3>\n";
+					$html .= "<h3>$test</h3>\n";
 					$numResults += count($ary['results']);
 					foreach ($ary['results'] as $result) {
 						if (preg_match("/FALSE/i", $result)) {
-							echo "<span style='color: red;'>ERROR $result</span><br>\n";
+							$html .= "<span style='color: red;'>ERROR $result</span><br>\n";
 						} else if (preg_match("/TRUE/i", $result)) {
-							echo "$result<br>\n";
+							$html .= "$result<br>\n";
 						} 
 					}
 				}
-				echo "</div>";
+				$html .= "</div>";
 			} else {
-				echo "Skipping class $myClass from ".dirname(__FILE__)."/$file<br>";
+				$html .= "Skipping class $myClass from ".dirname(__FILE__)."/$file<br>";
 			}
 		}
 	}
-	echo "<p>Done: $numTests Tests with $numResults Results Executed over $numFiles files</p>\n";
+	echo "<h2 class='blue'>$numTests Tests with $numResults Results Executed over $numFiles files</h2>\n";
+	echo $html;
+	echo "<h2 class='blue'>Complete</h2>\n";
 
 function isValidPrefix($file, $prefix) {
 	$validPrefices = array("FlightTracker", "CareerDev");

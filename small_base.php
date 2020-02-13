@@ -18,8 +18,9 @@ use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\LDAP;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\ModuleUnitTester;
-use \Vanderbilt\CareerDevLibrary\NIHExPORTER;
+use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\NavigationBar;
+use \Vanderbilt\CareerDevLibrary\NIHExPORTER;
 use \Vanderbilt\CareerDevLibrary\OracleConnection;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Scholar;
@@ -36,6 +37,7 @@ require_once(dirname(__FILE__)."/classes/EmailManager.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
 require_once(dirname(__FILE__)."/classes/NavigationBar.php");
+require_once(dirname(__FILE__)."/classes/NameMatcher.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
 
 ini_set("memory_limit", "4096M");
@@ -67,7 +69,6 @@ $GLOBALS['pid'] = $pid;
 $GLOBALS['server'] = $server;
 $GLOBALS['token'] = $token;
 $GLOBALS['tokenName'] = $tokenName;
-$GLOBALS['namesForMatch'] = array();
 $GLOBALS['event_id'] = $event_id;
 $GLOBALS['module'] = $module;
 $GLOBALS['adminEmail'] = $adminEmail;
@@ -358,81 +359,13 @@ function coeusMatch($fn1, $ln1, $fn2, $ln2) {
 # returns recordId that matches
 # returns "" if no match
 function matchName($first, $last) {
-	$ary = matchNames(array($first), array($last));
-	if (count($ary) > 0) {
-		return $ary[0];
-	}
-	return "";
+	return NameMatcher::matchName($first, $last);
 }
 
 # returns an array of recordId's that matches respective last, first
 # returns "" if no match
 function matchNames($firsts, $lasts) {
-	global $token, $server;
-	global $namesForMatch;
-	if (!$firsts || !$lasts) {
-		return "";
-	}
-	if (!$namesForMatch || empty($namesForMatch)) {
-		$data = array(
-			'token' => $token,
-			'content' => 'record',
-			'format' => 'json',
-			'fields' => array("record_id", "identifier_first_name", "identifier_last_name"),
-			'type' => 'flat',
-			'rawOrLabel' => 'raw',
-			'rawOrLabelHeaders' => 'raw',
-			'exportCheckboxLabel' => 'false',
-			'exportSurveyFields' => 'false',
-			'exportDataAccessGroups' => 'false',
-			'returnFormat' => 'json'
-		);
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $server);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, 0);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-		$output = curl_exec($ch);
-		curl_close($ch);
-
-		$redcapData = json_decode($output, true);
-		$namesForMatch = $redcapData;
-	} else {
-		$redcapData = $namesForMatch;
-	}
-	$recordIds = array();
-	for ($i = 0; $i < count($firsts) && $i < count($lasts); $i++) {
-		$myFirst = strtolower($firsts[$i]);
-		$myLast = strtolower($lasts[$i]);
-		$found = false;
-		foreach ($redcapData as $row) {
-			$sFirst = strtolower($row['identifier_first_name']);
-			$sLast = strtolower($row['identifier_last_name']);
-			$matchFirst = false;
-			if (preg_match("/".$sFirst."/", $myFirst) || preg_match("/".$myFirst."/", $sFirst)) {
-				$matchFirst = true;
-			}
-			$matchLast = false;
-			if (preg_match("/".$sLast."/", $myLast) || preg_match("/".$myLast."/", $sLast)) {
-				$matchLast = true;
-			}
-			if ($matchFirst && $matchLast) {
-				$recordIds[] = $row['record_id'];
-				$found = true;
-				break;
-			}
-		}
-		if (!$found) {
-			$recordIds[] = "";
-		}
-	}
-	return $recordIds;
+	return NameMatcher::matchNames($firsts, $lasts);
 }
 
 function prettyMoney($n, $displayCents = TRUE) {
@@ -1463,7 +1396,7 @@ function queueUpInitialEmail($record) {
 		$settingName = CareerDev::getEmailName($record);
 		if (!$emailManager->hasItem($settingName)) {
 			$links = EmailManager::getSurveyLinks($pid, array($record), "initial_survey");
-			if ($isset($links[$record])) {
+			if (isset($links[$record])) {
 				$link = $links[$record];
 			} else {
 				$link = "";
@@ -1742,6 +1675,43 @@ function produceSourcesAndTypes($scholar, $metadata) {
 		}
 	}
 	return array($sources, $sourceTypes);
+}
+
+function importCustomFields($filename, $token, $server, $pid) {
+	$lines = array();
+	$headers = array();
+	if (is_uploaded_file($filename)) {
+		$fp = fopen($filename, "rb");
+		if (!$fp) {
+			array_push($errors, "Cannot find file.");
+		}
+		$i = 0;
+		while ($line = fgetcsv($fp)) {
+			foreach ($line as $j => $item) {
+				$line[$j] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $item);
+			}
+			if ($i > 0) {
+				$lines[$i] = $line;
+			} else {
+				$headers = $line;
+			}
+			$i++;
+		}
+		fclose($fp);
+	}
+
+	list($upload, $errors, $newCounts) = Upload::prepareFromCSV($headers, $lines, $token, $server, $pid);
+
+	$html = "";
+	if (!empty($errors)) {
+		$html .= "<div class='red centered'>".implode("<br>", $errors)."</div>\n";
+	} else if (!empty($upload)) {
+		$feedback = Upload::rows($upload, $token, $server);
+		$html .= "<div class='green centered'>Success! Imported {$newCounts['new']} lines for new scholars and {$newCounts['existing']} lines for existing scholars.</div>\n";
+	} else {
+		$html .= "<div class='red centered'>No action taken!</div>\n";
+	}
+	return $html;
 }
 
 require_once(dirname(__FILE__)."/cronLoad.php");
