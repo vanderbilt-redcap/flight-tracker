@@ -4,6 +4,8 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Scholar.php");
+require_once(dirname(__FILE__)."/REDCapManagement.php");
+require_once(dirname(__FILE__)."/Consortium.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
 class CareerDevTester {
@@ -14,6 +16,43 @@ class CareerDevTester {
 		$this->server = $server;
 		$this->pid = $pid;
 		$this->testRecordId = "99999";
+	}
+
+	public function redcapManagement_test($tester) {
+		$rowsToModify = array();
+		foreach ($this->metadata as $row) {
+			if ($row['select_choices_or_calculations']) {
+				array_push($rowsToModify, $row);
+			}
+		}
+		foreach ($rowsToModify as $origRow) {
+			$row = $origRow;
+			$row['select_choices_or_calculations'] = "1, ABC";
+			$modRow = REDCapManagement::copyChoiceStrForField($row, $this->metadata);
+			$tester->tag("For field ".$origRow['field_name'].", modification successful");
+			$tester->assertNotEqual($modRow, $row);
+			$tester->tag("For field ".$origRow['field_name'].", modification back to original");
+			$tester->assertEqual($origRow, $modRow);
+		}
+	}
+
+	public function consortiumClass_test($tester) {
+		$nextTs = Consortium::findNextMeetingTs();
+		$tester->tag("Next Meeting in future");
+		$tester->assertTrue(($nextTs > time()) || (date("Y-m-d", $nextTs) == date("Y-m-d")));
+
+		for ($week = 1; $week <= 4; $week++) {
+			$ts = Consortium::findXthWednesdayTs($week, time());
+			$tester->tag("Wednesday for week $week is Wednesday");
+			$tester->assertEqual(3, date("N", $ts));
+			$tester->tag("Day of Wednesday on week $week in proper week");
+			$tester->assertEqual(floor((date("d", $ts) - 1) / 7) + 1, $week);
+		}
+
+		if (Consortium::meetingIsToday()) {
+			$tester->tag("Meeting is today => Wednesday");
+			$tester->assertEqual(date("N"), 3);
+		}
 	}
 
 	public function vfrsImport_test($tester) {
@@ -95,6 +134,28 @@ class CareerDevTester {
 
 	private static function phpToREDCapTimestamp($ts) {
 		return date("YmdHis", $ts);
+	}
+
+	public function emailMgmt_test($tester) {
+		$recordIds = Download::recordIds($this->token, $this->server);
+		$mgr = new EmailManager($this->token, $this->server, $this->pid, $this->module, $this->metadata);
+
+		# if then statements - individual
+		$emailSetting = EmailManager::getBlankSetting();
+		$emailSetting["who"] = array("filter"=>"some","none_complete"=>true,"max_emails"=>"5","new_records_since"=>"6","converted"=>"agnostic","from"=>"katherine.hartmann@vumc.org");
+		$rowsSome = $mgr->filterSome($emailSetting["who"], "initial_time", $emailSetting["when"], $emailSetting["what"]);
+		$rowsGetRows = $mgr->getRows($emailSetting["who"], "initial_time", $emailSetting["when"], $emailSetting["what"]);
+		$tester->tag("Count equal - filter some");
+		$tester->assertEqual($rowsSome, $rowsGetRows);
+		for ($i = 0; $i < count($rowsSome); $i++) {
+			$tester->tag("asset row $i equal - filter some");
+			$tester->assertEqual($rowsSome[$i], $rowsGetRows[$i]);
+		}
+
+		# filters
+		# if then statements - filter = all
+		# collect all Rows
+		# individuals
 	}
 
 	public function emailMgmtSmokeTest_test($tester) {

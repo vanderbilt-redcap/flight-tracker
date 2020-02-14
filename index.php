@@ -2,9 +2,11 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Consortium;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
+require_once(dirname(__FILE__)."/classes/Consortium.php");
 
 $bottomPadding = "<br><br><br><br><br>\n";
 
@@ -141,7 +143,7 @@ $(document).ready(function() {
 		<h3><i class='fa fa-globe-americas'></i> Consortium</h3>
 		<p class='centered'><a href='<?= CareerDev::link("community.php") ?>'>About the Consortium</a></p>
 		<h4 class='nomargin'>Monthly Planning Meetings</h4>
-		<p class='centered' style='margin-top: 0px;'>Next meeting at <?= findNextMeeting() ?>, at 1pm CT (2pm ET, 11am PT). Email <a href='mailto:scott.j.pearson@vumc.org'>Scott Pearson</a> for an invitation. (<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'>View agenda</a>.)</p>
+		<p class='centered' style='margin-top: 0px;'>Next meeting is on <?= Consortium::findNextMeeting() ?>, at 1pm CT (2pm ET, 11am PT). Email <a href='mailto:scott.j.pearson@vumc.org'>Scott Pearson</a> for an invitation. (<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'>View agenda</a>.)</p>
 	</div>
 	<?= $bottomPadding ?>
 </div>
@@ -149,43 +151,3 @@ $(document).ready(function() {
 
 </body>
 </html>
-
-<?php
-
-function findNextMeeting() {
-	$month = date("m");
-	$year = date("Y");
-	$day = 1;
-	$ts = strtotime("$year-$month-$day");
-	while (date("N", $ts) != 3) {
-		$ts += 24 * 3600;
-	} 
-	if (time() > $ts) {
-		# in past
-		if ($month == 12) {
-			$month = "01";
-			$year++;
-		} else {
-			$month++;
-		}
-		$day = 1;
-		$ts = strtotime("$year-$month-$day");
-		while (date("N", $ts) != 3) {
-			$ts += 24 * 3600;
-		} 
-		if (($month == 1) && ($day == 1)) {
-			$ts += 7 * 24 * 3600;
-		}
-		if (($month == 7) && ($day == 4)) {
-			$ts += 7 * 24 * 3600;
-		}
-	}
-	return date("l, F j", $ts);
-}
-
-function makeHangoutIcon() {
-	$html = "<img src='".CareerDev::link("img/hangout.png")."' style='height: 16px; width: 14px;'>";
-	return $html;
-}
-
-?>

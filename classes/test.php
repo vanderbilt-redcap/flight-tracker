@@ -15,6 +15,10 @@ body { font-family: Arial, Helvetica, sans-serif; }
 	require_once(dirname(__FILE__)."/../small_base.php");
 	require_once(dirname(__FILE__)."/UnitTester.php");
 
+	ini_set('display_errors', 1);
+	ini_set('display_startup_errors', 1);
+	error_reporting(E_ALL);
+
 	$prefix = "";
 	if ($_GET['prefix']) {
 		$prefix = $_GET['prefix'];

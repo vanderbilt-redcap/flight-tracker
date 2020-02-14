@@ -3,14 +3,17 @@
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
+require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 
 $filename = dirname(__FILE__)."/metadata.json";
 $lastCheckField = "prior_metadata_ts";
+$deletionRegEx = "/___delete$/";
 
 if ($_POST['process'] == "check") {
 	$ts = $_POST['timestamp'];
@@ -32,6 +35,11 @@ if ($_POST['process'] == "check") {
 		$metadata['file'] = json_decode($json, TRUE);
 		$metadata['REDCap'] = Download::metadata($token, $server);
 
+		$choices = array();
+		foreach ($metadata as $type => $md) {
+			$choices[$type] = REDCapManagement::getChoices($md);
+		}
+
 		$fieldList = array();
 		foreach ($metadata as $type => $metadataRows) {
 			$fieldList[$type] = array();
@@ -45,16 +53,16 @@ if ($_POST['process'] == "check") {
 		foreach ($fieldList["file"] as $field => $choiceStr) {
 			if (!isset($fieldList["REDCap"][$field])) {
 				array_push($missing, $field);
-				if (!preg_match("/___delete$/", $field) && !preg_match("/^coeus_/", $field)) {
+				if (!preg_match($deletionRegEx, $field) && !preg_match("/^coeus_/", $field)) {
 					array_push($additions, $field);
 				}
-			} else if ($choiceStr && $fieldList["REDCap"][$field] && ($choiceStr != $fieldList["REDCap"][$field])) {
+			} else if ($choiceStr && $choices["REDCap"][$field] && $choices["file"][$field] && $fieldList["REDCap"][$field] && ($choiceStr != $fieldList["REDCap"][$field])) {
 				array_push($missing, $field);
 			}
 		}
 
 		CareerDev::setSetting($lastCheckField, time());
-		if (count($additions) > 0) {
+		if (count($additions) + count($missing) > 0) {
 			echo "<script>var missing = ".json_encode($missing).";</script>\n";
 			echo "An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a>";
 		}
@@ -72,64 +80,8 @@ if ($_POST['process'] == "check") {
 	$metadata['file'] = json_decode($json, TRUE);
 	$metadata['REDCap'] = Download::metadata($token, $server);
 	if ($metadata['file']) {
-		$metadata['merged'] = mergeMetadata($metadata['REDCap'], $metadata['file'], $fields);
+		$metadata['merged'] = REDCapManagement::mergeMetadata($metadata['REDCap'], $metadata['file'], $fields, $deletionRegEx);
 		$feedback = Upload::metadata($metadata['merged'], $token, $server);
 		echo json_encode($feedback);
 	}
-}
-
-function getFields($metadata, $fields) {
-	$selectedRows = array();
-	foreach ($metadata as $row) {
-		if (in_array($row['field_name'], $fields)) {
-			array_push($selectedRows, $row);
-		}
-	}
-	return $selectedRows;
-}
-
-function getFieldsToDelete($metadata) {
-	$re = "/___delete$/";
-
-	$fields = array();
-	foreach ($metadata as $row) {
-		if (preg_match($re, $row['field_name'])) {
-			$field = preg_replace($re, "", $row['field_name']);
-			array_push($fields, $field);
-		}
-	}
-	return $fields;
-}
-
-function mergeMetadata($existingMetadata, $newMetadata, $fields) {
-	$fieldsToDelete = getFieldsToDelete($newMetadata);
-
-	$selectedRows = getFields($newMetadata, $fields);
-	foreach ($selectedRows as $newRow) {
-		if (!in_array($newRow['field_name'], $fieldsToDelete)) {
-			$priorRowField = "record_id";
-			foreach ($newMetadata as $row) {
-				if ($row['field_name'] == $newRow['field_name']) {
-					break;
-				} else {
-					$priorRowField = $row['field_name'];
-				}
-			}
-			$tempMetadata = array();
-			$priorNewRowField = "";
-			foreach ($existingMetadata as $row) {
-				if (!preg_match("/___delete$/", $row['field_name']) && !in_array($row['field_name'], $fieldsToDelete)) {
-					if ($priorNewRowField != $row['field_name']) {
-						array_push($tempMetadata, $row);
-					}
-				}
-				if (($priorRowField == $row['field_name']) && !preg_match("/___delete$/", $newRow['field_name'])) {
-					array_push($tempMetadata, $newRow);
-					$priorNewRowField = $newRow['field_name'];
-				}
-			}
-			$existingMetadata = $tempMetadata;
-		}
-	}
-	return $existingMetadata;
 }

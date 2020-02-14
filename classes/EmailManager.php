@@ -2,10 +2,10 @@
  
 namespace Vanderbilt\CareerDevLibrary;
 
-
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Upload.php");
+require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class EmailManager {
 	public function __construct($token, $server, $pid, $module = NULL, $metadata = array()) {
@@ -521,30 +521,11 @@ class EmailManager {
 
 	private function getSurveys() {
 		$pid = $this->pid;
-		if (!function_exists("db_query")) {
-			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-		}
-		$sql = "SELECT form_name, title FROM redcap_surveys WHERE project_id = '".$pid."'";
-		$q = db_query($sql);
-		if ($error = db_error()) {
-			Application::log("ERROR: ".$error);
-			throw new \Exception("ERROR: ".$error);
-		}
-
-		$currentInstruments = \REDCap::getInstrumentNames();
-
-		$forms = array();
-		while ($row = db_fetch_assoc($q)) {
-			# filter out surveys which aren't live
-			if (isset($currentInstruments[$row['form_name']])) {
-				$forms[$row['form_name']] = $row['title'];
-			}
-		}
-		return $forms;
+		return REDCapManagement::getSurveys($pid);
 	}
 
 	private function getRepeatingForms() {
-		return Scholar::getRepeatingForms($this->pid);
+		return REDCapManagement::getRepeatingForms($this->pid);
 	}
 
 	private static function processEmails($rows) {
@@ -577,164 +558,176 @@ class EmailManager {
 		return $form."_date";
 	}
 
-	public function getRows($who, $whenType = "", $when = array(), $what = array()) {
-		if (($who['filter'] == "all") || ($who['recipient'] == "individuals")) {
-			# get all names, either when specifying that the recipients are individual emails or if this is a mass email to all
-			$emails = Download::emails($this->token, $this->server);
-			$firstNames = Download::firstNames($this->token, $this->server);
-			$lastNames = Download::lastNames($this->token, $this->server);
-			$recordIds = array_unique(array_merge(array_keys($emails), array_keys($firstNames), array_keys($lastNames)));
+	public function collectAllEmails() {
+		# get all names, either when specifying that the recipients are individual emails or if this is a mass email to all
+		$emails = Download::emails($this->token, $this->server);
+		$firstNames = Download::firstNames($this->token, $this->server);
+		$lastNames = Download::lastNames($this->token, $this->server);
+		$recordIds = array_unique(array_merge(array_keys($emails), array_keys($firstNames), array_keys($lastNames)));
 
-			$rows = array();
-			foreach ($recordIds as $recordId) {
+		$rows = array();
+		foreach ($recordIds as $recordId) {
+			$rows[$recordId] = array(
+							"last_name" => $lastNames[$recordId],
+							"first_name" => $firstNames[$recordId],
+							"email" => $emails[$recordId],
+						);
+
+		}
+		return $rows;
+	}
+
+	public function getAllCheckedEmails($who) {
+		# checked off emails, specified in who
+		if (is_array($who['individuals'])) {
+			$pickedEmails = array();
+			for ($i = 0; $i < count($who['individuals']); $i++) {
+				array_push($pickedEmails, strtolower($who['individuals'][$i]));
+			}
+		} else {
+			$pickedEmails = explode(",", strtolower($who['individuals']));
+		}
+		$allEmails = Download::emails($this->token, $this->server);
+		$firstNames = Download::firstNames($this->token, $this->server);
+		$lastNames = Download::lastNames($this->token, $this->server);
+		$recordIds = array_unique(array_merge(array_keys($allEmails), array_keys($firstNames), array_keys($lastNames)));
+
+		$rows = array();
+		foreach ($recordIds as $recordId) {
+			$email = strtolower($allEmails[$recordId]);
+			if (in_array($email, $pickedEmails)) {
 				$rows[$recordId] = array(
 								"last_name" => $lastNames[$recordId],
 								"first_name" => $firstNames[$recordId],
-								"email" => $emails[$recordId],
+								"email" => $email,
 							);
-
 			}
-			return $rows;
-		} else if ($who['individuals']) {
-			# checked off emails, specified in who
-			if (is_array($who['individuals'])) {
-				$pickedEmails = array();
-				for ($i = 0; $i < count($who['individuals']); $i++) {
-					array_push($pickedEmails, strtolower($who['individuals'][$i]));
-				}
-			} else {
-				$pickedEmails = explode(",", strtolower($who['individuals']));
-			}
-			$allEmails = Download::emails($this->token, $this->server);
-			$firstNames = Download::firstNames($this->token, $this->server);
-			$lastNames = Download::lastNames($this->token, $this->server);
-			$recordIds = array_unique(array_merge(array_keys($allEmails), array_keys($firstNames), array_keys($lastNames)));
 
-			$rows = array();
-			foreach ($recordIds as $recordId) {
-				$email = strtolower($allEmails[$recordId]);
-				if (in_array($email, $pickedEmails)) {
-					$rows[$recordId] = array(
-									"last_name" => $lastNames[$recordId],
-									"first_name" => $firstNames[$recordId],
-									"email" => $email,
+		}
+		return $rows;
+	}
+
+	public function filterSome($who, $whenType, $when, $what) {
+		$fields = array("record_id", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv");
+		$surveys = $this->getSurveys();
+		foreach ($surveys as $form => $title) {
+			array_push($fields, $form."_complete");
+			array_push($fields, self::getDateField($form));
+		}
+
+		# structure data
+		$redcapData = Download::fields($this->token, $this->server, $fields);
+		$identifiers = array();
+		$lastUpdate = array();
+		$complete = array();
+		$converted = array();
+		foreach ($redcapData as $row) {
+			$recordId = $row['record_id'];
+			if ($row['redcap_repeat_instrument'] == "") {
+				$converted[$recordId] = $row['summary_ever_r01_or_equiv'];
+				$identifiers[$recordId] = array(
+								"last_name" => $row['identifier_last_name'],
+								"first_name" => $row['identifier_first_name'],
+								"email" => $row['identifier_email'],
 								);
-				}
-
 			}
-			return $rows;
-		} else if ($who['filter'] == "some") {
-			$fields = array("record_id", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv");
-			$surveys = $this->getSurveys();
-			foreach ($surveys as $form => $title) {
-				array_push($fields, $form."_complete");
-				array_push($fields, self::getDateField($form));
-			}
-
-			# structure data
-			$redcapData = Download::fields($this->token, $this->server, $fields);
-			$identifiers = array();
-			$lastUpdate = array();
-			$complete = array();
-			$converted = array();
-			foreach ($redcapData as $row) {
-				$recordId = $row['record_id'];
-				if ($row['redcap_repeat_instrument'] == "") {
-					$converted[$recordId] = $row['summary_ever_r01_or_equiv'];
-					$identifiers[$recordId] = array(
-									"last_name" => $row['identifier_last_name'],
-									"first_name" => $row['identifier_first_name'],
-									"email" => $row['identifier_email'],
-									);
-				}
-				foreach ($surveys as $currForm => $title) {
-					$dateField = self::getDateField($currForm);
-					if ($row[$dateField]) {
-						$ts = strtotime($row[$dateField]);
-						if (!isset($lastUpdate[$recordId])) {
-							$lastUpdate[$recordId] = array( $currForm => $ts );
-						} else if ($ts > $lastUpdate[$recordId][$currForm]) {
-							$lastUpdate[$recordId][$currForm] = $ts;
-						}
-					} else if ($row[$currForm."_complete"] == "2") {
-						# date blank
-						if (!isset($complete[$recordId])) {
-							$complete[$recordId] = array($currForm);
-						} else {
-							array_push($complete[$recordId], $currForm);
-						}
+			foreach ($surveys as $currForm => $title) {
+				$dateField = self::getDateField($currForm);
+				if ($row[$dateField]) {
+					$ts = strtotime($row[$dateField]);
+					if (!isset($lastUpdate[$recordId])) {
+						$lastUpdate[$recordId] = array( $currForm => $ts );
+					} else if ($ts > $lastUpdate[$recordId][$currForm]) {
+						$lastUpdate[$recordId][$currForm] = $ts;
+					}
+				} else if ($row[$currForm."_complete"] == "2") {
+					# date blank
+					if (!isset($complete[$recordId])) {
+						$complete[$recordId] = array($currForm);
+					} else {
+						array_push($complete[$recordId], $currForm);
 					}
 				}
 			}
+		}
 
-			$created = array();
-			$queue = array_keys($identifiers);
-			$filterFields = array(
-						"affiliations",
-						"primary_affiliation",
-						"department",
-						"paf",
-						"research_admin",
-						"role",
-						"building",
-						"grad_teaching",
-						"med_student_teaching",
-						"undergrad_teaching",
-						"imph_pi",
-						"other_pi",
-						"imph_coi",
-						);
-			$fieldsToDownload = array();
-			$filtersToApply = array();
-			foreach ($filterFields as $whoFilterField) {
-				if (isset($who[$whoFilterField])) {
-					$redcapField = self::getFieldAssociatedWithFilter($whoFilterField);
-					array_push($fieldsToDownload, $redcapField);
-					array_push($filtersToApply, $whoFilterField);
-				}
+		$created = array();
+		$queue = array_keys($identifiers);
+		$filterFields = array(
+					"affiliations",
+					"primary_affiliation",
+					"department",
+					"paf",
+					"research_admin",
+					"role",
+					"building",
+					"grad_teaching",
+					"med_student_teaching",
+					"undergrad_teaching",
+					"imph_pi",
+					"other_pi",
+					"imph_coi",
+					);
+		$fieldsToDownload = array();
+		$filtersToApply = array();
+		foreach ($filterFields as $whoFilterField) {
+			if (isset($who[$whoFilterField])) {
+				$redcapField = self::getFieldAssociatedWithFilter($whoFilterField);
+				array_push($fieldsToDownload, $redcapField);
+				array_push($filtersToApply, $whoFilterField);
 			}
-			if (!empty($fieldsToDownload)) {
-				array_push($fieldsToDownload, "record_id");
-				$filterREDCapData = Download::fields($this->token, $this->server, $fieldsToDownload);
-				foreach ($filtersToApply as $filter) {
-					$redcapField = self::getFieldAssociatedWithFilter($filter);
-					$queue = self::filterForField($redcapField, $who[$filter], $filterREDCapData, $queue);
-				}
-				
+		}
+		if (!empty($fieldsToDownload)) {
+			array_push($fieldsToDownload, "record_id");
+			$filterREDCapData = Download::fields($this->token, $this->server, $fieldsToDownload);
+			foreach ($filtersToApply as $filter) {
+				$redcapField = self::getFieldAssociatedWithFilter($filter);
+				$queue = self::filterForField($redcapField, $who[$filter], $filterREDCapData, $queue);
 			}
-			if ($who['last_complete']) {
-				$queue = self::filterForMonths($who['last_complete'], $lastUpdate, $queue);
-			}
-			if ($who['none_complete']) {
-				$queue = self::filterForNoComplete($lastUpdate, $complete, $queue);
-			}
-			if ($who['converted']) {
-				$queue = self::filterForConverted($who['converted'], $converted, $queue);
-			}
-			if ($who['max_emails'] || $who['new_records_since']) {
-				foreach ($queue as $recordId) {
-					$createDate = self::findRecordCreateDate($this->pid, $recordId);
-					if ($createDate) {
-						$created[$recordId] = strtotime($createDate);
-					}
-				}
-			}
-			if ($who['max_emails']) {
-				$queue = $this->filterForMaxEmails($who['max_emails'], $created, $queue);
-			}
-			if ($who['new_records_since']) {
-				$queue = self::filterForNewRecordsSince($who['new_records_since'], $created, $queue);
-			}
-			if ($whenType == "followup_time") {
-				$queue = self::filterOutSurveysCompleted($this->getForms($what), $when, $complete, $lastUpdate, $queue);
-			}
-
-			# build row of names and emails
-			$rows = array();
+			
+		}
+		if ($who['last_complete']) {
+			$queue = self::filterForMonths($who['last_complete'], $lastUpdate, $queue);
+		}
+		if ($who['none_complete']) {
+			$queue = self::filterForNoComplete($lastUpdate, $complete, $queue);
+		}
+		if ($who['converted']) {
+			$queue = self::filterForConverted($who['converted'], $converted, $queue);
+		}
+		if ($who['max_emails'] || $who['new_records_since']) {
 			foreach ($queue as $recordId) {
-				$rows[$recordId] = $identifiers[$recordId];
+				$createDate = self::findRecordCreateDate($this->pid, $recordId);
+				if ($createDate) {
+					$created[$recordId] = strtotime($createDate);
+				}
 			}
-			return $rows;
+		}
+		if ($who['max_emails']) {
+			$queue = $this->filterForMaxEmails($who['max_emails'], $created, $queue);
+		}
+		if ($who['new_records_since']) {
+			$queue = self::filterForNewRecordsSince($who['new_records_since'], $created, $queue);
+		}
+		if ($whenType == "followup_time") {
+			$queue = self::filterOutSurveysCompleted($this->getForms($what), $when, $complete, $lastUpdate, $queue);
+		}
+
+		# build row of names and emails
+		$rows = array();
+		foreach ($queue as $recordId) {
+			$rows[$recordId] = $identifiers[$recordId];
+		}
+		return $rows;
+	}
+
+	public function getRows($who, $whenType = "", $when = array(), $what = array()) {
+		if (($who['filter'] == "all") || ($who['recipient'] == "individuals")) {
+			return $this->collectAllEmails();
+		} else if ($who['individuals']) {
+			return $this->getAllCheckedEmails($who);
+		} else if ($who['filter'] == "some") {
+			return $this->filterSome($who, $whenType, $when, $what);
 		} else if (empty($who)) {
 			return array();
 		} else {

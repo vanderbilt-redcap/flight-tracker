@@ -315,13 +315,8 @@ function makeIntroPage($projectId) {
 	$html .= "<td><input type='text' name='cities'></td>\n";
 	$html .= "</tr>\n";
 
-	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'>Should the COEUS module be installed?<br><span class='small'>(Requires Custom Programming)</span></td>\n";
-	$html .= "<td>\n";
-	$html .= "<input type='radio' value='1' id='coeus_1' name='coeus'> <label for='coeus_1'>Yes</label> \n";
-	$html .= "<input type='radio' value='0' id='coeus_0' name='coeus' checked> <label for='coeus_0'>No</label> \n";
-	$html .= "</td>\n";
-	$html .= "</tr>\n";
+	// turn off COEUS since few use it
+	$html .= "<input type='hidden' value='0' name='coeus'>\n";
 
 	$html .= "<tr>\n";
 	$html .= "<td colspan='2' style='text-align: center;' ><button>Transform My Project!</button></td>\n";

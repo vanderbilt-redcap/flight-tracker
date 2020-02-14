@@ -664,9 +664,11 @@ class Filter {
 		return $html;
 	}
 
-	public function getRecords($config) {
-		$fields = array_merge(array("record_id"), $config->getFields());
-		$redcapData = Download::getIndexedRedcapData($this->token, $this->server, $fields);
+	public function getRecords($config, $redcapData = array()) {
+		if (empty($redcapData)) {
+			$fields = array_merge(array("record_id"), $config->getFields());
+			$redcapData = Download::getIndexedRedcapData($this->token, $this->server, $fields);
+		}
 
 		$in = array();
 		foreach ($redcapData as $recordId => $rows) {

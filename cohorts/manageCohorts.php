@@ -106,6 +106,11 @@ function cancel(selector) {
 
 $cohorts = new Cohorts($token, $server, CareerDev::getModule());
 $cohortTitles = $cohorts->getCohortTitles();
+$redcapData = array();
+if (!empty($cohortTitles)) {
+	$allFields = $cohorts->getAllFields();
+	$redcapData = Download::getIndexedRedcapData($token, $server, $allFields);
+}
 if (count($cohortTitles) > 0) {
 	echo "<table class='centered'>\n";
 	echo "<tr class='paddedRow borderedRow whiteRow centeredRow'><td></td><th>Cohort Size</th><th>Delete</th><th>Rename</th></tr>\n";
@@ -113,7 +118,7 @@ if (count($cohortTitles) > 0) {
 	foreach ($cohortTitles as $title) {
 		$filter = new Filter($token, $server, $metadata);
 		$config = $cohorts->getCohort($title);
-		$records = $filter->getRecords($config);
+		$records = $filter->getRecords($config, $redcapData);
 		$htmlTitle = \Vanderbilt\FlightTrackerExternalModule\makeHTMLId($title);
 		echo "<tr id='".$htmlTitle."' class='ui-widget-content paddedRow whiteRow borderedRow centeredRow'>\n";
 		$colWidth = 150;

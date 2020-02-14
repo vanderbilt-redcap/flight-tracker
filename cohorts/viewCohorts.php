@@ -29,6 +29,15 @@ echo "<h1>Existing Cohorts</h1>\n";
 $names = Download::names($token, $server);
 $cohortNames = $cohorts->getCohortNames();
 
+$redcapData = array();
+if (empty($cohorts->getCohortNames())) {
+	echo "<h4>No cohorts have been created.</h4>\n";
+} else {
+	$allFields = $cohorts->getAllFields();
+	$redcapData = Download::getIndexedRedcapData($token, $server, $allFields);
+}
+
+
 foreach ($cohortNames as $title) {
 	$config = $cohorts->getCohort($title); 
 	echo "<br><br>\n";
@@ -36,7 +45,7 @@ foreach ($cohortNames as $title) {
 	echo $config->getHTML($metadata);
 
 	$filter = new Filter($token, $server, $metadata);
-	$records = $filter->getRecords($config);
+	$records = $filter->getRecords($config, $redcapData);
 
 	$nameLinks = array();
 	foreach ($records as $recordId) {

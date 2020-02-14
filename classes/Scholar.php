@@ -2,10 +2,10 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-
 require_once(dirname(__FILE__)."/Grants.php");
 require_once(dirname(__FILE__)."/Upload.php");
 require_once(dirname(__FILE__)."/Download.php");
+require_once(dirname(__FILE__)."/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
 define("SOURCETYPE_FIELD", "additional_source_types");
@@ -32,21 +32,7 @@ class Scholar {
 	}
 
 	public static function getRepeatingForms($pid) {
-		if (!function_exists("db_query")) {
-			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-		}
-
-		$sql = "SELECT DISTINCT(r.form_name) AS form_name FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) INNER JOIN redcap_events_repeat AS r ON (m.event_id = r.event_id) WHERE a.project_id = '$pid'";
-		$q = db_query($sql);
-		if ($error = db_error()) {
-			Application::log("ERROR: ".$error);
-			throw new \Exception("ERROR: ".$error);
-		}
-		$repeatingForms = array();
-		while ($row = db_fetch_assoc($q)) {
-			array_push($repeatingForms, $row['form_name']);
-		}
-		return $repeatingForms;
+		return REDCapManagement::getRepeatingForms($pid);
 	}
 
 	public static function isDependentOnAcademia($field) {
@@ -85,36 +71,7 @@ class Scholar {
 	}
 
 	public static function getChoices($metadata) {
-		$choicesStrs = array();
-		$multis = array("checkbox", "dropdown", "radio");
-		foreach ($metadata as $row) {
-			if (in_array($row['field_type'], $multis) && $row['select_choices_or_calculations']) {
-				$choicesStrs[$row['field_name']] = $row['select_choices_or_calculations'];
-			} else if ($row['field_type'] == "yesno") {
-				$choicesStrs[$row['field_name']] = "0,No|1,Yes";
-			} else if ($row['field_type'] == "truefalse") {
-				$choicesStrs[$row['field_name']] = "0,False|1,True";
-			}
-		}
-		$choices = array();
-		foreach ($choicesStrs as $fieldName => $choicesStr) {
-			$choicePairs = preg_split("/\s*\|\s*/", $choicesStr);
-			$choices[$fieldName] = array();
-			foreach ($choicePairs as $pair) {
-				$a = preg_split("/\s*,\s*/", $pair);
-				if (count($a) == 2) {
-					$choices[$fieldName][$a[0]] = $a[1];
-				} else if (count($a) > 2) {
-					$a = preg_split("/,/", $pair);
-					$b = array();
-					for ($i = 1; $i < count($a); $i++) {
-						$b[] = $a[$i];
-					}
-					$choices[$fieldName][trim($a[0])] = implode(",", $b);
-				}
-			}
-		}
-		return $choices;
+		return REDCapManagement::getChoices($metadata);
 	}
 
 	public static function getKLength($type) {

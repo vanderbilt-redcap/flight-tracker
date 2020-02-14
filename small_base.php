@@ -5,6 +5,7 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\CohortConfig;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\Consortium;
 use \Vanderbilt\CareerDevLibrary\Crons;
 use \Vanderbilt\CareerDevLibrary\Definitions;
 use \Vanderbilt\CareerDevLibrary\Download;
@@ -23,6 +24,7 @@ use \Vanderbilt\CareerDevLibrary\NavigationBar;
 use \Vanderbilt\CareerDevLibrary\NIHExPORTER;
 use \Vanderbilt\CareerDevLibrary\OracleConnection;
 use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\SummaryGrants;
 use \Vanderbilt\CareerDevLibrary\Survey;
@@ -38,6 +40,8 @@ require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
 require_once(dirname(__FILE__)."/classes/NavigationBar.php");
 require_once(dirname(__FILE__)."/classes/NameMatcher.php");
+require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/classes/Consortium.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
 
 ini_set("memory_limit", "4096M");
@@ -573,71 +577,19 @@ function json_encode_with_spaces($data) {
 }
 
 function YMD2MDY($ymd) {
-	$nodes = preg_split("/[\/\-]/", $ymd);
-	if (count($nodes) == 3) {
-		$year = $nodes[0];
-		$month = $nodes[1];
-		$day = $nodes[2];
-		return $month."-".$day."-".$year;
-	}
-	return "";
+	return REDCapManagement::YMD2MDY($ymd);
 }
 
 function MDY2YMD($mdy) {
-	$nodes = preg_split("/[\/\-]/", $mdy);
-	if (count($nodes) == 3) {
-		$year = $nodes[2];
-		if ($year < 100) {
-			if ($year > 30) {
-				$year += 1900; 
-			} else {
-				$year += 2000;
-			}
-		}
-		return $year."-".$nodes[0]."-".$nodes[1];
-	}
-	return "";
+	return REDCapManagement::MDY2YMD($mdy);
 }
 
 function getLabels($metadata) {
-	$labels = array();
-	foreach ($metadata as $row) {
-		$labels[$row['field_name']] = $row['field_label'];
-	}
-	return $labels;
+	return REDCapManagement::getLabels($metadata);
 }
 
 function getChoices($metadata) {
-	$choicesStrs = array();
-	$multis = array("checkbox", "dropdown", "radio");
-	foreach ($metadata as $row) {
-		if (in_array($row['field_type'], $multis) && $row['select_choices_or_calculations']) {
-			$choicesStrs[$row['field_name']] = $row['select_choices_or_calculations'];
-		} else if ($row['field_type'] == "yesno") {
-			$choicesStrs[$row['field_name']] = "0,No|1,Yes";
-		} else if ($row['field_type'] == "truefalse") {
-			$choicesStrs[$row['field_name']] = "0,False|1,True";
-		}
-	}
-	$choices = array();
-	foreach ($choicesStrs as $fieldName => $choicesStr) {
-		$choicePairs = preg_split("/\s*\|\s*/", $choicesStr);
-		$choices[$fieldName] = array();
-		foreach ($choicePairs as $pair) {
-			$a = preg_split("/\s*,\s*/", $pair);
-			if (count($a) == 2) {
-				$choices[$fieldName][$a[0]] = $a[1];
-			} else if (count($a) > 2) {
-				$a = preg_split("/,/", $pair);
-				$b = array();
-				for ($i = 1; $i < count($a); $i++) {
-					$b[] = $a[$i];
-				}
-				$choices[$fieldName][trim($a[0])] = implode(",", $b);
-			}
-		}
-	}
-	return $choices;
+	return REDCapManagement::getChoices($metadata);
 }
 
 function getAlphabetizedNames($token, $server) {
@@ -930,15 +882,7 @@ function convertTo1DArray($ary) {
 }
 
 function indexREDCapData($redcapData) {
-	$indexedRedcapData = array();
-	foreach ($redcapData as $row) {
-		$recordId = $row['record_id'];
-		if (!isset($indexedRedcapData[$recordId])) {
-			$indexedRedcapData[$recordId] = array();
-		}
-		array_push($indexedRedcapData[$recordId], $row);
-	}
-	return $indexedRedcapData;
+	return REDCapManagement::indexREDCapData($redcapData);
 }
 
 function getIndexedRedcapData($token, $server, $fields, $cohort = "", $metadata = array()) {
