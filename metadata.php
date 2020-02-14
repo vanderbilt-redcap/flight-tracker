@@ -50,6 +50,7 @@ if ($_POST['process'] == "check") {
 
 		$missing = array();
 		$additions = array();
+		$changedChoices = array();
 		foreach ($fieldList["file"] as $field => $choiceStr) {
 			if (!isset($fieldList["REDCap"][$field])) {
 				array_push($missing, $field);
@@ -58,11 +59,12 @@ if ($_POST['process'] == "check") {
 				}
 			} else if ($choiceStr && $choices["REDCap"][$field] && $choices["file"][$field] && $fieldList["REDCap"][$field] && ($choiceStr != $fieldList["REDCap"][$field])) {
 				array_push($missing, $field);
+				array_push($changedChoices, $field);
 			}
 		}
 
 		CareerDev::setSetting($lastCheckField, time());
-		if (count($additions) + count($missing) > 0) {
+		if (count($additions) + count($changedChoices) > 0) {
 			echo "<script>var missing = ".json_encode($missing).";</script>\n";
 			echo "An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a>";
 		}
