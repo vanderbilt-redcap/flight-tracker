@@ -6,10 +6,6 @@ require_once(dirname(__FILE__)."/classes/Crons.php");
 require_once(dirname(__FILE__)."/small_base.php");
 
 $manager = new CronManager($token, $server, $pid);
-$specialOnly = FALSE;
-if (isset($argv[2]) && ($argv[2] = "special")) {
-	$specialOnly = TRUE;
-}
-loadCrons($manager, $specialOnly);
+$manager->addCron("drivers/12_reportStats.php", "reportStats", date("Y-m-d"));
 error_log($manager->getNumberOfCrons()." total crons loaded in");
 $manager->run($adminEmail, $tokenName, $pid);

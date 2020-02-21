@@ -11,6 +11,10 @@ class Application {
 		return CareerDev::getPID($token);
 	}
 
+	public static function getUnknown() {
+		return CareerDev::getUnknown();
+	}
+
 	public static function getFeedbackEmail() {
 		return "scott.j.pearson@vumc.org";
 	}

@@ -307,6 +307,8 @@ function makeSettings($module) {
 	array_push($ary["Installation Variables"], makeSetting("tokenName", "text", "Project Name"));
 	array_push($ary["Installation Variables"], makeSetting("timezone", "text", "Timezone"));
 	array_push($ary["Installation Variables"], makeSetting("cities", "text", "City or Cities"));
+	array_push($ary["Installation Variables"], makeSetting("grant_class", "radio", "Grant Class", "", CareerDev::getGrantClasses()));
+	array_push($ary["Installation Variables"], makeSetting("grant_number", "text", "Grant Number"));
 	array_push($ary["Installation Variables"], makeSetting("departments", "textarea", "Department Names"));
 	array_push($ary["Installation Variables"], makeSetting("resources", "textarea", "Resources"));
 	array_push($ary["Installation Variables"], makeSetting("send_error_logs", "yesno", "Report Fatal Errors to Development Team?"));
@@ -338,7 +340,7 @@ function makeHelperText($str) {
 	return "<tr><td colspan='2' class='centered'>".$str."</td></tr>";
 }
 
-function makeSetting($var, $type, $label, $default = "") {
+function makeSetting($var, $type, $label, $default = "", $fieldChoices = array()) {
 	$value = CareerDev::getSetting($var);
 	$html = "";
 	$spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
@@ -356,22 +358,24 @@ function makeSetting($var, $type, $label, $default = "") {
 		$html .= "<input type='$type' name='$var' value='$value'>\n";
 		$html .= "</td>";
 		$html .= "</tr>";
-	} else if ($type == "yesno") {
-		if ($value == "0") {
-			$selected0 = " checked";
-			$selected1 = "";
-		} else {
-			$selected0 = "";
-			$selected1 = " checked";
+	} else if (($type == "radio") || ($type == "yesno")) {
+		if ($type == "yesno") {
+			$fieldChoices = array("0" => "No", "1" => "Yes");
 		}
-
 		$html .= "<tr>";
 		$html .= "<td style='text-align: right;'>";
 		$html .= $label;
 		$html .= "</td><td style='text-align: left;'>";
-		$html .= "<input type='radio' name='$var' id='$var"."___0' value='0'$selected0><label for='$var"."___0'> No</label>\n";
-		$html .= $spacing;
-		$html .= "<input type='radio' name='$var' id='$var"."___1' value='1'$selected1><label for='$var"."___1'> Yes</label>\n";
+		$options = array();
+		foreach ($fieldChoices as $idx => $fieldLabel) {
+			if ($idx == $value) {
+				$selected = " checked";
+			} else {
+				$selected = "";
+			}
+			$html .= "<input type='radio' name='$var' id='$var"."___$idx' value='$idx'$selected><label for='$var"."___$idx'> $fieldLabel</label>\n";
+		}
+		$html .= implode($spacing, $options);
 		$html .= "</td>";
 		$html .= "</tr>";
 	} else if ($type == "textarea") {

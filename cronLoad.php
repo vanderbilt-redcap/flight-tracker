@@ -3,7 +3,7 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Crons;
+use \Vanderbilt\CareerDevLibrary\CronManager;
 
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Crons.php");
@@ -29,9 +29,6 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		if ($has['coeus']) {
 			$manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", "Thursday");
 		}
-		if ($has['vfrs']) {
-			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday");
-		}
 		if ($has['news']) {
 			$manager->addCron("news/getNewsItems_func.php", "getNewsItems", "Friday");
 		}
@@ -43,6 +40,10 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday");
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday");
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday");
+		$manager->addCron("drivers/12_reportStats.php", "reportStats", "Saturday");
+		if ($has['vfrs']) {
+			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday");
+		}
 	}
 	echo $manager->getNumberOfCrons()." crons loaded\n";
 }

@@ -8,16 +8,29 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.9.0";
+		return "2.10.0";
 	}
 
-        public static function getIntroductoryFromEmail() {
-                return self::getSetting("introductory_from");;
-        }
+	public static function getUnknown() {
+		return "Unknown";
+	}
 
-        public static function getEmailName($record) {
-                return "initial_survey_$record";
-        }
+	public static function getIntroductoryFromEmail() {
+		return self::getSetting("introductory_from");;
+	}
+
+	public static function getEmailName($record) {
+		return "initial_survey_$record";
+	}
+
+	public static function getGrantClasses() {
+		return array(
+				"T" => "Training Grant (T)",
+				"K" => "Career Development Grant (K)",
+				"Other" => "Other (e.g., not related to a grant)",
+				);
+	}
+
 
 	public static function log($mssg, $pid = FALSE) {
 		$module = self::getModule();
@@ -253,7 +266,7 @@ class CareerDev {
 	public static function saveCurrentDate($setting) {
 		$ary = self::getSetting(self::getGeneralSettingName());
 		$ary[$setting] = date("Y-m-d");
-        	self::setSetting(self::getGeneralSettingName(), $ary);
+		self::setSetting(self::getGeneralSettingName(), $ary);
 	}
 
 	public static function setSetting($field, $value) {

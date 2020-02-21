@@ -17,6 +17,40 @@ class Grant {
 		$this->translator = $lexicalTranslator;
 	}
 
+	public static function transformToBaseAwardNumber($num) {
+		$num = preg_replace("/^Individual K - Rec\. \d+ /", "", $num);
+		if (preg_match("/^Internal K/", $num)) {
+			return $num;
+		} else if (preg_match("/^K12/", $num)) {
+			return $num;
+		} else if (preg_match("/^KL2/", $num)) {
+			return $num;
+		} else if (preg_match("/^Individual K/", $num)) {
+			return $num;
+		} else if (preg_match("/^Unknown R01 - Rec. \d+/", $num)) {
+			return $num;
+		} else if (preg_match("/^Unknown/", $num)) {
+			return $num;
+		}
+		if (preg_match("/^\d+[A-Za-z]\d/", $num)) {
+			$num = preg_replace("/^\d+/", "", $num);
+		}
+		if (preg_match("/\s\d+[A-Za-z]\d/", $num)) {
+			$num = preg_replace("/\s\d+([A-Za-z]\d)/", "\\1", $num);
+		}
+		if (preg_match("/\S+[\(]\d*[A-Za-z]\d/", $num)) {
+			$num = preg_replace("/^\S+\(\d*([A-Za-z]\d)/", "\\1", $num);
+			$num = preg_replace("/(\d)\).*$/", "\\1", $num);
+		}
+		if (preg_match("/\d[A-Za-z]\d/", $num)) {
+			$num = preg_replace("/\s/", "", $num);
+		}
+		$num = preg_replace("/-[^\-]*$/", "", $num);
+		$num = preg_replace("/\s/", "", $num);
+		return $num;
+	}
+
+
 	public function getVariable($type) {
 		if (($type == "type") && !isset($this->specs[$type])) {
 			$this->putInBins();

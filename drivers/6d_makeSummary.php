@@ -96,7 +96,7 @@ function makeSummary($token, $server, $pid, $selectRecord = "", $allRecordRows =
 		$time2 = microtime(TRUE);
 		// CareerDev::log("6d CareerDev processing grants $recordId took ".($time2 - $time1));
 		// echo "6d CareerDev processing grants $recordId took ".($time2 - $time1)."\n";
-	
+
 		# update rows with new data
 		$time1 = microtime(TRUE);
 		$scholar = new Scholar($token, $server, $metadata, $pid);

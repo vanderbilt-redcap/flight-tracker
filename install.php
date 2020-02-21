@@ -3,10 +3,12 @@
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
+require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
 
 if (isset($_POST['departments']) && isset($_POST['resources'])) {
@@ -56,7 +58,7 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 		$formsAndLabels = array(
 					"custom_grant" => "[custom_number]",
 					"followup" => "",
-					"promotion" => "",
+					"position_change" => "",
 					"reporter" => "[reporter_projectnumber]",
 					"exporter" => "[exporter_full_project_num]",
 					"citation" => "[citation_pmid] [citation_title]",
@@ -85,6 +87,8 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 				'k12_kl2_length' => '3',
 				'individual_k_length' => '5',
 				'run_tonight' => FALSE,
+				'grant_class' => $_POST['grant_class'],
+				'grant_number' => $_POST['grant_number'],
 				);
 		setupModuleSettings($projectId, $settingFields);
 
@@ -110,7 +114,7 @@ function redirectToAddScholars() {
 }
 
 function isValidToken($token) {
-	return (strlen($token) == 32);
+	return REDCapManagement::isValidToken($token);
 }
 
 function uploadProjectSettings($token, $server, $title) {
@@ -127,40 +131,19 @@ function uploadProjectSettings($token, $server, $title) {
 
 
 function getPIDFromToken($token, $server) {
-	$projectSettings = Download::getProjectSettings($token, $server);
-	if (isset($projectSettings['project_id'])) {
-		return $projectSettings['project_id'];
-	}
-	return "";
+	return REDCapManagement::getPIDFromToken($token, $server);
 }
 
 function getEventIdForClassical($projectId) {
-	$sql = "SELECT DISTINCT(m.event_id) AS event_id FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) WHERE a.project_id = '$projectId'";
-	$q = db_query($sql);
-	if ($row = db_fetch_assoc($q)) {
-		return $row['event_id'];
-	}
-	throw new \Exception("The event_id is not defined. (This should never happen.)");
+	return REDCapManagement::getEventIdForClassical($projectId);
 }
 
 function getExternalModuleId($prefix) {
-	$sql = "SELECT external_module_id FROM redcap_external_modules WHERE directory_prefix = '".db_real_escape_string($prefix)."'";
-	$q = db_query($sql);
-	if ($row = db_fetch_assoc($q)) {
-		return $row['external_module_id'];
-	}
-	throw new \Exception("The external_module_id is not defined. (This should never happen.)");
+	return REDCapManagement::getExternalModuleId($prefix);
 }
 
 function setupRepeatingForms($eventId, $formsAndLabels) {
-	$sqlEntries = array();
-	foreach ($formsAndLabels as $form => $label) {
-		array_push($sqlEntries, "($eventId, '".db_real_escape_string($form)."', '".db_real_escape_string($label)."')");
-	}
-	if (!empty($sqlEntries)) {
-		$sql = "REPLACE INTO redcap_events_repeat (event_id, form_name, custom_repeat_form_label) VALUES".implode(",", $sqlEntries);
-		db_query($sql);
-	}
+	REDCapManagement::setupRepeatingForms($eventId, $formsAndLabels);
 }
 
 function setupModuleSettings($projectId, $fields) {
@@ -170,10 +153,7 @@ function setupModuleSettings($projectId, $fields) {
 }
 
 function setupSurveys($projectId, $surveysAndLabels) {
-	foreach ($surveysAndLabels as $form => $label) {
-		$sql = "REPLACE INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES ($projectId, '16', '".db_real_escape_string($form)."', '".db_real_escape_string($label)."', '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', '<p><strong>Thank you for taking the survey.</strong></p>\r\n<p>Have a nice day!</p>', 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
-		db_query($sql);
-	}
+	REDCap::setupSurveys($projectId, $surveysAndLabels);
 }
 
 function sendErrorMessage($mssg) {
@@ -216,6 +196,16 @@ function makeIntroPage($projectId) {
 	}
 
 	$html = "";
+	$html .= "<script>\n";
+	$html .= "function changeGrantClass(name) {\n";
+	$html .= "\tvar val = $('[name='+name+']:checked').val();\n";
+	$html .= "\tif ((val == 'K') || (val == 'T')) {\n";
+	$html .= "\t\t$('grant_number_row').show();\n";
+	$html .= "\t} else {\n";
+	$html .= "\t\t$('grant_number_row').hide();\n";
+	$html .= "\t}\n";
+	$html .= "}\n";
+	$html .= "</script>\n";
 	$html .= "<p class='small centered recessed'>(Not expecting this page? <a class='recessed' href='".APP_PATH_EXTMOD."manager/project.php?pid=$projectId'>Click Here</a> to Disable Flight Tracker)</p>\n";
 	$html .= "<style>\n";
 	$html .= getCSS();
@@ -284,8 +274,27 @@ function makeIntroPage($projectId) {
 	$html .= "</tr>\n";
 
 	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'>Other Affliiated Institutions:<br><span class='small'>(Short Names, List Separated by Commas)<br>E.g., Vanderbilt pools resources to track scholars from Meharry and Tennessee State. These names will be searched from the NIH as well.<br>Optional.</span></td>\n";
+	$html .= "<td style='text-align: right;'>Other Affiliated Institutions:<br><span class='small'>(Short Names, List Separated by Commas)<br>E.g., Vanderbilt pools resources to track scholars from Meharry and Tennessee State. These names will be searched from the NIH as well.<br>Optional.</span></td>\n";
 	$html .= "<td><input type='text' name='other_institutions'></td>\n";
+	$html .= "</tr>\n";
+
+	$html .= "<tr>\n";
+	$html .= "<td style='text-align: right;'>Class of Project:<br><span class='small'>If the project is affiliated with a grant, specify what type of grant. Small variations exist for these grant classes.</span></td>\n";
+	$html .= "<td>";
+	$grantClasses = CareerDev::getGrantClasses();
+	$grantClassRadios = array();
+	$grantClassName = "grant_class";
+	foreach ($grantClasses as $valud => $label) {
+		$id = $grantClassName."_".$value;
+		array_push($grantClassRadios, "<input type='radio' id='$id' name='$grantClassName' value='$value' onclick='changeGrantClass(\"$grantClassName\");'><label for='$id'> $label</label>");
+	}
+	$html .= implode("<br>", $grantClassRadios);
+	$html .= "</td>\n";
+	$html .= "</tr>\n";
+
+	$html .= "<tr id='grant_number_row' style='display: none;'>\n";
+	$html .= "<td style='text-align: right;'>Grant Number (e.g., R01CA654321):</td>\n";
+	$html .= "<td><input type='text' name='grant_number'></td>\n";
 	$html .= "</tr>\n";
 
 	$zones = timezone_identifiers_list();

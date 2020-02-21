@@ -26,7 +26,6 @@ use \Vanderbilt\CareerDevLibrary\OracleConnection;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Scholar;
-use \Vanderbilt\CareerDevLibrary\SummaryGrants;
 use \Vanderbilt\CareerDevLibrary\Survey;
 use \Vanderbilt\CareerDevLibrary\UnitTester;
 use \Vanderbilt\CareerDevLibrary\Upload;
@@ -35,6 +34,7 @@ use \Vanderbilt\CareerDevLibrary\iCite;
 
 require_once(dirname(__FILE__)."/classes/Publications.php");
 require_once(dirname(__FILE__)."/classes/Grants.php");
+require_once(dirname(__FILE__)."/classes/Grant.php");
 require_once(dirname(__FILE__)."/classes/EmailManager.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
@@ -60,6 +60,7 @@ $pid = CareerDev::getSetting("pid");
 $event_id = CareerDev::getSetting("event_id");
 $tokenName = CareerDev::getSetting("tokenName");
 $adminEmail = CareerDev::getSetting("admin_email");
+$grantClass = CareerDev::getSetting("grant_class");
 
 if (!$module) {
 	throw new \Exception("The base class has no module!");
@@ -76,40 +77,12 @@ $GLOBALS['tokenName'] = $tokenName;
 $GLOBALS['event_id'] = $event_id;
 $GLOBALS['module'] = $module;
 $GLOBALS['adminEmail'] = $adminEmail;
+$GLOBALS['grantClass'] = $grantClass;
 
 ############# FUNCTIONS ################
 
 function getBaseAwardNumber($num) {
-	$num = preg_replace("/^Individual K - Rec\. \d+ /", "", $num);
-	if (preg_match("/^Internal K/", $num)) {
-		return $num;
-	} else if (preg_match("/^K12/", $num)) {
-		return $num;
-	} else if (preg_match("/^KL2/", $num)) {
-		return $num;
-	} else if (preg_match("/^Individual K/", $num)) {
-		return $num;
-	} else if (preg_match("/^Unknown R01 - Rec. \d+/", $num)) {
-		return $num;
-	} else if (preg_match("/^Unknown/", $num)) {
-		return $num;
-	}
-	if (preg_match("/^\d+[A-Za-z]\d/", $num)) {
-		$num = preg_replace("/^\d+/", "", $num);
-	}
-	if (preg_match("/\s\d+[A-Za-z]\d/", $num)) {
-		$num = preg_replace("/\s\d+([A-Za-z]\d)/", "\\1", $num);
-	}
-	if (preg_match("/\S+[\(]\d*[A-Za-z]\d/", $num)) {
-		$num = preg_replace("/^\S+\(\d*([A-Za-z]\d)/", "\\1", $num);
-		$num = preg_replace("/(\d)\).*$/", "\\1", $num);
-	}
-	if (preg_match("/\d[A-Za-z]\d/", $num)) {
-		$num = preg_replace("/\s/", "", $num);
-	}
-	$num = preg_replace("/-[^\-]*$/", "", $num);
-	$num = preg_replace("/\s/", "", $num);
-	return $num;
+	return Grant::transformToBaseAwardNumber($num);
 }
 
 function getDepartmentChoices() {
@@ -1194,26 +1167,9 @@ function addLists($token, $server, $lists, $installCoeus = FALSE, $metadata = FA
 	}
 
 	$fields = array();
-	$fields["departments"] = array(
-					"summary_primary_dept",
-					"override_department1",
-					"override_department1_previous",
-					"check_primary_dept",
-					"check_prev1_primary_dept",
-					"check_prev2_primary_dept",
-					"check_prev3_primary_dept",
-					"check_prev4_primary_dept",
-					"check_prev5_primary_dept",
-					"followup_primary_dept",
-					"followup_prev1_primary_dept",
-					"followup_prev2_primary_dept",
-					"followup_prev3_primary_dept",
-					"followup_prev4_primary_dept",
-					"followup_prev5_primary_dept",
-					"promotion_department",
-					);
-	$fields["resources"] = array("resources_resource");
-	$fields["institutions"] = array("check_institution", "followup_institution");
+	$fields["departments"] = REDCapManagement::getSpecialFields("departments");
+	$fields["resources"] = REDCapManagement::getSpecialFields("resources");
+	$fields["institutions"] = REDCapManagement::getSpecialFields("institutions");
 
 	$newMetadata = array();
 	foreach ($metadata as $row) {

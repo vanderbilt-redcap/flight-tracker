@@ -3,6 +3,7 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/Download.php");
 
 class REDCapManagement {
 	public static function getChoices($metadata) {
@@ -90,22 +91,39 @@ class REDCapManagement {
 		return $selectedRows;
 	}
 
-	public static function getFieldsWithRegEx($metadata, $re) {
+	public static function getFieldsFromMetadata($metadata) {
+		$fields = array();
+		foreach ($metadata as $row) {
+			array_push($fields, $row['field_name']);
+		}
+		return $fields;
+	}
+
+	public static function getFieldsWithRegEx($metadata, $re, $removeRegex = FALSE) {
 		$fields = array();
 		foreach ($metadata as $row) {
 			if (preg_match($re, $row['field_name'])) {
-				$field = preg_replace($re, "", $row['field_name']);
+				if ($removeRegex) {
+					$field = preg_replace($re, "", $row['field_name']);
+				} else {
+					$field = $row['field_name'];
+				}
 				array_push($fields, $field);
 			}
 		}
 		return $fields;
 	}
 
+	public static function getMetadataFieldsToScreen() {
+		return array("select_choices_or_calculations", "required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation");
+	}
+
 	# if present, $fields contains the fields to copy over; if left as an empty array, then it attempts to install all fields
 	# $deletionRegEx contains the regular expression that marks fields for deletion
 	# places new metadata rows AFTER last match from $existingMetadata
 	public static function mergeMetadata($existingMetadata, $newMetadata, $fields = array(), $deletionRegEx = "/___delete$/") {
-		$fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx);
+		$metadataFieldsToCopy = self::getMetadataFieldsToScreen();
+		$fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx, TRUE);
 
 		if (empty($fields)) {
 			$selectedRows = $newMetadata;
@@ -133,7 +151,9 @@ class REDCapManagement {
 					}
 					if (($priorRowField == $row['field_name']) && !preg_match($deletionRegEx, $newRow['field_name'])) {
 						if ($newChoices[$newRow['field_name']]) {
-							$newRow = self::copyChoiceStrForField($newRow, $newMetadata);
+							foreach ($metadataFieldsToCopy as $metadataField) {
+								$newRow = self::copyMetadataSettingForField($newRow, $newMetadata, $metadataField);
+							}
 						}
 						array_push($tempMetadata, $newRow);
 						$priorNewRowField = $newRow['field_name'];
@@ -145,10 +165,10 @@ class REDCapManagement {
 		return $existingMetadata;
 	}
 
-	public static function copyChoiceStrForField($row, $metadata) {
+	public static function copyMetadataSettingForField($row, $metadata, $rowSetting) {
 		foreach ($metadata as $metadataRow) {
 			if ($metadataRow['field_name'] == $row['field_name']) {
-				$row['select_choices_or_calculations'] = $metadataRow['select_choices_or_calculations'];
+				$row[$rowSetting] = $metadataRow[$rowSetting];
 				break;
 			}
 		}
@@ -203,4 +223,89 @@ class REDCapManagement {
 		}
 		return $indexedRedcapData;
 	}
+
+	public function setupRepeatingForms($eventId, $formsAndLabels) {
+		$sqlEntries = array();
+		foreach ($formsAndLabels as $form => $label) {
+			array_push($sqlEntries, "($eventId, '".db_real_escape_string($form)."', '".db_real_escape_string($label)."')");
+		}
+		if (!empty($sqlEntries)) {
+			$sql = "REPLACE INTO redcap_events_repeat (event_id, form_name, custom_repeat_form_label) VALUES".implode(",", $sqlEntries);
+			db_query($sql);
+		}
+	}
+
+	public static function getEventIdForClassical($projectId) {
+		$sql = "SELECT DISTINCT(m.event_id) AS event_id FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) WHERE a.project_id = '$projectId'";
+		$q = db_query($sql);
+		if ($row = db_fetch_assoc($q)) {
+			return $row['event_id'];
+		}
+		throw new \Exception("The event_id is not defined. (This should never happen.)");
+	}
+
+	public static function getExternalModuleId($prefix) {
+		$sql = "SELECT external_module_id FROM redcap_external_modules WHERE directory_prefix = '".db_real_escape_string($prefix)."'";
+		$q = db_query($sql);
+		if ($row = db_fetch_assoc($q)) {
+			return $row['external_module_id'];
+		}
+		throw new \Exception("The external_module_id is not defined. (This should never happen.)");
+	}
+
+	public static function setupSurveys($projectId, $surveysAndLabels) {
+		foreach ($surveysAndLabels as $form => $label) {
+			$sql = "REPLACE INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES ($projectId, '16', '".db_real_escape_string($form)."', '".db_real_escape_string($label)."', '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', '<p><strong>Thank you for taking the survey.</strong></p>\r\n<p>Have a nice day!</p>', 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
+			db_query($sql);
+		}
+	}
+
+	public static function getPIDFromToken($token, $server) {
+		$projectSettings = Download::getProjectSettings($token, $server);
+		if (isset($projectSettings['project_id'])) {
+			return $projectSettings['project_id'];
+		}
+		return "";
+	}
+
+	public static function getSpecialFields($type) {
+		$fields = array();
+		$fields["departments"] = array(
+						"summary_primary_dept",
+						"override_department1",
+						"override_department1_previous",
+						"check_primary_dept",
+						"check_prev1_primary_dept",
+						"check_prev2_primary_dept",
+						"check_prev3_primary_dept",
+						"check_prev4_primary_dept",
+						"check_prev5_primary_dept",
+						"followup_primary_dept",
+						"followup_prev1_primary_dept",
+						"followup_prev2_primary_dept",
+						"followup_prev3_primary_dept",
+						"followup_prev4_primary_dept",
+						"followup_prev5_primary_dept",
+						);
+		$fields["resources"] = array("resources_resource");
+		$fields["institutions"] = array("check_institution", "followup_institution");
+
+		if (isset($fields[$type])) {
+			return $fields[$type];
+		}
+		if ($type == "all") {
+			$allFields = array();
+			foreach ($fields as $type => $typeFields) {
+				$allFields = array_merge($allFields, $typeFields);
+			}
+			$allFields = array_unique($allFields);
+			return $allFields;
+		}
+		return array();
+	}
+
+	public static function isValidToken($token) {
+		return (strlen($token) == 32);
+	}
+
 }

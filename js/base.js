@@ -591,11 +591,16 @@ function installMetadata(fields) {
 	$.post(url, { process: "install", fields: fields }, function(data) {
 		console.log(JSON.stringify(data));
 		$("#metadataWarning").removeClass("yellow");
-		$("#metadataWarning").addClass("green");
-		$("#metadataWarning").html("Installation Complete!");
-		setTimeout(function() {
-			$("#metadataWarning").fadeOut(500);
-		}, 3000);
+		if (!data.match(/Exception/)) {
+			$("#metadataWarning").addClass("green");
+			$("#metadataWarning").html("Installation Complete!");
+			setTimeout(function() {
+				$("#metadataWarning").fadeOut(500);
+			}, 3000);
+		} else {
+			$("#metadataWarning").addClass("red");
+			$("#metadataWarning").html("Error in installation! Metadata not updated.");
+		}
 	});
 }
 

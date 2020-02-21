@@ -41,30 +41,45 @@ if ($_POST['process'] == "check") {
 		}
 
 		$fieldList = array();
+		$indexedMetadata = array();
 		foreach ($metadata as $type => $metadataRows) {
 			$fieldList[$type] = array();
+			$indexedMetadata[$type] = array();
 			foreach ($metadataRows as $row) {
 				$fieldList[$type][$row['field_name']] = $row['select_choices_or_calculations'];
+				$indexedMetadata[$type][$row['field_name']] = $row;
 			}
 		}
 
 		$missing = array();
 		$additions = array();
-		$changedChoices = array();
+		$changed = array();
+		$metadataFields = REDCapManagement::getMetadataFieldsToScreen();
+		$specialFields = REDCapManagement::getSpecialFields("all");
 		foreach ($fieldList["file"] as $field => $choiceStr) {
-			if (!isset($fieldList["REDCap"][$field])) {
-				array_push($missing, $field);
-				if (!preg_match($deletionRegEx, $field) && !preg_match("/^coeus_/", $field)) {
-					array_push($additions, $field);
+			if (!in_array($field, $specialFields)) {
+				if (!isset($fieldList["REDCap"][$field])) {
+					array_push($missing, $field);
+					if (!preg_match($deletionRegEx, $field) && !preg_match("/^coeus_/", $field)) {
+						array_push($additions, $field);
+					}
+				} else if ($choiceStr && $choices["REDCap"][$field] && $choices["file"][$field] && $fieldList["REDCap"][$field] && ($choiceStr != $fieldList["REDCap"][$field])) {
+					array_push($missing, $field);
+					array_push($changed, $field);
+				} else {
+					foreach ($metadataFields as $metadataField) {
+						if (isset($indexedMetadata["file"][$field]) && isset($indexedMetadata["REDCap"][$field]) && ($indexedMetadata["file"][$field][$metadataField] != $indexedMetadata["REDCap"][$field][$metadataField])) {
+							array_push($missing, $field);
+							array_push($changed, $field);
+							break; // metadataFields loop
+						}
+					}
 				}
-			} else if ($choiceStr && $choices["REDCap"][$field] && $choices["file"][$field] && $fieldList["REDCap"][$field] && ($choiceStr != $fieldList["REDCap"][$field])) {
-				array_push($missing, $field);
-				array_push($changedChoices, $field);
 			}
 		}
 
 		CareerDev::setSetting($lastCheckField, time());
-		if (count($additions) + count($changedChoices) > 0) {
+		if (count($additions) + count($changed) > 0) {
 			echo "<script>var missing = ".json_encode($missing).";</script>\n";
 			echo "An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a>";
 		}
@@ -83,7 +98,34 @@ if ($_POST['process'] == "check") {
 	$metadata['REDCap'] = Download::metadata($token, $server);
 	if ($metadata['file']) {
 		$metadata['merged'] = REDCapManagement::mergeMetadata($metadata['REDCap'], $metadata['file'], $fields, $deletionRegEx);
-		$feedback = Upload::metadata($metadata['merged'], $token, $server);
-		echo json_encode($feedback);
+
+		if ($grantClass == "K") {
+			$mentorLabel = "Primary mentor during your K/K12 training period";
+		} else if ($grantClass == "T") {
+			$mentorLabel = "Primary mentor during your pre-doc/post-doc training period";
+		} else {
+			$mentorLabel = "Primary mentor (current)";
+		}
+		$metadata['merged'] = changeFieldLabel("check_primary_mentor", $mentorLabel, $metadata['merged']);
+		$metadata['merged'] = changeFieldLabel("followup_primary_mentor", $mentorLabel, $metadata['merged']);
+
+		try {
+			$feedback = Upload::metadata($metadata['merged'], $token, $server);
+			echo json_encode($feedback);
+		} catch (\Exception $e) {
+			$feedback = array("F311" => json_encode($metadata['merged'][310]), "Exception" => $e->getMessage());
+			echo json_encode($feedback);
+		}
 	}
+}
+
+function changeFieldLabel($field, $label, $metadata) {
+	$i = 0;
+	foreach ($metadata as $row) {
+		if ($row['field_name'] == $field) {
+			$metadata[$i]['field_label'] = $label;
+		}
+		$i++;
+	}
+	return $metadata;
 }

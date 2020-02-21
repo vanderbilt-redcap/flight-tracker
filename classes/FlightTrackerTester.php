@@ -91,6 +91,8 @@ class FlightTrackerTester {
 			$citizenship = self::assignRandomChoiceIndex($choices, "imported_citizenship");
 			$row = array(
 					"record_id" => $this->testRecordId,
+					"redcap_repeat_instrument" => "",
+					"redcap_repeat_instance" => "",
 					"identifier_first_name" => "TEST-FIRST",
 					"identifier_last_name" => "TEST-LAST",
 					"identifier_email" => "noreply@vumc.org",
@@ -124,15 +126,15 @@ class FlightTrackerTester {
 
 			$newREDCapData = makeSummary($this->token, $this->server, $this->pid, $this->testRecordId, $rows);
 			foreach ($newREDCapData as $newRow) {
-				if ($row["redcap_repeat_instrument"] == "") {
-					$tester->tag("Record ID Same ".json_encode($row));
+				if ($newRow["redcap_repeat_instrument"] == "") {
+					$tester->tag("Record ID Same ".json_encode($newRow));
 					$tester->assertEqual($newRow["record_id"], $this->testRecordId);
-	
+
 					$tester->tag("DOB Equal to Summary");
 					$tester->assertEqual($newRow["summary_dob"], $dob);
 					$tester->tag("Imported DOB Equal to Summary");
 					$tester->assertEqual($row["imported_dob"], $newRow["summary_dob"]);
-	
+
 					$tester->tag("Gender Equal to Summary");
 					$tester->assertEqual($newRow["summary_gender"], $gender);
 					$tester->tag("Imported Gender Equal to Summary");
@@ -142,7 +144,7 @@ class FlightTrackerTester {
 					$tester->assertEqual($newRow["summary_citizenship"], $citizenship);
 					$tester->tag("Imported Citizenship Equal to Summary");
 					$tester->assertEqual($row["imported_citizenship"], $newRow["summary_citizenship"]);
-	
+
 					if ($eth == 1) {
 						# Hispanic
 						switch($race) {

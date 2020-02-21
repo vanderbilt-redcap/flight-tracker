@@ -13,6 +13,7 @@ require_once(dirname(__FILE__)."/classes/Crons.php");
 require_once(dirname(__FILE__)."/classes/EmailManager.php");
 require_once(dirname(__FILE__)."/classes/NavigationBar.php");
 require_once(dirname(__FILE__)."/cronLoad.php");
+require_once(dirname(__FILE__)."/cronLoad.php");
 
 class FlightTrackerExternalModule extends AbstractExternalModule
 {

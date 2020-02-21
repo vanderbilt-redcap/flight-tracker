@@ -9,6 +9,10 @@ require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/classes/Consortium.php");
 
 $bottomPadding = "<br><br><br><br><br>\n";
+$grantNumberHeader = "";
+if ($grantNumber = CareerDev::getSetting("grant_number")) {
+	$grantNumberHeader = " - ".Grant::transformToBaseAwardNumber($grantNumber);
+}
 
 ?>
 <html>
@@ -35,7 +39,7 @@ $(document).ready(function() {
 <h4 class='nomargin'>Watch Your Scholars Fly</h4>
 <h5>from <a href='https://edgeforscholars.org'>Edge for Scholars</a></h5>
 
-<h2><?= $tokenName ?></h2>
+<h2><?= $tokenName.$grantNumberHeader ?></h2>
 
 <div class='centered' id='metadataWarning'></div>
 
@@ -49,7 +53,7 @@ $(document).ready(function() {
 		$hours = 12;    // 12 hours prior
 		$priorTs = time() - $hours * 3600;
 		$lockInfo = $module->getSystemSetting(\ExternalModules\ExternalModules::KEY_RESERVED_IS_CRON_RUNNING);
-		if ($lockInfo && ($lockInfo['time'] < $priorTs)) {
+		if ($lockInfo && $lockInfo['time'] && ($lockInfo['time'] < $priorTs)) {
 			echo "<div class='centered red'>Your cron has not completed within $hours hours. Your cron most likely needs to be reset. Please <a href='".CareerDev::link("reset_cron.php")."'>click here to do so</a>.</div>\n";
 		}
 	}

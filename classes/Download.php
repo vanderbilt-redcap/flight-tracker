@@ -246,6 +246,10 @@ class Download {
 		return Download::oneField($token, $server, "identifier_first_name");
 	}
 
+	public static function middlenames($token, $server) {
+		return Download::oneField($token, $server, "identifier_middle");
+	}
+
 	public static function emails($token, $server) {
 		return Download::oneField($token, $server, "identifier_email");
 	}

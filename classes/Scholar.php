@@ -5,6 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/Grants.php");
 require_once(dirname(__FILE__)."/Upload.php");
 require_once(dirname(__FILE__)."/Download.php");
+require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
@@ -97,8 +98,34 @@ class Scholar {
 	}
 
 	public function getORCID() {
-		$row = self::getNormativeRow($this->rows);
-		return $row['identifier_orcid'];
+		$result = $this->getORCIDResult($this->rows);
+		return $result->getValue();
+	}
+
+	public function getORCIDWithLink() {
+		$orcid = $this->getORCID();
+		return Links::makeLink("https://orcid.org/".$orcid, $orcid);
+	}
+
+	public function getORCIDResult($rows) {
+		$row = self::getNormativeRow(rows);
+
+		# by default use identifier; if not specified, get result through default order
+		if ($row['identifier_orcid']) {
+			$result = new Result($row['identifier_orcid'], "", "", "", $this->pid);
+		} else {
+			$vars = self::getDefaultOrder("identifier_orcid");
+			error_log("getORCIDResult looking through ".json_encode($vars));
+			$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		}
+		$value = $result->getValue();
+		$searchTerm = "/^https:\/\/orcid.org\//";
+		if (preg_match($searchTerm, $value)) {
+			# they provided URL instead of number
+			$result->setValue(preg_replace($searchTerm, "", $value));
+		}
+		error_log("getORCIDResult returning ".$result->getValue()." and source ".$result->getSource());
+		return $result;
 	}
 
 	public function getEmail() {
@@ -188,9 +215,9 @@ class Scholar {
 		}
 		$row = self::getNormativeRow($this->rows);
 		if ($row['identifier_institution']) {
-			if (in_array($row['identifier_institution'], Application::getInstitutions())) {
+			if ($row['identifier_institution'] && in_array($row['identifier_institution'], Application::getInstitutions())) {
 				return "Employed at ".$row['identifier_institution'];
-			} else {
+			} else if ($row['identifier_institution'] && ($row['identifier_institution'] != Application::getUnknown())) {
 				$institution = " for ".$row['identifier_institution'];
 				$date = "";
 				if ($row['identifier_left_date']) {
@@ -605,14 +632,14 @@ class Scholar {
 
 	# returns an array of (variableName, variableType) for to where (whither) they left VUMC
 	# used for the Scholars' survey and Follow-Up surveys
-	private function getWhereLeftInstitution($rows) {
+	private function getAllOtherInstitutions($rows) {
 		$followupInstitutionField = "followup_institution";
 		$checkInstitutionField = "check_institution";
 		$institutionCurrent = "1";
 
-		$currentInstitutions = Application::getInstitutions(); 
+		$currentProjectInstitutions = Application::getInstitutions(); 
 		for ($i = 0; $i < count($currentInstitutions); $i++) {
-			$currentInstitutions[$i] = trim(strtolower($currentInstitutions[$i]));
+			$currentProjectInstitutions[$i] = trim(strtolower($currentProjectInstitutions[$i]));
 		}
 		$choices = self::getChoices($this->metadata);
 		$followupRows = self::selectFollowupRows($rows);
@@ -622,7 +649,7 @@ class Scholar {
 				if (strtolower($value) == "other") {
 					$value = $row[$followupInstitutionField."_oth"];
 				}
-				if (!in_array(strtolower($value), $currentInstitutions)) {
+				if (!in_array(strtolower($value), $currentProjectInstitutions)) {
 					return new Result($value, "followup", "", "", $this->pid);
 				}
 			}
@@ -634,17 +661,20 @@ class Scholar {
 			if (strtolower($value) == "other") {
 				$value = $row[$checkInstitutionField."_oth"];
 			}
-			if (!in_array(strtolower($value), $currentInstitutions)) {
+			if (!in_array(strtolower($value), $currentProjectInstitutions)) {
 				return new Result($value, "scholars", "", "", $this->pid);
 			}
 		}
 		if ($normativeRow['imported_institution']) {
 			$value = $normativeRow['imported_institution'];
-			if (!in_array(strtolower($value), $currentInstitutions)) {
+			if (!in_array(strtolower($value), $currentProjectInstitutions)) {
 				return new Result($value, "manual", "", "", $this->pid);
 			}
 		}
-		return new Result($normativeRow['identifier_institution'], $normativeRow['identifier_institution_source'], "", "", $this->pid);
+		if ($normativeRow['identifier_institution'] != Application::getUnknown()) {
+			return new Result($normativeRow['identifier_institution'], $normativeRow['identifier_institution_source'], "", "", $this->pid);
+		}
+		return new Result("", "");
 	}
 
 	# returns an array of (variableName, variableType) for when they left VUMC
@@ -815,6 +845,7 @@ class Scholar {
 	}
 
 	# to get all, make $field == "all"
+	# add new fields here and getCalculatedFields
 	public static function getDefaultOrder($field) {
 		$orders = array();
 		$orders["summary_degrees"] = array(
@@ -833,6 +864,7 @@ class Scholar {
 							);
 		$orders["summary_primary_dept"] = array(
 							"override_department1" => "manual",
+							"promotion_department" => "manual",
 							"check_primary_dept" => "scholars",
 							"vfrs_department" => "vfrs",
 							"newman_new_department" => "new2017",
@@ -889,15 +921,31 @@ class Scholar {
 							);
 		$orders["identifier_institution"] = array(
 								"identifier_institution" => "manual",
+								"promotion_institution" => "manual",
 								"imported_institution" => "manual",
 								"check_institution" => "scholars",
 								);
+		$orders["identifier_left_job_title"] = array(
+								"promotion_job_title" => "manual",
+								"check_job_title" => "scholars",
+								"followup_job_title" => "scholars",
+								);
+		$orders["identifier_left_job_category"] = array(
+								"promotion_job_category" => "manual",
+								"check_job_category" => "scholars",
+								"followup_job_category" => "scholars",
+		);
+		$orders["identifier_left_department"] = array(
+								"promotion_department" => "manual",
+		);
 		$orders["summary_current_division"] = array(
+								"promotion_division" => "manual",
 								"identifier_left_division" => "manual",
 								"followup_division" => "followup",
 								"check_division" => "scholars",
 								"override_division" => "manual",
 								"imported_division" => "manual",
+								"identifier_starting_division" => "manual",
 								"vfrs_division" => "vfrs",
 								);
 		$orders["summary_current_rank"] = array(
@@ -1354,7 +1402,7 @@ class Scholar {
 			return new Result("Vanderbilt", $source, "", "", $this->pid);
 		} else if ($value == "2") {
 			return new Result("Meharry", $source, "", "", $this->pid);
-		} else if ($value == "") {
+		} else if (($value == "") || ($value == Application::getUnknown())) {
 			return new Result("", ""); 
 		} else if (is_numeric($value)) {
 			# Other
@@ -1370,6 +1418,7 @@ class Scholar {
 				return $otherResult;
 			}
 		} else {
+			# typical case
 			return new Result($value, $source, "", "", $this->pid);
 		}
 	}
@@ -1378,6 +1427,9 @@ class Scholar {
 		$vars = self::getDefaultOrder("summary_current_division");
 		$vars = $this->getOrder($vars, "summary_current_division");
 		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		if ($result->getValue() == "N/A") {
+			return new Result("", "");
+		}
 		if ($result->getValue() == "") {
 			$deptName = $this->getPrimaryDepartmentText();
 			$nodes = preg_split("/\//", $deptName);
@@ -1481,12 +1533,43 @@ class Scholar {
 		}
 	}
 
+	private function getJobCategory($rows) {
+		$vars = self::getDefaultOrder("identifier_left_job_category");
+		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+		return $result;
+	}
+
+	private function getNewDepartment($rows) {
+		$vars = self::getDefaultOrder("identifier_left_department");
+		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+		return $result;
+	}
+
+	private function getJobTitle($rows) {
+		$vars = self::getDefaultOrder("identifier_left_job_title");
+		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+		return $result;
+	}
+
+	public static function getDemographicsArray() {
+		return $this->demographics;
+	}
+
 	private static function getDemographicFields() {
+		return self::getCalculatedFields();
+	}
+
+	# add new fields here and getDefaultOrder
+	private static function getCalculatedFields() {
 		return array(
 				"summary_coeus_name" => "calculateCOEUSName",
 				"summary_survey" => "getSurvey",
 				"identifier_left_date" => "getWhenLeftInstitution",
-				"identifier_institution" => "getWhereLeftInstitution",
+				"identifier_institution" => "getAllOtherInstitutions",
+				"identifier_left_job_title" => "getJobTitle",
+				"identifier_left_job_category" => "getJobCategory",
+				"identifier_left_department" => "getNewDepartment",
+				"identifier_orcid" => "getORCIDResult",
 				"summary_degrees" => "getDegrees",
 				"summary_primary_dept" => "getPrimaryDepartment",
 				"summary_gender" => "getGender",
@@ -1495,6 +1578,7 @@ class Scholar {
 				"summary_citizenship" => "getCitizenship",
 				"summary_current_institution" => "getInstitution",
 				"summary_current_division" => "getCurrentDivision",
+				"identifier_left_division" => "getCurrentDivision",    // deliberate duplicate
 				"summary_current_rank" => "getCurrentRank",
 				"summary_current_start" => "getCurrentAppointmentStart",
 				"summary_current_tenure" => "getTenureStatus",
@@ -1506,29 +1590,34 @@ class Scholar {
 		$fields = self::getDemographicFields();
 		$rows = $this->rows;
 
+		$metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
+
 		$specialCases = array("summary_degrees", "summary_coeus_name", "summary_survey", "summary_race_ethnicity");
 		foreach ($fields as $field => $func) {
-			if (in_array($field, $specialCases)) {
-				# special cases
-				if (($field == "summary_degrees") || ($field == "summary_survey") || ($field == "summary_coeus_name")) {
+			if (in_array($field, $metadataFields)) {
+				if (in_array($field, $specialCases)) {
+					# special cases
+					if (($field == "summary_degrees") || ($field == "summary_survey") || ($field == "summary_coeus_name")) {
+						$result = $this->$func($rows);
+						$this->demographics[$field] = $result->getValue();
+					} else if ($field == "summary_race_ethnicity") {
+						$result = $this->$func($rows);
+	
+						$this->demographics[$field] = $result->getValue();
+						$this->demographics["summary_race_source"] = $result->getRaceSource();
+						$this->demographics["summary_race_sourcetype"] = $result->getRaceSourceType();
+						$this->demographics["summary_ethnicity_source"] = $result->getEthnicitySource();
+						$this->demographics["summary_ethnicity_sourcetype"] = $result->getEthnicitySourceType();
+					}
+				} else {
 					$result = $this->$func($rows);
+	
 					$this->demographics[$field] = $result->getValue();
-				} else if ($field == "summary_race_ethnicity") {
-					$result = $this->$func($rows);
-
-					$this->demographics[$field] = $result->getValue();
-					$this->demographics["summary_race_source"] = $result->getRaceSource();
-					$this->demographics["summary_race_sourcetype"] = $result->getRaceSourceType();
-					$this->demographics["summary_ethnicity_source"] = $result->getEthnicitySource();
-					$this->demographics["summary_ethnicity_sourcetype"] = $result->getEthnicitySourceType();
+					$this->demographics[$field."_source"] = $result->getSource();
+					$this->demographics[$field."_sourcetype"] = $result->getSourceType();
 				}
-			} else {
-				$result = $this->$func($rows);
-
-				$this->demographics[$field] = $result->getValue();
-				$this->demographics[$field."_source"] = $result->getSource();
-				$this->demographics[$field."_sourcetype"] = $result->getSourceType();
 			}
+			# no else because they probably have not updated their metadata
 		}
 	}
 
@@ -1574,6 +1663,10 @@ class Result {
 		$this->sourceType = $sourceType;
 		$this->date = $date;
 		$this->pid = $pid;
+	}
+
+	public function setValue($val) {
+		$this->value = $val;
 	}
 
 	public function getValue() {
