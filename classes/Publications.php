@@ -647,7 +647,10 @@ class Publications {
 				array_push($rcrs, $rcr);
 			}
 		}
-		return array_sum($rcrs) / count($rcrs);
+		if (count($rcrs) > 0) {
+			return array_sum($rcrs) / count($rcrs);
+		}
+		return "N/A";
 	}
 
 	public static function getPubTimestamp($citation, $recordId) {

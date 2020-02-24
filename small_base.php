@@ -1516,6 +1516,7 @@ function produceSourcesAndTypes($scholar, $metadata) {
 	$sources = array();
 	$sourceTypes = array();
 	$delim = getUploadDelim();
+	$allFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	foreach ($orders as $fieldForOrder => $order) {
 		$newOrder = $scholar->getOrder($order, $fieldForOrder);
 		foreach ($newOrder as $field => $source) {

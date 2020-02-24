@@ -4,11 +4,13 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Scholar;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
 require_once(dirname(__FILE__)."/classes/Scholar.php");
+require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 
 define('MAX_DEGREE_SOURCES', 5);
 
@@ -129,7 +131,7 @@ function getExistingChoicesTexts($existingChoices, $scholar, $allFields) {
 function makeOrder($metadata = array()) {
 	global $token, $server, $pid;
 	$exampleField = getExampleField();
-
+	$delim = \Vanderbilt\FlightTrackerExternalModule\getUploadDelim();
 
 	if (empty($metadata)) {
 		$metadata = Download::metadata($token, $server, $pid);
@@ -138,7 +140,7 @@ function makeOrder($metadata = array()) {
 	$orders = Scholar::getDefaultOrder("all");
 	$choices = Scholar::getChoices($metadata);
 
-	$allFields = getFieldNames($metadata);
+	$allFields = REDCapManagement::getFieldsFromMetadata($metadata);
 
 	$fieldLabels = array();
 	foreach ($orders as $fieldForOrder => $order) {
