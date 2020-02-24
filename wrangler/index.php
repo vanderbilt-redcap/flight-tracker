@@ -702,7 +702,7 @@ foreach ($redcapData as $row) {
 		$order = json_decode($row["summary_calculate_order"], true);
 		$inUse = array();
 		echo "<div class='left'>";
-		echo "<h3>Order Now In Use</h3>";
+		echo "<h3>Career Progression</h3>";
 		if (empty($order)) {
 			echo "<p>No awards.</p>";
 		} else {

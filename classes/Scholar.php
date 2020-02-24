@@ -333,6 +333,7 @@ class Scholar {
 	}
 
 	public function makeUploadRow() {
+		$metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
 		$uploadRow = array(
 					"record_id" => $this->recordId,
 					"redcap_repeat_instrument" => "",
@@ -340,18 +341,24 @@ class Scholar {
 					"summary_last_calculated" => date("Y-m-d H:i"),
 					);
 		foreach ($this->name as $var => $value) {
-			$uploadRow[$var] = $value;
+			if (in_array($var, $metadataFields)) {
+				$uploadRow[$var] = $value;
+			}
 		}
 		foreach ($this->demographics as $var => $value) {
-			$uploadRow[$var] = $value;
+			if (in_array($var, $metadataFields)) {
+				$uploadRow[$var] = $value;
+			}
 		}
 		foreach ($this->metaVariables as $var => $value) {
-			$uploadRow[$var] = $value;
+			if (in_array($var, $metadataFields)) {
+				$uploadRow[$var] = $value;
+			}
 		}
 
 		$grantUpload = $this->grants->makeUploadRow();
 		foreach ($grantUpload as $var => $value) {
-			if (!isset($uploadRow[$var])) {
+			if (!isset($uploadRow[$var]) && in_array($var, $metadataFields)) {
 				$uploadRow[$var] = $value;
 			}
 		}
