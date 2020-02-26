@@ -1197,12 +1197,20 @@ class Scholar {
 			return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
 		}
 		if ($eth == "") {
+			$choices = REDCapManagement::getChoices($this->metadata);
 			if ($race == 5) { # White
 				$val = 7;
 			} else if ($race == 4) { # Black
 				$val = 8;
 			}
 			if ($val) {
+				if (!isset($choices["summary_race_ethnicity"][$val])) {
+					if ($val == 7) {
+						$val = 1;   // white, non-Hisp
+					} else if ($val == 8) {
+						$val = 2;   // black, non-Hisp
+					}
+				}
 				return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
 			}
 		}

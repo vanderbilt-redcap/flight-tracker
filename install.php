@@ -153,7 +153,7 @@ function setupModuleSettings($projectId, $fields) {
 }
 
 function setupSurveys($projectId, $surveysAndLabels) {
-	REDCap::setupSurveys($projectId, $surveysAndLabels);
+	REDCapManagement::setupSurveys($projectId, $surveysAndLabels);
 }
 
 function sendErrorMessage($mssg) {

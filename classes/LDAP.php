@@ -15,6 +15,14 @@ class LDAP {
 		return self::getLDAPByMultiple(array($type), array($value));
 	}
 
+	public static function getVUNetsAndDepartments($first, $last) {
+		$key = array("givenname" => $first, "sn" => $last); 
+		$info = self::getLDAPByMultiple(array_keys($key), array_values($key));
+		$vunets = self::findField($info, "uid");
+		$departments = self::findField($info, "vanderbiltpersonhrdeptname");
+		return array($vunets, $departments);
+	}
+
 	public static function getVUNet($first, $last) {
 		$key = array("givenname" => $first, "sn" => $last); 
 		$info = self::getLDAPByMultiple(array_keys($key), array_values($key));
@@ -24,22 +32,20 @@ class LDAP {
 	# $info is line from getLDAP
 	# returns the first line in $info with the field $field
 	public static function findField($info, $field) {
-		$separator = ";";
+		$r = array();
 		for ($i = 0; $i < $info['count']; $i++) {
 			$line = $info[$i];
 			foreach ($line as $var => $results) {
 				if ($var == $field) {
 					if (isset($results['count'])) {
-						$r = array();
 						for ($j = 0; $j < $results['count']; $j++) {
 							array_push($r, $results[$j]);
 						}
-						return implode($separator." ", $r);
 					}
 				}
 			}
 		}
-		return "";
+		return $r;
 	}
 
 	public static function getFields() {
@@ -191,8 +197,10 @@ class LdapLookup {
 	private static function getUID($entry) {
 		foreach ($entry as $var => $results) {
 			if ($var == "uid") {
-				for ($i = 0; $i < $results['count']; $i++) {
-					return $results[$i];
+				if (isset($results['count'])) {
+					for ($i = 0; $i < $results['count']; $i++) {
+						return $results[$i];
+					}
 				}
 			}
 		}

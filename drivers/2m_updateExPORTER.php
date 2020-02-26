@@ -2,6 +2,7 @@
 
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 // define("APP_PATH_TEMP", "/Users/pearsosj/xampp/htdocs/redcap/temp/");
@@ -9,6 +10,7 @@ define('NOAUTH', true);
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
+require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
@@ -243,7 +245,7 @@ function updateExPORTER($token, $server, $pid) {
 				}
 				if ($possibleMatch) {
 					for ($k = 0; $k < count($firstNames); $k++) {
-						$recordId = \Vanderbilt\FlightTrackerExternalModule\matchName($firstNames[$k], $lastNames[$k]);
+						$recordId = NameMatcher::matchName($firstNames[$k], $lastNames[$k]);
 						if ($recordId && $firstNames[$k] && $lastNames[$k]) {
 							# upload line
 							$uploadLine = array("record_id" => $recordId, "redcap_repeat_instrument" => "exporter", "exporter_complete" => '2');

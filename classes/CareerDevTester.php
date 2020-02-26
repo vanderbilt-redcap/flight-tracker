@@ -28,7 +28,7 @@ class CareerDevTester {
 		foreach ($rowsToModify as $origRow) {
 			$row = $origRow;
 			$row['select_choices_or_calculations'] = "1, ABC";
-			$modRow = REDCapManagement::copyChoiceStrForField($row, $this->metadata);
+			$modRow = REDCapManagement::copyMetadataSettingForField($row, $this->metadata, "select_choices_or_calculations");
 			$tester->tag("For field ".$origRow['field_name'].", modification successful");
 			$tester->assertNotEqual($modRow, $row);
 			$tester->tag("For field ".$origRow['field_name'].", modification back to original");

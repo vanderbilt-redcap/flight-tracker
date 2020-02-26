@@ -20,13 +20,12 @@ require_once(dirname(__FILE__)."/../CareerDev.php");
 define("NOAUTH", true);
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
-function getLockFile() {
-	global $pid;
+function getLockFile($pid) {
 	return APP_PATH_TEMP."6_makeSummary.$pid.lock";
 }
 
-function lock() {
-	$lockFile = getLockFile();
+function lock($pid) {
+	$lockFile = getLockFile($pid);
 
 	$lockStart = time();
 	if (file_exists($lockFile)) {
@@ -37,15 +36,15 @@ function lock() {
 	fclose($fp);
 }
 
-function unlock() {
-	$lockFile = getLockFile();
+function unlock($pid) {
+	$lockFile = getLockFile($pid);
 	# close the lockFile
 	unlink($lockFile);
 }
 
 # $allRecordRows is for testing purposes only
 function makeSummary($token, $server, $pid, $selectRecord = "", $allRecordRows = array()) {
-	lock();
+	lock($pid);
 
 	if (!$token || !$server) {
 		throw new \Exception("6d makeSummary could not find token '$token' or server '$server'");
@@ -136,7 +135,7 @@ function makeSummary($token, $server, $pid, $selectRecord = "", $allRecordRows =
 		}
 	}
 
-	unlock();
+	unlock($pid);
 
 	CareerDev::saveCurrentDate("Last Summary of Data");
 	if (!empty($allRecordRows)) {
