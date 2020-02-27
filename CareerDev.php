@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.10.2";
+		return "2.10.3";
 	}
 
 	public static function getUnknown() {

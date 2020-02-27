@@ -16,11 +16,11 @@ class NameMatcher {
 		if (!$firsts || !$lasts) {
 			return "";
 		}
-		if (!self::$namesForMatch || empty(self::$namesForMatch)) {
-			if (!$token) {
-				$token = $_GLOBALS['token'];
-				$server = $_GLOBALS['server'];
-			}
+		if (!$token) {
+			$token = $_GLOBALS['token'];
+			$server = $_GLOBALS['server'];
+		}
+		if (!self::$namesForMatch || empty(self::$namesForMatch) || ($token != self::$currToken)) {
 			self::downloadNamesForMatch($token, $server);
 		}
 		$recordIds = array();
@@ -54,6 +54,7 @@ class NameMatcher {
 
 	public static function downloadNamesForMatch($token, $server) {
 		self::$namesForMatch = Download::fields($token, $server, array("record_id", "identifier_first_name", "identifier_last_name"));
+		self::$currToken = $token;
 		return self::$namesForMatch;
 	}
 
@@ -68,4 +69,5 @@ class NameMatcher {
 	}
 
 	private static $namesForMatch = array();
+	private static $currToken = "";
 }

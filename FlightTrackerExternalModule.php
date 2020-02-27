@@ -280,6 +280,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	private static function isExternalModulePage() {
 		$page = $_SERVER['PHP_SELF'];
+		if (preg_match("/ExternalModules\/manager\/project.php/", $page)) {
+			return TRUE;
+		}
+		if (preg_match("/ExternalModules\/manager\/ajax\//", $page)) {
+			return TRUE;
+		}
 		if (preg_match("/external_modules\/manager\/project.php/", $page)) {
 			return TRUE;
 		}

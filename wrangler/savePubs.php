@@ -14,38 +14,6 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
 
-function getCitations($ids) {
-	$cits = array();
-	$pmids = array();
-
-	foreach ($ids as $id) {
-		if ($id) {
-			if (is_numeric($id)) {
-				array_push($pmids, $id);
-			} else {
-				array_push($cits, $id);
-			}
-		}
-	}
-
-	$pubmed = Publications::getCitationsFromPubMed($pmids);
-	$cits = array_merge($cits, $pubmed);
-	return $cits;
-}
-
-function addCategories($citations, $categories) {
-	$newCitations = array();
-	foreach ($citations as $citationText) {
-		$citation = Citation::createCitationFromText($citationText);   // do not lookup PMC; otherwise, it would take FOREVER!
-		$id = $citation->getID();
-		if ($categories[$id]) {
-			$citation->setCategory($categories[$id]);
-		}
-		array_push($newCitations, $citation->getCitationWithCategory());
-	}
-	return $newCitations;
-}
-
 if (isset($_POST['finalized'])) {
 	$newFinalized = json_decode($_POST['finalized']);
 	$newOmissions = json_decode($_POST['omissions']);
