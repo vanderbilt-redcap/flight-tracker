@@ -1435,7 +1435,9 @@ class Grants {
 					$uploadRow[$key] = $value;
 				} else {
 					Application::log($key." not found in metadata, but in summary variables");
-					throw new Exception($key." not found in metadata, but in summary variables");
+
+					# Need to warn silently because of upgrade issues
+					// throw new Exception($key." not found in metadata, but in summary variables");
 				}
 			}
 			foreach ($this->calculate as $type => $ary) {

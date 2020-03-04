@@ -336,13 +336,15 @@ function coeusMatch($fn1, $ln1, $fn2, $ln2) {
 # returns recordId that matches
 # returns "" if no match
 function matchName($first, $last) {
-	return NameMatcher::matchName($first, $last);
+	global $token, $server;
+	return NameMatcher::matchName($first, $last, $token, $server);
 }
 
 # returns an array of recordId's that matches respective last, first
 # returns "" if no match
 function matchNames($firsts, $lasts) {
-	return NameMatcher::matchNames($firsts, $lasts);
+	global $token, $server;
+	return NameMatcher::matchNames($firsts, $lasts, $token, $server);
 }
 
 function prettyMoney($n, $displayCents = TRUE) {

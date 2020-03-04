@@ -12,13 +12,9 @@ require_once(dirname(__FILE__)."/Download.php");
 class NameMatcher {
 	# returns an array of recordId's that matches respective last, first
 	# returns "" if no match
-	public static function matchNames($firsts, $lasts, $token = "", $server = "") {
+	public static function matchNames($firsts, $lasts, $token, $server) {
 		if (!$firsts || !$lasts) {
 			return "";
-		}
-		if (!$token) {
-			$token = $_GLOBALS['token'];
-			$server = $_GLOBALS['server'];
 		}
 		if (!self::$namesForMatch || empty(self::$namesForMatch) || ($token != self::$currToken)) {
 			self::downloadNamesForMatch($token, $server);
@@ -53,6 +49,7 @@ class NameMatcher {
 	}
 
 	public static function downloadNamesForMatch($token, $server) {
+		Application::log("Downloading new names for pid ".Application::getPID($token));
 		self::$namesForMatch = Download::fields($token, $server, array("record_id", "identifier_first_name", "identifier_last_name"));
 		self::$currToken = $token;
 		return self::$namesForMatch;
@@ -60,8 +57,8 @@ class NameMatcher {
 
 	# returns recordId that matches
 	# returns "" if no match
-	public static function matchName($first, $last) {
-		$ary = self::matchNames(array($first), array($last));
+	public static function matchName($first, $last, $token, $server) {
+		$ary = self::matchNames(array($first), array($last), $token, $server);
 		if (count($ary) > 0) {
 			return $ary[0];
 		}

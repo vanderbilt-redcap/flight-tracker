@@ -3,11 +3,13 @@
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\NameMatcher;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
+require_once(dirname(__FILE__)."/classes/NameMatcher.php");
 
 if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 	# get starting record_id
@@ -53,7 +55,7 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 			}
 		}
 	}
-	list($upload, $emails) = processLines($lines, $recordId);
+	list($upload, $emails) = processLines($lines, $recordId, $token, $server);
 	$feedback = array();
 	if (!empty($upload)) {
 		$feedback = Upload::rows($upload, $token, $server);
@@ -120,7 +122,7 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 <?php
 }
 
-function processLines($lines, $nextRecordId) {
+function processLines($lines, $nextRecordId, $token, $server) {
 	$upload = array();
 	$lineNum = 1;
 	foreach ($lines as $nodes) {
@@ -129,7 +131,7 @@ function processLines($lines, $nextRecordId) {
 			$middle = $nodes[2];
 			$lastName = $nodes[3];
 			$preferred = $nodes[1];
-			$recordId = \Vanderbilt\FlightTrackerExternalModule\matchName($firstName, $lastName); 
+			$recordId = NameMatcher::matchName($firstName, $lastName, $token, $server); 
 			if (!$recordId) {
 				#new
 				$recordId = $nextRecordId;

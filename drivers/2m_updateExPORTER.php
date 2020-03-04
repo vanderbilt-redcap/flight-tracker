@@ -245,7 +245,7 @@ function updateExPORTER($token, $server, $pid) {
 				}
 				if ($possibleMatch) {
 					for ($k = 0; $k < count($firstNames); $k++) {
-						$recordId = NameMatcher::matchName($firstNames[$k], $lastNames[$k]);
+						$recordId = NameMatcher::matchName($firstNames[$k], $lastNames[$k], $token, $server);
 						if ($recordId && $firstNames[$k] && $lastNames[$k]) {
 							# upload line
 							$uploadLine = array("record_id" => $recordId, "redcap_repeat_instrument" => "exporter", "exporter_complete" => '2');

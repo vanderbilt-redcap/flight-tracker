@@ -29,7 +29,7 @@ class FlightTrackerTester {
 	public function nameMatcher_test($tester) {
 		$first = "Wrong";
 		$last = "Name";
-		$record = NameMatcher::matchName("Wrong", "Name");
+		$record = NameMatcher::matchName("Wrong", "Name", $this->token, $this->server);
 		$tester->tag("Match $first $last");
 		$tester->assertNotTrue($record);
 
@@ -41,7 +41,7 @@ class FlightTrackerTester {
 		$goodLast = $this->getGoodLastName();
 		$lasts = array($last, $goodLast);
 		$firsts = array($first, $goodFirst);
-		$records = NameMatcher::matchNames($firsts, $lasts);
+		$records = NameMatcher::matchNames($firsts, $lasts, $this->token, $this->server);
 		$tester->tag("number of records in array from matchNames");
 		$tester->assertEqual(count($lasts), count($records));
 		$tester->tag("Name {$firsts[0]} {$lasts[0]} matches ({$records[0]})".json_encode($records));

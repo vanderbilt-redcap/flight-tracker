@@ -32,20 +32,25 @@ class LDAP {
 	# $info is line from getLDAP
 	# returns the first line in $info with the field $field
 	public static function findField($info, $field) {
-		$r = array();
+		$separator = ";";
+		$values = array();
 		for ($i = 0; $i < $info['count']; $i++) {
 			$line = $info[$i];
+			$value = "";
 			foreach ($line as $var => $results) {
 				if ($var == $field) {
 					if (isset($results['count'])) {
+						$r = array();
 						for ($j = 0; $j < $results['count']; $j++) {
 							array_push($r, $results[$j]);
 						}
+						$value = implode($separator, $r);
 					}
 				}
 			}
+			array_push($values, $value);
 		}
-		return $r;
+		return $values;
 	}
 
 	public static function getFields() {

@@ -283,7 +283,7 @@ class Upload {
 	
 				foreach ($lines as $i => $line) {
 					if (self::isValidCSVLine($headers, $line)) {
-						list($recordId, $newErrors) = self::getRecordIdForCSVLine($headers, $line);
+						list($recordId, $newErrors) = self::getRecordIdForCSVLine($headers, $line, $token, $server);
 						$errors = array_merge($errors, $newErrors);
 						if ($recordId) {
 							$newCounts['existing']++;
@@ -387,18 +387,18 @@ class Upload {
 		return FALSE;
 	}
 
-	public static function getRecordIdForCSVLine($headers, $line) {
+	public static function getRecordIdForCSVLine($headers, $line, $token, $server) {
 		$recordId = FALSE;
 		$errors = array();
 		if (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {
 			if ($line[0] && $line[1]) {
-				$recordId = NameMatcher::matchName($line[1], $line[0]);
+				$recordId = NameMatcher::matchName($line[1], $line[0], $token, $server);
 			} else {
 				array_push($errors, "On data line $i, you must supply a first and last name.");
 			}
 		} else if (($headers[1] == "identifier_last_name") && ($headers[0] == "identifier_first_name")) {
 			if ($line[0] && $line[1]) {
-				$recordId = NameMatcher::matchName($line[0], $line[1]);
+				$recordId = NameMatcher::matchName($line[0], $line[1], $token, $server);
 			} else {
 				array_push($errors, "On data line $i, you must supply a first and last name.");
 			}
