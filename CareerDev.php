@@ -8,11 +8,27 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.10.4";
+		return "2.10.5";
 	}
 
 	public static function getUnknown() {
 		return "Unknown";
+	}
+
+	public static function isWrangler() {
+		return preg_match("/wrangler/", $_GET['page']);
+	}
+
+	public static function filterOutCopiedRecords($records) {
+		return $records;
+	}
+
+	public static function isRecordCopied($record) {
+		return FALSE;
+	}
+
+	public static function isCopiedProject() {
+		return FALSE;
 	}
 
 	public static function getIntroductoryFromEmail() {

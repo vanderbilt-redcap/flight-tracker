@@ -30,6 +30,10 @@ foreach ($lastNames as $rec => $ln) {
 	$fn = $firstNames[$rec];
 	$fullNames[$rec] = $fn." ".$ln;
 }
+$records = Download::recordIds($token, $server);
+if (CareerDev::isWrangler()) {
+        $records = CareerDev::filterOutCopiedRecords($records);
+}
 
 function makeHeadersOfTables($type) {
 	global $pid;
@@ -96,13 +100,15 @@ function search(page, div, name) {
 	if (name != '') {
 		var lastNames = <?= json_encode($lastNames) ?>;
 		var fullNames = <?= json_encode($fullNames) ?>;
+		var records = <?= json_encode($records) ?>;
 		var foundRecs = {};
 		var numFoundRecs = 0;
 		var re = new RegExp("^"+name);
 		var rec;
 		if (!name.match(/\s/)) {
 			// last name only
-			for (rec in lastNames) {
+			for (var i = 0; i < records.length; i++) {
+				rec = records[i];
 				var ln = lastNames[rec].toLowerCase();
 				if (re.test(ln)) {
 					foundRecs[rec] = ln;
@@ -110,7 +116,8 @@ function search(page, div, name) {
 				}
 			}
 		} else {    // first and last name
-			for (rec in fullNames) {
+			for (var i = 0; i < records.length; i++) {
+				rec = records[i];
 				var fn = fullNames[rec].toLowerCase();
 				if (re.test(fn)) {
 					foundRecs[rec] = fn;

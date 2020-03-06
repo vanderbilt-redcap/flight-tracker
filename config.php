@@ -17,7 +17,8 @@ define('MAX_DEGREE_SOURCES', 5);
 if (isset($_GET['uploadOrder'])) {
 	require_once(dirname(__FILE__)."/small_base.php");
 
-	\Vanderbilt\FlightTrackerExternalModule\uploadOrderToMetadata($token, $server, $_POST);
+	$html = \Vanderbilt\FlightTrackerExternalModule\uploadOrderToMetadata($token, $server, $_POST);
+	echo $html;
 	exit();
 } else {
 	require_once(dirname(__FILE__)."/charts/baseWeb.php");
@@ -26,6 +27,9 @@ if (isset($_GET['uploadOrder'])) {
 	<style>
 	td { padding: 8px; }
 	</style>
+
+<div id='overlay'></div>
+
 <?php
 }
 	echo "<h1>Configure ".CareerDev::getProgramName()."</h1>\n";
@@ -98,7 +102,7 @@ function getFieldNames($metadata) {
 }
 
 function getExampleField() {
-	return "identifier_left_date_source";
+	return Scholar::getExampleField();
 }
 
 function getExistingChoices($existingChoices, $scholar, $allFields) {
@@ -136,7 +140,7 @@ function makeOrder($metadata = array()) {
 	if (empty($metadata)) {
 		$metadata = Download::metadata($token, $server, $pid);
 	}
-	$scholar = new Scholar($token, $server, $pid, $metadata);
+	$scholar = new Scholar($token, $server, $metadata, $pid);
 	$orders = Scholar::getDefaultOrder("all");
 	$choices = Scholar::getChoices($metadata);
 
@@ -205,15 +209,23 @@ function makeOrder($metadata = array()) {
 				$html .= "<h4>".ucfirst($type)."</h4>\n";
 				$html .= "<ul class='sortable nobullets' id='$fieldForOrder$delim$type'>\n";
 				foreach ($sourceRow as $field => $source) {
-					$sourceName = $choices[$exampleField][$source];
-					$sourceTypeForField = $sourceType[$fieldForOrder][$type][$field];
+					if ($choices[$exampleField][$source]) {
+						$sourceName = $choices[$exampleField][$source];
+					} else {
+						$sourceName = $source;
+					}
+					$sourceTypeForField = $sourceTypes[$fieldForOrder][$type][$field];
 					$html .= makeLI($field, $sourceTypeForField, $sourceName, $field);
 				}
 				$html .= "</ul>\n";
 				$html .= makeNewSourceHTML($allFields, $choices[$exampleField], 1);
 			} else {
-				$sourceTypeForField = $sourceType[$fieldForOrder][$field];
-				$sourceName = $choices[$exampleField][$source];
+				$sourceTypeForField = $sourceTypes[$fieldForOrder][$field];
+				if ($choices[$exampleField][$source]) {
+					$sourceName = $choices[$exampleField][$source];
+				} else {
+					$sourceName = $source;
+				}
 				$fields = explode($delim, $field);
 				if (count($fields) > 1) {
 					# summary_degrees

@@ -31,7 +31,7 @@ function includeCitation(citation) {
 		var pmid = getPMID(citation);
 		if (pmid) {
 			presentScreen("Saving...");
-			$.post("savePubs.php?pid="+getPid(), { record_id: '<?= $_GET['record'] ?>', pmid: pmid }, function(data) {
+			$.post(getPageUrl("/wrangler/savePubs.php"), { record_id: '<?= $_GET['record'] ?>', pmid: pmid }, function(data) {
 				console.log("saveComplete "+JSON.stringify(data));
 				clearScreen();
 				if (data['error']) {

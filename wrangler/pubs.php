@@ -22,11 +22,18 @@ if ($_GET['record']) {
 	$record = $_GET['record'];
 } else {
 	$record = getNextRecordWithData($token, $server, 0);
-	header("Location: $url&record=".$record);
+	if ($record !== FALSE) {
+		header("Location: $url&record=".$record);
+	}
 }
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/baseSelect.php");
+
+if ($record === FALSE) {
+	echo "<h1>No Data Available</h1>\n";
+	exit();
+}
 
 $redcapData = Download::records($token, $server, array($record));
 $nextRecord = getNextRecordWithData($token, $server, $record);
@@ -104,5 +111,8 @@ function getNextRecordWithData($token, $server, $currRecord) {
 		}
 		$pos += $pullSize;
 	}
-	return $records[0];
+	if (count($records) >= 1) {
+		return $records[0];
+	}
+	return FALSE;
 }

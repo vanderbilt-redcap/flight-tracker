@@ -3,7 +3,7 @@ function commitOrder() {
 	var config = {};
 	var order = {}; 
 	$('.sortable').each(function(idx, ul) {
-		var fieldName  = $(ul).id();
+		var fieldName  = $(ul).attr("id");
 		config[fieldName] = {};
 		order[fieldName] = [];
 		$(ul).find("li").each(function(liIdx, li) {
@@ -12,7 +12,7 @@ function commitOrder() {
 			if (sourceAndField.match(/^.+ \[.+\]$/)) {
 				source = sourceAndField.replace(/ \[.+\]$/, "");
 			}
-			var sourceField = $(li).id();
+			var sourceField = $(li).attr("id");
 			if ($(li).attr("type") == "custom") {
 				config[fieldName][sourceField] = source;
 				order[fieldName].push(sourceField);
@@ -25,7 +25,10 @@ function commitOrder() {
 
 	// upload
 	var h = { config: JSON.stringify(config), order: JSON.stringify(order) };
-	$.post("config.php?pid="+getPid()+"&uploadOrder", h, function(data) {
+	presentScreen("Saving...");
+	$.post(getPageUrl("config.php")+"&uploadOrder", h, function(data) {
+		alert("Settings saved!");
+		clearScreen();
 		if (typeof(data) == "string") {
 			console.log(data);
 		} else {

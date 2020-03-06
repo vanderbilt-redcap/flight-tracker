@@ -100,6 +100,9 @@ function downloadURL($file) {
 				$za->close();
 				return APP_PATH_TEMP.$csvfile;
 			}
+		} else {
+			CareerDev::log("Cannot download $file from $url. Response: $resp");
+			CareerDev::log("Downloaded data=".substr($zip, 0, (strlen($zip) < 200 ? strlen($zip) : 200)));
 		}
 		return "";
 	} else {

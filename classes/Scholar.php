@@ -780,23 +780,27 @@ class Scholar {
 		return $transform[$num];
 	}
 
-	public function getOrder($defaultOrder, $field) {
+	public function getOrder($defaultOrder, $fieldForOrder) {
+		$choices = self::getChoices($this->metadata);
+		$exampleField = self::getExampleField();
 		foreach ($this->metadata as $row) {
-			if (($row['field_name'] == $field) && ($row['field_annotation'] != "")) {
+			if (($row['field_name'] == $fieldForOrder) && ($row['field_annotation'] != "")) {
 				$newOrder = json_decode($row['field_annotation'], TRUE); 
 				if ($newOrder) {
 					$newVars = array();
-					switch($field) {
+					switch($fieldForOrder) {
 						case "summary_degrees":
 							foreach ($newOrder as $newField => $newSource) {
 								if ($newField != $newSource) {
+									# newly input
 									$newVars[$newField] = $newSource;
 								} else {
+									# original
 									foreach ($defaultOrder as $ary) {
 										$newAry = array();
 										foreach ($ary as $field => $source) {
-											if ($source == $newSource) {
-												$newAry[$field] = $source;
+											if (($choices[$exampleField][$source] == $newSource) || ($source == $newSource)) {
+												$newAry[$field] = $newSource;
 											}
 										}
 										if (!empty($newAry)) {
@@ -818,8 +822,8 @@ class Scholar {
 										} else {
 											if ($defaultOrder[$type]) {
 												foreach ($defaultOrder[$type] as $field => $source) {
-													if ($source == $newSource) {
-														$newVars[$type][$field] = $source;
+													if (($choices[$exampleField][$source] == $newSource) || ($source == $newSource)) {
+														$newVars[$type][$field] = $newSource;
 													}
 												}
 											}
@@ -833,11 +837,13 @@ class Scholar {
 						default:
 							foreach ($newOrder as $newField => $newSource) {
 								if ($newField != $newSource) {
+									# newly input
 									$newVars[$newField] = $newSource;
 								} else {
+									# original
 									foreach ($defaultOrder as $field => $source) {
-										if ($source == $newSource) {
-											$newVars[$field] = $source;
+										if (($choices[$exampleField][$source] == $newSource) || ($source == $newSource)) {
+											$newVars[$field] = $newSource;
 										}
 									}
 								}
@@ -1658,6 +1664,10 @@ class Scholar {
 			$grants->compileGrants();
 			$this->grants = $grants;
 		}
+	}
+
+	public static function getExampleField() {
+		return "identifier_left_date_source";
 	}
 
 	private $token;

@@ -1514,6 +1514,8 @@ function produceNewOrderForMetadata($post, $metadata) {
 }
 
 function produceSourcesAndTypes($scholar, $metadata) {
+	$choices = Scholar::getChoices($metadata);
+	$exampleField = Scholar::getExampleField();
 	$orders = Scholar::getDefaultOrder("all");
 	$sources = array();
 	$sourceTypes = array();
@@ -1544,7 +1546,11 @@ function produceSourcesAndTypes($scholar, $metadata) {
 					}
 					if ($foundRowSource) {
 						$delimRowFields = implode($delim, $rowFields);
-						$sources[$fieldForOrder][$delimRowFields] = $foundRowSource;
+						if ($choices[$exampleField][$foundRowSource]) {
+							$sources[$fieldForOrder][$delimRowFields] = $choices[$exampleField][$foundRowSource];
+						} else {
+							$sources[$fieldForOrder][$delimRowFields] = $foundRowSource;
+						}
 						$sourceTypes[$fieldForOrder][$delimRowFields] = $sourceType;
 					}
 				} else {
@@ -1553,7 +1559,11 @@ function produceSourcesAndTypes($scholar, $metadata) {
 					$sources[$fieldForOrder][$type] = array();
 					foreach ($sourceRow as $field => $source) {
 						if (in_array($field, $allFields)) {
-							$sources[$fieldForOrder][$type][$field] = $source;
+							if ($choices[$exampleField][$source]) {
+								$sources[$fieldForOrder][$type][$field] = $choices[$exampleField][$source];
+							} else {
+								$sources[$fieldForOrder][$type][$field] = $source;
+							}
 							$sourceType = "custom";
 							if (isset($order[$type]) && isset($order[$type][$field])) {
 								$sourceType = "original";
@@ -1567,12 +1577,37 @@ function produceSourcesAndTypes($scholar, $metadata) {
 				}
 			} else {
 				if (in_array($field, $allFields)) {
-					$sources[$fieldForOrder][$field] = $source;
+					if ($choices[$exampleField][$source]) {
+						$sources[$fieldForOrder][$field] = $choices[$exampleField][$source];
+					} else {
+						$sources[$fieldForOrder][$field] = $source;
+					}
 					$sourceType = "custom";
 					if (isset($order[$field])) {
 						$sourceType = "original";
 					}
 					$sourceTypes[$fieldForOrder][$field] = $sourceType;
+				} else if (strpos($field, getUploadDelim()) !== FALSE) {
+					$fields = explode(getUploadDelim(), $field);
+					$inAllFields = TRUE;
+					foreach ($fields as $compoundField) {
+						if (!in_array($compoundField, $allFields)) {
+							$inAllFields = FALSE;
+							break;
+						}
+					}
+					if ($inAllFields) {
+						if ($choices[$exampleField][$source]) {
+							$sources[$fieldForOrder][$field] = $choices[$exampleField][$source];
+						} else {
+							$sources[$fieldForOrder][$field] = $source;
+						}
+						$sourceType = "custom";
+						if (isset($order[$field])) {
+							$sourceType = "original";
+						}
+						$sourceTypes[$fieldForOrder][$field] = $sourceType;
+					}
 				}
 			}
 		}

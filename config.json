@@ -52,6 +52,13 @@
 
 	"framework-version": 3,
 
+	"compatibility": {
+		"php-version-min": "5.0.0",
+		"php-version-max": "",
+		"redcap-version-min": "9.3.4",
+		"redcap-version-max": ""
+	},
+
 	"project-settings": [
 	]
 }

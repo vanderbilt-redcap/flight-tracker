@@ -119,7 +119,7 @@ function makeHTML($headers, $measurements, $lines = array(), $cohort = "", $meta
 	$html .= "</tr></table>\n";
 
 	if (!empty($lines)) {
-		$html .= makeLineGraph($lines);
+		$html .= \Vanderbilt\FlightTrackerExternalModule\makeLineGraph($lines);
 	}
 	$html .= "</div>\n";
 

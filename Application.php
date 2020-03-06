@@ -15,6 +15,10 @@ class Application {
 		return CareerDev::getUnknown();
 	}
 
+	public static function filterOutCopiedRecords($records) {
+		return CareerDev::filterOutCopiedRecords($records);
+	}
+
 	public static function getFeedbackEmail() {
 		return "scott.j.pearson@vumc.org";
 	}
