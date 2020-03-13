@@ -4,7 +4,6 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../Application.php");
 
-define("APP_PATH_TEMP", "/Users/pearsosj/xampp/htdocs/redcap/temp/");
 define("DATA_DIRECTORY", "filterData");
 define("INTERMEDIATE_1_FED", "R01AndEquivsList_Fed.txt");
 define("INTERMEDIATE_2_FED", "R01AndEquivsList2_Fed.txt");

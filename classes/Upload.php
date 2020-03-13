@@ -43,6 +43,7 @@ class Upload {
 		$feedback = json_decode($output, TRUE);
 		self::testFeedback($feedback, $metadata);
 
+		self::$useAPIOnly[$token] = TRUE;
 		Application::log("Upload::metadata returning $output");
 		return $feedback;
 	}
@@ -85,6 +86,7 @@ class Upload {
 		$feedback = json_decode($output, TRUE);
 		self::testFeedback($feedback, $redcapData);
 
+		self::$useAPIOnly[$token] = TRUE;
 		Application::log("Upload::projectSettings returning $output");
 		return $feedback;
 	}
@@ -195,8 +197,13 @@ class Upload {
 			$rowsOfRows = array($rows);
 		}
 
-		$allFeedback = array();
 		$pid = Application::getPID($token);
+		$saveDataEligible = ($pid && method_exists('\REDCap', 'saveData'));
+		if (isset(self::$useAPIOnly[$token]) && self::$useAPIOnly[$token]) {
+			$saveDataEligible = FALSE;
+		}
+
+		$allFeedback = array();
 		foreach ($rowsOfRows as $rows) {
 			$data = array(
 				'token' => $token,
@@ -208,7 +215,7 @@ class Upload {
 				'returnContent' => 'count',
 				'returnFormat' => 'json'
 				);
-			if ($pid && method_exists('\REDCap', 'saveData')) {
+			if ($saveDataEligible) {
 				$method = "saveData";
 				$time2 = microtime(TRUE);
 				$feedback = \REDCap::saveData($pid, "json", $data['data'], $data['overwriteBehavior']);
@@ -413,4 +420,6 @@ class Upload {
 		}
 		return array($recordId, $errors);
 	}
+
+	private static $useAPIOnly = array();
 }

@@ -155,6 +155,9 @@ class REDCapManagement {
 								$newRow = self::copyMetadataSettingForField($newRow, $newMetadata, $metadataField);
 							}
 						}
+
+						# delete already existing rows with same field_name
+						$tempMetadata = self::deleteRowsWithFieldName($tempMetadata, $newRow['field_name']);
 						array_push($tempMetadata, $newRow);
 						$priorNewRowField = $newRow['field_name'];
 					}
@@ -163,6 +166,16 @@ class REDCapManagement {
 			}
 		}
 		return $existingMetadata;
+	}
+
+	private static function deleteRowsWithFieldName($metadata, $fieldName) {
+		$newMetadata = array();
+		foreach ($metadata as $row) {
+			if ($row['field_name'] != $fieldName) {
+				array_push($newMetadata, $row);
+			}
+		}
+		return $newMetadata;
 	}
 
 	public static function copyMetadataSettingForField($row, $metadata, $rowSetting) {
@@ -308,4 +321,24 @@ class REDCapManagement {
 		return (strlen($token) == 32);
 	}
 
+	public static function isActiveProject($pid) {
+		$sql = "SELECT date_deleted FROM redcap_projects WHERE project_id = '".db_real_escape_string($pid)."' LIMIT 1";
+		$q = db_query($sql);
+		if ($row = db_fetch_assoc($q)) {
+			if (!$row['date_deleted']) {
+				return TRUE;
+			}
+		}
+		return FALSE;
+	}
+
+	public static function filterOutVariable($var, $row) {
+		$newRow = array();
+		foreach ($row as $field => $value) {
+			if (($field != $var) && (!preg_match("/^".$var."___/", $field))) {
+				$newRow[$field] = $value;
+			}
+		}
+		return $newRow;
+	}
 }

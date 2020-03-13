@@ -54,7 +54,22 @@ $(document).ready(function() {
 		$priorTs = time() - $hours * 3600;
 		$lockInfo = $module->getSystemSetting(\ExternalModules\ExternalModules::KEY_RESERVED_IS_CRON_RUNNING);
 		if ($lockInfo && $lockInfo['time'] && ($lockInfo['time'] < $priorTs)) {
-			echo "<div class='centered red'>Your cron has not completed within $hours hours. Your cron most likely needs to be reset. Please <a href='".CareerDev::link("reset_cron.php")."'>click here to do so</a>.</div>\n";
+			echo makeWarning("Your cron has not completed within $hours hours. Your cron most likely needs to be reset. Please <a href='".CareerDev::link("reset_cron.php")."'>click here to do so</a>.");
+		}
+
+		$lockHours = 4;
+		# remove old-style lock files; new lock files should be picked up by the REDCap clean-up cron 
+		$lockFile = APP_PATH_TEMP."6_makeSummary.{$_GET['pid']}.lock";
+		if (file_exists($lockFile)) {
+			$fp = fopen($lockFile, "r");
+			$lockDate = trim(fgets($fp));
+			if ($lockDate) {
+				$lockTs = strtotime($lockDate);
+				if ($lockTs && ($lockTs < time() - $lockHours * 3600)) {
+					unlink($lockFile);
+				}
+			}
+			fclose($fp);
 		}
 	}
 ?>
@@ -122,6 +137,10 @@ $(document).ready(function() {
 	}
 	echo "</table>\n";
 	echo $bottomPadding;
+
+function makeWarning($str) {
+	return "<div class='centered red'>$str</div>\n";
+}
 ?>
 </div>
 

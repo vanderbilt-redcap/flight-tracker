@@ -40,7 +40,7 @@ class Publications {
 
 		$html = "Record: <select style='width: 100%;' id='refreshRecord' onchange='refreshForRecord(\"$page\");'><option value=''>---SELECT---</option>";
 		foreach ($records as $record) {
-			$name = $records[$record];
+			$name = $names[$record];
 			$html .= "<option value='$record'>$record: $name</option>";
 		}
 		$html .= "</select>";

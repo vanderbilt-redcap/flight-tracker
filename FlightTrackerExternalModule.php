@@ -7,12 +7,13 @@ use ExternalModules\ExternalModules;
 use Vanderbilt\CareerDevLibrary\CronManager;
 use Vanderbilt\CareerDevLibrary\EmailManager;
 use Vanderbilt\CareerDevLibrary\NavigationBar;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/classes/Crons.php");
 require_once(dirname(__FILE__)."/classes/EmailManager.php");
 require_once(dirname(__FILE__)."/classes/NavigationBar.php");
-require_once(dirname(__FILE__)."/cronLoad.php");
+require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/cronLoad.php");
 
 class FlightTrackerExternalModule extends AbstractExternalModule
@@ -34,12 +35,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		// $pids = $this->framework->getProjectsWithModuleEnabled();
 		// CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		// foreach ($pids as $pid) {
-			// $token = $this->getProjectSetting("token", $pid);
-			// $server = $this->getProjectSetting("server", $pid);
-			// $tokenName = $this->getProjectSetting("tokenName", $pid);
-			// CareerDev::log("Sending emails for $tokenName (pid $pid)");
-			// $mgr = new EmailManager($token, $server, $pid, $this);
-			// $mgr->sendRelevantEmails();
+			// if (REDCapManagement::isProjectActive($pid)) {
+				// $token = $this->getProjectSetting("token", $pid);
+				// $server = $this->getProjectSetting("server", $pid);
+				// $tokenName = $this->getProjectSetting("tokenName", $pid);
+				// CareerDev::log("Sending emails for $tokenName (pid $pid)");
+				// $mgr = new EmailManager($token, $server, $pid, $this);
+				// $mgr->sendRelevantEmails();
+			// }
 		// }
 	}
 
@@ -48,28 +51,30 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$pids = $this->framework->getProjectsWithModuleEnabled();
 		CareerDev::log($this->getName()." running for pids ".json_encode($pids));
 		foreach ($pids as $pid) {
-			$token = $this->getProjectSetting("token", $pid);
-			$server = $this->getProjectSetting("server", $pid);
-			$tokenName = $this->getProjectSetting("tokenName", $pid);
-			$adminEmail = $this->getProjectSetting("admin_email", $pid);
-			$GLOBALS['namesForMatch'] = array();
-			CareerDev::setPid($pid);
-			CareerDev::log("Using $tokenName $adminEmail", $pid);
-			if ($token && $server) {
-				# only have token and server in initialized projects
-				$mgr = new CronManager($token, $server, $pid);
-				if ($this->getProjectSetting("run_tonight", $pid)) {
-					$this->setProjectSetting("run_tonight", FALSE, $pid);
-					loadInitialCrons($mgr, FALSE, $token, $server); 
-				} else {
-					echo $this->getName().": Loading crons for pid $pid and '$token'\n";
-					loadCrons($mgr, FALSE, $token, $server);
+			if (REDCapManagement::isProjectActive($pid)) {
+				$token = $this->getProjectSetting("token", $pid);
+				$server = $this->getProjectSetting("server", $pid);
+				$tokenName = $this->getProjectSetting("tokenName", $pid);
+				$adminEmail = $this->getProjectSetting("admin_email", $pid);
+				$GLOBALS['namesForMatch'] = array();
+				CareerDev::setPid($pid);
+				CareerDev::log("Using $tokenName $adminEmail", $pid);
+				if ($token && $server) {
+					# only have token and server in initialized projects
+					$mgr = new CronManager($token, $server, $pid);
+					if ($this->getProjectSetting("run_tonight", $pid)) {
+						$this->setProjectSetting("run_tonight", FALSE, $pid);
+						loadInitialCrons($mgr, FALSE, $token, $server); 
+					} else {
+						echo $this->getName().": Loading crons for pid $pid and '$token'\n";
+						loadCrons($mgr, FALSE, $token, $server);
+					}
+					CareerDev::log($this->getName().": Running crons for pid $pid", $pid);
+					$mgr->run($adminEmail, $tokenName, $pid);
+					CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
 				}
-				CareerDev::log($this->getName().": Running crons for pid $pid", $pid);
-				$mgr->run($adminEmail, $tokenName, $pid);
-				CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
+				# else project has not finished initialization
 			}
-			# else project has not finished initialization
 		}
 	}
 

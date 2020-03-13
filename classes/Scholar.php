@@ -71,8 +71,11 @@ class Scholar {
 		return array();
 	}
 
-	public static function getChoices($metadata) {
-		return REDCapManagement::getChoices($metadata);
+	public static function getChoices($metadata = array()) {
+		if (!empty($metadata)) {
+			self::$choices = REDCapManagement::getChoices($metadata);
+		}
+		return self::$choices;
 	}
 
 	public static function getKLength($type) {
@@ -637,49 +640,22 @@ class Scholar {
 	}
 
 
-	# returns an array of (variableName, variableType) for to where (whither) they left VUMC
-	# used for the Scholars' survey and Follow-Up surveys
+	# returns an array of (variableName, variableType) for to where (whither) they left current institution
+	# returns blank if at current institution
 	private function getAllOtherInstitutions($rows) {
 		$followupInstitutionField = "followup_institution";
 		$checkInstitutionField = "check_institution";
+		$manualField = "imported_institution";
 		$institutionCurrent = "1";
 
 		$currentProjectInstitutions = Application::getInstitutions(); 
 		for ($i = 0; $i < count($currentInstitutions); $i++) {
 			$currentProjectInstitutions[$i] = trim(strtolower($currentProjectInstitutions[$i]));
 		}
-		$choices = self::getChoices($this->metadata);
-		$followupRows = self::selectFollowupRows($rows);
-		foreach ($followupRows as $instance => $row) {
-			if ($row[$followupInstitutionField] && ($row[$followupInstitutionField] != $institutionCurrent)) {
-				$value = $choices[$followupInstitutionField][$row[$followupInstitutionField]];
-				if (strtolower($value) == "other") {
-					$value = $row[$followupInstitutionField."_oth"];
-				}
-				if (!in_array(strtolower($value), $currentProjectInstitutions)) {
-					return new Result($value, "followup", "", "", $this->pid);
-				}
-			}
-		}
-
-		$normativeRow = self::getNormativeRow($rows);
-		if ($row[$checkInstitutionField] && ($row[$checkInstitutionField] != $institutionCurrent)) {
-			$value = $choices[$checkInstitutionField][$row[$checkInstitutionField]];
-			if (strtolower($value) == "other") {
-				$value = $row[$checkInstitutionField."_oth"];
-			}
-			if (!in_array(strtolower($value), $currentProjectInstitutions)) {
-				return new Result($value, "scholars", "", "", $this->pid);
-			}
-		}
-		if ($normativeRow['imported_institution']) {
-			$value = $normativeRow['imported_institution'];
-			if (!in_array(strtolower($value), $currentProjectInstitutions)) {
-				return new Result($value, "manual", "", "", $this->pid);
-			}
-		}
-		if ($normativeRow['identifier_institution'] != Application::getUnknown()) {
-			return new Result($normativeRow['identifier_institution'], $normativeRow['identifier_institution_source'], "", "", $this->pid);
+		$result = $this->getInstitution($rows);
+		$value = strtolower($result->getValue());
+		if (!in_array($value, $currentProjectInstitutions)) {
+			return $result;
 		}
 		return new Result("", "");
 	}
@@ -780,9 +756,17 @@ class Scholar {
 		return $transform[$num];
 	}
 
-	public function getOrder($defaultOrder, $fieldForOrder) {
-		$choices = self::getChoices($this->metadata);
+	public static function getSourceChoices($metadata = array()) {
+		$choices = self::getChoices($metadata);
 		$exampleField = self::getExampleField();
+		if (isset($choices[$exampleField])) {
+			return $choices[$exampleField];
+		}
+		return array();
+	}
+
+	public function getOrder($defaultOrder, $fieldForOrder) {
+		$sourceChoices = self::getSourceChoices($this->metadata);
 		foreach ($this->metadata as $row) {
 			if (($row['field_name'] == $fieldForOrder) && ($row['field_annotation'] != "")) {
 				$newOrder = json_decode($row['field_annotation'], TRUE); 
@@ -799,7 +783,7 @@ class Scholar {
 									foreach ($defaultOrder as $ary) {
 										$newAry = array();
 										foreach ($ary as $field => $source) {
-											if (($choices[$exampleField][$source] == $newSource) || ($source == $newSource)) {
+											if (($sourceChoices[$source] == $newSource) || ($source == $newSource)) {
 												$newAry[$field] = $newSource;
 											}
 										}
@@ -822,7 +806,7 @@ class Scholar {
 										} else {
 											if ($defaultOrder[$type]) {
 												foreach ($defaultOrder[$type] as $field => $source) {
-													if (($choices[$exampleField][$source] == $newSource) || ($source == $newSource)) {
+													if (($sourceChoices[$source] == $newSource) || ($source == $newSource)) {
 														$newVars[$type][$field] = $newSource;
 													}
 												}
@@ -842,7 +826,7 @@ class Scholar {
 								} else {
 									# original
 									foreach ($defaultOrder as $field => $source) {
-										if (($choices[$exampleField][$source] == $newSource) || ($source == $newSource)) {
+										if (($sourceChoices[$source] == $newSource) || ($source == $newSource)) {
 											$newVars[$field] = $newSource;
 										}
 									}
@@ -990,6 +974,22 @@ class Scholar {
 							"followup_primary_mentor" => "followup",
 							"check_primary_mentor" => "scholars",
 							);
+		$orders["summary_disability"] = array(
+							"check_disability" => "scholars",
+							"vfrs_disability_those_with_phys" => "vfrs",
+							);
+		$orders["summary_disadvantaged"] = array(
+							"check_disadvantaged" => "scholars",
+							"vfrs_disadvantaged_the_criteria" => "vfrs",
+							);
+		$orders["summary_training_start"] = array(
+								"check_degree0_start" => "scholars",
+								"promotion_in_effect" => "manual",
+								);
+		$orders["summary_training_end"] = array(
+								"check_degree0_month/check_degree0_year" => "scholars",
+								"promotion_in_effect" => "manual",
+								);
 
 		if (isset($orders[$field])) {
 			return $orders[$field];
@@ -1201,6 +1201,12 @@ class Scholar {
 		if ($race == 2) {   # Asian
 			$val = 5;
 			return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
+		} else if ($race == 1) {    # American Indian or Native Alaskan
+			$val = 9;
+			return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
+		} else if ($race == 3) {    # Hawaiian or Other Pacific Islander
+			$val = 10;
+			return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
 		}
 		if ($eth == "") {
 			$choices = REDCapManagement::getChoices($this->metadata);
@@ -1347,14 +1353,32 @@ class Scholar {
 			$ary = array("", "");
 			$aryInstance = "";
 			$latestTs = "";
+			$splitVar = explode("/", $var);
 			foreach ($rows as $row) {
-				if ($row[$var]) {
-					$dateField = self::getDateFieldForSource($source, $var);
+				if ($row[$var] || ((count($splitVar) > 1) && $row[$splitVar[0]] && $row[$splitVar[1]])) {
 					$date = "";
-					if ($dateField && $row[$dateField]) {
-						$date = $row[$dateField];
-					} else if ($dateField && ($dateField != "check_date")) {
-						$date = $dateField;
+					if (count($splitVar) > 1) {
+						# YYYY-mm-dd
+						$varValues = array();
+						foreach ($splitVar as $v) {
+							array_push($varValues, $row[$v]);
+						}
+						if (count($varValues) == 3) {
+							$date = implode("-", $varValues);
+						} else if (count($varValues) == 2) {
+							# YYYY-mm
+							$startDay = "01";
+							$date = implode("-", $varValues)."-".$startDay;
+						} else {
+							throw new \Exception("Cannot interpret split variables: ".json_encode($varValues));
+						}
+					} else {
+						$dateField = self::getDateFieldForSource($source, $var);
+						if ($dateField && $row[$dateField]) {
+							$date = $row[$dateField];
+						} else if ($dateField && ($dateField != "check_date")) {
+							$date = $dateField;
+						}
 					}
 					if ($byLatest) {
 						# order by date
@@ -1363,9 +1387,13 @@ class Scholar {
 							if ($currTs > $latestTs) {
 								$latestTs = $currTs;
 								$result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
+								$result->setField($var);
+								$result->setInstance($row['redcap_repeat_instance']);
 							}
 						} else if (!$latestTs) {
 							$result = new Result(self::transformIfDate($row[$var]), $source, "", "", $pid);
+							$result->setField($var);
+							$result->setInstance($row['redcap_repeat_instance']);
 							$latestTs = 1; // nominally low value
 						}
 					} else {
@@ -1374,10 +1402,14 @@ class Scholar {
 							if (!$aryInstance
 								|| ($aryInstance > $row['redcap_repeat_instance'])) {
 								$result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
+								$result->setField($var);
+								$result->setInstance($row['redcap_repeat_instance']);
 								$aryInstance = $row['redcap_repeat_instance'];
 							}
 						} else {
-							return new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
+							$result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
+							$result->setField($var);
+							return $result;
 						}
 					}
 				}
@@ -1419,28 +1451,30 @@ class Scholar {
 		$value = $result->getValue();
 		$source = $result->getSource();
 
-		if ($value == "1") {
-			return new Result("Vanderbilt", $source, "", "", $this->pid);
-		} else if ($value == "2") {
-			return new Result("Meharry", $source, "", "", $this->pid);
+		if (is_numeric($value)) {
+			$choices = self::getChoices($this->metadata);
+			$fieldName = $result->getField();
+			if (isset($choices[$fieldName]) && isset($choices[$fieldName][$value])) {
+				$newValue = $choices[$fieldName][$value];
+				if ($newValue == "Other") {
+					foreach ($rows as $row) {
+						if ($row[$fieldName."_oth"]) {
+							$newValue = $row[$fieldName."_oth"];
+							break;
+						} else if ($row[$fieldName."_other"]) {
+							$newValue = $row[$fieldName."_other"];
+							break;
+						}
+					}
+				}
+				$result->setValue($newValue);
+			}
+			return $result;
 		} else if (($value == "") || ($value == Application::getUnknown())) {
 			return new Result("", ""); 
-		} else if (is_numeric($value)) {
-			# Other
-			$otherVars = array(
-					"check_institution_oth" => "scholars",
-					);
-			$otherResult = self::searchRowsForVars($rows, $otherVars, FALSE, $this->pid);
-			if (!$otherResult->getValue()) {
-				$otherValue = "Other";
-				$otherSource = $source;
-				return new Result($otherValue, $otherSource, "", "", $this->pid);
-			} else {
-				return $otherResult;
-			}
 		} else {
 			# typical case
-			return new Result($value, $source, "", "", $this->pid);
+			return $result;
 		}
 	}
 
@@ -1555,21 +1589,53 @@ class Scholar {
 	}
 
 	private function getJobCategory($rows) {
-		$vars = self::getDefaultOrder("identifier_left_job_category");
-		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
-		return $result;
+		return $this->searchForJobMove("identifier_left_job_category", $rows);
 	}
 
 	private function getNewDepartment($rows) {
-		$vars = self::getDefaultOrder("identifier_left_department");
-		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
-		return $result;
+		return $this->searchForJobMove("identifier_left_department", $rows);
 	}
 
 	private function getJobTitle($rows) {
-		$vars = self::getDefaultOrder("identifier_left_job_title");
-		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
-		return $result;
+		return $this->searchForJobMove("identifier_left_job_title", $rows);
+	}
+
+	private function searchForJobMove($field, $rows) {
+		$institutionResult = $this->getInstitution($rows);
+		$value = $institutionResult->getValue();
+		$vars = self::getDefaultOrder($field);
+		if ($value) {
+			return $this->matchWithInstitutionResult($institutionResult, $rows);
+		} else {
+			# no institution information
+			$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+			return $result;
+		}
+	}
+
+	private function matchWithInstitutionResult($institutionResult, $rows) {
+		$fieldName = $institutionResult->getField();
+		$instance = $institutionResult->getInstance();
+		$source = $institutionResult->getSource();
+		if (!$instance) {
+			$instances = array("", "1");
+		} else {
+			$instances = array($instance);
+		}
+		foreach ($rows as $row) {
+			$currInstance = ($row['redcap_repeat_instance'] ? $row['redcap_repeat_instance'] : "");
+			if (($row[$fieldName] == $value) && in_array($currInstance, $instances)) {
+				foreach ($vars as $origField => $origSource) {
+					if (($source == $origSource) && $row[$origField]) {
+						$result = new Result($row[$origField], $source, "", "", $this->pid);
+						$result->setField($origField);
+						$result->setInstance($currInstance);
+						return $result;
+					}
+				}
+			}
+		}
+		return new Result("", "");
 	}
 
 	public static function getDemographicsArray() {
@@ -1603,7 +1669,125 @@ class Scholar {
 				"summary_current_rank" => "getCurrentRank",
 				"summary_current_start" => "getCurrentAppointmentStart",
 				"summary_current_tenure" => "getTenureStatus",
+				"summary_urm" => "getURMStatus",
+				"summary_disability" => "getDisabilityStatus",
+				"summary_disadvantaged" => "getDisadvantagedStatus",
+				"summary_training_start" => "getTrainingStart",
+				"summary_training_end" => "getTrainingEnd",
 				);
+	}
+
+	private function getTrainingStart($rows) {
+		$vars = self::getDefaultOrder("summary_training_start");
+		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		$fieldName = $result->getField();
+		if (preg_match("/^promotion_/", $fieldName)) {
+			$positionChanges = self::getOrderedPromotionRows($rows);
+			$trainingRanks = array(9, 10);
+			foreach ($positionChanges as $startTs => $row) {
+				if ($row['promotion_rank'] && in_array($row['promotion_rank'], $trainingRanks) && $row['promotion_in_effect']) {
+					return new Result($row['promotion_in_effect'], "manual", "", "", $this->pid);
+				}
+			}
+			return new Result("", "");   // undecipherable
+		}
+		return $result;
+	}
+
+	private static function getOrderedPromotionRows($rows) {
+		$changes = array();
+		$startField = "promotion_in_effect";
+		foreach ($rows as $row) {
+			if (($row['redcap_repeat_instrument'] == "position_change") && $row[$startField]) {
+				$changes[strtotime($row[$startField])] = $row;
+			}
+		}
+
+		krsort($changes);    // get most recent
+		return $changes;
+	}
+
+	private function getTrainingEnd($rows) {
+		$vars = self::getDefaultOrder("summary_training_end");
+		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		$fieldName = $result->getField();
+		if (preg_match("/^promotion_/", $fieldName)) {
+			$positionChanges = self::getOrderedPromotionRows($rows);
+			$trainingRanks = array(9, 10);
+			$trainingStart = FALSE;
+			foreach ($positionChanges as $startTs => $row) {
+				if ($row['promotion_rank'] && in_array($row['promotion_rank'], $trainingRanks) && $row['promotion_in_effect']) {
+					$trainingStart = $startTs;
+				}
+			}
+			if ($trainingStart) {
+				$nextStart = "";
+				foreach ($positionChanges as $startTs => $row) {
+					if ($startTs == $trainingStart) {
+						if ($nextStart) {
+							return new Result($nextStart, "manual", "", "", $this->pid);
+						}
+					}
+					$nextStart = $row['promotion_in_effect'];
+				}
+			}
+			return new Result("", "");   // undecipherable
+		}
+		return $result;
+	}
+
+	private function getURMStatus($rows) {
+		$raceEthnicityValue = $this->getRaceEthnicity($rows)->getValue();
+		$disadvValue = $this->getDisadvantagedStatus($rows)->getValue();
+		$disabilityValue = $this->getDisabilityStatus($rows)->getValue();
+
+		$minorities = array(2, 3, 4, 5, 6, 8, 9, 10);
+		$value = "0";
+		if (($raceEthnicityValue === "") && ($disadvValue === "") && ($disabilityValue === "")) {
+			$value = "";
+		}
+		if (in_array($raceEthnicityValue, $minorities)) {
+			$value = "1";
+		}
+		if ($disadvValue == "1") {
+			$value = "1";
+		}
+		if ($disabilityValue == "1") {
+			$value = "1";
+		}
+		return new Result($value, "", "", "", $this->pid);
+	}
+
+	private function getDisadvantagedStatus($rows) {
+		$vars = self::getDefaultOrder("summary_disadvantaged");
+		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+		if ($result->getValue() == 1) {
+			# Yes
+			$value = "1";
+		} else if ($result->getValue() == 2) {
+			# No
+			$value = "0";
+		} else {
+			$value = "";
+		}
+		$result->setValue($value);
+		return $result;
+	}
+
+	private function getDisabilityStatus($rows) {
+		$vars = self::getDefaultOrder("summary_disability");
+		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+		if ($result->getValue() == 1) {
+			# Yes
+			$value = "1";
+		} else if ($result->getValue() == 2) {
+			# No
+			$value = "0";
+		} else {
+			$value = "";
+		}
+		$result->setValue($value);
+		return $result;
 	}
 
 	private function processDemographics() {
@@ -1679,15 +1863,34 @@ class Scholar {
 	private $name = array();
 	private $demographics = array();    // key for demographics is REDCap field name; value is REDCap value
 	private $metaVariables = array();   // copied from the Grants class
+	private static $choices;
 }
 
 class Result {
 	public function __construct($value, $source, $sourceType = "", $date = "", $pid = "") {
 		$this->value = $value;
-		$this->source = $source;
+		$this->source = self::translateSourceIfNeeded($source);
 		$this->sourceType = $sourceType;
 		$this->date = $date;
 		$this->pid = $pid;
+		$this->field = "";
+		$this->instance = "";
+	}
+
+	public function setInstance($instance) {
+		$this->instance = $instance;
+	}
+
+	public function getInstance() {
+		return $this->instance;
+	}
+
+	public function setField($field) {
+		$this->field = $field;
+	}
+
+	public function getField() {
+		return $this->field;
 	}
 
 	public function setValue($val) {
@@ -1713,6 +1916,17 @@ class Result {
 		return $this->date;
 	}
 
+	# returns index from source's choice array
+	protected static function translateSourceIfNeeded($source) {
+		$sourceChoices = Scholar::getSourceChoices();
+		foreach ($sourceChoices as $index => $label) {
+			if (($label == $source) || ($index == $source)) {
+				return $index;
+			}
+		}
+		return "";
+	}
+
 	public static function calculateSourceType($source, $pid = "") {
 		$selfReported = array("scholars", "followup", "vfrs");
 		$newman = array( "data", "sheet2", "demographics", "new2017", "k12", "nonrespondents", "manual" );
@@ -1734,14 +1948,16 @@ class Result {
 	protected $source;
 	protected $sourceType;
 	protected $date;
+	protected $field;
+	protected $instance;
 	protected $pid;
 }
 
 class RaceEthnicityResult extends Result {
 	public function __construct($value, $raceSource, $ethnicitySource, $pid = "") {
 		$this->value = $value;
-		$this->raceSource = $raceSource;
-		$this->ethnicitySource = $ethnicitySource;
+		$this->raceSource = self::translateSourceIfNeeded($raceSource);
+		$this->ethnicitySource = self::translateSourceIfNeeded($ethnicitySource);
 		$this->pid = $pid;
 	}
 

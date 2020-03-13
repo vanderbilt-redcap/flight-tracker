@@ -8,7 +8,11 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.10.5";
+		return "2.11.0";
+	}
+
+	public static function getLockFile($pid) {
+		return APP_PATH_TEMP.date("Ymdhis")."_6_makeSummary.$pid.lock";
 	}
 
 	public static function getUnknown() {

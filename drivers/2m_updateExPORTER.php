@@ -5,7 +5,6 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
-// define("APP_PATH_TEMP", "/Users/pearsosj/xampp/htdocs/redcap/temp/");
 define('NOAUTH', true);
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");

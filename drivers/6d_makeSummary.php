@@ -21,7 +21,7 @@ define("NOAUTH", true);
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 function getLockFile($pid) {
-	return APP_PATH_TEMP."6_makeSummary.$pid.lock";
+	return CareerDev::getLockFile($pid);
 }
 
 function lock($pid) {

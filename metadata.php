@@ -59,9 +59,11 @@ if ($_POST['process'] == "check") {
 		foreach ($fieldList["file"] as $field => $choiceStr) {
 			if (!in_array($field, $specialFields)) {
 				if (!isset($fieldList["REDCap"][$field])) {
-					array_push($missing, $field);
-					if (!preg_match($deletionRegEx, $field) && !preg_match("/^coeus_/", $field)) {
-						array_push($additions, $field);
+					if (!preg_match("/^coeus_/", $field)) {
+						array_push($missing, $field);
+						if (!preg_match($deletionRegEx, $field)) {
+							array_push($additions, $field);
+						}
 					}
 				} else if ($choiceStr && $choices["REDCap"][$field] && $choices["file"][$field] && $fieldList["REDCap"][$field] && ($choiceStr != $fieldList["REDCap"][$field])) {
 					array_push($missing, $field);
@@ -113,7 +115,7 @@ if ($_POST['process'] == "check") {
 			$feedback = Upload::metadata($metadata['merged'], $token, $server);
 			echo json_encode($feedback);
 		} catch (\Exception $e) {
-			$feedback = array("F311" => json_encode($metadata['merged'][310]), "Exception" => $e->getMessage());
+			$feedback = array("Exception" => $e->getMessage());
 			echo json_encode($feedback);
 		}
 	}

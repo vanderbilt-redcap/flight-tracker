@@ -22,7 +22,7 @@ if ($_GET['record']) {
 	$record = $_GET['record'];
 } else {
 	$record = getNextRecordWithData($token, $server, 0);
-	if ($record !== FALSE) {
+	if ($record) {
 		header("Location: $url&record=".$record);
 	}
 }
@@ -30,7 +30,7 @@ if ($_GET['record']) {
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/baseSelect.php");
 
-if ($record === FALSE) {
+if (!$record) {
 	echo "<h1>No Data Available</h1>\n";
 	exit();
 }
@@ -114,5 +114,5 @@ function getNextRecordWithData($token, $server, $currRecord) {
 	if (count($records) >= 1) {
 		return $records[0];
 	}
-	return FALSE;
+	return "";
 }
