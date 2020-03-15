@@ -35,7 +35,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		// $pids = $this->framework->getProjectsWithModuleEnabled();
 		// CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		// foreach ($pids as $pid) {
-			// if (REDCapManagement::isProjectActive($pid)) {
+			// if (REDCapManagement::isActiveProject($pid)) {
 				// $token = $this->getProjectSetting("token", $pid);
 				// $server = $this->getProjectSetting("server", $pid);
 				// $tokenName = $this->getProjectSetting("tokenName", $pid);
@@ -51,7 +51,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$pids = $this->framework->getProjectsWithModuleEnabled();
 		CareerDev::log($this->getName()." running for pids ".json_encode($pids));
 		foreach ($pids as $pid) {
-			if (REDCapManagement::isProjectActive($pid)) {
+			if (REDCapManagement::isActiveProject($pid)) {
 				$token = $this->getProjectSetting("token", $pid);
 				$server = $this->getProjectSetting("server", $pid);
 				$tokenName = $this->getProjectSetting("tokenName", $pid);
