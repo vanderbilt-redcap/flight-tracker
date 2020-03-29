@@ -70,7 +70,7 @@ if ($_POST['process'] == "check") {
 					array_push($changed, $field);
 				} else {
 					foreach ($metadataFields as $metadataField) {
-						if (isset($indexedMetadata["file"][$field]) && isset($indexedMetadata["REDCap"][$field]) && ($indexedMetadata["file"][$field][$metadataField] != $indexedMetadata["REDCap"][$field][$metadataField])) {
+						if (REDCapManagement::hasMetadataChanged($indexedMetadata["REDCap"][$field][$metadataField], $indexedMetadata["file"][$field][$metadataField], $metadataField)) {
 							array_push($missing, $field);
 							array_push($changed, $field);
 							break; // metadataFields loop

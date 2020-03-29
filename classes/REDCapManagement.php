@@ -4,6 +4,13 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
+require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+
+# for datediff
+$redcapFile = APP_PATH_DOCROOT.'/ProjectGeneral/math_functions.php';
+if (file_exists($redcapFile)) {
+    require_once($redcapFile);
+}
 
 class REDCapManagement {
 	public static function getChoices($metadata) {
@@ -122,7 +129,6 @@ class REDCapManagement {
 	# $deletionRegEx contains the regular expression that marks fields for deletion
 	# places new metadata rows AFTER last match from $existingMetadata
 	public static function mergeMetadata($existingMetadata, $newMetadata, $fields = array(), $deletionRegEx = "/___delete$/") {
-		$metadataFieldsToCopy = self::getMetadataFieldsToScreen();
 		$fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx, TRUE);
 
 		if (empty($fields)) {
@@ -150,11 +156,7 @@ class REDCapManagement {
 						}
 					}
 					if (($priorRowField == $row['field_name']) && !preg_match($deletionRegEx, $newRow['field_name'])) {
-						if ($newChoices[$newRow['field_name']]) {
-							foreach ($metadataFieldsToCopy as $metadataField) {
-								$newRow = self::copyMetadataSettingForField($newRow, $newMetadata, $metadataField);
-							}
-						}
+					    $newRow = self::copyMetadataSettingsForField($newRow, $newMetadata);
 
 						# delete already existing rows with same field_name
 						$tempMetadata = self::deleteRowsWithFieldName($tempMetadata, $newRow['field_name']);
@@ -178,15 +180,26 @@ class REDCapManagement {
 		return $newMetadata;
 	}
 
-	public static function copyMetadataSettingForField($row, $metadata, $rowSetting) {
-		foreach ($metadata as $metadataRow) {
-			if ($metadataRow['field_name'] == $row['field_name']) {
-				$row[$rowSetting] = $metadataRow[$rowSetting];
-				break;
-			}
-		}
-		return $row;
-	}
+	private static function isJSON($str) {
+	    json_decode($str);
+	    return (json_last_error() == JSON_ERROR_NONE);
+    }
+
+    public static function copyMetadataSettingsForField($row, $metadata) {
+        foreach ($metadata as $metadataRow) {
+            if ($metadataRow['field_name'] == $row['field_name']) {
+                # do not overwrite any settings in associative arrays
+                foreach (self::getMetadataFieldsToScreen() as $rowSetting) {
+                    if ($row[$rowSetting] != $metadataRow[$rowSetting]) {
+                        if (!self::isJSON($row[$rowSetting]) || ($rowSetting != "field_annotation")) {
+                            $row[$rowSetting] = $metadataRow[$rowSetting];
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
 
 	public static function YMD2MDY($ymd) {
 		$nodes = preg_split("/[\/\-]/", $ymd);
@@ -236,6 +249,16 @@ class REDCapManagement {
 		}
 		return $indexedRedcapData;
 	}
+
+	public static function hasMetadataChanged($oldValue, $newValue, $metadataField) {
+	    if ($metadataField == "field_annotation" && self::isJSON($oldValue)) {
+	        return FALSE;
+        }
+	    if (isset($oldValue) && isset($newValue) && ($oldValue != $newValue)) {
+            return TRUE;
+        }
+        return FALSE;
+    }
 
 	public function setupRepeatingForms($eventId, $formsAndLabels) {
 		$sqlEntries = array();
@@ -340,5 +363,9 @@ class REDCapManagement {
 			}
 		}
 		return $newRow;
+	}
+
+	public static function datediff($d1, $d2, $measurement) {
+		return datediff($d1, $d2, $measurement);
 	}
 }

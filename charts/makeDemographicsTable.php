@@ -6,14 +6,15 @@
 
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__).'/baseWeb.php');
 require_once(dirname(__FILE__).'/../CareerDev.php');
 require_once(dirname(__FILE__).'/../classes/Links.php');
 require_once(dirname(__FILE__).'/../classes/Download.php');
+require_once(dirname(__FILE__).'/../classes/REDCapManagement.php');
 require_once(dirname(__FILE__).'/../../../redcap_connect.php');
-require_once(APP_PATH_DOCROOT.'/ProjectGeneral/math_functions.php');    // for datediff
 
 $nameForAll = "Entire Society";
 if ($_GET['cohort']) {
@@ -71,7 +72,7 @@ function get_converted_k_to_r01($row) {
 	if ($row['summary_first_external_k'] && $row['summary_first_r01']) {
 		return 1;
 	} else if ($row['summary_first_external_k']) {
-		if (datediff($row['summary_first_external_k'], date('Y-m-d'), "y") <= 5) {
+		if (REDCapManagement::datediff($row['summary_first_external_k'], date('Y-m-d'), "y") <= 5) {
 			return 2;
 		} else {
 			return 3;
@@ -88,7 +89,7 @@ function get_converted_any_k_to_r01($row) {
 	if ($row['summary_first_any_k'] && $row['summary_first_r01']) {
 		return 1;
 	} else if ($row['summary_first_any_k']) {
-		if (datediff($row['summary_first_any_k'], date('Y-m-d'), "y") <= 5) {
+		if (REDCapManagement::datediff($row['summary_first_any_k'], date('Y-m-d'), "y") <= 5) {
 			return 2;
 		} else {
 			return 3;
@@ -123,7 +124,7 @@ function get_converted_k_to_r01_cats() {
 # get timespan from any k to r01/equivalent
 function get_any_timespan_less_than_five($row) {
 	if ($row['summary_first_any_k'] && $row['summary_first_r01']) {
-		$val = datediff($row['summary_first_any_k'], $row['summary_first_r01'], "y");
+		$val = REDCapManagement::datediff($row['summary_first_any_k'], $row['summary_first_r01'], "y");
 		if ($val > 5) {
 			return 2;  // no
 		} else {
@@ -146,7 +147,7 @@ function get_any_timespan_less_than_five($row) {
 # get timespan from external k to r01/equivalent
 function get_timespan_less_than_five($row) {
 	if ($row['summary_first_external_k'] && $row['summary_first_r01']) {
-		$val = datediff($row['summary_first_external_k'], $row['summary_first_r01'], "y");
+		$val = REDCapManagement::datediff($row['summary_first_external_k'], $row['summary_first_r01'], "y");
 		if ($val > 5) {
 			return 2;  // no
 		} else {
@@ -191,7 +192,7 @@ function get_average_age_at_first_r($data) {
 			if ($row['redcap_repeat_instrument'] == "") {
 				for ($i = 1; $i <= 15; $i++) {
 					if ($row['summary_dob'] && $row['summary_award_date_'.$i] && in_array($row['summary_award_type_'.$i], $rs)) {
-						$ages[] = datediff($row['summary_dob'], $row['summary_award_date_'.$i], "y");
+						$ages[] = REDCapManagement::datediff($row['summary_dob'], $row['summary_award_date_'.$i], "y");
 					}
 				}
 			}
@@ -207,7 +208,7 @@ function get_average_age_at_first_cda($data) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "") {
 				if ($row['summary_award_date_1'] && $row['summary_dob']) {
-					$ages[] = datediff($row['summary_dob'], $row['summary_award_date_1'], "y");
+					$ages[] = REDCapManagement::datediff($row['summary_dob'], $row['summary_award_date_1'], "y");
 				}
 			}
 		}
@@ -224,7 +225,7 @@ function get_average_age($data) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "") {
 				if ($row['summary_dob']) {
-					$ages[] = datediff($row['summary_dob'], date("Y-m-d"), "y");
+					$ages[] = REDCapManagement::datediff($row['summary_dob'], date("Y-m-d"), "y");
 				}
 			}
 		}
@@ -260,7 +261,7 @@ function get_any_k_to_r_conversion_average($data) {
 				}
 		
 				if ($first_k && $first_r) {
-					$diffs[] = datediff($first_k, $first_r, "y");
+					$diffs[] = REDCapManagement::datediff($first_k, $first_r, "y");
 				}
 			}
 		
@@ -283,7 +284,7 @@ function get_any_k_to_r_conversion_rate($data) {
 			if ($row['redcap_repeat_instrument'] == "") {
 				$firstCDAAge = 0;
 				if ($row['summary_award_date_1']) {
-					$firstCDAAge = datediff($row['summary_award_date_1'], date("Y-m-d"), "y");
+					$firstCDAAge = REDCapManagement::datediff($row['summary_award_date_1'], date("Y-m-d"), "y");
 				}
 				$first_k = "";
 				$first_r = "";
@@ -303,7 +304,7 @@ function get_any_k_to_r_conversion_rate($data) {
 				}
 
 				if ($first_k && $first_r) {
-					$diffs[] = datediff($first_k, $first_r, "y");
+					$diffs[] = REDCapManagement::datediff($first_k, $first_r, "y");
 					$started[] = $first_k;
 				} else if ($first_k && ($firstCDAAge > $ageThreshold)) {
 					$started[] = $first_k;
@@ -341,7 +342,7 @@ function get_external_k_to_r_conversion_average($data) {
 				}
 
 				if ($first_k && $first_r) {
-					$diffs[] = datediff($first_k, $first_r, "y");
+					$diffs[] = REDCapManagement::datediff($first_k, $first_r, "y");
 				}
 			}
 		}
@@ -379,7 +380,7 @@ function get_external_k_to_r_conversion_rate($data) {
 				}
 
 				if ($first_k && $first_r) {
-					$diffs[] = datediff($first_k, $first_r, "y");
+					$diffs[] = REDCapManagement::datediff($first_k, $first_r, "y");
 				}
 				if ($first_k) {
 					$started[] = $first_k;
@@ -533,7 +534,7 @@ function get_current_cda($data, $withinFiveYears = true) {
 							if (!$first_k) {
 								if (!$withinFiveYears) {
 									$qualified = true;
-								} else if (datediff($row['summary_award_date_'.$i], $today, "y") <= 5) {
+								} else if (REDCapManagement::datediff($row['summary_award_date_'.$i], $today, "y") <= 5) {
 									$qualified = true;
 								}
 								$first_k = $row['summary_award_date_'.$i];
@@ -547,7 +548,7 @@ function get_current_cda($data, $withinFiveYears = true) {
 								if (!$first_int_k) {
 									if (!$withinFiveYears) {
 										$qualified = true;
-									} else if (datediff($row['summary_award_date_'.$i], $today, "y") <= 3) {
+									} else if (REDCapManagement::datediff($row['summary_award_date_'.$i], $today, "y") <= 3) {
 										$qualified = true;
 									}
 									$first_int_k = $row['summary_award_date_'.$i];

@@ -2,10 +2,12 @@
 
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Grant;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Grants.php");
 require_once(dirname(__FILE__)."/../classes/Grant.php");
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/surveyHook.php");
 
 # This is the hook used for the scholars' survey. It is referenced in the hooks file.
@@ -136,7 +138,7 @@ $(document).ready(function() {
 	presetValue("check_name_middle", "<?php echo find('identifier_middle'); ?>");
 	presetValue("check_name_last", "<?php echo find('identifier_last_name'); ?>");
 	presetValue("check_email", "<?php echo find('identifier_email'); ?>");
-	presetValue("check_date_of_birth", "<?php echo \Vanderbilt\FlightTrackerExternalModule\YMD2MDY(find('summary_dob')); ?>");
+	presetValue("check_date_of_birth", "<?php echo REDCapManagement::YMD2MDY(find('summary_dob')); ?>");
 	$('#check_date_of_birth-tr td .ui-button').hide();
 	presetValue("check_gender", "<?php echo find('summary_gender'); ?>");
     <?php
@@ -334,6 +336,8 @@ $(document).ready(function() {
 	presetValue('check_primary_dept', '<?php echo find('summary_primary_dept'); ?>');
 	presetValue('check_division', '<?php echo find(array('identifier_starting_division')); ?>');
 	presetValue("check_orcid_id", "<?php echo find(array('identifier_orcid')); ?>");
+	presetValue("check_disadvantaged", "<?php echo find(array('summary_disadvantaged')); ?>");
+	presetValue("check_disability", "<?php echo find(array('summary_disability')); ?>");
 
 <?php
 # Get rid of my extra verbiage
@@ -348,8 +352,8 @@ function filterSponsorNumber($name) {
 	$i = 1;
 	foreach ($grants->getGrants("compiled") as $grant) {
 		if ($i <= MAX_GRANTS) {
-			echo "	presetValue('check_grant{$i}_start', '".\Vanderbilt\FlightTrackerExternalModule\YMD2MDY($grant->getVariable("start"))."');\n";
-			echo "	presetValue('check_grant{$i}_end', '".\Vanderbilt\FlightTrackerExternalModule\YMD2MDY($grant->getVariable("end"))."');\n";
+			echo "	presetValue('check_grant{$i}_start', '".REDCapManagement::YMD2MDY($grant->getVariable("start"))."');\n";
+			echo "	presetValue('check_grant{$i}_end', '".REDCapManagement::YMD2MDY($grant->getVariable("end"))."');\n";
 			echo "	presetValue('check_grant{$i}_number', '".filterSponsorNumber($grant->getBaseNumber())."');\n";
 			echo "	presetValue('check_grant{$i}_title', '".preg_replace("/'/", "\\'", $grant->getVariable("title"))."');\n";
 			echo "	presetValue('check_grant{$i}_org', '".$grant->getVariable("sponsor")."');\n";

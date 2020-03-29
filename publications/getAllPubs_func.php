@@ -1,6 +1,7 @@
 <?php
 
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\iCite;
@@ -9,6 +10,7 @@ use \Vanderbilt\CareerDevLibrary\Publications;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/iCite.php");
@@ -22,6 +24,7 @@ function getPubs($token, $server, $pid) {
 
 	$citationIds = array();
 	$pullSize = 1;
+	$maxInstances = array();
 	for ($i = 0; $i < count($records); $i += $pullSize) {
 		$pullRecords = array();
 		for ($j = $i; $j < count($records) && $j < $i + $pullSize; $j++) {
@@ -40,21 +43,22 @@ function getPubs($token, $server, $pid) {
 		}
 
 		$redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, $pullRecords);
-		$maxInstance = array();
 		foreach ($redcapData as $row) {
 			if ($row['redcap_repeat_instrument'] == "citation") {
 				$recordId = $row['record_id'];
 				$instance = $row['redcap_repeat_instance'];
-				if (!isset($maxInstance[$recordId]) || ($instance > $maxInstance[$recordId])) {
-					$maxInstance[$recordId] = $instance;
+				if (!isset($maxInstances[$recordId]) || ($instance > $maxInstances[$recordId])) {
+					$maxInstances[$recordId] = $instance;
 				}
 			}
 		}
 		binREDCapRows($redcapData, $citationIds);
 	}
 	foreach ($citationIds as $type => $typeCitationIds) {
-		CareerDev::log("citationIds[$type] has ".count($typeCitationIds));
-		echo "citationIds[$type] has ".count($typeCitationIds)."\n";
+		foreach ($typeCitationIds as $recordId => $recordCitationIds) {
+			CareerDev::log("citationIds[$type][$recordId] has ".count($recordCitationIds));
+			echo "citationIds[$type][$recordId] has ".count($recordCitationIds)."\n";
+		}
 	}
 	unset($redcapData);
 
@@ -313,6 +317,8 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server) {
 						if ($pmData['esearchresult'] && $pmData['esearchresult']['idlist']) {
 							# if the errorlist is not blank, it might search for simplified
 							# it might search for simplified names and produce bad results
+							$pmidNum = 1;
+							$pmidCount = count($pmData['esearchresult']['idlist']);
 							if (!isset($pmData['esearchresult']['errorlist'])
 								|| !$pmData['esearchresult']['errorlist']
 								|| !$pmData['esearchresult']['errorlist']['phrasesnotfound']
@@ -322,7 +328,10 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server) {
 									if (!$foundType) {
 										array_push($pmids, $pmid);
 										array_push($citationIds['New'][$recordId], $pmid);
-									}
+                                                                        } else {
+                                                                                Application::log("Record $recordId: Skipping $pmid ($pmidNum/$pmidCount)");
+                                                                        }
+                                                                        $pmidNum++;
 								}
 							}
 						}

@@ -54,17 +54,17 @@ class Application {
 		return CareerDev::getSetting($field);
 	}
 
-        public static function getInternalKLength() {
-                return CareerDev::getInternalKLength();
-        }
+	public static function getInternalKLength() {
+		return CareerDev::getInternalKLength();
+	}
 
-        public static function getK12KL2Length() {
-                return CareerDev::getK12KL2Length();
-        }
+	public static function getK12KL2Length() {
+		return CareerDev::getK12KL2Length();
+	}
 
-        public static function getIndividualKLength() {
-                return CareerDev::getIndividualKLength();
-        }
+	public static function getIndividualKLength() {
+		return CareerDev::getIndividualKLength();
+	}
 
 	public static $institutionFields = array(
 						"record_id",
@@ -316,6 +316,21 @@ class Application {
 						"citation_field_citation_rate",
 						"citation_nih_percentile",
 						"citation_rcr",
+						);
+
+	public static $customFields = array(
+						"record_id",
+						"custom_title",
+						"custom_number",
+						"custom_type",
+						"custom_org",
+						"custom_recipient_org",
+						"custom_role",
+						"custom_role_other",
+						"custom_start",
+						"custom_end",
+						"custom_costs",
+						"custom_last_update",
 						);
 
 

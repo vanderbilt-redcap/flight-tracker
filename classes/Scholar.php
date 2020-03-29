@@ -171,7 +171,28 @@ class Scholar {
 		return in_array($name, $lowerList);
 	}
 
-	public function getMentors() {
+	private function getMentorUserid($rows) {
+		$mentorResult = $this->getMentorText($rows);
+		$mentorField = $mentorResult->getField();
+		$mentorUseridField = $mentorField."_userid";
+		foreach ($rows as $row) {
+			if ($row[$mentorUseridField]) {
+				$r = new Result($row[$mentorUseridField], $mentorResult->getSource(), "", "", $this->pid);
+				$r->setField($mentorUseridField);
+				return $r;
+			}
+		}
+		return new Result("", "");
+	}
+
+	private function getMentorText($rows) {
+		$vars = self::getDefaultOrder("summary_mentor");
+		$vars = $this->getOrder($vars, "summary_mentor");
+		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		return $result;
+	}
+
+	public function getAllMentors() {
 		$mentorFields = $this->getMentorFields();
 		$mentors = array();
 		foreach ($this->rows as $row) {
@@ -192,6 +213,7 @@ class Scholar {
 					"/_vunet$/",
 					"/_source$/",
 					"/_sourcetype$/",
+					"/_userid$/",
 					);
 
 		foreach ($this->metadata as $row) {
@@ -432,6 +454,7 @@ class Scholar {
 
 	private function isLastKK12KL2() {
 		$k12kl2Type = 2;
+		$ksInside = array(1, 2, 3, 4);
 		if ($this->isLastKExternal()) {
 			return FALSE;
 		} else {
@@ -446,7 +469,7 @@ class Scholar {
 					$lastKType = $type;
 				}
 			}
-			return ($lastKType == $k12Kl2Type);
+			return ($lastKType == $k12kl2Type);
 		}
 	}
 
@@ -649,7 +672,7 @@ class Scholar {
 		$institutionCurrent = "1";
 
 		$currentProjectInstitutions = Application::getInstitutions(); 
-		for ($i = 0; $i < count($currentInstitutions); $i++) {
+		for ($i = 0; $i < count($currentProjectInstitutions); $i++) {
 			$currentProjectInstitutions[$i] = trim(strtolower($currentProjectInstitutions[$i]));
 		}
 		$result = $this->getInstitution($rows);
@@ -968,6 +991,12 @@ class Scholar {
 								"override_tenure" => "manual",
 								"imported_tenure" => "manual",
 								);
+		$orders["summary_mentor_userid"] = array(
+							"override_mentor_userid" => "manual",
+							"imported_mentor_userid" => "manual",
+							"followup_primary_mentor_userid" => "followup",
+							"check_primary_mentor_userid" => "scholars",
+							);
 		$orders["summary_mentor"] = array(
 							"override_mentor" => "manual",
 							"imported_mentor" => "manual",
@@ -1083,12 +1112,27 @@ class Scholar {
 	}
 
 	private function getPrimaryDepartment($rows) {
-		$vars = self::getDefaultOrder("summary_primary_dept");
-		$vars = $this->getOrder($vars, "summary_primary_dept");
+		$field = "summary_primary_dept";
+		$vars = self::getDefaultOrder($field);
+		$vars = $this->getOrder($vars, $field);
 		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 		$value = $result->getValue();
 		if ($result->getSource() == "vfrs") {
 			$value = self::transferVFRSDepartment($value);
+		}
+
+		$choices = self::getChoices($this->metadata);
+		if (isset($choices[$field]) && !isset($choices[$field][$value])) {
+			foreach ($choices[$field] as $idx => $label) {
+				if ($label == $value) {
+					$value = $idx;
+					break;
+				}
+			}
+		}
+		if (!isset($choices[$field][$value])) {
+			# from text entry and no match with our databank
+			return new Result("", "");
 		}
 
 		return new Result($value, $result->getSource(), "", "", $this->pid);
@@ -1172,9 +1216,11 @@ class Scholar {
 
 	# returns array of 3 (overall classification, race source, ethnicity source)
 	public function getRaceEthnicity($rows) {
-		$order = self::getDefaultOrder("summary_race_ethnicity");
-		$order = $this->getOrder($order, "summary_race_ethnicity");
+		$field = "summary_race_ethnicity";
+		$order = self::getDefaultOrder($field);
+		$order = $this->getOrder($order, $field);
 		$normativeRow = self::getNormativeRow($rows);
+		$choices = self::getChoices($this->metadata);
 
 		$race = "";
 		$raceSource = "";
@@ -1203,20 +1249,25 @@ class Scholar {
 			return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
 		} else if ($race == 1) {    # American Indian or Native Alaskan
 			$val = 9;
+			if (isset($choices[$field]) && !isset($choices[$field][$val])) {
+				$val = 6;
+			}
 			return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
 		} else if ($race == 3) {    # Hawaiian or Other Pacific Islander
 			$val = 10;
+			if (isset($choices[$field]) && !isset($choices[$field][$val])) {
+				$val = 6;
+			}
 			return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
 		}
 		if ($eth == "") {
-			$choices = REDCapManagement::getChoices($this->metadata);
 			if ($race == 5) { # White
 				$val = 7;
 			} else if ($race == 4) { # Black
 				$val = 8;
 			}
 			if ($val) {
-				if (!isset($choices["summary_race_ethnicity"][$val])) {
+				if (!isset($choices[$field][$val])) {
 					if ($val == 7) {
 						$val = 1;   // white, non-Hisp
 					} else if ($val == 8) {
@@ -1605,7 +1656,7 @@ class Scholar {
 		$value = $institutionResult->getValue();
 		$vars = self::getDefaultOrder($field);
 		if ($value) {
-			return $this->matchWithInstitutionResult($institutionResult, $rows);
+			return $this->matchWithInstitutionResult($institutionResult, $rows, $vars);
 		} else {
 			# no institution information
 			$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
@@ -1613,10 +1664,11 @@ class Scholar {
 		}
 	}
 
-	private function matchWithInstitutionResult($institutionResult, $rows) {
+	private function matchWithInstitutionResult($institutionResult, $rows, $vars) {
 		$fieldName = $institutionResult->getField();
 		$instance = $institutionResult->getInstance();
-		$source = $institutionResult->getSource();
+        $source = $institutionResult->getSource();
+        $value = $institutionResult->getValue();
 		if (!$instance) {
 			$instances = array("", "1");
 		} else {
@@ -1638,7 +1690,7 @@ class Scholar {
 		return new Result("", "");
 	}
 
-	public static function getDemographicsArray() {
+	public function getDemographicsArray() {
 		return $this->demographics;
 	}
 
@@ -1674,6 +1726,8 @@ class Scholar {
 				"summary_disadvantaged" => "getDisadvantagedStatus",
 				"summary_training_start" => "getTrainingStart",
 				"summary_training_end" => "getTrainingEnd",
+				"summary_mentor" => "getMentorText",
+				"summary_mentor_userid" => "getMentorUserid",
 				);
 	}
 

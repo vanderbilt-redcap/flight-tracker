@@ -2,13 +2,14 @@
 
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(APP_PATH_DOCROOT.'ProjectGeneral/math_functions.php');
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 
 ?>
 <style>

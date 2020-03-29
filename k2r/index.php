@@ -2,13 +2,14 @@
 
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(APP_PATH_DOCROOT.'/ProjectGeneral/math_functions.php');
 
 $options = array(
 		"1234" => "Any &amp; All Ks",
@@ -92,7 +93,7 @@ function getKAwardees($data, $intKLength, $indKLength) {
 				for ($i = 1; $i <= 15; $i++) {
 					if (in_array($row['summary_award_type_'.$i], $ind_ks)) {
 						$first_k = $row['summary_award_date_'.$i];
-						if (datediff($row['summary_award_date_'.$i], $today, "y") <= $indKLength) {
+						if (REDCapManagement::datediff($row['summary_award_date_'.$i], $today, "y") <= $indKLength) {
 							$qualifiers[$row['record_id']] = $person;
 						}
 						break;
@@ -105,7 +106,7 @@ function getKAwardees($data, $intKLength, $indKLength) {
 				for ($i = 1; $i < 15; $i++) {
 					if (in_array($row['summary_award_type_'.$i], $int_ks)) {
 						$first_int_k = $row['summary_award_date_'.$i];
-						if (datediff($row['summary_award_date_'.$i], $today, "y") <= $intKLength) {
+						if (REDCapManagement::datediff($row['summary_award_date_'.$i], $today, "y") <= $intKLength) {
 							$qualifiers[$row['record_id']] = $person;
 						}
 						break;
@@ -155,13 +156,13 @@ function isConverted($row, $kLength, $orderK, $kType) {
 		return false;
 	}
 	if (!$first_r) {
-		if ($kLength && (datediff($k, $today, "y") <= $kLength)) {
+		if ($kLength && (REDCapManagement::datediff($k, $today, "y") <= $kLength)) {
 			# K < X years old
-			// echo "B".datediff($k, $today, "y")." ".$k." ".$row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name']."<br>";
+			// echo "B".REDCapManagement::datediff($k, $today, "y")." ".$k." ".$row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name']."<br>";
 			return false;
 		}
 		# did not convert
-		if ($kLength && ($orderK == "last_k") && (datediff($last_k, $today, "y") <= $kLength)) {
+		if ($kLength && ($orderK == "last_k") && (REDCapManagement::datediff($last_k, $today, "y") <= $kLength)) {
 			# no R (not converted) and last K < X years old
 			// echo "C ".$row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name']."<br>";
 			return false;
@@ -203,13 +204,13 @@ function getAverages($data, $kLength, $orderK, $kType) {
 			}
 			if ($row['summary_dob']) {
 				$today = date("Y-m-d");
-				$sums["age"][] = datediff($row['summary_dob'], $today, "y");
+				$sums["age"][] = REDCapManagement::datediff($row['summary_dob'], $today, "y");
 				if ($row['summary_award_date_1']) {
-					$sums["age_at_first_cda"][] = datediff($row['summary_dob'], $row['summary_award_date_1'], "y");
+					$sums["age_at_first_cda"][] = REDCapManagement::datediff($row['summary_dob'], $row['summary_award_date_1'], "y");
 				}
 				for ($i = 1; $i <= 15; $i++) {
 					if ($row['summary_award_date_'.$i] && in_array($row['summary_award_type_'.$i], $rs)) {
-						$sums["age_at_first_r"][] = datediff($row['summary_dob'], $row['summary_award_date_'.$i], "y");
+						$sums["age_at_first_r"][] = REDCapManagement::datediff($row['summary_dob'], $row['summary_award_date_'.$i], "y");
 						break;
 					}
 				}

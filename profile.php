@@ -62,7 +62,7 @@ if (preg_match("/^\d\d\d\d-\d+-\d+$/", $status)) {
 $institution = $scholar->getInstitutionText();
 $degrees = $scholar->getDegreesText();
 $dept = $scholar->getPrimaryDepartmentText();
-$mentors = $scholar->getMentors();
+$mentors = $scholar->getAllMentors();
 $resources = $scholar->getResourcesUsed();
 $converted = $scholar->isConverted();
 $numGrants = $grants->getNumberOfGrants("prior");

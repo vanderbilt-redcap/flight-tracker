@@ -234,6 +234,7 @@ function makeIntroPage($projectId) {
 	$html .= "<li>Ten minutes (or less)</li>\n";
 	$html .= "<li>Your REDCap Administrator handy via email or phone.</li>\n";
 	$html .= "<li>A <a href='".APP_PATH_WEBROOT."API/project_api.php?pid=".$projectId."'>REDCap API Token</a> (32 characters) to this project. (You may need to contact your REDCap Administrator to generate this for you.)</li>\n";
+	$html .= "<li>REDCap Design User Rights. (The API token can be shared among all the project's users, but each Flight Tracker user needs Design rights.)</li>\n";
 	$html .= "<li>Basic configuration information (see below)</li>\n";
 	$html .= "<li>A list of primary academic departments for all institutions represented - at the very least, those that your scholars are part of</li>\n";
 	$html .= "<li>A list of institutional resources you offer for help (e.g., workshops, seminars)</li>\n";

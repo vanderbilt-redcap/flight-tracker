@@ -10,6 +10,7 @@ require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Scholar.php");
 require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/iCite.php");
+require_once(dirname(__FILE__)."/NameMatcher.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
 class CitationCollection {
@@ -229,6 +230,20 @@ class Citation {
 		$html .= self::makeCheckbox($id, $checkboxClass)." ".$source.$this->getCitationWithLink();
 		$html .= "</div>\n";
 		return $html;
+	}
+
+	public function hasAuthor($name) {
+		list($firstName, $lastName) = NameMatcher::splitName($name);
+		if ($lastName) {
+			$authorList = $this->getAuthorList();
+			foreach ($authorList as $author) {
+				list($currFirstName, $currLastName) = NameMatcher::splitName($author);
+				if (NameMatcher::matchByInitials($currLastName, $currFirstName, $lastName, $firstName)) {
+					return TRUE;
+				}
+			}
+		}
+		return FALSE;
 	}
 
 	private function changeTextColorOfLink($str, $color) {
@@ -464,8 +479,18 @@ class Citation {
 		}
 	}
 
-	private function getDate() {
+	private function getYear() {
 		$year = $this->getVariable("year");
+		if ($year) {
+			if (is_numeric($year) && ($year < 100)) {
+				$year += 2000;
+			}
+		}
+		return $year;
+	}
+
+	private function getDate() {
+		$year = $this->getYear();
 		$month = $this->getVariable("month");
 		$day = $this->getVariable("day");
 
@@ -486,9 +511,6 @@ class Citation {
 		$date = "";
 
 		if ($year) {
-			if (is_numeric($year) && ($year < 100)) {
-				$year += 2000;
-			}
 			$date .= $year;
 		}
 
@@ -531,12 +553,54 @@ class Citation {
 		return $str;
 	}
 
+	private function getVolumeAndPages() {
+		$vol = $this->getVariable("volume");
+		$pages = $this->getVariable("pages");
+
+		$str = "";
+		if ($vol) {
+			$str .= $vol;
+		}
+		if ($pages) {
+			$str .= ":".$pages;
+		}
+
+		return $str;
+	}
+
 	public function getCitation() {
 		$citation = $this->getVariable("authors").". ".$this->getVariable("title").". ".$this->getVariable("journal").". ".$this->getDate()."; ".$this->getIssueAndPages();
 		$doi = $this->getVariable("doi");
 		if ($doi) {
 			$citation .= " doi:".$doi.".";
 		}
+		return $citation;
+	}
+
+	public function getAuthorList() {
+		$authorList = preg_split("/\s*,\s*/", $this->getVariable("authors"));
+		return $authorList;
+	}
+
+	private static function boldName($lastName, $firstName, $authorList) {
+		$newAuthorList = array();
+		foreach ($authorList as $name) {
+			$nameNodes = preg_split("/\s+/", $name);
+			if (count($nameNodes) >= 2) {
+				$currLastName = $nameNodes[0];
+				$currFirstInitial = $nameNodes[1];
+				if (NameMatcher::matchByInitials($lastName, $firstName, $currLastName, $currFirstInitial)) {
+					$name = "<b>".$name."</b>";
+				}
+			}
+			array_push($newAuthorList, $name);
+		}
+		return implode(", ", $newAuthorList);
+	}
+
+	public function getNIHFormat($traineeLastName, $traineeFirstName) {
+		$authors = self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList());
+		$citation = $authors.", ".$this->getYear().", ".$this->getVariable("title").", ".$this->getVariable("journal").", ".$this->getVolumeAndPages().".";
 		return $citation;
 	}
 

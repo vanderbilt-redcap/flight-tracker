@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\CitationCollection;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Scholar;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 # This is the hook used for the scholars' followup survey. It is referenced in the hooks file.
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -29,6 +30,7 @@ require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Scholar.php");
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 
 $GLOBALS['data'] = Download::records($token, $server, array($record));
 $metadata = Download::metadata($token, $server);
@@ -121,6 +123,8 @@ $(document).ready(function() {
 	}
 
  	presetValue("followup_orcid_id", "<?php echo find(array('identifier_orcid', 'followup_orcid_id', 'check_orcid_id')); ?>");
+ 	presetValue("followup_disability", "<?php echo find(array('summary_disability')); ?>");
+ 	presetValue("followup_disadvantaged", "<?php echo find(array('summary_disadvantaged')); ?>");
  	presetValue("followup_name_first", "<?php echo find(array('identifier_first_name', 'followup_name_first', 'check_name_first')); ?>");
  	presetValue("followup_name_middle", "<?php echo find(array('newman_data_middle_name', 'followup_name_middle', 'check_name_middle')); ?>");
  	presetValue("followup_name_last", "<?php echo find(array('identifier_last_name', 'followup_name_last', 'check_name_last')); ?>");
@@ -177,9 +181,9 @@ function getTenureStatus($value) {
 			if ($j == 1) {
 				echo "	presetValue('followup_grant0_another', '1');\n";
 			}
-			echo "	presetValue('followup_grant{$j}_start', '".YMD2MDY($grant->getVariable("start"))."');\n";
+			echo "	presetValue('followup_grant{$j}_start', '".REDCapManagement::YMD2MDY($grant->getVariable("start"))."');\n";
 			if ($endDate) {
-				echo "	presetValue('followup_grant{$j}_end', '".YMD2MDY($grant->getVariable("end"))."');\n";
+				echo "	presetValue('followup_grant{$j}_end', '".REDCapManagement::YMD2MDY($grant->getVariable("end"))."');\n";
 			}
 			echo "	presetValue('followup_grant{$j}_number', '".filterSponsorNumber($grant->getBaseNumber())."');\n";
 			echo "	presetValue('followup_grant{$j}_title', '".preg_replace("/'/", "\\'", $grant->getVariable("title"))."');\n";
@@ -196,7 +200,7 @@ function getTenureStatus($value) {
 	# also .*_d\d+
 ?>
 	presetValue('followup_institution', '1');
-	presetValue('followup_academic_rank_dt', '<?php echo YMD2MDY(find('vfrs_current_appointment')); ?>');
+	presetValue('followup_academic_rank_dt', '<?php echo REDCapManagement::YMD2MDY(find('vfrs_current_appointment')); ?>');
 	presetValue('followup_tenure_status', <?php echo getTenureStatus(find('vfrs_tenure')); ?>);
 
 	doBranching();

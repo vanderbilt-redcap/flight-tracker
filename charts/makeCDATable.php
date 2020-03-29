@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/baseWeb.php");
@@ -13,9 +14,9 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Grants.php");
 require_once(dirname(__FILE__)."/../classes/Grant.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__).'/../../../redcap_connect.php');
-require_once(APP_PATH_DOCROOT.'ProjectGeneral/math_functions.php');
 
 # makes the stylized table of CDA awards
 
@@ -96,7 +97,7 @@ function getTimeSpan($row, $i) {
 	$start = $row['summary_award_date_'.$i];
 	$end = $row['summary_award_date_'.($i + 1)];
 	if ($start && $end) {
-		return floor(datediff($start, $end, "y") * 10) / 10;
+		return floor(REDCapManagement::datediff($start, $end, "y") * 10) / 10;
 	}
 	return "";
 }
@@ -126,6 +127,7 @@ echo "<td class='spacer'></td><td class='legendCell kEquivalent type'>K Equivale
 echo "<td class='spacer'></td><td class='legendCell k99r00 type'>K99/R00</td>"; 
 echo "<td class='spacer'></td><td class='legendCell r01 type'>R01</td>"; 
 echo "<td class='spacer'></td><td class='legendCell rEquivalent type'>R01 Equivalent</td>"; 
+echo "<td class='spacer'></td><td class='legendCell trainingAppt type'>Training Appointment</td>"; 
 echo "<td class='spacer'></td><td class='legendCell trainingAdmin type'>Training Grant Admin</td>"; 
 echo "<td class='spacer'></td>";
 echo "</tr>";
@@ -176,6 +178,7 @@ $cssClasses = array(
 			"K12/KL2" => "k12kl2",
 			"R01" => "r01",
 			"R01 Equivalent" => "rEquivalent",
+			"Training Appointment" => "trainingAppt",
 			"K99/R00" => "k99r00",
 			"Training Grant Admin" => "trainingAdmin",
 			"Research Fellowship" => "fellowship",

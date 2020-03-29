@@ -22,9 +22,91 @@ class Download {
 		}
 		return $indexedRedcapData;
 	}
+
 	public static function getIndexedRedcapData($token, $server, $fields, $cohort = "", $metadata = array()) {
 		$redcapData = self::getFilteredRedcapData($token, $server, $fields, $cohort, $metadata);
 		return self::indexREDCapData($redcapData);
+	}
+
+	public static function predocNames($token, $server) {
+		$names = self::names($token, $server);
+		$predocs = array();
+		$records = self::recordsWithTrainees($token, $server, array(6));
+		foreach ($records as $recordId) {
+			$predocs[$recordId] = $names[$recordId];
+		}
+		return $predocs;
+	}
+
+	public static function postdocNames($token, $server) {
+		$names = self::names($token, $server);
+		$postdocs = array();
+		$records = self::recordsWithTrainees($token, $server, array(7));
+		foreach ($records as $recordId) {
+			$postdocs[$recordId] = $names[$recordId];
+		}
+		return $postdocs;
+	}
+
+	# returns a hash with recordId => array of mentorUserids
+	public static function primaryMentorUserids($token, $server) {
+		$mentorUserids = Download::oneField($token, $server, "summary_mentor_userid");
+		foreach ($mentorUserids as $recordId => $userid) {
+			if ($userid) {
+				$recordUserids = preg_split("/\s*;\s*/", $userid);
+				$mentorUserids[$recordId] = $userid;
+			} else {
+				unset($mentorUserids[$recordId]);
+			}
+		}
+		return $mentorUserids;
+	}
+	# returns a hash with recordId => array of mentorNames
+	public static function primaryMentors($token, $server) {
+		$mentors = Download::oneField($token, $server, "summary_mentor");
+		foreach ($mentors as $recordId => $mentor) {
+			if ($mentor) {
+				$recordMentors = preg_split("/\s*;\s*/", $mentor);
+				$prettyRecordMentors = array();
+				foreach ($recordMentors as $mentor) {
+					$mentor = NameMatcher::pretty($mentor);
+					array_push($prettyRecordMentors, $mentor);
+				}
+				$mentors[$recordId] = $prettyRecordMentors;
+			} else {
+				unset($mentors[$recordId]);
+			}
+		}
+		return $mentors;
+	}
+
+	public static function trainingGrants($token, $server, $fields = array(), $traineeTypes = array(5, 6, 7)) {
+		if (empty($fields)) {
+			$fields = Application::$customFields;
+		}
+		$requiredFields = array("record_id", "custom_role");
+		foreach ($requiredFields as $field) {
+			if (!in_array($field, $fields)) {
+				throw new \Exception("Could not find required '$field' field in fields!");
+			}
+		}
+		$redcapData = self::fields($token, $server, $fields);
+		$filteredData = array();
+		foreach ($redcapData as $row) {
+			if (in_array($row['custom_role'], $traineeTypes)) {
+				array_push($filteredData, $row);
+			}
+		}
+		return $filteredData;
+	}
+
+	public static function recordsWithTrainees($token, $server, $traineeTypes = array(5, 6, 7)) {
+		$redcapData = self::trainingGrants($token, $server, array("record_id", "custom_role"), $traineeTypes);
+		$records = array();
+		foreach ($redcapData as $row) {
+			array_push($records, $row['record_id']);
+		}
+		return $records;
 	}
 
 	public static function getMaxInstanceForRepeatingForm($token, $server, $formName, $recordId) {
@@ -457,7 +539,7 @@ class Download {
 
 	public static function delete($token, $server, $records) {
 		$data = array(
-			'token' => 'E39DDA74C0E5927E601A866D8B7A6544',
+			'token' => $token,
 			'action' => 'delete',
 			'content' => 'record',
 			'records' => $records

@@ -65,6 +65,54 @@ class NameMatcher {
 		return "";
 	}
 
+	# case insensitive match based on last name and first initial only
+	# returns TRUE/FALSE
+	public static function matchByInitials($lastName1, $firstName1, $lastName2, $firstName2) {
+		$lastName1 = strtolower($lastName1);
+		$firstName1 = strtolower($firstName1);
+		$lastName2 = strtolower($lastName2);
+		$firstName2 = strtolower($firstName2);
+
+		$firstInitial1 = self::turnIntoOneInitial($firstName1);
+		$firstInitial2 = self::turnIntoOneInitial($firstName2);
+
+		return (($lastName1 == $lastName2) && ($firstInitial1 == $firstInitial2));
+	}
+
+	public static function turnIntoOneInitial($name) {
+		if (strlen($name) >= 1) {
+			return substr($name, 0, 1);
+		}
+		return "";
+	}
+
+	public static function pretty($name) {
+		list($first, $last) = self::splitName($name);
+		return "$first $last";
+	}
+
+	# returns list($firstName, $lastName)
+	public static function splitName($name) {
+		if ($name == "") {
+			return array("", "");
+		}
+		$nodes = preg_split("/\s*,\s*/", $name);
+		if (count($nodes) >= 2) {
+			# last-name, first-name
+			return array($nodes[1], $nodes[0]);
+		} else if (count($nodes) == 1) {
+			$nodes = preg_split("/\s+/", $name);
+			if (count($nodes) >= 2) {
+				return array($nodes[0], $nodes[1]);
+			} else if (count($nodes) == 1) {
+				return array($nodes[0], "");
+			} else {
+				throw new \Exception("Name-splitter could not read $name!");
+			}
+		}
+		return array("", "");
+	}
+
 	private static $namesForMatch = array();
 	private static $currToken = "";
 }

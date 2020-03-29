@@ -1468,6 +1468,7 @@ class Grant {
 				"K Equivalent" => 4,
 				"R01" => 5,
 				"R01 Equivalent" => 6,
+				"Training Appointment" => 10,
 				"Research Fellowship" => 7,
 				"Training Grant Admin" => 8,
 				"K99/R00" => 9,
