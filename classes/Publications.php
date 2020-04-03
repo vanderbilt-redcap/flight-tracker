@@ -28,7 +28,35 @@ class Publications {
 		return "Last/Full Name:<br><input id='search' type='text' style='width: 100%;'><br><div style='width: 100%; color: red;' id='searchDiv'></div>";
 	}
 
-	public static function getSelectRecord($filterOutCopiedRecords = FALSE) {
+	public function getNumberFirstAuthors()
+    {
+        return $this->getNumberAuthors("first");
+    }
+
+    private function getNumberAuthors($pos) {
+	    if ($pos == "first") {
+	        $method = "isFirstAuthor";
+        } else if ($pos == "last") {
+	        $method = "isLastAuthor";
+        } else {
+	        throw new \Exception("Invalid position $pos");
+        }
+	    $num = 0;
+	    $type = "Included";
+	    $total = $this->getCount($type);
+	    foreach ($this->getCitations($type) as $citation) {
+	        if ($citation->$method($this->getName())) {
+	            $num++;
+            }
+        }
+	    return $num."/".$total;
+    }
+
+    public function getNumberLastAuthors() {
+        return $this->getNumberAuthors("last");
+    }
+
+    public static function getSelectRecord($filterOutCopiedRecords = FALSE) {
 		global $token, $server;
 
 		$records = Download::recordIds($token, $server);
@@ -183,7 +211,7 @@ class Publications {
 			$i++;
 		}
 		if (!$xml) {
-			throw new Exception("Error: Cannot create object ".$output);
+			throw new \Exception("Error: Cannot create object ".$output);
 		}
 
 		$pubTypes = array();
@@ -819,6 +847,7 @@ class Publications {
 	private $omissions;
 	private $notDone;
 	private $choices;
+	private $names;
 }
 
 class PubmedMatch {

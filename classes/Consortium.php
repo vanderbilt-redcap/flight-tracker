@@ -23,9 +23,15 @@ class Consortium {
 		if ($firstWedTs > $midnightTs) {
 			return $firstWedTs;
 		}
+		if (self::formatLongDate($firstWedTs) == self::formatLongDate($startTime)) {
+			return $firstWedTs;
+		}
 
 		$thirdWedTs = self::findXthWednesdayTs(3, $startTime);
 		if ($thirdWedTs > $midnightTs) {
+			return $thirdWedTs;
+		}
+		if (self::formatLongDate($thirdWedTs) == self::formatLongDate($startTime)) {
 			return $thirdWedTs;
 		}
 

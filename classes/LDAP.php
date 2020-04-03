@@ -156,7 +156,7 @@ class LdapLookup {
 					}       
 				} else if(ldap_error($ldapConn) != "") {
 					echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
-					throw new Exception(ldap_error($ldapConn)." ".$searchFilter);
+					throw new \Exception(ldap_error($ldapConn)." ".$searchFilter);
 				}       
 			}       
 		}
@@ -240,7 +240,7 @@ class LdapLookup {
 			} else {
 				if(ldap_error($ldapConn) != "") {
 					echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
-					throw new Exception(ldap_error($ldapConn));
+					throw new \Exception(ldap_error($ldapConn));
 				}
 			}
 		}
@@ -290,6 +290,7 @@ class LdapLookup {
 			# Bind to LDAP server
 			self::$ldapBinds = array();
 			for ($i = 0; $i < count(self::$ldapConns); $i++) {
+			    # $ldapuser and $ldappass defined in the credentials file, included above
 				self::$ldapBinds[$i] = ldap_bind(self::$ldapConns[$i], "uid=".$ldapuser.",ou=special users,dc=vanderbilt,dc=edu", $ldappass);
 			}
 

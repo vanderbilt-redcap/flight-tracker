@@ -249,7 +249,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 			echo "<h2>Entire Population Averages</h2>";
 		}
 		echo "<table class='centered'>";
-		echo "<tr><th>Average K-To-R Conversian Rate<br>({$options[$_POST['k_type']]})";
+		echo "<tr><th>Average K-To-R Conversion Rate<br>({$options[$_POST['k_type']]})";
 		echo "<ul class='k2r'>";
 		if ($kLength) {
 			echo "<li class='k2r'>Omit anyone with a most-recent CDA less than $kLength years old</li>";

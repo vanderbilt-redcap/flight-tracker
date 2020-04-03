@@ -9,6 +9,7 @@ require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Filter.php");
 require_once(dirname(__FILE__)."/CohortConfig.php");
 require_once(dirname(__FILE__)."/Cohorts.php");
+require_once(dirname(__FILE__)."/Scholar.php");
 
 class Download {
 	public static function indexREDCapData($redcapData) {
@@ -344,7 +345,43 @@ class Download {
 		}
 	}
 
-	private static function oneField($token, $server, $field) {
+	public static function doctorateInstitutions($token, $server, $metadata) {
+        $pid = Application::getPID($token);
+        $scholar = new Scholar($token, $server, $metadata, $pid);
+        $choices = REDCapManagement::getChoices($metadata);
+        $eligibleRegexes = array("/MD/", "/PhD/", "/PharmD/", "/PsyD/", );
+
+        $allInstitutionFields = $scholar->getAllInstitutionFields();
+        $fields = array_unique(array_merge(array("record_id"), array_keys($allInstitutionFields)), array_values($allInstitutionFields));
+        $redcapData = Download::fields($token, $server, $fields);
+
+        $institutions = array();
+        foreach ($redcapData as $row) {
+            foreach ($allInstitutionFields as $institutionField => $degreeField) {
+                if ($row[$institutionField] && $row[$degreeField]) {
+                    $value = $choices[$degreeField][$row[$degreeField]];
+                    foreach ($eligibleRegexes as $regex) {
+                        if (preg_match($regex, $value)) {
+                            if (!isset($institutions[$row['record_id']])) {
+                                $institutions[$row['record_id']] = array();
+                            }
+                            array_push($institutions[$row['record_id']], $row[$institutionField]);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        # clean up
+        foreach ($institutions as $recordId => $institutionList) {
+            $institutions[$recordId] = array_unique($institutionList);
+        }
+
+        return $institutions;
+    }
+
+	public static function oneField($token, $server, $field) {
 		$data = array(
 			'token' => $token,
 			'content' => 'record',
@@ -535,16 +572,5 @@ class Download {
 			}
 		}
 		return false;
-	}
-
-	public static function delete($token, $server, $records) {
-		$data = array(
-			'token' => $token,
-			'action' => 'delete',
-			'content' => 'record',
-			'records' => $records
-		);
-
-		return self::sendToServer($server, $data);
 	}
 }

@@ -6,13 +6,16 @@
 
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__).'/baseWeb.php');
 require_once(dirname(__FILE__).'/../CareerDev.php');
+require_once(dirname(__FILE__).'/../Application.php');
 require_once(dirname(__FILE__).'/../classes/Links.php');
 require_once(dirname(__FILE__).'/../classes/Download.php');
+require_once(dirname(__FILE__).'/../classes/Grants.php');
 require_once(dirname(__FILE__).'/../classes/REDCapManagement.php');
 require_once(dirname(__FILE__).'/../../../redcap_connect.php');
 
@@ -69,10 +72,11 @@ function translateChoices($choiceStr) {
 # gets external k-to-r01 conversion rate
 # currently replaced by a summary field
 function get_converted_k_to_r01($row) {
-	if ($row['summary_first_external_k'] && $row['summary_first_r01']) {
+    $extKLength = Application::getSetting("individual_k_length");
+    if ($row['summary_first_external_k'] && $row['summary_first_r01']) {
 		return 1;
 	} else if ($row['summary_first_external_k']) {
-		if (REDCapManagement::datediff($row['summary_first_external_k'], date('Y-m-d'), "y") <= 5) {
+		if (REDCapManagement::datediff($row['summary_first_external_k'], date('Y-m-d'), "y") <= $extKLength) {
 			return 2;
 		} else {
 			return 3;
@@ -86,10 +90,11 @@ function get_converted_k_to_r01($row) {
 # gets any k-to-r01 conversion rate
 # currently replaced by a summary field
 function get_converted_any_k_to_r01($row) {
-	if ($row['summary_first_any_k'] && $row['summary_first_r01']) {
+    $extKLength = Application::getSetting("individual_k_length");
+    if ($row['summary_first_any_k'] && $row['summary_first_r01']) {
 		return 1;
 	} else if ($row['summary_first_any_k']) {
-		if (REDCapManagement::datediff($row['summary_first_any_k'], date('Y-m-d'), "y") <= 5) {
+		if (REDCapManagement::datediff($row['summary_first_any_k'], date('Y-m-d'), "y") <= $extKLength) {
 			return 2;
 		} else {
 			return 3;
@@ -102,9 +107,11 @@ function get_converted_any_k_to_r01($row) {
 # called dynamically
 # categories for any k conversion rate
 function get_converted_any_k_to_r01_cats() {
-	$ary = array();
+    $extKLength = Application::getSetting("individual_k_length");
+
+    $ary = array();
 	$ary[1] = "Converted Any K to R01-or-Equivalent";
-	$ary[2] = "Has Any K <= 5 Years Old; No R01-or-Equivalent";
+	$ary[2] = "Has Any K <= $extKLength Years Old; No R01-or-Equivalent";
 	$ary[3] = "Has Any K; No R01-or-Equivalent";
 	$ary[4] = "No Any K";
 	return $ary;
@@ -113,19 +120,22 @@ function get_converted_any_k_to_r01_cats() {
 # called dynamically
 # categories for external k conversion rate
 function get_converted_k_to_r01_cats() {
-	$ary = array();
+    $extKLength = Application::getSetting("individual_k_length");
+
+    $ary = array();
 	$ary[1] = "Converted External K to R01-or-Equivalent";
-	$ary[2] = "Has External K <= 5 Years Old; No R01-or-Equivalent";
+	$ary[2] = "Has External K <= $extKLength Years Old; No R01-or-Equivalent";
 	$ary[3] = "Has External K; No R01-or-Equivalent";
 	$ary[4] = "No External K";
 	return $ary;
 }
 
 # get timespan from any k to r01/equivalent
-function get_any_timespan_less_than_five($row) {
+function get_any_timespan_less_than_ext_k_length($row) {
+    $extKLength = Application::getSetting("individual_k_length");
 	if ($row['summary_first_any_k'] && $row['summary_first_r01']) {
 		$val = REDCapManagement::datediff($row['summary_first_any_k'], $row['summary_first_r01'], "y");
-		if ($val > 5) {
+		if ($val > $extKLength) {
 			return 2;  // no
 		} else {
 			return 1;  // yes
@@ -134,7 +144,7 @@ function get_any_timespan_less_than_five($row) {
 		$d = strtotime($row['summary_first_any_k']);
 		$dnow = strtotime('now'); 
 		$span = $dnow - $d;
-		if ($span > 5 * 3600 * 24 * 365) {
+		if ($span > $extKLength * 3600 * 24 * 365) {
 			return 2; // no
 		} else {
 			return 3; // unknown
@@ -145,10 +155,11 @@ function get_any_timespan_less_than_five($row) {
 }
 
 # get timespan from external k to r01/equivalent
-function get_timespan_less_than_five($row) {
+function get_timespan_less_than_ext_k_length($row) {
+    $extKLength = Application::getSetting("individual_k_length");
 	if ($row['summary_first_external_k'] && $row['summary_first_r01']) {
 		$val = REDCapManagement::datediff($row['summary_first_external_k'], $row['summary_first_r01'], "y");
-		if ($val > 5) {
+		if ($val > $extKLength) {
 			return 2;  // no
 		} else {
 			return 1;  // yes
@@ -157,7 +168,7 @@ function get_timespan_less_than_five($row) {
 		$d = strtotime($row['summary_first_external_k']);
 		$dnow = strtotime('now'); 
 		$span = $dnow - $d;
-		if ($span > 5 * 3600 * 24 * 365) {
+		if ($span > $extKLength * 3600 * 24 * 365) {
 			return 2; // no
 		} else {
 			return 3; // unknown
@@ -168,7 +179,7 @@ function get_timespan_less_than_five($row) {
 }
 
 # timespan categories
-function get_any_timespan_less_than_five_cats() {
+function get_any_timespan_less_than_ext_k_length_cats() {
 	$ary = array();
 	$ary[1] = "Yes";
 	$ary[2] = "No";
@@ -177,7 +188,7 @@ function get_any_timespan_less_than_five_cats() {
 }
 
 # timespan categories
-function get_timespan_less_than_five_cats() {
+function get_timespan_less_than_ext_k_length_cats() {
 	$ary = array();
 	$ary[1] = "Yes";
 	$ary[2] = "No";
@@ -277,8 +288,8 @@ function get_any_k_to_r_conversion_rate($data) {
 	$rs = array(5, 6);
 	$diffs = array();
 	$started = array();
-	$ageThreshold = 5;
-	
+	$ageThreshold = Application::getSetting("individual_k_length");
+
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "") {
@@ -503,10 +514,14 @@ function get_total_publications($data) {
 	return \Vanderbilt\FlightTrackerExternalModule\pretty($total);
 }
 
-# if $withinFiveYears == true, counts if have first k within 5 years or first internal k within 3 years
-function get_current_cda($data, $withinFiveYears = true) {
+# if $withinAllottedTime == true, counts if have first k within 5 years or first internal k within 3 years
+function get_current_cda($data, $withinAllottedTime = true) {
+    $intKLength = Application::getSetting("internal_k_length");
+    $k12Length = Application::getSetting("k12_kl2_length");
+    $extKLength = Application::getSetting("individual_k_length");
 	$ks = array(3, 4);
-	$int_ks = array(1, 2);
+    $intK = array(1);
+    $k12 = array(2);
 	$rs = array(5, 6);
 	$today = date("Y-m-d");
 	$people = array();
@@ -529,12 +544,12 @@ function get_current_cda($data, $withinFiveYears = true) {
 				}
 				if (!$first_r) {
 					$first_k = "";
-					for ($i = 1; $i <= 15; $i++) {
+					for ($i = 1; $i <= MAX_GRANTS; $i++) {
 						if (in_array($row['summary_award_type_'.$i], $ks)) {
 							if (!$first_k) {
-								if (!$withinFiveYears) {
+								if (!$withinAllottedTime) {
 									$qualified = true;
-								} else if (REDCapManagement::datediff($row['summary_award_date_'.$i], $today, "y") <= 5) {
+								} else if (REDCapManagement::datediff($row['summary_award_date_'.$i], $today, "y") <= $extKLength) {
 									$qualified = true;
 								}
 								$first_k = $row['summary_award_date_'.$i];
@@ -544,16 +559,21 @@ function get_current_cda($data, $withinFiveYears = true) {
 					if (!$first_k) {
 						$first_int_k = "";
 						for ($i = 1; $i <= 15; $i++) {
-							if (in_array($row['summary_award_type_'.$i], $int_ks)) {
-								if (!$first_int_k) {
-									if (!$withinFiveYears) {
-										$qualified = true;
-									} else if (REDCapManagement::datediff($row['summary_award_date_'.$i], $today, "y") <= 3) {
-										$qualified = true;
-									}
-									$first_int_k = $row['summary_award_date_'.$i];
-								}
-							}
+                            if (in_array($row['summary_award_type_'.$i], $intK)) {
+                                $kLength = $intKLength;
+                            } else if (in_array($row['summary_award_type_'.$i], $k12)) {
+                                $kLength = $k12Length;
+                            }
+                            if (in_array($row['summary_award_type_'.$i], array_merge($intK, $k12))) {
+                                if (!$first_int_k) {
+                                    if (!$withinAllottedTime) {
+                                        $qualified = true;
+                                    } else if (REDCapManagement::datediff($row['summary_award_date_' . $i], $today, "y") <= $kLength) {
+                                        $qualified = true;
+                                    }
+                                    $first_int_k = $row['summary_award_date_' . $i];
+                                }
+                            }
 						}
 					}
 				}
@@ -566,15 +586,16 @@ function get_current_cda($data, $withinFiveYears = true) {
 	return count($qualifiers)." (".(floor(count($qualifiers) / count($people) * 1000) / 10)."%)";
 }
 
+$extKLength = Application::getSetting("individual_k_length");
 
-$tableRows = array("summary_degrees", "summary_gender", "summary_race_ethnicity", "summary_primary_dept", "summary_award_type_1","summary_ever_external_k_to_r01_equiv", "summary_ever_first_any_k_to_r01_equiv", "summary_ever_last_external_k_to_r01_equiv", "summary_ever_last_any_k_to_r01_equiv", "summary_ever_internal_k","summary_ever_individual_k_or_equiv","summary_ever_k12_kl2","summary_ever_r01_or_equiv");
+$tableRows = array("summary_degrees", "summary_gender", "summary_race_ethnicity", "summary_primary_dept", "summary_award_type_1","summary_ever_external_k_to_r01_equiv", "summary_ever_first_any_k_to_r01_equiv", "summary_ever_last_external_k_to_r01_equiv", "summary_ever_last_any_k_to_r01_equiv", "summary_ever_internal_k","summary_ever_individual_k_or_equiv","summary_ever_k12_kl2","summary_ever_r01_or_equiv","summary_disability","summary_disadvantaged","summary_urm");
 $summaries = array(
 	"Average Age" => array("get_average_age", $nameForAll),
 	"Average Age at First CDA" => array("get_average_age_at_first_cda", $nameForAll),
 	"Average Age at First R" => array("get_average_age_at_first_r", $nameForAll),
-	"Any-K-to-R Conversion Rate<br>(omit within 5 years)" => array("get_any_k_to_r_conversion_rate", "All with Any K"),
+	"Any-K-to-R Conversion Rate<br>(omit within $extKLength years)" => array("get_any_k_to_r_conversion_rate", "All with Any K"),
 	"Any-K-to-R Conversion Average" => array("get_any_k_to_r_conversion_average", "All who Converted"),
-	"External-K-to-R Conversion Rate<br>(omit within 5 years)" => array("get_external_k_to_r_conversion_rate", "All with External K"),
+	"External-K-to-R Conversion Rate<br>(omit within $extKLength years)" => array("get_external_k_to_r_conversion_rate", "All with External K"),
 	"External-K-to-R Conversion Average" => array("get_external_k_to_r_conversion_average", "All who Converted"),
 	"Ever Internal K" => array("get_internal_k", $nameForAll),
 	"Ever Individual K or Equivalent" => array("get_individual_k_or_equiv", $nameForAll),
@@ -676,7 +697,7 @@ function getDegreeFields($metadata) {
 }
 
 function makeLink($row) {
-	global $pid, $metadata;
+	global $pid, $metadata, $event_id;
 	$recordId = $row['record_id'];
 	$name = $row['identifier_first_name']." ".$row['identifier_last_name'];
 
@@ -716,8 +737,7 @@ function makeLink($row) {
 	if (!$age) {
 		$age = "<span style='color: red;'>N/A</span>";
 	}
-	$eventIds = array(66635 => 155946, 68465 => 159386);
-	return Links::makeSummaryLink($pid, $recordId, $eventIds[$pid], "Record $recordId: $name")." <span style='font-size: 12px;'>Age at first CDA: $age</span>";
+	return Links::makeSummaryLink($pid, $recordId, $event_id, "Record $recordId: $name")." <span style='font-size: 12px;'>Age at first CDA: $age</span>";
 }
 
 $noDate = array();
@@ -793,16 +813,17 @@ foreach($redcapData as $recordId => $rows) {
 
 # get label for the table
 function getLabel($field, $metadata) {
-	foreach ($metadata as $row) {
+    $extKLength = Application::getSetting("individual_k_length");
+    foreach ($metadata as $row) {
 		if ($row['field_name'] == $field) {
 			return $row['field_label'];
 		}
 	}
-	if ($field == "timespan_less_than_five") {
-		return "External K to R01 < 5 Years";
+	if ($field == "timespan_less_than_ext_k_length") {
+		return "External K to R01 < $extKLength Years";
 	}
-	if ($field == "any_timespan_less_than_five") {
-		return "Any K to R01 < 5 Years";
+	if ($field == "any_timespan_less_than_ext_k_length") {
+		return "Any K to R01 < $extKLength Years";
 	}
 	if ($field == "converted_k_to_r01") {
 		return "Ever Converted External K to Any R01";
@@ -876,13 +897,11 @@ th.top { font-size: 18px; width: 60px; background-color: #c1e7f9; }
 th.left { font-size: 18px; width: 510px; }
 .total { background-color: #dddddd; }
 .subheader { font-size: 18px; background-color: #bbbbbb; }
-th.total { font-size: 18px; background-color: #bbbbbbb; }
-th.summary { background-color: #c1e7f9; }
+th.total { font-size: 18px; background-color: #bbbbbb; }
 td.pool { padding-left: 8px; padding-right: 8px; background-color:#eeeeee; text-align: center;  font-size: 14px; }
 tr:hover td { background-color:#aaaaaa; }
 tr:hover th { background-color:#aaaaaa; }
 tr.fixed { position: fixed; top: 0px; }
-.red { color: red; text-align: center; }
 .black { color: black; text-align: center; }
 </style>
 <?php
@@ -965,7 +984,7 @@ foreach ($tableData as $tableRow => $ary) {
 	}
 }
 foreach ($headerInfo as $tableRow => $ary) {
-	if (($tableRow == "timespan_less_than_five") || ($tableRow == "any_timespan_less_than_five")) {
+	if (($tableRow == "timespan_less_than_ext_k_length") || ($tableRow == "any_timespan_less_than_ext_k_length")) {
 		ksort($headerInfo[$tableRow]);
 	} else {
 		asort($headerInfo[$tableRow]);

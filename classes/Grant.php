@@ -804,7 +804,7 @@ class Grant {
 		} else if (preg_match("/^[A-Z][A-Z\d]\d/", $awardNo)) {
 			return substr($awardNo, 0, 3);
 		} else {
-			$baseAwardNumber = self::translateToBaseAwardNumber($awardNo);
+			$baseAwardNo = self::translateToBaseAwardNumber($awardNo);
 			if (preg_match("/^[A-Z][A-Z\d]\d/", $baseAwardNo)) {
 				return substr($baseAwardNo, 0, 3);
 			}
@@ -818,7 +818,7 @@ class Grant {
 		} else if (preg_match("/^[A-Z][A-Z\d]\d/", $awardNo)) {
 			return substr($awardNo, 3, 2);
 		} else {
-			$baseAwardNumber = self::translateToBaseAwardNumber($awardNo);
+			$baseAwardNo = self::translateToBaseAwardNumber($awardNo);
 			if (preg_match("/^[A-Z][A-Z\d]\d/", $baseAwardNo)) {
 				return substr($baseAwardNo, 3, 2);
 			}
@@ -921,7 +921,7 @@ class Grant {
 		} else if (preg_match("/^[A-Z][A-Z\d]\d/", $awardNo)) {
 			return substr($awardNo, 5, 6);
 		} else {
-			$baseAwardNumber = self::translateToBaseAwardNumber($awardNo);
+			$baseAwardNo = self::translateToBaseAwardNumber($awardNo);
 			if (preg_match("/^[A-Z][A-Z\d]\d/", $baseAwardNo)) {
 				return substr($baseAwardNo, 5, 6);
 			}

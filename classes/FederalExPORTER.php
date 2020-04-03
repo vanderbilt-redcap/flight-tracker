@@ -33,7 +33,6 @@ class FederalExPORTER {
 
 	public function showR01DataSince($date, $names) {
 		self::filterForActivityCodeSinceDateOrR01EquivalentAtVUMC("/\dR01/", $date);
-		// self::grabAllGrantsForPIs();
 		self::filterOut("/R56/", "PROJECT_NUMBER");
 		self::filterOutNames($names);
 		self::printPIs();
@@ -186,40 +185,6 @@ class FederalExPORTER {
 			}
 		}
 		return $outData;
-	}
-
-	public static function grabAllGrantsForPIs() {
-		$files = self::getDataSince2008();
-		$pis = array();
-		$cols = array("CONTACT_PI_PROJECT_LEADER", "OTHER_PIS");
-		$fp = fopen(DATA_DIRECTORY."/".INTERMEDIATE_1_FED, "r");
-		$headers = fgetcsv($fp);
-		while ($line = fgetcsv($fp)) {
-			for ($i = 0; $i < count($line); $i++) {
-				if (in_array($headers[$i], $cols)) {
-					$ids = preg_split("/; /", $line[$i]);
-					foreach ($ids as $id) {
-						if ($id && !in_array($id, $pis)) {
-							array_push($pis, $id);
-						}
-					}
-				}
-			}
-		}
-		fclose($fp);
-		
-		$fp = fopen(DATA_DIRECTORY."/".INTERMEDIATE_2_FED, "w");
-		fputcsv($fp, $headers);
-		foreach ($files as $file => $fiscalYear) {
-			if ($fiscalYear >= $tsYear - 1) {
-				$fileData = self::parseFile($file);
-				$filtered = self::filterForPIs($fileData, $pis);
-				unset($fileData);
-				self::writeData($filtered, $headers, $fp);
-				unset($filtered);
-			}
-		}
-		fclose($fp);
 	}
 
 	public static function filterForActivityCodeSinceDateOrR01EquivalentAtVUMC($regexActivityCode, $date) {
@@ -421,11 +386,11 @@ class FederalExPORTER {
 		$fp = fopen($file, "r");
 		Application::log("Parsing ".$file);
 		$lineCount = 0;
-		while ($str = fgets($fp)) {
+        $headers = array();
+        while ($str = fgets($fp)) {
 			$str = str_replace('\\","', '","', $str);
 			$line = str_getcsv($str);
 			if ($lineCount == 0) {
-				$headers = array();
 				$i = 0;
 				foreach ($line as $item) {
 					$item = trim($item);

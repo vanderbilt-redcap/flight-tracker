@@ -131,7 +131,7 @@ function makeSummary($token, $server, $pid, $selectRecord = "", $allRecordRows =
 		$errors = array_merge($errors, $myErrors);
 
 		if (!empty($errors)) {
-			throw new Exception("Errors in record $recordId!\n".implode("\n", $errors));
+			throw new \Exception("Errors in record $recordId!\n".implode("\n", $errors));
 		}
 	}
 

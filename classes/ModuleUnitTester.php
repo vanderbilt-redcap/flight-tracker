@@ -148,7 +148,7 @@ class ModuleUnitTester
 
 	public function getFailures() {
 		$badResults = array();
-		foreach ($testResults as $method => $ary) {
+		foreach ($this->testResults as $method => $ary) {
 			foreach ($ary['results'] as $result) {
 				if (preg_match("/FALSE/", $result)) {
 					if (!isset($badResults[$method])) {
@@ -221,51 +221,6 @@ class ModuleUnitTester
 				$this->currResults = array();
 			}
 		}
-	}
-
-	private function test_1() {
-		$pid = $this->pid;
-		if ($pid) {
-			$sql = "SELECT DISTINCT table_name FROM information_schema.tables WHERE table_schema='".db_real_escape_string($db)."'";
-			$tablesQ = db_query($sql);
-
-			$tables = array();
-			while ($row = db_fetch_assoc($tablesQ)) {
-				$tables[] = $row['table_name'];
-			}
-
-			$moduleId = "-1";
-			$prefix = "module_tester";
-			$key = "previousTables"; 
-
-			// GET PREVIOUS TABLES FROM MODULE/PROJECT
-			$sql = "SELECT external_module_id FROM redcap_external_modules WHERE directory_prefix = '".db_real_escape_string($prefix)."' LIMIT 1";
-			$idQ = db_query($sql);
-			if ($row = db_fetch_assoc($idQ)) {
-				$moduleId = $row['external_module_id'];
-			}
-
-			$sql = "SELECT value FROM redcap_external_module_settings WHERE external_module_id = '".db_real_escape_string($moduleId)."' AND project_id = ".db_real_escape_string($pid)." AND `key` = '".db_real_escape_string($key)."' LIMIT 1";
-			$q = db_query($sql);
-			$priorTables = NULL;
-			if ($row = db_fetch_assoc($q)) {
-				$priorTables = json_decode($row['value']);
-			}
-			
-			if ($priorTables) {
-				foreach($tables as $table) {
-					assertIn($table, $priorTables);
-				}
-			}
-			$priorTables = $tables;
-	
-			// SAVE INTO MODULE/PROJECT
-			$sql = "REPLACE INTO redcap_external_module_settings(external_module_id, project_id, `key`, `type`, value) VALUES('".db_real_escape_string($moduleId)."', '".db_real_escape_string($pid)."', '".db_real_escape_string($key)."', 'json-array', '".json_encode($priorTables)."'";
-			db_query($sql);
-		}
-	}
-	private function test_1_descript() {
-		return "Tells whether the REDCap tables has changed from the last time this module was run.";
 	}
 
 	private function test_2() {
@@ -437,36 +392,6 @@ class ModuleUnitTester
 	}
 	private function test_8_descript() {
 		return "Tells whether redcap_edocs_metadata matches with a real file in the filesystem";
-	}
-
-	private function test_9() {
-		$pid = $this->pid;
-		if ($pid) {
-			$sql = "SELECT DISTINCT f.form_name AS form_name FROM redcap_events_forms AS f INNER JOIN redcap_events_metadata AS m ON f.event_id = m.event_id INNER JOIN redcap_events_arms AS a ON a.arm_id = m.arm_id WHERE a.project_id = ".db_real_escape_string($pid); 
-			$formsQ = db_query($sql);
-
-			$sql = "SELECT DISTINCT form_name FROM redcap_metadata WHERE project_id = ".db_real_escape_string($pid);
-			$metadataQ = db_query($sql);
-
-			$forms = array();
-			while ($row = db_fetch_assoc($formsQ)) {
-				$forms[] = $row['form_name'];
-			}
-			$metadataForms = array();
-			while ($row = db_fetch_assoc($metadataQ)) {
-				$metadataForms[] = $row['form_name'];
-			}
-
-			foreach ($forms as $form) {
-				assertIn($form, $metadataForms);
-			}
-			foreach ($metadata as $form) {
-				assertIn($form, $forms);
-			}
-		}
-	}
-	private function test_9_descript() {
-		return "Tells whether redcap_event_forms matches with redcap_metadata";
 	}
 }
 

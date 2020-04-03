@@ -4,6 +4,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
+require_once(dirname(__FILE__)."/Upload.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 # for datediff
@@ -27,26 +28,31 @@ class REDCapManagement {
 		}
 		$choices = array();
 		foreach ($choicesStrs as $fieldName => $choicesStr) {
-			$choicePairs = preg_split("/\s*\|\s*/", $choicesStr);
-			$choices[$fieldName] = array();
-			foreach ($choicePairs as $pair) {
-				$a = preg_split("/\s*,\s*/", $pair);
-				if (count($a) == 2) {
-					$choices[$fieldName][$a[0]] = $a[1];
-				} else if (count($a) > 2) {
-					$a = preg_split("/,/", $pair);
-					$b = array();
-					for ($i = 1; $i < count($a); $i++) {
-						$b[] = $a[$i];
-					}
-					$choices[$fieldName][trim($a[0])] = implode(",", $b);
-				}
-			}
+		    $choices[$fieldName] = self::getRowChoices($choicesStr);
 		}
 		return $choices;
 	}
 
-	public static function getRepeatingForms($pid) {
+	public static function getRowChoices($choicesStr) {
+        $choicePairs = preg_split("/\s*\|\s*/", $choicesStr);
+        $choices = array();
+        foreach ($choicePairs as $pair) {
+            $a = preg_split("/\s*,\s*/", $pair);
+            if (count($a) == 2) {
+                $choices[$a[0]] = $a[1];
+            } else if (count($a) > 2) {
+                $a = preg_split("/,/", $pair);
+                $b = array();
+                for ($i = 1; $i < count($a); $i++) {
+                    $b[] = $a[$i];
+                }
+                $choices[trim($a[0])] = implode(",", $b);
+            }
+        }
+        return $choices;
+    }
+
+        public static function getRepeatingForms($pid) {
 		if (!function_exists("db_query")) {
 			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 		}
@@ -128,7 +134,7 @@ class REDCapManagement {
 	# if present, $fields contains the fields to copy over; if left as an empty array, then it attempts to install all fields
 	# $deletionRegEx contains the regular expression that marks fields for deletion
 	# places new metadata rows AFTER last match from $existingMetadata
-	public static function mergeMetadata($existingMetadata, $newMetadata, $fields = array(), $deletionRegEx = "/___delete$/") {
+	public static function mergeMetadataAndUpload($existingMetadata, $newMetadata, $token, $server, $fields = array(), $deletionRegEx = "/___delete$/") {
 		$fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx, TRUE);
 
 		if (empty($fields)) {
@@ -137,6 +143,7 @@ class REDCapManagement {
 			$selectedRows = self::getRowsForFieldsFromMetadata($fields, $newMetadata);
 		}
 		$newChoices = self::getChoices($newMetadata);
+		$upload = array();
 		foreach ($selectedRows as $newRow) {
 			if (!in_array($newRow['field_name'], $fieldsToDelete)) {
 				$priorRowField = "record_id";
@@ -156,10 +163,10 @@ class REDCapManagement {
 						}
 					}
 					if (($priorRowField == $row['field_name']) && !preg_match($deletionRegEx, $newRow['field_name'])) {
-					    $newRow = self::copyMetadataSettingsForField($newRow, $newMetadata);
+					    $newRow = self::copyMetadataSettingsForField($newRow, $newMetadata, $upload, $token, $server);
 
 						# delete already existing rows with same field_name
-						$tempMetadata = self::deleteRowsWithFieldName($tempMetadata, $newRow['field_name']);
+						self::deleteRowsWithFieldName($tempMetadata, $newRow['field_name']);
 						array_push($tempMetadata, $newRow);
 						$priorNewRowField = $newRow['field_name'];
 					}
@@ -167,17 +174,22 @@ class REDCapManagement {
 				$existingMetadata = $tempMetadata;
 			}
 		}
-		return $existingMetadata;
+        $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
+        if (!empty($upload)) {
+            $feedback = Upload::rows($upload, $token, $server);
+            Application::log("Uploaded ".count($upload)." data rows after merge: ".json_encode($feedback));
+        }
+        return $metadataFeedback;
 	}
 
-	private static function deleteRowsWithFieldName($metadata, $fieldName) {
+	private static function deleteRowsWithFieldName(&$metadata, $fieldName) {
 		$newMetadata = array();
 		foreach ($metadata as $row) {
 			if ($row['field_name'] != $fieldName) {
 				array_push($newMetadata, $row);
 			}
 		}
-		return $newMetadata;
+		$metadata = $newMetadata;
 	}
 
 	private static function isJSON($str) {
@@ -185,12 +197,50 @@ class REDCapManagement {
 	    return (json_last_error() == JSON_ERROR_NONE);
     }
 
-    public static function copyMetadataSettingsForField($row, $metadata) {
+    public static function copyMetadataSettingsForField($row, $metadata, &$upload, $token, $server) {
         foreach ($metadata as $metadataRow) {
             if ($metadataRow['field_name'] == $row['field_name']) {
                 # do not overwrite any settings in associative arrays
                 foreach (self::getMetadataFieldsToScreen() as $rowSetting) {
-                    if ($row[$rowSetting] != $metadataRow[$rowSetting]) {
+                    if ($rowSetting == "select_choices_or_calculations") {
+                        // merge
+                        $rowChoices = self::getRowChoices($row[$rowSetting]);
+                        $metadataChoices = self::getRowChoices($metadataRow[$rowSetting]);
+                        $mergedChoices = $rowChoices;
+                        foreach ($metadataChoices as $idx => $label) {
+                            if (!isset($mergedChoices[$idx])) {
+                                $mergedChoices[$idx] = $label;
+                            } else if (isset($mergedChoices[$idx]) && ($mergedChoices[$idx] == $label)) {
+                                # both have same idx/label - no big deal
+                            } else {
+                                # merge conflict => reassign all data values
+                                $field = $row['field_name'];
+                                $oldIdx = $idx;
+                                $newIdx = max(array_keys($mergedChoices)) + 1;
+                                Application::log("Merge conflict for field $field: Moving $oldIdx to $newIdx ($label)");
+
+                                $mergedChoices[$newIdx] = $label;
+                                $values = Download::oneField($token, $server, $field);
+                                $newRows = 0;
+                                foreach ($values as $recordId => $value) {
+                                    if ($value == $oldIdx) {
+                                        if (isset($upload[$recordId])) {
+                                            $upload[$recordId][$field] = $newIdx;
+                                        } else {
+                                            $upload[$recordId] = array("record_id" => $recordId, $field => $newIdx);
+                                        }
+                                        $newRows++;
+                                    }
+                                }
+                                Application::log("Uploading data $newRows rows for field $field");
+                            }
+                        }
+                        $pairedChoices = array();
+                        foreach ($mergedChoices as $idx => $label) {
+                            array_push($pairedChoices, "$idx, $label");
+                        }
+                        $row[$rowSetting] = implode(" | ", $pairedChoices);
+                    } else if ($row[$rowSetting] != $metadataRow[$rowSetting]) {
                         if (!self::isJSON($row[$rowSetting]) || ($rowSetting != "field_annotation")) {
                             $row[$rowSetting] = $metadataRow[$rowSetting];
                         }
@@ -199,6 +249,7 @@ class REDCapManagement {
                 break;
             }
         }
+        return $row;
     }
 
 	public static function YMD2MDY($ymd) {

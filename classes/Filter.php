@@ -327,6 +327,11 @@ class Filter {
 				"summary_dob" => "Date of Birth",
 				"summary_degrees" => "Academic Degrees",
 				"summary_citizenship" => "Citizenship",
+				"summary_urm" => "Under-Represented Minority Status",
+				"summary_disability" => "Disability Status",
+				"summary_disadvantaged" => "Disadvantaged Status",
+				"summary_training_start" => "Start of Training Program",
+				"summary_training_end" => "End of Training Program",
 				// "calc_institution" => "Institution",
 				"summary_current_rank" => "Current Academic Rank",
 				"calc_employment" => "Employment Status",
@@ -370,6 +375,15 @@ class Filter {
 	public function getChoices($var) {
 		if (isset($this->choices[$var])) {
 			return $this->choices[$var];
+		}
+		foreach ($this->metadata as $row) {
+			if ($row['field_name'] == $var) {
+				if ($row['field_type'] == "yesno") {
+					return array("0" => "No", "1" => "Yes");
+				} else if ($row['field_type'] == "truefalse") {
+					return array("0" => "False", "1" => "True");
+				}
+			}
 		}
 		return array();
 	}

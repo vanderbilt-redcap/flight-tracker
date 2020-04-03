@@ -1006,7 +1006,7 @@ class EmailManager {
 	}
 
 	public static function findRecordCreateDate($pid, $record) {
-		$logEventTable = method_exists('\REDCap', 'getLogEventTable') ? \REDCap::getLogEventTable($project_id) : "redcap_log_event";
+		$logEventTable = method_exists('\REDCap', 'getLogEventTable') ? \REDCap::getLogEventTable(pid) : "redcap_log_event";
 		if (!function_exists("db_query")) {
 			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 		}

@@ -17,8 +17,10 @@ class CronManager {
 			$this->crons[$day] = array();
 		}
 
-		$this->adminEmail = Application::getSetting("admin_email");
-		$this->sendErrorLogs = Application::getSetting("send_error_logs");
+        $this->adminEmail = Application::getSetting("admin_email");
+        $this->sendErrorLogs = Application::getSetting("send_error_logs");
+        self::$lastAdminEmail = Application::getSetting("admin_email");
+        self::$lastSendErrorLogs = Application::getSetting("send_error_logs");
 	}
 
 	# file is relative to career_dev's root
@@ -27,12 +29,12 @@ class CronManager {
 		$possibleDays = self::getDaysOfWeek();
 		$dateTs = strtotime($dayOfWeek);
 		if (!in_array($dayOfWeek, $possibleDays) && !$dateTs) {
-			throw new Exception("The dayOfWeek ($dayOfWeek) must be a string - 'Monday', 'Tuesday', 'Wednesday', etc. or a date (Y-M-D)");
+			throw new \Exception("The dayOfWeek ($dayOfWeek) must be a string - 'Monday', 'Tuesday', 'Wednesday', etc. or a date (Y-M-D)");
 		}
 
 		$absFile = dirname(__FILE__)."/../".$file;
 		if (!file_exists($absFile)) {
-			throw new Exception("File $absFile does not exist!");
+			throw new \Exception("File $absFile does not exist!");
 		}
 
 		$cronjob = new CronJob($absFile, $method);
@@ -73,8 +75,8 @@ class CronManager {
 		error_log("reportCronErrors");
 		# no DB access
 		if ($module = Application::getModule()) {
-			$adminEmail = $this->adminEmail;
-			$sendErrorLogs = $this->sendErrorLogs;
+			$adminEmail = self::$lastAdminEmail;
+			$sendErrorLogs = self::$lastSendErrorLogs;
 			$error = error_get_last();
 
 			$message = "Your cron job failed with the following error message:<br>";
@@ -121,22 +123,10 @@ class CronManager {
 				}
 				$cronjob->run($this->token, $this->server, $this->pid);
 				$run[$cronjob->getTitle()] = array("text" => "Succeeded", "ts" => self::getTimestamp());
+			} catch(\Throwable $e) {
+				$this->handle($e, $adminEmail, $cronjob);
 			} catch(\Exception $e) {
-				Application::log("Exception ".json_encode($e));
-				if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
-					require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-				}
-				if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
-					throw new \Exception("Could not instantiate REDCap class!");
-				}
-
-				$sendErrorLogs = Application::getSetting("send_error_logs");
-				if ($sendErrorLogs) {
-					$adminEmail .= ",".Application::getFeedbackEmail();
-				}
-
-				\REDCap::email($adminEmail, "noreply@vumc.org", PROGRAM_NAME." Cron Error", $cronjob->getTitle()."<br><br>".$e->getMessage()."<br>".json_encode($e->getTrace()));
-				Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".json_encode($e->getTrace()));
+				$this->handle($e, $adminEmail, $cronjob);
 			}
 		}
 		if (count($toRun) > 0) {
@@ -157,12 +147,32 @@ class CronManager {
 		}
 	}
 
+	public function handle($e, $adminEmail, $cronjob) {
+		Application::log("Exception ".json_encode($e));
+		if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
+			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+		}
+		if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
+			throw new \Exception("Could not instantiate REDCap class!");
+		}
+
+		$sendErrorLogs = Application::getSetting("send_error_logs");
+		if ($sendErrorLogs) {
+			$adminEmail .= ",".Application::getFeedbackEmail();
+		}
+
+		\REDCap::email($adminEmail, "noreply@vumc.org", PROGRAM_NAME." Cron Error", $cronjob->getTitle()."<br><br>".$e->getMessage()."<br>".json_encode($e->getTrace()));
+		Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".json_encode($e->getTrace()));
+	}
+
 	private $token;
 	private $server;
 	private $pid;
 	private $crons;
 	private $adminEmail;
 	private $sendErrorLogs;
+	private static $lastAdminEmail;
+	private static $lastSendErrorLogs;
 }
 
 class CronJob {
@@ -183,8 +193,8 @@ class CronJob {
 		ini_set('display_errors', 1);
 		require_once($this->file);
 		if ($this->method) {
+            $method = $this->method;
 			if ($passedToken && $passedServer && $passedPid) {
-				$method = $this->method;
 				$method($passedToken, $passedServer, $passedPid);
 			} else {
 				throw new \Exception("In cronjob while executing $method, could not find token '$passedToken' and/or server '$passedServer' and/or pid '$passedPid'");

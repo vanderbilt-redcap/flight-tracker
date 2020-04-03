@@ -87,7 +87,7 @@ if ($_POST['process'] == "check") {
 		}
 	}
 } else if ($_POST['process'] == "install") {
-	$fields = $_POST['fields'];
+	$postedFields = $_POST['fields'];
 	$fp = fopen($filename, "r");
 	$json = "";
 	while ($line = fgets($fp)) {
@@ -99,25 +99,32 @@ if ($_POST['process'] == "check") {
 	$metadata['file'] = json_decode($json, TRUE);
 	$metadata['REDCap'] = Download::metadata($token, $server);
 	if ($metadata['file']) {
-		$metadata['merged'] = REDCapManagement::mergeMetadata($metadata['REDCap'], $metadata['file'], $fields, $deletionRegEx);
+        if ($grantClass == "K") {
+            $mentorLabel = "Primary mentor during your K/K12 training period";
+        } else if ($grantClass == "T") {
+            $mentorLabel = "Primary mentor during your pre-doc/post-doc training period";
+        } else {
+            $mentorLabel = "Primary mentor (current)";
+        }
+        $fieldLabels = array();
+        foreach ($metadata as $type => $md) {
+            $fieldLabels[$type] = REDCapManagement::getLabels($md);
+        }
+        $fieldsForMentorLabel = array("check_primary_mentor", "followup_primary_mentor", );
+        foreach ($fieldsForMentorLabel as $field) {
+            $metadata['file'] = changeFieldLabel($field, $mentorLabel, $metadata['file']);
+            if ($fieldLabels['file'][$field] != $fieldLabels['REDCap'][$field]) {
+                array_push($postedFields, $field);
+            }
+        }
 
-		if ($grantClass == "K") {
-			$mentorLabel = "Primary mentor during your K/K12 training period";
-		} else if ($grantClass == "T") {
-			$mentorLabel = "Primary mentor during your pre-doc/post-doc training period";
-		} else {
-			$mentorLabel = "Primary mentor (current)";
-		}
-		$metadata['merged'] = changeFieldLabel("check_primary_mentor", $mentorLabel, $metadata['merged']);
-		$metadata['merged'] = changeFieldLabel("followup_primary_mentor", $mentorLabel, $metadata['merged']);
-
-		try {
-			$feedback = Upload::metadata($metadata['merged'], $token, $server);
-			echo json_encode($feedback);
-		} catch (\Exception $e) {
-			$feedback = array("Exception" => $e->getMessage());
-			echo json_encode($feedback);
-		}
+        try {
+		    $feedback = REDCapManagement::mergeMetadataAndUpload($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
+            echo json_encode($feedback);
+        } catch (\Exception $e) {
+            $feedback = array("Exception" => $e->getMessage());
+            echo json_encode($feedback);
+        }
 	}
 }
 

@@ -267,7 +267,7 @@ class FlightTrackerTester {
 		$tester->assertEqual(count($upload), count($data));
 		$tester->tag("proper matched names existing record ".json_encode($upload));
 		$tester->assertLessThan($upload[0]["record_id"], $maxRecordId + 1);
-		list($recordId, $errors) = Upload::getRecordIdForCSVLine($headers, $data[0]);
+		list($recordId, $errors) = Upload::getRecordIdForCSVLine($headers, $data[0], 0, $this->token, $this->server);
 		$tester->tag("proper matched names existing record: record_id's equal");
 		$tester->assertEqual($upload[0]["record_id"], $recordId);
 		$tester->tag("proper matched names existing record: matched");

@@ -102,7 +102,7 @@ if ($hasType && isset($_POST['begin']) && ($_POST['begin'] != "")) {
 		}
 
 		echo "<tr class='$rowClass'>";
-		echo "<td>".Links::makeSummaryLink($_GET['pid'], $row['record_id'], $event_ids[$_GET['pid']], $row['identifier_first_name']." ".$row['identifier_last_name'])."</td>";
+		echo "<td>".Links::makeSummaryLink($_GET['pid'], $row['record_id'], $event_id, $row['identifier_first_name']." ".$row['identifier_last_name'])."</td>";
 		echo "<td>".$row['summary_award_sponsorno_'.$i]."</td>";
 		echo "<td style='padding-right: 10px;'>Start: ".$row['summary_award_date_'.$i]."</td>";
 		if ($row['summary_award_end_date_'.$i]) {

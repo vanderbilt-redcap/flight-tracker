@@ -118,7 +118,8 @@ class Scholar {
 			$result = new Result($row['identifier_orcid'], "", "", "", $this->pid);
 		} else {
 			$vars = self::getDefaultOrder("identifier_orcid");
-			error_log("getORCIDResult looking through ".json_encode($vars));
+            $vars = $this->getOrder($vars, "identifier_orcid");
+            error_log("getORCIDResult looking through ".json_encode($vars));
 			$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 		}
 		$value = $result->getValue();
@@ -357,8 +358,25 @@ class Scholar {
 		$this->downloadAndSetup($record);
 	}
 
+	private static function isValidValue($metadataFields, $choices, $field, $value) {
+		if (in_array($field, $metadataFields)) {
+			if (isset($choices[$field])) {
+				if (isset($choices[$field][$value])) {
+					return TRUE;
+				} else {
+					return FALSE;
+				}
+			} else {
+				return TRUE;
+			}
+		} else {
+			return FALSE;
+		}
+	}
+
 	public function makeUploadRow() {
 		$metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
+		$choices = self::getChoices($this->metadata);
 		$uploadRow = array(
 					"record_id" => $this->recordId,
 					"redcap_repeat_instrument" => "",
@@ -366,24 +384,24 @@ class Scholar {
 					"summary_last_calculated" => date("Y-m-d H:i"),
 					);
 		foreach ($this->name as $var => $value) {
-			if (in_array($var, $metadataFields)) {
+			if (self::isValidValue($metadataFields, $choices, $var, $value)) {
 				$uploadRow[$var] = $value;
 			}
 		}
 		foreach ($this->demographics as $var => $value) {
-			if (in_array($var, $metadataFields)) {
+			if (self::isValidValue($metadataFields, $choices, $var, $value)) {
 				$uploadRow[$var] = $value;
 			}
 		}
 		foreach ($this->metaVariables as $var => $value) {
-			if (in_array($var, $metadataFields)) {
+			if (self::isValidValue($metadataFields, $choices, $var, $value)) {
 				$uploadRow[$var] = $value;
 			}
 		}
 
 		$grantUpload = $this->grants->makeUploadRow();
 		foreach ($grantUpload as $var => $value) {
-			if (!isset($uploadRow[$var]) && in_array($var, $metadataFields)) {
+			if (!isset($uploadRow[$var]) && self::isValidValue($metadataFields, $choices, $var, $value)) {
 				$uploadRow[$var] = $value;
 			}
 		}
@@ -870,7 +888,8 @@ class Scholar {
 		$orders = array();
 		$orders["summary_degrees"] = array(
 							array("override_degrees" => "manual"),
-							array("followup_degree" => "followup"),
+                            array("followup_degree" => "followup"),
+                            array("imported_degree" => "manual"),
 							array("check_degree1" => "scholars", "check_degree2" => "scholars", "check_degree3" => "scholars", "check_degree4" => "scholars", "check_degree5" => "scholars"),
 							array("vfrs_graduate_degree" => "vfrs", "vfrs_degree2" => "vfrs", "vfrs_degree3" => "vfrs", "vfrs_degree4" => "vfrs", "vfrs_degree5" => "vfrs", "vfrs_please_select_your_degree" => "vfrs"),
 							array("newman_new_degree1" => "new2017", "newman_new_degree2" => "new2017", "newman_new_degree3" => "new2017"),
@@ -1027,6 +1046,50 @@ class Scholar {
 		}
 		return array();
 	}
+
+	# returns associative array with key institution-field => degree-field
+    # bachelor's degree not included
+	public function getAllInstitutionFields() {
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
+	    $fields = array();
+
+	    for ($i = 0; $i <= 5; $i++) {
+	        $institutionField = "check_degree".$i."_institution";
+	        $degreeField = "check_degree".$i;
+	        if (in_array($institutionField, $metadataFields) && in_array($degreeField, $metadataFields)) {
+	            $fields[$institutionField] = $degreeField;
+            }
+        }
+
+        $institutionField = "imported_degree_institution";
+        $degreeField = "imported_degree";
+        if (in_array($institutionField, $metadataFields) && in_array($degreeField, $metadataFields)) {
+            $fields[$institutionField] = $degreeField;
+        }
+
+		// array("followup_degree" => "followup"),
+        $institutionField = "followup_degree_institution";
+	    $degreeField = "followup_degree";
+        if (in_array($institutionField, $metadataFields) && in_array($degreeField, $metadataFields)) {
+            $fields[$institutionField] = $degreeField;
+        }
+
+		// array("vfrs_graduate_degree" => "vfrs", "vfrs_degree2" => "vfrs", "vfrs_degree3" => "vfrs", "vfrs_degree4" => "vfrs", "vfrs_degree5" => "vfrs", "vfrs_please_select_your_degree" => "vfrs"),
+        $institutionField = "vfrs_degree1_institution";
+        $degreeField = "vfrs_graduate_degree";
+        if (in_array($institutionField, $metadataFields) && in_array($degreeField, $metadataFields)) {
+            $fields[$institutionField] = $degreeField;
+        }
+        for ($i = 2; $i <= 5; $i++) {
+            $institutionField = "vfrs_degree".$i."_institution";
+            $degreeField = "vfrs_degree".$i;
+            if (in_array($institutionField, $metadataFields) && in_array($degreeField, $metadataFields)) {
+                $fields[$institutionField] = $degreeField;
+            }
+        }
+
+	    return array_unique($fields);
+    }
 
 	private function getDegrees($rows) {
 		# move over and then down
@@ -1655,6 +1718,7 @@ class Scholar {
 		$institutionResult = $this->getInstitution($rows);
 		$value = $institutionResult->getValue();
 		$vars = self::getDefaultOrder($field);
+        $vars = $this->getOrder($vars, $field);
 		if ($value) {
 			return $this->matchWithInstitutionResult($institutionResult, $rows, $vars);
 		} else {
@@ -1733,6 +1797,7 @@ class Scholar {
 
 	private function getTrainingStart($rows) {
 		$vars = self::getDefaultOrder("summary_training_start");
+        $vars = $this->getOrder($vars, "summary_training_start");
 		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 		$fieldName = $result->getField();
 		if (preg_match("/^promotion_/", $fieldName)) {
@@ -1763,7 +1828,8 @@ class Scholar {
 
 	private function getTrainingEnd($rows) {
 		$vars = self::getDefaultOrder("summary_training_end");
-		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $vars = $this->getOrder($vars, "summary_training_end");
+        $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 		$fieldName = $result->getField();
 		if (preg_match("/^promotion_/", $fieldName)) {
 			$positionChanges = self::getOrderedPromotionRows($rows);
@@ -1814,7 +1880,8 @@ class Scholar {
 
 	private function getDisadvantagedStatus($rows) {
 		$vars = self::getDefaultOrder("summary_disadvantaged");
-		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+        $vars = $this->getOrder($vars, "summary_disadvantaged");
+        $result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
 		if ($result->getValue() == 1) {
 			# Yes
 			$value = "1";
@@ -1830,7 +1897,8 @@ class Scholar {
 
 	private function getDisabilityStatus($rows) {
 		$vars = self::getDefaultOrder("summary_disability");
-		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+        $vars = $this->getOrder($vars, "summary_disability");
+        $result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
 		if ($result->getValue() == 1) {
 			# Yes
 			$value = "1";

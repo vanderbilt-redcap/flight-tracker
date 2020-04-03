@@ -90,7 +90,7 @@ class CitationCollection {
 		rsort($keys);
 
 		if (count($keys) != count($unorderedArys)) {
-			throw new Exception("keys (".count($keys).") != unorderedArys (".count($unorderedArys).")");
+			throw new \Exception("keys (".count($keys).") != unorderedArys (".count($unorderedArys).")");
 		}
 
 		$ordered = array();
@@ -105,12 +105,12 @@ class CitationCollection {
 				}
 			}
 			if (!$found) {
-				throw new Exception($key." not found in ".json_encode($unorderedArys));
+				throw new \Exception($key." not found in ".json_encode($unorderedArys));
 			}
 		}
 
 		if (count($keys) != count($ordered)) {
-			throw new Exception("keys (".count($keys).") != ordered (".count($ordered).")");
+			throw new \Exception("keys (".count($keys).") != ordered (".count($ordered).")");
 		}
 
 		return $ordered;
@@ -126,7 +126,7 @@ class CitationCollection {
 		}
 		$sorted = self::sortArrays($unsorted, "timestamp");
 		if (count($unsorted) != count($sorted)) {
-			throw new Exception("Unsorted (".count($unsorted).") != sorted (".count($sorted).")");
+			throw new \Exception("Unsorted (".count($unsorted).") != sorted (".count($sorted).")");
 		}
 
 		$this->citations = array();
@@ -238,13 +238,42 @@ class Citation {
 			$authorList = $this->getAuthorList();
 			foreach ($authorList as $author) {
 				list($currFirstName, $currLastName) = NameMatcher::splitName($author);
-				if (NameMatcher::matchByInitials($currLastName, $currFirstName, $lastName, $firstName)) {
-					return TRUE;
-				}
+                if (NameMatcher::matchByInitials($currLastName, $currFirstName, $lastName, $firstName)) {
+                    return TRUE;
+                }
 			}
 		}
 		return FALSE;
 	}
+
+	public function isFirstAuthor($name) {
+        return $this->isAuthorIdx("first", $name);
+    }
+
+    public function isLastAuthor($name) {
+        return $this->isAuthorIdx("last", $name);
+    }
+
+    private function isAuthorIdx($pos, $name) {
+        list($firstName, $lastName) = NameMatcher::splitName($name);
+        $authorList = $this->getAuthorList();
+        if (count($authorList) == 0) {
+            throw new \Exception("Citation did not have any authors!");
+        }
+	    if ($pos == "first") {
+	        $idx = 0;
+	    } else if ($pos == "last") {
+	        $idx = count($authorList) - 1;
+	    } else {
+	        throw new \Exception("You must specify the first or the last author!");
+        }
+        $author = $authorList[$idx];
+        list($authorFirstName, $authorLastName) = NameMatcher::splitName($author);
+        if (NameMatcher::matchByInitials($authorFirstName, $authorLastName, $lastName, $firstName)) {
+            return TRUE;
+        }
+        return FALSE;
+    }
 
 	private function changeTextColorOfLink($str, $color) {
 		if (preg_match("/<a /", $str)) {
@@ -755,7 +784,7 @@ class Citation {
 			return $this->sourceChoices[$src];
 		} else {
 			if (!$this->sourceChoices && empty($this->sourceChoices)) {
-				$metadata = Download::metadata($token, $server);
+				$metadata = Download::metadata($this->token, $this->server);
 				$choices = Scholar::getChoices($metadata);
 				if (isset($choices["citation_source"])) {
 					$this->sourceChoices = $choices["citation_source"];

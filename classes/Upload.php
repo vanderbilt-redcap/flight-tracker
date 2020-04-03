@@ -290,7 +290,7 @@ class Upload {
 	
 				foreach ($lines as $i => $line) {
 					if (self::isValidCSVLine($headers, $line)) {
-						list($recordId, $newErrors) = self::getRecordIdForCSVLine($headers, $line, $token, $server);
+						list($recordId, $newErrors) = self::getRecordIdForCSVLine($headers, $line, $i, $token, $server);
 						$errors = array_merge($errors, $newErrors);
 						if ($recordId) {
 							$newCounts['existing']++;
@@ -394,7 +394,7 @@ class Upload {
 		return FALSE;
 	}
 
-	public static function getRecordIdForCSVLine($headers, $line, $token, $server) {
+	public static function getRecordIdForCSVLine($headers, $line, $i, $token, $server) {
 		$recordId = FALSE;
 		$errors = array();
 		if (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {

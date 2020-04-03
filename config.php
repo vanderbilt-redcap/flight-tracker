@@ -83,7 +83,7 @@ if (count($_POST) > 0) {
 		$lists["institutions"] = implode("\n", CareerDev::getInstitutions());
 		$metadata = Download::metadata($token, $server);
 		\Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $lists, CareerDev::getSetting("hasCoeus"), $metadata);
-		echo "<p class='centered green'>Saved ".json_encode($_POST)." settings</p>\n";
+		echo "<p class='centered green'>Saved ".count($_POST)." settings</p>\n";
 	}
 }
 

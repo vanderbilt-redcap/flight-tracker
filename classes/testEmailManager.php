@@ -22,6 +22,7 @@
 	}
 	$tester = new UnitTester();
 	$tester->analyze($obj);
+	$myClass = get_class($obj);
 
 	$badResults = $tester->getFailures();
 	$numBadResults = 0;

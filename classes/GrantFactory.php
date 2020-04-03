@@ -138,7 +138,6 @@ class NewmanGrantFactory extends GrantFactory {
 		$externalKAwardLength = Application::getIndividualKLength();
 		$k12kl2AwardLength = Application::getK12KL2Length();
 
-		$ary = array();
 		$date1 = "";
 		if (!preg_match("/none/", $row['newman_data_date_first_institutional_k_award_newman'])) {
 			$date1 = $row['newman_data_date_first_institutional_k_award_newman'];
@@ -155,7 +154,6 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setVariable('sponsor_type', $type);
 				$grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=data", "See Grant"));
 
-				$include = FALSE;
 				$isk12kl2 = FALSE;
 				if (preg_match("/K12/", $type) || preg_match("/KL2/", $type)) {
 					$grant->setNumber($type);
@@ -200,7 +198,7 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setVariable('direct_budget', 0);
 				$grant->setVariable('sponsor_type', $type);
 				if ($type) {
-					$grant->setNumber($specs['sponsor_type']);
+					$grant->setNumber($type);
 				} else {
 					$grant->setNumber("Individual K - Rec. {$row['record_id']}");
 				}
@@ -303,7 +301,7 @@ class NewmanGrantFactory extends GrantFactory {
 					$include = TRUE;
 					$isk12kl2 = TRUE;
 				} else {
-					if ($specs['sponsor_type']) {
+					if ($type) {
 						$grant->setNumber($type);
 						$include = TRUE;
 						$isk12kl2 = FALSE;

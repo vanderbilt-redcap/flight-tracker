@@ -32,10 +32,10 @@ function makeHTML($headers, $measurements, $lines = array(), $cohort = "", $meta
 	}
 
 	if (!isset($headers)) {
-		throw new Exception("headers must be specified!");
+		throw new \Exception("headers must be specified!");
 	}
 	if (!isset($measurements)) {
-		throw new Exception("measurements must be specified!");
+		throw new \Exception("measurements must be specified!");
 	}
 
 	$target = \Vanderbilt\FlightTrackerExternalModule\getTarget();

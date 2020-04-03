@@ -66,12 +66,7 @@ class Links {
 	}
 
 	private static function link($relativeUrl) {
-		$module = Application::getModule();
-                if ($module) {
-                	$relativeUrl = preg_replace("/^\//", "", $relativeUrl);
-                        return $module->getUrl($relativeUrl);
-                }
-                return $relativeUrl;
+                return Application::link($relativeUrl);
 	}
 
 	public static function makeProfileLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {

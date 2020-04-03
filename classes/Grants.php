@@ -605,7 +605,7 @@ class Grants {
 			$awardno = $grant->getNumber();
 			$grant->setVariable('source', "modify");
 			if ($action == "ADD") {
-				$listOfAwards[$awardNo] = $grant;
+				$listOfAwards[$awardno] = $grant;
 				if ($grant->getVariable('type') != "N/A") {
 					$change = new ImportedChange($awardno);
 					$change->setChange("type", $grant->getVariable('type'));
@@ -853,7 +853,6 @@ class Grants {
 					# deMorgan's law remixed
 					if (($basisGrant->getVariable("type") == "N/A") || $basisGrant->getVariable("takeover")) {
 						if (SHOW_DEBUG) { Application::log("Setting grant to $i"); }
-						$basisGrant = $grant;
 						$basisGrant = $currGrant;
 						$basisGrant->setNumber($basisGrant->getBaseNumber());
 					}
@@ -1409,7 +1408,7 @@ class Grants {
 							$uploadRow[$key] = $value;
 						} else {
 							Application::log($key." not found in metadata, but in compiledGrants");
-							throw new Exception($key." not found in metadata, but in compiledGrants");
+							throw new \Exception($key." not found in metadata, but in compiledGrants");
 						}
 					}
 					$i++;
@@ -1425,7 +1424,7 @@ class Grants {
 					if (isset($this->metadata[$key])) {
 						$uploadRow[$key] = $value;
 					} else {
-						throw new Exception($key." not found in metadata, but in blankGrant");
+						throw new \Exception($key." not found in metadata, but in blankGrant");
 					}
 				}
 			}
@@ -1437,7 +1436,7 @@ class Grants {
 					Application::log($key." not found in metadata, but in summary variables");
 
 					# Need to warn silently because of upgrade issues
-					// throw new Exception($key." not found in metadata, but in summary variables");
+					// throw new \Exception($key." not found in metadata, but in summary variables");
 				}
 			}
 			foreach ($this->calculate as $type => $ary) {

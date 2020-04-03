@@ -33,7 +33,7 @@ class NIHExPORTER {
 
 	public function showR01DataSince($date, $names) {
 		self::filterForActivityCodeSinceDateOrR01EquivalentAtVUMC("/\dR01/", $date);
-		self::grabAllGrantsForPIs();
+		self::grabAllGrantsForPIs($date);
 		self::filterOut("/R56/", "FULL_PROJECT_NUM");
 		self::filterOutNames($names);
 		self::printPIs();
@@ -189,9 +189,11 @@ class NIHExPORTER {
 		return $outData;
 	}
 
-	public static function grabAllGrantsForPIs() {
+	public static function grabAllGrantsForPIs($date) {
 		$files = self::getDataSince2009();
 		$pis = array();
+		$ts = strtotime($date);
+		$tsYear = date("Y", $ts);
 		$col = "PI_IDS";
 		$fp = fopen(DATA_DIRECTORY.INTERMEDIATE_1, "r");
 		$headers = fgetcsv($fp);
@@ -417,11 +419,11 @@ class NIHExPORTER {
 		$fp = fopen($file, "r");
 		Application::log("Parsing ".$file);
 		$lineCount = 0;
-		while ($str = fgets($fp)) {
+        $headers = array();
+        while ($str = fgets($fp)) {
 			$str = str_replace('\\","', '","', $str);
 			$line = str_getcsv($str);
 			if ($lineCount == 0) {
-				$headers = array();
 				$i = 0;
 				foreach ($line as $item) {
 					$headers[$i] = $item;

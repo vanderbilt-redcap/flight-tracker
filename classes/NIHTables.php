@@ -5,10 +5,12 @@ namespace Vanderbilt\CareerDevLibrary;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Citation.php");
 require_once(dirname(__FILE__)."/Publications.php");
+require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class NIHTables {
 	public function __construct($token, $server, $pid, $metadata = array()) {
@@ -107,25 +109,29 @@ class NIHTables {
 		return $years;
 	}
 
-	private function get6Data($table, $year) {
+	private function get6Data($table, $yearspan) {
 		$data = array();
 		if (preg_match("/^6[AB]II$/", $table)) {
-			return $this->get6IIData($table, $year);
+			return $this->get6IIData($table, $yearspan);
 		}
 		return $data;
 	}
 
-	private function get6IIData($table, $year) {
+	private function get6IIData($table, $yearspan) {
+	    $choices = REDCapManagement::getChoices($this->metadata);
 		$data = array();
 		$names = $this->downloadRelevantNames($table);
+		$doctorateInstitutions = Download::doctorateInstitutions($this->token, $this->server, $this->metadata);
 		$trainingTypes = self::getTrainingTypes($table);
 		if (!empty($names)) {
-			$trainingData = Download::trainingGrants($this->token, $this->server, array(), $trainingTypes);
-		}
-		if ($year['current']) {
-			$title = "Most Recent Program Year: ".$year['span'];
+			$trainingGrantData = Download::trainingGrants($this->token, $this->server, array(), $trainingTypes);
 		} else {
-			$title = "Previous Year: ".$year['span'];
+		    $trainingGrantData = array();
+        }
+		if ($yearspan['current']) {
+			$title = "Most Recent Program Year: ".$yearspan['span'];
+		} else {
+			$title = "Previous Year: ".$yearspan['span'];
 		}
 
 		$fields = array(
@@ -135,9 +141,14 @@ class NIHTables {
 				"check_undergrad_gpa",
 				"check_undergrad_institution",
 				"check_degree0_prior_rsch",
+                "summary_training_start",
+                "summary_training_end",
 				);
 		# also, prior institutions, date of entry into program
 
+        $newProgramEntrants = "New Entrants to the Program";
+        $newEligibleEntrants = "New Entrants Eligible for Support";
+        $newAppointments = "New Entrants Appointed to this Grant (Renewal/Revision Applications Only)";
 		$allClasses = array(
 					$newProgramEntrants,
 					$newEligibleEntrants,
@@ -155,13 +166,10 @@ class NIHTables {
 				$resultData[$field][$currClass] = array();
 			}
 		}
-		$newProgramEntrants = "New Entrants to the Program";
-		$newEligibleEntrants = "New Entrants Eligible for Support";
-		$newAppointments = "New Entrants Appointed to this Grant (Renewal/Revision Applications Only)";
 		foreach ($names as $recordId => $name) {
-			if ($enteredDuringYear) {
-				$recordData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
-				$recordClasses = array();   // ??? need to find out
+			if (self::enteredDuringYear($yearspan, $recordId, $trainingGrantData, $trainingTypes)) {
+                $recordData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
+                $recordClasses = array($newAppointments);
 				foreach ($recordData as $row) {
 					if ($row['redcap_repeat_instrument'] == "") {
 						foreach ($recordClasses as $currClass) {
@@ -180,7 +188,22 @@ class NIHTables {
 								array_push($resultData["gpa"][$currClass], $row['check_undergrad_gpa']);
 							}
 
-							# ??? institutions - question out to Melissa
+                            if (self::isPredoc($table)) {
+                                # use undergrad institution
+                                if ($row['check_undergrad_institution'] !== "") {
+                                    $institution = $row['check_undergrad_institution'];
+                                    if (is_numeric($institution)) {
+                                        $institution = $choices['check_undergrad_institution'][$institution];
+                                    }
+                                    array_push($resultData["institutions"][$currClass], $institution);
+                                }
+                            } else if (self::isPostdoc($table)) {
+                                #  use last doctorate-granting institution
+                                if ($doctorateInstitutions[$recordId] && !empty($doctorateInstitutions[$recordId])) {
+                                    array_push($resultData["institutions"][$currClass], implode("/", $doctorateInstitutions[$recordId]));
+                                }
+                            }
+
 							if (($row['check_degree0_prior_rsch'] !== "") && is_numeric($row['check_degree0_prior_rsch'])) {
 								array_push($resultData["research_months"][$currClass], $row['check_degree0_prior_rsch']);
 							}
@@ -202,9 +225,9 @@ class NIHTables {
 				$title => "Prior Institutions",
 				"Total Applicant Pool" => "",
 				"Applicants Eligible for Support" => "",
-				$newProgramEntrants => "",
-				$newEligibleEntrants => "",
-				$newAppointments => "",
+				$newProgramEntrants => self::$NA,
+				$newEligibleEntrants => self::$NA,
+				$newAppointments => self::findInstitutions($resultData["institutions"][$newAppointments]),
 				);
 		$data[2] = array(
 				$title => "Percent with a Disability",
@@ -236,7 +259,7 @@ class NIHTables {
 
 	private static function findPercent($ary) {
 		if (count($ary) == 0) {
-			return "N/A";
+			return self::$NA;
 		}
 		$cnt = 0;
 		foreach ($ary as $item) {
@@ -247,15 +270,52 @@ class NIHTables {
 		return ceil($cnt * 100 / count($ary))."%";
 	}
 
+	private static function enteredDuringYear($yearspan, $recordId, $trainingGrantData, $trainingTypes) {
+	    foreach ($trainingGrantData as $row) {
+	        if (($row['record_id'] == $recordId) && in_array($row['custom_role'], $trainingTypes) && $row['custom_start']) {
+	            $trainingStartTs = strtotime($row['custom_start']);
+	            if (($trainingStartTs >= $yearspan['begin']) && ($trainingStartTs <= $yearspan['end'])) {
+	                return TRUE;
+	            }
+            }
+        }
+	    return FALSE;
+    }
+
 	private static function findAverageAndRange($ary) {
 		if (count($ary) == 0) {
-			return "N/A";
+			return self::$NA;
 		}
 		$mean = ceil(array_sum($ary) / count($ary) * 10) / 10;
 		$min = ceil(min($ary) * 10) / 10;
 		$max = ceil(max($ary) * 10) / 10;
 		return sprintf("%.1f (%.1f-%.1f)", $mean, $min, $max);
 	}
+
+	private static function findInstitutions($ary) {
+	    if (count($ary) == 0) {
+	        return self::$NA;
+        }
+
+	    $countHash = array();
+	    foreach ($ary as $institution) {
+	        if (!isset($countHash[$institution])) {
+	            $countHash[$institution] = 0;
+            }
+	        $countHash[$institution]++;
+        }
+	    ksort($countHash);
+
+	    $list = array();
+	    foreach ($countHash as $institution => $count) {
+	        $item = $institution;
+	        if ($count > 1) {
+	            $item .= " (".$count.")";
+            }
+	        array_push($list, $item);
+        }
+	    return implode("<br>", $list);
+    }
 
 	private function get8Data($table) {
 		$data = array();
@@ -297,10 +357,18 @@ class NIHTables {
 		return FALSE;
 	}
 
+	private static function isPredoc($table) {
+	    return self::beginsWith($table, array("5A", "6A", "8A"));
+    }
+
+    private static function isPostdoc($table) {
+	    return self::beginsWith($table, array("5B", "6B", "8C"));
+    }
+
 	private static function getTrainingTypes($table) {
-		if (self::beginsWith($table, array("5A", "6A", "8A"))) {
+		if (self::isPredoc($table)) {
 			$types = array(6);
-		} else if (self::beginsWith($table, array("5B", "6B", "8C"))) {
+		} else if (self::isPostdoc($table)) {
 			$types = array(7);
 		} else {
 			$types = array();
@@ -355,7 +423,8 @@ class NIHTables {
 				}
 			}
 
-			$pubs = new Publications($token, $server, $metadata);
+			$redcapData = Download::fieldsForRecords($this->token, $this->server, Application::$citationFields, array($recordId));
+			$pubs = new Publications($this->token, $this->server, $this->metadata);
 			$pubs->setRows($redcapData);
 
 			if ($pubs->getCitationCount() == 0) {
@@ -390,4 +459,5 @@ class NIHTables {
 	private $server;
 	private $pid;
 	private $metadata;
+	private static $NA = "N/A";
 }

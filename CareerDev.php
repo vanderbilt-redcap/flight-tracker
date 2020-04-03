@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.11.2";
+		return "2.11.3";
 	}
 
 	public static function getLockFile($pid) {
@@ -1321,6 +1321,11 @@ class CareerDev {
 						"summary_current_rank",
 						"summary_dob",
 						"summary_citizenship",
+						"summary_urm",
+						"summary_disability",
+						"summary_disadvantaged",
+						"summary_training_start",
+						"summary_training_end",
 						"summary_ever_internal_k",
 						"summary_ever_individual_k_or_equiv",
 						"summary_ever_k12_kl2",
