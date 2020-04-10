@@ -124,6 +124,10 @@ class Publications {
 		return $this->getNumber($type);
 	}
 
+	public function getCitationCount($type = "Included") {
+	    return $this->getCount($type);
+    }
+
 	public function getNumber($type = "Included") {
 		return count($this->getCitations($type));
 	}

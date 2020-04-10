@@ -191,8 +191,11 @@ function makeIntroPage($projectId) {
 	if (!$rights[USERID]['api_export']) {
 		array_push($warnings, "This user must have <a href='".APP_PATH_WEBROOT."UserRights/index.php?pid=$projectId'>API Export rights</a> for this project in order to install ".CareerDev::getProgramName());
 	}
+	if (!$rights[USERID]['design']) {
+		array_push($warnings, "This user must have <a href='".APP_PATH_WEBROOT."UserRights/index.php?pid=$projectId'>Design rights</a> for this project in order to install ".CareerDev::getProgramName());
+	}
 	if ((!$rights[USERID]['api_import']) || (!$rights[USERID]['api_export'])) {
-		array_push($warnings, "To assign API rights, follow the link; select your username from the list; select 'Edit user priviledges;' and check API Import and API Export rights."); 
+		array_push($warnings, "To assign API rights, follow the link; select your username from the list; select 'Edit user priviledges;' and check API Import rights, API Export rights."); 
 	}
 
 	$html = "";
@@ -285,7 +288,7 @@ function makeIntroPage($projectId) {
 	$grantClasses = CareerDev::getGrantClasses();
 	$grantClassRadios = array();
 	$grantClassName = "grant_class";
-	foreach ($grantClasses as $valud => $label) {
+	foreach ($grantClasses as $value => $label) {
 		$id = $grantClassName."_".$value;
 		array_push($grantClassRadios, "<input type='radio' id='$id' name='$grantClassName' value='$value' onclick='changeGrantClass(\"$grantClassName\");'><label for='$id'> $label</label>");
 	}

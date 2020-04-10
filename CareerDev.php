@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.11.3";
+		return "2.11.4";
 	}
 
 	public static function getLockFile($pid) {
@@ -404,6 +404,7 @@ class CareerDev {
 			return array(
 					"Demographics Table" => self::link("/charts/makeDemographicsTable.php"),
 					"Stylized CDA Table" => self::link("/charts/makeCDATable.php"),
+					"Publication List" => self::link("/publications/view.php"),
 					"Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
 					"REDCap Reports" => $r."/DataExport/index.php",
 					"Missingness Report<br>(Computationally Expensive)" => self::link("/tablesAndLists/missingness.php"),

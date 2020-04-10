@@ -94,6 +94,70 @@ class REDCapManagement {
 		return $forms;
 	}
 
+    public static function transformFieldsIntoPrefixes($fields) {
+	    $prefixes = array();
+	    foreach ($fields as $field) {
+	        $prefix = self::getPrefix($field);
+	        if (!in_array($prefix, $prefixes)) {
+	            array_push($prefixes, $prefix);
+            }
+        }
+	    return $prefixes;
+    }
+
+    public static function getPrefix($field) {
+        $nodes = preg_split("/_/", $field);
+	    return $nodes[0];
+    }
+
+    public static function getRowForFieldFromMetadata($field, $metadata) {
+	    foreach ($metadata as $row) {
+	        if ($row['field_name'] == $field) {
+	            return $row;
+            }
+        }
+	    return array();
+    }
+
+    public static function getYear($date) {
+        $ts = strtotime($date);
+        if ($ts) {
+            return date("Y", $ts);
+        }
+        return "";
+    }
+
+    public static function getDayDuration($date1, $date2) {
+	    $span = self::getSecondDuration($date1, $date2);
+	    $oneDay = 24 * 3600;
+	    return $span / $oneDay;
+    }
+
+    public static function getSecondDuration($date1, $date2) {
+        $ts1 = strtotime($date1);
+        $ts2 = strtotime($date2);
+        if ($ts1 && $ts2) {
+            return abs($ts2 - $ts1);
+        } else {
+            throw new \Exception("Could not get timestamps from $date1 and $date2");
+        }
+    }
+
+    public static function getYearDuration($date1, $date2) {
+        $span = self::getSecondDuration($date1, $date2);
+	    $oneYear = 365 * 24 * 3600;
+	    return $span / $oneYear;
+    }
+
+    public static function matchAtLeastOneRegex($regexes, $str) {
+	    foreach ($regexes as $regex) {
+	        if (preg_match($regex, $str))  {
+	            return TRUE;
+            }
+        }
+	    return FALSE;
+    }
+
 	public static function getRowsForFieldsFromMetadata($fields, $metadata) {
 		$selectedRows = array();
 		foreach ($metadata as $row) {

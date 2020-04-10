@@ -108,7 +108,7 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 		</div>
 		<form method='POST' action='<?= CareerDev::link("add.php") ?>'><p>
 			<b>Please enter</b>:<br>
-			<i>FirstName, PreferredName, Middle, LastName, Email, Institution:</i><br>
+			<i>FirstName, PreferredName, Middle, LastName, Email, Additional Institutions:</i><br>
 			<textarea style='width: 600px; height: 300px;' name='newnames'></textarea><br>
 			<button>Process Names</button>
 		</p></form>

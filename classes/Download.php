@@ -54,14 +54,29 @@ class Download {
 		$mentorUserids = Download::oneField($token, $server, "summary_mentor_userid");
 		foreach ($mentorUserids as $recordId => $userid) {
 			if ($userid) {
-				$recordUserids = preg_split("/\s*;\s*/", $userid);
-				$mentorUserids[$recordId] = $userid;
+				$recordUserids = preg_split("/\s*[;,]\s*/", $userid);
+				$mentorUserids[$recordId] = $recordUserids;
 			} else {
 				unset($mentorUserids[$recordId]);
 			}
 		}
 		return $mentorUserids;
 	}
+
+	# returns array of $recordId => $menteeName
+	public static function menteesForMentor($token, $server, $requestedMentorUserid) {
+		$mentorUserids = self::primaryMentorUserids($token, $server);
+		$names = self::names($token, $server);
+
+		$menteeNames = array();
+		foreach ($mentorUserids as $recordId => $mentorUserids) {
+			if (in_array($requestedMentorUserid, $mentorUserids)) {
+				$menteeNames[$recordId] = $names[$recordId];
+			}
+		}
+		return $menteeNames;
+	}
+
 	# returns a hash with recordId => array of mentorNames
 	public static function primaryMentors($token, $server) {
 		$mentors = Download::oneField($token, $server, "summary_mentor");
@@ -83,7 +98,7 @@ class Download {
 
 	public static function trainingGrants($token, $server, $fields = array(), $traineeTypes = array(5, 6, 7)) {
 		if (empty($fields)) {
-			$fields = Application::$customFields;
+			$fields = Application::$customFields;      // default
 		}
 		$requiredFields = array("record_id", "custom_role");
 		foreach ($requiredFields as $field) {

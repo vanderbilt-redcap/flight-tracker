@@ -11,6 +11,10 @@ class Application {
 		return CareerDev::getPID($token);
 	}
 
+	public static function getGrantClasses() {
+	    CareerDev::getGrantClasses();
+    }
+
 	public static function getUnknown() {
 		return CareerDev::getUnknown();
 	}
@@ -338,4 +342,16 @@ class Application {
         "custom_last_update",
     );
 
+    public static $positionFields = array(
+        "record_id",
+        "promotion_in_effect",
+        "promotion_job_title",
+        "promotion_job_category",
+        "promotion_rank",
+        "promotion_institution",
+        "promotion_location",
+        "promotion_department",
+        "promotion_division",
+        "promotion_date",
+    );
 }

@@ -150,9 +150,9 @@ class CitationCollection {
 				$str .= "\n";
 			}
 			if ($hasLink) {
-				$str .= $citation->getCitation();
-			} else {
 				$str .= $citation->getCitationWithLink();
+			} else {
+				$str .= $citation->getCitation();
 			}
 		}
 		return $str;
@@ -475,8 +475,25 @@ class Citation {
 		return $this->getVariable("pmid");
 	}
 
+	public function getPMCWithPrefix() {
+		$pmc = $this->getVariable("pmcid");
+		if (!preg_match("/PMC/", $pmc)) {
+			$pmc = "PMC".$pmc;
+		}
+		return $pmc;
+	}
+
+	public function getPMCWithoutPrefix() {
+		$pmc = $this->getVariable("pmcid");
+		return preg_replace("/PMC/", "", $pmc);
+	}
+
 	public function getPMC() {
-		return $this->getVariable("pmc");
+		return $this->getVariable("pmcid");
+	}
+
+	public function getVariables() {
+		return json_encode($this->data);
 	}
 
 	public static function explodeList($str) {
@@ -657,24 +674,21 @@ class Citation {
 			$baseWithREDCap = $baseWithPMID;
 		}
 
+		$pmcWithPrefix = $this->getPMCWithPrefix();
 		if ($this->getPMC() && !preg_match("/PMC\d/", $baseWithREDCap)) {
-			if (preg_match("/PMC/", $this->getPMC())) {
-				$baseWithPMC = $baseWithREDCap." ".$this->getPMC().".";
-			} else {
-				$baseWithPMC = $baseWithREDCap." PMC".$this->getPMC().".";
-			}
+			$baseWithPMC = $baseWithREDCap." ".$pmcWithPrefix.".";
 		} else {
 			$baseWithPMC = $baseWithREDCap;
 		}
 
-		$baseWithPMCLink = preg_replace("/PMC{$this->pmcid}/", Links::makeLink($this->getPMCURL(), "PMC".$this->getPMC()), $baseWithPMC);
+		$baseWithPMCLink = preg_replace("/".$pmcWithPrefix."/", Links::makeLink($this->getPMCURL(), $pmcWithPrefix), $baseWithPMC);
 		$baseWithLinks = preg_replace("/PubMed PMID:\s*".$this->getPMID()."/", Links::makeLink($this->getURL(), "PubMed PMID: ".$this->getPMID(), $newTarget), $baseWithPMCLink);
 
 		return $baseWithLinks;
 	}
 
 	public function getPMCURL() {
-		return "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC".$this->getPMC();
+		return "https://www.ncbi.nlm.nih.gov/pmc/articles/".$this->getPMCWithPrefix();
 	}
 
 	public function getURL() {
@@ -743,6 +757,11 @@ class Citation {
 	public static function getCategories() {
 		return array("Original Research", "Not Original Research", "Uncategorized");
 	}
+
+	public function inTimespan($startTs, $endTs) {
+	    $ts = $this->getTimestamp();
+	    return (($startTs <= $ts) && ($endTs >= $ts));
+    }
 
 	public function getTimestamp() {
 		$date = $this->getDate();

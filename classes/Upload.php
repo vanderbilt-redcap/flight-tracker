@@ -11,7 +11,30 @@ require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/NameMatcher.php");
 
 class Upload {
-	public static function metadata($metadata, $token, $server) {
+    public static function adaptToUTF8(&$ary) {
+        if (!json_encode($ary)) {
+            if (json_last_error() == JSON_ERROR_UTF8) {
+                $ary = self::utf8ize($ary);
+            } else {
+                throw new \Exception("Error in JSON processing: ".json_last_error_msg());
+            }
+        }
+    }
+
+    public static function  utf8ize($mixed) {
+        if (is_array($mixed)) {
+            foreach ($mixed as $key => $value) {
+                $mixed[$key] = self::utf8ize($value);
+            }
+        } else if (is_string ($mixed)) {
+            return utf8_encode($mixed);
+        }
+        return $mixed;
+    }
+
+
+public static function metadata($metadata, $token, $server) {
+		self::adaptToUTF8($metadata);
 		if (!is_array($metadata)) {
 			Application::log("Upload::metadata: first parameter should be array");
 			die();
@@ -62,7 +85,8 @@ class Upload {
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
-		$data = array(
+        self::adaptToUTF8($settings);
+        $data = array(
 			'token' => $token,
 			'content' => 'project_settings',
 			'format' => 'json',
@@ -84,7 +108,7 @@ class Upload {
 		curl_close($ch);
 
 		$feedback = json_decode($output, TRUE);
-		self::testFeedback($feedback, $redcapData);
+		self::testFeedback($feedback, $settings);
 
 		self::$useAPIOnly[$token] = TRUE;
 		Application::log("Upload::projectSettings returning $output");
@@ -177,7 +201,8 @@ class Upload {
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
-		Application::log("Upload::rows uploading ".count($rows)." rows");
+        self::adaptToUTF8($rows);
+        Application::log("Upload::rows uploading ".count($rows)." rows");
 		if (count($rows) > self::getRowLimit()) {
 			$rowsOfRows = array();
 			$i = 0;
