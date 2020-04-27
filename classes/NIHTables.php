@@ -2,6 +2,9 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use function Vanderbilt\FlightTrackerExternalModule\avg;
+use function Vanderbilt\FlightTrackerExternalModule\json_encode_with_spaces;
+
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Citation.php");
 require_once(dirname(__FILE__)."/Grants.php");
@@ -26,7 +29,9 @@ class NIHTables {
 		if (strlen($tableNum) > 2) {
 			$front = substr($tableNum, 0, 2);
 			$back = substr($tableNum, 2);
-			return $front." Part ".$back;
+			if (self::isRoman($back)) {
+                return $front . " Part " . $back;
+            }
 		}
 		return $tableNum;
 	}
@@ -73,12 +78,12 @@ class NIHTables {
 			$html = "";
 			foreach (self::get6Years() as $year) {
 				$data = $this->get6Data($table, $year);
-				$html .= self::makeDataIntoHTML($data);
+				$html .= self::makeDataIntoHTML($data)."<br><br>";
 			}
 			return $html;
 		} else if (self::beginsWith($table, array("8A", "8C"))) {
 			$data = $this->get8Data($table);
-			return self::makeDataIntoHTML($data);
+			return $this->makeJS().self::makeDataIntoHTML($data);
 		} else if ($table == "Common Metrics") {
             $data = $this->getCommonMetricsData($table);
             return self::makeDataIntoHTML($data);
@@ -86,11 +91,41 @@ class NIHTables {
 		return "";
 	}
 
+	private function makeJS() {
+	    $html = "";
+        if ($this->hasSupportSummary()) {
+            $page = Application::link("reporting/updateSupportSummary.php");
+            $html .= "
+            <script>
+                $(document).ready(function() {
+                   $('textarea.support_summary').keyup(function() {
+                       var record = $(this).attr('record');
+                       $('button.support_summary[record='+record+']').show();
+                   });
+                });
+    
+                function saveSupportSummary(record) {
+                    let textareaSelector = 'textarea.support_summary[record='+record+']';
+                    let text = $(textareaSelector).val();
+                    if (record) {
+                       $.post('$page', { record: record, text: text }, function(data) {
+                            console.log('Updated record '+record+': '+data);
+                            $('button.support_summary[record='+record+']').hide();
+                       });
+                    }
+                }
+            </script>
+            ";
+        }
+	    return $html;
+    }
+
 	private function getCommonMetricsData($table) {
-	    $data = array();
-	    $cols = array(
+	    $cols1 = array(
             "First Name" => array("field" => "identifier_first_name", "required" => TRUE),
             "Last Name" => array("field" => "identifier_last_name", "required" => TRUE),
+        );
+	    $cols2K = array(
             "Year Funding Started" => array(
                 "main" => "summary_award_date_*",
                 "helper" => "summary_award_type_*",
@@ -102,17 +137,49 @@ class NIHTables {
                 "helper" => "summary_award_type_*",
                 "helperValues" => [1, 2],
             ),
+        );
+
+	    $cols2T = array(
+            "Year Funding Started" => array(
+                "main" => "custom_start",
+                "helper" => "custom_role",
+                "helperValues" => [5, 6, 7],
+                "required" => TRUE,
+            ),
+            "Year Funding Ended" => array(
+                "main" => "custom_end",
+                "helper" => "custom_role",
+                "helperValues" => [5, 6, 7],
+            ),
+        );
+
+	    $cols3 = array(
             "Classification" => array("field" => "identifier_left_job_category"),
+        );
+
+	    $cols4 = array(
             "Engaged in Research" => "Y",
             "URM?" => array("field" => "summary_urm"),
             "Gender" => array("field" => "summary_gender"),
             "Notes" => "",
         );
 
+        $grantClass = Application::getSetting("grant_class");
+	    if ($grantClass == "T") {
+	        $cols = array_merge($cols1, $cols2T, $cols3, $cols4);
+        } else if ($grantClass == "K") {
+            $cols = array_merge($cols1, $cols2K, $cols4);
+        } else {
+	        # Other
+	        $cols = array();
+        }
+
 	    $fieldsToDownload = $this->getFieldsFromDriver($cols);
 	    $recordIds = Download::recordIds($this->token, $this->server);
+	    $choices = $this->getAlteredChoices();
+        $data = array();
 	    foreach ($recordIds as $recordId) {
-	        $values = $this->fillInCommonMetricsForRecord($recordId, $fieldsToDownload, $cols);
+	        $values = $this->fillInCommonMetricsForRecord($recordId, $fieldsToDownload, $cols, $choices);
 	        if ($values) {
                 array_push($data, $values);
             }
@@ -120,7 +187,7 @@ class NIHTables {
 	    return $data;
     }
 
-    private function fillInCommonMetricsForRecord($recordId, $fieldsToDownload, $cols) {
+    private function fillInCommonMetricsForRecord($recordId, $fieldsToDownload, $cols, $choices = array()) {
         $redcapData = Download::fieldsForRecords($this->token, $this->server, $fieldsToDownload, array($recordId));
         $values = array();
         foreach ($cols as $header => $specs) {
@@ -129,9 +196,9 @@ class NIHTables {
                 # hard-coded value
                 $values[$header] = $specs;
             } else if ($specs['field']) {
-                $values[$header] = $this->searchForField($redcapData, $specs['field']);
+                $values[$header] = $this->searchForField($redcapData, $specs['field'], $choices);
             } else {
-                $values[$header] = self::processHelperSpecs($redcapData, $specs);
+                $values[$header] = $this->processHelperSpecs($redcapData, $specs, $choices);
             }
         }
         if (self::hasRequiredValues($values, $cols)) {
@@ -140,15 +207,35 @@ class NIHTables {
         return FALSE;
     }
 
-    private static function processHelperSpecs($redcapData, $specs) {
+    private function processHelperSpecs($redcapData, $specs, $choices = array()) {
         $helperValues = $specs['helperValues'];
-        $mainFields = self::explodeWildcardField($specs['main']);
-        $helperFields = self::explodeWildcardField($specs['helper']);
-        for ($i = 0; $i < count($mainFields) && $i < count($helperFields); $i++) {
-            $mainField = $mainFields[$i];
-            $helperField = $helperFields[$i];
+        $pattern = "/_\*/";
+        if (empty($choices)) {
+            $choices = $this->getAlteredChoices();
+        }
+        if (preg_match($pattern, $specs["main"]) && preg_match($pattern, $specs["helper"])) {
+            $mainFields = self::explodeWildcardField($specs['main']);
+            $helperFields = self::explodeWildcardField($specs['helper']);
+            for ($i = 0; $i < count($mainFields) && $i < count($helperFields); $i++) {
+                $mainField = $mainFields[$i];
+                $helperField = $helperFields[$i];
+                foreach ($redcapData as $row) {
+                    if ($row[$helperField] && in_array($row[$helperField], $helperValues) && $row[$mainField]) {
+                        if ($choices[$mainField]) {
+                            return $choices[$mainField][$row[$mainField]];
+                        }
+                        return $row[$mainField];
+                    }
+                }
+            }
+        } else {
+            $helperField = $specs['helper'];
+            $mainField = $specs['main'];
             foreach ($redcapData as $row) {
                 if ($row[$helperField] && in_array($row[$helperField], $helperValues) && $row[$mainField]) {
+                    if ($choices[$mainField]) {
+                        return $choices[$mainField][$row[$mainField]];
+                    }
                     return $row[$mainField];
                 }
             }
@@ -156,12 +243,18 @@ class NIHTables {
         return "";
 	}
 
-    private function searchForField($redcapData, $field) {
+    private function searchForField($redcapData, $field, $choices = array()) {
         if (!self::isValidField($field, $this->metadata)) {
             return $field;
         } else {
+            if (empty($choices)) {
+                $choices = $this->getAlteredChoices();
+            }
             foreach ($redcapData as $row) {
-                if ($row[$field]) {
+                if ($row[$field] !== "") {
+                    if ($choices[$field]) {
+                        return $choices[$field][$row[$field]];
+                    }
                     return $row[$field];
                 }
             }
@@ -229,7 +322,7 @@ class NIHTables {
 		$startYear = $endYear - $numYears;
 
 		$years = array();
-		for ($i = 0; $i < $numYears; $i++) {
+		for ($i = $numYears - 1; $i >= 0; $i--) {
 			$span = ($startYear + $i)."-".($startYear + $i + 1);
 			$ary = array(
 					"begin" => strtotime(($startYear + $i)."-07-01 00:00:00"),
@@ -254,7 +347,7 @@ class NIHTables {
 	}
 
 	private function get6IIData($table, $yearspan) {
-	    $choices = REDCapManagement::getChoices($this->metadata);
+	    $choices = $this->getAlteredChoices();
 		$data = array();
 		$names = $this->downloadRelevantNames($table);
 		$doctorateInstitutions = Download::doctorateInstitutions($this->token, $this->server, $this->metadata);
@@ -486,59 +579,6 @@ class NIHTables {
         return date("Y-m-d", $ts);
     }
 
-    private static function getSupportSummary($redcapData, $recordId, $startDate) {
-	    $sources = array("NSF", "Other Fed", "Univ", "Fdn", "Non-US", "Other");
-	    $types = array("RA", "TA", "F", "TG", "S", "Other");
-	    $summaries = array();
-	    if ($startDate) {
-            $startTs = strtotime($startDate);
-            $startMonthDay = date("-m-d", $startTs);
-            $startYear = REDCapManagement::getYear($startDate);
-        } else {
-	        $startTs = FALSE;
-	        $startMonthDay = "";
-	        $startYear = "";
-        }
-
-	    if ($startTs) {
-            foreach ($redcapData as $row) {
-                if ($row['record_id'] == $recordId) {
-                    if ($row['redcap_repeat_instrument'] == "custom_grant") {
-                        if ($row['custom_start'] && ($grantStartTs = strtotime($row['custom_start']))) {
-                            list($fundingSource, $fundingType) = self::getSourceAndType($row['custom_type']);
-                            $shortAwardNo = self::abbreviateAwardNo($row['custom_number'], $fundingSource, $fundingType);
-                            $grantYearStart = REDCapManagement::getYear($row['custom_start']);
-                            if ($row['custom_end']) {
-                                $durationFromStart = ceil(REDCapManagement::getYearDuration($startDate, $row['custom_end']));
-                            } else {
-                                $durationFromStart = ceil(REDCapManagement::getYearDuration($startDate, date("Y-m-d")));
-                            }
-                            if ($grantStartTs < strtotime($grantYearStart.$startMonthDay)) {
-                                # spans into prior year
-                                $grantYearStart--;
-                            }
-
-                            for ($year = $grantYearStart; $year < $startYear + $durationFromStart; $year++) {
-                                $yearNum = $year - $startYear + 1;
-                                if (!isset($summaries[$yearNum])) {
-                                    $summaries[$yearNum] = array();
-                                }
-                                array_push($summaries[$yearNum], $shortAwardNo);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        $formattedSummaries = array();
-        foreach ($summaries as $yearNum => $grantTypes) {
-            array_push($formattedSummaries, "TY ".$yearNum.": ".implode("; ", $grantTypes));
-        }
-
-        return implode("<br>\n", $formattedSummaries);
-	}
-
 	private function getAllDegreeFields() {
 	    $field = "summary_degrees";
         $vars = Scholar::getDefaultOrder($field);
@@ -575,12 +615,14 @@ class NIHTables {
 	    return $degreeYearFields;
     }
 
-    private function getTerminalDegreeAndYear($recordId) {
+    private function getTerminalDegreesAndYears($recordId) {
         $degreeFields = $this->getAllDegreeFields();
-	    $fields = array_unique(array_merge(array("record_id"), $degreeFields));
+        $fields = array_unique(array_merge(array("record_id", "summary_training_start", "summary_training_end"), $degreeFields));
         $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
-        $choices = REDCapManagement::getChoices($this->metadata);
+        $choices = $this->getAlteredChoices();
         $doctorateRegExes = array("/MD/", "/PhD/i", "/DPhil/i", "/PharmD/i", "/PsyD/i");
+        $doctorateDegreesAndYears = array();
+        $predocDegreesAnYears = array();
         foreach ($redcapData as $row) {
             foreach ($degreeFields as $field) {
                 if ($row[$field]) {
@@ -590,25 +632,59 @@ class NIHTables {
                         $value = $row[$field];
                     }
                     foreach ($doctorateRegExes as $regEx) {
-                        if (preg_match($regEx, $value)) {
-                            $degreeYearFields = $this->getAllDegreeYearFields($field);
-                            $year = "Unknown Year";
-                            foreach ($degreeYearFields as $yearField) {
-                                if (is_integer($row[$yearField])) {
-                                    $year = $row[$yearField];
-                                } else if (trtotime($row[$yearField])) {
-                                    $year = REDCapManagement::getYear($row[$yearField]);
-                                } else if ($row[$yearField]) {
-                                    $year = $row[$yearField];
-                                }
+                        $degreeYearFields = $this->getAllDegreeYearFields($field);
+                        $year = "Unknown Year";
+                        foreach ($degreeYearFields as $yearField) {
+                            if (is_integer($row[$yearField])) {
+                                $year = $row[$yearField];
+                            } else if (strtotime($row[$yearField])) {
+                                $year = REDCapManagement::getYear($row[$yearField]);
+                            } else if ($row[$yearField]) {
+                                $year = $row[$yearField];
                             }
-                            return $value." ".$year;
+                        }
+                        if (preg_match($regEx, $value)) {
+                            $doctorateDegreesAndYears[$value] = $year;
+                        } else {
+                            $predocDegreesAnYears[$value] = $year;
                         }
                     }
                 }
             }
         }
-        return "In Training";
+        if (empty($doctorateDegreesAndYears) && empty($predocDegreesAnYears)) {
+            if (REDCapManagement::findField($redcapData, $recordId, "summary_training_end")) {
+                return array("None Received" => "");
+            } else {
+                return array("In Training" => "");
+            }
+        } else if (!empty($doctorateDegreesAndYears)) {
+            return $doctorateDegreesAndYears;
+        } else {
+            return $predocDegreesAnYears;
+        }
+	}
+
+	private function getTerminalDegreeAndYear($recordId) {
+	    $degreesAndYears = $this->getTerminalDegreesAndYears($recordId);
+        arsort($degreesAndYears);
+        foreach ($degreesAndYears as $degree => $year) {
+            if ($degree == "In Training") {
+                return $degree;
+            }
+            return $degree." ".$year;
+        }
+    }
+
+    private static function getResearchTopicSource() {
+	    global $grantClass;
+	    if ($grantClass == "K") {
+	        return "Grant Title of K Award";
+        } else if ($grantClass == "T") {
+	        return "check_degree0_topic";
+        } else {
+	        return "";
+        }
     }
 
     private function getResearchTopic($recordId) {
@@ -653,10 +729,64 @@ class NIHTables {
             throw new \Exception("Your grant class ($grantClass) is invalid!");
         }
     }
+    
+    private function getAlteredChoices() {
+        if (!$this->choices) {
+            $this->choices = array();
+            $redcapChoices = REDCapManagement::getChoices($this->metadata);
+            foreach ($redcapChoices as $field => $fieldChoices) {
+                if (preg_match("/job_category/", $field)) {
+                    $this->choices[$field] = self::translateJobChoices($fieldChoices);
+                } else {
+                    $this->choices[$field] = $fieldChoices;
+                }
+            }
+
+            foreach ($this->metadata as $row) {
+                $field = $row['field_name'];
+                if ($row['field_type'] == "yesno") {
+                    $this->choices[$field] = array("0" => "No", "1" => "Yes");
+                } else if ($row['field_type'] == "truefalse") {
+                    $this->choices[$field] = array("0" => "False", "1" => "True");
+                }
+            }
+        }
+        return $this->choices;
+    }
+
+    private static function translateJobChoices($fieldChoices) {
+	    $newChoices = array();
+	    # 1, Academia, still research-dominant (PI)
+        # 5, Academia, still research-dominant (Staff)
+        # 2, Academia, not research dominant
+        # 7, Academia, training program
+        # 3, Private practice
+        # 4, Industry, federal, non-profit, or other - research dominant
+        # 6, Industry, federal, non-profit, or other - not research dominant
+	    foreach ($fieldChoices as $index => $label) {
+	        if ($index == 1) {
+	            $label = "Researcher/Faculty";
+            } else if ($index == 5) {
+	            $label = "Researcher";
+            } else if ($index == 2) {
+                $label = "Faculty";
+            } else if ($index == 7) {
+                $label = "Further Training";
+            } else if ($index == 3) {
+                $label = "Private Practice";
+            } else if ($index == 4) {
+                $label = "Researcher/Industry";
+            } else if ($index == 6) {
+                $label = "Industry";
+            }
+	        $newChoices[$index] = $label;
+        }
+	    return $newChoices;
+    }
 
     private function getAllPositionsInOrder($redcapData, $recordId) {
 	    $positions = array();
-	    $choices = REDCapManagement::getChoices($this->metadata);
+	    $choices = $this->getAlteredChoices();
         foreach ($redcapData as $row) {
             if ($row['record_id'] == $recordId) {
                 if ($row['redcap_repeat_instrument'] == "position_change") {
@@ -671,13 +801,44 @@ class NIHTables {
                     $descriptions["title"] = $row['promotion_job_title'];
                     $descriptions["department"] = $row['promotion_department'] ? $choices["promotion_department"][$row["promotion_department"]] : $row['promotion_division'];
                     $descriptions["institution"] = $row['promotion_institution'];
-                    $descriptions["activity"] = $row['promotion_job_category'] ? $choices["promotion_job_category"][$row["promotion_job_category"]] : "";
+                    $descriptions["activity"] = self::translateJobCategoryToActivity($row['promotion_job_category']);
+                    self::fillInBlankValues($descriptions);
                     $positions[$ts] = implode("<br>", array_values($descriptions));
                 }
             }
         }
         arsort($positions);
         return array_values($positions);
+    }
+
+    private static function translateJobCategoryToActivity($jobCategory) {
+	    # 1, Academia, still research-dominant (PI)
+        # 5, Academia, still research-dominant (Staff)
+        # 2, Academia, not research dominant
+        # 7, Academia, training program
+        # 3, Private practice
+        # 4, Industry, federal, non-profit, or other - research dominant
+        # 6, Industry, federal, non-profit, or other - not research dominant
+	    $categories = array(
+	        "Research-Intensive" => array(1, 5, 4),
+            "Research-Related" => array(2, 6),
+            "Further Training" => array(7),
+            "Other" => array(3),
+        );
+	    foreach ($categories as $key => $jobCategories) {
+	        if (in_array($jobCategory, $jobCategories)) {
+	            return $key;
+            }
+        }
+	    return "";
+    }
+
+    private static function fillInBlankValues(&$ary) {
+	    foreach ($ary as $key => $value) {
+	        if (!$value) {
+	            $ary[$key] = self::makeComment(self::$naMssg);
+            }
+        }
     }
 
     private function getInitialPosition($redcapData, $recordId) {
@@ -732,8 +893,12 @@ class NIHTables {
 
 	private static function getSourceAndType($type) {
 	    $ks = array(1, 2, 3, 4);
+	    $trainingTypes = array(10);
 	    $source = "Other";
 	    $fundingType = "Other";
+        if (in_array($type, $trainingTypes)) {
+            return array("", "");
+        }
 	    if (in_array($type, $ks)) {
 	        if ($type == "3") {
                 $source = "Fellowship";
@@ -759,7 +924,6 @@ class NIHTables {
             if ($row['record_id'] == $recordId) {
                 for ($i = 1; $i <= MAX_GRANTS; $i++) {
                     $awardNoField = "summary_award_sponsorno_".$i;
-                    // TODO dig out original role
                     $dateField = "summary_award_date_".$i;
                     $typeField = "summary_award_type_".$i;
                     $roleField = "summary_award_role_".$i;
@@ -767,9 +931,11 @@ class NIHTables {
                         $role = $row[$roleField];
                         $year = REDCapManagement::getYear($row[$dateField]);
                         list($fundingSource, $fundingType) = self::getSourceAndType($row[$typeField]);
-                        $shortAwardNo = self::abbreviateAwardNo($row[$awardNoField], $fundingSource, $fundingType);
-                        $ary = array($shortAwardNo, $role, $year);
-                        array_push($grantDescriptions, implode(" / ", $ary));
+                        if ($fundingSource  && $fundingType) {
+                            $shortAwardNo = self::abbreviateAwardNo($row[$awardNoField], $fundingSource, $fundingType);
+                            $ary = array($shortAwardNo, $role, $year);
+                            array_push($grantDescriptions, implode(" / ", $ary));
+                        }
                     }
                 }
             }
@@ -777,43 +943,47 @@ class NIHTables {
         return implode("<br><br>", $grantDescriptions);
     }
 
-    private function findRole($recordId, $baseAwardNo, $source, $name) {
+    # best guess
+    private static function transformNamesToLastFirst($aryOfNames) {
+	    $transformedNames = array();
+	    foreach ($aryOfNames as $name) {
+            $nodes = array();
+            $lastPosition = -1;
+            $firstPosition = -1;
+            if (preg_match("/,/", $name)) {
+                $nodes = preg_split("/\s*,\s*/", $name);
+                if (count($nodes) >= 2) {
+                    $lastPosition = 0;
+                    $firstPosition = 1;
+                }
+            } else if (preg_match("/\s/", $name)) {
+                $nodes = preg_split("/\s+/", $name);
+                $lastPosition = 1;
+                $firstPosition = 0;
+            }
 
-	    return "PI/Co-PI";    // default
+            $last = "";
+            $first = "";
+            if (($lastPosition >= 0) && ($firstPosition >= 0)) {
+                if (strlen($nodes[$lastPosition]) == 1) {
+                    # switch if old last name is just an initial; assume initials are first names
+                    $a = $firstPosition;
+                    $firstPosition = $lastPosition;
+                    $lastPosition = $a;
+                }
+                if ((count($nodes) > $lastPosition) && (count($nodes) > $firstPosition)) {
+                    $last = $nodes[$lastPosition];
+                    $first = $nodes[$firstPosition];
+                }
+            }
+            array_push($transformedNames, "$last, $first");
+        }
+	    return $transformedNames;
     }
 
-    # best guess
-    private static function getLastAndFirstNames($name) {
-	    $nodes = array();
-	    $lastPosition = -1;
-	    $firstPosition = -1;
-	    if (preg_match("/,/", $name)) {
-	        $nodes = preg_split("/\s*,\s*/", $name);
-	        if (count($nodes) >= 2) {
-                $lastPosition = 0;
-                $firstPosition = 1;
-            }
-        } else if (preg_match("/\s/", $name)) {
-	        $nodes = preg_split("/\s+/", $name);
-	        $lastPosition = 1;
-	        $firstPosition = 0;
-        }
-
-	    $last = "";
-	    $first = "";
-	    if (($lastPosition >= 0) && ($firstPosition >= 0)) {
-    	    if (strlen($nodes[$lastPosition]) == 1) {
-    	        # switch if old last name is just an initial; assume initials are first names
-    	        $a = $firstPosition;
-    	        $firstPosition = $lastPosition;
-    	        $lastPosition = $a;
-            }
-    	    if ((count($nodes) > $lastPosition) && (count($nodes) > $firstPosition)) {
-                $last = $nodes[$lastPosition];
-                $first = $nodes[$firstPosition];
-            }
-        }
-	    return array($last, $first);
+    private function hasSupportSummary() {
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
+        return in_array("identifier_support_summary", $metadataFields);
     }
 
     private function get8Data($table) {
@@ -824,6 +994,12 @@ class NIHTables {
 	        $lastNames = Download::lastnames($this->token, $this->server);
             $mentors = Download::primaryMentors($this->token, $this->server);
             $trainingGrants = Download::trainingGrants($this->token, $this->server);
+            $hasSupportSummary = $this->hasSupportSummary();
+            if ($hasSupportSummary) {
+                $supportSummaries = Download::oneField($this->token, $this->server, "identifier_support_summary");
+            } else {
+                $supportSummaries = array();
+            }
 
 	        $data = [];
 	        $baseLineStart = (date("Y") - self::$maxYearsOfGrantReporting)."-01-01";
@@ -841,21 +1017,26 @@ class NIHTables {
                         $countingStartDate = $baseLineStart;
                     }
                 }
-	            $supportSummary = self::getSupportSummary($currentTrainingGrants, $recordId, $countingStartDate);
 	            $terminalDegree = $this->getTerminalDegreeAndYear($recordId);
 	            $topic = $this->getResearchTopic($recordId);
 	            $initialPos = $this->getInitialPosition($positionData, $recordId);
 	            $currentPos = $this->getCurrentPosition($positionData, $recordId);
 	            $subsequentGrants = $this->getGrantSummary($recordId);
+                $supportSummary = $supportSummaries[$recordId] ? $supportSummaries[$recordId] : "";
 
-	            list($mentorLastName, $mentorFirstName) = self::getLastAndFirstNames($mentors[$recordId]);
+                if ($hasSupportSummary) {
+                    $supportSummaryHTML = self::makeComment("Please Edit")."<br><textarea class='support_summary' record='$recordId'>$supportSummary</textarea><br><button class='support_summary' record='$recordId' onclick='saveSupportSummary(\"$recordId\"); return false;' style='display: none; font-size: 10px;'>Save Changes</button>";
+                } else {
+                    $supportSummaryHTML = self::makeComment("Manually Entered");
+                }
+	            $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId]);
 	            $dataRow = array(
 	                "Trainee" => "{$lastNames[$recordId]}, {$firstNames[$recordId]}",
-                    "Faculty Member" => "$mentorLastName, $mentorFirstName",
-                    "Start Date" => $startDate,
-                    "Summary of Support During Training" => $supportSummary,
+                    "Faculty Member" => implode("; ", $transformedFacultyNames),
+                    "Start Date" => $countingStartDate,
+                    "Summary of Support During Training" => $supportSummaryHTML,
                     "Terminal Degree(s)<br>Received and Year(s)" => $terminalDegree,
-                    "Topic of Research Project" => $topic,
+                    "Topic of Research Project<br>(From ".self::getResearchTopicSource().")" => $topic,
                     "Initial Position<br>Department<br>Institution<br>Activity" => $initialPos,
                     "Current Position<br>Department<br>Institution<br>Activity" => $currentPos,
                     "Subsequent Grant(s)/Role/Year Awarded" => $subsequentGrants,
@@ -870,16 +1051,108 @@ class NIHTables {
         }
 	}
 
-    private function get8IVData() {
-	    $data = array();
-	    $data["Percentage of Trainees Entering Graduate School 10 Years Ago Who Completed the PhD"] = "0.0%";
-	    $data["Average Time to PhD for Trainee in the Last 10 Years"] = "0 years";
-	    return $data;
+	private static function formatTopic($topic, $src) {
+	    if ($topic) {
+	        return $topic."<br>($src)";
+        }
+	    return self::$naMssg;
     }
 
-	private static function integerToRoman($roman)
-    {
-        $romans = array(
+    private function get8IVData() {
+	    $predocs = Download::predocNames($this->token, $this->server);
+	    $trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");
+
+	    $yearspan = 10;
+	    $today = date("Y-m-d");
+	    $recordsForLast10Years = array();
+	    $recordsFor10YearsAgo = array();
+	    foreach ($predocs as $recordId => $name) {
+	        if ($trainingStarts[$recordId]) {
+	            $age = REDCapManagement::getYearDuration($trainingStarts[$recordId], $today);
+	            if ($age < $yearspan) {
+	                array_push($recordsForLast10Years, $recordId);
+	            }
+	            if ((ceil($age) == $yearspan) || (floor($age) == $yearspan)) {
+	                array_push($recordsFor10YearsAgo, $recordId);
+	            }
+	        }
+	    }
+
+	    $results = array();
+        $results["Percentage of Trainees Entering Graduate School $yearspan Years Ago Who Completed the PhD"] = array(
+            "value" => $this->getPercentWithPhD($recordsFor10YearsAgo),
+            "suffix" => "%",
+        );
+        $results["Average Time to PhD for Trainee in the Last $yearspan Years"] = array(
+            "value" => $this->getAverageTimeToPhD($recordsForLast10Years),
+            "suffix" => " years",
+        );
+
+	    $data = array();
+	    foreach ($results as $descr => $ary) {
+	        $value = $ary['value'];
+	        if ($value != self::$NA) {
+                $data[$descr] = REDCapManagement::pretty($value, 1) . $ary['suffix'];
+            } else {
+                $data[$descr] = $value;
+            }
+        }
+	    return array($data);
+    }
+
+    private function getPercentWithPhD($recordIds) {
+	    $numWithPhD = 0;
+	    $numTotal = 0;
+	    foreach ($recordIds as $recordId) {
+            $degreesAndYears = $this->getTerminalDegreesAndYears($recordId);
+            foreach ($degreesAndYears as $degree => $year) {
+                if (self::isKnownDate($degree, $year)) {
+                    $numTotal++;
+                    if (preg_match("/PhD/", $degree)) {
+                        $numWithPhD++;
+                    }
+                }
+            }
+        }
+	    if ($numTotal > 0) {
+	        return 100 * $numWithPhD / $numTotal;
+        } else {
+            return self::$NA;
+        }
+    }
+
+    private static function isKnownDate($degree, $year) {
+	    if ($degree == "In Training") {
+	        return FALSE;
+        }
+	    if (preg_match("/Unknown Year/", $year)) {
+	        return FALSE;
+        }
+	    return TRUE;
+   }
+
+    private function getAverageTimeToPhD($recordIds) {
+	    $timesToPhD = array();
+	    $currYear = date("Y");
+	    foreach ($recordIds as $recordId) {
+            $degreesAndYears = $this->getTerminalDegreesAndYears($recordId);
+            foreach ($degreesAndYears as $degree => $year) {
+                if (self::isKnownDate($degree, $year)) {
+                    if (preg_match("/PhD/", $degree)) {
+                        array_push($timesToPhD, $currYear - $year);
+                    }
+                }
+            }
+        }
+	    if (count($timesToPhD)) {
+            return avg($timesToPhD);
+        } else {
+	        return self::$NA;
+        }
+    }
+
+    private static function getRomanNumerals() {
+	    return array(
             'M' => 1000,
             'CM' => 900,
             'D' => 500,
@@ -894,6 +1167,22 @@ class NIHTables {
             'IV' => 4,
             'I' => 1,
         );
+    }
+
+    private static function isRoman($str) {
+	    $romans = array_keys(self::getRomanNumerals());
+	    for ($i=0; $i < strlen($str); $i++) {
+	        $ch = strtoupper($str[$i]);
+	        if (!in_array($ch, $romans)) {
+	            return FALSE;
+            }
+        }
+	    return TRUE;
+    }
+
+	private static function integerToRoman($roman)
+    {
+        $romans = self::getRomanNumerals();
 
         $result = 0;
 
@@ -928,13 +1217,21 @@ class NIHTables {
 			}
 			$currRow = array();
 			foreach ($row as $field => $value) {
-				array_push($currRow, "<td>$value</td>");
+			    $style = "";
+			    if ($field == "Publication") {
+                    $style = " style='text-align: left;'";
+                }
+			    if ($value) {
+                    array_push($currRow, "<td".$style.">$value</td>");
+                } else {
+			        array_push($currRow, "<td".$style.">".self::makeComment(self::$naMssg)."</td>");
+                }
 			}
 			array_push($htmlRows, "<tr>".implode("", $currRow)."</tr>\n"); 
 		}
 
-		$html = "<table>".implode("", $htmlRows)."</table>\n";
-		return $html; 
+		$html = "<table class='centered bordered'>".implode("", $htmlRows)."</table>\n";
+		return $html;
 	}
 
 	private static function beginsWith($table, $ary) {
@@ -982,12 +1279,9 @@ class NIHTables {
                 foreach ($names as $recordId => $name) {
                     $currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
                     foreach ($currentGrants as $row) {
-                        if ($row['redcap_repeat_instrument'] == "custom") {
+                        if ($row['redcap_repeat_instrument'] == "custom_grant") {
                             if ($part == 1) {
-                                # current appointments
-                                if (self::isActiveTimespan($row['custom_start'], $row['custom_end'])) {
-                                    $filteredNames[$recordId] = $name;
-                                }
+                                $filteredNames[$recordId] = $name;
                             } else if ($part == 3) {
                                 # recent graduates - those whose appointments have ended
                                 # for new applications only (currently)
@@ -1042,6 +1336,10 @@ class NIHTables {
         return $isActive;
     }
 
+    public static function makeComment($str) {
+	    return "<span class='action_required'>".$str."</span>";
+    }
+
 	private function get5Data($table) {
 		$data = array();
 		$names = $this->downloadRelevantNames($table);
@@ -1050,20 +1348,29 @@ class NIHTables {
 			$firstNames = Download::firstNames($this->token, $this->server);
 			$mentors = Download::primaryMentors($this->token, $this->server); 
 			$trainingData = Download::trainingGrants($this->token, $this->server);
-		}
+            $trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");
+        }
 		$fields = array_unique(array_merge(Application::$citationFields, array("record_id")));
 		foreach ($names as $recordId => $name) {
 			$pubData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
-			$facultyMember = $mentors[$recordId];
+            $facultyMembers = $mentors[$recordId];
 			$traineeName = $name;
 			$pastOrCurrent = "";
 			$trainingPeriod = "";
 			$startTs = 0;
+			if ($trainingStarts[$recordId]) {
+			    $startTs = strtotime($trainingStarts[$recordId]);
+                $startYear = REDCapManagement::getYear($trainingStarts[$recordId]);
+            }
 			$endTs = time();
 			$currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
 			foreach ($currentGrants as $row) {
-                if ($row['redcap_repeat_instrument'] == "custom") {
-                    $startYear = REDCapManagement::getYear($row['custom_start']);
+                if ($row['redcap_repeat_instrument'] == "custom_grant") {
+                    $currStartTs = strtotime($row['custom_start']);
+                    if (!$startTs || ($currStartTs < $startTs)) {
+                        $startTs = $currStartTs;
+                        $startYear = REDCapManagement::getYear($row['custom_start']);
+                    }
                     if ($row['custom_end']) {
                         $endTs = strtotime($row['custom_end']);
                         if ($endTs > time()) {
@@ -1085,32 +1392,45 @@ class NIHTables {
                 }
 			}
 
+			$eighteenMonthsDuration = 18 * 30 * 24 * 3600;
+			$endTs += $eighteenMonthsDuration;
+
 			$pubs = new Publications($this->token, $this->server, $this->metadata);
 			$pubs->setRows($pubData);
 
-			if ($pubs->getCitationCount() == 0) {
-				$dataRow = array(
-							"Faculty Member" => $facultyMember,
-							"Trainee Name" => $traineeName,
-							"Past or Current Trainee" => $pastOrCurrent,
-							"Training Period" => $trainingPeriod,
-							"Publication" => "No Publications",
-						);
-				array_push($data, $dataRow);
+            $noPubsRow = array(
+                "Trainee Name" => $traineeName,
+                "Faculty Member" => implode(", ", $facultyMembers),
+                "Past or Current Trainee" => $pastOrCurrent,
+                "Training Period" => $trainingPeriod,
+                "Publication" => "No Publications: ".self::makeComment("Explanation Needed"),
+            );
+
+            if ($pubs->getCitationCount() == 0) {
+				array_push($data, $noPubsRow);
 			} else {
-				$citations = $pubs->getCitations("Included");
+				$citations = $pubs->getSortedCitations("Included");
+				$nihFormatCits = array();
 				foreach ($citations as $citation) {
-					if ($citation->hasAuthor($facultyMember) && $citation->hasAuthor($traineeName) && $citation->inTimespan($startTs, $endTs)) {
-						$dataRow = array(
-									"Faculty Member" => $facultyMember,
-									"Trainee Name" => $traineeName,
-									"Past or Current Trainee" => $pastOrCurrent,
-									"Training Period" => $trainingPeriod,
-									"Publication" => $citation->getNIHFormat($lastNames[$recordId], $firstNames[$recordId]),
-								);
-						array_push($data, $dataRow);
-					}
+				    foreach ($facultyMembers as $facultyMember) {
+                        if ($citation->inTimespan($startTs, $endTs)) {
+                            $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId], $firstNames[$recordId]);
+                        }
+                    }
 				}
+				if (count($nihFormatCits) == 0) {
+                    array_push($data, $noPubsRow);
+                } else {
+                    $dataRow = array(
+                        "Trainee Name" => $traineeName,
+                        "Faculty Member" => $facultyMember,
+                        "Past or Current Trainee" => $pastOrCurrent,
+                        "Training Period" => $trainingPeriod,
+                        "Publication" => implode("<br>", $nihFormatCits),
+                    );
+                    array_push($data, $dataRow);
+
+                }
 			}
 		}
 		return $data;
@@ -1120,7 +1440,9 @@ class NIHTables {
 	private $server;
 	private $pid;
 	private $metadata;
+	private $choices;
 	private static $NA = "N/A";
 	private static $presentMarker = "Present";
 	public static $maxYearsOfGrantReporting = 15;
+	public static $naMssg = "None Specified";
 }

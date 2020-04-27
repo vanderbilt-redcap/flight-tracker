@@ -177,7 +177,7 @@ $module = Application::getModule();
 						title: 'Message'
 					},
 				],
-				"dom": 'Blftip'
+				"dom": 'Blfptip'
 		    }).on( 'draw', function () {
 				var ellipsis = $('.dataTables_paginate .ellipsis')
 				ellipsis.addClass('paginate_button')

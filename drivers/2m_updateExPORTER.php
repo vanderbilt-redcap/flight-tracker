@@ -68,24 +68,17 @@ function getExPORTERInstance($recordId, $redcapData, $upload, $uploadLine) {
  * returns empty string if $file not found
  * @param string $file Filename without leading URL
  */
-function downloadURL($file) {
+function downloadURLAndUnzip($file) {
 	$csvfile = preg_replace("/.zip/", ".csv", $file);
 	if (!file_exists(APP_PATH_TEMP.$csvfile)) {
 		CareerDev::log("Downloading $file...");
 
 		$url = "https://exporter.nih.gov/CSVs/final/".$file;
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, 0);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-		$zip = curl_exec($ch);
-		$resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-		curl_close($ch);
+        if (function_exists("downloadURL")) {
+            list($resp, $zip) = downloadURL($url);
+        } else {
+            list($resp, $zip) = \Vanderbilt\FlightTrackerExternalModule\downloadURL($url);
+        }
 
 		if ($resp == 200) {
 			CareerDev::log("Unzipping $file...");
@@ -140,7 +133,7 @@ function updateExPORTER($token, $server, $pid) {
 	# unzip zip files
 	for ($year = 2009; $year <= date("Y"); $year++) {
 		$url = "RePORTER_PRJ_C_FY".$year.".zip";
-		$file = downloadURL($url);
+		$file = downloadURLAndUnzip($url);
 		if ($file) {
 			$files[$file] = $year;
 		}
@@ -149,7 +142,7 @@ function updateExPORTER($token, $server, $pid) {
 		for ($week = 1; $week <= 53; $week++) {
 			$weekWithLeading0s = sprintf('%03d', $week);
 			$url = "RePORTER_PRJ_C_FY".$year."_".$weekWithLeading0s.".zip";
-			$file = downloadURL($url);
+			$file = downloadURLAndUnzip($url);
 			if ($file) {
 				$files[$file] = $year;
 			}

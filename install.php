@@ -226,7 +226,7 @@ function makeIntroPage($projectId) {
 	}
 	$html .= "<form method='POST' action='".CareerDev::link("install.php")."'>\n";
 	$html .= "<table style='margin-left: auto; margin-right: auto; max-width: 800px;'>\n";
-
+	
 	$html .= "<tr>\n";
 	$html .= "<td colspan='2'>\n";
 	$html .= "<h2>Software Mission</h2>\n";
@@ -243,6 +243,9 @@ function makeIntroPage($projectId) {
 	$html .= "<li>A list of institutional resources you offer for help (e.g., workshops, seminars)</li>\n";
 	$html .= "<li>A list of names, emails, and institutions</li>\n";
 	$html .= "</ol>\n";
+	$html .= "<h2>Federal Data Sources Consulted</h2>\n";
+	$html .= "<p class='centered'>The following data sources need to be accessible (white-listed) from your REDCap server in order for Flight Tracker to work.</p>\n";
+	$html .= CareerDev::getSiteListHTML();
 	$html .= "<h2>What You'll Get</h2>\n";
 	$html .= "<ol>\n";
 	$html .= "<li>A REDCap project filled with your scholars.</li>\n";

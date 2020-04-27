@@ -68,7 +68,7 @@ function getExPORTERInstance($recordId, $redcapData, $upload, $uploadLine) {
  * returns empty string if $file not found
  * @param string $file Filename without leading URL
  */
-function downloadURL($file) {
+function downloadURLAndUnzip($file) {
 	$csvfile = preg_replace("/.zip/", ".csv", $file);
 	if (!file_exists(APP_PATH_TEMP.$csvfile)) {
 		echo "Downloading $file...\n";
@@ -109,7 +109,7 @@ function downloadURL($file) {
 $files = array();
 
 // echo APP_PATH_TEMP."\n";
-// $files[] = downloadURL("RePORTER_PRJ_C_FY2018_048.zip");
+// $files[] = downloadURLAndUnzip("RePORTER_PRJ_C_FY2018_048.zip");
 // echo $files[0]."\n";
 
 # find relevant zips
@@ -117,7 +117,7 @@ $files = array();
 # unzip zip files
 for ($year = 2009; $year <= date("Y"); $year++) {
 	$url = "RePORTER_PRJ_C_FY".$year.".zip";
-	$file = downloadURL($url);
+	$file = downloadURLAndUnzip($url);
 	if ($file) {
 		$files[$file] = $year;
 	}
@@ -126,7 +126,7 @@ for ($year = date("Y") - 1; $year <= date("Y") + 1; $year++) {
 	for ($week = 1; $week <= 53; $week++) {
 		$weekWithLeading0s = sprintf('%03d', $week);
 		$url = "RePORTER_PRJ_C_FY".$year."_".$weekWithLeading0s.".zip";
-		$file = downloadURL($url);
+		$file = downloadURLAndUnzip($url);
 		if ($file) {
 			$files[$file] = $year;
 		}

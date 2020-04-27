@@ -32,6 +32,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		if ($has['news']) {
 			$manager->addCron("news/getNewsItems_func.php", "getNewsItems", "Friday");
 		}
+        $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
 		$manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
 
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday");

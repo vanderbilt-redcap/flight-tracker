@@ -277,17 +277,17 @@ class Grants {
 
 					if ($hasCoeus) {
 						# for non-infinitely-repeating COEUS forms
-						array_push($gfs, new CoeusGrantFactory($this->name, $this->lexicalTranslator));
+						array_push($gfs, new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 					} else {
 						foreach ($row as $field => $value) {
 							if (preg_match("/^newman_/", $field)) {
-								array_push($gfs, new NewmanGrantFactory($this->name, $this->lexicalTranslator));
+								array_push($gfs, new NewmanGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 								break;
 							}
 						}
 						foreach ($row as $field => $value) {
 							if (preg_match("/^check_/", $field)) {
-								array_push($gfs, new ScholarsGrantFactory($this->name, $this->lexicalTranslator));
+								array_push($gfs, new ScholarsGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 								break;
 							}
 						}
@@ -302,7 +302,7 @@ class Grants {
 							}
 						}
 
-						$priorGF = new PriorGrantFactory($this->name, $this->lexicalTranslator);
+						$priorGF = new PriorGrantFactory($this->name, $this-elexicalTranslator, $this->metadata);
 						$priorGF->processRow($row);
 						$priorGFGrants = $priorGF->getGrants();
 						foreach ($priorGFGrants as $grant) {
@@ -310,15 +310,15 @@ class Grants {
 						}
 					}
 				} else if ($row['redcap_repeat_instrument'] == "coeus") {
-					array_push($gfs, new CoeusGrantFactory($this->name, $this->lexicalTranslator));
+					array_push($gfs, new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 				} else if ($row['redcap_repeat_instrument'] == "reporter") {
-					array_push($gfs, new RePORTERGrantFactory($this->name, $this->lexicalTranslator));
+					array_push($gfs, new RePORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 				} else if ($row['redcap_repeat_instrument'] == "exporter") {
-					array_push($gfs, new ExPORTERGrantFactory($this->name, $this->lexicalTranslator));
+					array_push($gfs, new ExPORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 				} else if ($row['redcap_repeat_instrument'] == "custom_grant") {
-					array_push($gfs, new CustomGrantFactory($this->name, $this->lexicalTranslator));
+					array_push($gfs, new CustomGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 				} else if ($row['redcap_repeat_instrument'] == "followup") {
-					array_push($gfs, new FollowupGrantFactory($this->name, $this->lexicalTranslator));
+					array_push($gfs, new FollowupGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 				}
 				foreach ($gfs as $gf) {
 					$gf->processRow($row);
@@ -1408,7 +1408,8 @@ class Grants {
 							$uploadRow[$key] = $value;
 						} else {
 							Application::log($key." not found in metadata, but in compiledGrants");
-							throw new \Exception($key." not found in metadata, but in compiledGrants");
+                            # Need to warn silently because of upgrade issues
+							// throw new \Exception($key." not found in metadata, but in compiledGrants");
 						}
 					}
 					$i++;
@@ -1423,8 +1424,6 @@ class Grants {
 				foreach ($v as $key => $value) {
 					if (isset($this->metadata[$key])) {
 						$uploadRow[$key] = $value;
-					} else {
-						throw new \Exception($key." not found in metadata, but in blankGrant");
 					}
 				}
 			}

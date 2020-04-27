@@ -1360,6 +1360,7 @@ class Grant {
 					"total_budget" => "budget",
 					"direct_budget" => "direct_budget",
 					"percent_effort" => "effort",
+                    "role" => "role",
 					);
 		$ary = array();
 		$awardTypeConversion = self::getAwardTypes();

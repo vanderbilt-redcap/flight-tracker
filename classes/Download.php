@@ -340,11 +340,15 @@ class Download {
 		return Download::oneField($token, $server, "identifier_last_name");
 	}
 
-	public static function firstnames($token, $server) {
-		return Download::oneField($token, $server, "identifier_first_name");
-	}
+    public static function firstnames($token, $server) {
+        return Download::oneField($token, $server, "identifier_first_name");
+    }
 
-	public static function middlenames($token, $server) {
+    public static function ORCIDs($token, $server) {
+        return Download::oneField($token, $server, "identifier_orcid");
+    }
+
+    public static function middlenames($token, $server) {
 		return Download::oneField($token, $server, "identifier_middle");
 	}
 

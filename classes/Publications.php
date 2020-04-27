@@ -24,6 +24,58 @@ class Publications {
 		$this->choices = Scholar::getChoices($metadata);
 	}
 
+    public static function searchPubMedForName($first, $last, $institution = "") {
+        $first = preg_replace("/\s+/", "+", $first);
+        $last = preg_replace("/\s+/", "+", $last);
+        $institution = preg_replace("/\s+/", "+", $institution);
+        $term = $first . "+%5Bau%5D+AND+".$last."%5Bau%5D";
+        if ($institution) {
+            $term .= "+AND+" . strtolower($institution) . "%5Bad%5D";
+        }
+        return self::queryPubMed($term);
+    }
+
+    public static function searchPubMedForORCID($orcid) {
+        $term = $orcid . "%5Bauid%5D";
+        return self::queryPubMed($term);
+    }
+
+    public static function queryPubMed($term) {
+        $url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=100000&retmode=json&term=".$term;
+        Application::log($url);
+        echo $url."\n";
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+        $output = curl_exec($ch);
+        curl_close($ch);
+        Application::log("Downloaded ".strlen($output)." bytes");
+
+        $pmids = array();
+        $pmData = json_decode($output, true);
+        if ($pmData['esearchresult'] && $pmData['esearchresult']['idlist']) {
+            # if the errorlist is not blank, it might search for simplified
+            # it might search for simplified names and produce bad results
+            $pmidCount = count($pmData['esearchresult']['idlist']);
+            if (!isset($pmData['esearchresult']['errorlist'])
+                || !$pmData['esearchresult']['errorlist']
+                || !$pmData['esearchresult']['errorlist']['phrasesnotfound']
+                || empty($pmData['esearchresult']['errorlist']['phrasesnotfound'])) {
+                foreach ($pmData['esearchresult']['idlist'] as $pmid) {
+                    array_push($pmids, $pmid);
+                }
+            }
+        }
+        Publications::throttleDown();
+        return $pmids;
+    }
+
 	public static function getSearch() {
 		return "Last/Full Name:<br><input id='search' type='text' style='width: 100%;'><br><div style='width: 100%; color: red;' id='searchDiv'></div>";
 	}
@@ -300,7 +352,7 @@ class Publications {
 		return array();
 	}
 
-	public static function getCitationsFromPubMed($pmids, $src = "", $recordId = 0, $startInstance = 1) {
+	public static function getCitationsFromPubMed($pmids, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = array()) {
 		$citations = array();
 		$upload = array();
 		$instance = $startInstance;
@@ -443,6 +495,9 @@ class Publications {
 							"citation_rcr" => $iCite->getVariable("relative_citation_ratio"),
 							"citation_complete" => "2",
 							);
+					if (in_array($pmid, $confirmedPMIDs)) {
+					    $row['citation_include'] = '1';
+                    }
 					array_push($upload, $row);
 					$instance++;
 				} else {
@@ -745,6 +800,24 @@ class Publications {
 		}
 		return NULL;
 	}
+
+	public function getSortedCitations($type = "Included", $asc = TRUE) {
+	    $citations = $this->getCitations($type);
+	    $keyedByTimestamp = array();
+	    foreach ($citations as $citation) {
+	        $ts = $citation->getTimestamp();
+	        while (isset($keyedByTimestamp[$ts])) {
+	            $ts++;
+            }
+            $keyedByTimestamp[$ts] = $citation;
+        }
+	    if ($asc) {
+            ksort($keyedByTimestamp);
+        } else {
+	        krsort($keyedByTimestamp);
+        }
+	    return array_values($keyedByTimestamp);
+    }
 
 	# returns array of class Citation
 	public function getCitations($type = "Included") {

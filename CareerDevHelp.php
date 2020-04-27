@@ -38,7 +38,27 @@ class CareerDevHelp {
                 return "";
 	}
 
-	private static function replaceHelpLinks($line) {
+    private static function replaceCodeBlocks($line) {
+        if (preg_match_all("/executeCode\((\w+),\s*(\w+)/", $line, $matches)) {
+            for ($i = 0; $i < count($matches[0]); $i++) {
+                $matchStr = $matches[0][$i];
+                $className = $matches[1][$i];
+                $method = $matches[2][$i];
+                $returnHTML = "[$className::$method - Result not found]";
+                $namespaces = array("", "Vanderbilt\\FlightTrackerExternalModule\\", "Vanderbilt\\CareerDevLibrary\\");
+                foreach ($namespaces as $ns) {
+                    if (method_exists($ns.$className, $method)) {
+                        $returnHTML = call_user_func(array($ns.$className, $method));
+                        break;
+                    }
+                }
+                $line = str_replace($matchStr, $returnHTML, $line);
+            }
+        }
+        return $line;
+    }
+
+    private static function replaceHelpLinks($line) {
 		if (preg_match_all("/[\"']launchHelp\([\"']([\w\.]+)[\"']\);[\"']/", $line, $matches)) {
 			for ($i = 0; $i < count($matches[0]); $i++) {
 				$matchStr = $matches[0][$i];
@@ -57,6 +77,7 @@ class CareerDevHelp {
 			$strippedLines = array();
 			foreach ($lines as $line) {
 				$line = self::replaceHelpLinks($line);
+                $line = self::replaceCodeBlocks($line);
 				if (!$noImages) {
 					if (!preg_match("/<img /", $line)) {
 						array_push($strippedLines, $line);
@@ -194,6 +215,7 @@ class CareerDevHelp {
 				"Setting Up a Database" => array("changes.html"),
 				"Adding New Scholars" => array("addScholars.html"),
 				"Email Management" => array("emailMgmt.html"),
+                "External Sites Accessed" => array("whitelist.html"),
 				"Solving Situations" => array("situations.html"),
 				"Manual Curation: Grant Wrangler" => array("grantWrangler.html"),
 				"Manual Curation: Publication Wrangler" => array("pubWrangler.html"),

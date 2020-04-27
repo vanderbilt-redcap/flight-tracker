@@ -119,7 +119,6 @@ class Scholar {
 		} else {
 			$vars = self::getDefaultOrder("identifier_orcid");
             $vars = $this->getOrder($vars, "identifier_orcid");
-            error_log("getORCIDResult looking through ".json_encode($vars));
 			$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 		}
 		$value = $result->getValue();
@@ -128,7 +127,6 @@ class Scholar {
 			# they provided URL instead of number
 			$result->setValue(preg_replace($searchTerm, "", $value));
 		}
-		error_log("getORCIDResult returning ".$result->getValue()." and source ".$result->getSource());
 		return $result;
 	}
 
@@ -1031,6 +1029,7 @@ class Scholar {
 							"vfrs_disadvantaged_the_criteria" => "vfrs",
 							);
 		$orders["summary_training_start"] = array(
+                                "identifier_start_of_training" => "manual",
 								"check_degree0_start" => "scholars",
 								"promotion_in_effect" => "manual",
 								);
@@ -1723,10 +1722,22 @@ class Scholar {
 			return $this->matchWithInstitutionResult($institutionResult, $rows, $vars);
 		} else {
 			# no institution information
-			$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
-			return $result;
+            return self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
 		}
 	}
+
+	private function matchInstitutionInRow($value, $row) {
+        $vars = self::getDefaultOrder("identifier_institution");
+        $vars = $this->getOrder($vars, "identifier_institution");
+
+        foreach ($vars as $field => $source) {
+            if ($row[$field] == $value) {
+                return $field;
+            }
+        }
+
+        return FALSE;
+    }
 
 	private function matchWithInstitutionResult($institutionResult, $rows, $vars) {
 		$fieldName = $institutionResult->getField();
@@ -1740,10 +1751,10 @@ class Scholar {
 		}
 		foreach ($rows as $row) {
 			$currInstance = ($row['redcap_repeat_instance'] ? $row['redcap_repeat_instance'] : "");
-			if (($row[$fieldName] == $value) && in_array($currInstance, $instances)) {
+			if (in_array($currInstance, $instances) && $this->matchInstitutionInRow($value, $row)) {
 				foreach ($vars as $origField => $origSource) {
 					if (($source == $origSource) && $row[$origField]) {
-						$result = new Result($row[$origField], $source, "", "", $this->pid);
+					    $result = new Result($row[$origField], $source, "", "", $this->pid);
 						$result->setField($origField);
 						$result->setInstance($currInstance);
 						return $result;

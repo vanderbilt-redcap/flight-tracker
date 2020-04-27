@@ -4,12 +4,14 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
 require_once(dirname(__FILE__)."/classes/NameMatcher.php");
+require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 
 if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 	# get starting record_id
@@ -125,6 +127,8 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 function processLines($lines, $nextRecordId, $token, $server) {
 	$upload = array();
 	$lineNum = 1;
+	$metadata = Download::metadata($token, $server);
+	$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	foreach ($lines as $nodes) {
 		if (count($nodes) >= 6) {
 			$firstName = $nodes[0];
@@ -159,21 +163,7 @@ function processLines($lines, $nextRecordId, $token, $server) {
 					throw new \Exception("The gender column contains an invalid value ({$nodes[6]}). Import not successful.");
 				}
 				if ($nodes[7]) {
-					$dobNodes = preg_split("/[\-\/]/", $nodes[7]);
-					# assume MDY
-					if (count($dobNodes) == 3) {
-						if ($dobNodes[2] < 100) {
-							if ($dobNodes[2] > 20) {
-								$dobNodes[2] += 1900;
-							} else {
-								$dobNodes[2] += 2000;
-							}
-						}
-						$dob = $dobNodes[2]."-".$dobNodes[0]."-".$dobNodes[1];
-					} else {
-						echo "<p>The date-of-birth column contains an invalid value ({$nodes[7]}). Import not successful.</p>";
-						throw new \Exception("The date-of-birth column contains an invalid value ({$nodes[7]}). Import not successful.");
-					}
+				    $dob = importMDY2YMD($nodes[7], "date-of-birth");
 				} else {
 					$dob = "";
 				}
@@ -245,6 +235,12 @@ function processLines($lines, $nextRecordId, $token, $server) {
 				} else {
 					$mentor = "";
 				}
+				if ($nodes[14]) {
+				    $trainingStart = importMDY2YMD($nodes[14], "Start of Training");
+                } else {
+				    $trainingStart = "";
+                }
+
 				$uploadRow["imported_dob"] = $dob;
 				$uploadRow["imported_gender"] = $gender;
 				$uploadRow["imported_race"] = $race;
@@ -252,11 +248,32 @@ function processLines($lines, $nextRecordId, $token, $server) {
 				$uploadRow["imported_disadvantaged"] = $disadvantaged;
 				$uploadRow["imported_disabled"] = $disabled;
 				$uploadRow["imported_citizenship"] = $citizenship;
-				$uploadRow["imported_mentor"] = $mentor;
+                $uploadRow["imported_mentor"] = $mentor;
+                if (in_array("identifier_start_of_training", $metadataFields)) {
+                    $uploadRow["identifier_start_of_training"] = $trainingStart;
+                }
 			}
 			$upload[] = $uploadRow;
 		}
 		$lineNum++;
 	}
 	return array($upload, $emails);
+}
+
+function importMDY2YMD($mdyDate, $col) {
+    $nodes = preg_split("/[\-\/]/", $mdyDate);
+    # assume MDY
+    if (count($nodes) == 3) {
+        if ($nodes[2] < 100) {
+            if ($nodes[2] > 20) {
+                $nodes[2] += 1900;
+            } else {
+                $nodes[2] += 2000;
+            }
+        }
+        return $nodes[2] . "-" . $nodes[0] . "-" . $nodes[1];
+    } else {
+        echo "<p>The $col column contains an invalid value ($mdyDate). Import not successful.</p>";
+        throw new \Exception("The $col column contains an invalid value ({$mdyDate}). Import not successful.");
+    }
 }

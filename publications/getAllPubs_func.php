@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\iCite;
 use \Vanderbilt\CareerDevLibrary\VICTRPubMedConnection;
 use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
@@ -15,6 +16,7 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/iCite.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../classes/OracleConnection.php");
 
 function getPubs($token, $server, $pid) {
@@ -228,12 +230,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server) {
 						$maxInstances[$recordId] = 0;
 					}
 					$maxInstances[$recordId]++;
-					$uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), "victr", $recordId, $maxInstances[$recordId]);
-					foreach ($uploadRows as $uploadRow) {
-						// mark to include only for VICTR
-						$uploadRow['citation_include'] = '1';
-						array_push($upload, $uploadRow);
-					}
+					$uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), "victr", $recordId, $maxInstances[$recordId], array($newCitationId));
 					if (!isset($citationIds['Final'][$recordId])) {
 						$citationIds['Final'][$recordId] = array();
 					}
@@ -258,7 +255,10 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server) {
 function processPubMed(&$citationIds, &$maxInstances, $token, $server) { 
 	$allLastNames = Download::lastnames($token, $server);
 	$allFirstNames = Download::firstnames($token, $server);
-	$allInstitutions = Download::institutions($token, $server);
+    $allInstitutions = Download::institutions($token, $server);
+    $orcids = Download::ORCIDs($token, $server);
+    $metadata = Download::metadata($token, $server);
+    $choices = REDCapManagement::getChoices($metadata);
 
 	foreach ($allLastNames as $recordId => $recLastName) {
 		$firstName = $allFirstNames[$recordId];
@@ -288,72 +288,82 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server) {
 		$institutions = array_unique(array_merge(CareerDev::getInstitutions(), $personalInstitutions));
 
 		$pmids = array();
-		foreach ($lastNames as $lastName) {
+		$orcidPMIDs = array();
+        if ($orcids[$recordId]) {
+            $orcidPMIDs = Publications::searchPubMedForORCID($orcids[$recordId]);
+            addPMIDsIfNotFound($pmids, $citationIds, $orcidPMIDs, $recordId);
+        }
+
+        foreach ($lastNames as $lastName) {
 			foreach ($firstNames as $firstName) {
 				foreach ($institutions as $institution) {
 					if ($institution) {
-						if ($middle) {
-							$firstName .= "+".$middle;
+						if (isset($middle) && $middle) {
+							$firstName .= " ".$middle;
 						}
-						$institution = preg_replace("/\s+/", "+", $institution);
 						CareerDev::log("Searching $lastName $firstName at $institution");
 						echo "Searching $lastName $firstName at $institution\n";
-						$url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=100000&retmode=json&term=".$firstName."+".$lastName."+%5Bau%5D+AND+".strtolower($institution)."%5Bad%5D";
-						CareerDev::log($url);
-						echo $url."\n";
-						$ch = curl_init();
-						curl_setopt($ch, CURLOPT_URL, $url);
-						curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-						curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-						curl_setopt($ch, CURLOPT_VERBOSE, 0);
-						curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-						curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-						curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-						curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-						$output = curl_exec($ch);
-						curl_close($ch);
-
-						$pmData = json_decode($output, true);
-						if ($pmData['esearchresult'] && $pmData['esearchresult']['idlist']) {
-							# if the errorlist is not blank, it might search for simplified
-							# it might search for simplified names and produce bad results
-							$pmidNum = 1;
-							$pmidCount = count($pmData['esearchresult']['idlist']);
-							if (!isset($pmData['esearchresult']['errorlist'])
-								|| !$pmData['esearchresult']['errorlist']
-								|| !$pmData['esearchresult']['errorlist']['phrasesnotfound']
-								|| empty($pmData['esearchresult']['errorlist']['phrasesnotfound'])) {
-								foreach ($pmData['esearchresult']['idlist'] as $pmid) {
-									$foundType = inCitationIds($citationIds, $pmid, $recordId);
-									if (!$foundType) {
-										array_push($pmids, $pmid);
-										array_push($citationIds['New'][$recordId], $pmid);
-                                                                        } else {
-                                                                                Application::log("Record $recordId: Skipping $pmid ($pmidNum/$pmidCount)");
-                                                                        }
-                                                                        $pmidNum++;
-								}
-							}
-						}
-						Publications::throttleDown();
+                        $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $institution);
+						addPMIDsIfNotFound($pmids, $citationIds, $currPMIDs, $recordId);
 					}
 				}
+
+				// $naturalFirstName = REDCapManagement::stripNickname($allFirstNames[$recordId]);
+                // $currPMIDs = Publications::searchPubMedForName($naturalFirstName." ".$allLastNames[$recordId]);
+                // addPMIDsIfNotFound($pmids, $citationIds, $currPMIDs, $recordId);
 			}
 		}
 		CareerDev::log("$recordId at ".count($pmids)." PMIDs");
 		echo "$recordId at ".count($pmids)." PMIDs\n";
 
-
 		if (!isset($maxInstances[$recordId])) {
 			$maxInstances[$recordId] = 0;
 		}
-		$maxInstances[$recordId]++;
-		$uploadRows = Publications::getCitationsFromPubMed($pmids, "pubmed", $recordId, $maxInstances[$recordId]);
+        $nonOrcidPMIDs = array();
+        foreach ($pmids as $pmid) {
+            if (!in_array($pmid, $orcidPMIDs)) {
+                array_push($nonOrcidPMIDs, $pmid);
+            }
+        }
+        $pubmedRows = array();
+        $orcidRows = array();
+        $max = $maxInstances[$recordId];
+        $max++;
+        if (!empty($nonOrcidPMIDs)) {
+            $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDs, "pubmed", $recordId, $max, $orcidPMIDs);
+        }
+        if (!empty($orcidRows)) {
+            if (!empty($pubmedRows)) {
+                $max = REDCapManagement::getMaxInstance($pubmedRows, "citation", $recordId);
+                $max++;
+            }
+            $src = "orcid";
+            if (!isset($choices["citation_source"][$src])) {
+                $src = "pubmed";
+            }
+            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $src, $recordId, $max, $orcidPMIDs);
+        }
+        $uploadRows = array_merge($pubmedRows, $orcidRows);
 		if (!empty($uploadRows)) {
 			upload($uploadRows, $token, $server);
 		}
 	}
 	CareerDev::saveCurrentDate("Last PubMed Download");
+}
+
+function addPMIDsIfNotFound(&$pmids, &$citationIds, $currPMIDs, $recordId) {
+    $pmidNum = 1;
+    $pmidCount = count($currPMIDs);
+    foreach ($currPMIDs as $pmid) {
+        $foundType = inCitationIds($citationIds, $pmid, $recordId);
+        if (!$foundType) {
+            array_push($pmids, $pmid);
+            array_push($citationIds['New'][$recordId], $pmid);
+        } else {
+            Application::log("Record $recordId: Skipping $pmid ($pmidNum/$pmidCount)");
+        }
+        $pmidNum++;
+    }
 }
 
 function upload($upload, $token, $server) {

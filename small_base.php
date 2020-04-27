@@ -30,6 +30,7 @@ use \Vanderbilt\CareerDevLibrary\Survey;
 use \Vanderbilt\CareerDevLibrary\UnitTester;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\iCite;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 
 require_once(dirname(__FILE__)."/classes/Publications.php");
@@ -43,6 +44,7 @@ require_once(dirname(__FILE__)."/classes/NameMatcher.php");
 require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/classes/Consortium.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
+require_once(dirname(__FILE__)."/Application.php");
 
 ini_set("memory_limit", "4096M");
 date_default_timezone_set(CareerDev::getTimezone());
@@ -348,57 +350,34 @@ function matchNames($firsts, $lasts) {
 }
 
 function prettyMoney($n, $displayCents = TRUE) {
-	if ($displayCents) {
-		return "\$".pretty($n, 2);
-	} else {
-		return "\$".pretty($n, 0);
-	}
+    return REDCapManagement::prettyMoney($n, $displayCents);
 }
+
 function pretty($n, $numDecimalPlaces = 3) {
-	$s = "";
-	$n2 = abs($n);
-	$n2int = intval($n2);
-	$decimal = $n2 - $n2int;
-	while ($n2int > 0) {
-		$s1 = ($n2int % 1000);
-		$n2int = floor($n2int / 1000);
-		if (($s1 < 100) && ($n2int > 0)) {
-			if ($s1 < 10) {
-				$s1 = "0".$s1;
-			}
-			$s1 = "0".$s1;
-		}
-		if ($s) {
-			$s = $s1.",".$s;
-		} else {
-			$s = $s1;
-		}
-	}
-	if ($decimal && is_int($numDecimalPlaces) && ($numDecimalPlaces > 0)) {
-		$decimal = ".".floor($decimal * pow(10, $numDecimalPlaces));
-	} else {
-		$decimal = "";
-	}
-	if (!$s) {
-		$s = "0";
-	}
-	if ($n < 0) {
-		if (!$decimal) {
-			return "-".$s;
-		} else {
-			return "-".$s.$decimal;
-		}
-	}
-	if (!$decimal) {
-		return $s;
-	} else {
-		return $s.$decimal;
-	}
+    return REDCapManagement::pretty($n, $numDecimalPlaces);
+}
+
+function downloadURL($url) {
+    Application::log("Contacting $url");
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_VERBOSE, 0);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+    curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+    curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+    $data = curl_exec($ch);
+    $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    Application::log("Response code $resp; ".strlen($data)." bytes");
+    return array($resp, $data);
 }
 
 # given two timestamps (UNIX) $start, $end - let's call this duration.
 # provide the timestamps of a larger period, $yearStart, $yearEnd
-# figures the fraction of the year that is filled by the duraction
+# figures the fraction of the year that is filled by the duration
 # returns value | 0 <= value <= 1
 function calculateFractionEffort($start, $end, $yearStart, $yearEnd) {
 	if ($start && $end) {
@@ -546,9 +525,7 @@ function getCohort($row) {
 }
 
 function json_encode_with_spaces($data) {
-	$str = json_encode($data);
-	$str = preg_replace("/,/", ", ", $str);
-	return $str;
+    return REDCapManagement::json_encode_with_spaces($data);
 }
 
 function YMD2MDY($ymd) {

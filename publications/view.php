@@ -16,30 +16,36 @@ $names = Download::names($token, $server);
 
 echo "<h1>View Publications</h1>\n";
 if ($_GET['record']) {
-	$record = $_GET['record'];
-	$name = $names[$record];
-	$metadata = Download::metadata($token, $server);
-	$redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, array($record)); 
-	$pubs = new Publications($token, $server, $metadata);
-	$pubs->setRows($redcapData);
-	$citations = array();
-	$citations["Confirmed Publications"] = $pubs->getCitationCollection("Included");
-	$citations["Publications yet to be Confirmed"] = $pubs->getCitationCollection("Not Done");
+    if ($_GET['record'] == "all") {
+        $records = Download::recordIds($token, $server);
+    } else {
+        $records = array($_GET['record']);
+    }
+    foreach ($records as $record) {
+        $name = $names[$record];
+        $metadata = Download::metadata($token, $server);
+        $redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, array($record));
+        $pubs = new Publications($token, $server, $metadata);
+        $pubs->setRows($redcapData);
+        $citations = array();
+        $citations["Confirmed Publications"] = $pubs->getCitationCollection("Included");
+        $citations["Publications yet to be Confirmed"] = $pubs->getCitationCollection("Not Done");
 
-	echo makePublicationSearch($names);
-	foreach ($citations as $header => $citColl) {
-		echo "<h2>$header (".$citColl->getCount().")</h2>\n";
-		$citations = explode("\n", $citColl->getCitationsAsString(TRUE));
-		echo "<div class='centered' style='max-width: 800px;'>\n";
-		if ($citColl->getCount() == 0) {
-			echo "<p class='centered'>No citations.</p>\n";
-		} else {
-			foreach ($citations as $citation) {
-				echo "<p style='text-align: left;'>$citation</p>\n";
-			}
-		}
-		echo "</div>\n";
-	}
+        echo makePublicationSearch($names);
+        foreach ($citations as $header => $citColl) {
+            echo "<h2>$header (" . $citColl->getCount() . ")</h2>\n";
+            $citations = explode("\n", $citColl->getCitationsAsString(TRUE));
+            echo "<div class='centered' style='max-width: 800px;'>\n";
+            if ($citColl->getCount() == 0) {
+                echo "<p class='centered'>No citations.</p>\n";
+            } else {
+                foreach ($citations as $citation) {
+                    echo "<p style='text-align: left;'>$citation</p>\n";
+                }
+            }
+            echo "</div>\n";
+        }
+    }
 
 	echo "<br><br><br>";
 	
@@ -50,6 +56,7 @@ if ($_GET['record']) {
 function makePublicationSearch($names) {
 	$html = "";
 	$html .= "<h2>View a Scholar's Publications</h2>\n";
+	$html .= "<p class='centered'><a href='".CareerDev::link("publications/view.php")."&record=all'>View All Scholars' Publications</a></p>\n";
 	$html .= "<p class='centered'><select onchange='window.location.href = \"".CareerDev::link("publications/view.php")."&record=\" + $(this).val();'><option value=''>---SELECT---</option>\n";
 	foreach ($names as $recordId => $name) {
 		$html .= "<option value='$recordId'";

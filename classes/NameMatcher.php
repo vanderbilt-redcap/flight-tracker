@@ -48,6 +48,29 @@ class NameMatcher {
 		return $recordIds;
 	}
 
+	public static function explodeFirstName($first) {
+	    $nodes = preg_split("/\s*\(\s*/", $first);
+	    $newNodes = array();
+	    foreach ($nodes as $node) {
+	        $node = preg_replace("/\)/", "", $node);
+	        if ($node && !in_array($node, $newNodes)) {
+                array_push($newNodes, $node);
+            }
+        }
+	    return $newNodes;
+    }
+
+    public static function explodeLastName($last) {
+	    $nodes = preg_split("/[\s\-]+/", $last);
+	    $newNodes = array($last);
+	    foreach ($nodes as $node) {
+	        if ($node && !in_array($node, $newNodes)) {
+	            array_push($newNodes, $node);
+            }
+        }
+	    return $newNodes;
+    }
+
 	public static function downloadNamesForMatch($token, $server) {
 		Application::log("Downloading new names for pid ".Application::getPID($token));
 		self::$namesForMatch = Download::fields($token, $server, array("record_id", "identifier_first_name", "identifier_last_name"));
@@ -97,13 +120,22 @@ class NameMatcher {
 			return array("", "");
 		}
 		$nodes = preg_split("/\s*,\s*/", $name);
+		if (count($nodes) == 1) {
+            $nodes = preg_split("/\s*\band\b\s*/", $name);
+        }
 		if (count($nodes) >= 2) {
 			# last-name, first-name
 			return array($nodes[1], $nodes[0]);
 		} else if (count($nodes) == 1) {
 			$nodes = preg_split("/\s+/", $name);
-			if (count($nodes) >= 2) {
-				return array($nodes[0], $nodes[1]);
+			if (count($nodes) > 2) {
+			    if (strlen($nodes[1]) <= 2) {
+                    return array($nodes[0], $nodes[2]);
+                } else {
+                    return array($nodes[0], $nodes[1]);
+                }
+            } else if (count($nodes) == 2) {
+                return array($nodes[0], $nodes[1]);
 			} else if (count($nodes) == 1) {
 				return array($nodes[0], "");
 			} else {

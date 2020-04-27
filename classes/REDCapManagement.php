@@ -110,6 +110,16 @@ class REDCapManagement {
 	    return $nodes[0];
     }
 
+    public static function getMaxInstance($rows, $instrument, $recordId) {
+	    $max = 0;
+	    foreach ($rows as $row) {
+	        if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == $instrument) && ($row['redcap_repeat_instance'] > $max)) {
+	            $max = $row['redcap_repeat_instance'];
+            }
+        }
+	    return $max;
+    }
+
     public static function getRowForFieldFromMetadata($field, $metadata) {
 	    foreach ($metadata as $row) {
 	        if ($row['field_name'] == $field) {
@@ -191,9 +201,28 @@ class REDCapManagement {
 		return $fields;
 	}
 
-	public static function getMetadataFieldsToScreen() {
+    public static function stripNickname($firstName) {
+        return preg_replace("/\s+\(.+\)/", "", $firstName);
+    }
+
+    public static function getMetadataFieldsToScreen() {
 		return array("select_choices_or_calculations", "required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation");
 	}
+
+	public static function findField($redcapData, $recordId, $field) {
+	    foreach ($redcapData as $row) {
+	        if (($row['record_id'] == $recordId) && $row[$field]) {
+	            return $row[$field];
+            }
+        }
+	    return "";
+    }
+
+    public static function json_encode_with_spaces($data) {
+        $str = json_encode($data);
+        $str = preg_replace("/,/", ", ", $str);
+        return $str;
+    }
 
 	# if present, $fields contains the fields to copy over; if left as an empty array, then it attempts to install all fields
 	# $deletionRegEx contains the regular expression that marks fields for deletion
@@ -327,7 +356,59 @@ class REDCapManagement {
 		return "";
 	}
 
-	public static function MDY2YMD($mdy) {
+    public static function prettyMoney($n, $displayCents = TRUE) {
+        if ($displayCents) {
+            return "\$".self::pretty($n, 2);
+        } else {
+            return "\$".self::pretty($n, 0);
+        }
+    }
+
+    public static function pretty($n, $numDecimalPlaces = 3) {
+        $s = "";
+        $n2 = abs($n);
+        $n2int = intval($n2);
+        $decimal = $n2 - $n2int;
+        while ($n2int > 0) {
+            $s1 = ($n2int % 1000);
+            $n2int = floor($n2int / 1000);
+            if (($s1 < 100) && ($n2int > 0)) {
+                if ($s1 < 10) {
+                    $s1 = "0".$s1;
+                }
+                $s1 = "0".$s1;
+            }
+            if ($s) {
+                $s = $s1.",".$s;
+            } else {
+                $s = $s1;
+            }
+        }
+        if ($decimal && is_int($numDecimalPlaces) && ($numDecimalPlaces > 0)) {
+            $decimal = ".".floor($decimal * pow(10, $numDecimalPlaces));
+        } else {
+            $decimal = "";
+        }
+        if (!$s) {
+            $s = "0";
+        }
+        if ($n < 0) {
+            if (!$decimal) {
+                return "-".$s;
+            } else {
+                return "-".$s.$decimal;
+            }
+        }
+        if (!$decimal) {
+            return $s;
+        } else {
+            return $s.$decimal;
+        }
+    }
+
+
+
+    public static function MDY2YMD($mdy) {
 		$nodes = preg_split("/[\/\-]/", $mdy);
 		if (count($nodes) == 3) {
 			$month = $nodes[0];

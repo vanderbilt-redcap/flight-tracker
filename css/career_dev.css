@@ -28,7 +28,6 @@ div.right { border-left: 1px dotted black; border-right: 1px solid #888888; padd
 .small { font-size: 14px; }
 .smaller,.smaller a { font-size: 13px; }
 .smallest,.smallest a { font-size: 12px; }
-.000 { background-color: red; }
 .tookover td { background-color: #f4c3ff; padding: 0px; }
 .tookover th { font-size: 12px; text-align: left; width: 125px; background-color: #f4c3ff; padding: 0px; }
 .small_padding td { background-color: #eeeeee; padding: 0px; }
@@ -107,3 +106,7 @@ canvas { background-color: white; margin-top: 25px; }
 li.nobullets { list-style: none; }
 .nowrap { white-space: nowrap; }
 .centeredMinus50 { text-align: center; width: 50%; }
+.max-width { margin: 0 auto; max-width: 800px; }
+table.bordered tr td,table.bordered tr th { border: 1px solid #888; }
+table.bordered { border-collapse: collapse; }
+.action_required { color: red; font-weight: bold; }

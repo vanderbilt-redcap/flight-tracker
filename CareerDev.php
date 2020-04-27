@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.11.4";
+		return "2.12.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -35,7 +35,30 @@ class CareerDev {
 		return FALSE;
 	}
 
-	public static function getIntroductoryFromEmail() {
+	public static function getSites() {
+        $sites = array(
+            "NIH ExPORTER" => "exporter.nih.gov",
+            "Federal RePORTER" => "api.federalreporter.nih.gov",
+            "PubMed" => "eutils.ncbi.nlm.nih.gov",
+            "PubMed Central Converter" => "www.ncbi.nlm.nih.gov",
+            "iCite" => "icite.od.nih.gov",
+    	    "ORCID" => "pub.orcid.org",
+            "Statistics Reporting" => "redcap.vanderbilt.edu",
+        );
+        return $sites;
+    }
+
+    public static function getSiteListHTML() {
+        $sites = self::getSites();
+        $html = "<ul>\n";
+        foreach ($sites as $site => $domain) {
+            $html .= "<li>$site ($domain)</li>\n";
+        }
+        $html .= "</ul>\n";
+        return $html;
+    }
+
+    public static function getIntroductoryFromEmail() {
 		return self::getSetting("introductory_from");;
 	}
 
@@ -224,7 +247,7 @@ class CareerDev {
 		$longInst = self::getInstitution();
 
 		$institutions = array();
-		if (preg_match("/".strtolower($shortInst)."/", $longInst)) {
+		if (preg_match("/".strtolower($shortInst)."/", strtolower($longInst))) {
 			array_push($institutions, $shortInst);
 			array_push($institutions, $longInst);
 		} else {

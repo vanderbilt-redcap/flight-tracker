@@ -79,6 +79,7 @@ function updateReporter($token, $server, $pid) {
 	$fields = array("record_id", "identifier_last_name", "identifier_middle", "identifier_first_name", "identifier_institution");
 	$redcapData = Download::fields($token, $server, $fields);
 
+	$maxTries = 2;
 	$includedFields = array();
 	foreach ($redcapData as $row) {
 		# for each REDCap Record, download data for each person
@@ -91,9 +92,11 @@ function updateReporter($token, $server, $pid) {
 		$listOfNames = array();
 		foreach ($lastNames as $ln) {
 			foreach ($firstNames as $fn) {
-				$fn = preg_replace("/^\(/", "", $fn);
-				$fn = preg_replace("/\)$/", "", $fn);
-				$listOfNames[] = $fn." ".$ln;
+				if ($ln && $fn) {
+					$fn = preg_replace("/^\(/", "", $fn);
+					$fn = preg_replace("/\)$/", "", $fn);
+					$listOfNames[] = $fn." ".$ln;
+				}
 			}
 		} 
 		if (!in_array($firstName." ".$lastName, $listOfNames)) {
@@ -120,7 +123,7 @@ function updateReporter($token, $server, $pid) {
 			$currData = array();
 			$try = 0;
 			do {
-				if (isset($myData['offset']) && $myData['offset'] == 0) {
+				if (isset($myData) && isset($myData['offset']) && $myData['offset'] == 0) {
 					$try++;
 				} else {
 					$try = 0;
@@ -137,6 +140,7 @@ function updateReporter($token, $server, $pid) {
 				curl_setopt($ch, CURLOPT_AUTOREFERER, true);
 				curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
 				curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+				curl_setopt($ch, CURLOPT_TIMEOUT, 3);
 				$output = curl_exec($ch);
 				curl_close($ch);
 				// CareerDev::log($output);
@@ -154,7 +158,7 @@ function updateReporter($token, $server, $pid) {
 				}
 				CareerDev::log($myName." (".$lastName.") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}");
 				echo $myName." (".$lastName.") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}\n";
-			} while (($myData['totalCount'] > $myData['limit'] + $myData['offset']) || (($myData['offset'] == 0) && ($try < 5)));
+			} while (($myData['totalCount'] > $myData['limit'] + $myData['offset']) || (($myData['offset'] == 0) && ($try < $maxTries)));
 			CareerDev::log("{$row['record_id']}: $lastName currData ".count($currData));
 			echo "{$row['record_id']}: $lastName currData ".count($currData)."\n";
 

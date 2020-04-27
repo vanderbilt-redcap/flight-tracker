@@ -5,7 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
-$date = date("Y-m-d");
+$date = date("Y-m-d", time() - 24 * 3600);  // two days prior
 $pid = $_GET['pid'];
 
 if (is_numeric($pid)) {
