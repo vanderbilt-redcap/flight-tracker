@@ -14,6 +14,24 @@ function stripFromHTML(str, html) {
 	return "";
 }
 
+function turnOffStatusCron() {
+	$.post(getPageUrl("testConnectivity.php"), { turn_off: 1 }, function(html) {
+		console.log("Turned off "+html);
+		$("#status").html("Off");
+		$("#status_link").html("Turn on status cron");
+		$("#status_link").attr("onclick", "turnOnStatusCron();");
+	});
+}
+
+function turnOnStatusCron() {
+	$.post(getPageUrl("testConnectivity.php"), { turn_on: 1 }, function(html) {
+		console.log("Turned on "+html);
+		$("#status").html("On");
+		$("#status_link").html("Turn off status cron");
+		$("#status_link").attr("onclick", "turnOffStatusCron();");
+	});
+}
+
 function trimPeriods(str) {
 	return str.replace(/\.$/, "");
 }

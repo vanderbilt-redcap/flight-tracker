@@ -312,9 +312,10 @@ class EmailManager {
 	private function prepareOneEmail($emailSetting, $settingName, $whenType, $toField = "who") {
 		$data = $this->prepareEmail($emailSetting, $settingName, $whenType, $toField);
 		if (!empty($data)) {
-			$numMssgs = count($data['mssgs']);
+            $mssgRecords = array_keys($data['mssgs']);
+			$numMssgs = count($mssgRecords);
 			if ($numMssgs > 0) {
-				$recordId = reset(array_keys($data['mssgs']));
+				$recordId = reset($mssgRecords);
 			}
 			if ($recordId) {
 				$data['mssgs'] = array($recordId => $data['mssgs'][$recordId]);
@@ -442,6 +443,7 @@ class EmailManager {
 			array_push($fields, $form."_complete");
 			array_push($fields, self::getDateField($form));
 		}
+		$fields = REDCapManagement::filterOutInvalidFields($this->metadata, $fields);
 
 		# structure data
 		$redcapData = Download::fields($this->token, $this->server, $fields);
@@ -614,6 +616,7 @@ class EmailManager {
 			array_push($fields, $form."_complete");
 			array_push($fields, self::getDateField($form));
 		}
+		$fields = REDCapManagement::filterOutInvalidFields($this->metadata, $fields);
 
 		# structure data
 		$redcapData = Download::fields($this->token, $this->server, $fields);
@@ -624,7 +627,9 @@ class EmailManager {
 		foreach ($redcapData as $row) {
 			$recordId = $row['record_id'];
 			if ($row['redcap_repeat_instrument'] == "") {
-				$converted[$recordId] = $row['summary_ever_r01_or_equiv'];
+			    if (isset($row['summary_ever_r01_or_equiv'])) {
+                    $converted[$recordId] = $row['summary_ever_r01_or_equiv'];
+                }
 				$identifiers[$recordId] = array(
 								"last_name" => $row['identifier_last_name'],
 								"first_name" => $row['identifier_first_name'],
@@ -661,6 +666,9 @@ class EmailManager {
 					"research_admin",
 					"role",
 					"building",
+					"floor",
+					"team",
+					"leadership_teams",
 					"grad_teaching",
 					"med_student_teaching",
 					"undergrad_teaching",
@@ -672,9 +680,9 @@ class EmailManager {
 		$filtersToApply = array();
 		foreach ($filterFields as $whoFilterField) {
 			if (isset($who[$whoFilterField])) {
-				$redcapField = self::getFieldAssociatedWithFilter($whoFilterField);
-				array_push($fieldsToDownload, $redcapField);
-				array_push($filtersToApply, $whoFilterField);
+                $redcapField = self::getFieldAssociatedWithFilter($whoFilterField);
+                array_push($fieldsToDownload, $redcapField);
+                array_push($filtersToApply, $whoFilterField);
 			}
 		}
 		if (!empty($fieldsToDownload)) {
@@ -682,11 +690,15 @@ class EmailManager {
 			$filterREDCapData = Download::fields($this->token, $this->server, $fieldsToDownload);
 			foreach ($filtersToApply as $filter) {
 				$redcapField = self::getFieldAssociatedWithFilter($filter);
-				$queue = self::filterForField($redcapField, $who[$filter], $filterREDCapData, $queue);
+				if ($filter == "team") {
+                    $queue = self::filterForTeams($redcapField, $who[$filter], $filterREDCapData, $queue);
+                } else {
+                    $queue = self::filterForField($redcapField, $who[$filter], $filterREDCapData, $queue);
+                }
 			}
-			
 		}
-		if ($who['last_complete']) {
+
+        if ($who['last_complete']) {
 			$queue = self::filterForMonths($who['last_complete'], $lastUpdate, $queue);
 		}
 		if ($who['none_complete']) {
@@ -776,8 +788,12 @@ class EmailManager {
 		switch($whoFilter) {
 			case "affiliations":
 				return "summary_affiliations";
-			case "teams":
-				return "summary_teams";
+			case "team":
+				return "survey_team";
+            case "leadership_teams":
+                return "survey_leadership_teams";
+            case "floor":
+                return "survey_floor";
 			case "primary_affiliation":
 				return "summary_primary_affiliation";
 			case "department":
@@ -1039,6 +1055,36 @@ class EmailManager {
 		return FALSE;
 	}
 
+	private static function filterForTeams($field, $values, $redcapData, $queue) {
+        $newQueue = array();
+        if (in_array("", $values)) {
+            # ANY option
+            return $queue;
+        }
+        foreach ($values as $recordId) {
+            foreach ($redcapData as $row) {
+                if ($recordId == $row['record_id']) {
+                    $teamRecords = array();
+                    $team = preg_split("/\n/", $row[$field]);
+                    foreach ($team as $line) {
+                        if ($line) {
+                            $items = preg_split("/\s*,\s*/", $line);
+                            if (is_numeric($items[0])) {
+                                $teamRecords[] = $items[0];
+                            }
+                        }
+                    }
+                    foreach ($teamRecords as $teamRecordId) {
+                        if (in_array($teamRecordId, $queue) && !in_array($teamRecordId, $newQueue)) {
+                            $newQueue[] = $teamRecordId;
+                        }
+                    }
+                }
+            }
+        }
+        return $newQueue;
+    }
+
 	private static function filterForField($field, $value, $redcapData, $queue) {
 		$newQueue = array();
 		foreach ($queue as $recordId) {
@@ -1244,6 +1290,19 @@ class EmailManager {
 		if (!empty($inFiveMinsResults)) {
 			$tester->assertTrue(empty($inFiveMinsResults[$settingName]), "results for launch time + 5 minutes! ".json_encode($inFiveMinsResults));
 		}
+
+		$sixtyDaysDuration = 60 * 24 * 3600;
+		$currTime = time();
+		$sendTs = strtotime($testResults[$settingName]["when"]["initial_time"]);
+		for ($ts = $currTime; $ts < $currTime + $sixtyDaysDuration; $ts += 60) {
+		    $results = $this->enqueueRelevantEmails("", array($settingName), "prepareEmail", $ts);
+		    if (date("Y-m-d H:i", $sendTs) == date("Y-m-d H:i", $ts)) {
+		        $tester->assertTrue(isset($results[$settingName]), "at set time, found results");
+            } else {
+                $tester->assertTrue(!isset($results[$settingName]), "at not set time, found no results");
+            }
+        }
+
 	}
 
 	public function getSurveyLinks_test($tester) {

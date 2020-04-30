@@ -12,7 +12,11 @@ class Application {
 	}
 
 	public static function getGrantClasses() {
-	    CareerDev::getGrantClasses();
+	    return CareerDev::getGrantClasses();
+    }
+
+    public static function getProgramName() {
+	    return CareerDev::getProgramName();
     }
 
 	public static function getUnknown() {
@@ -54,9 +58,13 @@ class Application {
 		return CareerDev::link($loc);
 	}
 
-	public static function getSetting($field) {
-		return CareerDev::getSetting($field);
+	public static function getSetting($field, $pid = "") {
+		return CareerDev::getSetting($field, $pid);
 	}
+
+	public static function getSites() {
+	    return CareerDev::getSites();
+    }
 
 	public static function getInternalKLength() {
 		return CareerDev::getInternalKLength();

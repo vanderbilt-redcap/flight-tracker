@@ -49,6 +49,10 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 	echo $manager->getNumberOfCrons()." crons loaded\n";
 }
 
+function loadTestingCrons(&$manager) {
+    $date = date("Y-m-d");
+    $manager->addCron("drivers/14_connectivity.php", "testConnectivity", $date);
+}
 function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 	if (!$token) { global $token; }
 	if (!$server) { global $server; }

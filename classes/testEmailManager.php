@@ -6,7 +6,11 @@
 	use \Vanderbilt\CareerDevLibrary\UnitTester;
 
 	define("NOAUTH", TRUE);
-	require_once(dirname(__FILE__)."/../small_base.php");
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+
+    require_once(dirname(__FILE__)."/../small_base.php");
 	require_once(dirname(__FILE__)."/UnitTester.php");
 
 	echo "<h1>Email Manager Unit Tests</h1>\n";
@@ -21,7 +25,11 @@
 		echo $e->getMessage()."<br>";
 	}
 	$tester = new UnitTester();
-	$tester->analyze($obj);
+	try {
+        $tester->analyze($obj);
+    } catch (Exception $e) {
+        echo $e->getMessage()."<br>";
+    }
 	$myClass = get_class($obj);
 
 	$badResults = $tester->getFailures();
@@ -30,10 +38,10 @@
 		$numBadResults += count($ary);
 	}
 	if ($numBadResults > 0) {
-		echo "<h4 style='background-color: #ff7c7c;'>$numBadResults Failures</h4>\n";
+		echo "<h4 style='background-color: #ff7c7c;'>$numBadResults Failures from ".$tester->getTestCount()." tests</h4>\n";
 		echo "<div id='$myClass"."_results'>";
 	} else {
-		echo "<h4 style='background-color: #bdffb6;' onclick='$(\"#$myClass"."_results\").show();'>All Passed</h4>\n";
+		echo "<h4 style='background-color: #bdffb6;' onclick='$(\"#$myClass"."_results\").show();'>All Passed (".$tester->getTestCount().")</h4>\n";
 		echo "<div id='$myClass"."_results' style='display: none;'>";
 	}
 

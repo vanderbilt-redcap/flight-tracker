@@ -31,19 +31,27 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	function emails() {
-		// $this->setupApplication();
-		// $pids = $this->framework->getProjectsWithModuleEnabled();
-		// CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
-		// foreach ($pids as $pid) {
-			// if (REDCapManagement::isActiveProject($pid)) {
-				// $token = $this->getProjectSetting("token", $pid);
-				// $server = $this->getProjectSetting("server", $pid);
-				// $tokenName = $this->getProjectSetting("tokenName", $pid);
+	    $this->setupApplication();
+		$pids = $this->framework->getProjectsWithModuleEnabled();
+        CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
+		foreach ($pids as $pid) {
+			if (REDCapManagement::isActiveProject($pid)) {
+				$token = $this->getProjectSetting("token", $pid);
+				$server = $this->getProjectSetting("server", $pid);
+				$tokenName = $this->getProjectSetting("tokenName", $pid);
+                $adminEmail = $this->getProjectSetting("admin_email", $pid);
+                $cronStatus = $this->getProjectSetting("send_cron_status", $pid);
+                if ($cronStatus) {
+                    $mgr = new CronManager($token, $server, $pid);
+                    loadTestingCrons($mgr);
+                    $mgr->run($adminEmail, $tokenName);
+                }
+
 				// CareerDev::log("Sending emails for $tokenName (pid $pid)");
 				// $mgr = new EmailManager($token, $server, $pid, $this);
 				// $mgr->sendRelevantEmails();
-			// }
-		// }
+			}
+		}
 	}
 
 	function cron() {
@@ -70,7 +78,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 						loadCrons($mgr, FALSE, $token, $server);
 					}
 					CareerDev::log($this->getName().": Running crons for pid $pid", $pid);
-					$mgr->run($adminEmail, $tokenName, $pid);
+					$mgr->run($adminEmail, $tokenName);
 					CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
 				}
 				# else project has not finished initialization
@@ -236,7 +244,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	public function getBrandLogo() {
-		return $this->getProjectSetting($this->getBrandLogoName(), $base64);
+		return $this->getProjectSetting($this->getBrandLogoName(), $_GET['pid']);
 	}
 
 	public function canRedirectToInstall() {

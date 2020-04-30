@@ -31,6 +31,7 @@ use \Vanderbilt\CareerDevLibrary\UnitTester;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\iCite;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\ConnectionStatus;
 
 
 require_once(dirname(__FILE__)."/classes/Publications.php");
@@ -358,21 +359,7 @@ function pretty($n, $numDecimalPlaces = 3) {
 }
 
 function downloadURL($url) {
-    Application::log("Contacting $url");
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_VERBOSE, 0);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-    curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-    curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-    $data = curl_exec($ch);
-    $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    curl_close($ch);
-    Application::log("Response code $resp; ".strlen($data)." bytes");
-    return array($resp, $data);
+    return REDCapManagement::downloadURL($url);
 }
 
 # given two timestamps (UNIX) $start, $end - let's call this duration.

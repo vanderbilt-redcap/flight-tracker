@@ -254,6 +254,14 @@ class UnitTester
 	public function getResults() {
 		return $this->testResults;
 	}
+	
+	public function getTestCount() {
+	    $count = 0;
+        foreach ($this->testResults as $method => $ary) {
+            $count += count($ary['results']);
+        }
+        return $count;
+    }
 
 	public function getFailures() {
 		$badResults = array();

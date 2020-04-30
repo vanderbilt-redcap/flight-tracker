@@ -24,10 +24,16 @@ class IMPHRegisterTester {
 		$json = '{"0":{"modifytimestamp":{"count":1,"0":"20191024165009Z"},"0":"modifytimestamp","modifiersname":{"count":1,"0":"uid=identity manager,ou=directory services,dc=vanderbilt,dc=edu"},"1":"modifiersname","vanderbiltpersonlastepwchgdate":{"count":1,"0":"20191024"},"2":"vanderbiltpersonlastepwchgdate","mail":{"count":1,"0":"scott.j.pearson@vumc.org"},"3":"mail","o":{"count":1,"0":"VMC"},"4":"o","telephonenumber":{"count":1,"0":"615-322-4806"},"5":"telephonenumber","edupersonprimaryaffiliation":{"count":1,"0":"staff"},"6":"edupersonprimaryaffiliation","edupersonaffiliation":{"count":4,"0":"staff","1":"employee","2":"member","3":"affiliate"},"7":"edupersonaffiliation","displayname":{"count":1,"0":"Pearson, Scott James"},"8":"displayname","vanderbiltpersonjobstatus":{"count":1,"0":"N"},"9":"vanderbiltpersonjobstatus","vanderbiltpersonepinumber":{"count":1,"0":"0003237120"},"10":"vanderbiltpersonepinumber","givenname":{"count":1,"0":"Scott"},"11":"givenname","objectclass":{"count":7,"0":"top","1":"person","2":"inetOrgPerson","3":"eduPerson","4":"vanderbiltPerson","5":"posixAccount","6":"organizationalPerson"},"12":"objectclass","vanderbiltpersonemployeeclass":{"count":1,"0":"Staff"},"13":"vanderbiltpersonemployeeclass","departmentnumber":{"count":1,"0":"VICTR - 104242"},"14":"departmentnumber","vanderbiltpersonactiveemployee":{"count":1,"0":"Y"},"15":"vanderbiltpersonactiveemployee","uid":{"count":1,"0":"'.$uid.'"},"16":"uid","uidnumber":{"count":1,"0":"170738"},"17":"uidnumber","cn":{"count":1,"0":"Scott James Pearson"},"18":"cn","vanderbiltpersonhrdeptname":{"count":1,"0":"VICTR"},"19":"vanderbiltpersonhrdeptname","vanderbiltpersonsecurity":{"count":1,"0":"PUBLIC"},"20":"vanderbiltpersonsecurity","vanderbiltpersonhrdepttype":{"count":1,"0":"Medical"},"21":"vanderbiltpersonhrdepttype","gidnumber":{"count":1,"0":"10000"},"22":"gidnumber","vanderbiltpersoncommonid":{"count":1,"0":"234795"},"23":"vanderbiltpersoncommonid","vanderbiltpersonhrdeptnumber":{"count":1,"0":"104242"},"24":"vanderbiltpersonhrdeptnumber","homedirectory":{"count":1,"0":"\/home\/pearsosj"},"25":"homedirectory","vanderbiltpersonemployeeid":{"count":1,"0":"0118480"},"26":"vanderbiltpersonemployeeid","sn":{"count":1,"0":"Pearson"},"27":"sn","creatorsname":{"count":1,"0":"cn=prod idm resource manager,ou=application users,dc=vanderbilt,dc=edu"},"28":"creatorsname","createtimestamp":{"count":1,"0":"20140103181825Z"},"29":"createtimestamp","loginshell":{"count":1,"0":"\/bin\/sh"},"30":"loginshell","count":31,"dn":"uid=pearsosj,ou=people,dc=vanderbilt,dc=edu"},"count":1}';
 		$info = json_decode($json, TRUE);
 		$ldapUid = LDAP::findField($info, "uid");
+		if (is_array($ldapUid)) {
+		    $ldapUid = $ldapUid[0];
+        }
 		$tester->tag("findField: uid");
 		$tester->assertEqual($ldapUid, $uid);
 
 		$vunet = LDAP::getVUNet($first, $last);
+        if (is_array($vunet)) {
+            $vunet = $vunet[0];
+        }
 		$tester->tag("getVUNet =? $uid");
 		$tester->assertEqual($vunet, $uid);
 

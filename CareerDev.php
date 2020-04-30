@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.12.0";
+		return "2.13.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -316,16 +316,22 @@ class CareerDev {
 		$module = self::getModule();
 		if ($module) {
 			$pid = self::getPid();
-			$module->setProjectSetting($field, $value, $pid);
+			if ($pid) {
+                $module->setProjectSetting($field, $value, $pid);
+            } else {
+                throw new \Exception("Could not find pid!");
+            }
 		} else {
 			throw new \Exception("Could not find module!");
 		}
 	}
 
-	public static function getSetting($field) {
+	public static function getSetting($field, $pid = "") {
 		$module = self::getModule();
 		if ($module) {
-			$pid = self::getPid();
+		    if (!$pid) {
+                $pid = self::getPid();
+            }
 			return $module->getProjectSetting($field, $pid);
 		}
 		return "";
@@ -487,7 +493,8 @@ class CareerDev {
 					"Configure Application" => self::link("/config.php"),
 					"Configure Summaries" => self::link("/config.php")."&order",
 					"Logging" => self::link("/log/index.php"),
-					"Custom Programming" => self::link("/changes/README.md"),
+                    "Custom Programming" => self::link("/changes/README.md"),
+                    "Test Connectivity" => self::link("/testConnectivity.php"),
 					);
 			if (self::isViDERInstalledForProject()) {
 				$ary["ViDER Visualizations"] = ExternalModules::getUrl("vider", "index.php")."&pid=".$pid;

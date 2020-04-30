@@ -33,6 +33,17 @@ class REDCapManagement {
 		return $choices;
 	}
 
+	public static function filterOutInvalidFields($metadata, $fields) {
+	    $metadataFields = self::getFieldsFromMetadata($metadata);
+	    $newFields = array();
+	    foreach ($fields as $field) {
+	        if (in_array($field, $metadataFields)) {
+	            $newFields[] = $field;
+            }
+        }
+	    return $newFields;
+    }
+
 	public static function getRowChoices($choicesStr) {
         $choicePairs = preg_split("/\s*\|\s*/", $choicesStr);
         $choices = array();
@@ -200,6 +211,25 @@ class REDCapManagement {
 		}
 		return $fields;
 	}
+
+	public static function downloadURL($url) {
+        Application::log("Contacting $url");
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        $data = curl_exec($ch);
+        $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        Application::log("Response code $resp; ".strlen($data)." bytes");
+        return array($resp, $data);
+    }
 
     public static function stripNickname($firstName) {
         return preg_replace("/\s+\(.+\)/", "", $firstName);
