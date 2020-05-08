@@ -33,7 +33,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	function emails() {
 	    $this->setupApplication();
 		$pids = $this->framework->getProjectsWithModuleEnabled();
-        CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
+        // CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		foreach ($pids as $pid) {
 			if (REDCapManagement::isActiveProject($pid)) {
 				$token = $this->getProjectSetting("token", $pid);
@@ -107,10 +107,17 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		if (PAGE == "DataExport/index.php") {
 			echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
 			echo "<script src='".CareerDev::link("/js/colorCellFunctions.js")."'></script>\n";
-			echo "<script>\n";
-			echo "$(document).ready(function() { setTimeout(function() { transformColumn(); }, 500); });\n";
-			echo "</script>\n";
-		}
+			echo "
+<script>
+	$(document).ready(function() { setTimeout(function() { transformColumn(); }, 500); });
+</script>\n";
+            } else if (PAGE == "ProjectSetup/index.php") {
+            echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
+            echo "
+<script>
+    $(document).ready(function() { $('.chklist.round:eq(6)').hide(); });
+</script>\n";
+        }
 	}
 
 	function hook_every_page_top($project_id) {

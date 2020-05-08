@@ -23,6 +23,7 @@ class NIHTables {
 		} else {
 			$this->metadata = $metadata;
 		}
+		self::$NA = self::makeComment("Not Available");
 	}
 
 	public static function formatTableNum($tableNum) {
@@ -73,9 +74,10 @@ class NIHTables {
     public function getHTML($table) {
 		if (self::beginsWith($table, array("5A", "5B"))) {
 			$data = $this->get5Data($table);
-			return self::makeDataIntoHTML($data);
+			return self::getHTMLPrefix($table).self::makeDataIntoHTML($data);
 		} else if (self::beginsWith($table, array("6A", "6B"))) {
 			$html = "";
+			$html .= self::getHTMLPrefix($table);
 			foreach (self::get6Years() as $year) {
 				$data = $this->get6Data($table, $year);
 				$html .= self::makeDataIntoHTML($data)."<br><br>";
@@ -83,10 +85,10 @@ class NIHTables {
 			return $html;
 		} else if (self::beginsWith($table, array("8A", "8C"))) {
 			$data = $this->get8Data($table);
-			return $this->makeJS().self::makeDataIntoHTML($data);
+			return $this->makeJS().self::getHTMLPrefix($table).self::makeDataIntoHTML($data);
 		} else if ($table == "Common Metrics") {
             $data = $this->getCommonMetricsData($table);
-            return self::makeDataIntoHTML($data);
+            return self::getHTMLPrefix($table).self::makeDataIntoHTML($data);
         }
 		return "";
 	}
@@ -357,6 +359,7 @@ class NIHTables {
 		} else {
 		    $trainingGrantData = array();
         }
+		$trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");
 		if ($yearspan['current']) {
 			$title = "Most Recent Program Year: ".$yearspan['span'];
 		} else {
@@ -397,90 +400,95 @@ class NIHTables {
 		}
 		foreach ($names as $recordId => $name) {
 		    $currentGrantData = self::getTrainingGrantsForRecord($trainingGrantData, $recordId);
-			if (self::enteredDuringYear($yearspan, $recordId, $currentGrantData, $trainingTypes)) {
-                $recordData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
-                $recordClasses = array($newAppointments);
-				foreach ($recordData as $row) {
-					if ($row['redcap_repeat_instrument'] == "") {
-						foreach ($recordClasses as $currClass) {
-							if ($row['summary_urm'] == "1") {
-								array_push($resultData["urm"][$currClass], "1");
-							} else {
-								array_push($resultData["urm"][$currClass], "0");
-							}
-							if ($row['summary_disability'] == "1") {
-								array_push($resultData["disability"][$currClass], "1");
-							} else {
-								array_push($resultData["disability"][$currClass], "0");
-							}
 
-							if ($row['check_undergrad_gpa']) {
-								array_push($resultData["gpa"][$currClass], $row['check_undergrad_gpa']);
-							}
+            $recordData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
+            $recordClasses = array();
+            if (self::appointedDuringYear($yearspan, $recordId, $currentGrantData, $trainingTypes)) {
+                $recordClasses[] = $newAppointments;
+            }
+            if (self::startedTrainingDuringYear($yearspan, $recordId, $trainingStarts)) {
+                $recordClasses[] = $newProgramEntrants;
+            }
+            foreach ($recordClasses as $currClass) {
+                foreach ($recordData as $row) {
+                    if ($row['redcap_repeat_instrument'] == "") {
+                        if ($row['summary_urm'] == "1") {
+                            array_push($resultData["urm"][$currClass], "1");
+                        } else if (($row['summary_urm'] === "0") || ($row['summary_urm'] === 0)) {
+                            array_push($resultData["urm"][$currClass], "0");
+                        }
+                        if ($row['summary_disability'] == "1") {
+                            array_push($resultData["disability"][$currClass], "1");
+                        } else if (($row['summary_disability'] === "0") || ($row['summary_disability'] === 0)) {
+                            array_push($resultData["disability"][$currClass], "0");
+                        }
 
-                            if (self::isPredoc($table)) {
-                                # use undergrad institution
-                                if ($row['check_undergrad_institution'] !== "") {
-                                    $institution = $row['check_undergrad_institution'];
-                                    if (is_numeric($institution)) {
-                                        $institution = $choices['check_undergrad_institution'][$institution];
-                                    }
-                                    array_push($resultData["institutions"][$currClass], $institution);
+                        if ($row['check_undergrad_gpa']) {
+                            array_push($resultData["gpa"][$currClass], $row['check_undergrad_gpa']);
+                        }
+
+                        if (self::isPredoc($table)) {
+                            # use undergrad institution
+                            if ($row['check_undergrad_institution'] !== "") {
+                                $institution = $row['check_undergrad_institution'];
+                                if (is_numeric($institution)) {
+                                    $institution = $choices['check_undergrad_institution'][$institution];
                                 }
-                            } else if (self::isPostdoc($table)) {
-                                #  use last doctorate-granting institution
-                                if ($doctorateInstitutions[$recordId] && !empty($doctorateInstitutions[$recordId])) {
-                                    array_push($resultData["institutions"][$currClass], implode("/", $doctorateInstitutions[$recordId]));
-                                }
+                                array_push($resultData["institutions"][$currClass], $institution);
                             }
+                        } else if (self::isPostdoc($table)) {
+                            #  use last doctorate-granting institution
+                            if ($doctorateInstitutions[$recordId] && !empty($doctorateInstitutions[$recordId])) {
+                                array_push($resultData["institutions"][$currClass], implode("/", $doctorateInstitutions[$recordId]));
+                            }
+                        }
 
-							if (($row['check_degree0_prior_rsch'] !== "") && is_numeric($row['check_degree0_prior_rsch'])) {
-								array_push($resultData["research_months"][$currClass], $row['check_degree0_prior_rsch']);
-							}
-						}
-					}
-				}
-			}
+                        if (($row['check_degree0_prior_rsch'] !== "") && is_numeric($row['check_degree0_prior_rsch'])) {
+                            array_push($resultData["research_months"][$currClass], $row['check_degree0_prior_rsch']);
+                        }
+                    }
+                }
+            }
 		}
 
 		$data[0] = array(
 				$title => "Mean Months of Prior, Full-Time Research Experience (range)",
-				"Total Applicant Pool" => "",
-				"Applicants Eligible for Support" => "",
+				"Total Applicant Pool" => self::$blank,
+				"Applicants Eligible for Support" => self::$blank,
 				$newProgramEntrants => self::findAverageAndRange($resultData["research_months"][$newProgramEntrants]),
-				$newEligibleEntrants => self::findAverageAndRange($resultData["research_months"][$newEligibleEntrants]),
+				$newEligibleEntrants => self::$NA,
 				$newAppointments => self::findAverageAndRange($resultData["research_months"][$newAppointments]),
 				);
 		$data[1] = array(
 				$title => "Prior Institutions",
-				"Total Applicant Pool" => "",
-				"Applicants Eligible for Support" => "",
-				$newProgramEntrants => self::$NA,
+				"Total Applicant Pool" => self::$blank,
+				"Applicants Eligible for Support" => self::$blank,
+				$newProgramEntrants => self::findInstitutions($resultData["institutions"][$newProgramEntrants]),
 				$newEligibleEntrants => self::$NA,
 				$newAppointments => self::findInstitutions($resultData["institutions"][$newAppointments]),
 				);
 		$data[2] = array(
 				$title => "Percent with a Disability",
-				"Total Applicant Pool" => "",
-				"Applicants Eligible for Support" => "",
+				"Total Applicant Pool" => self::$blank,
+				"Applicants Eligible for Support" => self::$blank,
 				$newProgramEntrants => self::findPercent($resultData["disability"][$newProgramEntrants]),
-				$newEligibleEntrants => self::findPercent($resultData["disability"][$newEligibleEntrants]),
+				$newEligibleEntrants => self::$NA,
 				$newAppointments => self::findPercent($resultData["disability"][$newAppointments]),
 				);
 		$data[3] = array(
 				$title => "Percent from Underrepresented Racial &amp; Ethnic Groups",
-				"Total Applicant Pool" => "",
-				"Applicants Eligible for Support" => "",
+				"Total Applicant Pool" => self::$blank,
+				"Applicants Eligible for Support" => self::$blank,
 				$newProgramEntrants => self::findPercent($resultData["urm"][$newProgramEntrants]),
-				$newEligibleEntrants => self::findPercent($resultData["urm"][$newEligibleEntrants]),
+				$newEligibleEntrants => self::$NA,
 				$newAppointments => self::findPercent($resultData["urm"][$newAppointments]),
 				);
 		$data[4] = array(
 				$title => "Mean GPA (range)",
-				"Total Applicant Pool" => "",
-				"Applicants Eligible for Support" => "",
+				"Total Applicant Pool" => self::$NA,
+				"Applicants Eligible for Support" => self::$NA,
 				$newProgramEntrants => self::findAverageAndRange($resultData["gpa"][$newProgramEntrants]),
-				$newEligibleEntrants => self::findAverageAndRange($resultData["gpa"][$newEligibleEntrants]),
+				$newEligibleEntrants => self::$NA,
 				$newAppointments => self::findAverageAndRange($resultData["gpa"][$newAppointments]),
 				);
 
@@ -500,19 +508,29 @@ class NIHTables {
 		return ceil($cnt * 100 / count($ary))."%";
 	}
 
-	private static function enteredDuringYear($yearspan, $recordId, $trainingGrantData, $trainingTypes) {
-	    foreach ($trainingGrantData as $row) {
-	        if (($row['record_id'] == $recordId) && in_array($row['custom_role'], $trainingTypes) && $row['custom_start']) {
-	            $trainingStartTs = strtotime($row['custom_start']);
-	            if (($trainingStartTs >= $yearspan['begin']) && ($trainingStartTs <= $yearspan['end'])) {
-	                return TRUE;
-	            }
+    private static function appointedDuringYear($yearspan, $recordId, $trainingGrantData, $trainingTypes) {
+        foreach ($trainingGrantData as $row) {
+            if (($row['record_id'] == $recordId) && in_array($row['custom_role'], $trainingTypes) && $row['custom_start']) {
+                $trainingGrantStartTs = strtotime($row['custom_start']);
+                if (($trainingGrantStartTs >= $yearspan['begin']) && ($trainingGrantStartTs <= $yearspan['end'])) {
+                    return TRUE;
+                }
             }
         }
-	    return FALSE;
+        return FALSE;
     }
 
-	private static function findAverageAndRange($ary) {
+    private static function startedTrainingDuringYear($yearspan, $recordId, $trainingStarts) {
+	    if ($trainingStarts[$recordId]) {
+            $trainingStartTs = strtotime($trainingStarts[$recordId]);
+            if (($trainingStartTs >= $yearspan['begin']) && ($trainingStartTs <= $yearspan['end'])) {
+                return TRUE;
+            }
+        }
+        return FALSE;
+    }
+
+    private static function findAverageAndRange($ary) {
 		if (count($ary) == 0) {
 			return self::$NA;
 		}
@@ -836,7 +854,7 @@ class NIHTables {
     private static function fillInBlankValues(&$ary) {
 	    foreach ($ary as $key => $value) {
 	        if (!$value) {
-	            $ary[$key] = self::makeComment(self::$naMssg);
+	            $ary[$key] = self::$NA;
             }
         }
     }
@@ -1055,7 +1073,7 @@ class NIHTables {
 	    if ($topic) {
 	        return $topic."<br>($src)";
         }
-	    return self::$naMssg;
+	    return self::$NA;
     }
 
     private function get8IVData() {
@@ -1221,10 +1239,12 @@ class NIHTables {
 			    if ($field == "Publication") {
                     $style = " style='text-align: left;'";
                 }
-			    if ($value) {
+                if ($value == self::$blank) {
+                    array_push($currRow, "<td".$style." class='grey'></td>");
+                } else if ($value) {
                     array_push($currRow, "<td".$style.">$value</td>");
                 } else {
-			        array_push($currRow, "<td".$style.">".self::makeComment(self::$naMssg)."</td>");
+			        array_push($currRow, "<td".$style.">".self::$NA."</td>");
                 }
 			}
 			array_push($htmlRows, "<tr>".implode("", $currRow)."</tr>\n"); 
@@ -1233,6 +1253,13 @@ class NIHTables {
 		$html = "<table class='centered bordered'>".implode("", $htmlRows)."</table>\n";
 		return $html;
 	}
+
+	private static function getHTMLPrefix($table) {
+	    if (self::beginsWith($table, array("6A", "6B"))) {
+	        return "<p class='centered'>Note: The prior research experiences, prior institutions, and GPAs are entered by the scholar in the Initial Survey.</p>";
+        }
+	    return "";
+    }
 
 	private static function beginsWith($table, $ary) {
 		foreach ($ary as $a) {
@@ -1441,8 +1468,8 @@ class NIHTables {
 	private $pid;
 	private $metadata;
 	private $choices;
-	private static $NA = "N/A";
+	private static $NA;
+	private static $blank = "[Blank]";
 	private static $presentMarker = "Present";
 	public static $maxYearsOfGrantReporting = 15;
-	public static $naMssg = "None Specified";
 }

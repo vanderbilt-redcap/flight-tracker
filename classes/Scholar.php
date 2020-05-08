@@ -961,6 +961,7 @@ class Scholar {
 								"promotion_institution" => "manual",
 								"imported_institution" => "manual",
 								"check_institution" => "scholars",
+                                "check_undergrad_institution" => "scholars",
 								);
 		$orders["identifier_left_job_title"] = array(
 								"promotion_job_title" => "manual",
@@ -1306,7 +1307,21 @@ class Scholar {
 			}
 		}
 		$val = "";
-		if ($race == 2) {   # Asian
+		if (($race == 98) || ($eth == 98) || ($race == 99) || ($eth == 99)) {
+		    # 98, Unknown | 99, Prefer not to Answer
+		    if ($race == 99 || $eth == 99) {
+		        $val = 99;
+            } else {
+                $val = 98;
+            }
+            if ($race != $val) {
+                $raceSource = "";
+            }
+            if ($eth != $val) {
+                $ethSource = "";
+            }
+            return new RaceEthnicityResult($val, $raceSource, $ethSource, $this->pid);
+        } else if ($race == 2) {   # Asian
 			$val = 5;
 			return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
 		} else if ($race == 1) {    # American Indian or Native Alaskan

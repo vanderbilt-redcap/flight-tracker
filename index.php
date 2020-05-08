@@ -24,7 +24,6 @@ if ($grantNumber = CareerDev::getSetting("grant_number")) {
 .centered { text-align: center; }
 a, .large { font-size: 18px; }
 td { vertical-align: top; padding: 8px; }
-.red { color: red; }
 input[type=text] { font-size: 18px; width: 300px; }
 input[type=submit] { font-size: 18px; }
 </style>
@@ -156,7 +155,7 @@ function makeWarning($str) {
 		</form>
 	</div>
 
-	<div style='margin: 50px 0px 0px 0px; padding: 4px;' class='blueBorder translucentBG'>
+	<div style='margin: 50px 0px 0px 0px; padding: 4px 0;' class='blueBorder translucentBG'>
 		<h3><i class='fa fa-door-open'></i> Orientation</h3>
 		<p class='centered'><i class='fa fa-video'></i> <a href='<?= CareerDev::link("help/videos.php") ?>'>Training Videos</a></p>
 		<p class='centered'><a href='<?= CareerDev::link("help/why.php") ?>'>Why Use Flight Tracker?</a></p>

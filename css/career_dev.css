@@ -9,8 +9,8 @@ select,input[type=date],input[type=text],input[type=number] { font-size: 16px; }
 td { padding-left: 15px; padding-right: 15px; }
 td.cells,th.cells { text-align: center; padding-left: 5px; padding-right: 5px; }
 h1,h2,h3,h4,h5,.h3 { text-align: center; font-family: "Museo Sans"; }
-h2 { background-color: #cccccc; font-size: 28px; }
-h3,.h3 { background-color: #dddddd; font-size: 22px; }
+h2 { background-color: rgba(34.1,39.2,68.2,0.25); font-size: 28px; }
+h3,.h3 { background-color: rgba(34.1,39.2,68.2,0.35); font-size: 22px; }
 h4 { font-size: 18px; }
 h5 { margin: 0; color: #444444; font-size: 15px; }
 tr.odd td,tr.odd th { background-color: #eeeeee; border: 0; }

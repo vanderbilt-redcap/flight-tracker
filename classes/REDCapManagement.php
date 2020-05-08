@@ -265,7 +265,6 @@ class REDCapManagement {
 		} else {
 			$selectedRows = self::getRowsForFieldsFromMetadata($fields, $newMetadata);
 		}
-		$newChoices = self::getChoices($newMetadata);
 		$upload = array();
 		foreach ($selectedRows as $newRow) {
 			if (!in_array($newRow['field_name'], $fieldsToDelete)) {

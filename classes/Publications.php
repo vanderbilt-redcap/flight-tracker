@@ -28,7 +28,7 @@ class Publications {
         $first = preg_replace("/\s+/", "+", $first);
         $last = preg_replace("/\s+/", "+", $last);
         $institution = preg_replace("/\s+/", "+", $institution);
-        $term = $first . "+%5Bau%5D+AND+".$last."%5Bau%5D";
+        $term = $first."+".$last."%5Bau%5D";
         if ($institution) {
             $term .= "+AND+" . strtolower($institution) . "%5Bad%5D";
         }

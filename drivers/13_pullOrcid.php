@@ -79,7 +79,7 @@ function pullORCIDs($token, $server, $pid) {
     }
     if (!empty($multiples)) {
         # send email
-        global $adminEmail;
+        $adminEmail = Application::getSetting("admin_email", $pid);
         $html = makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata);
 
         require_once(dirname(__FILE__)."/../../../redcap_connect.php");
@@ -100,6 +100,7 @@ function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {
 
     $html = "";
     $html .= "<h1>Multiple ORCIDs Found</h1>\n";
+    $html .= "<h3>".Links::makeProjectHomeLink($pid, "REDCap Project")."</h3>";
     $html .= "<h3>".Links::makeLink($orcidSearchLink, $orcidSearchLink)."</h3>";
     $html .= "<h4>Please insert the proper ORCID on the identifiers form. Click on the name to take you to the REDCap record. Links are available for all new ORCIDs.</h4>\n";
     foreach ($multiples as $recordId => $recordORCIDs) {
@@ -127,7 +128,7 @@ function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {
             }
         }
     }
-    saveSetting("prior_orcids", $priorMultiples, "getORCIDField", $metadata);
+    CareerDev::setSetting("prior_orcids", $priorMultiples);
     $html .= "<h3>".Links::makeLink($orcidSearchLink, $orcidSearchLink)."</h3>";
     return $html;
 }
