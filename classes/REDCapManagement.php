@@ -212,6 +212,23 @@ class REDCapManagement {
 		return $fields;
 	}
 
+	public static function isValidIP($str) {
+	    return preg_match("/^\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b$/", $str);
+    }
+
+	public static function applyProxyIfExists(&$ch) {
+        $proxyIP = Application::getSetting("proxy-ip");
+        $proxyPort = Application::getSetting("proxy-port");
+        $proxyUsername = Application::getSetting("proxy-user");
+        $proxyPassword = Application::getSetting("proxy-pass");
+        if ($proxyIP && self::isValidIP($proxyIP) && $proxyPort && is_numeric($proxyPort)&& $proxyPassword && $proxyUsername) {
+            curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL , 1);
+            curl_setopt($ch, CURLOPT_PROXY, $proxyIP);
+            curl_setopt($ch, CURLOPT_PROXYPORT, $proxyPort);
+            curl_setopt($ch, CURLOPT_PROXYUSERPWD, "$proxyUsername:$proxyPassword");
+        }
+    }
+
 	public static function downloadURL($url) {
         Application::log("Contacting $url");
         $ch = curl_init();
@@ -224,8 +241,12 @@ class REDCapManagement {
         curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        self::applyProxyIfExists($ch);
         $data = curl_exec($ch);
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        if(curl_errno($ch)){
+            throw new \Exception(curl_error($ch));
+        }
         curl_close($ch);
         Application::log("Response code $resp; ".strlen($data)." bytes");
         return array($resp, $data);

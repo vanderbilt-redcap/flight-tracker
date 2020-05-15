@@ -333,7 +333,14 @@ function makeSettings($module) {
 	array_push($ary["Automated Emails"], makeSetting("init_subject", "text", "Initial Email Subject"));
 	array_push($ary["Automated Emails"], makeSetting("init_message", "textarea", "Initial Email Message"));
 
-	$html = "";
+    $ary["Proxy Server (Only if Applicable)"] = array();
+    array_push($ary["Proxy Server (Only if Applicable)"], makeHelperText("If your REDCap server has a proxy server, please fill out the following information. (If you don't know about this, you probably don't have one, so no worries then.)"));
+    array_push($ary["Proxy Server (Only if Applicable)"], makeSetting("proxy-ip", "text", "Proxy IP Address"));
+    array_push($ary["Proxy Server (Only if Applicable)"], makeSetting("proxy-port", "text", "Proxy Port Number"));
+    array_push($ary["Proxy Server (Only if Applicable)"], makeSetting("proxy-user", "text", "Proxy Username"));
+    array_push($ary["Proxy Server (Only if Applicable)"], makeSetting("proxy-pass", "text", "Proxy Password"));
+
+    $html = "";
 	if ($module) {
 		$html .= "<form method='POST' action='".$module->getUrl("config.php")."'>\n";
 		foreach ($ary as $header => $htmlAry) {

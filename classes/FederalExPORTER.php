@@ -3,6 +3,7 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 define("DATA_DIRECTORY", "filterData");
 define("INTERMEDIATE_1_FED", "R01AndEquivsList_Fed.txt");
@@ -503,18 +504,7 @@ class FederalExPORTER {
 			Application::log("Downloading $file...");
 
 			$url = "https://federalreporter.nih.gov/FileDownload/DownloadFile?fileToDownload=".$file;
-			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, $url);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-			curl_setopt($ch, CURLOPT_VERBOSE, 0);
-			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-			curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-			curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-			curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-			$zip = curl_exec($ch);
-			$resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-			curl_close($ch);
+			list($resp, $zip) = REDCapManagement::downloadURL($url);
 
 			if (($resp == 200) && (!preg_match("/Not found/", $zip))) {
 				Application::log("Unzipping $file to ".APP_PATH_TEMP.$federalFile."...");

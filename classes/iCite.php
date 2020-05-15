@@ -3,6 +3,7 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class iCite {
 	public function __construct($pmid) {
@@ -12,18 +13,8 @@ class iCite {
 
 	private static function getData($pmid) {
 		$url = "https://icite.od.nih.gov/api/pubs?pmids=".$pmid."&format=json";
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, 0);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-		$json = curl_exec($ch);
-		curl_close($ch);
-		Application::log("iCite ".$url);
+		list($resp, $json) = REDCapManagement::downloadURL($url);
+		Application::log("iCite ".$url.": $resp");
 
 		$data = json_decode($json, true);
 		if (!$data || !$data['data'] || count($data['data']) == 0) {

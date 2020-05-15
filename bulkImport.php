@@ -3,11 +3,13 @@
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
+require_once(dirname(__FILE__)."/Application.php");
 
 $importFile = "import.csv";
 if ($_FILES['bulk']) {
@@ -103,7 +105,7 @@ if ($_FILES['bulk']) {
 
 <h1>Import Grants in Bulk</h1>
 
-<div style='width: 800px; margin: 14px auto;' class='green centered padded'>Please import a CSV (comma delimited) with one row per grant. Use <a href='<?= $importFile ?>'>this template</a> to start with. Each line must match the first name and last name (exactly) as specified in the database.</div>
+<div style='width: 800px; margin: 14px auto;' class='green centered padded'>Please import a CSV (comma delimited) with one row per grant. Use <a href='<?= Application::link($importFile) ?>'>this template</a> to start with. Each line must match the first name and last name (exactly) as specified in the database.</div>
 <form method='POST' action='<?= CareerDev::link("bulkImport.php") ?>' enctype='multipart/form-data'>
 <p class='centered'><input type='file' name='bulk'></p>
 <p class='centered'><input type='submit' name='submit' value='Upload'></p>

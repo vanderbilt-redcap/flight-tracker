@@ -12,6 +12,7 @@ require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/iCite.php");
 require_once(dirname(__FILE__)."/Citation.php");
 require_once(dirname(__FILE__)."/Scholar.php");
+require_once(dirname(__FILE__)."/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
 class Publications {
@@ -43,19 +44,8 @@ class Publications {
     public static function queryPubMed($term) {
         $url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=100000&retmode=json&term=".$term;
         Application::log($url);
-        echo $url."\n";
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-        $output = curl_exec($ch);
-        curl_close($ch);
-        Application::log("Downloaded ".strlen($output)." bytes");
+        list($resp, $output) = REDCapManagement::downloadURL($url);
+        Application::log("$resp: Downloaded ".strlen($output)." bytes");
 
         $pmids = array();
         $pmData = json_decode($output, true);
@@ -241,17 +231,7 @@ class Publications {
 		}
 		$url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id=".implode(",", $pmids);
 		Publications::throttleDown();
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, 0);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-		$output = curl_exec($ch);
-		curl_close($ch);
+		list($resp, $output) = REDCapManagement::downloadURL($url);
 		return $output;
 	}
 
@@ -699,17 +679,7 @@ class Publications {
 		if ($id) {
 			$query = "ids=".$id."&format=json";
 			$url = "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?".$query;
-			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, $url);
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-			curl_setopt($ch, CURLOPT_VERBOSE, 0);
-			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-			curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-			curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-			curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			$output = curl_exec($ch);
-			curl_close($ch);
+			list($resp, $output) = REDCapManagement::downloadURL($url);
 
 			Publications::throttleDown();
 

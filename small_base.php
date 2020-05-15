@@ -179,92 +179,12 @@ function getDepartmentChoices() {
 		$choices2[120727] = "Medicine, Health & Society (120727)";
 }
 
-function getCommentsForRecord($record) {
-	global $pid;
-	global $server;
-
-	$ch = curl_init();
-	$url = $server."../plugins/career_dev/getCommentsForRecord.php?pid=$pid&record=$record";
-	curl_setopt($ch, CURLOPT_URL, $url);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-	curl_setopt($ch, CURLOPT_VERBOSE, 0);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-	$output = curl_exec($ch);
-	curl_close($ch);
-	$comments = json_decode($output, true);
-	return $comments;
-}
-
-function submitCommentsForRecord($record, $field_name, $comment) {
-	global $pid;
-	global $server;
-
-	$ch = curl_init();
-	$url = $server."../plugins/career_dev/submitCommentsForRecord.php?pid=$pid&record=$record&field_name=$field_name&comment=".urlencode($comment);
-	echo "URL: $url\n";
-	curl_setopt($ch, CURLOPT_URL, $url);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-	curl_setopt($ch, CURLOPT_VERBOSE, 0);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-	$output = curl_exec($ch);
-	echo "Output: $output\n";
-	curl_close($ch);
-}
-
 function getReverseAwardTypes() {
 	return Grant::getReverseAwardTypes();
 }
 
 function getAwardTypes() {
 	return Grant::getAwardTypes();
-}
-
-function getRecordIdJson($recordId) {
-	global $token, $server;
-
-	$redcapData = array();
-
-	if ($recordId) {
-		$data = array(
-			'token' => $token,
-			'content' => 'record',
-			'format' => 'json',
-			'records' => array($recordId),
-			'type' => 'flat',
-			'rawOrLabel' => 'raw',
-			'rawOrLabelHeaders' => 'raw',
-			'exportCheckboxLabel' => 'false',
-			'exportSurveyFields' => 'false',
-			'exportDataAccessGroups' => 'false',
-			'returnFormat' => 'json'
-		);
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $server);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, 0);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-		$output = curl_exec($ch);
-		curl_close($ch);
-
-		$redcapData = json_decode($output, true);
-	}
-	return $redcapData;
 }
 
 # return boolean
