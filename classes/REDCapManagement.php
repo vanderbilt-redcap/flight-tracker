@@ -189,10 +189,16 @@ class REDCapManagement {
 		return $selectedRows;
 	}
 
-	public static function getFieldsFromMetadata($metadata) {
+	public static function getFieldsFromMetadata($metadata, $instrument = FALSE) {
 		$fields = array();
 		foreach ($metadata as $row) {
-			array_push($fields, $row['field_name']);
+		    if ($instrument) {
+		        if ($instrument == $row['form_name']) {
+                    array_push($fields, $row['field_name']);
+                }
+            } else {
+                array_push($fields, $row['field_name']);
+            }
 		}
 		return $fields;
 	}
@@ -222,25 +228,41 @@ class REDCapManagement {
         $proxyUsername = Application::getSetting("proxy-user");
         $proxyPassword = Application::getSetting("proxy-pass");
         if ($proxyIP && self::isValidIP($proxyIP) && $proxyPort && is_numeric($proxyPort)&& $proxyPassword && $proxyUsername) {
-            curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL , 1);
-            curl_setopt($ch, CURLOPT_PROXY, $proxyIP);
-            curl_setopt($ch, CURLOPT_PROXYPORT, $proxyPort);
-            curl_setopt($ch, CURLOPT_PROXYUSERPWD, "$proxyUsername:$proxyPassword");
+            $proxyOpts = [
+                CURLOPT_HTTPPROXYTUNNEL => 1,
+                CURLOPT_PROXY => $proxyIP,
+                CURLOPT_PROXYPORT => $proxyPort,
+                CURLOPT_PROXYUSERPWD => "$proxyUsername:$proxyPassword",
+            ];
+            foreach ($proxyOpts as $opt => $value) {
+                curl_setopt($ch, $opt, $value);
+            }
         }
     }
 
-	public static function downloadURL($url) {
+	public static function downloadURL($url, $addlOpts = []) {
         Application::log("Contacting $url");
+        $defaultOpts = [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_VERBOSE => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_AUTOREFERER => true,
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_FRESH_CONNECT => 1,
+            CURLOPT_TIMEOUT => 30,
+        ];
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        foreach ($defaultOpts as $opt => $value) {
+            if (!isset($addlOpts[$opt])) {
+                curl_setopt($ch, $opt, $value);
+            }
+        }
+        foreach ($addlOpts as $opt => $value) {
+            curl_setopt($ch, $opt, $value);
+        }
         self::applyProxyIfExists($ch);
         $data = curl_exec($ch);
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
@@ -260,13 +282,56 @@ class REDCapManagement {
 		return array("select_choices_or_calculations", "required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation");
 	}
 
-	public static function findField($redcapData, $recordId, $field) {
+	public static function findField($redcapData, $recordId, $field, $instrument = FALSE, $instance = FALSE) {
 	    foreach ($redcapData as $row) {
-	        if (($row['record_id'] == $recordId) && $row[$field]) {
-	            return $row[$field];
+	        if ($row['record_id'] == $recordId) {
+	            if ($instance && $instrument) {
+                    if (($instrument == $row['redcap_repeat_instrument']) && ($instance == $row['redcap_repeat_instance'])) {
+                        return $row[$field];
+                    }
+                } else if ($instrument) {
+                    if ($instrument == $row['redcap_repeat_instrument']) {
+                        return $row[$field];
+                    }
+                } else if ($row[$field]) {
+                    return $row[$field];
+                }
             }
         }
 	    return "";
+    }
+
+    public static function getParametersAsHiddenInputs($url) {
+        $params = self::getParameters($url);
+        $html = [];
+        foreach ($params as $key => $value) {
+            $html[] = "<input type='hidden' name='$key' value='$value'>";
+        }
+        return implode("\n", $html);
+    }
+
+    public static function getParameters($url) {
+        $nodes = explode("?", $url);
+        $params = [];
+        if (count($nodes) > 0) {
+            $pairs = explode("&", $nodes[1]);
+            foreach ($pairs as $pair) {
+                if ($pair) {
+                    $pairNodes = explode("=", $pair);
+                    if (count($pairNodes) >= 2) {
+                        $params[$pairNodes[0]] = $pairNodes[1];
+                    } else {
+                        $params[$pairNodes[0]] = "";
+                    }
+                }
+            }
+        }
+        return $params;
+    }
+
+    public static function getPage($url) {
+	    $nodes = explode("?", $url);
+	    return $nodes[0];
     }
 
     public static function json_encode_with_spaces($data) {
@@ -495,6 +560,14 @@ class REDCapManagement {
 		}
 		return $indexedRedcapData;
 	}
+
+	public static function indexMetadata($metadata) {
+	    $indexed = [];
+	    foreach ($metadata as $row) {
+	        $indexed[$row['field_name']] = $row;
+        }
+	    return $indexed;
+    }
 
 	public static function hasMetadataChanged($oldValue, $newValue, $metadataField) {
 	    if ($metadataField == "field_annotation" && self::isJSON($oldValue)) {

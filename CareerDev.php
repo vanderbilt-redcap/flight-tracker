@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.13.3";
+		return "2.14.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -438,6 +438,7 @@ class CareerDev {
 					"REDCap Reports" => $r."/DataExport/index.php",
 					"Missingness Report<br>(Computationally Expensive)" => self::link("/tablesAndLists/missingness.php"),
 					"Search Within a Timespan" => self::link("/search/inTimespan.php"),
+                    "Brag: Publications Widget" => self::link("/brag.php")."&showHeaders",
 					);
 		}
 		if (($menuName == "Mentoring") || ($menuName == "Mentor") || ($menuName == "Mentors")) {

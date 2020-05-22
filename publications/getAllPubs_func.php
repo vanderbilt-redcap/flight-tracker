@@ -155,101 +155,52 @@ function reverseArray($ary) {
 }
 
 function processVICTR(&$citationIds, &$maxInstances, $token, $server) {
-	$vunets = reverseArray(Download::vunets($token, $server));
+    $vunets = reverseArray(Download::vunets($token, $server));
+    include "/app001/credentials/con_redcap_ldap_user.php";
 
-	if (preg_match("/redcap.vanderbilt.edu/", $server)) {
-		# pulls from PubMed via a helper file
-
-		define("NOAUTH", true);
-
-		$pubmedConnect = new VICTRPubMedConnection();
-		$pubmedConnect->connect();
-		$pubmedData = $pubmedConnect->getData();
-		$pubmedConnect->close();
-
-		CareerDev::log(count($pubmedData['outcomepubs'])." Pubs entries downloaded");
-		CareerDev::log(count($pubmedData['outcomepubmatches'])." PubMatches entries downloaded");
-		CareerDev::log(count($pubmedData['pubmed_publications'])." PubMedPubs entries downloaded");
-		echo count($pubmedData['outcomepubs'])." Pubs entries downloaded\n";
-		echo count($pubmedData['outcomepubmatches'])." PubMatches entries downloaded\n";
-		echo count($pubmedData['pubmed_publications'])." PubMedPubs entries downloaded\n";
-	} else {
-		$pubmedData = array();
-		$types = array("outcomepubs", "outcomepubmatches", "pubmed_publications");
-		foreach ($types as $type) {
-			$pubmedData[$type] = array();
-			$fp = fopen($type.".format.json", "r");
-			while ($jsonRow = fgets($fp)) {
-				$jsonData = json_decode($jsonRow, true);
-				$pubmedData[$type][] = $jsonData;
-			}
-			fclose($fp);
-		}
-	}
-
-	$months = array(	"JAN" => 1,
-				"FEB" => 2,
-				"MAR" => 3,
-				"APR" => 4,
-				"MAY" => 5,
-				"JUN" => 6,
-				"JUL" => 7,
-				"AUG" => 8,
-				"SEP" => 9,
-				"OCT" => 10,
-				"NOV" => 11,
-				"DEC" => 12,
-			);
-
-	$numFound = 0;
-	$numNew = 0;
-
-	$upload = array();
-	# outcomepubs contains automatic matches; if user self-identifies with the citation, OUTP_ISAUTHOR is 1
-	# outcompubmatches only contains those who use VICTR resources
-	$i = 0;
-	$iTotal = count($pubmedData['outcomepubs']);
-	$batchSize = 200;
-	foreach ($pubmedData['outcomepubs'] as $row) {
-		if ($i % $batchSize === 0) {
-			CareerDev::log("Looking at row $i of $iTotal: ".json_encode($row));
-			echo "Looking at row $i of $iTotal: ".json_encode($row)."\n";
-			if (!empty($upload)) {
-				upload($upload, $token, $server);
-				$upload = array();
-			}
-		}
-		if (isset($vunets[$row['USR_VUNET']]) && ($row['OUTP_ISAUTHOR'] == "1")) {
-			$newCitationId = $row['SRI_PUBPUB_ID'];
-			$recordId = $vunets[$row['USR_VUNET']];
-			if ($recordId) {
-				$foundType = inCitationIds($citationIds, $newCitationId, $recordId);
-				if (!$foundType) {
-					echo "$i/$iTotal. vunet: ".$row['USR_VUNET']." PMID: ".$newCitationId." recordId: ".$recordId."\n";
-					if (!isset($maxInstances[$recordId])) {
-						$maxInstances[$recordId] = 0;
-					}
-					$maxInstances[$recordId]++;
-					$uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), "victr", $recordId, $maxInstances[$recordId], array($newCitationId));
-					if (!isset($citationIds['Final'][$recordId])) {
-						$citationIds['Final'][$recordId] = array();
-					}
-					array_push($citationIds['Final'][$recordId], $newCitationId);
-				} else {
-					CareerDev::log("$i/$iTotal. Skipping because matched: ".$row['USR_VUNET']." PMID: ".$newCitationId);
-					echo "$i/$iTotal. Skipping because matched: ".$row['USR_VUNET']." PMID: ".$newCitationId."\n";
-				}
-			} else {
-				CareerDev::log("Count not find record for vunet ".$row['USR_VUNET']);
-				echo "Count not find record for vunet ".$row['USR_VUNET']."\n";
-			}
-		}
-		$i++;
-	}
-	CareerDev::saveCurrentDate("Last VICTR PubMed Fetch Download");
-	if (!empty($upload)) {
-		upload($upload, $token, $server);
-	}
+    foreach ($vunets as $vunet => $recordId) {
+        $url = "https://starbrite.app.vumc.org/s/sri/api/pub-match/vunet";
+        $getParams = [$vunet];
+        $url .= '/' . implode('/', array_map('urlencode', $getParams));
+        $opts = [
+            CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_SSL_VERIFYPEER => 0,
+            CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
+            CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
+            CURLOPT_USERPWD => $ldapuser . ':' . $ldappass,
+            CURLOPT_CUSTOMREQUEST => "GET",
+        ];
+        list($resp, $output) = REDCapManagement::downloadURL($url, $opts);
+        $pmids = fetchPMIDs(json_decode($output, TRUE));
+        foreach ($pmids as $newCitationId) {
+            if ($recordId) {
+                $foundType = inCitationIds($citationIds, $newCitationId, $recordId);
+                if (!$foundType) {
+                    Application::log("vunet: " . $vunet . " PMID: " . $newCitationId . " recordId: " . $recordId);
+                    if (!isset($maxInstances[$recordId])) {
+                        $maxInstances[$recordId] = 0;
+                    }
+                    $maxInstances[$recordId]++;
+                    $uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), "victr", $recordId, $maxInstances[$recordId], array($newCitationId));
+                    foreach ($uploadRows as $uploadRow) {
+                        // mark to include only for VICTR
+                        $uploadRow['citation_include'] = '1';
+                        array_push($upload, $uploadRow);
+                    }
+                    if (!isset($citationIds['Final'][$recordId])) {
+                        $citationIds['Final'][$recordId] = array();
+                    }
+                    array_push($citationIds['Final'][$recordId], $newCitationId);
+                } else {
+                    Application::log("Skipping because matched: " . $vunet . " PMID: " . $newCitationId);
+                }
+            }
+        }
+    }
+    CareerDev::saveCurrentDate("Last VICTR PubMed Fetch Download");
+    if (!empty($upload)) {
+        upload($upload, $token, $server);
+    }
 }
 
 function processPubMed(&$citationIds, &$maxInstances, $token, $server) { 

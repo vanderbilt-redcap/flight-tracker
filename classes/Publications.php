@@ -63,11 +63,12 @@ class Publications {
             }
         }
         Publications::throttleDown();
+        Application::log("$url returned PMIDs: ".REDCapManagement::json_encode_with_spaces($pmids));
         return $pmids;
     }
 
 	public static function getSearch() {
-		return "Last/Full Name:<br><input id='search' type='text' style='width: 100%;'><br><div style='width: 100%; color: red;' id='searchDiv'></div>";
+		return "Last/Full Name:<br><input id='search' type='text' style='width: 100%;'><br><div style='width: 100%; color: #ff0000;' id='searchDiv'></div>";
 	}
 
 	public function getNumberFirstAuthors()
@@ -742,24 +743,6 @@ class Publications {
 		return $pubsInRange;
 	}
 
-	public function writeToREDCap($token, $server) {
-		if (!$token || !$server) {
-			return "";
-		}
-		if (($this->recordId != 0) && $this->hasChanged) {
-			$upload = array(
-					"record_id" => $this->recordId,
-					"redcap_repeat_instrument" => "",
-					"redcap_repeat_instance" => "",
-					"summary_final_citation_id" => json_encode($this->getCitationIds("Included")),
-					"summary_final_citations" => implode("\n", $this->getCitations("Included")),
-					"summary_number_citations" => $this->getNumber(),
-					);
-			return Upload::oneRow($token, $server, $upload);
-		}
-		return "";
-	}
-
 	public function getCitationCollection($type = "Included") {
 		if (($type == "Included") || ($type == "Final")) {
 			return $this->goodCitations;
@@ -770,6 +753,18 @@ class Publications {
 		}
 		return NULL;
 	}
+
+	public function getSortedCitationsInTimespan($startTs, $endTs = FALSE, $type = "Included", $asc = TRUE) {
+	    $citations = $this->getSortedCitations($type, $asc);
+	    $includedCits = [];
+	    foreach ($citations as $citation) {
+	        $ts = $citation->getTimestamp();
+	        if (($ts >= $startTs) && (($ts <= $endTs) || !$endTs)) {
+	            $includedCits[] = $citation;
+            }
+        }
+	    return $includedCits;
+    }
 
 	public function getSortedCitations($type = "Included", $asc = TRUE) {
 	    $citations = $this->getCitations($type);

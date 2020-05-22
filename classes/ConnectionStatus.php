@@ -47,6 +47,14 @@ class ConnectionStatus {
         return $this->url;
     }
 
+    # coordinated with encodeName in drivers/14_connectivity.php
+    public static function encodeName($str) {
+        $str = strtolower($str);
+        $str = preg_replace("/\s+/", "_", $str);
+        $str = preg_replace("/^[^a-z]+|[^\w:\.\-]+/", "", $str);
+        return $str;
+    }
+
     public static function formatResultsInHTML($title, $results) {
         $html = "";
         $html .= "<h2>$title</h2>\n";
