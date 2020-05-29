@@ -26,6 +26,11 @@ $(document).ready(function() {
 	});
 });
 
+function resetCitation(id) {
+    $('#'+id).val("reset");
+    $('#image_'+id).attr("src", "<?= Application::link("wrangler/reset.png") ?>");
+}
+
 function includeCitation(citation) {
 	if (citation) {
 		var pmid = getPMID(citation);

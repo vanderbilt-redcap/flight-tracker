@@ -794,6 +794,8 @@ class EmailManager {
                 return "survey_leadership_teams";
             case "floor":
                 return "survey_floor";
+            case "suite":
+                return "survey_suite";
 			case "primary_affiliation":
 				return "summary_primary_affiliation";
 			case "department":

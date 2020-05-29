@@ -218,6 +218,8 @@ class Citation {
 			throw new \Exception("Unknown citationClass $citationClass");
 		}
 
+		$ableToReset = ["included", "omitted"];
+
 		$html = "";
 		$source = $this->getSource();
 		if ($source) {
@@ -228,6 +230,9 @@ class Citation {
 		$html .= "<div class='citation $citationClass' id='citation_".$citationClass."$id'>";
 		$html .= "<div class='citationCategories'><span class='tooltiptext'>".$this->makeTooltip()."</span>".$this->getCategory()."</div>";
 		$html .= self::makeCheckbox($id, $checkboxClass)." ".$source.$this->getCitationWithLink();
+		if (in_array($citationClass, $ableToReset)) {
+            $html .= "<div style='text-align: right;' class='smallest'><span onclick='resetCitation(\"$id\");' class='finger'>reset</span></div>";
+        }
 		$html .= "</div>\n";
 		return $html;
 	}
@@ -310,6 +315,10 @@ class Citation {
 
 	# img is unchecked, checked, or readonly
 	private static function makeCheckbox($id, $img) {
+	    $validImages = ["unchecked", "checked", "readonly"];
+	    if (!in_array($img, $validImages)) {
+	        throw new \Exception("Image ($img) must be in: ".implode(", ", $validImages));
+        }
 		$imgFile = "wrangler/".$img.".png";
 		$size = self::getImageSize()."px";
 		$js = "if ($(this).attr(\"src\").match(/unchecked/)) { $(\"#$id\").val(\"include\"); $(this).attr(\"src\", \"".Application::link("wrangler/checked.png")."\"); } else { $(\"#$id\").val(\"exclude\"); $(this).attr(\"src\", \"".Application::link("wrangler/unchecked.png")."\"); }";
@@ -322,10 +331,10 @@ class Citation {
 		}
 		$input = "<input type='hidden' id='$id' value='$value'>";
 		if (($img == "unchecked") || ($img == "checked")) {
-			return "<img src='".Application::link($imgFile)."' onclick='$js' style='width: $size; height: $size;' align='left'>".$input;
+			return "<img src='".Application::link($imgFile)."' id='image_$id' onclick='$js' style='width: $size; height: $size;' align='left'>".$input;
 		}
 		if ($img == "readonly") {
-			return "<img src='".Application::link($imgFile)."' style='width: $size; height: $size;' align='left'>";
+			return "<img src='".Application::link($imgFile)."' id='image_$id' style='width: $size; height: $size;' align='left'>".$input;
 		}
 		return "";
 	}

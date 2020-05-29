@@ -1811,7 +1811,8 @@ class Scholar {
 				"summary_current_rank" => "getCurrentRank",
 				"summary_current_start" => "getCurrentAppointmentStart",
 				"summary_current_tenure" => "getTenureStatus",
-				"summary_urm" => "getURMStatus",
+                "summary_urm" => "getURMStatus",
+                // ??? "summary_scopus_h_index" => "getScopusHIndex",
 				"summary_disability" => "getDisabilityStatus",
 				"summary_disadvantaged" => "getDisadvantagedStatus",
 				"summary_training_start" => "getTrainingStart",
@@ -1882,12 +1883,39 @@ class Scholar {
 		return $result;
 	}
 
+    private function getScopusHIndex($rows) {
+	    if ($key = Application::getSetting("scopus_api_key", $this->pid)) {
+            $orcid = $this->getORCID();
+            if ($orcid) {
+                # ???
+            } else {
+                $firstNames = NameMatcher::explodeFirstName($this->getName("first"));
+                $lastNames = NameMatcher::explodeLastName($this->getName("last"));
+                $institutions = Application::getInstitutions();
+                foreach ($firstNames as $firstName) {
+                    foreach ($lastNames as $lastName) {
+                        foreach ($institutions as $institution) {
+                            $query = "AUTHFIRST($firstName) AND AFFIL($institution) AND AUTHLASTNAME($lastName)";
+                            $url = "https://api.elsevier.com/content/search/scopus?query=".urlencode($query)."&apikey=".$key;
+                            $json = REDCapManagement::downloadURL($url);
+                            $data = json_decode($json, TRUE);
+                            foreach ($data['author-retrieval-response'] as $row) {
+                                return new Result($row["h-index"], "");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return new Result("", "");
+    }
+
 	private function getURMStatus($rows) {
 		$raceEthnicityValue = $this->getRaceEthnicity($rows)->getValue();
 		$disadvValue = $this->getDisadvantagedStatus($rows)->getValue();
 		$disabilityValue = $this->getDisabilityStatus($rows)->getValue();
 
-		$minorities = array(2, 3, 4, 5, 6, 8, 9, 10);
+		$minorities = array(2, 3, 4, 6, 8, 9, 10);
 		$value = "0";
 		if (($raceEthnicityValue === "") && ($disadvValue === "") && ($disabilityValue === "")) {
 			$value = "";

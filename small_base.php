@@ -792,9 +792,7 @@ function getCohortHeaderHTML() {
 }
 
 function makeHTMLId($id) {
-	$htmlFriendly = preg_replace("/\s+/", "_", $id);
-	$htmlFriendly = preg_replace("/[\"'#<>\~\`\!\@\#\$\%\^\&\*\(\)]/", "", $htmlFriendly);
-	return $htmlFriendly;
+    return REDCapManagement::makeHTMLId($id);
 }
 
 function makeSafe($htmlStr) {

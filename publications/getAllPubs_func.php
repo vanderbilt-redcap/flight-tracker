@@ -214,6 +214,10 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server) {
 	foreach ($allLastNames as $recordId => $recLastName) {
 		$firstName = $allFirstNames[$recordId];
 		$lastNames = preg_split("/\s*[\s\-]\s*/", strtolower($recLastName));
+        for ($i = 0; $i < count($lastNames); $i++) {
+            $lastNames[$i] = preg_replace("/^\(/", "", $lastNames[$i]);
+            $lastNames[$i] = preg_replace("/\)$/", "", $lastNames[$i]);
+        }
 		if (count($lastNames) > 1) {
 			array_push($lastNames, strtolower($recLastName));
 		}

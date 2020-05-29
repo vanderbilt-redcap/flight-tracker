@@ -131,6 +131,12 @@ class REDCapManagement {
 	    return $max;
     }
 
+    public static function makeHTMLId($id) {
+        $htmlFriendly = preg_replace("/\s+/", "_", $id);
+        $htmlFriendly = preg_replace("/[\"'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=]/", "", $htmlFriendly);
+        return $htmlFriendly;
+    }
+
     public static function getRowForFieldFromMetadata($field, $metadata) {
 	    foreach ($metadata as $row) {
 	        if ($row['field_name'] == $field) {
@@ -240,7 +246,7 @@ class REDCapManagement {
         }
     }
 
-	public static function downloadURL($url, $addlOpts = []) {
+	public static function downloadURL($url, $addlOpts = [], $autoRetriesLeft = 3) {
         Application::log("Contacting $url");
         $defaultOpts = [
             CURLOPT_RETURNTRANSFER => true,
@@ -250,7 +256,7 @@ class REDCapManagement {
             CURLOPT_AUTOREFERER => true,
             CURLOPT_MAXREDIRS => 10,
             CURLOPT_FRESH_CONNECT => 1,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_TIMEOUT => 60,
         ];
 
         $ch = curl_init();
@@ -267,7 +273,14 @@ class REDCapManagement {
         $data = curl_exec($ch);
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         if(curl_errno($ch)){
-            throw new \Exception(curl_error($ch));
+            Application::log(curl_error($ch));
+            if ($autoRetriesLeft > 0) {
+                sleep(30);
+                Application::log("Retrying ($autoRetriesLeft left)...");
+                self::downloadURL($url, $addlOpts, $autoRetriesLeft - 1);
+            } else {
+                throw new \Exception(curl_error($ch));
+            }
         }
         curl_close($ch);
         Application::log("Response code $resp; ".strlen($data)." bytes");

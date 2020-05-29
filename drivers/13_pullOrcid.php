@@ -286,18 +286,18 @@ function makeQueryFromParams($params) {
         if (is_array($value)) {
             $values = array();
             foreach ($value as $v) {
-                array_push($values, replaceWhitespaceWithPlus($v));
+                array_push($values, $v);
             }
             if (count($values) > 1) {
-                array_push($queryStrings, $key . ":" . "(" . implode("+OR+", $values) . ")");
+                array_push($queryStrings, $key . ":" . "(" . implode(" OR ", $values) . ")");
             } else {
                 $value = $values[0];
                 array_push($queryStrings, $key . ":" . $value);
             }
         } else if ($value) {
-            array_push($queryStrings, $key . ":" . replaceWhitespaceWithPlus($value));
+            array_push($queryStrings, $key . ":" . $value);
         }
     }
-    return implode("+AND+", $queryStrings);
+    return urlencode(implode(" AND ", $queryStrings));
 }
 

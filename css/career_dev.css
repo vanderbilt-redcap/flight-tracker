@@ -111,3 +111,4 @@ table.bordered tr td,table.bordered tr th { border: 1px solid #888; }
 table.bordered { border-collapse: collapse; }
 .action_required { color: red; font-weight: bold; }
 p.bordered,div.bordered { border: 1px solid #888; }
+.finger { cursor: pointer; }

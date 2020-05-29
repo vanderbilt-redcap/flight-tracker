@@ -419,8 +419,9 @@ function getRecord() {
 
 function submitChanges(nextRecord) {
 	var recordId = getRecord();
-	var newFinalized = new Array();
-	var newOmits = new Array();
+	var newFinalized = [];
+	var newOmits = [];
+	var resets = [];
 	$('#finalize').hide();
 	$('#uploading').show();
 	$('[type=hidden]').each(function(idx, elem) {
@@ -435,6 +436,8 @@ function submitChanges(nextRecord) {
 				} else if (value == "exclude") {
 					// unchecked => put in omits
 					newOmits.push(pmid);
+				} else if (value == "reset") {
+					resets.push(pmid);
 				}
 			}
 		}
@@ -446,6 +449,7 @@ function submitChanges(nextRecord) {
 		data: {
 			record_id: recordId,
 			omissions: JSON.stringify(newOmits),
+			resets: JSON.stringify(resets),
 			finalized: JSON.stringify(newFinalized)
 		},
 		dataType: 'json',

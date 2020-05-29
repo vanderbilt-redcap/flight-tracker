@@ -324,7 +324,7 @@ class CohortConfig {
 		} else if (is_array($row['variable'])) {
 			return TRUE;
 		} else if (in_array($row['variable'], $allowedVariables)) {
-			if ($row['choice'] || ($row['comparison'] && $row['value'])) {
+			if (isset($row['choice']) || (isset($row['comparison']) && isset($row['value']))) {
 				return TRUE;
 			} else {
 				throw new \Exception("Cannot find choice or comparison or value in ".json_encode($row));
