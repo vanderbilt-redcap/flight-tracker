@@ -225,7 +225,15 @@ class REDCapManagement {
 	}
 
 	public static function isValidIP($str) {
-	    return preg_match("/^\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b$/", $str);
+	    if (preg_match("/^\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b$/", $str)) {
+	        # numeric
+            return TRUE;
+        }
+	    if (preg_match("/^\b\w\.\w+\b$/", $str)) {
+	        # word
+	        return TRUE;
+        }
+	    return FALSE;
     }
 
 	public static function applyProxyIfExists(&$ch) {
@@ -233,7 +241,7 @@ class REDCapManagement {
         $proxyPort = Application::getSetting("proxy-port");
         $proxyUsername = Application::getSetting("proxy-user");
         $proxyPassword = Application::getSetting("proxy-pass");
-        if ($proxyIP && self::isValidIP($proxyIP) && $proxyPort && is_numeric($proxyPort)&& $proxyPassword && $proxyUsername) {
+        if ($proxyIP && $proxyPort && is_numeric($proxyPort)&& $proxyPassword && $proxyUsername) {
             $proxyOpts = [
                 CURLOPT_HTTPPROXYTUNNEL => 1,
                 CURLOPT_PROXY => $proxyIP,
