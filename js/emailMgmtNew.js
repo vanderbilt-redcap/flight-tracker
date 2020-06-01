@@ -2,8 +2,9 @@ function updateAll(ob, pid, post) {
 	var testField = 'test_to';
 	var id = $(ob).attr('id');
 	var name = $(ob).attr('name');
+	let skip = ["survey_links"]
 	console.log("updateAll with id "+id+" and name "+name);
-	if (id || name) {
+	if ((id || name) && (skip.indexOf(name) < 0) && (skip.indexOf(id) < 0)) {
 		if ($(ob).attr('type') != "checkbox") {
 			// only use post variable if not a checkbox
 			if ($('[name=recipient][value=filtered_group]').is(':checked')) {

@@ -30,6 +30,7 @@ if ($_GET['record']) {
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/baseSelect.php");
 
+
 if (!$record) {
 	echo "<h1>No Data Available</h1>\n";
 	exit();
