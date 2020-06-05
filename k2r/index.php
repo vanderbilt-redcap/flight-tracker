@@ -179,17 +179,22 @@ function isConverted($row, $kLength, $orderK, $kType) {
 }
 
 function getAverages($data, $kLength, $orderK, $kType) {
-	global $rs;
+	global $rs, $pid, $event_id;
 
 	$avgs = array(
 			"conversion" => 0,
 			"age" => 0,
 			"age_at_first_cda" => 0,
 			"age_at_first_r" => 0,
+            "converted" => [],
+            "not_converted" => [],
+            "omitted" => [],
 			);
 	$sums = array();
 	foreach ($avgs as $key => $value) {
-		$sums[$key] = array();
+        if (!is_array($avgs[$key])) {
+            $sums[$key] = array();
+        }
 	}
 
 	foreach ($data as $row) {
@@ -198,9 +203,13 @@ function getAverages($data, $kLength, $orderK, $kType) {
 			if ($c == "numer") {
 				// echo "Numer ".$row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name']."<br>";
 				$sums["conversion"][] = 100;   // percent
+                $avgs["converted"][] = Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['identifier_first_name']." ".$row['identifier_last_name']);
 			} else if ($c == "denom") {
 				// echo "Denom ".$row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name']."<br>";
 				$sums["conversion"][] = 0;
+                $avgs["not_converted"][] = Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['identifier_first_name']." ".$row['identifier_last_name']);
+            } else {
+                $avgs["omitted"][] = Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['identifier_first_name']." ".$row['identifier_last_name']);
 			}
 			if ($row['summary_dob']) {
 				$today = date("Y-m-d");
@@ -266,7 +275,17 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 		echo "<tr><th>Average Age at First CDA</th><td>{$avgs['age_at_first_cda']}</td></tr>";
 		echo "<tr><th>Average Age at First R / R-Equivalent</th><td>{$avgs['age_at_first_r']}</td></tr>";
 		echo "</table>";
-	} else if (isset($_POST['list'])) {
+
+        echo "<p class='centered'><a href='javascript:;' onclick='$(\"#names\").show();'>Show Names</a></p>";
+        echo "<table class='centered' id='names' style='display: none;'>";
+        echo "<tr><th class='centered'>Converted</th><th class='centered'>Not Converted</th><th class='centered'>Omitted</th></tr>";
+        echo "<tr>";
+        echo "<td class='centered' style='vertical-align: top;'>".implode("<br>", $avgs['converted'])."</td>";
+        echo "<td class='centered' style='vertical-align: top;'>".implode("<br>", $avgs['not_converted'])."</td>";
+        echo "<td class='centered' style='vertical-align: top;'>".implode("<br>", $avgs['omitted'])."</td>";
+        echo "</tr>";
+        echo "</table>";
+    } else if (isset($_POST['list'])) {
 		$showNames = false;
 		if ($_POST['show_names']) {
 			$showNames = true;

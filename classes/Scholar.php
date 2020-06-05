@@ -1812,7 +1812,7 @@ class Scholar {
 				"summary_current_start" => "getCurrentAppointmentStart",
 				"summary_current_tenure" => "getTenureStatus",
                 "summary_urm" => "getURMStatus",
-                // ??? "summary_scopus_h_index" => "getScopusHIndex",
+                // ??? "summary_wos_h_index" => "getWoSHIndex",
 				"summary_disability" => "getDisabilityStatus",
 				"summary_disadvantaged" => "getDisadvantagedStatus",
 				"summary_training_start" => "getTrainingStart",
@@ -1884,24 +1884,73 @@ class Scholar {
 	}
 
     private function getScopusHIndex($rows) {
-	    if ($key = Application::getSetting("scopus_api_key", $this->pid)) {
+        if ($key = Application::getSetting("scopus_api_key", $this->pid)) {
+            $format = "application/json";
+            if ($orcid = $this->getORCID()) {
+                $url = "https://api.elsevier.com/content/author/orcid/$orcid?httpAccept=" . urlencode($format) . "&apikey=" . $key;
+                $json = REDCapManagement::downloadURL($url);
+                $data = json_decode($json, TRUE);
+
+
+            } else {
+                $firstNames = NameMatcher::explodeFirstName($this->getName("first"));
+                $lastNames = NameMatcher::explodeLastName($this->getName("last"));
+                $institutions = $this->getAllOtherInstitutions($rows);
+                foreach ($firstNames as $firstName) {
+                    foreach ($lastNames as $lastName) {
+                        foreach ($institutions as $institution) {
+                            $query = "AUTHFIRST($firstName) AND AUTHLASTNAME($lastName) AND AFFIL($institution)";
+                            $url = "https://api.elsevier.com/content/search/author?httpAccept=" . urlencode($format) . "&query=" . urlencode($query) . "&apikey=" . $key;
+                            $json = REDCapManagement::downloadURL($url);
+                            $data = json_decode($json, TRUE);
+                            if ($data['search-results']) {
+                                foreach ($data['search-results']['entry'] as $authorRow) {
+                                    if ($authorRow['dc:identifier']) {
+                                        $authorId = preg_replace("/^AUTHOR_ID:/", "", $authorRow['dc:identifier']);
+                                        if ($authorId) {
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if ($authorId) {
+                                $url = "http://api.elsevier.com/content/author_id/" . $authorId . "?view=metrics&httpAccept=" . urlencode($format) . "&apikey=" . $key;
+                                $json = REDCapManagement::downloadURL($url);
+                                $data = json_decode($json, TRUE);
+                                foreach ($data["author-retrieval-response"] as $authorRow) {
+                                    if ($authorRow['h-index']) {
+                                        return new Result($authorRow['h-index'], "");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return new Result("", "");
+    }
+    private function getWoSHIndex($rows) {
+	    if ($key = Application::getSetting("wos_api_key", $this->pid)) {
             $orcid = $this->getORCID();
             if ($orcid) {
                 # ???
             } else {
                 $firstNames = NameMatcher::explodeFirstName($this->getName("first"));
                 $lastNames = NameMatcher::explodeLastName($this->getName("last"));
-                $institutions = Application::getInstitutions();
+                $institutions = $this->getAllOtherInstitutions($rows);
                 foreach ($firstNames as $firstName) {
                     foreach ($lastNames as $lastName) {
                         foreach ($institutions as $institution) {
-                            $query = "AUTHFIRST($firstName) AND AFFIL($institution) AND AUTHLASTNAME($lastName)";
-                            $url = "https://api.elsevier.com/content/search/scopus?query=".urlencode($query)."&apikey=".$key;
+                            $query = "AUTHFIRST($firstName) AND AUTHLASTNAME($lastName) AND AFFIL($institution)";
+                            $format = "application/json";
+                            $url = "https://api.elsevier.com/content/search/author?httpAccept=".urlencode($format)."&query=".urlencode($query)."&apikey=".$key;
                             $json = REDCapManagement::downloadURL($url);
                             $data = json_decode($json, TRUE);
-                            foreach ($data['author-retrieval-response'] as $row) {
-                                return new Result($row["h-index"], "");
-                            }
+                            $authorId = "16023751600";   // Eric Austin TODO
+                            $url = "http://api.elsevier.com/content/author/author_id/".$authorId."?httpAccept=".urlencode($format)."&start=0&count=200&view=DOCUMENTS&apike".$key;
+                            $json = REDCapManagement::downloadURL($url);
+                            $data = json_decode($json, TRUE);
                         }
                     }
                 }
