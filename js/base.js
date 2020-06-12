@@ -621,7 +621,7 @@ function installMetadata(fields) {
 			}, 3000);
 		} else {
 			$("#metadataWarning").addClass("red");
-			$("#metadataWarning").html("Error in installation! Metadata not updated.");
+			$("#metadataWarning").html("Error in installation! Metadata not updated. "+JSON.stringify(data));
 		}
 	});
 }

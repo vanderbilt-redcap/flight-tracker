@@ -83,7 +83,7 @@ if ($_POST['process'] == "check") {
 		CareerDev::setSetting($lastCheckField, time());
 		if (count($additions) + count($changed) > 0) {
 			echo "<script>var missing = ".json_encode($missing).";</script>\n";
-			echo "An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a>";
+			echo "An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a><br>The following fields are impacted: ".implode(", ", $missing);
 		}
 	}
 } else if ($_POST['process'] == "install") {

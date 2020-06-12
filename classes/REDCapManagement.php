@@ -195,6 +195,14 @@ class REDCapManagement {
 		return $selectedRows;
 	}
 
+	public static function isValidChoice($value, $fieldChoices) {
+	    if ($fieldChoices) {
+	        return isset($fieldChoices[$value]);
+        }
+	    # no choices
+	    return TRUE;
+    }
+
 	public static function getFieldsFromMetadata($metadata, $instrument = FALSE) {
 		$fields = array();
 		foreach ($metadata as $row) {
@@ -683,6 +691,16 @@ class REDCapManagement {
 	public static function isValidToken($token) {
 		return (strlen($token) == 32);
 	}
+
+	public static function getActiveProjects($pids) {
+	    $activeProjects = [];
+	    foreach ($pids as $pid) {
+	        if (self::isActiveProject($pid)) {
+	            $activeProjects[] = $pid;
+            }
+        }
+	    return $activeProjects;
+    }
 
 	public static function isActiveProject($pid) {
 		$sql = "SELECT date_deleted FROM redcap_projects WHERE project_id = '".db_real_escape_string($pid)."' LIMIT 1";

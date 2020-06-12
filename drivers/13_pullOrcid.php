@@ -35,7 +35,9 @@ function pullORCIDs($token, $server, $pid) {
     $noMatches = array();
     $multiples = array();
     foreach ($recordIds as $recordId) {
-        if (!$orcids[$recordId] || !preg_match("/^\d\d\d\d-\d\d\d\d-\d\d\d\d-\d\d\d.$/", $orcids[$recordId])) {
+        if ((!$orcids[$recordId]
+            || !preg_match("/^\d\d\d\d-\d\d\d\d-\d\d\d\d-\d\d\d.$/", $orcids[$recordId])
+        ) && ($firstnames[$recordId] && $lastnames[$recordId])) {
             list($orcid, $mssg) = downloadORCID($recordId, $firstnames[$recordId], $lastnames[$recordId], $institutions[$recordId]);
             if ($ary = isCodedMessage($mssg)) {
                 foreach ($ary as $recordId => $value) {
@@ -132,6 +134,7 @@ function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {
     $html .= "<h3>".Links::makeLink($orcidSearchLink, $orcidSearchLink)."</h3>";
     return $html;
 }
+
 # returns list($orcid, $message)
 function downloadORCID($recordId, $first, $last, $institutionList) {
     $delim = ORCID_DELIM;

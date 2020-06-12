@@ -94,7 +94,7 @@ class CronManager {
 		}
 	}
 
-	public function run($adminEmail = "", $tokenName = "") {
+	public function run($adminEmail = "", $tokenName = "", $additionalEmailText = "") {
 		$dayOfWeek = date("l");
 		$date = date(self::getDateFormat());
 		$keys = array($date, $dayOfWeek);     // in order that they will run
@@ -136,6 +136,10 @@ class CronManager {
 				$ts = $mssgAry['ts'];
 				$text .= $title."<br>".$mssg."<br>".$ts."<br><br>";
 			}
+			if ($additionalEmailText) {
+			    $text .= "<br><br>".$additionalEmailText;
+            }
+
 			if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
 				require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 			} 

@@ -311,7 +311,8 @@ function addPMIDsIfNotFound(&$pmids, &$citationIds, $currPMIDs, $recordId) {
     $pmidCount = count($currPMIDs);
     foreach ($currPMIDs as $pmid) {
         $foundType = inCitationIds($citationIds, $pmid, $recordId);
-        if (!$foundType) {
+        $alreadyInPMIDs = in_array($pmid, $pmids);
+        if (!$foundType && !$alreadyInPMIDs) {
             array_push($pmids, $pmid);
             array_push($citationIds['New'][$recordId], $pmid);
         } else {
