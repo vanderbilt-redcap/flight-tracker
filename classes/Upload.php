@@ -10,28 +10,61 @@ require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/NameMatcher.php");
 
-class Upload {
-    public static function adaptToUTF8(&$ary) {
+class Upload
+{
+    public static function adaptToUTF8(&$ary)
+    {
         if (!json_encode($ary)) {
             if (json_last_error() == JSON_ERROR_UTF8) {
                 $ary = self::utf8ize($ary);
             } else {
-                throw new \Exception("Error in JSON processing: ".json_last_error_msg());
+                throw new \Exception("Error in JSON processing: " . json_last_error_msg());
             }
         }
     }
 
-    public static function  utf8ize($mixed) {
+    public static function utf8ize($mixed)
+    {
         if (is_array($mixed)) {
             foreach ($mixed as $key => $value) {
                 $mixed[$key] = self::utf8ize($value);
             }
-        } else if (is_string ($mixed)) {
+        } else if (is_string($mixed)) {
             return utf8_encode($mixed);
         }
         return $mixed;
     }
 
+    public static function deleteRecords($token, $server, $records) {
+        Application::log("Deleting ".count($records)." records");
+        if (!empty($records)) {
+            $data = array(
+                'token' => $token,
+                'action' => 'delete',
+                'content' => 'record',
+                'records' => $records
+            );
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $server);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_VERBOSE, 0);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+            curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+            curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+            $output = curl_exec($ch);
+            curl_close($ch);
+            Application::log("Deleted ".$output);
+
+            $feedback = json_decode($output, TRUE);
+            self::testFeedback($feedback);
+
+            return $feedback;
+        }
+        return array();
+    }
 
 public static function metadata($metadata, $token, $server) {
 		self::adaptToUTF8($metadata);
@@ -52,7 +85,6 @@ public static function metadata($metadata, $token, $server) {
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $server);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch, CURLOPT_VERBOSE, 0);
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
@@ -71,7 +103,7 @@ public static function metadata($metadata, $token, $server) {
 		return $feedback;
 	}
 
-	private static function testFeedback($feedback, $rows) {
+	private static function testFeedback($feedback, $rows = array()) {
 		if (isset($feedback['error']) && $feedback['error']) {
 			throw new \Exception($feedback['error']."\n".json_encode($rows));
 		}
@@ -96,7 +128,6 @@ public static function metadata($metadata, $token, $server) {
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $server);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch, CURLOPT_VERBOSE, 0);
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
@@ -251,7 +282,6 @@ public static function metadata($metadata, $token, $server) {
 				$ch = curl_init();
 				curl_setopt($ch, CURLOPT_URL, $server);
 				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 				curl_setopt($ch, CURLOPT_VERBOSE, 0);
 				curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 				curl_setopt($ch, CURLOPT_AUTOREFERER, true);

@@ -98,8 +98,8 @@ function updateReporter($token, $server, $pid) {
 					$listOfNames[] = $fn." ".$ln;
 				}
 			}
-		} 
-		if (!in_array($firstName." ".$lastName, $listOfNames)) {
+		}
+        if ($firstName && $lastName && !in_array($firstName." ".$lastName, $listOfNames)) {
 			$listOfNames[] = strtoupper($firstName." ".$lastName);
 		}
 

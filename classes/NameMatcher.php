@@ -10,8 +10,25 @@ require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
 
 class NameMatcher {
-	# returns an array of recordId's that matches respective last, first
-	# returns "" if no match
+    public static function matchLastName($lastName, $token, $server) {
+        if (!$lastName) {
+            return [];
+        }
+        if (!self::$namesForMatch || empty(self::$namesForMatch) || ($token != self::$currToken)) {
+            self::downloadNamesForMatch($token, $server);
+        }
+
+        $names = [];
+        $lastName = strtolower($lastName);
+        foreach (self::$namesForMatch as $row) {
+            $sLast = strtolower($row['identifier_last_name']);
+            if (preg_match("/".$sLast."/", $lastName) || preg_match("/".$lastName."/", $sLast)) {
+                $names[$row['record_id']] = $row['identifier_first_name']." ".$row['identifier_last_name'];
+            }
+        }
+        return $names;
+    }
+
 	public static function matchNames($firsts, $lasts, $token, $server) {
 		if (!$firsts || !$lasts) {
 			return "";

@@ -1276,7 +1276,7 @@ class Grant {
 			return "K99/R00";
 		} else if (preg_match("/^\d?[Rr]01/", $awardNo)) {
 			return "R01";
-		} else if (preg_match("/^\d?[Tt]\d\d/", $awardNo)) {
+		} else if (preg_match("/^\d?[Tt]\d\d/", $awardNo) || preg_match("/^\d?[Dd]43/", $awardNo)) {
 			return "Training Grant Admin";
 		} else if ($specs['direct_budget'] && ($specs['direct_budget'] >= 750000)) {
 			# not R01 or R00

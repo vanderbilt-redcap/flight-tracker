@@ -266,7 +266,6 @@ class REDCapManagement {
         Application::log("Contacting $url");
         $defaultOpts = [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_VERBOSE => 0,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_AUTOREFERER => true,
@@ -367,6 +366,16 @@ class REDCapManagement {
         $str = json_encode($data);
         $str = preg_replace("/,/", ", ", $str);
         return $str;
+    }
+
+    public static function removeBlanksFromAry($ary) {
+	    $newAry = [];
+	    foreach ($ary as $item) {
+	        if ($item !== "") {
+	            $newAry[] = $item;
+            }
+        }
+	    return $newAry;
     }
 
 	# if present, $fields contains the fields to copy over; if left as an empty array, then it attempts to install all fields

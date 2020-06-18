@@ -235,12 +235,15 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server) {
 			$firstNames = array(preg_replace("/\s+/", "+", $firstName));
 		}
 
-
 		$personalInstitutions = array();
 		if (isset($allInstitutions[$recordId])) {
 			$personalInstitutions = preg_split("/\s*,\s*/", $allInstitutions[$recordId]);
 		}
 		$institutions = array_unique(array_merge(CareerDev::getInstitutions(), $personalInstitutions));
+
+        $firstNames = REDCapManagement::removeBlanksFromAry($firstNames);
+        $lastNames = REDCapManagement::removeBlanksFromAry($lastNames);
+        $institutions = REDCapManagement::removeBlanksFromAry($institutions);
 
 		$pmids = array();
 		$orcidPMIDs = array();

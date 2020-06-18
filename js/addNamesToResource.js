@@ -1,5 +1,5 @@
 function showSignIn() {
-	if ($("#resource").val()) {
+	if ($("#resource").val() && $("#date").val()) {
 		$("#attendance").show();
 		$("#note").hide();
 	} else {
@@ -10,9 +10,10 @@ function showSignIn() {
 
 function showResource() {
 	var resource = $("#resource").val();
-	if (resource) {
+	var date = $("#date").val();
+	if (resource && date) {
 		$("#prior_attendance_title").html("Already Signed In");
-		$("#prior_attendance").html(resources[resource]);
+		$("#prior_attendance").html(resources[resource][date]);
 	} else {
 		$("#prior_attendance").html("");
 		$("#prior_attendance_title").html("&nbsp;");
