@@ -81,6 +81,22 @@ class REDCapManagement {
 		return $repeatingForms;
 	}
 
+	public static function getDifferencesInArrays($ary1, $ary2) {
+	    if (self::arraysEqual($ary1, $ary2)) {
+	        return "";
+        }
+	    $notes = [];
+	    foreach ($ary1 as $key => $value1) {
+	        if (!isset($ary2[$key])) {
+	            $notes[] = "ary2 missing $key";
+	        }
+	        if ($ary2[$key] != $value1) {
+	            $notes[] = "$key: $value1 vs. ".$ary2[$key];
+            }
+        }
+	    return implode(", ", $notes);
+    }
+
 	public static function getSurveys($pid) {
 		if (!function_exists("db_query")) {
 			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
@@ -307,7 +323,7 @@ class REDCapManagement {
     }
 
     public static function getMetadataFieldsToScreen() {
-		return array("select_choices_or_calculations", "required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation");
+		return array("required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation");
 	}
 
 	public static function findField($redcapData, $recordId, $field, $instrument = FALSE, $instance = FALSE) {
@@ -376,6 +392,26 @@ class REDCapManagement {
             }
         }
 	    return $newAry;
+    }
+
+    public static function isDate($str) {
+	    if (preg_match("/^\d+[\/\-]\d+[\/\-\d+$/", $str)) {
+	        $nodes = preg_split("/[\/\-]/", $str);
+	        $earliestYear = 1900;
+	        if (count($nodes) == 3) {
+                if (($nodes[0] >= $earliestYear) && ($nodes[1] <= 12) && ($nodes[2] <= 31)) {
+                    # YMD
+                    return TRUE;
+                } else if (($nodes[0] <= 12) && ($nodes[1] <= 31) && ($nodes[2] >= $earliestYear)) {
+                    # MDY
+                    return TRUE;
+                } else if (($nodes[0] <= 31) && ($nodes[1] <= 12) && ($nodes[2] >= $earliestYear)) {
+                    # DMY
+                    return TRUE;
+                }
+            }
+        }
+        return FALSE;
     }
 
 	# if present, $fields contains the fields to copy over; if left as an empty array, then it attempts to install all fields
@@ -700,6 +736,27 @@ class REDCapManagement {
 	public static function isValidToken($token) {
 		return (strlen($token) == 32);
 	}
+
+	public static function arraysEqual($ary1, $ary2) {
+	    if (!isset($ary1) || !isset($ary2)) {
+	        return FALSE;
+        }
+        if (!is_array($ary1) || !is_array($ary2)) {
+            return FALSE;
+        }
+	    foreach ([$ary1 => $ary2, $ary2 => $ary1] as $aryA => $aryB) {
+            foreach ($aryA as $key => $valueA) {
+                if (!isset($aryB[$key])) {
+                    return FALSE;
+                }
+                $valueB = $aryB[$key];
+                if ($valueA !== $valueB) {
+                    return FALSE;
+                }
+            }
+        }
+	    return TRUE;
+    }
 
 	public static function getActiveProjects($pids) {
 	    $activeProjects = [];

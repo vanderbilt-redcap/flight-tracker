@@ -170,6 +170,13 @@ class Scholar {
 		return in_array($name, $lowerList);
 	}
 
+	private function getEcommonsId($rows) {
+        $vars = self::getDefaultOrder("identifier_ecommons_id");
+        $vars = $this->getOrder($vars, "identifier_ecommons_id");
+        $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        return $result;
+    }
+
 	private function getMentorUserid($rows) {
 		$mentorResult = $this->getMentorText($rows);
 		$mentorField = $mentorResult->getField();
@@ -884,160 +891,164 @@ class Scholar {
 	# add new fields here and getCalculatedFields
 	public static function getDefaultOrder($field) {
 		$orders = array();
-		$orders["summary_degrees"] = array(
-							array("override_degrees" => "manual"),
-                            array("followup_degree" => "followup"),
-                            array("imported_degree" => "manual"),
-							array("check_degree1" => "scholars", "check_degree2" => "scholars", "check_degree3" => "scholars", "check_degree4" => "scholars", "check_degree5" => "scholars"),
-							array("vfrs_graduate_degree" => "vfrs", "vfrs_degree2" => "vfrs", "vfrs_degree3" => "vfrs", "vfrs_degree4" => "vfrs", "vfrs_degree5" => "vfrs", "vfrs_please_select_your_degree" => "vfrs"),
-							array("newman_new_degree1" => "new2017", "newman_new_degree2" => "new2017", "newman_new_degree3" => "new2017"),
-							array("newman_data_degree1" => "data", "newman_data_degree2" => "data", "newman_data_degree3" => "data"),
-							array("newman_demographics_degrees" => "demographics"),
-							array("newman_sheet2_degree1" => "sheet2", "newman_sheet2_degree2" => "sheet2", "newman_sheet2_degree3" => "sheet2"),
-							);
-		$orders["identifier_orcid"] = array(
-							"check_orcid_id" => "scholars",
-							"followup_orcid_id" => "followup",
-							);
-		$orders["summary_primary_dept"] = array(
-							"override_department1" => "manual",
-							"promotion_department" => "manual",
-							"check_primary_dept" => "scholars",
-							"vfrs_department" => "vfrs",
-							"newman_new_department" => "new2017",
-							"newman_demographics_department1" => "demographics",
-							"newman_data_department1" => "data",
-							"newman_sheet2_department1" => "sheet2",
-							);
-		$orders["summary_gender"] = array(
-							"override_gender" => "manual",
-							"check_gender" => "scholars",
-							"vfrs_gender" => "vfrs",
-							"imported_gender" => "manual",
-							"newman_new_gender" => "new2017",
-							"newman_demographics_gender" => "demographics",
-							"newman_data_gender" => "data",
-							"newman_nonrespondents_gender" => "nonrespondents",
-							);
-		$orders["summary_race_ethnicity"] = array();
-		$orders["summary_race_ethnicity"]["race"] = array(
-									"override_race" => "manual",
-									"check_race" => "scholars",
-									"vfrs_race" => "vfrs",
-									"imported_race" => "manual",
-									"newman_new_race" => "new2017",
-									"newman_demographics_race" => "demographics",
-									"newman_data_race" => "data",
-									"newman_nonrespondents_race" => "nonrespondents",
-									);
-		$orders["summary_race_ethnicity"]["ethnicity"] = array(
-									"override_ethnicity" => "manual",
-									"check_ethnicity" => "scholars",
-									"vfrs_ethnicity" => "vfrs",
-									"imported_ethnicity" => "manual",
-									"newman_new_ethnicity" => "new2017",
-									"newman_demographics_ethnicity" => "demographics",
-									"newman_data_ethnicity" => "data",
-									"newman_nonrespondents_ethnicity" => "nonrespondents",
-									);
-		$orders["summary_dob"] = array(
-						"check_date_of_birth" => "scholars",
-						"vfrs_date_of_birth" => "vfrs",
-						"override_dob" => "manual",
-						"imported_dob" => "manual",
-						"newman_new_date_of_birth" => "new2017",
-						"newman_demographics_date_of_birth" => "demographics",
-						"newman_data_date_of_birth" => "data",
-						"newman_nonrespondents_date_of_birth" => "nonrespondents",
-						);
-		$orders["summary_citizenship"] = array(
-							"followup_citizenship" => "followup",
-							"check_citizenship" => "scholars",
-							"override_citizenship" => "manual",
-							"imported_citizenship" => "manual",
-							);
-		$orders["identifier_institution"] = array(
-								"identifier_institution" => "manual",
-								"promotion_institution" => "manual",
-								"imported_institution" => "manual",
-								"check_institution" => "scholars",
-                                "check_undergrad_institution" => "scholars",
-								);
-		$orders["identifier_left_job_title"] = array(
-								"promotion_job_title" => "manual",
-								"check_job_title" => "scholars",
-								"followup_job_title" => "scholars",
-								);
-		$orders["identifier_left_job_category"] = array(
-								"promotion_job_category" => "manual",
-								"check_job_category" => "scholars",
-								"followup_job_category" => "scholars",
-		);
-		$orders["identifier_left_department"] = array(
-								"promotion_department" => "manual",
-		);
-		$orders["summary_current_division"] = array(
-								"promotion_division" => "manual",
-								"identifier_left_division" => "manual",
-								"followup_division" => "followup",
-								"check_division" => "scholars",
-								"override_division" => "manual",
-								"imported_division" => "manual",
-								"identifier_starting_division" => "manual",
-								"vfrs_division" => "vfrs",
-								);
-		$orders["summary_current_rank"] = array(
-							"promotion_rank" => "manual",
-							"override_rank" => "manual",
-							"imported_rank" => "manual",
-							"followup_academic_rank" => "followup",
-							"check_academic_rank" => "scholars",
-							"newman_new_rank" => "new2017",
-							"newman_demographics_academic_rank" => "demographics",
-							);
-		$orders["summary_current_start"] = array(
-							"promotion_in_effect" => "manual",
-							"followup_academic_rank_dt" => "followup",
-							"check_academic_rank_dt" => "scholars",
-							"override_position_start" => "manual",
-							"imported_position_start" => "manual",
-							"vfrs_when_did_this_appointment" => "vfrs",
-							);
-		$orders["summary_current_tenure"] = array(
-								"followup_tenure_status" => "followup",
-								"check_tenure_status" => "scholars",
-								"override_tenure" => "manual",
-								"imported_tenure" => "manual",
-								);
-		$orders["summary_mentor_userid"] = array(
-							"override_mentor_userid" => "manual",
-							"imported_mentor_userid" => "manual",
-							"followup_primary_mentor_userid" => "followup",
-							"check_primary_mentor_userid" => "scholars",
-							);
-		$orders["summary_mentor"] = array(
-							"override_mentor" => "manual",
-							"imported_mentor" => "manual",
-							"followup_primary_mentor" => "followup",
-							"check_primary_mentor" => "scholars",
-							);
-		$orders["summary_disability"] = array(
-							"check_disability" => "scholars",
-							"vfrs_disability_those_with_phys" => "vfrs",
-							);
-		$orders["summary_disadvantaged"] = array(
-							"check_disadvantaged" => "scholars",
-							"vfrs_disadvantaged_the_criteria" => "vfrs",
-							);
-		$orders["summary_training_start"] = array(
-                                "identifier_start_of_training" => "manual",
-								"check_degree0_start" => "scholars",
-								"promotion_in_effect" => "manual",
-								);
-		$orders["summary_training_end"] = array(
-								"check_degree0_month/check_degree0_year" => "scholars",
-								"promotion_in_effect" => "manual",
-								);
+        $orders["summary_degrees"] = array(
+            array("override_degrees" => "manual"),
+            array("followup_degree" => "followup"),
+            array("imported_degree" => "manual"),
+            array("check_degree1" => "scholars", "check_degree2" => "scholars", "check_degree3" => "scholars", "check_degree4" => "scholars", "check_degree5" => "scholars"),
+            array("vfrs_graduate_degree" => "vfrs", "vfrs_degree2" => "vfrs", "vfrs_degree3" => "vfrs", "vfrs_degree4" => "vfrs", "vfrs_degree5" => "vfrs", "vfrs_please_select_your_degree" => "vfrs"),
+            array("newman_new_degree1" => "new2017", "newman_new_degree2" => "new2017", "newman_new_degree3" => "new2017"),
+            array("newman_data_degree1" => "data", "newman_data_degree2" => "data", "newman_data_degree3" => "data"),
+            array("newman_demographics_degrees" => "demographics"),
+            array("newman_sheet2_degree1" => "sheet2", "newman_sheet2_degree2" => "sheet2", "newman_sheet2_degree3" => "sheet2"),
+        );
+        $orders["identifier_orcid"] = array(
+            "check_orcid_id" => "scholars",
+            "followup_orcid_id" => "followup",
+        );
+        $orders["summary_primary_dept"] = array(
+            "override_department1" => "manual",
+            "promotion_department" => "manual",
+            "check_primary_dept" => "scholars",
+            "vfrs_department" => "vfrs",
+            "newman_new_department" => "new2017",
+            "newman_demographics_department1" => "demographics",
+            "newman_data_department1" => "data",
+            "newman_sheet2_department1" => "sheet2",
+        );
+        $orders["summary_gender"] = array(
+            "override_gender" => "manual",
+            "check_gender" => "scholars",
+            "vfrs_gender" => "vfrs",
+            "imported_gender" => "manual",
+            "newman_new_gender" => "new2017",
+            "newman_demographics_gender" => "demographics",
+            "newman_data_gender" => "data",
+            "newman_nonrespondents_gender" => "nonrespondents",
+        );
+        $orders["summary_race_ethnicity"] = array();
+        $orders["summary_race_ethnicity"]["race"] = array(
+            "override_race" => "manual",
+            "check_race" => "scholars",
+            "vfrs_race" => "vfrs",
+            "imported_race" => "manual",
+            "newman_new_race" => "new2017",
+            "newman_demographics_race" => "demographics",
+            "newman_data_race" => "data",
+            "newman_nonrespondents_race" => "nonrespondents",
+        );
+        $orders["summary_race_ethnicity"]["ethnicity"] = array(
+            "override_ethnicity" => "manual",
+            "check_ethnicity" => "scholars",
+            "vfrs_ethnicity" => "vfrs",
+            "imported_ethnicity" => "manual",
+            "newman_new_ethnicity" => "new2017",
+            "newman_demographics_ethnicity" => "demographics",
+            "newman_data_ethnicity" => "data",
+            "newman_nonrespondents_ethnicity" => "nonrespondents",
+        );
+        $orders["summary_dob"] = array(
+            "check_date_of_birth" => "scholars",
+            "vfrs_date_of_birth" => "vfrs",
+            "override_dob" => "manual",
+            "imported_dob" => "manual",
+            "newman_new_date_of_birth" => "new2017",
+            "newman_demographics_date_of_birth" => "demographics",
+            "newman_data_date_of_birth" => "data",
+            "newman_nonrespondents_date_of_birth" => "nonrespondents",
+        );
+        $orders["summary_citizenship"] = array(
+            "followup_citizenship" => "followup",
+            "check_citizenship" => "scholars",
+            "override_citizenship" => "manual",
+            "imported_citizenship" => "manual",
+        );
+        $orders["identifier_institution"] = array(
+            "identifier_institution" => "manual",
+            "promotion_institution" => "manual",
+            "imported_institution" => "manual",
+            "check_institution" => "scholars",
+            "check_undergrad_institution" => "scholars",
+        );
+        $orders["identifier_left_job_title"] = array(
+            "promotion_job_title" => "manual",
+            "check_job_title" => "scholars",
+            "followup_job_title" => "scholars",
+        );
+        $orders["identifier_left_job_category"] = array(
+            "promotion_job_category" => "manual",
+            "check_job_category" => "scholars",
+            "followup_job_category" => "scholars",
+        );
+        $orders["identifier_left_department"] = array(
+            "promotion_department" => "manual",
+        );
+        $orders["summary_current_division"] = array(
+            "promotion_division" => "manual",
+            "identifier_left_division" => "manual",
+            "followup_division" => "followup",
+            "check_division" => "scholars",
+            "override_division" => "manual",
+            "imported_division" => "manual",
+            "identifier_starting_division" => "manual",
+            "vfrs_division" => "vfrs",
+        );
+        $orders["summary_current_rank"] = array(
+            "promotion_rank" => "manual",
+            "override_rank" => "manual",
+            "imported_rank" => "manual",
+            "followup_academic_rank" => "followup",
+            "check_academic_rank" => "scholars",
+            "newman_new_rank" => "new2017",
+            "newman_demographics_academic_rank" => "demographics",
+        );
+        $orders["summary_current_start"] = array(
+            "promotion_in_effect" => "manual",
+            "followup_academic_rank_dt" => "followup",
+            "check_academic_rank_dt" => "scholars",
+            "override_position_start" => "manual",
+            "imported_position_start" => "manual",
+            "vfrs_when_did_this_appointment" => "vfrs",
+        );
+        $orders["summary_current_tenure"] = array(
+            "followup_tenure_status" => "followup",
+            "check_tenure_status" => "scholars",
+            "override_tenure" => "manual",
+            "imported_tenure" => "manual",
+        );
+        $orders["summary_mentor_userid"] = array(
+            "override_mentor_userid" => "manual",
+            "imported_mentor_userid" => "manual",
+            "followup_primary_mentor_userid" => "followup",
+            "check_primary_mentor_userid" => "scholars",
+        );
+        $orders["summary_mentor"] = array(
+            "override_mentor" => "manual",
+            "imported_mentor" => "manual",
+            "followup_primary_mentor" => "followup",
+            "check_primary_mentor" => "scholars",
+        );
+        $orders["summary_disability"] = array(
+            "check_disability" => "scholars",
+            "vfrs_disability_those_with_phys" => "vfrs",
+        );
+        $orders["summary_disadvantaged"] = array(
+            "check_disadvantaged" => "scholars",
+            "vfrs_disadvantaged_the_criteria" => "vfrs",
+        );
+        $orders["summary_training_start"] = array(
+            "identifier_start_of_training" => "manual",
+            "check_degree0_start" => "scholars",
+            "promotion_in_effect" => "manual",
+        );
+        $orders["summary_training_end"] = array(
+            "check_degree0_month/check_degree0_year" => "scholars",
+            "promotion_in_effect" => "manual",
+        );
+        $orders["identifier_ecommons_id"] = array(
+            "check_ecommons_id" => "scholars",
+            "followup_ecommons_id" => "followup",
+        );
 
 		if (isset($orders[$field])) {
 			return $orders[$field];
@@ -1790,36 +1801,37 @@ class Scholar {
 
 	# add new fields here and getDefaultOrder
 	private static function getCalculatedFields() {
-		return array(
-				"summary_coeus_name" => "calculateCOEUSName",
-				"summary_survey" => "getSurvey",
-				"identifier_left_date" => "getWhenLeftInstitution",
-				"identifier_institution" => "getAllOtherInstitutions",
-				"identifier_left_job_title" => "getJobTitle",
-				"identifier_left_job_category" => "getJobCategory",
-				"identifier_left_department" => "getNewDepartment",
-				"identifier_orcid" => "getORCIDResult",
-				"summary_degrees" => "getDegrees",
-				"summary_primary_dept" => "getPrimaryDepartment",
-				"summary_gender" => "getGender",
-				"summary_race_ethnicity" => "getRaceEthnicity",
-				"summary_dob" => "getDOB",
-				"summary_citizenship" => "getCitizenship",
-				"summary_current_institution" => "getInstitution",
-				"summary_current_division" => "getCurrentDivision",
-				"identifier_left_division" => "getCurrentDivision",    // deliberate duplicate
-				"summary_current_rank" => "getCurrentRank",
-				"summary_current_start" => "getCurrentAppointmentStart",
-				"summary_current_tenure" => "getTenureStatus",
-                "summary_urm" => "getURMStatus",
-                // ??? "summary_wos_h_index" => "getWoSHIndex",
-				"summary_disability" => "getDisabilityStatus",
-				"summary_disadvantaged" => "getDisadvantagedStatus",
-				"summary_training_start" => "getTrainingStart",
-				"summary_training_end" => "getTrainingEnd",
-				"summary_mentor" => "getMentorText",
-				"summary_mentor_userid" => "getMentorUserid",
-				);
+		return [
+            "summary_coeus_name" => "calculateCOEUSName",
+            "summary_survey" => "getSurvey",
+            "identifier_left_date" => "getWhenLeftInstitution",
+            "identifier_institution" => "getAllOtherInstitutions",
+            "identifier_left_job_title" => "getJobTitle",
+            "identifier_left_job_category" => "getJobCategory",
+            "identifier_left_department" => "getNewDepartment",
+            "identifier_orcid" => "getORCIDResult",
+            "summary_degrees" => "getDegrees",
+            "summary_primary_dept" => "getPrimaryDepartment",
+            "summary_gender" => "getGender",
+            "summary_race_ethnicity" => "getRaceEthnicity",
+            "summary_dob" => "getDOB",
+            "summary_citizenship" => "getCitizenship",
+            "summary_current_institution" => "getInstitution",
+            "summary_current_division" => "getCurrentDivision",
+            "identifier_left_division" => "getCurrentDivision",    // deliberate duplicate
+            "summary_current_rank" => "getCurrentRank",
+            "summary_current_start" => "getCurrentAppointmentStart",
+            "summary_current_tenure" => "getTenureStatus",
+            "summary_urm" => "getURMStatus",
+            // ??? "summary_wos_h_index" => "getWoSHIndex",
+            "summary_disability" => "getDisabilityStatus",
+            "summary_disadvantaged" => "getDisadvantagedStatus",
+            "summary_training_start" => "getTrainingStart",
+            "summary_training_end" => "getTrainingEnd",
+            "summary_mentor" => "getMentorText",
+            "summary_mentor_userid" => "getMentorUserid",
+            "identifier_ecommons_id" => "getEcommonsId",
+        ];
 	}
 
 	private function getTrainingStart($rows) {
@@ -1839,6 +1851,14 @@ class Scholar {
 		}
 		return $result;
 	}
+
+	public static function getAwardTypeFields($metadata) {
+	    return REDCapManagement::getFieldsWithRegEx($metadata, "/^summary_award_type_/");
+    }
+
+	public static function getAwardDateFields($metadata) {
+        return REDCapManagement::getFieldsWithRegEx($metadata, "/^summary_award_.*date_/");
+    }
 
 	private static function getOrderedPromotionRows($rows) {
 		$changes = array();

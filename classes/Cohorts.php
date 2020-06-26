@@ -23,6 +23,26 @@ class Cohorts {
 		$this->configs = $this->getConfigs();
 	}
 
+	public function makeCohortSelect($defaultCohort, $onchangeJS = "") {
+	    $html = "Select Cohort: <select";
+	    if ($onchangeJS) {
+	        $html .= " onchange='".$onchangeJS."'";
+        }
+	    $html .= ">";
+        $html .= "<option value=''>---ALL---</option>\n";
+
+        $cohortTitles = $this->getCohortTitles();
+        foreach ($cohortTitles as $title) {
+            $html .= "<option value='$title'";
+            if ($title == $defaultCohort) {
+                $html .= " selected";
+            }
+            $html .= ">$title</option>\n";
+        }
+        $html .= "</select>";
+        return $html;
+    }
+
 	private function getConfigs() {
 		if ($this->module) {
 			$configs = $this->module->getProjectSetting($this->settingName); 

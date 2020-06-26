@@ -711,7 +711,9 @@ class Publications {
 			}
 		}
 		if (count($rcrs) > 0) {
-			return array_sum($rcrs) / count($rcrs);
+		    $accuracy = 1000;
+
+			return round(array_sum($rcrs) / count($rcrs) * $accuracy) / $accuracy;
 		}
 		return "N/A";
 	}

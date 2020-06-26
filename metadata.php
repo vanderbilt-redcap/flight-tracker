@@ -65,9 +65,10 @@ if ($_POST['process'] == "check") {
 							array_push($additions, $field);
 						}
 					}
-				} else if ($choiceStr && $choices["REDCap"][$field] && $choices["file"][$field] && $fieldList["REDCap"][$field] && ($choiceStr != $fieldList["REDCap"][$field])) {
+				} else if ($choices["file"][$field] && $choices["REDCap"][$field] && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])) {
 					array_push($missing, $field);
 					array_push($changed, $field);
+
 				} else {
 					foreach ($metadataFields as $metadataField) {
 						if (REDCapManagement::hasMetadataChanged($indexedMetadata["REDCap"][$field][$metadataField], $indexedMetadata["file"][$field][$metadataField], $metadataField)) {
@@ -83,7 +84,7 @@ if ($_POST['process'] == "check") {
 		CareerDev::setSetting($lastCheckField, time());
 		if (count($additions) + count($changed) > 0) {
 			echo "<script>var missing = ".json_encode($missing).";</script>\n";
-			echo "An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a><br>The following fields are impacted: ".implode(", ", $missing);
+			echo "An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a><br>The following fields will be added: ".(empty($additions) ? "none" : implode(", ", $additions))."<br>The following fields will be changed: ".(empty($changed) ? "none" : implode(", ", $changed));
 		}
 	}
 } else if ($_POST['process'] == "install") {

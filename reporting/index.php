@@ -3,11 +3,13 @@
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NIHTables;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/NIHTables.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
+require_once(dirname(__FILE__)."/../classes/Cohorts.php");
 
 
 function makeLink($tableNum) {
@@ -39,16 +41,42 @@ function makeTableHeader($tableNum) {
 	return "";
 }
 
-$predocs = Download::predocNames($token, $server);
-$postdocs = Download::postdocNames($token, $server);
+$metadata = Download::metadata($token, $server);
+$tables = new NIHTables($token, $server, $pid, $metadata);
+$predocs = $tables->downloadPredocNames();
+if (isset($_GET['appointments'])) {
+    $postdocs = $tables->downloadPostdocNames("8C-VUMC");
+} else {
+    $postdocs = $tables->downloadPostdocNames();
+}
 
 $predocNames = implode(", ", array_values($predocs));
 $postdocNames = implode(", ", array_values($postdocs));
 $emptyNames = "None";
 
+$metadata = Download::metadata($token, $server);
+$cohorts = new Cohorts($token, $server, $metadata);
+
 ?>
 
 <h1>NIH Tables</h1>
+
+<?php
+
+if (($pid == 66635) && preg_match("/redcap.vanderbilt.edu/", $server)) {
+    $currentUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+    if (isset($_GET['appointments'])) {
+        $url = preg_replace("/\&appointments/", "", $currentUrl);
+        // echo "<p class='centered'><a href='$url'>View All Post-Docs</a></p>\n";
+    } else {
+        $url = $currentUrl . "&appointments";
+        // echo "<p class='centered'><a href='$url'>View Post-Docs by Appointment-Only</a></p>\n";
+    }
+}
+
+?>
+
+<p class="centered"><?= $cohorts->makeCohortSelect($_GET['cohort'], "if ($(this).val()) { window.location.href = \"".Application::link("reporting/index.php")."&cohort=\" + $(this).val(); } else { window.location.href = \"".Application::link("reporting/index.php")."\"; }") ?></p>
 
 <h2>Predoctoral Scholars (<?= count($predocs) ?>)</h2>
 <p class='centered'><?= $predocNames ? $predocNames : $emptyNames ?></p>
@@ -61,15 +89,33 @@ $emptyNames = "None";
 
 <h2><?= makeTableHeader("5") ?></h2>
 <p class='centered'><?= makeLink("5A") ?></p>
-<p class='centered'><?= makeLink("5B") ?></p>
+<?php
+if (isset($_GET['appointments'])) {
+    echo "<p class='centered'>".makeLink("5B-VUMC")."</p>\n";
+} else {
+    echo "<p class='centered'>".makeLink("5B")."</p>\n";
+}
+?>
 
 <h2><?= makeTableHeader("6") ?></h2>
 <p class='centered'><?= makeLink("6AII") ?></p>
-<p class='centered'><?= makeLink("6BII") ?></p>
+<?php
+if (isset($_GET['appointments'])) {
+    echo "<p class='centered'>".makeLink("6BII-VUMC")."</p>\n";
+} else {
+    echo "<p class='centered'>".makeLink("6BII")."</p>\n";
+}
+?>
 
 <h2><?= makeTableHeader("8") ?></h2>
 <p class='centered'><?= makeLink("8AI") ?></p>
 <p class='centered'><?= makeLink("8AIII") ?></p>
 <p class='centered'><?= makeLink("8AIV") ?></p>
-<p class='centered'><?= makeLink("8CI") ?></p>
-<p class='centered'><?= makeLink("8CIII") ?></p>
+<?php
+if (isset($_GET['appointments'])) {
+    echo "<p class='centered'>".makeLink("8CI-VUMC")."</p>\n";
+    echo "<p class='centered'>".makeLink("8CIII-VUMC")."</p>\n";
+} else {
+    echo "<p class='centered'>".makeLink("8CI")."</p>\n";
+    echo "<p class='centered'>".makeLink("8CIII")."</p>\n";
+}

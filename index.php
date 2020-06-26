@@ -46,9 +46,6 @@ $(document).ready(function() {
 	################ Overhead with External Module
 	$module = CareerDev::getModule();
 	if ($module) {
-		$fourWeeksPrior = time() - 28 * 24 * 3600;
-		$module->removeLogs("timestamp < ".date("Y-m-d", $fourWeeksPrior));
-
 		$hours = 12;    // 12 hours prior
 		$priorTs = time() - $hours * 3600;
 		$lockInfo = $module->getSystemSetting(\ExternalModules\ExternalModules::KEY_RESERVED_IS_CRON_RUNNING);

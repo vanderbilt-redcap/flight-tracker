@@ -54,11 +54,26 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		}
 	}
 
-	function cron() {
+	public function cleanupLogs($pid)
+    {
+        CareerDev::log("Cleaning up logs for $pid");
+        $daysPrior = 28;
+
+        $this->cleanupExtModLogs($pid, $daysPrior);
+    }
+
+    public function cleanupExtModLogs($pid, $daysPrior) {
+	    $ts = time() - $daysPrior * 24 * 3600;
+	    $thresholdTs = date("Y-m-d", $ts);
+	    $this->removeLogs("timestamp <= '$thresholdTs' AND project_id = '$pid'");
+    }
+
+	public function cron() {
 		$this->setupApplication();
 		$pids = $this->framework->getProjectsWithModuleEnabled();
 		CareerDev::log($this->getName()." running for pids ".json_encode($pids));
 		foreach ($pids as $pid) {
+		    $this->cleanupLogs($pid);
 			if (REDCapManagement::isActiveProject($pid)) {
 				$token = $this->getProjectSetting("token", $pid);
 				$server = $this->getProjectSetting("server", $pid);

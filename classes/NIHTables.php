@@ -41,6 +41,7 @@ class NIHTables {
 		$five = "Publications of Those in Training";
 		$six = "Applicants, Entrants, and Their Characteristics for the Past Five Years";
 		$eight = "Program Outcomes";
+        $appointmentMssg = "for Appointments Only";
 
 		$group = "Postdoctoral";
 		if (preg_match("/A/i", $table)) {
@@ -49,20 +50,28 @@ class NIHTables {
 
 		if ($table == "5") {
 			return $five;
-		} else if (preg_match("/^5.$/", $table)) {
-			return "$five: $group";
+        } else if (preg_match("/^5.$/", $table)) {
+            return "$five: $group";
+        } else if (preg_match("/^5.-VUMC$/", $table)) {
+            return "$five: $group $appointmentMssg";
 		} else if ($table == "6") {
 			return $six;
-		} else if (preg_match("/^6.II$/", $table)) {
-			return "$six: $group - Characteristics";
+        } else if (preg_match("/^6.II$/", $table)) {
+            return "$six: $group - Characteristics";
+        } else if (preg_match("/^6.II-VUMC$/", $table)) {
+            return "$six: $group - Characteristics $appointmentMssg";
 		} else if ($table == "8") {
 			return $eight;
-		} else if (preg_match("/^8.I$/", $table)) {
-			return "$eight: $group - Those Appointed to the Training Grant";
+        } else if (preg_match("/^8.I$/", $table)) {
+            return "$eight: $group - Those Appointed to the Training Grant";
+        } else if (preg_match("/^8.I-VUMC$/", $table)) {
+            return "$eight: $group - Those Appointed to the Training Grant $appointmentMssg";
 		} else if (preg_match("/^8.II$/", $table)) {
 			return "$eight: $group - Those Clearly Associated with the Training Grant";
-		} else if (preg_match("/^8.III$/", $table)) {
-			return "$eight: $group - Recent Graduates";
+        } else if (preg_match("/^8.III$/", $table)) {
+            return "$eight: $group - Recent Graduates";
+        } else if (preg_match("/^8.III-VUMC$/", $table)) {
+            return "$eight: $group - Recent Graduates $appointmentMssg";
 		} else if (preg_match("/^8.IV$/", $table)) {
 			return "$eight: $group - Program Statistics";
 		} else if ($table == "Common Metrics") {
@@ -1077,8 +1086,8 @@ class NIHTables {
     }
 
     private function get8IVData() {
-	    $predocs = Download::predocNames($this->token, $this->server);
-	    $trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");
+	    $predocs = $this->downloadPredocNames();
+        $trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");
 
 	    $yearspan = 10;
 	    $today = date("Y-m-d");
@@ -1290,11 +1299,38 @@ class NIHTables {
 		return $types;
 	}
 
-	private function downloadRelevantNames($table) {
+    public function downloadPostdocNames($table = "") {
+        if (preg_match("/-VUMC$/", $table)) {
+            if ($_GET['cohort']) {
+                $names = Download::postdocAppointmentNames($this->token, $this->server, $this->metadata, $_GET['cohort']);
+            } else {
+                $names = Download::postdocAppointmentNames($this->token, $this->server);
+            }
+        } else {
+            if ($_GET['cohort']) {
+                $names = Download::postdocNames($this->token, $this->server, $this->metadata, $_GET['cohort']);
+            } else {
+                $names = Download::postdocNames($this->token, $this->server);
+            }
+
+        }
+        return $names;
+    }
+
+    public function downloadPredocNames() {
+        if ($_GET['cohort']) {
+            $names = Download::predocNames($this->token, $this->server, $this->metadata, $_GET['cohort']);
+        } else {
+            $names = Download::predocNames($this->token, $this->server);
+        }
+        return $names;
+    }
+
+    private function downloadRelevantNames($table) {
 		if (self::beginsWith($table, array("5A", "6A", "8A"))) {
-			$names = Download::predocNames($this->token, $this->server);
+            $names = $this->downloadPredocNames();
 		} else if (self::beginsWith($table, array("5B", "6B", "8C"))) {
-			$names = Download::postdocNames($this->token, $this->server);
+		    $names = $this->downloadPostdocNames($table);
 		} else {
 			$names = array();
 		}
@@ -1382,7 +1418,9 @@ class NIHTables {
 			$pubData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
             $facultyMembers = $mentors[$recordId];
 			$traineeName = $name;
-			$pastOrCurrent = "";
+
+			# fill $trainingPeriod, $pastOrCurrent, $startTs, $startYear, $endTs, $endYear
+            $pastOrCurrent = "";
 			$trainingPeriod = "";
 			$startTs = 0;
 			if ($trainingStarts[$recordId]) {
@@ -1391,43 +1429,75 @@ class NIHTables {
             }
 			$endTs = time();
 			$currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
-			foreach ($currentGrants as $row) {
-                if ($row['redcap_repeat_instrument'] == "custom_grant") {
-                    $currStartTs = strtotime($row['custom_start']);
-                    if (!$startTs || ($currStartTs < $startTs)) {
-                        $startTs = $currStartTs;
-                        $startYear = REDCapManagement::getYear($row['custom_start']);
-                    }
-                    if ($row['custom_end']) {
-                        $endTs = strtotime($row['custom_end']);
-                        if ($endTs > time()) {
-                            # in future
-                            $endYear = self::$presentMarker;
-                        } else {
-                            # in past
-                            $endYear = REDCapManagement::getYear($row['custom_end']);
+			if (empty($currentGrants)) {
+                $awardDateFields = Scholar::getAwardDateFields($this->metadata);
+                $awardTypeFields = Scholar::getAwardTypeFields($this->metadata);
+                $summaryData = Download::fieldsForRecords($this->token, $this->server, array_unique(array_merge($awardDateFields, $awardTypeFields, ["record_id"])), [$recordId]);
+                $eligibleKs = [1, 2];    // limit to Internal K and K12/KL2
+                $kDates = [];
+                foreach ($summaryData as $row) {
+                    for ($i = 1; $i <= MAX_GRANTS; $i++) {
+                        if ($row['summary_award_type_'.$i] && in_array($row['summary_award_type_'.$i], $eligibleKs)) {
+                            $kDates[] = ["begin" => $row['summary_award_date_'.$i], "end" => $row['summary_award_end_date_'.$i]];
                         }
-                    } else {
-                        $endYear = self::$presentMarker;
                     }
-                    if ($endYear == self::$presentMarker) {
-                        $pastOrCurrent = "Current";
-                    } else {
-                        $pastOrCurrent = "Past";
-                    }
-                    $trainingPeriod = "$startYear-$endYear";
                 }
-			}
+                list($beginDate, $endDate) = self::combineDates($kDates);
+                $startYear = ($beginDate ? REDCapManagement::getYear($beginDate) : self::$NA);
+                $startTs = ($beginDate ? strtotime($beginDate) : "");
+                $endTs = ($endDate ? strtotime($endDate) : "");
+                if ($endTs && $endTs > time()) {
+                    # in future
+                    $endYear = self::$presentMarker;
+                } else {
+                    # in past
+                    $endYear = ($endDate ? REDCapManagement::getYear($endDate) : self::$presentMarker);
+                }
 
+            } else {
+                foreach ($currentGrants as $row) {
+                    if ($row['redcap_repeat_instrument'] == "custom_grant") {
+                        $currStartTs = strtotime($row['custom_start']);
+                        if (!$startTs || ($currStartTs < $startTs)) {
+                            $startTs = $currStartTs;
+                            $startYear = REDCapManagement::getYear($row['custom_start']);
+                        } else {
+                            $startYear = self::$NA;
+                        }
+                        if ($row['custom_end']) {
+                            $endTs = strtotime($row['custom_end']);
+                            if ($endTs > time()) {
+                                # in future
+                                $endYear = self::$presentMarker;
+                            } else {
+                                # in past
+                                $endYear = REDCapManagement::getYear($row['custom_end']);
+                            }
+                        } else {
+                            $endYear = self::$presentMarker;
+                        }
+                    }
+                }
+            }
+
+            if ($endYear == self::$presentMarker) {
+                $pastOrCurrent = "Current";
+            } else {
+                $pastOrCurrent = "Past";
+            }
+            $trainingPeriod = "$startYear-$endYear";
+
+            # track 18 months after the end of the training grant
 			$eighteenMonthsDuration = 18 * 30 * 24 * 3600;
 			$endTs += $eighteenMonthsDuration;
 
 			$pubs = new Publications($this->token, $this->server, $this->metadata);
 			$pubs->setRows($pubData);
 
+            $transformedFacultyNames = self::transformNamesToLastFirst($facultyMembers);
             $noPubsRow = array(
                 "Trainee Name" => $traineeName,
-                "Faculty Member" => implode(", ", $facultyMembers),
+                "Faculty Member" => implode("; ", $transformedFacultyNames),
                 "Past or Current Trainee" => $pastOrCurrent,
                 "Training Period" => $trainingPeriod,
                 "Publication" => "No Publications: ".self::makeComment("Explanation Needed"),
@@ -1439,18 +1509,17 @@ class NIHTables {
 				$citations = $pubs->getSortedCitations("Included");
 				$nihFormatCits = array();
 				foreach ($citations as $citation) {
-				    foreach ($facultyMembers as $facultyMember) {
-                        if ($citation->inTimespan($startTs, $endTs)) {
-                            $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId], $firstNames[$recordId]);
-                        }
+                    if ($citation->inTimespan($startTs, $endTs)) {
+                        $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId], $firstNames[$recordId]);
                     }
 				}
 				if (count($nihFormatCits) == 0) {
                     array_push($data, $noPubsRow);
                 } else {
+                    $transformedFacultyNames = self::transformNamesToLastFirst($facultyMembers);
                     $dataRow = array(
                         "Trainee Name" => $traineeName,
-                        "Faculty Member" => $facultyMember,
+                        "Faculty Member" => implode("; ", $transformedFacultyNames),
                         "Past or Current Trainee" => $pastOrCurrent,
                         "Training Period" => $trainingPeriod,
                         "Publication" => implode("<br>", $nihFormatCits),
@@ -1462,6 +1531,28 @@ class NIHTables {
 		}
 		return $data;
 	}
+
+	private static function combineDates($dates) {
+	    if (count($dates) == 0) {
+	        return [FALSE, FALSE];
+        }
+	    $oneYear = 365 * 24 * 3600;
+	    $span = 20 * $oneYear;
+	    $earliestTs = time() + $span;
+	    $latestTs = 0;
+	    foreach ($dates as $date) {
+	        $beginTs = $date['begin'] ? strtotime($date['begin']) : time() + $span;
+	        $endTs = $date['end'] ? strtotime($date['end']) : 0;
+	        $earliestTs = ($beginTs < $earliestTs) ? $beginTs : $earliestTs;
+	        $latestTs = ($endTs > $latestTs) ? $endTs : $latestTs;
+        }
+
+	    if ($earliestTs && $latestTs) {
+            $format = "Y-m-d";
+            return [date($format, $earliestTs), date($format, $latestTs)];
+        }
+        return [FALSE, FALSE];
+    }
 
 	private $token;
 	private $server;

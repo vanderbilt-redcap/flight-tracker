@@ -29,22 +29,82 @@ class Download {
 		return self::indexREDCapData($redcapData);
 	}
 
-	public static function predocNames($token, $server) {
+	public static function predocNames($token, $server, $metadata = [], $cohort = "") {
 		$names = self::names($token, $server);
 		$predocs = array();
 		$records = self::recordsWithTrainees($token, $server, array(6));
+		if ($cohort) {
+            $cohortConfig = self::getCohortConfig($token, $server, $metadata, $cohort);
+            if ($cohortConfig) {
+                $filter = new Filter($token, $server, $metadata);
+                $allPredocs = $records;
+                $cohortRecords = $filter->getRecords($cohortConfig);
+                $records = [];
+                foreach ($allPredocs as $recordId) {
+                    if (in_array($recordId, $cohortRecords)) {
+                        $records[] = $recordId;
+                    }
+                }
+            }
+        }
 		foreach ($records as $recordId) {
 			$predocs[$recordId] = $names[$recordId];
 		}
 		return $predocs;
 	}
 
-	public static function postdocNames($token, $server) {
+    public static function postdocAppointmentNames($token, $server, $metadata = [], $cohort = "") {
+        $names = self::names($token, $server);
+        $postdocTrainees = self::recordsWithTrainees($token, $server, array(7));
+        if ($cohort) {
+            $cohortConfig = self::getCohortConfig($token, $server, $metadata, $cohort);
+            if ($cohortConfig) {
+                $filter = new Filter($token, $server, $metadata);
+                $cohortRecords = $filter->getRecords($cohortConfig);
+                $records = [];
+                foreach ($postdocTrainees as $recordId) {
+                    if (in_array($recordId, $cohortRecords)) {
+                        $records[] = $recordId;
+                    }
+                }
+            } else {
+                $records = $postdocTrainees;
+            }
+        } else {
+            $records = $postdocTrainees;
+        }
+        $postdocs = [];
+        foreach ($records as $recordId) {
+            $postdocs[$recordId] = $names[$recordId];
+        }
+        return $postdocs;
+    }
+    public static function postdocNames($token, $server, $metadata = [], $cohort = "") {
 		$names = self::names($token, $server);
+		$predocs = self::predocNames($token, $server);
 		$postdocs = array();
-		$records = self::recordsWithTrainees($token, $server, array(7));
+        if ($cohort) {
+            $cohortConfig = self::getCohortConfig($token, $server, $metadata, $cohort);
+            if ($cohortConfig) {
+                $filter = new Filter($token, $server, $metadata);
+                $everyone = array_keys($names);
+                $cohortRecords = $filter->getRecords($cohortConfig);
+                $records = [];
+                foreach ($everyone as $recordId) {
+                    if (in_array($recordId, $cohortRecords)) {
+                        $records[] = $recordId;
+                    }
+                }
+            } else {
+                $records = array_keys($names);
+            }
+        } else {
+            $records = array_keys($names);
+        }
 		foreach ($records as $recordId) {
-			$postdocs[$recordId] = $names[$recordId];
+		    if (!isset($predocs[$recordId])) {
+                $postdocs[$recordId] = $names[$recordId];
+            }
 		}
 		return $postdocs;
 	}
@@ -472,9 +532,9 @@ class Download {
 		return $records;
 	}
 
-	public static function fieldsWithConfig($token, $server, $metadata, $fields, $config) {
+	public static function fieldsWithConfig($token, $server, $metadata, $fields, $cohortConfig) {
 		$filter = new Filter($token, $server, $metadata);
-		$records = $filter->getRecords($config);
+		$records = $filter->getRecords($cohortConfig);
 		Application::log("Download::fieldsWithFilter ".count($records)." records; ".count($fields)." fields");
 		return Download::fieldsForRecords($token, $server, $fields, $records);
 	}
@@ -570,25 +630,30 @@ class Download {
 		return self::sendToServer($server, $data);
 	}
 
+	private static function getCohortConfig($token, $server, $metadata, $cohort)
+    {
+        if ($module = Application::getModule()) {
+            $cohorts = new Cohorts($token, $server, $module);
+        } else {
+            $cohorts = new Cohorts($token, $server, $metadata);
+        }
+        $cohortNames = $cohorts->getCohortNames();
+        if (in_array($cohort, $cohortNames)) {
+            return $cohorts->getCohort($cohort);
+        }
+        return FALSE;
+    }
+
 	public static function cohortRecordIds($token, $server, $metadata, $cohort) {
-		$filter = new Filter($token, $server, $metadata);
-		if ($module = Application::getModule()) {
-			$cohorts = new Cohorts($token, $server, $module);
-		} else {
-			$cohorts = new Cohorts($token, $server, $metadata);
-		}
-		$cohortNames = $cohorts->getCohortNames();
-		if (in_array($cohort, $cohortNames)) {
-			$config = $cohorts->getCohort($cohort);
-			if ($config) {
-				$redcapData = self::fieldsWithConfig($token, $server, $metadata, array("record_id"), $config);
-				$records = array();
-				foreach ($redcapData as $row) {
-					array_push($records, $row['record_id']);
-				}
-				return $records;
-			}
-		}
+		$cohortConfig = self::getCohortConfig($token, $server, $metadata, $cohort);
+        if ($cohortConfig) {
+            $redcapData = self::fieldsWithConfig($token, $server, $metadata, array("record_id"), $cohortConfig);
+            $records = array();
+            foreach ($redcapData as $row) {
+                array_push($records, $row['record_id']);
+            }
+            return $records;
+        }
 		return false;
 	}
 }
