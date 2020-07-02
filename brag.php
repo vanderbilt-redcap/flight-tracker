@@ -32,6 +32,7 @@ if (isset($_GET['showHeaders'])) {
     require_once(dirname(__FILE__)."/charts/baseWeb.php");
     $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
     $url = preg_replace("/\&showHeaders=*/", "", $url);
+    $url .= "&NOAUTH";
     ?>
     <h3>Brag on Your Scholars' Publications!</h3>
     <h4>Include this Page as a Widget in Another Page</h4>
@@ -78,13 +79,13 @@ if ($asc) {
     arsort($citationsWithTs);
 }
 
-echo "<h1>".getTimespanHeader($daysPrior)."</h1>\n";
+echo "<h4>".getTimespanHeader($daysPrior)."</h4>\n";
 echo "<div style='padding: 8px;'>\n";
 if (empty($citationsWithTs)) {
     echo "<p class='centered'>None</p>";
 } else {
     foreach ($citationsWithTs as $citationStr => $ts) {
-        echo "<p>".$citationStr."</p>\n";
+        echo "<p class='smaller'>".$citationStr."</p>\n";
     }
 }
 echo "</div>\n";

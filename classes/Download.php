@@ -47,11 +47,29 @@ class Download {
                 }
             }
         }
-		foreach ($records as $recordId) {
+        $records = self::filterByInclusion($records, $token, $server, $metadata);
+        foreach ($records as $recordId) {
 			$predocs[$recordId] = $names[$recordId];
 		}
 		return $predocs;
 	}
+
+	private static function filterByInclusion($records, $token, $server, $metadata) {
+	    $field = "identifier_table_include";
+	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+	    if (!in_array("identifier_table_include", $metadataFields)) {
+	        return $records;
+        }
+
+	    $includeData = self::oneField($token, $server, $field);
+	    $includedRecords = [];
+	    foreach ($records as $recordId) {
+	        if ($includeData[$recordId] == '1') {
+	            $includedRecords[] = $recordId;
+            }
+        }
+	    return $includedRecords;
+    }
 
     public static function postdocAppointmentNames($token, $server, $metadata = [], $cohort = "") {
         $names = self::names($token, $server);
@@ -73,6 +91,7 @@ class Download {
         } else {
             $records = $postdocTrainees;
         }
+        $records = self::filterByInclusion($records, $token, $server, $metadata);
         $postdocs = [];
         foreach ($records as $recordId) {
             $postdocs[$recordId] = $names[$recordId];

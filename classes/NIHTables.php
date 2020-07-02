@@ -1337,6 +1337,8 @@ class NIHTables {
 		if (self::beginsWith($table, array("8A", "8C"))) {
 		    $filteredNames = array();
             $part = self::getPartNumber($table);
+            $k12kl2Type = 2;
+            $internalKType = 1;
             if (in_array($part, array(1, 3))) {
                 $trainingData = Download::trainingGrants($this->token, $this->server);
                 foreach ($names as $recordId => $name) {
@@ -1344,11 +1346,14 @@ class NIHTables {
                     foreach ($currentGrants as $row) {
                         if ($row['redcap_repeat_instrument'] == "custom_grant") {
                             if ($part == 1) {
-                                $filteredNames[$recordId] = $name;
+                                if (self::isRecentGraduate($row['current_end'], 15) && ($row['current_type'] == $k12kl2Type)) {
+
+                                    $filteredNames[$recordId] = $name;
+                                }
                             } else if ($part == 3) {
                                 # recent graduates - those whose appointments have ended
                                 # for new applications only (currently)
-                                if (self::isRecentGraduate($row['current_end'])) {
+                                if (self::isRecentGraduate($row['current_end'], 5) && ($row['current_type'] == $internalKType)) {
                                     $filteredNames[$recordId] = $name;
                                 }
                             }
@@ -1363,8 +1368,7 @@ class NIHTables {
 		return $names;
 	}
 
-	private static function isRecentGraduate($end) {
-	    $yearsAgo = 5;
+	private static function isRecentGraduate($end, $yearsAgo) {
 	    if (!$end) {
 	        return FALSE;
         }

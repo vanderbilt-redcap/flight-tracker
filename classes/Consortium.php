@@ -9,6 +9,7 @@ class Consortium {
 	}
 
 	public static function findNextMeetingTs($startTime = NULL) {
+        $meetTwiceAMonth = FALSE;
 		if (!$startTime) {
 			if (date("Y-m") == "2020-02") {
 				# start twice a month in 2020-03
@@ -27,13 +28,15 @@ class Consortium {
 			return $firstWedTs;
 		}
 
-		$thirdWedTs = self::findXthWednesdayTs(3, $startTime);
-		if ($thirdWedTs > $midnightTs) {
-			return $thirdWedTs;
-		}
-		if (self::formatLongDate($thirdWedTs) == self::formatLongDate($startTime)) {
-			return $thirdWedTs;
-		}
+		if ($meetTwiceAMonth) {
+            $thirdWedTs = self::findXthWednesdayTs(3, $startTime);
+            if ($thirdWedTs > $midnightTs) {
+                return $thirdWedTs;
+            }
+            if (self::formatLongDate($thirdWedTs) == self::formatLongDate($startTime)) {
+                return $thirdWedTs;
+            }
+        }
 
 		$month = date("m");
 		$year = date("Y");

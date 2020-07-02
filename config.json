@@ -50,6 +50,11 @@
 		}
 	],
 
+   "no-auth-pages": [
+      "brag"
+   ],
+
+
 	"framework-version": 3,
 
 	"compatibility": {
