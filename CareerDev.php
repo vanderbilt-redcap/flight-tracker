@@ -8,14 +8,25 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.14.8";
+		return "2.15.0";
 	}
 
 	public static function getLockFile($pid) {
 		return APP_PATH_TEMP.date("Ymdhis")."_6_makeSummary.$pid.lock";
 	}
 
-	public static function getUnknown() {
+    public static function refreshRecordSummary($token, $server, $pid, $recordId) {
+        if (self::getSetting("auto_recalculate", $pid)) {
+            require_once(dirname(__FILE__) . "/drivers/6d_makeSummary.php");
+            try {
+                makeSummary($token, $server, $pid, $recordId);
+            } catch (\Exception $e) {
+                echo "<div class='centered padded red'>" . $e->getMessage() . "</div>\n";
+            }
+        }
+    }
+
+    public static function getUnknown() {
 		return "Unknown";
 	}
 

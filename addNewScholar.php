@@ -32,7 +32,8 @@ if (checkPOSTKeys(array_values($fields))) {
 	}
 	$feedback = Upload::oneRow($uploadRow, $token, $server);
 	\Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($recordId);
-	if ($feedback['error']) {
+    Application::refreshRecordSummary($token, $server, $pid, $recordId);
+    if ($feedback['error']) {
 		echo "<div class='red padded'>ERROR! ".$feedback['error']."</div>\n";
 	} else {
 		echo "<div class='green padded'>Scholar successfully added to Record $recordId. They will be automatically processed and updated with each overnight run.</div>\n";

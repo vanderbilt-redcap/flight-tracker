@@ -89,6 +89,8 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 				'run_tonight' => FALSE,
 				'grant_class' => $_POST['grant_class'],
 				'grant_number' => $_POST['grant_number'],
+                'auto_recalculate' => '1',
+                'shared_forms' => [],
 				);
 		setupModuleSettings($projectId, $settingFields);
 

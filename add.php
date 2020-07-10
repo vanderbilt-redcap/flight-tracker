@@ -57,11 +57,14 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 			}
 		}
 	}
-	list($upload, $emails) = processLines($lines, $recordId, $token, $server);
+	list($upload, $emails, $newRecordIds) = processLines($lines, $recordId, $token, $server);
 	$feedback = array();
 	if (!empty($upload)) {
 		$feedback = Upload::rows($upload, $token, $server);
-	} else {
+		foreach ($newRecordIds as $recordId) {
+            Application::refreshRecordSummary($token, $server, $pid, $recordId);
+        }
+    } else {
 		$mssg = "No data specified.";
 		header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
 	}
@@ -129,6 +132,7 @@ function processLines($lines, $nextRecordId, $token, $server) {
 	$lineNum = 1;
 	$metadata = Download::metadata($token, $server);
 	$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+	$recordIds = [];
 	foreach ($lines as $nodes) {
 		if (count($nodes) >= 6) {
 			$firstName = $nodes[0];
@@ -236,9 +240,19 @@ function processLines($lines, $nextRecordId, $token, $server) {
 					$mentor = "";
 				}
 				if ($nodes[14]) {
-				    $trainingStart = importMDY2YMD($nodes[14], "Start of Training");
+				    if (REDCapManagement::isDate($nodes[14])) {
+                        $trainingStart = importMDY2YMD($nodes[14], "Start of Training");
+                        $orcid = "";
+                    } else {
+                        $trainingStart = "";
+				        $orcid = $nodes[14];
+                    }
                 } else {
 				    $trainingStart = "";
+				    $orcid = "";
+                }
+				if ($nodes[15]) {
+                    $trainingStart = importMDY2YMD($nodes[15], "Start of Training");
                 }
 
 				$uploadRow["imported_dob"] = $dob;
@@ -252,12 +266,16 @@ function processLines($lines, $nextRecordId, $token, $server) {
                 if (in_array("identifier_start_of_training", $metadataFields)) {
                     $uploadRow["identifier_start_of_training"] = $trainingStart;
                 }
+                if ($orcid && in_array("identifier_orcid", $metadataFields)) {
+                    $uploadRow["identifier_orcid"] = $orcid;
+                }
 			}
 			$upload[] = $uploadRow;
+			$recordIds[] = $uploadRow["record_id"];
 		}
 		$lineNum++;
 	}
-	return array($upload, $emails);
+	return array($upload, $emails, $recordIds);
 }
 
 function importMDY2YMD($mdyDate, $col) {

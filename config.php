@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule;
 
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
@@ -325,7 +326,9 @@ function makeSettings($module) {
 	array_push($ary["Installation Variables"], makeSetting("grant_number", "text", "Grant Number"));
 	array_push($ary["Installation Variables"], makeSetting("departments", "textarea", "Department Names"));
 	array_push($ary["Installation Variables"], makeSetting("resources", "textarea", "Resources"));
-	array_push($ary["Installation Variables"], makeSetting("send_error_logs", "yesno", "Report Fatal Errors to Development Team?"));
+    array_push($ary["Installation Variables"], makeSetting("send_error_logs", "yesno", "Report Fatal Errors to Development Team?"));
+    array_push($ary["Installation Variables"], makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "Report Fatal Errors to Development Team?"));
+    array_push($ary["Installation Variables"], makeSetting("auto_recalculate", "yesno", "Automatically Re-summarize After Data Saves? (No waits until overnight.)", 0));
 
 	$ary["Automated Emails"] = array();
 	array_push($ary["Automated Emails"], makeHelperText("An initial email can automatically be sent out during the first month after the new record is added to the database. If you desire to use this feature, please complete the following fields."));
@@ -359,6 +362,25 @@ function makeSettings($module) {
 
 function makeHelperText($str) {
 	return "<tr><td colspan='2' class='centered'>".$str."</td></tr>";
+}
+
+function makeCheckboxes($var, $fieldChoices, $label, $defaultChecked = []) {
+    $sharedForms = CareerDev::getSetting($var);
+    if (!$sharedForms) {
+        $sharedForms = $defaultChecked;
+    }
+    $html = "";
+    $html .= "<tr><td>\n";
+    foreach ($fieldChoices as $idx => $fieldLabel) {
+        if (in_array($idx, $sharedForms)) {
+            $selected = " checked";
+        } else {
+            $selected = "";
+        }
+        $html .= "<input type='checkbox' name='$var"."[]' id='$var"."___$idx' value='$idx'$selected><label for='$var"."___$idx'> $fieldLabel</label>\n";
+    }
+    $html .= "</td></tr>\n";
+    return $html;
 }
 
 function makeSetting($var, $type, $label, $default = "", $fieldChoices = array()) {

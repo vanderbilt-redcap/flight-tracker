@@ -87,16 +87,20 @@ function checkMetadataForFields($token, $server) {
 	$vars = array();
 	$vars['coeus'] = FALSE;
 	$vars['vfrs'] = FALSE;
-	$vars['news'] = FALSE;
+    $vars['news'] = FALSE;
+    $vars['ldap'] = FALSE;
 
 	foreach ($metadata as $row) {
 		$field = $row['field_name'];
 		if (preg_match("/^coeus_/", $field)) {
 			$vars['coeus'] = TRUE;
 		}
-		if (preg_match("/^vfrs_/", $field)) {
-			$vars['vfrs'] = TRUE;
-		}
+        if (preg_match("/^vfrs_/", $field)) {
+            $vars['vfrs'] = TRUE;
+        }
+        if (preg_match("/^ldap_/", $field)) {
+            $vars['ldap'] = TRUE;
+        }
 		if ($field == "summary_news") {
 			$vars['news'] = TRUE;
 		}

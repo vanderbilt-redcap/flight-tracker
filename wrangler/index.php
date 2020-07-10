@@ -6,14 +6,14 @@
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Upload;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/baseSelect.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 $daysForNew = 60;
 if (isset($_GET['new']) && is_numeric($_GET['new'])) {
@@ -21,7 +21,7 @@ if (isset($_GET['new']) && is_numeric($_GET['new'])) {
 }
 $_GLOBALS['daysForNew'] = $daysForNew;
 
-$url = CareerDev::link("wrangler/index.php");
+$url = Application::link("wrangler/index.php");
 if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 	$url .= "&headers=false";
 }
@@ -43,7 +43,8 @@ if (isset($_POST['toImport']) && isset($_POST['record'])) {
 		echo "<p class='green centered shadow note'>";
 		if (isset($outputData['count']) || isset($outputData['item_count'])) {
 			echo "Upload Success!";
-		}
+            Application::refreshRecordSummary($token, $server, $pid, $record);
+        }
 		echo "</p>\n";
 	} else {
 		echo "<p class='red centered'>Error! ".json_encode($outputData)."</p>";

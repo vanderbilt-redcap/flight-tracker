@@ -5,15 +5,16 @@ define("NOAUTH", true);
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
 
-$url = CareerDev::link("wrangler/pubs.php");
+$url = Application::link("wrangler/pubs.php");
 if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 	$url .= "&headers=false";
 }

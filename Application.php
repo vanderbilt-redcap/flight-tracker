@@ -15,6 +15,10 @@ class Application {
 	    return CareerDev::getGrantClasses();
     }
 
+    public static function refreshRecordSummary($token, $server, $pid, $recordId) {
+	    return CareerDev::refreshRecordSummary($token, $server, $pid, $recordId);
+    }
+
     public static function getProgramName() {
 	    return CareerDev::getProgramName();
     }
