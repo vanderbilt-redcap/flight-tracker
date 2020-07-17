@@ -3,6 +3,7 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class LDAP {
 	public static function getLDAPByMultiple($types, $values)
@@ -15,8 +16,57 @@ class LDAP {
 		return self::getLDAPByMultiple(array($type), array($value));
 	}
 
+    public static function getREDCapRowFromName($first, $last, $metadata, $recordId) {
+        $key = self::getNameAssociations($first, $last);
+        return self::getREDCapRow(array_keys($key), array_values($key), $metadata, $recordId);
+    }
+
+    public static function getREDCapRowFromUid($uid, $metadata, $recordId) {
+        $key = ["uid" => $uid];
+        return self::getREDCapRow(array_keys($key), array_values($key), $metadata, $recordId);
+    }
+
+    public static function getREDCapRow($types, $values, $metadata, $recordId) {
+	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+	    $hasLDAP = FALSE;
+	    $prefix = "ldap_";
+	    foreach ($metadataFields as $redcapField) {
+	        if (preg_match("/^$prefix/", $redcapField)) {
+	            $hasLDAP = TRUE;
+	            break;
+            }
+        }
+	    if (!$hasLDAP) {
+	        return [];
+        }
+
+	    $info = self::getLDAPByMultiple($types, $values);
+	    $ldapFields = self::getFields();
+	    $row = ["record_id" => $recordId];
+	    foreach ($ldapFields as $ldapField) {
+	        $redcapField = $prefix.$ldapField;
+	        if (in_array($redcapField, $metadataFields)) {
+                $values = self::findField($info, $ldapField);
+                if (count($values) == 1) {
+                    $row[$redcapField] = $values[0];
+                } else if (count($values) == 0) {
+                    Application::log("Could not find $ldapField for Record $recordId in LDAP");
+                } else {
+                    # multiple
+                    Application::log("Could has multiple values for Record $recordId in LDAP: ".implode(", ", $values));
+                    $row[$redcapField] = $values[0];
+                }
+            }
+        }
+	    return $row;
+    }
+
+    private static function getNameAssociations($first, $last) {
+        return ["givenname" => $first, "sn" => $last];
+    }
+
 	public static function getVUNetsAndDepartments($first, $last) {
-		$key = array("givenname" => $first, "sn" => $last); 
+		$key = self::getNameAssociations($first, $last);
 		$info = self::getLDAPByMultiple(array_keys($key), array_values($key));
 		$vunets = self::findField($info, "uid");
 		$departments = self::findField($info, "vanderbiltpersonhrdeptname");
@@ -24,13 +74,13 @@ class LDAP {
 	}
 
 	public static function getVUNet($first, $last) {
-		$key = array("givenname" => $first, "sn" => $last); 
+        $key = self::getNameAssociations($first, $last);
 		$info = self::getLDAPByMultiple(array_keys($key), array_values($key));
 		return self::findField($info, "uid");
 	}
 
 	# $info is line from getLDAP
-	# returns the first line in $info with the field $field
+	# returns array from $info with the field $field
 	public static function findField($info, $field) {
 		$separator = ";";
 		$values = array();
@@ -54,42 +104,44 @@ class LDAP {
 	}
 
 	public static function getFields() {
-		return array(
-				"modifytimestamp",
-				"modifiersname",
-				"departmentnumber",
-				"edupersonaffiliation",
-				"vanderbiltpersonhrdeptname",
-				"vanderbiltpersonhrdeptnumber",
-				"vanderbiltpersonlastepwchgdate",
-				"o",
-				"vanderbiltpersoncommonid",
-				"displayname",
-				"uid",
-				"edupersonprincipalname",
-				"creatorsname",
-				"createtimestamp",
-				"vanderbiltpersonsecurity",
-				"givenname",
-				"sn",
-				"objectclass",
-				"uidnumber",
-				"gidnumber",
-				"homedirectory",
-				"mail",
-				"vanderbiltpersonepinumber",
-				"vanderbiltpersonstudentid",
-				"vanderbiltpersonemployeeid",
-				"cn",
-				"vanderbiltpersonjobstatus",
-				"vanderbiltpersonhrdepttype",
-				"vanderbiltpersonactiveemployee",
-				"vanderbiltpersonactivestudent",
-				"vanderbiltpersonemployeeclass",
-				"edupersonprimaryaffiliation",
-				"telephonenumber",
-				"loginshell",
-				);
+		return [
+            "modifytimestamp",
+            "modifiersname",
+            "departmentnumber",
+            "edupersonaffiliation",
+            "vanderbiltpersonhrdeptname",
+            "vanderbiltpersonhrdeptnumber",
+            "vanderbiltpersonlastepwchgdate",
+            "o",
+            "vanderbiltpersoncommonid",
+            "displayname",
+            "uid",
+            "edupersonprincipalname",
+            "creatorsname",
+            "createtimestamp",
+            "vanderbiltpersonsecurity",
+            "givenname",
+            "sn",
+            "objectclass",
+            "uidnumber",
+            "gidnumber",
+            "homedirectory",
+            "mail",
+            "vanderbiltpersonepinumber",
+            "vanderbiltpersonstudentid",
+            "vanderbiltpersonemployeeid",
+            "cn",
+            "vanderbiltpersonjobstatus",
+            "vanderbiltpersonhrdepttype",
+            "vanderbiltpersonactiveemployee",
+            "vanderbiltpersonactivestudent",
+            "vanderbiltpersonemployeeclass",
+            "edupersonprimaryaffiliation",
+            "telephonenumber",
+            "loginshell",
+            "vanderbiltpersonjobcode",
+            "vanderbiltpersonjobname",
+        ];
 	}
 }
 

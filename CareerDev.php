@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.15.1";
+		return "2.15.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -301,7 +301,13 @@ class CareerDev {
 			if (($row['token'] == $localToken) && (strpos($row['server'], SERVER_NAME) !== FALSE)) {
 				return $row['pid'];
 			}
+            if (($row['mentorToken'] == $localToken) && (strpos($row['server'], SERVER_NAME) !== FALSE)) {
+                return $row['mentorPid'];
+            }
 		}
+        if ((self::getSetting('mentor_token') == $localToken) && (strpos(self::getSetting('server'), SERVER_NAME) !== FALSE)) {
+            return self::getSetting('mentor_pid');
+        }
 		return "";
 	}
 

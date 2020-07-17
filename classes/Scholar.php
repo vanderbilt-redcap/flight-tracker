@@ -170,11 +170,57 @@ class Scholar {
 		return in_array($name, $lowerList);
 	}
 
-	private function getEcommonsId($rows) {
-        $vars = self::getDefaultOrder("identifier_ecommons_id");
-        $vars = $this->getOrder($vars, "identifier_ecommons_id");
+    private function getStudySection1($rows) {
+        return $this->getStudySection($rows, 1);
+    }
+
+    private function getStudySection2($rows) {
+        return $this->getStudySection($rows, 2);
+    }
+
+    private function getStudySection3($rows) {
+        return $this->getStudySection($rows, 3);
+    }
+
+    private function getStudySection4($rows) {
+        return $this->getStudySection($rows, 4);
+    }
+
+    private function getStudySectionOther1($rows) {
+        return $this->getStudySectionOther($rows, 1);
+    }
+
+    private function getStudySectionOther2($rows) {
+        return $this->getStudySectionOther($rows, 2);
+    }
+
+    private function getStudySectionOther3($rows) {
+        return $this->getStudySectionOther($rows, 3);
+    }
+
+    private function getStudySectionOther4($rows) {
+        return $this->getStudySectionOther($rows, 4);
+    }
+
+    private function getStudySection($rows, $i) {
+	    $field = "summary_study_section_name_".$i;
+        return $this->getGenericValueForField($rows, $field);
+    }
+
+    private function getStudySectionOther($rows, $i) {
+        $field = "summary_other_standing_" . $i;
+        return $this->getGenericValueForField($rows, $field);
+    }
+
+    private function getGenericValueForField($rows, $field) {
+        $vars = self::getDefaultOrder($field);
+        $vars = $this->getOrder($vars, $field);
         $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
         return $result;
+    }
+
+    private function getEcommonsId($rows) {
+        return $this->getGenericValueForField($rows, "identifier_ecommons_id");
     }
 
 	private function getMentorUserid($rows) {
@@ -192,10 +238,7 @@ class Scholar {
 	}
 
 	private function getMentorText($rows) {
-		$vars = self::getDefaultOrder("summary_mentor");
-		$vars = $this->getOrder($vars, "summary_mentor");
-		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
-		return $result;
+        return $this->getGenericValueForField($rows, "summary_mentor");
 	}
 
 	public function getAllMentors() {
@@ -887,6 +930,10 @@ class Scholar {
 		return $defaultOrder;
 	}
 
+	public static function getNumStudySections() {
+	    return 4;
+    }
+
 	# to get all, make $field == "all"
 	# add new fields here and getCalculatedFields
 	public static function getDefaultOrder($field) {
@@ -1049,6 +1096,16 @@ class Scholar {
             "check_ecommons_id" => "scholars",
             "followup_ecommons_id" => "followup",
         );
+        for ($i = 1; $i <= self::getNumStudySections(); $i++) {
+            $orders["summary_study_section_name_".$i] = [
+                "check_nih_standing_study_session_name_".$i => "scholars",
+                "expertise_nih_standing_study_session_name_".$i => "expertise",
+            ];
+            $orders["summary_other_standing_".$i] = [
+                "check_other_standing_".$i => "scholars",
+                "expertise_other_standing_".$i => "expertise",
+            ];
+        }
 
 		if (isset($orders[$field])) {
 			return $orders[$field];
@@ -1187,9 +1244,7 @@ class Scholar {
 
 	private function getPrimaryDepartment($rows) {
 		$field = "summary_primary_dept";
-		$vars = self::getDefaultOrder($field);
-		$vars = $this->getOrder($vars, $field);
-		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->getGenericValueForField($rows, $field);
 		$value = $result->getValue();
 		if ($result->getSource() == "vfrs") {
 			$value = self::transferVFRSDepartment($value);
@@ -1266,9 +1321,7 @@ class Scholar {
 	}
 
 	public function getGender($rows) {
-		$vars = self::getDefaultOrder("summary_gender");
-		$vars = $this->getOrder($vars, "summary_gender");
-		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->getGenericValueForField($rows, "summary_gender");
 
 		# must reverse for certain sources
 		$tradOrder = array("manual", "scholars", "followup");
@@ -1406,9 +1459,7 @@ class Scholar {
 
 	# finds date-of-birth
 	public function getDOB($rows) {
-		$vars = self::getDefaultOrder("summary_dob");
-		$vars = $this->getOrder($vars, "summary_dob");
-		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->getGenericValueForField($rows, "summary_dob");
 		$date = $result->getValue();
 		if ($date) {
 			$date = self::convertToYYYYMMDD($date);
@@ -1418,9 +1469,7 @@ class Scholar {
 	}
 
 	public function getCitizenship($rows) {
-		$vars = self::getDefaultOrder("summary_citizenship");
-		$vars = $this->getOrder($vars, "summary_citizenship");
-		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->getGenericValueForField($rows, "summary_citizenship");
 		if ($result->getValue() == "") {
 			$selectChoices = array(
 						"vfrs_citizenship" => "vfrs",
@@ -1584,11 +1633,8 @@ class Scholar {
 	}
 
 	private function getInstitution($rows) {
-		$vars = self::getDefaultOrder("identifier_institution");
-		$vars = $this->getOrder($vars, "identifier_institution");
-		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->getGenericValueForField($rows, "identifier_institution");
 		$value = $result->getValue();
-		$source = $result->getSource();
 
 		if (is_numeric($value)) {
 			$choices = self::getChoices($this->metadata);
@@ -1618,9 +1664,7 @@ class Scholar {
 	}
 
 	private function getCurrentDivision($rows) {
-		$vars = self::getDefaultOrder("summary_current_division");
-		$vars = $this->getOrder($vars, "summary_current_division");
-		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->getGenericValueForField($rows, "summary_current_division");
 		if ($result->getValue() == "N/A") {
 			return new Result("", "");
 		}
@@ -1681,15 +1725,11 @@ class Scholar {
 	}
 
 	private function getCurrentAppointmentStart($rows) {
-		$vars = self::getDefaultOrder("summary_current_start");
-		$vars = $this->getOrder($vars, "summary_current_start");
-		return self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        return $this->getGenericValueForField($rows, "summary_current_start");
 	}
 
 	private function getTenureStatus($rows) {
-		$vars = self::getDefaultOrder("summary_current_tenure");
-		$vars = $this->getOrder($vars, "summary_current_tenure");
-		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->getGenericValueForField($rows, "summary_current_tenure");
 		if ($result->getValue() == "") {
 			$otherFields = array(
 						"vfrs_tenure" => "vfrs",
@@ -1801,7 +1841,7 @@ class Scholar {
 
 	# add new fields here and getDefaultOrder
 	private static function getCalculatedFields() {
-		return [
+		$ary = [
             "summary_coeus_name" => "calculateCOEUSName",
             "summary_survey" => "getSurvey",
             "identifier_left_date" => "getWhenLeftInstitution",
@@ -1832,12 +1872,17 @@ class Scholar {
             "summary_mentor_userid" => "getMentorUserid",
             "identifier_ecommons_id" => "getEcommonsId",
         ];
+        for ($i = 1; $i <= self::getNumStudySections(); $i++) {
+            $ary["summary_study_section_name_".$i] = "getStudySection".$i;
+            $ary["summary_other_standing_".$i] = "getStudySectionOther".$i;
+        }
+
+		return $ary;
 	}
 
+
 	private function getTrainingStart($rows) {
-		$vars = self::getDefaultOrder("summary_training_start");
-        $vars = $this->getOrder($vars, "summary_training_start");
-		$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->getGenericValueForField($rows, "summary_training_start");
 		$fieldName = $result->getField();
 		if (preg_match("/^promotion_/", $fieldName)) {
 			$positionChanges = self::getOrderedPromotionRows($rows);
@@ -1874,9 +1919,7 @@ class Scholar {
 	}
 
 	private function getTrainingEnd($rows) {
-		$vars = self::getDefaultOrder("summary_training_end");
-        $vars = $this->getOrder($vars, "summary_training_end");
-        $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->getGenericValueForField($rows, "summary_training_end");
 		$fieldName = $result->getField();
 		if (preg_match("/^promotion_/", $fieldName)) {
 			$positionChanges = self::getOrderedPromotionRows($rows);

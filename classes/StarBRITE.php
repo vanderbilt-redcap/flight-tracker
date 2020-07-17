@@ -8,7 +8,8 @@ require_once(dirname(__FILE__)."/REDCapManagement.php");
 class StarBRITE {
     static function accessSRI($resourcePath, $getParams) {
         include "/app001/credentials/con_redcap_ldap_user.php";
-        $resourcePath = preg_replace("/^\//", $resourcePath);
+        $resourcePath = preg_replace("/^\//", "", $resourcePath);
+        $resourcePath = preg_replace("/\/$/", "", $resourcePath);
         $url = "https://starbrite.app.vumc.org/s/sri/api/$resourcePath";
         $url .= '/' . implode('/', array_map('urlencode', $getParams));
         $opts = [

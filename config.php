@@ -327,7 +327,7 @@ function makeSettings($module) {
 	array_push($ary["Installation Variables"], makeSetting("departments", "textarea", "Department Names"));
 	array_push($ary["Installation Variables"], makeSetting("resources", "textarea", "Resources"));
     array_push($ary["Installation Variables"], makeSetting("send_error_logs", "yesno", "Report Fatal Errors to Development Team?"));
-    array_push($ary["Installation Variables"], makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "Report Fatal Errors to Development Team?"));
+    array_push($ary["Installation Variables"], makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "Share Data Among the Following Resources?"));
     array_push($ary["Installation Variables"], makeSetting("auto_recalculate", "yesno", "Automatically Re-summarize After Data Saves? (No waits until overnight.)", 0));
 
 	$ary["Automated Emails"] = array();
@@ -370,12 +370,21 @@ function makeCheckboxes($var, $fieldChoices, $label, $defaultChecked = []) {
         $sharedForms = $defaultChecked;
     }
     $html = "";
-    $html .= "<tr><td>\n";
+    $html .= "<tr><td style='text-align: right;'>$label</td>\n";
+    $html .= "<td style='text-align: left;'>";
+    $first = TRUE;
     foreach ($fieldChoices as $idx => $fieldLabel) {
         if (in_array($idx, $sharedForms)) {
             $selected = " checked";
         } else {
             $selected = "";
+        }
+        if (!$first) {
+            for ($i = 0 ; $i < 5; $i++) {
+                $html .= "&nbsp;";
+            }
+        } else {
+            $first = FALSE;
         }
         $html .= "<input type='checkbox' name='$var"."[]' id='$var"."___$idx' value='$idx'$selected><label for='$var"."___$idx'> $fieldLabel</label>\n";
     }
@@ -386,7 +395,10 @@ function makeCheckboxes($var, $fieldChoices, $label, $defaultChecked = []) {
 function makeSetting($var, $type, $label, $default = "", $fieldChoices = array()) {
 	$value = CareerDev::getSetting($var);
 	$html = "";
-	$spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+	$spacing = "";
+    for ($i = 0 ; $i < 5; $i++) {
+        $spacing .= "&nbsp;";
+    }
 	if (($type == "text") || ($type == "number")) {
 		$html .= "<tr>";
 		$html .= "<td style='text-align: right;'>";

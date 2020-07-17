@@ -342,7 +342,7 @@ class Grants {
 	}
 
 	public static function getSourceOrderWithLabels() {
-		return array(
+		return [
 				"modify" => "Manual Modifications",
 				"exporter" => "NIH ExPORTER",
 				"reporter" => "Federal RePORTER",
@@ -353,7 +353,8 @@ class Grants {
 				"data" => "Newman Spreadsheet 'data'",
 				"sheet2" => "Newman Spreadsheet 'sheet2'",
 				"new2017" => "Spreadsheet with 2017 Scholars",
-				);
+				"expertise" => "Expertise Database",
+				];
 	}
 
 	public static function getSourceOrderForOlderData() {

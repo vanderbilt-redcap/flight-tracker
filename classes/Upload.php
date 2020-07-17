@@ -105,9 +105,11 @@ public static function metadata($metadata, $token, $server) {
 
 	private static function testFeedback($feedback, $rows = array()) {
 		if (isset($feedback['error']) && $feedback['error']) {
+            Application::log("Upload error: ".$feedback['error']);
 			throw new \Exception($feedback['error']."\n".json_encode($rows));
 		}
 		if (isset($feedback['errors']) && $feedback['errors']) {
+		    Application::log("Upload errors: ".implode("; ", $feedback['errors']));
 			throw new \Exception(implode("; ", $feedback['errors'])."\n".json_encode($rows));
 		}
 		return TRUE;
@@ -254,7 +256,7 @@ public static function metadata($metadata, $token, $server) {
 		}
 
 		$pid = Application::getPID($token);
-		$saveDataEligible = ($pid && method_exists('\REDCap', 'saveData'));
+		$saveDataEligible = ($pid && $_GET['pid'] && method_exists('\REDCap', 'saveData'));
 		if (isset(self::$useAPIOnly[$token]) && self::$useAPIOnly[$token]) {
 			$saveDataEligible = FALSE;
 		}

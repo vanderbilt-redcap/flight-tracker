@@ -252,6 +252,7 @@ class EmailManager {
 			}
 
 			// \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
+            \REDCap::email("rebecca.helton@vumc.org,scott.j.pearson@vumc.org", $from, $to[$recordId].": ".$subjects[$recordId], $mssg);
 			usleep(200000); // wait 0.2 seconds for other items to process
 		}
 		$records = array_keys($mssgs);
@@ -501,9 +502,9 @@ class EmailManager {
 					$mssgs[$recordId] = str_replace("[last_name]", $lastNames[$recordId], $mssgs[$recordId]);
 				}
 			}
-			$mssgs[$recordId] = str_replace("</p><p>", "<br>", $mssgs[$recordId]);
-			$mssgs[$recordId] = str_replace("<p><br></p>", "<br>", $mssgs[$recordId]);
-			$mssgs[$recordId] = str_replace("<br><br><br>", "<br><br>", $mssgs[$recordId]);
+			// $mssgs[$recordId] = str_replace("</p><p>", "<br>", $mssgs[$recordId]);
+			// $mssgs[$recordId] = str_replace("<p><br></p>", "<br>", $mssgs[$recordId]);
+			// $mssgs[$recordId] = str_replace("<br><br><br>", "<br><br>", $mssgs[$recordId]);
 		}
 
 		return $mssgs;

@@ -294,9 +294,11 @@ class Download {
 
 	private static function sendToServer($server, $data) {
 		$pid = Application::getPID($data['token']);
-		if (($pid) && ($data['content'] == "record") && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
-			$output = \REDCap::getData($pid, "json", $data['records'], $data['fields']); 
+		if ($pid  && $_GET['pid'] && ($data['content'] == "record") && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
+			// Application::log("sendToServer: ".$pid." ".$data['token']." REDCap::getData");
+		    $output = \REDCap::getData($pid, "json", $data['records'], $data['fields']);
 		} else {
+            // Application::log("sendToServer: ".$pid." CURL ".$data['token']);
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_URL, $server);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

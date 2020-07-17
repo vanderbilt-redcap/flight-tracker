@@ -1224,7 +1224,9 @@ class NIHTables {
 
 
     private static function getPartNumber($table) {
+	    $table = preg_replace("/-VUMC$/", "", $table);
 	    $romanNumeral = preg_replace("/^\d[A-G]/", "", $table);
+
 	    return self::integerToRoman($romanNumeral);
     }
 
@@ -1312,7 +1314,6 @@ class NIHTables {
             } else {
                 $names = Download::postdocNames($this->token, $this->server);
             }
-
         }
         return $names;
     }
@@ -1346,14 +1347,13 @@ class NIHTables {
                     foreach ($currentGrants as $row) {
                         if ($row['redcap_repeat_instrument'] == "custom_grant") {
                             if ($part == 1) {
-                                if (self::isRecentGraduate($row['current_end'], 15) && ($row['current_type'] == $k12kl2Type)) {
-
+                                if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15) && ($row['custom_type'] == $k12kl2Type)) {
                                     $filteredNames[$recordId] = $name;
                                 }
                             } else if ($part == 3) {
                                 # recent graduates - those whose appointments have ended
                                 # for new applications only (currently)
-                                if (self::isRecentGraduate($row['current_end'], 5) && ($row['current_type'] == $internalKType)) {
+                                if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 5) && ($row['custom_type'] == $internalKType)) {
                                     $filteredNames[$recordId] = $name;
                                 }
                             }
@@ -1368,9 +1368,20 @@ class NIHTables {
 		return $names;
 	}
 
-	private static function isRecentGraduate($end, $yearsAgo) {
+	private static function isRecentGraduate($type, $start, $end, $yearsAgo) {
 	    if (!$end) {
-	        return FALSE;
+	        if (!$start) {
+                return FALSE;
+            }
+	        if ($type == 1) {
+                $end = REDCapManagement::addYears($start, Application::getInternalKLength());
+            } else if ($type == 2) {
+                $end = REDCapManagement::addYears($start, Application::getK12KL2Length());
+            } else if (in_array($type, [3, 4])) {
+                $end = REDCapManagement::addYears($start, Application::getIndividualKLength());
+            } else {
+	            return FALSE;
+            }
         }
 	    $endTs = strtotime($end);
 	    $currYear = date("Y");

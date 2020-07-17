@@ -161,12 +161,27 @@ function submitPMID(pmid, textId) {
 
 				var loc = getLocation(volume, issue, pages);
 				var citation = names.join(",")+". "+title+". "+journal+". "+year+" "+month+day+";"+loc+". PubMed PMID: "+pmid+".";
-				$(textId).val(citation);
+				console.log("citation: "+citation);
+				if (isContainer(textId)) {
+					$(textId).html(prefixHTML + citation);
+				} else {
+					$(textId).val(citation);
+				}
 			},
 			error: function(e) {
 				$(textId).html("ERROR: "+JSON.stringify(e));
 			}
 		});
+	}
+}
+
+function isContainer(id) {
+	var containers = ["p", "div"];
+	var idTag = $(id).prop("tagName");
+	if (containers.indexOf(idTag) >= 0) {
+		return true;
+	} else {
+		return false;
 	}
 }
 
@@ -642,3 +657,51 @@ function submitLogs(url) {
 		alert("Emailed logs to Developers");
 	});
 }
+
+function getNewWranglerImg(state) {
+	var validStates = [ "checked", "unchecked", "omitted" ];
+	if (state && in_array(state, validStates)) {
+		var url = "";
+		switch(state) {
+			case "checked":
+				url = checkedImg;
+				break;
+			case "unchecked":
+				url = uncheckedImg;
+				break;
+			case "omitted":
+				url = omittedImg;
+				break;
+			default:
+				break;
+		}
+		return url;
+	}
+	return "";
+}
+
+function addPMID(pmid) {
+	if (!isNaN(pmid) && notAlreadyUsed(pmid)) {
+		var newState = "checked";
+		var newDiv = "notDone";
+		var newImg = getNewWranglerImg(newState);
+		var newId = "PMID"+pmid;
+		$('#'+newDiv).append("<div id='"+newId+"' style='margin: 8px 0; min-height: 26px;'></div>");
+		submitPMID(pmid, "#"+newId, "<img align='left' style='margin: 2px; width: 26px; height: 26px;' src='"+newImg+"' alt='"+newState+"' onclick='changeCheckboxValue(this); enqueue();'>", function() { if (enqueue()) { $('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1); } });
+	} else if (isNaN(pmid)) {
+		alert("PMID "+pmid+" is not a number!");
+	} else {
+		// not already used
+		var bin = $("#PMID"+pmid).parent().attr("id");
+		var names = {};
+		names['finalized'] = "Citations Already Accepted and Finalized";
+		names['notDone'] = "Citations to Review";
+		names['omitted'] = "Citations to Omit";
+		alert("PMID "+pmid+" has already been entered in "+names[bin]+"!");
+	}
+}
+
+function notAlreadyUsed(pmid) {
+	return ($('#PMID'+pmid).length === 0);
+}
+

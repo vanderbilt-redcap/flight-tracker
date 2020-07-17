@@ -33,6 +33,10 @@ class REDCapManagement {
 		return $choices;
 	}
 
+	public static function isWebBrowser() {
+	    return isset($_GET['pid']);
+    }
+
 	public static function filterOutInvalidFields($metadata, $fields) {
 	    $metadataFields = self::getFieldsFromMetadata($metadata);
 	    $newFields = array();
@@ -42,6 +46,16 @@ class REDCapManagement {
             }
         }
 	    return $newFields;
+    }
+
+    public static function hasInstance($token, $server, $recordId, $instrument, $instance) {
+	    $redcapData = Download::formForRecords($token, $server, $recordId, $instrument);
+	    foreach ($redcapData as $row) {
+	        if (($row['redcap_repeat_instrument'] == $instrument) && ($row['redcap_repeat_instance'] == $instance)) {
+                return TRUE;
+            }
+        }
+	    return FALSE;
     }
 
 	public static function getRowChoices($choicesStr) {
@@ -278,6 +292,14 @@ class REDCapManagement {
         }
     }
 
+    public static function makeChoiceStr($fieldChoices) {
+	    $pairs = [];
+	    foreach ($fieldChoices as $key => $label) {
+	        $pairs[] = "$key, $label";
+        }
+	    return implode(" | ", $pairs);
+    }
+
 	public static function downloadURL($url, $addlOpts = [], $autoRetriesLeft = 3) {
         Application::log("Contacting $url");
         $defaultOpts = [
@@ -287,7 +309,7 @@ class REDCapManagement {
             CURLOPT_AUTOREFERER => true,
             CURLOPT_MAXREDIRS => 10,
             CURLOPT_FRESH_CONNECT => 1,
-            CURLOPT_TIMEOUT => 60,
+            CURLOPT_TIMEOUT => 120,
         ];
 
         $ch = curl_init();
@@ -614,6 +636,14 @@ class REDCapManagement {
 		}
 		return "";
 	}
+
+	public static function addYears($date, $years) {
+	    $ts = strtotime($date);
+	    $year = date("Y", $ts);
+	    $year += $years;
+	    $monthDays = date("-m-d", $ts);
+	    return $year.$monthDays;
+    }
 
 	public static function getLabels($metadata) {
 		$labels = array();

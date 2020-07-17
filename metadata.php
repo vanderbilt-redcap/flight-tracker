@@ -121,7 +121,7 @@ if ($_POST['process'] == "check") {
 
         try {
 		    $feedback = REDCapManagement::mergeMetadataAndUpload($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
-            echo json_encode($feedback);
+		    echo json_encode($feedback);
         } catch (\Exception $e) {
             $feedback = array("Exception" => $e->getMessage());
             echo json_encode($feedback);

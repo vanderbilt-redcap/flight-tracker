@@ -23,10 +23,12 @@ if (isset($_POST['departments']) && isset($_POST['resources'])) {
 		$installCoeus = CareerDev::getSetting("hasCoeus");
 		$institutions = CareerDev::getInstitutions();
 		displayInstallHeaders($module, $token, $server, $pid, $tokenName);
-		if ($_POST['resources'] && $_POST['departments']) {
+        $departments = trim($_POST['departments']);
+        $resources = trim($_POST['resources']);
+		if ($resources && $departments) {
 			$lists = array(
-					"departments" => $_POST['departments'],
-					"resources" => $_POST['resources'],
+					"departments" => $departments,
+					"resources" => $resources,
 					"institutions" => implode("\n", $institutions),
 					);
 			$feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $lists, $installCoeus);
@@ -354,6 +356,7 @@ function makeInstallHeaders() {
 	$html .= "<title>Flight Tracker for Scholars</title>\n";
 	$html .= "<link rel='icon' href='".CareerDev::link("img/flight_tracker_icon.png")."'>\n";
 	$html .= "<link rel='stylesheet' type='text/css' href='".CareerDev::link("css/career_dev.css")."'>\n";
+	$html .= "<script src='".CareerDev::link("js/jquery.min.js")."'></script>\n";
 	$html .= "</head>\n";
 	$html .= "<body>\n";
 	$html .= "<p class='centered'>".CareerDev::makeLogo()."</p>\n";

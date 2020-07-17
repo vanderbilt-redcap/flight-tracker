@@ -168,7 +168,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	    $forms = self::getSharingInformation();
 	    $formsForCopy = [];
 	    foreach ($forms as $instrument => $config) {
-            if ($config["always_copy"]) {
+            if (!$config["always_copy"]) {
                 $formsForCopy[] = $instrument;
             }
         }
