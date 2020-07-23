@@ -194,9 +194,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $choices = [];
         $pidsUpdated = [];
 
+        Application::log("Getting project data for pids: ".json_encode($pids));
 	    foreach ($pids as $pid) {
+	        Application::log("Getting project data for pid ".$pid);
             $token = $this->getProjectSetting("token", $pid);
             $server = $this->getProjectSetting("server", $pid);
+            Application::log("Got token with length of ".strlen($token)." for pid $pid");
             $tokens[$pid] = $token;
             $servers[$pid] = $server;
         }
@@ -215,6 +218,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
 
         foreach ($pids as $pid) {
+            Application::log("Downloading data for pid $pid");
             $token = $tokens[$pid];
             $server = $servers[$pid];
             $firstNames[$pid] = Download::firstnames($token, $server);
@@ -233,6 +237,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	    # push
 	    foreach ($pids as $sourcePid) {
+	        Application::log("Searching through pid $sourcePid");
             $sourceToken = $tokens[$sourcePid];
             $sourceServer = $servers[$sourcePid];
             $sharedFormsForSource = $this->getProjectSetting("shared_forms", $sourcePid);
@@ -241,6 +246,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             }
             foreach ($pids as $destPid) {
                 if ($destPid != $sourcePid) {
+                    Application::log("Communicating between $sourcePid and $destPid");
                     $destToken = $tokens[$destPid];
                     $destServer = $servers[$destPid];
                     $sharedFormsForDest = $this->getProjectSetting("shared_forms", $destPid);

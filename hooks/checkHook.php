@@ -359,7 +359,7 @@ function filterSponsorNumber($name) {
 			echo "	presetValue('check_grant{$i}_org', '".$grant->getVariable("sponsor")."');\n";
 			echo "	presetValue('check_grant{$i}_costs', '".Grant::convertToMoney($grant->getVariable("direct_budget"))."');\n";
 			echo "	presetValue('check_grant{$i}_role', '1');\n";
-			if (($i < MAX_GRANTS) &&  ($i < count($grants->getNumberOfGrants("compiled")))) {
+			if (($i < MAX_GRANTS) && ($i < $grants->getNumberOfGrants("compiled"))) {
 				echo "	presetValue('check_grant{$i}_another', '1');\n";
 			}
 		}

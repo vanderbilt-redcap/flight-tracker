@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.15.2";
+		return "2.15.3";
 	}
 
 	public static function getLockFile($pid) {
@@ -143,10 +143,10 @@ class CareerDev {
 		if (self::$pid) {
 			return self::$pid;
 		}
-		if ($_GET['pid']) {
-			# least reliable because REDCap can sometimes change this value in other crons
-			return $_GET['pid'];
-		}
+// 		if ($_GET['pid']) {
+//			# least reliable because REDCap can sometimes change this value in other crons
+//			return $_GET['pid'];
+//		}
 		return NULL;
 	}
 
@@ -305,11 +305,42 @@ class CareerDev {
                 return $row['mentorPid'];
             }
 		}
-        if ((self::getSetting('mentor_token') == $localToken) && (strpos(self::getSetting('server'), SERVER_NAME) !== FALSE)) {
-            return self::getSetting('mentor_pid');
+		if ($relevantPid = self::getPidFromDatabase($localToken)) {
+		    return $relevantPid;
         }
 		return "";
 	}
+
+	public static function getModuleId() {
+	    return ExternalModules::getIdForPrefix("flight_tracker");
+    }
+
+	public static function getPidFromDatabase($token) {
+        $fieldsToSearch = ["token", "mentor_token"];
+        $moduleId = self::getModuleId();
+        if ($moduleId) {
+            foreach ($fieldsToSearch as $field) {
+                $sql = "SELECT project_id FROM redcap_external_module_settings WHERE key = '$field' AND external_module_id = '$moduleId' AND value = '".db_real_escape_string($localToken)."'";
+                $q = db_query($sql);
+                $currentPid = FALSE;
+                while ($row = db_fetch_assoc($q)) {
+                    $currentPid = $row["pid"];
+                    break;
+                }
+                if ($currentPid) {
+                    if ($field == "token") {
+                        return $currentPid;
+                    } else if ($field == "mentor_token") {
+                        # mentor_token
+                        return self::getSetting('mentor_pid', $currentPid);
+                    } else {
+                        throw new \Exception("Looking through invalid field $field");
+                    }
+                }
+            }
+        }
+        return "";
+    }
 
 	public static function getHelpLink() {
 		return self::link("/help/index.php");
@@ -323,16 +354,18 @@ class CareerDev {
 		return self::link("/index.php");
 	}
 
-	public static function saveCurrentDate($setting) {
+	public static function saveCurrentDate($setting, $pid) {
 		$ary = self::getSetting(self::getGeneralSettingName());
 		$ary[$setting] = date("Y-m-d");
-		self::setSetting(self::getGeneralSettingName(), $ary);
+		self::setSetting(self::getGeneralSettingName(), $ary, $pid);
 	}
 
-	public static function setSetting($field, $value) {
+	public static function setSetting($field, $value, $pid = NULL) {
 		$module = self::getModule();
 		if ($module) {
-			$pid = self::getPid();
+		    if (!$pid) {
+                $pid = self::getPid();
+            }
 			if ($pid) {
                 $module->setProjectSetting($field, $value, $pid);
             } else {

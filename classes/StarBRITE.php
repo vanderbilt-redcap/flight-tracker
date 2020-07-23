@@ -23,4 +23,8 @@ class StarBRITE {
         list($resp, $output) = REDCapManagement::downloadURL($url, $opts);
         return json_decode($output, TRUE);
     }
+
+    static function dataForUserid($userid) {
+        return self::accessSRI("project/vunet/", ["coeus", $userid]);
+    }
 }

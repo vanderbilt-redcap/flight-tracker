@@ -22,6 +22,7 @@ class Publications {
 		if (empty($metadata)) {
 			$metadata = Download::metadata($token, $server);
 		}
+		$this->metadata = $metadata;
 		$this->choices = Scholar::getChoices($metadata);
 	}
 
@@ -322,15 +323,18 @@ class Publications {
 	public function uploadSummary() {
 		$recordId = $this->recordId;
 		if ($recordId) {
-			$row = array(
-					"record_id" => $recordId,
-					"redcap_repeat_instrument" => "",
-					"redcap_repeat_instance" => "",
-					"summary_publication_count" => $this->getCount("Original Included"),
-					);
-			return Upload::oneRow($row, $this->token, $this->server);
+		    $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
+		    if (in_array("summary_publication_count", $metadataFields)) {
+                $row = [
+                    "record_id" => $recordId,
+                    "redcap_repeat_instrument" => "",
+                    "redcap_repeat_instance" => "",
+                    "summary_publication_count" => $this->getCount("Original Included"),
+                ];
+                return Upload::oneRow($row, $this->token, $this->server);
+            }
 		}
-		return array();
+		return [];
 	}
 
 	public static function getCitationsFromPubMed($pmids, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = array()) {
@@ -885,13 +889,12 @@ class Publications {
 	private $input;
 	private $name;
 	private $token;
+    private $metadata;
 	private $server;
 	private $recordId;
 	private $goodCitations;
 	private $omissions;
-	private $notDone;
 	private $choices;
-	private $names;
 }
 
 class PubmedMatch {

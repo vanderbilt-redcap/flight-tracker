@@ -308,7 +308,7 @@ function updateCoeus($token, $server, $pid) {
 		CareerDev::log($pullNumber." No new data is available.");
 	}
 	
-	CareerDev::saveCurrentDate("Last COEUS Download");
+	CareerDev::saveCurrentDate("Last COEUS Download", $pid);
 }
 
 

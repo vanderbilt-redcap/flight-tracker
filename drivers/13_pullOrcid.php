@@ -72,9 +72,9 @@ function pullORCIDs($token, $server, $pid) {
         Application::log("ORCID Upload: ".json_encode($feedback));
     }
     if (function_exists("saveCurrentDate")) {
-        saveCurrentDate("Last ORCID Download");
+        saveCurrentDate("Last ORCID Download", $pid);
     } else {
-        CareerDev::saveCurrentDate("Last ORCID Download");
+        CareerDev::saveCurrentDate("Last ORCID Download", $pid);
     }
     if (!empty($noMatches)) {
         Application::log("Could not find matches for records: ".REDCapManagement::json_encode_with_spaces($noMatches));

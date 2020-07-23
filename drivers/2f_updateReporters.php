@@ -339,4 +339,4 @@ $mssg = "$totalRecordsAffected Records Affected\n"."$totalReporterEntriesUploade
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 \REDCap::email($victrEmail, "no-reply@vanderbilt.edu", "CareerDev RePORTER script run", "SUCCESS<br><br>".preg_replace("/\n/", "<br>", $mssg));
 
-CareerDev::saveCurrentDate("Last Federal RePORTER Download");
+CareerDev::saveCurrentDate("Last Federal RePORTER Download", $pid);

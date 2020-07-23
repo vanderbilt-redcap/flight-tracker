@@ -11,22 +11,34 @@ class LDAP {
 		return LdapLookup::lookupUserDetailsByKeys($values, $types, true, false, true);
 	}
 
-	public static function getLDAP($type, $value)
-	{
+	public static function getLDAP($type, $value) {
 		return self::getLDAPByMultiple(array($type), array($value));
 	}
 
-    public static function getREDCapRowFromName($first, $last, $metadata, $recordId) {
-        $key = self::getNameAssociations($first, $last);
-        return self::getREDCapRow(array_keys($key), array_values($key), $metadata, $recordId);
+    public static function getREDCapRowsFromName($first, $last, $metadata, $recordId, $repeatingForms) {
+	    $firstNames = NameMatcher::explodeFirstName($first);
+	    $lastNames = NameMatcher::explodeLastName($last);
+	    $instrument = "ldap";
+	    $rows = [];
+	    foreach ($firstNames as $firstName) {
+	        $firstName = strtolower($firstName);
+	        foreach ($lastNames as $lastName) {
+	            $lastName = strtolower($lastName);
+                $key = self::getNameAssociations($firstName, $lastName);
+                $maxInstance = REDCapManagement::getMaxInstance($rows, $instrument, $recordId);
+                $rows = array_merge($rows, self::getREDCapRows(array_keys($key), array_values($key), $metadata, $recordId, $maxInstance + 1, $repeatingForms));
+                $rows = REDCapManagement::deDupREDCapRows($rows, $recordId, $instrument);
+            }
+        }
+	    return $rows;
     }
 
-    public static function getREDCapRowFromUid($uid, $metadata, $recordId) {
+    public static function getREDCapRowsFromUid($uid, $metadata, $recordId, $repeatingForms) {
         $key = ["uid" => $uid];
-        return self::getREDCapRow(array_keys($key), array_values($key), $metadata, $recordId);
+        return self::getREDCapRows(array_keys($key), array_values($key), $metadata, $recordId, 0, $repeatingForms);
     }
 
-    public static function getREDCapRow($types, $values, $metadata, $recordId) {
+    public static function getREDCapRows($types, $values, $metadata, $recordId, $previousMaxInstance = 0, $repeatingForms = []) {
 	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	    $hasLDAP = FALSE;
 	    $prefix = "ldap_";
@@ -42,23 +54,37 @@ class LDAP {
 
 	    $info = self::getLDAPByMultiple($types, $values);
 	    $ldapFields = self::getFields();
-	    $row = ["record_id" => $recordId];
+	    $rows = [];
+	    $defaultRow = ["record_id" => $recordId, "ldap_complete" => "2"];
 	    foreach ($ldapFields as $ldapField) {
 	        $redcapField = $prefix.$ldapField;
 	        if (in_array($redcapField, $metadataFields)) {
                 $values = self::findField($info, $ldapField);
-                if (count($values) == 1) {
-                    $row[$redcapField] = $values[0];
-                } else if (count($values) == 0) {
-                    Application::log("Could not find $ldapField for Record $recordId in LDAP");
-                } else {
+                if (count($values) == 0) {
+                    // Application::log("Could not find $ldapField for Record $recordId in LDAP");
+                } else if (in_array("ldap", $repeatingForms)) {
                     # multiple
-                    Application::log("Could has multiple values for Record $recordId in LDAP: ".implode(", ", $values));
-                    $row[$redcapField] = $values[0];
+                    // Application::log("Could have values for Record $recordId in LDAP: " . implode(", ", $values));
+                    $i = 0;
+                    foreach ($values as $value) {
+                        if (!isset($rows[$i])) {
+                            $rows[$i] = $defaultRow;
+                            $rows[$i]["redcap_repeat_instrument"] = "ldap";
+                            $rows[$i]["redcap_repeat_instance"] = $previousMaxInstance + 1;
+                            $previousMaxInstance++;
+                        }
+                        $rows[$i][$redcapField] = $value;
+                        $i++;
+                    }
+                } else {
+                    if (!isset($rows[0])) {
+                        $rows[0] = $defaultRow;
+                    }
+                    $rows[0][$redcapField] = $values[0];
                 }
             }
         }
-	    return $row;
+	    return $rows;
     }
 
     private static function getNameAssociations($first, $last) {
@@ -72,6 +98,11 @@ class LDAP {
 		$departments = self::findField($info, "vanderbiltpersonhrdeptname");
 		return array($vunets, $departments);
 	}
+
+	public static function getName($uid) {
+        $info = self::getLDAP("uid", $uid);
+        return self::findField($info, "sn")." ".self::findField($info, "givenname");
+    }
 
 	public static function getVUNet($first, $last) {
         $key = self::getNameAssociations($first, $last);
@@ -196,21 +227,30 @@ class LdapLookup {
 			}
 			$searchFilter = "($char".implode("", $searchTerms).")";
 			foreach (self::$ldapConns as $ldapConn) {
-				$sr = ldap_search($ldapConn, "ou=people,dc=vanderbilt,dc=edu", $searchFilter);
-				if ($sr) {
-					$data = ldap_get_entries($ldapConn, $sr);
-					if ($oneLine) {
-						for($i = 0; $i < count($data); $i++) {
-							return $data[$i];
-						}       
-					} else {
-						$allData = self::mergeAndDiscardDups($allData, $data);
-					}       
-				} else if(ldap_error($ldapConn) != "") {
-					echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
-					throw new \Exception(ldap_error($ldapConn)." ".$searchFilter);
-				}       
-			}       
+			    $currTry = 0;
+			    $sr = NULL;
+			    while (($currTry < self::MAX_RETRIES) && !$sr) {
+			        $currTry++;
+                    $sr = ldap_search($ldapConn, "ou=people,dc=vanderbilt,dc=edu", $searchFilter);
+                    if ($sr) {
+                        $data = ldap_get_entries($ldapConn, $sr);
+                        if ($oneLine) {
+                            for($i = 0; $i < count($data); $i++) {
+                                return $data[$i];
+                            }
+                        } else {
+                            $allData = self::mergeAndDiscardDups($allData, $data);
+                        }
+                    } else if (ldap_error($ldapConn) != "") {
+                        if ($currTry == self::MAX_RETRIES) {
+                            echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
+                            throw new \Exception(ldap_error($ldapConn)." ".$searchFilter);
+                        } else {
+                            sleep(1);
+                        }
+                    }
+                }
+			}
 		}
 		return $allData;
 	}
@@ -363,5 +403,7 @@ class LdapLookup {
 		$connection = @ldap_connect("ldap://DC-M1.ds.vanderbilt.edu");
 		return @ldap_bind($connection, "$vunetid@vanderbilt.edu", $password);
 	}
+
+	const MAX_RETRIES = 5;
 }
 

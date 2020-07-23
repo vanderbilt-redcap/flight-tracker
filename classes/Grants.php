@@ -1391,14 +1391,19 @@ class Grants {
 	}
 
 	public function makeUploadRow() {
-		if ($this->token && $this->server) {
+		if ($this->token && $this->server && $this->metadata) {
+		    $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
 			$uploadRow = array(
 						"record_id" => $this->recordId,
 						"redcap_repeat_instrument" => "",
 						"redcap_repeat_instance" => "",
-						"summary_grant_count" => $this->getCount("compiled"),
-						"summary_total_budgets" => $this->getTotalDollars("compiled"),
 						);
+			if (in_array("summary_grant_count", $metadataFields)) {
+			    $uploadRow["summary_grant_count"] = $this->getCount("compiled");
+            }
+            if (in_array("summary_total_budgets", $metadataFields)) {
+                $uploadRow["summary_total_budgets"] = $this->getTotalDollars("compiled");
+            }
 			$i = 1;
 			foreach ($this->compiledGrants as $grant) {
 				if ($i <= MAX_GRANTS) {

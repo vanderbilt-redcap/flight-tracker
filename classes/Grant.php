@@ -812,7 +812,8 @@ class Grant {
 		return "";
 	}
 
-	private static function getInstituteCode($awardNo) {
+	# https://www.nlm.nih.gov/bsd/grant_acronym.html
+	public static function getInstituteCode($awardNo) {
 		if (preg_match("/^\d[A-Z][A-Z\d]\d/", $awardNo)) {
 			return substr($awardNo, 4, 2);
 		} else if (preg_match("/^[A-Z][A-Z\d]\d/", $awardNo)) {
@@ -826,6 +827,7 @@ class Grant {
 		return "";
 	}
 
+	# https://www.nlm.nih.gov/bsd/grant_acronym.html
 	private static function getFundingInstitute($awardNo) {
 		$instituteCode = self::getInstituteCode($awardNo);
 		switch ($instituteCode) {
@@ -1315,8 +1317,10 @@ class Grant {
 			return "R01 Equivalent";
 		} else if (preg_match("/^\d?IK2[BC]X/", $awardNo)) {
 			return "K Equivalent";
-		} else if (preg_match("/^\d?R37/", $awardNo)) {
-			return "R01 Equivalent";
+        } else if (preg_match("/^\d?R37/", $awardNo)) {
+            return "R01 Equivalent";
+        } else if (preg_match("/^\d?R35/", $awardNo)) {
+            return "R01 Equivalent";
 		} else if (preg_match("/Internal K/", $awardNo)) {
 			return "Internal K";
 		} else if (preg_match("/K12\/KL2/", $awardNo)) {

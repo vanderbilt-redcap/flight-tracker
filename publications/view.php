@@ -21,36 +21,47 @@ if ($_GET['record']) {
     } else {
         $records = array($_GET['record']);
     }
+    $confirmed = "Confirmed Publications";
+    $notConfirmed = "Publications yet to be Confirmed";
+    $citations = [$confirmed => [], $notConfirmed => []];
     foreach ($records as $record) {
         $name = $names[$record];
         $metadata = Download::metadata($token, $server);
         $redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, array($record));
         $pubs = new Publications($token, $server, $metadata);
         $pubs->setRows($redcapData);
-        $citations = array();
-        $citations["Confirmed Publications"] = $pubs->getCitationCollection("Included");
-        $citations["Publications yet to be Confirmed"] = $pubs->getCitationCollection("Not Done");
+        $citations[$confirmed][] = $pubs->getCitationCollection("Included");
+        $citations[$notConfirmed][] = $pubs->getCitationCollection("Not Done");
+    }
 
-        echo makePublicationSearch($names);
-        foreach ($citations as $header => $citColl) {
-            echo "<h2>$header (" . $citColl->getCount() . ")</h2>\n";
-            $citations = explode("\n", $citColl->getCitationsAsString(TRUE));
-            echo "<div class='centered' style='max-width: 800px;'>\n";
-            if ($citColl->getCount() == 0) {
-                echo "<p class='centered'>No citations.</p>\n";
-            } else {
+    echo makePublicationSearch($names);
+    foreach ($citations as $header => $citColls) {
+        $total = totalCitationColls($citColls);
+        echo "<h2>$header (" . $total . ")</h2>\n";
+        echo "<div class='centered' style='max-width: 800px;'>\n";
+        if ($total == 0) {
+            echo "<p class='centered'>No citations.</p>\n";
+        } else {
+            foreach ($citColls as $citColl) {
+                $citations = explode("\n", $citColl->getCitationsAsString(TRUE));
                 foreach ($citations as $citation) {
                     echo "<p style='text-align: left;'>$citation</p>\n";
                 }
             }
-            echo "</div>\n";
         }
+        echo "</div>\n";
     }
-
 	echo "<br><br><br>";
-	
 } else {
 	echo makePublicationSearch($names);
+}
+
+function totalCitationColls($citColls) {
+    $total = 0;
+    foreach ($citColls as $citColl) {
+        $total += $citColl->getCount();
+    }
+    return $total;
 }
 
 function makePublicationSearch($names) {

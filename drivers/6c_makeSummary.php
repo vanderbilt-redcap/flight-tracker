@@ -119,4 +119,4 @@ if ($sendEmail) {
 # close the lockFile
 unlink($lockFile);
 
-CareerDev::saveCurrentDate("Last Email Blast");
+CareerDev::saveCurrentDate("Last Email Blast", $pid);

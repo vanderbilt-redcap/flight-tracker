@@ -19,13 +19,14 @@ function reportStats($token, $server, $pid) {
 	// $numGrants = getTotalNumberOfGrantsAfterCombination($token, $server);
 	// $numPubs = getTotalNumberOfConfirmedPublications($token, $server);
 
-	$post = array(
-			"pid" => $pid,
-			"server" => $server,
-			"scholars" => count($recordIds),
-			"date" => date("Y-m-d"),
-			"version" => CareerDev::getVersion(),
-			);
+	$post = [
+        "pid" => $pid,
+        "server" => $server,
+        "scholars" => count($recordIds),
+        "date" => date("Y-m-d"),
+        "version" => CareerDev::getVersion(),
+        "grant_class" => CareerDev::getSetting("grant_class"),
+    ];
 			// "grants" => $numGrants,
 			// "publications" => $numPubs,
 

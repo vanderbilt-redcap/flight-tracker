@@ -279,5 +279,5 @@ function updateReporter($token, $server, $pid) {
 		$totalReporterEntriesUploaded += count($rows);
 	}
 
-	CareerDev::saveCurrentDate("Last Federal RePORTER Download");
+	CareerDev::saveCurrentDate("Last Federal RePORTER Download", $pid);
 }

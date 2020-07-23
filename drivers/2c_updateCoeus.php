@@ -837,4 +837,4 @@ try {
 	\REDCap::email($victrEmail, "no-reply@vanderbilt.edu", "COEUS NOT Updated on CareerDev", "The script threw an exception.<br>".$e->getMessage());
 }
 
-CareerDev::saveCurrentDate("Last COEUS Download");
+CareerDev::saveCurrentDate("Last COEUS Download", $pid);

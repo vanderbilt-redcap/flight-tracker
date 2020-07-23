@@ -288,13 +288,13 @@ class Download {
 	}
 
 	public static function isCurrentServer($server) {
-		$currServer = $_SERVER['SERVER_NAME'];
+		$currServer = SERVER_NAME;
 		return (strpos(strtolower($server), strtolower($currServer)) !== FALSE);
 	}
 
 	private static function sendToServer($server, $data) {
 		$pid = Application::getPID($data['token']);
-		if ($pid  && $_GET['pid'] && ($data['content'] == "record") && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
+		if ($pid && $_GET['pid'] && ($pid == $_GET['pid']) && ($data['content'] == "record") && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
 			// Application::log("sendToServer: ".$pid." ".$data['token']." REDCap::getData");
 		    $output = \REDCap::getData($pid, "json", $data['records'], $data['fields']);
 		} else {

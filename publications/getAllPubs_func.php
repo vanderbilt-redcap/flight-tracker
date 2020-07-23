@@ -69,7 +69,7 @@ function getPubs($token, $server, $pid) {
 	}
 	processPubMed($citationIds, $maxInstances, $token, $server);
 	postprocess($token, $server);
-	CareerDev::saveCurrentDate("Last PubMed Download");
+	CareerDev::saveCurrentDate("Last PubMed Download", $pid);
 }
 
 function postprocess($token, $server) {
@@ -197,7 +197,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server) {
             }
         }
     }
-    CareerDev::saveCurrentDate("Last VICTR PubMed Fetch Download");
+    CareerDev::saveCurrentDate("Last VICTR PubMed Fetch Download", $pid);
     if (!empty($upload)) {
         upload($upload, $token, $server);
     }
@@ -207,8 +207,13 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server) {
 	$allLastNames = Download::lastnames($token, $server);
 	$allFirstNames = Download::firstnames($token, $server);
     $allInstitutions = Download::institutions($token, $server);
-    $orcids = Download::ORCIDs($token, $server);
     $metadata = Download::metadata($token, $server);
+    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+    if (in_array("identifier_orcid", $metadataFields)) {
+        $orcids = Download::ORCIDs($token, $server);
+    } else {
+        $orcids = [];
+    }
     $choices = REDCapManagement::getChoices($metadata);
 
 	foreach ($allLastNames as $recordId => $recLastName) {
@@ -306,7 +311,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server) {
 			upload($uploadRows, $token, $server);
 		}
 	}
-	CareerDev::saveCurrentDate("Last PubMed Download");
+	CareerDev::saveCurrentDate("Last PubMed Download", $pid);
 }
 
 function addPMIDsIfNotFound(&$pmids, &$citationIds, $currPMIDs, $recordId) {

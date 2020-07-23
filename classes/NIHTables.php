@@ -616,7 +616,25 @@ class NIHTables {
         foreach ($vars as $ary) {
             foreach ($ary as $field => $source) {
                 if (in_array($field, $metadataFields)) {
-                    array_push($fields, $field);
+                    if ($field == "override_degrees") {
+                        $fields[$field] = [];
+                    } else if ($field == "followup_degree") {
+                        $fields[$field] = [];
+                    } else if (preg_match("/^check_degree/", $field)) {
+                        $fields[$field] = [$field."_year"];
+                    } else if (preg_match("/^vfrs_degree/", $field)) {
+                        $fields[$field] = [$field."_year"];
+                    } else if ($field == "vfrs_graduate_degree") {
+                        $fields[$field] = ["vfrs_degree1_year"];
+                    } else if (preg_match("/^newman_new_degree/", $field)) {
+                        $fields[$field] = [];
+                    } else if (preg_match("/^newman_data_degree/", $field)) {
+                        $fields[$field] = [];
+                    } else if (preg_match("/^newman_sheet2_degree/", $field)) {
+                        $fields[$field] = [];
+                    } else if ($field == "newman_demographics_degrees") {
+                        $fields[$field] = ["newman_demographics_last_degree_year", "newman_demographics_degrees_years"];
+                    }
                 }
             }
         }
@@ -624,34 +642,29 @@ class NIHTables {
     }
 
     private function getAllDegreeYearFields($degreeFields) {
-	    if (!array($degreeFields)) {
-            $degreeFields = array($degreeFields);
+	    if (!is_array($degreeFields)) {
+            $degreeFields = [$degreeFields];
         }
-	    $degreePrefixes = REDCapManagement::transformFieldsIntoPrefixes($degreeFields);
-	    $degreeYearFields = array();
-	    foreach (REDCapManagement::getFieldsFromMetadata($this->metadata) as $currField) {
-	        $currPrefix = REDCapManagement::getPrefix($currField);
-	        if (in_array($currPrefix, $degreePrefixes)) {
-	            # screen for dates and numeric
-                $metadataRow = REDCapManagement::getRowForFieldFromMetadata($currField, $this->metadata);
-                if (REDCapManagement::matchAtLeastOneRegex(array("/^date_/", "/^datetime_/", "/^integer/"), $metadataRow['text_validation_type_or_show_slider_number'])) {
-                    array_push($degreeYearFields, $currField);
-                }
-	        }
+	    $degreeMatches = $this->getAllDegreeFields();
+	    $degreeYearFields = [];
+	    foreach ($degreeFields as $currField) {
+            $degreeYearFields = array_merge($degreeYearFields, $degreeMatches[$currField]);
         }
 	    return $degreeYearFields;
     }
 
     private function getTerminalDegreesAndYears($recordId) {
-        $degreeFields = $this->getAllDegreeFields();
-        $fields = array_unique(array_merge(array("record_id", "summary_training_start", "summary_training_end"), $degreeFields));
+        $degreeMatches = $this->getAllDegreeFields();
+        $degreeFields = array_keys($degreeMatches);
+        $degreeYearFields = $this->getAllDegreeYearFields($degreeFields);
+        $fields = array_unique(array_merge(["record_id", "summary_training_start", "summary_training_end"], $degreeFields, $degreeYearFields));
         $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
         $choices = $this->getAlteredChoices();
         $doctorateRegExes = array("/MD/", "/PhD/i", "/DPhil/i", "/PharmD/i", "/PsyD/i");
         $doctorateDegreesAndYears = array();
         $predocDegreesAnYears = array();
-        foreach ($redcapData as $row) {
-            foreach ($degreeFields as $field) {
+        foreach ($degreeFields as $field) {
+            foreach ($redcapData as $row) {
                 if ($row[$field]) {
                     if ($choices[$field] && isset($choices[$field][$row[$field]])) {
                         $value = $choices[$field][$row[$field]];
@@ -659,15 +672,17 @@ class NIHTables {
                         $value = $row[$field];
                     }
                     foreach ($doctorateRegExes as $regEx) {
-                        $degreeYearFields = $this->getAllDegreeYearFields($field);
-                        $year = "Unknown Year";
-                        foreach ($degreeYearFields as $yearField) {
-                            if (is_integer($row[$yearField])) {
+                        $year = self::$unknownYearText;
+                        foreach ($degreeMatches[$field] as $yearField) {
+                            if (intval($row[$yearField])) {
                                 $year = $row[$yearField];
+                                break;
                             } else if (strtotime($row[$yearField])) {
                                 $year = REDCapManagement::getYear($row[$yearField]);
+                                break;
                             } else if ($row[$yearField]) {
                                 $year = $row[$yearField];
+                                break;
                             }
                         }
                         if (preg_match($regEx, $value)) {
@@ -677,6 +692,9 @@ class NIHTables {
                         }
                     }
                 }
+            }
+            if (!empty($doctorateDegreesAndYears) && !empty($predocDegreesAnYears) && !in_array(self::$unknownYearText, array_values($doctorateDegreesAndYears)) && !in_array(self::$unknownYearText, array_values($predocDegreesAnYears))) {
+                break;
             }
         }
         if (empty($doctorateDegreesAndYears) && empty($predocDegreesAnYears)) {
@@ -695,12 +713,18 @@ class NIHTables {
 	private function getTerminalDegreeAndYear($recordId) {
 	    $degreesAndYears = $this->getTerminalDegreesAndYears($recordId);
         arsort($degreesAndYears);
+        $default = "Unknown";
         foreach ($degreesAndYears as $degree => $year) {
             if ($degree == "In Training") {
                 return $degree;
             }
-            return $degree." ".$year;
+            if ($year == self::$unknownYearText) {
+                $default = $degree." ".$year;
+            } else {
+                return $degree." ".$year;
+            }
         }
+        return $default;
     }
 
     private static function getResearchTopicSource() {
@@ -885,7 +909,6 @@ class NIHTables {
 
     private static function abbreviateAwardNo($awardNo, $fundingSource = "Other", $fundingType = "Other") {
         $ary = Grant::parseNumber($awardNo);
-        $supportSource = "Other";
         $supportType = "Other";
 
         if ($fundingType == "Research Assistantship") {
@@ -913,7 +936,9 @@ class NIHTables {
         } else if ($fundingSource == "Non-US") {
             $supportSource = "Non-US";
         } else if ($fundingSource == "NIH") {
-            $supportSource = $ary["funding_institute"];
+            $supportSource = $ary["institute_code"];
+        } else {
+            $supportSource = $ary["institute_code"];
         }
 	    return "$supportSource $supportType";
 	}
@@ -942,10 +967,10 @@ class NIHTables {
 	    return array($source, $fundingType);
     }
 
-    private function getGrantSummary($recordId) {
+    private function getGrantSummary($recordId, $table) {
         # Subsequent Grant(s)/Role/Year Awarded
+        $isPredoc = self::isPredoc($table);
         $redcapData = Download::fieldsForRecords($this->token, $this->server, Application::$summaryFields, array($recordId));
-        $names = Download::names($this->token, $this->server);
         $grantDescriptions = array();
         foreach ($redcapData as $row) {
             if ($row['record_id'] == $recordId) {
@@ -954,13 +979,22 @@ class NIHTables {
                     $dateField = "summary_award_date_".$i;
                     $typeField = "summary_award_type_".$i;
                     $roleField = "summary_award_role_".$i;
-                    if ($row[$awardNoField] && $row[$dateField]) {
-                        $role = $row[$roleField];
+                    if ($isPredoc) {
+                        $validGrant = TRUE;
+                    } else {
+                        $validGrant = (!in_array($row[$typeField], [1, 2]) && ($i == 1));
+                    }
+                    if ($row[$awardNoField] && $row[$dateField] && $validGrant) {
+                        $role = $row[$roleField] ? $row[$roleField] : self::$NA;
                         $year = REDCapManagement::getYear($row[$dateField]);
                         list($fundingSource, $fundingType) = self::getSourceAndType($row[$typeField]);
                         if ($fundingSource  && $fundingType) {
-                            $shortAwardNo = self::abbreviateAwardNo($row[$awardNoField], $fundingSource, $fundingType);
-                            $ary = array($shortAwardNo, $role, $year);
+                            if ($row[$awardNoField] == "Peds K12") {
+                                $shortAwardNo = "HD K12";
+                            } else {
+                                $shortAwardNo = self::abbreviateAwardNo($row[$awardNoField], $fundingSource, $fundingType);
+                            }
+                            $ary = [$shortAwardNo, $role, $year];
                             array_push($grantDescriptions, implode(" / ", $ary));
                         }
                     }
@@ -1030,13 +1064,13 @@ class NIHTables {
 
 	        $data = [];
 	        $baseLineStart = (date("Y") - self::$maxYearsOfGrantReporting)."-01-01";
+	        $startingDates = [];
 	        foreach ($names as $recordId => $name) {
                 $currentTrainingGrants = self::getTrainingGrantsForRecord($trainingGrants, $recordId);
-                $positionData = Download::fieldsForRecords($this->token, $this->server, Application::$positionFields, array($recordId));
 
-	            $startDate = self::getEarliestStartDate($currentTrainingGrants, $recordId);
-	            if (!$startDate) {
-	                $countingStartDate = $baseLineStart;
+                $startDate = self::getEarliestStartDate($currentTrainingGrants, $recordId);
+                if (!$startDate) {
+                    $countingStartDate = $baseLineStart;
                 } else {
                     if (strtotime($startDate) > strtotime($baseLineStart)) {
                         $countingStartDate = $startDate;
@@ -1044,11 +1078,21 @@ class NIHTables {
                         $countingStartDate = $baseLineStart;
                     }
                 }
-	            $terminalDegree = $this->getTerminalDegreeAndYear($recordId);
+                $startingDates[$recordId] = strtotime($countingStartDate);
+            }
+            asort($startingDates);
+	        foreach ($startingDates as $recordId => $ts) {
+	            $countingStartDate = date("m/Y", $ts);
+                $positionData = Download::fieldsForRecords($this->token, $this->server, Application::$positionFields, array($recordId));
+                $terminalDegree = $this->getTerminalDegreeAndYear($recordId);
 	            $topic = $this->getResearchTopic($recordId);
 	            $initialPos = $this->getInitialPosition($positionData, $recordId);
 	            $currentPos = $this->getCurrentPosition($positionData, $recordId);
-	            $subsequentGrants = $this->getGrantSummary($recordId);
+	            if ($terminalDegree == "In Training") {
+                    $subsequentGrants = "Current Scholar";
+                } else {
+                    $subsequentGrants = $this->getGrantSummary($recordId, $table);
+                }
                 $supportSummary = $supportSummaries[$recordId] ? $supportSummaries[$recordId] : "";
 
                 if ($hasSupportSummary) {
@@ -1059,7 +1103,7 @@ class NIHTables {
 	            $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId]);
 	            $dataRow = array(
 	                "Trainee" => "{$lastNames[$recordId]}, {$firstNames[$recordId]}",
-                    "Faculty Member" => implode("; ", $transformedFacultyNames),
+                    "Faculty Member" => "<p>".implode("</p><p>", $transformedFacultyNames)."</p>",
                     "Start Date" => $countingStartDate,
                     "Summary of Support During Training" => $supportSummaryHTML,
                     "Terminal Degree(s)<br>Received and Year(s)" => $terminalDegree,
@@ -1152,7 +1196,7 @@ class NIHTables {
 	    if ($degree == "In Training") {
 	        return FALSE;
         }
-	    if (preg_match("/Unknown Year/", $year)) {
+	    if (preg_match("/".self::$unknownYearText."/", $year)) {
 	        return FALSE;
         }
 	    return TRUE;
@@ -1328,9 +1372,9 @@ class NIHTables {
     }
 
     private function downloadRelevantNames($table) {
-		if (self::beginsWith($table, array("5A", "6A", "8A"))) {
+		if (self::isPredoc($table)) {
             $names = $this->downloadPredocNames();
-		} else if (self::beginsWith($table, array("5B", "6B", "8C"))) {
+        } else if (self::isPostdoc($table)) {
 		    $names = $this->downloadPostdocNames($table);
 		} else {
 			$names = array();
@@ -1577,5 +1621,6 @@ class NIHTables {
 	private static $NA;
 	private static $blank = "[Blank]";
 	private static $presentMarker = "Present";
+	private static $unknownYearText = "Unknown Year";
 	public static $maxYearsOfGrantReporting = 15;
 }

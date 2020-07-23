@@ -54,7 +54,7 @@ function sendInitialSurveys($token, $server, $pid) {
 			}
 		}
 	}
-	CareerDev::saveCurrentDate("Last Survey Blast Run");
+	CareerDev::saveCurrentDate("Last Survey Blast Run", $pid);
 }
 
 function sendEmail($pid, $recordId, $firstName, $lastName, $email, $mssg) {

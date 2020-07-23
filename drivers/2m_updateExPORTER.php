@@ -319,5 +319,5 @@ function updateExPORTER($token, $server, $pid) {
 	// $mssg = "NIH Exporter run\n\n".count($upload)." rows\n".$output."\n\n";
 	// \REDCap::email($adminEmail, "no-reply@vanderbilt.edu", "CareerDev NIH Exporter", $mssg);
 
-	CareerDev::saveCurrentDate("Last NIH ExPORTER Download");
+	CareerDev::saveCurrentDate("Last NIH ExPORTER Download", $pid);
 }

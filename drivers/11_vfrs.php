@@ -31,7 +31,7 @@ function updateVFRS($token, $server, $pid) {
 			updateVFRSForRecord($token, $server, $pid, $recordId);
 		}
 	}
-	CareerDev::saveCurrentDate("Last VFRS Update");
+	CareerDev::saveCurrentDate("Last VFRS Update", $pid);
 }
 
 /**

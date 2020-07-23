@@ -55,7 +55,7 @@ class Cohorts {
 					$json = $row['field_annotation'];
 					if ($json) {
 						$configs = json_decode($json, true);
-						if ($configs) {
+						if ($configs !== NULL) {
 							return $configs;
 						} else {
 							throw new \Exception("Could not decode config JSON: '".$json."'");

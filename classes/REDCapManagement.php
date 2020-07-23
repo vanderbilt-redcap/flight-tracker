@@ -49,7 +49,7 @@ class REDCapManagement {
     }
 
     public static function hasInstance($token, $server, $recordId, $instrument, $instance) {
-	    $redcapData = Download::formForRecords($token, $server, $recordId, $instrument);
+	    $redcapData = Download::formForRecords($token, $server, $instrument, [$recordId]);
 	    foreach ($redcapData as $row) {
 	        if (($row['redcap_repeat_instrument'] == $instrument) && ($row['redcap_repeat_instance'] == $instance)) {
                 return TRUE;
@@ -136,29 +136,65 @@ class REDCapManagement {
 	}
 
     public static function transformFieldsIntoPrefixes($fields) {
-	    $prefixes = array();
+	    $prefixes = [];
 	    foreach ($fields as $field) {
 	        $prefix = self::getPrefix($field);
 	        if (!in_array($prefix, $prefixes)) {
-	            array_push($prefixes, $prefix);
+	            $prefixes[] = $prefix;
             }
         }
 	    return $prefixes;
     }
 
+    public static function MY2YMD($my) {
+	    if (!$my) {
+	        return "";
+        }
+        $sep = "-";
+	    $nodes = preg_split("/[\-\/]/", $my);
+	    if (count($nodes) == 2) {
+            return $nodes[1] . $sep . $nodes[0] . $sep . "01";
+        } else if (count($nodes) == 3) {
+            $mdy = $my;
+            return self::MDY2YMD($mdy);
+        } else if (count($nodes) == 1) {
+	        $year = $nodes[0];
+	        if ($year > 1900) {
+	            return $year."-01-01";
+            } else {
+	            throw new \Exception("Invalid year: $year");
+            }
+        } else {
+	        throw new \Exception("Cannot convert MM/YYYY $my");
+        }
+    }
+
     public static function getPrefix($field) {
         $nodes = preg_split("/_/", $field);
+        if ($nodes[0] == "newman") {
+            return $nodes[0]."_".$nodes[1];
+        }
 	    return $nodes[0];
     }
 
     public static function getMaxInstance($rows, $instrument, $recordId) {
-	    $max = 0;
-	    foreach ($rows as $row) {
-	        if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == $instrument) && ($row['redcap_repeat_instance'] > $max)) {
-	            $max = $row['redcap_repeat_instance'];
+        $max = 0;
+        foreach ($rows as $row) {
+            if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == $instrument) && ($row['redcap_repeat_instance'] > $max)) {
+                $max = $row['redcap_repeat_instance'];
             }
         }
-	    return $max;
+        return $max;
+    }
+
+    public static function getMaxInstanceForEvent($rows, $eventName, $recordId) {
+        $max = 0;
+        foreach ($rows as $row) {
+            if (($row['record_id'] == $recordId) && ($row['redcap_event_name'] == $eventName) && ($row['redcap_repeat_instance'] > $max)) {
+                $max = $row['redcap_repeat_instance'];
+            }
+        }
+        return $max;
     }
 
     public static function makeHTMLId($id) {
@@ -417,7 +453,7 @@ class REDCapManagement {
     }
 
     public static function isDate($str) {
-	    if (preg_match("/^\d+[\/\-]\d+[\/\-\d+$/", $str)) {
+	    if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
 	        $nodes = preg_split("/[\/\-]/", $str);
 	        $earliestYear = 1900;
 	        if (count($nodes) == 3) {
@@ -434,6 +470,44 @@ class REDCapManagement {
             }
         }
         return FALSE;
+    }
+
+    public static function deDupREDCapRows($rows, $instrument, $recordId) {
+	    $i = 0;
+	    $skip = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance"];
+	    $newRows = [];
+	    $duplicates = [];
+	    foreach ($rows as $row1) {
+	        $j = 0;
+	        foreach ($rows as $row2) {
+	            if (($i < $j)
+                    && !in_array($j, $duplicates) && !in_array($i, $duplicates)
+                    && ($row1["redcap_repeat_instrument"] == $instrument) && ($row2["redcap_repeat_instrument"] == $instrument)
+                    && ($row1["record_id"] == $recordId) && ($row2["record_id"] == $recordId)) {
+	                $allMatch = TRUE;
+	                foreach ($row1 as $field => $value) {
+                        if (!in_array($field, $skip) && ($row1[$field] != $row2[$field])) {
+                            $allMatch = FALSE;
+                            break;
+                        }
+                    }
+                    $newRows[$i] = $row1;
+	                if ($allMatch) {
+                        $duplicates[] = $j;
+                    }
+                }
+	            $j++;
+            }
+	        $i++;
+        }
+
+	    # re-index
+	    $i = 1;
+	    foreach ($newRows as $idx => $row) {
+	        $newRows[$idx]["redcap_repeat_instance"] = $i;
+	        $i++;
+        }
+	    return array_values($newRows);
     }
 
 	# if present, $fields contains the fields to copy over; if left as an empty array, then it attempts to install all fields

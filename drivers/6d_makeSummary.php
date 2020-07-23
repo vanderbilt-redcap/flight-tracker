@@ -137,7 +137,7 @@ function makeSummary($token, $server, $pid, $selectRecord = "", $allRecordRows =
 
 	unlock($pid);
 
-	CareerDev::saveCurrentDate("Last Summary of Data");
+	CareerDev::saveCurrentDate("Last Summary of Data", $pid);
 	if (!empty($allRecordRows)) {
 		return mergeNormativeRows($returnREDCapData);
 	}

@@ -35,6 +35,30 @@ class Upload
         return $mixed;
     }
 
+    public static function deleteForm($token, $server, $pid, $prefix, $recordId) {
+        $records = Download::recordIds($token, $server);
+        if (Download::isCurrentServer($server)) {
+            if (in_array($recordId, $records)) {
+                if (!preg_match("/_$/", $prefix)) {
+                    $prefix .= "_";
+                }
+                $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name LIKE '$prefix%'";
+                Application::log("Running SQL $sql");
+                $q = db_query($sql);
+                if ($error = db_error()) {
+                    Application::log("SQL ERROR: " . $error);
+                    throw new \Exception($error);
+                } else {
+                    Application::log("SQL: " . $q->affected_rows . " rows affected");
+                }
+            } else {
+                throw new \Exception("Could not find record!");
+            }
+        } else {
+            throw new \Exception("Wrong server");
+        }
+    }
+
     public static function deleteRecords($token, $server, $records) {
         Application::log("Deleting ".count($records)." records");
         if (!empty($records)) {
@@ -256,7 +280,7 @@ public static function metadata($metadata, $token, $server) {
 		}
 
 		$pid = Application::getPID($token);
-		$saveDataEligible = ($pid && $_GET['pid'] && method_exists('\REDCap', 'saveData'));
+		$saveDataEligible = ($pid && $_GET['pid']  && ($pid == $_GET['pid']) && method_exists('\REDCap', 'saveData'));
 		if (isset(self::$useAPIOnly[$token]) && self::$useAPIOnly[$token]) {
 			$saveDataEligible = FALSE;
 		}
