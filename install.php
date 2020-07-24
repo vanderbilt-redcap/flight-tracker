@@ -31,7 +31,7 @@ if (isset($_POST['departments']) && isset($_POST['resources'])) {
 					"resources" => $resources,
 					"institutions" => implode("\n", $institutions),
 					);
-			$feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $lists, $installCoeus);
+			$feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $pid, $lists, $installCoeus);
 			redirectToAddScholars();
 		} else {
 			echo "<p class='red centered'>You must supply at least one resource and one department!</p>\n";
@@ -153,7 +153,7 @@ function setupRepeatingForms($eventId, $formsAndLabels) {
 
 function setupModuleSettings($projectId, $fields) {
 	foreach ($fields as $field => $value) {
-		CareerDev::setSetting($field, $value);
+		CareerDev::setSetting($field, $value, $projectId);
 	}
 }
 

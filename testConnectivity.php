@@ -11,7 +11,7 @@ if ($_POST['turn_on'] || $_POST['turn_off']) {
     } else if ($_POST['turn_off']) {
         $value = "";
     }
-    CareerDev::setSetting("send_cron_status", $value);
+    CareerDev::setSetting("send_cron_status", $value, $pid);
     echo "send_cron_status = $value";
     exit;
 }
@@ -19,7 +19,7 @@ if ($_POST['turn_on'] || $_POST['turn_off']) {
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/drivers/14_connectivity.php");
 
-$cronStatus = CareerDev::getSetting("send_cron_status");
+$cronStatus = CareerDev::getSetting("send_cron_status", $pid);
 if ($cronStatus) {
     $status = "On";
     $link = "<button id='status_link' onclick='turnOffStatusCron(); return false;'>Turn off status cron</button>";

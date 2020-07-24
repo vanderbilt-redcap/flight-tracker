@@ -19,9 +19,9 @@ require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__).'/../../../redcap_connect.php');
 
 # makes the stylized table of CDA awards
+$warningsOn = FALSE;
 
 $redcapData = Download::fields($token, $server, array_unique(array_merge(CareerDev::$summaryFields, CareerDev::$citationFields)));
-
 $metadata = Download::metadata($token, $server);
 
 # transform verbose to the simpler name
@@ -137,8 +137,8 @@ echo "<br><br>";
 
 # unit testing
 foreach ($redcapData as $row) {
-	if (($row['redcap_repeat_instrument'] == "") && !$row['summary_award_date_1']) {
-		echo "<p class='red centered'>".Links::makeRecordHomeLink($pid, $row['record_id'], "Record ".$row['record_id'])." ({$row['identifier_first_name']} {$row['identifier_last_name']}) lacks any awards.</p>"; 
+	if (($row['redcap_repeat_instrument'] == "") && !$row['summary_award_date_1'] && $warningsOn) {
+		echo "<p class='red centered'>".Links::makeRecordHomeLink($pid, $row['record_id'], "Record ".$row['record_id'])." ({$row['identifier_first_name']} {$row['identifier_last_name']}) lacks any awards.</p>";
 	}
 	if ($row['redcap_repeat_instrument'] == "") {
 		$firstR = $row['summary_first_r01'];
@@ -146,8 +146,8 @@ foreach ($redcapData as $row) {
 		if ($firstR && $firstK) {
 			$firstR = strtotime($firstR);
 			$firstK = strtotime($firstK);
-			if ($firstR < $firstK) {
-				echo "<p class='red centered'>".Links::makeRecordHomeLink($pid, $row['record_id'], "Record ".$row['record_id'])." ({$row['identifier_first_name']} {$row['identifier_last_name']}) has an R award before a K award.</p>"; 
+			if (($firstR < $firstK) && $warningsOn) {
+				echo "<p class='red centered'>".Links::makeRecordHomeLink($pid, $row['record_id'], "Record ".$row['record_id'])." ({$row['identifier_first_name']} {$row['identifier_last_name']}) has an R award before a K award.</p>";
 			}
 		} else if ($firstR && !$firstK) {
 			$grants = new Grants($token, $server);
@@ -159,8 +159,8 @@ foreach ($redcapData as $row) {
 					break;
 				}
 			}
-			if (!$hasK99R00) {
-				echo "<p class='red centered'>".Links::makeRecordHomeLink($pid, $row['record_id'], "Record ".$row['record_id'])." ({$row['identifier_first_name']} {$row['identifier_last_name']}) lacks a K award.</p>"; 
+			if (!$hasK99R00 && $warningsOn) {
+				echo "<p class='red centered'>".Links::makeRecordHomeLink($pid, $row['record_id'], "Record ".$row['record_id'])." ({$row['identifier_first_name']} {$row['identifier_last_name']}) lacks a K award.</p>";
 			}
 		}
 	}

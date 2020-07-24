@@ -472,6 +472,18 @@ class REDCapManagement {
         return FALSE;
     }
 
+    public static function convertDollarsToNumber($value) {
+        if (strpos($value, "$") === 0) {
+            $value = str_replace("$", "", $value);
+            $value = str_replace(",", "", $value);
+        }
+        return $value;
+    }
+
+    public static function convertNumberToDollars($value) {
+	    return "$".$value;
+    }
+
     public static function deDupREDCapRows($rows, $instrument, $recordId) {
 	    $i = 0;
 	    $skip = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance"];
@@ -738,6 +750,16 @@ class REDCapManagement {
 		}
 		return $indexedRedcapData;
 	}
+
+	public static function getRowsForRecord($redcapData, $recordId) {
+	    $rows = [];
+	    foreach ($redcapData as $row) {
+	        if ($row['record_id'] == $recordId) {
+	            $rows[] = $row;
+            }
+        }
+	    return $rows;
+    }
 
 	public static function indexMetadata($metadata) {
 	    $indexed = [];

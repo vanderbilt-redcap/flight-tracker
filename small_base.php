@@ -1026,9 +1026,9 @@ function filterForCoeusFields($fields) {
 	return $newFields;
 }
 
-function addLists($token, $server, $lists, $installCoeus = FALSE, $metadata = FALSE) {
-	CareerDev::setSetting("departments", $lists["departments"]);
-	CareerDev::setSetting("resources", $lists["resources"]);
+function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadata = FALSE) {
+	CareerDev::setSetting("departments", $lists["departments"], $pid);
+	CareerDev::setSetting("resources", $lists["resources"], $pid);
 	$others = array(
 			"departments" => 999999,
 			"resources" => FALSE,

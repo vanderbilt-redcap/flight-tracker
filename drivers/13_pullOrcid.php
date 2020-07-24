@@ -95,7 +95,7 @@ function pullORCIDs($token, $server, $pid) {
 function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {
     $orcidThreshold = 6;
     $orcidSearchLink = "https://orcid.org/orcid-search/search";
-    $priorMultiples = Application::getSetting("prior_orcids");
+    $priorMultiples = Application::getSetting("prior_orcids", $pid);
     if (!$priorMultiples) {
         $priorMultiples = array();
     }
@@ -111,7 +111,7 @@ function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {
         }
         if (count($recordORCIDs) > count($priorMultiples[$recordId])) {
             $name = $firstnames[$recordId] . " " . $lastnames[$recordId];
-            $name = Links::makeIdentifiersLink($pid, $recordId, Application::getSetting("event_id"), $name);
+            $name = Links::makeIdentifiersLink($pid, $recordId, Application::getSetting("event_id", $pid), $name);
             $orcidLinks = array();
             foreach ($recordORCIDs as $orcid) {
                 $url = "https://orcid.org/" . $orcid;
@@ -130,7 +130,7 @@ function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {
             }
         }
     }
-    CareerDev::setSetting("prior_orcids", $priorMultiples);
+    CareerDev::setSetting("prior_orcids", $priorMultiples, $pid);
     $html .= "<h3>".Links::makeLink($orcidSearchLink, $orcidSearchLink)."</h3>";
     return $html;
 }
