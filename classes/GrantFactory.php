@@ -44,7 +44,17 @@ abstract class GrantFactory {
 	    return count($newNodes);
     }
 
-	abstract public function processRow($row);
+    protected function getProjectIdentifiers($token) {
+        if ($token) {
+            $pid = Application::getPid($token);
+            $event_id = Application::getEventId($token);
+        } else {
+            global $pid, $event_id;
+        }
+        return [$pid, $event_id];
+    }
+
+	abstract public function processRow($row, $token = "");
 
 	protected $name = "";
 	protected $grants = array();
@@ -57,8 +67,8 @@ abstract class GrantFactory {
 class ScholarsGrantFactory extends GrantFactory {
 
 	# get the Scholars' Survey (always nicknamed check) default spec array
-	public function processRow($row) {
-		global $pid, $event_id;
+	public function processRow($row, $token = "") {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= $this->maxGrants; $i++) {
 			if ($row["check_grant$i"."_start"] != "") {
 				$awardno = $row['check_grant'.$i.'_number'];
@@ -97,8 +107,8 @@ class ScholarsGrantFactory extends GrantFactory {
 }
 
 class FollowupGrantFactory extends GrantFactory {
-	public function processRow($row) {
-		global $pid, $event_id;
+	public function processRow($row, $token = "") {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= $this->maxGrants; $i++) {
 			if ($row["followup_grant$i"."_start"] != "") {
 				$awardno = $row['followup_grant'.$i.'_number'];
@@ -137,7 +147,7 @@ class FollowupGrantFactory extends GrantFactory {
 }
 
 class NewmanGrantFactory extends GrantFactory {
-	public function processRow($row) {
+	public function processRow($row, $token = "") {
 		$this->processNewmanData($row);
 		$this->processSheet2($row);
 		$this->processNew2017($row);
@@ -503,8 +513,8 @@ class CoeusGrantFactory extends GrantFactory {
 		return parent::cleanAwardNo($awardNo);
 	}
 
-	public function processRow($row) {
-		global $pid, $event_id;
+	public function processRow($row, $token = "") {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
 		$grant = new Grant($this->lexicalTranslator);
 		$awardNo = self::cleanAwardNo($row['coeus_sponsor_award_number']);
 		$grant->setVariable('original_award_number', $row['coeus_sponsor_award_number']);
@@ -557,9 +567,44 @@ class CoeusGrantFactory extends GrantFactory {
 	}
 }
 
+class Coeus2GrantFactory extends CoeusGrantFactory {
+    public function processRow($row, $token = "") {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
+        $awardNo = self::cleanAwardNo($row['coeus2_agency_grant_number']);
+        $choices = REDCapManagement::getChoices($this->metadata);
+        $grant = new Grant($this->lexicalTranslator);
+        $roleText = $choices['coeus2_role'][$row['coeus2_role']];
+
+        $grant->setNumber($awardNo);
+        $grant->setVariable('source', "coeus2");
+        $grant->setVariable('original_award_number', $row['coeus2_agency_grant_number']);
+        $grant->setVariable('person_name', $this->name);
+        $grant->setVariable('start', REDCapManagement::datetime2Date($row['coeus2_current_period_start']));
+        $grant->setVariable('end', REDCapManagement::datetime2Date($row['coeus2_current_period_end']));
+        $grant->setVariable('title', $row['coeus2_title']);
+        $grant->setVariable('budget', $row['coeus2_current_period_total_funding']);
+        $grant->setVariable('direct_budget', $row['coeus2_current_period_direct_funding']);
+        $grant->setVariable('last_update', $row['coeus2_last_update']);
+        $grant->setVariable('pi_flag', ($roleText == "Principal Investigator") ? "Y" : "N");
+        $grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
+        $grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
+        $grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus2&instance={$row['redcap_repeat_instance']}", "See Grant"));
+        if ($roleText == "Principal Investigator") {
+            $grant->setVariable("role", "PI");
+        } else if ($roleText == "Investigator") {
+            $grant->setVariable("role", "Co-I");
+        } else {
+            $grant->setVariable("role", $roleText);
+        }
+
+        $grant->putInBins();
+        array_push($this->grants, $grant);
+    }
+}
+
 class RePORTERGrantFactory extends GrantFactory {
-	public function processRow($row) {
-		global $pid, $event_id;
+	public function processRow($row, $token = "") {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
 		$awardNo = self::cleanAwardNo($row['reporter_projectnumber']);
 		$grant = new Grant($this->lexicalTranslator);
 		$grant->setVariable('original_award_number', $row['reporter_projectnumber']);
@@ -608,9 +653,9 @@ class RePORTERGrantFactory extends GrantFactory {
 }
 
 class ExPORTERGrantFactory extends GrantFactory {
-	public function processRow($row)
+	public function processRow($row, $token = "")
     {
-        global $pid, $event_id;
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
         $grant = new Grant($this->lexicalTranslator);
         $grant->setVariable('person_name', $row['exporter_pi_names']);
         $grant->setVariable('start', RePORTERGrantFactory::getReporterDate($row['exporter_budget_start']));
@@ -647,8 +692,8 @@ class ExPORTERGrantFactory extends GrantFactory {
 }
 
 class CustomGrantFactory extends GrantFactory {
-	public function processRow($row) {
-		global $pid, $event_id;
+	public function processRow($row, $token = "") {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
 		$awardNo = self::cleanAwardNo($row['custom_number']);
 
 		$grant = new Grant($this->lexicalTranslator);
@@ -685,8 +730,8 @@ class CustomGrantFactory extends GrantFactory {
 }
 
 class PriorGrantFactory extends GrantFactory {
-	public function processRow($row) {
-		global $pid, $event_id;
+	public function processRow($row, $token = "") {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i = 1; $i <= MAX_GRANTS; $i++) {
 			if ($row['summary_award_date_'.$i]) {
 				$grant = new Grant($this->lexicalTranslator);

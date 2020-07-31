@@ -84,7 +84,11 @@ if ($_POST['process'] == "check") {
 		CareerDev::setSetting($lastCheckField, time(), $pid);
 		if (count($additions) + count($changed) > 0) {
 			echo "<script>var missing = ".json_encode($missing).";</script>\n";
-			echo "An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a><br>The following fields will be added: ".(empty($additions) ? "none" : implode(", ", $additions))."<br>The following fields will be changed: ".(empty($changed) ? "none" : implode(", ", $changed));
+            echo "<div id='metadataWarning' class='install-metadata-box install-metadata-box-danger'>
+                <i class='fa fa-exclamation-circle' aria-hidden='true'></i> An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing,".json_encode($this->getUrl("index.php?pid=".IEDEA_PROJECTS)).");'>Click here to install.</a>
+                <ul><li>The following fields will be added: ".(empty($additions) ? "<i>None</i>" : "<strong>".implode(", ", $additions)."</strong>")."</li>
+                <li>The following fields will be changed: ".(empty($changed) ? "<i>None</i>" : "<strong>".implode(", ", $changed)."</strong>")."</li></ul>
+            </div>";
 		}
 	}
 } else if ($_POST['process'] == "install") {

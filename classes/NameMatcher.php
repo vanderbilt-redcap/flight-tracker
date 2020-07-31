@@ -38,12 +38,12 @@ class NameMatcher {
 		}
 		$recordIds = array();
 		for ($i = 0; $i < count($firsts) && $i < count($lasts); $i++) {
-			$myFirst = strtolower($firsts[$i]);
-			$myLast = strtolower($lasts[$i]);
+			$myFirst = self::prepareName($firsts[$i]);
+			$myLast = self::prepareName($lasts[$i]);
 			$found = false;
 			foreach (self::$namesForMatch as $row) {
-				$sFirst = strtolower($row['identifier_first_name']);
-				$sLast = strtolower($row['identifier_last_name']);
+				$sFirst = self::prepareName($row['identifier_first_name']);
+				$sLast = self::prepareName($row['identifier_last_name']);
 				$matchFirst = false;
 				if (preg_match("/".$sFirst."/", $myFirst) || preg_match("/".$myFirst."/", $sFirst)) {
 					$matchFirst = true;
@@ -64,6 +64,12 @@ class NameMatcher {
 		}
 		return $recordIds;
 	}
+
+	private static function prepareName($name) {
+        $name = strtolower($name);
+        $name = preg_replace("/\s+/", "-", $name);
+        return $name;
+    }
 
 	public static function explodeFirstName($first) {
 	    $nodes = preg_split("/\s*\(\s*/", $first);

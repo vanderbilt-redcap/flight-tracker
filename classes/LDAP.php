@@ -27,10 +27,10 @@ class LDAP {
                 $key = self::getNameAssociations($firstName, $lastName);
                 $maxInstance = REDCapManagement::getMaxInstance($rows, $instrument, $recordId);
                 $rows = array_merge($rows, self::getREDCapRows(array_keys($key), array_values($key), $metadata, $recordId, $maxInstance + 1, $repeatingForms));
-                $rows = REDCapManagement::deDupREDCapRows($rows, $recordId, $instrument);
+                $rows = REDCapManagement::deDupREDCapRows($rows, $instrument, $recordId);
             }
         }
-	    return $rows;
+        return $rows;
     }
 
     public static function getREDCapRowsFromUid($uid, $metadata, $recordId, $repeatingForms) {
@@ -40,6 +40,7 @@ class LDAP {
 
     public static function getREDCapRows($types, $values, $metadata, $recordId, $previousMaxInstance = 0, $repeatingForms = []) {
 	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+	    $debug = FALSE;
 	    $hasLDAP = FALSE;
 	    $prefix = "ldap_";
 	    foreach ($metadataFields as $redcapField) {
@@ -61,10 +62,14 @@ class LDAP {
 	        if (in_array($redcapField, $metadataFields)) {
                 $values = self::findField($info, $ldapField);
                 if (count($values) == 0) {
-                    // Application::log("Could not find $ldapField for Record $recordId in LDAP");
+                    if ($debug) {
+                        Application::log("Could not find $ldapField for Record $recordId in LDAP");
+                    }
                 } else if (in_array("ldap", $repeatingForms)) {
                     # multiple
-                    // Application::log("Could have values for Record $recordId in LDAP: " . implode(", ", $values));
+                    if ($debug) {
+                        Application::log("Could have values for Record $recordId in LDAP: " . implode(", ", $values));
+                    }
                     $i = 0;
                     foreach ($values as $value) {
                         if (!isset($rows[$i])) {
@@ -82,7 +87,14 @@ class LDAP {
                     }
                     $rows[0][$redcapField] = $values[0];
                 }
+            } else {
+	            if ($debug) {
+                    Application::log("Could not find $redcapField");
+                }
             }
+        }
+	    if ($debug) {
+	        Application::log("getREDCapRows Returning ".json_encode_with_spaces($rows));
         }
 	    return $rows;
     }
@@ -101,18 +113,24 @@ class LDAP {
 
 	public static function getName($uid) {
         $info = self::getLDAP("uid", $uid);
-        return self::findField($info, "sn")." ".self::findField($info, "givenname");
+        return self::findField($info, "sn", 0)." ".self::findField($info, "givenname", 0);
     }
 
-	public static function getVUNet($first, $last) {
+    public static function getVUNet($first, $last) {
         $key = self::getNameAssociations($first, $last);
-		$info = self::getLDAPByMultiple(array_keys($key), array_values($key));
-		return self::findField($info, "uid");
-	}
+        $info = self::getLDAPByMultiple(array_keys($key), array_values($key));
+        return self::findField($info, "uid", 0);
+    }
 
-	# $info is line from getLDAP
+    public static function getAllVUNets($first, $last) {
+        $key = self::getNameAssociations($first, $last);
+        $info = self::getLDAPByMultiple(array_keys($key), array_values($key));
+        return self::findField($info, "uid");
+    }
+
+    # $info is line from getLDAP
 	# returns array from $info with the field $field
-	public static function findField($info, $field) {
+	public static function findField($info, $field, $idx = "all") {
 		$separator = ";";
 		$values = array();
 		for ($i = 0; $i < $info['count']; $i++) {
@@ -131,7 +149,13 @@ class LDAP {
 			}
 			array_push($values, $value);
 		}
-		return $values;
+		if ($idx == "all") {
+            return $values;
+        } else if (isset($values[$idx])) {
+            return $values[$idx];
+        } else {
+		    throw new \Exception("Could not find index $idx for uid $field");
+        }
 	}
 
 	public static function getFields() {

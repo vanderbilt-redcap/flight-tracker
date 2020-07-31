@@ -165,11 +165,15 @@ class Links {
 		return self::makeRepeatingFormLink($pid, $recordId, $event_id, $text, "exporter", $instance);
 	}
 
-	public static function makeCOEUSLink($pid, $recordId, $event_id, $text, $instance = 1) {
-		return self::makeRepeatingFormLink($pid, $recordId, $event_id, $text, "coeus", $instance);
-	}
+    public static function makeCOEUSLink($pid, $recordId, $event_id, $text, $instance = 1) {
+        return self::makeRepeatingFormLink($pid, $recordId, $event_id, $text, "coeus", $instance);
+    }
 
-	public static function makePublicationsLink($pid, $recordId, $event_id, $text, $instance = 1, $newTarget = FALSE) {
+    public static function makeCOEUS2Link($pid, $recordId, $event_id, $text, $instance = 1) {
+        return self::makeRepeatingFormLink($pid, $recordId, $event_id, $text, "coeus2", $instance);
+    }
+
+    public static function makePublicationsLink($pid, $recordId, $event_id, $text, $instance = 1, $newTarget = FALSE) {
 		return self::makeFormLink($pid, $recordId, $event_id, $text, "citation", $instance, "", $newTarget);
 	}
 

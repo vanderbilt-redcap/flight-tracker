@@ -622,20 +622,20 @@ function startTonight() {
 
 function installMetadata(fields) {
 	var url = getPageUrl("metadata.php");
-	$("#metadataWarning").removeClass("red");
-	$("#metadataWarning").addClass("yellow");
-	$("#metadataWarning").html("Installing...");
+	$("#metadataWarning").removeClass("install-metadata-box-danger");
+	$("#metadataWarning").addClass("install-metadata-box-warning");
+	$("#metadataWarning").html("<em class='fa fa-spinner fa-spin'></em> Installing...");
 	$.post(url, { process: "install", fields: fields }, function(data) {
-		console.log(JSON.stringify(data));
-		$("#metadataWarning").removeClass("yellow");
+		// console.log(JSON.stringify(data));
+		$("#metadataWarning").removeClass("install-metadata-box-warning");
 		if (!data.match(/Exception/)) {
-			$("#metadataWarning").addClass("green");
-			$("#metadataWarning").html("Installation Complete!");
+			$("#metadataWarning").addClass("install-metadata-box-success");
+			$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
 			setTimeout(function() {
 				$("#metadataWarning").fadeOut(500);
 			}, 3000);
 		} else {
-			$("#metadataWarning").addClass("red");
+			$("#metadataWarning").addClass("install-metadata-box-danger");
 			$("#metadataWarning").html("Error in installation! Metadata not updated. "+JSON.stringify(data));
 		}
 	});
@@ -687,7 +687,7 @@ function addPMID(pmid) {
 		var newImg = getNewWranglerImg(newState);
 		var newId = "PMID"+pmid;
 		$('#'+newDiv).append("<div id='"+newId+"' style='margin: 8px 0; min-height: 26px;'></div>");
-		submitPMID(pmid, "#"+newId, "<img align='left' style='margin: 2px; width: 26px; height: 26px;' src='"+newImg+"' alt='"+newState+"' onclick='changeCheckboxValue(this); enqueue();'>", function() { if (enqueue()) { $('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1); } });
+		submitPMID(pmid, "#"+newId, "<img align='left' style='margin: 2px; width: 26px; height: 26px;' src='"+newImg+"' alt='"+newState+"' onclick='changeCheckboxValue(this);'>", function() { if (enqueue()) { $('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1); } });
 	} else if (isNaN(pmid)) {
 		alert("PMID "+pmid+" is not a number!");
 	} else {
@@ -701,7 +701,73 @@ function addPMID(pmid) {
 	}
 }
 
+function changeCheckboxValue(ob) {
+	let divId = $(ob).parent().attr("id")
+	let state = $(ob).attr('alt')
+	let pmid = $(ob).parent().attr('id').replace(/^PMID/, "")
+	let recordId = $("#record_id").val()
+
+	let params = getUrlVars()
+	let hash = params['s']
+
+	let newState = ""
+	let newDiv = ""
+	let oldDiv = ""
+	switch(state) {
+		case "omitted":
+			newState = "checked"
+			newDiv = "notDone"
+			oldDiv = "omitted"
+			break
+		case "unchecked":
+			newState = "checked"
+			break
+		case "checked":
+			newState = "omitted"
+			newDiv = "omitted"
+			oldDiv = "notDone"
+			break
+		default:
+			break
+	}
+	let newImg = getNewWranglerImg(newState);
+	if (newState) {
+		$(ob).attr('alt', newState)
+		if (extmod_base_url) {
+			// on survey page
+			$.post(extmod_base_url+"?prefix=flightTracker&page="+encodeURI("wrangler/certifyPub")+"&pid="+pid, { hash: hash, record: recordId, pmid: pmid, state: newState }, function(html) {
+				console.log(html);
+			})
+		} else {
+			console.log("No External Module base URL")
+		}
+	}
+	if (newImg) {
+		$(ob).attr('src', newImg)
+	}
+	if (newDiv) {
+		let obDiv = $("#"+divId).detach()
+		$(obDiv).appendTo("#"+newDiv)
+		$(obDiv).show()
+		$('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1)
+	}
+	if (oldDiv) {
+		$("#"+oldDiv+"Count").html(parseInt($('#'+oldDiv+'Count').html(), 10) - 1)
+	}
+	// enqueue();
+}
+
 function notAlreadyUsed(pmid) {
 	return ($('#PMID'+pmid).length === 0);
+}
+
+function enqueue() {
+}
+
+function presetValue(name, value) {
+	if (($('[name="'+name+'"]').val() == "") && (value != "")) {
+		$('[name="'+name+'"]').val(value);
+		$('[name="'+name+'___radio"][value="'+value+'"]').attr('checked', true);
+	}
 }
 

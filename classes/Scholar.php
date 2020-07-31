@@ -130,6 +130,22 @@ class Scholar {
 		return $result;
 	}
 
+	public function lookupEmail($rows) {
+	    if ($email = $this->getEmail()) {
+	        return new Result($email, "");
+        }
+        $vars = self::getDefaultOrder("identifier_email");
+        $vars = $this->getOrder($vars, "identifier_email");
+        $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        if ($result->getSource() == "ldap") {
+            if (REDCapManagement::getNumberOfRows($rows, "ldap") > 1) {
+                # cannot differentiate between more than one row
+                return new Result("", "");
+            }
+        }
+        return $result;
+    }
+
 	public function getEmail() {
 		$row = self::getNormativeRow($this->rows);
 		return $row['identifier_email'];
@@ -953,11 +969,17 @@ class Scholar {
             "check_orcid_id" => "scholars",
             "followup_orcid_id" => "followup",
         );
+        $orders["identifier_email"] = array(
+            "check_email" => "scholars",
+            "followup_email" => "followup",
+            "ldap_mail" => "ldap",
+        );
         $orders["summary_primary_dept"] = array(
             "override_department1" => "manual",
             "promotion_department" => "manual",
             "check_primary_dept" => "scholars",
             "vfrs_department" => "vfrs",
+            "ldap_vanderbiltpersonhrdeptnumber" => "ldap",
             "newman_new_department" => "new2017",
             "newman_demographics_department1" => "demographics",
             "newman_data_department1" => "data",
@@ -1046,6 +1068,7 @@ class Scholar {
             "imported_rank" => "manual",
             "followup_academic_rank" => "followup",
             "check_academic_rank" => "scholars",
+            "ldap_vanderbiltpersonjobname" => "ldap",
             "newman_new_rank" => "new2017",
             "newman_demographics_academic_rank" => "demographics",
         );
@@ -1850,6 +1873,7 @@ class Scholar {
             "identifier_left_job_category" => "getJobCategory",
             "identifier_left_department" => "getNewDepartment",
             "identifier_orcid" => "getORCIDResult",
+            "identifier_email" => "lookupEmail",
             "summary_degrees" => "getDegrees",
             "summary_primary_dept" => "getPrimaryDepartment",
             "summary_gender" => "getGender",

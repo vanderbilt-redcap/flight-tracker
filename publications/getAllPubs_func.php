@@ -65,9 +65,9 @@ function getPubs($token, $server, $pid) {
 	unset($redcapData);
 
 	if (CareerDev::getShortInstitution() == "Vanderbilt") {
-		processVICTR($citationIds, $maxInstances, $token, $server);
+		processVICTR($citationIds, $maxInstances, $token, $server, $pid);
 	}
-	processPubMed($citationIds, $maxInstances, $token, $server);
+	processPubMed($citationIds, $maxInstances, $token, $server, $pid);
 	postprocess($token, $server);
 	CareerDev::saveCurrentDate("Last PubMed Download", $pid);
 }
@@ -154,7 +154,7 @@ function reverseArray($ary) {
 	return $newAry;
 }
 
-function processVICTR(&$citationIds, &$maxInstances, $token, $server) {
+function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid) {
     $vunets = reverseArray(Download::vunets($token, $server));
     include "/app001/credentials/con_redcap_ldap_user.php";
 
@@ -203,7 +203,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server) {
     }
 }
 
-function processPubMed(&$citationIds, &$maxInstances, $token, $server) { 
+function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid) {
 	$allLastNames = Download::lastnames($token, $server);
 	$allFirstNames = Download::firstnames($token, $server);
     $allInstitutions = Download::institutions($token, $server);

@@ -298,6 +298,23 @@ class REDCapManagement {
 		return $fields;
 	}
 
+	public static function REDCapTsToPHPTs($redcapTs) {
+	    $year = substr($redcapTs, 0, 4);
+	    $month = substr($redcapTs, 4, 2);
+	    $day = substr($redcapTs, 6, 2);
+	    return strtotime("$year-$month-$day");
+    }
+
+	public static function getNumberOfRows($rows, $instrument) {
+	    $numRows = 0;
+	    foreach ($rows as $row) {
+	        if ($row['redcap_repeat_instrument'] == $instrument) {
+	            $numRows++;
+            }
+        }
+	    return $numRows;
+    }
+
 	public static function isValidIP($str) {
 	    if (preg_match("/^\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b$/", $str)) {
 	        # numeric
@@ -383,6 +400,34 @@ class REDCapManagement {
     public static function getMetadataFieldsToScreen() {
 		return array("required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation");
 	}
+
+	public static function findInData($data, $fields) {
+        if (!is_array($fields)) {
+            $fields = array($fields);
+        }
+
+        foreach ($fields as $field) {
+            if (preg_match("/^coeus_/", $field) || preg_match("/^coeus2_/", $field)) {
+                $values = array();
+                foreach ($data as $row) {
+                    $instance = $row['redcap_repeat_instance'];
+                    if (isset($row[$field]) && ($row[$field] != "")) {
+                        $values[$instance] = preg_replace("/'/", "\\'", $row[$field]);;
+                    }
+                }
+                if (!empty($values)) {
+                    return $values;
+                }
+            } else {
+                foreach ($data as $row) {
+                    if (($row['redcap_repeat_instrument'] == "") && isset($row[$field]) && ($row[$field] != "")) {
+                        return preg_replace("/'/", "\\'", $row[$field]);
+                    }
+                }
+            }
+        }
+        return "";
+    }
 
 	public static function findField($redcapData, $recordId, $field, $instrument = FALSE, $instance = FALSE) {
 	    foreach ($redcapData as $row) {
@@ -484,18 +529,49 @@ class REDCapManagement {
 	    return "$".$value;
     }
 
+    public static function isValidSurvey($pid, $hash) {
+	    if ($hash) {
+            $sql = "select s.project_id AS project_id from redcap_surveys_participants AS p INNER JOIN redcap_surveys AS s ON s.survey_id = p.survey_id WHERE p.hash ='".db_real_escape_string($hash)."' AND s.project_id='".db_real_escape_string($pid)."'";
+            $q = db_query($sql);
+            return (db_num_rows($q) > 0);
+        }
+	    return FALSE;
+    }
+
+    public static function getUserNames($username) {
+        $sql = "select user_firstname, user_lastname from redcap_user_information WHERE username = '".db_real_escape_string($username)."'";
+        $q = db_query($sql);
+        if ($row = db_fetch_assoc($q)) {
+            return [$row['user_firstname'], $row['user_lastname']];
+        }
+        return ["", ""];
+    }
+
     public static function deDupREDCapRows($rows, $instrument, $recordId) {
+	    $debug = FALSE;
 	    $i = 0;
 	    $skip = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance"];
 	    $newRows = [];
 	    $duplicates = [];
+	    if ($debug) {
+            Application::log("deDupREDCapRows A: ".count($rows)." rows");
+        }
 	    foreach ($rows as $row1) {
+            $newRows[$i] = $row1;
 	        $j = 0;
 	        foreach ($rows as $row2) {
+                if ($debug) {
+                    Application::log("deDupREDCapRows B ($i, $j): ".json_encode($duplicates));
+                    Application::log("deDupREDCapRows C ($i, $j, $instrument, $recordId): ".json_encode($row1));
+                    Application::log("deDupREDCapRows D ($i, $j, $instrument, $recordId): ".json_encode($row2));
+                }
 	            if (($i < $j)
                     && !in_array($j, $duplicates) && !in_array($i, $duplicates)
                     && ($row1["redcap_repeat_instrument"] == $instrument) && ($row2["redcap_repeat_instrument"] == $instrument)
                     && ($row1["record_id"] == $recordId) && ($row2["record_id"] == $recordId)) {
+                    if ($debug) {
+                        Application::log("deDupREDCapRows E ($i, $j)");
+                    }
 	                $allMatch = TRUE;
 	                foreach ($row1 as $field => $value) {
                         if (!in_array($field, $skip) && ($row1[$field] != $row2[$field])) {
@@ -503,9 +579,18 @@ class REDCapManagement {
                             break;
                         }
                     }
-                    $newRows[$i] = $row1;
 	                if ($allMatch) {
+                        if ($debug) {
+                            Application::log("deDupREDCapRows F ($i, $j)");
+                        }
                         $duplicates[] = $j;
+                    }
+                } else {
+                    if ($debug) {
+                        Application::log("deDupREDCapRows G ".json_encode($i < $j));
+                        Application::log("deDupREDCapRows H ".json_encode(!in_array($j, $duplicates) && !in_array($i, $duplicates)));
+                        Application::log("deDupREDCapRows I {$row1["redcap_repeat_instrument"]} {$row2["redcap_repeat_instrument"]} $instrument ".json_encode(($row1["redcap_repeat_instrument"] == $instrument) && ($row2["redcap_repeat_instrument"] == $instrument)));
+                        Application::log("deDupREDCapRows J {$row1["record_id"]} {$row2["record_id"]} $recordId ".json_encode(($row1["record_id"] == $recordId) && ($row2["record_id"] == $recordId)));
                     }
                 }
 	            $j++;
@@ -533,7 +618,6 @@ class REDCapManagement {
 		} else {
 			$selectedRows = self::getRowsForFieldsFromMetadata($fields, $newMetadata);
 		}
-		$upload = array();
 		foreach ($selectedRows as $newRow) {
 			if (!in_array($newRow['field_name'], $fieldsToDelete)) {
 				$priorRowField = "record_id";
@@ -565,10 +649,6 @@ class REDCapManagement {
 			}
 		}
         $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
-        if (!empty($upload)) {
-            $feedback = Upload::rows($upload, $token, $server);
-            Application::log("Uploaded ".count($upload)." data rows after merge: ".json_encode($feedback));
-        }
         return $metadataFeedback;
 	}
 
@@ -750,6 +830,15 @@ class REDCapManagement {
 		}
 		return $indexedRedcapData;
 	}
+
+	public static function datetime2Date($datetime) {
+	    if (preg_match("/\s/", $datetime)) {
+	        $nodes = preg_split("\s+", $datetime);
+	        return $nodes[0];
+        }
+	    # date, not datetime
+	    return $datetime;
+    }
 
 	public static function getRowsForRecord($redcapData, $recordId) {
 	    $rows = [];

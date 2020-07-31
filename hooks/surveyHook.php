@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\CitationCollection;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \ExternalModules\ExternalModules;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../Application.php");
@@ -37,6 +38,9 @@ $omitted = $pubs->getCitationCollection("Omitted");
 $headerStyle = "text-align: center; margin: 16px 0; padding: 4px;";
 $html = "";
 $html .= "<script src='".Application::link("js/base.js")."'></script>\n";
+$html .= "<script>
+let extmod_base_url = '".ExternalModules::$BASE_URL."'
+</script>\n";
 $html .= "<h3 class='header toolbar'><font size='+1'>Publications</font></h3>\n";
 
 $html .= "<h4 style='$headerStyle'><span id='notDoneCount'>".$notDone->getCount()."</span> Citations to Review (Check to Confirm as Your Paper)</h4>\n";
@@ -105,7 +109,7 @@ function makeCheckboxes($coll, $img, $divId, $style = "") {
 	$html = "";
 	$html .= "<div id='$divId'$styleFiller>\n";
 	foreach ($coll->getCitations() as $citationObj) {
-		$html .= "<div id='PMID".$citationObj->getPMID()."' style='margin: 8px 0; min-height: 26px;'><img align='left' style='margin: 2px; width: 26px; height: 26px;' src='".Application::link("/wrangler/".$img.".png")."' alt='$img' onclick='changeCheckboxValue(this); enqueue();'> ".$citationObj->getCitationWithLink(FALSE, TRUE)."</div>\n";
+		$html .= "<div id='PMID".$citationObj->getPMID()."' style='margin: 8px 0; min-height: 26px;'><img align='left' style='margin: 2px; width: 26px; height: 26px;' src='".Application::link("/wrangler/".$img.".png")."' alt='$img' onclick='changeCheckboxValue(this);'> ".$citationObj->getCitationWithLink(FALSE, TRUE)."</div>\n";
 	}
 	$html .= "</div>\n";
 	return $html;

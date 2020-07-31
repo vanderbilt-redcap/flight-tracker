@@ -2,18 +2,25 @@
 
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 
 $recordId = $_POST['record'];
 $newPMID = $_POST['pmid'];
 $state = $_POST['state'];
+$hash = $_POST['hash'];
 
 $records = Download::recordIds($token, $server);
 if (!$recordId || !in_array($recordId, $records)) {
     throw new \Exception("Invalid Record");
+}
+
+if (!REDCapManagement::isValidSurvey($pid, $hash)) {
+    throw new \Exception("Invalid Survey");
 }
 
 if ($state == "checked") {

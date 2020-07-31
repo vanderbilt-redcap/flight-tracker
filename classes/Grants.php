@@ -309,8 +309,10 @@ class Grants {
 							$this->priorGrants[] = $grant;
 						}
 					}
-				} else if ($row['redcap_repeat_instrument'] == "coeus") {
-					array_push($gfs, new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+                } else if ($row['redcap_repeat_instrument'] == "coeus") {
+                    array_push($gfs, new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+                } else if ($row['redcap_repeat_instrument'] == "coeus2") {
+                    array_push($gfs, new Coeus2GrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 				} else if ($row['redcap_repeat_instrument'] == "reporter") {
 					array_push($gfs, new RePORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 				} else if ($row['redcap_repeat_instrument'] == "exporter") {
@@ -343,23 +345,25 @@ class Grants {
 
 	public static function getSourceOrderWithLabels() {
 		return [
-				"modify" => "Manual Modifications",
-				"exporter" => "NIH ExPORTER",
-				"reporter" => "Federal RePORTER",
-				"coeus" => "COEUS",
-				"followup" => "Follow-Up Survey",
-				"scholars" => "Initial Scholar's Survey",
-				"custom" => "REDCap Custom Grants",
-				"data" => "Newman Spreadsheet 'data'",
-				"sheet2" => "Newman Spreadsheet 'sheet2'",
-				"new2017" => "Spreadsheet with 2017 Scholars",
-				"expertise" => "Expertise Database",
-				];
+            "modify" => "Manual Modifications",
+            "exporter" => "NIH ExPORTER",
+            "reporter" => "Federal RePORTER",
+            "coeus2" => "COEUS",
+            "coeus" => "COEUS",
+            "followup" => "Follow-Up Survey",
+            "scholars" => "Initial Scholar's Survey",
+            "custom" => "REDCap Custom Grants",
+            "data" => "Newman Spreadsheet 'data'",
+            "sheet2" => "Newman Spreadsheet 'sheet2'",
+            "new2017" => "Spreadsheet with 2017 Scholars",
+            "expertise" => "Expertise Database",
+        ];
 	}
 
 	public static function getSourceOrderForOlderData() {
 		return array(
 				"modify",
+				"coeus2",
 				"coeus",
 				"custom",
 				"reporter",
@@ -1390,6 +1394,18 @@ class Grants {
 		return $row;
 	}
 
+	private static function translateSourcesIntoSourceOrder($field, $value) {
+	    if (preg_match("/_source/", $field) && !preg_match("/sourcetype/", $field)) {
+            $sourceOrder = self::getSourceOrder();
+            if (in_array($value, $sourceOrder)) {
+                if ($value == "coeus2") {
+                    return "coeus";
+                }
+            }
+        }
+	    return $value;
+    }
+
 	public function makeUploadRow() {
 		if ($this->token && $this->server && $this->metadata) {
 		    $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
@@ -1410,6 +1426,7 @@ class Grants {
 					$v = $grant->getREDCapVariables($i);
 					if (SHOW_DEBUG) { Application::log("Grant $i: ".json_encode($v)); }
 					foreach ($v as $key => $value) {
+                        $value = self::translateSourcesIntoSourceOrder($key, $value);
 						if (isset($this->metadata[$key])) {
 							$uploadRow[$key] = $value;
 						} else {
@@ -1428,6 +1445,7 @@ class Grants {
 			for ($grant_i = $i; $grant_i <= MAX_GRANTS; $grant_i++) {
 				$v = $blankGrant->getREDCapVariables($grant_i);
 				foreach ($v as $key => $value) {
+                    $value = self::translateSourcesIntoSourceOrder($key, $value);
 					if (isset($this->metadata[$key])) {
 						$uploadRow[$key] = $value;
 					}
@@ -1436,6 +1454,7 @@ class Grants {
 			$v = $this->getSummaryVariables($this->rows);
 			foreach ($v as $key => $value) {
 				if (isset($this->metadata[$key])) {
+                    $value = self::translateSourcesIntoSourceOrder($key, $value);
 					$uploadRow[$key] = $value;
 				} else {
 					Application::log($key." not found in metadata, but in summary variables");
@@ -1460,8 +1479,9 @@ class Grants {
 	public function uploadGrants() {
 		$uploadRow = $this->makeUploadRow();
 		if (!empty($uploadRow)) {
-			Upload::oneRow($uploadRow, $this->token, $this->server);
+			return Upload::oneRow($uploadRow, $this->token, $this->server);
 		}
+		return [];
 	}
 
 	private function setupTests() {

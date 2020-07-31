@@ -127,13 +127,6 @@ function getDisability($value) {
 ?>
 <script>
 $(document).ready(function() {
-	function presetValue(name, value) {
-		if (($('[name="'+name+'"]').val() == "") && (value != "")) {
-			$('[name="'+name+'"]').val(value);
-			$('[name="'+name+'___radio"][value="'+value+'"]').attr('checked', true);
-		}
-	}
-
 	presetValue("check_name_first", "<?php echo find('identifier_first_name'); ?>");
 	presetValue("check_name_middle", "<?php echo find('identifier_middle'); ?>");
 	presetValue("check_name_last", "<?php echo find('identifier_last_name'); ?>");

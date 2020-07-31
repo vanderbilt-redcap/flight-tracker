@@ -115,13 +115,6 @@ function getCitizenship($value) {
 ?>
 <script>
 $(document).ready(function() {
-	function presetValue(name, value) {
-		if (($('[name="'+name+'"]').val() == "") && (value != "")) {
-			$('[name="'+name+'"]').val(value);
-			$('[name="'+name+'___radio"][value="'+value+'"]').attr('checked', true);
-		}
-	}
-
  	presetValue("followup_orcid_id", "<?php echo find(array('identifier_orcid', 'followup_orcid_id', 'check_orcid_id')); ?>");
  	presetValue("followup_disability", "<?php echo find(array('summary_disability')); ?>");
  	presetValue("followup_disadvantaged", "<?php echo find(array('summary_disadvantaged')); ?>");

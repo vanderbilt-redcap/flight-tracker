@@ -1060,7 +1060,8 @@ class Grant {
 		return array(
 				"modify" => 2,
 				"custom" => 2,
-				"coeus" => 0,
+                "coeus" => 0,
+                "coeus2" => 0,
 				"exporter" => 0,
 				"reporter" => 0,
 				"followup" => 1,
