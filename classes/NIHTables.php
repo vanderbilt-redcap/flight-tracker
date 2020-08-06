@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use function Vanderbilt\FlightTrackerExternalModule\avg;
 use function Vanderbilt\FlightTrackerExternalModule\json_encode_with_spaces;
 
@@ -842,23 +843,28 @@ class NIHTables {
             if ($row['record_id'] == $recordId) {
                 if ($row['redcap_repeat_instrument'] == "position_change") {
                     $date = $row['promotion_in_effect'];
-                    $ts = 0;
                     if ($date && strtotime($date)) {
                         $ts = strtotime($date);
-                    }
 
-                    # Position<br>Department<br>Institution<br>Activity
-                    $descriptions = array();
-                    $descriptions["title"] = $row['promotion_job_title'];
-                    $descriptions["department"] = $row['promotion_department'] ? $choices["promotion_department"][$row["promotion_department"]] : $row['promotion_division'];
-                    $descriptions["institution"] = $row['promotion_institution'];
-                    $descriptions["activity"] = self::translateJobCategoryToActivity($row['promotion_job_category']);
-                    self::fillInBlankValues($descriptions);
-                    $positions[$ts] = implode("<br>", array_values($descriptions));
+                        # Position<br>Department<br>Institution<br>Activity
+                        $descriptions = array();
+                        $descriptions["title"] = $row['promotion_job_title'];
+                        if (($row["promotion_department"] == "999999") && $row["promotion_department_other"]) {
+                            $descriptions["department"] = $row["promotion_department_other"];
+                        } else if ($row['promotion_department']) {
+                            $descriptions["department"] = $choices["promotion_department"][$row["promotion_department"]];
+                        } else {
+                            $descriptions["department"] = $row['promotion_division'];
+                        }
+                        $descriptions["institution"] = $row['promotion_institution'];
+                        $descriptions["activity"] = self::translateJobCategoryToActivity($row['promotion_job_category']);
+                        self::fillInBlankValues($descriptions);
+                        $positions[$ts] = implode("<br>", array_values($descriptions));
+                    }
                 }
             }
         }
-        arsort($positions);
+        asort($positions);
         return array_values($positions);
     }
 
@@ -982,7 +988,7 @@ class NIHTables {
                     if ($isPredoc) {
                         $validGrant = TRUE;
                     } else {
-                        $validGrant = (!in_array($row[$typeField], [1, 2]) && ($i == 1));
+                        $validGrant = (!in_array($row[$typeField], [1, 2]) && ($i != 1));
                     }
                     if ($row[$awardNoField] && $row[$dateField] && $validGrant) {
                         $role = $row[$roleField] ? $row[$roleField] : self::$NA;
@@ -1569,7 +1575,7 @@ class NIHTables {
 				$nihFormatCits = array();
 				foreach ($citations as $citation) {
                     if ($citation->inTimespan($startTs, $endTs)) {
-                        $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId], $firstNames[$recordId]);
+                        $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId], $firstNames[$recordId], CareerDev::isVanderbilt());
                     }
 				}
 				if (count($nihFormatCits) == 0) {

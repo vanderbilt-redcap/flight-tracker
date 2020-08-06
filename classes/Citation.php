@@ -653,9 +653,12 @@ class Citation {
 		return implode(", ", $newAuthorList);
 	}
 
-	public function getNIHFormat($traineeLastName, $traineeFirstName) {
+	public function getNIHFormat($traineeLastName, $traineeFirstName, $includeIDs = FALSE) {
 		$authors = self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList());
 		$citation = $authors.", ".$this->getYear().", ".$this->getVariable("title").", ".$this->getVariable("journal").", ".$this->getVolumeAndPages().".";
+		if ($includeIDs) {
+		    $citation .= " PMID ".$this->getPMID().". PMC ".$this->getPMCWithoutPrefix().".";
+        }
 		return $citation;
 	}
 

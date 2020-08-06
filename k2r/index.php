@@ -3,11 +3,13 @@
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 
@@ -243,7 +245,7 @@ $metadata = Download::metadata($token, $server);
 
 if (isset($_POST['average']) || isset($_POST['list'])) {
 	$myFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_institution", "identifier_left_date");
-	$redcapData = Download::getFilteredREDCapData($token, $server, array_unique(array_merge($summaryFields, $myFields)), $_GET['cohort'], $metadata);
+	$redcapData = Download::getFilteredREDCapData($token, $server, array_unique(array_merge(Application::$summaryFields, $myFields)), $_GET['cohort'], $metadata);
 
 	if (isset($_POST['average'])) {
 		$kLength = '';

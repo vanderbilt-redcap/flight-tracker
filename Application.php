@@ -378,6 +378,7 @@ class Application {
         "promotion_institution",
         "promotion_location",
         "promotion_department",
+        "promotion_department_other",
         "promotion_division",
         "promotion_date",
     );

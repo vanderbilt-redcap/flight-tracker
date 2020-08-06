@@ -476,6 +476,24 @@ class CareerDev {
 		return preg_match("/vanderbilt.edu/", SERVER_NAME);
 	}
 
+	public static function getRepeatingFormsAndLabels() {
+        $formsAndLabels = [
+            "custom_grant" => "[custom_number]",
+            "followup" => "",
+            "position_change" => "",
+            "reporter" => "[reporter_projectnumber]",
+            "exporter" => "[exporter_full_project_num]",
+            "citation" => "[citation_pmid] [citation_title]",
+            "resources" => "[resources_resource]: [resources_date]",
+            "honors_and_awards" => "[honor_name]: [honor_date]",
+        ];
+        if (self::isVanderbilt()) {
+            $formsAndLabels["ldap"] = "[ldap_vanderbiltpersonjobname]";
+            $formsAndLabels["coeus2"] = "[coeus2_award_status]: [coeus2_agency_grant_number]";
+        }
+        return $formsAndLabels;
+    }
+
 	public static function getMenu($menuName) {
 		global $pid;
 		$r = self::getREDCapDir();
@@ -499,7 +517,7 @@ class CareerDev {
 					);
 		}
 		if ($menuName == "Scholars") {
-			return array(
+			return [
 					"Add a New Scholar" => self::link("/addNewScholar.php"),
 					"Scholar Profiles" => self::link("/profile.php"),
 					// DISABLED "Configure an Email" => self::link("/emailMgmt/configure.php"),
@@ -509,8 +527,9 @@ class CareerDev {
 					"Add a New Survey" => self::link("/emailMgmt/add.php"),
 					// "List of Nonrespondents" => self::link("/emailMgmt/noSurvey.php"),
 					"Survey Responses" => self::link("/surveyResponses.php"),
-					"Import Data" => self::link("/import.php"),
-					);
+                    "Import General Data" => self::link("/import.php"),
+                    "Import Positions" => self::link("/bulkImport.php")."&positions",
+					];
 		}
 		if ($menuName == "Dashboards") {
 			return array(
@@ -594,7 +613,7 @@ class CareerDev {
 		if (($menuName == "Wrangle Data") || ($menuName == "Wrangle") || ($menuName == "Wrangler")) {
 			return array(
 					"Add a Custom Grant" => self::link("/customGrants.php"),
-					"Add Custom Grants by Bulk" => self::link("/bulkImport.php"),
+					"Add Custom Grants by Bulk" => self::link("/bulkImport.php")."&grants",
 					"Grant Wrangler" => self::link("/wrangler/index.php"),
 					"Publication Wrangler" => self::link("/wrangler/pubs.php"),
 					"Lexical Translator" => self::link("/lexicalTranslator.php"),

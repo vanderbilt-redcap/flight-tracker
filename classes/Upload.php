@@ -35,14 +35,51 @@ class Upload
         return $mixed;
     }
 
-    public static function deleteForm($token, $server, $pid, $prefix, $recordId) {
+    public static function deleteField($token, $server, $pid, $field, $recordId, $instance = NULL) {
+        $records = Download::recordIds($token, $server);
+        if (Download::isCurrentServer($server)) {
+            if (in_array($recordId, $records)) {
+                $instanceClause = "";
+                if ($instance) {
+                    if ($instance == 1) {
+                        $instanceClause = " AND instance IS NULL";
+                    } else {
+                        $instanceClause = " AND instance = '$instance'";
+                    }
+                }
+                $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name = '$field'".$instanceClause;
+                Application::log("Running SQL $sql");
+                $q = db_query($sql);
+                if ($error = db_error()) {
+                    Application::log("SQL ERROR: " . $error);
+                    throw new \Exception($error);
+                } else {
+                    Application::log("SQL: " . $q->affected_rows . " rows affected");
+                }
+            } else {
+                throw new \Exception("Could not find record!");
+            }
+        } else {
+            throw new \Exception("Wrong server");
+        }
+    }
+
+        public static function deleteForm($token, $server, $pid, $prefix, $recordId, $instance = NULL) {
         $records = Download::recordIds($token, $server);
         if (Download::isCurrentServer($server)) {
             if (in_array($recordId, $records)) {
                 if (!preg_match("/_$/", $prefix)) {
                     $prefix .= "_";
                 }
-                $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name LIKE '$prefix%'";
+                $instanceClause = "";
+                if ($instance) {
+                    if ($instance == 1) {
+                        $instanceClause = " AND instance IS NULL";
+                    } else {
+                        $instanceClause = " AND instance = '$instance'";
+                    }
+                }
+                $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name LIKE '$prefix%'".$instanceClause;
                 Application::log("Running SQL $sql");
                 $q = db_query($sql);
                 if ($error = db_error()) {

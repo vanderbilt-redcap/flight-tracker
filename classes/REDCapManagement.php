@@ -71,7 +71,7 @@ class REDCapManagement {
                 for ($i = 1; $i < count($a); $i++) {
                     $b[] = $a[$i];
                 }
-                $choices[trim($a[0])] = implode(",", $b);
+                $choices[trim($a[0])] = trim(implode(",", $b));
             }
         }
         return $choices;
@@ -620,7 +620,7 @@ class REDCapManagement {
 		}
 		foreach ($selectedRows as $newRow) {
 			if (!in_array($newRow['field_name'], $fieldsToDelete)) {
-				$priorRowField = "record_id";
+				$priorRowField = end($existingMetadata)['field_name'];
 				foreach ($newMetadata as $row) {
 					if ($row['field_name'] == $newRow['field_name']) {
 						break;

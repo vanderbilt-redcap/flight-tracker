@@ -3,78 +3,112 @@
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
+require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/classes/NameMatcher.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/Application.php");
 
-$importFile = "import.csv";
+if (isset($_GET['positions'])) {
+    $importFile = "import_positions.csv";
+    $title = "Positions";
+    $suffix = "&positions";
+    $expectedItems = 10;
+} else if (isset($_GET['grants'])) {
+    $importFile = "import.csv";
+    $title = "Grants";
+    $suffix = "&grants";
+} else {
+    # default
+    $importFile = "import.csv";
+    $title = "Grants";
+    $suffix = "&grants";
+    $expectedItems = 11;
+}
+
 if ($_FILES['bulk']) {
 	$longImportFile = dirname(__FILE__)."/".$importFile;
-	if (verifyFile($_FILES['bulk'], $longImportFile)) {
+	if (verifyFile($_FILES['bulk'], $longImportFile, $expectedItems)) {
 		$errors = array();
-		$upload = array();
 		$lines = readCSV($_FILES['bulk']);
 
-		$lastNames = Download::lastnames($token, $server);
-		$firstNames = Download::firstnames($token, $server);
-		$matchedIndices = array(0);
-		foreach ($lastNames as $recordId => $lastName) {
-			$firstName = strtolower($firstNames[$recordId]);
-			$lastName = strtolower($lastName);
-			$matchedLines = array();
-			$i = 0;
-			foreach ($lines as $line) {
-				if (($firstName == strtolower($line[0])) && ($lastName == strtolower($line[1]))) {
-					array_push($matchedLines, $line);
-					if (!in_array($i, $matchedIndices)) {
-						array_push($matchedIndices, $i);
-					}
-				}
-				$i++;
-			} 
-			if (count($matchedLines) > 0) {
-				$redcapData = Download::fieldsForRecords($token, $server,  array("record_id", "custom_last_update"), array($recordId));
-				$max = 0;
-				foreach ($redcapData as $row) {
-					if (($row['redcap_repeat_instrument'] == "custom_grant") && ($row['redcap_repeat_instance'] > $max)) {
-						$max = $row['redcap_repeat_instance'];
-					}
-				}
-				$next = $max + 1;
-				foreach ($matchedLines as $line) {
-					$uploadRow = array(
-								"record_id" => $recordId,
-								"redcap_repeat_instrument" => "custom_grant",
-								"redcap_repeat_instance" => $next,
-								"custom_title" => $line[2],
-								"custom_number" => $line[3],
-								"custom_type" => translateTypeIntoIndex($line[4]),
-								"custom_org" => $line[5],
-								"custom_recipient_org" => $line[6],
-								"custom_role" => translateRoleIntoIndex($line[7]),
-								"custom_start" => $line[8],
-								"custom_end" => $line[9],
-								"custom_costs" => $line[10],
-								"custom_last_update" => date("Y-m-d"),
-								"custom_grant_complete" => "2",
-								);
-					array_push($upload, $uploadRow);
-					$next++;
-				}
-			}
-		}
+		$metadata = Download::metadata($token, $server);
+		$choices = REDCapManagement::getChoices($metadata);
+		$matchedIndices = [0];
+		$unmatchedLines = [];
+		$maxInstances = [];
 		$i = 0;
-		$unmatchedLines = array();
-		foreach ($lines as $line) {
-			if (!in_array($i, $matchedIndices)) {
-				array_push($unmatchedLines, $i);
-			}
-			$i++;
-		}
+        foreach ($lines as $line) {
+            $firstName = $line[0];
+            $lastName = $line[1];
+            $recordId = NameMatcher::matchName($firstName, $lastName, $token, $server);
+            if ($recordId) {
+                if ($title == "Grants") {
+                    $redcapData = Download::fieldsForRecords($token, $server,  array("record_id", "custom_last_update"), [$recordId]);
+                    if (!$maxInstances[$recordId]) {
+                        $maxInstances[$recordId] = REDCapManagement::getMaxInstance($redcapData, "custom_grant", $recordId);
+                    }
+                } else if ($title == "Positions") {
+                    $redcapData = Download::fieldsForRecords($token, $server,  array("record_id", "promotion_date"), [$recordId]);
+                    if (!$maxInstances[$recordId]) {
+                        $maxInstances[$recordId] = REDCapManagement::getMaxInstance($redcapData, "position_change", $recordId);
+                    }
+                } else {
+                    echo "<p class='red padded'>ERROR! Could not match group!</p>\n";
+                }
+                $maxInstances[$recordId]++;
+                if ($title == "Grants") {
+                    $uploadRow = [
+                        "record_id" => $recordId,
+                        "redcap_repeat_instrument" => "custom_grant",
+                        "redcap_repeat_instance" => $maxInstances[$recordId],
+                        "custom_title" => $line[2],
+                        "custom_number" => $line[3],
+                        "custom_type" => translateTypeIntoIndex($line[4], $choices),
+                        "custom_org" => $line[5],
+                        "custom_recipient_org" => $line[6],
+                        "custom_role" => translateIntoIndex($line[7], $choices, "custom_role"),
+                        "custom_start" => $line[8],
+                        "custom_end" => $line[9],
+                        "custom_costs" => $line[10],
+                        "custom_last_update" => date("Y-m-d"),
+                        "custom_grant_complete" => "2",
+                    ];
+                    $upload[] = $uploadRow;
+                } else if ($title == "Positions") {
+                    list($department, $other) = findDepartment($line[8], $choices, "promotion_department");
+                    $uploadRow = [
+                        "record_id" => $recordId,
+                        "redcap_repeat_instrument" => "position_change",
+                        "redcap_repeat_instance" => $maxInstances[$recordId],
+                        "promotion_in_effect" => $line[2],
+                        "promotion_job_title" => $line[3],
+                        "promotion_job_category" => translateIntoIndex($line[4], $choices, "promotion_job_category"),
+                        "promotion_rank" => translateIntoIndex($line[5], $choices, "promotion_rank"),
+                        "promotion_institution" => $line[6],
+                        "promotion_location" => $line[7],
+                        "promotion_department" => $department,
+                        "promotion_department_other" => $other,
+                        "promotion_division" => $line[9],
+                        "promotion_date" => date("Y-m-d"),
+                        "position_change_complete" => "2",
+                    ];
+                    $upload[] = $uploadRow;
+                } else {
+                    echo "<p class='red padded'>ERROR! Could not match group!</p>\n";
+                    $unmatchedLines[] = $i;
+                }
+            } else if ($i != 0) {
+                $unmatchedLines[] = $i;
+            }
+            $i++;
+        }
 		if (!empty($unmatchedLines)) {
 			echo "<div class='red padded'>\n";
 			echo "<h4>Unmatched Lines!</h4>\n";
@@ -86,9 +120,6 @@ if ($_FILES['bulk']) {
 			echo "</div>\n";
 		} else {
 			$feedback = Upload::rows($upload, $token, $server);
-			foreach (getRecordsFromREDCapData($upload) as $recordId) {
-				\Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($recordId);
-			}
 			if ($feedback['error'])	{
 				echo "<p class='red padded'>ERROR! ".$feedback['error']."</p>\n";
 			} else {
@@ -96,24 +127,24 @@ if ($_FILES['bulk']) {
 			}
 		}
 	} else {
-		echo "<p class='red padded'>ERROR! The file is not in the right format. ".detectFirstError($_FILES['bulk'], $longImportFile)."</p>\n";
+		echo "<p class='red padded'>ERROR! The file is not in the right format. ".detectFirstError($_FILES['bulk'], $longImportFile, $expectedItems)."</p>\n";
 	}
 } else if ($_POST['submit']) {
 	echo "<p class='red padded'>ERROR! The file could not be found!</p>\n";
 }
 ?>
 
-<h1>Import Grants in Bulk</h1>
+<h1>Import <?= $title ?> in Bulk</h1>
 
 <div style='width: 800px; margin: 14px auto;' class='green centered padded'>Please import a CSV (comma delimited) with one row per grant. Use <a href='<?= Application::link($importFile) ?>'>this template</a> to start with. Each line must match the first name and last name (exactly) as specified in the database.</div>
-<form method='POST' action='<?= CareerDev::link("bulkImport.php") ?>' enctype='multipart/form-data'>
+<form method='POST' action='<?= CareerDev::link("bulkImport.php").$suffix ?>' enctype='multipart/form-data'>
 <p class='centered'><input type='file' name='bulk'></p>
 <p class='centered'><input type='submit' name='submit' value='Upload'></p>
 </form>
 
 <?php
-function verifyFile($fileinfo, $importFile) {
-	$error = detectFirstError($fileinfo, $importFile);
+function verifyFile($fileinfo, $importFile, $expectedItems) {
+	$error = detectFirstError($fileinfo, $importFile, $expectedItems);
 	if (!$error) {
 		return TRUE;
 	} else {
@@ -121,7 +152,7 @@ function verifyFile($fileinfo, $importFile) {
 	}
 }
 
-function detectFirstError($fileinfo, $importFile) {
+function detectFirstError($fileinfo, $importFile, $expected) {
 	if (!$fileinfo) {
 		return "No file supplied!";
 	}
@@ -149,17 +180,18 @@ function detectFirstError($fileinfo, $importFile) {
 	}
 
 	$i = 2;
-	$expected = 11;
 	while ($line = fgetcsv($fp)) {
 		if (count($line) != $expected) {
 			return "Line $i has ".count($line)." items! ($expected items expected.)";
 		}
-		if (!inDateFormat($line[8])) {
-			return "The start date {$line[8]} is not in YYYY-MM-DD or MM-DD-YYYY format!";
-		}
-		if (!inDateFormat($line[9])) {
-			return "The end date {$line[9]} is not in YYYY-MM-DD or MM-DD-YYYY format!";
-		}
+		if (preg_match("/import\.csv/", $importFile)) {
+            if (!inDateFormat($line[8])) {
+                return "The start date {$line[8]} is not in YYYY-MM-DD or MM-DD-YYYY format!";
+            }
+            if (!inDateFormat($line[9])) {
+                return "The end date {$line[9]} is not in YYYY-MM-DD or MM-DD-YYYY format!";
+            }
+        }
 		$i++;
 	}
 	fclose($fp);
@@ -226,29 +258,49 @@ function readCSV($fileinfo) {
 	return array();
 }
 
-function translateTypeIntoIndex($type) {
+function translateTypeIntoIndex($type, $allChoices) {
 	if (is_numeric($type)) {
 		return $type;
 	} else {
-		$awardTypes = getAwardTypes();
-		if (isset($awardTypes[$type])) {
-			return $awardTypes[$type];
-		}
-		return "";
+	    return translateIntoIndex($type, $allChoices, "custom_type");
 	}
 }
 
-function translateRoleIntoIndex($role) {
-	$choices = array(
-			"PI" => 1,
-			"Co-PI" => 2,
-			"Co-I" => 3,
-			"Other" => 4,
-			);
-	if (isset($choices[$role])) {
-		return $choices[$role];
-	}
-	return "";
+# returns [$departmentIndex, $otherValue]
+function findDepartment($value, $allChoices, $field) {
+    $choices = $allChoices[$field];
+    $foundIdx = "";
+    foreach ($choices as $idx => $label) {
+        if ($label == $value) {
+            $foundIdx = $idx;
+        }
+    }
+    if ($foundIdx != "") {
+        return [$foundIdx, ""];
+    } else if ($choices["999999"] && $value != "") {
+        # select field with OTHER
+        return ["999999", $value];
+    } else if ($choices && $value != "") {
+        # select field, but no other specified
+        return ["", $value];
+    } else {
+        # no select field
+        return [$value, ""];
+    }
+}
+
+function translateIntoIndex($value, $allChoices, $field) {
+	$choices = $allChoices[$field];
+	foreach ($choices as $idx => $label) {
+	    if ($label == $value) {
+	        return $idx;
+        }
+    }
+	if ($value == "") {
+        return "";
+    } else {
+	    throw new \Exception("Could not find $value in choices: ".json_encode($choices));
+    }
 }
 
 function getRecordsFromREDCapData($redcapData) {

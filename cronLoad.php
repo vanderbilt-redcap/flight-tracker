@@ -32,6 +32,12 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		if ($has['news']) {
 			$manager->addCron("news/getNewsItems_func.php", "getNewsItems", "Friday");
 		}
+        if ($has['coeus2']) {
+            $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday");
+        }
+        if ($has['ldap']) {
+            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Wednesday");
+        }
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
 		$manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
 
@@ -67,6 +73,12 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 		if ($has['news']) {
 			$manager->addCron("news/getNewsItems_func.php", "getNewsItems", $date);
 		}
+        if ($has['coeus2']) {
+            $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", $date);
+        }
+        if ($has['ldap']) {
+            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", $date);
+        }
 
 		$manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", $date);
 		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", $date);
@@ -85,25 +97,27 @@ function checkMetadataForFields($token, $server) {
 	$metadata = Download::metadata($token, $server);
 
 	$vars = array();
-	$vars['coeus'] = FALSE;
+    $vars['coeus2'] = FALSE;
+    $vars['coeus'] = FALSE;
 	$vars['vfrs'] = FALSE;
     $vars['news'] = FALSE;
     $vars['ldap'] = FALSE;
 
+    $regexes = [
+        "/^coeus_/" => "coeus",
+        "/^coeus2_/" => "coeus2",
+        "/^vfrs_/" => "vfrs",
+        "/^ldap_/" => "ldap",
+        "/^summary_news$/" => "news",
+    ];
+
 	foreach ($metadata as $row) {
 		$field = $row['field_name'];
-		if (preg_match("/^coeus_/", $field)) {
-			$vars['coeus'] = TRUE;
-		}
-        if (preg_match("/^vfrs_/", $field)) {
-            $vars['vfrs'] = TRUE;
+		foreach ($regexes as $regex => $setting) {
+            if (!$vars[$setting] && preg_match($regex, $field)) {
+                $vars[$setting] = TRUE;
+            }
         }
-        if (preg_match("/^ldap_/", $field)) {
-            $vars['ldap'] = TRUE;
-        }
-		if ($field == "summary_news") {
-			$vars['news'] = TRUE;
-		}
 	}
 	return $vars;
 }

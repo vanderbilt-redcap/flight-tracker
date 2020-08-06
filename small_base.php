@@ -1200,7 +1200,9 @@ function queueUpInitialEmail($record) {
 			}
 		}
 	} else {
-		throw new \Exception("Could not queue up initial email because the name and email are not specified!");
+	    # make silent because someone might not save name and email
+        Application::log("Could not queue up initial email for Record $record because the name and email are not specified!");
+		// throw new \Exception("Could not queue up initial email for Record $record because the name and email are not specified!");
 	}
 }
 

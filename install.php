@@ -58,20 +58,11 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 		displayInstallHeaders(CareerDev::getModule(), $newToken, $newServer, $projectId, $_POST['title']);
 		echo "<h1>Academic Departments</h1>\n";
 
-		$formsAndLabels = array(
-					"custom_grant" => "[custom_number]",
-					"followup" => "",
-					"position_change" => "",
-					"reporter" => "[reporter_projectnumber]",
-					"exporter" => "[exporter_full_project_num]",
-					"citation" => "[citation_pmid] [citation_title]",
-					"resources" => "[resources_resource]: [resources_date]",
-					"honors_and_awards" => "[honor_name]: [honor_date]",
-					);
+		$formsAndLabels = CareerDev::getRepeatingFormsAndLabels();
 		if ($_POST['coeus']) {
-			$formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
+			// $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
 		}
-		setupRepeatingForms($eventId, $formsAndLabels);
+        REDCapManagement::setupRepeatingForms($eventId, $formsAndLabels);
 
 		$settingFields = array(
 				'institution' => $_POST['institution'],
@@ -145,10 +136,6 @@ function getEventIdForClassical($projectId) {
 
 function getExternalModuleId($prefix) {
 	return REDCapManagement::getExternalModuleId($prefix);
-}
-
-function setupRepeatingForms($eventId, $formsAndLabels) {
-	REDCapManagement::setupRepeatingForms($eventId, $formsAndLabels);
 }
 
 function setupModuleSettings($projectId, $fields) {
