@@ -111,7 +111,7 @@ class Scholar {
 	}
 
 	public function getORCIDResult($rows) {
-		$row = self::getNormativeRow(rows);
+		$row = self::getNormativeRow($rows);
 
 		# by default use identifier; if not specified, get result through default order
 		if ($row['identifier_orcid']) {
