@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.16.2";
+		return "2.17.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -204,7 +204,7 @@ class CareerDev {
 	}
 
 	public static function makeLogo() {
-		return "<img src='".self::link("img/flight_tracker_logo_medium.png")."' alt='Flight Tracker for Scholars'>";
+		return "<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'><img src='".self::link("img/flight_tracker_logo_medium.png")."' alt='Flight Tracker for Scholars'></a>";
 	}
 
 	public static function link($relativeUrl) {

@@ -17,6 +17,10 @@ class Grant {
 		$this->translator = $lexicalTranslator;
 	}
 
+	public function isInternalVanderbiltGrant() {
+        return preg_match("/VUMC\s*\d+/", $this->getNumber());
+    }
+
 	public static function transformToBaseAwardNumber($num) {
 		$num = preg_replace("/^Individual K - Rec\. \d+ /", "", $num);
 		if (preg_match("/^Internal K/", $num)) {
@@ -1056,22 +1060,27 @@ class Grant {
 		return "";
 	}
 
+	public function isSelfReported() {
+	    return ($this->getSourceType() == 1);
+    }
+
 	private static function getSourceTypeTranslation() {
-		return array(
-				"modify" => 2,
-				"custom" => 2,
-                "coeus" => 0,
-                "coeus2" => 0,
-				"exporter" => 0,
-				"reporter" => 0,
-				"followup" => 1,
-				"scholars" => 1,
-				"override" => 2,
-				"manual" => 2,
-				"data" => 2,
-				"sheet2" => 2,
-				"new2017" => 2,
-				);
+		return [
+            "modify" => 2,
+            "custom" => 2,
+            "coeus" => 0,
+            "coeus2" => 0,
+            "exporter" => 0,
+            "reporter" => 0,
+            "ldap" => 0,
+            "followup" => 1,
+            "scholars" => 1,
+            "override" => 2,
+            "manual" => 2,
+            "data" => 2,
+            "sheet2" => 2,
+            "new2017" => 2,
+            ];
 	}
 
 
@@ -1241,11 +1250,16 @@ class Grant {
 		return "N/A";
 	}
 
+	public static function getCoeusSources() {
+	    return ["coeus", "coeus2"];
+    }
+
 	# uses private variable specs
 	# Finds the award type
 	# difficult
 	private function getCurrentType() {
 		$specs = $this->specs;
+		$coeusSources = self::getCoeusSources();
 		$awardNo = $this->getNumber();
 
 		// Application::log($awardNo.": First Pass");
@@ -1261,7 +1275,7 @@ class Grant {
 			return "N/A";
 		} else if (preg_match("/^\d?[Kk][1L]2/", $awardNo)) {
 			if (preg_match("/\d[Kk][1L]2/", $awardNo) || preg_match("/^[Kk][1L]2/", $awardNo) || preg_match("/[Kk][1L]2$/", $awardNo)) {
-				if (($specs['pi_flag'] == "N") && ($specs['source'] == "coeus")) {
+				if (($specs['pi_flag'] == "N") && (in_array($specs['source'], $coeusSources))) {
 					// return "K12/KL2";
 				} else if (($specs['pi_flag'] == "Y") && (in_array($specs['source'], $trainingGrantSources ))) {
 					return "Training Grant Admin";
@@ -1465,6 +1479,15 @@ class Grant {
 		}
 		return $fundingSources;
 	}
+
+	public static function convertGrantTypesToStrings($ary) {
+	    $awardTypes = self::getReverseAwardTypes();
+	    $newAry = [];
+	    foreach ($ary as $item) {
+	        $newAry[] = $awardTypes[$item];
+        }
+	    return $newAry;
+    }
 
 	public static function getAwardTypes() {
 		$awardTypes = array (

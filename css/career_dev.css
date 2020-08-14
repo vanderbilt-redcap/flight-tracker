@@ -117,3 +117,5 @@ p.bordered,div.bordered { border: 1px solid #888; }
 .install-metadata-box-warning{ color: #8a6d3b; background-color: #8dc63f; border-color: #faebcc; }
 .install-metadata-box-success{ color: #3c763d; background-color: #f1f6d6; border-color: #d6e9c6; }
 .install-metadata-box{ padding: 15px; margin-bottom: 20px; border: 1px solid transparent; border-radius: 4px; }
+.oneAtATime input[type=text],.list textarea { font-size: 20px; width: 150px; }
+.list textarea { height: 100px; }

@@ -24,7 +24,6 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		$has = checkMetadataForFields($token, $server);
 
 		$manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
-		$manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "2020-03-05");
 		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", "Tuesday");
 		if ($has['coeus']) {
 			$manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", "Thursday");

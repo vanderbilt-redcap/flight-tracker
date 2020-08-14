@@ -547,7 +547,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	
 		$str .= "<div class='topHeaderWrapper'>\n";
 		$str .= "<div class='topHeader'>\n";
-		$str .= "<div class='topBar' style='float: left; padding-left: 5px;'><img alt='Flight Tracker for Scholars' src='".CareerDev::link("/img/flight_tracker_logo_small.png")."'></div>\n";
+		$str .= "<div class='topBar' style='float: left; padding-left: 5px;'><a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'><img alt='Flight Tracker for Scholars' src='".CareerDev::link("/img/flight_tracker_logo_small.png")."'></a></div>\n";
 		if ($base64 = $this->getBrandLogo()) {
 			$str .= "<div class='topBar' style='float:right;'><img src='$base64' class='brandLogo'></div>\n";
 		} else {
@@ -565,7 +565,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			$str .= "<div class='recessed' style='width: $px"."px;'><a class='nounderline' href='https://projectredcap.org/'>Powered by REDCap</a></div>\n";
 			$str .= "</div>\n";    // bottomBar
 			$str .= "<div class='bottomBar' style='float: right;'><span class='recessed'>funded by</span><br>\n";
-			$str .= "<img src='".CareerDev::link("/img/ctsa.png")."' style='height: 22px;'></div>\n";
+			$str .= "<a href='https://ncats.nih.gov/ctsa'><img src='".CareerDev::link("/img/ctsa.png")."' style='height: 22px;'></a></div>\n";
 			$str .= "</div>\n";    // bottomBar
 			$str .= "</div>\n";    // bottomFooter
 		}

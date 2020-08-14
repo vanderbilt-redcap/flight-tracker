@@ -6,9 +6,11 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\StarBRITE;
 use \Vanderbilt\CareerDevLibrary\LDAP;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
@@ -84,6 +86,7 @@ function processCoeus2($token, $server, $pid) {
             Upload::rows($upload, $token, $server);
         }
     }
+    CareerDev::saveCurrentDate("Last StarBRITE COEUS Pull", $pid);
 }
 
 function allFieldsValid($row, $metadataFields) {

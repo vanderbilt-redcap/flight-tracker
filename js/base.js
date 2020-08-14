@@ -37,142 +37,226 @@ function trimPeriods(str) {
 }
 
 function submitPMC(pmc, textId) {
-	if (pmc) {
-		if (!pmc.match(/PMC/)) {
-			pmc = "PMC"+pmc;
-		}
-		var url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&retmode=xml&id="+pmc;
-		$.ajax({
-			url: url,
-			success: function(xml) {
-				var pmid = "";
-				$(xml).find("pmc-articleset>article>front>article-meta>article-id").each(function() {
-					if ($(this).attr("pub-id-type") == "pmid") {
-						pmid = "PubMed PMID: "+$(this).text()+". ";
-					}
-				});
-				var journal = "";
-				$(xml).find("pmc-articleset>article>front>journal-meta>journal-id").each(function() {
-					if ($(this).attr("journal-id-type") == "iso-abbrev") {
-						journal = $(this).text();
-					}
-				});
-				journal = journal.replace(/\.$/, "");
+	submitPMCs([pmc], textId);
+}
 
-				var year = "";
-				var month = "";
-				var day = "";
-				$(xml).find("pmc-articleset>article>front>article-meta>pub-date").each(function() {
-					var pubType = $(this).attr("pub-type");
-					if ((pubType == "collection") || (pubType == "ppub")) {
-						if ($(this).find("month")) {
-							month = $(this).find("month").text();
-						}
-						if ($(this).find("year")) {
-							year = $(this).find("year").text();
-						}
-						if ($(this).find("day")) {
-							day = " "+$(this).find("day").text();
-						}
-					}
-				});
-				var volume = $(xml).find("pmc-articleset>article>front>article-meta>volume").text();
-				var issue = $(xml).find("pmc-articleset>article>front>article-meta>issue").text();
-
-				var fpage = $(xml).find("pmc-articleset>article>front>article-meta>fpage").text();
-				var lpage = $(xml).find("pmc-articleset>article>front>article-meta>lpage").text();
-				var pages = "";
-				if (fpage && lpage) {
-					pages = fpage + "-" + lpage;
-				}
-
-				var title = $(xml).find("pmc-articleset>article>front>article-meta>title-group>article-title").text();
-				title = title.replace(/\.$/, "");
-
-				var names = [];
-				$(xml).find("pmc-articleset>article>front>article-meta>contrib-group>contrib").each(function(index, elem) {
-					if ($(elem).attr("contrib-type") == "author") {
-						var surname = $(elem).find("name>surname").text();
-						var givenNames = $(elem).find("name>given-names").text();
-						names.push(surname+" "+givenNames);
-					}
-				});
-
-				pmc = pmc + ".";
-				var loc = getLocation(volume, issue, pages);
-				var citation = names.join(",")+". "+title+". "+journal+". "+year+" "+month+day+";"+loc+". "+pmid+pmc;
-				$(textId).val(citation);
-
-			},
-			error: function(e) {
-				$(textId).html("ERROR: "+JSON.stringify(e));
-			}
-		});
+function resetCitationList(textId) {
+	if (isContainer(textId)) {
+		$(textId).html('');
+	} else {
+		$(textId).val('');
 	}
 }
+
+function submitPMCs(pmcs, textId) {
+	if (!Array.isArray(pmcs)) {
+		pmcs = pmcs.split(/\n/);
+	}
+	if (pmcs && Array.isArray(pmcs)) {
+		resetCitationList(textId);
+		for (var i=0; i < pmcs.length; i++) {
+			var pmc = pmcs[i];
+			if (pmc) {
+				if (!pmc.match(/PMC/)) {
+					pmc = 'PMC'+pmc;
+				}
+				var url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&retmode=xml&id='+pmc;
+				$.ajax({
+					url: url,
+					success: function(xml) {
+						var pmid = '';
+						var myPmc = '';
+						var articleLocation = 'pmc-articleset>article>front>';
+						var articleMetaLocation = articleLocation+'article-meta>';
+						$(xml).find(articleMetaLocation+'article-id').each(function() {
+							if ($(this).attr('pub-id-type') === 'pmid') {
+								pmid = 'PubMed PMID: '+$(this).text()+'. ';
+							} else if ($(this).attr('pub-id-type') === 'pmc') {
+								myPmc = 'PMC'+$(this).text()+'.';
+							}
+						});
+						var journal = '';
+						$(xml).find(articleLocation+'journal-meta>journal-id').each(function() {
+							if ($(this).attr('journal-id-type') === 'iso-abbrev') {
+								journal = $(this).text();
+							}
+						});
+						journal = journal.replace(/\.$/, '');
+
+						var year = '';
+						var month = '';
+						var day = '';
+						$(xml).find(articleMetaLocation+'pub-date').each(function() {
+							var pubType = $(this).attr('pub-type');
+							if ((pubType === 'collection') || (pubType === 'ppub')) {
+								if ($(this).find('month')) {
+									month = $(this).find('month').text();
+								}
+								if ($(this).find('year')) {
+									year = $(this).find('year').text();
+								}
+								if ($(this).find('day')) {
+									day = ' '+$(this).find('day').text();
+								}
+							}
+						});
+						var volume = $(xml).find(articleMetaLocation+'volume').text();
+						var issue = $(xml).find(articleMetaLocation+'issue').text();
+
+						var fpage = $(xml).find(articleMetaLocation+'fpage').text();
+						var lpage = $(xml).find(articleMetaLocation+'lpage').text();
+						var pages = '';
+						if (fpage && lpage) {
+							pages = fpage + '-' + lpage;
+						}
+
+						var title = $(xml).find(articleMetaLocation+'title-group>article-title').text();
+						title = title.replace(/\.$/, '');
+
+						var namePrefix = 'name>';
+						var names = [];
+						$(xml).find(articleMetaLocation+'contrib-group>contrib').each(function(index, elem) {
+							if ($(elem).attr('contrib-type') === 'author') {
+								var surname = $(elem).find(namePrefix+'surname').text();
+								var givenNames = $(elem).find(namePrefix+'given-names').text();
+								names.push(surname+' '+givenNames);
+							}
+						});
+
+						var loc = getLocation(volume, issue, pages);
+						var citation = names.join(',')+'. '+title+'. '+journal+'. '+year+' '+month+day+';'+loc+'. '+pmid+myPmc;
+						console.log('citation: '+citation);
+						updateCitationList(textId, '', citation);
+					},
+					error: function(e) {
+						updateCitationList(textId, '', 'ERROR: '+JSON.stringify(e));
+					}
+				});
+			}
+		}
+	}
+}
+
+function updateCitationList(textId, prefixHTML, text) {
+	var citations = getPreviousCitations(textId, prefixHTML);
+	citations.push(text);
+	if (isContainer(textId)) {
+		$(textId).html(citations.join('<br>\n'));
+	} else {
+		$(textId).val(citations.join('\n'));
+	}
+}
+
 function getLocation(volume, issue, pages) {
 	var loc = volume;
 	if (issue) {
-		loc += "("+issue+")";
+		loc += '('+issue+')';
 	}
 	if (pages) {
-		loc += ":"+pages;
+		loc += ':'+pages;
 	}
 	return loc;
 }
 
-function submitPMID(pmid, textId) {
-	if (pmid) {
-		var url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id="+pmid;
-		$.ajax({
-			url: url,
-			success: function(xml) {
-				// similar to publications/getPubMedByName.php
-				// make all changes in two places in two languages!!!
+function submitPMID(pmid, textId, prefixHTML, cb) {
+	submitPMIDs([pmid], textId, prefixHTML, cb);
+}
 
-				var year = $(xml).find("PubmedArticleSet>PubmedArticle>MedlineCitation>Article>Journal>JournalIssue>PubDate>Year").text();
-				var month = $(xml).find("PubmedArticleSet>PubmedArticle>MedlineCitation>Article>Journal>JournalIssue>PubDate>Month").text();
-				var volume = $(xml).find("PubmedArticleSet>PubmedArticle>MedlineCitation>Article>Journal>JournalIssue>Volume").text();
-				var issue = $(xml).find("PubmedArticleSet>PubmedArticle>MedlineCitation>Article>Journal>JournalIssue>Issue").text();
-				var pages = $(xml).find("PubmedArticleSet>PubmedArticle>MedlineCitation>Article>Pagination>MedlinePgn").text();
-				var title = $(xml).find("PubmedArticleSet>PubmedArticle>MedlineCitation>Article>ArticleTitle").text();
-				title = title.replace(/\.$/, "");
 
-				var journal = trimPeriods($(xml).find("PubmedArticleSet>PubmedArticle>MedlineCitation>Article>Journal>ISOAbbreviation").text());
-				journal = journal.replace(/\.$/, "");
-
-				var dayNode = $(xml).find("PubmedArticleSet>PubmedArticle>MedlineCitation>Article>Journal>JournalIssue>PubDate>Day");
-				var day = "";
-				if (dayNode) {
-					day = " "+dayNode.text();
-				}
-
-				var names = [];
-				$(xml).find("PubmedArticleSet>PubmedArticle>MedlineCitation>Article>AuthorList>Author").each(function(index, elem) {
-					var lastName = $(elem).find("LastName");
-					var initials = $(elem).find("Initials");
-					var collective = $(elem).find("CollectiveName");
-					if (lastName && initials) {
-						names.push(lastName.text()+" "+initials.text());
-					} else if (collective) {
-						names.push(collective.text());
-					}
-				});
-
-				var loc = getLocation(volume, issue, pages);
-				var citation = names.join(",")+". "+title+". "+journal+". "+year+" "+month+day+";"+loc+". PubMed PMID: "+pmid+".";
-				console.log("citation: "+citation);
-				if (isContainer(textId)) {
-					$(textId).html(prefixHTML + citation);
-				} else {
-					$(textId).val(citation);
-				}
-			},
-			error: function(e) {
-				$(textId).html("ERROR: "+JSON.stringify(e));
-			}
-		});
+// cb = callback
+function submitPMIDs(pmids, textId, prefixHTML, cb) {
+	if (!Array.isArray(pmids)) {
+		pmids = pmids.split(/\n/);
 	}
+	if (!prefixHTML) {
+		prefixHTML = '';
+	}
+	if (!cb) {
+		cb = function() { };
+	}
+	if (pmids && (Array.isArray(pmids))) {
+		resetCitationList(textId);
+		var numSuccesses = 0;
+		for (var i = 0; i < pmids.length; i++) {
+			var pmid = pmids[i];
+			var url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id='+pmid;
+			// AJAX call will return in uncertain order => append, not overwrite, results
+			$.ajax({
+				url: url,
+				success: function(xml) {
+					// similar to publications/getPubMedByName.php
+					// make all changes in two places in two languages!!!
+
+					var citationLocation = 'PubmedArticleSet>PubmedArticle>MedlineCitation>';
+					var articleLocation = citationLocation + 'Article>';
+					var journalLocation = articleLocation + 'Journal>JournalIssue>';
+
+					var myPmid = $(xml).find(citationLocation+'PMID').text();
+					var year = $(xml).find(journalLocation+'PubDate>Year').text();
+					var month = $(xml).find(journalLocation+'PubDate>Month').text();
+					var volume = $(xml).find(journalLocation+'Volume').text();
+					var issue = $(xml).find(journalLocation+'Issue').text();
+					var pages = $(xml).find(articleLocation+'Pagination>MedlinePgn').text();
+					var title = $(xml).find(articleLocation+'ArticleTitle').text();
+					title = title.replace(/\.$/, '');
+
+					var journal = trimPeriods($(xml).find(articleLocation + 'Journal>ISOAbbreviation').text());
+					journal = journal.replace(/\.$/, '');
+
+					var dayNode = $(xml).find(journalLocation+'PubDate>Day');
+					var day = '';
+					if (dayNode) {
+						day = ' '+dayNode.text();
+					}
+
+					var names = [];
+					$(xml).find(articleLocation+'AuthorList>Author').each(function(index, elem) {
+						var lastName = $(elem).find('LastName');
+						var initials = $(elem).find('Initials');
+						var collective = $(elem).find('CollectiveName');
+						if (lastName && initials) {
+							names.push(lastName.text()+' '+initials.text());
+						} else if (collective) {
+							names.push(collective.text());
+						}
+					});
+
+					var loc = getLocation(volume, issue, pages);
+					var citation = names.join(',')+'. '+title+'. '+journal+'. '+year+' '+month+day+';'+loc+'. PubMed PMID: '+myPmid;
+					console.log('citation: '+citation);
+
+					updateCitationList(textId, prefixHTML, citation);
+					numSuccesses++;
+					if (numSuccesses === pmids.length) {
+						cb();
+					}
+				},
+				error: function(e) {
+					updateCitationList(textId, prefixHTML, 'ERROR: '+JSON.stringify(e));
+				}
+			});
+		}
+	}
+}
+
+function getPreviousCitations(textId, prefixHTML) {
+	var citations = [];
+	if (isContainer(textId)) {
+		citations = $(textId).html().split(/<br>\n/);
+		if ((citations.length === 0) && (prefixHTML !== "")) {
+			citations.push(prefixHTML);
+		}
+	} else {
+		citations = $(textId).val().split(/\n/);
+	}
+
+	var filteredCitations = [];
+	for (var i = 0; i < citations.length; i++) {
+		if (citations[i]) {
+			filteredCitations.push(citations[i]);
+		}
+	}
+	return filteredCitations;
 }
 
 function isContainer(id) {

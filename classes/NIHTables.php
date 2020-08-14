@@ -24,7 +24,7 @@ class NIHTables {
 		} else {
 			$this->metadata = $metadata;
 		}
-		self::$NA = self::makeComment("Not Available");
+		self::$NA = self::makeComment(self::$notAvailable);
 	}
 
 	public static function formatTableNum($tableNum) {
@@ -847,8 +847,14 @@ class NIHTables {
                         $ts = strtotime($date);
 
                         # Position<br>Department<br>Institution<br>Activity
-                        $descriptions = array();
-                        $descriptions["title"] = $row['promotion_job_title'];
+                        $descriptions = [];
+                        if ($row['promotion_job_title']) {
+                            $descriptions["title"] = $row['promotion_job_title'];
+                        } else if ($row['promotion_rank']) {
+                            $descriptions["title"] = $choices['promotion_rank'][$row['promotion_rank']];
+                        } else {
+                            $descriptions["title"] = "";
+                        }
                         if (($row["promotion_department"] == "999999") && $row["promotion_department_other"]) {
                             $descriptions["department"] = $row["promotion_department_other"];
                         } else if ($row['promotion_department']) {
@@ -859,12 +865,19 @@ class NIHTables {
                         $descriptions["institution"] = $row['promotion_institution'];
                         $descriptions["activity"] = self::translateJobCategoryToActivity($row['promotion_job_category']);
                         self::fillInBlankValues($descriptions);
-                        $positions[$ts] = implode("<br>", array_values($descriptions));
+                        $descriptionStr = implode("<br>", array_values($descriptions));
+                        $numNotAvailablesInDescription = substr_count($descriptionStr, self::$notAvailable);
+                        $numNotAvailablesInExistingItem = substr_count($positions[$ts], self::$notAvailable);
+                        # if new timestamps -OR- if less not available comments, then set
+                        if (!isset($positions[$ts])
+                            || ($positions[$ts] && ($numNotAvailablesInDescription < $numNotAvailablesInExistingItem))) {
+                            $positions[$ts] = $descriptionStr;
+                        }
                     }
                 }
             }
         }
-        asort($positions);
+        ksort($positions);
         return array_values($positions);
     }
 
@@ -893,7 +906,7 @@ class NIHTables {
     private static function fillInBlankValues(&$ary) {
 	    foreach ($ary as $key => $value) {
 	        if (!$value) {
-	            $ary[$key] = self::$NA;
+	            $ary[$key] = self::makeComment(self::$notAvailable." (".ucfirst($key).")");
             }
         }
     }
@@ -950,8 +963,12 @@ class NIHTables {
 	}
 
 	private static function getSourceAndType($type) {
-	    $ks = array(1, 2, 3, 4);
-	    $trainingTypes = array(10);
+        $ks = [1, 2, 3, 4];
+        $trainingTypes = [10];
+	    if (!is_numeric($type)) {
+	        $ks = Grant::convertGrantTypesToStrings($ks);
+	        $trainingTypes = Grant::convertGrantTypesToStrings($trainingTypes);
+        }
 	    $source = "Other";
 	    $fundingType = "Other";
         if (in_array($type, $trainingTypes)) {
@@ -973,41 +990,57 @@ class NIHTables {
 	    return array($source, $fundingType);
     }
 
-    private function getGrantSummary($recordId, $table) {
+    # $grantCategory correlates with Grants::getGrants
+    private function getGrantSummary($recordId, $table, $grantCategory = "all") {
         # Subsequent Grant(s)/Role/Year Awarded
+        if ($grantCategory == "all") {
+            $redcapData = Download::records($this->token, $this->server, [$recordId]);
+        } else if ($grantCategory == "prior") {
+            $redcapData = Download::fieldsForRecords($this->token, $this->server, Application::$summaryFields, [$recordId]);
+        } else {
+            throw new \Exception("Unknown category: ".$grantCategory);
+        }
         $isPredoc = self::isPredoc($table);
-        $redcapData = Download::fieldsForRecords($this->token, $this->server, Application::$summaryFields, array($recordId));
-        $grantDescriptions = array();
-        foreach ($redcapData as $row) {
-            if ($row['record_id'] == $recordId) {
-                for ($i = 1; $i <= MAX_GRANTS; $i++) {
-                    $awardNoField = "summary_award_sponsorno_".$i;
-                    $dateField = "summary_award_date_".$i;
-                    $typeField = "summary_award_type_".$i;
-                    $roleField = "summary_award_role_".$i;
-                    if ($isPredoc) {
-                        $validGrant = TRUE;
+        $grants = new Grants($this->token, $this->server, $this->metadata);
+        $grants->setRows($redcapData);
+        if ($grantCategory != "prior") {
+            $grants->compileGrants();
+        }
+        $idx = 1;
+        $grantDescriptions = [];
+        foreach ($grants->getGrants($grantCategory) as $grant) {
+            $awardNo = $grant->getNumber();
+            if ($awardNo && $grant->getVariable("start") && self::includeGrant($grant->getVariable("type"), $isPredoc, $idx)) {
+                $role = $grant->getVariable("role") ? $grant->getVariable("role") : self::$NA;
+                $year = REDCapManagement::getYear($grant->getVariable("start"));
+                list($fundingSource, $fundingType) = self::getSourceAndType($grant->getVariable("type"));
+                if ($fundingSource && $fundingType) {
+                    if ($awardNo == "Peds K12") {
+                        $shortAwardNo = "HD K12";
                     } else {
-                        $validGrant = (!in_array($row[$typeField], [1, 2]) && ($i != 1));
+                        $shortAwardNo = self::abbreviateAwardNo($awardNo, $fundingSource, $fundingType);
                     }
-                    if ($row[$awardNoField] && $row[$dateField] && $validGrant) {
-                        $role = $row[$roleField] ? $row[$roleField] : self::$NA;
-                        $year = REDCapManagement::getYear($row[$dateField]);
-                        list($fundingSource, $fundingType) = self::getSourceAndType($row[$typeField]);
-                        if ($fundingSource  && $fundingType) {
-                            if ($row[$awardNoField] == "Peds K12") {
-                                $shortAwardNo = "HD K12";
-                            } else {
-                                $shortAwardNo = self::abbreviateAwardNo($row[$awardNoField], $fundingSource, $fundingType);
-                            }
-                            $ary = [$shortAwardNo, $role, $year];
-                            array_push($grantDescriptions, implode(" / ", $ary));
-                        }
+                    if (preg_match("/Other/", $shortAwardNo)) {
+                        $shortAwardNo .= " ".self::makeComment("(".$awardNo.")");
                     }
+                    $ary = [$shortAwardNo, $role, $year];
+                    array_push($grantDescriptions, implode(" / ", $ary));
                 }
             }
+            $idx++;
         }
         return implode("<br><br>", $grantDescriptions);
+    }
+
+    private static function includeGrant($type, $isPredoc, $i) {
+        $internalKTypes = [1, 2];
+        if ($isPredoc) {
+            return TRUE;
+        }
+        if (!is_numeric($type)) {
+            $internalKTypes = Grant::convertGrantTypesToStrings($internalKTypes);
+        }
+        return (!in_array($type, $internalKTypes) && ($i != 1));
     }
 
     # best guess
@@ -1495,9 +1528,7 @@ class NIHTables {
 			$endTs = time();
 			$currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
 			if (empty($currentGrants)) {
-                $awardDateFields = Scholar::getAwardDateFields($this->metadata);
-                $awardTypeFields = Scholar::getAwardTypeFields($this->metadata);
-                $summaryData = Download::fieldsForRecords($this->token, $this->server, array_unique(array_merge($awardDateFields, $awardTypeFields, ["record_id"])), [$recordId]);
+                $summaryData = Download::fieldsForRecords($this->token, $this->server, self::getSummaryAwardFields($this->metadata), [$recordId]);
                 $eligibleKs = [1, 2];    // limit to Internal K and K12/KL2
                 $kDates = [];
                 foreach ($summaryData as $row) {
@@ -1534,6 +1565,10 @@ class NIHTables {
                             if ($endTs > time()) {
                                 # in future
                                 $endYear = self::$presentMarker;
+                                $calculatedEndYear = $this->getEndYearOfInternalKOrK12($recordId);
+                                if ($calculatedEndYear && ($calculatedEndYear < $endYear)) {
+                                    $endYear = $calculatedEndYear;
+                                }
                             } else {
                                 # in past
                                 $endYear = REDCapManagement::getYear($row['custom_end']);
@@ -1597,6 +1632,36 @@ class NIHTables {
 		return $data;
 	}
 
+	private static function getSummaryAwardFields($metadata) {
+        $awardDateFields = Scholar::getAwardDateFields($metadata);
+        $awardTypeFields = Scholar::getAwardTypeFields($metadata);
+        return array_unique(array_merge($awardDateFields, $awardTypeFields, ["record_id"]));
+    }
+
+    private function getEndYearOfInternalKOrK12($recordId) {
+	    $date = $this->getEndDateOfInternalKOrK12($recordId);
+	    if ($date) {
+	        $ts = strtotime($date);
+	        return date("Y", $ts);
+        }
+	    return FALSE;
+    }
+
+	private function getEndDateOfInternalKOrK12($recordId) {
+        $summaryData = Download::fieldsForRecords($this->token, $this->server, self::getSummaryAwardFields($this->metadata), [$recordId]);
+        $eligibleKs = [3];
+        foreach ($summaryData as $row) {
+            for ($i = 1; $i <= MAX_GRANTS; $i++) {
+                if ($row['summary_award_type_'.$i] && in_array($row['summary_award_type_'.$i], $eligibleKs) && $row['summary_award_date_'.$i]) {
+                    $oneDay = 24 * 3600;
+                    $ts = strtotime($row['summary_award_date_'.$i]);
+                    return date("Y-m-d", $ts - $oneDay);
+                }
+            }
+        }
+	    return FALSE;
+    }
+
 	private static function combineDates($dates) {
 	    if (count($dates) == 0) {
 	        return [FALSE, FALSE];
@@ -1624,6 +1689,7 @@ class NIHTables {
 	private $pid;
 	private $metadata;
 	private $choices;
+	private static $notAvailable = "Not Available";
 	private static $NA;
 	private static $blank = "[Blank]";
 	private static $presentMarker = "Present";

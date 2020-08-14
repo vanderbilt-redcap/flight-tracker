@@ -130,7 +130,29 @@ class Scholar {
 		return $result;
 	}
 
-	public function lookupEmail($rows) {
+    public function lookupUserid($rows) {
+        return $this->getUserid($rows, "identifier_userid");
+    }
+
+    public function lookupVUNet($rows) {
+        return $this->getUserid($rows, "identifier_vunet");
+    }
+
+    private function getUserid($rows, $field) {
+        $row = self::getNormativeRow($rows);
+	    if ($row[$field]) {
+            return new Result($row[$field], "", "", "", $this->pid);
+        }
+        $vars = self::getDefaultOrder($field);
+        $vars = $this->getOrder($vars, $field);
+        $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        if ($result->getSource() == "ldap") {
+            return $this->getLDAPResult($rows, $field, $result);
+        }
+        return $result;
+    }
+
+    public function lookupEmail($rows) {
 	    if ($email = $this->getEmail()) {
 	        return new Result($email, "");
         }
@@ -138,14 +160,46 @@ class Scholar {
         $vars = $this->getOrder($vars, "identifier_email");
         $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
         if ($result->getSource() == "ldap") {
-            if (REDCapManagement::getNumberOfRows($rows, "ldap") > 1) {
-                # cannot differentiate between more than one row
-                return new Result("", "");
-            }
+            return $this->getLDAPResult($rows, "ldap_mail", $result);
         }
         return $result;
     }
 
+    private function getLDAPResult($rows, $field, $priorResult) {
+        $numRows = REDCapManagement::getNumberOfRows($rows, "ldap");
+        if ($numRows == 1) {
+            return $priorResult;
+        } else if ($numRows == 2) {
+            $validLDAPDomains = ["vumc.org", "vanderbilt.edu"];
+            $numExpected = 2;
+
+            $emails = [];
+            foreach ($rows as $row) {
+                if ($row['redcap_repeat_instrument'] == "ldap") {
+                    $emails[$row[$field]] = explode("@", strtolower($row["ldap_mail"]));
+                }
+            }
+            $keys = array_keys($emails);
+            if ((count($emails) == $numExpected) && (count($emails[$keys[0]]) == $numExpected) && (count($emails[$keys[1]]) == $numExpected)
+                && ($emails[$keys[0]][0] == $emails[$keys[1]][0])
+                && in_array($emails[$keys[0]][1], $validLDAPDomains) && in_array($emails[$keys[1]][1], $validLDAPDomains)) {
+                # same email address; different domain; all domains in $validLDAPDomains
+                if ($emails[$keys[0]][1] == "vumc.org") {
+                    return new Result($keys[0], "ldap", "Computer-Generated", "", $this->pid);
+                } else {
+                    return new Result($keys[1], "ldap", "Computer-Generated", "", $this->pid);
+                }
+            } else {
+                throw new \Exception("For some reason, I found ".count($emails)." when I was expecting $numExpected!");
+            }
+        }
+        else {      // == 0 or > 2
+            # cannot differentiate between more than one row
+            return new Result("", "");
+        }
+    }
+
+    # lookupEmail calculates the email; this simply returns the value that has already been saved
 	public function getEmail() {
 		$row = self::getNormativeRow($this->rows);
 		return $row['identifier_email'];
@@ -382,8 +436,8 @@ class Scholar {
 		$this->setRows($rows);
 	}
 
-	public static function hasDemographics($rows) {
-		$fields = self::getDemographicFields();
+	public static function hasDemographics($rows, $metadata) {
+		$fields = self::getDemographicFields($metadata);
 		$has = array();
 		foreach ($fields as $field => $func) {
 			$has[$field] = FALSE;
@@ -404,7 +458,7 @@ class Scholar {
 	}
 
 	public function process() {
-		if ((count($this->rows) == 1) && self::hasDemographics($this->rows) && ($this->rows[0]['redcap_repeat_instrument'] == "")) {
+		if ((count($this->rows) == 1) && self::hasDemographics($this->rows, $this->metadata) && ($this->rows[0]['redcap_repeat_instrument'] == "")) {
 			$this->loadDemographics();
 		} else {
 			$this->processDemographics();
@@ -973,6 +1027,12 @@ class Scholar {
             "check_email" => "scholars",
             "followup_email" => "followup",
             "ldap_mail" => "ldap",
+        );
+        $orders["identifier_userid"] = array(
+            "ldap_uid" => "ldap",
+        );
+        $orders["identifier_vunet"] = array(
+            "ldap_uid" => "ldap",
         );
         $orders["summary_primary_dept"] = array(
             "override_department1" => "manual",
@@ -1774,7 +1834,7 @@ class Scholar {
 
 	private function loadDemographics() {
 		$this->demographics = array();
-		$fields = self::getDemographicFields();
+		$fields = self::getDemographicFields($this->metadata);
 		$rows = $this->rows;
 
 		foreach ($rows as $row) {
@@ -1858,12 +1918,13 @@ class Scholar {
 		return $this->demographics;
 	}
 
-	private static function getDemographicFields() {
-		return self::getCalculatedFields();
+	private static function getDemographicFields($metadata) {
+		return self::getCalculatedFields($metadata);
 	}
 
 	# add new fields here and getDefaultOrder
-	private static function getCalculatedFields() {
+	private static function getCalculatedFields($metadata) {
+	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		$ary = [
             "summary_coeus_name" => "calculateCOEUSName",
             "summary_survey" => "getSurvey",
@@ -1900,6 +1961,12 @@ class Scholar {
             $ary["summary_study_section_name_".$i] = "getStudySection".$i;
             $ary["summary_other_standing_".$i] = "getStudySectionOther".$i;
         }
+        if (in_array("identifier_userid", $metadataFields)) {
+            $ary["identifier_userid"] = "lookupUserid";
+        } else {
+            $ary["identifier_vunet"] = "lookupVUNet";
+        }
+
 
 		return $ary;
 	}
@@ -2104,7 +2171,7 @@ class Scholar {
 
 	private function processDemographics() {
 		$this->demographics = array();
-		$fields = self::getDemographicFields();
+		$fields = self::getDemographicFields($this->metadata);
 		$rows = $this->rows;
 
 		$metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);

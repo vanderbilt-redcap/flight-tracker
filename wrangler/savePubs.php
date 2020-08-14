@@ -65,20 +65,25 @@ if (isset($_POST['finalized'])) {
         echo json_encode($data);
     }
 } else if (isset($_POST['pmid'])) {
-	$pmid = $_POST['pmid'];
-	$recordId = $_POST['record_id'];
-
-	$maxInstance = Citation::findMaxInstance($token, $server, $recordId);
-	$maxInstance++;
-	$upload = Publications::getCitationsFromPubMed(array($pmid), "manual", $recordId, $maxInstance); 
-
-	if (!empty($upload)) {
-		$feedback = Upload::rows($upload, $token, $server);
-		echo json_encode($feedback);
-	} else {
-		echo json_encode(array("error" => "Upload queue empty!"));
-	}
+    $pmids = [$_POST['pmid']];
+} else if (isset($_POST['pmids'])) {
+    $pmids = $_POST['pmids'];
 } else {
-	$data = array("error" => "You don't have any input! This should never happen.");
-	echo json_encode($data);
+    $data = array("error" => "You don't have any input! This should never happen.");
+    echo json_encode($data);
+}
+
+if ($pmids && !empty($pmids)) {
+    $recordId = $_POST['record_id'];
+    if ($recordId) {
+        $maxInstance = Citation::findMaxInstance($token, $server, $recordId);
+        $maxInstance++;
+        $upload = Publications::getCitationsFromPubMed($pmids, "manual", $recordId, $maxInstance);
+        if (!empty($upload)) {
+            $feedback = Upload::rows($upload, $token, $server);
+            echo json_encode($feedback);
+        } else {
+            echo json_encode(array("error" => "Upload queue empty!"));
+        }
+    }
 }

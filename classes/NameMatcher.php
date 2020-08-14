@@ -41,23 +41,25 @@ class NameMatcher {
 			$myFirst = self::prepareName($firsts[$i]);
 			$myLast = self::prepareName($lasts[$i]);
 			$found = false;
-			foreach (self::$namesForMatch as $row) {
-				$sFirst = self::prepareName($row['identifier_first_name']);
-				$sLast = self::prepareName($row['identifier_last_name']);
-				$matchFirst = false;
-				if (preg_match("/".$sFirst."/", $myFirst) || preg_match("/".$myFirst."/", $sFirst)) {
-					$matchFirst = true;
-				}
-				$matchLast = false;
-				if (preg_match("/".$sLast."/", $myLast) || preg_match("/".$myLast."/", $sLast)) {
-					$matchLast = true;
-				}
-				if ($matchFirst && $matchLast) {
-					$recordIds[] = $row['record_id'];
-					$found = true;
-					break;
-				}
-			}
+			if ($myFirst && $myLast) {
+                foreach (self::$namesForMatch as $row) {
+                    $sFirst = self::prepareName($row['identifier_first_name']);
+                    $sLast = self::prepareName($row['identifier_last_name']);
+                    $matchFirst = false;
+                    if (preg_match("/".$sFirst."/", $myFirst) || preg_match("/".$myFirst."/", $sFirst)) {
+                        $matchFirst = true;
+                    }
+                    $matchLast = false;
+                    if (preg_match("/".$sLast."/", $myLast) || preg_match("/".$myLast."/", $sLast)) {
+                        $matchLast = true;
+                    }
+                    if ($matchFirst && $matchLast) {
+                        $recordIds[] = $row['record_id'];
+                        $found = true;
+                        break;
+                    }
+                }
+            }
 			if (!$found) {
 				$recordIds[] = "";
 			}
@@ -104,10 +106,12 @@ class NameMatcher {
 	# returns recordId that matches
 	# returns "" if no match
 	public static function matchName($first, $last, $token, $server) {
-		$ary = self::matchNames(array($first), array($last), $token, $server);
-		if (count($ary) > 0) {
-			return $ary[0];
-		}
+        if ($first && $last) {
+            $ary = self::matchNames(array($first), array($last), $token, $server);
+            if (count($ary) > 0) {
+                return $ary[0];
+            }
+        }
 		return "";
 	}
 
