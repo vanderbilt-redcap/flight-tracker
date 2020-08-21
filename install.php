@@ -342,7 +342,7 @@ function makeInstallHeaders() {
 	$html .= "<head>\n";
 	$html .= "<title>Flight Tracker for Scholars</title>\n";
 	$html .= "<link rel='icon' href='".CareerDev::link("img/flight_tracker_icon.png")."'>\n";
-	$html .= "<link rel='stylesheet' type='text/css' href='".CareerDev::link("css/career_dev.css")."'>\n";
+	$html .= "<link rel='stylesheet' type='text/css' href='".CareerDev::link("css/career_dev.css")."&".CareerDev::getVersion()."'>\n";
 	$html .= "<script src='".CareerDev::link("js/jquery.min.js")."'></script>\n";
 	$html .= "</head>\n";
 	$html .= "<body>\n";

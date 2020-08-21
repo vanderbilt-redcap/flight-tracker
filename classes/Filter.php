@@ -680,7 +680,7 @@ class Filter {
 
 	public function getRecords($config, $redcapData = array()) {
 		if (empty($redcapData)) {
-			$fields = array_merge(array("record_id"), $config->getFields());
+			$fields = array_merge(array("record_id"), $config->getFields($this->metadata));
 			$redcapData = Download::getIndexedRedcapData($this->token, $this->server, $fields);
 		}
 

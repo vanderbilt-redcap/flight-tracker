@@ -27,6 +27,16 @@ class NIHTables {
 		self::$NA = self::makeComment(self::$notAvailable);
 	}
 
+	private static function makeRemove($recordId, $grantName) {
+	    $url = Application::link("reporting/grants.php")."&record=$recordId&name=".urlencode($grantName);
+	    return "<a onclick='$(this).parent().hide(); $.post(\"$url\", {}, function(html) { console.log(\"Removed \"+html); });' href='javascript:;' class='redtext smallest nounderline'>[x]</a>";
+    }
+
+    private static function makeReset($recordId) {
+	    $url = Application::link("reporting/grants.php")."&record=$recordId&reset";
+        return "<div class='alignright'><a onclick='$.post(\"$url\", {}, function(html) { console.log(\"Reset \"+html); $(\".subsequentGrants_$recordId\").show(); });' href='javascript:;' class='bluetext smallest nounderline'>[reset]</a></div>";
+    }
+
 	public static function formatTableNum($tableNum) {
 		if (strlen($tableNum) > 2) {
 			$front = substr($tableNum, 0, 2);
@@ -1024,12 +1034,32 @@ class NIHTables {
                         $shortAwardNo .= " ".self::makeComment("(".$awardNo.")");
                     }
                     $ary = [$shortAwardNo, $role, $year];
-                    array_push($grantDescriptions, implode(" / ", $ary));
+                    $style = "";
+                    if ($this->isRemovedGrant($recordId, $awardNo)) {
+                        $style = " style='display: none;'";
+                    }
+                    array_push($grantDescriptions, "<p$style class='subsequentGrants_$recordId'>".implode(" / ", $ary)." ".self::makeRemove($recordId, $awardNo)."</p>");
                 }
             }
             $idx++;
         }
-        return implode("<br><br>", $grantDescriptions);
+        if (count($grantDescriptions) > 0) {
+            return implode("", $grantDescriptions).self::makeReset($recordId);
+        }
+        return "";
+    }
+
+    public static function getSubsequentGrantsSettingName() {
+	    return "subsequent_grants";
+    }
+
+    public function isRemovedGrant($recordId, $title) {
+	    $settingName = self::getSubsequentGrantsSettingName();
+	    $setting = Application::getSetting($settingName, $this->pid);
+	    if ($setting && $setting[$recordId]) {
+	        return in_array($title, $setting[$recordId]);
+        }
+	    return FALSE;
     }
 
     private static function includeGrant($type, $isPredoc, $i) {
@@ -1047,35 +1077,7 @@ class NIHTables {
     private static function transformNamesToLastFirst($aryOfNames) {
 	    $transformedNames = array();
 	    foreach ($aryOfNames as $name) {
-            $nodes = array();
-            $lastPosition = -1;
-            $firstPosition = -1;
-            if (preg_match("/,/", $name)) {
-                $nodes = preg_split("/\s*,\s*/", $name);
-                if (count($nodes) >= 2) {
-                    $lastPosition = 0;
-                    $firstPosition = 1;
-                }
-            } else if (preg_match("/\s/", $name)) {
-                $nodes = preg_split("/\s+/", $name);
-                $lastPosition = 1;
-                $firstPosition = 0;
-            }
-
-            $last = "";
-            $first = "";
-            if (($lastPosition >= 0) && ($firstPosition >= 0)) {
-                if (strlen($nodes[$lastPosition]) == 1) {
-                    # switch if old last name is just an initial; assume initials are first names
-                    $a = $firstPosition;
-                    $firstPosition = $lastPosition;
-                    $lastPosition = $a;
-                }
-                if ((count($nodes) > $lastPosition) && (count($nodes) > $firstPosition)) {
-                    $last = $nodes[$lastPosition];
-                    $first = $nodes[$firstPosition];
-                }
-            }
+	        list($first, $last) = NameMatcher::splitName($name);
             array_push($transformedNames, "$last, $first");
         }
 	    return $transformedNames;
@@ -1331,10 +1333,14 @@ class NIHTables {
 			foreach ($row as $field => $value) {
 			    $style = "";
 			    if ($field == "Publication") {
-                    $style = " style='text-align: left;'";
+			        if ($value == self::$blank) {
+                        $style = " class='leftAlignedCell grey'";
+                    } else {
+                        $style = " class='leftAlignedCell'";
+                    }
                 }
                 if ($value == self::$blank) {
-                    array_push($currRow, "<td".$style." class='grey'></td>");
+                    array_push($currRow, "<td".$style."></td>");
                 } else if ($value) {
                     array_push($currRow, "<td".$style.">$value</td>");
                 } else {
@@ -1418,12 +1424,17 @@ class NIHTables {
 		} else {
 			$names = array();
 		}
-		if (self::beginsWith($table, array("8A", "8C"))) {
-		    $filteredNames = array();
-            $part = self::getPartNumber($table);
+		if (self::beginsWith($table, ["8A", "8C", "5B"])) {
+		    $filteredNames = [];
+		    # 1 = all K12s/KL2s; 2 = Friends of Grant; 3 = Recent Graduates (Internal Ks)
+		    if (self::beginsWith($table, ["5B"])) {
+		        $part = 1;
+            } else {
+                $part = self::getPartNumber($table);
+            }
             $k12kl2Type = 2;
             $internalKType = 1;
-            if (in_array($part, array(1, 3))) {
+            if (in_array($part, [1, 3])) {
                 $trainingData = Download::trainingGrants($this->token, $this->server);
                 foreach ($names as $recordId => $name) {
                     $currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
@@ -1501,8 +1512,34 @@ class NIHTables {
 	    return "<span class='action_required'>".$str."</span>";
     }
 
+    private function getStartAndEndFromSummary($recordId, $eligibleKs) {
+        $awardFields = self::getSummaryAwardFields($this->metadata);
+        $summaryData = Download::fieldsForRecords($this->token, $this->server, $awardFields, [$recordId]);
+        $kDates = [];
+        foreach ($summaryData as $row) {
+            for ($i = 1; $i <= MAX_GRANTS; $i++) {
+                if ($row['summary_award_type_' . $i] && in_array($row['summary_award_type_' . $i], $eligibleKs)) {
+                    $kDates[] = ["begin" => $row['summary_award_date_' . $i], "end" => $row['summary_award_end_date_' . $i]];
+                }
+            }
+        }
+        list($beginDate, $endDate) = self::combineDates($kDates);
+        $startYear = ($beginDate ? REDCapManagement::getYear($beginDate) : self::$NA);
+        $startTs = ($beginDate ? strtotime($beginDate) : "");
+        $endTs = ($endDate ? strtotime($endDate) : "");
+        if ($endTs && $endTs > time()) {
+            # in future
+            $endYear = self::$presentMarker;
+        } else {
+            # in past
+            $endYear = ($endDate ? REDCapManagement::getYear($endDate) : self::$presentMarker);
+        }
+        return [$startYear, $startTs, $endYear, $endTs];
+    }
+
 	private function get5Data($table) {
-		$data = array();
+        $eligibleKs = [2];     // K12/KL2 only
+        $data = array();
 		$names = $this->downloadRelevantNames($table);
 		if (!empty($names)) {
 			$lastNames = Download::lastNames($this->token, $this->server);
@@ -1511,10 +1548,9 @@ class NIHTables {
 			$trainingData = Download::trainingGrants($this->token, $this->server);
             $trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");
         }
-		$fields = array_unique(array_merge(Application::$citationFields, array("record_id")));
+		$fields = array_unique(array_merge(Application::getCitationFields($this->metadata), array("record_id")));
 		foreach ($names as $recordId => $name) {
 			$pubData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
-            $facultyMembers = $mentors[$recordId];
 			$traineeName = $name;
 
 			# fill $trainingPeriod, $pastOrCurrent, $startTs, $startYear, $endTs, $endYear
@@ -1528,28 +1564,7 @@ class NIHTables {
 			$endTs = time();
 			$currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
 			if (empty($currentGrants)) {
-                $summaryData = Download::fieldsForRecords($this->token, $this->server, self::getSummaryAwardFields($this->metadata), [$recordId]);
-                $eligibleKs = [1, 2];    // limit to Internal K and K12/KL2
-                $kDates = [];
-                foreach ($summaryData as $row) {
-                    for ($i = 1; $i <= MAX_GRANTS; $i++) {
-                        if ($row['summary_award_type_'.$i] && in_array($row['summary_award_type_'.$i], $eligibleKs)) {
-                            $kDates[] = ["begin" => $row['summary_award_date_'.$i], "end" => $row['summary_award_end_date_'.$i]];
-                        }
-                    }
-                }
-                list($beginDate, $endDate) = self::combineDates($kDates);
-                $startYear = ($beginDate ? REDCapManagement::getYear($beginDate) : self::$NA);
-                $startTs = ($beginDate ? strtotime($beginDate) : "");
-                $endTs = ($endDate ? strtotime($endDate) : "");
-                if ($endTs && $endTs > time()) {
-                    # in future
-                    $endYear = self::$presentMarker;
-                } else {
-                    # in past
-                    $endYear = ($endDate ? REDCapManagement::getYear($endDate) : self::$presentMarker);
-                }
-
+			    list($startYear, $startTs, $endYear, $endTs) = $this->getStartAndEndFromSummary($recordId, $eligibleKs);
             } else {
                 foreach ($currentGrants as $row) {
                     if ($row['redcap_repeat_instrument'] == "custom_grant") {
@@ -1560,7 +1575,7 @@ class NIHTables {
                         } else {
                             $startYear = self::$NA;
                         }
-                        if ($row['custom_end']) {
+                        if ($row['custom_end'] && in_array($row['custom_type'], $eligibleKs)) {
                             $endTs = strtotime($row['custom_end']);
                             if ($endTs > time()) {
                                 # in future
@@ -1574,9 +1589,27 @@ class NIHTables {
                                 $endYear = REDCapManagement::getYear($row['custom_end']);
                             }
                         } else {
-                            $endYear = self::$presentMarker;
+                            list($startYearCopy, $startTsCopy, $endYear, $endTs) = $this->getStartAndEndFromSummary($recordId, $eligibleKs);
+                            if (!$startTs) {
+                                $startTs = $startTsCopy;
+                                $startYear = $startYearCopy;
+                            }
                         }
                     }
+                }
+            }
+
+			if (!$endYear || ($endYear == self::$presentMarker)) {
+			    list($autocalcEndYear, $autocalcEndTs) = $this->autocalculateKLength($currentGrants, $recordId, [1, 2]);
+			    if ($autocalcEndTs && ($autocalcEndTs < time())) {
+			        $endYear = $autocalcEndYear;
+			        $endTs = $autocalcEndTs;
+                }
+                if (!$endYear) {
+                    $endYear = self::$presentMarker;
+                }
+                if ($endYear == self::$presentMarker) {
+                    $endYear = self::$presentMarker;
                 }
             }
 
@@ -1588,13 +1621,17 @@ class NIHTables {
             $trainingPeriod = "$startYear-$endYear";
 
             # track 18 months after the end of the training grant
-			$eighteenMonthsDuration = 18 * 30 * 24 * 3600;
-			$endTs += $eighteenMonthsDuration;
+            if ($endTs) {
+                $eighteenMonthsDuration = 18 * 30 * 24 * 3600;
+                $endTs += $eighteenMonthsDuration;
+            } else {
+                $endTs = time();
+            }
 
 			$pubs = new Publications($this->token, $this->server, $this->metadata);
 			$pubs->setRows($pubData);
 
-            $transformedFacultyNames = self::transformNamesToLastFirst($facultyMembers);
+            $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId]);
             $noPubsRow = array(
                 "Trainee Name" => $traineeName,
                 "Faculty Member" => implode("; ", $transformedFacultyNames),
@@ -1616,13 +1653,13 @@ class NIHTables {
 				if (count($nihFormatCits) == 0) {
                     array_push($data, $noPubsRow);
                 } else {
-                    $transformedFacultyNames = self::transformNamesToLastFirst($facultyMembers);
+                    $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId]);
                     $dataRow = array(
                         "Trainee Name" => $traineeName,
                         "Faculty Member" => implode("; ", $transformedFacultyNames),
                         "Past or Current Trainee" => $pastOrCurrent,
                         "Training Period" => $trainingPeriod,
-                        "Publication" => implode("<br>", $nihFormatCits),
+                        "Publication" => "<p class='citation'>".implode("</p><p class='citation'>", $nihFormatCits)."</p>",
                     );
                     array_push($data, $dataRow);
 
@@ -1631,6 +1668,52 @@ class NIHTables {
 		}
 		return $data;
 	}
+
+	private function autocalculateKLength($currentGrants, $recordId, $eligibleKs) {
+	    foreach ($currentGrants as $row) {
+            $startDate = $row['custom_start'];
+            $type = $row['custom_type'];
+            if ($startDate && $type && in_array($type, $eligibleKs)) {
+                return self::transformStartAndTypeToEnd($startDate, $type);
+            }
+        }
+
+	    $summaryData = Download::fieldsForRecords($this->token, $this->server, self::getSummaryAwardFields($this->metadata), [$recordId]);
+        $row = REDCapManagement::getNormativeRow($summaryData);
+        $offTrainingStartDate = FALSE;
+        $offTrainingTypes = [3, 5, 6];
+        $transformedEnd = FALSE;
+        for ($i = 1; $i <= MAX_GRANTS; $i++) {
+            $startDate = $row["summary_award_date_".$i];
+            $type = $row["summary_award_type_".$i];
+            if (!$transformedEnd && $startDate && $type && in_array($type, $eligibleKs)) {
+                $transformedEnd = self::transformStartAndTypeToEnd($startDate, $type);
+            }
+            if (!$offTrainingStartDate && $row['summary_award_type_'.$i] && in_array($row['summary_award_type_'.$i], $offTrainingTypes)) {
+                $offTrainingStartDate = $row['summary_award_date_'.$i];
+            }
+        }
+
+        if ($offTrainingStartDate) {
+            $offTrainingStartTs = strtotime($offTrainingStartDate);
+            $oneDay = 24 * 3600;
+            $endTs = $offTrainingStartTs - $oneDay;
+            $endDate = date("Y-m-d", $endTs);
+            return [$endDate, $endTs];
+        }
+        if ($transformedEnd) {
+            return $transformedEnd;
+        }
+	    return [self::$presentMarker, FALSE];
+    }
+
+    private static function transformStartAndTypeToEnd($startDate, $type) {
+        $yearLength = Grant::autocalculateGrantLength($type);
+        $endDate = REDCapManagement::addYears($startDate, $yearLength);
+        $endTs = strtotime($endDate);
+        $endYear = date("Y", $endTs);
+        return [$endYear, $endTs];
+    }
 
 	private static function getSummaryAwardFields($metadata) {
         $awardDateFields = Scholar::getAwardDateFields($metadata);
@@ -1648,7 +1731,8 @@ class NIHTables {
     }
 
 	private function getEndDateOfInternalKOrK12($recordId) {
-        $summaryData = Download::fieldsForRecords($this->token, $this->server, self::getSummaryAwardFields($this->metadata), [$recordId]);
+	    $awardFields = self::getSummaryAwardFields($this->metadata);
+        $summaryData = Download::fieldsForRecords($this->token, $this->server, $awardFields, [$recordId]);
         $eligibleKs = [3];
         foreach ($summaryData as $row) {
             for ($i = 1; $i <= MAX_GRANTS; $i++) {

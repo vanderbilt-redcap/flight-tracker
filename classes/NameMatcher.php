@@ -155,14 +155,12 @@ class NameMatcher {
 			return array($nodes[1], $nodes[0]);
 		} else if (count($nodes) == 1) {
 			$nodes = preg_split("/\s+/", $name);
-			if (count($nodes) > 2) {
-			    if (strlen($nodes[1]) <= 2) {
-                    return array($nodes[0], $nodes[2]);
-                } else {
-                    return array($nodes[0], $nodes[1]);
-                }
-            } else if (count($nodes) == 2) {
+            if (count($nodes) == 2) {
                 return array($nodes[0], $nodes[1]);
+            } else if (count($nodes) == 3) {
+                return array($nodes[0] . " " . $nodes[1], $nodes[2]);
+            } else if (count($nodes) == 4) {
+                return array($nodes[0]." ".$nodes[1]." ".$nodes[2], $nodes[3]);
 			} else if (count($nodes) == 1) {
 				return array($nodes[0], "");
 			} else {

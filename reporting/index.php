@@ -67,10 +67,10 @@ if (($pid == 66635) && preg_match("/redcap.vanderbilt.edu/", $server)) {
     $currentUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
     if (isset($_GET['appointments'])) {
         $url = preg_replace("/\&appointments/", "", $currentUrl);
-        // echo "<p class='centered'><a href='$url'>View All Post-Docs</a></p>\n";
+        echo "<p class='centered'><a href='$url'>View All Post-Docs</a></p>\n";
     } else {
         $url = $currentUrl . "&appointments";
-        // echo "<p class='centered'><a href='$url'>View Post-Docs by Appointment-Only</a></p>\n";
+        echo "<p class='centered'><a href='$url'>View Post-Docs by Appointment-Only</a></p>\n";
     }
 }
 

@@ -7,10 +7,11 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 
+$metadata = Download::metadata($token, $server);
 $recordIds = Download::recordIds($token, $server);
 $names = Download::names($token, $server);
 foreach ($recordIds as $recordId) {
-    $recordData = Download::fieldsForRecords($token, $server, Application::$citationFields, [$recordId]);
+    $recordData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), [$recordId]);
     $dupInstances = [];
     $pmids = [];
     $invalidPMIDs = [];

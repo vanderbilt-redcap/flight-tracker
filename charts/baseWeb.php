@@ -52,12 +52,12 @@ function makeHeadersOfTables($type) {
 <title>Flight Tracker for Scholars</title>
 <script src='<?= CareerDev::link("/js/jquery.min.js") ?>'></script>
 <script src='<?= CareerDev::link("/js/jquery-ui.min.js") ?>'></script>
-<script src='<?= CareerDev::link("/js/base.js") ?>'></script>
-<script src='<?= CareerDev::link("/js/autocomplete.js") ?>'></script>
+<script src='<?= CareerDev::link("/js/base.js")."&".CareerDev::getVersion() ?>'></script>
+<script src='<?= CareerDev::link("/js/autocomplete.js")."&".CareerDev::getVersion() ?>'></script>
 <link rel="icon" type="image/png" href="<?= CareerDev::link("/img/flight_tracker_icon.png") ?>">
 <link rel="stylesheet" href="<?= CareerDev::link("/css/jquery-ui.css") ?>">
 <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous">
-<link rel="stylesheet" href="<?= CareerDev::link("/css/career_dev.css") ?>">
+<link rel="stylesheet" href="<?= CareerDev::link("/css/career_dev.css")."&".CareerDev::getVersion() ?>">
 <?= CareerDev::makeBackgroundCSSLink() ?>
 
 <script>

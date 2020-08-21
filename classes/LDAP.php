@@ -315,7 +315,7 @@ class LdapLookup {
 	  * @param $entry array
 	  * returns string
 	  */
-	private static function getUID($entry) {
+	public static function getUID($entry) {
 		foreach ($entry as $var => $results) {
 			if ($var == "uid") {
 				if (isset($results['count'])) {

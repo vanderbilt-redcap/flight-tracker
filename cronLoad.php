@@ -40,6 +40,9 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
 		$manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
 
+        if (date("d") == "18") {
+            $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"));
+        }
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday");
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday");
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday");

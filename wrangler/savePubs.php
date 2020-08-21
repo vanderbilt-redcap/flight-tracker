@@ -15,13 +15,15 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
 
+$metadata = Download::metadata($token, $server);
+
 if (isset($_POST['finalized'])) {
     $newFinalized = json_decode($_POST['finalized']);
     $newOmissions = json_decode($_POST['omissions']);
     $newResets = json_decode($_POST['resets']);
     $recordId = $_POST['record_id'];
 
-    $redcapData = Download::fieldsForRecords($token, $server, Application::$citationFields, array($recordId));
+    $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($recordId));
 
     $priorPMIDs = [];
     $upload = array();
@@ -49,7 +51,7 @@ if (isset($_POST['finalized'])) {
                 # new citation
                 $maxInstance = Citation::findMaxInstance($token, $server, $recordId, $redcapData);
                 $maxInstance++;
-                $uploadRows = Publications::getCitationsFromPubMed(array($pmid), "manual", $recordId, $maxInstance);
+                $uploadRows = Publications::getCitationsFromPubMed(array($pmid), $metadata,"manual", $recordId, $maxInstance);
                 array_push($priorPMIDs, $pmid);
                 foreach ($uploadRows as $uploadRow) {
                     array_push($upload, $uploadRow);
@@ -78,7 +80,7 @@ if ($pmids && !empty($pmids)) {
     if ($recordId) {
         $maxInstance = Citation::findMaxInstance($token, $server, $recordId);
         $maxInstance++;
-        $upload = Publications::getCitationsFromPubMed($pmids, "manual", $recordId, $maxInstance);
+        $upload = Publications::getCitationsFromPubMed($pmids, $metadata, "manual", $recordId, $maxInstance);
         if (!empty($upload)) {
             $feedback = Upload::rows($upload, $token, $server);
             echo json_encode($feedback);

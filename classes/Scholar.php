@@ -147,7 +147,7 @@ class Scholar {
         $vars = $this->getOrder($vars, $field);
         $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
         if ($result->getSource() == "ldap") {
-            return $this->getLDAPResult($rows, $field, $result);
+            return $this->getLDAPResult($rows, "ldap_uid", $result);
         }
         return $result;
     }
@@ -180,17 +180,29 @@ class Scholar {
                 }
             }
             $keys = array_keys($emails);
-            if ((count($emails) == $numExpected) && (count($emails[$keys[0]]) == $numExpected) && (count($emails[$keys[1]]) == $numExpected)
-                && ($emails[$keys[0]][0] == $emails[$keys[1]][0])
-                && in_array($emails[$keys[0]][1], $validLDAPDomains) && in_array($emails[$keys[1]][1], $validLDAPDomains)) {
-                # same email address; different domain; all domains in $validLDAPDomains
-                if ($emails[$keys[0]][1] == "vumc.org") {
-                    return new Result($keys[0], "ldap", "Computer-Generated", "", $this->pid);
+            if (count($emails) == $numExpected) {
+                if ((count($emails[$keys[0]]) == $numExpected) && (count($emails[$keys[1]]) == $numExpected)) {
+                    if ($emails[$keys[0]][0] == $emails[$keys[1]][0]) {
+                        if (in_array($emails[$keys[0]][1], $validLDAPDomains) && in_array($emails[$keys[1]][1], $validLDAPDomains)) {
+                            # same email address; different domain; all domains in $validLDAPDomains
+                            if ($emails[$keys[0]][1] == "vumc.org") {
+                                return new Result($keys[0], "ldap", "Computer-Generated", "", $this->pid);
+                            } else {
+                                return new Result($keys[1], "ldap", "Computer-Generated", "", $this->pid);
+                            }
+                        } else {
+                            throw new \Exception("Invalid domain: ".$emails[$keys[0]][1]." and ".$emails[$keys[1]][1]);
+                        }
+                    } else {
+                        # do not throw exception because this could still be a valid pull; treat as if there were 3+ results
+                        Application::log("Different emails: ".$emails[$keys[0]][0]." and ".$emails[$keys[1]][0]);
+                        return new Result("", "");
+                    }
                 } else {
-                    return new Result($keys[1], "ldap", "Computer-Generated", "", $this->pid);
+                    throw new \Exception("For some reason, I found parts (".count($emails[$keys[0]])." and ".count($emails[$keys[1]]).") when I was expecting $numExpected!");
                 }
             } else {
-                throw new \Exception("For some reason, I found ".count($emails)." when I was expecting $numExpected!");
+                throw new \Exception("For some reason, I found ".count($emails)." emails when I was expecting $numExpected!");
             }
         }
         else {      // == 0 or > 2
@@ -775,12 +787,7 @@ class Scholar {
 	}
 
 	private static function getNormativeRow($rows) {
-		foreach ($rows as $row) {
-			if (($row['redcap_repeat_instrument'] == "") && ($row['redcap_repeat_instance'] == "")) {
-				return $row;
-			}
-		}
-		return array();
+	    return REDCapManagement::getNormativeRow($rows);
 	}
 
 	private static function getResultForPrefices($prefices, $row, $suffix, $pid = "") {
@@ -1948,7 +1955,7 @@ class Scholar {
             "summary_current_start" => "getCurrentAppointmentStart",
             "summary_current_tenure" => "getTenureStatus",
             "summary_urm" => "getURMStatus",
-            // ??? "summary_wos_h_index" => "getWoSHIndex",
+            "summary_wos_h_index" => "getWoSHIndex",
             "summary_disability" => "getDisabilityStatus",
             "summary_disadvantaged" => "getDisadvantagedStatus",
             "summary_training_start" => "getTrainingStart",

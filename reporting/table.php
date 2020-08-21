@@ -25,4 +25,7 @@ if ($tableNum != "Common Metrics") {
 }
 echo "<p class='centered max-width'>A tool to expedite reporting to the NIH, this table should be considered <b>preliminary</b> and requiring manual verification.$note</p>";
 echo "<h2>".NIHTables::getTableHeader($tableNum)."</h2>\n";
+if ($_GET['cohort']) {
+    echo "<h3>Cohort ".$_GET['cohort']."</h3>\n";
+}
 echo $table->getHTML($tableNum);

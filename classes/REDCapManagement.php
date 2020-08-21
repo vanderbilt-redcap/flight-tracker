@@ -95,6 +95,52 @@ class REDCapManagement {
 		return $repeatingForms;
 	}
 
+	public static function filterMetadataForForm($metadata, $instrument) {
+	    $filteredMetadata = [];
+	    foreach ($metadata as $row) {
+	        if ($row['form_name'] == $instrument) {
+	            $filteredMetadata[] = $row;
+            }
+        }
+	    return $filteredMetadata;
+    }
+
+	public static function makeConjunction($list) {
+	    if (count($list) == 1) {
+            return $list[0];
+        } else if (count($list) == 2) {
+	        return $list[0]." and ".$list[1];
+        } else {
+	        $lastElem = $list[count($list) - 2].", and ".$list[count($list) - 1];
+	        $elems = [];
+	        for ($i = 0; $i < count($list) - 2; $i++) {
+	            $elems[] = $list[$i];
+            }
+	        $elems[] = $lastElem;
+	        return implode(", ", $elems);
+        }
+    }
+
+	public static function stripHTML($htmlStr) {
+        return preg_replace("/<[^>]+>/", "", $htmlStr);
+    }
+
+    public static function formatMangledText($str) {
+	    return utf8_decode($str);
+    }
+
+	public static function getNormativeRow($rows) {
+        foreach ($rows as $row) {
+            if (!isset($row['redcap_repeat_instrument']) && !isset($row['redcap_repeat_instance'])) {
+                return $row;
+            }
+            if (($row['redcap_repeat_instrument'] == "") && ($row['redcap_repeat_instance'] == "")) {
+                return $row;
+            }
+        }
+        return [];
+    }
+
 	public static function getDifferencesInArrays($ary1, $ary2) {
 	    if (self::arraysEqual($ary1, $ary2)) {
 	        return "";
@@ -868,7 +914,37 @@ class REDCapManagement {
         return FALSE;
     }
 
-	public function setupRepeatingForms($eventId, $formsAndLabels) {
+    public static function makeHiddenInputs($params) {
+        $items = [];
+        foreach ($params as $key => $value) {
+            $html = "<input type='hidden' id='$key' name='$key'";
+            if ($value !== "") {
+                $html .= " value='$value'";
+            }
+            $html .= ">";
+            $items[] = $html;
+        }
+        return implode("", $items);
+    }
+
+    public static function splitURL($fullURL) {
+        list($url, $paramList) = explode("?", $fullURL);
+        $pairs = explode("&", $paramList);
+        $params = [];
+        foreach ($pairs as $pair) {
+            $items = explode("=", $pair);
+            if (count($items) == 2) {
+                $params[$items[0]] = $items[1];
+            } else if (count($items) == 1) {
+                $params[$items[0]] = "";
+            } else {
+                throw new \Exception("This should never happen. A GET parameter has ".count($items)." items.");
+            }
+        }
+        return [$url, $params];
+    }
+
+    public function setupRepeatingForms($eventId, $formsAndLabels) {
 		$sqlEntries = array();
 		foreach ($formsAndLabels as $form => $label) {
 			array_push($sqlEntries, "($eventId, '".db_real_escape_string($form)."', '".db_real_escape_string($label)."')");

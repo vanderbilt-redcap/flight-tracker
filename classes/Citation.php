@@ -15,16 +15,21 @@ require_once(dirname(__FILE__)."/../Application.php");
 
 class CitationCollection {
 	# type = [ Final, New, Omit ]
-	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $choices = array()) {
+	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = array()) {
 		$this->token = $token;
 		$this->server = $server;
 		$this->citations = array();
+		if (empty($metadata)) {
+		    $this->metadata = Download::metadata($token, $server);
+        } else {
+            $this->metadata = $metadata;
+        }
 		if (empty($redcapData)) {
-			$redcapData = Download::fieldsForRecords($token, $server, Application::$citationFields, array($recordId));
+			$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($this->metadata), array($recordId));
 		}
 		foreach ($redcapData as $row) {
 			if (($row['redcap_repeat_instrument'] == "citation") && ($row['record_id'] == $recordId)) {
-				$c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $choices);
+				$c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata);
 				if ($c->getType() == $type) {
 					array_push($this->citations, $c);
 				}
@@ -158,6 +163,17 @@ class CitationCollection {
 		return $str;
 	}
 
+	public function filterForTimespan($startTs, $endTs) {
+	    $newCitations = [];
+	    foreach ($this->getCitations() as $citation) {
+	        $ts = $citation->getTimestamp();
+	        if (($ts >= $startTs) && ($ts <= $endTs)) {
+	            $newCitations[] = $citation;
+            }
+        }
+	    $this->citations = $newCitations;
+    }
+
 	public function getCount() {
 		return count($this->citations);
 	}
@@ -165,15 +181,18 @@ class CitationCollection {
 	private $citations = array();
 	private $token = "";
 	private $server = "";
+	private $metadata = [];
 }
 
 class Citation {
-	public function __construct($token, $server, $recordId, $instance, $row = array(), $choices = array()) {
+	public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array()) {
 		$this->recordId = $recordId;
 		$this->instance = $instance;
 		$this->token = $token;
 		$this->server = $server;
 		$this->origRow = $row;
+		$this->metadata = $metadata;
+		$choices = REDCapManagement::getChoices($metadata);
 
 		if (isset($choices["citation_source"])) {
 			$this->sourceChoices = $choices["citation_source"];
@@ -188,9 +207,9 @@ class Citation {
 		return 26;
 	}
 
-	public static function findMaxInstance($token, $server, $recordId, $redcapData = array()) {
+	public static function findMaxInstance($token, $server, $recordId, $redcapData = array(), $metadata = []) {
 		if (empty($redcapData)) {
-			$redcapData = Download::fieldsForRecords($token, $server, Application::$citationFields, array($recordId));
+			$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields(metadata), array($recordId));
 		}
 		$maxInstance = 0;
 		$instrument = "citation";
@@ -447,7 +466,7 @@ class Citation {
 	}
 
 	private function downloadData() { 
-		$redcapData = Download::fieldsForRecords($this->token, $this->server, Application::$citationFields, array($this->getRecordId()));
+		$redcapData = Download::fieldsForRecords($this->token, $this->server, Application::getCitationFields($this->metadata), array($this->getRecordId()));
 		foreach ($redcapData as $row) {
 			if (($row['record_id'] == $this->getRecordId()) && ($row['redcap_repeat_instrument'] == "citation") && ($row['redcap_repeat_instance'] == $this->getInstance())) {
 				foreach ($row as $field => $value) {
@@ -463,7 +482,10 @@ class Citation {
 	public function getVariable($var) {
 		$var = strtolower(preg_replace("/^citation_/", "", $var));
 		if (isset($this->data[$var])) {
-			return $this->data[$var];
+            $value = $this->data[$var];
+		    $value = REDCapManagement::stripHTML($value);
+		    $value = REDCapManagement::formatMangledText($value);     // REDCap and PubMed save in incompatible formats
+		    return $value;
 		}
 		return "";
 	}
@@ -485,8 +507,8 @@ class Citation {
 	}
 
 	public function getPMCWithPrefix() {
-		$pmc = $this->getVariable("pmcid");
-		if (!preg_match("/PMC/", $pmc)) {
+		$pmc = $this->getPMC();
+		if ($pmc && !preg_match("/PMC/", $pmc)) {
 			$pmc = "PMC".$pmc;
 		}
 		return $pmc;
@@ -655,12 +677,30 @@ class Citation {
 
 	public function getNIHFormat($traineeLastName, $traineeFirstName, $includeIDs = FALSE) {
 		$authors = self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList());
-		$citation = $authors.", ".$this->getYear().", ".$this->getVariable("title").", ".$this->getVariable("journal").", ".$this->getVolumeAndPages().".";
+		$citation = $authors.", ".$this->getYear().", ".$this->getVariable("title").", ".$this->getVariable("journal");
+		if ($this->getVolumeAndPages()) {
+		    $citation .= ", ".$this->getVolumeAndPages();
+        }
+		$citation .= ".";
 		if ($includeIDs) {
-		    $citation .= " PMID ".$this->getPMID().". PMC ".$this->getPMCWithoutPrefix().".";
+		    $citation .= " PMID ".$this->getPMID().".";
+		    if ($this->getPMCWithoutPrefix()) {
+		        $citation .= " PMC ".$this->getPMCWithoutPrefix().".";
+}
         }
 		return $citation;
 	}
+
+	public function getImage($alignment = "left") {
+	    if ($this->origRow["citation_altmetric_image"]) {
+	        $img = "<img src='".$this->origRow["citation_altmetric_image"]."' align='$alignment'  style='width: 48px; height: 48px;' alt='Altmetrics'>";
+	        if ($this->origRow["citation_altmetric_details_url"]) {
+	            return "<a href='".$this->origRow["citation_altmetric_details_url"]."'>$img</a>";
+            }
+	        return $img;
+        }
+	    return "";
+    }
 
 	public function getCitationWithLink($includeREDCapLink = TRUE, $newTarget = FALSE) {
 		global $pid, $event_id;
@@ -687,13 +727,18 @@ class Citation {
 		}
 
 		$pmcWithPrefix = $this->getPMCWithPrefix();
-		if ($this->getPMC() && !preg_match("/PMC\d/", $baseWithREDCap)) {
+		if ($pmcWithPrefix && !preg_match("/PMC\d/", $baseWithREDCap)) {
 			$baseWithPMC = $baseWithREDCap." ".$pmcWithPrefix.".";
 		} else {
 			$baseWithPMC = $baseWithREDCap;
 		}
 
-		$baseWithPMCLink = preg_replace("/".$pmcWithPrefix."/", Links::makeLink($this->getPMCURL(), $pmcWithPrefix), $baseWithPMC);
+		if ($pmcWithPrefix) {
+            $baseWithPMCLink = preg_replace("/".$pmcWithPrefix."/", Links::makeLink($this->getPMCURL(), $pmcWithPrefix), $baseWithPMC);
+        } else {
+		    $baseWithPMCLink = $baseWithPMC;
+        }
+
 		$baseWithLinks = preg_replace("/PubMed PMID:\s*".$this->getPMID()."/", Links::makeLink($this->getURL(), "PubMed PMID: ".$this->getPMID(), $newTarget), $baseWithPMCLink);
 
 		return $baseWithLinks;
@@ -815,8 +860,7 @@ class Citation {
 			return $this->sourceChoices[$src];
 		} else {
 			if (!$this->sourceChoices && empty($this->sourceChoices)) {
-				$metadata = Download::metadata($this->token, $this->server);
-				$choices = Scholar::getChoices($metadata);
+				$choices = Scholar::getChoices($this->metadata);
 				if (isset($choices["citation_source"])) {
 					$this->sourceChoices = $choices["citation_source"];
 				}
@@ -844,5 +888,6 @@ class Citation {
 	private $token = "";
 	private $server = "";
 	private $sourceChoices = array();
+	private $metadata = [];
 }
 

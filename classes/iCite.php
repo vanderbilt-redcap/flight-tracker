@@ -42,6 +42,10 @@ class iCite {
 		return "";
 	}
 
+	public function hasData() {
+	    return $this->data && !empty($this->data);
+    }
+
 	private $pmid;
 	private $data;
 }

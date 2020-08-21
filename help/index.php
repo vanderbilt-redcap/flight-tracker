@@ -50,9 +50,9 @@ if (isset($_POST['fullPage'])) {
 	} else {
 		echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
 		echo "<script src='".CareerDev::link("/js/jquery-ui.min.js")."'></script>\n";
-		echo "<script src='".CareerDev::link("/js/base.js")."'></script>\n";
+		echo "<script src='".CareerDev::link("/js/base.js")."&".CareerDev::getVersion()."'></script>\n";
 		echo "<link rel='stylesheet' href='".CareerDev::link("/css/jquery-ui.css")."'>\n";
-		echo "<link rel='stylesheet' href='".CareerDev::link("/css/career_dev.css")."'>\n";
+		echo "<link rel='stylesheet' href='".CareerDev::link("/css/career_dev.css")."&".CareerDev::getVersion()."'>\n";
 
 		$html .= CareerDevHelp::getHelpPage($_GET['htmlPage']);
 		$pageTitle = CareerDevHelp::getPageTitle($_GET['htmlPage']);

@@ -47,17 +47,17 @@ class Download {
                 }
             }
         }
-        $records = self::filterByInclusion($records, $token, $server, $metadata);
+        $records = self::filterByManualInclusion($records, $token, $server, $metadata);
         foreach ($records as $recordId) {
 			$predocs[$recordId] = $names[$recordId];
 		}
 		return $predocs;
 	}
 
-	private static function filterByInclusion($records, $token, $server, $metadata) {
+	private static function filterByManualInclusion($records, $token, $server, $metadata) {
 	    $field = "identifier_table_include";
 	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-	    if (!in_array("identifier_table_include", $metadataFields)) {
+	    if (!in_array($field, $metadataFields)) {
 	        return $records;
         }
 
@@ -91,7 +91,7 @@ class Download {
         } else {
             $records = $postdocTrainees;
         }
-        $records = self::filterByInclusion($records, $token, $server, $metadata);
+        $records = self::filterByManualInclusion($records, $token, $server, $metadata);
         $postdocs = [];
         foreach ($records as $recordId) {
             $postdocs[$recordId] = $names[$recordId];
@@ -161,11 +161,16 @@ class Download {
 		$mentors = Download::oneField($token, $server, "summary_mentor");
 		foreach ($mentors as $recordId => $mentor) {
 			if ($mentor) {
-				$recordMentors = preg_split("/\s*;\s*/", $mentor);
+                $regex = "/\s*;\s*/";
+                if (preg_match("/[A-Za-z\.]+\s+[A-Za-z\.]+\s*,\s*[A-Za-z\.]+\s+[A-Za-z\.]+/", $mentor)) {
+                    # separating two names - not last name, first name
+                    $regex = "/\s*[;,]\s*/";
+                }
+				$recordMentors = preg_split($regex, $mentor);
 				$prettyRecordMentors = array();
-				foreach ($recordMentors as $mentor) {
-					$mentor = NameMatcher::pretty($mentor);
-					array_push($prettyRecordMentors, $mentor);
+				foreach ($recordMentors as $recordMentor) {
+                    $recordMentor = NameMatcher::pretty($recordMentor);
+					array_push($prettyRecordMentors, $recordMentor);
 				}
 				$mentors[$recordId] = $prettyRecordMentors;
 			} else {

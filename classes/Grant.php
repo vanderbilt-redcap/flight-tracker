@@ -1048,6 +1048,23 @@ class Grant {
 		return preg_replace("/,/g", "", $num);
 	}
 
+	public static function autocalculateGrantLength($type) {
+	    if (!is_numeric($type)) {
+	        # convert string to number
+	        $awardTypes = self::getAwardTypes();
+	        $type = $awardTypes[$type];
+        }
+        if ($type == 1) {
+            return Application::getInternalKLength();
+        } else if ($type == 2) {
+            return Application::getK12KL2Length();
+        } else if (in_array($type, [3, 4])) {
+            return Application::getIndividualKLength();
+        } else {
+            throw new \Exception("Invalid type ($type) for year length");
+        }
+    }
+
 	# 0, Computer-Generated
 	# 1, Self-Reported
 	# 2, Manually Entered

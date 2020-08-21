@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Altmetric;
 
 if (!isset($_GET['showHeaders'])) {
     define("NOAUTH", TRUE);
@@ -15,9 +16,11 @@ require_once(dirname(__FILE__)."/classes/Publications.php");
 require_once(dirname(__FILE__)."/classes/Citation.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/classes/Altmetric.php");
 require_once(dirname(__FILE__)."/Application.php");
 
 $recordIds = Download::recordIds($token, $server);
+$metadata = Download::metadata($token, $server);
 
 if (isset($_GET['daysPrior']) && is_numeric($_GET['daysPrior']) && ($_GET['daysPrior'] >= 0)) {
     $daysPrior = $_GET['daysPrior'];
@@ -35,6 +38,7 @@ if (isset($_GET['showHeaders'])) {
     $url .= "&NOAUTH";
     ?>
     <h3>Brag on Your Scholars' Publications!</h3>
+    <?= Altmetric::makeClickText(); ?>
     <h4>Include this Page as a Widget in Another Page</h4>
     <div class="max-width centered">
         <p class="centered">Copy the following HTML and place into another HTML webpage to display your scholars' publications. Your website must likely have cross-origin framing turned on (which is the default).</p>
@@ -61,7 +65,7 @@ if (isset($_GET['asc'])) {
 }
 $allCitations = [];
 foreach ($recordIds as $recordId) {
-    $redcapData = Download::fieldsForRecords($token, $server, Application::$citationFields, array($recordId));
+    $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($recordId));
     $pubs = new Publications($token, $server, $pid);
     $pubs->setRows($redcapData);
     $recordCitations = $pubs->getSortedCitationsInTimespan($startTs, $endTs, "Included", FALSE);
@@ -70,7 +74,13 @@ foreach ($recordIds as $recordId) {
 
 $citationsWithTs = [];
 foreach ($allCitations as $citation) {
-    $citationsWithTs[$citation->getCitation()] = $citation->getTimestamp();
+    if (isset($_GET['altmetrics'])) {
+        $citationStr = $citation->getImage("left");
+    } else {
+        $citationStr = "";
+    }
+    $citationStr .= $citation->getCitation();
+    $citationsWithTs[$citationStr] = $citation->getTimestamp();
 }
 
 if ($asc) {

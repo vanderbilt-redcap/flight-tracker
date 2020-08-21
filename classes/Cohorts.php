@@ -72,7 +72,7 @@ class Cohorts {
 		foreach ($this->configs as $title => $configAry) {
 			$config = $this->getCohort($title);
 			if ($config) {
-				$configFields = $config->getFields();
+				$configFields = $config->getFields($this->metadata);
 				$allFields = array_unique(array_merge($allFields, $configFields));
 			} else {
 				throw new \Exception("Could not find config $title");

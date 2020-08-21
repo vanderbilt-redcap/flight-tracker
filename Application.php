@@ -47,7 +47,18 @@ class Application {
 		return CareerDev::getEmailName($record);
 	}
 
-	public static function getInstitution() {
+    public static function getCitationFields($metadata) {
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+        $fields = ["record_id"];
+        foreach (self::$citationFields as $field) {
+            if (in_array($field, $metadataFields)) {
+                $fields[] = $field;
+            }
+        }
+        return $fields;
+    }
+
+    public static function getInstitution() {
 		$insts = self::getInstitutions();
 		if (count($insts) > 0) {
 			return $insts[0];
@@ -328,7 +339,7 @@ class Application {
         "summary_first_any_k_to_first_r01",
     ];
 
-    public static $citationFields = array(
+    private static $citationFields = array(
         "record_id",
         "citation_pmid",
         "citation_include",

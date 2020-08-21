@@ -4,6 +4,7 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Citation;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -12,6 +13,7 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 ?>
 <style>
@@ -75,7 +77,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 	$names = \Vanderbilt\FlightTrackerExternalModule\getAlphabetizedNames($token, $server);
 	$citationCount = 0;
 	foreach ($names as $recordId => $name) {
-		$citationData = Download::fieldsForRecords($token, $server, $citationFields, array($recordId));
+		$citationData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($recordId));
 		$pubs = new Publications($token, $server, $metadata);
 		$pubs->setRows($citationData);
 		$citations = $pubs->getCitations("Included");

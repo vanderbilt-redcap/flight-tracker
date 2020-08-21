@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/baseWeb.php");
@@ -16,13 +17,14 @@ require_once(dirname(__FILE__)."/../classes/Grant.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__).'/../../../redcap_connect.php');
 
 # makes the stylized table of CDA awards
 $warningsOn = FALSE;
 
-$redcapData = Download::fields($token, $server, array_unique(array_merge(CareerDev::$summaryFields, CareerDev::$citationFields)));
 $metadata = Download::metadata($token, $server);
+$redcapData = Download::fields($token, $server, array_unique(array_merge(CareerDev::$summaryFields, Application::getCitationFields($metadata))));
 
 # transform verbose to the simpler name
 function transformSelfRecord($num) {

@@ -5,10 +5,12 @@ use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Scholar;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
@@ -96,7 +98,7 @@ foreach ($sorted as $recordId => $rows) {
 		}
 	}
 
-	$pubData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, array($recordId));
+	$pubData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($recordId));
 	$pubs = new Publications($token, $server, $metadata);
 	$pubs->setRows($pubData);
 	$pubTimes[$recordId] = array();

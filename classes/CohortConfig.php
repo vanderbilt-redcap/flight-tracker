@@ -256,12 +256,12 @@ class CohortConfig {
 		throw new \Exception("Improper combiner: '$combiner'");
 	}
 
-	public function getFields() {
+	public function getFields($metadata) {
 		$fields = array();
 		foreach ($this->getRows() as $row) {
 			if ($row['type'] != "resources") {
 				if (preg_match("/^calc_/", $row['variable'])) {
-					foreach (array_merge(Application::$summaryFields, Application::$citationFields) as $field) {
+					foreach (array_merge(Application::$summaryFields, Application::getCitationFields($metadata)) as $field) {
 						if (!in_array($field, $fields)) {
 							array_push($fields, $field);
 						}

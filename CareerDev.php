@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.17.0";
+		return "2.18.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -55,6 +55,7 @@ class CareerDev {
             "iCite" => "icite.od.nih.gov",
     	    "ORCID" => "pub.orcid.org",
             "Statistics Reporting" => "redcap.vanderbilt.edu",
+            "Altmetrics" => "api.altmetric.com",
         );
         return $sites;
     }
@@ -355,10 +356,14 @@ class CareerDev {
 	}
 
 	public static function saveCurrentDate($setting, $pid) {
-		$ary = self::getSetting(self::getGeneralSettingName());
+		$ary = self::getSetting(self::getGeneralSettingName(), $pid);
 		$ary[$setting] = date("Y-m-d");
 		self::setSetting(self::getGeneralSettingName(), $ary, $pid);
 	}
+
+	public static function saveSetting($field, $value, $pid = NULL) {
+	    self::setSetting($field, $value, $pid);
+    }
 
 	public static function setSetting($field, $value, $pid = NULL) {
 		$module = self::getModule();

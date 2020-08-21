@@ -6,9 +6,11 @@ use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\CitationCollection;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \ExternalModules\ExternalModules;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
@@ -28,7 +30,7 @@ switch($instrument) {
 }
 
 $metadata = Download::metadata($token, $server);
-$recordData = Download::fieldsForRecords($token, $server, Application::$citationFields, array($record));
+$recordData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($record));
 $pubs = new Publications($token, $server, $metadata);
 $pubs->setRows($recordData);
 $finalized = $pubs->getCitationCollection("Final");
@@ -37,7 +39,7 @@ $omitted = $pubs->getCitationCollection("Omitted");
 
 $headerStyle = "text-align: center; margin: 16px 0; padding: 4px;";
 $html = "";
-$html .= "<script src='".Application::link("js/base.js")."'></script>\n";
+$html .= "<script src='".Application::link("js/base.js")."&".CareerDev::getVersion()."'></script>\n";
 $html .= "<script>
 let extmod_base_url = '".ExternalModules::$BASE_URL."'
 </script>\n";

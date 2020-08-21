@@ -21,6 +21,7 @@ require_once(dirname(__FILE__)."/../classes/OracleConnection.php");
 
 function getPubs($token, $server, $pid) {
 	$cleanOldData = FALSE;
+	$metadata = Download::metadata($token, $server);
 
 	$records = Download::recordIds($token, $server);
 
@@ -34,7 +35,7 @@ function getPubs($token, $server, $pid) {
 		}
 
 		if ($cleanOldData && $pid) {
-			$redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, $pullRecords);
+			$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), $pullRecords);
 			foreach ($redcapData as $row) {
 				if ($row['redcap_repeat_instrument'] == "citation") {
 					$recordId = $row['record_id'];
@@ -44,7 +45,7 @@ function getPubs($token, $server, $pid) {
 			}
 		}
 
-		$redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, $pullRecords);
+		$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), $pullRecords);
 		foreach ($redcapData as $row) {
 			if ($row['redcap_repeat_instrument'] == "citation") {
 				$recordId = $row['record_id'];
@@ -74,13 +75,14 @@ function getPubs($token, $server, $pid) {
 
 function postprocess($token, $server) {
 	$records = Download::recordIds($token, $server);
+	$metadata = Download::metadata($token, $server);
 	$pullSize = 3;
 	for ($i = 0; $i < count($records); $i += $pullSize) {
 		$pullRecords = array();
 		for ($j = $i; ($j < count($records)) && ($j < $i + $pullSize); $j++) {
 			array_push($pullRecords, $records[$j]);
 		}
-		$redcapData = Download::fieldsForRecords($token, $server, CareerDev::$citationFields, $pullRecords);
+		$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), $pullRecords);
 		$indexedData = array();
 		foreach ($redcapData as $row) {
 			$recordId = $row['record_id'];
@@ -155,6 +157,7 @@ function reverseArray($ary) {
 }
 
 function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid) {
+    $metadata = Download::metadata($token, $server);
     $vunets = reverseArray(Download::vunets($token, $server));
     include "/app001/credentials/con_redcap_ldap_user.php";
 
@@ -181,7 +184,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid) {
                         $maxInstances[$recordId] = 0;
                     }
                     $maxInstances[$recordId]++;
-                    $uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), "victr", $recordId, $maxInstances[$recordId], array($newCitationId));
+                    $uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), $metadata, "victr", $recordId, $maxInstances[$recordId], array($newCitationId));
                     foreach ($uploadRows as $uploadRow) {
                         // mark to include only for VICTR
                         $uploadRow['citation_include'] = '1';
@@ -293,7 +296,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid) {
         $max = $maxInstances[$recordId];
         $max++;
         if (!empty($nonOrcidPMIDs)) {
-            $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDs, "pubmed", $recordId, $max, $orcidPMIDs);
+            $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDs, $metadata, "pubmed", $recordId, $max, $orcidPMIDs);
         }
         if (!empty($orcidRows)) {
             if (!empty($pubmedRows)) {
@@ -304,7 +307,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid) {
             if (!isset($choices["citation_source"][$src])) {
                 $src = "pubmed";
             }
-            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $src, $recordId, $max, $orcidPMIDs);
+            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $max, $orcidPMIDs);
         }
         $uploadRows = array_merge($pubmedRows, $orcidRows);
 		if (!empty($uploadRows)) {

@@ -105,13 +105,18 @@ table.bordered { border-collapse: collapse; }
 p.bordered,div.bordered { border: 1px solid #888; }
 .finger { cursor: pointer; }
 .red { background-color: #f0565d; }
+.redtext { color: #f0565d; }
 .green { background-color: #8dc63f; }
+.greentext { color: #8dc63f; }
 .yellow { background-color: #f1f6d6; }
 .blue { background-color: #d4d4eb; }
+.bluetext { color: #48489d; }
 .blueBorder { border-radius: 10px; border: 4px solid #5764ae; }
 .purple { background-color: #f4c3ff; }
+.purpletext { color: #f4c3ff; }
 .orange { background-color: #f79721; }
 .grey { background-color: #dddddd; }
+.greytext { color: #dddddd; }
 /* Coordinated with .red, .green, and .yellow */
 .install-metadata-box-danger{ color: #a94442; background-color: #f0565d; border-color: #ebccd1; }
 .install-metadata-box-warning{ color: #8a6d3b; background-color: #8dc63f; border-color: #faebcc; }
@@ -119,3 +124,7 @@ p.bordered,div.bordered { border: 1px solid #888; }
 .install-metadata-box{ padding: 15px; margin-bottom: 20px; border: 1px solid transparent; border-radius: 4px; }
 .oneAtATime input[type=text],.list textarea { font-size: 20px; width: 150px; }
 .list textarea { height: 100px; }
+.nounderline { text-decoration: none; }
+.alignright { text-align: right; }
+td.leftAlignedCell,th.leftAlignedCell { text-align: left; padding-top: 15px; padding-bottom: 15px; }
+td.leftAlignedCell p.citation { padding: 6px 0; margin: 0; }
