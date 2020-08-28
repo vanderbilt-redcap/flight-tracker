@@ -1956,6 +1956,8 @@ class Scholar {
             "summary_current_tenure" => "getTenureStatus",
             "summary_urm" => "getURMStatus",
             "summary_wos_h_index" => "getWoSHIndex",
+            "summary_icite_h_index" => "getiCiteHIndex",
+            "summary_scopus_h_index" => "getScopusHIndex",
             "summary_disability" => "getDisabilityStatus",
             "summary_disadvantaged" => "getDisadvantagedStatus",
             "summary_training_start" => "getTrainingStart",
@@ -2091,31 +2093,35 @@ class Scholar {
         }
         return new Result("", "");
     }
+
     private function getWoSHIndex($rows) {
-	    if ($key = Application::getSetting("wos_api_key", $this->pid)) {
-            $orcid = $this->getORCID();
-            if ($orcid) {
-                # ???
-            } else {
-                $firstNames = NameMatcher::explodeFirstName($this->getName("first"));
-                $lastNames = NameMatcher::explodeLastName($this->getName("last"));
-                $institutions = $this->getAllOtherInstitutions($rows);
-                foreach ($firstNames as $firstName) {
-                    foreach ($lastNames as $lastName) {
-                        foreach ($institutions as $institution) {
-                            $query = "AUTHFIRST($firstName) AND AUTHLASTNAME($lastName) AND AFFIL($institution)";
-                            $format = "application/json";
-                            $url = "https://api.elsevier.com/content/search/author?httpAccept=".urlencode($format)."&query=".urlencode($query)."&apikey=".$key;
-                            $json = REDCapManagement::downloadURL($url);
-                            $data = json_decode($json, TRUE);
-                            $authorId = "16023751600";   // Eric Austin TODO
-                            $url = "http://api.elsevier.com/content/author/author_id/".$authorId."?httpAccept=".urlencode($format)."&start=0&count=200&view=DOCUMENTS&apike".$key;
-                            $json = REDCapManagement::downloadURL($url);
-                            $data = json_decode($json, TRUE);
-                        }
+        return $this->getHIndex($rows, "citation_wos_times_cited");
+    }
+
+    private function getiCiteHIndex($rows) {
+        return $this->getHIndex($rows, "citation_num_citations");
+    }
+
+    private function getHIndex($rows, $timesCitedField) {
+	    $timesCitedValues = [];
+        foreach ($rows as $row) {
+            if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == 1) && $row[$timesCitedField]) {
+                $timesCitedValues[] = $row[$timesCitedField];
+            }
+        }
+        if (!empty($timesCitedValues)) {
+            $i = 0;
+            do {
+                $i++;
+                $numValid = 0;
+                foreach ($timesCitedValues as $value) {
+                    if ($value >= $i) {
+                        $numValid++;
                     }
                 }
-            }
+            } while ($i < count($timesCitedValues) && ($numValid >= $i));
+            $i--;
+            return new Result($i, "");
         }
         return new Result("", "");
     }

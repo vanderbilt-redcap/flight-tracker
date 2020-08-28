@@ -184,7 +184,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid) {
                         $maxInstances[$recordId] = 0;
                     }
                     $maxInstances[$recordId]++;
-                    $uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), $metadata, "victr", $recordId, $maxInstances[$recordId], array($newCitationId));
+                    $uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), $metadata, "victr", $recordId, $maxInstances[$recordId], [$newCitationId], $pid);
                     foreach ($uploadRows as $uploadRow) {
                         // mark to include only for VICTR
                         $uploadRow['citation_include'] = '1';
@@ -296,7 +296,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid) {
         $max = $maxInstances[$recordId];
         $max++;
         if (!empty($nonOrcidPMIDs)) {
-            $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDs, $metadata, "pubmed", $recordId, $max, $orcidPMIDs);
+            $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDs, $metadata, "pubmed", $recordId, $max, $orcidPMIDs, $pid);
         }
         if (!empty($orcidRows)) {
             if (!empty($pubmedRows)) {
@@ -307,7 +307,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid) {
             if (!isset($choices["citation_source"][$src])) {
                 $src = "pubmed";
             }
-            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $max, $orcidPMIDs);
+            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $max, $orcidPMIDs, $pid);
         }
         $uploadRows = array_merge($pubmedRows, $orcidRows);
 		if (!empty($uploadRows)) {

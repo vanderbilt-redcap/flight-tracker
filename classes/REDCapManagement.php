@@ -593,6 +593,25 @@ class REDCapManagement {
         return ["", ""];
     }
 
+    public static function fillInLinks($text) {
+        return preg_replace(
+            '/((https?|ftp):\/\/(\S*?\.\S*?))([\s)\[\]{},;"\':<]|\.\s|$)/i',
+            "<a href=\"$1\" target=\"_blank\">$3</a>$4",
+            $text
+        );
+    }
+
+    public static function getUserid($firstName, $lastName) {
+	    $firstName = strtolower($firstName);
+	    $lastName = strtolower($lastName);
+        $sql = "select username from redcap_user_information WHERE LOWER(user_firstname) = '".db_real_escape_string($firstName)."' AND LOWER(user_lastname) = '".db_real_escape_string($lastName)."'";
+        $q = db_query($sql);
+        if ($row = db_fetch_assoc($q)) {
+            return $row['username'];
+        }
+        return "";
+    }
+
     public static function deDupREDCapRows($rows, $instrument, $recordId) {
 	    $debug = FALSE;
 	    $i = 0;
@@ -884,6 +903,21 @@ class REDCapManagement {
         }
 	    # date, not datetime
 	    return $datetime;
+    }
+
+    public static function filterForREDCap($row, $metadataFields) {
+	    $newRow = [];
+	    $redcapManagementFields = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance"];
+	    foreach ($row as $field => $value) {
+	        if (in_array($field, $metadataFields)
+                || preg_match("/_complete$/", $field)
+                || in_array($field, $redcapManagementFields)) {
+	            $newRow[$field] = $value;
+            } else {
+	            Application::log("Filtering out ".$field);
+            }
+        }
+	    return $newRow;
     }
 
 	public static function getRowsForRecord($redcapData, $recordId) {

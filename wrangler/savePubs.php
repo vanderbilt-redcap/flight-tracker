@@ -51,7 +51,7 @@ if (isset($_POST['finalized'])) {
                 # new citation
                 $maxInstance = Citation::findMaxInstance($token, $server, $recordId, $redcapData);
                 $maxInstance++;
-                $uploadRows = Publications::getCitationsFromPubMed(array($pmid), $metadata,"manual", $recordId, $maxInstance);
+                $uploadRows = Publications::getCitationsFromPubMed(array($pmid), $metadata,"manual", $recordId, $maxInstance, [], $pid);
                 array_push($priorPMIDs, $pmid);
                 foreach ($uploadRows as $uploadRow) {
                     array_push($upload, $uploadRow);
@@ -80,7 +80,7 @@ if ($pmids && !empty($pmids)) {
     if ($recordId) {
         $maxInstance = Citation::findMaxInstance($token, $server, $recordId);
         $maxInstance++;
-        $upload = Publications::getCitationsFromPubMed($pmids, $metadata, "manual", $recordId, $maxInstance);
+        $upload = Publications::getCitationsFromPubMed($pmids, $metadata, "manual", $recordId, $maxInstance, [], $pid);
         if (!empty($upload)) {
             $feedback = Upload::rows($upload, $token, $server);
             echo json_encode($feedback);

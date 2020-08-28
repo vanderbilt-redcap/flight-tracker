@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/small_base.php");
@@ -15,6 +16,7 @@ require_once(dirname(__FILE__)."/classes/Grants.php");
 require_once(dirname(__FILE__)."/classes/Scholar.php");
 require_once(dirname(__FILE__)."/classes/Links.php");
 require_once(dirname(__FILE__)."/classes/Publications.php");
+require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 
 if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 	$record = $_GET['record'];
@@ -38,6 +40,12 @@ $scholar->setRows($redcapData);
 $scholar->setGrants($grants);
 $pubs = new Publications($token, $server, $metadata);
 $pubs->setRows($redcapData);
+
+$iCiteHIndex = REDCapManagement::findField($redcapData, $record, "summary_icite_h_index");
+$wosHIndex = REDCapManagement::findField($redcapData, $record, "summary_wos_h_index");
+$scopusHIndex = REDCapManagement::findField($redcapData, $record, "summary_scopus_h_index");
+$altmetricRange = $pubs->getAltmetricRange("Original Included");
+$avgRCR = $pubs->getAverageRCR("Original Included");
 
 $normativeRow = array();
 foreach ($redcapData as $row) {
@@ -67,7 +75,6 @@ $resources = $scholar->getResourcesUsed();
 $converted = $scholar->isConverted();
 $numGrants = $grants->getNumberOfGrants("prior");
 $numPublications = $pubs->getNumber("Original Included");
-$avgRCR = $pubs->getAverageRCR("Original Included");
 $numCitations = $pubs->getNumberOfCitationsByOthers("Original Included");
 $dollarsSummaryTotal = $grants->getTotalDollars("prior");
 $dollarsSummaryDirect = $grants->getDirectDollars("prior");
@@ -169,8 +176,6 @@ if (CareerDev::getInstitutionCount() == 1) {
 	<tr>
 		<td class='label profileHeader'>Confirmed Original<br>Research Articles:</td>
 		<td class='value profileHeader'><?= \Vanderbilt\FlightTrackerExternalModule\pretty($numPublications) ?></td>
-		<td class='label profileHeader'>Average Relative<br>Citation Ratio:</td>
-		<td class='value profileHeader'><?= \Vanderbilt\FlightTrackerExternalModule\pretty($avgRCR) ?></td>
 	</tr>
 	<tr>
 		<td class='label profileHeader'>Grants:</td>
@@ -216,6 +221,32 @@ if ($dollarsCompiledTotal) {
 			<div class='valueCentered'>This allows you to see all of your data about grants at one glance. The information to the left is preferred over the information to the write. The computer automatically picks the data which is most preferred. Items in green are being used while items in red disagree with the information in the preferred grant. This helps you see where the information comes from.</div>
 		</td>
 	</tr>
+
+    <?php
+    $bibliometricScores = [];
+    if ($wosHIndex) { $bibliometricScores[Links::makeLink("https://support.clarivate.com/ScientificandAcademicResearch/s/article/Web-of-Science-h-index-information?language=en_US", "H Index", TRUE)." calculated<br>from ".Links::makeLink("https://www.webofknowledge.com/", "Web of Science", TRUE)] = $wosHIndex; }
+    if ($scopusHIndex) { $bibliometricScores[Links::makeLink("https://blog.scopus.com/topics/h-index", "H Index", TRUE)."<br>from".Links::makeLink("https://www.scopus.com/", "Scopus", TRUE)] = $scopusHIndex; };
+    if ($altmetricRange) { $bibliometricScores["Range of ".Links::makeLink("https://www.altmetric.com/", "Altmetric", TRUE)." Scores"] = $altmetricRange; }
+    if ($avgRCR) { $bibliometricScores["Average ".Links::makeLink("https://dpcpsi.nih.gov/sites/default/files/iCite%20fact%20sheet_0.pdf", "Relative Citation<br> Ratio", TRUE)." from ".Links::makeLink("https://icite.od.nih.gov/", "iCite", TRUE)." Scores"] = $avgRCR; }
+    if ($iCiteHIndex) { $bibliometricScores["iCite H Index, calculated<br>from ".Links::makeLink("https://icite.od.nih.gov/", "iCite (NIH)", TRUE)] = $iCiteHIndex; }
+
+    $i = 0;
+    foreach ($bibliometricScores as $label => $value) {
+        if ($i % 2 == 0) {
+            echo "<tr>\n";
+        }
+        echo "<td class='label profileHeader'>$label:</td>\n";
+        echo "<td class='value profileHeader'>".pretty($value)."</td>\n";
+        if ($i % 2 == 1) {
+            echo "</tr>\n";
+        }
+        $i++;
+    }
+    if (count($bibliometricScores) % 2 == 1) {
+        echo "</tr>\n";
+    }
+    ?>
+
 </table><br><br>
 
 <?php 

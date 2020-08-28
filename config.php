@@ -4,6 +4,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Scholar;
+use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule;
 
@@ -11,6 +12,7 @@ require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
 require_once(dirname(__FILE__)."/classes/Scholar.php");
+require_once(dirname(__FILE__)."/classes/Links.php");
 require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 
 define('MAX_DEGREE_SOURCES', 5);
@@ -335,6 +337,11 @@ function makeSettings($module) {
 	array_push($ary["Automated Emails"], makeSetting("init_from", "text", "Initial Email From Address"));
 	array_push($ary["Automated Emails"], makeSetting("init_subject", "text", "Initial Email Subject"));
 	array_push($ary["Automated Emails"], makeSetting("init_message", "textarea", "Initial Email Message"));
+
+    $ary["Bibliometrics"] = array();
+    array_push($ary["Bibliometrics"], makeSetting("wos_userid", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)")." User ID"));
+    array_push($ary["Bibliometrics"], makeSetting("wos_password", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)")." Password"));
+    array_push($ary["Bibliometrics"], makeSetting("scopus_api_key", "text", Links::makeLink("https://www.scopus.com/", "Scopus")." API Key (for H Index)"));
 
     $ary["Proxy Server (Only if Applicable)"] = array();
     array_push($ary["Proxy Server (Only if Applicable)"], makeHelperText("If your REDCap server has a proxy server, please fill out the following information. (If you don't know about this, you probably don't have one, so no worries then.)"));

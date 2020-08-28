@@ -164,7 +164,8 @@ class NameMatcher {
 			} else if (count($nodes) == 1) {
 				return array($nodes[0], "");
 			} else {
-				throw new \Exception("Name-splitter could not read $name!");
+				Application::log("$name is larger than 4 nodes!");
+				return array($name, "");
 			}
 		}
 		return array("", "");

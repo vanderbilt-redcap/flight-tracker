@@ -1039,15 +1039,23 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
 		$lists[$type] = makeREDCapList($str, $other);
 	}
 
-	if (!$metadata) {
-		$fp = fopen(dirname(__FILE__)."/metadata.json", "r");
-		$json = "";
-		$line = "";
-		while ($line = fgets($fp)) {
-			$json .= $line;
-		}
-		fclose($fp);
-		$metadata = json_decode($json, true);
+	$files = [dirname(__FILE__)."/metadata.json"];
+    if (CareerDev::isVanderbilt()) {
+        $files[] = dirname(__FILE__)."/metadata.vanderbilt.json";
+    }
+
+    if (!$metadata) {
+        $metadata = [];
+        foreach ($files as $file) {
+            $fp = fopen($file, "r");
+            $json = "";
+            while ($line = fgets($fp)) {
+                $json .= $line;
+            }
+            fclose($fp);
+            $newLines = json_decode($json, true);
+            $metadata = array_merge($metadata, $newLines);
+        }
 	}
 
 	$fields = array();

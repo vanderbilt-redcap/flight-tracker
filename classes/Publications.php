@@ -14,6 +14,7 @@ require_once(dirname(__FILE__)."/Citation.php");
 require_once(dirname(__FILE__)."/Scholar.php");
 require_once(dirname(__FILE__)."/REDCapManagement.php");
 require_once(dirname(__FILE__)."/Altmetric.php");
+require_once(dirname(__FILE__)."/WebOfScience.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
 class Publications {
@@ -25,6 +26,7 @@ class Publications {
 		}
 		$this->metadata = $metadata;
 		$this->choices = Scholar::getChoices($metadata);
+		$this->pid = Application::getPID($token);
 	}
 
     public static function searchPubMedForName($first, $last, $institution = "") {
@@ -67,6 +69,19 @@ class Publications {
         Publications::throttleDown();
         Application::log("$url returned PMIDs: ".REDCapManagement::json_encode_with_spaces($pmids));
         return $pmids;
+    }
+
+    public function getAltmetricRange($type = "included") {
+	    $scores = [];
+	    foreach ($this->getCitations($type) as $citation) {
+	        $scores[] = $citation->getVariable("altmetric_score");
+        }
+	    $maxRoundedUp = ceil(max($scores));
+	    $minRoundedDown = floor(min($scores));
+	    if ($minRoundedDown == $maxRoundedUp) {
+	        return $minRoundedDown;
+        }
+	    return $minRoundedDown."-".$maxRoundedUp;
     }
 
 	public static function getSearch() {
@@ -161,15 +176,21 @@ class Publications {
 	    $upload = [];
 	    $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
 	    $autoInclude = ["redcap_repeat_instrument", "redcap_repeat_instance"];
+	    $pmids = [];
 	    foreach($this->rows as $row) {
 	        if (($row['redcap_repeat_instrument'] == "citation") && $row["citation_pmid"]) {
-                $iCite = new iCite($row['citation_pmid']);
+                $pmid = $row['citation_pmid'];
+	            if ($pmid) {
+                    $pmids[] = $pmid;
+                }
+                $iCite = new iCite($pmid);
                 if ($iCite->hasData()) {
                     $doi = $iCite->getVariable("doi");
                     $newFields = [
                         "record_id" => $this->recordId,
                         "redcap_repeat_instrument" => "citation",
                         "redcap_repeat_instance" => $row['redcap_repeat_instance'],
+                        "citation_pmid" => $pmid,
                         "citation_doi" => $doi,
                         "citation_is_research" => $iCite->getVariable("is_research_article"),
                         "citation_num_citations" => $iCite->getVariable("citation_count"),
@@ -180,12 +201,7 @@ class Publications {
                         "citation_rcr" => $iCite->getVariable("relative_citation_ratio"),
                         "citation_icite_last_update" => date("Y-m-d"),
                     ];
-                    $uploadRow = [];
-                    foreach ($newFields as $field => $value) {
-                        if (in_array($field, $metadataFields) || in_array($field, $autoInclude)) {
-                            $uploadRow[$field] = $value;
-                        }
-                    }
+                    $uploadRow = REDCapManagement::filterForREDCap($newFields, $metadataFields);
                     if ($doi) {
                         $altmetricRow = self::getAltmetricRow($doi, $metadataFields);
                         $uploadRow = array_merge($uploadRow, $altmetricRow);
@@ -195,6 +211,7 @@ class Publications {
                 }
             }
         }
+	    self::addTimesCited($upload, $this->pid, $pmids, $metadataFields);
 	    if (!empty($upload)) {
 	        Upload::rows($upload, $this->token, $this->server);
         }
@@ -414,7 +431,7 @@ class Publications {
 		return [];
 	}
 
-	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = array()) {
+	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = array(), $pid = NULL) {
 		$upload = array();
 		$instance = $startInstance;
 		$pullSize = self::getPMIDLimit();
@@ -563,17 +580,37 @@ class Publications {
 					if (in_array($pmid, $confirmedPMIDs)) {
 					    $row['citation_include'] = '1';
                     }
+                    $row = REDCapManagement::filterForREDCap($row, $metadataFields);
 					array_push($upload, $row);
 					$instance++;
 				} else {
 					throw new \Exception("Please specify a record id!");
 				}
 			}
-
 			Publications::throttleDown();
 		}
+		self::addTimesCited($upload, $pid, $pmids, $metadataFields);
 		return $upload;
 	}
+
+	private static function addTimesCited(&$upload, $pid, $pmids, $metadataFields) {
+        $timesCitedField = "citation_wos_times_cited";
+        $lastUpdateField = "citation_wos_last_update";
+        if (in_array($timesCitedField, $metadataFields)) {
+            $wos = new WebOfScience($pid);
+            $timesCitedData = $wos->getData($pmids);
+            foreach ($timesCitedData as $pmid => $timesCited) {
+                for ($i = 0; $i < count($upload); $i++) {
+                    if ($upload[$i]['citation_pmid'] == $pmid) {
+                        $upload[$i][$timesCitedField] = $timesCited;
+                        if (in_array($lastUpdateField, $metadataFields)) {
+                            $upload[$i][$lastUpdateField] = date("Y-m-d");
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 	public static function throttleDown($secs = 1) {
 		sleep($secs);
@@ -978,6 +1015,7 @@ class Publications {
 	private $goodCitations;
 	private $omissions;
 	private $choices;
+	private $pid;
 }
 
 class PubmedMatch {

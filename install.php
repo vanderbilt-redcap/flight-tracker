@@ -159,6 +159,7 @@ function makeDepartmentPrompt($projectId) {
 	$html .= getCSS();
 	$html .= "</style>\n";
 
+	$style = " style='width: 400px; height: 400px;'";
 	$html .= "<form method='POST' action='".preg_replace("/pid=\d+/", "pid=$projectId", CareerDev::getLink("install.php"))."'>\n";
 	$html .= "<p class='centered'>Please enter a list of your academic departments.<br>(One per line.)<br>\n";
 	$html .= "<textarea name='departments' class='config'></textarea></p>\n";
@@ -371,5 +372,6 @@ function getCSS() {
 	$html .= "td { padding: 8px; }\n";
 	$html .= "input[type=text],select { width: 200px; }\n";
 	$html .= "button { font-size: 20px; color: white; background-color: black; }\n";
+	$html .= "textarea.config { width: 400px; height: 400px; }\n";
 	return $html;
 }
