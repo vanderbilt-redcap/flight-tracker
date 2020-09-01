@@ -66,7 +66,11 @@ class Application {
 		return "";
 	}
 
-	public static function getModule() {
+    public static function isWebBrowser() {
+        return $_SERVER['REQUEST_URI'];
+    }
+
+    public static function getModule() {
 		return CareerDev::getModule();
 	}
 	public static function link($loc) {

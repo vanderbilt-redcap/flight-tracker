@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.19.0";
+		return "2.19.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -55,7 +55,9 @@ class CareerDev {
             "iCite" => "icite.od.nih.gov",
     	    "ORCID" => "pub.orcid.org",
             "Statistics Reporting" => "redcap.vanderbilt.edu",
-            "Altmetrics" => "api.altmetric.com",
+            "Altmetric" => "api.altmetric.com",
+            "Scopus" => "api.elsevier.com",
+            "Web of Science" => "ws.isiknowledge.com",
         );
         return $sites;
     }

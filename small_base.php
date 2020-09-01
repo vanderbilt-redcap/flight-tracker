@@ -48,7 +48,9 @@ require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/Application.php");
 
 ini_set("memory_limit", "4096M");
-date_default_timezone_set(CareerDev::getTimezone());
+if (!Application::isWebBrowser()) {
+    date_default_timezone_set(CareerDev::getTimezone());
+}
 
 define('INSTITUTION', CareerDev::getInstitution());
 define('PROGRAM_NAME', CareerDev::getProgramName());

@@ -245,11 +245,19 @@ class Scholar {
 
 	private static function nameInList($name, $list) {
 		$name = strtolower($name);
+		$nameAry = NameMatcher::splitName($name);
 		$lowerList = array();
 		foreach ($list as $item) {
-			array_push($lowerList, strtolower($item));
+		    $item = strtolower($item);
+		    $itemNameAry = NameMatcher::splitName($item);
+			array_push($lowerList, $itemNameAry);
 		}
-		return in_array($name, $lowerList);
+		foreach ($lowerList as $itemNameAry) {
+		    if (($nameAry[0] == $itemNameAry[0]) && ($nameAry[1] == $itemNameAry[1])) {
+		        return TRUE;
+            }
+        }
+		return FALSE;
 	}
 
     private function getStudySection1($rows) {
@@ -329,8 +337,8 @@ class Scholar {
 		foreach ($this->rows as $row) {
 			foreach ($row as $field => $value) {
 				if ($value && in_array($field, $mentorFields)) {
-					if (!self::nameInList($value, $mentors)) { 
-						array_push($mentors, $value);
+					if (!self::nameInList($value, $mentors)) {
+						$mentors[] = $value;
 					}
 				}
 			}
@@ -339,13 +347,15 @@ class Scholar {
 	}
 
 	private function getMentorFields() {
-		$fields = array();
-		$skipRegex = array(
-					"/_vunet$/",
-					"/_source$/",
-					"/_sourcetype$/",
-					"/_userid$/",
-					);
+		$fields = [];
+		$skipRegex = [
+		    "/_vunet$/",
+            "/_source$/",
+            "/_sourcetype$/",
+            "/_userid$/",
+            "/_time$/",
+            "/_user$/",
+        ];
 
 		foreach ($this->metadata as $row) {
 			if (preg_match("/mentor/", $row['field_name'])) {
