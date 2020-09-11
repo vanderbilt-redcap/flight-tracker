@@ -99,7 +99,7 @@ class LDAP {
 	    return $rows;
     }
 
-    private static function getNameAssociations($first, $last) {
+    public static function getNameAssociations($first, $last) {
         return ["givenname" => $first, "sn" => $last];
     }
 
@@ -218,6 +218,10 @@ class LdapLookup {
 	private static $ldapConns;
 	private static $ldapBinds;
 
+	private function resetConnections($includeVU) {
+	    self::initialize($includeVU, TRUE);
+    }
+
 	/**
 	 * @param $values array of strings
 	 * @param $keys array of strings
@@ -250,31 +254,39 @@ class LdapLookup {
 				$char = "&";
 			}
 			$searchFilter = "($char".implode("", $searchTerms).")";
-			foreach (self::$ldapConns as $ldapConn) {
-			    $currTry = 0;
-			    $sr = NULL;
-			    while (($currTry < self::MAX_RETRIES) && !$sr) {
-			        $currTry++;
-                    $sr = ldap_search($ldapConn, "ou=people,dc=vanderbilt,dc=edu", $searchFilter);
-                    if ($sr) {
-                        $data = ldap_get_entries($ldapConn, $sr);
-                        if ($oneLine) {
-                            for($i = 0; $i < count($data); $i++) {
-                                return $data[$i];
+			$resetTries = 0;
+			do {
+                $hasReset = FALSE;
+                foreach (self::$ldapConns as $ldapConn) {
+                    $currTry = 0;
+                    $sr = NULL;
+                    while (($currTry < self::MAX_RETRIES) && !$sr) {
+                        $currTry++;
+                        $sr = ldap_search($ldapConn, "ou=people,dc=vanderbilt,dc=edu", $searchFilter);
+                        if ($sr) {
+                            $data = ldap_get_entries($ldapConn, $sr);
+                            if ($oneLine) {
+                                for($i = 0; $i < count($data); $i++) {
+                                    return $data[$i];
+                                }
+                            } else {
+                                $allData = self::mergeAndDiscardDups($allData, $data);
                             }
-                        } else {
-                            $allData = self::mergeAndDiscardDups($allData, $data);
-                        }
-                    } else if (ldap_error($ldapConn) != "") {
-                        if ($currTry == self::MAX_RETRIES) {
-                            echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
-                            throw new \Exception(ldap_error($ldapConn)." ".$searchFilter);
-                        } else {
-                            sleep(1);
+                        } else if (ldap_error($ldapConn) != "") {
+                            if (ldap_error($ldapConn) == "Can't contact LDAP server") {
+                                self::resetConnections($includeVU);
+                                $hasReset = TRUE;
+                                $resetTries++;
+                                break;
+                            }
+                            if ($currTry == self::MAX_RETRIES) {
+                                echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
+                                throw new \Exception(ldap_error($ldapConn)." ".$searchFilter);
+                            }
                         }
                     }
                 }
-			}
+            } while($hasReset && ($resetTries < self::MAX_RETRIES));
 		}
 		return $allData;
 	}
@@ -392,8 +404,8 @@ class LdapLookup {
 		return $allData;
 	}
 
-	public static function initialize($includeVU = FALSE) {
-		if(!self::$ldapBinds) {
+	public static function initialize($includeVU = FALSE, $force = FALSE) {
+		if(!self::$ldapBinds || $force) {
 			include "/app001/credentials/con_redcap_ldap_user.php";
 
 			self::$ldapConns = array();

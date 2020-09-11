@@ -38,9 +38,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	function emails() {
 	    $this->setupApplication();
-		$pids = $this->framework->getProjectsWithModuleEnabled();
+        $pids = $this->framework->getProjectsWithModuleEnabled();
+        $activePids = REDCapManagement::getActiveProjects($pids);
         // CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
-		foreach ($pids as $pid) {
+		foreach ($activePids as $pid) {
 			if (REDCapManagement::isActiveProject($pid)) {
 				$token = $this->getProjectSetting("token", $pid);
 				$server = $this->getProjectSetting("server", $pid);

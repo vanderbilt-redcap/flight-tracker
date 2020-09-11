@@ -236,7 +236,7 @@ if ($dollarsCompiledTotal) {
             echo "<tr>\n";
         }
         echo "<td class='label profileHeader'>$label:</td>\n";
-        echo "<td class='value profileHeader'>".pretty($value)."</td>\n";
+        echo "<td class='value profileHeader'>".REDCapManagement::pretty($value)."</td>\n";
         if ($i % 2 == 1) {
             echo "</tr>\n";
         }

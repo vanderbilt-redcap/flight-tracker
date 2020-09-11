@@ -27,17 +27,20 @@ function getLDAPs($token, $server, $pid) {
         Upload::deleteForm($token, $server, $pid, "ldap_", $recordId);
         $userid = $userids[$recordId];
         $lastName = $lastNames[$recordId];
-        if ($userid) {
-            Application::log("$pid: Searching for userid $userid");
-            $upload = LDAP::getREDCapRowsFromUid($userid, $metadata, $recordId, $repeatingForms);
-        } else {
-            Application::log("$pid: Searching for name $firstName $lastName");
-            $upload = LDAP::getREDCapRowsFromName($firstName, $lastName, $metadata, $recordId, $repeatingForms);
+        try {
+            if ($userid) {
+                Application::log("$pid: Searching for userid $userid");
+                $upload = LDAP::getREDCapRowsFromUid($userid, $metadata, $recordId, $repeatingForms);
+            } else {
+                Application::log("$pid: Searching for name $firstName $lastName");
+                $upload = LDAP::getREDCapRowsFromName($firstName, $lastName, $metadata, $recordId, $repeatingForms);
+            }
+            if (!empty($upload)) {
+                Upload::rows($upload, $token, $server);
+            }
+        } catch (\Exception $e) {
+            Application::log("ERROR: ".$e->getMessage());
         }
-        if (!empty($upload)) {
-            Upload::rows($upload, $token, $server);
-        }
-        sleep(2);
     }
     CareerDev::saveCurrentDate("Last LDAP Directory Pull", $pid);
 }

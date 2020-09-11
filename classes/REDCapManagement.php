@@ -600,16 +600,33 @@ class REDCapManagement {
             $text
         );
     }
-
-    public static function getUserid($firstName, $lastName) {
-	    $firstName = strtolower($firstName);
-	    $lastName = strtolower($lastName);
+    public static function getUseridsFromREDCap($firstName, $lastName) {
+        $firstName = strtolower($firstName);
+        $lastName = strtolower($lastName);
         $sql = "select username from redcap_user_information WHERE LOWER(user_firstname) = '".db_real_escape_string($firstName)."' AND LOWER(user_lastname) = '".db_real_escape_string($lastName)."'";
         $q = db_query($sql);
+        $userids = [];
+        while ($row = db_fetch_assoc($q)) {
+            $userids[] = $row['username'];
+        }
+        return $userids;
+    }
+
+    public static function getEmailFromUseridFromREDCap($userid) {
+        $sql = "select user_email from redcap_user_information WHERE LOWER(username) = '".db_real_escape_string($userid)."'";
+        $q = db_query($sql);
         if ($row = db_fetch_assoc($q)) {
-            return $row['username'];
+            return $row['user_email'];
         }
         return "";
+    }
+
+    public static function getUseridFromREDCap($firstName, $lastName) {
+	    $userids = self::getUseridsFromREDCap($firstName, $lastName);
+	    if (count($userids) > 0) {
+	        return $userids[0];
+        }
+	    return "";
     }
 
     public static function deDupREDCapRows($rows, $instrument, $recordId) {
@@ -968,7 +985,7 @@ class REDCapManagement {
         foreach ($pairs as $pair) {
             $items = explode("=", $pair);
             if (count($items) == 2) {
-                $params[$items[0]] = $items[1];
+                $params[$items[0]] = urldecode($items[1]);
             } else if (count($items) == 1) {
                 $params[$items[0]] = "";
             } else {

@@ -35,8 +35,8 @@ class Application {
 		return "scott.j.pearson@vumc.org";
 	}
 
-	public static function log($mssg) {
-		CareerDev::log($mssg);
+	public static function log($mssg, $pid = FALSE) {
+		CareerDev::log($mssg, $pid);
 	}
 
 	public static function getInstitutions() {

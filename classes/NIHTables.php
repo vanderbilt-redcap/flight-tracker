@@ -628,7 +628,9 @@ class NIHTables {
             foreach ($ary as $field => $source) {
                 if (in_array($field, $metadataFields)) {
                     if ($field == "override_degrees") {
-                        $fields[$field] = [];
+                        $fields[$field] = ["override_degrees_year"];
+                    } else if ($field == "imported_degrees") {
+                        $fields[$field] = ["imported_degrees_year"];
                     } else if ($field == "followup_degree") {
                         $fields[$field] = [];
                     } else if (preg_match("/^check_degree/", $field)) {
@@ -743,7 +745,7 @@ class NIHTables {
 	    if ($grantClass == "K") {
 	        return "Grant Title of K Award";
         } else if ($grantClass == "T") {
-	        return "check_degree0_topic";
+	        return "check_degree0_topic or custom_title";
         } else {
 	        return "";
         }
@@ -776,10 +778,17 @@ class NIHTables {
             }
             return $lastValidKTitle;
         } else if ($grantClass == "T") {
-            # if T => from survey (check_degree0_topic)
+            # if T => from survey (check_degree0_topic or custom_title)
             $topics = Download::oneField($this->token, $this->server, "check_degree0_topic");
-            if (isset($topics[$recordId])) {
+            if ($topics[$recordId]) {
                 return $topics[$recordId];
+            }
+            $redcapData = Download::fieldsForRecords($this->token, $this->server, ["record_id", "custom_type", "custom_title"], [$recordId]);
+            $kType = self::getTrainingType();
+            foreach ($redcapData as $row) {
+                if ($row['custom_title'] && ($row['custom_type'] == $kType)) {
+                    return $row['custom_title'];
+                }
             }
             return "";
         } else if (($grantClass == "Other") || ($grantClass == "")) {
@@ -1416,6 +1425,18 @@ class NIHTables {
         return $names;
     }
 
+    private static function getTrainingType() {
+	    global $grantClass;
+        if (in_array($grantClass, ["T", "Other"])) {
+            return 10;   // Other is training grant
+        } else if (in_array($grantClass, ["K"])) {
+            return 2;
+        } else if ($grantClass == "") {
+            return 2;    // K12 by default
+        }
+        throw new \Exception("Invalid Grant Class: $grantClass");
+	}
+
     private function downloadRelevantNames($table) {
 		if (self::isPredoc($table)) {
             $names = $this->downloadPredocNames();
@@ -1426,13 +1447,13 @@ class NIHTables {
 		}
 		if (self::beginsWith($table, ["8A", "8C", "5B"])) {
 		    $filteredNames = [];
-		    # 1 = all K12s/KL2s; 2 = Friends of Grant; 3 = Recent Graduates (Internal Ks)
+		    # 1 = all K12s/KL2s or Training Grant, depending on class of project; 2 = Friends of Grant; 3 = Recent Graduates (Internal Ks)
 		    if (self::beginsWith($table, ["5B"])) {
 		        $part = 1;
             } else {
                 $part = self::getPartNumber($table);
             }
-            $k12kl2Type = 2;
+		    $thisGrantType = self::getTrainingType();
             $internalKType = 1;
             if (in_array($part, [1, 3])) {
                 $trainingData = Download::trainingGrants($this->token, $this->server);
@@ -1441,7 +1462,7 @@ class NIHTables {
                     foreach ($currentGrants as $row) {
                         if ($row['redcap_repeat_instrument'] == "custom_grant") {
                             if ($part == 1) {
-                                if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15) && ($row['custom_type'] == $k12kl2Type)) {
+                                if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15) && ($row['custom_type'] == $thisGrantType)) {
                                     $filteredNames[$recordId] = $name;
                                 }
                             } else if ($part == 3) {

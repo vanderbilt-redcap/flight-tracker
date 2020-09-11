@@ -44,6 +44,18 @@ if ($_GET['record']) {
         $included = $pubs->getCitationCollection("Included");
         $notDone = $pubs->getCitationCollection("Not Done");
 
+        if ($_GET['startDate'] && REDCapManagement::isDate($_GET['startDate'])) {
+            $startTs = strtotime($_GET['startDate']);
+            if ($_GET['endDate'] && REDCapManagement::isDate($_GET['endDate'])) {
+                $endTs = strtotime($_GET['endDate']);
+            } else {
+                $endTs = time();
+            }
+            $dates[$record] = date("m-d-Y", $startTs)." - ".date("m-d-Y", $endTs);
+
+            $included->filterForTimespan($startTs, $endTs);
+            $notDone->filterForTimespan($startTs, $endTs);
+        }
         if ($_GET['trainingPeriodPlusDays']) {
             $trainingStart = $trainingStarts[$record];
             $trainingEnd = $trainingEnds[$record];
@@ -135,23 +147,35 @@ function makeExtraURLParams($exclude = []) {
 function makeCustomizeTable() {
     $html = "";
     $style = "style='width: 250px; padding: 15px; vertical-align: top;'";
-    $defaultDays = "";
-    if (isset($_GET['trainingPeriodPlusDays']) && is_numeric($_GET['trainingPeriodPlusDays'])) {
-        $defaultDays = $_GET['trainingPeriodPlusDays'];
+    $defaultFields = ["trainingPeriodPlusDays", "startDate", "endDate"];
+    $defaults = [];
+    foreach ($defaultFields as $field) {
+        $defaults[$field] = "";
+        if (isset($_GET[$field])) {
+            if (is_numeric($_GET[$field]) || REDCapManagement::isDate($_GET[$field])) {
+                $defaults[$field] = $_GET[$field];
+            }
+        }
     }
+
     $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays"]);
     list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
 
     $html .= "<table class='centered'>\n";
     $html .= "<tr>\n";
-    $html .= "<td colspan='2' $style><h2 class='nomargin'>Customize</h2></td>\n";
+    $html .= "<td colspan='3' $style><h2 class='nomargin'>Customize</h2></td>\n";
     $html .= "</tr>\n";
     $html .= "<tr>\n";
+    $html .= "<td $style><form action='$url' method='GET'>";
+    $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
+    $html .= "<h4>Show Pubs During Dates</h4>";
+    $html .= "<p class='centered'>Show All Publications Between:<br>Start: <input type='date' name='startDate' style='width: 150px;' value='{$defaults['startDate']}'><br>End: <input type='date' name='endDate' style='width: 150px;' value='{$defaults['endDate']}'><br><button>Re-Configure</button></p>";
+    $html .= "</form></td>\n";
     $html .= "<td $style>".Altmetric::makeClickText()."</td>\n";
     $html .= "<td $style><form action='$url' method='GET'>";
     $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
     $html .= "<h4>Show Pubs During Training</h4>";
-    $html .= "<p class='centered'>Additional Days: <input type='number' name='trainingPeriodPlusDays' style='width: 60px;' value='$defaultDays'><br><button>Re-Configure</button></p>";
+    $html .= "<p class='centered'>Additional Days: <input type='number' name='trainingPeriodPlusDays' style='width: 60px;' value='{$defaults['trainingPeriodPlusDays']}'><br><button>Re-Configure</button></p>";
     $html .= "</form></td>\n";
     $html .= "</tr>\n";
     $html .= "</table>\n";

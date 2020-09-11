@@ -29,6 +29,12 @@ class NameMatcher {
         return $names;
     }
 
+    public static function eliminateInitials($name) {
+        $name = preg_replace("/\b[A-Z]\b\.?/", "", $name);
+        trim($name);
+        return $name;
+    }
+
 	public static function matchNames($firsts, $lasts, $token, $server) {
 		if (!$firsts || !$lasts) {
 			return "";
@@ -158,8 +164,14 @@ class NameMatcher {
             if (count($nodes) == 2) {
                 return array($nodes[0], $nodes[1]);
             } else if (count($nodes) == 3) {
+                if (in_array(strtolower($nodes[1]), ["von", "van"])) {
+                    return array($nodes[0],  $nodes[1]." ".$nodes[2]);
+                }
                 return array($nodes[0] . " " . $nodes[1], $nodes[2]);
             } else if (count($nodes) == 4) {
+                if (in_array(strtolower($nodes[1]), ["von", "van"]) && (strtolower($nodes[2]) == "der")) {
+                    return array($nodes[0], $nodes[1]." ".$nodes[2]." ".$nodes[3]);
+                }
                 return array($nodes[0]." ".$nodes[1]." ".$nodes[2], $nodes[3]);
 			} else if (count($nodes) == 1) {
 				return array($nodes[0], "");

@@ -1,0 +1,3 @@
+<?php
+
+define('DEBUG', TRUE);

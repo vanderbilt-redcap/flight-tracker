@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.19.1";
+		return "2.20.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -493,6 +493,7 @@ class CareerDev {
             "citation" => "[citation_pmid] [citation_title]",
             "resources" => "[resources_resource]: [resources_date]",
             "honors_and_awards" => "[honor_name]: [honor_date]",
+            "manual_degree" => "[imported_degree]",
         ];
         if (self::isVanderbilt()) {
             $formsAndLabels["ldap"] = "[ldap_vanderbiltpersonjobname]";

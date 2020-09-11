@@ -167,11 +167,16 @@ public static function metadata($metadata, $token, $server) {
 	private static function testFeedback($feedback, $rows = array()) {
 		if (isset($feedback['error']) && $feedback['error']) {
             Application::log("Upload error: ".$feedback['error']);
-			throw new \Exception($feedback['error']."\n".json_encode($rows));
+			throw new \Exception("Error: ".$feedback['error']."\n".json_encode($rows));
 		}
 		if (isset($feedback['errors']) && $feedback['errors']) {
-		    Application::log("Upload errors: ".implode("; ", $feedback['errors']));
-			throw new \Exception(implode("; ", $feedback['errors'])."\n".json_encode($rows));
+		    if (is_array($feedback['errors'])) {
+                Application::log("Upload errors: ".implode("; ", $feedback['errors']));
+                throw new \Exception("Errors: ".implode("; ", $feedback['errors'])."\n".json_encode($rows));
+            } else {
+                Application::log("Upload errors: ".$feedback['errors']);
+                throw new \Exception("Errors: ".$feedback['errors']."\n".json_encode($rows));
+            }
 		}
 		return TRUE;
 	}

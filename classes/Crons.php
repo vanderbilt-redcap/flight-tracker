@@ -165,8 +165,8 @@ class CronManager {
 			$adminEmail .= ",".Application::getFeedbackEmail();
 		}
 
-		\REDCap::email($adminEmail, "noreply@vumc.org", Application::getProgramName()." Cron Error", $cronjob->getTitle()."<br><br>".$e->getMessage()."<br>".json_encode($e->getTrace()));
-		Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".json_encode($e->getTrace()));
+		\REDCap::email($adminEmail, "noreply@vumc.org", Application::getProgramName()." Cron Error", $cronjob->getTitle()."<br><br>".$e->getMessage()."<br>".$e->getTraceAsString());
+		Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".$e->getTraceAsString());
 	}
 
 	private $token;

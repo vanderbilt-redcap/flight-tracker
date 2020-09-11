@@ -51,8 +51,18 @@
 	],
 
    "no-auth-pages": [
-      "brag",
-	   "wrangler/certifyPub"
+       "brag",
+	   "wrangler/certifyPub",
+	   "mentor/_agreement_save.php",
+	   "mentor/addMentor.php",
+	   "mentor/index.php",
+	   "mentor/index_mentorview.php",
+	   "mentor/getREDCapUserid.php",
+	   "mentor/index_complete.php",
+	   "mentor/schedule_email.php",
+	   "mentor/change.php",
+	   "mentor/importData.php",
+	   "mentor/index_menteeview.php"
    ],
 
 

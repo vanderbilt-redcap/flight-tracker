@@ -80,7 +80,7 @@ if (count($_POST) > 0) {
 			if (($key == "departments") || ($key == "resources")) {
 				$lists[$key] = $value;
 			} else {
-				CareerDev::setSetting($key, $value);
+				CareerDev::setSetting($key, $value, $pid);
 			}
 		}
 		$lists["institutions"] = implode("\n", CareerDev::getInstitutions());

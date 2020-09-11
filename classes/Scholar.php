@@ -2,10 +2,13 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+
 require_once(dirname(__FILE__)."/Grants.php");
 require_once(dirname(__FILE__)."/Upload.php");
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Links.php");
+require_once(dirname(__FILE__)."/LDAP.php");
 require_once(dirname(__FILE__)."/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
@@ -175,12 +178,16 @@ class Scholar {
 
             $emails = [];
             foreach ($rows as $row) {
-                if ($row['redcap_repeat_instrument'] == "ldap") {
+                if (($row['redcap_repeat_instrument'] == "ldap") && !in_array($row['ldap_vanderbiltpersonjobname'], self::$skipJobs)) {
                     $emails[$row[$field]] = explode("@", strtolower($row["ldap_mail"]));
                 }
             }
             $keys = array_keys($emails);
-            if (count($emails) == $numExpected) {
+            if (count($emails) == 0) {
+                return new Result("", "");
+            } else if (count($emails) == 1) {
+                return new Result($keys[0], "ldap", "Computer-Generated", "", $this->pid);
+            } else if (count($emails) == $numExpected) {
                 if ((count($emails[$keys[0]]) == $numExpected) && (count($emails[$keys[1]]) == $numExpected)) {
                     if ($emails[$keys[0]][0] == $emails[$keys[1]][0]) {
                         if (in_array($emails[$keys[0]][1], $validLDAPDomains) && in_array($emails[$keys[1]][1], $validLDAPDomains)) {
@@ -324,6 +331,33 @@ class Scholar {
 				return $r;
 			}
 		}
+		if (CareerDev::isVanderbilt() && $mentorResult->getValue()) {
+            try {
+                list($firstName, $lastName) = NameMatcher::splitName($mentorResult->getValue());
+                $firstName = NameMatcher::eliminateInitials($firstName);
+                $key = LDAP::getNameAssociations($firstName, $lastName);
+                $info = LDAP::getLDAPByMultiple(array_keys($key), array_values($key));
+                if ($info) {
+                    $allUIDs = LDAP::findField($info, "uid");
+                    $jobs = LDAP::findField($info, "vanderbiltpersonjobname");
+                    $uids = [];
+                    if (count($allUIDs) == 1) {
+                        $uids = $allUIDs;
+                    } else {
+                        for ($i = 0; ($i < count($allUIDs)) && ($i < count($jobs)); $i++) {
+                            if (!in_array($jobs[$i], self::$skipJobs)) {
+                                $uids[] = $allUIDs[$i];
+                            }
+                        }
+                    }
+                    if (count($uids) == 1) {
+                        return new Result($uids[0], "ldap", "Computer-Generated", "", $this->pid);
+                    }
+                }
+            } catch(\Exception $e) {
+                Application::log("LDAP mentor lookup ERROR: ".$e->getMessage(), $this->pid);
+            }
+        }
 		return new Result("", "");
 	}
 
@@ -816,27 +850,58 @@ class Scholar {
 	}
 
 
-	# returns an array of (variableName, variableType) for to where (whither) they left current institution
+	# returns a Result for to where (whither) they left current institution
 	# returns blank if at current institution
-	private function getAllOtherInstitutions($rows) {
-		$followupInstitutionField = "followup_institution";
-		$checkInstitutionField = "check_institution";
-		$manualField = "imported_institution";
-		$institutionCurrent = "1";
+    private function getAllOtherInstitutionsAsList($rows) {
+        $institutions = $this->getAllOtherInstitutions($rows);
+        return new Result(implode(", ", $institutions), "");
+    }
 
-		$currentProjectInstitutions = Application::getInstitutions(); 
-		for ($i = 0; $i < count($currentProjectInstitutions); $i++) {
-			$currentProjectInstitutions[$i] = trim(strtolower($currentProjectInstitutions[$i]));
-		}
-		$result = $this->getInstitution($rows);
-		$value = strtolower($result->getValue());
-		if (!in_array($value, $currentProjectInstitutions)) {
-			return $result;
-		}
-		return new Result("", "");
+    private function getAllOtherInstitutions($rows) {
+        $currentProjectInstitutions = Application::getInstitutions();
+        for ($i = 0; $i < count($currentProjectInstitutions); $i++) {
+            $currentProjectInstitutions[$i] = trim(strtolower($currentProjectInstitutions[$i]));
+        }
+
+        $splitterRegex = "/\s*[,;]\s*/";
+        $choices = self::getChoices($this->metadata);
+
+	    $priorInstitutionList = REDCapManagement::findField($rows, $this->recordId,"identifier_institution");
+        $seenInstitutions = [];
+        $seenInstitutionsInLowerCase = [];
+	    if ($priorInstitutionList) {
+            $candidates = preg_split($splitterRegex, $priorInstitutionList);
+            foreach  ($candidates as $institution) {
+                if (!in_array(strtolower($institution), $currentProjectInstitutions)) {
+                    # filter out current institutions as these are searched by default
+                    $seenInstitutions[] = $institution;
+                    $seenInstitutionsInLowerCase[] = strtolower($institution);
+                }
+            }
+        }
+
+        $defaultOrder = self::getDefaultOrder("identifier_institution");
+        $vars = $this->getOrder($defaultOrder, "identifier_institution");
+        foreach ($vars as $field => $source) {
+            $value = REDCapManagement::findField($rows, $this->recordId, $field);
+            if ($value) {
+                if (isset($choices[$field]) && isset($choices[$field][$value])) {
+                    $institutions = [$choices[$field][$value]];
+                } else {
+                    $institutions = preg_split($splitterRegex, $value);
+                }
+                foreach ($institutions as $institution) {
+                    if (!in_array(strtolower($institution), $seenInstitutionsInLowerCase) && !in_array(strtolower($institution), $currentProjectInstitutions)) {
+                        $seenInstitutions[] = $institution;
+                        $seenInstitutionsInLowerCase[] = strtolower($institution);
+                    }
+                }
+            }
+        }
+        return $seenInstitutions;
 	}
 
-	# returns an array of (variableName, variableType) for when they left VUMC
+	# returns a Result for when they left VUMC
 	# used for the Scholars' survey and Follow-Up surveys
 	private function getWhenLeftInstitution($rows) {
 		$followupInstitutionField = "followup_institution";
@@ -1115,6 +1180,7 @@ class Scholar {
             "imported_institution" => "manual",
             "check_institution" => "scholars",
             "check_undergrad_institution" => "scholars",
+            "vfrs_current_degree_institution" => "vfrs",
         );
         $orders["identifier_left_job_title"] = array(
             "promotion_job_title" => "manual",
@@ -1946,7 +2012,7 @@ class Scholar {
             "summary_coeus_name" => "calculateCOEUSName",
             "summary_survey" => "getSurvey",
             "identifier_left_date" => "getWhenLeftInstitution",
-            "identifier_institution" => "getAllOtherInstitutions",
+            "identifier_institution" => "getAllOtherInstitutionsAsList",
             "identifier_left_job_title" => "getJobTitle",
             "identifier_left_job_category" => "getJobCategory",
             "identifier_left_department" => "getNewDepartment",
@@ -2266,6 +2332,7 @@ class Scholar {
 	private $demographics = array();    // key for demographics is REDCap field name; value is REDCap value
 	private $metaVariables = array();   // copied from the Grants class
 	private static $choices;
+    protected static $skipJobs = ["Student Expense Only", ""];
 }
 
 class Result {
@@ -2335,9 +2402,13 @@ class Result {
 
 		if ($source == "") {
 			$sourcetype = "";
-		} else if (in_array($source, $selfReported) || in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "1", $pid))) {
-			$sourcetype = "1";
-		} else if (in_array($source, $newman) || in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "2", $pid))) {
+		} else if (in_array($source, $selfReported)) {
+            $sourcetype = "1";
+        } else if ($pid && in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "1", $pid))) {
+            $sourcetype = "1";
+		} else if (in_array($source, $newman)) {
+            $sourcetype = "2";
+        } else if ($pid && in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "2", $pid))) {
 			$sourcetype = "2";
 		} else {
 			$sourcetype = "0";

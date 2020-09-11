@@ -388,7 +388,7 @@ class Download {
 			$redcapData = self::sendToServer($server, $data);
 			$ids = array();
 			foreach ($redcapData as $row) {
-				if ($row['identifier_vunet']) {
+				if ($row[$userIdField]) {
 					$ids[$row['record_id']] = $row[$userIdField];
 				}
 			}
