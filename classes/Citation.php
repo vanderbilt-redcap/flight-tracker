@@ -207,24 +207,6 @@ class Citation {
 		return 26;
 	}
 
-	public static function findMaxInstance($token, $server, $recordId, $redcapData = array(), $metadata = []) {
-		if (empty($redcapData)) {
-			$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields(metadata), array($recordId));
-		}
-		$maxInstance = 0;
-		$instrument = "citation";
-		foreach ($redcapData as $row) {
-			if (($row['redcap_repeat_instrument'] == $instrument) && ($recordId == $row['record_id'])) {
-				$instance = $row['redcap_repeat_instance'];
-				if ($instance > $maxInstance) {
-					$maxInstance = $instance;
-				} 
-			}
-		}
-		return $maxInstance;
-
-	}
-
 	# citationClass is notDone, included, or omitted
 	public function toHTML($citationClass) {
 		if ($citationClass == "notDone") {

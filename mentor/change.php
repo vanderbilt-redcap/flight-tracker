@@ -44,7 +44,7 @@ if ($type == "radio") {
     }
 } else if ($type == "checkbox") {
     if (preg_match("/___/", $fieldName)) {
-        $checkboxValues = [ "", "0", "1", ];
+        $checkboxValues = ["", "0", "1",];
         list($field, $key) = preg_split("/___/", $fieldName);
         if ($recordId
             && in_array($recordId, $recordIds)
@@ -63,6 +63,24 @@ if ($type == "radio") {
                 "mentoring_agreement_complete" => "2",
             ];
         }
+    }
+} else if ($type == "textarea") {
+    if ($recordId
+        && in_array($recordId, $recordIds)
+        && $instrument
+        && $instance
+        && $fieldName
+        && in_array($fieldName, $metadataFields)
+    ) {
+        $uploadRow = [
+            "record_id" => $recordId,
+            "redcap_repeat_instrument" => $instrument,
+            "redcap_repeat_instance" => $instance,
+            $fieldName => $value,
+            "mentoring_last_update" => date("Y-m-d"),
+            "mentoring_userid" => $userid,
+            "mentoring_agreement_complete" => "2",
+        ];
     }
 } else if ($type == "notes") {
     if ($recordId
@@ -100,4 +118,6 @@ if (!empty($uploadRow)) {
     } catch (\Exception $e) {
         echo "Exception: ".$e->getMessage()."<br>\n".$e->getTraceAsString();
     }
+} else {
+    echo "No inputs! ".REDCapManagement::json_encode_with_spaces($_REQUEST);
 }

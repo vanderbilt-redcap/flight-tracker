@@ -57,7 +57,8 @@ list($firstName, $lastName) = getNameFromREDCap($userid2, $token, $server);
 $otherMentors = REDCapManagement::makeConjunction($myMentors["name"]);
 $otherMentees = REDCapManagement::makeConjunction($myMentees["name"]);
 
-$redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
+$fields = array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields);
+$redcapData = Download::fieldsForRecords($token, $server, $fields, [$menteeRecordId]);
 if ($_REQUEST['instance']) {
     $currInstance = $_REQUEST['instance'];
 } else {
@@ -68,18 +69,8 @@ $menteeInstance = getMaxInstanceForUserid($redcapData, $menteeRecordId, $userids
 $surveysAvailableToPrefill = getMySurveys($userid2, $token, $server, $menteeRecordId, $currInstance);
 list($priorNotes, $instances) = makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $menteeInstance);
 $currInstanceRow = [];
-foreach ($redcapData as $row) {
-    if (($row['record_id'] == $menteeRecordId)
-        && ($row['redcap_repeat_instrument'] == "mentoring_agreement")
-        && ($row['redcap_repeat_instance'] == $currInstance)) {
-        $currInstanceRow = $row;
-    }
-    if (($row['record_id'] == $menteeRecordId)
-        && ($row['redcap_repeat_instrument'] == "mentoring_agreement")
-        && ($row['redcap_repeat_instance'] == $menteeInstance)) {
-        $menteeInstanceRow = $row;
-    }
-}
+$currInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $currInstance);
+$menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance);
 
 ?>
 <section class="bg-light">
@@ -107,8 +98,9 @@ foreach ($redcapData as $row) {
                     $sections = [];
                     $tableNum = 1;
                     $i = 0;
+                    $skipFieldTypes = ["file", "text"];
                     foreach ($metadata as $row) {
-                        if ($row['section_header']) {
+                        if ($row['section_header'] && !in_array($row['field_type'], $skipFieldTypes)) {
                             $sections[$tableNum] = $row['section_header'];
 
                             if ($tableNum > 1) {
@@ -125,8 +117,8 @@ foreach ($redcapData as $row) {
                             $htmlRows[] = '<tr>';
                             $htmlRows[] = '<th style="text-align: left;" scope="col">question</th>';
                             $htmlRows[] = '<th style="text-align: center;" scope="col">mentor responses</th>';
+                            $htmlRows[] = '<th style="text-align: center;" scope="col">latest note<br>(click for full conversation)</th>';
                             $htmlRows[] = '<th style="text-align: center;" scope="col">mentee responses</th>';
-                            $htmlRows[] = '<th style="text-align: center;" scope="col">latest note</th>';
                             $htmlRows[] = '</tr>';
                             $htmlRows[] = '</thead>';
                             $htmlRows[] = '<tbody>';
@@ -134,13 +126,13 @@ foreach ($redcapData as $row) {
                             $tableNum++;
                         }
                         $field = $row['field_name'];
-                        if (!in_array($field, $notesFields)) {
+                        if (!in_array($field, $notesFields) && !in_array($row['field_type'], $skipFieldTypes)) {
                             $i++;
-                            $prefices = ["radio" => "exampleRadiosh", "checkbox" => "exampleChecksh"];
+                            $prefices = ["radio" => "exampleRadiosh", "checkbox" => "exampleChecksh", "notes" => "exampleTextareash"];
 
                             $menteeFieldValues = [];
                             $mentorFieldValues = [];
-                            if ($row['field_type'] == "radio") {
+                            if (($row['field_type'] == "radio") || ($row['field_type'] == "notes")) {
                                 $menteeValue = REDCapManagement::findField([$menteeInstanceRow], $menteeRecordId, $field, "mentoring_agreement", $menteeInstance);
                                 $mentorValue = REDCapManagement::findField([$currInstanceRow], $menteeRecordId, $field, "mentoring_agreement", $currInstance);
                                 if ($menteeValue) {
@@ -161,8 +153,6 @@ foreach ($redcapData as $row) {
                                         $mentorFieldValues[] = $index;
                                     }
                                 }
-                            } else {
-                                throw new \Exception("Invalid Field Type in $field: ".$row['field_type']);
                             }
                             $specs = [
                                 "mentor" => ["values" => $mentorFieldValues, "suffix" => "", "colClass" => "thementor", "status" => "", ],
@@ -173,26 +163,37 @@ foreach ($redcapData as $row) {
                             } else {
                                 $status = "disagree";
                             }
-                            $htmlRows[] = '<tr id="m'.$i.'" class="'.$status.'">';
+                            $htmlRows[] = "<tr id='$field-tr' class='$status'>";
                             $htmlRows[] = '<th scope="row">'.$row['field_label'].'</th>';
                             $prefix = $prefices[$row['field_type']];
                             foreach ($specs as $key => $spec) {
-                                $htmlRows[] = '<td class="'.$spec['colClass'].'">';
                                 $suffix = "";
-                                foreach ($choices[$field] as $index => $label) {
-                                    $name = $prefix.$field.$spec['suffix'];
-                                    $id = $name."___".$index;
-                                    $selected = "";
-                                    if (in_array($index, $spec['values'])) {
-                                        $selected = "checked";
+                                if (in_array($row['field_type'], ["checkbox", "radio"])) {
+                                    $htmlRows[] = "<td class='{$spec['colClass']}'>";
+                                    foreach ($choices[$field] as $index => $label) {
+                                        $name = $prefix.$field.$spec['suffix'];
+                                        $id = $name."___".$index;
+                                        $selected = "";
+                                        if (in_array($index, $spec['values'])) {
+                                            $selected = "checked";
+                                        }
+                                        $htmlRows[] = '<div class="form-check"><input class="form-check-input" type="'.$row['field_type'].'" name="'.$name.'" id="'.$id.'" value="'.$index.'" '.$selected.' '.$spec['status'].'><label class="form-check-label" for="'.$id.'">'.$label.'</label></div>';
                                     }
-                                    $htmlRows[] = '<div class="form-check"><input class="form-check-input" type="'.$row['field_type'].'" name="'.$name.'" id="'.$id.'" value="'.$index.'" '.$selected.' '.$spec['status'].'><label class="form-check-label" for="'.$id.'">'.$label.'</label></div>';
+                                    $htmlRows[] = '</td>';
+                                } else if (($row['field_type'] == "notes") && ($key == "mentor")) {
+                                    $name = $prefix.$field.$spec['suffix'];
+                                    $id = $name;
+                                    $value = $spec['values'][0];
+
+                                    $htmlRows[] = "<td class='{$spec['colClass']}' colspan='3'>";
+                                    $htmlRows[] = '<div class="form-check" style="height: 100px;"><textarea class="form-check-input" name="'.$name.'" id="'.$id.'">'.$value.'</textarea></div>';
+                                    $htmlRows[] = '</td>';
                                 }
-                                $htmlRows[] = '</td>';
+                                if ($key == "mentor") {
+                                    $htmlRows[] = makeNotesHTML($field, [$menteeInstanceRow], $menteeRecordId, $menteeInstance, $notesFields);
+                                }
                             }
                         }
-
-                        $htmlRows[] = makeNotesHTML($field, [$menteeInstanceRow], $menteeRecordId, $menteeInstance, $notesFields);
                         $htmlRows[] = '</tr>';
                     }
                     $htmlRows[] = "</tbody></table>";
@@ -224,7 +225,7 @@ foreach ($redcapData as $row) {
                         border-right: 1px solid #cccccc;
                     }
 
-                    thead th:nth-of-type(4) {
+                    thead th:nth-of-type(3) {
                         width: 31%;
                     }
 
@@ -273,13 +274,13 @@ foreach ($redcapData as $row) {
                         background: none;
                     }
                     tbody tr.disagree td:nth-of-type(1),
-                    tbody tr.disagree td:nth-of-type(3),
+                    tbody tr.disagree td:nth-of-type(2),
                     tbody tr.disagree th:nth-of-type(1){
                         background-color:#af000024 !important;
                         font-weight: bold;
                     }
-                    thead th:nth-of-type(3),
-                    tbody tr td:nth-of-type(2){
+                    thead th:nth-of-type(4),
+                    tbody tr td:nth-of-type(3){
                         background-color:#af000024 !important;
                     }
                     tbody tr th:nth-of-type(1),
@@ -312,6 +313,12 @@ foreach ($redcapData as $row) {
                         display: block;
                         box-sizing: padding-box;
                         overflow: hidden;
+                    }
+
+                    textarea.form-check-input {
+                        width: 100%;
+                        height: 100px;
+                        overflow: scroll !important;
                     }
 
                     .tnote {
@@ -571,8 +578,9 @@ foreach ($redcapData as $row) {
             //updatequest = updatequest.replace()
         });
 
-        $("input[type=checkbox]").change(function() { updateData(this); });
-        $("input[type=radio]").change(function() { updateData(this); });
+        $("input[type=checkbox].form-check-input").change(function() { updateData(this); });
+        $("input[type=radio].form-check-input").change(function() { updateData(this); });
+        $("textarea.form-check-input").blur(function() { updateData(this); });
 
 
     <?php
@@ -626,6 +634,7 @@ foreach ($redcapData as $row) {
     }
 
     function updateData(ob) {
+        console.log("updateData with "+$(ob).attr("id"));
         changeHighlightingFromAgreements(ob);
         var suffix = '';
         if ($(ob).attr("id").match(/_menteeanswer/)) {
@@ -642,9 +651,11 @@ foreach ($redcapData as $row) {
             let thisbox = "#exampleChecksh"+fieldName+suffix+"___"+value;
 
             $(thisbox).addClass("simptip-position-left").attr("data-tooltip","option saved!");
+            let type = "checkbox";
+            console.log(thisbox+" "+type);
 
             $.post('<?= Application::link("mentor/change.php").$uidString ?>', {
-                type: 'checkbox',
+                type: type,
                 record: '<?= $menteeRecordId ?>',
                 instance: '<?= $currInstance ?>',
                 field_name: fullFieldName,
@@ -661,8 +672,10 @@ foreach ($redcapData as $row) {
             let thisbox = "#exampleRadiosh"+fieldName+suffix+"___"+value;
             $(thisbox).addClass("simptip-position-left").attr("data-tooltip","option saved!");
 
+            let type = "radio";
+            console.log(thisbox+" "+type);
             $.post('<?= Application::link("mentor/change.php").$uidString ?>', {
-                type: 'radio',
+                type: type,
                 record: '<?= $menteeRecordId ?>',
                 instance: '<?= $currInstance ?>',
                 field_name: fieldName,
@@ -671,6 +684,24 @@ foreach ($redcapData as $row) {
             }, function(html) {
                 console.log(html);
                 $(thisbox).delay(300).removeClass("simptip-position-left").removeAttr("data-tooltip");
+            });
+        } else if ($(ob).attr("id").match(/^exampleTextareash/)) {
+            let fieldName = $(ob).attr("id").replace(/^exampleTextareash/, "");
+            let value = $(ob).val();
+            let thisbox = "#exampleTextareash"+fieldName;
+            $(thisbox).attr("disabled", true);
+            let type = "textarea";
+            console.log(thisbox+" "+type);
+            $.post('<?= Application::link("mentor/change.php").$uidString ?>', {
+                type: type,
+                record: '<?= $menteeRecordId ?>',
+                instance: '<?= $currInstance ?>',
+                field_name: fieldName,
+                value: value,
+                userid: '<?= $userid2 ?>'
+            }, function(html) {
+                console.log(html);
+                $(thisbox).attr("disabled", false);
             });
         }
         $('.chart').data('easyPieChart').update(getPercentComplete());
@@ -718,6 +749,7 @@ foreach ($redcapData as $row) {
         margin-bottom: 5px;
         display: inline-block;
         max-width: 95%;
+        width: 95%;
     }
 
     .acomment.odd {
@@ -810,7 +842,7 @@ foreach ($redcapData as $row) {
 
 </style>
 
-<?= makeCommentJS($userid2, $menteeRecordId, $currInstance, $priorNotes) ?>
+<?= makeCommentJS($userid2, $menteeRecordId, $menteeInstance, $currInstance, $priorNotes) ?>
 
 <style type="text/css">
     body {

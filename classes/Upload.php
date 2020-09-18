@@ -181,6 +181,53 @@ public static function metadata($metadata, $token, $server) {
 		return TRUE;
 	}
 
+	public static function file($pid, $record, $field, $base64, $filename, $instance = 1) {
+        $contents = base64_decode($base64);
+        if ($contents) {
+            $file = [];
+            $file['tmp_name'] = APP_PATH_TEMP.$field."_".$record."_".substr(sha1(rand()), 0, 6)."_".$filename;
+            $file['size'] = strlen($contents);
+            $file['name'] = $filename;
+
+            $fp = fopen($file['tmp_name'], "w");
+            fwrite($fp, $contents);
+            fclose($fp);
+
+            $instance = db_real_escape_string($instance);
+
+            $sql = "SELECT m.event_id AS event_id FROM redcap_events_arms AS a INNER JOIN redcap_events_metadata AS m ON a.arm_id = m.arm_id WHERE a.project_id = '".db_real_escape_string($pid)."'";
+            $q = db_query($sql);
+            if ($error = db_error()) {
+                return ["error" => $error];
+            }
+            if ($row = db_fetch_assoc($q)) {
+                $event_id = $row['event_id'];
+            } else {
+                return ["error" => "Could not locate event_id!"];
+            }
+
+            require_once(APP_PATH_DOCROOT."Classes/Files.php");
+            $docId = \Files::uploadFile($file, $pid);
+            $sql = "REPLACE INTO redcap_data SET project_id = '".db_real_escape_string($pid)."',
+                        event_id = '".db_real_escape_string($event_id)."',
+                        record = '".db_real_escape_string($record)."',
+                        field_name = '".db_real_escape_string($field)."',
+                        value = '".db_real_escape_string($docId)."',";
+            if ($instance == 1) {
+                $sql .= " instance = NULL";
+            } else {
+                $sql .= " instance = '$instance'";
+            }
+            db_query($sql);
+            if ($error = db_error()) {
+                return ["error" => $error];
+            } else {
+                return ["doc_id" => $docId];
+            }
+        } else {
+            return ["error" => "Could not decode base64"];
+        }
+    }
 	public static function projectSettings($settings, $token, $server) {
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");

@@ -50,8 +50,11 @@ $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_mer
   <div class="container">
     <div class="row">
       <div class="col-lg-12">
-        <h2 style="color: #727272;">Welcome, <?= $firstName ?>!</h2>
-        <p><style type="text/css">
+          <h2><?= $firstName ?>, here are your mentee-mentor relationships</h2>
+          <div class="blue-box">
+              <h3><?= implode("<br>&rarr; ", ["Mentee Preferences", "Discussion with Mentor", "Final Agreement", "Revisit Agreement"]) ?></h3>
+          </div>
+          <p><style type="text/css">
 
 .table{width: 96%; margin-left: 4%;}
 thead th {border-top: 0px solid #dee2e6 !important;font-size: 11px; text-transform: uppercase;font-family: proxima-soft, sans-serif; border-bottom: unset !important;    letter-spacing: 1px;}
@@ -77,6 +80,16 @@ padding-top: 1.4em !important; text-align: center;
 tbody tr td:nth-of-type(1) small{
     margin-top: -5px;
     display: block;
+}
+
+.blue-box {
+    padding: 40px;
+    background-image: linear-gradient(to bottom right, #66d1ff, #4f64db);
+    border-radius: 25px;
+    margin: 25px auto;
+    max-width: 500px;
+    text-align: center !important;
+    box-shadow: 6px 6px 4px #444444;
 }
 
 textarea{  display: block;box-sizing: padding-box;overflow: hidden;}
@@ -135,11 +148,13 @@ line-height: 20px; font-family: proxima-nova}
                       $percentComplete = 0;
                       $mdy = date("m-d-Y");
                       $lastMentorInstance = FALSE;
+                      $surveyText = "start";
                   } else {
                       $percentComplete = getPercentComplete($myRow, $metadata);
                       $mdy = REDCapManagement::YMD2MDY($myRow['mentoring_last_update']);
                       $instance = $myRow['redcap_repeat_instance'];
                       $lastMentorInstance = $mentorRow['redcap_repeat_instance'];
+                      $surveyText = "edit";
                   }
                   $newMentorInstance = $instance + 1;
                   $trailerURL = $uidString."&menteeRecord=$menteeRecordId&instance=$instance";
@@ -156,7 +171,7 @@ line-height: 20px; font-family: proxima-nova}
                   }
 
                   echo "<tr id='m$i'>\n";
-                  echo "<th scope='row'><a class='surveylink' href='$surveyPage'>$mdy</a></th>\n";
+                  echo "<th scope='row'><a class='surveylink' href='$surveyPage'>$surveyText</a></th>\n";
                   if ($percentComplete > 0) {
                       echo "<td class='orange'>$percentComplete%<br><small>$mdy</small></td>\n";
                   } else {
@@ -186,81 +201,12 @@ line-height: 20px; font-family: proxima-nova}
               ?>
               </tbody>
           </table>
-
-
-          <div class="col-lg-4" style="float: right;">
-                <div id="boxa" class="box_bg box_white boxa">
-                    <div class="row">
-                        <div class="col-lg-7 box_title">Characteristics of a <strong>Successful Mentor</strong></div>
-                        <div class="col-lg-5 box_guys">
-                            <img src="<?= Application::link("mentor/img/images/box_imgs_03.jpg") ?>">
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-lg-12 box_body">
-                          <p>A successful mentor is not just an advisor, but a role model, guide and colleague. </p>
-                          <p class="lm"><button type="button" class="btn btn-light" onclick="characteristicsPopup('mentor');">Learn More</button></p>
-                      </div>
-                    </div>
-                  </div>
-                    <div id="boxb" class="box_bg box_white boxb">
-                        <div class="row">
-                            <div class="col-lg-7 box_title">Characteristics of a <strong>Successful Mentee</strong></div>
-                            <div class="col-lg-5 box_guys">
-                                <img src="<?= Application::link("mentor/img/images/box_imgs_06.jpg") ?>">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12 box_body">
-                                <p>The foundation for a successful mentee rests on three “vital signs” of successful mentoring relationships: respect, responsiveness, and accountability.</p>
-                                <p class="lm"><button type="button" class="btn btn-light" onclick="characteristicsPopup('mentee');">Learn More</button></p>
-
-                            </div>
-                        </div>
-
-                    </div>
-                    <div id="boxc" class="box_bg box_white boxc">
-                        <div class="row">
-                            <div class="col-lg-7 box_title">Additional Resources<br>for a<br>Deeper Dive</div>
-                            <div class="col-lg-5 box_guys">
-                                <img src="<?= Application::link("mentor/img/images/box_imgs_08.png") ?>">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12 box_body">
-                                <p>These papers in the literature provide opportunities for further exploration.</p>
-                                <p class="lm"><button type="button" class="btn btn-light" onclick="characteristicsPopup('resources');">Learn More</button></p>
-
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-    <?= makePopupJS() ?>
-
-    <p>Welcome to a new way to think about the agreement of collaboration between a Mentee (also referred to here as ‘Scholar’) and Mentor. Mentor-Mentee Scholar Agreements (‘Mentoring Agreement’), or contracts, function to define a mutually agreed upon set of goals and parameters which provide a foundation for the mentoring relationship.  Ideally, a formal agreement will address a broad range of domains, including the Scholar’s research and education, professional development and career advancement and interactions between the scholar and mentor with respect to support, communication, personal conduct and interpersonal interactions.</p>
-    <p>While seen as a valuable mechanism to align expectations between scholars and mentors, and provide a road map for collaboration, agreements are not uniformly employed.  One possible reason for the lack of universal use is the need for a more user friendly, relevant document which may serve as an active guidepost applicable to all levels of the scholar’s career development.  This program was created to provide an improved foundation for the development of agreement documents, and a site for their ongoing access and update.</p>
-
-          <h3>Background</h3>
-          <p><img src="<?= Application::link("/mentor/img/temp_image.jpg") ?>" style="float: right; margin-right: 39px;width: 296px;">Every mentor – mentee scientific and career development relationship is different, but there are common features that characterize successful relationships.</p>
-          <!-- <p>Traditional Mentoring Agreements provide a static template for each mentor-mentee pairing to address at the start of their formal mentoring relationship.</p> -->
-
-          <p>With this Mentoring Agreement, we seek to:</p>
-          <ol>
-              <li>Create the foundation for a discussion and documentation of key ‘domains’ crucial to a productive initiation and maintenance of the mentor-mentee relationship. Example ‘domains’ are:</li>
-              <ol type="a">
-                  <li>Meetings, Communication and Work Expectations</li>
-                  <li>Financial Support</li>
-                  <li>Research</li>
-                  <li>Approach to Scholarly Products</li>
-                  <li>Career and Professional Development</li>
-              </ol>
-
-              <li>Create a modifiable Mentoring Agreement which may be created at the start of each relationship and revisited for revision over time as the relationship, scientific efforts, and career development of the mentee mature (e.g., every 12 months).</li>
-          </ol>
-          <p>We hope you find this agreement helpful as you begin or continue your Mentor-Mentee Scholar relationship.</p>
       </div>
     </div>
+  </div>
+</section>
+
+
 
 
 
@@ -363,6 +309,13 @@ $('.viewagreement').hover(
 }
 .h2, h2 {
     font-weight: 700;
+    text-align: center;
+    color: #727272;
+}
+
+h3 {
+    color: #555555;
+    text-align: center;
 }
 
 a.surveylink {
@@ -571,11 +524,6 @@ h4{
 .tdata{
     padding-top: 30px;
 }
-.characteristics {
-    background-color: #dddddd;
-    padding: 20px;
-    font-size: 18px;
-}
 .note_viewagreementstatus{
   background-image: url(./images/note_viewagreementstatus.png);
     height: 157px;
@@ -623,7 +571,7 @@ $('.viewagreementstatus').hover(
     .listmentors tbody tr{    line-height: 30px;}
     .listmentors .form-control{font-size: 14px;}
     .listmentors input:placeholder-shown {border:0px; background: none;}
-    .listmentors tbody tr th:nth-of-type(1), .listmentors tbody tr td:nth-of-type(1){padding-left: 0px !important; padding-right: 0px !important; text-align: center;}
+    .listmentors tbody tr th:nth-of-type(1), .listmentors tbody tr td:nth-of-type(1){vertical-align: middle; padding-left: 0px !important; padding-right: 0px !important; text-align: center;}
     .listmentors tbody tr th:nth-of-type(1), .listmentors tbody tr td:nth-of-type(3), .listmentors tbody tr td:nth-of-type(4), .listmentors tbody tr td:nth-of-type(5), .listmentors tbody tr td:nth-of-type(6){padding-top: 1.4em !important;}
     .listmentors tjbody tr td:nth-of-type(4){text-align: center;}
     .listmentors tbody tr td:nth-of-type(3):hover{cursor:hand;}

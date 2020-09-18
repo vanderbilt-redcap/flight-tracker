@@ -20,8 +20,10 @@ require_once dirname(__FILE__)."/../classes/REDCapManagement.php";
 authenticate($userid, $_REQUEST['menteeRecord']);
 if ($_GET['uid']) {
     $username = $_GET['uid'];
+    $uidString = "&uid=$username";
 } else {
     $username = $userid;
+    $uidString = "";
 }
 
 require_once dirname(__FILE__).'/_header.php';
@@ -38,13 +40,16 @@ if ($_REQUEST['instance']) {
     throw new \Exception("You must specify an instance");
 }
 list($firstName, $lastName) = getNameFromREDCap($username, $token, $server);
+$userids = Download::userids($token, $server);
 $metadata = Download::metadata($token, $server);
 $metadata = filterMetadata($metadata);
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 $notesFields = getNotesFields($metadataFields);
 $choices = REDCapManagement::getChoices($metadata);
-$redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
+$redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
 $row = pullInstanceFromREDCap($redcapData, $instance);
+$menteeInstance = getMaxInstanceForUserid($redcapData, $menteeRecordId, $userids[$menteeRecordId]);
+$menteeRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance);
 $listOfMentors = REDCapManagement::makeConjunction(array_values($myMentors["name"]));
 $listOfMentees = isMentee($menteeRecordId, $username) ? $firstName." ".$lastName : $myMentees["name"][$menteeRecordId];
 $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
@@ -70,6 +75,7 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
           $closing = "</ul></div></p>";
           $noInfo = "No Information Specified.";
           $hasRows = FALSE;
+          $skipFieldTypes = ["file", "text"];
           foreach ($metadata as $metadataRow) {
               if ($metadataRow['section_header']) {
                   if (!empty($htmlRows)) {
@@ -84,14 +90,47 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
                   $hasRows = FALSE;
               }
               $field = $metadataRow['field_name'];
-              if ($row[$field] && !in_array($field, $notesFields)) {
+              $possibleNotesField = $field."_notes";
+              if ($row[$field] && !in_array($field, $notesFields) && !in_array($metadataRow['field_type'], $skipFieldTypes)) {
                   $value = "";
                   if ($choices[$field] && $choices[$field][$row[$field]]) {
                       $value = $choices[$field][$row[$field]];
                   } else {
-                      $value = $row[$field];
+                      $value = preg_replace("/\n/", "<br>", $row[$field]);
+                      $value = preg_replace("/<script>.+<\/script>/", "", $value);   // security
                   }
-                  $htmlRows[] = "<li>".$metadataRow['field_label'].": <span>".$value."</span></li>";
+
+                  $notesText = "";
+                  if ($menteeRow[$possibleNotesField]) {
+                      $notesText = "<div class='smaller'>".preg_replace("/\n/", "<br>", $menteeRow[$possibleNotesField])."</div>";
+                  }
+                  if ($metadataRow['field_type'] == "notes") {
+                      $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><span>".$value."</span></li>";
+                  } else {
+                      $htmlRows[] = "<li>".$metadataRow['field_label'].": <span>".$value."</span>$notesText</li>";
+                  }
+                  $hasRows = TRUE;
+              } else if (($metadataRow['field_type'] == "file") && ($metadataRow['text_validation_type_or_show_slider_number'] == "signature")) {
+                  $dateField = $field."_date";
+                  if ($row[$field]) {
+                      $base64 = getBase64OfFile($row[$field], $_GET['pid']);
+                      if ($row[$dateField]) {
+                          $date = "<br>".REDCapManagement::YMD2MDY($row[$dateField]);
+                      } else {
+                          $date = "";
+                      }
+                      if ($base64) {
+                          $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><img src='$base64' class='signature' alt='signature'><div class='signatureDate'>$date</div></li>";
+                      }
+                  } else {
+                      $date = date("m-d-Y");
+                      $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><div class='signature' id='$field'></div><div class='signatureDate'>$date</div><button onclick='saveSignature(\"$field\");'>Save</button> <button onclick='resetSignature(\"#$field\");'>Reset</button></li>";
+                      $htmlRows[] = "<script>
+                            $(document).ready(function() {
+                                $('#$field').jSignature();
+                            });
+                            </script>";
+                  }
                   $hasRows = TRUE;
               }
           }
@@ -107,6 +146,28 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
   </div>
 </section>
 
+<script src="<?= Application::link("mentor/js/jSignature.min.js") ?>"></script>
+
+<script>
+    function saveSignature(field) {
+        let ob = '#'+field;
+        let datapair = $(ob).jSignature('getData', 'svgbase64');
+        $.post('<?= Application::link("mentor/uploadSignature.php").$uidString ?>',
+            { menteeRecord: '<?= $menteeRecordId ?>',
+                field: field,
+                b64image: datapair[1],
+                mime_type: datapair[0],
+                instance: '<?= $instance ?>',
+                date: '<?= REDCapManagement::MDY2YMD($date) ?>' },
+            function(html) {
+            console.log(html);
+        });
+    }
+
+    function resetSignature(ob) {
+        $(ob).jSignature("reset");
+    }
+</script>
 
 <style type="text/css">
   body {
@@ -152,6 +213,16 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
   margin: auto;
 }
 
+.signature {
+    width: 400px;
+    height: 100px;   /* fixed by jSignature */
+}
+.signatureDate {
+    padding-left: 25px;
+    text-align: right;
+    width: 400px;
+}
+
 .getstarted{
     display: table-cell;
   text-align: center;
@@ -161,6 +232,20 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
   width: 50vw; height: 323px;
   background-color: #056c7d; text-align: center;
 }
+
+  .timestamp {
+      display: inline;
+      margin-left: 6px;
+      font-size: 12px;
+      font-weight: 100;
+      color: #a8a8a8;
+      text-decoration: none !important;
+  }
+  .smaller {
+      padding-left: 20px;
+      font-size: 14px;
+  }
+
 .btn-light{color: #26798a}
 .lm{text-align: center}
 .lm button{color:#000000;}
@@ -204,38 +289,50 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
     margin-top: 0px;
     position: absolute;
     top: -1px;
-    left: -8px;
+    left: -6px;
     z-index: -1;
-} 
+}
 
-.categ:nth-of-type(1)+div {border-left: 1px solid #f6dd66;}
-.categ:nth-of-type(2)+div {border-left: 1px solid #ec9d50;}
-.categ:nth-of-type(3)+div {border-left: 1px solid #5fb749;}
-.categ:nth-of-type(4)+div {border-left: 1px solid #a66097;}
-.categ:nth-of-type(5)+div {border-left: 1px solid #9ba4ac;}
-.categ:nth-of-type(6)+div {border-left: 1px solid #41a9de;}
-.categ:nth-of-type(7)+div {border-left: 1px solid #f6dd66;}
-.categ:nth-of-type(8)+div {border-left: 1px solid #ec9d50;}
-.categ:nth-of-type(9)+div {border-left: 1px solid #5fb749;}
-.categ:nth-of-type(10)+div {border-left: 1px solid #a66097;}
-.categ:nth-of-type(11)+div {border-left: 1px solid #9ba4ac;}
-.categ:nth-of-type(12)+div {border-left: 1px solid #41a9de;}
-.categ:nth-of-type(13)+div {border-left: 1px solid #f6dd66;}
+  .categ:nth-of-type(1)+div {border-left: 1px solid #f6dd66;}
+  .categ:nth-of-type(2)+div {border-left: 1px solid #ec9d50;}
+  .categ:nth-of-type(3)+div {border-left: 1px solid #5fb749;}
+  .categ:nth-of-type(4)+div {border-left: 1px solid #a66097;}
+  .categ:nth-of-type(5)+div {border-left: 1px solid #9ba4ac;}
+  .categ:nth-of-type(6)+div {border-left: 1px solid #41a9de;}
+  .categ:nth-of-type(7)+div {border-left: 1px solid #f6dd66;}
+  .categ:nth-of-type(8)+div {border-left: 1px solid #ec9d50;}
+  .categ:nth-of-type(9)+div {border-left: 1px solid #5fb749;}
+  .categ:nth-of-type(10)+div {border-left: 1px solid #a66097;}
+  .categ:nth-of-type(11)+div {border-left: 1px solid #9ba4ac;}
+  .categ:nth-of-type(12)+div {border-left: 1px solid #41a9de;}
+  .categ:nth-of-type(13)+div {border-left: 1px solid #f6dd66;}
+  .categ:nth-of-type(14)+div {border-left: 1px solid #ec9d50;}
+  .categ:nth-of-type(15)+div {border-left: 1px solid #5fb749;}
+  .categ:nth-of-type(16)+div {border-left: 1px solid #a66097;}
+  .categ:nth-of-type(17)+div {border-left: 1px solid #9ba4ac;}
+  .categ:nth-of-type(18)+div {border-left: 1px solid #41a9de;}
+  .categ:nth-of-type(19)+div {border-left: 1px solid #f6dd66;}
 
 
-.categ:nth-of-type(1)::before {background-color: #f6dd66;}
-.categ:nth-of-type(2)::before {background-color: #ec9d50;}
-.categ:nth-of-type(3)::before {background-color: #5fb749;}
-.categ:nth-of-type(4)::before {background-color: #a66097;}
-.categ:nth-of-type(5)::before {background-color: #9ba4ac;}
-.categ:nth-of-type(6)::before {background-color: #41a9de;}
-.categ:nth-of-type(7)::before {background-color: #f6dd66;}
-.categ:nth-of-type(8)::before {background-color: #ec9d50;}
-.categ:nth-of-type(9)::before {background-color: #5fb749;}
-.categ:nth-of-type(10)::before {background-color: #a66097;}
-.categ:nth-of-type(11)::before {background-color: #9ba4ac;}
-.categ:nth-of-type(12)::before {background-color: #41a9de;}
-.categ:nth-of-type(13)::before {background-color: #f6dd66;}
+  .categ:nth-of-type(1)::before {background-color: #f6dd66;}
+  .categ:nth-of-type(2)::before {background-color: #ec9d50;}
+  .categ:nth-of-type(3)::before {background-color: #5fb749;}
+  .categ:nth-of-type(4)::before {background-color: #a66097;}
+  .categ:nth-of-type(5)::before {background-color: #9ba4ac;}
+  .categ:nth-of-type(6)::before {background-color: #41a9de;}
+  .categ:nth-of-type(7)::before {background-color: #f6dd66;}
+  .categ:nth-of-type(8)::before {background-color: #ec9d50;}
+  .categ:nth-of-type(9)::before {background-color: #5fb749;}
+  .categ:nth-of-type(10)::before {background-color: #a66097;}
+  .categ:nth-of-type(11)::before {background-color: #9ba4ac;}
+  .categ:nth-of-type(12)::before {background-color: #41a9de;}
+  .categ:nth-of-type(13)::before {background-color: #f6dd66;}
+  .categ:nth-of-type(14)::before {background-color: #ec9d50;}
+  .categ:nth-of-type(15)::before {background-color: #5fb749;}
+  .categ:nth-of-type(16)::before {background-color: #a66097;}
+  .categ:nth-of-type(17)::before {background-color: #9ba4ac;}
+  .categ:nth-of-type(18)::before {background-color: #41a9de;}
+  .categ:nth-of-type(19)::before {background-color: #f6dd66;}
 
 
 </style>

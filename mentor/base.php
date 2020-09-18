@@ -49,7 +49,14 @@ function makePercentCompleteJS() {
         var numer = 0;
         var denom = 0;
         var seen = {};
-        $('input').each(function(idx, ob) {
+       // $('textarea.form-check-input').each(function(idx, ob) {
+           // if ($(ob).val()) {
+               // numer++;
+           // }
+           // denom++;
+       // });
+       // skip checkboxes as they can be all blank
+       $('input[type=radio].form-check-input').each(function(idx, ob) {
             let name = $(ob).attr('name');
             if (!name.match(/_mentee/) || window.location.href.match(/menteeview/)) {
                 if (typeof seen[name] == 'undefined') {
@@ -225,9 +232,10 @@ function getPercentComplete($row, $metadata) {
     $numer = 0;
     $denom = count($metadataFields) - count($notesFields);
 
+    $skip = ["checkbox", "notes"];
     foreach ($metadata as $metadataRow) {
         if (!in_array($metadataRow['field_name'], $notesFields)) {
-            if ($metadataRow['field_type'] == "checkbox") {
+            if (in_array($metadataRow['field_type'], $skip)) {
                 $denom--;
             } else if ($row[$metadataRow['field_name']]) {
                 $numer++;
@@ -446,7 +454,7 @@ function makeSurveyHTML($partners, $row, $metadata) {
         <div style='text-align: center;margin-top: 0px;font-size: 13px;width: 115px;'>(complete)</div>
     </div>
 </div></p>";
-    $html .= "<p>Welcome to the Mentoring Agreement. The first step to completing the Mentoring Agreement is to reflect on what is important to you in a successful mentor-mentee relationship. Through a series of questions on topics such as meetings, communication, research, and approach to scholarly products, to name a few, this survey will help guide you through that process and provide you with a tool to capture your thoughts. The survey should take about 30 minutes to complete. Your mentor(s)/mentee ($partners) will also complete a survey.</p>";
+    $html .= "<p>Welcome to the Mentoring Agreement. The first step to completing the Mentoring Agreement is to reflect on what is important to you in a successful mentor-mentee relationship. Through a series of questions on topics such as meetings, communication, research, and approach to scholarly products, to name a few, this survey will help guide you through that process and provide you with a tool to capture your thoughts. The survey should take about 15 minutes to complete. Your mentor(s)/mentee ($partners) will also complete a survey.</p>";
     $html .= "<p><img src='$imageLink' style='float: left; margin-right: 39px;width: 296px;'>Once both of you have completed the process, you will be able to see each of your surveys side by side to see where you agree or disagree. At that time, we recommend scheduling a time to meet with each other to discuss those items where you disagree so that you can come to an agreement.  Once you come to an agreement on each question, a final Mentor-Mentee agreement will be produced that you can refer to as needed. We encourage mentors and mentees to revisit this document on a regular basis, with a suggestion of annually.</p>";
 
     $html .= "<script src='$scriptLink'></script>";
@@ -515,6 +523,20 @@ function makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, 
     return [$priorNotes, $instances];
 }
 
+function getBase64OfFile($fileId, $pid) {
+    $sql = "SELECT stored_name, mime_type from redcap_edocs_metadata WHERE doc_id = '".db_real_escape_string($fileId)."' LIMIT 1";
+    $q = db_query($sql);
+    if ($row = db_fetch_assoc($q)) {
+        $filename = EDOC_PATH.$row['stored_name'];
+        $mimeType = $row['mime_type'];
+        if (file_exists($filename)) {
+            $header = "data:$mimeType;base64,";
+            return $header.base64_encode(file_get_contents($filename));
+        }
+    }
+    return "";
+}
+
 function getUseridsForRecord($token, $server, $recordId, $recipientType) {
     $userids = [];
     if (in_array($recipientType, ["mentee", "all"])) {
@@ -543,7 +565,7 @@ function getEmailAddressesForRecord($userids) {
     return array_unique($emails);
 }
 
-function makeCommentJS($username, $menteeRecordId, $instance, $priorNotes) {
+function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInstance, $priorNotes) {
     $html = "";
     $uidString = "";
     if (isset($_GET['uid'])) {
@@ -630,7 +652,7 @@ function makeCommentJS($username, $menteeRecordId, $instance, $priorNotes) {
             url: '".Application::link("mentor/_agreement_save.php").$uidString."',
             type : 'POST',
             //dataType : 'json', // data type
-            data :  'record_id=$menteeRecordId&redcap_repeat_instance=$instance&'+serialized,
+            data :  'record_id=$menteeRecordId&redcap_repeat_instance=$currentInstance&'+serialized,
             success : function(result) {
                 console.log(result);
                 $('.sweet-modal-overlay').remove();
@@ -669,11 +691,12 @@ function makeCommentJS($username, $menteeRecordId, $instance, $priorNotes) {
             } else {
                 priorNotes[notesFieldName] = latestcomment;
             }
+            console.log('Uploading to instance $menteeInstance');
             $.post('".Application::link("mentor/change.php").$uidString."', {
                 userid: '$username',
                 type: 'notes',
                 record: '$menteeRecordId',
-                instance: '$instance',
+                instance: '$menteeInstance',
                 field_name: notesFieldName,
                 value: latestcomment
             }, function(html) {
@@ -689,10 +712,10 @@ function makeCommentJS($username, $menteeRecordId, $instance, $priorNotes) {
     function scheduleMentorEmail(menteeRecord, menteeName) {
         let link = getLinkForEntryPage();
         let subject = menteeName+'\'s Mentoring Agreement';
-        let paragraph1 = '<p>Your mentee ('+menteeName+') has completed an initial mentoring agreement and would like you to review the following Mentor Agreement.</p>';
+        let paragraph1 = '<p>Your mentee ('+menteeName+') has completed an initial mentoring agreement and would like you to review the following Mentee-Mentor Agreement. Please schedule a time with your mentee (included on this email) to follow up and finalize this agreement.</p>';
         let paragraph2 = '<p><a href=\"'+link+'\">'+link+'</p>';
         let message = paragraph1 + paragraph2;
-        scheduleEmail('mentor', menteeRecord, subject, message, 'now');
+        scheduleEmail('all', menteeRecord, subject, message, 'now');
     }
 
     function scheduleMenteeEmail(menteeRecord, menteeName) {
@@ -707,7 +730,7 @@ function makeCommentJS($username, $menteeRecordId, $instance, $priorNotes) {
     function scheduleReminderEmail(menteeRecord, menteeName, dateToSend) {
         let link = getLinkForEntryPage();
         let subject = 'Reminder: '+menteeName+'\'s Mentoring Agreement';
-        let paragraph1 = '<p>Your mentee ('+menteeName+') has completed an initial mentoring agreement and would like you to review the following Mentor Agreement.</p>';
+        let paragraph1 = '<p>Your mentee ('+menteeName+') has completed an initial mentoring agreement and would like you to review the following Mentee-Mentor Agreement.</p>';
         let paragraph2 = '<p><a href=\"'+link+'\">'+link+'</p>';
         let message = paragraph1 + paragraph2;
         scheduleEmail('all', menteeRecord, subject, message, dateToSend);
@@ -727,6 +750,27 @@ function makeCommentJS($username, $menteeRecordId, $instance, $priorNotes) {
 
 </script>";
     return $html;
+}
+
+function getSectionHeadersWithMenteeQuestions($metadata) {
+    $sectionHeaderCounts = [];
+    $skipFieldTypes = ["notes", "file", "text"];
+    foreach ($metadata as $row) {
+        if ($row['section_header']) {
+            $sectionHeaderCounts[$row['section_header']] = 0;
+            $lastSectionHeader = $row['section_header'];
+        }
+        if (!in_array($row['field_type'], $skipFieldTypes)) {
+            $sectionHeaderCounts[$lastSectionHeader]++;
+        }
+    }
+    $sectionHeaders = [];
+    foreach ($sectionHeaderCounts as $header => $numMenteeItems) {
+        if ($numMenteeItems > 0) {
+            $sectionHeaders[] = $header;
+        }
+    }
+    return $sectionHeaders;
 }
 
 function makeNotesHTML($field, $redcapData, $recordId, $instance, $notesFields) {
@@ -868,7 +912,7 @@ function makeReminderJS($from) {
                         action: function() {
                             let note = $('#tnote').html();
                             if (note && mentorUserids) {
-                                scheduleEmail('mentor', recordId, 'Mentor Agreement with '+menteeName, note, 'now');
+                                scheduleEmail('mentor', recordId, 'Mentee-Mentor Agreement with '+menteeName, note, 'now');
                             } else if (!note) {
                                $.sweetModal('Error! No note specified! No email sent!');
                             }

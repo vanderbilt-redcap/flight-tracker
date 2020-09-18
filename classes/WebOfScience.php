@@ -145,7 +145,7 @@ class WebOfScience {
         } else {
             throw new \Exception("Could not parse XML!");
         }
-        Application::log("Returning results: ".json_encode_with_spaces($results));
+        Application::log("Returning results: ".REDCapManagement::json_encode_with_spaces($results));
         return $results;
     }
 

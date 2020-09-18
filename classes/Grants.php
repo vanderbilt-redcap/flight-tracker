@@ -530,7 +530,9 @@ class Grants {
 				$start = $grant->getVariable('start');
 				if ($start) {
 					$startingTimes[$awardNo] = $start; 
-				}
+				} else {
+				    Application::log("A: $awardNo lacks a start ".json_encode($grant->toArray()));
+                }
 			}
 			asort($startingTimes);
 			$awardsByStart = array();	// a list of the awards used, ordered by starting time
@@ -547,7 +549,9 @@ class Grants {
 				$start = $grant->getVariable('start');
 				if ($start) {
 					$startingTimes[$i] = $start;
-				}
+				} else {
+                    Application::log("B: ".$grant->getBaseAwardNumber()." lacks a start ".json_encode($grant->toArray()));
+                }
 				$i++;
 			}
 			asort($startingTimes);
@@ -608,8 +612,11 @@ class Grants {
 
 		# 2. Organize grants
 		$awardsBySource = self::combineBySource($sourceOrder, $filteredGrants);
+        foreach ($awardsBySource as $awardNo => $grants) {
+            if (SHOW_DEBUG) { Application::log("2. $awardNo with ".count($grants)); }
+        }
 
-		# 3. import modified lists first from the wrangler/index.php interface (Grant Wrangler)
+        # 3. import modified lists first from the wrangler/index.php interface (Grant Wrangler)
 		# these trump everything
 		foreach ($this->calculate['to_import'] as $index => $ary) {
 			$action = $ary[0];
@@ -649,6 +656,10 @@ class Grants {
 		}
 		$this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource);
 
+		foreach ($awardsBySource as $awardNo => $grants) {
+            if (SHOW_DEBUG) { Application::log("3. $awardNo with ".count($grants)); }
+        }
+
 		# 4. make changes
 		foreach ($this->changes as $change) {
 			$changeAwardNo = $change->getNumber();
@@ -677,8 +688,11 @@ class Grants {
 			}
 		}
 		$this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource);
+        foreach ($awardsBySource as $awardNo => $grants) {
+            if (SHOW_DEBUG) { Application::log("4. $awardNo with ".count($grants)); }
+        }
 
-		# grants are ordered by source; need to order by start date
+        # grants are ordered by source; need to order by start date
 		# 5. order grants
 		$awardsByStart = self::orderGrantsByStart($awardsBySource);
 		foreach ($awardsByStart as $awardNo => $grant) {
@@ -732,6 +746,8 @@ class Grants {
 		}
         foreach ($awardsByType["deduped"] as $baseNumber => $grant) {
             if ($grant->isInternalVanderbiltGrant()) {
+                if (SHOW_DEBUG) { Application::log("Removing ".json_encode($grant->toArray())); }
+                if (SHOW_DEBUG) { Application::log("7. Removing because isInternalVanderbiltGrant ".$baseNumber); }
                 unset($awardsByType["deduped"][$baseNumber]);
             }
         }
@@ -746,6 +762,7 @@ class Grants {
                 $prevBaseNumber = "";
                 $clean = TRUE;
                 foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
+                    if (SHOW_DEBUG) { Application::log("8. For $type, inspecting ".$baseNumber); }
                     if (($prevGrant) && ($prevGrant->getVariable('start') == $grant->getVariable('start')) && ($prevGrant->getVariable('type') == $grant->getVariable('type'))) {
                         foreach (array_reverse($sourceOrder) as $source) {
                             if ($prevGrant->getVariable("source") == $source) {
@@ -756,6 +773,7 @@ class Grants {
                                     self::copyBudgetsIfBlank($grant, [$grant, $awardsByType[$type][$prevBaseNumber]]);
                                     self::copyTitleIfBlank($grant, [$grant, $awardsByType[$type][$prevBaseNumber]]);
                                 }
+                                if (SHOW_DEBUG) { Application::log("8A. Removing $type because same timestamp ".$prevBaseNumber); }
                                 unset($awardsByType[$type][$prevBaseNumber]);
                                 $prevGrant = $grant;
                                 $prevBaseNumber = $baseNumber;
@@ -768,6 +786,7 @@ class Grants {
                                     self::copyBudgetsIfBlank($prevGrant, [$prevGrant, $awardsByType[$type][$baseNumber]]);
                                     self::copyTitleIfBlank($prevGrant, [$prevGrant, $awardsByType[$type][$baseNumber]]);
                                 }
+                                if (SHOW_DEBUG) { Application::log("8B. Removing $type because same timestamp ".$baseNumber); }
                                 unset($awardsByType[$type][$baseNumber]);
                                 break; // sourceOrder loop
                             }
@@ -825,6 +844,7 @@ class Grants {
         foreach ($typeAssignments as $type => $variable) {
             $this->$variable = [];
             foreach ($awardsByType[$type] as $baseNumber => $grant) {
+                if (SHOW_DEBUG) { Application::log("10. Adding to $type ".$grant->getBaseNumber()); }
                 array_push($this->$variable, $grant);
             }
         }
@@ -1236,137 +1256,11 @@ class Grants {
 		return 0;
 	}
 
-	public static function datediff($d1, $d2, $unit=null, $returnSigned=false, $returnSigned2=false)
-	{
-		global $missingDataCodes;
-		// Make sure Units are provided and that dates are trimmed
-		if ($unit == null) return NAN;
-		$d1 = trim($d1);
-		$d2 = trim($d2);
-		// Missing data codes
-		if (isset($missingDataCodes) && !empty($missingDataCodes)) {
-			if ($d1 != '' && isset($missingDataCodes[$d1])) $d1 = '';
-			if ($d2 != '' && isset($missingDataCodes[$d2])) $d2 = '';
-		}
-		// If ymd, mdy, or dmy is used as the 4th parameter, then assume user is using Calculated field syntax
-		// and assume that returnSignedValue is the 5th parameter.
-		if (in_array(strtolower(trim($returnSigned)), array('ymd', 'dmy', 'mdy'))) {
-			$returnSigned = $returnSigned2;
-		}
-		// Initialize parameters first
-		if (strtolower($d1) === "today") $d1 = TODAY; elseif (strtolower($d1) === "now") $d1 = NOW;
-		if (strtolower($d2) === "today") $d2 = TODAY; elseif (strtolower($d2) === "now") $d2 = NOW;
-		$d1isToday = ($d1 == TODAY);
-		$d2isToday = ($d2 == TODAY);
-		$d1isNow = ($d1 == NOW);
-		$d2isNow = ($d2 == NOW);
-		$returnSigned = ($returnSigned === true || $returnSigned === 'true');
-		// Determine data type of field ("date", "time", "datetime", or "datetime_seconds")
-		$format_checkfield = ($d1isToday ? $d2 : $d1);
-		$numcolons = substr_count($format_checkfield, ":");
-		if ($numcolons == 1) {
-			if (strpos($format_checkfield, "-") !== false) {
-				$datatype = "datetime";
-			} else {
-				$datatype = "time";
-			}
-		} else if ($numcolons > 1) {
-			$datatype = "datetime_seconds";
-		} else {
-			$datatype = "date";
-		}
-		// TIME only
-		if ($datatype == "time" && !$d1isToday && !$d2isToday) {
-			if ($d1isNow) {
-				$d2 = "$d2:00";
-				$d1 = substr($d1, -8);
-			} elseif ($d2isNow) {
-				$d1 = "$d1:00";
-				$d2 = substr($d2, -8);
-			}
-			// Return in specified units
-			return secondDiff(timeToSeconds($d1),timeToSeconds($d2),$unit,$returnSigned);
-		}
-		// DATE, DATETIME, or DATETIME_SECONDS
-		// If using 'today' for either date, then set format accordingly
-		if ($d1isToday) {
-			if ($datatype == "time") {
-				return NAN;
-			} else {
-				$d2 = substr($d2, 0, 10);
-			}
-		} elseif ($d2isToday) {
-			if ($datatype == "time") {
-				return NAN;
-			} else {
-				$d1 = substr($d1, 0, 10);
-			}
-		}
-		// If a date[time][_seconds] field, then ensure it has dashes
-		if (substr($datatype, 0, 4) == "date" && (strpos($d1, "-") === false || strpos($d2, "-") === false)) {
-			return NAN;
-		}
-		// Make sure the date/time values aren't empty
-		if ($d1 == "" || $d2 == "" || $d1 == null || $d2 == null) {
-			return NAN;
-		}
-		// Make sure both values are same length/datatype
-		if (strlen($d1) != strlen($d2)) {
-			if (strlen($d1) > strlen($d2) && $d2 != '') {
-				if (strlen($d1) == 16) {
-					if (strlen($d2) == 10) $d2 .= " 00:00";
-					$datatype = "datetime";
-				} else if (strlen($d1) == 19) {
-					if (strlen($d2) == 10) $d2 .= " 00:00";
-					else if (strlen($d2) == 16) $d2 .= ":00";
-					$datatype = "datetime_seconds";
-				}
-			} else if (strlen($d2) > strlen($d1) && $d1 != '') {
-				if (strlen($d2) == 16) {
-					if (strlen($d1) == 10) $d1 .= " 00:00";
-					$datatype = "datetime";
-				} else if (strlen($d2) == 19) {
-					if (strlen($d1) == 10) $d1 .= " 00:00";
-					else if (strlen($d1) == 16) $d1 .= ":00";
-					$datatype = "datetime_seconds";
-				}
-			}
-		}
-		// Separate time if datetime or datetime_seconds
-		$d1b = explode(" ", $d1);
-		$d2b = explode(" ", $d2);
-		// Split into date and time (in units of seconds)
-		$d1 = $d1b[0];
-		$d2 = $d2b[0];
-		$d1sec = (!empty($d1b[1])) ? timeToSeconds($d1b[1]) : 0;
-		$d2sec = (!empty($d2b[1])) ? timeToSeconds($d2b[1]) : 0;
-		// Separate pieces of date component
-		$dt1 = explode("-", $d1);
-		$dt2 = explode("-", $d2);
-		// Convert the dates to seconds (conversion varies due to dateformat)
-		$dat1 = mktime(0,0,0,$dt1[1],$dt1[2],$dt1[0]) + $d1sec;
-		$dat2 = mktime(0,0,0,$dt2[1],$dt2[2],$dt2[0]) + $d2sec;
-		// Get the difference in seconds
-		$sec = $dat2 - $dat1;
-		if (!$returnSigned) $sec = abs($sec);
-		// Return in specified units
-		if ($unit == "s") {
-			return $sec;
-		} else if ($unit == "m") {
-			return $sec/60;
-		} else if ($unit == "h") {
-			return $sec/3600;
-		} else if ($unit == "d") {
-			return ($datatype == "date" ? round($sec/86400) : $sec/86400);
-		} else if ($unit == "M") {
-			return $sec/2630016; // Use 1 month = 30.44 days
-		} else if ($unit == "y") {
-			return $sec/31556952; // Use 1 year = 365.2425 days
-		}
-		return NAN;
-	}
+    public static function datediff($d1, $d2, $measurement) {
+        return REDCapManagement::datediff($d1, $d2, $measurement);
+    }
 
-	private static function getLastKType($row) {
+    private static function getLastKType($row) {
 		$kTypes = array(1, 2, 3, 4);
 		$lastK = FALSE;
 		for ($i = 1; $i <= MAX_GRANTS; $i++) {

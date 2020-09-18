@@ -629,8 +629,8 @@ class NIHTables {
                 if (in_array($field, $metadataFields)) {
                     if ($field == "override_degrees") {
                         $fields[$field] = ["override_degrees_year"];
-                    } else if ($field == "imported_degrees") {
-                        $fields[$field] = ["imported_degrees_year"];
+                    } else if ($field == "imported_degree") {
+                        $fields[$field] = ["imported_degree_year"];
                     } else if ($field == "followup_degree") {
                         $fields[$field] = [];
                     } else if (preg_match("/^check_degree/", $field)) {
@@ -876,8 +876,10 @@ class NIHTables {
                         }
                         if (($row["promotion_department"] == "999999") && $row["promotion_department_other"]) {
                             $descriptions["department"] = $row["promotion_department_other"];
-                        } else if ($row['promotion_department']) {
+                        } else if ($row['promotion_department'] && $choices['promotion_department'][$row['promotion_department']]) {
                             $descriptions["department"] = $choices["promotion_department"][$row["promotion_department"]];
+                        } else if ($row['promotion_department']) {
+                            $descriptions["department"] = $row["promotion_department"];
                         } else {
                             $descriptions["department"] = $row['promotion_division'];
                         }
@@ -947,7 +949,6 @@ class NIHTables {
 
     private static function abbreviateAwardNo($awardNo, $fundingSource = "Other", $fundingType = "Other") {
         $ary = Grant::parseNumber($awardNo);
-        $supportType = "Other";
 
         if ($fundingType == "Research Assistantship") {
             $supportType = "RA";
@@ -961,6 +962,8 @@ class NIHTables {
             $supportType = "S";
         } else if ($ary["activity_code"]) {
             $supportType = $ary["activity_code"];
+        } else {
+            $supportType = "";
         }
 
         if ($fundingSource == "NSF") {
@@ -975,8 +978,15 @@ class NIHTables {
             $supportSource = "Non-US";
         } else if ($fundingSource == "NIH") {
             $supportSource = $ary["institute_code"];
-        } else {
+        } else if ($ary["institute_code"]) {
             $supportSource = $ary["institute_code"];
+        } else {
+            $supportSource = "";
+        }
+        if (($supportSource == "HX") && ($supportType == "I01")) {
+            return "VA Merit";
+        } else if (($supportType == "") && ($supportType == "")) {
+            return "Other";
         }
 	    return "$supportSource $supportType";
 	}
@@ -1033,7 +1043,7 @@ class NIHTables {
                 $role = $grant->getVariable("role") ? $grant->getVariable("role") : self::$NA;
                 $year = REDCapManagement::getYear($grant->getVariable("start"));
                 list($fundingSource, $fundingType) = self::getSourceAndType($grant->getVariable("type"));
-                if ($fundingSource && $fundingType) {
+                if ($fundingSource) {
                     if ($awardNo == "Peds K12") {
                         $shortAwardNo = "HD K12";
                     } else {
@@ -1046,9 +1056,26 @@ class NIHTables {
                     $style = "";
                     if ($this->isRemovedGrant($recordId, $awardNo)) {
                         $style = " style='display: none;'";
+                        // $style = " style='color: green;'";
                     }
                     array_push($grantDescriptions, "<p$style class='subsequentGrants_$recordId'>".implode(" / ", $ary)." ".self::makeRemove($recordId, $awardNo)."</p>");
+                } else {
+                    # exclude - this information is for debug only
+                    $role = $grant->getVariable("role") ? $grant->getVariable("role") : self::$NA;
+                    $year = REDCapManagement::getYear($grant->getVariable("start"));
+                    list($fundingSource, $fundingType) = self::getSourceAndType($grant->getVariable("type"));
+                    $shortAwardNo = self::abbreviateAwardNo($awardNo, $fundingSource, $fundingType);
+                    $ary = [$awardNo, $shortAwardNo, $role, $year, $fundingSource, $fundingType];
+                    // array_push($grantDescriptions, "<p style='color: darkorange;'>No fund ".implode(" / ", $ary)."</p>");
                 }
+            } else {
+                # exclude - this information is for debug only
+                $role = $grant->getVariable("role") ? $grant->getVariable("role") : self::$NA;
+                $year = REDCapManagement::getYear($grant->getVariable("start"));
+                list($fundingSource, $fundingType) = self::getSourceAndType($grant->getVariable("type"));
+                $shortAwardNo = self::abbreviateAwardNo($awardNo, $fundingSource, $fundingType);
+                $ary = [$awardNo, $shortAwardNo, $role, $year, $fundingSource, $fundingType];
+                // array_push($grantDescriptions, "<p style='color: blue;'>Excl. ".implode(" / ", $ary)."</p>");
             }
             $idx++;
         }

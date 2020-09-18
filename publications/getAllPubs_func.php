@@ -409,3 +409,17 @@ function clearAllCitations($pid, $records) {
 		db_query($sql);
 	}
 }
+
+function fetchPMIDs($pubMedData) {
+    $pmids = [];
+    if ($pubMedData["data"]) {
+        foreach ($pubMedData["data"] as $sourceData) {
+            if ($sourceData["publications"]) {
+                foreach ($sourceData["publications"] as $pub) {
+                    $pmids[] = $pub["pubMedId"];
+                }
+            }
+        }
+    }
+    return $pmids;
+}

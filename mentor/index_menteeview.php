@@ -72,7 +72,7 @@ foreach ($redcapData as $row) {
 
 list($priorNotes, $instances) = makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $currInstance);
 
-$welcomeText = "<p>Below is the Mentor Agreement with <strong>$otherMentors</strong>. Once completed, $otherMentors will be notified to complete the agreement on their end.</p>";
+$welcomeText = "<p>Below is the Mentee-Mentor Agreement with <strong>$otherMentors</strong>. Once completed, $otherMentors will be notified to complete the agreement on their end.</p>";
 
 ?>
 
@@ -199,11 +199,13 @@ $('.viewagreement').hover(
 
 <div style="display: none"><table><tbody>
 <?php
+$skipFieldTypes = ["file", "text"];
+$secHeaders = getSectionHeadersWithMenteeQuestions($metadata);
 foreach ($metadata as $row) {
   $sec_header =  $row['section_header'];
   $fieldName = $row['field_name'];
   $rowName = $fieldName."-tr";
-  if($sec_header != ""){ ?>
+  if(in_array($sec_header, $secHeaders) && !in_array($row['field_type'], $skipFieldTypes)) { ?>
             </tbody></table></div>
           <div class="tabledquestions">
             <div class="mainHeader"><?php echo strip_tags($sec_header); ?></div>
@@ -218,7 +220,7 @@ foreach ($metadata as $row) {
               <tr>
                   <th style="text-align: left;" scope="col">question</th>
                   <th style="text-align: center;" scope="col">mentee responses</th>
-                  <th style="text-align: center;" scope="col">latest note</th>
+                  <th style="text-align: center;" scope="col">latest note<br>(click for full conversation)</th>
               </tr>
               </thead>
               <tbody>
@@ -255,25 +257,44 @@ foreach ($metadata as $row) {
                       $isChecked = "checked";
                   }
 
-                  ?><div class="form-check"><input class="form-check-input" type="checkbox" name="<?= $name ?>" id="<?= $id ?>" <?= $isChecked ?> ><label class="form-check-label" for="<?= $id ?>"><?= $label; ?></label></div><?php
+                  ?>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" name="<?= $name ?>" id="<?= $id ?>" <?= $isChecked ?> ><label class="form-check-label" for="<?= $id ?>"><?= $label; ?></label></div>
+                  <?php
               }
               ?>
           </td>
           <?= makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields) ?>
       </tr>
-  <?php }
+  <?php
+  } else if (($row['field_type'] == "notes") && (!in_array($fieldName, $notesFields))) {
+      $prefix = "exampleTextareash";
+      $name = $prefix.$fieldName;
+      $id = $name;
+      $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, "mentoring_agreement", $currInstance);
+      ?>
+      <!--
+      <tr id="<?= $rowName ?>"><th scope="row"><?= trim($row['field_label']) ?></th>
+          <td colspan="2">
+              <div class="form-check" style="height: 100px;">
+                  <textarea class="form-check-input" name="<?= $name ?>" id="<?= $id ?>"><?= $value ?></textarea>
+              </div>
+          </td>
+      </tr>
+      -->
+    <?php
+  }
 
 
 }
 
 
 ?>
- 
 
-</div>
-</div>
-</div>
-</section>
+
+          </div>
+      </div>
+      </div>
+      </section>
 </form>
 <div class="fauxcomment" style="display: none;"></div>
 <style type="text/css">
@@ -380,6 +401,12 @@ foreach ($metadata as $row) {
               display: block;
               box-sizing: padding-box;
               overflow: hidden;
+            }
+
+            textarea.form-check-input {
+                width: 100%;
+                height: 100px;
+                overflow: scroll !important;
             }
 
             .tnote {
@@ -777,8 +804,9 @@ foreach ($metadata as $row) {
             updatequest = updatequest.replace()
         });
 
-        $("input[type=checkbox]").change(function() { updateData(this); });
-        $("input[type=radio]").change(function() { updateData(this); });
+        $("input[type=checkbox].form-check-input").change(function() { updateData(this); });
+        $("input[type=radio].form-check-input").change(function() { updateData(this); });
+        $("textarea.form-check-input").blur(function() { updateData(this); });
 
         $("select#instances").change(() => {
             let value = $('select#instances option:selected').val()
@@ -830,9 +858,7 @@ foreach ($metadata as $row) {
             let fieldName = a[0]
             let value = a[1]
             let thisbox = "#exampleRadiosh"+fieldName+"___"+value;
-            let stpad = $(thisbox+"+label").width();
             $(thisbox).addClass("simptip-position-left").attr("data-tooltip","option saved!");
-            console.log(thisbox);
 
             $.post('<?= Application::link("mentor/change.php").$uidString ?>', {
                 type: 'radio',
@@ -845,7 +871,24 @@ foreach ($metadata as $row) {
                 console.log(html);
                 $(thisbox).delay(300).removeClass("simptip-position-left").removeAttr("data-tooltip");
             });
+        } else if ($(ob).attr("id").match(/^exampleTextareash/)) {
+            let fieldName = $(ob).attr("id").replace(/^exampleTextareash/, "");
+            let value = $(ob).val();
+            let thisbox = "#exampleTextareash"+fieldName;
+            $(thisbox).attr("disabled", true);
+            $.post('<?= Application::link("mentor/change.php").$uidString ?>', {
+                type: 'textarea',
+                record: '<?= $menteeRecordId ?>',
+                instance: '<?= $currInstance ?>',
+                field_name: fieldName,
+                value: value,
+                userid: '<?= $userid2 ?>'
+            }, function(html) {
+                console.log(html);
+                $(thisbox).attr("disabled", false);
+            });
         }
+
         $('.chart').data('easyPieChart').update(getPercentComplete());
     }
 
@@ -857,7 +900,7 @@ foreach ($metadata as $row) {
 
 </script>
 
-<?= makeCommentJS($userid2, $menteeRecordId, $currInstance, $priorNotes) ?>
+<?= makeCommentJS($userid2, $menteeRecordId, $currInstance, $currInstance, $priorNotes) ?>
 
 
 <style type="text/css">

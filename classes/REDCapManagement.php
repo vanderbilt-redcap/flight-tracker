@@ -399,6 +399,17 @@ class REDCapManagement {
 	    return implode(" | ", $pairs);
     }
 
+    public static function getRow($rows, $recordId, $instrument, $instance = 1) {
+	    foreach ($rows as $row) {
+	        if (($row['record_id'] == $recordId) &&
+                ($row['redcap_repeat_instrument'] == $instrument)
+                && ($row['redcap_repeat_instance'] == $instance)) {
+	            return $row;
+            }
+        }
+	    return [];
+    }
+
 	public static function downloadURL($url, $addlOpts = [], $autoRetriesLeft = 3) {
         Application::log("Contacting $url");
         $defaultOpts = [
@@ -431,6 +442,7 @@ class REDCapManagement {
                 Application::log("Retrying ($autoRetriesLeft left)...");
                 self::downloadURL($url, $addlOpts, $autoRetriesLeft - 1);
             } else {
+                Application::log("Error: ".curl_error($ch));
                 throw new \Exception(curl_error($ch));
             }
         }
@@ -689,11 +701,32 @@ class REDCapManagement {
 	    return array_values($newRows);
     }
 
+    # returns TRUE if and only if fields in $newMetadata after $priorField are fields in $newRows
+    private static function atEndOfMetadata($priorField, $newRows, $newMetadata) {
+	    $newFields = [];
+	    foreach ($newRows as $row) {
+	        $newFields[] = $row['field_name'];
+        }
+
+	    $found = FALSE;
+	    foreach ($newMetadata as $row) {
+            if ($found) {
+                if (!in_array($row['field_name'], $newFields)) {
+                    return FALSE;
+                }
+	        } else if ($priorField == $row['field_name']) {
+	            $found = TRUE;
+            }
+        }
+	    return TRUE;
+    }
+
 	# if present, $fields contains the fields to copy over; if left as an empty array, then it attempts to install all fields
 	# $deletionRegEx contains the regular expression that marks fields for deletion
 	# places new metadata rows AFTER last match from $existingMetadata
-	public static function mergeMetadataAndUpload($existingMetadata, $newMetadata, $token, $server, $fields = array(), $deletionRegEx = "/___delete$/") {
+	public static function mergeMetadataAndUpload($originalMetadata, $newMetadata, $token, $server, $fields = array(), $deletionRegEx = "/___delete$/") {
 		$fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx, TRUE);
+		$existingMetadata = $originalMetadata;
 
 		if (empty($fields)) {
 			$selectedRows = $newMetadata;
@@ -710,24 +743,27 @@ class REDCapManagement {
 						$priorRowField = $row['field_name'];
 					}
 				}
-				$tempMetadata = array();
-				$priorNewRowField = "";
-				foreach ($existingMetadata as $row) {
-					if (!preg_match($deletionRegEx, $row['field_name']) && !in_array($row['field_name'], $fieldsToDelete)) {
-						if ($priorNewRowField != $row['field_name']) {
-							array_push($tempMetadata, $row);
-						}
-					}
-					if (($priorRowField == $row['field_name']) && !preg_match($deletionRegEx, $newRow['field_name'])) {
-					    $newRow = self::copyMetadataSettingsForField($newRow, $newMetadata, $upload, $token, $server);
+				if (self::atEndOfMetadata($priorRowField, $selectedRows, $newMetadata)) {
+                    $priorRowField = end($originalMetadata)['field_name'];
+                }
+                $tempMetadata = array();
+                $priorNewRowField = "";
+                foreach ($existingMetadata as $row) {
+                    if (!preg_match($deletionRegEx, $row['field_name']) && !in_array($row['field_name'], $fieldsToDelete)) {
+                        if ($priorNewRowField != $row['field_name']) {
+                            array_push($tempMetadata, $row);
+                        }
+                    }
+                    if (($priorRowField == $row['field_name']) && !preg_match($deletionRegEx, $newRow['field_name'])) {
+                        $newRow = self::copyMetadataSettingsForField($newRow, $newMetadata, $upload, $token, $server);
 
-						# delete already existing rows with same field_name
-						self::deleteRowsWithFieldName($tempMetadata, $newRow['field_name']);
-						array_push($tempMetadata, $newRow);
-						$priorNewRowField = $newRow['field_name'];
-					}
-				}
-				$existingMetadata = $tempMetadata;
+                        # delete already existing rows with same field_name
+                        self::deleteRowsWithFieldName($tempMetadata, $newRow['field_name']);
+                        array_push($tempMetadata, $newRow);
+                        $priorNewRowField = $newRow['field_name'];
+                    }
+                }
+                $existingMetadata = $tempMetadata;
 			}
 		}
         $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
@@ -915,7 +951,7 @@ class REDCapManagement {
 
 	public static function datetime2Date($datetime) {
 	    if (preg_match("/\s/", $datetime)) {
-	        $nodes = preg_split("\s+", $datetime);
+	        $nodes = preg_split("/\s+/", $datetime);
 	        return $nodes[0];
         }
 	    # date, not datetime
@@ -1131,7 +1167,141 @@ class REDCapManagement {
 		return $newRow;
 	}
 
-	public static function datediff($d1, $d2, $measurement) {
-		return datediff($d1, $d2, $measurement);
-	}
+    public static function datediff($d1, $d2, $unit=null, $returnSigned=false, $returnSigned2=false)
+    {
+        $now = date("Y-m-d H:i:s");
+        $today = date("Y-m-d");
+
+        global $missingDataCodes;
+        // Make sure Units are provided and that dates are trimmed
+        if ($unit == null) return NAN;
+        $d1 = trim($d1);
+        $d2 = trim($d2);
+        // Missing data codes
+        if (isset($missingDataCodes) && !empty($missingDataCodes)) {
+            if ($d1 != '' && isset($missingDataCodes[$d1])) $d1 = '';
+            if ($d2 != '' && isset($missingDataCodes[$d2])) $d2 = '';
+        }
+        // If ymd, mdy, or dmy is used as the 4th parameter, then assume user is using Calculated field syntax
+        // and assume that returnSignedValue is the 5th parameter.
+        if (in_array(strtolower(trim($returnSigned)), array('ymd', 'dmy', 'mdy'))) {
+            $returnSigned = $returnSigned2;
+        }
+        // Initialize parameters first
+        if (strtolower($d1) === "today") $d1 = $today; elseif (strtolower($d1) === "now") $d1 = $now;
+        if (strtolower($d2) === "today") $d2 = $today; elseif (strtolower($d2) === "now") $d2 = $now;
+        $d1isToday = ($d1 == $today);
+        $d2isToday = ($d2 == $today);
+        $d1isNow = ($d1 == $now);
+        $d2isNow = ($d2 == $now);
+        $returnSigned = ($returnSigned === true || $returnSigned === 'true');
+        // Determine data type of field ("date", "time", "datetime", or "datetime_seconds")
+        $format_checkfield = ($d1isToday ? $d2 : $d1);
+        $numcolons = substr_count($format_checkfield, ":");
+        if ($numcolons == 1) {
+            if (strpos($format_checkfield, "-") !== false) {
+                $datatype = "datetime";
+            } else {
+                $datatype = "time";
+            }
+        } else if ($numcolons > 1) {
+            $datatype = "datetime_seconds";
+        } else {
+            $datatype = "date";
+        }
+        // TIME only
+        if ($datatype == "time" && !$d1isToday && !$d2isToday) {
+            if ($d1isNow) {
+                $d2 = "$d2:00";
+                $d1 = substr($d1, -8);
+            } elseif ($d2isNow) {
+                $d1 = "$d1:00";
+                $d2 = substr($d2, -8);
+            }
+            // Return in specified units
+            return self::secondDiff(strtotime($d1),strtotime($d2),$unit,$returnSigned);
+        }
+        // DATE, DATETIME, or DATETIME_SECONDS
+        // If using 'today' for either date, then set format accordingly
+        if ($d1isToday) {
+            if ($datatype == "time") {
+                return NAN;
+            } else {
+                $d2 = substr($d2, 0, 10);
+            }
+        } elseif ($d2isToday) {
+            if ($datatype == "time") {
+                return NAN;
+            } else {
+                $d1 = substr($d1, 0, 10);
+            }
+        }
+        // If a date[time][_seconds] field, then ensure it has dashes
+        if (substr($datatype, 0, 4) == "date" && (strpos($d1, "-") === false || strpos($d2, "-") === false)) {
+            return NAN;
+        }
+        // Make sure the date/time values aren't empty
+        if ($d1 == "" || $d2 == "" || $d1 == null || $d2 == null) {
+            return NAN;
+        }
+        // Make sure both values are same length/datatype
+        if (strlen($d1) != strlen($d2)) {
+            if (strlen($d1) > strlen($d2) && $d2 != '') {
+                if (strlen($d1) == 16) {
+                    if (strlen($d2) == 10) $d2 .= " 00:00";
+                    $datatype = "datetime";
+                } else if (strlen($d1) == 19) {
+                    if (strlen($d2) == 10) $d2 .= " 00:00";
+                    else if (strlen($d2) == 16) $d2 .= ":00";
+                    $datatype = "datetime_seconds";
+                }
+            } else if (strlen($d2) > strlen($d1) && $d1 != '') {
+                if (strlen($d2) == 16) {
+                    if (strlen($d1) == 10) $d1 .= " 00:00";
+                    $datatype = "datetime";
+                } else if (strlen($d2) == 19) {
+                    if (strlen($d1) == 10) $d1 .= " 00:00";
+                    else if (strlen($d1) == 16) $d1 .= ":00";
+                    $datatype = "datetime_seconds";
+                }
+            }
+        }
+        // Separate time if datetime or datetime_seconds
+        $d1b = explode(" ", $d1);
+        $d2b = explode(" ", $d2);
+        // Split into date and time (in units of seconds)
+        $d1 = $d1b[0];
+        $d2 = $d2b[0];
+        $d1sec = (!empty($d1b[1])) ? strtotime($d1b[1]) : 0;
+        $d2sec = (!empty($d2b[1])) ? strtotime($d2b[1]) : 0;
+        // Separate pieces of date component
+        $dt1 = explode("-", $d1);
+        $dt2 = explode("-", $d2);
+        // Convert the dates to seconds (conversion varies due to dateformat)
+        $dat1 = mktime(0,0,0,$dt1[1],$dt1[2],$dt1[0]) + $d1sec;
+        $dat2 = mktime(0,0,0,$dt2[1],$dt2[2],$dt2[0]) + $d2sec;
+        // Get the difference in seconds
+        return self::secondDiff($dat1, $dat2, $unit, $returnSigned);
+    }
+
+    // Return the difference of two number values in desired units converted from seconds
+    private static function secondDiff($time1,$time2,$unit,$returnSigned) {
+        $sec = $time2-$time1;
+        if (!$returnSigned) $sec = abs($sec);
+        // Return in specified units
+        if ($unit == "s") {
+            return $sec;
+        } else if ($unit == "m") {
+            return $sec/60;
+        } else if ($unit == "h") {
+            return $sec/3600;
+        } else if ($unit == "d") {
+            return $sec/86400;
+        } else if ($unit == "M") {
+            return $sec/2630016; // Use 1 month = 30.44 days
+        } else if ($unit == "y") {
+            return $sec/31556952; // Use 1 year = 365.2425 days
+        }
+        return NAN;
+    }
 }

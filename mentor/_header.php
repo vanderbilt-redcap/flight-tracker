@@ -20,7 +20,7 @@ if ($_GET['uid']) {
   <meta name="description" content="">
   <meta name="author" content="">
 
-  <title><?= Application::getProgramName()." - Mentor Agreement" ?></title>
+  <title><?= Application::getProgramName()." - Mentee-Mentor Agreement" ?></title>
     <script src="<?= Application::link("mentor/vendor/jquery/jquery.min.js") ?>"></script>
 
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
@@ -43,7 +43,7 @@ if ($_GET['uid']) {
   <!-- Navigation -->
   <nav class="navbar navbar-light bg-light static-top">
     <div class="container">
-      <a class="navbar-brand" href="<?= Application::link("mentor/index.php").$uidString ?>" title="Go to Front Page"><img alt="<?= Application::getProgramName() ?>" src="<?= Application::link("mentor/img/logo.jpg") ?>" style="max-width: 175px;"></a>
-
+      <a class="navbar-brand" href="<?= Application::link("mentor/intro.php").$uidString ?>" title="Go to Front Page"><img alt="<?= Application::getProgramName() ?>" src="<?= Application::link("mentor/img/logo.jpg") ?>" style="max-width: 175px;"></a>
+        <a class="navbar-btn" href="<?= Application::link("mentor/intro.php").$uidString ?>">Front Page</a>
     </div>
   </nav>

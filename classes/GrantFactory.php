@@ -599,6 +599,7 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
             }
 
             $grant->putInBins();
+            Application::log("Coeus2GrantFactory adding ".json_encode($grant->toArray()));
             array_push($this->grants, $grant);
         }
     }
@@ -646,11 +647,11 @@ class RePORTERGrantFactory extends GrantFactory {
 		if (!$dt) {
 			return "";
 		}
-		$nodes = preg_split("/T/", $dt);
-		if (count($nodes) != 2) {
-			return $nodes[0];
-		}
-		return $nodes[0];
+		if (preg_match("/T/", $dt)) {
+            $nodes = preg_split("/T/", $dt);
+            return $nodes[0];
+        }
+		return $dt;
 	}
 }
 
@@ -658,6 +659,7 @@ class ExPORTERGrantFactory extends GrantFactory {
 	public function processRow($row, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
+        $awardNo = self::cleanAwardNo($row['exporter_full_project_num']);
         $grant = new Grant($this->lexicalTranslator);
         $grant->setVariable('person_name', $row['exporter_pi_names']);
         $grant->setVariable('start', RePORTERGrantFactory::getReporterDate($row['exporter_budget_start']));
@@ -670,7 +672,6 @@ class ExPORTERGrantFactory extends GrantFactory {
         $grant->setVariable('sponsor', $row['exporter_ic_name']);
         $grant->setVariable('sponsor_type', $row['exporter_ic_name']);
         $grant->setVariable('original_award_number', $row['exporter_full_project_num']);
-        $awardNo = self::cleanAwardNo($row['exporter_full_project_num']);
         $grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
         $grant->setNumber($awardNo);
         $grant->setVariable('source', "exporter");

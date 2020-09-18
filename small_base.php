@@ -1137,12 +1137,7 @@ function findMaxInstance($data, $instrument) {
 }
 
 function getMetadataRow($field, $metadata) {
-	foreach ($metadata as $row) {
-		if ($row['field_name'] == $field) {
-			return $row;
-		}
-	}
-	return array();
+    return REDCapManagement::getRowForFieldFromMetadata($field, $metadata);
 }
 
 # return array
