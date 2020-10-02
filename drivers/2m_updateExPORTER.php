@@ -178,17 +178,17 @@ function updateExPORTER($token, $server, $pid) {
 	foreach ($files as $file => $year) {
 		CareerDev::log("Reading $file");
 		echo "Reading $file\n";
-                $fp = fopen($file, "r");
-                $file2 = $file.".new";
-                $fp2 = fopen($file2, "w");
-                while ($line = fgets($fp)) {
-                        $line = preg_replace("/(\w)\\\\\",\"/", "$1\\\\\\\\\",\"", $line);
-                        fwrite($fp2, $line);
-                }
-                fclose($fp);
-                fclose($fp2);
+        $fp = fopen($file, "r");
+        $file2 = $file.".new";
+        $fp2 = fopen($file2, "w");
+        while ($line = fgets($fp)) {
+            $line = preg_replace("/(\w)\\\\\",\"/", "$1\\\\\\\\\",\"", $line);
+            fwrite($fp2, $line);
+        }
+        fclose($fp);
+        fclose($fp2);
 
-                $fp2 = fopen($file2, "r");
+        $fp2 = fopen($file2, "r");
 		$i = 0;
 		$headers = array();
 		while ($line = fgetcsv($fp2)) {

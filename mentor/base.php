@@ -320,7 +320,7 @@ function makePopupJS() {
         $resources[$i] = $resource;
     }
 
-    $close = "<div style='text-align: right; font-size: 12px; margin: 0;'><a href='javascript:;' onclick='$(this).parent().parent().slideUp(\"fast\");' style='text-decoration: none; color: black;'>X</a></div>";
+    $close = "<div style='text-align: right; font-size: 13px; margin: 0;'><a href='javascript:;' onclick='$(this).parent().parent().slideUp(\"fast\");' style='text-decoration: none; color: black;'>X</a></div>";
 
     $html = "";
 
@@ -439,7 +439,7 @@ function adjustDate($ts, $monthsInFuture) {
     return fixDate($month, $day, $year);
 }
 
-function makeSurveyHTML($partners, $row, $metadata) {
+function makeSurveyHTML($partners, $partnerRelationship, $row, $metadata) {
     $html = "";
     $imageLink = Application::link("mentor/img/temp_image.jpg");
     $scriptLink = Application::link("mentor/vendor/jquery.easy-pie-chart/dist/jquery.easypiechart.min.js");
@@ -454,8 +454,9 @@ function makeSurveyHTML($partners, $row, $metadata) {
         <div style='text-align: center;margin-top: 0px;font-size: 13px;width: 115px;'>(complete)</div>
     </div>
 </div></p>";
-    $html .= "<p>Welcome to the Mentoring Agreement. The first step to completing the Mentoring Agreement is to reflect on what is important to you in a successful mentor-mentee relationship. Through a series of questions on topics such as meetings, communication, research, and approach to scholarly products, to name a few, this survey will help guide you through that process and provide you with a tool to capture your thoughts. The survey should take about 15 minutes to complete. Your mentor(s)/mentee ($partners) will also complete a survey.</p>";
-    $html .= "<p><img src='$imageLink' style='float: left; margin-right: 39px;width: 296px;'>Once both of you have completed the process, you will be able to see each of your surveys side by side to see where you agree or disagree. At that time, we recommend scheduling a time to meet with each other to discuss those items where you disagree so that you can come to an agreement.  Once you come to an agreement on each question, a final Mentor-Mentee agreement will be produced that you can refer to as needed. We encourage mentors and mentees to revisit this document on a regular basis, with a suggestion of annually.</p>";
+    $html .= "<p>Welcome to the Mentoring Agreement. The first step to completing the Mentoring Agreement is to reflect on what is important to you in a successful mentee-mentor relationship. Through a series of questions on topics such as meetings, communication, research, and approach to scholarly products, to name a few, this survey will help guide you through that process and provide you with a tool to capture your thoughts. The survey should take about 30 minutes to complete. Your $partnerRelationship ($partners) will also complete a survey.</p>";
+    $html .= "<p><img src='$imageLink' style='float: left; margin-right: 39px;width: 296px;'>The mentee should complete the agreement first. An email will alert the mentor(s) whenever the agreement is submitted. The mentor(s) should arrange a time to meet with the mentee to fill out their part of the agreement, which will act as the final authorized/completed agreement. Then the completed agreement can be viewed, signed, and printed. A follow-up email will be scheduled for when the agreement should be revisited.</p>";
+    $html .= "<p>Each section below will explore expectations and goals regarding relevant topics for the relationship, such as the approach to direct one-on-one meetings.</p>";
 
     $html .= "<script src='$scriptLink'></script>";
     $html .= "<script>
@@ -484,6 +485,22 @@ function makeSurveyHTML($partners, $row, $metadata) {
     </script>";
 
     return $html;
+}
+
+function agreementSigned($redcapData, $menteeRecordId, $currInstance) {
+    $row = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $currInstance);
+    $fields = [
+        "mentoring_sig_mentee",
+        "mentoring_sig_mentee_date",
+        "mentoring_sig_mentor",
+        "mentoring_sig_mentor_date",
+    ];
+    foreach ($fields as $field) {
+        if (!$row[$field]) {
+            return FALSE;
+        }
+    }
+    return TRUE;
 }
 
 function getMySurveys($username, $token, $server, $currentRecordId, $currentInstance) {
@@ -599,7 +616,7 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
 
     dounbindenter=function(){
         $(document).keypress(function(e){
-            if (e.which == 13){
+            if (e.which == 13) {
                 return;
             }
         });
@@ -613,7 +630,7 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
         let fieldName = servicerequest_id.replace(/-tr$/, '');
         let notesFieldName = fieldName + '_notes';
         let priorNote = priorNotes[notesFieldName] ? priorNotes[notesFieldName] : '';
-        let commentcontent = '<div style=\"position: relative;height: 250px;\"><div class=\"closecomments\"><span style=\"float:left;color: #000000;font-weight: 700;font-size: 12px;margin-left: 6px;\">Notes/comments:</span><a style=\"float:right;\" href=\"javascript:$(\'.fauxcomment\').css(\'display\',\'none\');dounbindenter()\"><img src=\"".Application::link("mentor/images/x-circle.svg")."\"></a></div><div id=\"'+fieldName+'-lcomments\" class=\"listofcomments\" style=\"position: absolute;bottom: 0;height: 220px;display: inline-block;overflow: scroll;\">';
+        let commentcontent = '<div style=\"position: relative;height: 250px;\"><div class=\"closecomments\"><span style=\"float:left;color: #000000;font-weight: 700;font-size: 13px;margin-left: 6px;\">Notes/comments:</span><a style=\"float:right;\" href=\"javascript:$(\'.fauxcomment\').css(\'display\',\'none\');dounbindenter()\"><img src=\"".Application::link("mentor/images/x-circle.svg")."\"></a></div><div id=\"'+fieldName+'-lcomments\" class=\"listofcomments\" style=\"position: absolute;bottom: 0;height: 220px;display: inline-block;overflow: scroll;\">';
 
         for(var line of priorNote.split(/\\n/)) {
             if(line != ''){
@@ -622,12 +639,17 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
         }
 
         if (insert_comment) {
-            commentcontent += '</div></div><div class=\"insertcomment\"><input id=\"addcomment\" type=\"text\" placeholder=\"add comment...\"><span><a href=\"javascript:addcomment(\'' + servicerequest_id + '\')\"><img src=\"".Application::link("mentor/images/at-sign.svg")."\" style=\"height: 18px;margin-left: 8px;\"></a></span></div>';
+            commentcontent += '</div></div><div class=\"insertcomment\"><input class=\"addcomment\" type=\"text\" placeholder=\"add comment...\" servicerequest=\"'+servicerequest_id+'\"><span><a href=\"javascript:addcomment(\'' + servicerequest_id + '\', $(\'[servicerequest='+servicerequest_id+']\'))\"><img src=\"".Application::link("mentor/images/at-sign.svg")."\" style=\"height: 18px;margin-left: 8px;\"></a></span></div>';
             //bind ENTER key to comment
             $(document).keypress(function(e){
                 if (e.which == 13){
-                    addcomment(servicerequest_id);
-                    return false;
+                    if (e.target && $(e.target).attr('servicerequest')) {
+                        // binds at time of click, not at setup time
+                        addcomment($(e.target).attr('servicerequest'), $(e.target));                    
+                    }
+                    if (!$(e.target).is('textarea.form-check-input')) {
+                        return false;
+                    }
                 }
             });
         }
@@ -667,17 +689,22 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
         });
     }
 
-    addcomment = function(servicerequest_id) {
+    addcomment = function(servicerequest_id, inputObj) {
         $('#' + servicerequest_id + ' .tcomments .timestamp').remove();
-        let commentText = $('#addcomment').val();
+        let commentText = inputObj.val();
         if (commentText) {
             let d = new Date();
             let today = (d.getMonth() + 1)+'-'+d.getDate()+'-'+d.getFullYear();
             let latestcomment = commentText + '<span class=\"timestamp\">($username) '+today+' ' + d.getHours() + ':' + minutes_with_leading_zeros(d) + '</span>';
             $('<div class=\"acomment\">' + latestcomment + '</div>').appendTo('.listofcomments');
-            $('#' + servicerequest_id + ' .tcomments a').html(commentText);
-            $('#' + servicerequest_id + ' .tcomments a').after('<span class=\"timestamp\">($username) '+today+' ' + d.getHours() + ':' + minutes_with_leading_zeros(d) + '</span>');
-            $('#addcomment').val('');
+            let priorText = $('#' + servicerequest_id + ' .tcomments a').html();
+            console.log(priorText);
+            if (priorText.match(/add note/)) {
+                $('#' + servicerequest_id + ' .tcomments a').html(latestcomment);
+            } else {
+                $('#' + servicerequest_id + ' .tcomments a').html(priorText + '<br>' + latestcomment);
+            }
+            inputObj.val('');
             $('.acomment:odd').css('background-color', '#eceff5');
             let fieldName = servicerequest_id.replace(/-tr$/, '');
             let notesFieldName = fieldName + '_notes';
@@ -691,7 +718,7 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
             } else {
                 priorNotes[notesFieldName] = latestcomment;
             }
-            console.log('Uploading to instance $menteeInstance');
+            console.log('Uploading to '+notesFieldName+' in instance $menteeInstance');
             $.post('".Application::link("mentor/change.php").$uidString."', {
                 userid: '$username',
                 type: 'notes',
@@ -782,8 +809,8 @@ function makeNotesHTML($field, $redcapData, $recordId, $instance, $notesFields) 
         if ($notesData == "") {
             $html .= "<a href='javascript:void(0)' onclick='showcomment($(this).closest(\"tr\").attr(\"id\"), true)'>add note</a>\n";
         } else {
-            $notesLines = explode("\n", $notesData);
-            $html .= "<a href='javascript:void(0)' onclick='showcomment($(this).closest(\"tr\").attr(\"id\"), true)'><div class='tnote'>".$notesLines[count($notesLines) - 1]."</div></a>\n";
+            $notesData = preg_replace("/\n/", "<br>", $notesData);
+            $html .= "<a href='javascript:void(0)' onclick='showcomment($(this).closest(\"tr\").attr(\"id\"), true)'><div class='tnote'>".$notesData."</div></a>\n";
         }
         $html .= "</td>\n";
     }
@@ -822,7 +849,6 @@ function makePrefillHTML($surveysAvailableToPrefill, $uidString = "") {
             let recordId = a[0];
             let instance = a[1];
             $.post('$link', { record: recordId, instance: instance }, function(json) {
-                console.log(json);
                 let data = JSON.parse(json);
                 clearAll();
                 for (let field in data) {
@@ -831,22 +857,24 @@ function makePrefillHTML($surveysAvailableToPrefill, $uidString = "") {
                         let b = field.split(/___/);
                         let checkboxField = b[0];
                         let checkboxValue = b[1];
-                        let fieldSel = '#exampleRadiosh'+checkboxField+'___'+checkboxValue;
-                        console.log('Setting '+fieldSel+' with '+value);
+                        let fieldSel = '#exampleChecksh'+checkboxField+'___'+checkboxValue;
                         if ((value === 0) || (value === '0') || (value === '')) {
-                            $('#exampleChecksh'+checkboxField+'___'+checkboxValue).attr('checked', false);
+                            $(fieldSel).attr('checked', false);
                         } else if ((value === 1) || (value === '1')) {
-                            $('#exampleChecksh'+checkboxField+'___'+checkboxValue).attr('checked', true);
+                            $(fieldSel).attr('checked', true);
                         } else {
                             $.sweetModal('Invalid check value '+value);
                         }
+                        updateData(fieldSel);
                     } else if (value !== '') {
                         let fieldSel = '#exampleRadiosh'+field+'___'+value;
-                        console.log('Checking '+fieldSel);
                         $(fieldSel).attr('checked', true);
+                        updateData(fieldSel);
                     }
                 }
                 $(sel).val('');
+                $('input[type=checkbox].form-check-input').trigger('change');
+                $('input[type=radio].form-check-input').trigger('change');
             });
         }
     }
@@ -870,6 +898,8 @@ function beautifyHeader($str) {
     $str = preg_replace("/Career and Professional Development/i", "Development", $str);
     $str = preg_replace("/Approach to Scholarly Products/i", "Scholarship", $str);
     $str = preg_replace("/Financial Support/i", "Financials", $str);
+    $str = preg_replace("/Mentee-Mentor 1:1 Meetings/i", "Meetings", $str);
+    $str = preg_replace("/Next/i", "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Next", $str);
     return $str;
 }
 

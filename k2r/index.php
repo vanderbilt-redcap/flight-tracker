@@ -4,14 +4,12 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 $options = array(
 		"1234" => "Any &amp; All Ks",
@@ -120,16 +118,21 @@ function getKAwardees($data, $intKLength, $indKLength) {
 	return $qualifiers;
 }
 
+function breakUpKs($kType) {
+    $kPre = preg_split("//", $kType);
+    $ks = [];
+    foreach ($kPre as $k) {
+        if ($k !== "") {
+            $ks[] = $k;
+        }
+    }
+    return $ks;
+}
+
 function isConverted($row, $kLength, $orderK, $kType) {
 	global $ind_ks, $int_ks, $rs;
-	$kPre = preg_split("//", $kType);
-	$ks = array();
 	$k99r00 = 9;
-	foreach ($kPre as $k) {
-		if ($k !== "") {
-			$ks[] = $k;
-		}
-	}
+	$ks = breakUpKs($kType);
 	$today = date("Y-m-d");
  
 	$k = "";
@@ -180,7 +183,36 @@ function isConverted($row, $kLength, $orderK, $kType) {
 	return "numer";
 }
 
-function getAverages($data, $kLength, $orderK, $kType) {
+function isRowInKRange($row, $orderK, $kType, $kStartDate, $kEndDate) {
+    if (!$kStartDate && !$kEndDate) {
+        return TRUE;
+    }
+    $ks = breakUpKs($kType);
+    $kDate = "";
+    for ($i = 0; $i < MAX_GRANTS; $i++) {
+        if (in_array($row['summary_award_type_'.$i], $ks)) {
+            $rowField = "summary_award_date_".$i;
+            if ($orderK == "first_k") {
+                if (!$kDate && $row[$rowField]) {
+                    $kDate = $row[$rowField];
+                }
+            } else if ($orderK == "last_k") {
+                if ($row[$rowField]) {
+                    $kDate = $row[$rowField];
+                }
+            }
+        }
+    }
+    if ($kStartDate && !REDCapManagement::dateCompare($kDate, ">=", $kStartDate)) {
+        return FALSE;
+    }
+    if ($kEndDate && !REDCapManagement::dateCompare($kDate, "<=", $kEndDate)) {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+function getAverages($data, $kLength, $orderK, $kType, $kStartDate, $kEndDate) {
 	global $rs, $pid, $event_id;
 
 	$avgs = array(
@@ -194,13 +226,13 @@ function getAverages($data, $kLength, $orderK, $kType) {
 			);
 	$sums = array();
 	foreach ($avgs as $key => $value) {
-        if (!is_array($avgs[$key])) {
+	    if (!is_array($avgs[$key])) {
             $sums[$key] = array();
         }
 	}
 
 	foreach ($data as $row) {
-		if ($row['redcap_repeat_instrument'] === "") {
+		if (($row['redcap_repeat_instrument'] === "") && isRowInKRange($row, $orderK, $kType, $kStartDate, $kEndDate)) {
 			$c = isConverted($row, $kLength, $orderK, $kType);
 			if ($c == "numer") {
 				// echo "Numer ".$row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name']."<br>";
@@ -210,9 +242,9 @@ function getAverages($data, $kLength, $orderK, $kType) {
 				// echo "Denom ".$row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name']."<br>";
 				$sums["conversion"][] = 0;
                 $avgs["not_converted"][] = Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['identifier_first_name']." ".$row['identifier_last_name']);
-            } else {
+			} else {
                 $avgs["omitted"][] = Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['identifier_first_name']." ".$row['identifier_last_name']);
-			}
+            }
 			if ($row['summary_dob']) {
 				$today = date("Y-m-d");
 				$sums["age"][] = REDCapManagement::datediff($row['summary_dob'], $today, "y");
@@ -252,7 +284,18 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 		if (isset($_POST['k'])) {
 			$kLength = $_POST['k'];
 		}
-		$avgs = getAverages($redcapData, $kLength, $_POST['k_number'], $_POST['k_type']);
+		$avgs = getAverages($redcapData, $kLength, $_POST['k_number'], $_POST['k_type'], $_POST['start'], $_POST['end']);
+
+		$dateRange = "";
+		if ($_POST['start']) {
+		    if ($_POST['end']) {
+		        $dateRange = "<br>".REDCapManagement::YMD2MDY($_POST['start'])." - ".REDCapManagement::YMD2MDY($_POST['end']);
+		    } else {
+                $dateRange = "<br>Starting at ".REDCapManagement::YMD2MDY($_POST['start']);
+            }
+        } else if ($_POST['end']) {
+            $dateRange = "<br>Prior to ".REDCapManagement::YMD2MDY($_POST['end']);
+        }
 
 		if ($_GET['cohort']) {
 			echo "<h2>Cohort {$_GET['cohort']} Averages</h2>";
@@ -260,7 +303,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 			echo "<h2>Entire Population Averages</h2>";
 		}
 		echo "<table class='centered'>";
-		echo "<tr><th>Average K-To-R Conversion Rate<br>({$options[$_POST['k_type']]})";
+		echo "<tr><th>Average K-To-R Conversion Rate<br>({$options[$_POST['k_type']]})$dateRange";
 		echo "<ul class='k2r'>";
 		if ($kLength) {
 			echo "<li class='k2r'>Omit anyone with a most-recent CDA less than $kLength years old</li>";
@@ -278,16 +321,16 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 		echo "<tr><th>Average Age at First R / R-Equivalent</th><td>{$avgs['age_at_first_r']}</td></tr>";
 		echo "</table>";
 
-        echo "<p class='centered'><a href='javascript:;' onclick='$(\"#names\").show();'>Show Names</a></p>";
-        echo "<table class='centered' id='names' style='display: none;'>";
+		echo "<p class='centered'><a href='javascript:;' onclick='$(\"#names\").show(); $(\"#scrollDown\").show();'>Show Names</a> <span id='scrollDown' style='display: none;'>(Scroll Down)</span></p>";
+		echo "<table class='centered' id='names' style='display: none;'>";
         echo "<tr><th class='centered'>Converted</th><th class='centered'>Not Converted</th><th class='centered'>Omitted</th></tr>";
         echo "<tr>";
         echo "<td class='centered' style='vertical-align: top;'>".implode("<br>", $avgs['converted'])."</td>";
         echo "<td class='centered' style='vertical-align: top;'>".implode("<br>", $avgs['not_converted'])."</td>";
         echo "<td class='centered' style='vertical-align: top;'>".implode("<br>", $avgs['omitted'])."</td>";
         echo "</tr>";
-        echo "</table>";
-    } else if (isset($_POST['list'])) {
+		echo "</table>";
+	} else if (isset($_POST['list'])) {
 		$showNames = false;
 		if ($_POST['show_names']) {
 			$showNames = true;
@@ -322,9 +365,9 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 	}
 ?>
 
-<form action='<?= CareerDev::link("/k2r/index.php").$cohortParams ?>' method='POST'>
+<form action='<?= Application::link("k2r/index.php").$cohortParams ?>' method='POST'>
 <h2>Conversion Rate</h2>
-<p class='centered'>Select Cohort (optional):<br><?= \Vanderbilt\FlightTrackerExternalModule\getCohortSelect($token, $server, $pid, $metadata) ?></p>
+<p class='centered'>Select Cohort (optional):<br><?= \Vanderbilt\FlightTrackerExternalModule\getCohortSelect($token, $server, $pid) ?></p>
 <p class='centered'>Exclude those within <input type='text' name='k' value='5'> years of receipt of most recent K who have not converted<br>
 <span class='small'>(leave blank if you want <b>all</b> conversions)</span></p>
 <p class='centered'>Type of K: <select name='k_type'>
@@ -341,12 +384,13 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 ?>
 </select></p>
 <p class='centered'>Start Countdown At: <select name='k_number'><option value='first_k'>First K</option><option value='last_k' selected>Last K</option></select></p>
+<p class='centered'>Start of Period for Ks: <input type="date" name="start">&nbsp;&nbsp;&nbsp;End of Period for Ks: <input type="date" name="end"></p>
 <p class='centered'><input type='radio' name='r01equivtype' value='r01equiv' checked> R01 &amp; R01-Equivalents<br>
 <input type='radio' name='r01equivtype' value='r01'> R01s only</p>
 <p class='centered'><input type='submit' name='average' value='Calculate'></p>
 </form>
 <hr>
-<form action='<?= CareerDev::link("/k2r/index.php").$cohortParams ?>' method='POST'>
+<form action='<?= Application::link("k2r/index.php").$cohortParams ?>' method='POST'>
 <h2>Who is on a K Award?</h2>
 <p class='centered'>Length of Internal-K / K12 / KL2 Award: <input type='text' name='internal_k' value='3'> years</p>
 <p class='centered'>Length of Individual-K / K-Equivalent Award: <input type='text' name='individual_k' value='5'> years</p>

@@ -566,6 +566,10 @@ class Download {
 	}
 
 	public static function fields($token, $server, $fields) {
+	    if (empty($fields)) {
+	        Application::log("Error! Download::fields blank ".json_encode(debug_backtrace()));
+	        return [];
+        }
 		Application::log("Download::fields ".count($fields)." fields");
 		$data = array(
 			'token' => $token,

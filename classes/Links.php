@@ -66,7 +66,7 @@ class Links {
 	}
 
 	private static function link($relativeUrl) {
-                return Application::link($relativeUrl);
+	    return Application::link($relativeUrl);
 	}
 
 	public static function makeProfileLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {

@@ -64,33 +64,42 @@ abstract class GrantFactory {
 	protected static $defaultRole = "PI/Co-PI";
 }
 
-class ScholarsGrantFactory extends GrantFactory {
+class InitialGrantFactory extends GrantFactory {
+    public function setPrefix($prefix) {
+        $prefix = preg_replace("/_$/", "", $prefix);
+        $this->prefix = $prefix;
+    }
 
 	# get the Scholars' Survey (always nicknamed check) default spec array
 	public function processRow($row, $token = "") {
+        $prefix = $this->prefix;
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= $this->maxGrants; $i++) {
-			if ($row["check_grant$i"."_start"] != "") {
-				$awardno = $row['check_grant'.$i.'_number'];
+			if ($row[$prefix."_grant$i"."_start"] != "") {
+				$awardno = $row[$prefix.'_grant'.$i.'_number'];
 				$grant = new Grant($this->lexicalTranslator);
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
-				$grant->setVariable('start', $row['check_grant'.$i.'_start']);
-				$grant->setVariable('end', $row['check_grant'.$i.'_end']);
-				$grant->setVariable('source', "scholars");
-				$costs = Grant::removeCommas($row['check_grant'.$i.'_costs']);
+				$grant->setVariable('start', $row[$prefix.'_grant'.$i.'_start']);
+				$grant->setVariable('end', $row[$prefix.'_grant'.$i.'_end']);
+				if ($prefix == "check") {
+                    $grant->setVariable('source', "scholars");
+                } else if ($prefix == "init_import") {
+                    $grant->setVariable('source', "manual");
+                }
+				$costs = Grant::removeCommas($row[$prefix.'grant'.$i.'_costs']);
 				$grant->setVariable('budget', $costs);
-				$grant->setVariable('direct_budget', Grants::directCostsFromTotal($costs, $awardno, $row['check_grant'.$i.'_start']));
+				$grant->setVariable('direct_budget', Grants::directCostsFromTotal($costs, $awardno, $row[$prefix.'grant'.$i.'_start']));
 				// $grant->setVariable('fAndA', Grants::getFAndA($awardno, $row['check_grant'.$i.'_start']));
 				$grant->setVariable('finance_type', Grants::getFinanceType($awardno));
-				$grant->setVariable('sponsor', $row['check_grant'.$i.'_org']);
+				$grant->setVariable('sponsor', $row[$prefix.'grant'.$i.'_org']);
 				$grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=initial_survey", "See Grant"));
 				# Co-PI or PI, not Co-I or Other
-				if (($row['check_grant'.$i.'_role'] == 1) || ($row['check_grant'.$i.'_role'] == 2) || ($row['check_grant'.$i.'_role'] == '')) {
+				if (($row[$prefix.'grant'.$i.'_role'] == 1) || ($row[$prefix.'grant'.$i.'_role'] == 2) || ($row[$prefix.'grant'.$i.'_role'] == '')) {
 					$grant->setVariable('pi_flag', 'Y');
 				} else {
 					$grant->setVariable('pi_flag', 'N');
 				}
-				$grant->setVariable("role", $this->choices["check_grant".$i."_role"][$row["check_grant".$i."_role"]]);
+				$grant->setVariable("role", $this->choices[$prefix."grant".$i."_role"][$row[$prefix."grant".$i."_role"]]);
 				$grant->setNumber($awardno);
 				$grant->setVariable("original_award_number", $awardno);
 				if (preg_match("/^\d?[A-Z]\d\d/", $awardno, $matches)) {
@@ -104,6 +113,7 @@ class ScholarsGrantFactory extends GrantFactory {
 	}
 
 	private $maxGrants = MAX_GRANTS;
+    private $prefix = "";
 }
 
 class FollowupGrantFactory extends GrantFactory {

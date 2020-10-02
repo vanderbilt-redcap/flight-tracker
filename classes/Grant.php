@@ -54,6 +54,12 @@ class Grant {
 		return $num;
 	}
 
+	public function isNIH() {
+	    # from https://era.nih.gov/files/Deciphering_NIH_Application.pdf
+        $nihInstituteCodes = ["TW", "TR", "AT", "CA", "EY", "HG", "HL", "AG", "AA", "AI", "AR", "EB", "HD", "DA", "DC", "DE", "DK", "ES", "GM", "MH", "MD", "NS", "NR", "LM"];
+	    $ary = self::parseNumber($this->getNumber());
+        return in_array($ary['institute_code'], $nihInstituteCodes);
+    }
 
 	public function getVariable($type) {
 		if (($type == "type") && !isset($this->specs[$type])) {

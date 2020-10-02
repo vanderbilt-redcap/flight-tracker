@@ -30,6 +30,7 @@ class EmailManager {
 		} else {
 			$this->data = self::loadData($this->settingName, $this->metadata, $this->hijackedField, $this->pid);
 		}
+		Application::log("Loaded data for settings: ".json_encode(array_keys($this->data)));
 	}
 
 	public static function isEmailAddress($str) {
@@ -140,15 +141,19 @@ class EmailManager {
 		if (!is_array($names)) {
 			$names = array($names);
 		}
-		$results = array();
+		$results = [];
 		if (!$currTime) {
-			$currTime = time();
+			$currTime = $_SERVER['REQUEST_TIME_FLOAT'];
 		}
 		foreach ($this->data as $name => $emailSetting) {
 			if (in_array($name, $names) || empty($names)) {
+                Application::log("Checking if $name is enabled");
 				if ($emailSetting['enabled'] || ($func == "prepareEmail")) {
-					$when = $emailSetting["when"];
-					$sent = $emailSetting["sent"];
+				    Application::log("$name is enabled");
+                    if (!isset($results[$name])) {
+                        $results[$name] = [];
+                    }
+                    $when = $emailSetting["when"];
 					foreach ($when as $type => $datetime) {
 						$ts = self::transformToTS($datetime);
 						$result = FALSE;
@@ -158,14 +163,12 @@ class EmailManager {
 								$result = $this->$func($emailSetting, $name, $type, $to);
 							}
 						} else {
-							if ($this->isReadyToSend($ts, $_SERVER['REQUEST_TIME_FLOAT'])) {
-								$result = $this->$func($emailSetting, $name, $type);
+							if ($this->isReadyToSend($ts, $currTime)) {
+                                Application::log("Sending $name");
+                                $result = $this->$func($emailSetting, $name, $type);
 							}
 						}
 						if ($result && !empty($result)) {
-							if (!isset($results[$name])) {
-								$results[$name] = array();
-							}
 							$results[$name][$type] = $result;
 						}
 					}
@@ -251,8 +254,11 @@ class EmailManager {
 				throw new \Exception("Could not find REDCap class!");
 			}
 
-			// \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
-            \REDCap::email("rebecca.helton@vumc.org,scott.j.pearson@vumc.org", $from, $to[$recordId].": ".$subjects[$recordId], $mssg);
+			if (method_exists("Application", "isTestGroup") && Application::isTestGroup($this->pid)) {
+                \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
+            } else {
+                \REDCap::email("scott.j.pearson@vumc.org,rebecca.helton@vumc.org", $from, $to[$recordId].": ".$subjects[$recordId], $mssg);
+            }
 			usleep(200000); // wait 0.2 seconds for other items to process
 		}
 		$records = array_keys($mssgs);
@@ -330,7 +336,7 @@ class EmailManager {
 	private function prepareEmail($emailSetting, $settingName, $whenType, $toField = "who") {
 		$rows = $this->getRows($emailSetting["who"], $whenType, $this->getForms($emailSetting["what"]));
 		if (empty($rows)) {
-			return array();
+			return [];
 		}
 
 		$data = array();
@@ -360,6 +366,7 @@ class EmailManager {
 
 	public function getSettingsNames() {
 		$allEmailKeys = array_keys($this->data);
+		Application::log("Email keys: ".json_encode($allEmailKeys));
 		if (method_exists("Application", "getEmailName")) {
 			$allRecords = Download::recordIds($this->token, $this->server);
 			$unmatchedKeys = array();
@@ -522,8 +529,7 @@ class EmailManager {
 	}
 
 	private function getSurveys() {
-		$pid = $this->pid;
-		return REDCapManagement::getSurveys($pid);
+		return REDCapManagement::getSurveys($this->pid, $this->metadata);
 	}
 
 	private function getRepeatingForms() {
@@ -610,16 +616,26 @@ class EmailManager {
 	}
 
 	public function filterSome($who, $whenType, $when, $what) {
+	    // Application::log("filterSome: ".json_encode_with_spaces($who));
+        if (count($this->metadata) == 0) {
+            $this->metadata = Download::metadata($this->token, $this->server);
+        }
 		$fields = array("record_id", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv");
 		$surveys = $this->getSurveys();
+        $steps = [];
+        $steps["surveys"] = $surveys;
+        $steps["metadata"] = $this->metadata;
 		foreach ($surveys as $form => $title) {
 			array_push($fields, $form."_complete");
 			array_push($fields, self::getDateField($form));
 		}
+        $steps["fields 1"] = $fields;
 		$fields = REDCapManagement::filterOutInvalidFields($this->metadata, $fields);
 
 		# structure data
+        $steps["fields 2"] = $fields;
 		$redcapData = Download::fields($this->token, $this->server, $fields);
+		$steps["redcapData"] = count($redcapData);
 		$identifiers = array();
 		$lastUpdate = array();
 		$complete = array();
@@ -658,6 +674,7 @@ class EmailManager {
 
 		$created = array();
 		$queue = array_keys($identifiers);
+		$steps["queue"] = $queue;
 		$filterFields = array(
 					"affiliations",
 					"primary_affiliation",
@@ -700,12 +717,18 @@ class EmailManager {
 
         if ($who['last_complete']) {
 			$queue = self::filterForMonths($who['last_complete'], $lastUpdate, $queue);
+			$steps["1"] = $queue;
 		}
-		if ($who['none_complete']) {
+		if ($who['none_complete'] == "true") {
 			$queue = self::filterForNoComplete($lastUpdate, $complete, $queue);
-		}
+            $steps["2"] = $queue;
+		} else if ($who['none_complete'] == "false") {
+            $queue = self::filterForComplete($lastUpdate, $complete, $queue);
+            $steps["3"] = $queue;
+        }
 		if ($who['converted']) {
 			$queue = self::filterForConverted($who['converted'], $converted, $queue);
+            $steps["4"] = $queue;
 		}
 		if ($who['max_emails'] || $who['new_records_since']) {
 			foreach ($queue as $recordId) {
@@ -714,15 +737,19 @@ class EmailManager {
 					$created[$recordId] = strtotime($createDate);
 				}
 			}
+            $steps["5"] = $queue;
 		}
 		if ($who['max_emails']) {
 			$queue = $this->filterForMaxEmails($who['max_emails'], $created, $queue);
+            $steps["6"] = $queue;
 		}
 		if ($who['new_records_since']) {
 			$queue = self::filterForNewRecordsSince($who['new_records_since'], $created, $queue);
+            $steps["7"] = $queue;
 		}
 		if ($whenType == "followup_time") {
 			$queue = self::filterOutSurveysCompleted($this->getForms($what), $when, $complete, $lastUpdate, $queue);
+            $steps["8"] = $queue;
 		}
 
 		# build row of names and emails
@@ -730,7 +757,12 @@ class EmailManager {
 		foreach ($queue as $recordId) {
 			$rows[$recordId] = $identifiers[$recordId];
 		}
-		return $rows;
+        // Application::log("filterSome rows: ".count($rows));
+		foreach ($steps as $num => $items) {
+            // Application::log("filterSome step $num: ".count($items));
+        }
+
+        return $rows;
 	}
 
 	public function getRows($who, $whenType = "", $when = array(), $what = array()) {
@@ -897,17 +929,27 @@ class EmailManager {
 		return $queue;
 	}
 
-	# if no surveys ever completed
-	private static function filterForNoComplete($lastUpdate, $complete, $queue) {
-		foreach ($queue as $recordId) {
-			if (isset($lastUpdate[$recordId]) || isset($complete[$recordId])) {
-				unset($queue[array_search($recordId, $queue)]);
-			}
-		}
-		return $queue;
-	}
+    # if no surveys ever completed
+    private static function filterForNoComplete($lastUpdate, $complete, $queue) {
+        foreach ($queue as $recordId) {
+            if (isset($lastUpdate[$recordId]) || isset($complete[$recordId])) {
+                unset($queue[array_search($recordId, $queue)]);
+            }
+        }
+        return $queue;
+    }
 
-	private static function filterForConverted($status, $converted, $queue) {
+    # if any surveys ever completed
+    private static function filterForComplete($lastUpdate, $complete, $queue) {
+        foreach ($queue as $recordId) {
+            if (!isset($lastUpdate[$recordId]) && !isset($complete[$recordId])) {
+                unset($queue[array_search($recordId, $queue)]);
+            }
+        }
+        return $queue;
+    }
+
+    private static function filterForConverted($status, $converted, $queue) {
 		$convValue = "";
 		if ($status == "yes") {
 			$convValue = "1";
@@ -943,7 +985,8 @@ class EmailManager {
 		$settingName = $this->settingName;
 		$data = self::cleanUpEmails($this->data, $this->token, $this->server);
 		if ($this->module) {
-			return $this->module->setProjectSetting($settingName, $data);
+		    Application::log("Saving email data into $settingName");
+			return $this->module->setProjectSetting($settingName, $data, $this->pid);
 		} else if ($this->metadata) {
 			$json = json_encode($data);
 			$newMetadata = array();
@@ -998,8 +1041,10 @@ class EmailManager {
 
 	private static function loadData($settingName, $moduleOrMetadata, $hijackedField, $pid) {
 		if ($moduleOrMetadata && !is_array($moduleOrMetadata)) {
+		    Application::log("Loading email data from $settingName");
 			$setting = $moduleOrMetadata->getProjectSetting($settingName, $pid);
 			if ($setting) {
+			    Application::log("Got settings from $settingName ".json_encode(array_keys($setting)));
 				return $setting;
 			} else {
 				return array();

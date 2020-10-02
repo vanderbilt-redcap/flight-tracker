@@ -29,3 +29,4 @@ if ($_GET['cohort']) {
     echo "<h3>Cohort ".$_GET['cohort']."</h3>\n";
 }
 echo $table->getHTML($tableNum);
+echo $table->getExportHTML($tableNum);

@@ -740,7 +740,95 @@ class Scholar {
 		return (count($this->metaVariables) > 0) ? TRUE : FALSE;
 	}
 
-	public function isConverted($autoCalculate = TRUE) {
+	public function getLastKDate() {
+        $ks = [1, 2, 3, 4];
+        $lastK = "";
+        foreach ($this->rows as $row) {
+            for ($i = 1; $i <= MAX_GRANTS; $i++) {
+                if (in_array($row['summary_award_type_' . $i], $ks) && $row['summary_award_date_' . $i]) {
+                    $lastK = $row['summary_award_date_'.$i];
+                }
+            }
+        }
+        return $lastK;
+    }
+
+	public function startedKOnOrAfterTs($ts) {
+	    $lastK = $this->getLastKDate();
+	    if ($lastK) {
+            $currTs = strtotime($lastK);
+            return ($currTs >= $ts);
+        }
+	    return FALSE;
+    }
+
+	# requires that identifier_institution and identifier_left_date be downloaded into rows
+	public function hasLeftInstitution() {
+        foreach ($this->rows as $row) {
+            $atOtherInstitution = $row['identifier_institution'] && !in_array($row['identifier_institution'], Application::getInstitutions());
+            if ($atOtherInstitution || $row['identifier_left_date']) {
+                return TRUE;
+            }
+        }
+        return FALSE;
+    }
+
+	public function onK($r01Only = FALSE, $makeKLengthLongest = FALSE) {
+	    if ($makeKLengthLongest) {
+            $kLengthInSeconds = self::calculateMaxKLengthInSeconds();
+        }
+        if (!$this->hasMetaVariables()) {
+            $this->getMetaVariables();
+        }
+        if ($r01Only) {
+            if ($this->hasR01()) {
+                return FALSE;
+            }
+        } else {
+            if ($this->hasR01OrEquiv()) {
+                return FALSE;
+            }
+        }
+        if ($this->hasK()) {
+            $lastTime = strtotime($this->metaVariables['summary_last_any_k']);
+            if ($this->isLastKExternal()) {
+                $kLength = $makeKLengthLongest ? $kLengthInSeconds : self::calculateKLengthInSeconds("External");
+                if (time() > $lastTime + $kLength) {
+                    return FALSE;
+                } else {
+                    return TRUE;
+                }
+            } else {
+                if ($makeKLengthLongest) {
+                    $kLength = $kLengthInSeconds;
+                } else if ($this->isLastKK12KL2()) {
+                    $kLength = self::calculateKLengthInSeconds("K12/KL2");
+                } else {
+                    $kLength = self::calculateKLengthInSeconds("Internal");
+                }
+                if (time() > $lastTime + $kLength) {
+                    return FALSE;
+                } else {
+                    return TRUE;
+                }
+            }
+        }
+        return FALSE;
+    }
+
+    private static function calculateMaxKLengthInSeconds() {
+        $possibleKLengths = [
+            self::calculateKLengthInSeconds("External"),
+            self::calculateKLengthInSeconds("K12/KL2"),
+            self::calculateKLengthInSeconds("Internal"),
+        ];
+        return max($possibleKLengths);
+    }
+
+	public function isConverted($autoCalculate = TRUE, $makeKLengthLongest = FALSE) {
+        if ($makeKLengthLongest) {
+            $kLengthInSeconds = self::calculateMaxKLengthInSeconds();
+        }
 		if ($this->hasMetaVariables()) {
 			if ($this->hasK99R00()) {
 				return "Not Eligible";
@@ -749,13 +837,16 @@ class Scholar {
 					$lastTime = strtotime($this->metaVariables['summary_last_any_k']);
 					$rTime = strtotime($this->metaVariables['summary_first_r01_or_equiv']);
 					if ($this->isLastKExternal()) {
-						if ($rTime > $lastTime + self::calculateKLengthInSeconds("External")) {
+					    $kLength = $makeKLengthLongest ? $kLengthInSeconds : self::calculateKLengthInSeconds("External");
+						if ($rTime > $lastTime + $kLength) {
 							return "Converted while not on K";
 						} else {
 							return "Converted while on K";
 						}
 					} else {
-						if ($this->isLastKK12KL2()) {
+					    if ($makeKLengthLongest) {
+					        $kLength = $kLengthInSeconds;
+                        } else if ($this->isLastKK12KL2()) {
 							$kLength = self::calculateKLengthInSeconds("K12/KL2");
 						} else {
 							$kLength = self::calculateKLengthInSeconds("Internal");
@@ -767,25 +858,11 @@ class Scholar {
 						}
 					}
 				} else {
-					$lastTime = strtotime($this->metaVariables['summary_last_any_k']);
-					if ($this->isLastKExternal()) {
-						if (time() > $lastTime + self::calculateKLengthInSeconds("External")) {
-							return "Not Converted";
-						} else {
-							return "Not Eligible";
-						}
-					} else {
-						if ($this->isLastKK12KL2()) {
-							$kLength = self::calculateKLengthInSeconds("K12/KL2");
-						} else {
-							$kLength = self::calculateKLengthInSeconds("Internal");
-						}
-						if (time() > $lastTime + $kLength) {
-							return "Not Converted";
-						} else {
-							return "Not Eligible";
-						} 
-					}
+					if ($this->onK()) {
+					    return "Not Eligible";
+                    } else {
+					    return "Not Converted";
+                    }
 				}
 			} else {
 				return "Not Eligible";
@@ -905,7 +982,8 @@ class Scholar {
 	# used for the Scholars' survey and Follow-Up surveys
 	private function getWhenLeftInstitution($rows) {
 		$followupInstitutionField = "followup_institution";
-		$checkInstitutionField = "check_institution";
+        $checkInstitutionField = "check_institution";
+        $importInstitutionField = "init_import_institution";
 		$institutionCurrent = '1';
 		$suffix = "_academic_rank_enddt";
 	
@@ -927,19 +1005,31 @@ class Scholar {
 		}
 
 		$normativeRow = self::getNormativeRow($rows);
-		if ($normativeRow[$checkInstitutionField] != $institutionCurrent) {
-			$prefices = array(
-						"check_prev1" => "scholars",
-						"check_prev2" => "scholars",
-						"check_prev3" => "scholars",
-						"check_prev4" => "scholars",
-						"check_prev5" => "scholars",
-					);
-			$res = self::getResultForPrefices($prefices, $normativeRow, $suffix, $this->pid);
-			if ($res->getValue()) {
-				return $res;
-			}
-		}
+        if ($normativeRow[$checkInstitutionField] != $institutionCurrent) {
+            $prefices = array(
+                "check_prev1" => "scholars",
+                "check_prev2" => "scholars",
+                "check_prev3" => "scholars",
+                "check_prev4" => "scholars",
+                "check_prev5" => "scholars",
+            );
+            $res = self::getResultForPrefices($prefices, $normativeRow, $suffix, $this->pid);
+            if ($res->getValue()) {
+                return $res;
+            }
+        } else if ($normativeRow[$importInstitutionField] != $institutionCurrent) {
+            $prefices = array(
+                "init_import_prev1" => "manual",
+                "init_import_prev2" => "manual",
+                "init_import_prev3" => "manual",
+                "init_import_prev4" => "manual",
+                "init_import_prev5" => "manual",
+            );
+            $res = self::getResultForPrefices($prefices, $normativeRow, $suffix, $this->pid);
+            if ($res->getValue()) {
+                return $res;
+            }
+        }
 
 		return new Result($normativeRow['identifier_left_date'], $normativeRow['identifier_left_date_source'], $normativeRow['identifier_left_date_sourcetype'], "", $this->pid);
 	}
@@ -1095,6 +1185,7 @@ class Scholar {
             array("followup_degree" => "followup"),
             array("imported_degree" => "manual"),
             array("check_degree1" => "scholars", "check_degree2" => "scholars", "check_degree3" => "scholars", "check_degree4" => "scholars", "check_degree5" => "scholars"),
+            array("init_import_degree1" => "manual", "init_import_degree2" => "manual", "init_import_degree3" => "manual", "init_import_degree4" => "manual", "init_import_degree5" => "manual"),
             array("vfrs_graduate_degree" => "vfrs", "vfrs_degree2" => "vfrs", "vfrs_degree3" => "vfrs", "vfrs_degree4" => "vfrs", "vfrs_degree5" => "vfrs"),
             array("newman_new_degree1" => "new2017", "newman_new_degree2" => "new2017", "newman_new_degree3" => "new2017"),
             array("newman_data_degree1" => "data", "newman_data_degree2" => "data", "newman_data_degree3" => "data"),
@@ -1104,10 +1195,12 @@ class Scholar {
         $orders["identifier_orcid"] = array(
             "check_orcid_id" => "scholars",
             "followup_orcid_id" => "followup",
+            "init_import_orcid_id" => "manual",
         );
         $orders["identifier_email"] = array(
             "check_email" => "scholars",
             "followup_email" => "followup",
+            "init_import_email" => "manual",
             "ldap_mail" => "ldap",
         );
         $orders["identifier_userid"] = array(
@@ -1121,76 +1214,97 @@ class Scholar {
             "promotion_department" => "manual",
             "check_primary_dept" => "scholars",
             "vfrs_department" => "vfrs",
+            "init_import_primary_dept" => "manual",
             "ldap_vanderbiltpersonhrdeptnumber" => "ldap",
             "newman_new_department" => "new2017",
             "newman_demographics_department1" => "demographics",
             "newman_data_department1" => "data",
             "newman_sheet2_department1" => "sheet2",
         );
-        $orders["summary_gender"] = array(
+        $orders["summary_gender"] = [
             "override_gender" => "manual",
             "check_gender" => "scholars",
+            "followup_gender" => "followup",
             "vfrs_gender" => "vfrs",
             "imported_gender" => "manual",
+            "init_import_gender" => "manual",
             "newman_new_gender" => "new2017",
             "newman_demographics_gender" => "demographics",
             "newman_data_gender" => "data",
             "newman_nonrespondents_gender" => "nonrespondents",
-        );
-        $orders["summary_race_ethnicity"] = array();
-        $orders["summary_race_ethnicity"]["race"] = array(
+        ];
+        $orders["summary_transgender"] = [
+            "check_transgender" => "scholars",
+            "followup_transgender" => "followup",
+            "init_import_transgender" => "manual",
+        ];
+        $orders["summary_sexual_orientation"] = [
+            "check_sexual_orientation" => "scholars",
+            "followup_sexual_orientation" => "followup",
+            "init_import_sexual_orientation" => "manual",
+        ];
+        $orders["summary_race_ethnicity"] = [];
+        $orders["summary_race_ethnicity"]["race"] = [
             "override_race" => "manual",
             "check_race" => "scholars",
             "vfrs_race" => "vfrs",
             "imported_race" => "manual",
+            "init_import_race" => "manual",
             "newman_new_race" => "new2017",
             "newman_demographics_race" => "demographics",
             "newman_data_race" => "data",
             "newman_nonrespondents_race" => "nonrespondents",
-        );
-        $orders["summary_race_ethnicity"]["ethnicity"] = array(
+        ];
+        $orders["summary_race_ethnicity"]["ethnicity"] = [
             "override_ethnicity" => "manual",
             "check_ethnicity" => "scholars",
             "vfrs_ethnicity" => "vfrs",
             "imported_ethnicity" => "manual",
+            "init_import_ethnicity" => "manual",
             "newman_new_ethnicity" => "new2017",
             "newman_demographics_ethnicity" => "demographics",
             "newman_data_ethnicity" => "data",
             "newman_nonrespondents_ethnicity" => "nonrespondents",
-        );
-        $orders["summary_dob"] = array(
+        ];
+        $orders["summary_dob"] = [
             "check_date_of_birth" => "scholars",
             "vfrs_date_of_birth" => "vfrs",
             "override_dob" => "manual",
             "imported_dob" => "manual",
+            "init_import_date_of_birth" => "manual",
             "newman_new_date_of_birth" => "new2017",
             "newman_demographics_date_of_birth" => "demographics",
             "newman_data_date_of_birth" => "data",
             "newman_nonrespondents_date_of_birth" => "nonrespondents",
-        );
-        $orders["summary_citizenship"] = array(
+        ];
+        $orders["summary_citizenship"] = [
             "followup_citizenship" => "followup",
             "check_citizenship" => "scholars",
             "override_citizenship" => "manual",
             "imported_citizenship" => "manual",
-        );
-        $orders["identifier_institution"] = array(
+            "init_import_citizenship" => "manual",
+        ];
+        $orders["identifier_institution"] = [
             "identifier_institution" => "manual",
             "promotion_institution" => "manual",
             "imported_institution" => "manual",
             "check_institution" => "scholars",
             "check_undergrad_institution" => "scholars",
             "vfrs_current_degree_institution" => "vfrs",
-        );
+            "init_import_institution" => "manual",
+            "init_import_undergrad_institution" => "manual",
+        ];
         $orders["identifier_left_job_title"] = array(
             "promotion_job_title" => "manual",
-            "check_job_title" => "scholars",
             "followup_job_title" => "scholars",
+            "check_job_title" => "scholars",
+            "init_import_job_title" => "manual",
         );
         $orders["identifier_left_job_category"] = array(
             "promotion_job_category" => "manual",
-            "check_job_category" => "scholars",
             "followup_job_category" => "scholars",
+            "check_job_category" => "scholars",
+            "init_import_job_category" => "manual",
         );
         $orders["identifier_left_department"] = array(
             "promotion_department" => "manual",
@@ -1202,6 +1316,7 @@ class Scholar {
             "check_division" => "scholars",
             "override_division" => "manual",
             "imported_division" => "manual",
+            "init_import_division" => "manual",
             "identifier_starting_division" => "manual",
             "vfrs_division" => "vfrs",
         );
@@ -1211,6 +1326,7 @@ class Scholar {
             "imported_rank" => "manual",
             "followup_academic_rank" => "followup",
             "check_academic_rank" => "scholars",
+            "init_import_academic_rank" => "manual",
             "ldap_vanderbiltpersonjobname" => "ldap",
             "newman_new_rank" => "new2017",
             "newman_demographics_academic_rank" => "demographics",
@@ -1221,6 +1337,7 @@ class Scholar {
             "check_academic_rank_dt" => "scholars",
             "override_position_start" => "manual",
             "imported_position_start" => "manual",
+            "init_import_academic_rank_dt" => "manual",
             "vfrs_when_did_this_appointment" => "vfrs",
         );
         $orders["summary_current_tenure"] = array(
@@ -1228,48 +1345,59 @@ class Scholar {
             "check_tenure_status" => "scholars",
             "override_tenure" => "manual",
             "imported_tenure" => "manual",
+            "init_import_tenure_status" => "manual",
         );
         $orders["summary_mentor_userid"] = array(
             "override_mentor_userid" => "manual",
             "imported_mentor_userid" => "manual",
             "followup_primary_mentor_userid" => "followup",
             "check_primary_mentor_userid" => "scholars",
+            "init_import_primary_mentor_userid" => "manual",
         );
         $orders["summary_mentor"] = array(
             "override_mentor" => "manual",
             "imported_mentor" => "manual",
             "followup_primary_mentor" => "followup",
             "check_primary_mentor" => "scholars",
+            "init_import_primary_mentor" => "manual",
         );
         $orders["summary_disability"] = array(
             "check_disability" => "scholars",
             "vfrs_disability_those_with_phys" => "vfrs",
+            "init_import_disability" => "manual",
         );
         $orders["summary_disadvantaged"] = array(
+            "followup_disadvantaged" => "followup",
             "check_disadvantaged" => "scholars",
             "vfrs_disadvantaged_the_criteria" => "vfrs",
+            "init_import_disadvantaged" => "manual",
         );
         $orders["summary_training_start"] = array(
             "identifier_start_of_training" => "manual",
             "check_degree0_start" => "scholars",
+            "init_import_degree0_start" => "manual",
             "promotion_in_effect" => "manual",
         );
         $orders["summary_training_end"] = array(
             "check_degree0_month/check_degree0_year" => "scholars",
+            "init_import_degree0_month/init_import_degree0_year" => "manual",
             "promotion_in_effect" => "manual",
         );
         $orders["identifier_ecommons_id"] = array(
             "check_ecommons_id" => "scholars",
             "followup_ecommons_id" => "followup",
+            "init_import_ecommons_id" => "manual",
         );
         for ($i = 1; $i <= self::getNumStudySections(); $i++) {
             $orders["summary_study_section_name_".$i] = [
                 "check_nih_standing_study_session_name_".$i => "scholars",
                 "expertise_nih_standing_study_session_name_".$i => "expertise",
+                "init_import_nih_standing_study_session_name_".$i => "manual",
             ];
             $orders["summary_other_standing_".$i] = [
                 "check_other_standing_".$i => "scholars",
                 "expertise_other_standing_".$i => "expertise",
+                "init_import_other_standing_".$i => "manual",
             ];
         }
 
@@ -1288,10 +1416,15 @@ class Scholar {
 	    $fields = array();
 
 	    for ($i = 0; $i <= 5; $i++) {
+            $institutionFieldInit = "init_import_degree".$i."_institution";
+            $degreeFieldInit = "init_import_degree".$i;
 	        $institutionField = "check_degree".$i."_institution";
 	        $degreeField = "check_degree".$i;
-	        if (in_array($institutionField, $metadataFields) && in_array($degreeField, $metadataFields)) {
-	            $fields[$institutionField] = $degreeField;
+            if (in_array($institutionField, $metadataFields) && in_array($degreeField, $metadataFields)) {
+                $fields[$institutionField] = $degreeField;
+            }
+            if (in_array($institutionFieldInit, $metadataFields) && in_array($degreeFieldInit, $metadataFields)) {
+                $fields[$institutionFieldInit] = $degreeFieldInit;
             }
         }
 
@@ -1486,8 +1619,20 @@ class Scholar {
 		return "";
 	}
 
-	public function getGender($rows) {
-        $result = $this->getGenericValueForField($rows, "summary_gender");
+    public function getSexualOrientation($rows) {
+        $result = $this->getGenericValueForField($rows, "summary_sexual_orientation");
+        return $result;
+    }
+
+    public function getTransgenderStatus($rows) {
+        $result = $this->getGenericValueForField($rows, "summary_transgender");
+        return $result;
+    }
+
+    public function getGender($rows) {
+	    $summaryField = "summary_gender";
+        $result = $this->getGenericValueForField($rows, $summaryField);
+        $choices = REDCapManagement::getChoices($this->metadata);
 
 		# must reverse for certain sources
 		$tradOrder = array("manual", "scholars", "followup");
@@ -1497,12 +1642,26 @@ class Scholar {
 			}
 			$source = $result->getSource();
 			$value = $result->getValue();
+			$field = $result->getField();
 			if ($value == 1) {  # Male
 				return new Result(2, $source, "", "", $this->pid);
 			} else if ($value == 2) {   # Female
 				return new Result(1, $source, "", "", $this->pid);
-			}
-			# forget no-reports and others
+			} else if ($choices[$field] && $choices[$field][$value]) {
+			    $label = $choices[$field][$value];
+			    $newValue = FALSE;
+                if (preg_match("/nonbinary/i", $label) || preg_match("/non-binary/i", $label)) {
+                    $newValue = 3;
+                } else if (preg_match("/other/i", $label)) {
+                    $newValue = 99;
+                } else if (preg_match("/prefer/i", $label) && preg_match("/not/i", $label) && preg_match("/answer/i", $label)) {
+                    $newValue = 98;
+                }
+                if ($newValue && $choices[$summaryField][$newValue]) {
+                    return new Result($newValue, $source, "", "", $this->pid);
+                }
+            }
+			# forget others
 		}
 		return new Result("", "");
 	}
@@ -1686,16 +1845,18 @@ class Scholar {
 			case "followup":
 				return "followup_date";
 			case "manual":
-				if (preg_match("/^promotion_/", $field)) {
-					return "promotion_date";
+                if (preg_match("/^promotion_/", $field)) {
+                    return "promotion_date";
+                } else if (preg_match("/^init_import_/", $field)) {
+                    return "init_import_date";
 				} else if (preg_match("/^override_/", $field)) {
 					return $field."_time";
 				}
 				return "";
 			case "new_2017":
 				return "2017-10-01";
-			case "scholars":
-				return "check_date";
+            case "scholars":
+                return "check_date";
 		}
 		return "";
 	}
@@ -1730,7 +1891,7 @@ class Scholar {
 						$dateField = self::getDateFieldForSource($source, $var);
 						if ($dateField && $row[$dateField]) {
 							$date = $row[$dateField];
-						} else if ($dateField && ($dateField != "check_date")) {
+						} else if ($dateField && !in_array($dateField, ["check_date", "init_import_date"])) {
 							$date = $dateField;
 						}
 					}
@@ -2021,6 +2182,8 @@ class Scholar {
             "summary_degrees" => "getDegrees",
             "summary_primary_dept" => "getPrimaryDepartment",
             "summary_gender" => "getGender",
+            "summary_sexual_orientation" => "getSexualOrientation",
+            "summary_transgender" => "getTransgenderStatus",
             "summary_race_ethnicity" => "getRaceEthnicity",
             "summary_dob" => "getDOB",
             "summary_citizenship" => "getCitizenship",

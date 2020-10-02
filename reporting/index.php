@@ -54,7 +54,6 @@ $predocNames = implode(", ", array_values($predocs));
 $postdocNames = implode(", ", array_values($postdocs));
 $emptyNames = "None";
 
-$metadata = Download::metadata($token, $server);
 $cohorts = new Cohorts($token, $server, $metadata);
 
 ?>
@@ -119,3 +118,15 @@ if (isset($_GET['appointments'])) {
     echo "<p class='centered'>".makeLink("8CI")."</p>\n";
     echo "<p class='centered'>".makeLink("8CIII")."</p>\n";
 }
+
+$bookmarkletJSURL = Application::link("js/xtract.js");
+$cohortParam = "";
+if ($_GET['cohort']) {
+    $cohortParam = "&cohort=".$_GET['cohort'];
+}
+
+?>
+
+<h2>Use with xTRACT (forthcoming)</h2>
+<p class="centered">Use the following link to install with <a href="https://mreidsma.github.io/bookmarklets/installing.html">these instructions</a>. This script needs to be run (<i>i.e.</i>, the bookmark needs to be clicked) on every xTRACT page in NIH eCommons.</p>
+<p class='centered'><a href="javascript:(function(){var%20script=document.createElement('script');script.type='text/javascript';script.src='<?= $bookmarkletJSURL ?>&'+Math.random();document.getElementsByTagName('head')[0].appendChild(script);getDataFromREDCap('<?= Application::link("/reporting/getData.php").$cohortParam ?>'})();">Bookmarklet</a></p>

@@ -54,9 +54,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     $mgr->run($adminEmail, $tokenName);
                 }
 
-				// CareerDev::log("Sending emails for $tokenName (pid $pid)");
-				// $mgr = new EmailManager($token, $server, $pid, $this);
-				// $mgr->sendRelevantEmails();
+                if (Application::isTestGroup($pid)) {
+                    Application::log("Sending emails for $tokenName (pid $pid)");
+                    $mgr = new EmailManager($token, $server, $pid, $this);
+                    $mgr->sendRelevantEmails();
+                }
 			}
 		}
 	}
@@ -474,7 +476,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		if ($tokenName) {
 			# turn off for surveys and login pages
 			$url = $_SERVER['PHP_SELF'];
-			if (USERID && !preg_match("/surveys/", $url) && !isset($_GET['s'])) {
+			if (!preg_match("/surveys/", $url) && !isset($_GET['s'])) {
 				echo $this->makeHeaders($this, $token, $server, $project_id, $tokenName);
 			}
 		} else {
@@ -493,6 +495,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		} else if ($instrument == "followup") {
 			require_once(dirname(__FILE__)."/hooks/followupHook.php");
 		}
+		require_once(dirname(__FILE__)."/hooks/setDateHook.php");
 	}
 
 	function hook_save_record($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {

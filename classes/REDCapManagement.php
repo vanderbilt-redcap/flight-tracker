@@ -37,12 +37,31 @@ class REDCapManagement {
 	    return isset($_GET['pid']);
     }
 
+    public static function getFormsFromMetadata($metadata) {
+	    $forms = [];
+	    foreach ($metadata as $row) {
+	        $formName = $row['form_name'];
+	        if (!in_array($formName, $forms)) {
+	            $forms[] = $formName;
+            }
+        }
+	    return $forms;
+    }
+
 	public static function filterOutInvalidFields($metadata, $fields) {
 	    $metadataFields = self::getFieldsFromMetadata($metadata);
+	    $metadataForms = self::getFormsFromMetadata($metadata);
 	    $newFields = array();
 	    foreach ($fields as $field) {
 	        if (in_array($field, $metadataFields)) {
 	            $newFields[] = $field;
+            } else {
+	            foreach ($metadataForms as $form) {
+	                if ($field == $form."_complete") {
+	                    $newFields[] = $field;
+	                    break;
+                    }
+                }
             }
         }
 	    return $newFields;
@@ -157,7 +176,7 @@ class REDCapManagement {
 	    return implode(", ", $notes);
     }
 
-	public static function getSurveys($pid) {
+	public static function getSurveys($pid, $metadata = []) {
 		if (!function_exists("db_query")) {
 			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 		}
@@ -169,7 +188,15 @@ class REDCapManagement {
 			throw new \Exception("ERROR: ".$error);
 		}
 
-		$currentInstruments = \REDCap::getInstrumentNames();
+		if (!empty($metadata)) {
+		    $instrumentNames = REDCapManagement::getFormsFromMetadata($metadata);
+		    $currentInstruments = [];
+		    foreach ($instrumentNames as $instrumentName) {
+		        $currentInstruments[$instrumentName] = self::translateFormToName($instrumentName);
+            }
+        } else {
+            $currentInstruments = \REDCap::getInstrumentNames();
+        }
 
 		$forms = array();
 		while ($row = db_fetch_assoc($q)) {
@@ -178,8 +205,105 @@ class REDCapManagement {
 				$forms[$row['form_name']] = $row['title'];
 			}
 		}
-		return $forms;
+
+        return $forms;
 	}
+
+	public static function getPrefixFromInstrument($instrument) {
+        if ($instrument == "initial_survey") {
+            $prefix = "check";
+        } else if ($instrument == "initial_import") {
+            $prefix = "init_import";
+        } else if ($instrument == "followup") {
+            $prefix = "followup";
+        } else if ($instrument == "identifiers") {
+            $prefix = "identifier";
+        } else if ($instrument == "manual") {
+            $prefix = "override";
+        } else if ($instrument == "manual_import") {
+            $prefix = "imported";
+        } else if ($instrument == "manual_degree") {
+            $prefix = "imported";
+        } else if ($instrument == "summary") {
+            $prefix = "summary";
+        } else if ($instrument == "demographics") {
+            $prefix = "newman_demographics";
+        } else if ($instrument == "data") {
+            $prefix = "newman_data";
+        } else if ($instrument == "sheet2") {
+            $prefix = "newman_sheet2";
+        } else if ($instrument == "nonrespondents") {
+            $prefix = "newman_nonrespondents";
+        } else if ($instrument == "new_2017") {
+            $prefix = "newman_new";
+        } else if ($instrument == "spreadsheet") {
+            $prefix = "spreadsheet";
+        } else if ($instrument == "vfrs") {
+            $prefix = "vfrs";
+        } else if ($instrument == "coeus") {
+            $prefix = "coeus";
+        } else if ($instrument == "coeus2") {
+            $prefix = "coeus2";
+        } else if ($instrument == "custom_grant") {
+            $prefix = "custom";
+        } else if ($instrument == "reporter") {
+            $prefix = "reporter";
+        } else if ($instrument == "exporter") {
+            $prefix = "exporter";
+        } else if ($instrument == "citation") {
+            $prefix = "citation";
+        } else if ($instrument == "resources") {
+            $prefix = "resources";
+        } else if ($instrument == "honors_and_awards") {
+            $prefix = "honor";
+        } else if ($instrument == "ldap") {
+            $prefix = "ldap";
+        } else if ($instrument == "position_change") {
+            $prefix = "promotion";
+        } else {
+            $prefix = "";
+        }
+        return $prefix;
+    }
+
+	public static function dateCompare($d1, $op, $d2) {
+	    $ts1 = strtotime($d1);
+	    $ts2 = strtotime($d2);
+	    if ($op == ">") {
+            return ($ts1 > $ts2);
+        } else if ($op == ">=") {
+            return ($ts1 >= $ts2);
+        } else if ($op == "<=") {
+            return ($ts1 <= $ts2);
+        } else if ($op == "<") {
+            return ($ts1 < $ts2);
+        } else if ($op == "==") {
+            return ($ts1 == $ts2);
+        } else if (($op == "!=") || ($op == "<>")) {
+            return ($ts1 != $ts2);
+        } else {
+	        throw new \Exception("Invalid operation ($op)!");
+        }
+    }
+
+    public static function convertInstrumentNameToPrefix($instrument, $metadata) {
+        foreach ($metadata as $row) {
+            if ($row['form_name'] == $instrument) {
+                $nodes = explode("_", $row['field_name']);
+                if ($nodes[0] == "newman") {
+                    return $nodes[0]."_".$nodes[1];
+                }
+                return $nodes[0];
+            }
+        }
+        return "";
+    }
+
+    public static function translateFormToName($instrument) {
+	    $instrument = str_replace("_", " ", $instrument);
+	    $instrument = ucwords($instrument);
+	    return $instrument;
+    }
 
     public static function transformFieldsIntoPrefixes($fields) {
 	    $prefixes = [];

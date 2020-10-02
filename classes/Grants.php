@@ -294,10 +294,17 @@ class Grants {
 							}
 						}
 						foreach ($row as $field => $value) {
-							if (preg_match("/^check_/", $field)) {
-								array_push($gfs, new ScholarsGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
-								break;
-							}
+                            if (preg_match("/^check_/", $field)) {
+                                $gf = new InitialGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
+                                $gf->setPrefix("check");
+                                array_push($gfs, $gf);
+                                break;
+                            } else if (preg_match("/^init_import_/", $field)) {
+                                $gf = new InitialGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
+                                $gf->setPrefix("init_import");
+                                array_push($gfs, $gf);
+                                break;
+                            }
 						}
 
 						$this->calculate = array();

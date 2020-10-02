@@ -142,7 +142,7 @@ class CareerDevTester {
 
 		# if then statements - individual
 		$emailSetting = EmailManager::getBlankSetting();
-		$emailSetting["who"] = array("filter"=>"some","none_complete"=>true,"max_emails"=>"5","new_records_since"=>"6","converted"=>"agnostic","from"=>"katherine.hartmann@vumc.org");
+		$emailSetting["who"] = array("filter"=>"some","none_complete"=>"true","max_emails"=>"5","new_records_since"=>"6","converted"=>"agnostic","from"=>"katherine.hartmann@vumc.org");
 		$rowsSome = $mgr->filterSome($emailSetting["who"], "initial_time", $emailSetting["when"], $emailSetting["what"]);
 		$rowsGetRows = $mgr->getRows($emailSetting["who"], "initial_time", $emailSetting["when"], $emailSetting["what"]);
 		$tester->tag("Count equal - filter some");

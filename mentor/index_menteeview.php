@@ -84,7 +84,7 @@ $welcomeText = "<p>Below is the Mentee-Mentor Agreement with <strong>$otherMento
 
             <h2 style="color: #727272;">Hi, <?= $firstName ?>!</h2>
 
-            <?= makeSurveyHTML($otherMentors, $instanceRow, $metadata) ?>
+            <?= makeSurveyHTML($otherMentors, "mentor(s)", $instanceRow, $metadata) ?>
 
         </div>
     </div>
@@ -272,7 +272,6 @@ foreach ($metadata as $row) {
       $id = $name;
       $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, "mentoring_agreement", $currInstance);
       ?>
-      <!--
       <tr id="<?= $rowName ?>"><th scope="row"><?= trim($row['field_label']) ?></th>
           <td colspan="2">
               <div class="form-check" style="height: 100px;">
@@ -280,7 +279,6 @@ foreach ($metadata as $row) {
               </div>
           </td>
       </tr>
-      -->
     <?php
   }
 
@@ -500,37 +498,68 @@ foreach ($metadata as $row) {
               margin-top: 1em;
             }
             .tabledquestions:nth-of-type(5) {
-              padding: 1em;
-              background-color: #a6609721;
-              margin-top: 1em;
+                padding: 1em;
+                background-color: #a6609721;
+                margin-top: 1em;
             }
             .tabledquestions:nth-of-type(6) {
-              padding: 1em;
-              background-color: #9ba4ac21;
-              margin-top: 1em;
+                padding: 1em;
+                background-color: #9ba4ac21;
+                margin-top: 1em;
             }
             .tabledquestions:nth-of-type(7) {
-              padding: 1em;
-              background-color: #41a9de14;
-              margin-top: 1em;
+                padding: 1em;
+                background-color: #41a9de14;
+                margin-top: 1em;
             }
 
             .tabledquestions:nth-of-type(8) {
-              padding: 1em;
-              background-color: #f6dd6645;
-              margin-top: 1em;
+                padding: 1em;
+                background-color: #f6dd6645;
+                margin-top: 1em;
             }
             .tabledquestions:nth-of-type(9) {
-              padding: 1em;
-              background-color: #ec9d5045;
-              margin-top: 1em;
+                padding: 1em;
+                background-color: #ec9d5045;
+                margin-top: 1em;
             }
             .tabledquestions:nth-of-type(10) {
-              padding: 1em;
-              background-color: #5fb7494a;
-              margin-top: 1em;
+                padding: 1em;
+                background-color: #5fb7494a;
+                margin-top: 1em;
             }
-            
+            .tabledquestions:nth-of-type(11) {
+                padding: 1em;
+                background-color: #a6609721;
+                margin-top: 1em;
+            }
+            .tabledquestions:nth-of-type(12) {
+                padding: 1em;
+                background-color: #9ba4ac21;
+                margin-top: 1em;
+            }
+            .tabledquestions:nth-of-type(13) {
+                padding: 1em;
+                background-color: #41a9de14;
+                margin-top: 1em;
+            }
+
+            .tabledquestions:nth-of-type(14) {
+                padding: 1em;
+                background-color: #f6dd6645;
+                margin-top: 1em;
+            }
+            .tabledquestions:nth-of-type(15) {
+                padding: 1em;
+                background-color: #ec9d5045;
+                margin-top: 1em;
+            }
+            .tabledquestions:nth-of-type(16) {
+                padding: 1em;
+                background-color: #5fb7494a;
+                margin-top: 1em;
+            }
+
 
 
 
@@ -587,12 +616,12 @@ foreach ($metadata as $row) {
     color: #a8a8a8;
   }
 
-  input#addcomment {
+  input.addcomment {
     margin-bottom: 11px;
     border-radius: 5px;
     border: 1px solid #eeeeee;
     padding: 4px;
-    font-size: 10px;
+    font-size: 13px;
     padding-left: 6px;
     width: 90%;
   }
@@ -951,7 +980,7 @@ jQuery(document).ready(function() {
       $('.note_viewagreementstatus').removeClass('opacity100');
     }
   );
-$('#tsurvey>section').append('<div style="width:100%;text-align:center;"><button type="button" class="btn btn-light viewagreement" style="margin-top: 22px;margin-bottom: 8em;color:#ffffff; background-color: #056c7d;border-color: #056c7d;" onclick="saveagreement()">save mentoring agreement</button></div>');
+$('#tsurvey>section').append('<div style="width:100%;text-align:center;"><button type="button" class="btn btn-light viewagreement" style="margin-top: 22px;margin-bottom: 8em;color:#ffffff; background-color: #056c7d;border-color: #056c7d;" onclick="saveagreement()">save mentoring agreement &amp; notify mentor(s)</button></div>');
 });
 
 </script>

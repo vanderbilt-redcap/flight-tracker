@@ -81,7 +81,7 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
 
                 <h2 style="color: #727272;">Hi, <?= $firstName ?>!</h2>
 
-                <?= makeSurveyHTML($menteeName, $currInstanceRow, $metadata) ?>
+                <?= makeSurveyHTML($menteeName, "mentee", $currInstanceRow, $metadata) ?>
 
             </div>
 
@@ -99,6 +99,7 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
                     $tableNum = 1;
                     $i = 0;
                     $skipFieldTypes = ["file", "text"];
+                    $agreementSigned = agreementSigned($redcapData, $menteeRecordId, $currInstance);
                     foreach ($metadata as $row) {
                         if ($row['section_header'] && !in_array($row['field_type'], $skipFieldTypes)) {
                             $sections[$tableNum] = $row['section_header'];
@@ -158,12 +159,17 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
                                 "mentor" => ["values" => $mentorFieldValues, "suffix" => "", "colClass" => "thementor", "status" => "", ],
                                 "mentee" => ["values" => $menteeFieldValues, "suffix" => "_menteeanswer", "colClass" => "thementee", "status" => "disabled", ],
                             ];
-                            if (fieldValuesAgree($mentorFieldValues, $menteeFieldValues)) {
+                            if (fieldValuesAgree($mentorFieldValues, $menteeFieldValues) || ($row['field_type'] == "notes")) {
                                 $status = "agree";
                             } else {
                                 $status = "disagree";
                             }
-                            $htmlRows[] = "<tr id='$field-tr' class='$status'>";
+                            if ($agreementSigned) {
+                                $statusClass = "";
+                            } else {
+                                $statusClass = " class='$status'";
+                            }
+                            $htmlRows[] = "<tr id='$field-tr'$statusClass>";
                             $htmlRows[] = '<th scope="row">'.$row['field_label'].'</th>';
                             $prefix = $prefices[$row['field_type']];
                             foreach ($specs as $key => $spec) {
@@ -183,7 +189,13 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
                                 } else if (($row['field_type'] == "notes") && ($key == "mentor")) {
                                     $name = $prefix.$field.$spec['suffix'];
                                     $id = $name;
-                                    $value = $spec['values'][0];
+                                    $mentorValue = $spec['values'][0];
+                                    $menteeValue = REDCapManagement::findField($redcapData, $menteeRecordId, $field, "mentoring_agreement", $menteeInstance);
+                                    if ($mentorValue) {
+                                        $value = $mentorValue;
+                                    } else {
+                                        $value = $menteeValue;
+                                    }
 
                                     $htmlRows[] = "<td class='{$spec['colClass']}' colspan='3'>";
                                     $htmlRows[] = '<div class="form-check" style="height: 100px;"><textarea class="form-check-input" name="'.$name.'" id="'.$id.'">'.$value.'</textarea></div>';
@@ -446,6 +458,22 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
                         background-color: #f6dd6645 !important;
                     }
 
+                    #quest9 {
+                        background-color: #a6609721 !important;
+                    }
+
+                    #quest10{
+                        background-color: #9ba4ac21 !important;
+                    }
+
+                    #quest11{
+                        background-color: #41a9de14 !important;
+                    }
+
+                    #quest12{
+                        background-color: #f6dd6645 !important;
+                    }
+
                     .form-check-input { margin-right: 6px !important; }
 
                 </style>
@@ -469,7 +497,7 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
 
 
 
-<p style="text-align: center;"><button type="button" class="btn btn-info" onclick="window.location='<?= Application::link("mentor/index_complete.php").$uidString."&menteeRecord=$menteeRecordId&instance=$currInstance" ?>';">view final agreement</button></p
+<p style="text-align: center;"><button type="button" class="btn btn-info" onclick="window.location='<?= Application::link("mentor/index_complete.php").$uidString."&menteeRecord=$menteeRecordId&instance=$currInstance" ?>';">save, view &amp; sign final agreement</button></p
 <p style="height: 200px"></p>
 <div class="fauxcomment" style="display: none;"></div>
 
@@ -624,13 +652,20 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
     }
 
     function changeHighlightingFromAgreements(ob) {
-        if (valuesAgree($(ob).attr('name'), getOtherName(ob))) {
-            $(ob).closest("tr").removeClass("disagree");
-            $(ob).closest("tr").addClass("agree");
-        } else {
-            $(ob).closest("tr").addClass("disagree");
-            $(ob).closest("tr").removeClass("agree");
+        <?php
+        if (!agreementSigned($redcapData, $menteeRecordId, $currInstance)) {
+        ?>
+            if (valuesAgree($(ob).attr('name'), getOtherName(ob))) {
+                $(ob).closest("tr").removeClass("disagree");
+                $(ob).closest("tr").addClass("agree");
+            } else {
+                $(ob).closest("tr").addClass("disagree");
+                $(ob).closest("tr").removeClass("agree");
+            }
+        <?php
         }
+        ?>
+
     }
 
     function updateData(ob) {
@@ -775,12 +810,12 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
         color: #a8a8a8;
     }
 
-    input#addcomment {
+    input.addcomment {
         margin-bottom: 11px;
         border-radius: 5px;
         border: 1px solid #eeeeee;
         padding: 4px;
-        font-size: 10px;
+        font-size: 13px;
         padding-left: 6px;
         width: 90%;
     }

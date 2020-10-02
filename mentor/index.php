@@ -50,10 +50,11 @@ $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_mer
   <div class="container">
     <div class="row">
       <div class="col-lg-12">
-          <h2><?= $firstName ?>, here are your mentee-mentor relationships</h2>
           <div class="blue-box">
+              <h2 style="color: #222222;">Typical Workflow</h2>
               <h3><?= implode("<br>&rarr; ", ["Mentee Preferences", "Discussion with Mentor", "Final Agreement", "Revisit Agreement"]) ?></h3>
           </div>
+          <h2><?= $firstName ?>, here are your mentee-mentor relationships</h2>
           <p><style type="text/css">
 
 .table{width: 96%; margin-left: 4%;}

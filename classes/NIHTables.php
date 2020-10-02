@@ -91,6 +91,14 @@ class NIHTables {
 		return $table;
 	}
 
+	public function getExportHTML($table) {
+	    if (Application::hasComposer()) {
+	        $link = Application::link("reporting/export.php")."&table=".urlencode($table);
+	        return "<a href='$link'>Export to MS Word</a>";
+        }
+	    return "";
+    }
+
     public function getHTML($table) {
 		if (self::beginsWith($table, array("5A", "5B"))) {
 			$data = $this->get5Data($table);

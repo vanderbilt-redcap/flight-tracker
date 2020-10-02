@@ -129,7 +129,11 @@ class Publications {
 		$html = "Record: <select style='width: 100%;' id='refreshRecord' onchange='refreshForRecord(\"$page\");'><option value=''>---SELECT---</option>";
 		foreach ($records as $record) {
 			$name = $names[$record];
-			$html .= "<option value='$record'>$record: $name</option>";
+			$selected = "";
+			if (isset($_GET['record']) && ($_GET['record'] == $record)) {
+			    $selected = " SELECTED";
+            }
+			$html .= "<option value='$record'$selected>$record: $name</option>";
 		}
 		$html .= "</select>";
 		return $html;

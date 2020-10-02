@@ -30,9 +30,9 @@ foreach ($lastNames as $rec => $ln) {
 	$fn = $firstNames[$rec];
 	$fullNames[$rec] = $fn." ".$ln;
 }
-$records = Download::recordIds($token, $server);
+$allMyRecords = Download::recordIds($token, $server);
 if (CareerDev::isWrangler()) {
-        $records = CareerDev::filterOutCopiedRecords($records);
+    $allMyRecords = CareerDev::filterOutCopiedRecords($allMyRecords);
 }
 
 function makeHeadersOfTables($type) {
@@ -100,7 +100,7 @@ function search(page, div, name) {
 	if (name != '') {
 		var lastNames = <?= json_encode($lastNames) ?>;
 		var fullNames = <?= json_encode($fullNames) ?>;
-		var records = <?= json_encode($records) ?>;
+		var records = <?= json_encode($allMyRecords) ?>;
 		var foundRecs = {};
 		var numFoundRecs = 0;
 		var re = new RegExp("^"+name);

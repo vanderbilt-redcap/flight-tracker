@@ -32,51 +32,55 @@ class WebOfScience {
     }
 
     public function getData($pmids) {
-        $batchedPmids = self::batchPMIDs($pmids, 50);
+        if ($this->userid && $this->passwd) {
+            $batchedPmids = self::batchPMIDs($pmids, 50);
 
-        $data = [];
-        foreach ($batchedPmids as $pmids) {
-            Application::log("Downloading for ".count($pmids)." PMIDs");
-            $xml = $this->makeXML($pmids);
-            // Application::log("Uploading ".$xml);
-            $url = 'https://ws.isiknowledge.com/cps/xrpc';
+            $data = [];
+            foreach ($batchedPmids as $pmids) {
+                Application::log("Downloading for ".count($pmids)." PMIDs");
+                $xml = $this->makeXML($pmids);
+                // Application::log("Uploading ".$xml);
+                $url = 'https://ws.isiknowledge.com/cps/xrpc';
 
-            $curl = curl_init($url);
-            curl_setopt($curl, CURLOPT_HTTPHEADER, array("Content-Type: text/xml"));
-            curl_setopt($curl, CURLOPT_POST, true);
-            curl_setopt($curl, CURLOPT_POSTFIELDS, $xml);
-            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-            $result = curl_exec($curl);
-            if (curl_errno($curl)) {
-                throw new Exception(curl_error($curl));
-            }
-            curl_close($curl);
-            Application::log("Got ".strlen($result)." bytes from ".$url);
-            // Application::log($result);
-
-            $maxTries = 5;
-            $tryNum = 0;
-            $done = FALSE;
-            while (($tryNum < $maxTries) && !$done) {
-                $tryNum++;
-                try {
-                    $values = $this->parseXML($result);
-                    Application::log("On try $tryNum, got ".count($values)." values from XML");
-                    $done = TRUE;
-                } catch (\Exception $e) {
-                    Application::log("parseXML try $tryNum: ".$e->getMessage());
-                    sleep(120);    // "wait a couple of minutes in case of error"
+                $curl = curl_init($url);
+                curl_setopt($curl, CURLOPT_HTTPHEADER, array("Content-Type: text/xml"));
+                curl_setopt($curl, CURLOPT_POST, true);
+                curl_setopt($curl, CURLOPT_POSTFIELDS, $xml);
+                curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+                $result = curl_exec($curl);
+                if (curl_errno($curl)) {
+                    throw new Exception(curl_error($curl));
                 }
+                curl_close($curl);
+                Application::log("Got ".strlen($result)." bytes from ".$url);
+                // Application::log($result);
+
+                $maxTries = 5;
+                $tryNum = 0;
+                $done = FALSE;
+                while (($tryNum < $maxTries) && !$done) {
+                    $tryNum++;
+                    try {
+                        $values = $this->parseXML($result);
+                        Application::log("On try $tryNum, got ".count($values)." values from XML");
+                        $done = TRUE;
+                    } catch (\Exception $e) {
+                        Application::log("parseXML try $tryNum: ".$e->getMessage());
+                        sleep(120);    // "wait a couple of minutes in case of error"
+                    }
+                }
+                if ($tryNum > $maxTries) {
+                    throw new \Exception("Exceeded maximum of $maxTries tries");
+                }
+                foreach ($values as $key => $value) {
+                    $data[$key] = $value;
+                }
+                sleep(1);    // rate-limiter
             }
-            if ($tryNum > $maxTries) {
-                throw new \Exception("Exceeded maximum of $maxTries tries");
-            }
-            foreach ($values as $key => $value) {
-                $data[$key] = $value;
-            }
-            sleep(1);    // rate-limiter
+            return $data;
+        } else {
+            return [];
         }
-        return $data;
     }
 
     private function makeXML($pmids) {

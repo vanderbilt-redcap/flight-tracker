@@ -199,29 +199,6 @@ if ($dollarsCompiledTotal) {
 		<td class='label profileHeader'>Resources Used:</td>
 		<td class='value profileHeader'><?= printList($resources) ?></td>
 	</tr>
-</table><br><br>
-
-<h2>Contents</h2>
-<table style='margin-left: auto; margin-right: auto; max-width: 800px; border-radius: 10px; padding: 8px;' class='blue'>
-	<tr>
-		<td class='profileHeader'>
-			<div class='labelCentered'><a href='#grant_wrangler'>Grant Wrangler</a></div>
-			<div class='valueCentered'>The Grant Wrangler helps you make manual changes to the structure of grants that is computed. You can change which grants are included or excluded. You can also change some of the properties in each grant. This information will be fed back into the computed summaries next time that script is run in the background.</div>
-		</td>
-	</tr>
-	<tr>
-		<td class='profileHeader'>
-			<div class='labelCentered'><a href='#pub_wrangler'>Publication Wrangler</a></div>
-			<div class='valueCentered'>The Publication Wrangler helps you filter through each publication to see if names are mismatched. Since names can sometimes be mis-identified in publications, the step of authenticating the citation is required.</div>
-		</td>
-	</tr>
-	<tr>
-		<td class='profileHeader'>
-			<div class='labelCentered'><a href='#data_sources'>Data Source Comparison</a></div>
-			<div class='valueCentered'>This allows you to see all of your data about grants at one glance. The information to the left is preferred over the information to the write. The computer automatically picks the data which is most preferred. Items in green are being used while items in red disagree with the information in the preferred grant. This helps you see where the information comes from.</div>
-		</td>
-	</tr>
-
     <?php
     $bibliometricScores = [];
     if ($wosHIndex) { $bibliometricScores[Links::makeLink("https://support.clarivate.com/ScientificandAcademicResearch/s/article/Web-of-Science-h-index-information?language=en_US", "H Index", TRUE)." calculated<br>from ".Links::makeLink("https://www.webofknowledge.com/", "Web of Science", TRUE)] = $wosHIndex; }
@@ -246,6 +223,29 @@ if ($dollarsCompiledTotal) {
         echo "</tr>\n";
     }
     ?>
+
+</table><br><br>
+
+<h2>Contents</h2>
+<table style='margin-left: auto; margin-right: auto; max-width: 800px; border-radius: 10px; padding: 8px;' class='blue'>
+	<tr>
+		<td class='profileHeader'>
+			<div class='labelCentered'><a href='#grant_wrangler'>Grant Wrangler</a></div>
+			<div class='valueCentered'>The Grant Wrangler helps you make manual changes to the structure of grants that is computed. You can change which grants are included or excluded. You can also change some of the properties in each grant. This information will be fed back into the computed summaries next time that script is run in the background.</div>
+		</td>
+	</tr>
+	<tr>
+		<td class='profileHeader'>
+			<div class='labelCentered'><a href='#pub_wrangler'>Publication Wrangler</a></div>
+			<div class='valueCentered'>The Publication Wrangler helps you filter through each publication to see if names are mismatched. Since names can sometimes be mis-identified in publications, the step of authenticating the citation is required.</div>
+		</td>
+	</tr>
+	<tr>
+		<td class='profileHeader'>
+			<div class='labelCentered'><a href='#data_sources'>Data Source Comparison</a></div>
+			<div class='valueCentered'>This allows you to see all of your data about grants at one glance. The information to the left is preferred over the information to the write. The computer automatically picks the data which is most preferred. Items in green are being used while items in red disagree with the information in the preferred grant. This helps you see where the information comes from.</div>
+		</td>
+	</tr>
 
 </table><br><br>
 

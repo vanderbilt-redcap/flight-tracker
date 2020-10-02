@@ -4,6 +4,7 @@ use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\FlightTrackerExternalModule\Measurement;
+use \Vanderbilt\FlightTrackerExternalModule\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");

@@ -56,6 +56,7 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
 
 ?>
 <section class="bg-light">
+    <div style="text-align: center;" class="smaller"><a href="javascript:;" onclick="window.print();">Click here to print or save as PDF</a></div>
   <div class="container">
     <div class="row">
       <div class="col-lg-12" style="">
@@ -64,10 +65,11 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
         <?= REDCapManagement::YMD2MDY(REDCapManagement::findField($redcapData, $menteeRecordId, "mentoring_last_update")) ?></h2>
 
             <p style="text-align: center;width: 80%;margin: auto;margin-top: 2em;">
-            <span style="text-decoration: underline;"><?= $listOfMentors ?> (mentor)</span> and <span style="text-decoration: underline;"><?= $listOfMentees ?> (mentee)</span> do hereby enter into a formal mentoring agreement. The elements of the document below provide evidence that a formal discussion has been conducted by the Mentor and Mentee together, touching on multiple topics that relate to the foundations of a successful training relationship for both parties. Below are key elements which we discussed at the start of our Mentor-Mentee Relationship. These elements, and others, also provide opportunities for further and/or new discussions together at future time points (e.g., 6, 12, and 18 months from now, as well as on an as needed basis).
+            <span style="text-decoration: underline;"><?= $listOfMentees ?> (mentee)</span> and <span style="text-decoration: underline;"><?= $listOfMentors ?> (mentor)</span> do hereby enter into a formal mentoring agreement. The elements of the document below provide evidence that a formal discussion has been conducted by the Mentor and Mentee together, touching on multiple topics that relate to the foundations of a successful training relationship for both parties. Below are key elements which we discussed at the start of our Mentee-Mentor Relationship. These elements, and others, also provide opportunities for further and/or new discussions together at future time points (e.g., 6, 12, and 18 months from now, as well as on an as needed basis).
             </p>
 
           <p style="text-align: center;">We will revisit this agreement on-or-around <?= $dateToRevisit ?>.</p>
+          <p style="text-align: center;" class="smaller"><a href="javascript:;" class="notesShowHide" onclick="toggleAllNotes(this);">hide all chatter</a></p>
 
           <?php
 
@@ -102,7 +104,7 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
 
                   $notesText = "";
                   if ($menteeRow[$possibleNotesField]) {
-                      $notesText = "<div class='smaller'>".preg_replace("/\n/", "<br>", $menteeRow[$possibleNotesField])."</div>";
+                      $notesText = "<div class='smaller notesText'>".preg_replace("/\n/", "<br>", $menteeRow[$possibleNotesField])."</div><!-- <div class='smaller'><a href='javascript:;' class='notesShowHide' onclick='showHide(this);'>hide chatter</a></div> -->";
                   }
                   if ($metadataRow['field_type'] == "notes") {
                       $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><span>".$value."</span></li>";
@@ -149,6 +151,31 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
 <script src="<?= Application::link("mentor/js/jSignature.min.js") ?>"></script>
 
 <script>
+    function toggleAllNotes(ob) {
+        let showMssg = "show all chatter";
+        let hideMssg = "hide all chatter";
+        if ($(ob).html() == showMssg) {
+            $(ob).html(hideMssg);
+            $(".notesText").show();
+        } else {
+            $(ob).html(showMssg);
+            $(".notesText").hide();
+        }
+    }
+
+    function showHide(ob) {
+        let noteDiv = $(ob).closest("div.notesText");
+        let showMssg = "show chatter";
+        let hideMssg = "hide chatter";
+        if ($(ob).html() == showMssg) {
+            $(ob).html(hideMssg);
+            noteDiv.show();
+        } else {
+            $(ob).html(showMssg);
+            noteDiv.hide();
+        }
+    }
+
     function saveSignature(field) {
         let ob = '#'+field;
         let datapair = $(ob).jSignature('getData', 'svgbase64');
@@ -161,6 +188,7 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
                 date: '<?= REDCapManagement::MDY2YMD($date) ?>' },
             function(html) {
             console.log(html);
+            window.location.reload();
         });
     }
 
@@ -170,7 +198,13 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
 </script>
 
 <style type="text/css">
-  body {
+.notesShowHide {
+    text-decoration: underline;
+    color: black;
+}
+
+
+body {
 
     font-family: europa, sans-serif;
     letter-spacing: -0.5px;
@@ -214,8 +248,8 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
 }
 
 .signature {
-    width: 400px;
-    height: 100px;   /* fixed by jSignature */
+    width: auto;
+    height: auto;
 }
 .signatureDate {
     padding-left: 25px;

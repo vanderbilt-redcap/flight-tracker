@@ -95,16 +95,16 @@ list($firstName, $lastName) = getNameFromREDCap($username, $token, $server);
 
                 <?= makePopupJS() ?>
 
-                <p>Welcome to a new way to think about the agreement of collaboration between a Mentee (also referred to here as ‘Scholar’) and Mentor. Mentor-Mentee Scholar Agreements (‘Mentoring Agreement’), or contracts, function to define a mutually agreed upon set of goals and parameters which provide a foundation for the mentoring relationship.  Ideally, a formal agreement will address a broad range of domains, including the Scholar’s research and education, professional development and career advancement and interactions between the scholar and mentor with respect to support, communication, personal conduct and interpersonal interactions.</p>
+                <p>Welcome to a new way to think about the agreement of collaboration between a Mentee (also referred to here as ‘Scholar’) and Mentor. Mentee-Mentor Scholar Agreements (‘Mentoring Agreement’), or contracts, function to define a mutually agreed upon set of goals and parameters which provide a foundation for the mentoring relationship.  Ideally, a formal agreement will address a broad range of domains, including the Scholar’s research and education, professional development and career advancement and interactions between the scholar and mentor with respect to support, communication, personal conduct and interpersonal interactions.</p>
                 <p>While seen as a valuable mechanism to align expectations between scholars and mentors, and provide a road map for collaboration, agreements are not uniformly employed.  One possible reason for the lack of universal use is the need for a more user friendly, relevant document which may serve as an active guidepost applicable to all levels of the scholar’s career development.  This program was created to provide an improved foundation for the development of agreement documents, and a site for their ongoing access and update.</p>
 
                 <h3>Background</h3>
-                <p><img src="<?= Application::link("/mentor/img/temp_image.jpg") ?>" style="float: right; margin-right: 39px;width: 296px;">Every mentor – mentee scientific and career development relationship is different, but there are common features that characterize successful relationships.</p>
-                <!-- <p>Traditional Mentoring Agreements provide a static template for each mentor-mentee pairing to address at the start of their formal mentoring relationship.</p> -->
+                <p><img src="<?= Application::link("/mentor/img/temp_image.jpg") ?>" style="float: right; margin-right: 39px;width: 296px;">Every mentee-mentor scientific and career development relationship is different, but there are common features that characterize successful relationships.</p>
+                <!-- <p>Traditional Mentoring Agreements provide a static template for each mentee-mentor pairing to address at the start of their formal mentoring relationship.</p> -->
 
                 <p>With this Mentoring Agreement, we seek to:</p>
                 <ol>
-                    <li>Create the foundation for a discussion and documentation of key ‘domains’ crucial to a productive initiation and maintenance of the mentor-mentee relationship. Example ‘domains’ are:</li>
+                    <li>Create the foundation for a discussion and documentation of key ‘domains’ crucial to a productive initiation and maintenance of the mentee-mentor relationship. Example ‘domains’ are:</li>
                     <ol type="a">
                         <li>Meetings, Communication and Work Expectations</li>
                         <li>Financial Support</li>
@@ -115,7 +115,7 @@ list($firstName, $lastName) = getNameFromREDCap($username, $token, $server);
 
                     <li>Create a modifiable Mentoring Agreement which may be created at the start of each relationship and revisited for revision over time as the relationship, scientific efforts, and career development of the mentee mature (e.g., every 12 months).</li>
                 </ol>
-                <p>We hope you find this agreement helpful as you begin or continue your Mentor-Mentee Scholar relationship.</p>
+                <p>We hope you find this agreement helpful as you begin or continue your Mentee-Mentor Scholar relationship.</p>
             </div>
         </div>
     </div>

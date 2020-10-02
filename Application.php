@@ -66,6 +66,33 @@ class Application {
 		return "";
 	}
 
+    public static function hasComposer() {
+        return file_exists(self::getComposerAutoloadLocation());
+    }
+
+    public static function isTestGroup($pid) {
+        return CareerDev::isTestGroup($pid);
+	}
+
+    public static function writeHTMLToDoc($html, $filename) {
+	    if (self::hasComposer()) {
+            require_once(self::getComposerAutoloadLocation());
+
+            $phpWord = new \PhpOffice\PhpWord\PhpWord();
+            $section = $phpWord->addSection();
+            \PhpOffice\PhpWord\Shared\Html::addHtml($section, $html);
+
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment;filename="'.$filename.'"');
+            $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
+            $objWriter->save('php://output');
+        }
+    }
+
+    public static function getComposerAutoloadLocation() {
+        return dirname(__FILE__)."/vendor/autoload.php";
+    }
+
     public static function isWebBrowser() {
         return $_SERVER['REQUEST_URI'];
     }

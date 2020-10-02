@@ -8,7 +8,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.20.1";
+		return "2.21.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -502,6 +502,10 @@ class CareerDev {
         return $formsAndLabels;
     }
 
+    public static function isTestGroup($pid) {
+        return (SERVER_NAME == "redcap.vanderbilt.edu") && in_array($pid, [105963, 101785]);
+    }
+
 	public static function getMenu($menuName) {
 		global $pid;
 		$r = self::getREDCapDir();
@@ -525,20 +529,22 @@ class CareerDev {
 					);
 		}
 		if ($menuName == "Scholars") {
-			return [
-					"Add a New Scholar" => self::link("/addNewScholar.php"),
-					"Scholar Profiles" => self::link("/profile.php"),
-					// DISABLED "Configure an Email" => self::link("/emailMgmt/configure.php"),
-					// DISABLED "View Email Log" => self::link("/emailMgmt/log.php"),
-					// "Survey/Email Management" => self::link("/emailMgmt/index.php"),
-					// "Manage Email Texts" => self::link("/emailMgmt/text.php"),
-					"Add a New Survey" => self::link("/emailMgmt/add.php"),
-					// "List of Nonrespondents" => self::link("/emailMgmt/noSurvey.php"),
-					"Survey Responses" => self::link("/surveyResponses.php"),
-                    "Import General Data" => self::link("/import.php"),
-                    "Import Positions" => self::link("/bulkImport.php")."&positions",
-					];
-		}
+            $ary = [
+                "Add a New Scholar" => self::link("/addNewScholar.php"),
+                "Scholar Profiles" => self::link("/profile.php"),
+                "Add a New Survey" => self::link("/emailMgmt/add.php"),
+            ];
+            if (self::isTestGroup($pid)) {
+                $ary["Configure an Email"] = self::link("/emailMgmt/configure.php");
+                $ary["View Email Log"] = self::link("/emailMgmt/log.php");
+                $ary["List of Nonrespondents"] = self::link("/emailMgmt/noSurvey.php");
+            }
+            $ary["Survey Responses"] = self::link("/surveyResponses.php");
+            $ary["Import General Data"] = self::link("/import.php");
+            $ary["Import Positions"] = self::link("/bulkImport.php") . "&positions";
+
+            return $ary;
+        }
 		if ($menuName == "Dashboards") {
 			return array(
 					"Overall" => self::link("/dashboard/overall.php"),

@@ -1,6 +1,5 @@
 <?php
 
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\CitationCollection;
@@ -9,53 +8,59 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Altmetric;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Altmetric.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../Application.php");
 
 $names = Download::names($token, $server);
-
-echo "<h1>View Publications</h1>\n";
-echo makeCustomizeTable();
-
 if ($_GET['record']) {
     if ($_GET['record'] == "all") {
         $records = Download::recordIds($token, $server);
     } else {
         $records = array($_GET['record']);
     }
+}
+if (isset($_GET['download']) && $records) {
+    list($citations, $dates) = getCitationsForRecords($records, $token, $server);
+    $html = makePublicationListHTML($citations, $names, $dates);
+    Application::writeHTMLToDoc($html, "Publications ".date("Y-m-d").".docx");
+    exit;
+}
+require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+
+$link = Application::link("publications/view.php")."&download".makeExtraURLParams();
+echo "<h1>View Publications</h1>\n";
+if (Application::hasComposer()) {
+    // echo "<p class='centered'><a href='$link'>Download as MS Word doc</a></p>\n";
+}
+echo makeCustomizeTable();
+if ($records) {
+    list($citations, $dates) = getCitationsForRecords($records, $token, $server);
+    echo makePublicationSearch($names);
+    echo makePublicationListHTML($citations, $names, $dates);
+} else {
+	echo makePublicationSearch($names);
+}
+
+function getCitationsForRecords($records, $token, $server) {
     $trainingStarts = Download::oneField($token, $server, "summary_training_start");
     $trainingEnds = Download::oneField($token, $server, "summary_training_end");
+    $metadata = Download::metadata($token, $server);
     $confirmed = "Confirmed Publications";
-    $notConfirmed = "Publications yet to be Confirmed";
+    $notConfirmed = "Publications Yet to be Confirmed";
     $citations = [$confirmed => [], $notConfirmed => []];
     $dates = [];
-    $metadata = Download::metadata($token, $server);
     foreach ($records as $record) {
-        $name = $names[$record];
-        $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($record));
+        $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), [$record]);
         $pubs = new Publications($token, $server, $metadata);
         $pubs->setRows($redcapData);
         $included = $pubs->getCitationCollection("Included");
         $notDone = $pubs->getCitationCollection("Not Done");
 
-        if ($_GET['startDate'] && REDCapManagement::isDate($_GET['startDate'])) {
-            $startTs = strtotime($_GET['startDate']);
-            if ($_GET['endDate'] && REDCapManagement::isDate($_GET['endDate'])) {
-                $endTs = strtotime($_GET['endDate']);
-            } else {
-                $endTs = time();
-            }
-            $dates[$record] = date("m-d-Y", $startTs)." - ".date("m-d-Y", $endTs);
-
-            $included->filterForTimespan($startTs, $endTs);
-            $notDone->filterForTimespan($startTs, $endTs);
-        }
         if ($_GET['trainingPeriodPlusDays']) {
             $trainingStart = $trainingStarts[$record];
             $trainingEnd = $trainingEnds[$record];
@@ -69,10 +74,9 @@ if ($_GET['record']) {
                     # currently training or do not have end date?
                     $endTs = time();
                 }
-                $dates[$record] = date("m-d-Y", $startTs)." - ".date("m-d-Y", $endTs);
-
                 $included->filterForTimespan($startTs, $endTs);
                 $notDone->filterForTimespan($startTs, $endTs);
+                $dates[$record] = date("m-d-Y", $startTs)." - ".date("m-d-Y", $endTs);
             } else {
                 # do not filter
                 $dates[$record] = "Training period not recorded";
@@ -82,14 +86,25 @@ if ($_GET['record']) {
         $citations[$confirmed][$record] = $included;
         $citations[$notConfirmed][$record] = $notDone;
     }
+    return [$citations, $dates];
+}
 
-    echo makePublicationSearch($names);
+function totalCitationColls($citColls) {
+    $total = 0;
+    foreach ($citColls as $citColl) {
+        $total += $citColl->getCount();
+    }
+    return $total;
+}
+
+function makePublicationListHTML($citations, $names, $dates) {
+    $html = "";
     foreach ($citations as $header => $citColls) {
         $total = totalCitationColls($citColls);
-        echo "<h2>$header (" . REDCapManagement::pretty($total) . ")</h2>\n";
-        echo "<div class='centered' style='max-width: 800px;'>\n";
+        $html .= "<h2>$header (" . REDCapManagement::pretty($total) . ")</h2>\n";
+        $html .= "<div class='centered' style='max-width: 800px;'>\n";
         if ($total == 0) {
-            echo "<p class='centered'>No citations.</p>\n";
+            $html .= "<p class='centered'>No citations.</p>\n";
         } else {
             foreach ($citColls as $record => $citColl) {
                 $name = $names[$record];
@@ -100,33 +115,24 @@ if ($_GET['record']) {
                 }
                 $header .= "</p>\n";
                 if ($citColl->getCount() > 0) {
-                    echo $header;
+                    $html .= $header;
                 }
 
                 $citations = $citColl->getCitations();
                 foreach ($citations as $citation) {
-                    echo "<p style='text-align: left;'>";
+                    $html .= "<p style='text-align: left;'>";
                     if (isset($_GET['altmetrics'])) {
-                        echo $citation->getImage("left");
+                        $html .= $citation->getImage("left");
                     }
-                    echo $citation->getCitationWithLink();
-                    echo "</p>\n";
+                    $html .= $citation->getCitationWithLink();
+                    $html .= "</p>\n";
                 }
             }
         }
-        echo "</div>\n";
+        $html .= "</div>\n";
     }
-	echo "<br><br><br>";
-} else {
-	echo makePublicationSearch($names);
-}
-
-function totalCitationColls($citColls) {
-    $total = 0;
-    foreach ($citColls as $citColl) {
-        $total += $citColl->getCount();
-    }
-    return $total;
+    $html .= "<br><br><br>";
+    return $html;
 }
 
 function makeExtraURLParams($exclude = []) {
@@ -147,35 +153,23 @@ function makeExtraURLParams($exclude = []) {
 function makeCustomizeTable() {
     $html = "";
     $style = "style='width: 250px; padding: 15px; vertical-align: top;'";
-    $defaultFields = ["trainingPeriodPlusDays", "startDate", "endDate"];
-    $defaults = [];
-    foreach ($defaultFields as $field) {
-        $defaults[$field] = "";
-        if (isset($_GET[$field])) {
-            if (is_numeric($_GET[$field]) || REDCapManagement::isDate($_GET[$field])) {
-                $defaults[$field] = $_GET[$field];
-            }
-        }
+    $defaultDays = "";
+    if (isset($_GET['trainingPeriodPlusDays']) && is_numeric($_GET['trainingPeriodPlusDays'])) {
+        $defaultDays = $_GET['trainingPeriodPlusDays'];
     }
-
     $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays"]);
     list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
 
     $html .= "<table class='centered'>\n";
     $html .= "<tr>\n";
-    $html .= "<td colspan='3' $style><h2 class='nomargin'>Customize</h2></td>\n";
+    $html .= "<td colspan='2' $style><h2 class='nomargin'>Customize</h2></td>\n";
     $html .= "</tr>\n";
     $html .= "<tr>\n";
-    $html .= "<td $style><form action='$url' method='GET'>";
-    $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
-    $html .= "<h4>Show Pubs During Dates</h4>";
-    $html .= "<p class='centered'>Show All Publications Between:<br>Start: <input type='date' name='startDate' style='width: 150px;' value='{$defaults['startDate']}'><br>End: <input type='date' name='endDate' style='width: 150px;' value='{$defaults['endDate']}'><br><button>Re-Configure</button></p>";
-    $html .= "</form></td>\n";
     $html .= "<td $style>".Altmetric::makeClickText()."</td>\n";
     $html .= "<td $style><form action='$url' method='GET'>";
     $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
     $html .= "<h4>Show Pubs During Training</h4>";
-    $html .= "<p class='centered'>Additional Days: <input type='number' name='trainingPeriodPlusDays' style='width: 60px;' value='{$defaults['trainingPeriodPlusDays']}'><br><button>Re-Configure</button></p>";
+    $html .= "<p class='centered'>Additional Days: <input type='number' name='trainingPeriodPlusDays' style='width: 60px;' value='$defaultDays'><br><button>Re-Configure</button></p>";
     $html .= "</form></td>\n";
     $html .= "</tr>\n";
     $html .= "</table>\n";
@@ -184,10 +178,10 @@ function makeCustomizeTable() {
 }
 
 function makePublicationSearch($names) {
-    $html = "";
+	$html = "";
 	$html .= "<h2>View a Scholar's Publications</h2>\n";
-	$html .= "<p class='centered'><a href='".CareerDev::link("publications/view.php")."&record=all".makeExtraURLParams(["record"])."'>View All Scholars' Publications</a></p>\n";
-    $html .= "<p class='centered'><select onchange='window.location.href = \"".CareerDev::link("publications/view.php").makeExtraURLParams(["record"])."&record=\" + $(this).val();'><option value=''>---SELECT---</option>\n";
+	$html .= "<p class='centered'><a href='".Application::link("publications/view.php")."&record=all".makeExtraURLParams(["record"])."'>View All Scholars' Publications</a></p>\n";
+	$html .= "<p class='centered'><select onchange='window.location.href = \"".Application::link("publications/view.php").makeExtraURLParams(["record"])."&record=\" + $(this).val();'><option value=''>---SELECT---</option>\n";
 	foreach ($names as $recordId => $name) {
 		$html .= "<option value='$recordId'";
 		if ($_GET['record'] && ($_GET['record'] == $recordId)) {

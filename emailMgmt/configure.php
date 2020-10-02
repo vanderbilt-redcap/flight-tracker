@@ -65,7 +65,7 @@ if ($currSetting['enabled']) {
 # defaults
 $indivs = "$isDisabled"; $filteredGroup = "checked";
 $all = "checked"; $some = "$isDisabled";
-$surveyCompleteNo = "checked"; $surveyCompleteYes = "$isDisabled";
+$surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "$isDisabled"; $surveyCompleteNoMatter = "checked";
 $lastCompleteMonths = 12; $maxEmails = 5; $newRecordsSince = 6;
 $maxSpecified = "$isDisabled"; $newRecordsSinceSpecified = "$isDisabled";
 $r01No = "$isDisabled"; $r01Yes = "$isDisabled"; $r01Agnostic = "checked";
@@ -75,10 +75,12 @@ if ($_POST['recipient'] == "individuals") {
 	if ($_POST['filter'] == "some") {
 		$all = "$isDisabled"; $some = "checked";
 		if ($_POST['survey_complete'] == "yes") {
-			$surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "checked";
+			$surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "checked"; $surveyCompleteNoMatter = "$isDisabled";
 			if ($_POST['last_complete_months']) {
 				$lastCompleteMonths = $_POST['last_complete_months'];
 			}
+        } else if ($_POST['survey_complete'] == "no") {
+            $surveyCompleteNo = "checked"; $surveyCompleteYes = "$isDisabled"; $surveyCompleteNoMatter = "$isDisabled";
 		}
 		if ($_POST['r01_or_equiv'] == "yes") {
 			$r01No = "$isDisabled"; $r01Yes = "checked"; $r01Agnostic = "$isDisabled";
@@ -89,7 +91,7 @@ if ($_POST['recipient'] == "individuals") {
 			$maxEmails = $_POST['max_emails'];
 			$maxSpecified = "checked";
 		}
-		if ($_POST['new_records_since']) {
+        if (($_POST['newRecords'] == "new") && $_POST['new_records_since']) {
 			$newRecordsSince = $_POST['new_records_since'];
 			$newRecordsSinceSpecified = "checked";
 		}
@@ -116,14 +118,20 @@ if ($currSetting["who"]["individuals"]) {
 			# go with POST
 			break;
 	}
-	if ($currSetting["who"]["none_complete"]) {
-		$surveyCompleteNo = "checked";
-		$surveyCompleteYes = "$isDisabled";
-	} else if ($currSetting["who"]["last_complete"]) {
-		$surveyCompleteNo = "$isDisabled";
-		$surveyCompleteYes = "checked";
-		$lastCompleteMonths = $currSetting["who"]["last_complete"];
-	}
+    if ($currSetting["who"]["none_complete"] == "true") {
+        $surveyCompleteNo = "checked";
+        $surveyCompleteYes = "$isDisabled";
+        $surveyCompleteNoMatter = "$isDisabled";
+    } else if ($currSetting["who"]["none_complete"] == "false") {
+        $surveyCompleteNo = "$isDisabled";
+        $surveyCompleteYes = "checked";
+        $surveyCompleteNoMatter = "$isDisabled";
+        $lastCompleteMonths = $currSetting["who"]["last_complete"];
+    } else if ($currSetting["who"]["none_complete"] == "nomatter") {
+        $surveyCompleteNo = "$isDisabled";
+        $surveyCompleteYes = "$isDisabled";
+        $surveyCompleteNoMatter = "checked";
+    }
 	if ($currSetting["who"]["max_emails"]) {
 		$maxEmails = $currSetting["who"]["max_emails"];
 		$maxSpecified = "checked";
@@ -220,9 +228,9 @@ $(document).ready(function() {
 				</p>
 				<div id='filterItems' style='display: none;'>
 					<p class='centered'>Filter: Have Any Surveys Been Completed?<br>
-						<span class='nowrap'><input class='who_to' type='radio' name='survey_complete' id='survey_no' value='no' <?= $surveyCompleteNo ?>><label for='survey_no'> No</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='survey_complete' id='survey_yes' value='yes' <?= $surveyCompleteYes ?>><label for='survey_yes'> Yes</label></span>
+                        <span class='nowrap'><input class='who_to' type='radio' name='survey_complete' id='survey_no' value='no' <?= $surveyCompleteNo ?>><label for='survey_no'> No</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='survey_complete' id='survey_yes' value='yes' <?= $surveyCompleteYes ?>><label for='survey_yes'> Yes</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='survey_complete' id='survey_no_matter' value='nomatter' <?= $surveyCompleteNoMatter ?>><label for='survey_no_matter'> Doesn't Matter</label></span>
 					</p>
-					<p class='centered' id='whenCompleted' style='display: none;'>Filter: The Scholar Hasn't Filled Out a Survey in Last:<br>
+					<p class='centered' id='whenCompleted' style='display: none;'>Filter: Skip if the Scholar Has Filled Out a Survey in Last:<br>
 						<input class='who_to' type='text' style='width: 50px;' id='last_complete_months' name='last_complete_months' value='<?= $lastCompleteMonths ?>' <?= $isReadonly ?>> Months
 					</p>
 
@@ -343,6 +351,10 @@ if (!$isDisabled) {
 	echo "<script>var quill = new Quill('#message', { theme: 'snow' });</script>\n";
 }
 
+function decodeEmail($str) {
+    return str_replace("_at_", "@", $str);
+}
+
 function translatePostToEmailSetting($post) {
 	$emailSetting = EmailManager::getBlankSetting();
 
@@ -362,7 +374,8 @@ function translatePostToEmailSetting($post) {
 		if ($post['recipient'] == 'individuals') {
 			$checkedEmails = array();
 			foreach ($post as $key => $value) {
-				if ($value && isEmailAddress($key)) {
+                $key = decodeEmail($key);
+                if ($value && EmailManager::isEmailAddress($key)) {
 					array_push($checkedEmails, $key);
 				}
 			}
@@ -383,9 +396,12 @@ function translatePostToEmailSetting($post) {
 		}
 		if ($post["survey_complete"]) {
 			if ($post["last_complete_months"] && ($post["survey_complete"] == "yes")) {
+                $emailSetting["who"]["none_complete"] = "false";
 				$emailSetting["who"]["last_complete"] = $post["last_complete_months"];
-			} else if ($post["survey_complete"] == "no") {
-				$emailSetting["who"]["none_complete"] = TRUE;
+            } else if ($post["survey_complete"] == "no") {
+                $emailSetting["who"]["none_complete"] = "true";
+            } else if ($post["survey_complete"] == "nomatter" ) {
+                $emailSetting["who"]["none_complete"] = "nomatter";
 			} else {
 				# only happens if the months are not specified; returns blank setting; better than throwing an exception
 				return array("The Months were not specified", "", EmailManager::getBlankSetting());
@@ -394,9 +410,9 @@ function translatePostToEmailSetting($post) {
 		if ($post["max_emails"]) {
 			$emailSetting["who"]["max_emails"] = $post["max_emails"];
 		}
-		if ($post["new_records_since"]) {
-			$emailSetting["who"]["new_records_since"] = $post["new_records_since"];
-		}
+        if (($post['newRecords'] == "new") && $post['new_records_since']) {
+            $emailSetting["who"]["new_records_since"] = $post["new_records_since"];
+        }
 		if ($post["r01_or_equiv"]) {
 			$emailSetting["who"]["converted"] = $post["r01_or_equiv"];
 		}
