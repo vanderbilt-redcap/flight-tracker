@@ -30,7 +30,6 @@ class EmailManager {
 		} else {
 			$this->data = self::loadData($this->settingName, $this->metadata, $this->hijackedField, $this->pid);
 		}
-		Application::log("Loaded data for settings: ".json_encode(array_keys($this->data)));
 	}
 
 	public static function isEmailAddress($str) {
@@ -1041,10 +1040,8 @@ class EmailManager {
 
 	private static function loadData($settingName, $moduleOrMetadata, $hijackedField, $pid) {
 		if ($moduleOrMetadata && !is_array($moduleOrMetadata)) {
-		    Application::log("Loading email data from $settingName");
 			$setting = $moduleOrMetadata->getProjectSetting($settingName, $pid);
 			if ($setting) {
-			    Application::log("Got settings from $settingName ".json_encode(array_keys($setting)));
 				return $setting;
 			} else {
 				return array();

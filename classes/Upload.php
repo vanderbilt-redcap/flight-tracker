@@ -290,7 +290,7 @@ public static function metadata($metadata, $token, $server) {
 	public static function isolateErrors($result) {
 		if (is_array($result) && $result['errors']) {
 			return $result['errors'];
-		} else {
+		} else if (is_string($result)) {
 			$result = json_decode($result, true);
 			if ($result && $result['errors']) {
 				return $result['errors'];
@@ -298,6 +298,7 @@ public static function metadata($metadata, $token, $server) {
 				return array();
 			}
 		}
+		return [];
 	}
 
 	public static function oneRow($row, $token, $server) {

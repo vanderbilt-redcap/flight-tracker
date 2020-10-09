@@ -303,7 +303,7 @@ class Download {
 			// Application::log("sendToServer: ".$pid." ".$data['token']." REDCap::getData");
 		    $output = \REDCap::getData($pid, "json", $data['records'], $data['fields']);
 		} else {
-            // Application::log("sendToServer: ".$pid." CURL ".$data['token']);
+            // Application::log("sendToServer: ".$pid." CURL ".$data['token']." server=".$server);
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_URL, $server);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -318,6 +318,9 @@ class Download {
 			curl_close($ch);
 		}
 		$redcapData = json_decode($output, true);
+		if ($redcapData === NULL) {
+		    Application::log("ERROR: ".$output);
+        }
 		if (isset($redcapData['error']) && !empty($redcapData['error'])) {
 			throw new \Exception("Download Exception: ".$redcapData['error']);
 		}
@@ -572,19 +575,23 @@ class Download {
         }
 		Application::log("Download::fields ".count($fields)." fields");
 		$data = array(
-			'token' => $token,
-			'content' => 'record',
-			'format' => 'json',
-			'type' => 'flat',
-			'rawOrLabel' => 'raw',
-			'fields' => $fields,
-			'rawOrLabelHeaders' => 'raw',
-			'exportCheckboxLabel' => 'false',
-			'exportSurveyFields' => 'false',
-			'exportDataAccessGroups' => 'false',
-			'returnFormat' => 'json'
+            'token' => $token,
+            'content' => 'record',
+            'format' => 'json',
+            'type' => 'flat',
+            'rawOrLabel' => 'raw',
+            'fields' => $fields,
+            'rawOrLabelHeaders' => 'raw',
+            'exportCheckboxLabel' => 'false',
+            'exportSurveyFields' => 'false',
+            'exportDataAccessGroups' => 'false',
+            'returnFormat' => 'json'
 		);
-		return self::sendToServer($server, $data);
+		$returnData = self::sendToServer($server, $data);
+		if (count($returnData) == 0) {
+            Application::log("ERROR: null return from data: ".json_encode($data));
+        }
+		return $returnData;
 	}
 
 	public function downloads_test($tester) {

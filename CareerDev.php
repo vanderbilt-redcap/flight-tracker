@@ -3,12 +3,13 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use ExternalModules\ExternalModules;
+use Vanderbilt\CareerDevLibrary\Application;
 
 class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.21.0";
+		return "2.21.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -141,7 +142,11 @@ class CareerDev {
 
 	public static function getPid($token = "") {
 		if ($token) {
-			return self::getPidFromToken($token);
+			$pid = self::getPidFromToken($token);
+			if (!$pid) {
+			    self::log("ERROR: Could not find pid $pid for $token");
+            }
+			return $pid;
 		}
 		if (self::$pid) {
 			return self::$pid;
@@ -291,7 +296,10 @@ class CareerDev {
 	# returns current PID if no token is specified and if using the current server
 	# otherwise returns empty string
 	public static function getPidFromToken($localToken = "") {
-		global $pid, $token, $server, $info;
+        global $pid, $token, $server, $info;
+	    if (file_exists("/app001/credentials/career_dev/credentials.php")) {
+	        include("/app001/credentials/career_dev/credentials.php");
+        }
 		if (!$localToken) {
 			if (strpos($server, SERVER_NAME) !== FALSE) {
 				return $pid;
@@ -315,27 +323,38 @@ class CareerDev {
 	}
 
 	public static function getModuleId() {
-	    return ExternalModules::getIdForPrefix("flight_tracker");
+	    return ExternalModules::getIdForPrefix("flightTracker");
     }
 
-	public static function getPidFromDatabase($token) {
+	public static function getPidFromDatabase($localToken) {
+	    if (isset(self::$tokenTranslateToPid[$localToken])) {
+	        return self::$tokenTranslateToPid[$localToken];
+        } else if (isset(self::$mentorTokenTranslateToPid[$localToken])) {
+	        return self::$mentorTokenTranslateToPid[$localToken];
+        }
         $fieldsToSearch = ["token", "mentor_token"];
         $moduleId = self::getModuleId();
         if ($moduleId) {
             foreach ($fieldsToSearch as $field) {
-                $sql = "SELECT project_id FROM redcap_external_module_settings WHERE key = '$field' AND external_module_id = '$moduleId' AND value = '".db_real_escape_string($localToken)."'";
+                $sql = "SELECT project_id FROM redcap_external_module_settings WHERE `key` = '$field' AND external_module_id = '$moduleId' AND value = '".db_real_escape_string($localToken)."'";
                 $q = db_query($sql);
+                if ($error = db_error()) {
+                    self::log("ERROR: $error ".$sql);
+                }
                 $currentPid = FALSE;
                 while ($row = db_fetch_assoc($q)) {
-                    $currentPid = $row["pid"];
+                    $currentPid = $row["project_id"];
                     break;
                 }
                 if ($currentPid) {
                     if ($field == "token") {
+                        self::$tokenTranslateToPid[$localToken] = $currentPid;
                         return $currentPid;
                     } else if ($field == "mentor_token") {
                         # mentor_token
-                        return self::getSetting('mentor_pid', $currentPid);
+                        $mentorPid = self::getSetting('mentor_pid', $currentPid);
+                        self::$mentorTokenTranslateToPid[$localToken] = $mentorPid;
+                        return $mentorPid;
                     } else {
                         throw new \Exception("Looking through invalid field $field");
                     }
@@ -1637,4 +1656,7 @@ class CareerDev {
 						);
 
 	private static $pid = "";
+
+	private static $tokenTranslateToPid = [];
+	private static $mentorTokenTranslateToPid = [];
 }

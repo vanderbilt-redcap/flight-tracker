@@ -3,6 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Scholar;
+use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\FlightTrackerExternalModule\Measurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
@@ -11,6 +12,7 @@ require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/base.php");
 require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
+require_once(dirname(__FILE__)."/../classes/Links.php");
 require_once(dirname(__FILE__)."/../classes/Scholar.php");
 require_once(dirname(__FILE__)."/../classes/Grants.php");
 
@@ -67,7 +69,18 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 }
 
 foreach ($conversions as $yearspan => $recordQueues) {
-    $measurements["K-to-R Conversions over Last $yearspan Years"] = new Measurement(count($recordQueues["numer"]), count($recordQueues["denom"]));
+    $meas = new Measurement(count($recordQueues["numer"]), count($recordQueues["denom"]));;
+    $meas->setPercentage(TRUE);
+    $numer = [];
+    $denom = [];
+    foreach ($recordQueues["numer"] as $recordId) {
+        $numer[] = Links::makeSummaryLink($pid, $recordId, $event_id, $names[$recordId]);
+    }
+    foreach ($recordQueues["denom"] as $recordId) {
+        $denom[] = Links::makeSummaryLink($pid, $recordId, $event_id, $names[$recordId]);
+    }
+    $meas->setNames($numer, $denom);
+    $measurements["K-to-R Conversions over Last $yearspan Years"] = $meas;
 }
 
 array_push($headers, "Grants");

@@ -1051,7 +1051,7 @@ class Grant {
 	}
 
 	public static function removeCommas($num) {
-		return preg_replace("/,/g", "", $num);
+		return preg_replace("/,/", "", $num);
 	}
 
 	public static function autocalculateGrantLength($type) {

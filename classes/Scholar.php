@@ -1036,6 +1036,7 @@ class Scholar {
 
 	# key = instance; value = REDCap data row
 	private static function selectFollowupRows($rows) {
+	    $followupRows = [];
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "followup") {
 				$followupRows[$row['redcap_repeat_instance']] = $row;

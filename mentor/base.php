@@ -296,7 +296,7 @@ function makePopupJS() {
     // TODO Additional, Custom Resources - put at top
     $resources[] = "Huskins WC, Silet K, Weber-Main AM, Begg MD, Fowler VG, Jr., Hamilton J and Fleming M. Identifying and aligning expectations in a mentoring relationship. <i>Clinical and translational science</i>. 2011;4:439-47. https://doi.org/10.1111/j.1752-8062.2011.00356.x";
     $resources[] = "Ramanan RA, Taylor WC, Davis RB and Phillips RS. Mentoring matters. Mentoring and career preparation in internal medicine residency training. <i>J Gen Intern Med</i>. 2006;21:340-5. https://doi.org/10.1111/j.1525-1497.2006.00346_1.x";
-    $resources[] = "Ramanan RA, Phillips RS, Davis RB, Silen W and Reede JY. Mentoring in medicine: keys to satisfaction. <i>The American journal of medicine</i>. 2002;112:336-41. https://doi.org/10.1016/s0002-9343(02)01032-x";
+    $resources[] = "Ramanan RA, Phillips RS, Davis RB, Silen W and Reede JY. Mentoring in medicine: keys to satisfaction. <i>The American journal of medicine</i>. 2002;112:336-41. https://doi.org/10.1016/s0002-9343%2802%2901032-x";
     $resources[] = "Pololi L and Knight S. Mentoring faculty in academic medicine. A new paradigm? <i>J Gen Intern Med</i>. 2005;20:866-70. https://doi.org/10.1111/j.1525-1497.2005.05007.x";
     $resources[] = "Pololi LH, Knight SM, Dennis K and Frankel RM. Helping medical school faculty realize their dreams: An innovative, collaborative mentoring program. <i>Academic Medicine</i>. 2002;77:377-384. https://doi.org/10.1097/00001888-200205000-00005";
     $resources[] = "Johnston-Anumonwo I. Mentoring across difference: success and struggle in an academic geography career. <i>Gender Place Cult</i>. 2019;26:1683-1700. https://doi.org/10.1080/0966369x.2019.1681369";

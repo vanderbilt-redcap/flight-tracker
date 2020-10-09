@@ -55,7 +55,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 }
 
                 if (Application::isTestGroup($pid)) {
-                    Application::log("Sending emails for $tokenName (pid $pid)");
                     $mgr = new EmailManager($token, $server, $pid, $this);
                     $mgr->sendRelevantEmails();
                 }
@@ -208,14 +207,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
         $credentialsFile = "/app001/credentials/career_dev/credentials.php";
         if (preg_match("/redcap.vanderbilt.edu/", SERVER_NAME)  && file_exists($credentialsFile)) {
-            require_once($credentialsFile);
+            include($credentialsFile);
             if (isset($info)) {
                 $prodPid = $info["prod"]["pid"];
                 $prodToken = $info["prod"]["token"];
                 $prodServer = $info["prod"]["server"];
                 $pids[] = $prodPid;
                 $tokens[$prodPid] = $prodToken;
-                $servers[$prodServer] = $prodServer;
+                $servers[$prodPid] = $prodServer;
                 Application::log("Searching through Vanderbilt Master Project ($prodPid)");
             }
         }
@@ -345,7 +344,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                                                             $instrument,
                                                             $newInstance);
                                                         if ($repeatingRow && is_array($repeatingRow)) {
-                                                            CareerDev::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                                            // CareerDev::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
                                                             $repeatingRows[] = $repeatingRow;
                                                             $newInstance++;
                                                         }
@@ -362,7 +361,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                                             // Application::log("Uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
                                             try {
                                                 $feedback = Upload::rows($upload, $destToken, $destServer);
-                                                Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId");
+                                                // Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId");
                                                 // Application::log(json_encode($upload));
                                                 if (!in_array($destPid, $pidsUpdated)) {
                                                     $pidsUpdated[] = $destPid;
@@ -423,7 +422,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     $this->setProjectSetting("run_tonight", FALSE, $pid);
                     loadInitialCrons($mgr, FALSE, $token, $server);
                 } else {
-                    CareerDev::log($this->getName().": Loading crons for pid $pid with token of ".strlen($token)." characters");
                     loadCrons($mgr, FALSE, $token, $server);
                 }
                 CareerDev::log($this->getName().": Running crons for pid $pid", $pid);

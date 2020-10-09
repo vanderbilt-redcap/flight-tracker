@@ -14,7 +14,7 @@ class NameMatcher {
         if (!$lastName) {
             return [];
         }
-        if (!self::$namesForMatch || empty(self::$namesForMatch) || ($token != self::$currToken)) {
+        if ((self::$namesForMatch === NULL) || ($token != self::$currToken)) {
             self::downloadNamesForMatch($token, $server);
         }
 
@@ -113,6 +113,7 @@ class NameMatcher {
 	public static function downloadNamesForMatch($token, $server) {
 		Application::log("Downloading new names for pid ".Application::getPID($token));
 		self::$namesForMatch = Download::fields($token, $server, array("record_id", "identifier_first_name", "identifier_last_name"));
+        Application::log("Downloaded ".count(self::$namesForMatch)." rows");
 		self::$currToken = $token;
 		return self::$namesForMatch;
 	}
@@ -191,6 +192,6 @@ class NameMatcher {
 		return array("", "");
 	}
 
-	private static $namesForMatch = array();
+	private static $namesForMatch = NULL;
 	private static $currToken = "";
 }

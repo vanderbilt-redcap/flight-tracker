@@ -11,6 +11,9 @@ class StarBRITE {
         $resourcePath = preg_replace("/^\//", "", $resourcePath);
         $resourcePath = preg_replace("/\/$/", "", $resourcePath);
         $url = "https://starbrite.app.vumc.org/s/sri/api/$resourcePath";
+        if (SERVER_NAME == "redcaptest.vanderbilt.edu") {
+            $url = "https://starbritetest.app.vumc.org/s/sri/api/$resourcePath";
+        }
         $url .= '/' . implode('/', array_map('urlencode', $getParams));
         $opts = [
             CURLOPT_RETURNTRANSFER => 1,

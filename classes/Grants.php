@@ -317,7 +317,7 @@ class Grants {
 							}
 						}
 
-						$priorGF = new PriorGrantFactory($this->name, $this-elexicalTranslator, $this->metadata);
+						$priorGF = new PriorGrantFactory($this->name, $this-lexicalTranslator, $this->metadata);
 						$priorGF->processRow($row);
 						$priorGFGrants = $priorGF->getGrants();
 						foreach ($priorGFGrants as $grant) {

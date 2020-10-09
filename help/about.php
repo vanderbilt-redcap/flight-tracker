@@ -1,10 +1,12 @@
 <?php
 
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 
 
 ?>
@@ -21,14 +23,5 @@ require_once(dirname(__FILE__)."/../CareerDev.php");
 <p class='centered nomargin'><a href='https://edgeforscholars.org/'>Edge for Scholars</a></p>
 
 <h3>Development Team</h3>
-<p class='centered'>The <a href='https://my.vanderbilt.edu/ctcareerdevelopment/'>Office of Clinical and Translational Scientist Development</a> at Vanderbilt University Medical Center</p>
-
-<p class='centered'>Katherine Hartmann, MD, PhD<br>
-Eric Austin, MD<br>
-Rebecca Helton<br>
-Scott J. Pearson<br>
-Patrick Newman<br>
-Chad Lightner<br>
-Melissa Krasnove<br>
-Helen Bird<br>
-Adrienne Babcock</p>
+<p class='centered'><img src="<?= Application::link("img/efs_small.png") ?>" style='width: 200px; height: 124px;' alt="Edge for Scholars"></p>
+<p class='centered'>The <a href='https://my.vanderbilt.edu/ctcareerdevelopment/'>Edge for Scholars Team</a> at Vanderbilt University Medical Center</p>
