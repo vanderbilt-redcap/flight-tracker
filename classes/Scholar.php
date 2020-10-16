@@ -232,7 +232,7 @@ class Scholar {
 			$resource = "";
 			foreach ($row as $field => $value) {
 				if ($value) {
-					if ($field == "resources_used") {
+					if ($field == "resources_date") {
 						$date = $value;
 					} else if ($field == "resources_resource") {
 						$resource = $choices['resources_resource'][$value];
@@ -1459,83 +1459,93 @@ class Scholar {
 	    return array_unique($fields);
     }
 
+    public function findAllDegrees($rows) {
+        # move over and then down
+        $order = self::getDefaultOrder("summary_degrees");
+        $order = $this->getOrder($order, "summary_degrees");
+
+        $normativeRow = self::getNormativeRow($rows);
+        $followupRows = self::selectFollowupRows($rows);
+
+        # combines degrees
+        $degrees = array();
+        foreach ($order as $variables) {
+            foreach ($variables as $variable => $source) {
+                if ($variable == "vfrs_please_select_your_degree") {
+                    $normativeRow[$variable] = self::transformSelectDegree($normativeRow[$variable]);
+                }
+                if ($source == "followup") {
+                    foreach ($followupRows as $row) {
+                        if ($row[$variable] && !in_array($row[$variable], $degrees)) {
+                            $degrees[] = $row[$variable];
+                        }
+                    }
+                }
+                if ($normativeRow[$variable] && !in_array($normativeRow[$variable], $degrees)) {
+                    $degrees[] = $normativeRow[$variable];
+                }
+            }
+        }
+        return $degrees;
+    }
+
+    private static function translateDegreesFromList($degrees) {
+	    $value = "";
+        if (empty($degrees)) {
+            return new Result("", "");
+        } else if (in_array(1, $degrees) || in_array(9, $degrees) || in_array(10, $degrees) || in_array(7, $degrees) || in_array(8, $degrees) || in_array(14, $degrees) || in_array(12, $degrees)) { # MD
+            if (in_array(2, $degrees) || in_array(9, $degrees) || in_array(10, $degrees)) {
+                $value = 10;  # MD/PhD
+            } else if (in_array(3, $degrees) || in_array(16, $degrees) || in_array(18, $degrees)) { # MPH
+                $value = 7;
+            } else if (in_array(4, $degrees) || in_array(7, $degrees)) { # MSCI
+                $value = 8;
+            } else if (in_array(5, $degrees) || in_array(8, $degrees)) { # MS
+                $value = 9;
+            } else if (in_array(6, $degrees) || in_array(13, $degrees) || in_array(14, $degrees)) { # Other
+                $value = 7;     # MD + other
+            } else if (in_array(11, $degrees) || in_array(12, $degrees)) { # MHS
+                $value = 12;
+            } else {
+                $value = 1;   # MD only
+            }
+        } else if (in_array(2, $degrees)) { # PhD
+            if (in_array(11, $degrees)) {
+                $value = 10;  # MD/PhD
+            } else if (in_array(3, $degrees)) { # MPH
+                $value = 2;
+            } else if (in_array(4, $degrees)) { # MSCI
+                $value = 2;
+            } else if (in_array(5, $degrees)) { # MS
+                $value = 2;
+            } else if (in_array(6, $degrees)) { # Other
+                $value = 2;
+            } else {
+                $value = 2;     # PhD only
+            }
+        } else if (in_array(6, $degrees)) {  # Other
+            if (in_array(1, $degrees)) {   # MD
+                $value = 7;  # MD + other
+            } else if (in_array(2, $degrees)) {  # PhD
+                $value = 2;
+            } else {
+                $value = 6;
+            }
+        } else if (in_array(3, $degrees)) {  # MPH
+            $value = 6;
+        } else if (in_array(4, $degrees)) {  # MSCI
+            $value = 6;
+        } else if (in_array(5, $degrees)) {  # MS
+            $value = 6;
+        } else if (in_array(15, $degrees)) {  # PsyD
+            $value = 6;
+        }
+	    return $value;
+    }
+
 	private function getDegrees($rows) {
-		# move over and then down
-		$order = self::getDefaultOrder("summary_degrees");
-		$order = $this->getOrder($order, "summary_degrees");
-
-		$normativeRow = self::getNormativeRow($rows);
-		$followupRows = self::selectFollowupRows($rows);
-
-		# combines degrees
-		$value = "";
-		$degrees = array();
-		foreach ($order as $variables) {
-			foreach ($variables as $variable => $source) {
-				if ($variable == "vfrs_please_select_your_degree") {
-					$normativeRow[$variable] = self::transformSelectDegree($normativeRow[$variable]);
-				}
-				if ($source == "followup") {
-					foreach ($followupRows as $row) {
-						if ($row[$variable] && !in_array($row[$variable], $degrees)) {
-							$degrees[] = $row[$variable];
-						}
-					}
-				}
-				if ($normativeRow[$variable] && !in_array($normativeRow[$variable], $degrees)) {
-					$degrees[] = $normativeRow[$variable];
-				}
-			}
-		}
-		if (empty($degrees)) {
-			return new Result("", "");
-		} else if (in_array(1, $degrees) || in_array(9, $degrees) || in_array(10, $degrees) || in_array(7, $degrees) || in_array(8, $degrees) || in_array(14, $degrees) || in_array(12, $degrees)) { # MD
-			if (in_array(2, $degrees) || in_array(9, $degrees) || in_array(10, $degrees)) {
-				$value = 10;  # MD/PhD
-			} else if (in_array(3, $degrees) || in_array(16, $degrees) || in_array(18, $degrees)) { # MPH
-				$value = 7;
-			} else if (in_array(4, $degrees) || in_array(7, $degrees)) { # MSCI
-				$value = 8;
-			} else if (in_array(5, $degrees) || in_array(8, $degrees)) { # MS
-				$value = 9;
-			} else if (in_array(6, $degrees) || in_array(13, $degrees) || in_array(14, $degrees)) { # Other
-				$value = 7;     # MD + other
-			} else if (in_array(11, $degrees) || in_array(12, $degrees)) { # MHS
-				$value = 12;
-			} else {
-				$value = 1;   # MD only
-			}
-		} else if (in_array(2, $degrees)) { # PhD
-			if (in_array(11, $degrees)) {
-				$value = 10;  # MD/PhD
-			} else if (in_array(3, $degrees)) { # MPH
-				$value = 2;
-			} else if (in_array(4, $degrees)) { # MSCI
-				$value = 2;
-			} else if (in_array(5, $degrees)) { # MS
-				$value = 2;
-			} else if (in_array(6, $degrees)) { # Other
-				$value = 2;
-			} else {
-				$value = 2;     # PhD only
-			}
-		} else if (in_array(6, $degrees)) {  # Other
-			if (in_array(1, $degrees)) {   # MD
-				$value = 7;  # MD + other
-			} else if (in_array(2, $degrees)) {  # PhD
-				$value = 2;
-			} else {
-				$value = 6;
-			}
-		} else if (in_array(3, $degrees)) {  # MPH
-			$value = 6;
-		} else if (in_array(4, $degrees)) {  # MSCI
-			$value = 6;
-		} else if (in_array(5, $degrees)) {  # MS
-			$value = 6;
-		} else if (in_array(15, $degrees)) {  # PsyD
-			$value = 6;
-		}
+	    $degrees = $this->findAllDegrees($rows);
+	    $value = self::translateDegreesFromList($degrees);
 
 		$newValue = self::translateFirstDegree($value);
 		$newSource = "";
@@ -1847,7 +1857,7 @@ class Scholar {
 				return "followup_date";
 			case "manual":
                 if (preg_match("/^promotion_/", $field)) {
-                    return "promotion_date";
+                    return "promotion_in_effect";
                 } else if (preg_match("/^init_import_/", $field)) {
                     return "init_import_date";
 				} else if (preg_match("/^override_/", $field)) {
@@ -1863,15 +1873,21 @@ class Scholar {
 	}
 
 	# $vars is listed in order of priority; key = variable, value = data source
-	private static function searchRowsForVars($rows, $vars, $byLatest = FALSE, $pid = "") {
+	private static function searchRowsForVars($rows, $vars, $byLatest = FALSE, $pid = "", $showDebug = FALSE) {
 		$result = new Result("", "");
+        $aryInstance = "";
+        $latestTs = 0;
 		foreach ($vars as $var => $source) {
-			$ary = array("", "");
-			$aryInstance = "";
-			$latestTs = "";
 			$splitVar = explode("/", $var);
 			foreach ($rows as $row) {
 				if ($row[$var] || ((count($splitVar) > 1) && $row[$splitVar[0]] && $row[$splitVar[1]])) {
+				    if ($showDebug) {
+				        if ($row[$var]) {
+				            Application::log("Found at $var: ".$row[$var]);
+                        } else if (count($splitVar) > 1) {
+                            Application::log("Found at {$splitVar[0]}: ".$row[$splitVar[0]]." and {$splitVar[1]}: ".$row[$splitVar[1]]);
+                        }
+                    }
 					$date = "";
 					if (count($splitVar) > 1) {
 						# YYYY-mm-dd
@@ -1899,19 +1915,28 @@ class Scholar {
 					if ($byLatest) {
 						# order by date
 						if ($date) {
+                            if ($showDebug) {
+                                Application::log("$var: Date: ".$date);
+                            }
 							$currTs = strtotime($date);
 							if ($currTs > $latestTs) {
+							    if ($showDebug) {
+                                    Application::log("$var: Setting date: ".$date." and value: ".$row[$var]);
+                                }
 								$latestTs = $currTs;
 								$result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
 								$result->setField($var);
 								$result->setInstance($row['redcap_repeat_instance']);
 							}
 						} else if (!$latestTs) {
+                            if ($showDebug) {
+                                Application::log("$var: Transformed Date: ".self::transformIfDate($row[$var]));
+                            }
 							$result = new Result(self::transformIfDate($row[$var]), $source, "", "", $pid);
 							$result->setField($var);
 							$result->setInstance($row['redcap_repeat_instance']);
 							$latestTs = 1; // nominally low value
-						}
+                        }
 					} else {
 						if ($row['redcap_repeat_instrument'] == $source) {
 							# get earliest instance - i.e., lowest repeat_instance
@@ -2011,6 +2036,7 @@ class Scholar {
 		$vars = self::getDefaultOrder("summary_current_rank");
 		$vars = $this->getOrder($vars, "summary_current_rank");
 		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+        // Application::log($this->getName()." summary_current_rank: ".$result->displayInText());
 		if (!$result->getValue()) {
 			$otherFields = array(
 						"vfrs_current_appointment" => "vfrs",
@@ -2509,6 +2535,30 @@ class Result {
 		$this->field = "";
 		$this->instance = "";
 	}
+
+	public function displayInText() {
+	    $properties = [];
+	    $properties[] = "value='".$this->value."'";
+	    if ($this->source) {
+	        $properties[] = "source=".$this->source;
+        }
+	    if ($this->sourceType) {
+	        $properties[] = "sourceType=".$this->sourceType;
+        }
+	    if ($this->date) {
+	        $properties[] = "date=".$this->date;
+        }
+	    if ($this->field) {
+	        $properties[] = "field=".$this->field;
+        }
+	    if ($this->instance) {
+	        $properties[] = "instance=".$this->instance;
+        }
+	    if ($this->pid) {
+	        $properties[] = "pid=".$this->pid;
+        }
+	    return implode("; ", $properties);
+    }
 
 	public function setInstance($instance) {
 		$this->instance = $instance;

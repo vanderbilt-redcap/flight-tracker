@@ -180,17 +180,20 @@ class Download {
 		return $mentors;
 	}
 
-	public static function trainingGrants($token, $server, $fields = array(), $traineeTypes = array(5, 6, 7)) {
+	public static function trainingGrants($token, $server, $fields = array(), $traineeTypes = array(5, 6, 7), $records = []) {
 		if (empty($fields)) {
 			$fields = Application::$customFields;      // default
 		}
+		if (empty($records)) {
+		    $records = self::recordIds($token, $server);
+        }
 		$requiredFields = array("record_id", "custom_role");
 		foreach ($requiredFields as $field) {
 			if (!in_array($field, $fields)) {
 				throw new \Exception("Could not find required '$field' field in fields!");
 			}
 		}
-		$redcapData = self::fields($token, $server, $fields);
+		$redcapData = self::fieldsForRecords($token, $server, $fields, $records);
 		$filteredData = array();
 		foreach ($redcapData as $row) {
 			if (in_array($row['custom_role'], $traineeTypes)) {
@@ -200,11 +203,26 @@ class Download {
 		return $filteredData;
 	}
 
+    public static function appointmentsForRecord($token, $server, $record, $traineeTypes = [5, 6, 7]) {
+        $redcapData = self::trainingGrants($token, $server, array("record_id", "custom_role"), $traineeTypes, [$record]);
+        $types = [];
+        foreach ($redcapData as $row) {
+            $roleType = $row['custom_role'];
+            if (in_array($row['custom_role'], $traineeTypes) && !in_array($roleType, $types)) {
+                $types[] = $roleType;
+            }
+        }
+        return $types;
+    }
+
 	public static function recordsWithTrainees($token, $server, $traineeTypes = array(5, 6, 7)) {
 		$redcapData = self::trainingGrants($token, $server, array("record_id", "custom_role"), $traineeTypes);
 		$records = array();
 		foreach ($redcapData as $row) {
-			array_push($records, $row['record_id']);
+		    $recordId = $row['record_id'];
+		    if (!in_array($recordId, $records)) {
+                array_push($records, $recordId);
+            }
 		}
 		return $records;
 	}
@@ -667,7 +685,23 @@ class Download {
 		return self::sendToServer($server, $data);
 	}
 
-	private static function getCohortConfig($token, $server, $metadata, $cohort)
+    public static function sortedfirstnames($token, $server) {
+	    $lastNames = self::sortedlastnames($token, $server);
+        $firstNames = self::firstnames($token, $server);
+        $newFirstNames = [];
+        foreach ($lastNames as $recordId => $lastName) {
+            $newFirstNames[$recordId] = $firstNames[$recordId];
+        }
+        return $newFirstNames;
+    }
+
+    public static function sortedlastnames($token, $server) {
+        $lastNames = self::lastnames($token, $server);
+        asort($lastNames);
+        return $lastNames;
+    }
+
+    private static function getCohortConfig($token, $server, $metadata, $cohort)
     {
         if ($module = Application::getModule()) {
             $cohorts = new Cohorts($token, $server, $module);

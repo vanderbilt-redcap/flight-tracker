@@ -446,23 +446,18 @@ class Publications {
 				array_push($pmidsToPull, $pmids[$j]);
 			}
 			$output = self::pullFromEFetch($pmidsToPull);
-			$mssg = json_decode($output, true);
+            $xml = simplexml_load_string(utf8_encode($output));
 			$tries = 0;
 			$maxTries = 10;
 			$numSecs = 300; // five minutes? 60;
-			while ($mssg && $mssg['error'] && ($tries < $maxTries)) {
+			while (!$xml && ($tries < $maxTries)) {
 				$tries++;
 				Publications::throttleDown($numSecs);
 				$output = self::pullFromEFetch($pmidsToPull);
-				$mssg = json_decode($output, true);
+                $xml = simplexml_load_string(utf8_encode($output));
 			}
-			if ($mssg && ($tries >= $maxTries)) {
+			if (!$xml && ($tries >= $maxTries)) {
 				throw new \Exception("Cannot pull from eFetch! Attempted $tries times. ".$output);
-			}
-
-			$xml = simplexml_load_string(utf8_encode($output));
-			if (!$xml) {
-				throw new \Exception("Error: Cannot create object ".$output);
 			}
 			foreach ($xml->PubmedArticle as $medlineCitation) {
 				$article = $medlineCitation->MedlineCitation->Article;

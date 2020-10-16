@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\iCite;
 use \Vanderbilt\CareerDevLibrary\VICTRPubMedConnection;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\StarBRITE;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
@@ -18,6 +19,7 @@ require_once(dirname(__FILE__)."/../classes/iCite.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../classes/OracleConnection.php");
+require_once(dirname(__FILE__)."/../classes/StarBRITE.php");
 
 function getPubs($token, $server, $pid) {
 	$cleanOldData = FALSE;
@@ -160,9 +162,10 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid) {
     $metadata = Download::metadata($token, $server);
     $vunets = reverseArray(Download::vunets($token, $server));
     include "/app001/credentials/con_redcap_ldap_user.php";
+    $starBriteServer = StarBRITE::getServer();
 
     foreach ($vunets as $vunet => $recordId) {
-        $url = "https://starbrite.app.vumc.org/s/sri/api/pub-match/vunet";
+        $url = "https://$starBriteServer/s/sri/api/pub-match/vunet";
         $getParams = [$vunet];
         $url .= '/' . implode('/', array_map('urlencode', $getParams));
         $opts = [

@@ -15,6 +15,24 @@ class Application {
 	    return CareerDev::getGrantClasses();
     }
 
+    # TRUE iff &record= appended to end of page
+    public static function isRecordPage($link) {
+        $regexes = [
+            "/profile\.php/",
+            "/customGrants\.php/",
+            "/initial\.php/",
+            "/dashboard\//",
+            "/wrangler\//",
+            "/publications\/view\.php/",
+        ];
+        foreach ($regexes as $regex) {
+            if (preg_match($regex, $link)) {
+                return TRUE;
+            }
+        }
+        return FALSE;
+    }
+
     public static function refreshRecordSummary($token, $server, $pid, $recordId) {
 	    return CareerDev::refreshRecordSummary($token, $server, $pid, $recordId);
     }

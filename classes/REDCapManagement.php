@@ -1061,6 +1061,23 @@ class REDCapManagement {
 		return $labels;
 	}
 
+	public static function YMD2MY($ymd) {
+	    $ts = strtotime($ymd);
+	    if ($ts) {
+	        return date("m/Y", $ts);
+        }
+	    return $ymd;
+    }
+
+    public static function stripMY($str) {
+	    if (preg_match("/\d\d\/\d\d\d\d/", $str, $matches)) {
+	        return $matches[0];
+        } else if (preg_match("/\d\d\d\d/", $str, $matches)) {
+	        return $matches[0];
+        }
+	    return $str;
+    }
+
 	public static function indexREDCapData($redcapDataFromJSON) {
 		$indexedRedcapData = array();
 		foreach ($redcapDataFromJSON as $row) {

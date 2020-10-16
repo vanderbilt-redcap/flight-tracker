@@ -86,20 +86,20 @@ class InitialGrantFactory extends GrantFactory {
                 } else if ($prefix == "init_import") {
                     $grant->setVariable('source', "manual");
                 }
-				$costs = Grant::removeCommas($row[$prefix.'grant'.$i.'_costs']);
+				$costs = Grant::removeCommas($row[$prefix.'_grant'.$i.'_costs']);
 				$grant->setVariable('budget', $costs);
-				$grant->setVariable('direct_budget', Grants::directCostsFromTotal($costs, $awardno, $row[$prefix.'grant'.$i.'_start']));
+				$grant->setVariable('direct_budget', Grants::directCostsFromTotal($costs, $awardno, $row[$prefix.'_grant'.$i.'_start']));
 				// $grant->setVariable('fAndA', Grants::getFAndA($awardno, $row['check_grant'.$i.'_start']));
 				$grant->setVariable('finance_type', Grants::getFinanceType($awardno));
-				$grant->setVariable('sponsor', $row[$prefix.'grant'.$i.'_org']);
+				$grant->setVariable('sponsor', $row[$prefix.'_grant'.$i.'_org']);
 				$grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=initial_survey", "See Grant"));
 				# Co-PI or PI, not Co-I or Other
-				if (($row[$prefix.'grant'.$i.'_role'] == 1) || ($row[$prefix.'grant'.$i.'_role'] == 2) || ($row[$prefix.'grant'.$i.'_role'] == '')) {
+				if (($row[$prefix.'grant'.$i.'_role'] == 1) || ($row[$prefix.'_grant'.$i.'_role'] == 2) || ($row[$prefix.'_grant'.$i.'_role'] == '')) {
 					$grant->setVariable('pi_flag', 'Y');
 				} else {
 					$grant->setVariable('pi_flag', 'N');
 				}
-				$grant->setVariable("role", $this->choices[$prefix."grant".$i."_role"][$row[$prefix."grant".$i."_role"]]);
+				$grant->setVariable("role", $this->choices[$prefix."_grant".$i."_role"][$row[$prefix."_grant".$i."_role"]]);
 				$grant->setNumber($awardno);
 				$grant->setVariable("original_award_number", $awardno);
 				if (preg_match("/^\d?[A-Z]\d\d/", $awardno, $matches)) {
@@ -609,7 +609,7 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
             }
 
             $grant->putInBins();
-            Application::log("Coeus2GrantFactory adding ".json_encode($grant->toArray()));
+            // Application::log("Coeus2GrantFactory adding ".json_encode($grant->toArray()));
             array_push($this->grants, $grant);
         }
     }

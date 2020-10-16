@@ -6,14 +6,20 @@ require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class StarBRITE {
+    static function getServer() {
+        $server = "starbrite.app.vumc.org";
+        if (SERVER_NAME == "redcaptest.vanderbilt.edu") {
+            $server = "starbritetest.app.vumc.org";
+        }
+        return $server;
+    }
+
     static function accessSRI($resourcePath, $getParams) {
         include "/app001/credentials/con_redcap_ldap_user.php";
         $resourcePath = preg_replace("/^\//", "", $resourcePath);
         $resourcePath = preg_replace("/\/$/", "", $resourcePath);
-        $url = "https://starbrite.app.vumc.org/s/sri/api/$resourcePath";
-        if (SERVER_NAME == "redcaptest.vanderbilt.edu") {
-            $url = "https://starbritetest.app.vumc.org/s/sri/api/$resourcePath";
-        }
+        $server = self::getServer();
+        $url = "https://$server/s/sri/api/$resourcePath";
         $url .= '/' . implode('/', array_map('urlencode', $getParams));
         $opts = [
             CURLOPT_RETURNTRANSFER => 1,

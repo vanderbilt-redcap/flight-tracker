@@ -157,37 +157,110 @@ class NameMatcher {
 	}
 
 	# returns list($firstName, $lastName)
-	public static function splitName($name) {
+	public static function splitName($name, $parts = 2) {
+        if ($parts <= 0) {
+            throw new \Exception("Parts must be positive! ($parts)");
+        }
 		if ($name == "") {
-			return array("", "");
+		    $returnValues = [];
+		    for ($i = 0; $i < $parts; $i++) {
+		        $returnValues[] = "";
+            }
+			return $returnValues;
 		}
+		if ($parts == 1) {
+		    return [$name];
+        }
+
 		$nodes = preg_split("/\s*,\s*/", $name);
 		if (count($nodes) == 1) {
             $nodes = preg_split("/\s*\band\b\s*/", $name);
         }
 		if (count($nodes) >= 2) {
 			# last-name, first-name
-			return array($nodes[1], $nodes[0]);
+            if ($parts == 2) {
+                return [$nodes[1], $nodes[0]];
+            } else if ($parts == 1) {
+                return [$nodes[0]];
+            } else if (count($nodes) >= $parts) {
+                $returnValues = [$nodes[1], $nodes[0]];
+                for ($i = 2; $i < $parts; $i++) {
+                    $returnValues[] = $nodes[$i];
+                }
+                return $returnValues;
+            } else {     // $parts > count($nodes)
+                $returnValues = [$nodes[1], $nodes[0]];
+                for ($i = 2; $i < count($nodes); $i++) {
+                    $returnValues[] = $nodes[$i];
+                }
+                for ($i = count($nodes); $i < $parts; $i++) {
+                    $returnValues[] = "";
+                }
+                return $returnValues;
+            }
 		} else if (count($nodes) == 1) {
-			$nodes = preg_split("/\s+/", $name);
-            if (count($nodes) == 2) {
-                return array($nodes[0], $nodes[1]);
-            } else if (count($nodes) == 3) {
-                if (in_array(strtolower($nodes[1]), ["von", "van"])) {
-                    return array($nodes[0],  $nodes[1]." ".$nodes[2]);
+            if ($parts >= 2) {
+			    do {
+			        $changed = FALSE;
+                    if (count($nodes) == $parts) {
+                        return $nodes;
+                    } else if (count($nodes) > $parts) {
+                        $lastNodeIdx = count($nodes) - 1;
+                        if (in_array(strtolower($nodes[$lastNodeIdx - 1]), ["von", "van"])) {
+                            $newNodes = [];
+                            for ($i = 0; $i < $lastNodeIdx - 2; $i++) {
+                                $newNodes[] = $nodes[$i];
+                            }
+                            $newNodes[] = $nodes[$lastNodeIdx - 1]." ".$nodes[$lastNodeIdx];
+                            $changed = TRUE;
+                            $nodes = $newNodes;
+                        }
+                    } else if (($lastNodeIdx > 2) && in_array(strtolower($nodes[$lastNodeIdx - 2]), ["von", "van"]) && (strtolower($nodes[$lastNodeIdx - 1]) == "der")) {
+                        $newNodes = [];
+                        for ($i = 0; $i < $lastNodeIdx - 3; $i++) {
+                            $newNodes[] = $nodes[$i];
+                        }
+                        $newNodes[] = $nodes[$lastNodeIdx - 2]." ".$nodes[$lastNodeIdx - 1]." ".$nodes[$lastNodeIdx];
+                        $changed = TRUE;
+                        $nodes = $newNodes;
+                    } else if (count($nodes) < $parts) {
+                        $returnValues = [$nodes[0]];
+                        for ($i = 0; $i < $parts - count($nodes); $i++) {
+                            $returnValues[] = "";
+                        }
+                        for ($i = 1; $i < count($nodes); $i++) {
+                            $returnValues[] = $nodes[$i];
+                        }
+                        return $returnValues;
+                    }
+                } while($changed);
+
+                $returnValues = [];
+                if (count($nodes) > $parts) {
+                    $first = $nodes[0];
+                    for ($i = 1; $i < count($nodes) - $parts; $i++) {
+                        $first .= " ".$nodes[$i];
+                    }
+                    $returnValues[] = $first;
+                    for ($i = count($nodes) - $parts; $i < $parts; $i++) {
+                        $returnValues[] = $nodes[$i];
+                    }
+                    return $returnValues;
+                } else if (count($nodes) < $parts) {
+                    $lastNodeIdx = count($nodes) - 1;
+                    $returnValues[] = $nodes[0];
+                    for ($i = 1; $i < $lastNodeIdx; $i++) {
+                        $returnValues[] = $nodes[$i];
+                    }
+                    for ($i = $lastNodeIdx; $i < $parts - 1; $i++) {
+                        $returnValues[] = "";
+                    }
+                    $returnValues[] = $nodes[$lastNodeIdx];
+                    return $returnValues;
+                } else {
+                    throw new \Exception("This should never happen!");
                 }
-                return array($nodes[0] . " " . $nodes[1], $nodes[2]);
-            } else if (count($nodes) == 4) {
-                if (in_array(strtolower($nodes[1]), ["von", "van"]) && (strtolower($nodes[2]) == "der")) {
-                    return array($nodes[0], $nodes[1]." ".$nodes[2]." ".$nodes[3]);
-                }
-                return array($nodes[0]." ".$nodes[1]." ".$nodes[2], $nodes[3]);
-			} else if (count($nodes) == 1) {
-				return array($nodes[0], "");
-			} else {
-				Application::log("$name is larger than 4 nodes!");
-				return array($name, "");
-			}
+            }
 		}
 		return array("", "");
 	}

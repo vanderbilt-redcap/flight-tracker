@@ -12,6 +12,8 @@ require_once(dirname(__FILE__)."/GrantLexicalTranslator.php");
 require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
+define('SHOW_GRANT_DEBUG', FALSE);
+
 class Grant {
 	public function __construct($lexicalTranslator) {
 		$this->translator = $lexicalTranslator;
@@ -1285,12 +1287,12 @@ class Grant {
 		$coeusSources = self::getCoeusSources();
 		$awardNo = $this->getNumber();
 
-		// Application::log($awardNo.": First Pass");
+		if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": First Pass"); }
 		if ($type = $this->lexicallyTranslate($awardNo)) {
 			return $type;
 		}
 
-		// Application::log($awardNo.": Second Pass");
+		if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass"); }
 		$trainingGrantSources = array("coeus", "reporter", "exporter");
 		if (($awardNo == "") || preg_match("/\b000\b/", $awardNo)) {
 			return "N/A";
@@ -1328,23 +1330,23 @@ class Grant {
 					$yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
 					if (($yearspan >= 3) && ($specs['direct_budget'] / $yearspan > 250000)) {
 						if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
-							// Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600)));
+							if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600))); }
 							return "R01 Equivalent";
 						} else {
-							// Application::log($awardNo.": Second Pass - exit D");
+							if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit D"); }
 						}
 					} else {
-						// Application::log($awardNo.": Second Pass - exit C");
+						if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit C"); }
 					}
 				} else {
-					// Application::log($awardNo.": Second Pass - exit B");
+					if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit B"); }
 				}
 			} else {
-				// Application::log($awardNo.": Second Pass - exit A");
+				if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit A"); }
 			}
 		}
 
-		// Application::log($awardNo.": Third Pass");
+		if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Third Pass"); }
 		if (preg_match("/^[Kk]23 - /", $awardNo)) {
 			return "Individual K";
 		} else if (preg_match("/^\d?[Kk]24/", $awardNo)) {
@@ -1380,8 +1382,10 @@ class Grant {
 			}
 		}
 
-		// Application::log($awardNo.": Final Pass");
-		// Application::log($awardNo.": ".json_encode($specs));
+		if (SHOW_GRANT_DEBUG) {
+		    Application::log($awardNo.": Final Pass");
+		    Application::log($awardNo.": ".json_encode($specs));
+        }
 		return "N/A";
 	}
 

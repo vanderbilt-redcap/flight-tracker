@@ -317,7 +317,7 @@ class Grants {
 							}
 						}
 
-						$priorGF = new PriorGrantFactory($this->name, $this-lexicalTranslator, $this->metadata);
+						$priorGF = new PriorGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
 						$priorGF->processRow($row);
 						$priorGFGrants = $priorGF->getGrants();
 						foreach ($priorGFGrants as $grant) {
@@ -532,45 +532,107 @@ class Grants {
 
 	private static function orderGrantsByStart($awards) {
 		if (self::isAssoc($awards)) {
-			$startingTimes = array();
-			foreach ($awards as $awardNo => $grant) {
-				$start = $grant->getVariable('start');
-				if ($start) {
-					$startingTimes[$awardNo] = $start; 
-				} else {
-				    Application::log("A: $awardNo lacks a start ".json_encode($grant->toArray()));
+            $startingTimes = array();
+            foreach ($awards as $awardNo => $grant) {
+                $start = $grant->getVariable('start');
+                if (REDCapManagement::isDate($start)) {
+                    $start = strtotime($start);
                 }
-			}
-			asort($startingTimes);
-			$awardsByStart = array();	// a list of the awards used, ordered by starting time
-			foreach ($startingTimes as $awardNo => $ts) {
-				if (isset($awards[$awardNo])) {
-					$awardsByStart[$awardNo] = $awards[$awardNo];
-				}
-			}
-			return $awardsByStart;
-		} else {
-			$startingTimes = array();
-			$i = 0;
-			foreach ($awards as $grant) {
-				$start = $grant->getVariable('start');
-				if ($start) {
-					$startingTimes[$i] = $start;
-				} else {
+                if (SHOW_DEBUG) {
+                    Application::log($awardNo . " has $start; " . date("Y-m-d", $start) . " " . $grant->getVariable("source"));
+                }
+                if ($start) {
+                    $startingTimes[$awardNo] = $start;
+                } else {
+                    Application::log("A: $awardNo lacks a start " . json_encode($grant->toArray()));
+                }
+            }
+        } else {
+            $startingTimes = array();
+            $i = 0;
+            foreach ($awards as $grant) {
+                $start = $grant->getVariable('start');
+                if (REDCapManagement::isDate($start)) {
+                    $start = strtotime($start);
+                }
+                if (SHOW_DEBUG) {
+                    Application::log($grant->getNumber()." has $start; ".date("Y-m-d", $start)." ".$grant->getVariable("source"));
+                }
+                if ($start) {
+                    $startingTimes[$i] = $start;
+                } else {
                     Application::log("B: ".$grant->getBaseAwardNumber()." lacks a start ".json_encode($grant->toArray()));
                 }
-				$i++;
-			}
-			asort($startingTimes);
-			$awardsByStart = array();
-			foreach ($startingTimes as $i => $ts) {
-				if (isset($awards[$i])) {
-					array_push($awardsByStart, $awards[$i]);
-				}
-			}
-			return $awardsByStart;
-		}
+                $i++;
+            }
+        }
+        $startingTimes = self::orderDuplicateTsByTimeAndType($startingTimes, $awards);
+        $awardsByStart = array();	// a list of the awards used, ordered by starting time
+        foreach ($startingTimes as $idx => $ts) {
+            if (isset($awards[$idx])) {
+                if (is_numeric($idx)) {
+                    $awardsByStart[] = $awards[$idx];
+                } else {
+                    $awardNo = $idx;
+                    $awardsByStart[$awardNo] = $awards[$awardNo];
+                }
+            }
+        }
+        return $awardsByStart;
 	}
+
+	# Secondary order, after order by timestamp
+	private static function orderDuplicateTsByTimeAndType($startingTimes, $awards) {
+	    $newTimes = [];
+	    $idxesByTs = [];
+	    foreach ($startingTimes as $idx => $ts) {
+	        $ts = intval($ts);
+	        if (!isset($idxesByTs[$ts])) {
+                $idxesByTs[$ts] = [];
+            }
+	        $idxesByTs[$ts][] = $idx;
+        }
+	    ksort($idxesByTs);
+	    $awardTypeLookup = Grant::getAwardTypes();
+	    foreach ($idxesByTs as $ts => $indexes) {
+	        if (count($indexes) == 1) {
+	            $newTimes[$indexes[0]] = $ts;
+            } else {
+	            $awardTypes = [];
+	            foreach ($indexes as $idx) {
+	                $awardTypes[$idx] = $awardTypeLookup[$awards[$idx]->getVariable("type")];
+                }
+	            asort($awardTypes);
+	            $newlyOrderedAwardTypes = [];
+	            $awardTypePriorities = [
+	                [10],         // Training Grant Appt.
+                    [7],          // Research Fellowship
+                    [1, 2, 3, 4], // K-class
+                    [9],          // K99/R00
+                    [5, 6],       // R-class
+                    [8],          // Training Grant Admin.
+                ];
+	            $seenTypes = [];
+	            foreach ($awardTypePriorities as $currAwardTypes) {
+	                $seenTypes = array_unique(array_merge($seenTypes, $currAwardTypes));
+                    foreach ($awardTypes as $idx => $awardTypeIdx) {
+                        if (in_array($awardTypeIdx, $currAwardTypes)) {
+                            $newlyOrderedAwardTypes[] = $idx;
+                        }
+                    }
+                }
+                foreach ($awardTypes as $idx => $awardTypeIdx) {
+                    if (!in_array($awardTypeIdx, $seenTypes)) {   // Others
+                        $newlyOrderedAwardTypes[] = $idx;
+                    }
+                }
+                foreach ($newlyOrderedAwardTypes as $idx) {
+                    $newTimes[$idx] = $ts;
+                }
+            }
+        }
+	    return $newTimes;
+    }
 
 	private function compileGrantsForConversion() {
 		# Strategy: Do not include N/A's. Sort by start timestamp and then look for duplicates
@@ -703,7 +765,7 @@ class Grants {
 		# 5. order grants
 		$awardsByStart = self::orderGrantsByStart($awardsBySource);
 		foreach ($awardsByStart as $awardNo => $grant) {
-			if (SHOW_DEBUG) { Application::log("5. awardsByStart: ".$awardNo." ".$grant->getVariable("type")); }
+			if (SHOW_DEBUG) { Application::log("5. awardsByStart: ".$awardNo." ".$grant->getVariable("type")." ".$grant->getVariable("start")); }
 		}
 
 		# 6. remove duplicates by sources; most-preferred by sourceOrder
@@ -928,9 +990,9 @@ class Grants {
 			return $grants[0];
 		} else {
 			$basisGrant = $grants[0];
-			if (SHOW_DEBUG) { Application::log("Using basisGrant: ".$basisGrant->getNumber()." ".$basisGrant->getVariable("type")." from ".$basisGrant->getVariable("source")." with $".$basisGrant->getVariable("budget")); }
+			if (SHOW_DEBUG) { Application::log("Using basisGrant: ".$basisGrant->getNumber()." ".$basisGrant->getVariable("type")." from ".$basisGrant->getVariable("source")." with $".$basisGrant->getVariable("budget")." ".$basisGrant->getVariable("start")); }
 			for ($i = 1; $i < count($grants); $i++) {
-				if (SHOW_DEBUG) { Application::log("combineGrants $i ".$grants[$i]->getNumber().": ".$grants[$i]->getVariable("type")); }
+				if (SHOW_DEBUG) { Application::log("combineGrants $i ".$grants[$i]->getNumber().": ".$grants[$i]->getVariable("type")." from ".$grants[$i]->getVariable("source")." ".$grants[$i]->getVariable("start")); }
 				$currGrant = $grants[$i];
 				if (($currGrant->getVariable("type") != "N/A") && !$currGrant->getVariable("takeover")) {
 					# use first grant that is not N/A as basis or is not a takeover

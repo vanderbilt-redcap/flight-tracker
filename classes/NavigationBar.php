@@ -40,15 +40,23 @@ class NavigationBar {
 			return $link;
 		} else if (!preg_match("/pid=\d+/", $link)) {
 			if (!preg_match("/\?/", $link)) {
-				return $link . "?pid=".$pid;
+				$link .= "?pid=".$pid;
 			} else if (preg_match("/\?\w/", $link)) {
-				return $link . "&pid=".$pid;
+				$link .= "&pid=".$pid;
 			} else {
-				return $link . "pid=".$pid;
+				$link .= "pid=".$pid;
 			}
-		} else {
-			return $link;
 		}
+		if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isRecordPage") && Application::isRecordPage($link) && ($_GET['id'] || $_GET['record'])) {
+		    if ($_GET['record']) {
+		        $record = $_GET['record'];
+            } else {
+		        $record = $_GET['id'];
+            }
+		    $link .= "&record=$record";
+        }
+
+		return $link;
 	}
 
 	private static function isJavascript($link) {
