@@ -1282,15 +1282,21 @@ class Grant {
 	# uses private variable specs
 	# Finds the award type
 	# difficult
-	private function getCurrentType() {
-		$specs = $this->specs;
-		$coeusSources = self::getCoeusSources();
-		$awardNo = $this->getNumber();
+	private function getCurrentType()
+    {
+        $specs = $this->specs;
+        $awardNo = $this->getNumber();
 
-		if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": First Pass"); }
-		if ($type = $this->lexicallyTranslate($awardNo)) {
-			return $type;
-		}
+        if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": First Pass"); }
+        if ($type = $this->lexicallyTranslate($awardNo)) {
+            return $type;
+        }
+
+        return self::calculateAwardType($specs, $awardNo);
+    }
+
+    public static function calculateAwardType($specs, $awardNo) {
+        $coeusSources = self::getCoeusSources();
 
 		if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass"); }
 		$trainingGrantSources = array("coeus", "reporter", "exporter");

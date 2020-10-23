@@ -57,6 +57,7 @@ function getPubs($token, $server, $pid) {
 				}
 			}
 		}
+        Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $redcapData);
 		binREDCapRows($redcapData, $citationIds);
 	}
 	foreach ($citationIds as $type => $typeCitationIds) {
@@ -131,19 +132,19 @@ function processUncategorizedRow($token, $server, $row) {
 		CareerDev::log("Uncategorized row: {$row['record_id']}:{$row['redcap_repeat_instance']} $pmid");
 		echo "Uncategorized row: {$row['record_id']}:{$row['redcap_repeat_instance']} $pmid\n";
 		$iCite = new iCite($pmid);
-		if ($iCite->getVariable("is_research_article")) {
+		if ($iCite->getVariable($pmid, "is_research_article")) {
 			$uploadRow = array(
 						"record_id" => $row['record_id'],
 						"redcap_repeat_instrument" => "citation",
 						"redcap_repeat_instance" => $row['redcap_repeat_instance'],
-						"citation_doi" => $iCite->getVariable("doi"),
-						"citation_is_research" => $iCite->getVariable("is_research_article"),
-						"citation_num_citations" => $iCite->getVariable("citation_count"),
-						"citation_citations_per_year" => $iCite->getVariable("citations_per_year"),
-						"citation_expected_per_year" => $iCite->getVariable("expected_citations_per_year"),
-						"citation_field_citation_rate" => $iCite->getVariable("field_citation_rate"),
-						"citation_nih_percentile" => $iCite->getVariable("nih_percentile"),
-						"citation_rcr" => $iCite->getVariable("relative_citation_ratio"),
+						"citation_doi" => $iCite->getVariable($pmid, "doi"),
+						"citation_is_research" => $iCite->getVariable($pmid, "is_research_article"),
+						"citation_num_citations" => $iCite->getVariable($pmid, "citation_count"),
+						"citation_citations_per_year" => $iCite->getVariable($pmid, "citations_per_year"),
+						"citation_expected_per_year" => $iCite->getVariable($pmid, "expected_citations_per_year"),
+						"citation_field_citation_rate" => $iCite->getVariable($pmid, "field_citation_rate"),
+						"citation_nih_percentile" => $iCite->getVariable($pmid, "nih_percentile"),
+						"citation_rcr" => $iCite->getVariable($pmid, "relative_citation_ratio"),
 						);
 			upload(array($uploadRow), $token, $server);
 		}

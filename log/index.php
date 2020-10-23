@@ -112,7 +112,7 @@ $module = Application::getModule();
 
 	<p class='centered'><button onclick='submitLogs("<?= Application::link("log/email-logs.php") ?>"); return false;'>Report Today's Logs to Developers</button></p>
 
-	<table id="em-log-module-log-entries" class="table table-striped table-bordered"></table>
+	<table id="em-log-module-log-entries" class="table table_search table-striped table-bordered"></table>
 
 	<script>
 		Swal = Swal.mixin({
@@ -158,53 +158,54 @@ $module = Application::getModule();
 			var lastOverlayDisplayTime = 0
 			var table = $('#em-log-module-log-entries').DataTable({
 				"pageLength": 100,
-		        	"processing": true,
-		        	"serverSide": true,
-		        	"ajax": {
+                "processing": true,
+		        "serverSide": true,
+		        "ajax": {
 					url: '<?= Application::link("log/get-logs.php") ?>'
 				},
 				"autoWidth": false,
-				"searching": false,
+				"searching": true,
 				"ordering": false,
 				"order": [[ 0, "desc" ]],
 				"columns": [
 					{
 						data: 'timestamp',
-						title: 'Date/Time'
+						title: 'Date/Time',
+                        searchable: false
 					},
 					{
 						data: 'message',
-						title: 'Message'
+						title: 'Message',
+                        searchable: true
 					},
 				],
 				"dom": 'Blfptip'
-		    }).on( 'draw', function () {
-				var ellipsis = $('.dataTables_paginate .ellipsis')
-				ellipsis.addClass('paginate_button')
-				ellipsis.click(function(e){
-					var jumpToPage = async function(){
-						const response = await Swal.fire({
-							text: 'What page number would like like to jump to?',
-							input: 'text',
-							showCancelButton: true
-						})
+            }).on( 'draw', function () {
+                var ellipsis = $('.dataTables_paginate .ellipsis')
+                ellipsis.addClass('paginate_button')
+                ellipsis.click(function (e) {
+                    var jumpToPage = async function () {
+                        const response = await Swal.fire({
+                            text: 'What page number would like like to jump to?',
+                            input: 'text',
+                            showCancelButton: true
+                        })
 
-						var page = response.value
+                        var page = response.value
 
-						var pageCount = table.page.info().pages
+                        var pageCount = table.page.info().pages
 
-						if(isNaN(page) || page < 1 || page > pageCount){
-							Swal.fire('', 'You must enter a page between 1 and ' + pageCount)
-						}
-						else{
-							table.page(page-1).draw('page')
-						}
-					}
+                        if (isNaN(page) || page < 1 || page > pageCount) {
+                            Swal.fire('', 'You must enter a page between 1 and ' + pageCount)
+                        } else {
+                            table.page(page - 1).draw('page')
+                        }
+                    }
 
-					jumpToPage()
+                    jumpToPage()
 
-					return false
-				})
+                    return false
+                })
 		    }).on( 'processing.dt', function(e, settings, processing){
 		    	// if(processing){
 					// $.LoadingOverlay('show')
@@ -222,6 +223,7 @@ $module = Application::getModule();
 			// $.LoadingOverlaySetup({
 				// 'background': 'rgba(30,30,30,0.7)'
 			// })
-		})
+
+        })
 	</script>
 </div>

@@ -6,13 +6,23 @@ require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class iCite {
-	public function __construct($pmid) {
-		$this->pmid = $pmid;
-		$this->data = self::getData($pmid);
+	public function __construct($pmids) {
+		$this->pmids = $pmids;
+		$this->data = self::getData($pmids);
 	}
 
-	private static function getData($pmid) {
-		$url = "https://icite.od.nih.gov/api/pubs?pmids=".$pmid."&format=json";
+	private static function getData($pmids) {
+	    if (!is_array($pmids)) {
+	        $pmids = [$pmids];
+        }
+	    $maxSize = 10;
+	    for ($i = 0; $i < count($pmids); $i += $maxSize) {
+	        $queue = [];
+	        for ($j = $i; ($j < count($pmids)) && ($j < $i + $maxSize); $j++) {
+	            $queue[] = $pmids[$j];
+            }
+        }
+		$url = "https://icite.od.nih.gov/api/pubs?pmids=".implode(",", $queue)."&format=json";
 		list($resp, $json) = REDCapManagement::downloadURL($url);
 		Application::log("iCite ".$url.": $resp");
 
@@ -21,31 +31,47 @@ class iCite {
 			return array();
 		}
 		// Application::log(json_encode($data['data'][0]));
-		return $data['data'][0];
+		return $data['data'];
 	}
 
-	public function getPMID() {
-		return $this->pmid;
+	public function getPMIDs() {
+		return $this->pmids;
 	}
 
-	public function getVariable($var) {
-		if (isset($this->data[$var])) {
-			if ($var == "is_research_article") {
-				if ($this->data["is_research_article"]) {
-					return "1";
-				} else {
-					return "0";
-				}
-			}
-			return strval($this->data[$var]);
-		}
+	public function getVariable($pmid, $var) {
+	    foreach ($this->data as $datum) {
+	        if ($datum['pmid'] == $pmid) {
+                if (isset($datum[$var])) {
+                    if ($var == "is_research_article") {
+                        if ($datum["is_research_article"]) {
+                            return "1";
+                        } else {
+                            return "0";
+                        }
+                    }
+                    return strval($datum[$var]);
+                }
+            }
+        }
 		return "";
 	}
 
-	public function hasData() {
-	    return $this->data && !empty($this->data);
+	public function hasData($pmid = NULL) {
+	    if ($pmid) {
+	        if (!$this->data) {
+	            return FALSE;
+            }
+	        foreach ($this->data as $datum) {
+	            if ($datum['pmid'] == $pmid) {
+	                return TRUE;
+                }
+            }
+	        return FALSE;
+        } else {
+            return $this->data && !empty($this->data);
+        }
     }
 
-	private $pmid;
+	private $pmids;
 	private $data;
 }

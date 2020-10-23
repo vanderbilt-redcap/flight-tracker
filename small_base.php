@@ -1534,7 +1534,24 @@ function importCustomFields($filename, $token, $server, $pid) {
 		$html .= "<div class='red centered'>".implode("<br>", $errors)."</div>\n";
 	} else if (!empty($upload)) {
 		$feedback = Upload::rows($upload, $token, $server);
-		$html .= "<div class='green centered'>Success! Imported {$newCounts['new']} lines for new scholars and {$newCounts['existing']} lines for existing scholars.</div>\n";
+		$hasCitation = FALSE;
+		foreach ($upload as $row) {
+		    if ($row['redcap_repeat_instrument'] == "citation") {
+		        $hasCitation = TRUE;
+		        break;
+            }
+        }
+		$pubsLine = "";
+		if ($hasCitation) {
+		    $metadata = Download::metadata($token, $server);
+            $indexedUpload = REDCapManagement::indexREDCapData($upload);
+            $numPubsAffected = 0;
+            foreach ($indexedUpload as $recordId => $rows) {
+                $numPubsAffected += Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $rows);
+            }
+            $pubsLine = " $numPubsAffected publications downloaded.";
+        }
+		$html .= "<div class='green centered'>Success! Imported {$newCounts['new']} lines for new scholars and {$newCounts['existing']} lines for existing scholars.$pubsLine</div>\n";
 	} else {
 		$html .= "<div class='red centered'>No action taken!</div>\n";
 	}

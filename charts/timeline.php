@@ -25,6 +25,8 @@ require_once(dirname(__FILE__)."/../classes/Links.php");
 <style>
 body { font-size: 12px; }
 #visualization { background-color: white; }
+.Unfunded { border-color: #888888; }
+.Awarded { border-color: red; }
 </style>
 
 <?php
@@ -50,7 +52,61 @@ body { font-size: 12px; }
 	$id = 1;
 	$maxTs = 0;
 	$minTs = time();
-	foreach ($grants->getGrants("prior") as $grant) {
+
+    $skipNumbers = ["000"];
+    $validStatuses = ["Awarded", "Unfunded"];
+    foreach ($rows as $row) {
+        if (($row['redcap_repeat_instrument'] == "coeus2")
+            && !in_array($row['coeus2_agency_grant_number'], $skipNumbers)
+            && in_array($row['coeus2_award_status'], $validStatuses)) {
+
+            $submissionTs = strtotime($row['coeus2_submitted_to_agency']);
+            $startTs = FALSE;
+            $endTs = FALSE;
+
+            $grantAry = [];
+            $grantAry['id'] = $id;
+            $grantAry['start'] = date("Y-m-d", $submissionTs);
+            $grantAry['className'] = $row['coeus2_award_status'];
+            $grantAry['type'] = "point";
+            $grantNumber = $row['coeus2_agency_grant_number'];
+            $titleLength = 25;
+            if (strlen($row['coeus2_title']) > $titleLength) {
+                $truncatedTitle = substr($row['coeus2_title'], 0, $titleLength)."...";
+            } else {
+                $truncatedTitle = $row['coeus2_title'];
+            }
+            if ($grantNumber) {
+                $grantNumber .= " Application";
+            } else {
+                $grantNumber = $row['coeus2_award_status'].": ".$truncatedTitle;
+            }
+            $grantAry['content'] = Links::makeFormLink($pid, $recordId, $event_id, $grantNumber, "coeus2", $row['redcap_repeat_instance']);
+            array_push($grantsAndPubs, $grantAry);
+
+            if ($endTs) {
+                if ($maxTs < $endTs) {
+                    $maxTs = $endTs;
+                }
+            } else {
+                if ($maxTs < $startTs) {
+                    $maxTs = $startTs;
+                }
+                if ($maxTs < $submissionTs) {
+                    $maxTs = $submissionTs;
+                }
+            }
+            if ($startTs && ($minTs > $startTs)) {
+                $minTs = $startTs;
+            }
+            if ($submissionTs && ($minTs > $submissionTs)) {
+                $minTs = $submissionTs;
+            }
+            $id++;
+        }
+    }
+
+    foreach ($grants->getGrants("prior") as $grant) {
 		$grantAry = array(
 					"id" => $id,
 					"content" => $grant->getBaseNumber()." (".$grant->getVariable("type").")",
@@ -66,7 +122,7 @@ body { font-size: 12px; }
 			$grantAry['end'] = $end;
 			$endTs = strtotime($end);
 		} else {
-			$grantAray['type'] = "box";
+			$grantAry['type'] = "box";
 		}
 
 		if ($endTs) {

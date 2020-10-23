@@ -9,7 +9,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.21.2";
+		return "2.22.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -605,7 +605,8 @@ class CareerDev {
 				$ary["Enable ViDER Visualizations"] = $r."/ExternalModules/manager/project.php?pid=".$pid;
 			}
 			if (self::isVanderbilt()) {
-				$ary["Sync VUNet List to COEUS"] = self::link("/syncVUNet.php");
+			    $ary['Evaluate Grant Submissions'] = self::link("/submissions.php");
+                // $ary["Sync VUNet List to COEUS"] = self::link("/syncVUNet.php");
 			}
 			return $ary;
 		}

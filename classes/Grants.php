@@ -123,7 +123,24 @@ class Grants {
 		if ($type == "all") {
 		    return $this->dedupedGrants;
         }
-		return array();
+
+		$allSources = [];
+        foreach ($this->nativeGrants as $grant) {
+            $source = $grant->getVariable("source");
+            if (in_array($source, $allSources)) {
+                $allSources[] = $source;
+            }
+        }
+		if (in_array($type, $allSources)) {
+		    $sourceGrants = [];
+		    foreach ($this->nativeGrants as $grant) {
+		        if ($grant->getVariable("source") == $type) {
+		            $sourceGrants[] = $grant;
+                }
+            }
+		    return $sourceGrants;
+        }
+		return [];
 	}
 
 	private static function makeDollarsAndCents($cost) {

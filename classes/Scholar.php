@@ -2096,6 +2096,25 @@ class Scholar {
 				}
 			} 
 		}
+
+		$rankResult = $this->getCurrentRank($rows);
+		if (in_array($rankResult->getValue(), [6, 7])) {
+		    return new Result(3, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);;   // Tenured
+        }
+        if (in_array($rankResult->getValue(), [4])) {
+            return new Result(1, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);   // Not Tenure track
+        }
+
+        $tenured = ["Professor", "Assoc Professor"];
+        foreach ($rows as $row) {
+            if ($row['redcap_repeat_instrument'] == "ldap") {
+                if (in_array($row['ldap_vanderbiltpersonjobname'], $tenured)) {
+                    return new Result(3, "ldap", "Computer-Generated", "", $this->pid);;
+                } else if (preg_match("/Research/", $row['ldap_vanderbiltpersonjobname'])) {
+                    return new Result(1, "ldap", "Computer-Generated", "", $this->pid);;
+                }
+            }
+        }
 		return $result;
 	}
 

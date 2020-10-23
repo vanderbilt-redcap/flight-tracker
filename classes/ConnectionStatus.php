@@ -15,20 +15,22 @@ class ConnectionStatus {
     public function test() {
         $tests = [];
 
-        $data = file_get_contents($this->url);
-        $bytes = strlen($data);
-        if ($bytes > 0) {
-            $tests['file_get_contents'] = REDCapManagement::pretty($bytes)." bytes returned.";
-        } else {
-            $tests['file_get_contents'] = "ERROR: No data returned!";
-        }
-
         list($returnCode, $data) = REDCapManagement::downloadURL($this->url);
         $bytes = strlen($data);
         if ($bytes > 0) {
             $tests['downloadURL'] = REDCapManagement::pretty($bytes)." bytes returned with response code of $returnCode.";
         } else {
             $tests['downloadURL'] = "ERROR: No data returned with response code of $returnCode!";
+        }
+
+        if ($returnCode != 404) {
+            $data = file_get_contents($this->url);
+            $bytes = strlen($data);
+            if ($bytes > 0) {
+                $tests['file_get_contents'] = REDCapManagement::pretty($bytes)." bytes returned.";
+            } else {
+                $tests['file_get_contents'] = "ERROR: No data returned!";
+            }
         }
 
         $timeout = 15;

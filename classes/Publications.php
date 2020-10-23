@@ -179,7 +179,6 @@ class Publications {
 	public function updateMetrics() {
 	    $upload = [];
 	    $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
-	    $autoInclude = ["redcap_repeat_instrument", "redcap_repeat_instance"];
 	    $pmids = [];
 	    foreach($this->rows as $row) {
 	        if (($row['redcap_repeat_instrument'] == "citation") && $row["citation_pmid"]) {
@@ -187,35 +186,17 @@ class Publications {
 	            if ($pmid) {
                     $pmids[] = $pmid;
                 }
-                $iCite = new iCite($pmid);
-                if ($iCite->hasData()) {
-                    $doi = $iCite->getVariable("doi");
-                    $newFields = [
-                        "record_id" => $this->recordId,
-                        "redcap_repeat_instrument" => "citation",
-                        "redcap_repeat_instance" => $row['redcap_repeat_instance'],
-                        "citation_pmid" => $pmid,
-                        "citation_doi" => $doi,
-                        "citation_is_research" => $iCite->getVariable("is_research_article"),
-                        "citation_num_citations" => $iCite->getVariable("citation_count"),
-                        "citation_citations_per_year" => $iCite->getVariable("citations_per_year"),
-                        "citation_expected_per_year" => $iCite->getVariable("expected_citations_per_year"),
-                        "citation_field_citation_rate" => $iCite->getVariable("field_citation_rate"),
-                        "citation_nih_percentile" => $iCite->getVariable("nih_percentile"),
-                        "citation_rcr" => $iCite->getVariable("relative_citation_ratio"),
-                        "citation_icite_last_update" => date("Y-m-d"),
-                    ];
-                    $uploadRow = REDCapManagement::filterForREDCap($newFields, $metadataFields);
-                    if ($doi) {
-                        $altmetricRow = self::getAltmetricRow($doi, $metadataFields);
-                        $uploadRow = array_merge($uploadRow, $altmetricRow);
-                    }
-                    $upload[] = $uploadRow;
-                    usleep(1150000);   // altmetric has a 1 second rate-limit
-                }
+	            $setupFields = [
+	                "record_id" => $this->recordId,
+                    "redcap_repeat_instrument" => "citation",
+                    "redcap_repeat_instance" => $row['redcap_repeat_instance'],
+                    "citation_pmid" => $pmid,
+                ];
+	            $upload[] = $setupFields;
             }
         }
-	    self::addTimesCited($upload, $this->pid, $pmids, $metadataFields);
+        self::addTimesCited($upload, $this->pid, $pmids, $metadataFields);
+        self::updateAssocGrantsAndBibliometrics($upload, $pmids, $this->metadata, $this->recordId);
 	    if (!empty($upload)) {
 	        Upload::rows($upload, $this->token, $this->server);
         }
@@ -435,6 +416,61 @@ class Publications {
 		return [];
 	}
 
+	# returns number of citations filled in
+	public static function uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $redcapData) {
+	    $blankPMIDs = [];
+	    $blankPMCs = [];
+	    $skip = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance", "citation_pmid", "citation_pmcid"];
+	    foreach ($redcapData as $row) {
+            $recordId = $row['record_id'];
+            if ($row['redcap_repeat_instrument'] == "citation") {
+                $numFilled = 0;
+                foreach ($row as $field => $value) {
+                    if (!in_array($field, $skip)) {
+                        if ($value) {
+                            $numFilled++;
+                        }
+                    }
+                }
+                if ($numFilled === 0) {
+                    $instance = $row['redcap_repeat_instance'];
+                    if ($row['citation_pmid']) {
+                        $blankPMIDs[$instance] = $row['citation_pmid'];
+                    } else if ($row['citation_pmcid']) {
+                        $blankPMCs[$instance] = $row['citation_pmcid'];
+                    } else {
+                        Application::log("ERROR: Citation missing PMID and PMC: Record " . $row['record_id'] . " Instance $instance");
+                    }
+                }
+            }
+        }
+	    foreach ($blankPMCs as $instance => $pmcid) {
+            $pmid = self::PMCToPMID($pmcid);
+            $blankPMIDs[$instance] = $pmid;
+        }
+
+	    if (!empty($blankPMIDs)) {
+            $uploadRows = self::getCitationsFromPubMed(array_values($blankPMIDs), $metadata, "", $recordId);
+            Application::log("Uploading ".count($uploadRows)." for $recordId");
+            $i = 0;
+            foreach ($uploadRows as $row) {
+                $pmid = $row["citation_pmid"];
+                foreach ($blankPMIDs as $instance => $pmid2) {
+                    if ($pmid == $pmid2) {
+                        $uploadRows[$i]["redcap_repeat_instance"] = $instance;
+                        break; // inner
+                    }
+                }
+                $i++;
+            }
+            if (!empty($uploadRows)) {
+                $feedback = Upload::rows($uploadRows, $token, $server);
+            }
+            return count($uploadRows);
+        }
+	    return 0;
+    }
+
 	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = array(), $pid = NULL) {
 		$upload = array();
 		$instance = $startInstance;
@@ -459,137 +495,182 @@ class Publications {
 			if (!$xml && ($tries >= $maxTries)) {
 				throw new \Exception("Cannot pull from eFetch! Attempted $tries times. ".$output);
 			}
+			$pmidsPulled = [];
 			foreach ($xml->PubmedArticle as $medlineCitation) {
-				$article = $medlineCitation->MedlineCitation->Article;
-				$authors = array();
-				if ($article->AuthorList->Author) {
-					foreach ($article->AuthorList->Author as $authorXML) {
-						$author = $authorXML->LastName." ".$authorXML->Initials;
-						if ($author != " ") {
-							$authors[] = $author;
-						} else {
-							$authors[] = strval($authorXML->CollectiveName);
-						}
-					}
-				}
-				$title = strval($article->ArticleTitle);
-				$title = preg_replace("/\.$/", "", $title); 
-
-				$pubTypes = array();
-				if ($article->PublicationTypeList) {
-					foreach ($article->PublicationTypeList->PublicationType as $pubType) {
-						array_push($pubTypes, strval($pubType));
-					}
-				}
-
-				$assocGrants = array();
-				if ($article->GrantList) {
-					foreach ($article->GrantList->Grant as $grant) {
-						array_push($assocGrants, strval($grant->GrantID));
-					}
-				}
-
-				$meshTerms = array();
-				if ($medlineCitation->MedlineCitation->MeshHeadingList) {
-					foreach ($medlineCitation->MedlineCitation->MeshHeadingList->MeshHeading as $mesh) {
-						array_push($meshTerms, strval($mesh->DescriptorName));
-					}
-				}
-
-				$journal = strval($article->Journal->ISOAbbreviation);
-				$journal = preg_replace("/\.$/", "", $journal);
-
-				$issue = $article->Journal->JournalIssue;	// not a strval but node!!!
-				$year = "";
-				$month = "";
-				$day = "";
-
-				$date = $issue->PubDate->Year." ".$issue->PubDate->Month;
-				if ($issue->PubDate->Year) {
-					$year = strval($issue->PubDate->Year);
-				}
-				if ($issue->PubDate->Month) {
-					$month = strval($issue->PubDate->Month);
-				}
-				if ($issue->PubDate->Day) {
-					$date = $date." ".$issue->PubDate->Day;
-					$day = "{$issue->PubDate->Day}";
-				}
-				$journalIssue = strval($issue->Volume);
-				$vol = "";
-				if ($issue->Volume) {
-					$vol = strval($issue->Volume);
-				}
-				$iss = "";
-				if ($issue->Issue) {
-					$journalIssue .= "(".strval($issue->Issue).")";
-					$iss = strval($issue->Issue);
-				}
-				$pages = "";
-				if ($article->Pagination->MedlinePgn) {
-					$journalIssue .= ":".$article->Pagination->MedlinePgn;
-					$pages = strval($article->Pagination->MedlinePgn);
-				}
-				$pmid = strval($medlineCitation->MedlineCitation->PMID);
-				$pubmed = "PubMed PMID: ".$pmid;
-				$pmcid = self::PMIDToPMC($pmid);
-				$pmcPhrase = "";
-				if ($pmcid) {
-					if (!preg_match("/PMC/", $pmcid)) {
-						$pmcid = "PMC".$pmcid;
-					}
-					$pmcPhrase = " ".$pmcid.".";
-				}
-
-				if ($recordId) {
-					$iCite = new iCite($pmid);
-					$row = [
-							"record_id" => "$recordId",
-							"redcap_repeat_instrument" => "citation",
-							"redcap_repeat_instance" => "$instance",
-							"citation_pmid" => $pmid,
-							"citation_pmcid" => $pmcid,
-							"citation_doi" => $iCite->getVariable("doi"),
-							"citation_include" => "",
-							"citation_source" => $src,
-							"citation_authors" => implode(", ", $authors),
-							"citation_title" => $title,
-							"citation_pub_types" => implode("; ", $pubTypes),
-							"citation_mesh_terms" => implode("; ", $meshTerms),
-							"citation_journal" => $journal,
-							"citation_issue" => $iss,
-							"citation_volume" => $vol,
-							"citation_year" => $year,
-							"citation_month" => $month,
-							"citation_day" => $day,
-							"citation_pages" => $pages,
-							"citation_grants" => implode("; ", $assocGrants),
-							"citation_is_research" => $iCite->getVariable("is_research_article"),
-							"citation_num_citations" => $iCite->getVariable("citation_count"),
-							"citation_citations_per_year" => $iCite->getVariable("citations_per_year"),
-							"citation_expected_per_year" => $iCite->getVariable("expected_citations_per_year"),
-							"citation_field_citation_rate" => $iCite->getVariable("field_citation_rate"),
-							"citation_nih_percentile" => $iCite->getVariable("nih_percentile"),
-							"citation_rcr" => $iCite->getVariable("relative_citation_ratio"),
-                            "citation_icite_last_update" => date("Y-m-d"),
-							"citation_complete" => "2",
-                    ];
-					$altmetricRow = self::getAltmetricRow($iCite->getVariable("doi"), $metadataFields);
-					$row = array_merge($row, $altmetricRow);
-					if (in_array($pmid, $confirmedPMIDs)) {
-					    $row['citation_include'] = '1';
+                $article = $medlineCitation->MedlineCitation->Article;
+                $authors = array();
+                if ($article->AuthorList->Author) {
+                    foreach ($article->AuthorList->Author as $authorXML) {
+                        $author = $authorXML->LastName . " " . $authorXML->Initials;
+                        if ($author != " ") {
+                            $authors[] = $author;
+                        } else {
+                            $authors[] = strval($authorXML->CollectiveName);
+                        }
                     }
-                    $row = REDCapManagement::filterForREDCap($row, $metadataFields);
-					array_push($upload, $row);
-					$instance++;
-				} else {
-					throw new \Exception("Please specify a record id!");
-				}
-			}
+                }
+                $title = strval($article->ArticleTitle);
+                $title = preg_replace("/\.$/", "", $title);
+
+                $pubTypes = array();
+                if ($article->PublicationTypeList) {
+                    foreach ($article->PublicationTypeList->PublicationType as $pubType) {
+                        array_push($pubTypes, strval($pubType));
+                    }
+                }
+
+                $assocGrants = array();
+                if ($article->GrantList) {
+                    foreach ($article->GrantList->Grant as $grant) {
+                        array_push($assocGrants, strval($grant->GrantID));
+                    }
+                }
+
+                $meshTerms = array();
+                if ($medlineCitation->MedlineCitation->MeshHeadingList) {
+                    foreach ($medlineCitation->MedlineCitation->MeshHeadingList->MeshHeading as $mesh) {
+                        array_push($meshTerms, strval($mesh->DescriptorName));
+                    }
+                }
+
+                $journal = strval($article->Journal->ISOAbbreviation);
+                $journal = preg_replace("/\.$/", "", $journal);
+
+                $issue = $article->Journal->JournalIssue;    // not a strval but node!!!
+                $year = "";
+                $month = "";
+                $day = "";
+
+                $date = $issue->PubDate->Year . " " . $issue->PubDate->Month;
+                if ($issue->PubDate->Year) {
+                    $year = strval($issue->PubDate->Year);
+                }
+                if ($issue->PubDate->Month) {
+                    $month = strval($issue->PubDate->Month);
+                }
+                if ($issue->PubDate->Day) {
+                    $date = $date . " " . $issue->PubDate->Day;
+                    $day = "{$issue->PubDate->Day}";
+                }
+                $journalIssue = strval($issue->Volume);
+                $vol = "";
+                if ($issue->Volume) {
+                    $vol = strval($issue->Volume);
+                }
+                $iss = "";
+                if ($issue->Issue) {
+                    $journalIssue .= "(" . strval($issue->Issue) . ")";
+                    $iss = strval($issue->Issue);
+                }
+                $pages = "";
+                if ($article->Pagination->MedlinePgn) {
+                    $journalIssue .= ":" . $article->Pagination->MedlinePgn;
+                    $pages = strval($article->Pagination->MedlinePgn);
+                }
+                $pmid = strval($medlineCitation->MedlineCitation->PMID);
+                $pubmed = "PubMed PMID: " . $pmid;
+                $pmcid = self::PMIDToPMC($pmid);
+                $pmcPhrase = "";
+                if ($pmcid) {
+                    if (!preg_match("/PMC/", $pmcid)) {
+                        $pmcid = "PMC" . $pmcid;
+                    }
+                    $pmcPhrase = " " . $pmcid . ".";
+                }
+                $pmidsPulled[] = $pmid;
+            }
+
+			if (!empty($pmidsPulled) && $recordId) {
+                $iCite = new iCite($pmidsPulled);
+                $row = [
+                    "record_id" => "$recordId",
+                    "redcap_repeat_instrument" => "citation",
+                    "redcap_repeat_instance" => "$instance",
+                    "citation_pmid" => $pmid,
+                    "citation_pmcid" => $pmcid,
+                    "citation_doi" => $iCite->getVariable($pmid, "doi"),
+                    "citation_include" => "",
+                    "citation_source" => $src,
+                    "citation_authors" => implode(", ", $authors),
+                    "citation_title" => $title,
+                    "citation_pub_types" => implode("; ", $pubTypes),
+                    "citation_mesh_terms" => implode("; ", $meshTerms),
+                    "citation_journal" => $journal,
+                    "citation_issue" => $iss,
+                    "citation_volume" => $vol,
+                    "citation_year" => $year,
+                    "citation_month" => $month,
+                    "citation_day" => $day,
+                    "citation_pages" => $pages,
+                    "citation_grants" => implode("; ", $assocGrants),
+                    "citation_is_research" => $iCite->getVariable($pmid, "is_research_article"),
+                    "citation_num_citations" => $iCite->getVariable($pmid, "citation_count"),
+                    "citation_citations_per_year" => $iCite->getVariable($pmid, "citations_per_year"),
+                    "citation_expected_per_year" => $iCite->getVariable($pmid, "expected_citations_per_year"),
+                    "citation_field_citation_rate" => $iCite->getVariable($pmid, "field_citation_rate"),
+                    "citation_nih_percentile" => $iCite->getVariable($pmid, "nih_percentile"),
+                    "citation_rcr" => $iCite->getVariable($pmid, "relative_citation_ratio"),
+                    "citation_icite_last_update" => date("Y-m-d"),
+                    "citation_complete" => "2",
+                ];
+                $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields);
+                $row = array_merge($row, $altmetricRow);
+                if (in_array($pmid, $confirmedPMIDs)) {
+                    $row['citation_include'] = '1';
+                }
+                $row = REDCapManagement::filterForREDCap($row, $metadataFields);
+                array_push($upload, $row);
+                $instance++;
+            } else if (!$recordId) {
+                throw new \Exception("Please specify a record id!");
+            } else {     // $pmidsPulled is empty
+			    Application::log("ERROR: No PMIDs pulled from ".json_encode($pmidsToPull));
+            }
 			Publications::throttleDown();
 		}
 		self::addTimesCited($upload, $pid, $pmids, $metadataFields);
 		return $upload;
+	}
+
+	private static function updateAssocGrantsAndBibliometrics(&$upload, $pmids, $metadata, $recordId) {
+	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+        $rows = self::getCitationsFromPubMed($pmids, $metadata, "", $recordId);
+        $fieldsToCopy = [
+            "citation_grants",      // associated grants
+            "citation_doi",
+            "citation_is_research",
+            "citation_num_citations",
+            "citation_citations_per_year",
+            "citation_expected_per_year",
+            "citation_field_citation_rate",
+            "citation_nih_percentile",
+            "citation_rcr",
+            "citation_icite_last_update",
+        ];
+
+        $i = 0;
+        foreach ($upload as $row) {
+            $pmid = $row['citation_pmid'];
+            foreach ($rows as $row2) {
+                if ($pmid == $row2['citation_pmid']) {
+                    foreach ($fieldsToCopy as $field) {
+                        $upload[$i][$field] = $row2[$field];
+                    }
+                    $upload[$i] = REDCapManagement::filterForREDCap($upload[$i], $metadataFields);
+                }
+            }
+            $i++;
+        }
+
+        $i = 0;
+        foreach ($upload as $row) {
+            if ($row['citation_doi']) {
+                $altmetricRow = self::getAltmetricRow($row['citation_doi'], $metadataFields);
+                $upload[$i] = array_merge($upload[$i], $altmetricRow);
+                usleep(1150000);   // altmetric has a 1 second rate-limit
+            }
+            $i++;
+        }
 	}
 
 	private static function addTimesCited(&$upload, $pid, $pmids, $metadataFields) {

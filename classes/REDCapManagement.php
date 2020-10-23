@@ -5,6 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Upload.php");
+require_once(dirname(__FILE__)."/Stats.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 # for datediff
@@ -368,8 +369,8 @@ class REDCapManagement {
     }
 
     public static function makeHTMLId($id) {
-        $htmlFriendly = preg_replace("/\s+/", "_", $id);
-        $htmlFriendly = preg_replace("/[\"'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=]/", "", $htmlFriendly);
+        $htmlFriendly = preg_replace("/[\s\-]+/", "_", $id);
+        $htmlFriendly = preg_replace("/[\"'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;]/", "", $htmlFriendly);
         return $htmlFriendly;
     }
 
@@ -984,6 +985,9 @@ class REDCapManagement {
     }
 
     public static function pretty($n, $numDecimalPlaces = 3) {
+	    if (!is_numeric($n)) {
+	        return $n;
+        }
         $s = "";
         $n2 = abs($n);
         $n2int = intval($n2);
@@ -1068,6 +1072,12 @@ class REDCapManagement {
         }
 	    return $ymd;
     }
+
+    public static function stddev($ary) {
+	    $stats = new Stats($ary);
+	    return $stats->stddev();
+    }
+
 
     public static function stripMY($str) {
 	    if (preg_match("/\d\d\/\d\d\d\d/", $str, $matches)) {
