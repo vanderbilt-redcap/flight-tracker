@@ -612,6 +612,16 @@ class REDCapManagement {
         return "";
     }
 
+    public static function findAllFields($redcapData, $recordId, $field) {
+	    $values = [];
+        foreach ($redcapData as $row) {
+            if (($row['record_id'] == $recordId) && $row[$field]) {
+                $values[] = $row[$field];
+            }
+        }
+        return $values;
+    }
+
 	public static function findField($redcapData, $recordId, $field, $instrument = FALSE, $instance = FALSE) {
 	    foreach ($redcapData as $row) {
 	        if ($row['record_id'] == $recordId) {

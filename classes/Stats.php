@@ -2,29 +2,6 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-use MathPHP\Statistics\Significance;
-
-require_once(dirname(__FILE__)."/math-php/src/Probability/Distribution/Distribution.php");
-require_once(dirname(__FILE__)."/math-php/src/Probability/Distribution/Continuous/ContinuousDistribution.php");
-require_once(dirname(__FILE__)."/math-php/src/Probability/Distribution/Continuous/Continuous.php");
-require_once(dirname(__FILE__)."/math-php/src/Number/ObjectArithmetic.php");
-
-$directoriesToSearch = [
-    "math-php/src/Statistics",
-    "math-php/src/Probability/Distribution/Continuous",
-    "math-php/src/Probability",
-    "math-php/src/Number",
-    "math-php/src/Functions",
-    ];
-
-foreach ($directoriesToSearch as $dir) {
-    $dir = preg_replace("/^\//", "", $dir);
-    $dir = preg_replace("/\/$/", "", $dir);
-    foreach (glob(dirname(__FILE__)."/$dir/*.php") as $filename)  {
-        require_once $filename;
-    }
-}
-
 # Future: Can implementation tie into: https://github.com/markrogoyski/math-php/tree/master/tests
 # Adapted from https://www.geeksforgeeks.org/program-implement-t-test/
 class Stats {
@@ -79,8 +56,13 @@ class Stats {
     }
 
     // Function to find t-test of two set of statistical data.
-    public function tTest($stats) {
-        return $this->unpairedTTest($stats);
+    public function tTest($comparison) {
+        $t = $this->unpairedTTest($comparison);
+        return $t;
+    }
+
+    public function getDegreesOfFreedom() {
+        return $this->getN() - 1;
     }
 
     public function getValues() {
@@ -88,8 +70,26 @@ class Stats {
     }
 
     public function unpairedTTest($comparison) {
-        $ary = Significance::tTest($this->getValues(), $comparison->getValues());
-        return $ary['p2'];   // two-tailed answer
+        if (get_class($comparison) != "Vanderbilt\CareerDevLibrary\Stats") {
+            return self::$nan;
+        }
+        $n = $this->getN();
+        $m = $comparison->getN();
+        if ($n == 0) {
+            return self::$nan;
+        }
+        if ($m == 0) {
+            return self::$nan;
+        }
+
+        $mean1 = $this->mean();
+        $mean2 = $comparison->mean();
+        $sd1 = $this->standardDeviation();
+        $sd2 = $comparison->standardDeviation();
+
+        // Formula to find t-test of two set of data.
+        $t_test = ($mean1 - $mean2) / sqrt(($sd1 * $sd1) / $n + ($sd2 * $sd2) / $m);
+        return $t_test;
     }
 
     public function z($x) {
@@ -129,14 +129,19 @@ class Stats {
         }
     }
 
-    public function confidenceInterval($percent) {
+    public function confidenceInterval($percent, $df = FALSE) {
         $n = $this->getN();
         if ($n == 0) {
             return [self::$nan, self::$nan];
         }
         $mu = $this->mean();
         $sigma = $this->standardDeviation();
-        $z = self::convertStandardPercentsToZ($percent);
+        if ($df) {
+            # T score
+            $z = CohortStudy::convertPercentToZ($percent, $df);
+        } else {
+            $z = self::convertStandardPercentsToZ($percent);
+        }
         $ci = [];
         $ci[0] = $mu - $z * $sigma / sqrt($n);
         $ci[1] = $mu + $z * $sigma / sqrt($n);

@@ -13,6 +13,7 @@ require_once(dirname(__FILE__)."/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
 define("SOURCETYPE_FIELD", "additional_source_types");
+define("SHOW_DEBUG_FOR_INSTITUTIONS", FALSE);
 
 class Scholar {
 	public function __construct($token, $server, $metadata = array(), $pid = "") {
@@ -309,10 +310,10 @@ class Scholar {
         return $this->getGenericValueForField($rows, $field);
     }
 
-    private function getGenericValueForField($rows, $field) {
+    private function getGenericValueForField($rows, $field, $byLatest = FALSE, $showDebug = FALSE) {
         $vars = self::getDefaultOrder($field);
         $vars = $this->getOrder($vars, $field);
-        $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = self::searchRowsForVars($rows, $vars, $byLatest, $this->pid, $showDebug);
         return $result;
     }
 
@@ -935,6 +936,7 @@ class Scholar {
     }
 
     private function getAllOtherInstitutions($rows) {
+	    $showDebug = SHOW_DEBUG_FOR_INSTITUTIONS;
         $currentProjectInstitutions = Application::getInstitutions();
         for ($i = 0; $i < count($currentProjectInstitutions); $i++) {
             $currentProjectInstitutions[$i] = trim(strtolower($currentProjectInstitutions[$i]));
@@ -960,14 +962,20 @@ class Scholar {
         $defaultOrder = self::getDefaultOrder("identifier_institution");
         $vars = $this->getOrder($defaultOrder, "identifier_institution");
         foreach ($vars as $field => $source) {
-            $value = REDCapManagement::findField($rows, $this->recordId, $field);
-            if ($value) {
+            $values = REDCapManagement::findAllFields($rows, $this->recordId, $field);
+            if ($showDebug) {
+                Application::log("In getAllOtherInstitutions for $field, found ".json_encode($values));
+            }
+            foreach ($values as $value) {
                 if (isset($choices[$field]) && isset($choices[$field][$value])) {
                     $institutions = [$choices[$field][$value]];
                 } else {
                     $institutions = preg_split($splitterRegex, $value);
                 }
                 foreach ($institutions as $institution) {
+                    if ($showDebug) {
+                        Application::log("In getAllOtherInstitutions, looking at $institution");
+                    }
                     if (!in_array(strtolower($institution), $seenInstitutionsInLowerCase) && !in_array(strtolower($institution), $currentProjectInstitutions)) {
                         $seenInstitutions[] = $institution;
                         $seenInstitutionsInLowerCase[] = strtolower($institution);
@@ -975,6 +983,7 @@ class Scholar {
                 }
             }
         }
+        Application::log("In getAllOtherInstitutions, returning ".json_encode($seenInstitutions));
         return $seenInstitutions;
 	}
 
@@ -1960,8 +1969,14 @@ class Scholar {
 			}
 		}
 		if ($byLatest) {
+            if ($showDebug) {
+                Application::log("Returning '".$result->getValue()."'");
+            }
 			return $result;
 		}
+        if ($showDebug) {
+            Application::log("Returning blank");
+        }
 		return new Result("", "");
 	}
 
@@ -1986,8 +2001,13 @@ class Scholar {
 	}
 
 	private function getInstitution($rows) {
-        $result = $this->getGenericValueForField($rows, "identifier_institution");
+	    $showDebug = SHOW_DEBUG_FOR_INSTITUTIONS;
+        $result = $this->getGenericValueForField($rows, "identifier_institution", TRUE, SHOW_DEBUG_FOR_INSTITUTIONS);
 		$value = $result->getValue();
+
+		if ($showDebug) {
+		    Application::log("getInstitution has $value");
+        }
 
 		if (is_numeric($value)) {
 			$choices = self::getChoices($this->metadata);
@@ -2009,8 +2029,14 @@ class Scholar {
 			}
 			return $result;
 		} else if (($value == "") || ($value == Application::getUnknown())) {
-			return new Result("", ""); 
+            if ($showDebug) {
+                Application::log("getInstitution returning blank");
+            }
+			return new Result("", "");
 		} else {
+            if ($showDebug) {
+                Application::log("getInstitution returning ".$result->getValue());
+            }
 			# typical case
 			return $result;
 		}
