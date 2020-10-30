@@ -303,7 +303,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 			echo "<h2>Entire Population Averages</h2>";
 		}
 		echo "<table class='centered'>";
-		echo "<tr><th>Average K-To-R Conversion Rate<br>({$options[$_POST['k_type']]})$dateRange";
+		echo "<tr><th>Average K-To-R Conversion Ratio<br>({$options[$_POST['k_type']]})$dateRange";
 		echo "<ul class='k2r'>";
 		if ($kLength) {
 			echo "<li class='k2r'>Omit anyone with a most-recent CDA less than $kLength years old</li>";
@@ -366,7 +366,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 ?>
 
 <form action='<?= Application::link("k2r/index.php").$cohortParams ?>' method='POST'>
-<h2>Conversion Rate</h2>
+<h2>Conversion Ratio</h2>
 <p class='centered'>Select Cohort (optional):<br><?= \Vanderbilt\FlightTrackerExternalModule\getCohortSelect($token, $server, $pid) ?></p>
 <p class='centered'>Exclude those within <input type='text' name='k' value='5'> years of receipt of most recent K who have not converted<br>
 <span class='small'>(leave blank if you want <b>all</b> conversions)</span></p>

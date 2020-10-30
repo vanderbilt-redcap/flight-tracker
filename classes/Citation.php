@@ -538,59 +538,66 @@ class Citation {
 		}
 	}
 
+	public static function transformYear($year) {
+        if ($year) {
+            if (is_numeric($year) && ($year < 100)) {
+                $year += 2000;
+            }
+        }
+        return $year;
+    }
+
 	private function getYear() {
 		$year = $this->getVariable("year");
-		if ($year) {
-			if (is_numeric($year) && ($year < 100)) {
-				$year += 2000;
-			}
-		}
-		return $year;
+		return self::transformYear($year);
 	}
+
+	public static function transformIntoDate($year, $month, $day) {
+        $translateMonth = array(
+            1 => "January",
+            2 => "February",
+            3 => "March",
+            4 => "April",
+            5 => "May",
+            6 => "June",
+            7 => "July",
+            8 => "August",
+            9 => "Septemeber",
+            10 => "October",
+            11 => "November",
+            12 => "December",
+        );
+        $date = "";
+
+        if ($year) {
+            $date .= $year;
+        }
+
+        if ($month) {
+            if (is_numeric($month)) {
+                $month = $translateMonth[intval($month)];
+            }
+            if ($date) {
+                $date .= " ";
+            }
+            $date .= $month;
+        }
+
+        if ($day) {
+            if ($date) {
+                $date .= " ";
+            }
+            $date .= $day;
+        }
+
+        return $date;
+    }
 
 	private function getDate() {
 		$year = $this->getYear();
 		$month = $this->getVariable("month");
 		$day = $this->getVariable("day");
-
-		$translateMonth = array(
-					1 => "January",
-					2 => "February",
-					3 => "March",
-					4 => "April",
-					5 => "May",
-					6 => "June",
-					7 => "July",
-					8 => "August",
-					9 => "Septemeber",
-					10 => "October",
-					11 => "November",
-					12 => "December",
-					);
-		$date = "";
-
-		if ($year) {
-			$date .= $year;
-		}
-
-		if ($month) {
-			if (is_numeric($month)) {
-				$month = $translateMonth[intval($month)];
-			}
-			if ($date) {
-				$date .= " ";
-			}
-			$date .= $month;
-		}
-
-		if ($day) {
-			if ($date) {
-				$date .= " ";
-			}
-			$date .= $day;
-		}
-
-		return $date;
+		return self::transformIntoDate($year, $month, $day);
 	}
 
 	private function getIssueAndPages() {
@@ -802,38 +809,41 @@ class Citation {
 	    return (($startTs <= $ts) && ($endTs >= $ts));
     }
 
-	public function getTimestamp() {
-		$date = $this->getDate();
-		if ($date) {
-			$dateNodes = preg_split("/\s+/", $date);
-			$year = $dateNodes[0];
-			$months = array("Jan" => "01", "Feb" => "02", "Mar" => "03", "Apr" => "04", "May" => "05", "Jun" => "06", "Jul" => "07", "Aug" => "08", "Sep" => "09", "Oct" => "10", "Nov" => "11", "Dec" => "12");
+    public static function transformDateToTimestamp($date) {
+        if ($date) {
+            $dateNodes = preg_split("/\s+/", $date);
+            $year = $dateNodes[0];
+            $months = array("Jan" => "01", "Feb" => "02", "Mar" => "03", "Apr" => "04", "May" => "05", "Jun" => "06", "Jul" => "07", "Aug" => "08", "Sep" => "09", "Oct" => "10", "Nov" => "11", "Dec" => "12");
 
-			if (count($dateNodes) == 1) {
-				$month = "01";
-			} else if (is_numeric($dateNodes[1])) {
-				$month = $dateNodes[1];
-				if ($month < 10) {
-					$month = "0".intval($month);
-				}
-			} else if (isset($months[$dateNodes[1]])) {
-				$month = $months[$dateNodes[1]];
-			} else {
-				$month = "01";
-			}
-	
-			if (count($dateNodes) <= 2) {
-				$day = "01";
-			} else {
-				$day = $dateNodes[2];
-				if ($day < 10) {
-					$day = "0".intval($day);
-				}
-			}
-			return strtotime($year."-".$month."-".$day);
-		} else {
-			return 0;
-		}
+            if (count($dateNodes) == 1) {
+                $month = "01";
+            } else if (is_numeric($dateNodes[1])) {
+                $month = $dateNodes[1];
+                if ($month < 10) {
+                    $month = "0".intval($month);
+                }
+            } else if (isset($months[$dateNodes[1]])) {
+                $month = $months[$dateNodes[1]];
+            } else {
+                $month = "01";
+            }
+
+            if (count($dateNodes) <= 2) {
+                $day = "01";
+            } else {
+                $day = $dateNodes[2];
+                if ($day < 10) {
+                    $day = "0".intval($day);
+                }
+            }
+            return strtotime($year."-".$month."-".$day);
+        } else {
+            return 0;
+        }
+    }
+
+	public function getTimestamp() {
+		return self::transformDateToTimestamp($this->getDate());
 	}
 
 	public function getSource() {

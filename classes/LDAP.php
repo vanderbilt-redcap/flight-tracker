@@ -113,13 +113,19 @@ class LDAP {
 
 	public static function getName($uid) {
         $info = self::getLDAP("uid", $uid);
-        return self::findField($info, "sn", 0)." ".self::findField($info, "givenname", 0);
+        if ($info['count'] > 0) {
+            return self::findField($info, "sn", 0)." ".self::findField($info, "givenname", 0);
+        }
+        return "";
     }
 
     public static function getVUNet($first, $last) {
         $key = self::getNameAssociations($first, $last);
         $info = self::getLDAPByMultiple(array_keys($key), array_values($key));
-        return self::findField($info, "uid", 0);
+        if ($info['count'] > 0) {
+            return self::findField($info, "uid", 0);
+        }
+        return "";
     }
 
     public static function getAllVUNets($first, $last) {

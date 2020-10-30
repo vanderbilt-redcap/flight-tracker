@@ -102,10 +102,18 @@ class NameMatcher {
     public static function explodeLastName($last) {
 	    $nodes = preg_split("/[\s\-]+/", $last);
 	    $newNodes = array($last);
+	    $i = 0;
+	    $suffixesInUpper = ["I", "II", "III", "IV", "JR", "JR.", "SR", "SR."];
+	    $prefixesInLower = ["van", "von", "de"];
 	    foreach ($nodes as $node) {
-	        if ($node && !in_array($node, $newNodes)) {
-	            array_push($newNodes, $node);
+	        if (in_array(strtoupper($node), $suffixesInUpper) && ($i == 1)) {
+	            return [$nodes[0]." ".$nodes[1]];
+            } else if (in_array(strtolower($node), $prefixesInLower) && ($i == 0) && (count($nodes) >= 2)) {
+                return self::collapseNames($nodes, 1);
+            } else if ($node && !in_array($node, $newNodes)) {
+	            $newNodes[] =  $node;
             }
+	        $i++;
         }
 	    return $newNodes;
     }
@@ -158,6 +166,9 @@ class NameMatcher {
 
 	# returns list($firstName, $lastName)
 	public static function splitName($name, $parts = 2) {
+        $simpleLastNamePrefixes = ["von", "van", "de"];
+        $complexLastNamePrefixes = [["von", "van", "de"], ["der", "la"]];
+
         if ($parts <= 0) {
             throw new \Exception("Parts must be positive! ($parts)");
         }
@@ -200,63 +211,47 @@ class NameMatcher {
             }
 		} else if (count($nodes) == 1) {
             if ($parts >= 2) {
+                $nodes = preg_split("/\s+/", $nodes[0]);
 			    do {
-			        $changed = FALSE;
+                    $changed = FALSE;
                     if (count($nodes) == $parts) {
                         return $nodes;
+                    } else if ((count($nodes) == 3) && (self::isInitial($nodes[0]) || self::isInitial($nodes[1]))) {
+                        if ($parts == 2) {
+                            return [$nodes[0] . " " . $nodes[1], $nodes[2]];
+                        } else if ($parts > 3) {
+                            return self::padWithSpaces($nodes, $parts);
+                        } else if ($parts == 3) {
+                            return $nodes;
+                        }
                     } else if (count($nodes) > $parts) {
                         $lastNodeIdx = count($nodes) - 1;
-                        if (in_array(strtolower($nodes[$lastNodeIdx - 1]), ["von", "van"])) {
+                        if (in_array(strtolower($nodes[$lastNodeIdx - 1]), $simpleLastNamePrefixes)) {
                             $newNodes = [];
                             for ($i = 0; $i < $lastNodeIdx - 2; $i++) {
                                 $newNodes[] = $nodes[$i];
                             }
-                            $newNodes[] = $nodes[$lastNodeIdx - 1]." ".$nodes[$lastNodeIdx];
+                            $newNodes[] = $nodes[$lastNodeIdx - 1] . " " . $nodes[$lastNodeIdx];
                             $changed = TRUE;
                             $nodes = $newNodes;
                         }
-                    } else if (($lastNodeIdx > 2) && in_array(strtolower($nodes[$lastNodeIdx - 2]), ["von", "van"]) && (strtolower($nodes[$lastNodeIdx - 1]) == "der")) {
+                    } else if (($lastNodeIdx > 2) && in_array(strtolower($nodes[$lastNodeIdx - 2]), $complexLastNamePrefixes[0]) && in_array(strtolower($nodes[$lastNodeIdx - 1]), $complexLastNamePrefixes[1])) {
                         $newNodes = [];
                         for ($i = 0; $i < $lastNodeIdx - 3; $i++) {
                             $newNodes[] = $nodes[$i];
                         }
-                        $newNodes[] = $nodes[$lastNodeIdx - 2]." ".$nodes[$lastNodeIdx - 1]." ".$nodes[$lastNodeIdx];
+                        $newNodes[] = $nodes[$lastNodeIdx - 2] . " " . $nodes[$lastNodeIdx - 1] . " " . $nodes[$lastNodeIdx];
                         $changed = TRUE;
                         $nodes = $newNodes;
                     } else if (count($nodes) < $parts) {
-                        $returnValues = [$nodes[0]];
-                        for ($i = 0; $i < $parts - count($nodes); $i++) {
-                            $returnValues[] = "";
-                        }
-                        for ($i = 1; $i < count($nodes); $i++) {
-                            $returnValues[] = $nodes[$i];
-                        }
-                        return $returnValues;
+                        return self::padWithSpaces($nodes, $parts);
                     }
                 } while($changed);
 
-                $returnValues = [];
                 if (count($nodes) > $parts) {
-                    $first = $nodes[0];
-                    for ($i = 1; $i < count($nodes) - $parts; $i++) {
-                        $first .= " ".$nodes[$i];
-                    }
-                    $returnValues[] = $first;
-                    for ($i = count($nodes) - $parts; $i < $parts; $i++) {
-                        $returnValues[] = $nodes[$i];
-                    }
-                    return $returnValues;
+                    return self::collapseNames($nodes, $parts);
                 } else if (count($nodes) < $parts) {
-                    $lastNodeIdx = count($nodes) - 1;
-                    $returnValues[] = $nodes[0];
-                    for ($i = 1; $i < $lastNodeIdx; $i++) {
-                        $returnValues[] = $nodes[$i];
-                    }
-                    for ($i = $lastNodeIdx; $i < $parts - 1; $i++) {
-                        $returnValues[] = "";
-                    }
-                    $returnValues[] = $nodes[$lastNodeIdx];
-                    return $returnValues;
+                    return self::padWithSpaces($nodes, $parts);
                 } else {
                     throw new \Exception("This should never happen!");
                 }
@@ -264,6 +259,33 @@ class NameMatcher {
 		}
 		return array("", "");
 	}
+
+	private static function collapseNames($nodes, $parts) {
+        $first = $nodes[0];
+        for ($i = 1; $i < count($nodes) - $parts; $i++) {
+            $first .= " ".$nodes[$i];
+        }
+        $returnValues[] = $first;
+        for ($i = count($nodes) - $parts; $i < $parts; $i++) {
+            $returnValues[] = $nodes[$i];
+        }
+        return $returnValues;
+    }
+
+	private static function isInitial($name) {
+        return preg_match("/^\w\.$/", $name);
+    }
+
+    private static function padWithSpaces($nodes, $parts) {
+        $returnValues = [$nodes[0]];
+        for ($i = 0; $i < $parts - count($nodes); $i++) {
+            $returnValues[] = "";
+        }
+        for ($i = 1; $i < count($nodes); $i++) {
+            $returnValues[] = $nodes[$i];
+        }
+        return $returnValues;
+    }
 
 	private static $namesForMatch = NULL;
 	private static $currToken = "";

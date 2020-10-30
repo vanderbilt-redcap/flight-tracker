@@ -9,7 +9,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.22.1";
+		return "2.23.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -529,7 +529,7 @@ class CareerDev {
 		global $pid;
 		$r = self::getREDCapDir();
 		if (($menuName == "View") || ($menuName == "View Data") || ($menuName == "Data")) {
-			return array(
+			$ary = [
 					"Demographics Table" => self::link("/charts/makeDemographicsTable.php"),
 					"Stylized CDA Table" => self::link("/charts/makeCDATable.php"),
 					"Publication List" => self::link("/publications/view.php"),
@@ -538,7 +538,12 @@ class CareerDev {
 					"Missingness Report<br>(Computationally Expensive)" => self::link("/tablesAndLists/missingness.php"),
 					"Search Within a Timespan" => self::link("/search/inTimespan.php"),
                     "Brag: Publications Widget" => self::link("/brag.php")."&showHeaders",
-					);
+                    "Social Network of Co-Authorship" => self::link("/socialNetwork/coauthorship.php"),
+            ];
+			if (self::isVanderbilt()) {
+                $ary['Evaluate Grant Submissions'] = self::link("/submissions.php");
+            }
+            return $ary;
 		}
 		if (($menuName == "Mentoring") || ($menuName == "Mentor") || ($menuName == "Mentors")) {
 			return array(
@@ -604,10 +609,9 @@ class CareerDev {
 			} else if (self::isViDERInstalledForSystem()) {
 				$ary["Enable ViDER Visualizations"] = $r."/ExternalModules/manager/project.php?pid=".$pid;
 			}
-			if (self::isVanderbilt()) {
-			    $ary['Evaluate Grant Submissions'] = self::link("/submissions.php");
+			// if (self::isVanderbilt()) {
                 // $ary["Sync VUNet List to COEUS"] = self::link("/syncVUNet.php");
-			}
+			// }
 			return $ary;
 		}
 		if ($menuName == "REDCap") {
@@ -658,7 +662,8 @@ class CareerDev {
 
 	public static $citationFields = array(
 						"record_id",
-						"citation_pmid",
+                        "citation_doi",
+                        "citation_pmid",
 						"citation_include",
 						"citation_source",
 						"citation_pmcid",

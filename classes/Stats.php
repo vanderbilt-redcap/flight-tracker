@@ -17,6 +17,46 @@ class Stats {
         return $this->standardDeviation();
     }
 
+    public function median() {
+        $n = $this->getN();
+        $arr = $this->arr;
+        asort($arr);
+        if ($n > 0) {
+            if ($n % 2 == 0) {
+                return $arr[$n / 2];
+            } else {
+                return ($arr[floor($n / 2)] + $arr[ceil($n / 2)]) / 2;
+            }
+        } else {
+            return self::$nan;
+        }
+    }
+
+    public function mode() {
+        $n = $this->getN();
+        $arr = $this->arr;
+        asort($arr);
+        if ($n > 0) {
+            $counts = [];
+            foreach ($arr as $item) {
+                if (!isset($counts[$item])) {
+                    $counts[$item] = 0;
+                }
+                $counts[$item]++;
+            }
+            $max = max(array_values($counts));
+            $maxItems = [];
+            foreach ($counts as $item => $count) {
+                if ($count == $max) {
+                    $maxItems[] = $item;
+                }
+            }
+            return $maxItems;
+        } else {
+            return self::$nan;
+        }
+    }
+
     public function mean() {
         $n = $this->getN();
         if ($n == 0) {
@@ -31,6 +71,14 @@ class Stats {
 
     public function getN() {
         return count($this->arr);
+    }
+
+    public function sum() {
+        return $this->total();
+    }
+
+    public function total() {
+        return array_sum($this->arr);
     }
 
     public function stddev() {

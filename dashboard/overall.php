@@ -23,7 +23,7 @@ $metadata = Download::metadata($token, $server);
 $indexedRedcapData = \Vanderbilt\FlightTrackerExternalModule\getIndexedRedcapData($token, $server, CareerDev::$summaryFields, $_GET['cohort'], $metadata);
 
 # total number of scholars
-# Overall conversion rate
+# Overall conversion ratio
 # breakdown of converted
 
 $convertedStatuses = array("Converted while not on K", "Converted while on K");

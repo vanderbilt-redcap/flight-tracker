@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Stats;
+use \Vanderbilt\CareerDevLibrary\BarChart;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/Application.php");
@@ -17,6 +18,9 @@ require_once(dirname(__FILE__)."/classes/Grant.php");
 require_once(dirname(__FILE__)."/classes/Grants.php");
 require_once(dirname(__FILE__)."/classes/GrantFactory.php");
 require_once(dirname(__FILE__)."/classes/Stats.php");
+require_once(dirname(__FILE__)."/classes/BarChart.php");
+
+define('NUM_BARS', 10);
 
 $processPubs = FALSE;
 if (isset($_GET['pubs'])) {
@@ -141,7 +145,8 @@ if ($totalCount > 0) {
                         $transformedData[$col][$recordId] = $datum[$col];
                     }
                 }
-                $stats = new Stats($transformedData[$col]);
+                $stats = new Stats(array_values($transformedData[$col]));
+
                 $counts[$bin][$col] = $stats->getN();
                 $stddev[$bin][$col] = $stats->standardDeviation();
                 $averages[$bin][$col] = $stats->mean();
@@ -150,7 +155,6 @@ if ($totalCount > 0) {
         }
     }
 }
-echo "<script src='".Application::link("js/Chart.min.js")."'></script>";
 echo "<script>
 function toggleCharts() {
     if ($('.chartWrapper').is(':visible')) {
@@ -168,6 +172,7 @@ if ($processPubs) {
     echo "<p class='centered'><a href='".Application::link("submissions.php")."&pubs'>Turn on Publication Analysis</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$toggleCharts</p>";
 }
 
+$firstBarChart = TRUE;
 echo "<table class='centered'><tr>";
 foreach ($averages as $bin => $binData) {
     echo "<td>";
@@ -180,7 +185,7 @@ foreach ($averages as $bin => $binData) {
             $allData = [];
             foreach ($averages as $bin2 => $binData2) {
                 $i2 = 0;
-                foreach ($binData2 as $col2 => $average2) {
+                foreach (array_keys($binData2) as $col2) {
                     if ($i == $i2) {
                         $allData = array_merge($allData, $dataPoints[$bin2][$col2]);
                     }
@@ -194,7 +199,17 @@ foreach ($averages as $bin => $binData) {
                 echo "<h3>$col</h3>";
                 echo "<p class='centered nomargin bolded' style='font-size: 60px;'>".REDCapManagement::pretty($average, 2)."</p>";
                 echo "<h4 class='nomargin'>(n=$n; &sigma;=".REDCapManagement::pretty($sigma, 2).")</h4>";
-                echo makeBarGraph($data, REDCapManagement::makeHTMLId($bin." ".$col), $min, $max);
+
+                list ($cols, $labels) = makeHistogramData($dataPoints[$bin], NUM_BARS, $min, $max, $col);
+                $chart = new BarChart($cols, $labels, REDCapManagement::makeHTMLId($bin." ".$col));
+                $chart->setXAxisLabel($col);
+                $chart->setYAxisLabel("Number of Scholars");
+                if ($firstBarChart) {
+                    echo $chart->getImportHTML();
+                    $firstBarChart = FALSE;
+                }
+                echo $chart->getHTML(500, 300);
+
                 echo "<br><br>";
             }
             $i++;
@@ -206,75 +221,32 @@ foreach ($averages as $bin => $binData) {
 }
 echo "</tr></table>";
 
-
-function makeBarGraph($data, $name, $min, $max) {
-    $bars = 10;
+function makeHistogramData($binData, $bars, $min, $max, $thiscol) {
     $barWidth = ($max - $min) / $bars;
-
     $cols = [];
     $labels = [];
     for ($i = 0; $i < $bars; $i++) {
         $barMin = $min + $i * $barWidth;
         $barMax = $min + ($i + 1) * $barWidth;
-        $numItems = 0;
-        foreach ($data as $item) {
-            if (($item >= $barMin) && ($item < $barMax)) {
-                $numItems++;
+        foreach (array_keys($binData) as $thisCol) {
+            $numItems = 0;
+            foreach ($binData[$thisCol] as $item) {
+                if (($item >= $barMin) && ($item < $barMax)) {
+                    $numItems++;
+                }
+                if ($item == $max) {
+                    $numItems++;
+                }
             }
-            if ($item == $max) {
-                $numItems++;
+            if ($thisCol == $thiscol) {
+                $cols[] = $numItems;
+                $labels[] = REDCapManagement::pretty($barMin, 1);
             }
         }
-        $cols[] = $numItems;
-        $labels[] = REDCapManagement::pretty($barMin, 1);
     }
     $labels[] = REDCapManagement::pretty($max, 1);
-
-    $html = "";
-    $html .= "<div style='margin: 0 auto; width: 400px; height: 200px;' class='chartWrapper'>";
-    $html .= "<canvas id='$name'></canvas>";
-    $html .= "<script>
-    const $name"."_ctx = document.getElementById('$name').getContext('2d');
-
-var $name"."_chart = new Chart($name"."_ctx, {
-    type: 'bar',
-    data: {
-      labels: ".json_encode($labels).",
-      datasets: [{
-        label: '',
-        data: ".json_encode($cols).",
-        backgroundColor: '#d4d4eb',
-      }]
-    },
-    options: {
-      scales: {
-        xAxes: [{
-          display: false,
-          barPercentage: 1,
-          ticks: {
-            max: $bars,
-          }
-        }, {
-          display: true,
-          ticks: {
-            autoSkip: true,
-            beginAtZero: true,
-            max: $bars,
-          }
-        }],
-        yAxes: [{
-          ticks: {
-            beginAtZero: true
-          }
-        }]
-      }
-    }
-});
-</script>";
-    $html .= "</div>";
-    return $html;
+    return [$cols, $labels];
 }
-
 
 function getNumBeforeTs($orderedGrants, $thresholdTs) {
     $num = 0;

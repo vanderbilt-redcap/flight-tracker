@@ -3,8 +3,6 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use function Vanderbilt\FlightTrackerExternalModule\avg;
-use function Vanderbilt\FlightTrackerExternalModule\json_encode_with_spaces;
 
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Citation.php");
@@ -90,14 +88,6 @@ class NIHTables {
         }
 		return $table;
 	}
-
-	public function getExportHTML($table) {
-	    if (Application::hasComposer()) {
-	        $link = Application::link("reporting/export.php")."&table=".urlencode($table);
-	        return "<a href='$link'>Export to MS Word</a>";
-        }
-	    return "";
-    }
 
     public function getHTML($table) {
 		if (self::beginsWith($table, array("5A", "5B"))) {
@@ -1403,7 +1393,7 @@ class NIHTables {
             }
         }
 	    if (count($timesToPhD)) {
-            return avg($timesToPhD);
+            return array_sum($timesToPhD) / count($timesToPhD);
         } else {
 	        return self::$NA;
         }

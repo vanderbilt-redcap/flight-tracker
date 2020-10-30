@@ -23,13 +23,18 @@ class Cohorts {
 		$this->configs = $this->getConfigs();
 	}
 
-	public function makeCohortSelect($defaultCohort, $onchangeJS = "") {
-	    $html = "Select Cohort: <select";
+	public function makeCohortSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
+	    $html = "Select Cohort: <select name='cohort'";
 	    if ($onchangeJS) {
 	        $html .= " onchange='".$onchangeJS."'";
         }
 	    $html .= ">";
-        $html .= "<option value=''>---ALL---</option>\n";
+	    if ($displayAllOption) {
+            $html .= "<option value=''>---SELECT---</option>\n";
+            $html .= "<option value='all'>---ALL---</option>\n";
+        } else {
+            $html .= "<option value=''>---ALL---</option>\n";
+        }
 
         $cohortTitles = $this->getCohortTitles();
         foreach ($cohortTitles as $title) {

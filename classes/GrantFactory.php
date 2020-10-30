@@ -75,7 +75,7 @@ class InitialGrantFactory extends GrantFactory {
         $prefix = $this->prefix;
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= $this->maxGrants; $i++) {
-			if ($row[$prefix."_grant$i"."_start"] != "") {
+			if (($row[$prefix."_grant$i"."_start"] != "") && ($row[$prefix."_grant$i"."_notmine"] != '1')) {
 				$awardno = $row[$prefix.'_grant'.$i.'_number'];
 				$grant = new Grant($this->lexicalTranslator);
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
@@ -120,7 +120,7 @@ class FollowupGrantFactory extends GrantFactory {
 	public function processRow($row, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= $this->maxGrants; $i++) {
-			if ($row["followup_grant$i"."_start"] != "") {
+			if (($row["followup_grant$i"."_start"] != "") && ($row["followup_grant$i"."_notmine"] != '1')) {
 				$awardno = $row['followup_grant'.$i.'_number'];
 
 				$grant = new Grant($this->lexicalTranslator);

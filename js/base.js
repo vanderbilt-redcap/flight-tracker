@@ -882,3 +882,10 @@ function presetValue(name, value) {
 	}
 }
 
+function clearValue(name) {
+	$('[name=\''+name+'\']').val('');
+	if ($('[name='+name+'___radio]').length > 0) {
+		$('[name='+name+'___radio]').attr('checked', false);
+	}
+}
+
