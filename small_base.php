@@ -824,14 +824,14 @@ function getUploadAryFromRoster($matched) {
 		# matched with JavaScript
 		if ($row['identifier_middle']) {
 			$name = strtolower($row['identifier_first_name']." ".$row['identifier_middle']." ".$row['identifier_last_name']);
-		} else {
-			$name = strtolower($row['identifier_first_name']." ".$row['identifier_last_name']);
+            $names[$name] = $row['record_id'];
 		}
-		$names[$name] = $row['record_id'];
+        $name = strtolower($row['identifier_first_name']." ".$row['identifier_last_name']);
+        $names[$name] = $row['record_id'];
 	}
 
 	$roster = array();
-	$matched = explode("\r\n", $matched);
+	$matched = preg_split("/[\r\n]+/", $matched);
 	foreach ($matched as $name) {
 		if ($name) {
 			$roster[] = strtolower($name);

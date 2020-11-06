@@ -666,15 +666,15 @@ class Citation {
 
 	public function getNIHFormat($traineeLastName, $traineeFirstName, $includeIDs = FALSE) {
 		$authors = self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList());
-		$citation = $authors.", ".$this->getYear().", ".$this->getVariable("title").", ".$this->getVariable("journal");
+		$citation = $authors.". ".$this->getVariable("title").". ".$this->getVariable("journal").". ".$this->getYear();
 		if ($this->getVolumeAndPages()) {
-		    $citation .= ", ".$this->getVolumeAndPages();
+		    $citation .= " ".$this->getVolumeAndPages();
         }
 		$citation .= ".";
 		if ($includeIDs) {
 		    $citation .= " PMID ".$this->getPMID().".";
 		    if ($this->getPMCWithoutPrefix()) {
-		        $citation .= " PMC ".$this->getPMCWithoutPrefix().".";
+		        $citation .= " PMC".$this->getPMCWithoutPrefix().".";
 }
         }
 		return $citation;

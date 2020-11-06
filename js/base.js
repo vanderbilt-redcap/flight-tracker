@@ -152,7 +152,7 @@ function downloadOnePMC(i, pmcs, textId) {
 
 function updateCitationList(textId, prefixHTML, text) {
 	var citations = getPreviousCitations(textId, prefixHTML);
-	citations.push(text);
+	citations.push(prefixHTML+text);
 	if (isContainer(textId)) {
 		$(textId).html(citations.join('<br>\n'));
 	} else {
@@ -287,7 +287,7 @@ function getPreviousCitations(textId, prefixHTML) {
 function isContainer(id) {
 	var containers = ["p", "div"];
 	var idTag = $(id).prop("tagName");
-	if (containers.indexOf(idTag) >= 0) {
+	if (containers.indexOf(idTag.toLowerCase()) >= 0) {
 		return true;
 	} else {
 		return false;

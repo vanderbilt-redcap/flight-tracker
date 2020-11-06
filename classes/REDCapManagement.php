@@ -731,6 +731,20 @@ class REDCapManagement {
 	    return FALSE;
     }
 
+    public static function explodeInstitutions($institutions) {
+	    $newInstitutions = [];
+	    foreach ($institutions as $inst) {
+	        $newInstitutions[] = $inst;
+	        if (preg_match("/university/i", $inst)) {
+	            $inst2 = preg_replace("/university/i", "univ", $inst);
+	            if ($inst != $inst2) {
+	                $newInstitutions[] = $inst2;
+                }
+            }
+        }
+	    return $newInstitutions;
+    }
+
     public static function getUserNames($username) {
         $sql = "select user_firstname, user_lastname from redcap_user_information WHERE username = '".db_real_escape_string($username)."'";
         $q = db_query($sql);
@@ -976,14 +990,11 @@ class REDCapManagement {
     }
 
 	public static function YMD2MDY($ymd) {
-		$nodes = preg_split("/[\/\-]/", $ymd);
-		if (count($nodes) == 3) {
-			$year = $nodes[0];
-			$month = $nodes[1];
-			$day = $nodes[2];
-			return $month."-".$day."-".$year;
-		}
-		return "";
+	    $ts = strtotime($ymd);
+	    if ($ts) {
+            return date("m-d-Y", $ts);
+        }
+	    echo "";
 	}
 
     public static function prettyMoney($n, $displayCents = TRUE) {
@@ -1018,7 +1029,16 @@ class REDCapManagement {
             }
         }
         if ($decimal && is_int($numDecimalPlaces) && ($numDecimalPlaces > 0)) {
-            $decimal = ".".floor($decimal * pow(10, $numDecimalPlaces));
+            $decPart = floor($decimal * pow(10, $numDecimalPlaces));
+            $paddedDecPart = $decPart;
+            # start padding at 1/100s place
+            for ($i = 1; $i < $numDecimalPlaces; $i++){
+                $decimalPlaceValue = pow(10, ($numDecimalPlaces - $i));
+                if ($decPart < $decimalPlaceValue) {
+                    $paddedDecPart = "0".$paddedDecPart;
+                }
+            }
+            $decimal = ".".$paddedDecPart;
         } else {
             $decimal = "";
         }

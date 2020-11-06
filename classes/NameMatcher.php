@@ -40,6 +40,25 @@ class NameMatcher {
             [$name1, $name2],
             [$name2, $name1],
         ];
+        $compoundRegex = "/[\-\s]/";
+        if (preg_match($compoundRegex, $name1)) {
+            $pairs[] = [
+                preg_replace($compoundRegex, "", $name1),
+                $name2,
+            ];
+        }
+        if (preg_match($compoundRegex, $name2)) {
+            $pairs[] = [
+                $name1,
+                preg_replace($compoundRegex, "", $name2),
+            ];
+        }
+        if (preg_match($compoundRegex, $name1) && preg_match($compoundRegex, $name2)) {
+            $pairs[] = [
+                preg_replace($compoundRegex, "", $name1),
+                preg_replace($compoundRegex, "", $name2),
+            ];
+        }
         foreach ($pairs as $pair) {
             $n1 = $pair[0];
             $n2 = $pair[1];
@@ -88,12 +107,12 @@ class NameMatcher {
     }
 
 	public static function explodeFirstName($first) {
-	    $nodes = preg_split("/\s*\(\s*/", $first);
+        $first = preg_replace("/[\(\)]/", "", $first);
+	    $nodes = preg_split("/\s+/", $first);
 	    $newNodes = array();
 	    foreach ($nodes as $node) {
-	        $node = preg_replace("/\)/", "", $node);
 	        if ($node && !in_array($node, $newNodes)) {
-                array_push($newNodes, $node);
+                $newNodes[] = $node;
             }
         }
 	    return $newNodes;
@@ -165,7 +184,7 @@ class NameMatcher {
 	}
 
 	# returns list($firstName, $lastName)
-	public static function splitName($name, $parts = 2) {
+	public static function splitName($name, $parts = 2, $loggingOn = FALSE) {
         $simpleLastNamePrefixes = ["von", "van", "de"];
         $complexLastNamePrefixes = [["von", "van", "de"], ["der", "la"]];
 
@@ -188,6 +207,7 @@ class NameMatcher {
             $nodes = preg_split("/\s*\band\b\s*/", $name);
         }
 		if (count($nodes) >= 2) {
+		    if ($loggingOn) { echo "Comma delimited<br>"; }
 			# last-name, first-name
             if ($parts == 2) {
                 return [$nodes[1], $nodes[0]];
@@ -212,11 +232,16 @@ class NameMatcher {
 		} else if (count($nodes) == 1) {
             if ($parts >= 2) {
                 $nodes = preg_split("/\s+/", $nodes[0]);
-			    do {
+                $lastNodeIdx = count($nodes) - 1;
+                if ($loggingOn) { echo "Split into ".count($nodes)." nodes<br>"; }
+                do {
                     $changed = FALSE;
+                    if ($loggingOn) { echo "In do-while with ".count($nodes)." nodes<br>"; }
                     if (count($nodes) == $parts) {
+                        if ($loggingOn) { echo "Do-while A<br>"; }
                         return $nodes;
                     } else if ((count($nodes) == 3) && (self::isInitial($nodes[0]) || self::isInitial($nodes[1]))) {
+                        if ($loggingOn) { echo "Do-while B<br>"; }
                         if ($parts == 2) {
                             return [$nodes[0] . " " . $nodes[1], $nodes[2]];
                         } else if ($parts > 3) {
@@ -225,26 +250,43 @@ class NameMatcher {
                             return $nodes;
                         }
                     } else if (count($nodes) > $parts) {
-                        $lastNodeIdx = count($nodes) - 1;
                         if (in_array(strtolower($nodes[$lastNodeIdx - 1]), $simpleLastNamePrefixes)) {
+                            if ($loggingOn) {
+                                echo "Do-while C<br>";
+                            }
                             $newNodes = [];
-                            for ($i = 0; $i < $lastNodeIdx - 2; $i++) {
+                            for ($i = 0; $i < $lastNodeIdx - 1; $i++) {
                                 $newNodes[] = $nodes[$i];
                             }
                             $newNodes[] = $nodes[$lastNodeIdx - 1] . " " . $nodes[$lastNodeIdx];
                             $changed = TRUE;
                             $nodes = $newNodes;
+                        } else if (($lastNodeIdx > 2) && in_array(strtolower($nodes[$lastNodeIdx - 2]), $complexLastNamePrefixes[0]) && in_array(strtolower($nodes[$lastNodeIdx - 1]), $complexLastNamePrefixes[1])) {
+                            if ($loggingOn) {
+                                echo "Do-while D<br>";
+                            }
+                            $newNodes = [];
+                            for ($i = 0; $i < $lastNodeIdx - 2; $i++) {
+                                $newNodes[] = $nodes[$i];
+                            }
+                            $newNodes[] = $nodes[$lastNodeIdx - 2] . " " . $nodes[$lastNodeIdx - 1] . " " . $nodes[$lastNodeIdx];
+                            $changed = TRUE;
+                            $nodes = $newNodes;
+                        } else {
+                            if ($loggingOn) {
+                                echo "Do-while E: ".json_encode($nodes)."<br>";
+                            }
+                            return self::collapseNames($nodes, $parts);
                         }
-                    } else if (($lastNodeIdx > 2) && in_array(strtolower($nodes[$lastNodeIdx - 2]), $complexLastNamePrefixes[0]) && in_array(strtolower($nodes[$lastNodeIdx - 1]), $complexLastNamePrefixes[1])) {
-                        $newNodes = [];
-                        for ($i = 0; $i < $lastNodeIdx - 3; $i++) {
-                            $newNodes[] = $nodes[$i];
-                        }
-                        $newNodes[] = $nodes[$lastNodeIdx - 2] . " " . $nodes[$lastNodeIdx - 1] . " " . $nodes[$lastNodeIdx];
-                        $changed = TRUE;
-                        $nodes = $newNodes;
                     } else if (count($nodes) < $parts) {
+                        if ($loggingOn) {
+                            echo "Do-while F<br>";
+                        }
                         return self::padWithSpaces($nodes, $parts);
+                    } else {
+                        if ($loggingOn) {
+                            echo "Do-while G<br>";
+                        }
                     }
                 } while($changed);
 
@@ -262,11 +304,14 @@ class NameMatcher {
 
 	private static function collapseNames($nodes, $parts) {
         $first = $nodes[0];
-        for ($i = 1; $i < count($nodes) - $parts; $i++) {
+        for ($i = 1; $i <= count($nodes) - $parts; $i++) {
             $first .= " ".$nodes[$i];
         }
+        # collapse initials
+        $first = preg_replace("/\b(\w)\b\s\b(\w)\b/", "$1$2", $first);
+
         $returnValues[] = $first;
-        for ($i = count($nodes) - $parts; $i < $parts; $i++) {
+        for ($i = count($nodes) - $parts + 1; $i < count($nodes); $i++) {
             $returnValues[] = $nodes[$i];
         }
         return $returnValues;

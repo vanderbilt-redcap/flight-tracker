@@ -9,7 +9,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.23.0";
+		return "2.24.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -627,11 +627,12 @@ class CareerDev {
 					);
 		}
 		if ($menuName == "Resources") {
-			return array(
+			return [
 					"Participation Roster" => self::link("/resources/add.php"),
 					"Manage" => self::link("/resources/manage.php"),
 					"Dashboard Metrics" => self::link("/dashboard/resources.php"),
-					);
+                    "Measure ROI" => self::link("/resources/roi.php"),
+            ];
 		}
 		if ($menuName == "Help") {
 			$currPage = self::getCurrPage();

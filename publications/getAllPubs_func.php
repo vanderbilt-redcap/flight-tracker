@@ -5,10 +5,10 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\iCite;
-use \Vanderbilt\CareerDevLibrary\VICTRPubMedConnection;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\StarBRITE;
+use \Vanderbilt\CareerDevLibrary\NameMatcher;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
@@ -18,10 +18,10 @@ require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/iCite.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../classes/OracleConnection.php");
 require_once(dirname(__FILE__)."/../classes/StarBRITE.php");
+require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
 
-function getPubs($token, $server, $pid) {
+function getPubs($token, $server, $pid, $records) {
 	$cleanOldData = FALSE;
 	$metadata = Download::metadata($token, $server);
 
@@ -69,15 +69,14 @@ function getPubs($token, $server, $pid) {
 	unset($redcapData);
 
 	if (CareerDev::getShortInstitution() == "Vanderbilt") {
-		processVICTR($citationIds, $maxInstances, $token, $server, $pid);
+		processVICTR($citationIds, $maxInstances, $token, $server, $pid, $records);
 	}
-	processPubMed($citationIds, $maxInstances, $token, $server, $pid);
-	postprocess($token, $server);
+	processPubMed($citationIds, $maxInstances, $token, $server, $pid, $records);
+	postprocess($token, $server, $records);
 	CareerDev::saveCurrentDate("Last PubMed Download", $pid);
 }
 
-function postprocess($token, $server) {
-	$records = Download::recordIds($token, $server);
+function postprocess($token, $server, $records) {
 	$metadata = Download::metadata($token, $server);
 	$pullSize = 3;
 	for ($i = 0; $i < count($records); $i += $pullSize) {
@@ -159,13 +158,14 @@ function reverseArray($ary) {
 	return $newAry;
 }
 
-function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid) {
+function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $records) {
     $metadata = Download::metadata($token, $server);
-    $vunets = reverseArray(Download::vunets($token, $server));
+    $vunets = Download::vunets($token, $server);
     include "/app001/credentials/con_redcap_ldap_user.php";
     $starBriteServer = StarBRITE::getServer();
 
     foreach ($vunets as $vunet => $recordId) {
+        $vunet = $vunets[$recordId];
         $url = "https://$starBriteServer/s/sri/api/pub-match/vunet";
         $getParams = [$vunet];
         $url .= '/' . implode('/', array_map('urlencode', $getParams));
@@ -210,7 +210,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid) {
     }
 }
 
-function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid) {
+function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $records) {
 	$allLastNames = Download::lastnames($token, $server);
 	$allFirstNames = Download::firstnames($token, $server);
     $allInstitutions = Download::institutions($token, $server);
@@ -222,36 +222,23 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid) {
         $orcids = [];
     }
     $choices = REDCapManagement::getChoices($metadata);
+    $defaultInstitutions = Application::getInstitutions();
 
 	foreach ($allLastNames as $recordId => $recLastName) {
 		$firstName = $allFirstNames[$recordId];
-		$lastNames = preg_split("/\s*[\s\-]\s*/", strtolower($recLastName));
-        for ($i = 0; $i < count($lastNames); $i++) {
-            $lastNames[$i] = preg_replace("/^\(/", "", $lastNames[$i]);
-            $lastNames[$i] = preg_replace("/\)$/", "", $lastNames[$i]);
-        }
-		if (count($lastNames) > 1) {
-			array_push($lastNames, strtolower($recLastName));
-		}
-		if (preg_match("/\s\(/", strtolower($firstName))) {
-			# nickname in parentheses
-			$namesWithFormatting = preg_split("/\s\(/", strtolower($firstName));
-			$firstNames = array();
-			foreach ($namesWithFormatting as $formattedFirstName) {
-				$firstName = preg_replace("/\)$/", "", $formattedFirstName);
-				$firstName = preg_replace("/\s+/", "+", $firstName);
-				array_push($firstNames, $firstName);
-			}
-		} else {
-			# specified full name => search as group
-			$firstNames = array(preg_replace("/\s+/", "+", $firstName));
-		}
+        $lastNames = NameMatcher::explodeLastName(strtolower($recLastName));
+        $firstNames = NameMatcher::explodeFirstName(strtolower($firstName));
 
-		$personalInstitutions = array();
-		if (isset($allInstitutions[$recordId])) {
-			$personalInstitutions = preg_split("/\s*,\s*/", $allInstitutions[$recordId]);
-		}
-		$institutions = array_unique(array_merge(CareerDev::getInstitutions(), $personalInstitutions));
+        if (isset($allInstitutions[$recordId])) {
+            $institutions = preg_split("/\s*,\s*/", $allInstitutions[$recordId]);
+        } else {
+            $institutions = [];
+        }
+        foreach ($defaultInstitutions as $defaultInstitution) {
+            if (!in_array($defaultInstitution, $institutions)) {
+                $institutions[] = $defaultInstitution;
+            }
+        }
 
         $firstNames = REDCapManagement::removeBlanksFromAry($firstNames);
         $lastNames = REDCapManagement::removeBlanksFromAry($lastNames);

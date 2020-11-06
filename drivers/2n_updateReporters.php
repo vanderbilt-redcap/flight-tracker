@@ -3,11 +3,15 @@
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\NameMatcher;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
+require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 
 function getNewInstanceForRecord($oldReporters, $recordId) {
 	$max = 0;
@@ -43,11 +47,10 @@ function isNewItem($oldReporters, $item, $recordId) {
 	return true;
 }
 
-function updateReporter($token, $server, $pid) {
+function updateReporter($token, $server, $pid, $recordIds) {
 	# clear out old data
 	CareerDev::log("Clearing out old data");
 	echo "Clearing out old data\n";
-	$recordIds = Download::recordIds($token, $server);
 
 	$oldReporters = array();
 	$redcapRows = array();
@@ -87,15 +90,13 @@ function updateReporter($token, $server, $pid) {
 		$max = 0;
 		$firstName = $row['identifier_first_name'];
 		$lastName = $row['identifier_last_name'];
-		$firstNames = preg_split("/[\s\-]/", strtoupper($row['identifier_first_name']));
-		$lastNames = preg_split("/[\s\-]/", strtoupper($row['identifier_last_name']));
+        $firstNames = NameMatcher::explodeFirstName($row['identifier_first_name']);
+        $lastNames = NameMatcher::explodeLastName($row['identifier_last_name']);
 		$listOfNames = array();
 		foreach ($lastNames as $ln) {
 			foreach ($firstNames as $fn) {
 				if ($ln && $fn) {
-					$fn = preg_replace("/^\(/", "", $fn);
-					$fn = preg_replace("/\)$/", "", $fn);
-					$listOfNames[] = $fn." ".$ln;
+					$listOfNames[] = strtoupper($fn." ".$ln);
 				}
 			}
 		} 
@@ -114,12 +115,11 @@ function updateReporter($token, $server, $pid) {
 				array_push($institutions, $inst);
 			}
 		}
-		
-		$included = array();
+        $institutions = REDCapManagement::explodeInstitutions($institutions);
+
+        $included = array();
 		foreach ($listOfNames as $myName) {
-			$myName = preg_replace("/^\(/", "", $myName);
-			$myName = preg_replace("/\)$/", "", $myName);
-			$query = "/v1/projects/search?query=PiName:".urlencode($myName); 
+			$query = "/v1/projects/search?query=PiName:".urlencode($myName);
 			$currData = array();
 			$try = 0;
 			do {
@@ -129,23 +129,8 @@ function updateReporter($token, $server, $pid) {
 					$try = 0;
 				}
 				$url = "https://api.federalreporter.nih.gov".$query."&offset=".($max + 1);
-				CareerDev::log($url);
-				echo $url."\n";
-				$ch = curl_init();
-				curl_setopt($ch, CURLOPT_URL, $url);
-				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-				curl_setopt($ch, CURLOPT_VERBOSE, 0);
-				curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-				curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-				curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-				curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-				curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-				$output = curl_exec($ch);
-				curl_close($ch);
-				// CareerDev::log($output);
-
-				$myData = json_decode($output, true);
+                list($resp, $output) = REDCapManagement::downloadURL($url);
+                $myData = json_decode($output, true);
 				if ($myData && $myData['items']) {
 						foreach ($myData['items'] as $item) {
 						$currData[] = $item;

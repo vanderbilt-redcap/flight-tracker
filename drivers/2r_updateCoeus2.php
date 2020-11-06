@@ -17,14 +17,15 @@ require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../classes/StarBRITE.php");
 require_once(dirname(__FILE__)."/../classes/LDAP.php");
 
-function processCoeus2($token, $server, $pid) {
+function processCoeus2($token, $server, $pid, $records) {
     $userids = Download::userids($token, $server);
     $metadata = Download::metadata($token, $server);
     $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
     $choices = REDCapManagement::getChoices($metadata);
     $instrument = "coeus2";
     $prefix = "coeus2_";
-    foreach ($userids as $recordId => $userid) {
+    foreach ($records as $recordId) {
+        $userid = $userids[$recordId];
         Application::log("Looking up COEUS information for Record $recordId");
         if ($userid) {
             $starbriteData = StarBRITE::dataForUserid($userid);

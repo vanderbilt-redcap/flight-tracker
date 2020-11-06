@@ -30,7 +30,7 @@ if ($_POST['date']) {
 echo "<h1>Resource Participation Roster</h1>";
 
 if (isset($_POST['resource']) && $_POST['resource'] && isset($_POST['matched']) && $_POST['matched']) {
-	$records = getUploadAryFromRoster($_POST['matched']);
+	$records = \Vanderbilt\FlightTrackerExternalModule\getUploadAryFromRoster($_POST['matched']);
 
 	$numUploaded = 0;
 	foreach ($records as $recordId) {
@@ -42,7 +42,7 @@ if (isset($_POST['resource']) && $_POST['resource'] && isset($_POST['matched']) 
 		}
 	}
 
-	echo "<h3>Names Uploaded</h3>";
+    echo "<h3>Names Uploaded in ".count($records)." Records</h3>";
 }
 
 $metadata = Download::metadata($token, $server);
@@ -89,7 +89,7 @@ foreach ($resources as $value => $dateAry) {
 }
 
 ?>
-<form method='POST' action='<?= Application::link("add.php") ?>'>
+<form method='POST' action='<?= Application::link("resources/add.php") ?>'>
     <p class="centered">Date: <input type="date" id="date" name="date" onchange="showSignIn(); showResource();" value="<?= $requestedDate ?>"></p>
     <p class='centered'>Select a resource:<br>
         <select name='resource' id='resource' onchange='showSignIn(); showResource();'>

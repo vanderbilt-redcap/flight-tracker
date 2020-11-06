@@ -125,7 +125,7 @@ function makeUploadHoldingQueue($line, $headers) {
 	return $uploadLineHoldingQueue;
 }
 
-function updateExPORTER($token, $server, $pid) {
+function updateExPORTER($token, $server, $pid, $records) {
 	$files = array();
 
 	# find relevant zips
@@ -154,7 +154,6 @@ function updateExPORTER($token, $server, $pid) {
 	echo "Downloading REDCap\n";
 
 	$redcapData = array();
-	$records = Download::recordIds($token, $server);
 	foreach ($records as $recordId) {
 		$redcapData[$recordId] = Download::fieldsForRecords($token, $server, array_unique(array_merge(CareerDev::$customFields, CareerDev::$exporterFields)), array($recordId));
 	}

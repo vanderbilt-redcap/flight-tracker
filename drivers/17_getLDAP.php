@@ -17,13 +17,14 @@ require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/LDAP.php");
 require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
 
-function getLDAPs($token, $server, $pid) {
+function getLDAPs($token, $server, $pid, $records) {
     $metadata = Download::metadata($token, $server);
     $repeatingForms = REDCapManagement::getRepeatingForms($pid);
     $firstNames = Download::firstnames($token, $server);
     $lastNames = Download::lastnames($token, $server);
     $userids = Download::userids($token, $server);
-    foreach ($firstNames as $recordId => $firstName) {
+    foreach ($records as $recordId) {
+        $firstName = $firstNames[$recordId];
         Upload::deleteForm($token, $server, $pid, "ldap_", $recordId);
         $userid = $userids[$recordId];
         $lastName = $lastNames[$recordId];

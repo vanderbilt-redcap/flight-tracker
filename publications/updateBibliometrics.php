@@ -9,8 +9,7 @@ require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 
 
-function updateBibliometrics($token, $server, $pid) {
-    $records = Download::recordIds($token, $server);
+function updateBibliometrics($token, $server, $pid, $records) {
     $metadata = Download::metadata($token, $server);
     foreach ($records as $recordId) {
         $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), [$recordId]);

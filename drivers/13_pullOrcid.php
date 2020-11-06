@@ -21,8 +21,7 @@ define("NO_MATCHES", "NO_MATCHES");
 define("MORE_THAN_ONE", "MORE_THAN_ONE");
 define("ORCID_DELIM", "|");
 
-function pullORCIDs($token, $server, $pid) {
-    $recordIds = Download::recordIds($token, $server);
+function pullORCIDs($token, $server, $pid, $recordIds) {
     $orcids = Download::ORCIDs($token, $server);
     $firstnames = Download::firstnames($token, $server);
     $lastnames = Download::lastnames($token, $server);

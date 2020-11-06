@@ -43,7 +43,7 @@ function unlock($pid) {
 }
 
 # $allRecordRows is for testing purposes only
-function makeSummary($token, $server, $pid, $selectRecord = "", $allRecordRows = array()) {
+function makeSummary($token, $server, $pid, $records, $allRecordRows = array()) {
 	lock($pid);
 
 	if (!$token || !$server) {
@@ -56,11 +56,6 @@ function makeSummary($token, $server, $pid, $selectRecord = "", $allRecordRows =
 	CareerDev::log("6d CareerDev downloaded metadata: ".count($metadata));
 
 	# done in batches of 1 records
-	if (!$selectRecord) {
-		$records = Download::recordIds($token, $server);
-	} else {
-		$records = array($selectRecord);
-	}
 	$errors = array();
 	$returnREDCapData = array();
 	foreach ($records as $recordId) {

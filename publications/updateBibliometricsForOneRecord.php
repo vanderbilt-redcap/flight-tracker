@@ -9,7 +9,7 @@ require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/Publications.php");
 
 
-function updateBibliometrics($token, $server, $pid) {
+function updateBibliometrics($token, $server, $pid, $records) {
     $records = [1];
     $metadata = Download::metadata($token, $server);
     foreach ($records as $recordId) {

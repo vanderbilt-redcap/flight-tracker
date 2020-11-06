@@ -4,7 +4,8 @@ namespace Vanderbilt\CareerDevLibrary;
 
 # Future: Can implementation tie into: https://github.com/markrogoyski/math-php/tree/master/tests
 # Adapted from https://www.geeksforgeeks.org/program-implement-t-test/
-class Stats {
+class Stats
+{
     public function __construct($arr) {
         $this->arr = $arr;
     }

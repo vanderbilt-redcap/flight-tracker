@@ -16,18 +16,18 @@ require_once(dirname(__FILE__)."/../coeusPull_func.php");
 define("NOAUTH", "true");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 	
-function processCoeus($token, $server, $pid) {
+function processCoeus($token, $server, $pid, $records) {
 	CareerDev::log("Step 1");
 	pullCoeus($token, $server, $pid);
 	CareerDev::log("Step 1 done");
 	CareerDev::log("Step 2");
 	processFiles($token, $server, $pid);
 	CareerDev::log("Step 2 done");
-	updateCoeus($token, $server, $pid);
+	updateCoeus($token, $server, $pid, $records);
 	CareerDev::log("Step 3 done");
 }
 
-function updateCoeus($token, $server, $pid) {
+function updateCoeus($token, $server, $pid, $allRecordIds) {
 	# update COEUS information in REDCap without disturbing other information
 	# 6 should be run afterwards
 	# part of a larger process that downloads from COEUS database, reformats, puts in REDCap, and recalculates
@@ -45,7 +45,6 @@ function updateCoeus($token, $server, $pid) {
 
 	
 	# download original data
-	$allRecordIds = Download::recordIds($token, $server);
 	$pullSize = 1;
 	$numPulls = ceil(count($allRecordIds) / $pullSize);
 	$unmatchedInvestigators = array();

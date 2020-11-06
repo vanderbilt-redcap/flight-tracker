@@ -94,7 +94,7 @@ class CronManager {
 		}
 	}
 
-	public function run($adminEmail = "", $tokenName = "", $additionalEmailText = "") {
+	public function run($adminEmail = "", $tokenName = "", $additionalEmailText = "", $records = []) {
 		$dayOfWeek = date("l");
 		$date = date(self::getDateFormat());
 		$keys = array($date, $dayOfWeek);     // in order that they will run
@@ -111,6 +111,10 @@ class CronManager {
 			}
 		}
 
+		if (empty($records)) {
+		    $records = Download::recordIds($this->token, $this->server);
+        }
+
 		register_shutdown_function("CronManager::reportCronErrors");
 
 		Application::log("Running ".count($toRun)." crons for pid ".$this->pid." with keys ".json_encode($keys));
@@ -121,7 +125,7 @@ class CronManager {
 				if (!$this->token || !$this->server) {
 					throw new \Exception("Could not pass token '".$this->token."' or server '".$this->server."' to cron job");
 				}
-				$cronjob->run($this->token, $this->server, $this->pid);
+				$cronjob->run($this->token, $this->server, $this->pid, $records);
 				$run[$cronjob->getTitle()] = array("text" => "Succeeded", "ts" => self::getTimestamp());
 			} catch(\Throwable $e) {
 				$this->handle($e, $adminEmail, $cronjob);
@@ -189,7 +193,7 @@ class CronJob {
 		return $this->file.": ".$this->method;
 	}
 
-	public function run($passedToken, $passedServer, $passedPid) {
+	public function run($passedToken, $passedServer, $passedPid, $records) {
 		if (!$passedToken || !$passedServer || !$passedPid) {
 			throw new \Exception("In cronjob at beginning, could not find token '$passedToken' and/or server '$passedServer' and/or pid '$passedPid'");
 		}
@@ -199,7 +203,7 @@ class CronJob {
 		if ($this->method) {
             $method = $this->method;
 			if ($passedToken && $passedServer && $passedPid) {
-				$method($passedToken, $passedServer, $passedPid);
+				$method($passedToken, $passedServer, $passedPid, $records);
 			} else {
 				throw new \Exception("In cronjob while executing $method, could not find token '$passedToken' and/or server '$passedServer' and/or pid '$passedPid'");
 			}

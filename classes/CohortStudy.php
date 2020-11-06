@@ -3,30 +3,9 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/Stats.php");
+require_once(dirname(__FILE__)."/Study.php");
 
-class CohortStudy {
-    public function __construct($control, $treatment) {
-        if (is_array($control) && is_array($treatment)) {
-            $control = new Stats($control);
-            $treatment = new Stats($treatment);
-        }
-
-        $statsClassName = "Vanderbilt\CareerDevLibrary\Stats";
-        if ((get_class($control) != $statsClassName) || (get_class($treatment) != $statsClassName)) {
-            throw new \Exception("Both control and treatment need to be a Stats object: ".get_class($control)." ".get_class($treatment));
-        }
-        $this->control = $control;
-        $this->treatment = $treatment;
-    }
-
-    public function getControl() {
-        return $this->control;
-    }
-
-    public function getTreatment() {
-        return $this->treatment;
-    }
-
+class CohortStudy extends Study {
     # types include unpaired, paired, left-tailed paired, right-tailed paired
     public function getP($type = "unpaired") {
         if (strtolower($type) == "unpaired") {
@@ -144,7 +123,9 @@ class CohortStudy {
             if (($tScore >= $num1) && ($tScore <= $num2)) {
                 # figure out linear integration for items in between
                 $fractionInBetween = ($tScore - $num1) / ($num2 - $num1);
-                return $p1 + $fractionInBetween * ($p2 - $p1);
+                $result = $p1 + $fractionInBetween * ($p2 - $p1);
+                // echo "Row $i found: t=$tScore between num1=$num1 and num2=$num2 with p1=$p1 and p2=$p2 fraction=$fractionInBetween result=$result<br>";
+                return $result;
             }
         }
         return $twoTailP[count($twoTailP) - 1];
@@ -179,7 +160,4 @@ class CohortStudy {
     public function getTreatmentCI($percent) {
         return $this->treatment->confidenceInterval($percent);
     }
-
-    protected $control;
-    protected $treatment;
 }
