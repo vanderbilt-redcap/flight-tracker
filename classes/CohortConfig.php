@@ -109,7 +109,13 @@ class CohortConfig {
 
 	private static function compare($value1, $comparison, $value2) {
 		switch($comparison) {
-			case "gt":
+            case "contains":
+                return strpos($value1, $value2);
+                break;
+            case "not_contains":
+                return !strpos($value1, $value2);
+                break;
+		    case "gt":
 				return ($value1 > $value2);
 				break;
 			case "gteq":
@@ -256,6 +262,17 @@ class CohortConfig {
 		throw new \Exception("Improper combiner: '$combiner'");
 	}
 
+	public function getManualRecords() {
+	    if (isset($this->config['records'])) {
+	        return $this->config['records'];
+        }
+	    return [];
+    }
+
+    public function addRecords($records) {
+	    $this->config['records'] = $records;
+    }
+
 	public function getFields($metadata) {
 		$fields = array();
 		foreach ($this->getRows() as $row) {
@@ -304,7 +321,9 @@ class CohortConfig {
 				}
 			}
 			return TRUE;
-		}
+		} else if (isset($ary['records'])) {
+		    return TRUE;
+        }
 		return FALSE;
 	}
 
@@ -380,7 +399,14 @@ class CohortConfig {
 	}
 
 	public function getHTML($metadata) {
-		$html .= "<table style='margin-left: auto; margin-right: auto;'>\n";
+	    if (isset($this->config['records'])) {
+	        if (empty($this->config['records'])) {
+	            return "<p class='centered'>No Records Specified</p>";
+            } else {
+                return "<p class='centered'>Records: ".implode(", ", $this->config['records'])."</p>";
+            }
+        }
+		$html = "<table style='margin-left: auto; margin-right: auto;'>\n";
 
 		$choices = Scholar::getChoices($metadata);
 		$labels = Filter::getAllChoices();
@@ -396,6 +422,7 @@ class CohortConfig {
 
 		$comparisons = self::getComparisons();
 		$contains = Filter::getContainsSettings();
+		$stringComparisons = Filter::getStringComparisons();
 		$firstRow = TRUE;
 		foreach ($this->getRows() as $row) {
 			$html .= "<tr class='borderedRow centeredRow'>\n";
@@ -429,9 +456,13 @@ class CohortConfig {
 					} else if ($field == "comparison") {
 						if ($usesContains) {
 							$value = $contains[$row[$field]];
-						} else {
+						} else if ($comparisons[$row[$field]]) {
 							$value = $comparisons[$row[$field]];
-						}
+						} else if ($stringComparisons[$row[$field]]) {
+						    $value = $stringComparisons[$row[$field]];
+                        } else {
+						    throw new \Exception("This should never happen. Comparison of type {$row[$field]}.");
+                        }
 					} else {
 						$value = $row[$field];
 					}

@@ -9,7 +9,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.24.0";
+		return "2.25.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -558,11 +558,9 @@ class CareerDev {
                 "Scholar Profiles" => self::link("/profile.php"),
                 "Add a New Survey" => self::link("/emailMgmt/add.php"),
             ];
-            if (self::isTestGroup($pid)) {
-                $ary["Configure an Email"] = self::link("/emailMgmt/configure.php");
-                $ary["View Email Log"] = self::link("/emailMgmt/log.php");
-                $ary["List of Nonrespondents"] = self::link("/emailMgmt/noSurvey.php");
-            }
+            $ary["Configure an Email"] = self::link("/emailMgmt/configure.php");
+            $ary["View Email Log"] = self::link("/emailMgmt/log.php");
+            $ary["List of Nonrespondents"] = self::link("/emailMgmt/noSurvey.php");
             $ary["Survey Responses"] = self::link("/surveyResponses.php");
             $ary["Import General Data"] = self::link("/import.php");
             $ary["Import Positions"] = self::link("/bulkImport.php") . "&positions";
@@ -589,7 +587,8 @@ class CareerDev {
 					"Manage Cohorts" => self::link("/cohorts/manageCohorts.php"),
 					"Cohort Profiles" => self::link("/cohorts/profile.php"),
 					"Export a Cohort" => self::link("/cohorts/exportCohort.php"),
-					"View Cohort Metrics" => self::link("/cohorts/selectCohort.php"),
+                    "View Cohort Metrics" => self::link("/cohorts/selectCohort.php"),
+                    "Hand-Pick a Cohort" => self::link("/cohorts/pickCohort.php"),
 					);
 		}
 		if ($menuName == "General") {

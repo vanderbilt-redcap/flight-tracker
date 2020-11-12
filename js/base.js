@@ -36,8 +36,8 @@ function trimPeriods(str) {
 	return str.replace(/\.$/, "");
 }
 
-function submitPMC(pmc, textId) {
-	submitPMCs([pmc], textId);
+function submitPMC(pmc, textId, prefixHTML) {
+	submitPMCs([pmc], textId, prefixHTML);
 }
 
 function resetCitationList(textId) {
@@ -48,17 +48,18 @@ function resetCitationList(textId) {
 	}
 }
 
-function submitPMCs(pmcs, textId) {
+function submitPMCs(pmcs, textId, prefixHTML) {
 	if (!Array.isArray(pmcs)) {
 		pmcs = pmcs.split(/\n/);
 	}
 	if (pmcs && Array.isArray(pmcs)) {
 		resetCitationList(textId);
-		downloadOnePMC(0, pmcs, textId);
+		presentScreen("Downloading...");
+		downloadOnePMC(0, pmcs, textId, prefixHTML);
 	}
 }
 
-function downloadOnePMC(i, pmcs, textId) {
+function downloadOnePMC(i, pmcs, textId, prefixHTML) {
 	var pmc = pmcs[i];
 	if (pmc) {
 		if (!pmc.match(/PMC/)) {
@@ -129,21 +130,25 @@ function downloadOnePMC(i, pmcs, textId) {
 
 				var loc = getLocation(volume, issue, pages);
 				var citation = names.join(',') + '. ' + title + '. ' + journal + '. ' + year + ' ' + month + day + ';' + loc + '. ' + pmid + myPmc;
-				updateCitationList(textId, '', citation);
+				updateCitationList(textId, prefixHTML, citation);
 				let nextI = i + 1;
 				if (nextI < pmcs.length) {
 					setTimeout(function () {
-						downloadOnePMC(nextI, pmcs, textId);
+						downloadOnePMC(nextI, pmcs, textId, prefixHTML);
 					}, 1000);    // rate limiter
+				} else {
+					clearScreen();
 				}
 			},
 			error: function (e) {
-				updateCitationList(textId, '', 'ERROR: ' + JSON.stringify(e));
+				updateCitationList(textId, prefixHTML, 'ERROR: ' + JSON.stringify(e));
 				let nextI = i + 1;
 				if (nextI < pmids.length) {
 					setTimeout(function () {
-						downloadOnePMC(nextI, pmcs, textId);
+						downloadOnePMC(nextI, pmcs, textId, prefixHTML);
 					}, 1000);    // rate limiter
+				} else {
+					clearScreen();
 				}
 			}
 		});
@@ -231,6 +236,7 @@ function downloadOnePMID(i, pmids, textId, prefixHTML, doneCb) {
 						downloadOnePMID(nextI, pmids, textId, prefixHTML, doneCb);
 					}, 1000);    // rate limiter
 				} else if (nextI === pmids.length) {
+					clearScreen();
 					doneCb();
 				}
 			},
@@ -241,6 +247,8 @@ function downloadOnePMID(i, pmids, textId, prefixHTML, doneCb) {
 					setTimeout(function () {
 						downloadOnePMID(nextI, pmids, textId, prefixHTML, doneCb);
 					}, 1000);    // rate limiter
+				} else {
+					clearScreen();
 				}
 			}
 		});
@@ -260,6 +268,7 @@ function submitPMIDs(pmids, textId, prefixHTML, cb) {
 	}
 	if (pmids && (Array.isArray(pmids))) {
 		resetCitationList(textId);
+		presentScreen("Downloading...");
 		downloadOnePMID(0, pmids, textId, prefixHTML, cb);
 	}
 }
@@ -789,24 +798,27 @@ function getNewWranglerImg(state) {
 	return "";
 }
 
+function getPubImgHTML(newState) {
+	var newImg = getNewWranglerImg(newState);
+	return "<img align='left' style='margin: 2px; width: 26px; height: 26px;' src='"+newImg+"' alt='"+newState+"' onclick='changeCheckboxValue(this);'>";
+}
+
 function addPMID(pmid) {
 	if (!isNaN(pmid) && notAlreadyUsed(pmid)) {
-		var newState = "checked";
-		var newDiv = "notDone";
-		var newImg = getNewWranglerImg(newState);
-		var newId = "PMID"+pmid;
-		$('#'+newDiv).append("<div id='"+newId+"' style='margin: 8px 0; min-height: 26px;'></div>");
-		submitPMID(pmid, "#"+newId, "<img align='left' style='margin: 2px; width: 26px; height: 26px;' src='"+newImg+"' alt='"+newState+"' onclick='changeCheckboxValue(this);'>", function() { if (enqueue()) { $('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1); } });
+		var newState = 'checked';
+		var newDiv = 'notDone';
+		var newId = 'PMID'+pmid;
+		$('#'+newDiv).append('<div id="'+newId+'" style="margin: 8px 0; min-height: 26px;"></div>');
+		submitPMID(pmid, '#'+newId, getPubImgHTML(newState), function() { if (enqueue()) { $('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1); } });
 	} else if (isNaN(pmid)) {
-		alert("PMID "+pmid+" is not a number!");
+		alert('PMID '+pmid+' is not a number!');
 	} else {
 		// not already used
-		var bin = $("#PMID"+pmid).parent().attr("id");
 		var names = {};
-		names['finalized'] = "Citations Already Accepted and Finalized";
-		names['notDone'] = "Citations to Review";
-		names['omitted'] = "Citations to Omit";
-		alert("PMID "+pmid+" has already been entered in "+names[bin]+"!");
+		names['finalized'] = 'Citations Already Accepted and Finalized';
+		names['notDone'] = 'Citations to Review';
+		names['omitted'] = 'Citations to Omit';
+		alert('PMID '+pmid+' has already been entered in '+names[bin]+'!');
 	}
 }
 

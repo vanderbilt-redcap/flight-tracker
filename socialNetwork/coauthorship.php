@@ -20,6 +20,9 @@ require_once(dirname(__FILE__)."/../classes/SocialNetworkChart.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+if ($_GET['record']) {
+    $highlightedRecord = $_GET['record'];
+}
 
 $metadata = Download::metadata($token, $server);
 $choices = REDCapManagement::getChoices($metadata);
@@ -31,35 +34,40 @@ if ($_GET['cohort'] && ($_GET['cohort'] != "all")) {
 } else {
     $records = [];
 }
-$possibleFields = ["record_id", "summary_primary_dept", "summary_gender", "summary_urm", "summary_degrees"];
+$possibleFields = ["record_id", "summary_primary_dept", "summary_gender", "summary_urm", "summary_degrees", "summary_current_division"];
 if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
     $indexByField = $_GET['field'];
 } else {
     $indexByField = "record_id";
 }
 $networkChartName = "chartdiv";
-
+$includeMentors = ($_GET['mentors'] == "on") && ($indexByField == 'record_id');
+$includeHeaders = !isset($_GET['headers']) || ($_GET['headers'] != "false");
 
 $cohorts = new Cohorts($token, $server, $metadata);
 
-?>
-
-<h1>Publishing Collaborations Among Scholars</h1>
-<?php
+if ($includeHeaders) {
+    echo "<h1>Publishing Collaborations Among Scholars</h1>\n";
     list($url, $params) = REDCapManagement::splitURL(Application::link("socialNetwork/coauthorship.php"));
     echo "<form method='GET' action='$url'>\n";
     foreach ($params as $param => $value) {
         echo "<input type='hidden' name='$param' value='$value'>";
     }
-?>
+    echo "<p class='centered'><a href='" . Application::link("cohorts/addCohort.php") . "'>Make a Cohort</a> to View a Sub-Group<br>";
+    echo $cohorts->makeCohortSelect($_GET['cohort'], "", TRUE) . "<br>";
+    echo makeFieldSelect($indexByField, $possibleFields, $metadataLabels) . "<br>";
+    $style = "";
+    if ($indexByField != "record_id") {
+        $style = " style='display: none;'";
+    }
+    $checked = "";
+    if ($_GET['mentors'] == "on") {
+        $checked = " checked";
+    }
+    echo "<span id='mentorCheckbox'$style><input type='checkbox' name='mentors'$checked> Include Mentors' Collaborations with Scholars<br></span>";
+    echo "<button>Go!</button></p></form>";
+}
 
-<p class="centered"><a href="<?= Application::link("cohorts/addCohort.php") ?>">Make a Cohort</a> to View a Sub-Group<br>
-    <?= $cohorts->makeCohortSelect($_GET['cohort'], "", TRUE) ?><br>
-    <?= makeFieldSelect($indexByField, $possibleFields, $metadataLabels) ?><br>
-    <button>Go!</button>
-</p>
-</form>
-<?php
 if (isset($_GET['cohort']) && !empty($records)) {
     $inlineDefinitions = [
         "given" => "Citations <u>to</u> others in network",
@@ -68,12 +76,15 @@ if (isset($_GET['cohort']) && !empty($records)) {
     $topDefinitions = [
         "Scholar" => "The person whose publication is being examined.",
         "Collaborator" => "A different person who has co-authored a paper with the Scholar.",
-        "Connection" => "A paper published with a Scholar and one-or-more Collaborators.",
+        "Connection" => "A paper published with a Scholar and a Collaborator. (One paper may have more than one connection.)",
     ];
 
     $names = Download::names($token, $server);
     $possibleLastNames = getExplodedLastNames($token, $server);
     $possibleFirstNames = getExplodedFirstNames($token, $server);
+    if ($includeMentors) {
+        addMentorNamesForRecords($possibleFirstNames, $possibleLastNames, $records, $token, $server, $highlightedRecord);
+    }
     $fields = ["record_id", "citation_include", "citation_authors", "citation_year", "citation_month", "citation_day"];
     if (!in_array($indexByField, $fields)) {
         $fields[] = $indexByField;
@@ -82,49 +93,69 @@ if (isset($_GET['cohort']) && !empty($records)) {
     $matches = [];
     $pubs = [];
     $index = [];
-    foreach ($records as $fromRecordId) {
-        $matches[$fromRecordId] = findMatchesForRecord($index, $pubs, $token, $server, $fields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records);
+    if ($highlightedRecord) {
+        foreach ($records as $fromRecordId) {
+            if ($fromRecordId == $highlightedRecord) {
+                $matches[$highlightedRecord] = findMatchesForRecord($index, $pubs, $token, $server, $fields, $highlightedRecord, $possibleFirstNames, $possibleLastNames, $indexByField, $records);
+            } else {
+                $matches[$fromRecordId] = [];
+            }
+        }
+    } else {
+        foreach ($records as $fromRecordId) {
+            $matches[$fromRecordId] = findMatchesForRecord($index, $pubs, $token, $server, $fields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records);
+        }
     }
 
     list($connections, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index);
+    if ($includeMentors) {
+        $mentorConnections = getAvgMentorConnections($matches);
+    }
     list($stats, $maxConnections, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators) = makeSummaryStats($connections, $names);
 
-    echo "<table style='margin: 30px auto;' class='bordered'>\n";
-    echo "<tr><td colspan='2'><h4 class='nomargin'>Definitions</h4>";
-    $lines = [];
-    foreach ($topDefinitions as $term => $def) {
-        $lines[] = "<b>$term</b> - $def";
-    }
-    echo "<div class='centered'>".implode("<br>", $lines)."</div>";
-    foreach (array_keys($connections) as $type) {
-        echo "<tr><td colspan='2' class='centered green'><h4 class='nomargin'>".ucfirst($type)."</h4>{$inlineDefinitions[$type]}</td></tr>";
-        if ($stats) {
-            echo "<tr><th>Total Connections</th><td>".REDCapManagement::pretty(array_sum($stats[$type]->getValues()))."</td></tr>\n";
-            echo "<tr><th>Number of Scholars with Connections</th><td>n = ".REDCapManagement::pretty($stats[$type]->getN())."</td></tr>\n";
-            echo "<tr><th>Average Number of Collaborators with at least one Connection</th><td>".REDCapManagement::pretty($totalCollaborators[$type] / $stats[$type]->getN(), 1)."</td></tr>\n";
-            echo "<tr><th>Mean of Connections</th><td>&mu; = ".REDCapManagement::pretty($stats[$type]->mean(), 1)."</td></tr>\n";
-            echo "<tr><th>Average Connections with a Collaborator</th><td>".REDCapManagement::pretty($stats[$type]->sum() / $totalCollaborators[$type], 1)."</td></tr>\n";
-            echo "<tr><th>Median of Connections</th><td>".REDCapManagement::pretty($stats[$type]->median(), 1)."</td></tr>\n";
-            echo "<tr><th>Mode of Connections</th><td>".implode(", ", $stats[$type]->mode())."</td></tr>\n";
-            echo "<tr><th>Standard Deviation</th><td>&sigma; = ".REDCapManagement::pretty($stats[$type]->getSigma(), 1)."</td></tr>\n";
-            echo "<tr><th>Maximum Connections</th><td>max = ".REDCapManagement::pretty($maxConnections[$type])." (".REDCapManagement::makeConjunction($maxNames[$type]).")</td></tr>\n";
-            echo "<tr><th>Maximum Number of Collaborators</th><td>max = ".REDCapManagement::pretty($maxCollaborators[$type])." (".REDCapManagement::makeConjunction($maxCollabNames[$type]).")</td></tr>\n";
+    if ($includeHeaders) {
+        echo "<table style='margin: 30px auto; max-width: 800px;' class='bordered'>\n";
+        echo "<tr><td colspan='2'><h4 class='nomargin'>Definitions</h4>";
+        $lines = [];
+        foreach ($topDefinitions as $term => $def) {
+            $lines[] = "<b>$term</b> - $def";
         }
+        echo "<div class='centered'>".implode("<br>", $lines)."</div>";
+        foreach (array_keys($connections) as $type) {
+            echo "<tr><td colspan='2' class='centered green'><h4 class='nomargin'>".ucfirst($type)."</h4>{$inlineDefinitions[$type]}</td></tr>";
+            if ($stats) {
+                echo "<tr><th>Total Connections</th><td>".REDCapManagement::pretty(array_sum($stats[$type]->getValues()))."</td></tr>\n";
+                echo "<tr><th>Number of Scholars with Connections</th><td>n = ".REDCapManagement::pretty($stats[$type]->getN())."</td></tr>\n";
+                echo "<tr><th>Average Number of Collaborators with at least one Connection</th><td>".REDCapManagement::pretty($totalCollaborators[$type] / $stats[$type]->getN(), 1)."</td></tr>\n";
+                echo "<tr><th>Mean of Connections</th><td>&mu; = ".REDCapManagement::pretty($stats[$type]->mean(), 1)."</td></tr>\n";
+                echo "<tr><th>Average Connections with a Collaborator</th><td>".REDCapManagement::pretty($stats[$type]->sum() / $totalCollaborators[$type], 1)."</td></tr>\n";
+                echo "<tr><th>Median of Connections</th><td>".REDCapManagement::pretty($stats[$type]->median(), 1)."</td></tr>\n";
+                echo "<tr><th>Mode of Connections</th><td>".implode(", ", $stats[$type]->mode())."</td></tr>\n";
+                echo "<tr><th>Standard Deviation</th><td>&sigma; = ".REDCapManagement::pretty($stats[$type]->getSigma(), 1)."</td></tr>\n";
+                echo "<tr><th>Maximum Connections</th><td>max = ".REDCapManagement::pretty($maxConnections[$type])." (".REDCapManagement::makeConjunction($maxNames[$type]).")</td></tr>\n";
+                echo "<tr><th>Maximum Number of Collaborators</th><td>max = ".REDCapManagement::pretty($maxCollaborators[$type])." (".REDCapManagement::makeConjunction($maxCollabNames[$type]).")</td></tr>\n";
+                if ($includeMentors && ($type == "given")) {
+                    echo "<tr><th>Average Connections per Mentor with All Scholars</th><td>".REDCapManagement::pretty($mentorConnections, 1)."</td></tr>\n";
+                }
+            }
+        }
+        echo "</table>\n";
     }
-    echo "</table>\n";
 
     $socialNetwork = new SocialNetworkChart($networkChartName, $chartData);
-    $socialNetwork->setNonRibbon(count($uniqueNames) > 50);
+    $socialNetwork->setNonRibbon(count($uniqueNames) > 100);
     echo $socialNetwork->getImportHTML();
     echo $socialNetwork->getHTML(900, 700);
-    echo "<br><br>";
 
-    list($barChartCols, $barChartLabels) = makePublicationColsAndLabels($pubs);
-    $chart = new BarChart($barChartCols, $barChartLabels, "barChart");
-    $chart->setXAxisLabel("Year");
-    $chart->setYAxisLabel("Number of Collaborations");
-    echo $chart->getImportHTML();
-    echo $chart->getHTML(500, 300);
+    if ($includeHeaders) {
+        echo "<br><br>";
+        list($barChartCols, $barChartLabels) = makePublicationColsAndLabels($pubs);
+        $chart = new BarChart($barChartCols, $barChartLabels, "barChart");
+        $chart->setXAxisLabel("Year");
+        $chart->setYAxisLabel("Number of Connections");
+        echo $chart->getImportHTML();
+        echo $chart->getHTML(500, 300);
+    }
 }
 
 
@@ -161,7 +192,7 @@ function makePublicationColsAndLabels($pubs) {
 
 function makeFieldSelect($selectedField, $fields, $metadataLabels) {
     $html = "";
-    $html .= "Index by Field: <select name='field'>";
+    $html .= "Index by Field: <select name='field' onchange='if ($(this).val() == \"record_id\") { $(\"#mentorCheckbox\").show(); } else { $(\"#mentorCheckbox\").hide(); }'>";
     foreach ($fields as $field) {
         $selected = "";
         if ($field == $selectedField) {
@@ -173,6 +204,23 @@ function makeFieldSelect($selectedField, $fields, $metadataLabels) {
     return $html;
 }
 
+function getAvgMentorConnections($matches) {
+    $mentorConnections = 0;
+    $mentorCollaborators = [];
+    foreach (array_keys($matches) as $fromRecordId) {
+        foreach ($matches[$fromRecordId] as $toRecordId => $fromInstances) {
+            if (preg_match("/^Mentor/", $toRecordId)) {
+                $mentor = $toRecordId;
+                $mentorConnections += count($fromInstances);
+                if (!in_array($mentor, $mentorCollaborators)) {
+                    $mentorCollaborators[] = $mentor;
+                }
+            }
+        }
+    }
+    return $mentorConnections / count($mentorCollaborators);
+}
+
 function makeEdges($matches, $indexByField, $names, $choices, $index) {
     $connections = ["given" => [], "received" => [], ];
     $chartData = [];
@@ -181,8 +229,18 @@ function makeEdges($matches, $indexByField, $names, $choices, $index) {
         $connections["given"][$fromRecordId] = [];
         foreach ($matches[$fromRecordId] as $toRecordId => $fromInstances) {
             if ($indexByField == "record_id") {
-                $from = $fromRecordId.": ".$names[$fromRecordId];
-                $to = $toRecordId.": ".$names[$toRecordId];
+                if ($names[$fromRecordId]) {
+                    $from = $fromRecordId.": ".$names[$fromRecordId];
+                } else {
+                    # mentor
+                    $from = $fromRecordId;
+                }
+                if ($names[$toRecordId]) {
+                    $to = $toRecordId . ": " . $names[$toRecordId];
+                } else {
+                    # mentor
+                    $to = $toRecordId;
+                }
             } else if ($choices[$indexByField]) {
                 $from = $choices[$indexByField][$index[$fromRecordId]];
                 $to = $choices[$indexByField][$index[$toRecordId]];
@@ -293,13 +351,49 @@ function makeSummaryStats($connections, $names) {
             $numConnections = array_sum(array_values($indivConnections));
             $numCollaborators = count($indivConnections);
             if ($numConnections == $maxConnections[$type]) {
-                $maxNames[$type][] = $names[$recordId];
+                if ($names[$recordId]) {
+                    $maxNames[$type][] = $names[$recordId];
+                } else {
+                    # mentor
+                    $maxNames[$type][] = $recordId;
+                }
             }
             if ($numCollaborators == $maxCollaborators[$type]) {
-                $maxCollabNames[$type][] = $names[$recordId];
+                if ($names[$recordId]) {
+                    $maxCollabNames[$type][] = $names[$recordId];
+                } else {
+                    # mentor
+                    $maxCollabNames[$type][] = $recordId;
+                }
             }
         }
     }
     return [$stats, $maxConnections, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators];
 }
 
+function addMentorNamesForRecords(&$firstNames, &$lastNames, &$records, $token, $server, $highlightedRecord = FALSE) {
+    $mentors = Download::primaryMentors($token, $server);
+    foreach ($mentors as $recordId => $mentorList) {
+        $useThisRecord = !$highlightedRecord || ($highlightedRecord == $recordId);
+        if (in_array($recordId, $records) && $useThisRecord) {
+            $i = 1;
+            foreach ($mentorList as $mentor) {
+                list($first, $last) = NameMatcher::splitName($mentor);
+                $alreadyPresent = FALSE;
+                foreach ($firstNames as $currRecordId => $currFirst) {
+                    $currLast = $lastNames[$currRecordId];
+                    if (NameMatcher::matchByInitials($last, $first, $currLast, $currFirst)) {
+                        $alreadyPresent = TRUE;
+                    }
+                }
+                if (!$alreadyPresent) {
+                    $key = "Mentor $mentor";
+                    $records[] = $key;
+                    $firstNames[$key] = NameMatcher::explodeFirstName($first);
+                    $lastNames[$key] = NameMatcher::explodeLastName($last);
+                }
+                $i++;
+            }
+        }
+    }
+}

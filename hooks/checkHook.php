@@ -32,7 +32,7 @@ $grants->compileGrants();
 # fields is a prioritized list of fields to look through
 # returns an array for existing coeus values (instance = value)
 # returns "" when data is not there
-function find($fields) {
+function findInCheck($fields) {
 	global $data;
 	if (!is_array($fields)) {
 		$fields = array($fields);
@@ -127,15 +127,15 @@ function getDisability($value) {
 ?>
 <script>
 $(document).ready(function() {
-	presetValue("check_name_first", "<?php echo find('identifier_first_name'); ?>");
-	presetValue("check_name_middle", "<?php echo find('identifier_middle'); ?>");
-	presetValue("check_name_last", "<?php echo find('identifier_last_name'); ?>");
-	presetValue("check_email", "<?php echo find('identifier_email'); ?>");
-	presetValue("check_date_of_birth", "<?php echo REDCapManagement::YMD2MDY(find('summary_dob')); ?>");
+	presetValue("check_name_first", "<?php echo findInCheck('identifier_first_name'); ?>");
+	presetValue("check_name_middle", "<?php echo findInCheck('identifier_middle'); ?>");
+	presetValue("check_name_last", "<?php echo findInCheck('identifier_last_name'); ?>");
+	presetValue("check_email", "<?php echo findInCheck('identifier_email'); ?>");
+	presetValue("check_date_of_birth", "<?php echo REDCapManagement::YMD2MDY(findInCheck('summary_dob')); ?>");
 	$('#check_date_of_birth-tr td .ui-button').hide();
-	presetValue("check_gender", "<?php echo find('summary_gender'); ?>");
+	presetValue("check_gender", "<?php echo findInCheck('summary_gender'); ?>");
     <?php
-	$re = find('summary_race_ethnicity');
+	$re = findInCheck('summary_race_ethnicity');
 	if ($re != '') {
 	    $raceTranslate = array(
 				    1 => 5,
@@ -157,58 +157,58 @@ $(document).ready(function() {
 	    echo "  presetValue('check_ethnicity', '{$ethnTranslate[$re]}');\n";
 	}
     ?>
-	presetValue("check_citizenship", "<?php echo find('summary_citizenship'); ?>");
-	presetValue("check_primary_mentor", "<?php echo find('summary_mentor'); ?>");
-	presetValue("check_institution", "<?php echo getInstitution(find('identifier_institution', 'check_institution')); ?>");
+	presetValue("check_citizenship", "<?php echo findInCheck('summary_citizenship'); ?>");
+	presetValue("check_primary_mentor", "<?php echo findInCheck('summary_mentor'); ?>");
+	presetValue("check_institution", "<?php echo getInstitution(findInCheck('identifier_institution', 'check_institution')); ?>");
 
 <?php
-	if (find("vfrs_graduate_degree")) {
+	if (findInCheck("vfrs_graduate_degree")) {
 		#VFRS
 ?>
 		<?php $curr = "vfrs_degree1"; $checkI = 1; ?>
 		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo find("vfrs_graduate_degree" ); ?>");
-		<?php if (find("vfrs_graduate_degree") == 6) { echo "presetValue('check_degree".$checkI."_oth', '".find("vfrs_please_specify")."');\n"; } ?>
-		presetValue(base+"_month", "<?php $v = find($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
-		presetValue(base+"_year", "<?php $v = find($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
-		presetValue(base+"_institution", "<?php echo find($curr.'_institution') ?>");
-		presetValue(base+"_institution", "<?php echo find($curr.'_institution') ?>");
-		presetValue(base+"_another", "<?php if (find('vfrs_degree2') != '') { echo "1"; } ?>");
+		presetValue(base, "<?php echo findInCheck("vfrs_graduate_degree" ); ?>");
+		<?php if (findInCheck("vfrs_graduate_degree") == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify")."');\n"; } ?>
+		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
+		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
+		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
+		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
+		presetValue(base+"_another", "<?php if (findInCheck('vfrs_degree2') != '') { echo "1"; } ?>");
 
-		<?php $curr = "vfrs_degree2"; if (find($curr)) { $checkI++; } ?>
+		<?php $curr = "vfrs_degree2"; if (findInCheck($curr)) { $checkI++; } ?>
 		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo find($curr); ?>");
-		<?php if (find($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".find("vfrs_please_specify2")."');\n"; } ?>
-		presetValue(base+"_month", "<?php $v = find($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
-		presetValue(base+"_year", "<?php $v = find($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
-		presetValue(base+"_institution", "<?php echo find($curr.'_institution') ?>");
-		presetValue(base+"_another", "<?php if (find('vfrs_degree3') != '') { echo "1"; } ?>");
+		presetValue(base, "<?php echo findInCheck($curr); ?>");
+		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify2")."');\n"; } ?>
+		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
+		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
+		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
+		presetValue(base+"_another", "<?php if (findInCheck('vfrs_degree3') != '') { echo "1"; } ?>");
 
-		<?php $curr = "vfrs_degree3"; if (find($curr)) { $checkI++; } ?>
+		<?php $curr = "vfrs_degree3"; if (findInCheck($curr)) { $checkI++; } ?>
 		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo find($curr); ?>");
-		<?php if (find($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".find("vfrs_please_specify3")."');\n"; } ?>
-		presetValue(base+"_month", "<?php $v = find($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
-		presetValue(base+"_year", "<?php $v = find($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
-		presetValue(base+"_institution", "<?php echo find($curr.'_institution') ?>");
-		presetValue(base+"_another", "<?php if (find('vfrs_degree4') != '') { echo "1"; } ?>");
+		presetValue(base, "<?php echo findInCheck($curr); ?>");
+		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify3")."');\n"; } ?>
+		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
+		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
+		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
+		presetValue(base+"_another", "<?php if (findInCheck('vfrs_degree4') != '') { echo "1"; } ?>");
 
-		<?php $curr = "vfrs_degree4"; if (find($curr)) { $checkI++; } ?>
+		<?php $curr = "vfrs_degree4"; if (findInCheck($curr)) { $checkI++; } ?>
 		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo find($curr); ?>");
-		<?php if (find($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".find("vfrs_please_specify4")."');\n"; } ?>
-		presetValue(base+"_month", "<?php $v = find($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
-		presetValue(base+"_year", "<?php $v = find($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
-		presetValue(base+"_institution", "<?php echo find($curr.'_institution') ?>");
-		presetValue(base+"_another", "<?php if (find('vfrs_degree5') != '') { echo "1"; } ?>");
+		presetValue(base, "<?php echo findInCheck($curr); ?>");
+		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify4")."');\n"; } ?>
+		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
+		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
+		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
+		presetValue(base+"_another", "<?php if (findInCheck('vfrs_degree5') != '') { echo "1"; } ?>");
 
-		<?php $curr = "vfrs_degree5"; if (find($curr)) { $checkI++; } ?>
+		<?php $curr = "vfrs_degree5"; if (findInCheck($curr)) { $checkI++; } ?>
 		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo find($curr); ?>");
-		<?php if (find($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".find("vfrs_please_specify5")."');\n"; } ?>
-		presetValue(base+"_month", "<?php $v = find($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
-		presetValue(base+"_year", "<?php $v = find($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
-		presetValue(base+"_institution", "<?php echo find($curr.'_institution') ?>");
+		presetValue(base, "<?php echo findInCheck($curr); ?>");
+		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify5")."');\n"; } ?>
+		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
+		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
+		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
 <?php
 	} else {
 		# Newman
@@ -249,16 +249,16 @@ $(document).ready(function() {
 		}
 
 		$degreeIndices = array();
-		if (find("newman_data_degree1") != "") {
-			$degreeIndices[] = find("newman_data_degree1");
-			$degreeIndices[] = find("newman_data_degree2");
-			$degreeIndices[] = find("newman_data_degree3");
-		} else if (find("newman_sheet2_degree1") != "") {
-			$degreeIndices[] = find("newman_sheet2_degree1");
-			$degreeIndices[] = find("newman_sheet2_degree2");
-			$degreeIndices[] = find("newman_sheet2_degree3");
+		if (findInCheck("newman_data_degree1") != "") {
+			$degreeIndices[] = findInCheck("newman_data_degree1");
+			$degreeIndices[] = findInCheck("newman_data_degree2");
+			$degreeIndices[] = findInCheck("newman_data_degree3");
+		} else if (findInCheck("newman_sheet2_degree1") != "") {
+			$degreeIndices[] = findInCheck("newman_sheet2_degree1");
+			$degreeIndices[] = findInCheck("newman_sheet2_degree2");
+			$degreeIndices[] = findInCheck("newman_sheet2_degree3");
 		} else {
-			$degreeIndices[] = find("newman_demographics_degrees");
+			$degreeIndices[] = findInCheck("newman_demographics_degrees");
 		}
 		$degrees = findDegreeIndexList($degreeIndices);
 
@@ -279,11 +279,11 @@ $(document).ready(function() {
 		$fellowYears = array();
 		for ($i = 0; $i < 5; $i++) {
 			$index = $i + 1;
-			$year = find('vfrs_degree{$index}_residency');
+			$year = findInCheck('vfrs_degree{$index}_residency');
 			if ($year) { $residencyYears[] = $year; }
-			$year = find('vfrs_degree{$index}_clinfelyear');
+			$year = findInCheck('vfrs_degree{$index}_clinfelyear');
 			if ($year) { $fellowYears[] = $year; }
-			$year = find('vfrs_degree{$index}_postdocyear');
+			$year = findInCheck('vfrs_degree{$index}_postdocyear');
 			if ($year) { $fellowYears[] = $year; }
 		}
 		while (count($residencyYears) < 5) {
@@ -326,11 +326,11 @@ $(document).ready(function() {
 	}
 ?>
 
-	presetValue('check_primary_dept', '<?php echo find('summary_primary_dept'); ?>');
-	presetValue('check_division', '<?php echo find(array('identifier_starting_division')); ?>');
-	presetValue("check_orcid_id", "<?php echo find(array('identifier_orcid')); ?>");
-	presetValue("check_disadvantaged", "<?php echo find(array('summary_disadvantaged')); ?>");
-	presetValue("check_disability", "<?php echo find(array('summary_disability')); ?>");
+	presetValue('check_primary_dept', '<?php echo findInCheck('summary_primary_dept'); ?>');
+	presetValue('check_division', '<?php echo findInCheck(array('identifier_starting_division')); ?>');
+	presetValue("check_orcid_id", "<?php echo findInCheck(array('identifier_orcid')); ?>");
+	presetValue("check_disadvantaged", "<?php echo findInCheck(array('summary_disadvantaged')); ?>");
+	presetValue("check_disability", "<?php echo findInCheck(array('summary_disability')); ?>");
 
 <?php
 # Get rid of my extra verbiage

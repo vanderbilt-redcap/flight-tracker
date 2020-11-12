@@ -30,8 +30,12 @@ class Cohorts {
         }
 	    $html .= ">";
 	    if ($displayAllOption) {
+	        $allStatus = "";
+	        if ($defaultCohort == "all") {
+	            $allStatus = " selected";
+            }
             $html .= "<option value=''>---SELECT---</option>\n";
-            $html .= "<option value='all'>---ALL---</option>\n";
+            $html .= "<option value='all'$allStatus>---ALL---</option>\n";
         } else {
             $html .= "<option value=''>---ALL---</option>\n";
         }
@@ -111,12 +115,16 @@ class Cohorts {
 
 	public function addCohort($name, $config) {
 		$cohortConfig = new CohortConfig($name);
-		$cohortConfig->setCombiner($config['combiner']);
-		foreach ($config['rows'] as $row) {
-			if (CohortConfig::isValidRow($row)) {
-				$cohortConfig->addRow($row);
-			}
-		}
+		if (isset($config['records'])) {
+		    $cohortConfig->addRecords($config['records']);
+        } else {
+            $cohortConfig->setCombiner($config['combiner']);
+            foreach ($config['rows'] as $row) {
+                if (CohortConfig::isValidRow($row)) {
+                    $cohortConfig->addRow($row);
+                }
+            }
+        }
 		$this->configs[$cohortConfig->getName()] = $cohortConfig->getArray();
 		$this->save();
 	}

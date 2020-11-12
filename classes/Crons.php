@@ -4,6 +4,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 // require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class CronManager {
 	public function __construct($token, $server, $pid) {

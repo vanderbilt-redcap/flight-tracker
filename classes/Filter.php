@@ -49,7 +49,16 @@ class Filter {
 		}
 	}
 
-	# function used in dynamic variable
+    public static function getStringComparisons() {
+        return [
+            "eq" => "=",
+            "neq" => "!=",
+            "contains" => "contains",
+            "not_contains" => "does not contain",
+        ];
+    }
+
+    # function used in dynamic variable
 	public function calc_email_domain($type, $rows = array()) {
 		$func = "getEmailDomain";
 		if ($type == GET_CHOICES) {
@@ -396,6 +405,8 @@ class Filter {
 		return array(
 				"eq" => "Has",
 				"neq" => "Does Not Have",
+                "contains" => "Contains",
+                "not_contains" => "Does Not Contain",
 				);
 	}
 
@@ -684,12 +695,21 @@ class Filter {
 			$redcapData = Download::getIndexedRedcapData($this->token, $this->server, $fields);
 		}
 
-		$in = array();
-		foreach ($redcapData as $recordId => $rows) {
-			if ($config->isIn($rows, $this)) {
-				array_push($in, $recordId);
-			}
-		}
+        $in = [];
+		$records = $config->getManualRecords();
+		if (!empty($records)) {
+            foreach ($redcapData as $recordId => $rows) {
+                if (in_array($recordId, $records)) {
+                    array_push($in, $recordId);
+                }
+            }
+        } else {
+            foreach ($redcapData as $recordId => $rows) {
+                if ($config->isIn($rows, $this)) {
+                    array_push($in, $recordId);
+                }
+            }
+        }
 		return $in;
 	}
 
@@ -741,10 +761,7 @@ class CalcSettings {
 
 	public function getComparisons() {
 		if ($this->type == "string") {
-			return array(
-					"eq" => "=",
-					"neq" => "!=",
-					);
+			return Filter::getStringComparisons();
 		} else if (($this->type == "number") || ($this->type == "date")) {
 			return CohortConfig::getComparisons();
 		}

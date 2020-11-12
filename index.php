@@ -129,7 +129,7 @@ $(document).ready(function() {
 		}
 		echo "</tr>\n";
 		echo "<tr>\n";
-		echo "<td colspan='$numCols' class='centered'><a href='javascript:;' onclick='startTonight(".$_GET['pid'].");'>Click to All Updates Tonight</a><br><span class='small'>(Otherwise, updates will run over the course of the week.)</span></td>\n";
+		echo "<td colspan='$numCols' class='centered'><a href='javascript:;' onclick='startTonight(".$_GET['pid'].");'>Click to Run All Updates Tonight</a><br><span class='small'>(Otherwise, updates will run over the course of the week.)</span></td>\n";
 		echo "</tr>\n";
 	}
 	echo "</table>\n";

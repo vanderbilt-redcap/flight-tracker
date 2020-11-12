@@ -54,10 +54,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     $mgr->run($adminEmail, $tokenName);
                 }
 
-                if (Application::isTestGroup($pid)) {
-                    $mgr = new EmailManager($token, $server, $pid, $this);
-                    $mgr->sendRelevantEmails();
-                }
+                $mgr = new EmailManager($token, $server, $pid, $this);
+                $mgr->sendRelevantEmails();
 			}
 		}
 	}

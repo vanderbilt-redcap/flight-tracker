@@ -47,8 +47,8 @@ require_once(dirname(__FILE__)."/css.php");
                 }
             }
             if (pmids.length > 0) {
-                presentScreen("Saving...");
-                $.post("<?= Application::link("wrangler/savePubs.php") ?>", { record_id: '<?= $_GET['record'] ?>', pmids: pmids }, function(data) {
+                presentScreen('Saving...');
+                $.post('<?= Application::link("wrangler/savePubs.php") ?>', { record_id: '<?= $_GET['record'] ?>', pmids: pmids }, function(data) {
                     console.log("saveComplete "+JSON.stringify(data));
                     clearScreen();
                     if (data['error']) {
@@ -66,30 +66,7 @@ require_once(dirname(__FILE__)."/css.php");
 
         function includeCitation(citation) {
             if (citation) {
-                var pmid = getPMID(citation);
-                if (pmid) {
-                    presentScreen("Saving...");
-                    $.post("<?= Application::link("wrangler/savePubs.php") ?>", { record_id: '<?= $_GET['record'] ?>', pmid: pmid }, function(data) {
-                        console.log("saveComplete "+JSON.stringify(data));
-                        clearScreen();
-                        if (data['error']) {
-                            makeNote(data['error']);
-                        } else if (data['errors']) {
-                            makeNote(data['errors']);
-                        } else {
-                            makeNote();
-                        }
-                    });
-                }
-                if (pmid) {
-                    id = "PMID" + pmid;
-                } else {
-                    id = "ID" + maxid;
-                }
-
-                var js = "if ($(this).attr(\"src\") == \"checked.png\") { $(\"#"+id+"\").val(\"exclude\"); $(this).attr(\"src\", \"unchecked.png\"); } else { $(\"#"+id+"\").val(\"include\"); $(this).attr(\"src\", \"checked.png\"); }";
-
-                $("#manualCitation").val("");
+                includeCitations(citation);
             } else {
                 alert("Please specify a citation!");
             }

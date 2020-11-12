@@ -1,15 +1,19 @@
 <?php
 
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Citation;
+use \Vanderbilt\CareerDevLibrary\CitationCollection;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
+require_once(dirname(__FILE__)."/Application.php");
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Grants.php");
@@ -21,7 +25,7 @@ require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 	$record = $_GET['record'];
 } else {
-        $recordIds = Download::recordIds($token, $server);
+	$recordIds = Download::recordIds($token, $server);
 	if (count($recordIds) > 0) {
         	$record = $recordIds[0];
 	} else {
@@ -29,7 +33,7 @@ if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 	}
 }
 
-$nextRecord = \Vanderbilt\FlightTrackerExternalModule\getNextRecord($record);
+$nextRecord = REDCapManagement::getNextRecord($record, $token, $server);
 $redcapData = Download::records($token, $server, array($record));
 $metadata = Download::metadata($token, $server);
 
@@ -65,7 +69,7 @@ if ($email) {
 }
 $status = $scholar->getEmploymentStatus();
 if (preg_match("/^\d\d\d\d-\d+-\d+$/", $status)) {
-	$status = "Left ".INSTITUTION." on ".\Vanderbilt\FlightTrackerExternalModule\YMD2MDY($status);
+	$status = "Left ".INSTITUTION." on ".REDCapManagement::YMD2MDY($status);
 }
 $institution = $scholar->getInstitutionText();
 $degrees = $scholar->getDegreesText();
@@ -75,6 +79,8 @@ $resources = $scholar->getResourcesUsed();
 $converted = $scholar->isConverted();
 $numGrants = $grants->getNumberOfGrants("prior");
 $numPublications = $pubs->getNumber("Original Included");
+$numFirstAuthors = $pubs->getNumberFirstAuthors();
+$numLastAuthors = $pubs->getNumberLastAuthors();
 $numCitations = $pubs->getNumberOfCitationsByOthers("Original Included");
 $dollarsSummaryTotal = $grants->getTotalDollars("prior");
 $dollarsSummaryDirect = $grants->getDirectDollars("prior");
@@ -174,24 +180,30 @@ if (CareerDev::getInstitutionCount() == 1) {
 		<td class='value profileHeader allcaps'><?= $converted ?></td>
 	</tr>
 	<tr>
+		<td class='label profileHeader'>Number of First-Author Articles:</td>
+		<td class='value profileHeader'><?= REDCapManagement::pretty($numFirstAuthors) ?></td>
+		<td class='label profileHeader'>Number of Last-Author Articles:</td>
+		<td class='value profileHeader'><?= REDCapManagement::pretty($numLastAuthors) ?></td>
+	</tr>
+	<tr>
 		<td class='label profileHeader'>Confirmed Original<br>Research Articles:</td>
-		<td class='value profileHeader'><?= \Vanderbilt\FlightTrackerExternalModule\pretty($numPublications) ?></td>
+		<td class='value profileHeader'><?= REDCapManagement::pretty($numPublications) ?></td>
 	</tr>
 	<tr>
 		<td class='label profileHeader'>Grants:</td>
-		<td class='value profileHeader'><?= \Vanderbilt\FlightTrackerExternalModule\pretty($numGrants) ?></td>
+		<td class='value profileHeader'><?= REDCapManagement::pretty($numGrants) ?></td>
 		<td class='label profileHeader'>Citations by Others:</td>
-		<td class='value profileHeader'><?= \Vanderbilt\FlightTrackerExternalModule\pretty($numCitations) ?></td>
+		<td class='value profileHeader'><?= REDCapManagement::pretty($numCitations) ?></td>
 	</tr>
 	<tr>
 <?php
 if ($dollarsCompiledTotal) {
 	echo "<td class='label profileHeader'>Total Dollars<br>All Grants<br>(Internal and External;<br>recorded in COEUS):</td>\n";
-	echo "<td class='value profileHeader'>".\Vanderbilt\FlightTrackerExternalModule\prettyMoney($dollarsCompiledTotal)."</td>\n";
+	echo "<td class='value profileHeader'>".REDCapManagement::prettyMoney($dollarsCompiledTotal)."</td>\n";
 }
 ?>
 		<td class='label profileHeader'>Total Dollars<br>from Grants<br>(External Sources Only):</td>
-		<td class='value profileHeader'><?= \Vanderbilt\FlightTrackerExternalModule\prettyMoney($dollarsSummaryTotal) ?></td>
+		<td class='value profileHeader'><?= REDCapManagement::prettyMoney($dollarsSummaryTotal) ?></td>
 	</tr>
 	<tr>
 		<td class='label profileHeader'>Mentors:</td>
@@ -200,30 +212,32 @@ if ($dollarsCompiledTotal) {
 		<td class='value profileHeader'><?= printList($resources) ?></td>
 	</tr>
     <?php
-    $bibliometricScores = [];
-    if ($wosHIndex) { $bibliometricScores[Links::makeLink("https://support.clarivate.com/ScientificandAcademicResearch/s/article/Web-of-Science-h-index-information?language=en_US", "H Index", TRUE)." calculated<br>from ".Links::makeLink("https://www.webofknowledge.com/", "Web of Science", TRUE)] = $wosHIndex; }
-    if ($scopusHIndex) { $bibliometricScores[Links::makeLink("https://blog.scopus.com/topics/h-index", "H Index", TRUE)."<br>from".Links::makeLink("https://www.scopus.com/", "Scopus", TRUE)] = $scopusHIndex; };
-    if ($altmetricRange) { $bibliometricScores["Range of ".Links::makeLink("https://www.altmetric.com/", "Altmetric", TRUE)." Scores"] = $altmetricRange; }
-    if ($avgRCR) { $bibliometricScores["Average ".Links::makeLink("https://dpcpsi.nih.gov/sites/default/files/iCite%20fact%20sheet_0.pdf", "Relative Citation<br> Ratio", TRUE)." from ".Links::makeLink("https://icite.od.nih.gov/", "iCite", TRUE)." Scores"] = $avgRCR; }
-    if ($iCiteHIndex) { $bibliometricScores["iCite H Index, calculated<br>from ".Links::makeLink("https://icite.od.nih.gov/", "iCite (NIH)", TRUE)] = $iCiteHIndex; }
+        $bibliometricScores = [];
+        if ($wosHIndex) { $bibliometricScores[Links::makeLink("https://support.clarivate.com/ScientificandAcademicResearch/s/article/Web-of-Science-h-index-information?language=en_US", "H Index", TRUE)." calculated<br>from ".Links::makeLink("https://www.webofknowledge.com/", "Web of Science", TRUE)] = $wosHIndex; }
+        if ($scopusHIndex) { $bibliometricScores[Links::makeLink("https://blog.scopus.com/topics/h-index", "H Index", TRUE)."<br>from".Links::makeLink("https://www.scopus.com/", "Scopus", TRUE)] = $scopusHIndex; };
+        if ($altmetricRange) { $bibliometricScores["Range of ".Links::makeLink("https://www.altmetric.com/", "Altmetric", TRUE)." Scores"] = $altmetricRange; }
+        if ($avgRCR) { $bibliometricScores["Average ".Links::makeLink("https://dpcpsi.nih.gov/sites/default/files/iCite%20fact%20sheet_0.pdf", "Relative Citation<br> Ratio", TRUE)." from ".Links::makeLink("https://icite.od.nih.gov/", "iCite", TRUE)." Scores"] = $avgRCR; }
+        if ($iCiteHIndex) { $bibliometricScores["iCite H Index, calculated<br>from ".Links::makeLink("https://icite.od.nih.gov/", "iCite (NIH)", TRUE)] = $iCiteHIndex; }
 
-    $i = 0;
-    foreach ($bibliometricScores as $label => $value) {
-        if ($i % 2 == 0) {
-            echo "<tr>\n";
+        $i = 0;
+        foreach ($bibliometricScores as $label => $value) {
+            if ($i % 2 == 0) {
+                echo "<tr>\n";
+            }
+            echo "<td class='label profileHeader'>$label:</td>\n";
+            if (is_numeric($value)) {
+                $value = REDCapManagement::pretty($value);
+            }
+            echo "<td class='value profileHeader'>$value</td>\n";
+            if ($i % 2 == 1) {
+                echo "</tr>\n";
+            }
+            $i++;
         }
-        echo "<td class='label profileHeader'>$label:</td>\n";
-        echo "<td class='value profileHeader'>".REDCapManagement::pretty($value)."</td>\n";
-        if ($i % 2 == 1) {
+        if (count($bibliometricScores) % 2 == 1) {
             echo "</tr>\n";
         }
-        $i++;
-    }
-    if (count($bibliometricScores) % 2 == 1) {
-        echo "</tr>\n";
-    }
     ?>
-
 </table><br><br>
 
 <h2>Contents</h2>
@@ -246,19 +260,22 @@ if ($dollarsCompiledTotal) {
 			<div class='valueCentered'>This allows you to see all of your data about grants at one glance. The information to the left is preferred over the information to the write. The computer automatically picks the data which is most preferred. Items in green are being used while items in red disagree with the information in the preferred grant. This helps you see where the information comes from.</div>
 		</td>
 	</tr>
-
 </table><br><br>
 
-<?php 
+<?php
 
 require_once(dirname(__FILE__)."/charts/timeline.php");
 echo "<br><br>\n";
+echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>\n";
+echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".Application::link("socialNetwork/coauthorship.php")."&record=$record&field=record_id&cohort=all&headers=false&mentors=on'></iframe><br><br>\n";
+
+if (!CareerDev::isCopiedProject()) {
+	echo "<iframe class='centered' style='height: 600px;' id='grant_wrangler' src='".Application::link("wrangler/index.php")."&record=$record&headers=false'></iframe><br><br>\n";
+	echo "<iframe class='centered' style='height: 600px;' id='pub_wrangler' src='".Application::link("wrangler/pubs.php")."&record=$record&headers=false'></iframe><br><br>\n";
+}
+echo "<iframe class='centered' style='height: 600px;' id='data_sources' src='".Application::link("tablesAndLists/dataSourceCompare.php")."&record=$record&headers=false'></iframe><br><br>\n";
 
 ?>
-
-<iframe class='centered' style='height: 600px;' id='grant_wrangler' src='<?= CareerDev::link("wrangler/index.php")."&record=$record&headers=false" ?>'></iframe><br><br>
-<iframe class='centered' style='height: 600px;' id='pub_wrangler' src='<?= CareerDev::link("wrangler/pubs.php")."&record=$record&headers=false" ?>'></iframe><br><br>
-<iframe class='centered' style='height: 600px;' id='data_sources' src='<?= CareerDev::link("tablesAndLists/dataSourceCompare.php")."&record=$record&headers=false" ?>'></iframe><br><br>
 
 </div>
 <?php

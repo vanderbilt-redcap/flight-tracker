@@ -578,10 +578,8 @@ class Publications {
                     $pmcPhrase = " " . $pmcid . ".";
                 }
                 $pmidsPulled[] = $pmid;
-            }
 
-			if (!empty($pmidsPulled) && $recordId) {
-                $iCite = new iCite($pmidsPulled);
+                $iCite = new iCite($pmid);
                 $row = [
                     "record_id" => "$recordId",
                     "redcap_repeat_instrument" => "citation",
@@ -621,9 +619,11 @@ class Publications {
                 $row = REDCapManagement::filterForREDCap($row, $metadataFields);
                 array_push($upload, $row);
                 $instance++;
-            } else if (!$recordId) {
+            }
+
+            if (!$recordId) {
                 throw new \Exception("Please specify a record id!");
-            } else {     // $pmidsPulled is empty
+            } else if (empty($pmidsPulled)) {     // $pmidsPulled is empty
 			    Application::log("ERROR: No PMIDs pulled from ".json_encode($pmidsToPull));
             }
 			Publications::throttleDown();
@@ -817,11 +817,11 @@ class Publications {
 		$html .= "<table style='margin-left: auto; margin-right: auto; border-radius: 10px;' class='bin'><tr>\n";
 		$html .= "<td style='width: 250px; height: 200px; text-align: left; vertical-align: top;'>\n";
 		$html .= "<h4 style='margin-bottom: 0px;'>Lookup PMID</h4>\n";
-        $html .= "<p class='oneAtATime'><input type='text' id='pmid'> <button onclick='submitPMID($(\"#pmid\").val(), \"#manualCitation\", \"#lookupResult\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide();'>Switch to Bulk</a></p>\n";
-        $html .= "<p class='list' style='display: none;'><textarea id='pmidList'></textarea> <button onclick='submitPMIDs($(\"#pmidList\").val(), \"#manualCitation\", \"#lookupResult\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show();'>Switch to Single</a></p>\n";
+        $html .= "<p class='oneAtATime'><input type='text' id='pmid'> <button onclick='submitPMID($(\"#pmid\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide();'>Switch to Bulk</a></p>\n";
+        $html .= "<p class='list' style='display: none;'><textarea id='pmidList'></textarea> <button onclick='submitPMIDs($(\"#pmidList\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show();'>Switch to Single</a></p>\n";
 		$html .= "<h4 style='margin-bottom: 0px;'>Lookup PMC</h4>\n";
-        $html .= "<p class='oneAtATime'><input type='text'> <button onclick='submitPMC($(\"#pmc\").val(), \"#manualCitation\", \"#lookupResult\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide();'>Switch to Bulk</a></p>\n";
-        $html .= "<p class='list' style='display: none;'><textarea id='pmcList'></textarea> <button onclick='submitPMCs($(\"#pmcList\").val(), \"#manualCitation\", \"#lookupResult\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show();'>Switch to Single</a></p>\n";
+        $html .= "<p class='oneAtATime'><input type='text'> <button onclick='submitPMC($(\"#pmc\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide();'>Switch to Bulk</a></p>\n";
+        $html .= "<p class='list' style='display: none;'><textarea id='pmcList'></textarea> <button onclick='submitPMCs($(\"#pmcList\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show();'>Switch to Single</a></p>\n";
 		$html .= "</td><td style='width: 500px;'>\n";
 		$html .= "<div id='lookupResult'>\n";
 		$html .= "<p><textarea style='width: 100%; height: 150px; font-size: 16px;' id='manualCitation'></textarea></p>\n";

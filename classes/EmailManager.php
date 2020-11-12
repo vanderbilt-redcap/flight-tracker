@@ -253,11 +253,7 @@ class EmailManager {
 				throw new \Exception("Could not find REDCap class!");
 			}
 
-			if (method_exists("Application", "isTestGroup") && Application::isTestGroup($this->pid)) {
-                \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
-            } else {
-                \REDCap::email("scott.j.pearson@vumc.org,rebecca.helton@vumc.org", $from, $to[$recordId].": ".$subjects[$recordId], $mssg);
-            }
+			\REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
 			usleep(200000); // wait 0.2 seconds for other items to process
 		}
 		$records = array_keys($mssgs);

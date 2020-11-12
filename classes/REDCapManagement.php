@@ -1005,6 +1005,22 @@ class REDCapManagement {
         }
     }
 
+    public static function getNextRecord($record, $token, $server) {
+        $records = Download::recordIds($token, $server);
+        $i = 0;
+        foreach ($records as $rec) {
+            if ($rec == $record) {
+                if ($i < count($records)) {
+                    return $records[$i + 1];
+                } else {
+                    return $records[0];
+                }
+            }
+            $i++;
+        }
+        return "";
+    }
+
     public static function pretty($n, $numDecimalPlaces = 3) {
 	    if (!is_numeric($n)) {
 	        return $n;

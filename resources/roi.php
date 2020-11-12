@@ -24,8 +24,11 @@ if ($_GET['cohort']) {
     $records = Download::records($token, $server);
 }
 $choices = REDCapManagement::getChoices($metadata);
+$today = date("Y-m-d");
+$maxKLength = max([Application::getIndividualKLength(), Application::getK12KL2Length(), Application::getInternalKLength(), ]);
+$pThreshold = 0.05;
 
-$fields = ["record_id", "summary_last_any_k", "summary_first_r01_or_equiv", "summary_ever_last_any_k_to_r01_equiv", "citation_include", "citation_rcr", "resources_resource"];
+$fields = ["record_id", "summary_last_any_k", "summary_first_r01_or_equiv", "summary_ever_last_any_k_to_r01_equiv", "identifier_left_date", "citation_include", "citation_rcr", "resources_resource"];
 $data = [];
 $resources = [];
 foreach ($records as $recordId) {
@@ -36,6 +39,8 @@ foreach ($records as $recordId) {
     $yearsToConvert = "";
     $numIncludedPubs = 0;
     $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+    $leftAndDidntConvert = FALSE;
+    $stillOnK = FALSE;
     foreach ($redcapData as $row) {
         if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == "1")) {
             $numIncludedPubs++;
@@ -47,6 +52,12 @@ foreach ($records as $recordId) {
             if ($row['summary_first_r01_or_equiv'] && $row['summary_last_any_k']) {
                 $yearsToConvert = REDCapManagement::datediff($row['summary_last_any_k'], $row['summary_first_r01_or_equiv'], "y", FALSE);
             }
+            if ($row['summary_last_any_k']) {
+                $stillOnK = (REDCapManagement::datediff($row['summary_last_any_k'], $today, "y", FALSE) <= $maxKLength);
+            } else {
+                $stillOnK = TRUE;
+            }
+            $leftAndDidntConvert = (($row['summary_ever_last_any_k_to_r01_equiv'] == 0) && $row['identifier_left_date']);
         } else if (($row['redcap_repeat_instrument'] == "resources") && $row['resources_resource']) {
             $resource = $choices['resources_resource'][$row['resources_resource']];
             if (!in_array($resource, $resourcesUsed)) {
@@ -55,8 +66,10 @@ foreach ($records as $recordId) {
         }
     }
     $dataRow = [];
-    $dataRow["Conversion Status"] = $conversionStatus;
-    $dataRow["Years to Convert"] = $yearsToConvert;
+    if (!$leftAndDidntConvert && !$stillOnK) {
+        $dataRow["Conversion Status"] = $conversionStatus;
+        $dataRow["Years to Convert"] = $yearsToConvert;
+    }
     $dataRow["Number of Publications"] = $numIncludedPubs;
     if (!empty($rcrs)) {
         $dataRow["Average Relative Citation Ratio"] = avg($rcrs);
@@ -86,7 +99,7 @@ foreach ($allResources as $resourceIdx => $resource) {
     }
 }
 
-
+$measuresInOrder = ["Conversion Ratio", "Years to Convert", "Number of Publications", "Average Relative Citation Ratio"];
 echo "<h1>Return on Investment for Resources</h1>";
 $cohorts = new Cohorts($token, $server, $metadata);
 echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'], "if ($(this).val()) { window.location.href = \"?pid=$pid&cohort=\"+$(this).val(); } else { window.location.href = \"?pid=$pid\"; }")."</p>";    // TODO revise for ExtMod
@@ -97,7 +110,7 @@ foreach ($dataByResource as $resource => $groups) {
         $results[$group] = [];
         foreach ($dataByResource[$resource][$group] as $measure => $values) {
             if (in_array($measure, ["Conversion Status"])) {
-                $newLabel = "Conversion Rate";
+                $newLabel = "Conversion Ratio";
                 $result = calculateConversionRate($values);
                 $results[$group][$newLabel] = $result;
             } else {
@@ -114,8 +127,8 @@ foreach ($dataByResource as $resource => $groups) {
             echo "<th>$label</th>";
         }
         echo "</tr>";
-        foreach (array_keys($results["Control"]) as $measure) {
-            $isDiscrete = ($measure == "Conversion Rate");
+        foreach ($measuresInOrder as $measure) {
+            $isDiscrete = ($measure == "Conversion Ratio");
             echo "<tr><td colspan='3' class='green'><h4 class='nomargin'>Effect of $resource on $measure</h4></td></tr>";
             echo "<tr>";
             echo "<th>Mean (&mu;) for $measure</th>";
@@ -161,6 +174,11 @@ foreach ($dataByResource as $resource => $groups) {
                     echo "<th><a href='https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2938757/'>Odds Ratio</a></th>";
                     echo "<td class='centered' colspan='2'>OR = ".REDCapManagement::pretty($oddsRatio, 2)."</td>";
                     echo "</tr>";
+
+                    echo "<tr>";
+                    echo "<th>Interpretation</th>";
+                    echo "<td class='centered' colspan='2' style='max-width: 500px;'>Those using the resource are ".REDCapManagement::pretty($oddsRatio, 2)." times more likely to have a good outcome.</td>";
+                    echo "</tr>";
                 } else {
                     $study = new CohortStudy($results["Control"][$measure]["values"], $results["Treatment"][$measure]["values"]);
                     $t = $study->getControl()->unpairedTTest($study->getTreatment());
@@ -174,8 +192,15 @@ foreach ($dataByResource as $resource => $groups) {
                         foreach ($ciPercents as $ciPercent) {
                             $ci[$ciPercent] = $study->getTreatmentCI($ciPercent);
                         }
+
+                        if ($p <= $pThreshold) {
+                            $interpretation = "There is a statistically significant difference in outcomes between those who used the resource and those who did not. (p <= ".REDCapManagement::pretty($pThreshold, 2).")";
+                        } else {
+                            $interpretation = "There is not a statistically significant difference in outcomes between those who used the resource and those who did not. Perhaps having a larger sample-size (n) - i.e., more power - would provide more insight. (p > ".REDCapManagement::pretty($pThreshold, 2).")";
+                        }
                     } else {
                         $p = Stats::$nan;
+                        $interpretation = "";
                     }
 
                     // echo "<tr>";
@@ -209,6 +234,12 @@ foreach ($dataByResource as $resource => $groups) {
                             echo "<td class='centered' colspan='2'>CI = [" . REDCapManagement::pretty($ci[$ciPercent][0], 2) . ", " . REDCapManagement::pretty($ci[$ciPercent][1], 2) . "]</td>";
                             echo "</tr>";
                         }
+                    }
+                    if ($interpretation) {
+                        echo "<tr>";
+                        echo "<th>Interpretation</th>";
+                        echo "<td class='centered' colspan='2' style='max-width: 500px;'>$interpretation</td>";
+                        echo "</tr>";
                     }
                 }
             }
