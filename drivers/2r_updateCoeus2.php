@@ -5,8 +5,8 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\StarBRITE;
-use \Vanderbilt\CareerDevLibrary\LDAP;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\LDAP;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../Application.php");
@@ -38,34 +38,8 @@ function processCoeus2($token, $server, $pid, $records) {
             foreach ($starbriteData['data'] as $award) {
                 $id = $award['id'];
                 if (!in_array($id, $priorIDs)) {
-                    $altId = $award['altId'];
-                    $title = $award['title'];
-                    $role = getCOEUSUser($userid, $award["users"], $choices[$prefix . 'role']);
-                    $collabs = getCOEUSCollabs($userid, $award["users"]);
-                    $uploadRow = [
-                        "record_id" => $recordId,
-                        "redcap_repeat_instrument" => $instrument,
-                        "redcap_repeat_instance" => $nextInstance,
-                        "coeus2_last_update" => date("Y-m-d"),
-                        "coeus2_complete" => "2",
-                        $prefix . "id" => $id,
-                        $prefix . "altid" => $altId,
-                        $prefix . "role" => $role,
-                        $prefix . "collaborators" => $collabs,
-                        $prefix . "title" => $title,
-                    ];
-                    foreach ($award['blocks'] as $item) {
-                        $field = $prefix . makeLabelIntoField($item['label']);
-                        $order = ["date", "content", "description"];
-                        $uploadRow[$field] = getCOEUSNodeValue($order, $item);
-                    }
-                    foreach ($award['details'] as $item) {
-                        $field = $prefix . makeLabelIntoField($item['label']);
-                        $order = ["content", "description"];
-                        $uploadRow[$field] = REDCapManagement::convertDollarsToNumber(getCOEUSNodeValue($order, $item));
-                    }
-
-                    if (allFieldsValid($uploadRow, $metadataFields)) {
+                    $uploadRow = StarBRITE::formatForUpload($award, $userid, $nextInstance, $recordId, $choices);
+                    if (REDCapManagement::allFieldsValid($uploadRow, $metadataFields)) {
                         $upload[] = $uploadRow;
                         $instancesToUpload[] = $uploadRow['redcap_repeat_instance'];
                         $nextInstance++;
@@ -88,62 +62,6 @@ function processCoeus2($token, $server, $pid, $records) {
         }
     }
     CareerDev::saveCurrentDate("Last StarBRITE COEUS Pull", $pid);
-}
-
-function allFieldsValid($row, $metadataFields) {
-    $skip = ["redcap_repeat_instrument", "redcap_repeat_instance", "coeus2_complete"];
-    foreach ($row as $field => $value) {
-        if (!in_array($field, $skip) && !in_array($field, $metadataFields)) {
-            return FALSE;
-        }
-    }
-    return TRUE;
-}
-
-function getCOEUSNodeValue($order, $item) {
-    foreach ($order as $awardField) {
-        if ($item[$awardField]) {
-            return $item[$awardField];
-        }
-    }
-    return "";
-}
-
-function makeLabelIntoField($label) {
-    return REDCapManagement::makeHTMLId(strtolower($label));
-}
-
-function getCOEUSCollabs($userid, $awardUsers) {
-    $collabs = [];
-    foreach ($awardUsers as $user) {
-        if ($user['vunet'] != $userid) {
-            try {
-                $name = LDAP::getName($user['vunet']);
-            } catch (\Exception $e) {
-                Application::log("ERROR: ".$e->getMessage());
-                $name = "";
-            }
-            if ($name) {
-                $collabs[] = $name." (".$user['vunet']."; ".$user['role'].")";
-            } else {
-                $collabs[] = $user['vunet']." (".$user['role'].")";
-            }
-        }
-    }
-    return implode(", ", $collabs);
-}
-
-function getCOEUSUser($userid, $awardUsers, $roleChoices) {
-    foreach ($awardUsers as $user) {
-        if ($user['vunet'] == $userid) {
-            foreach ($roleChoices as $idx => $label) {
-                if ($label == $user['role']) {
-                    return $idx;
-                }
-            }
-        }
-    }
-    return "";
 }
 
 function getPriorCOEUSAwardIds($redcapData) {

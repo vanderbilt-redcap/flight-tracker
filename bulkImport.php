@@ -39,6 +39,7 @@ if ($_FILES['bulk']) {
 		$lines = readCSV($_FILES['bulk']);
 
 		$metadata = Download::metadata($token, $server);
+		$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		$choices = REDCapManagement::getChoices($metadata);
 		$matchedIndices = [0];
 		$unmatchedLines = [];
@@ -60,7 +61,7 @@ if ($_FILES['bulk']) {
                         $maxInstances[$recordId] = REDCapManagement::getMaxInstance($redcapData, "position_change", $recordId);
                     }
                 } else {
-                    echo "<p class='red padded'>ERROR! Could not match group!</p>\n";
+                    echo "<p class='red padded centered max-width'>ERROR! Could not match group!</p>\n";
                 }
                 $maxInstances[$recordId]++;
                 if ($title == "Grants") {
@@ -99,9 +100,16 @@ if ($_FILES['bulk']) {
                         "promotion_date" => date("Y-m-d"),
                         "position_change_complete" => "2",
                     ];
+                    if (in_array("promotion_prior", $metadataFields)) {
+                        if ($line[10]) {
+                            $uploadRow["promotion_prior"] = "1";
+                        } else {
+                            $uploadRow["promotion_prior"] = "";
+                        }
+                    }
                     $upload[] = $uploadRow;
                 } else {
-                    echo "<p class='red padded'>ERROR! Could not match group!</p>\n";
+                    echo "<p class='red padded centered max-width'>ERROR! Could not match group!</p>\n";
                     $unmatchedLines[] = $i;
                 }
             } else if ($i != 0) {
@@ -110,7 +118,7 @@ if ($_FILES['bulk']) {
             $i++;
         }
 		if (!empty($unmatchedLines)) {
-			echo "<div class='red padded'>\n";
+			echo "<div class='red padded max-width'>\n";
 			echo "<h4>Unmatched Lines!</h4>\n";
 			echo "<p class='centered'>The following lines could not be matched to a record. Please fix and submit again. No records were imported.</p>\n";
 			foreach ($unmatchedLines as $i) {
@@ -121,16 +129,16 @@ if ($_FILES['bulk']) {
 		} else {
 			$feedback = Upload::rows($upload, $token, $server);
 			if ($feedback['error'])	{
-				echo "<p class='red padded'>ERROR! ".$feedback['error']."</p>\n";
+				echo "<p class='red padded centered max-width'>ERROR! ".$feedback['error']."</p>\n";
 			} else {
-				echo "<p class='green padded'>Upload successful!</p>\n";
+				echo "<p class='green padded centered max-width'>Upload successful!</p>\n";
 			}
 		}
 	} else {
-		echo "<p class='red padded'>ERROR! The file is not in the right format. ".detectFirstError($_FILES['bulk'], $longImportFile, $expectedItems)."</p>\n";
+		echo "<p class='red padded centered max-width'>ERROR! The file is not in the right format. ".detectFirstError($_FILES['bulk'], $longImportFile, $expectedItems)."</p>\n";
 	}
 } else if ($_POST['submit']) {
-	echo "<p class='red padded'>ERROR! The file could not be found!</p>\n";
+	echo "<p class='red padded centered max-width'>ERROR! The file could not be found!</p>\n";
 }
 ?>
 
@@ -167,11 +175,17 @@ function detectFirstError($fileinfo, $importFile, $expected) {
 	fclose($fp);
 
 	$fp = fopen($filename, "r");
+    $firstLine = fgetcsv($fp);
 
-	$firstLine = fgetcsv($fp);
-	if (count($headers) != count($firstLine)) {
-		return "The number of headers (".count($firstLine).") do not match what's expected (".count($headers).")!";
-	}
+	if (preg_match("/import_positions/", $importFile)) {
+        if (count($headers) + 1 == count($firstLine)) {
+            $headers[] = "Prior [Yes or No]";
+            $expected++;
+        }
+    }
+    if (count($headers) != count($firstLine)) {
+        return "The number of headers (".count($firstLine).") do not match what's expected (".count($headers).")!";
+    }
 
 	for ($i = 0; $i < count($headers); $i++) {
 		if ($headers[$i] != $firstLine[$i]) {
@@ -299,7 +313,7 @@ function translateIntoIndex($value, $allChoices, $field) {
 	if ($value == "") {
         return "";
     } else {
-	    throw new \Exception("Could not find $value in choices: ".json_encode($choices));
+	    throw new \Exception("Could not find '$value' in choices: ".json_encode($choices));
     }
 }
 

@@ -162,44 +162,34 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $rec
     $metadata = Download::metadata($token, $server);
     $vunets = Download::vunets($token, $server);
     include "/app001/credentials/con_redcap_ldap_user.php";
-    $starBriteServer = StarBRITE::getServer();
 
-    foreach ($vunets as $vunet => $recordId) {
+    foreach ($records as $recordId) {
         $vunet = $vunets[$recordId];
-        $url = "https://$starBriteServer/s/sri/api/pub-match/vunet";
-        $getParams = [$vunet];
-        $url .= '/' . implode('/', array_map('urlencode', $getParams));
-        $opts = [
-            CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_SSL_VERIFYPEER => 0,
-            CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
-            CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
-            CURLOPT_USERPWD => $ldapuser . ':' . $ldappass,
-            CURLOPT_CUSTOMREQUEST => "GET",
-        ];
-        list($resp, $output) = REDCapManagement::downloadURL($url, $opts);
-        $pmids = fetchPMIDs(json_decode($output, TRUE));
-        foreach ($pmids as $newCitationId) {
-            if ($recordId) {
-                $foundType = inCitationIds($citationIds, $newCitationId, $recordId);
-                if (!$foundType) {
-                    Application::log("vunet: " . $vunet . " PMID: " . $newCitationId . " recordId: " . $recordId);
-                    if (!isset($maxInstances[$recordId])) {
-                        $maxInstances[$recordId] = 0;
+        if ($vunet) {
+            $data = StarBRITE::accessSRI("pub-match/vunet/", [$vunet]);
+            $pmids = fetchPMIDs($data);
+            foreach ($pmids as $newCitationId) {
+                if ($recordId) {
+                    $foundType = inCitationIds($citationIds, $newCitationId, $recordId);
+                    if (!$foundType) {
+                        Application::log("vunet: " . $vunet . " PMID: " . $newCitationId . " recordId: " . $recordId);
+                        if (!isset($maxInstances[$recordId])) {
+                            $maxInstances[$recordId] = 0;
+                        }
+                        $maxInstances[$recordId]++;
+                        $uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), $metadata, "victr", $recordId, $maxInstances[$recordId], [$newCitationId], $pid);
+                        foreach ($uploadRows as $uploadRow) {
+                            // mark to include only for VICTR
+                            $uploadRow['citation_include'] = '1';
+                            array_push($upload, $uploadRow);
+                        }
+                        if (!isset($citationIds['Final'][$recordId])) {
+                            $citationIds['Final'][$recordId] = array();
+                        }
+                        array_push($citationIds['Final'][$recordId], $newCitationId);
+                    } else {
+                        Application::log("Skipping because matched: " . $vunet . " PMID: " . $newCitationId);
                     }
-                    $maxInstances[$recordId]++;
-                    $uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), $metadata, "victr", $recordId, $maxInstances[$recordId], [$newCitationId], $pid);
-                    foreach ($uploadRows as $uploadRow) {
-                        // mark to include only for VICTR
-                        $uploadRow['citation_include'] = '1';
-                        array_push($upload, $uploadRow);
-                    }
-                    if (!isset($citationIds['Final'][$recordId])) {
-                        $citationIds['Final'][$recordId] = array();
-                    }
-                    array_push($citationIds['Final'][$recordId], $newCitationId);
-                } else {
-                    Application::log("Skipping because matched: " . $vunet . " PMID: " . $newCitationId);
                 }
             }
         }

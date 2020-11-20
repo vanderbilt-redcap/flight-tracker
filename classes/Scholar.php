@@ -2108,6 +2108,39 @@ class Scholar {
         return $this->getGenericValueForField($rows, "summary_current_start");
 	}
 
+	public function getEndOfK($kTypes = [1, 2, 3, 4]) {
+	    $lastEndDate = "";
+	    foreach ($this->rows as $row) {
+	        if (($row['redcap_repeat_instrument'] == "") && ($row['redcap_repeat_instance'] == "")) {
+                $startOfR = $row['summary_first_r01_or_equiv'];
+                if ($startOfR) {
+                    $ts = strtotime($startOfR);
+                    $ts -= 24 * 3600;
+                    $oneDayBeforeStartOfR = date("Y-m-d", $ts);
+                }
+	            # get end of last K
+	            for ($i = 1; $i < MAX_GRANTS; $i++) {
+	                $type = $row['summary_award_type_'.$i];
+	                if (in_array($type, $kTypes)) {
+                        $startDate = $row['summary_award_date_'.$i];
+                        $endDate = $row['summary_award_end_date_'.$i];
+                        if (!$endDate) {
+	                        $kLength = Scholar::getKLength($type);
+	                        $endDate = REDCapManagement::addYears($startDate, $kLength);
+                        }
+                        if (!$endDate || ($oneDayBeforeStartOfR && REDCapManagement::dateCompare($endDate, ">", $oneDayBeforeStartOfR))) {
+                            $endDate = $oneDayBeforeStartOfR;
+                        }
+                        if ($endDate && (!$lastEndDate || REDCapManagement::dateCompare($lastEndDate, "<", $endDate))) {
+                            $lastEndDate = $endDate;
+                        }
+                    }
+                }
+            }
+        }
+	    return $lastEndDate;
+    }
+
 	private function getTenureStatus($rows) {
         $result = $this->getGenericValueForField($rows, "summary_current_tenure");
 		if ($result->getValue() == "") {

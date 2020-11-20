@@ -965,6 +965,7 @@ class NIHTables {
                         $descriptions["institution"] = $row['promotion_institution'];
                         $descriptions["activity"] = self::translateJobCategoryToActivity($row['promotion_job_category']);
                         $descriptions["original_category"] = ($row["promotion_job_category"] ? $choices["promotion_job_category"][$row["promotion_job_category"]] : "");
+                        $descriptions["original_category_num"] = $row["promotion_job_category"];
                         self::fillInBlankValues($descriptions);
                         $descriptionStr = implode("<br>", $descriptions);
                         $numNotAvailablesInDescription = substr_count($descriptionStr, self::$notAvailable);
@@ -1497,7 +1498,7 @@ class NIHTables {
 	    return "";
     }
 
-	private static function beginsWith($table, $ary) {
+	public static function beginsWith($table, $ary) {
 		foreach ($ary as $a) {
 			$regex = "/^".$a."/i";
 			if (preg_match($regex, $table)) {

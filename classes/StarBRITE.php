@@ -14,6 +14,86 @@ class StarBRITE {
         return $server;
     }
 
+    static function getCOEUSNodeValue($order, $item) {
+        foreach ($order as $awardField) {
+            if ($item[$awardField]) {
+                return $item[$awardField];
+            }
+        }
+        return "";
+    }
+
+    static function makeLabelIntoField($label) {
+        return REDCapManagement::makeHTMLId(strtolower($label));
+    }
+
+    static function getCOEUSCollabs($userid, $awardUsers) {
+        $collabs = [];
+        foreach ($awardUsers as $user) {
+            if ($user['vunet'] != $userid) {
+                try {
+                    $name = LDAP::getName($user['vunet']);
+                } catch (\Exception $e) {
+                    Application::log("ERROR: ".$e->getMessage());
+                    $name = "";
+                }
+                if ($name) {
+                    $collabs[] = $name." (".$user['vunet']."; ".$user['role'].")";
+                } else {
+                    $collabs[] = $user['vunet']." (".$user['role'].")";
+                }
+            }
+        }
+        return implode(", ", $collabs);
+    }
+
+    static function getCOEUSUser($userid, $awardUsers, $roleChoices) {
+        foreach ($awardUsers as $user) {
+            if ($user['vunet'] == $userid) {
+                foreach ($roleChoices as $idx => $label) {
+                    if ($label == $user['role']) {
+                        return $idx;
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    static function formatForUpload($award, $userid, $instance, $recordId, $choices) {
+        $prefix = "coeus2_";
+        $instrument = "coeus2";
+
+        $id = $award['id'];
+        $altId = $award['altId'];
+        $title = $award['title'];
+        $role = self::getCOEUSUser($userid, $award["users"], $choices[$prefix . 'role']);
+        $collabs = self::getCOEUSCollabs($userid, $award["users"]);
+        $uploadRow = [
+            "record_id" => $recordId,
+            "redcap_repeat_instrument" => $instrument,
+            "redcap_repeat_instance" => $instance,
+            "coeus2_last_update" => date("Y-m-d"),
+            "coeus2_complete" => "2",
+            $prefix . "id" => $id,
+            $prefix . "altid" => $altId,
+            $prefix . "role" => $role,
+            $prefix . "collaborators" => $collabs,
+            $prefix . "title" => $title,
+        ];
+        foreach ($award['blocks'] as $item) {
+            $field = $prefix . self::makeLabelIntoField($item['label']);
+            $order = ["date", "content", "description"];
+            $uploadRow[$field] = self::getCOEUSNodeValue($order, $item);
+        }
+        foreach ($award['details'] as $item) {
+            $field = $prefix . self::makeLabelIntoField($item['label']);
+            $order = ["content", "description"];
+            $uploadRow[$field] = REDCapManagement::convertDollarsToNumber(self::getCOEUSNodeValue($order, $item));
+        }
+        return $uploadRow;
+    }
+
     static function accessSRI($resourcePath, $getParams) {
         include "/app001/credentials/con_redcap_ldap_user.php";
         $resourcePath = preg_replace("/^\//", "", $resourcePath);

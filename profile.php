@@ -137,7 +137,7 @@ $(document).ready(function() {
 
 <div class='subnav'>
 	<?= Links::makeProfileLink($pid, "View Profile for Next Record", $nextRecord, FALSE, "purple") ?>
-	<?= Links::makeEmailMgmtLink($pid, "Survey Management", FALSE, "purple") ?>
+	<?= Links::makeEmailMgmtLink($pid, "Survey Distribution", FALSE, "purple") ?>
 	<?= Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green") ?>
 	<?= Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green") ?>
 

@@ -3,10 +3,12 @@
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Scholar;
 
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
+require_once(dirname(__FILE__)."/../classes/Scholar.php");
 
 if (isset($_GET['csv'])) {
 	require_once(dirname(__FILE__)."/../small_base.php");

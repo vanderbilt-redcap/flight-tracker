@@ -11,7 +11,11 @@ class Application {
 		return CareerDev::getPID($token);
 	}
 
-	public static function getGrantClasses() {
+    public static function getProjectTitle() {
+        return \REDCap::getProjectTitle();
+    }
+
+    public static function getGrantClasses() {
 	    return CareerDev::getGrantClasses();
     }
 

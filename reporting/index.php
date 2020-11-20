@@ -124,9 +124,28 @@ $cohortParam = "";
 if ($_GET['cohort']) {
     $cohortParam = "&cohort=".$_GET['cohort'];
 }
+$appointmentParam = "";
+if (isset($_GET['appointments'])) {
+    $appointmentParam = "&appointments";
+}
 
 ?>
 
-<h2>Use with xTRACT (forthcoming)</h2>
-<p class="centered">Use the following link to install with <a href="https://mreidsma.github.io/bookmarklets/installing.html">these instructions</a>. This script needs to be run (<i>i.e.</i>, the bookmark needs to be clicked) on every xTRACT page in NIH eCommons.</p>
-<p class='centered'><a href="javascript:(function(){var%20script=document.createElement('script');script.type='text/javascript';script.src='<?= $bookmarkletJSURL ?>&'+Math.random();document.getElementsByTagName('head')[0].appendChild(script);getDataFromREDCap('<?= Application::link("/reporting/getData.php").$cohortParam ?>'})();">Bookmarklet</a></p>
+<h2>Use with xTRACT for Reporting to NIH</h2>
+<p class="centered"><a href="https://public.era.nih.gov/commons/"><img src="<?= Application::link("img/era.png") ?>" alt="eRA Commons"> eRA Commons</a></p>
+<h4>Step-By-Step Instructions</h4>
+<ol class="max-width centered">
+    <li class="left-align">Right-click on the below bookmarklet link.</li>
+    <li class="left-align">Click copy link from the menu that appears.</li>
+    <li class="left-align">Go to your browser's bookmarks bar and right-click the bar.</li>
+    <li class="left-align">Paste the link onto the bookmarks bar. It should begin with the words <code>javascript:</code>.</li>
+    <li class="left-align">Go to eRA Commons via the above link.</li>
+    <li class="left-align">Navigate to xTRACT and select your grant.</li>
+    <li class="left-align">Proceed as if you are preparing a Research Training Dataset (RTD).</li>
+    <li class="left-align">Click on the <i>Participating Trainees</i> link and select a trainee to edit.</li>
+    <li class="left-align">On the page entitled <i>Participating Trainee Detail</i> (at <code>editParticipatingPersonHome.era</code>), click on the bookmarklet link in the bookmarks bar.</li>
+    <li class="left-align">The script will attempt to match the trainee's name to your Flight Tracker database. You can adjust the record if the match is incorrect.</li>
+    <li class="left-align">Open the dialog boxes to fill out the data. Flight Tracker will provide an option to 'Auto-Fill' if data exist. Please check over the information for accuracy.</li>
+    <li class="left-align">If the page refreshed, you will need to run the bookmarklet anew on the page. There will be a Flight Tracker logo if the bookmarklet has already been run.</li>
+</ol>
+<p class='centered'><a href="javascript:(function(){var%20script=document.createElement('script');script.type='text/javascript';script.src='<?= $bookmarkletJSURL ?>&'+Math.random();document.getElementsByTagName('head')[0].appendChild(script);setTimeout(function(){var%20x=new%20xTRACT('<?= Application::link("/reporting/getData.php").$cohortParam.$appointmentParam."&NOAUTH" ?>', '<?= $token ?>');x.getDataFromREDCap();},1000);})();">Unique Bookmarklet for <?= Application::getProjectTitle() ?></a></p>

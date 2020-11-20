@@ -711,7 +711,8 @@ class REDCapManagement {
     }
 
     public static function convertDollarsToNumber($value) {
-        if (strpos($value, "$") === 0) {
+        if ((strpos($value, "$") === 0)
+            || (substr($value, 0, 2) == "-$")) {
             $value = str_replace("$", "", $value);
             $value = str_replace(",", "", $value);
         }
@@ -1004,6 +1005,25 @@ class REDCapManagement {
             return "\$".self::pretty($n, 0);
         }
     }
+
+    public static function allFieldsValid($row, $metadataFields) {
+        $skip = ["/^redcap_repeat_instrument$/", "/^redcap_repeat_instance$/", "/_complete$/"];
+        foreach ($row as $field => $value) {
+            $found = FALSE;
+            foreach ($skip as $regex) {
+                if (preg_match($regex, $field)) {
+                    $found = TRUE;
+                    break;
+                }
+            }
+            if (!$found && !in_array($field, $metadataFields)) {
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }
+
+
 
     public static function getNextRecord($record, $token, $server) {
         $records = Download::recordIds($token, $server);

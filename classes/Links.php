@@ -109,7 +109,7 @@ class Links {
 	}
 
 	public static function makeEmailMgmtLink($pid, $text, $markAsNew = FALSE, $linkClass = "") {
-		$url = self::link("emailMgmt/index.php");
+		$url = self::link("emailMgmt/configure.php");
 		if ($markAsNew) {
 			$url = $url."&new";
 		}

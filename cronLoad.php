@@ -32,11 +32,14 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		if ($has['news']) {
 			$manager->addCron("news/getNewsItems_func.php", "getNewsItems", "Friday");
 		}
-        if ($has['coeus2']) {
-            $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday");
-        }
         if ($has['ldap']) {
             $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Wednesday");
+        }
+        if ($has['coeus2']) {
+            $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday");
+            if (date("Y-m-d") == "2020-11-19") {
+                $manager->addCron("drivers/refreshCOEUSFailedNumbers.php", "refreshCoeus2Numbers", "Thursday");
+            }
         }
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
 		$manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");

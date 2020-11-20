@@ -34,6 +34,7 @@ div.right { border-left: 1px dotted black; border-right: 1px solid #888888; padd
 .small_padding th { font-size: 12px; text-align: left; width: 125px; background-color: #eeeeee; padding: 0px; }
 .bin { vertical-align: top; border: 1px dotted #aaaaaa; }
 .centered { text-align: center; }
+.left-align { text-align: left; }
 .bolded { font-weight: bold; }
 div.centered,table.centered { margin: 0px auto; }
 table { border-collapse: collapse; }

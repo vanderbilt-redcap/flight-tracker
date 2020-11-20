@@ -742,7 +742,7 @@ class Publications {
 
 	private function rightColumnText() {
 		$html = "<button class='sticky biggerButton green' id='finalize' style='display: none; font-weight: bold;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'>Finalize Citations</button><br>\n";
-		$html .= "<div class='sticky red shadow' style='height: 120px; padding: 5px; vertical-align: middle; text-align: center; display: none;' id='uploading'>\n";
+		$html .= "<div class='sticky red shadow' style='height: 180px; padding: 5px; vertical-align: middle; text-align: center; display: none;' id='uploading'>\n";
 		$html .= "<p>Uploading Changes...</p>\n";
 		$html .= "<p style='font-size: 12px;'>Redownloading citations from PubMed to ensure accuracy. May take up to one minute.</p>\n";
 		$html .= "</div>\n";

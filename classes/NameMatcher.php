@@ -36,6 +36,9 @@ class NameMatcher {
     }
 
     private static function doNamesMatch($name1, $name2) {
+        if (strtolower($name1) == strtolower($name2)) {
+            return TRUE;
+        }
         $pairs = [
             [$name1, $name2],
             [$name2, $name1],
@@ -91,7 +94,6 @@ class NameMatcher {
                     $sLast = self::prepareName($row['identifier_last_name']);
                     if (self::doNamesMatch($sFirst, $myFirst) && self::doNamesMatch($sLast, $myLast)) {
                         $recordIds[$i] = $row['record_id'];
-                        $found = true;
                         break;  // inner
                     }
                 }
@@ -183,6 +185,137 @@ class NameMatcher {
 		return "$first $last";
 	}
 
+	# from 2010 census
+    # https://www.census.gov/topics/population/genealogy/data/2010_surnames.html
+	public static function isCommonLastName($lastName) {
+        # criteria 200,000+ names in US
+        $listOfCommonLastNames = [
+            "SMITH",
+            "JOHNSON",
+            "WILLIAMS",
+            "BROWN",
+            "JONES",
+            "GARCIA",
+            "MILLER",
+            "DAVIS",
+            "RODRIGUEZ",
+            "MARTINEZ",
+            "HERNANDEZ",
+            "LOPEZ",
+            "GONZALEZ",
+            "WILSON",
+            "ANDERSON",
+            "THOMAS",
+            "TAYLOR",
+            "MOORE",
+            "JACKSON",
+            "MARTIN",
+            "LEE",
+            "PEREZ",
+            "THOMPSON",
+            "WHITE",
+            "HARRIS",
+            "SANCHEZ",
+            "CLARK",
+            "RAMIREZ",
+            "LEWIS",
+            "ROBINSON",
+            "WALKER",
+            "YOUNG",
+            "ALLEN",
+            "KING",
+            "WRIGHT",
+            "SCOTT",
+            "TORRES",
+            "NGUYEN",
+            "HILL",
+            "FLORES",
+            "GREEN",
+            "ADAMS",
+            "NELSON",
+            "BAKER",
+            "HALL",
+            "RIVERA",
+            "CAMPBELL",
+            "MITCHELL",
+            "CARTER",
+            "ROBERTS",
+            "GOMEZ",
+            "PHILLIPS",
+            "EVANS",
+            "TURNER",
+            "DIAZ",
+            "PARKER",
+            "CRUZ",
+            "EDWARDS",
+            "COLLINS",
+            "REYES",
+            "STEWART",
+            "MORRIS",
+            "MORALES",
+            "MURPHY",
+            "COOK",
+            "ROGERS",
+            "GUTIERREZ",
+            "ORTIZ",
+            "MORGAN",
+            "COOPER",
+            "PETERSON",
+            "BAILEY",
+            "REED",
+            "KELLY",
+            "HOWARD",
+            "RAMOS",
+            "KIM",
+            "COX",
+            "WARD",
+            "RICHARDSON",
+            "WATSON",
+            "BROOKS",
+            "CHAVEZ",
+            "WOOD",
+            "JAMES",
+            "BENNETT",
+            "GRAY",
+            "MENDOZA",
+            "RUIZ",
+            "HUGHES",
+            "PRICE",
+            "ALVAREZ",
+            "CASTILLO",
+            "SANDERS",
+            "PATEL",
+            "MYERS",
+            "LONG",
+            "ROSS",
+            "FOSTER",
+            "JIMENEZ",
+            "POWELL",
+            "JENKINS",
+            "PERRY",
+            "RUSSELL",
+            "SULLIVAN",
+            "BELL",
+            "COLEMAN",
+            "BUTLER",
+            "HENDERSON",
+            "BARNES",
+            "GONZALES",
+            "FISHER",
+            "VASQUEZ",
+            "SIMMONS",
+            "ROMERO",
+            "JORDAN",
+            "PATTERSON",
+            "ALEXANDER",
+            "HAMILTON",
+            "GRAHAM",
+            "REYNOLDS",
+        ];
+        $lastName = trim(strtoupper($lastName));
+        return in_array($lastName, $listOfCommonLastNames);
+    }
+
 	# returns list($firstName, $lastName)
 	public static function splitName($name, $parts = 2, $loggingOn = FALSE) {
         $simpleLastNamePrefixes = ["von", "van", "de"];
@@ -220,14 +353,12 @@ class NameMatcher {
                 }
                 return $returnValues;
             } else {     // $parts > count($nodes)
-                $returnValues = [$nodes[1], $nodes[0]];
+                $nodesInRightOrder = [$nodes[1]];   // first name
                 for ($i = 2; $i < count($nodes); $i++) {
-                    $returnValues[] = $nodes[$i];
+                    $nodesInRightOrder[] = $nodes[$i];
                 }
-                for ($i = count($nodes); $i < $parts; $i++) {
-                    $returnValues[] = "";
-                }
-                return $returnValues;
+                $nodesInRightOrder[] = $nodes[0];    // last name
+                return self::padWithSpaces($nodesInRightOrder, $parts);
             }
 		} else if (count($nodes) == 1) {
             if ($parts >= 2) {
