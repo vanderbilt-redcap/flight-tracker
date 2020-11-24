@@ -64,7 +64,7 @@ class Upload
         }
     }
 
-        public static function deleteForm($token, $server, $pid, $prefix, $recordId, $instance = NULL) {
+    public static function deleteForm($token, $server, $pid, $prefix, $recordId, $instance = NULL) {
         $records = Download::recordIds($token, $server);
         if (Download::isCurrentServer($server)) {
             if (in_array($recordId, $records)) {

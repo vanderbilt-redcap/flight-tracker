@@ -36,7 +36,7 @@ if (isset($_POST['finalized'])) {
             $matched = FALSE;
             foreach ($redcapData as $row) {
                 if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
-                    if (($pmid == $row['citation_pmid']) && !in_array($pmid, $priorPMIDs)) {
+                    if ($pmid == $row['citation_pmid']) {
                         $uploadRow = array(
                             "record_id" => $recordId,
                             "redcap_repeat_instrument" => "citation",
@@ -46,7 +46,6 @@ if (isset($_POST['finalized'])) {
                         array_push($priorPMIDs, $pmid);
                         array_push($upload, $uploadRow);
                         $matched = TRUE;
-                        break;
                     }
                 }
             }
@@ -65,6 +64,10 @@ if (isset($_POST['finalized'])) {
     if (!empty($upload)) {
         $feedback = Upload::rows($upload, $token, $server);
         echo json_encode($feedback);
+        // echo " ".REDCapManagement::json_encode_with_spaces($upload);
+        $pubs = new Publications($token, $server, $metadata);
+        $pubs->setRows($redcapData);
+        $pubs->deduplicateCitations($recordId);
     } else {
         $data = array("error" => "You don't have any new citations enqueued to change!");
         echo json_encode($data);
@@ -93,4 +96,8 @@ if ($pmids && !empty($pmids)) {
             echo json_encode(array("error" => "Upload queue empty!"));
         }
     }
+    $pubs = new Publications($token, $server, $metadata);
+    $pubs->setRows($redcapData);
+    $pubs->deduplicateCitations($recordId);
 }
+

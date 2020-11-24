@@ -576,15 +576,17 @@ function submitChanges(nextRecord) {
 		}
 	});
 	var url = getPageUrl("wrangler/savePubs.php");
+	let postdata = {
+		record_id: recordId,
+		omissions: JSON.stringify(newOmits),
+		resets: JSON.stringify(resets),
+		finalized: JSON.stringify(newFinalized)
+	};
+	console.log('Posting '+JSON.stringify(postdata));
 	$.ajax({
 		url: url,
 		method: 'POST',
-		data: {
-			record_id: recordId,
-			omissions: JSON.stringify(newOmits),
-			resets: JSON.stringify(resets),
-			finalized: JSON.stringify(newFinalized)
-		},
+		data: postdata,
 		dataType: 'json',
 		success: function(data) {
 			if (data['count'] && (data['count'] > 0)) {

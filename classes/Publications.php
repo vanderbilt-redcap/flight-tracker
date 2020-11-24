@@ -27,7 +27,24 @@ class Publications {
 		$this->metadata = $metadata;
 		$this->choices = Scholar::getChoices($metadata);
 		$this->pid = Application::getPID($token);
+		$this->names = Download::names($token, $server);
 	}
+
+	public function deduplicateCitations($recordId) {
+	    $pmids = [];
+	    $duplicateInstances = [];
+	    foreach ($this->rows as $row) {
+	        $pmid = $row['citation_pmid'];
+	        if (!in_array($pmid, $pmids)) {
+	            $pmids[] = $pmid;
+            } else {
+	            $duplicateInstances[] = $row['redcap_repeat_instance'];
+            }
+        }
+	    foreach ($duplicateInstances as $instance) {
+            Upload::deleteForm($this->token, $this->server, $this->pid, "citation_", $recordId, $instance);
+        }
+    }
 
     public static function searchPubMedForName($first, $last, $institution = "") {
         $first = preg_replace("/\s+/", "+", $first);
@@ -88,32 +105,40 @@ class Publications {
 		return "Last/Full Name:<br><input id='search' type='text' style='width: 100%;'><br><div style='width: 100%; color: #ff0000;' id='searchDiv'></div>";
 	}
 
-	public function getNumberFirstAuthors()
-    {
-        return $this->getNumberAuthors("first");
+	public function getNumberFirstAuthors() {
+        $type = "Included";
+        return self::getNumberAuthorsHelper("first", $this->getCitations($type), $this->getName());
     }
 
-    private function getNumberAuthors($pos) {
-	    if ($pos == "first") {
-	        $method = "isFirstAuthor";
+    private static function getNumberAuthorsHelper($pos, $citations, $name) {
+        if ($pos == "first") {
+            $method = "isFirstAuthor";
         } else if ($pos == "last") {
-	        $method = "isLastAuthor";
+            $method = "isLastAuthor";
         } else {
-	        throw new \Exception("Invalid position $pos");
+            throw new \Exception("Invalid position $pos");
         }
-	    $num = 0;
-	    $type = "Included";
-	    $total = $this->getCount($type);
-	    foreach ($this->getCitations($type) as $citation) {
-	        if ($citation->$method($this->getName())) {
-	            $num++;
+        $num = 0;
+        $total = count($citations);
+        foreach ($citations as $citation) {
+            if ($citation->$method($name)) {
+                $num++;
             }
         }
-	    return $num."/".$total;
+        return $num."/".$total;
     }
 
     public function getNumberLastAuthors() {
-        return $this->getNumberAuthors("last");
+        $type = "Included";
+        return self::getNumberAuthorsHelper("last", $this->getCitations($type), $this->getName());
+    }
+
+    public static function getNumberFirstAuthor($citations, $name) {
+        return self::getNumberAuthorsHelper("first", $citations, $name);
+    }
+
+    public static function getNumberLastAuthor($citations, $name) {
+        return self::getNumberAuthorsHelper("last", $citations, $name);
     }
 
     public static function getSelectRecord($filterOutCopiedRecords = FALSE) {
@@ -162,9 +187,9 @@ class Publications {
 		}
 
 		$this->process();
-		$this->goodCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Final", $this->rows, $this->metadata);
-		$this->input = new CitationCollection($this->recordId, $this->token, $this->server, "New", $this->rows, $this->metadata);
-		$this->omissions = new CitationCollection($this->recordId, $this->token, $this->server, "Omit", $this->rows, $this->metadata);
+		$this->goodCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Final", $this->rows, $this->metadata, $this->names);
+		$this->input = new CitationCollection($this->recordId, $this->token, $this->server, "New", $this->rows, $this->metadata, $this->names);
+		$this->omissions = new CitationCollection($this->recordId, $this->token, $this->server, "Omit", $this->rows, $this->metadata, $this->names);
 		foreach ($this->omissions->getCitations() as $citation) {
 			$pmid = $citation->getPMID();
 			if ($this->input->has($pmid)) {
@@ -1096,6 +1121,7 @@ class Publications {
 	private $omissions;
 	private $choices;
 	private $pid;
+	private $names;
 }
 
 class PubmedMatch {

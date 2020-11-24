@@ -45,6 +45,22 @@ $scholar->setGrants($grants);
 $pubs = new Publications($token, $server, $metadata);
 $pubs->setRows($redcapData);
 
+$trainingStats = [];
+$trainingStartDate = REDCapManagement::findField($redcapData, $record, "summary_training_start");
+if ($trainingStartDate) {
+    $trainingStartTs = strtotime($trainingStartDate);
+    $trainingEndDate = REDCapManagement::findField($redcapData, $record, "summary_training_end");
+    if (!$trainingEndDate) {
+        $trainingEndTs = time();
+    } else {
+        $trainingEndTs = strtotime($trainingEndDate);
+    }
+    $citations = $pubs->getSortedCitationsInTimespan($trainingStartTs, $trainingEndTs);
+    $trainingStats["Number of Publications During Training"] = count($citations);
+    $trainingStats["Number of First-Author Publications During Training"] = Publications::getNumberFirstAuthor($citations, $pubs->getName());
+    $trainingStats["Number of Last-Author Publications During Training"] = Publications::getNumberLastAuthor($citations, $pubs->getName());
+}
+
 $iCiteHIndex = REDCapManagement::findField($redcapData, $record, "summary_icite_h_index");
 $wosHIndex = REDCapManagement::findField($redcapData, $record, "summary_wos_h_index");
 $scopusHIndex = REDCapManagement::findField($redcapData, $record, "summary_scopus_h_index");
@@ -212,31 +228,16 @@ if ($dollarsCompiledTotal) {
 		<td class='value profileHeader'><?= printList($resources) ?></td>
 	</tr>
     <?php
-        $bibliometricScores = [];
-        if ($wosHIndex) { $bibliometricScores[Links::makeLink("https://support.clarivate.com/ScientificandAcademicResearch/s/article/Web-of-Science-h-index-information?language=en_US", "H Index", TRUE)." calculated<br>from ".Links::makeLink("https://www.webofknowledge.com/", "Web of Science", TRUE)] = $wosHIndex; }
-        if ($scopusHIndex) { $bibliometricScores[Links::makeLink("https://blog.scopus.com/topics/h-index", "H Index", TRUE)."<br>from".Links::makeLink("https://www.scopus.com/", "Scopus", TRUE)] = $scopusHIndex; };
-        if ($altmetricRange) { $bibliometricScores["Range of ".Links::makeLink("https://www.altmetric.com/", "Altmetric", TRUE)." Scores"] = $altmetricRange; }
-        if ($avgRCR) { $bibliometricScores["Average ".Links::makeLink("https://dpcpsi.nih.gov/sites/default/files/iCite%20fact%20sheet_0.pdf", "Relative Citation<br> Ratio", TRUE)." from ".Links::makeLink("https://icite.od.nih.gov/", "iCite", TRUE)." Scores"] = $avgRCR; }
-        if ($iCiteHIndex) { $bibliometricScores["iCite H Index, calculated<br>from ".Links::makeLink("https://icite.od.nih.gov/", "iCite (NIH)", TRUE)] = $iCiteHIndex; }
 
-        $i = 0;
-        foreach ($bibliometricScores as $label => $value) {
-            if ($i % 2 == 0) {
-                echo "<tr>\n";
-            }
-            echo "<td class='label profileHeader'>$label:</td>\n";
-            if (is_numeric($value)) {
-                $value = REDCapManagement::pretty($value);
-            }
-            echo "<td class='value profileHeader'>$value</td>\n";
-            if ($i % 2 == 1) {
-                echo "</tr>\n";
-            }
-            $i++;
-        }
-        if (count($bibliometricScores) % 2 == 1) {
-            echo "</tr>\n";
-        }
+    $bibliometricScores = [];
+    if ($wosHIndex) { $bibliometricScores[Links::makeLink("https://support.clarivate.com/ScientificandAcademicResearch/s/article/Web-of-Science-h-index-information?language=en_US", "H Index", TRUE)." calculated<br>from ".Links::makeLink("https://www.webofknowledge.com/", "Web of Science", TRUE)] = $wosHIndex; }
+    if ($scopusHIndex) { $bibliometricScores[Links::makeLink("https://blog.scopus.com/topics/h-index", "H Index", TRUE)."<br>from".Links::makeLink("https://www.scopus.com/", "Scopus", TRUE)] = $scopusHIndex; };
+    if ($altmetricRange) { $bibliometricScores["Range of ".Links::makeLink("https://www.altmetric.com/", "Altmetric", TRUE)." Scores"] = $altmetricRange; }
+    if ($avgRCR) { $bibliometricScores["Average ".Links::makeLink("https://dpcpsi.nih.gov/sites/default/files/iCite%20fact%20sheet_0.pdf", "Relative Citation<br> Ratio", TRUE)." from ".Links::makeLink("https://icite.od.nih.gov/", "iCite", TRUE)." Scores"] = $avgRCR; }
+    if ($iCiteHIndex) { $bibliometricScores["iCite H Index, calculated<br>from ".Links::makeLink("https://icite.od.nih.gov/", "iCite (NIH)", TRUE)] = $iCiteHIndex; }
+    echo makeStatsHTML($trainingStats);
+    echo makeStatsHTML($bibliometricScores);
+
     ?>
 </table><br><br>
 
@@ -294,4 +295,27 @@ function printList($list) {
 		return "(None specified.)";
 	}
 	return implode("<br>", $list);
+}
+
+function makeStatsHTML($stats) {
+    $i = 0;
+    $html = "";
+    foreach ($stats as $label => $value) {
+        if ($i % 2 == 0) {
+            $html .= "<tr>\n";
+        }
+        $html .= "<td class='label profileHeader'>$label:</td>\n";
+        if (is_numeric($value)) {
+            $value = REDCapManagement::pretty($value);
+        }
+        $html .= "<td class='value profileHeader'>$value</td>\n";
+        if ($i % 2 == 1) {
+            $html .= "</tr>\n";
+        }
+        $i++;
+    }
+    if (count($stats) % 2 == 1) {
+        $html .= "</tr>\n";
+    }
+    return $html;
 }

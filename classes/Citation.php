@@ -15,7 +15,7 @@ require_once(dirname(__FILE__)."/../Application.php");
 
 class CitationCollection {
 	# type = [ Final, New, Omit ]
-	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = array()) {
+	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = array(), $names = []) {
 		$this->token = $token;
 		$this->server = $server;
 		$this->citations = array();
@@ -27,9 +27,12 @@ class CitationCollection {
 		if (empty($redcapData)) {
 			$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($this->metadata), array($recordId));
 		}
+		if (empty($names)) {
+		    $names = Download::names($token, $server);
+        }
 		foreach ($redcapData as $row) {
 			if (($row['redcap_repeat_instrument'] == "citation") && ($row['record_id'] == $recordId)) {
-				$c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata);
+				$c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $names[$recordId]);
 				if ($c->getType() == $type) {
 					array_push($this->citations, $c);
 				}
@@ -185,13 +188,14 @@ class CitationCollection {
 }
 
 class Citation {
-	public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array()) {
+	public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array(), $name = "") {
 		$this->recordId = $recordId;
 		$this->instance = $instance;
 		$this->token = $token;
 		$this->server = $server;
 		$this->origRow = $row;
 		$this->metadata = $metadata;
+		$this->name = $name;
 		$choices = REDCapManagement::getChoices($metadata);
 
 		if (isset($choices["citation_source"])) {
@@ -635,7 +639,7 @@ class Citation {
 	}
 
 	public function getCitation() {
-		$citation = $this->getVariable("authors").". ".$this->getVariable("title").". ".$this->getVariable("journal").". ".$this->getDate()."; ".$this->getIssueAndPages();
+        $citation = $this->getVariable("authors").". ".$this->getVariable("title").". ".$this->getVariable("journal").". ".$this->getDate()."; ".$this->getIssueAndPages();
 		$doi = $this->getVariable("doi");
 		if ($doi) {
 			$citation .= " doi:".$doi.".";

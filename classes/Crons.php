@@ -116,7 +116,7 @@ class CronManager {
 		    $records = Download::recordIds($this->token, $this->server);
         }
 
-		register_shutdown_function("CronManager::reportCronErrors");
+		register_shutdown_function(["CronManager", "reportCronErrors"]);
 
 		Application::log("Running ".count($toRun)." crons for pid ".$this->pid." with keys ".json_encode($keys));
 		foreach ($toRun as $cronjob) {

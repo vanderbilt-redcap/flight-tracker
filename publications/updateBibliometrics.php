@@ -17,5 +17,6 @@ function updateBibliometrics($token, $server, $pid, $records) {
         $pubs = new Publications($token, $server, $metadata);
         $pubs->setRows($redcapData);
         $pubs->updateMetrics();
+        $pubs->deduplicateCitations($recordId);
     }
 }
