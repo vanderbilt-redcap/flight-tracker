@@ -1181,7 +1181,7 @@ function queueUpInitialEmail($record) {
 	}
 	if ($name && $email) {
 		$metadata = Download::metadata($token, $server);
-		$emailManager = new EmailManager($token, $server, $pid, NULL, $metadata);
+		$emailManager = new EmailManager($token, $server, $pid, Application::getModule(), $metadata);
 		$settingName = CareerDev::getEmailName($record);
 		if (!$emailManager->hasItem($settingName)) {
 			$links = EmailManager::getSurveyLinks($pid, array($record), "initial_survey");
@@ -1201,7 +1201,7 @@ function queueUpInitialEmail($record) {
 				$emailSetting["what"]["message"] = $message;
 				$emailSetting["what"]["subject"] = $subject;
 				$emailSetting["when"]["initial_time"] = $dateToEmail1;
-				$feedback = $emailManager->saveSetting($settingName, $emailSetting);
+				// DISABLED $feedback = $emailManager->saveSetting($settingName, $emailSetting);
 			}
 		}
 	} else {
