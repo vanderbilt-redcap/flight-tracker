@@ -11,10 +11,12 @@ td.grants { vertical-align: top; padding: 5px; }
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Scholar;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Grants.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Scholar.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../wrangler/baseSelect.php");
 
@@ -29,7 +31,7 @@ $nextRecord = \Vanderbilt\FlightTrackerExternalModule\getNextRecord($record);
 
 if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
 	echo "<table style='margin-left: auto; margin-right: auto;'><tr>\n";
-	echo "<td class='yellow' style='text-align: center;'><a href='".APP_PATH_WEBROOT_FULL."plugins/career_dev/tablesAndLists/dataSourceCompare.php?pid=$pid&record=$nextRecord'>View Next Record</a></td>\n";
+	echo "<td class='yellow' style='text-align: center;'><a href='".Application::link('/tablesAndLists/dataSourceCompare.php')."&record=$nextRecord'>View Next Record</a></td>\n";
 	echo "</tr></table>\n";
 }
 
@@ -86,7 +88,7 @@ if (isset($_GET['header']) && (strtolower($_GET['header']) != "false")) {
 	echo "<td>".getCompareSelectRecord()."</td>\n";
 	echo "<td><span style='font-size: 12px;'>Last/Full Name:</span><br><input id='search' type='text' style='width: 100px;'><br><div style='width: 100px; color: red; font-size: 11px;' id='searchDiv'></div></td>\n";
 
-	$nextPageLink = "coeusFederalCompare.php?pid=".$pid."&record=".$nextRecord;
+	$nextPageLink = Application::link("tablesAndLists/dataSourceCompare.php")."&record=".$nextRecord;
 	# next record is in the same window => don't use Links class
 	echo "<td class='yellow' style='text-align: center;'><a href='$nextPageLink'>View Next Record</a></td>\n";
 	echo "<td class='blue'>".Links::makeSummaryLink($pid, $record, $event_id, "View REDCap")."</td>\n";

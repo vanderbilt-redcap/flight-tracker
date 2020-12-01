@@ -1289,7 +1289,7 @@ class REDCapManagement {
 		if (isset($projectSettings['project_id'])) {
 			return $projectSettings['project_id'];
 		}
-		return "";
+		throw new \Exception("Could not get project-id from project settings: ".self::json_encode_with_spaces($projectSettings));
 	}
 
 	public static function getSpecialFields($type) {

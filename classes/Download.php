@@ -574,7 +574,9 @@ class Download {
 		$redcapData = self::sendToServer($server, $data);
 		$records = array();
 		foreach ($redcapData as $row) {
-			array_push($records, $row['record_id']);
+		    if (!in_array($row['record_id'], $records)) {
+                $records[] = $row['record_id'];
+            }
 		}
 		return $records;
 	}

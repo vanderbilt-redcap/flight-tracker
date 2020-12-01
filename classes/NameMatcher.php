@@ -76,6 +76,14 @@ class NameMatcher {
         return FALSE;
     }
 
+    public static function explodeAlternates($name) {
+        $list = [$name];
+        if (preg_match("/'/", $name)) {
+            $list[] = preg_replace("/'/", "", $name);
+        }
+        return $list;
+    }
+
 	public static function matchNames($firsts, $lasts, $token, $server) {
 		if (!$firsts || !$lasts) {
 			return "";
@@ -92,9 +100,21 @@ class NameMatcher {
                 foreach (self::$namesForMatch as $row) {
                     $sFirst = self::prepareName($row['identifier_first_name']);
                     $sLast = self::prepareName($row['identifier_last_name']);
-                    if (self::doNamesMatch($sFirst, $myFirst) && self::doNamesMatch($sLast, $myLast)) {
-                        $recordIds[$i] = $row['record_id'];
-                        break;  // inner
+                    $found = FALSE;
+                    foreach (self::explodeAlternates($sFirst) as $sFirst) {
+                        foreach (self::explodeAlternates($sLast) as $sLast) {
+                            if (self::doNamesMatch($sFirst, $myFirst) && self::doNamesMatch($sLast, $myLast)) {
+                                $recordIds[$i] = $row['record_id'];
+                                $found = TRUE;
+                                break;  // inner
+                            }
+                        }
+                        if ($found) {
+                            break;
+                        }
+                    }
+                    if ($found) {
+                        break;
                     }
                 }
             }
