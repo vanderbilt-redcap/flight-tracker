@@ -545,6 +545,8 @@ class REDCapManagement {
             CURLOPT_MAXREDIRS => 10,
             CURLOPT_FRESH_CONNECT => 1,
             CURLOPT_TIMEOUT => 120,
+            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => 0,
         ];
 
         $ch = curl_init();

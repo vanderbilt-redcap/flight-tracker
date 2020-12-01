@@ -333,7 +333,9 @@ class Download {
 			curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
 			curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 			curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 			$output = curl_exec($ch);
             $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $error = curl_error($ch);
