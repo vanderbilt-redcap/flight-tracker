@@ -317,6 +317,7 @@ class Download {
 
 	private static function sendToServer($server, $data) {
 		$pid = Application::getPID($data['token']);
+        $error = "";
 		if ($pid && $_GET['pid'] && ($pid == $_GET['pid']) && ($data['content'] == "record") && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
 			// Application::log("sendToServer: ".$pid." ".$data['token']." REDCap::getData");
 		    $output = \REDCap::getData($pid, "json", $data['records'], $data['fields']);
@@ -335,12 +336,13 @@ class Download {
 			curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 			$output = curl_exec($ch);
             $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            $error = curl_error($ch);
             curl_close($ch);
 		}
 		$redcapData = json_decode($output, true);
 		if ($redcapData === NULL) {
 		    Application::log("ERROR: ".$output);
-		    throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output'");
+		    throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
         }
 		if (isset($redcapData['error']) && !empty($redcapData['error'])) {
 			throw new \Exception("Download Exception: ".$redcapData['error']);
