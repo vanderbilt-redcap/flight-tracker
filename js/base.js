@@ -746,7 +746,7 @@ function installMetadata(fields) {
 	$("#metadataWarning").addClass("install-metadata-box-warning");
 	$("#metadataWarning").html("<em class='fa fa-spinner fa-spin'></em> Installing...");
 	$.post(url, { process: "install", fields: fields }, function(data) {
-		// console.log(JSON.stringify(data));
+		console.log(JSON.stringify(data));
 		$("#metadataWarning").removeClass("install-metadata-box-warning");
 		if (!data.match(/Exception/)) {
 			$("#metadataWarning").addClass("install-metadata-box-success");
