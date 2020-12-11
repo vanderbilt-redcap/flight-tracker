@@ -1178,6 +1178,7 @@ class REDCapManagement {
     }
 
     public static function prefix2CompleteField($prefix) {
+	    $prefix = preg_replace("/_$/", "", $prefix);
         if ($prefix == "promotion") {
             return "position_change_complete";
         } else if ($prefix == "check") {

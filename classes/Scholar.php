@@ -983,7 +983,9 @@ class Scholar {
                 }
             }
         }
-        Application::log("In getAllOtherInstitutions, returning ".json_encode($seenInstitutions));
+        if ($showDebug) {
+            Application::log("In getAllOtherInstitutions, returning ".json_encode($seenInstitutions));
+        }
         return $seenInstitutions;
 	}
 

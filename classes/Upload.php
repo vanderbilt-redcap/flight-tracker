@@ -132,7 +132,7 @@ class Upload
             Application::log("Deleted ".$output);
 
             $feedback = json_decode($output, TRUE);
-            self::testFeedback($feedback);
+            self::testFeedback($feedback, $output);
 
             return $feedback;
         }
@@ -169,15 +169,17 @@ public static function metadata($metadata, $token, $server) {
 		curl_close($ch);
 
 		$feedback = json_decode($output, TRUE);
-		self::testFeedback($feedback, $metadata);
+		self::testFeedback($feedback, $output, $metadata);
 
 		self::$useAPIOnly[$token] = TRUE;
 		Application::log("Upload::metadata returning $output");
 		return $feedback;
 	}
 
-	private static function testFeedback($feedback, $rows = array()) {
-		if (isset($feedback['error']) && $feedback['error']) {
+	private static function testFeedback($feedback, $originalText, $rows = array()) {
+        if (!$feedback) {
+            throw new \Exception("Upload error (non-JSON): $originalText");
+        } else if (isset($feedback['error']) && $feedback['error']) {
             Application::log("Upload error: ".$feedback['error']);
 			throw new \Exception("Error: ".$feedback['error']."\n".json_encode($rows));
 		}
@@ -266,7 +268,7 @@ public static function metadata($metadata, $token, $server) {
 		curl_close($ch);
 
 		$feedback = json_decode($output, TRUE);
-		self::testFeedback($feedback, $settings);
+		self::testFeedback($feedback, $output, $settings);
 
 		self::$useAPIOnly[$token] = TRUE;
 		Application::log("Upload::projectSettings returning $output");
@@ -428,7 +430,7 @@ public static function metadata($metadata, $token, $server) {
 			} else {
 				Application::log("Upload::rows $method returning $output in ".($time3 - $time2)." seconds");
 			}
-			self::testFeedback($feedback, $rows);
+			self::testFeedback($feedback, $output, $rows);
 			$allFeedback = self::combineFeedback($allFeedback, $feedback);
 		}
 		return $allFeedback;
