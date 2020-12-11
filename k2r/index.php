@@ -310,7 +310,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 		}
 		echo "<li class='k2r'>Omit anyone with no matched CDA</li>";
 		echo "<li class='k2r'>Omit anyone with a K99/R00</li>";
-		echo "<li class='k2r'>Omit anyone who has left ".INSTITUTION." who has not converted and who did not fill out a Initial Survey</li>";
+		echo "<li class='k2r'>Omit anyone who has left ".INSTITUTION." who has not converted and who did not fill out an Initial Survey</li>";
 		if ($kLength) {
 			echo "<li class='k2r'>Omit anyone with a CDA of the given type that is less than $kLength years old</li>";
 		}

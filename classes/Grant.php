@@ -1329,27 +1329,28 @@ class Grant {
 		} else if ($specs['direct_budget'] && ($specs['direct_budget'] >= 750000)) {
 			# not R01 or R00
 			if ($specs['project_start'] && $specs['project_end']) {
-				$projStart = strtotime($specs['project_start']);
-				$projEnd = strtotime($specs['project_end']);
-				if ($projStart && $projEnd) {
-					# 3 years
-					$yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
-					if (($yearspan >= 3) && ($specs['direct_budget'] / $yearspan > 250000)) {
-						if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
-							if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600))); }
-							return "R01 Equivalent";
-						} else {
-							if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit D"); }
-						}
-					} else {
-						if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit C"); }
-					}
-				} else {
-					if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit B"); }
-				}
-			} else {
-				if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit A"); }
-			}
+                $projStart = strtotime($specs['project_start']);
+                $projEnd = strtotime($specs['project_end']);
+            } else if ($specs['start'] && $specs['end']) {
+                $projStart = strtotime($specs['start']);
+                $projEnd = strtotime($specs['end']);
+            }
+            if ($projStart && $projEnd) {
+                # 3 years
+                $yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
+                if (($yearspan >= 3) && ($specs['direct_budget'] / $yearspan > 250000)) {
+                    if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
+                        if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600))); }
+                        return "R01 Equivalent";
+                    } else {
+                        if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit D"); }
+                    }
+                } else {
+                    if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit C: ".REDCapManagement::pretty($yearspan, 1)." years"); }
+                }
+            } else {
+                if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit B"); }
+            }
 		}
 
 		if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Third Pass"); }

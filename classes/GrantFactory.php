@@ -79,8 +79,10 @@ class InitialGrantFactory extends GrantFactory {
 				$awardno = $row[$prefix.'_grant'.$i.'_number'];
 				$grant = new Grant($this->lexicalTranslator);
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
-				$grant->setVariable('start', $row[$prefix.'_grant'.$i.'_start']);
-				$grant->setVariable('end', $row[$prefix.'_grant'.$i.'_end']);
+                $grant->setVariable('start', $row[$prefix.'_grant'.$i.'_start']);
+                $grant->setVariable('end', $row[$prefix.'_grant'.$i.'_end']);
+                $grant->setVariable('project_start', $row[$prefix.'_grant'.$i.'_start']);
+                $grant->setVariable('project_end', $row[$prefix.'_grant'.$i.'_end']);
 				if ($prefix == "check") {
                     $grant->setVariable('source', "scholars");
                 } else if ($prefix == "init_import") {
@@ -88,13 +90,13 @@ class InitialGrantFactory extends GrantFactory {
                 }
 				$costs = Grant::removeCommas($row[$prefix.'_grant'.$i.'_costs']);
 				$grant->setVariable('budget', $costs);
-				$grant->setVariable('direct_budget', Grants::directCostsFromTotal($costs, $awardno, $row[$prefix.'_grant'.$i.'_start']));
+				$grant->setVariable('direct_budget', $costs);
 				// $grant->setVariable('fAndA', Grants::getFAndA($awardno, $row['check_grant'.$i.'_start']));
 				$grant->setVariable('finance_type', Grants::getFinanceType($awardno));
 				$grant->setVariable('sponsor', $row[$prefix.'_grant'.$i.'_org']);
 				$grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=initial_survey", "See Grant"));
 				# Co-PI or PI, not Co-I or Other
-				if (($row[$prefix.'grant'.$i.'_role'] == 1) || ($row[$prefix.'_grant'.$i.'_role'] == 2) || ($row[$prefix.'_grant'.$i.'_role'] == '')) {
+				if (in_array($row[$prefix.'grant'.$i.'_role'], [1, 2, ''])) {
 					$grant->setVariable('pi_flag', 'Y');
 				} else {
 					$grant->setVariable('pi_flag', 'N');
@@ -125,18 +127,20 @@ class FollowupGrantFactory extends GrantFactory {
 
 				$grant = new Grant($this->lexicalTranslator);
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
-				$grant->setVariable('start', $row['followup_grant'.$i.'_start']);
-				$grant->setVariable('end', $row['followup_grant'.$i.'_end']);
+                $grant->setVariable('start', $row['followup_grant'.$i.'_start']);
+                $grant->setVariable('end', $row['followup_grant'.$i.'_end']);
+                $grant->setVariable('project_start', $row['followup_grant'.$i.'_start']);
+                $grant->setVariable('project_end', $row['followup_grant'.$i.'_end']);
 				$grant->setVariable('source', "followup");
 				$costs = Grant::removeCommas($row['followup_grant'.$i.'_costs']);
-				$grant->setVariable('budget', Grants::totalCostsFromDirect($costs, $awardno, $row['followup_grant'.$i.'_start']));
+				$grant->setVariable('budget', $costs);
 				// $grant->setVariable('fAndA', Grants::getFAndA($awardno, $row['followup_grant'.$i.'_start']));
 				$grant->setVariable('finance_type', Grants::getFinanceType($awardno));
 				$grant->setVariable('direct_budget', $costs);
 				$grant->setVariable('sponsor', $row['followup_grant'.$i.'_org']);
 				$grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=followup&instance={$row['redcap_repeat_instance']}", "See Grant"));
 				# Co-PI or PI, not Co-I or Other
-				if (($row['followup_grant'.$i.'_role'] == 1) || ($row['followup_grant'.$i.'_role'] == 2) || ($row['followup_grant'.$i.'_role'] == '')) {
+				if (in_array($row['followup_grant'.$i.'_role'], [1, 2, ''])) {
 					$grant->setVariable('pi_flag', 'Y');
 				} else {
 					$grant->setVariable('pi_flag', 'N');
@@ -148,7 +152,8 @@ class FollowupGrantFactory extends GrantFactory {
 					$match = preg_replace("/^\d/", "", $matches[0]);
 					$grant->setVariable('nih_mechanism', $match);
 				}
-				array_push($this->grants, $grant);
+                $grant->putInBins();
+                array_push($this->grants, $grant);
 			}
 		}
 	}

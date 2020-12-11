@@ -351,16 +351,17 @@ class Filter {
 
 	# variable => label
 	public static function getGrantChoices() {
-		$ary = array(
+		$ary = [
 				"calc_award_type" => "Award Type",
-				"summary_award_type_1" => "First Award Type",
+                "summary_ever_last_any_k_to_r01_equiv" => "Conversion Status",
+                "summary_award_type_1" => "First Award Type",
 				"summary_award_sponsorno_1" => "First Award Sponsor Number",
 				"calc_sponsorno" => "Any Award Sponsor Number",
 				"calc_activity_code" => "Activity Code",
 				"summary_first_any_k" => "First Any K",
 				"summary_last_any_k" => "Last Any K",
 				"summary_first_r01_or_equiv" => "First R01 or Equivalent",
-				);
+				];
 		return $ary;
 	}
 

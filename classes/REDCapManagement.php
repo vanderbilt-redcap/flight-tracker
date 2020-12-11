@@ -1177,6 +1177,19 @@ class REDCapManagement {
 	    return $datetime;
     }
 
+    public static function prefix2CompleteField($prefix) {
+        if ($prefix == "promotion") {
+            return "position_change_complete";
+        } else if ($prefix == "check") {
+            return "initial_survey_complete";
+        } else if ($prefix == "custom") {
+            return "custom_grant_complete";
+        } else if ($prefix == "imported_degree") {
+            return "manual_degree_complete";
+        }
+        return "";
+    }
+
     public static function filterForREDCap($row, $metadataFields) {
 	    $newRow = [];
 	    $redcapManagementFields = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance"];
@@ -1250,7 +1263,7 @@ class REDCapManagement {
         return [$url, $params];
     }
 
-    public function setupRepeatingForms($eventId, $formsAndLabels) {
+    public static function setupRepeatingForms($eventId, $formsAndLabels) {
 		$sqlEntries = array();
 		foreach ($formsAndLabels as $form => $label) {
 			array_push($sqlEntries, "($eventId, '".db_real_escape_string($form)."', '".db_real_escape_string($label)."')");

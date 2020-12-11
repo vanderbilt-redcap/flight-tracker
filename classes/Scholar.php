@@ -251,13 +251,13 @@ class Scholar {
 		return $resources;
 	}
 
-	private static function nameInList($name, $list) {
+	public static function nameInList($name, $list) {
 		$name = strtolower($name);
-		$nameAry = NameMatcher::splitName($name);
+		$nameAry = NameMatcher::splitName($name, 2);
 		$lowerList = array();
 		foreach ($list as $item) {
 		    $item = strtolower($item);
-		    $itemNameAry = NameMatcher::splitName($item);
+		    $itemNameAry = NameMatcher::splitName($item, 2);
 			array_push($lowerList, $itemNameAry);
 		}
 		foreach ($lowerList as $itemNameAry) {
@@ -381,7 +381,7 @@ class Scholar {
 		return $mentors;
 	}
 
-	private function getMentorFields() {
+	public function getMentorFields() {
 		$fields = [];
 		$skipRegex = [
 		    "/_vunet$/",

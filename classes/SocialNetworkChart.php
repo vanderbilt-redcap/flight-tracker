@@ -28,6 +28,15 @@ class SocialNetworkChart extends Chart {
         return [];
     }
 
+    private static function hasField($chartData, $field) {
+        foreach ($chartData as $row) {
+            if ($row[$field]) {
+                return TRUE;
+            }
+        }
+        return FALSE;
+    }
+
     public function getHTML($width, $height) {
         $html = "
 <div id='{$this->name}' class='centered' style='width: {$width}px; height: {$height}px; background-color: white;'></div>
@@ -45,7 +54,14 @@ class SocialNetworkChart extends Chart {
         chart.dataFields.fromName = 'from';
         chart.dataFields.toName = 'to';
         chart.dataFields.value = 'value';
-
+        ";
+        if (self::hasField($this->chartData, "nodeColor")) {
+            $html .= "
+            chart.dataFields.color = 'nodeColor';
+            chart.nodes.label = { 'disabled': true };
+            ";
+        }
+        $html .= "
         chart.nonRibbon = ".json_encode($this->isNonRibbon).";
         let link = chart.links.template;
         link.middleLine.strokeWidth = 2;
@@ -115,6 +131,9 @@ class SocialNetworkChart extends Chart {
             let counters = {};
             let mainChar = false;
             node.incomingDataItems.each(function(dataItem) {
+                if (dataItem.color) {
+                    return dataItem.color;
+                }
                 if(colors[dataItem.toName]){
                     mainChar = true;
                 }

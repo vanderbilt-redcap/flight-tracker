@@ -316,6 +316,9 @@ class Download {
 	}
 
 	private static function sendToServer($server, $data) {
+	    if (!$server) {
+	        throw new \Exception("No server specified");
+        }
 		$pid = Application::getPID($data['token']);
         $error = "";
 		if ($pid && $_GET['pid'] && ($pid == $_GET['pid']) && ($data['content'] == "record") && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {

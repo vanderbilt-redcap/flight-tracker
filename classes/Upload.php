@@ -88,6 +88,18 @@ class Upload
                 } else {
                     Application::log("SQL: " . $q->affected_rows . " rows affected");
                 }
+                $completeField = REDCapManagement::prefix2CompleteField($prefix);
+                if ($completeField) {
+                    $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name = '$completeField'".$instanceClause;
+                    Application::log("Running SQL $sql");
+                    $q = db_query($sql);
+                    if ($error = db_error()) {
+                        Application::log("SQL ERROR: " . $error);
+                        throw new \Exception($error);
+                    } else {
+                        Application::log("SQL: " . $q->affected_rows . " rows affected");
+                    }
+                }
             } else {
                 throw new \Exception("Could not find record!");
             }

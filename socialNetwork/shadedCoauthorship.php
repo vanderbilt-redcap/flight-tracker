@@ -26,9 +26,6 @@ if ($_GET['record']) {
     $highlightedRecord = $_GET['record'];
 }
 
-define('PUBYEAR_SELECT', '---pub_year---');
-define('START_YEAR', 2010);
-
 $metadata = Download::metadata($token, $server);
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 $choices = REDCapManagement::getChoices($metadata);
@@ -48,19 +45,17 @@ if (CareerDev::isVanderbilt() && in_array("identifier_grant_type", $metadataFiel
 }
 if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
     $indexByField = $_GET['field'];
-} else if ($_GET['field'] == PUBYEAR_SELECT) {
-    $indexByField = PUBYEAR_SELECT;
 } else {
     $indexByField = "record_id";
 }
-$includeMentors = ($_GET['mentors'] == "on") && isForIndividualScholars($indexByField);
-$otherMentorsOnly = ($_GET['other_mentors'] == "on") && isForIndividualScholars($indexByField);
+$includeMentors = ($_GET['mentors'] == "on") && ($indexByField == 'record_id');
+$otherMentorsOnly = ($_GET['other_mentors'] == "on") && ($indexByField == 'record_id');
 
 $cohorts = new Cohorts($token, $server, $metadata);
 
 if ($includeHeaders) {
     echo "<h1>Publishing Collaborations Among Scholars</h1>\n";
-    list($url, $params) = REDCapManagement::splitURL(Application::link("socialNetwork/coauthorship.php"));
+    list($url, $params) = REDCapManagement::splitURL(Application::link("socialNetwork/shadedCoauthorship.php"));
     echo "<form method='GET' action='$url'>\n";
     foreach ($params as $param => $value) {
         echo "<input type='hidden' name='$param' value='$value'>";
@@ -69,7 +64,7 @@ if ($includeHeaders) {
     echo $cohorts->makeCohortSelect($_GET['cohort'], "", TRUE) . "<br>";
     echo makeFieldSelect($indexByField, $possibleFields, $metadataLabels) . "<br>";
     $style = "";
-    if (!isForIndividualScholars($indexByField)) {
+    if ($indexByField != "record_id") {
         $style = " style='display: none;'";
     }
     $checked = [];
@@ -139,7 +134,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
         }
     }
 
-    list($connections, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index, $pubs);
+    list($connections, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index, $token, $server);
     if ($includeMentors) {
         $mentorConnections = getAvgMentorConnections($matches);
     }
@@ -174,7 +169,6 @@ if (isset($_GET['cohort']) && !empty($records)) {
         echo "</table>\n";
     }
 
-    echo makeLegendHTML($indexByField);
     $socialNetwork = new SocialNetworkChart($networkChartName, $chartData);
     $socialNetwork->setNonRibbon(count($uniqueNames) > 100);
     echo $socialNetwork->getImportHTML();
@@ -225,8 +219,7 @@ function makePublicationColsAndLabels($pubs) {
 
 function makeFieldSelect($selectedField, $fields, $metadataLabels) {
     $html = "";
-    $pubyearSelect = PUBYEAR_SELECT;
-    $html .= "Index by Field: <select name='field' onchange='if (($(this).val() == \"record_id\") || ($(this).val() == \"$pubyearSelect\")) { $(\".mentorCheckbox\").show(); } else { $(\".mentorCheckbox\").hide(); }'>";
+    $html .= "Index by Field: <select name='field' onchange='if ($(this).val() == \"record_id\") { $(\".mentorCheckbox\").show(); } else { $(\".mentorCheckbox\").hide(); }'>";
     foreach ($fields as $field) {
         $selected = "";
         if ($field == $selectedField) {
@@ -234,11 +227,6 @@ function makeFieldSelect($selectedField, $fields, $metadataLabels) {
         }
         $html .= "<option value='$field'$selected>".$metadataLabels[$field]."</option>";
     }
-    $selected = "";
-    if ($selectedField == PUBYEAR_SELECT) {
-        $selected = " selected";
-    }
-    $html .= "<option value='".PUBYEAR_SELECT."'$selected>Publication Year</option>";
     $html .= "</select>";
     return $html;
 }
@@ -260,150 +248,120 @@ function getAvgMentorConnections($matches) {
     return $mentorConnections / count($mentorCollaborators);
 }
 
-function generateColorWheel($numColors, $startYear, $endYear) {
-    # from https://learnui.design/tools/data-color-picker.html#palette
-    $colors = [
-        "#003f5c",
-        "#2f4b7c",
-        "#665191",
-        "#a05195",
-        "#d45087",
-        "#f95d6a",
-        "#ff7c43",
-        "#ffa600",
-    ];
-    $unknownColor = '#000000';
-
-    if ($numColors > count($colors)) {
-        throw new \Exception("Requested $numColors colors; maximum is ".count($colors));
-    }
-
-    $yearspan = $endYear - $startYear + 1;
-    $yearsPerColor = 1;
-    while ($yearspan > $yearsPerColor * count($colors)) {
-        $yearsPerColor++;
-    }
-
-    $colorWheel = ["Unknown" => $unknownColor];
-    $i = 0;
-    for ($year_i = $startYear; $year_i <= $endYear; $year_i += $yearsPerColor) {
-        for ($year = $year_i; $year < $year_i + $yearsPerColor; $year++) {
-            $colorWheel[$year] = $colors[$i];
-        }
-        $i++;
-    }
-    return $colorWheel;
-}
-
-function collapseColorWheel($colorWheel) {
-    $newWheel = [];
-    $reverseWheel = [];
-    ksort($colorWheel);
-    foreach ($colorWheel as $label => $hex) {
-        if (is_numeric($label)) {
-            $year = $label;
-            if (!isset($reverseWheel[$hex])) {
-                $reverseWheel[$hex] = ["start" => $year, "end" => $year];
-            }
-            $reverseWheel[$hex]["end"] = $year;
+function getTypeForRecord($oneFieldData, $recordId, $combine) {
+    $value = $oneFieldData[$recordId];
+    if (in_array($value, $combine)) {
+        if (isset($_GET['newOnly'])) {
+            return FALSE;
         } else {
-            # unknown
-            $newWheel[$label] = $hex;
+            return implode(" / ", $combine);
         }
+    } else {
+        return $value;
     }
-    foreach ($reverseWheel as $hex => $ary) {
-        if ($ary["start"] == $ary["end"]) {
-            $yearspan = $ary["start"];
+}
+
+function getNodeColorIndex($from, $fromType, $combine) {
+    $combineType = implode(" / ", $combine);
+    if ($fromType == "Mentor") {
+        return 0;
+    }else if ($fromType == $combineType) {
+        return 2;
+    } else if ($fromType == "KL2") {
+        return 3;
+    } else if ($fromType == "TL1") {
+        return 4;
+    }
+    throw new \Exception("Invalid node type $from $fromType");
+}
+
+function getEdgeColorIndex($fromType, $toType, $combine) {
+    $combineType = implode(" / ", $combine);
+    $validTypes = ["Mentor", $combineType, "KL2", "TL1"];
+    if (!in_array($fromType, $validTypes)) {
+        throw new \Exception("Invalid From Type $fromType!");
+    }
+    if (!in_array($toType, $validTypes)) {
+        throw new \Exception("Invalid To Type $toType!");
+    }
+
+    if (($toType == "Mentor") || ($fromType == "Mentor")) {
+        return 0;
+    }
+    if ($fromType == $combineType) {
+        return 2;
+    } else if ($fromType == "KL2") {
+        return 3;
+    } else if ($fromType == "TL1") {
+        return 4;
+    } else {
+        throw new \Exception("This should never happen ($fromType, $toType)");
+    }
+}
+
+function makeNodeName($recordId, $indexByField, $colorData, $combine, $choices, $index, $names) {
+    $fromType = FALSE;
+    if ($indexByField == "record_id") {
+        if ($names[$recordId]) {
+            $from = $recordId.": ".$names[$recordId];
+            $fromType = getTypeForRecord($colorData, $recordId, $combine);
+            return [$from, $fromType];
         } else {
-            $yearspan = $ary["start"]."-".$ary["end"];
+            # mentor
+            $fromType = "Mentor";
+            $from = $recordId;
+            return [$from, $fromType];
         }
-        $newWheel[$yearspan] = $hex;
+    } else if ($choices[$indexByField]) {
+        $from = $choices[$indexByField][$index[$recordId]];
+    } else {
+        $from = $index[$recordId];
     }
-    return $newWheel;
+    return [$from, $fromType];
 }
 
-function makeLegendHTML($indexByField) {
-    if ($indexByField == PUBYEAR_SELECT) {
-        $colorWheel = generateColorWheel(8, START_YEAR, date("Y"));
-        $colorWheel = collapseColorWheel($colorWheel);
-
-        $lines = [];
-        foreach ($colorWheel as $label => $hex) {
-            $lines[] = "<span style='background-color: $hex'>&nbsp;&nbsp;&nbsp;</span> $label";
-        }
-        return "<div style='background-color: white;' class='smaller centered max-width'>".implode("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;", $lines)."</div>";
+function makeEdges($matches, $indexByField, $names, $choices, $index, $token, $server) {
+    if (isset($_GET['blackAndWhite'])) {
+        $colorWheel = ["#000000", "#808080", "#C0C0C0", "#DCDCDC", "#F5F5F5",];
+    } else {
+        // $colorWheel = ["#003f5c", "#955196", "#dd5182", "#ff6e54", "#ffa600",];  // https://learnui.design/tools/data-color-picker.html#palette
+        $colorWheel = ["#003f5c", "#955196", "#ff6e54", "#dd5182", "#ffda00",];
     }
-    return "";
-}
-
-function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
-    $colorWheel = generateColorWheel(8, START_YEAR, date("Y"));
     $combine = ["VCTRS", "VPSD", "VFRS"];
     $connections = ["given" => [], "received" => [], ];
     $chartData = [];
     $uniqueNames = [];
+    $colorData = Download::oneField($token, $server, "identifier_grant_type");
+    foreach (array_keys($matches) as $fromRecordId) {
+        if (count($matches[$fromRecordId]) > 0) {
+            list($from, $fromType) = makeNodeName($fromRecordId, $indexByField, $colorData, $combine, $choices, $index, $names);
+            if ($fromType) {
+                $colorIndex = getNodeColorIndex($from, $fromType, $combine);
+                $chartRow = ["from" => $from, "nodeColor" => $colorWheel[$colorIndex]];
+                $chartData[] = $chartRow;
+            }
+        }
+    }
     foreach (array_keys($matches) as $fromRecordId) {
         $connections["given"][$fromRecordId] = [];
+        list($from, $fromType) = makeNodeName($fromRecordId, $indexByField, $colorData, $combine, $choices, $index, $names);
         foreach ($matches[$fromRecordId] as $toRecordId => $fromInstances) {
-            if (isForIndividualScholars($indexByField)) {
-                if ($names[$fromRecordId]) {
-                    $from = $fromRecordId.": ".$names[$fromRecordId];
-                } else {
-                    # mentor
-                    $from = $fromRecordId;
-                }
-                if ($names[$toRecordId]) {
-                    $to = $toRecordId . ": " . $names[$toRecordId];
-                } else {
-                    # mentor
-                    $to = $toRecordId;
-                }
-            } else if ($choices[$indexByField]) {
-                $from = $choices[$indexByField][$index[$fromRecordId]];
-                $to = $choices[$indexByField][$index[$toRecordId]];
-            } else {
-                $from = $index[$fromRecordId];
-                $to = $index[$toRecordId];
-            }
+            list($to, $toType) = makeNodeName($toRecordId, $indexByField, $colorData, $combine, $choices, $index, $names);
             foreach ([$to, $from] as $name) {
                 if (!in_array($name, $uniqueNames)) {
                     $uniqueNames[] = $name;
                 }
             }
-            if (in_array($from, $combine)) {
-                $from = implode(" / ", $combine);
-            }
-            if (in_array($to, $combine)) {
-                $to = implode(" / ", $combine);
-            }
             $numItems = count($fromInstances);
-            $chartRow = ["from" => $from, "to" => $to];
-            if ($indexByField == PUBYEAR_SELECT) {
-                $dates = [];
-                foreach ($pubs as $key => $ts) {
-                    $nodes = preg_split("/:/", $key);
-                    if ($ts && ($fromRecordId == $nodes[0]) && ($toRecordId == $nodes[1])) {
-                        $year = date("Y", $ts);
-                        if (!isset($dates[$year])) {
-                            $dates[$year] = 0;
-                        }
-                        $dates[$year]++;
-                    }
-                }
-                if (count($dates) > 0) {
-                    foreach ($dates as $year => $count) {
-                        $newRow = $chartRow;
-                        $newRow['nodeColor'] = $colorWheel[$year];
-                        $newRow['value'] = $count;
-                        $chartData[] = $newRow;
-                    }
-                } else {
-                    $chartRow['nodeColor'] = $colorWheel['Unknown'];
-                    $chartRow['value'] = $numItems;
-                    $chartData[] = $chartRow;
-               }
-            } else {
-                $chartRow['value'] = $numItems;
+            $chartRow = ["from" => $from, "to" => $to, "value" => $numItems];
+            if ($fromType && $toType) {
+                $colorIndex = getEdgeColorIndex($fromType, $toType, $combine);
+                $chartRow["nodeColor"] = $colorWheel[$colorIndex];
+                $chartRow["colorIndex"] = $colorIndex;
+            }
+            if (!isset($_GET['newOnly'])) {
+                $chartData[] = $chartRow;
+            } else if ($fromType && $toType) {
                 $chartData[] = $chartRow;
             }
             $connections["given"][$fromRecordId][$toRecordId] = $numItems;
@@ -549,6 +507,6 @@ function addMentorNamesForRecords(&$firstNames, &$lastNames, &$records, $mentors
     }
 }
 
-function isForIndividualScholars($indexByField) {
-    return in_array($indexByField, ["record_id", PUBYEAR_SELECT]);
+function findColors($records, $token, $server, $field) {
+
 }

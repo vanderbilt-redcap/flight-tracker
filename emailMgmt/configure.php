@@ -155,9 +155,9 @@ $(document).ready(function() {
 	$('#<?= $selectName ?>').change(function() {
 		var val = $('#<?= $selectName ?> option:selected').val();
 		if (val) {
-			window.location = '?pid=<?= $pid ?>&<?= $selectName ?>='+val;
+			window.location = '<?= CareerDev::link("/emailMgmt/configure.php")."&$selectName=" ?>'+val;
 		} else {
-			window.location = '?pid=<?= $pid ?>';
+			window.location = '<?= CareerDev::link("/emailMgmt/configure.php") ?>';
 		}
 	});
 	$('#<?= $messageSelectName ?>').change(function() {

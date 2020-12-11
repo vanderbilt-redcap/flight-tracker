@@ -9,7 +9,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.25.8";
+		return "2.25.9";
 	}
 
 	public static function getLockFile($pid) {
@@ -338,6 +338,7 @@ class CareerDev {
             foreach ($fieldsToSearch as $field) {
                 $sql = "SELECT project_id FROM redcap_external_module_settings WHERE `key` = '$field' AND external_module_id = '$moduleId' AND value = '".db_real_escape_string($localToken)."'";
                 $q = db_query($sql);
+                $numRows = db_num_rows($q);
                 if ($error = db_error()) {
                     self::log("ERROR: $error ".$sql);
                 }
@@ -358,8 +359,12 @@ class CareerDev {
                     } else {
                         throw new \Exception("Looking through invalid field $field");
                     }
+                } else {
+                    self::log("Could not find $field; found $numRows rows from $sql");
                 }
             }
+        } else {
+            throw new \Exception("Could not find module-id");
         }
         return "";
     }
