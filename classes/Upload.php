@@ -127,6 +127,8 @@ class Upload
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
             curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             $output = curl_exec($ch);
             $feedback = json_decode($output, TRUE);
             self::testFeedback($feedback, $output, $ch);
@@ -163,7 +165,9 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch, $metadata);
@@ -265,7 +269,9 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-		$output = curl_exec($ch);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $output = curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch, $settings);
         curl_close($ch);
@@ -419,7 +425,9 @@ public static function metadata($metadata, $token, $server) {
 				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 				curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 				curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-				$time2 = microtime(TRUE);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                $time2 = microtime(TRUE);
 				$output = curl_exec($ch);
                 $feedback = json_decode($output, true);
                 self::testFeedback($feedback, $output, $ch, $rows);
