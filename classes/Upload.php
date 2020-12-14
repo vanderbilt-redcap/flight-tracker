@@ -128,11 +128,10 @@ class Upload
             curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
             $output = curl_exec($ch);
+            $feedback = json_decode($output, TRUE);
+            self::testFeedback($feedback, $output, $ch);
             curl_close($ch);
             Application::log("Deleted ".$output);
-
-            $feedback = json_decode($output, TRUE);
-            self::testFeedback($feedback, $output);
 
             return $feedback;
         }
@@ -166,19 +165,21 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = curl_exec($ch);
+        $feedback = json_decode($output, TRUE);
+        self::testFeedback($feedback, $output, $ch, $metadata);
 		curl_close($ch);
 
-		$feedback = json_decode($output, TRUE);
-		self::testFeedback($feedback, $output, $metadata);
 
 		self::$useAPIOnly[$token] = TRUE;
 		Application::log("Upload::metadata returning $output");
 		return $feedback;
 	}
 
-	private static function testFeedback($feedback, $originalText, $rows = array()) {
+	private static function testFeedback($feedback, $originalText, $curlHandle, $rows = array()) {
         if (!$feedback) {
-            throw new \Exception("Upload error (non-JSON): $originalText");
+            $returnCode = curl_getinfo($curlHandle, CURLINFO_RESPONSE_CODE);
+            $curlError = curl_error($curlHandle);
+            throw new \Exception("Upload error (non-JSON): $originalText [$returnCode] - $curlError");
         } else if (isset($feedback['error']) && $feedback['error']) {
             Application::log("Upload error: ".$feedback['error']);
 			throw new \Exception("Error: ".$feedback['error']."\n".json_encode($rows));
@@ -265,10 +266,9 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = curl_exec($ch);
-		curl_close($ch);
-
-		$feedback = json_decode($output, TRUE);
-		self::testFeedback($feedback, $output, $settings);
+        $feedback = json_decode($output, TRUE);
+        self::testFeedback($feedback, $output, $ch, $settings);
+        curl_close($ch);
 
 		self::$useAPIOnly[$token] = TRUE;
 		Application::log("Upload::projectSettings returning $output");
@@ -421,16 +421,16 @@ public static function metadata($metadata, $token, $server) {
 				curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 				$time2 = microtime(TRUE);
 				$output = curl_exec($ch);
+                $feedback = json_decode($output, true);
+                self::testFeedback($feedback, $output, $ch, $rows);
 				curl_close($ch);
 				$time3 = microtime(TRUE);
-				$feedback = json_decode($output, true);
 			}
 			if ($method == "saveData") {
 				Application::log("Upload::rows $method for pid $pid returning $output in ".($time3 - $time2)." seconds");
 			} else {
 				Application::log("Upload::rows $method returning $output in ".($time3 - $time2)." seconds");
 			}
-			self::testFeedback($feedback, $output, $rows);
 			$allFeedback = self::combineFeedback($allFeedback, $feedback);
 		}
 		return $allFeedback;

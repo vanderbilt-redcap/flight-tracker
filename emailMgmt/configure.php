@@ -15,14 +15,14 @@ $metadata = Download::metadata($token, $server);  // must load on save and reloa
 $hasErrors = FALSE;
 if (count($_POST) > 0) {
 	# saveSetting evokes a separate $mgr instance; must do first so that save will take effect
-        $mgr = new EmailManager($token, $server, $pid, CareerDev::getModule(), $metadata);
+    $mgr = new EmailManager($token, $server, $pid, CareerDev::getModule(), $metadata);
 	list($message, $settingName, $emailSetting) = translatePostToEmailSetting($realPost);
 	if (($emailSetting == EmailManager::getBlankSetting())) {
 		$html = "Some settings were left unfilled. Please check your configuration again. ".$message;
 		$noteClass = "red";
 		$hasErrors = TRUE;
 	} else {
-        	$feedback = $mgr->saveSetting($settingName, $emailSetting);
+	    $feedback = $mgr->saveSetting($settingName, $emailSetting);
 		if ($feedback['error']) {
 			$html = "Error! ".$feedback['error'];
 			$noteClass = "red";
