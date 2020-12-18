@@ -100,7 +100,7 @@ class CareerDev {
 			if ($pid) {
 				$params = array("project_id" => $pid);
 				$module->log($mssg, $params);
-				error_log($pid.": ".$mssg);
+				// error_log($pid.": ".$mssg);
 			} else {
 				error_log($mssg);
 			}
