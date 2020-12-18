@@ -149,9 +149,6 @@ class EmailManager {
                 Application::log("Checking if $name is enabled");
 				if ($emailSetting['enabled'] || ($func == "prepareEmail")) {
 				    Application::log("$name is enabled");
-                    if (!isset($results[$name])) {
-                        $results[$name] = [];
-                    }
                     $when = $emailSetting["when"];
 					foreach ($when as $type => $datetime) {
 						$ts = self::transformToTS($datetime);
@@ -168,6 +165,9 @@ class EmailManager {
 							}
 						}
 						if ($result && !empty($result)) {
+                            if (!isset($results[$name])) {
+                                $results[$name] = [];
+                            }
 							$results[$name][$type] = $result;
 						}
 					}

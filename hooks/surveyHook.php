@@ -80,6 +80,15 @@ var surveyPrefix = "<?= $prefix ?>";
 
 $(document).ready(function() {
 	var html = <?= json_encode($html) ?>;
+	<?php
+        if (!$html) {
+            echo "// no \$html\n";
+        }
+        if (!json_encode($html)) {
+            echo "// JSON Error: ".json_last_error_msg()."\n";
+            echo "// \$html: ".preg_replace("/[\n\r]*/g", "[RETURN]", $html);
+        }
+	?>
 	var finalizedPubs = <?= json_encode($finalized->getIds()) ?>;
 	var omittedPubs = <?= json_encode($omitted->getIds()) ?>;
 	var skippedPubs = <?= json_encode($notDone->getIds()) ?>;

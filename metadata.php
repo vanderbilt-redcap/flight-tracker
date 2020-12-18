@@ -133,7 +133,8 @@ if ($_POST['process'] == "check") {
             try {
                 $feedback = REDCapManagement::mergeMetadataAndUpload($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
                 echo json_encode($feedback)."\n";
-                $formsAndLabels = CareerDev::getRepeatingFormsAndLabels();
+                $newMetadata = Download::metadata($token, $server);
+                $formsAndLabels = CareerDev::getRepeatingFormsAndLabels($newMetadata);
                 REDCapManagement::setupRepeatingForms($event_id, $formsAndLabels);   // runs a REPLACE
             } catch (\Exception $e) {
                 $feedback = array("Exception" => $e->getMessage());

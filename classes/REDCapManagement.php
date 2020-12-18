@@ -932,7 +932,7 @@ class REDCapManagement {
 		$metadata = $newMetadata;
 	}
 
-	private static function isJSON($str) {
+	public static function isJSON($str) {
 	    json_decode($str);
 	    return (json_last_error() == JSON_ERROR_NONE);
     }

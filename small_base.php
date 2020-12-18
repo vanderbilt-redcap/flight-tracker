@@ -52,20 +52,20 @@ if (!Application::isWebBrowser()) {
     date_default_timezone_set(CareerDev::getTimezone());
 }
 
-define('INSTITUTION', CareerDev::getInstitution());
+$pid = CareerDev::getSetting("pid");
+define('INSTITUTION', CareerDev::getInstitution($pid));
 define('PROGRAM_NAME', CareerDev::getProgramName());
 define("ENVIRONMENT", "prod");      // for Oracle database connectivity
 
 if (!$module) {
 	$module = CareerDev::getModule();
 }
-$token = CareerDev::getSetting("token");
-$server = CareerDev::getSetting("server");
-$pid = CareerDev::getSetting("pid");
-$event_id = CareerDev::getSetting("event_id");
-$tokenName = CareerDev::getSetting("tokenName");
-$adminEmail = CareerDev::getSetting("admin_email");
-$grantClass = CareerDev::getSetting("grant_class");
+$token = CareerDev::getSetting("token", $pid);
+$server = CareerDev::getSetting("server", $pid);
+$event_id = CareerDev::getSetting("event_id", $pid);
+$tokenName = CareerDev::getSetting("tokenName", $pid);
+$adminEmail = CareerDev::getSetting("admin_email", $pid);
+$grantClass = CareerDev::getSetting("grant_class", $pid);
 
 if (!$module) {
 	throw new \Exception("The base class has no module!");
@@ -1159,6 +1159,7 @@ function filterFields($fields, $metadata) {
 
 function queueUpInitialEmail($record) {
 	global $token, $server, $pid;
+    return;    // turned off for now
 
 	$dateToEmail1 = date("Y-m-d", 14 * 24 * 3600 + time())." 09:15:00";
 	$dateToEmail2 = date("Y-m-d", 28 * 24 * 3600 + time())." 09:15:00";

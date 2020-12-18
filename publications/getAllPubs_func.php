@@ -279,7 +279,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         if (!empty($nonOrcidPMIDs)) {
             $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDs, $metadata, "pubmed", $recordId, $max, $orcidPMIDs, $pid);
         }
-        if (!empty($orcidRows)) {
+        if (!empty($orcidPMIDs)) {
             if (!empty($pubmedRows)) {
                 $max = REDCapManagement::getMaxInstance($pubmedRows, "citation", $recordId);
                 $max++;

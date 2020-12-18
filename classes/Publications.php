@@ -27,7 +27,8 @@ class Publications {
 		$this->metadata = $metadata;
 		$this->choices = Scholar::getChoices($metadata);
 		$this->pid = Application::getPID($token);
-		$this->names = Download::names($token, $server);
+        $this->names = Download::names($token, $server);
+        $this->lastNames = Download::lastnames($token, $server);
 	}
 
 	public function deduplicateCitations($recordId) {
@@ -169,27 +170,21 @@ class Publications {
 	public function setRows($rows) {
 		$this->rows = $rows;
 
-		$this->name = "";
+        $this->name = "";
+        $this->lastName = "";
 		$this->recordId = 0;
 		foreach ($rows as $row) {
 			if ($row['record_id']) {
 				$this->recordId = $row['record_id'];
-			}
-			if ($row['redcap_repeat_instrument'] == "") {
-				if ($row['identifier_first_name'] && $row['identifier_last_name']) {
-					$this->name = $row['identifier_first_name']." ".$row['identifier_last_name'];
-				} else if ($row['identifier_last_name']) {
-					$this->name = $row['identifier_last_name'];
-				} else if ($row['identifier_first_name']) {
-					$this->name = $row['identifier_first_name'];
-				}
+                $this->name = $this->names[$this->recordId];
+                $this->lastName = $this->lastNames[$this->recordId];
 			}
 		}
 
 		$this->process();
-		$this->goodCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Final", $this->rows, $this->metadata, $this->names);
-		$this->input = new CitationCollection($this->recordId, $this->token, $this->server, "New", $this->rows, $this->metadata, $this->names);
-		$this->omissions = new CitationCollection($this->recordId, $this->token, $this->server, "Omit", $this->rows, $this->metadata, $this->names);
+		$this->goodCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Final", $this->rows, $this->metadata, $this->lastNames);
+		$this->input = new CitationCollection($this->recordId, $this->token, $this->server, "New", $this->rows, $this->metadata, $this->lastNames);
+		$this->omissions = new CitationCollection($this->recordId, $this->token, $this->server, "Omit", $this->rows, $this->metadata, $this->lastNames);
 		foreach ($this->omissions->getCitations() as $citation) {
 			$pmid = $citation->getPMID();
 			if ($this->input->has($pmid)) {
@@ -740,6 +735,9 @@ class Publications {
 			}
 			$html .= "</h4>\n";
 			$html .= "<div id='newCitations'>\n";
+			if ($notDoneCount > 1) {
+                $html .= "<p class='centered'><a href='javascript:;' onclick='selectAllCitations(\"#newCitations\");'>Select All New Citations</a> | <a href='javascript:;' onclick='unselectAllCitations(\"#newCitations\");'>Deselect All New Citations</a></p>";
+            }
 			$html .= $notDone->toHTML("notDone");
 		}
 		$html .= "</div>\n";
@@ -799,7 +797,15 @@ class Publications {
 		return $html;
 	}
 
-	# returns HTML to edit the publication; used in data wrangling
+	public static function makeUncommonDefinition() {
+	    return NameMatcher::makeUncommonDefinition();
+    }
+
+    public static function makeLongDefinition() {
+	    return NameMatcher::makeLongDefinition();
+    }
+
+    # returns HTML to edit the publication; used in data wrangling
 	public function getEditText() {
 		$html = "";
 		$html .= "<h1>Publication Wrangler</h1>\n";
@@ -807,6 +813,16 @@ class Publications {
 		if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
 			$html .= "<h2>".$this->recordId.": ".$this->name."</h2>\n";
 		}
+
+        $notDone = $this->getCitationCollection("Not Done");
+        $notDoneCount = $notDone->getCount();
+		if (!NameMatcher::isCommonLastName($this->lastName) && ($notDoneCount > 0)) {
+		    $html .= "<p class='centered bolded'>";
+		    $html .= $this->lastName." is an ".self::makeUncommonDefinition()." last name in the United States.<br>";
+		    $html .= "You likely can approve these publications without close review.<br>";
+		    $html .= "<a href='javascript:;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'><span class='green bolded'>Click here to approve all the publications for this record automatically.</span></a>";
+		    $html .= "</p>";
+        }
 
 		$included = $this->getCitationCollection("Included");
 		$includedCount = $included->getCount();
@@ -818,8 +834,6 @@ class Publications {
 			$html .= "<h3 class='newHeader'>$includedCount Existing Citations | ";
 		}
 
-		$notDone = $this->getCitationCollection("Not Done");
-		$notDoneCount = $notDone->getCount();
 		if ($notDoneCount == 1) {
 			$html .= "$notDoneCount New Citation</h3>\n";
 		} else if ($notDoneCount == 0) {
@@ -839,7 +853,7 @@ class Publications {
 
 	private function manualLookup() {
 		$html = "";
-		$html .= "<table style='margin-left: auto; margin-right: auto; border-radius: 10px;' class='bin'><tr>\n";
+		$html .= "<table id='lookupTable' style='margin-left: auto; margin-right: auto; border-radius: 10px;' class='bin'><tr>\n";
 		$html .= "<td style='width: 250px; height: 200px; text-align: left; vertical-align: top;'>\n";
 		$html .= "<h4 style='margin-bottom: 0px;'>Lookup PMID</h4>\n";
         $html .= "<p class='oneAtATime'><input type='text' id='pmid'> <button onclick='submitPMID($(\"#pmid\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide();'>Switch to Bulk</a></p>\n";
@@ -1121,7 +1135,9 @@ class Publications {
 	private $omissions;
 	private $choices;
 	private $pid;
-	private $names;
+    private $names;
+    private $lastNames;
+    private $lastName;
 }
 
 class PubmedMatch {

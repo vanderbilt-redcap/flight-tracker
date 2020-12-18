@@ -15,7 +15,7 @@ require_once(dirname(__FILE__)."/../Application.php");
 
 class CitationCollection {
 	# type = [ Final, New, Omit ]
-	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = array(), $names = []) {
+	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = array(), $lastNames = []) {
 		$this->token = $token;
 		$this->server = $server;
 		$this->citations = array();
@@ -28,11 +28,11 @@ class CitationCollection {
 			$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($this->metadata), array($recordId));
 		}
 		if (empty($names)) {
-		    $names = Download::names($token, $server);
+		    $lastNames = Download::lastnames($token, $server);
         }
 		foreach ($redcapData as $row) {
 			if (($row['redcap_repeat_instrument'] == "citation") && ($row['record_id'] == $recordId)) {
-				$c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $names[$recordId]);
+				$c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $lastNames[$recordId]);
 				if ($c->getType() == $type) {
 					array_push($this->citations, $c);
 				}
@@ -188,14 +188,14 @@ class CitationCollection {
 }
 
 class Citation {
-	public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array(), $name = "") {
+	public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array(), $lastName = "") {
 		$this->recordId = $recordId;
 		$this->instance = $instance;
 		$this->token = $token;
 		$this->server = $server;
 		$this->origRow = $row;
 		$this->metadata = $metadata;
-		$this->name = $name;
+		$this->lastName = $lastName;
 		$choices = REDCapManagement::getChoices($metadata);
 
 		if (isset($choices["citation_source"])) {
@@ -228,7 +228,7 @@ class Citation {
 		$html = "";
 		$source = $this->getSource();
 		if ($source) {
-			$source = "<b>" . $source . "</b>: ";
+			$source = "<span class='sourceInCitation'>" . $source . "</span>: ";
 		}
 		$id = $this->getUniqueID();
 		$pmid = $this->getPMID();
@@ -638,11 +638,32 @@ class Citation {
 		return $str;
 	}
 
+	private static function addPeriodIfExtant($str) {
+	    if ($str) {
+	        $str .= ". ";
+        }
+	    return $str;
+    }
+
 	public function getCitation() {
-        $citation = $this->getVariable("authors").". ".$this->getVariable("title").". ".$this->getVariable("journal").". ".$this->getDate()."; ".$this->getIssueAndPages();
+	    $authors = self::addPeriodIfExtant(self::boldName($this->lastName, "", $this->getAuthorList()));
+        $title = self::addPeriodIfExtant($this->getVariable("title"));
+        $journal = self::addPeriodIfExtant($this->getVariable("journal"));
+
+        $date = $this->getDate();
+        $issue = $this->getIssueAndPages();
+        $dateAndIssue = $date;
+        if ($dateAndIssue && $issue) {
+            $dateAndIssue .= "; ".$issue;
+        } else if ($this->getIssueAndPages()) {
+            $dateAndIssue = $issue;
+        }
+        $dateAndIssue = self::addPeriodIfExtant($dateAndIssue);
+
+	    $citation = $authors.$title.$journal.$dateAndIssue;
 		$doi = $this->getVariable("doi");
 		if ($doi) {
-			$citation .= " doi:".$doi.".";
+			$citation .= self::addPeriodIfExtant("doi:".$doi);
 		}
 		return $citation;
 	}
@@ -659,9 +680,15 @@ class Citation {
 			if (count($nameNodes) >= 2) {
 				$currLastName = $nameNodes[0];
 				$currFirstInitial = $nameNodes[1];
-				if (NameMatcher::matchByInitials($lastName, $firstName, $currLastName, $currFirstInitial)) {
-					$name = "<b>".$name."</b>";
-				}
+				if ($firstName && $lastName) {
+                    if (NameMatcher::matchByInitials($lastName, $firstName, $currLastName, $currFirstInitial)) {
+                        $name = "<b>".$name."</b>";
+                    }
+                } else if ($lastName) {
+				    if (NameMatcher::matchByLastName($lastName, $currLastName)) {
+				        $name = "<b>".$name."</b>";
+                    }
+                }
 			}
 			array_push($newAuthorList, $name);
 		}
@@ -669,17 +696,32 @@ class Citation {
 	}
 
 	public function getNIHFormat($traineeLastName, $traineeFirstName, $includeIDs = FALSE) {
-		$authors = self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList());
-		$citation = $authors.". ".$this->getVariable("title").". ".$this->getVariable("journal").". ".$this->getYear();
-		if ($this->getVolumeAndPages()) {
-		    $citation .= " ".$this->getVolumeAndPages();
+        $authors = self::addPeriodIfExtant(self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList()));
+        $title = self::addPeriodIfExtant($this->getVariable("title"));
+        $journal = self::addPeriodIfExtant($this->getVariable("journal"));
+
+        $date = $this->getDate();
+        $issue = $this->getIssueAndPages();
+        $dateAndIssue = $date;
+        if ($dateAndIssue && $issue) {
+            $dateAndIssue .= "; ".$issue;
+        } else if ($this->getIssueAndPages()) {
+            $dateAndIssue = $issue;
         }
-		$citation .= ".";
+        $dateAndIssue = self::addPeriodIfExtant($dateAndIssue);
+
+        $citation = $authors.$title.$journal.$dateAndIssue;
+        $doi = $this->getVariable("doi");
+        if ($doi) {
+            $citation .= self::addPeriodIfExtant("doi:".$doi);
+        }
 		if ($includeIDs) {
-		    $citation .= " PMID ".$this->getPMID().".";
-		    if ($this->getPMCWithoutPrefix()) {
-		        $citation .= " PMC".$this->getPMCWithoutPrefix().".";
-}
+		    if ($pmid = $this->getPMID()) {
+                $citation .= self::addPeriodIfExtant("PMID ".$pmid);
+            }
+		    if ($pmc = $this->getPMCWithoutPrefix()) {
+		        $citation .= self::addPeriodIfExtant("PMC".$pmc);
+            }
         }
 		return $citation;
 	}
@@ -707,7 +749,7 @@ class Citation {
 			$baseWithDOILink = $base;
 		}
 
-		if ($this->getPMID() && !preg_match("/PMID\d/", $baseWithDOILink)) {
+		if ($this->getPMID() && !preg_match("/PMID\s*\d/", $baseWithDOILink)) {
 			$baseWithPMID = $baseWithDOILink." PubMed PMID: ".$this->getPMID();
 		} else {
 			$baseWithPMID = $baseWithDOILink;
@@ -738,12 +780,20 @@ class Citation {
 	}
 
 	public function getPMCURL() {
-		return "https://www.ncbi.nlm.nih.gov/pmc/articles/".$this->getPMCWithPrefix();
+	    return self::getURLForPMC($this->getPMCWithPrefix());
+    }
+
+    public static function getURLForPMC($pmcid) {
+		return "https://www.ncbi.nlm.nih.gov/pmc/articles/".$pmcid;
 	}
 
 	public function getURL() {
-		return "https://www.ncbi.nlm.nih.gov/pubmed/?term=".$this->getPMID();
+	    return self::getURLForPMID($this->getPMID());
 	}
+
+	public static function getURLForPMID($pmid) {
+        return "https://www.ncbi.nlm.nih.gov/pubmed/?term=".$pmid;
+    }
 
 	public function isResearch() {
 		return $this->isResearchArticle();
@@ -885,5 +935,6 @@ class Citation {
 	private $server = "";
 	private $sourceChoices = array();
 	private $metadata = [];
+	private $lastName = "";
 }
 

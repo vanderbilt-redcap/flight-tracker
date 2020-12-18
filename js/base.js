@@ -903,3 +903,23 @@ function clearValue(name) {
 	}
 }
 
+function includeWholeRecord(record) {
+	$('#include_'+record).hide();
+	$('#exclude_'+record).show();
+	$('#links_'+record).show();
+	$('#note_'+record).hide();
+	$('.record_'+record).val(1);
+}
+
+function excludeWholeRecord(record) {
+	$('#include_'+record).show();
+	$('#exclude_'+record).hide();
+	$('#links_'+record).hide();
+	$('#note_'+record).show();
+	$('.record_'+record).val(0);
+}
+
+function removePMIDFromAutoApprove(record, instance, pmid) {
+	$('#record_'+record+':'+instance).val(0);
+	$('#record_'+record+'_pmid_'+pmid).hide();
+}

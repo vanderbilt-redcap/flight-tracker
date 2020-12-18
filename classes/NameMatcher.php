@@ -65,7 +65,7 @@ class NameMatcher {
         foreach ($pairs as $pair) {
             $n1 = $pair[0];
             $n2 = $pair[1];
-            if (strlen($n1) >= 4) {
+            if (!self::isShortLastName($n1)) {
                 if (preg_match("/".$n1."/i", $n2)) {
                     return TRUE;
                 }
@@ -74,6 +74,18 @@ class NameMatcher {
             }
         }
         return FALSE;
+    }
+
+    public static function isShortLastName($lastName) {
+        return (strlen($lastName) <= 4);
+    }
+
+    public static function makeUncommonDefinition() {
+        return "<a class='tooltip'>uncommon<span class='tooltiptext' style='font-weight: normal;'>".Application::getProgramName()." defines uncommon as less than 200,000 people in the 2010 US Census.</span></a>";
+    }
+
+    public static function makeLongDefinition() {
+        return "<a class='tooltip'>long<span class='tooltiptext' style='font-weight: normal;'>".Application::getProgramName()." defines long as five or more characters.</span></a>";
     }
 
     public static function explodeAlternates($name) {
@@ -178,6 +190,12 @@ class NameMatcher {
         }
 		return "";
 	}
+
+	public static function matchByLastName($lastName1, $lastName2) {
+        $lastName1 = strtolower($lastName1);
+        $lastName2 = strtolower($lastName2);
+        return ($lastName1 == $lastName2);
+    }
 
 	# case insensitive match based on last name and first initial only
 	# returns TRUE/FALSE

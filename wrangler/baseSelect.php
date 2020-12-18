@@ -34,6 +34,22 @@ require_once(dirname(__FILE__)."/css.php");
             $('#image_'+id).attr("src", resetButton);
         }
 
+        function selectAllCitations(divSelector) {
+            $(divSelector).find("img").each(function(idx, ob) {
+                let id = $(ob).attr("id").replace(/^image_/, '');
+                $('#'+id).val('include');
+                $(ob).attr('src', '<?= Application::link('wrangler/checked.png') ?>');
+            });
+        }
+
+        function unselectAllCitations(divSelector) {
+            $(divSelector).find("img").each(function(idx, ob) {
+                let id = $(ob).attr("id").replace(/^image_/, '');
+                $('#'+id).val('exclude');
+                $(ob).attr('src', '<?= Application::link('wrangler/unchecked.png') ?>');
+            });
+        }
+
         function includeCitations(citations) {
             var splitCitations = citations.split(/\n/);
             var pmids = [];

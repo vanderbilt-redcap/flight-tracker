@@ -57,12 +57,34 @@ class Application {
 		return "scott.j.pearson@vumc.org";
 	}
 
-	public static function log($mssg, $pid = FALSE) {
+    public static function getPatentFields($metadata) {
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+        $possibleFields = [
+            "record_id",
+            "patent_number",
+            "patent_include",
+            "patent_date",
+            "patent_inventors",
+            "patent_inventor_ids",
+            "patent_assignees",
+            "patent_assignee_ids",
+            "patent_last_update",
+        ];
+        $fields = [];
+        foreach ($possibleFields as $field) {
+            if (in_array($field, $metadataFields)) {
+                $fields[] = $field;
+            }
+        }
+        return $fields;
+    }
+
+    public static function log($mssg, $pid = FALSE) {
 		CareerDev::log($mssg, $pid);
 	}
 
-	public static function getInstitutions() {
-		return CareerDev::getInstitutions();
+	public static function getInstitutions($pid = NULL) {
+		return CareerDev::getInstitutions($pid);
 	}
 
 	public static function getEmailName($record) {

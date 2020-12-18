@@ -4,12 +4,13 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 
 use ExternalModules\ExternalModules;
 use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Download;
 
 class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.25.13";
+		return "2.26.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -261,9 +262,9 @@ class CareerDev {
 		return count(self::getInstitutions());
 	}
 
-	public static function getInstitutions() {
-		$shortInst = self::getShortInstitution();
-		$longInst = self::getInstitution();
+	public static function getInstitutions($pid = NULL) {
+		$shortInst = self::getShortInstitution($pid);
+		$longInst = self::getInstitution($pid);
 
 		$institutions = array();
 		if (preg_match("/".strtolower($shortInst)."/", strtolower($longInst))) {
@@ -273,7 +274,7 @@ class CareerDev {
 			array_push($institutions, $longInst);
 		}
 
-		$otherInsts = preg_split("/,\s*/", self::getSetting("other_institutions"));
+		$otherInsts = preg_split("/,\s*/", self::getSetting("other_institutions", $pid));
 		foreach ($otherInsts as $otherInst) {
 			if ($otherInst && !in_array($otherInst, $institutions)) {
 				array_push($institutions, $otherInst);
@@ -422,12 +423,12 @@ class CareerDev {
 		return self::getSetting("timezone");
 	}
 
-	public static function getShortInstitution() {
-		return self::getSetting("short_institution");
+	public static function getShortInstitution($pid) {
+		return self::getSetting("short_institution", $pid);
 	}
 
-	public static function getInstitution() {
-		return self::getSetting("institution");
+	public static function getInstitution($pid) {
+		return self::getSetting("institution", $pid);
 	}
 
 	public static function getProgramName() {
@@ -507,7 +508,7 @@ class CareerDev {
 		return preg_match("/vanderbilt.edu/", SERVER_NAME);
 	}
 
-	public static function getRepeatingFormsAndLabels() {
+	public static function getRepeatingFormsAndLabels($metadata = []) {
         $formsAndLabels = [
             "custom_grant" => "[custom_number]",
             "followup" => "",
@@ -519,10 +520,22 @@ class CareerDev {
             "honors_and_awards" => "[honor_name]: [honor_date]",
             "manual_degree" => "[imported_degree]",
         ];
+
+        if (empty($metadata)) {
+            $pid = self::getPid();
+            $token = self::getSetting("token", $pid);
+            $server = self::getSetting("server", $pid);
+            $metadata = Download::metadata($token, $server);
+        }
+        if (count(Application::getPatentFields($metadata)) > 1) {
+            $formsAndLabels["patent"] = "[patent_number]";
+        }
+
         if (self::isVanderbilt()) {
             $formsAndLabels["ldap"] = "[ldap_vanderbiltpersonjobname]";
             $formsAndLabels["coeus2"] = "[coeus2_award_status]: [coeus2_agency_grant_number]";
         }
+
         return $formsAndLabels;
     }
 

@@ -58,12 +58,6 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 		displayInstallHeaders(CareerDev::getModule(), $newToken, $newServer, $projectId, $_POST['title']);
 		echo "<h1>Academic Departments</h1>\n";
 
-		$formsAndLabels = CareerDev::getRepeatingFormsAndLabels();
-		if ($_POST['coeus']) {
-			// $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
-		}
-        REDCapManagement::setupRepeatingForms($eventId, $formsAndLabels);
-
 		$settingFields = array(
 				'institution' => $_POST['institution'],
 				'short_institution' => $_POST['short_institution'],
@@ -88,7 +82,14 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 				);
 		setupModuleSettings($projectId, $settingFields);
 
-		$surveysAndLabels = array(
+		$metadata = Download::metadata($newToken, $newServer);
+        $formsAndLabels = CareerDev::getRepeatingFormsAndLabels($metadata);
+        if ($_POST['coeus']) {
+            // $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
+        }
+        REDCapManagement::setupRepeatingForms($eventId, $formsAndLabels);
+
+        $surveysAndLabels = array(
 						"initial_survey" => "Flight Tracker Initial Survey",
 						"followup" => "Flight Tracker Followup Survey",
 						);
