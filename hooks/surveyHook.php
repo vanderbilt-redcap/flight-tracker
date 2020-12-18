@@ -70,7 +70,7 @@ if ($finalized->getCount() > 0) {
 	$html .= makeEmptyDiv("finalized")."\n";
 }
 $html .= "<div style='text-align: center;'><label for='pmid'>PMID</label>: <input type='number' id='pmid' value=''><br><button type='button' class='purple' onclick='addPMID($(\"#pmid\").val()); return false;'>Add PMID</button></div>\n";
-
+$html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
 ?>
 <script>
 var checkedImg = "<?= Application::link("wrangler/checked.png") ?>";
@@ -80,15 +80,6 @@ var surveyPrefix = "<?= $prefix ?>";
 
 $(document).ready(function() {
 	var html = <?= json_encode($html) ?>;
-	<?php
-        if (!$html) {
-            echo "// no \$html\n";
-        }
-        if (!json_encode($html)) {
-            echo "// JSON Error: ".json_last_error_msg()."\n";
-            echo "// \$html: ".preg_replace("/[\n\r]*/g", "[RETURN]", $html);
-        }
-	?>
 	var finalizedPubs = <?= json_encode($finalized->getIds()) ?>;
 	var omittedPubs = <?= json_encode($omitted->getIds()) ?>;
 	var skippedPubs = <?= json_encode($notDone->getIds()) ?>;
