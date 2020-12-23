@@ -66,7 +66,8 @@
 	   "mentor/importData",
 	   "mentor/index_menteeview",
 	   "reporting/getData",
-	   "js/xtract.js"
+	   "js/xtract.js",
+	   "emailMgmt/makeSurveyLinks"
    ],
 
 

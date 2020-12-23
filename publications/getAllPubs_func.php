@@ -68,7 +68,7 @@ function getPubs($token, $server, $pid, $records) {
 	}
 	unset($redcapData);
 
-	if (CareerDev::getShortInstitution() == "Vanderbilt") {
+	if (CareerDev::getShortInstitution($pid) == "Vanderbilt") {
 		processVICTR($citationIds, $maxInstances, $token, $server, $pid, $records);
 	}
 	processPubMed($citationIds, $maxInstances, $token, $server, $pid, $records);

@@ -699,8 +699,35 @@ class NIHTables {
         return $degreesAndAddOns;
     }
 
-    public function getTerminalDegreesAndYears($recordId) {
-	    $degreesAndYears = $this->getDegreesAndAddOns($recordId, TRUE, FALSE);
+    private static function formatDegreesAndYears($degreesAndYears, $returnOneEntry) {
+        $default = "Unknown";
+        $texts = [];
+        foreach ($degreesAndYears as $degree => $year) {
+            if ($degree == "In Training") {
+                return self::$NA;
+            }
+            if ($year == self::$unknownYearText) {
+                $default = $degree." ".$year;
+            } else {
+                $texts[] = $degree." ".$year;
+            }
+        }
+
+        if (empty($texts)) {
+            if ($default) {
+                return $default;
+            } else {
+                return self::$NA;
+            }
+        } else if ($returnOneEntry) {
+            return $texts[0];
+        } else {
+            return implode("<br>", $texts);
+        }
+    }
+
+    private function getDoctoralDegreesAndYears($recordId, $asText = TRUE) {
+        $degreesAndYears = $this->getDegreesAndAddOns($recordId, TRUE, FALSE);
         if ((count($degreesAndYears) == 1) && ((isset($degreesAndYears["None Received"])) || (isset($degreesAndYears["In Training"])))) {
             return $degreesAndYears;
         }
@@ -708,15 +735,63 @@ class NIHTables {
         $doctorateRegExes = array("/MD/", "/PhD/i", "/DPhil/i", "/PharmD/i", "/PsyD/i");
         $doctorateDegreesAndYears = array();
         foreach ($degreesAndYears as $degree => $year) {
-            $matchDoctorate = FALSE;
             foreach ($doctorateRegExes as $regEx) {
                 if (preg_match($regEx, $degree)) {
-                    $doctorateDegreesAndYears[$degree] = $year;
-                    $matchDoctorate = TRUE;
-                    break;     // inner
+                    if (!isset($doctorateDegreesAndYears[$degree])) {
+                        $doctorateDegreesAndYears[$degree] = $year;
+                    } else if ($year < $doctorateDegreesAndYears[$degree]) {
+                        $doctorateDegreesAndYears[$degree] = $year;
+                    }
                 }
             }
-            if (!$matchDoctorate) {
+        }
+
+        arsort($doctorateDegreesAndYears);
+        if ($asText) {
+            return self::formatDegreesAndYears($doctorateDegreesAndYears, FALSE);
+        } else {
+            return $doctorateDegreesAndYears;
+        }
+    }
+
+    private function getPostdocDegreesAndYears($recordId, $asText = TRUE) {
+        $doctoralDegreesAndYears = $this->getTerminalDegreesAndYears($recordId, FALSE);
+        $earliestDoctorate = FALSE;
+        foreach ($doctoralDegreesAndYears as $degree => $year) {
+            if ($year < $earliestDoctorate) {
+                $earliestDoctorate = $year;
+            }
+        }
+        if ((count($doctoralDegreesAndYears) > 0) && !$earliestDoctorate) {
+            throw new \Exception("Could not find earliest doctorate for record $recordId!");
+        }
+
+        $allDegreesAndYears = $this->getDegreesAndAddOns($recordId, TRUE, FALSE);
+        $degreesAndYears = [];
+        foreach ($allDegreesAndYears as $degree => $year) {
+            if (!isset($doctoralDegreesAndYears[$degree])
+                && (count($doctoralDegreesAndYears) > 0)
+                && ($year >= $earliestDoctorate)) {
+                $degreesAndYears[$degree] = $year;
+            }
+        }
+        arsort($degreesAndYears);
+        if ($asText) {
+            return self::formatDegreesAndYears($degreesAndYears, FALSE);
+        } else {
+            return $degreesAndYears;
+        }
+    }
+
+    public function getTerminalDegreesAndYears($recordId, $asText = FALSE) {
+	    $degreesAndYears = $this->getDegreesAndAddOns($recordId, TRUE, FALSE);
+        if ((count($degreesAndYears) == 1) && ((isset($degreesAndYears["None Received"])) || (isset($degreesAndYears["In Training"])))) {
+            return $degreesAndYears;
+        }
+
+        $doctorateDegreesAndYears = $this->getDoctoralDegreesAndYears($recordId, FALSE);
+        foreach ($degreesAndYears as $degree => $year) {
+            if (!isset($doctorateDegreesAndYears[$degree])) {
                 $predocDegreesAndYears[$degree] = $year;
             }
         }
@@ -724,15 +799,31 @@ class NIHTables {
             $fields = ["record_id", "summary_training_start", "summary_training_end"];
             $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$recordId]);
             if (REDCapManagement::findField($redcapData, $recordId, "summary_training_end")) {
-                return ["None Received" => ""];
+                if ($asText) {
+                    return "None Received";
+                } else {
+                    return ["None Received" => ""];
+                }
             } else {
-                return ["In Training" => ""];
+                if ($asText) {
+                    return "In Training";
+                } else {
+                    return ["In Training" => ""];
+                }
             }
         }
         if (!empty($doctorateDegreesAndYears)) {
-            return $doctorateDegreesAndYears;
+            if ($asText) {
+                return self::formatDegreesAndYears($doctorateDegreesAndYears, FALSE);
+            } else {
+                return $doctorateDegreesAndYears;
+            }
         } else {
-            return $predocDegreesAndYears;
+            if ($asText) {
+                return self::formatDegreesAndYears($predocDegreesAndYears, FALSE);
+            } else {
+                return $predocDegreesAndYears;
+            }
         }
     }
 
@@ -799,20 +890,9 @@ class NIHTables {
 	}
 
 	private function getTerminalDegreeAndYear($recordId) {
-	    $degreesAndYears = $this->getTerminalDegreesAndYears($recordId);
+	    $degreesAndYears = $this->getTerminalDegreesAndYears($recordId, FALSE);
         arsort($degreesAndYears);
-        $default = "Unknown";
-        foreach ($degreesAndYears as $degree => $year) {
-            if ($degree == "In Training") {
-                return $degree;
-            }
-            if ($year == self::$unknownYearText) {
-                $default = $degree." ".$year;
-            } else {
-                return $degree." ".$year;
-            }
-        }
-        return $default;
+        return self::formatDegreesAndYears($degreesAndYears, TRUE);
     }
 
     private static function getResearchTopicSource() {
@@ -1262,6 +1342,8 @@ class NIHTables {
 	            $countingStartDate = date("m/Y", $ts);
                 $positionData = Download::fieldsForRecords($this->token, $this->server, Application::$positionFields, array($recordId));
                 $terminalDegree = $this->getTerminalDegreeAndYear($recordId);
+                $doctoralDegrees = $this->getDoctoralDegreesAndYears($recordId, TRUE);
+                $postdocDegrees = $this->getPostdocDegreesAndYears($recordId, TRUE);
 	            $topic = $this->getResearchTopic($recordId);
 	            $initialPos = $this->getInitialPosition($positionData, $recordId);
 	            $currentPos = $this->getCurrentPosition($positionData, $recordId);
@@ -1278,18 +1360,36 @@ class NIHTables {
                     $supportSummaryHTML = self::makeComment("Manually Entered");
                 }
 	            $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId]);
+
                 # if modify column headers, need to modify reporting/getData.php
-	            $dataRow = array(
-	                "Trainee" => "{$lastNames[$recordId]}, {$firstNames[$recordId]}",
-                    "Faculty Member" => "<p>".implode("</p><p>", $transformedFacultyNames)."</p>",
-                    "Start Date" => $countingStartDate,
-                    "Summary of Support During Training" => $supportSummaryHTML,
-                    "Terminal Degree(s)<br>Received and Year(s)" => $terminalDegree,
-                    "Topic of Research Project<br>(From ".self::getResearchTopicSource().")" => $topic,
-                    "Initial Position<br>Department<br>Institution<br>Activity" => $initialPos,
-                    "Current Position<br>Department<br>Institution<br>Activity" => $currentPos,
-                    "Subsequent Grant(s)/Role/Year Awarded" => $subsequentGrants,
-                );
+                if (self::beginsWith($table, ['8A'])) {
+                    $dataRow = [
+                        "Trainee" => "{$lastNames[$recordId]}, {$firstNames[$recordId]}",
+                        "Terminal Degree(s)<br>Received and Year(s)" => $terminalDegree,
+                        "Faculty Member" => "<p>".implode("</p><p>", $transformedFacultyNames)."</p>",
+                        "Start Date" => $countingStartDate,
+                        "Summary of Support During Training" => $supportSummaryHTML,
+                        "Topic of Research Project<br>(From ".self::getResearchTopicSource().")" => $topic,
+                        "Initial Position<br>Department<br>Institution<br>Activity" => $initialPos,
+                        "Current Position<br>Department<br>Institution<br>Activity" => $currentPos,
+                        "Subsequent Grant(s)/Role/Year Awarded" => $subsequentGrants,
+                    ];
+                } else if (self::beginsWith($table, ['8C'])) {
+                    $dataRow = [
+                        "Trainee" => "{$lastNames[$recordId]}, {$firstNames[$recordId]}",
+                        "Doctoral<br>Degree(s)<br>and Year(s)" => $doctoralDegrees,
+                        "Faculty Member" => "<p>".implode("</p><p>", $transformedFacultyNames)."</p>",
+                        "Start Date" => $countingStartDate,
+                        "Summary of Support During Training" => $supportSummaryHTML,
+                        "Degree(s)<br>Resulting from<br>Postdoctoral<br>Training and<br>Year(s)" => $postdocDegrees,
+                        "Topic of Research Project<br>(From ".self::getResearchTopicSource().")" => $topic,
+                        "Initial Position<br>Department<br>Institution<br>Activity" => $initialPos,
+                        "Current Position<br>Department<br>Institution<br>Activity" => $currentPos,
+                        "Subsequent Grant(s)/Role/Year Awarded" => $subsequentGrants,
+                    ];
+                } else {
+                    throw new \Exception("Invalid table number $table!");
+                }
 	            array_push($data, $dataRow);
             }
 	        return $data;
@@ -1353,7 +1453,7 @@ class NIHTables {
 	    $numWithPhD = 0;
 	    $numTotal = 0;
 	    foreach ($recordIds as $recordId) {
-            $degreesAndYears = $this->getTerminalDegreesAndYears($recordId);
+            $degreesAndYears = $this->getTerminalDegreesAndYears($recordId, FALSE);
             foreach ($degreesAndYears as $degree => $year) {
                 if (self::isKnownDate($degree, $year)) {
                     $numTotal++;
@@ -1384,7 +1484,7 @@ class NIHTables {
 	    $timesToPhD = array();
 	    $currYear = date("Y");
 	    foreach ($recordIds as $recordId) {
-            $degreesAndYears = $this->getTerminalDegreesAndYears($recordId);
+            $degreesAndYears = $this->getTerminalDegreesAndYears($recordId, FALSE);
             foreach ($degreesAndYears as $degree => $year) {
                 if (self::isKnownDate($degree, $year)) {
                     if (preg_match("/PhD/", $degree)) {

@@ -78,7 +78,7 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
     if (!empty($noMatches)) {
         Application::log("Could not find matches for records: ".REDCapManagement::json_encode_with_spaces($noMatches));
     }
-    if (!empty($multiples)) {
+    if (countNewMultiples($multiples, $pid) > 0) {
         # send email
         $adminEmail = Application::getSetting("admin_email", $pid);
         $html = makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata);
@@ -89,6 +89,23 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
     if (!empty($messages)) {
         throw new \Exception(count($messages)." messages: ".implode("; ", $messages));
     }
+}
+
+function countNewMultiples($multiples, $pid) {
+    $priorMultiples = Application::getSetting("prior_orcids", $pid);
+    if (!$priorMultiples) {
+        $priorMultiples = array();
+    }
+    $newMultiples = 0;
+    foreach ($multiples as $recordId => $recordORCIDs) {
+        if (!isset($priorMultiples[$recordId])) {
+            $priorMultiples[$recordId] = array();
+        }
+        if (count($recordORCIDs) > count($priorMultiples[$recordId])) {
+            $newMultiples++;
+        }
+    }
+    return $newMultiples;
 }
 
 function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {

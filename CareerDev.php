@@ -10,7 +10,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.26.1";
+		return "2.27.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -611,6 +611,7 @@ class CareerDev {
 		}
 		if ($menuName == "General") {
 			$ary = array(
+			        "NIH Reporting" => self::link("reporting/index.php"),
 					"List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
 					"K2R Conversion Calculator" => self::link("/k2r/index.php"),
 					"Search Grants" => self::link("/search/index.php"),

@@ -196,13 +196,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $choices = [];
         $pidsUpdated = [];
 
-        Application::log("Getting project data for pids: ".json_encode($pids));
+        foreach ($pids as $pid) {
+            // Application::log("Getting project data for pids: ".json_encode($pids), $pid);
+        }
 	    foreach ($pids as $pid) {
-	        Application::log("Getting project data for pid ".$pid);
+	        Application::log("Getting project data for pid ".$pid, $pid);
             $token = $this->getProjectSetting("token", $pid);
             $server = $this->getProjectSetting("server", $pid);
             if ($token && $server) {
-                Application::log("Got token with length of ".strlen($token)." for pid $pid");
+                Application::log("Got token with length of ".strlen($token)." for pid $pid", $pid);
                 $tokens[$pid] = $token;
                 $servers[$pid] = $server;
             }
@@ -217,13 +219,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 $pids[] = $prodPid;
                 $tokens[$prodPid] = $prodToken;
                 $servers[$prodPid] = $prodServer;
-                Application::log("Searching through Vanderbilt Master Project ($prodPid)");
+                Application::log("Searching through Vanderbilt Master Project ($prodPid)", $prodPid);
             }
         }
 
         foreach ($pids as $pid) {
             if ($tokens[$pid] && $servers[$pid]) {
-                Application::log("Downloading data for pid $pid");
+                Application::log("Downloading data for pid $pid", $pid);
                 $token = $tokens[$pid];
                 $server = $servers[$pid];
                 $firstNames[$pid] = Download::firstnames($token, $server);
@@ -243,7 +245,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	    # push
 	    foreach ($pids as $sourcePid) {
-	        Application::log("Searching through pid $sourcePid");
+	        Application::log("Searching through pid $sourcePid", $sourcePid);
 	        if ($tokens[$sourcePid] && $servers[$sourcePid]) {
                 $sourceToken = $tokens[$sourcePid];
                 $sourceServer = $servers[$sourcePid];
@@ -253,7 +255,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 }
                 foreach ($pids as $destPid) {
                     if (($destPid != $sourcePid) && $tokens[$destPid] && $servers[$destPid]) {
-                        Application::log("Communicating between $sourcePid and $destPid");
+                        Application::log("Communicating between $sourcePid and $destPid", $destPid);
                         $destToken = $tokens[$destPid];
                         $destServer = $servers[$destPid];
                         $sharedFormsForDest = $this->getProjectSetting("shared_forms", $destPid);
@@ -363,11 +365,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                                             }
                                             $upload = array_merge($upload, $repeatingRows);
                                             if (!empty($upload)) {
-                                                // Application::log("Uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                                // Application::log("Uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
                                                 try {
                                                     $feedback = Upload::rows($upload, $destToken, $destServer);
-                                                    // Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId");
-                                                    // Application::log(json_encode($upload));
+                                                    // Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId", $destPid);
+                                                    // Application::log(json_encode($upload), $destPid;
                                                     if (!in_array($destPid, $pidsUpdated)) {
                                                         $pidsUpdated[] = $destPid;
                                                     }
@@ -376,10 +378,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                                                     Application::log($e->getMessage());
                                                 }
                                             } else {
-                                                // CareerDev::log("Skipping uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                                // Application::log("Skipping uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
                                             }
                                         } else {
-                                            // CareerDev::log("Could not match complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                            // Application::log("Could not match complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
                                         }
                                     }
                                 }
