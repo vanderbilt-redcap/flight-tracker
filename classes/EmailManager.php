@@ -416,12 +416,15 @@ class EmailManager {
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = curl_exec($ch);
 		curl_close($ch);
 		if ($returnList = json_decode($output, TRUE)) {
 			return $returnList;
 		} else {
+		    Application::log("Warning! Could not decode JSON: $output");
 			return $output;
 		}
 	}
