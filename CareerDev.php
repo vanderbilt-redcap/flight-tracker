@@ -10,7 +10,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.27.1";
+		return "2.27.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -31,7 +31,6 @@ class CareerDev {
     public static function getUnknown() {
 		return "Unknown";
 	}
-
 	public static function isWrangler() {
 		return preg_match("/wrangler/", $_GET['page']);
 	}
@@ -323,8 +322,15 @@ class CareerDev {
 		return "";
 	}
 
+	# to distinguish between Vanderbilt servers (which pull straight from the git repo) and those from the REDCap repo
+    # flightTracker = Vanderbilt
+    # flight_tracker = from REDCap Repo
 	public static function getModuleId() {
-	    return ExternalModules::getIdForPrefix("flightTracker");
+	    if (self::isVanderbilt()) {
+            return ExternalModules::getIdForPrefix("flightTracker");
+        } else {
+            return ExternalModules::getIdForPrefix("flight_tracker");
+        }
     }
 
 	public static function getPidFromDatabase($localToken) {
