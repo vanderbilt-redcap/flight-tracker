@@ -1391,6 +1391,7 @@ class Scholar {
             "promotion_in_effect" => "manual",
         );
         $orders["summary_training_end"] = array(
+            "identifier_end_of_training" => "manual",
             "check_degree0_month/check_degree0_year" => "scholars",
             "init_import_degree0_month/init_import_degree0_year" => "manual",
             "promotion_in_effect" => "manual",

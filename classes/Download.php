@@ -300,6 +300,14 @@ class Download {
 		return $rows;
 	}
 
+	public static function projectTitle($token, $server) {
+	    $settings = self::getProjectSettings($token, $server);
+	    if ($settings['project_title']) {
+	        return $settings['project_title'];
+        }
+	    return "";
+    }
+
 	public static function getProjectSettings($token, $server) {
 		$data = array(
 			'token' => $token,

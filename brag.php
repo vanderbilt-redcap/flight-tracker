@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Altmetric;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
 
 if (!isset($_GET['showHeaders'])) {
     define("NOAUTH", TRUE);
@@ -15,12 +16,17 @@ require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Publications.php");
 require_once(dirname(__FILE__)."/classes/Citation.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
+require_once(dirname(__FILE__)."/classes/Cohorts.php");
 require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/classes/Altmetric.php");
 require_once(dirname(__FILE__)."/Application.php");
 
-$recordIds = Download::recordIds($token, $server);
 $metadata = Download::metadata($token, $server);
+if ($_GET['cohort'] && ($_GET['cohort'] != 'all')) {
+    $recordIds = Download::cohortRecordIds($token, $server, $metadata, $_GET['cohort']);
+} else {
+    $recordIds = Download::recordIds($token, $server);
+}
 
 if (isset($_GET['daysPrior']) && is_numeric($_GET['daysPrior']) && ($_GET['daysPrior'] >= 0)) {
     $daysPrior = $_GET['daysPrior'];
@@ -44,11 +50,16 @@ if (isset($_GET['showHeaders'])) {
         <p class="centered">Copy the following HTML and place into another HTML webpage to display your scholars' publications. Your website must likely have cross-origin framing turned on (which is the default).</p>
         <div class="max-width centered"><code>&lt;iframe src="<?= $url ?>" title="Recent Publications" style="width: 400px; height: 400px;"&gt;&lt;/iframe&gt;</code></div>
 
-        <h4>What Time Period Should Show?</h4>
+        <h4>Further Configurations</h4>
         <form method="GET" action="<?= REDCapManagement::getPage(Application::link("brag.php")) ?>">
             <?= REDCapManagement::getParametersAsHiddenInputs(Application::link("brag.php")) ?>
+            <?php
+            $cohorts = new Cohorts($token, $server, Application::getModule());
+            echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'])."</p>";
+            ?>
             <?= isset($_GET['showHeaders']) ? "<input type='hidden' name='showHeaders' value='' />" : "" ?>
-            <p class="centered">Days Prior: <input type="number" name="daysPrior" style="width: 75px;" value="<?= $daysPrior ?>"> <button>Reset</button></p>
+            <p class="centered">What Time Period Should Show? Days Prior: <input type="number" name="daysPrior" style="width: 75px;" value="<?= $daysPrior ?>"></p>
+            <p class="centered"><button>Reset</button></p>
         </form>
     </div>
     <hr>

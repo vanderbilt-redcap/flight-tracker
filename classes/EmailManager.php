@@ -407,7 +407,7 @@ class EmailManager {
 				"instances" => $newInstances,
 				);
 		$ch = curl_init();
-		$url = Application::link("emailMgmt/makeSurveyLinks.php");
+		$url = Application::link("emailMgmt/makeSurveyLinks.php")."&NOAUTH";
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_VERBOSE, 0);
@@ -424,6 +424,7 @@ class EmailManager {
 		if ($returnList = json_decode($output, TRUE)) {
 			return $returnList;
 		} else {
+		    Application::log($url);
 		    Application::log("Warning! Could not decode JSON: $output");
 			return $output;
 		}

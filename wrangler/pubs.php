@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Publications.php");
@@ -15,6 +16,7 @@ require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
 require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../Application.php");
@@ -33,7 +35,7 @@ if ($_POST['request']) {
         foreach ($_POST as $key => $value) {
             if ($value && preg_match("/^record_\d+:\d+$/", $key)) {
                 $pair = preg_replace("/^record_/", "", $key);
-                list($recordId, $instance) = preg_split("/:/", $key);
+                list($recordId, $instance) = preg_split("/:/", $pair);
                 if (in_array($recordId, $records)) {
                     $upload[] = [
                         'record_id' => $recordId,
@@ -45,7 +47,7 @@ if ($_POST['request']) {
             }
         }
         if (!empty($upload)) {
-            Upload::rows($upload, $token, $server);
+            $feedback = Upload::rows($upload, $token, $server);
         }
         $nextRecord = getNextRecordWithData($token, $server, 0);   // after upload
         header("Location: $url&record=".$nextRecord);

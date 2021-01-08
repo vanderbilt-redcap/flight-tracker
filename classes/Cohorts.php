@@ -24,11 +24,11 @@ class Cohorts {
 	}
 
 	public function makeCohortSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
-	    $html = "Select Cohort: <select name='cohort'";
-	    if ($onchangeJS) {
+        $html = "<label for='cohort'>Cohort:</label> <select id='cohort' name='cohort'";
+        if ($onchangeJS) {
 	        $html .= " onchange='".$onchangeJS."'";
         }
-	    $html .= ">";
+        $html .= " class='form-control'>";
 	    if ($displayAllOption) {
 	        $allStatus = "";
 	        if ($defaultCohort == "all") {
@@ -50,6 +50,10 @@ class Cohorts {
         }
         $html .= "</select>";
         return $html;
+    }
+
+	public function makeCohortSelectUI($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
+	    return $this->makeCohortSelect($defaultCohort, $onchangeJS, $displayAllOption);
     }
 
 	private function getConfigs() {
