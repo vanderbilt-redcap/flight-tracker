@@ -6,6 +6,10 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \ExternalModules\ExternalModules;
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Download.php");

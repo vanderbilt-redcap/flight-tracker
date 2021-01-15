@@ -1264,6 +1264,16 @@ class REDCapManagement {
         return [$url, $params];
     }
 
+    public static function dedup1DArray($ary) {
+	    $newAry = [];
+	    foreach ($ary as $item) {
+	        if (!in_array($item, $newAry)) {
+	            $newAry[] = $item;
+            }
+        }
+	    return $newAry;
+    }
+
     public static function setupRepeatingForms($eventId, $formsAndLabels) {
 		$sqlEntries = array();
 		foreach ($formsAndLabels as $form => $label) {

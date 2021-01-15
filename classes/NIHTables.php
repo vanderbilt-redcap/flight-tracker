@@ -208,7 +208,7 @@ class NIHTables {
     }
 
     private function fillInCommonMetricsForRecord($recordId, $fieldsToDownload, $cols, $choices = array()) {
-        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fieldsToDownload, array($recordId));
+        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fieldsToDownload, [$recordId]);
         $values = array();
         foreach ($cols as $header => $specs) {
             $values[$header] = "";

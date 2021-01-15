@@ -29,6 +29,7 @@ class Publications {
 		$this->pid = Application::getPID($token);
         $this->names = Download::names($token, $server);
         $this->lastNames = Download::lastnames($token, $server);
+        $this->firstNames = Download::firstnames($token, $server);
 	}
 
 	public function deduplicateCitations($recordId) {
@@ -182,9 +183,9 @@ class Publications {
 		}
 
 		$this->process();
-		$this->goodCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Final", $this->rows, $this->metadata, $this->lastNames);
-		$this->input = new CitationCollection($this->recordId, $this->token, $this->server, "New", $this->rows, $this->metadata, $this->lastNames);
-		$this->omissions = new CitationCollection($this->recordId, $this->token, $this->server, "Omit", $this->rows, $this->metadata, $this->lastNames);
+		$this->goodCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Final", $this->rows, $this->metadata, $this->lastNames, $this->firstNames);
+		$this->input = new CitationCollection($this->recordId, $this->token, $this->server, "New", $this->rows, $this->metadata, $this->lastNames, $this->firstNames);
+		$this->omissions = new CitationCollection($this->recordId, $this->token, $this->server, "Omit", $this->rows, $this->metadata, $this->lastNames, $this->firstNames);
 		foreach ($this->omissions->getCitations() as $citation) {
 			$pmid = $citation->getPMID();
 			if ($this->input->has($pmid)) {
@@ -887,6 +888,31 @@ class Publications {
 		}
 		return "";
 	}
+
+	public function getUpdatedBlankPMCs($recordId) {
+	    $upload = [];
+        foreach ($this->rows as $row) {
+            if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
+                $instance = $row['redcap_repeat_instance'];
+                if (!$row['citation_pmcid']) {
+                    $pmid = $row['citation_pmid'];
+                    if ($pmid) {
+                        $pmcid = self::PMIDToPMC($pmid);
+                        if ($pmcid) {
+                            $uploadRow = [
+                                "record_id" => $recordId,
+                                "redcap_repeat_instrument" => "citation",
+                                "redcap_repeat_instance" => $instance,
+                                "citation_pmcid" => $pmcid,
+                                ];
+                            $upload[] = $uploadRow;
+                        }
+                    }
+                }
+            }
+        }
+        return $upload;
+    }
 
 	public static function PMIDToPMC($pmid) {
 		if ($pmid) {

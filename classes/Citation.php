@@ -15,7 +15,7 @@ require_once(dirname(__FILE__)."/../Application.php");
 
 class CitationCollection {
 	# type = [ Final, New, Omit ]
-	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = array(), $lastNames = []) {
+	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = array(), $lastNames = [], $firstNames = []) {
 		$this->token = $token;
 		$this->server = $server;
 		$this->citations = array();
@@ -27,12 +27,15 @@ class CitationCollection {
 		if (empty($redcapData)) {
 			$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($this->metadata), array($recordId));
 		}
-		if (empty($names)) {
+		if (empty($lastNames)) {
 		    $lastNames = Download::lastnames($token, $server);
+        }
+        if (empty($firstNames)) {
+            $firstNames = Download::firstnames($token, $server);
         }
 		foreach ($redcapData as $row) {
 			if (($row['redcap_repeat_instrument'] == "citation") && ($row['record_id'] == $recordId)) {
-				$c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $lastNames[$recordId]);
+				$c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $lastNames[$recordId], $firstNames[$recordId]);
 				if ($c->getType() == $type) {
 					array_push($this->citations, $c);
 				}
@@ -188,7 +191,7 @@ class CitationCollection {
 }
 
 class Citation {
-	public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array(), $lastName = "") {
+	public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array(), $lastName = "", $firstName = "") {
 		$this->recordId = $recordId;
 		$this->instance = $instance;
 		$this->token = $token;
@@ -196,6 +199,7 @@ class Citation {
 		$this->origRow = $row;
 		$this->metadata = $metadata;
 		$this->lastName = $lastName;
+		$this->firstName = $firstName;
 		$choices = REDCapManagement::getChoices($metadata);
 
 		if (isset($choices["citation_source"])) {
@@ -645,8 +649,18 @@ class Citation {
 	    return $str;
     }
 
-	public function getCitation() {
-	    $authors = self::addPeriodIfExtant(self::boldName($this->lastName, "", $this->getAuthorList()));
+	public function getCitation($multipleNamesToBold = []) {
+	    if (!empty($multipleNamesToBold)) {
+	        $authorList = $this->getAuthorList();
+	        foreach ($multipleNamesToBold as $nameAry) {
+	            $firstName = $nameAry["firstName"];
+	            $lastName = $nameAry["lastName"];
+	            $authorList = self::boldName($lastName, $firstName, $authorList);
+            }
+	        $authors = self::addPeriodIfExtant(implode(", ", $authorList));
+        } else {
+            $authors = self::addPeriodIfExtant(implode(", ", self::boldName($this->lastName, $this->firstName, $this->getAuthorList())));
+        }
         $title = self::addPeriodIfExtant($this->getVariable("title"));
         $journal = self::addPeriodIfExtant($this->getVariable("journal"));
 
@@ -673,30 +687,107 @@ class Citation {
 		return $authorList;
 	}
 
-	private static function boldName($lastName, $firstName, $authorList) {
-		$newAuthorList = array();
+	private static function getNamesFromNodes($nameNodes) {
+        $currLastNames = [];
+        if (count($nameNodes) > 2) {
+            for ($i = 0; $i < count($nameNodes) - 1; $i++) {
+                $currLastNames[] = $nameNodes[$i];
+            }
+            $currLastName = implode(" ", $currLastNames);
+            $currFirstInitial = $nameNodes[count($nameNodes) - 1];
+        } else {
+            $currLastName = $nameNodes[0];
+            $currFirstInitial = $nameNodes[1];
+        }
+        return [$currLastNames, $currFirstInitial, $currLastName];
+    }
+
+    private static function isBolded($name) {
+	    return preg_match("/<b>/", $name);
+    }
+
+	public static function boldName($lastName, $firstName, $authorList) {
+        $lastName = trim($lastName);
+        $firstName = trim($firstName);
+		$newAuthorList = [];
+		$boldedName = FALSE;
 		foreach ($authorList as $name) {
-			$nameNodes = preg_split("/\s+/", $name);
-			if (count($nameNodes) >= 2) {
-				$currLastName = $nameNodes[0];
-				$currFirstInitial = $nameNodes[1];
-				if ($firstName && $lastName) {
+            $nameNodes = preg_split("/\s+/", $name);
+            if (count($nameNodes) >= 2) {
+                list($currLastNames, $currFirstInitial, $currLastName) = self::getNamesFromNodes($nameNodes);
+                if ($firstName && $lastName) {
                     if (NameMatcher::matchByInitials($lastName, $firstName, $currLastName, $currFirstInitial)) {
-                        $name = "<b>".$name."</b>";
-                    }
-                } else if ($lastName) {
-				    if (NameMatcher::matchByLastName($lastName, $currLastName)) {
-				        $name = "<b>".$name."</b>";
+                        if (!self::isBolded($name)) {
+                            $name = "<b>" . $name . "</b>";
+                        }
+                        $boldedName = TRUE;
+                    } else {
+                        // for double last names - must loop through both last names
+                        foreach (NameMatcher::explodeLastName($lastName) as $ln) {
+                            $matched = FALSE;
+                            if (NameMatcher::matchByInitials($ln, $firstName, $currLastName, $currFirstInitial)) {
+                                $matched = TRUE;
+                            }
+                            foreach ($currLastNames as $ln2) {
+                                if (NameMatcher::matchByInitials($ln, $firstName, $ln2, $currFirstInitial)) {
+                                    $matched = TRUE;
+                                }
+                            }
+                            if ($matched) {
+                                if (!self::isBolded($name)) {
+                                    $name = "<b>" . $name . "</b>";
+                                }
+                                $boldedName = TRUE;
+                                break;    // inner
+                            }
+                        }
                     }
                 }
-			}
-			array_push($newAuthorList, $name);
-		}
-		return implode(", ", $newAuthorList);
+            }
+            $newAuthorList[] = $name;
+        }
+
+		if (!$boldedName) {
+		    $authorList = $newAuthorList;
+		    $newAuthorList = [];
+            foreach ($authorList as $name) {
+                $nameNodes = preg_split("/\s+/", $name);
+                if (count($nameNodes) >= 2) {
+                    list($currLastNames, $currFirstInitial, $currLastName) = self::getNamesFromNodes($nameNodes);
+                    if ($lastName) {
+                        if (NameMatcher::matchByLastName($lastName, $currLastName)) {
+                            if (!self::isBolded($name)) {
+                                $name = "<b>" . $name . "</b>";
+                            }
+                        } else {
+                            foreach (NameMatcher::explodeLastName($lastName) as $ln) {
+                                $matched = FALSE;
+                                if (NameMatcher::matchByLastName($ln, $currLastName)) {
+                                    $matched = TRUE;
+                                }
+                                foreach (NameMatcher::explodeLastName($currLastName) as $ln2) {
+                                    if (NameMatcher::matchByLastName($ln, $ln2)) {
+                                        $matched = TRUE;
+                                    }
+                                }
+                                if ($matched) {
+                                    if (!self::isBolded($name)) {
+                                        $name = "<b>" . $name . "</b>";
+                                    }
+                                    break;    // inner
+                                }
+                            }
+                        }
+                    }
+                }
+                $newAuthorList[] = $name;
+            }
+        }
+		return $newAuthorList;
 	}
 
 	public function getNIHFormat($traineeLastName, $traineeFirstName, $includeIDs = FALSE) {
-        $authors = self::addPeriodIfExtant(self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList()));
+        $authors = self::addPeriodIfExtant(implode(", ", self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList())));
         $title = self::addPeriodIfExtant($this->getVariable("title"));
         $journal = self::addPeriodIfExtant($this->getVariable("journal"));
 
@@ -935,6 +1026,7 @@ class Citation {
 	private $server = "";
 	private $sourceChoices = array();
 	private $metadata = [];
-	private $lastName = "";
+    private $firstName = "";
+    private $lastName = "";
 }
 

@@ -18,5 +18,9 @@ function updateBibliometrics($token, $server, $pid, $records) {
         $pubs->setRows($redcapData);
         $pubs->updateMetrics();
         $pubs->deduplicateCitations($recordId);
+        $upload = $pubs->getUpdatedBlankPMCs($recordId);
+        if (!empty($upload)) {
+            $feedback = Upload::rows($upload, $token, $server);
+        }
     }
 }

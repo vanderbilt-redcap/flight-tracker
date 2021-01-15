@@ -10,7 +10,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.27.3";
+		return "2.28.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -563,6 +563,7 @@ class CareerDev {
 					"Search Within a Timespan" => self::link("/search/inTimespan.php"),
                     "Brag: Publications Widget" => self::link("/brag.php")."&showHeaders",
                     "Social Network of Co-Authorship" => self::link("/socialNetwork/coauthorship.php"),
+                    "Word Clouds of Publications" => self::link("/publications/wordCloud.php"),
             ];
 			if (self::isVanderbilt()) {
                 $ary['Evaluate Grant Submissions'] = self::link("/submissions.php");
@@ -667,7 +668,8 @@ class CareerDev {
 					"Why Use?" => self::link("/help/why.php"),
 					"How to Use?" => self::link("/help/how.php"),
 					"Introductory Video" => self::link("/help/intro.php"),
-					"Full FAQ" => self::link("/help/faq.php"),
+                    "Full FAQ" => self::link("/help/faq.php"),
+                    "Codebook" => self::link("/help/Codebook.pdf"),
 					"How to Extend?" => self::link("/help/extend.php"),
 					"Brand Your Project" => self::link("/help/brand.php"),
 					"Feedback" => self::link("/help/feedback.php"),

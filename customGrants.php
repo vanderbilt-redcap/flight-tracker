@@ -39,7 +39,7 @@ if ($_GET['record']) {
 	$(document).ready(function() {
 		$('#record').change(function() {
 			var record = $(this).val();
-			window.location.href = '<?= $module->getUrl("customGrants.php") ?>&record='+record;
+			window.location.href = '<?= CareerDev::link("customGrants.php") ?>&record='+record;
 		});
 	});
 </script>

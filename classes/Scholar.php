@@ -932,6 +932,7 @@ class Scholar {
 	# returns blank if at current institution
     private function getAllOtherInstitutionsAsList($rows) {
         $institutions = $this->getAllOtherInstitutions($rows);
+        $institutions = REDCapManagement::dedup1DArray($institutions);
         return new Result(implode(", ", $institutions), "");
     }
 

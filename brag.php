@@ -48,7 +48,7 @@ if (isset($_GET['showHeaders'])) {
     <h4>Include this Page as a Widget in Another Page</h4>
     <div class="max-width centered">
         <p class="centered">Copy the following HTML and place into another HTML webpage to display your scholars' publications. Your website must likely have cross-origin framing turned on (which is the default).</p>
-        <div class="max-width centered"><code>&lt;iframe src="<?= $url ?>" title="Recent Publications" style="width: 400px; height: 400px;"&gt;&lt;/iframe&gt;</code></div>
+        <div class="max-width centered"><code>&lt;iframe src="<?= $url ?>" title="Recent Publications" style="width: 100%; height: 400px;"&gt;&lt;/iframe&gt;</code></div>
 
         <h4>Further Configurations</h4>
         <form method="GET" action="<?= REDCapManagement::getPage(Application::link("brag.php")) ?>">
@@ -75,12 +75,27 @@ if (isset($_GET['asc'])) {
     $asc = FALSE;
 }
 $allCitations = [];
+$allPMIDs = [];
+$multipleScholarPMIDs = [];
+$firstNames = Download::firstnames($token, $server);
+$lastNames = Download::lastnames($token, $server);
 foreach ($recordIds as $recordId) {
     $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($recordId));
     $pubs = new Publications($token, $server, $pid);
     $pubs->setRows($redcapData);
     $recordCitations = $pubs->getSortedCitationsInTimespan($startTs, $endTs, "Included", FALSE);
-    $allCitations = array_merge($recordCitations, $allCitations);
+    foreach ($recordCitations as $citation) {
+        $pmid = $citation->getPMID();
+        if (in_array($pmid, $allPMIDs)) {
+            if (!isset($multipleScholarPMIDs[$pmid])) {
+                $multipleScholarPMIDs[$pmid] = [];
+            }
+            $multipleScholarPMIDs[$pmid][] = ["lastName" => $lastNames[$recordId], "firstName" => $firstNames[$recordId]];
+        } else {
+            $allCitations[] = $citation;
+            $allPMIDs[] = $pmid;
+        }
+    }
 }
 
 $citationsWithTs = [];
@@ -90,7 +105,12 @@ foreach ($allCitations as $citation) {
     } else {
         $citationStr = "";
     }
-    $citationStr .= $citation->getCitation();
+    $pmid = $citation->getPMID();
+    if (isset($multipleScholarPMIDs[$pmid])) {
+        $citationStr .= $citation->getCitation($multipleScholarPMIDs[$pmid]);
+    } else {
+        $citationStr .= $citation->getCitation();
+    }
     $citationsWithTs[$citationStr] = $citation->getTimestamp();
 }
 
