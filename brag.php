@@ -86,14 +86,15 @@ foreach ($recordIds as $recordId) {
     $recordCitations = $pubs->getSortedCitationsInTimespan($startTs, $endTs, "Included", FALSE);
     foreach ($recordCitations as $citation) {
         $pmid = $citation->getPMID();
-        if (in_array($pmid, $allPMIDs)) {
+        if (isset($allPMIDs[$pmid])) {
             if (!isset($multipleScholarPMIDs[$pmid])) {
                 $multipleScholarPMIDs[$pmid] = [];
+                $multipleScholarPMIDs[$pmid][] = $allPMIDs[$pmid];
             }
             $multipleScholarPMIDs[$pmid][] = ["lastName" => $lastNames[$recordId], "firstName" => $firstNames[$recordId]];
         } else {
             $allCitations[] = $citation;
-            $allPMIDs[] = $pmid;
+            $allPMIDs[$pmid] = ["lastName" => $lastNames[$recordId], "firstName" => $firstNames[$recordId]];
         }
     }
 }
@@ -107,6 +108,7 @@ foreach ($allCitations as $citation) {
     }
     $pmid = $citation->getPMID();
     if (isset($multipleScholarPMIDs[$pmid])) {
+        // Application::log("Calling getCitation $pmid with multiple: ".REDCapManagement::json_encode_with_spaces($multipleScholarPMIDs[$pmid]));
         $citationStr .= $citation->getCitation($multipleScholarPMIDs[$pmid]);
     } else {
         $citationStr .= $citation->getCitation();

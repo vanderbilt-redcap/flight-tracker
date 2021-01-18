@@ -651,11 +651,13 @@ class Citation {
 
 	public function getCitation($multipleNamesToBold = []) {
 	    if (!empty($multipleNamesToBold)) {
+	        // Application::log("Has multiple names to bold: ".REDCapManagement::json_encode_with_spaces($multipleNamesToBold));
 	        $authorList = $this->getAuthorList();
 	        foreach ($multipleNamesToBold as $nameAry) {
 	            $firstName = $nameAry["firstName"];
 	            $lastName = $nameAry["lastName"];
 	            $authorList = self::boldName($lastName, $firstName, $authorList);
+	            // Application::log("Bolding $lastName $firstName: ".REDCapManagement::json_encode_with_spaces($authorList));
             }
 	        $authors = self::addPeriodIfExtant(implode(", ", $authorList));
         } else {
