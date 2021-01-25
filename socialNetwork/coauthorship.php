@@ -419,12 +419,21 @@ function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
 }
 
 function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records) {
+    $fields[] = "identifier_last_name";
+    $fields[] = "identifier_first_name";
+    $fields = array_unique($fields);
     $redcapData = Download::fieldsForRecords($token, $server, $fields, [$fromRecordId]);
     $matches = [];
+    $fromLastName = "";
+    $fromFirstName = "";
     foreach ($redcapData as $row) {
         if ($row['redcap_repeat_instrument'] == "") {
             $index[$fromRecordId] = $row[$indexByField];
+            $fromFirstName = $row['identifier_last_name'];
+            $fromLastName = $row['identifier_first_name'];
         }
+    }
+    foreach ($redcapData as $row) {
         if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == '1')) {
             $authors = preg_split("/,\s*/", $row['citation_authors']);
             foreach ($authors as $author) {
@@ -433,7 +442,8 @@ function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRe
                     if ($toRecordId != $fromRecordId && in_array($toRecordId, $records)) {
                         foreach ($possibleFirstNames[$toRecordId] as $firstName) {
                             foreach ($possibleLastNames[$toRecordId] as $lastName) {
-                                if (NameMatcher::matchByInitials($authorLast, $authorInitials, $lastName, $firstName)) {
+                                if (NameMatcher::matchByInitials($authorLast, $authorInitials, $lastName, $firstName) &&
+                                    !NameMatcher::matchByInitials($authorLast, $authorInitials, $fromLastName, $fromFirstName)) {
                                     // echo "Matched $fromRecordId $authorLast, $authorInitials to $toRecordId $lastName, $firstName<br>";
                                     if (!isset($matches[$toRecordId])) {
                                         $matches[$toRecordId] = [];

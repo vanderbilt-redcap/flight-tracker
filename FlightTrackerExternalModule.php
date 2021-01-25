@@ -432,7 +432,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 } else {
                     loadCrons($mgr, FALSE, $token, $server);
                 }
-                CareerDev::log($this->getName().": Running crons for pid $pid", $pid);
+                CareerDev::log($this->getName().": Running ".$mgr->getNumberOfCrons()." crons for pid $pid", $pid);
                 $addlEmailText = in_array($pid, $pidsUpdated) ? "Surveys shared from other Flight Tracker projects" : "";
                 $mgr->run($adminEmail, $tokenName, $addlEmailText);
                 CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);

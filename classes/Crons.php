@@ -12,10 +12,10 @@ class CronManager {
 		$this->server = $server;
 		$this->pid = $pid;
 
-		$this->crons = array();
+		$this->crons = [];
 		$days = self::getDaysOfWeek();
 		foreach ($days as $day) {
-			$this->crons[$day] = array();
+			$this->crons[$day] = [];
 		}
 
         $this->adminEmail = Application::getSetting("admin_email", $pid);
@@ -26,7 +26,8 @@ class CronManager {
 
 	# file is relative to career_dev's root
 	# dayOfWeek is in string format - "Monday", "Tuesday", etc. or a date in form Y-M-D
-	public function addCron($file, $method, $dayOfWeek) {
+    # records here, if specified, overrides the records specified in function run
+	public function addCron($file, $method, $dayOfWeek, $records = []) {
 		$possibleDays = self::getDaysOfWeek();
 		$dateTs = strtotime($dayOfWeek);
 		if (!in_array($dayOfWeek, $possibleDays) && !$dateTs) {
@@ -39,17 +40,29 @@ class CronManager {
 		}
 
 		$cronjob = new CronJob($absFile, $method);
+        if (!empty($records)) {
+            $cronjob->setRecords($records);
+        }
+        // Application::log("Has day of week $dayOfWeek and timestamp for ".date("Y-m-d", $dateTs));
 		if (in_array($dayOfWeek, $possibleDays)) {
 			# Weekday
-			array_push($this->crons[$dayOfWeek], $cronjob);
+            if (!isset($this->crons[$dayOfWeek])) {
+                $this->crons[$dayOfWeek] = [];
+                // Application::log("Reset cron list for $dayOfWeek");
+            }
+			$this->crons[$dayOfWeek][] = $cronjob;
+            // Application::log("Assigned cron for $dayOfWeek");
 		} else if ($dateTs) {
 			# Y-M-D
 			$date = date(self::getDateFormat(), $dateTs);
 			if (!isset($this->crons[$date])) {
-				$this->crons[$date] = array();
+				$this->crons[$date] = [];
+				// Application::log("Reset cron list for $date");
 			}
-			array_push($this->crons[$date], $cronjob);
+			$this->crons[$date][] = $cronjob;
+			// Application::log("Assigned cron for $date");
 		}
+		// Application::log("Added cron $method: ".$this->getNumberOfCrons()." total crons now");
 	}
 
 	private static function getDaysOfWeek() {
@@ -95,31 +108,36 @@ class CronManager {
 		}
 	}
 
-	public function run($adminEmail = "", $tokenName = "", $additionalEmailText = "", $records = []) {
+	public function run($adminEmail = "", $tokenName = "", $additionalEmailText = "", $recordsToRun = []) {
 		$dayOfWeek = date("l");
 		$date = date(self::getDateFormat());
 		$keys = array($date, $dayOfWeek);     // in order that they will run
 
 		Application::log("CRONS RUN AT ".date("Y-m-d h:i:s")." FOR PID ".$this->pid);
 		Application::log("adminEmail ".$adminEmail);
-		$run = array();
-		$toRun = array();
+		Application::log("Looking in ".$this->getNumberOfCrons()." cron jobs");
+		$run = [];
+		$toRun = [];
 		foreach ($keys as $key) {
 			if (isset($this->crons[$key])) {
 				foreach ($this->crons[$key] as $cronjob) {
-					array_push($toRun, $cronjob);
+					$toRun[] = $cronjob;
 				}
 			}
 		}
-
-		if (empty($records)) {
-		    $records = Download::recordIds($this->token, $this->server);
-        }
 
 		register_shutdown_function(["CronManager", "reportCronErrors"]);
 
 		Application::log("Running ".count($toRun)." crons for pid ".$this->pid." with keys ".json_encode($keys));
 		foreach ($toRun as $cronjob) {
+		    $records = $cronjob->getRecords();
+            if (empty($records)) {
+                if (empty($recordsToRun)) {
+                    $records = Download::recordIds($this->token, $this->server);
+                } else {
+                    $records = $recordsToRun;
+                }
+            }
 			Application::log("Running ".$cronjob->getTitle());
 			$run[$cronjob->getTitle()] = array("text" => "Attempted", "ts" => self::getTimestamp());
 			try {
@@ -213,6 +231,15 @@ class CronJob {
 		}
 	}
 
+	public function setRecords($records) {
+	    $this->records = $records;
+    }
+
+    public function getRecords() {
+	    return $this->records;
+    }
+
 	private $file = "";
 	private $method = "";
+	private $records = [];
 }

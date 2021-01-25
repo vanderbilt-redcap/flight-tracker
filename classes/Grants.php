@@ -126,7 +126,7 @@ class Grants {
         if ($type == "all_pis") {
             $grants = $this->dedupedGrants;
             $filteredGrants = [];
-            $piRoles = ["Co-PI", "PI", "Principal Investigator", "Admin", "PI/Co-PI", "Post-doctoral Trainee"];
+            $piRoles = ["Co-PI", "PI", "Principal Investigator", "Admin", "PI/Co-PI"];    // exclude: "Post-Doctoral Trainee"
             foreach ($grants as $grant) {
                 if (in_array($grant->getVariable("role"), $piRoles)) {
                     $filteredGrants[] = $grant;

@@ -10,7 +10,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.28.1";
+		return "2.29.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -99,7 +99,9 @@ class CareerDev {
 			if ($pid) {
 				$params = array("project_id" => $pid);
 				$module->log($mssg, $params);
-				// error_log($pid.": ".$mssg);
+				if (self::isVanderbilt()) {
+                    error_log($pid.": ".$mssg);
+                }
 			} else {
 				error_log($mssg);
 			}
@@ -585,6 +587,7 @@ class CareerDev {
             ];
             $ary["Configure an Email"] = self::link("/emailMgmt/configure.php");
             $ary["View Email Log"] = self::link("/emailMgmt/log.php");
+            $ary["View Email Queue"] = self::link("/emailMgmt/viewQueue.php");
             $ary["List of Nonrespondents"] = self::link("/emailMgmt/noSurvey.php");
             $ary["Survey Responses"] = self::link("/surveyResponses.php");
             $ary["Import General Data"] = self::link("/import.php");

@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\CronManager;
 
@@ -44,8 +45,14 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
 		$manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
 
-        if (date("d") == "18") {
-            $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"));
+        # limited group because bibliometric updates take a lot of time due to rate limiters
+		$bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
+		if (!empty($bibliometricRecordsToUpdate)) {
+		    if ((Application::getPid($token) == "112169") && CareerDev::isVanderbilt() && (date("Y-m-d") == "2021-01-23")) {
+                $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"));
+            } else {
+                $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
+            }
         }
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday");
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday");
@@ -128,3 +135,13 @@ function checkMetadataForFields($token, $server) {
 	return $vars;
 }
 
+function getRecordsToUpdateBibliometrics($token, $server, $dayOfMonth, $daysInMonth) {
+    $records = Download::recordIds($token, $server);
+    $recordsToRun = [];
+    foreach ($records as $recordId) {
+        if (($recordId - 1) % $daysInMonth == $dayOfMonth - 1) {
+            $recordsToRun[] = $recordId;
+        }
+    }
+    return $recordsToRun;
+}

@@ -370,7 +370,7 @@ class REDCapManagement {
 
     public static function makeHTMLId($id) {
         $htmlFriendly = preg_replace("/[\s\-]+/", "_", $id);
-        $htmlFriendly = preg_replace("/[\"'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;]/", "", $htmlFriendly);
+        $htmlFriendly = preg_replace("/[\+\"\/\[\]'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;]/", "", $htmlFriendly);
         return $htmlFriendly;
     }
 

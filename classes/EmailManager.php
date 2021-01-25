@@ -136,6 +136,35 @@ class EmailManager {
 		return $ts;
 	}
 
+	public function getQueue($thresholdTs) {
+	    $rows = [];
+        foreach ($this->data as $name => $emailSetting) {
+            foreach ($emailSetting["when"] as $whenType => $datetime) {
+                $ts = self::transformToTS($datetime);
+                if ($ts >= $thresholdTs) {
+                    $processedRows = $this->getRows($emailSetting["who"], $whenType, $this->getForms($emailSetting["what"]));
+                    $emailsByRecord = self::processEmails($processedRows);
+                    $emails = [];
+                    foreach ($emailsByRecord as $recordId => $email) {
+                        if ($email) {
+                            $emails[] = Links::makeRecordHomeLink($this->pid, $recordId, "Record $recordId").": $email";
+                        }
+                    }
+
+                    $row = [];
+                    $row['name'] = $name;
+                    list($row['date'], $row['time']) = explode(" ", $datetime);
+                    $row['from'] = $emailSetting['what']['from'];
+                    $row['subject'] = self::getSubject($emailSetting["what"]);;
+                    $row['to'] = $emails;
+                    $row['to_count'] = count($emails);
+                    $rows[] = $row;
+                }
+            }
+        }
+        return $rows;
+    }
+
 	private function enqueueRelevantEmails($to = "", $names = array(), $func = "sendEmail", $currTime = FALSE) {
 		if (!is_array($names)) {
 			$names = array($names);
