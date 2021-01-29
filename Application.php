@@ -92,14 +92,15 @@ class Application {
 	}
 
     public static function getCitationFields($metadata) {
-        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-        $fields = ["record_id"];
-        foreach (self::$citationFields as $field) {
-            if (in_array($field, $metadataFields)) {
-                $fields[] = $field;
-            }
-        }
-        return $fields;
+        return REDCapManagement::screenForFields($metadata, self::$citationFields);
+    }
+
+    public static function getCustomFields($metadata) {
+        return REDCapManagement::screenForFields($metadata, self::$customFields);
+    }
+
+    public static function getExporterFields($metadata) {
+        return REDCapManagement::screenForFields($metadata, CareerDev::$exporterFields);
     }
 
     public static function getInstitution() {
@@ -431,6 +432,7 @@ class Application {
         "citation_month",
         "citation_day",
         "citation_pages",
+        "citation_abstract",
         "citation_is_research",
         "citation_num_citations",
         "citation_citations_per_year",
@@ -438,6 +440,18 @@ class Application {
         "citation_field_citation_rate",
         "citation_nih_percentile",
         "citation_rcr",
+        "citation_icite_last_update",
+        "citation_altmetric_score",
+        "citation_altmetric_image",
+        "citation_altmetric_details_url",
+        "citation_altmetric_id",
+        "citation_altmetric_fbwalls_count",
+        "citation_altmetric_feeds_count",
+        "citation_altmetric_gplus_count",
+        "citation_altmetric_posts_count",
+        "citation_altmetric_tweeters_count",
+        "citation_altmetric_accounts_count",
+        "citation_altmetric_last_update",
     );
 
     public static $customFields = array(

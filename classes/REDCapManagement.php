@@ -1264,6 +1264,17 @@ class REDCapManagement {
         return [$url, $params];
     }
 
+    public static function screenForFields($metadata, $possibleFields) {
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+        $fields = ["record_id"];
+        foreach ($possibleFields as $field) {
+            if (in_array($field, $metadataFields)) {
+                $fields[] = $field;
+            }
+        }
+        return $fields;
+    }
+
     public static function dedup1DArray($ary) {
 	    $newAry = [];
 	    foreach ($ary as $item) {

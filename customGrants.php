@@ -2,18 +2,21 @@
 
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Links.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
+require_once(dirname(__FILE__)."/Application.php");
 
 if ($_GET['record']) {
 	$record = $_GET['record'];
 	$pid = $_GET['pid'];
 
-	$redcapData = Download::fieldsForRecords($token, $server, CareerDev::$customFields, array($record));
+	$metadata = Download::metadata($token, $server);
+	$redcapData = Download::fieldsForRecords($token, $server, Application::getCustomFields($metadata), [$record]);
 	$max = 0;
 	foreach ($redcapData as $row) {
 		if (($row['redcap_repeat_instrument'] == "custom_grant") && ($row['redcap_repeat_instance'] > $max)) {

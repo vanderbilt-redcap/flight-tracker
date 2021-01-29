@@ -713,36 +713,50 @@ class CustomGrantFactory extends GrantFactory {
 	public function processRow($row, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		$awardNo = self::cleanAwardNo($row['custom_number']);
+		$directCosts = $row['custom_costs'];
+		if ($row['custom_costs_total']) {
+		    $totalCosts = $row['custom_costs_total'];
+		    if (!$directCosts) {
+		        $directCosts = Grants::directCostsFromTotal($totalCosts, $awardNo, $row['custom_start']);
+            }
+        } else {
+		    if ($directCosts) {
+                $totalCosts = Grants::totalCostsFromDirect($directCosts, $awardNo, $row['custom_start']);
+            } else {
+		        $totalCosts = '';
+            }
+        }
 
 		$grant = new Grant($this->lexicalTranslator);
 		$grant->setVariable('start', $row['custom_start']);
 		$grant->setVariable('end', $row['custom_end']);
 		$grant->setVariable('title', $row['custom_title']);
-		$grant->setVariable('budget', Grants::totalCostsFromDirect($row['custom_costs'], $awardNo, $row['custom_start']));
+		$grant->setVariable('budget', $totalCosts);
 		// $grant->setVariable('fAndA', Grants::getFAndA($awardNo, $row['custom_start']));
 		$grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
-		$grant->setVariable('direct_budget', $row['custom_costs']);
+		$grant->setVariable('direct_budget', $directCosts);
 		$grant->setVariable('sponsor', $row['custom_org']);
 		$grant->setVariable('original_award_number', $row['custom_number']);
 		$grant->setNumber($awardNo);
 		$grant->setVariable('source', "custom");
 		if (($row['custom_role'] == 1) || ($row['custom_role'] == 2) || ($row['custom_role'] == '')) {
 			$grant->setVariable('pi_flag', 'Y');
+            $type = $row['custom_type'];
+            $reverseAwardTypes = Grant::getReverseAwardTypes();
+            if ($reverseAwardTypes[$type]) {
+                $grant->setVariable("type", $reverseAwardTypes[$type]);
+            } else {
+                $grant->putInBins();
+            }
 		} else {
 			$grant->setVariable('pi_flag', 'N');
+            $grant->putInBins();
 		}
 		$grant->setVariable("role", $this->choices["custom_role"][$row["custom_role"]]);
 		$grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
 		$grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=custom_grant&instance={$row['redcap_repeat_instance']}", "See Grant"));
 		$grant->setVariable('last_update', $row['custom_last_update']);
 
-		$type = $row['custom_type'];
-		$reverseAwardTypes = Grant::getReverseAwardTypes();
-		if ($reverseAwardTypes[$type]) {
-			$grant->setVariable("type", $reverseAwardTypes[$type]);
-		} else {
-			$grant->putInBins();
-		}
 		array_push($this->grants, $grant);
 	}
 }

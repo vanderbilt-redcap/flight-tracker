@@ -23,9 +23,11 @@ require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
 
 function getPubs($token, $server, $pid, $records) {
 	$cleanOldData = FALSE;
-	$metadata = Download::metadata($token, $server);
+    $metadata = Download::metadata($token, $server);
+    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+    $hasAbstract = in_array("citation_abstract", $metadataFields);
 
-	$records = Download::recordIds($token, $server);
+    $records = Download::recordIds($token, $server);
 
 	$citationIds = array();
 	$pullSize = 1;
@@ -55,8 +57,22 @@ function getPubs($token, $server, $pid, $records) {
 				if (!isset($maxInstances[$recordId]) || ($instance > $maxInstances[$recordId])) {
 					$maxInstances[$recordId] = $instance;
 				}
+                if (!$row['citation_abstract'] && $hasAbstract) {
+                    $pubmedMatch = Publications::downloadPMID($row['citation_pmid']);
+                    $abstract = $pubmedMatch->getVariable("Abstract");
+                    if ($abstract) {
+                        $uploadRow = [
+                            "record_id" => $recordId,
+                            "redcap_repeat_instrument" => "citation",
+                            "redcap_repeat_instance" => $instance,
+                            "citation_abstract" => $abstract,
+                        ];
+                        Upload::oneRow($uploadRow, $token, $server);
+                    }
+                }
 			}
 		}
+
         Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $redcapData);
 		binREDCapRows($redcapData, $citationIds);
 	}
@@ -117,7 +133,7 @@ function removeDuplicates($token, $server, $rows, $recordId) {
 							"redcap_repeat_instance" => $row['redcap_repeat_instance'],
 							"citation_include" => "0",
 							);
-				upload(array($uploadRow), $token, $server);
+				upload([$uploadRow], $token, $server);
 			} else {
 				array_push($alreadySeen, $pmid);
 			}

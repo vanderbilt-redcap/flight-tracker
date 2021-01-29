@@ -10,7 +10,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.29.0";
+		return "2.30.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -690,32 +690,44 @@ class CareerDev {
 		return array();
 	}
 
-	public static $citationFields = array(
-						"record_id",
-                        "citation_doi",
-                        "citation_pmid",
-						"citation_include",
-						"citation_source",
-						"citation_pmcid",
-						"citation_authors",
-						"citation_title",
-						"citation_pub_types",
-						"citation_mesh_terms",
-						"citation_journal",
-						"citation_volume",
-						"citation_issue",
-						"citation_year",
-						"citation_month",
-						"citation_day",
-						"citation_pages",
-						"citation_is_research",
-						"citation_num_citations",
-						"citation_citations_per_year",
-						"citation_expected_per_year",
-						"citation_field_citation_rate",
-						"citation_nih_percentile",
-						"citation_rcr",
-						);
+	public static $citationFields = [
+        "record_id",
+        "citation_pmid",
+        "citation_include",
+        "citation_source",
+        "citation_pmcid",
+        "citation_authors",
+        "citation_title",
+        "citation_pub_types",
+        "citation_mesh_terms",
+        "citation_journal",
+        "citation_volume",
+        "citation_issue",
+        "citation_year",
+        "citation_month",
+        "citation_day",
+        "citation_pages",
+        "citation_abstract",
+        "citation_is_research",
+        "citation_num_citations",
+        "citation_citations_per_year",
+        "citation_expected_per_year",
+        "citation_field_citation_rate",
+        "citation_nih_percentile",
+        "citation_rcr",
+        "citation_icite_last_update",
+        "citation_altmetric_score",
+        "citation_altmetric_image",
+        "citation_altmetric_details_url",
+        "citation_altmetric_id",
+        "citation_altmetric_fbwalls_count",
+        "citation_altmetric_feeds_count",
+        "citation_altmetric_gplus_count",
+        "citation_altmetric_posts_count",
+        "citation_altmetric_tweeters_count",
+        "citation_altmetric_accounts_count",
+        "citation_altmetric_last_update",
+        ];
 
 	public static $smallCitationFields = array(
 							"record_id",
@@ -820,6 +832,7 @@ class CareerDev {
 						"exporter_indirect_cost_amt",
 						"exporter_total_cost",
 						"exporter_total_cost_sub_project",
+						"exporter_abstract",
 						"exporter_last_update",
 						);
 

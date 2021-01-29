@@ -493,10 +493,12 @@ class Publications {
     }
 
 	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = array(), $pid = NULL) {
-		$upload = array();
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+        $hasAbstract = in_array("citation_abstract", $metadataFields);
+
+		$upload = [];
 		$instance = $startInstance;
 		$pullSize = self::getPMIDLimit();
-		$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		for ($i = 0; $i < count($pmids); $i += $pullSize) {
 			$pmidsToPull = array();
 			for ($j = $i; ($j < count($pmids)) && ($j < $i + $pullSize); $j++) {
@@ -519,7 +521,11 @@ class Publications {
 			$pmidsPulled = [];
 			foreach ($xml->PubmedArticle as $medlineCitation) {
                 $article = $medlineCitation->MedlineCitation->Article;
-                $authors = array();
+                $abstract = "";
+                if ($article->Abstract && $article->Abstract->AbstractText) {
+                    $abstract = strval($article->Abstract->AbstractText);
+                }
+                $authors = [];
                 if ($article->AuthorList->Author) {
                     foreach ($article->AuthorList->Author as $authorXML) {
                         $author = $authorXML->LastName . " " . $authorXML->Initials;
@@ -632,6 +638,10 @@ class Publications {
                     "citation_icite_last_update" => date("Y-m-d"),
                     "citation_complete" => "2",
                 ];
+                if ($hasAbstract) {
+                    $row['citation_abstract'] = $abstract;
+                }
+
                 $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields);
                 $row = array_merge($row, $altmetricRow);
                 if (in_array($pmid, $confirmedPMIDs)) {
@@ -1260,10 +1270,10 @@ class PubmedMatch {
 	private function autoSuggestCategoryAndScore() {
 		$pubAry = $this->toArray();
 		if (is_array($pubAry['Publication Types']) && !empty($pubAry['Publication Types'])) {
-			$cat = Citation::suggestCategoryFromPubTypes($pubAry['Publication Types'], $pubAry['Title']);
-			if ($cat) {
-				return array($cat, 100);
-			}
+			// $cat = Citation::suggestCategoryFromPubTypes($pubAry['Publication Types'], $pubAry['Title']);
+			// if ($cat) {
+				// return array($cat, 100);
+			// }
 		}
 		if (isset($pubAry['Abstract'])) {
 			return self::analyzeAbstractAndTitle($pubAry['Abstract'], $pubAry['Title']);

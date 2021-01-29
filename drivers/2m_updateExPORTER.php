@@ -3,14 +3,18 @@
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 define('NOAUTH', true);
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 /**
@@ -108,25 +112,70 @@ function downloadURLAndUnzip($file) {
  * @param $headers array read from CSV that consist of the headers for each row
  * constraint: count($line) == count($headers)
  */
-function makeUploadHoldingQueue($line, $headers) {
+function makeUploadHoldingQueue($line, $headers, $abstracts) {
 	$j = 0;
 	$dates = array("exporter_budget_start", "exporter_budget_end", "exporter_project_start", "exporter_project_end");
 	$uploadLineHoldingQueue = array();
 	foreach ($line as $item) {
 		$field = "exporter_".strtolower($headers[$j]);
 		if (in_array($field, $dates)) {
-			$item = \Vanderbilt\FlightTrackerExternalModule\MDY2YMD($item);
+			$item = REDCapManagement::MDY2YMD($item);
 		}
 		$uploadLineHoldingQueue[$field] = convert_from_latin1_to_utf8_recursively($item);
 		$j++;
 	}
-	$uploadLineHoldingQueue['exporter_last_update'] = date("Y-m-d");
+    if ($uploadLineHoldingQueue['exporter_application_id']) {
+        $uploadLineHoldingQueue['exporter_abstract'] = $abstracts[$uploadLineHoldingQueue['exporter_application_id']];
+    }
+    $uploadLineHoldingQueue['exporter_last_update'] = date("Y-m-d");
 	$uploadLineHoldingQueue['exporter_complete'] = '2';
 	return $uploadLineHoldingQueue;
 }
 
+function updateAbstracts($token, $server, $pid) {
+    $records = Download::recordIds($token, $server);
+    $files = [];
+    $abstractFiles = [];
+
+    # find relevant zips
+    # download relevent zips into APP_PATH_TEMP
+    # unzip zip files
+    for ($year = 2009; $year <= date("Y"); $year++) {
+        $url = "RePORTER_PRJ_C_FY".$year.".zip";
+        $file = downloadURLAndUnzip($url);
+        if ($file) {
+            $files[$file] = $year;
+        }
+
+        $abstractURL = "RePORTER_PRJABS_C_FY".$year.".zip";
+        $abstractFile = downloadURLAndUnzip($abstractURL);
+        if ($abstractFile) {
+            $abstractFiles[$file] = $abstractFile;
+        }
+    }
+    for ($year = date("Y") - 1; $year <= date("Y") + 1; $year++) {
+        for ($week = 1; $week <= 53; $week++) {
+            $weekWithLeading0s = sprintf('%03d', $week);
+            $url = "RePORTER_PRJ_C_FY".$year."_".$weekWithLeading0s.".zip";
+            $file = downloadURLAndUnzip($url);
+            if ($file) {
+                $files[$file] = $year;
+            }
+
+            $abstractURL = "RePORTER_PRJABS_C_FY".$year."_".$weekWithLeading0s.".zip";
+            $abstractFile = downloadURLAndUnzip($abstractURL);
+            if ($abstractFile) {
+                $abstractFiles[$file] = $abstractFile;
+            }
+        }
+    }
+
+    uploadBlankAbstracts($token, $server, $records, $abstractFiles);
+}
+
 function updateExPORTER($token, $server, $pid, $records) {
-	$files = array();
+	$files = [];
+	$abstractFiles = [];
 
 	# find relevant zips
 	# download relevent zips into APP_PATH_TEMP
@@ -137,6 +186,12 @@ function updateExPORTER($token, $server, $pid, $records) {
 		if ($file) {
 			$files[$file] = $year;
 		}
+
+		$abstractURL = "RePORTER_PRJABS_C_FY".$year.".zip";
+        $abstractFile = downloadURLAndUnzip($abstractURL);
+        if ($abstractFile) {
+            $abstractFiles[$file] = $abstractFile;
+        }
 	}
 	for ($year = date("Y") - 1; $year <= date("Y") + 1; $year++) {
 		for ($week = 1; $week <= 53; $week++) {
@@ -146,16 +201,25 @@ function updateExPORTER($token, $server, $pid, $records) {
 			if ($file) {
 				$files[$file] = $year;
 			}
+
+            $abstractURL = "RePORTER_PRJABS_C_FY".$year."_".$weekWithLeading0s.".zip";
+            $abstractFile = downloadURLAndUnzip($abstractURL);
+            if ($abstractFile) {
+                $abstractFiles[$file] = $abstractFile;
+            }
 		}
 	}
-
 
 	CareerDev::log("Downloading REDCap");
 	echo "Downloading REDCap\n";
 
+	$metadata = Download::metadata($token, $server);
+	$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+	$hasAbstract = in_array("exporter_abstract", $metadataFields);
+
 	$redcapData = array();
 	foreach ($records as $recordId) {
-		$redcapData[$recordId] = Download::fieldsForRecords($token, $server, array_unique(array_merge(CareerDev::$customFields, CareerDev::$exporterFields)), array($recordId));
+		$redcapData[$recordId] = Download::fieldsForRecords($token, $server, array_unique(array_merge(Application::getCustomFields($metadata), Application::getExporterFields($metadata))), array($recordId));
 	}
 	echo "Downloaded ".count($redcapData)." records\n";
 
@@ -175,6 +239,8 @@ function updateExPORTER($token, $server, $pid, $records) {
 	$upload = array();
 	$newUploads = array();		// new records
 	foreach ($files as $file => $year) {
+	    $abstracts = readAbstracts($abstractFiles[$file]);
+
 		CareerDev::log("Reading $file");
 		echo "Reading $file\n";
         $fp = fopen($file, "r");
@@ -243,14 +309,27 @@ function updateExPORTER($token, $server, $pid, $records) {
 						if ($recordId && $firstNames[$k] && $lastNames[$k]) {
 							# upload line
 							$uploadLine = array("record_id" => $recordId, "redcap_repeat_instrument" => "exporter", "exporter_complete" => '2');
-							$uploadLineHoldingQueue = makeUploadHoldingQueue($line, $headers);
+							$uploadLineHoldingQueue = makeUploadHoldingQueue($line, $headers, $abstracts);
 							list($uploadLine["redcap_repeat_instance"], $isNew) = getExPORTERInstance($recordId, $redcapData[$recordId], $upload, $uploadLineHoldingQueue);
 							if ($isNew) {
 								$uploadLine = array_merge($uploadLine, $uploadLineHoldingQueue);
 								CareerDev::log("Matched name {$recordId} {$firstNames[$k]} {$lastNames[$k]} = {$uploadLine['exporter_pi_names']}");
 								echo "Matched name {$recordId} {$firstNames[$k]} {$lastNames[$k]} = {$uploadLine['exporter_pi_names']}\n";
+								if ($hasAbstract && $uploadLine['exporter_application_id']) {
+								    $uploadLine['exporter_abstract'] = $abstracts[$uploadLine['exporter_application_id']];
+                                }
 								$upload[] = $uploadLine;
-							}
+							} else {
+							    $currRow = REDCapManagement::getRow($redcapData[$recordId], $recordId, "exporter", $uploadLine['redcap_repeat_instance']);
+							    if (!$currRow['exporter_abstract'] && $currRow['export_application_id'] && $hasAbstract) {
+							        $upload[] = [
+							            "record_id" => $recordId,
+                                        "redcap_repeat_instrument" => "exporter",
+                                        "redcap_repeat_instance" => $uploadLine["redcap_repeat_instance"],
+							            "exporter_abstract" => $abstracts[$uploadLine['exporter_application_id']],
+                                    ];
+                                }
+                            }
 						} else if (!$recordId && $firstNames[$k] && $lastNames[$k] && $year >= date("Y")) {
 							# new person?
 							$j = 0;
@@ -271,7 +350,7 @@ function updateExPORTER($token, $server, $pid, $records) {
 								$j++;
 							}
 							if ($isK && $isSupportYear1) {
-								$uploadLineHoldingQueue = makeUploadHoldingQueue($line, $headers);
+								$uploadLineHoldingQueue = makeUploadHoldingQueue($line, $headers, $abstracts);
 								$newUploads[$firstNames[$k]." ".$lastNames[$k]] = $uploadLineHoldingQueue;
 							}
 						}
@@ -304,6 +383,9 @@ function updateExPORTER($token, $server, $pid, $records) {
 	
 		list($firstName, $lastName) = preg_split("/\s/", $fullName);
 		$upload[] = array("record_id" => $maxRecordId, "redcap_repeat_instrument" => "", "redcap_repeat_instance" => "", "identifier_first_name" => ucfirst(strtolower($firstName)), "identifier_last_name" => ucfirst(strtolower($lastName)));
+        if ($hasAbstract && $uploadLine['exporter_application_id']) {
+            $uploadLine['exporter_abstract'] = $abstracts[$uploadLine['exporter_application_id']];
+        }
 		$upload[] = $uploadLine;
 	}
 	
@@ -315,8 +397,70 @@ function updateExPORTER($token, $server, $pid, $records) {
 		echo json_encode($feedback)."\n";
 	}
 
+	if ($hasAbstract) {
+        uploadBlankAbstracts($token, $server, $records, $abstractFiles);
+    }
+
 	// $mssg = "NIH Exporter run\n\n".count($upload)." rows\n".$output."\n\n";
 	// \REDCap::email($adminEmail, "no-reply@vanderbilt.edu", "CareerDev NIH Exporter", $mssg);
 
 	CareerDev::saveCurrentDate("Last NIH ExPORTER Download", $pid);
+}
+
+function readAbstracts($file) {
+    $data = [];
+    if (file_exists($file)) {
+        $fp = fopen($file, "r");
+        $headers = fgetcsv($fp);
+        while ($line = fgetcsv($fp)) {
+            $appId = $line[0];
+            $abstract = $line[1];
+            if ($appId && $abstract) {
+                $data[$appId] = $abstract;
+            }
+        }
+        fclose($fp);
+    }
+    return $data;
+}
+
+function uploadBlankAbstracts($token, $server, $records, $abstractFiles) {
+    foreach ($records as $recordId) {
+        $fields = ["record_id", "exporter_application_id", "exporter_abstract"];
+        $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+        $blankApplicationIds = [];
+        foreach ($redcapData as $row) {
+            if ($row['redcap_repeat_instrument'] == "exporter") {
+                if ($row['exporter_abstract'] == "") {
+                    $blankApplicationIds[$row['redcap_repeat_instance']] = $row['exporter_application_id'];
+                }
+            }
+        }
+
+        $upload = [];
+        foreach ($blankApplicationIds as $instance => $applicationId) {
+            $found = FALSE;
+            foreach ($abstractFiles as $dataFile => $abstractFile) {
+                $fp = fopen($abstractFile, "r");
+                while (!$found && ($line = fgetcsv($fp))) {
+                    if ($line[1] && ($line[0] == $applicationId)) {
+                        $upload[] = [
+                            "record_id" => $recordId,
+                            "redcap_repeat_instrument" => "exporter",
+                            "redcap_repeat_instance" => $instance,
+                            "exporter_abstract" => $line[1],
+                        ];
+                        $found = TRUE;
+                    }
+                }
+                fclose($fp);
+                if ($found) {
+                    break;   // inner
+                }
+            }
+        }
+        if (!empty($upload)) {
+            Upload::rows($upload, $token, $server);
+        }
+    }
 }

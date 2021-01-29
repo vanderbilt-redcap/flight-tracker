@@ -1287,6 +1287,11 @@ class Grant {
         $specs = $this->specs;
         $awardNo = $this->getNumber();
 
+        if ($specs['pi_flag'] == 'N') {
+            if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": pi_flag is N"); }
+            return "N/A";
+        }
+
         if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": First Pass"); }
         if ($type = $this->lexicallyTranslate($awardNo)) {
             return $type;
@@ -1322,8 +1327,8 @@ class Grant {
 			return "K Equivalent";
 		} else if (preg_match("/^\d?[Rr]00/", $awardNo) || preg_match("/^\d?[Kk]\s*99/", $awardNo)) {
 			return "K99/R00";
-		} else if (preg_match("/^\d?[Rr]01/", $awardNo)) {
-			return "R01";
+        } else if (preg_match("/^\d?[Rr]01/", $awardNo)) {
+            return "R01";
 		} else if (preg_match("/^\d?[Tt]\d\d/", $awardNo) || preg_match("/^\d?[Dd]43/", $awardNo)) {
 			return "Training Grant Admin";
 		} else if ($specs['direct_budget'] && ($specs['direct_budget'] >= 750000)) {
@@ -1368,6 +1373,10 @@ class Grant {
             return "R01 Equivalent";
         } else if (preg_match("/^\d?R35/", $awardNo)) {
             return "R01 Equivalent";
+        } else if (preg_match("/^\d?[Dd][Pp]1/", $awardNo)) {
+            return "R01 Equivalent";
+        } else if (preg_match("/^\d?DP7/", $awardNo) || preg_match("/^\d?[Rr]25/", $awardNo) || preg_match("/^\d?[Tt]90/", $awardNo)) {
+		    return "Training Grant Admin";
 		} else if (preg_match("/Internal K/", $awardNo)) {
 			return "Internal K";
 		} else if (preg_match("/K12\/KL2/", $awardNo)) {

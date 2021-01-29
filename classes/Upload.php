@@ -64,6 +64,16 @@ class Upload
         }
     }
 
+    public static function copyRecord($token, $server, $oldRecordId, $newRecordId) {
+        $oldRecordData = Download::records($token, $server, [$oldRecordId]);
+        $newRecordData = [];
+        foreach ($oldRecordData as $row) {
+            $row['record_id'] = $newRecordId;
+            $newRecordData[] = $row;
+        }
+        return self::rows($newRecordData, $token, $server);
+    }
+
     public static function deleteForm($token, $server, $pid, $prefix, $recordId, $instance = NULL) {
         $records = Download::recordIds($token, $server);
         if (Download::isCurrentServer($server)) {

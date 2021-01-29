@@ -45,6 +45,7 @@ if ($_FILES['bulk']) {
 		$unmatchedLines = [];
 		$maxInstances = [];
 		$i = 0;
+		$customFields = Application::getCustomFields($metadata);
         foreach ($lines as $line) {
             $firstName = $line[0];
             $lastName = $line[1];
@@ -81,6 +82,9 @@ if ($_FILES['bulk']) {
                         "custom_last_update" => date("Y-m-d"),
                         "custom_grant_complete" => "2",
                     ];
+                    if (in_array("custom_costs_total", $customFields)) {
+                        $uploadRow["custom_costs_total"] = $line[11];
+                    }
                     $upload[] = $uploadRow;
                 } else if ($title == "Positions") {
                     list($department, $other) = findDepartment($line[8], $choices, "promotion_department");

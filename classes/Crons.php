@@ -43,26 +43,38 @@ class CronManager {
         if (!empty($records)) {
             $cronjob->setRecords($records);
         }
-        // Application::log("Has day of week $dayOfWeek and timestamp for ".date("Y-m-d", $dateTs));
+        if ($this->isDebug) {
+            Application::log("Has day of week $dayOfWeek and timestamp for ".date("Y-m-d", $dateTs));
+        }
 		if (in_array($dayOfWeek, $possibleDays)) {
 			# Weekday
             if (!isset($this->crons[$dayOfWeek])) {
                 $this->crons[$dayOfWeek] = [];
-                // Application::log("Reset cron list for $dayOfWeek");
+                if ($this->isDebug) {
+                    Application::log("Reset cron list for $dayOfWeek");
+                }
             }
 			$this->crons[$dayOfWeek][] = $cronjob;
-            // Application::log("Assigned cron for $dayOfWeek");
+            if ($this->isDebug) {
+                Application::log("Assigned cron for $dayOfWeek");
+            }
 		} else if ($dateTs) {
 			# Y-M-D
 			$date = date(self::getDateFormat(), $dateTs);
 			if (!isset($this->crons[$date])) {
 				$this->crons[$date] = [];
-				// Application::log("Reset cron list for $date");
+				if ($this->isDebug) {
+                    Application::log("Reset cron list for $date");
+                }
 			}
 			$this->crons[$date][] = $cronjob;
-			// Application::log("Assigned cron for $date");
+			if ($this->isDebug) {
+                Application::log("Assigned cron for $date");
+            }
 		}
-		// Application::log("Added cron $method: ".$this->getNumberOfCrons()." total crons now");
+		if ($this->isDebug) {
+            Application::log("Added cron $method: ".$this->getNumberOfCrons()." total crons now");
+        }
 	}
 
 	private static function getDaysOfWeek() {
@@ -138,13 +150,15 @@ class CronManager {
                     $records = $recordsToRun;
                 }
             }
-			Application::log("Running ".$cronjob->getTitle());
+			Application::log("Running ".$cronjob->getTitle()." with ".count($records)." records");
 			$run[$cronjob->getTitle()] = array("text" => "Attempted", "ts" => self::getTimestamp());
 			try {
 				if (!$this->token || !$this->server) {
 					throw new \Exception("Could not pass token '".$this->token."' or server '".$this->server."' to cron job");
 				}
-				$cronjob->run($this->token, $this->server, $this->pid, $records);
+				if (!$this->isDebug) {
+                    $cronjob->run($this->token, $this->server, $this->pid, $records);
+                }
 				$run[$cronjob->getTitle()] = array("text" => "Succeeded", "ts" => self::getTimestamp());
 			} catch(\Throwable $e) {
 				$this->handle($e, $adminEmail, $cronjob);
@@ -153,6 +167,13 @@ class CronManager {
 			}
 		}
 		if (count($toRun) > 0) {
+		    if ($this->isDebug) {
+		        Application::log("Attempting to save current date");
+		        Application::saveCurrentDate("Test", $this->pid);
+		        Application::removeCurrentDate("Test", $this->pid);
+                Application::log("Done attempting to save current date");
+            }
+
 			$text = $tokenName." ".$this->server."<br><br>";
 			foreach ($run as $title => $mssgAry) {
 				$mssg = $mssgAry['text'];
@@ -168,11 +189,17 @@ class CronManager {
 			} 
 			if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
 				throw new \Exception("Could not instantiate REDCap class!");
-			} 
-			Application::log("Sending ".Application::getProgramName()." email for pid ".$this->pid." to $adminEmail");
-			\REDCap::email($adminEmail, "noreply@vumc.org", Application::getProgramName()." Cron Report", $text);
+			}
+			if (!$this->isDebug) {
+                Application::log("Sending ".Application::getProgramName()." email for pid ".$this->pid." to $adminEmail");
+                \REDCap::email($adminEmail, "noreply@vumc.org", Application::getProgramName()." Cron Report", $text);
+            }
 		}
 	}
+
+	public function setDebug($isDebug) {
+	    $this->isDebug = $isDebug;
+    }
 
 	public function handle($e, $adminEmail, $cronjob) {
 		Application::log("Exception ".json_encode($e));
@@ -200,6 +227,7 @@ class CronManager {
 	private $sendErrorLogs;
 	private static $lastAdminEmail;
 	private static $lastSendErrorLogs;
+	private $isDebug = FALSE;
 }
 
 class CronJob {

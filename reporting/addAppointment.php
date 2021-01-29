@@ -22,7 +22,8 @@ if (!in_array($recordId, $records)) {
     die("Invalid record");
 }
 
-$redcapData = Download::fieldsForRecords($token, $server, Application::$customFields, [$recordId]);
+$metadata = Download::metadata($token, $server);
+$redcapData = Download::fieldsForRecords($token, $server, Application::getCustomFields($metadata), [$recordId]);
 $max = REDCapManagement::getMaxInstance($redcapData, "custom_grant", $recordId);
 
 if ($start && !REDCapManagement::isDate($start)) {

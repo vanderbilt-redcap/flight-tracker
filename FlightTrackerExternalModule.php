@@ -21,6 +21,7 @@ require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/NameMatcher.php");
 require_once(dirname(__FILE__)."/cronLoad.php");
+require_once(APP_PATH_DOCROOT."Classes/System.php");
 
 class FlightTrackerExternalModule extends AbstractExternalModule
 {
@@ -397,6 +398,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	function cron() {
+        \System::increaseMaxExecTime(7200);   // 2 hours
+
 		$this->setupApplication();
 		$pids = $this->framework->getProjectsWithModuleEnabled();
 		CareerDev::log($this->getName()." running for pids ".json_encode($pids));

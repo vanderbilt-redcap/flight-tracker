@@ -21,11 +21,11 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		// $manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", date("Y-m-d"));
 		// $manager->addCron("publications/getAllPubs_func.php", "getPubs", date("Y-m-d"));
 		// $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", date("Y-m-d"));
-        $manager->addCron("publications/updateBibliometricsForOneRecord.php", "updateBibliometrics", date("Y-m-d"));
+        $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", date("Y-m-d"));
 	} else if ($token && $server) {
 		$has = checkMetadataForFields($token, $server);
 
-		$manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
+        $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
 		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", "Tuesday");
 		if ($has['coeus']) {
 			$manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", "Thursday");
@@ -43,16 +43,12 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
             }
         }
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
-		$manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
+        $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
 
         # limited group because bibliometric updates take a lot of time due to rate limiters
 		$bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
 		if (!empty($bibliometricRecordsToUpdate)) {
-		    if ((Application::getPid($token) == "112169") && CareerDev::isVanderbilt() && (date("Y-m-d") == "2021-01-23")) {
-                $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"));
-            } else {
-                $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
-            }
+            $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
         }
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday");
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday");

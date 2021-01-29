@@ -180,9 +180,12 @@ class Download {
 		return $mentors;
 	}
 
-	public static function trainingGrants($token, $server, $fields = array(), $traineeTypes = array(5, 6, 7), $records = []) {
+	public static function trainingGrants($token, $server, $fields = [], $traineeTypes = [5, 6, 7], $records = [], $metadata = []) {
 		if (empty($fields)) {
-			$fields = Application::$customFields;      // default
+            if (empty($metadata)) {
+                $metadata = self::metadata($token, $server);
+            }
+			$fields = Application::getCustomFields($metadata);      // default
 		}
 		if (empty($records)) {
 		    $records = self::recordIds($token, $server);
@@ -203,8 +206,8 @@ class Download {
 		return $filteredData;
 	}
 
-    public static function appointmentsForRecord($token, $server, $record, $traineeTypes = [5, 6, 7]) {
-        $redcapData = self::trainingGrants($token, $server, array("record_id", "custom_role"), $traineeTypes, [$record]);
+    public static function appointmentsForRecord($token, $server, $record, $traineeTypes = [5, 6, 7], $metadata = []) {
+        $redcapData = self::trainingGrants($token, $server, array("record_id", "custom_role"), $traineeTypes, [$record], $metadata);
         $types = [];
         foreach ($redcapData as $row) {
             $roleType = $row['custom_role'];
@@ -215,8 +218,8 @@ class Download {
         return $types;
     }
 
-	public static function recordsWithTrainees($token, $server, $traineeTypes = array(5, 6, 7)) {
-		$redcapData = self::trainingGrants($token, $server, array("record_id", "custom_role"), $traineeTypes);
+	public static function recordsWithTrainees($token, $server, $traineeTypes = [5, 6, 7], $metadata = []) {
+		$redcapData = self::trainingGrants($token, $server, array("record_id", "custom_role"), $traineeTypes, $metadata);
 		$records = array();
 		foreach ($redcapData as $row) {
 		    $recordId = $row['record_id'];

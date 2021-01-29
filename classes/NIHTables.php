@@ -373,7 +373,7 @@ class NIHTables {
 		$doctorateInstitutions = Download::doctorateInstitutions($this->token, $this->server, $this->metadata);
 		$trainingTypes = self::getTrainingTypes($table);
 		if (!empty($names)) {
-			$trainingGrantData = Download::trainingGrants($this->token, $this->server, array(), $trainingTypes);
+			$trainingGrantData = Download::trainingGrants($this->token, $this->server, [], $trainingTypes, [], $this->metadata);
 		} else {
 		    $trainingGrantData = array();
         }
@@ -1311,7 +1311,7 @@ class NIHTables {
 	        $firstNames = Download::firstnames($this->token, $this->server);
 	        $lastNames = Download::lastnames($this->token, $this->server);
             $mentors = Download::primaryMentors($this->token, $this->server);
-            $trainingGrants = Download::trainingGrants($this->token, $this->server);
+            $trainingGrants = Download::trainingGrants($this->token, $this->server, [], [5, 6, 7], [], $this->metadata);
             $hasSupportSummary = $this->hasSupportSummary();
             if ($hasSupportSummary) {
                 $supportSummaries = Download::oneField($this->token, $this->server, "identifier_support_summary");
@@ -1721,7 +1721,7 @@ class NIHTables {
 		    $thisGrantType = self::getTrainingType();
             $internalKType = 1;
             if (in_array($part, [1, 3])) {
-                $trainingData = Download::trainingGrants($this->token, $this->server);
+                $trainingData = Download::trainingGrants($this->token, $this->server, [], [5, 6, 7], [], $this->metadata);
                 foreach ($names as $recordId => $name) {
                     $currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
                     foreach ($currentGrants as $row) {
@@ -1831,7 +1831,7 @@ class NIHTables {
 			$lastNames = Download::lastNames($this->token, $this->server);
 			$firstNames = Download::firstNames($this->token, $this->server);
 			$mentors = Download::primaryMentors($this->token, $this->server); 
-			$trainingData = Download::trainingGrants($this->token, $this->server);
+			$trainingData = Download::trainingGrants($this->token, $this->server, [], [5, 6, 7], [], $this->metadata);
             $trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");
         }
 		$fields = array_unique(array_merge(Application::getCitationFields($this->metadata), array("record_id")));

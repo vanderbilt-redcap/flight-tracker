@@ -99,7 +99,7 @@ function getTimeSpan($row, $i) {
 	$start = $row['summary_award_date_'.$i];
 	$end = $row['summary_award_date_'.($i + 1)];
 	if ($start && $end) {
-		return floor(REDCapManagement::datediff($start, $end, "y") * 10) / 10;
+		return round(REDCapManagement::datediff($start, $end, "y") * 10) / 10;
 	}
 	return "";
 }
@@ -370,14 +370,16 @@ foreach ($transformedREDCapData as $recordId => $rows) {
 					}
 				}
 			} else {
-				# main path
-				echo "<td class='cell $rightBox'>$type$date$mech$budget$link</td>";
-				$ts = getTimeSpan($normativeRow, $i);
-				if ($ts !== "") {
-					echo "<td class='spacer'><div class='spacerYears'>$ts</div><div class='spacerYear'>years<br>b/w<br>starts</div></td>";
-				} else {
-					echo "<td class='spacer'></td>";
-				}
+			    if (!in_array($grant->getVariable("type"), ["Research Fellowship"])) {
+                    # main path
+                    echo "<td class='cell $rightBox'>$type$date$mech$budget$link</td>";
+                    $ts = getTimeSpan($normativeRow, $i);
+                    if ($ts !== "") {
+                        echo "<td class='spacer'><div class='spacerYears'>$ts</div><div class='spacerYear'>years<br>b/w<br>starts</div></td>";
+                    } else {
+                        echo "<td class='spacer'></td>";
+                    }
+                }
 			}
 		}
 		$i++;
