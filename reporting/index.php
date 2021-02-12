@@ -81,13 +81,13 @@ if (file_exists(dirname(__FILE__)."/../customGrants.php")) {
 ?>
 
 <p class="centered"><?= $cohorts->makeCohortSelect($_GET['cohort'], "if ($(this).val()) { window.location.href = \"".Application::link("reporting/index.php")."&cohort=\" + $(this).val(); } else { window.location.href = \"".Application::link("reporting/index.php")."\"; }") ?></p>
-<p class="centered">To sign up scholars to these lists, fill out a Custom Grant for each scholar. <?= $note ?> Under role, sign them up to your grant as a General Trainee, Pre-Doctoral Trainee, or Post-Doctoral Trainee. Then verify that the scholar is a part of the lists below.</p>
+<p class="centered max-width">To sign up scholars to these lists, fill out a Custom Grant for each scholar. <?= $note ?> Under role, sign them up to your grant as a General Trainee, Pre-Doctoral Trainee, or Post-Doctoral Trainee. Then verify that the scholar is a part of the lists below.</p>
 
 <h2>Predoctoral Scholars (<?= count($predocs) ?>)</h2>
-<p class='centered'><?= $predocNames ? $predocNames : $emptyNames ?></p>
+<p class='centered max-width'><?= $predocNames ? $predocNames : $emptyNames ?></p>
 
 <h2>Postdoctoral Scholars (<?= count($postdocs) ?>)</h2>
-<p class='centered'><?= $postdocNames ? $postdocNames : $emptyNames ?></p>
+<p class='centered max-width'><?= $postdocNames ? $postdocNames : $emptyNames ?></p>
 
 <h2><?= makeTableHeader("Common Metrics") ?></h2>
 <p class='centered'><?= makeLink("Common Metrics") ?></p>

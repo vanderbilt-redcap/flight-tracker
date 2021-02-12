@@ -22,7 +22,7 @@ if (is_numeric($pid)) {
 	}
 
 	$adminEmails = preg_split("/\s*,\s*/", $adminEmail);
-	$from = "noreply@vumc.org";
+	$from = Application::getSetting("default_from");
 	if (count($adminEmails) > 0) {
 		$from = $adminEmails[0];
 	}

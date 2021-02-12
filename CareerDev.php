@@ -10,7 +10,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.30.0";
+		return "2.31.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -91,23 +91,27 @@ class CareerDev {
 
 
 	public static function log($mssg, $pid = FALSE) {
-		$module = self::getModule();
-		if ($module) {
-			if (!$pid) {
-				$pid = self::getPid();
-			}
-			if ($pid) {
-				$params = array("project_id" => $pid);
-				$module->log($mssg, $params);
-				if (self::isVanderbilt()) {
-                    error_log($pid.": ".$mssg);
+        if (isset($_GET['test'])) {
+            echo $mssg . "<br>\n";
+        } else {
+            $module = self::getModule();
+            if ($module) {
+                if (!$pid) {
+                    $pid = self::getPid();
                 }
-			} else {
-				error_log($mssg);
-			}
-		} else {
-			error_log($mssg);
-		}
+                if ($pid) {
+                    $params = array("project_id" => $pid);
+                    $module->log($mssg, $params);
+                    if (self::isVanderbilt()) {
+                        error_log($pid.": ".$mssg);
+                    }
+                } else {
+                    error_log($mssg);
+                }
+            } else {
+                error_log($mssg);
+            }
+        }
 	}
 
 	public static function isREDCap() {
@@ -246,7 +250,7 @@ class CareerDev {
 	public static function getLink($relativeUrl) {
 		$relativeUrl = preg_replace("/^\//", "", $relativeUrl);
 		if ($module = self::getModule()) {
-			return $module->getUrl($relativeUrl);
+		    return $module->getUrl($relativeUrl);
 		}
 		return "";
 	}
@@ -564,8 +568,10 @@ class CareerDev {
 					"Missingness Report<br>(Computationally Expensive)" => self::link("/tablesAndLists/missingness.php"),
 					"Search Within a Timespan" => self::link("/search/inTimespan.php"),
                     "Brag: Publications Widget" => self::link("/brag.php")."&showHeaders",
-                    "Social Network of Co-Authorship" => self::link("/socialNetwork/coauthorship.php"),
+                    "Social Network of Co-Authorship" => self::link("/socialNetwork/collaboration.php"),
+                    "Social Network of Grant Collaboration" => self::link("/socialNetwork/collaboration.php")."&grants",
                     "Word Clouds of Publications" => self::link("/publications/wordCloud.php"),
+                    "Active Grant Budgets at a Time" => self::link("/financial/activeBudget.php"),
             ];
 			if (self::isVanderbilt()) {
                 $ary['Evaluate Grant Submissions'] = self::link("/submissions.php");

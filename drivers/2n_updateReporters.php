@@ -5,9 +5,11 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
@@ -50,8 +52,6 @@ function isNewItem($oldReporters, $item, $recordId) {
 function updateReporter($token, $server, $pid, $recordIds) {
 	# clear out old data
 	CareerDev::log("Clearing out old data");
-	echo "Clearing out old data\n";
-
 	$oldReporters = array();
 	$redcapRows = array();
 	$uploadRows = array();
@@ -80,14 +80,13 @@ function updateReporter($token, $server, $pid, $recordIds) {
 
 	# download names
 	$fields = array("record_id", "identifier_last_name", "identifier_middle", "identifier_first_name", "identifier_institution");
-	$redcapData = Download::fields($token, $server, $fields);
+	$redcapData = Download::fieldsForRecords($token, $server, $fields, $recordIds);
 
 	$maxTries = 2;
 	$includedFields = array();
 	foreach ($redcapData as $row) {
 		# for each REDCap Record, download data for each person
 		# search for PI of last_name and at Vanderbilt
-		$max = 0;
 		$firstName = $row['identifier_first_name'];
 		$lastName = $row['identifier_last_name'];
         $firstNames = NameMatcher::explodeFirstName($row['identifier_first_name']);
@@ -96,6 +95,9 @@ function updateReporter($token, $server, $pid, $recordIds) {
 		foreach ($lastNames as $ln) {
 			foreach ($firstNames as $fn) {
 				if ($ln && $fn) {
+				    if (!NameMatcher::isShortName($fn)) {
+				        $fn = "*".$fn."*";
+                    }
 					$listOfNames[] = strtoupper($fn." ".$ln);
 				}
 			}
@@ -104,8 +106,9 @@ function updateReporter($token, $server, $pid, $recordIds) {
 			$listOfNames[] = strtoupper($firstName." ".$lastName);
 		}
 
+        $helperInstitutions = Application::getHelperInstitutions();
 		$institutions = array();
-		$allInstitutions = CareerDev::getInstitutions();
+		$allInstitutions = array_unique(array_merge(CareerDev::getInstitutions(), $helperInstitutions));
 		if ($row['identifier_institution']) {
 			$institutions = preg_split('/\s*,\s*/', strtolower($row['identifier_institution']));
 		}
@@ -116,12 +119,14 @@ function updateReporter($token, $server, $pid, $recordIds) {
 			}
 		}
         $institutions = REDCapManagement::explodeInstitutions($institutions);
+		Application::log("Institutions: ".REDCapManagement::json_encode_with_spaces($institutions));
 
         $included = array();
 		foreach ($listOfNames as $myName) {
 			$query = "/v1/projects/search?query=PiName:".urlencode($myName);
 			$currData = array();
 			$try = 0;
+			$max = 0;   // reset with every new name
 			do {
 				if (isset($myData) && isset($myData['offset']) && $myData['offset'] == 0) {
 					$try++;
@@ -142,10 +147,8 @@ function updateReporter($token, $server, $pid, $recordIds) {
 					$myData = array("totalCount" => 0, "limit" => 0, "offset" => 0);
 				}
 				CareerDev::log($myName." (".$lastName.") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}");
-				echo $myName." (".$lastName.") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}\n";
 			} while (($myData['totalCount'] > $myData['limit'] + $myData['offset']) || (($myData['offset'] == 0) && ($try < $maxTries)));
 			CareerDev::log("{$row['record_id']}: $lastName currData ".count($currData));
-			echo "{$row['record_id']}: $lastName currData ".count($currData)."\n";
 
 			# dissect current data; must have first name to include
 			$pis = array();
@@ -179,10 +182,26 @@ function updateReporter($token, $server, $pid, $recordIds) {
 								$myFirstName = preg_replace("/^\(/", "", $myFirstName);
 								$myFirstName = preg_replace("/\)$/", "", $myFirstName);
 								if (preg_match("/".strtoupper($myFirstName)."/", $itemFirstName) && (preg_match("/$institution/i", $item['orgName']))) {
-									if ((strtoupper($myFirstName) != "HAROLD") || (strtoupper($lastName) != "MOSES") || !preg_match("/HAROLD L/")) {
-										# Hack: exclude HAROLD L MOSES since HAROLD MOSES JR is valid
+									Application::log("Possible match $itemFirstName and $institution vs. '{$item['orgName']}'");
+								    if (in_array($institution, $helperInstitutions)) {
+								        Application::log("Helper institution ($institution)?");
+									    $proceed = FALSE;
+                                        Application::log("Helper institution inspecting cities: ".json_encode(CareerDev::getCities())." vs. '".$item['orgCity']."'");
+									    foreach (CareerDev::getCities() as $city) {
+                                            if (preg_match("/".$city."/i", $item['orgCity'])) {
+                                                Application::log("Matched city");
+                                                $proceed = TRUE;
+                                            }
+                                        }
+                                    } else {
+									    $proceed = TRUE;
+									    if (CareerDev::isVanderbilt() && ((strtoupper($myFirstName) != "HAROLD") && (strtoupper($lastName) == "MOSES") && preg_match("/HAROLD L/i", $myFirstName))) {
+                                            # Hack: exclude HAROLD L MOSES since HAROLD MOSES JR is valid
+									        $proceed = FALSE;
+                                        }
+                                    }
+								    if ($proceed) {
 										CareerDev::log("Including $itemFirstName {$item['orgName']}");
-										echo "Including $itemFirstName {$item['orgName']}\n";
 										$included[] = $item;
 										$found = true;
 										break;
@@ -202,7 +221,6 @@ function updateReporter($token, $server, $pid, $recordIds) {
 				}
 			}
 			CareerDev::log("{$row['record_id']}: $firstName $lastName included ".count($included));
-			echo "{$row['record_id']}: $firstName $lastName included ".count($included)."\n";
 			// echo "itemNames: ".json_encode($pis)."\n";
 		}
 
@@ -240,8 +258,7 @@ function updateReporter($token, $server, $pid, $recordIds) {
 			}
 		}
 		CareerDev::log($row['record_id']." ".count($upload)." rows to upload; skipped ".count($notUpload)." rows from original of ".getReporterCount($oldReporters, $row['record_id']));
-		echo $row['record_id']." ".count($upload)." rows to upload; skipped ".count($notUpload)." rows from original of ".getReporterCount($oldReporters, $row['record_id'])."\n";
-	
+
 		foreach ($upload as $uploadRow) {
 			if (!isset($uploadRows[$uploadRow['record_id']])) {
 				$uploadRows[$uploadRow['record_id']] = array();
@@ -254,7 +271,6 @@ function updateReporter($token, $server, $pid, $recordIds) {
 			$feedback = Upload::rows($upload, $token, $server);
 			$output = json_encode($feedback);
 			CareerDev::log("Upload $firstName $lastName ({$row['record_id']}): ".$output);
-			echo "Upload $firstName $lastName ({$row['record_id']}): ".$output."\n";
 		}
 	}
 
@@ -264,5 +280,7 @@ function updateReporter($token, $server, $pid, $recordIds) {
 		$totalReporterEntriesUploaded += count($rows);
 	}
 
-	CareerDev::saveCurrentDate("Last Federal RePORTER Download", $pid);
+    REDCapManagement::deduplicateByKey($token, $server, $pid, $recordIds, "reporter_nihapplid", "reporter", "reporter");
+
+    CareerDev::saveCurrentDate("Last Federal RePORTER Download", $pid);
 }

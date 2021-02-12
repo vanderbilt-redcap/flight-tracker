@@ -50,13 +50,13 @@ function getPubs($token, $server, $pid, $records) {
 		}
 
 		$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), $pullRecords);
+		foreach ($records as $recordId) {
+		    $maxInstances[$recordId] = REDCapManagement::getMaxInstance($redcapData, $recordId, "citation");
+        }
 		foreach ($redcapData as $row) {
 			if ($row['redcap_repeat_instrument'] == "citation") {
 				$recordId = $row['record_id'];
 				$instance = $row['redcap_repeat_instance'];
-				if (!isset($maxInstances[$recordId]) || ($instance > $maxInstances[$recordId])) {
-					$maxInstances[$recordId] = $instance;
-				}
                 if (!$row['citation_abstract'] && $hasAbstract) {
                     $pubmedMatch = Publications::downloadPMID($row['citation_pmid']);
                     $abstract = $pubmedMatch->getVariable("Abstract");
@@ -228,9 +228,10 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         $orcids = [];
     }
     $choices = REDCapManagement::getChoices($metadata);
-    $defaultInstitutions = Application::getInstitutions();
+    $defaultInstitutions = array_unique(array_merge(Application::getInstitutions(), Application::getHelperInstitutions()));
 
-	foreach ($allLastNames as $recordId => $recLastName) {
+	foreach ($records as $recordId) {
+        $recLastName = $allLastNames[$recordId];
 		$firstName = $allFirstNames[$recordId];
         $lastNames = NameMatcher::explodeLastName(strtolower($recLastName));
         $firstNames = NameMatcher::explodeFirstName(strtolower($firstName));
@@ -331,22 +332,12 @@ function addPMIDsIfNotFound(&$pmids, &$citationIds, $currPMIDs, $recordId) {
 }
 
 function upload($upload, $token, $server) {
-	CareerDev::log("In function upload with ".count($upload)." rows");
-	echo "In function upload with ".count($upload)." rows\n";
-	$uploadSize = 1;
-	$j = 0;
-	while ($j < count($upload)) {
-		$k = 0;
-		$uploadSegments = array();
-		while (($k < $uploadSize) && ($j + k < count($upload))) {
-			$row = $upload[$j + $k];
-			$row['citation_complete'] = '2';
-			array_push($uploadSegments, $row);
-			$k++;
-		}
-		Upload::rows($uploadSegments, $token, $server);
-		$j += $uploadSize;
-	}
+    for ($i = 0; $i < count($upload); $i++) {
+        if ($upload[$i]['redcap_repeat_instrument'] == "citation") {
+            $upload[$i]['citation_complete'] = '2';
+        }
+    }
+    Upload::rows($upload, $token, $server);
 }
 
 function binREDCapRows($redcapData, &$citationIds) {

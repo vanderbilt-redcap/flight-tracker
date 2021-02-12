@@ -24,11 +24,16 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", date("Y-m-d"));
 	} else if ($token && $server) {
 		$has = checkMetadataForFields($token, $server);
+        $pid = CareerDev::getPid();
 
+        if ($pid == 126829) {
+            $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "2021-02-10");
+            $manager->addCron("drivers/2n_updateReporters.php", "updateReporter", "2021-02-10");
+        }
         $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
 		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", "Tuesday");
 		if ($has['coeus']) {
-			$manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", "Thursday");
+			// $manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", "Thursday");
 		}
 		if ($has['news']) {
 			$manager->addCron("news/getNewsItems_func.php", "getNewsItems", "Friday");
@@ -74,25 +79,27 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 
 	$date = date("Y-m-d");
 
+	$records = [];
+
 	if ($token && $server) {
 		$has = checkMetadataForFields($token, $server);
 		if ($has['vfrs']) {
-			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date);
+			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records);
 		}
 		if ($has['news']) {
-			$manager->addCron("news/getNewsItems_func.php", "getNewsItems", $date);
+			$manager->addCron("news/getNewsItems_func.php", "getNewsItems", $date, $records);
 		}
         if ($has['coeus2']) {
-            $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", $date);
+            $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", $date, $records);
         }
         if ($has['ldap']) {
-            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", $date);
+            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", $date, $records);
         }
 
-		$manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", $date);
-		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", $date);
-		$manager->addCron("publications/getAllPubs_func.php", "getPubs", $date);
-		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date);
+		$manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", $date, $records);
+		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", $date, $records);
+		$manager->addCron("publications/getAllPubs_func.php", "getPubs", $date, $records);
+		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records);
 
 		# last because may not have setup. Will fail last
 		if ($has['coeus']) {

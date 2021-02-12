@@ -116,7 +116,7 @@ class CronManager {
 			}
 
 			error_log("reportCronErrors: ".$message);
-			\REDCap::email($adminEmail, "noreply@vumc.org",  Application::getProgramName()." Cron Improper Shutdown", $message);
+			\REDCap::email($adminEmail, Application::getSetting("default_from"),  Application::getProgramName()." Cron Improper Shutdown", $message);
 		}
 	}
 
@@ -192,7 +192,7 @@ class CronManager {
 			}
 			if (!$this->isDebug) {
                 Application::log("Sending ".Application::getProgramName()." email for pid ".$this->pid." to $adminEmail");
-                \REDCap::email($adminEmail, "noreply@vumc.org", Application::getProgramName()." Cron Report", $text);
+                \REDCap::email($adminEmail, Application::getSetting("default_from"), Application::getProgramName()." Cron Report", $text);
             }
 		}
 	}
@@ -215,7 +215,7 @@ class CronManager {
 			$adminEmail .= ",".Application::getFeedbackEmail();
 		}
 
-		\REDCap::email($adminEmail, "noreply@vumc.org", Application::getProgramName()." Cron Error", $cronjob->getTitle()."<br><br>".$e->getMessage()."<br>".$e->getTraceAsString());
+		\REDCap::email($adminEmail, Application::getSetting("default_from"), Application::getProgramName()." Cron Error", $cronjob->getTitle()."<br><br>".$e->getMessage()."<br>".$e->getTraceAsString());
 		Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".$e->getTraceAsString());
 	}
 

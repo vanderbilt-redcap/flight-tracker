@@ -37,8 +37,24 @@ class SocialNetworkChart extends Chart {
         return FALSE;
     }
 
-    public function getHTML($width, $height) {
-        $html = "
+    private static function makeLegend($legendInfo, $width) {
+        if (!empty($legendInfo)) {
+            $html = "<div style='text-align: center; font-size: 12px; width: {$width}px;' class='centered'>";
+            $spans = [];
+            foreach ($legendInfo as $color => $label) {
+                $spans[] = "<span style='height: 20px; background-color: $color;'>&nbsp;&nbsp;&nbsp;</span> $label";
+            }
+            $html .= implode("&nbsp;&nbsp;&nbsp;", $spans);
+            $html .= "</div>";
+            return $html;
+        }
+        return "";
+    }
+
+    public function getHTML($width, $height, $showLabels = TRUE, $legendInfo = []) {
+        $html = "";
+        $html .= self::makeLegend($legendInfo, $width);
+        $html .= "
 <div id='{$this->name}' class='centered' style='width: {$width}px; height: {$height}px; background-color: white;'></div>
 
 <script>
@@ -79,6 +95,13 @@ class SocialNetworkChart extends Chart {
         nodeTemplate.showSystemTooltip = true;
         nodeTemplate.propertyFields.fill = 'color';
         nodeTemplate.tooltipText = '{name}\'s connections';  // {total}
+";
+        if (!$showLabels) {
+            $html .= "
+            nodeTemplate.label.disabled = true;
+            ";
+        }
+        $html .= "
 
         // when rolled over the node, make all the links rolled-over
         nodeTemplate.events.on('over', function(event) {

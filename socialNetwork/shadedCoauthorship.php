@@ -396,7 +396,7 @@ function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRe
                                     if (!isset($matches[$toRecordId])) {
                                         $matches[$toRecordId] = [];
                                     }
-                                    $matches[$toRecordId][] = $row['redcap_repeat_instrument'];
+                                    $matches[$toRecordId][] = $row['redcap_repeat_instance'];
                                     $ts = getCitationTimestamp($row);
                                     if ($ts) {
                                         $pubs["$fromRecordId:$toRecordId:".$row['redcap_repeat_instance']] = $ts;

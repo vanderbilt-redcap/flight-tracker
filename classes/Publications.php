@@ -602,18 +602,15 @@ class Publications {
                     if (!preg_match("/PMC/", $pmcid)) {
                         $pmcid = "PMC" . $pmcid;
                     }
-                    $pmcPhrase = " " . $pmcid . ".";
                 }
                 $pmidsPulled[] = $pmid;
 
-                $iCite = new iCite($pmid);
                 $row = [
                     "record_id" => "$recordId",
                     "redcap_repeat_instrument" => "citation",
                     "redcap_repeat_instance" => "$instance",
                     "citation_pmid" => $pmid,
                     "citation_pmcid" => $pmcid,
-                    "citation_doi" => $iCite->getVariable($pmid, "doi"),
                     "citation_include" => "",
                     "citation_source" => $src,
                     "citation_authors" => implode(", ", $authors),
@@ -628,28 +625,40 @@ class Publications {
                     "citation_day" => $day,
                     "citation_pages" => $pages,
                     "citation_grants" => implode("; ", $assocGrants),
-                    "citation_is_research" => $iCite->getVariable($pmid, "is_research_article"),
-                    "citation_num_citations" => $iCite->getVariable($pmid, "citation_count"),
-                    "citation_citations_per_year" => $iCite->getVariable($pmid, "citations_per_year"),
-                    "citation_expected_per_year" => $iCite->getVariable($pmid, "expected_citations_per_year"),
-                    "citation_field_citation_rate" => $iCite->getVariable($pmid, "field_citation_rate"),
-                    "citation_nih_percentile" => $iCite->getVariable($pmid, "nih_percentile"),
-                    "citation_rcr" => $iCite->getVariable($pmid, "relative_citation_ratio"),
-                    "citation_icite_last_update" => date("Y-m-d"),
                     "citation_complete" => "2",
                 ];
                 if ($hasAbstract) {
                     $row['citation_abstract'] = $abstract;
                 }
 
-                $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields);
-                $row = array_merge($row, $altmetricRow);
                 if (in_array($pmid, $confirmedPMIDs)) {
                     $row['citation_include'] = '1';
                 }
                 $row = REDCapManagement::filterForREDCap($row, $metadataFields);
                 array_push($upload, $row);
                 $instance++;
+            }
+
+            $iCite = new iCite($pmidsPulled);
+			foreach ($pmidsPulled as $pmid) {
+                for ($i = 0; $i < count($upload); $i++) {
+                    if ($upload[$i]['citation_pmid'] == $pmid) {
+                        $upload[$i]["citation_doi"] = $iCite->getVariable($pmid, "doi");
+                        $upload[$i]["citation_is_research"] = $iCite->getVariable($pmid, "is_research_article");
+                        $upload[$i]["citation_num_citations"] = $iCite->getVariable($pmid, "citation_count");
+                        $upload[$i]["citation_citations_per_year"] = $iCite->getVariable($pmid, "citations_per_year");
+                        $upload[$i]["citation_expected_per_year"] = $iCite->getVariable($pmid, "expected_citations_per_year");
+                        $upload[$i]["citation_field_citation_rate"] = $iCite->getVariable($pmid, "field_citation_rate");
+                        $upload[$i]["citation_nih_percentile"] = $iCite->getVariable($pmid, "nih_percentile");
+                        $upload[$i]["citation_rcr"] = $iCite->getVariable($pmid, "relative_citation_ratio");
+                        if (in_array("citation_icite_last_update", $metadataFields)) {
+                            $upload[$i]["citation_icite_last_update"] = date("Y-m-d");
+                        }
+
+                        $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields);
+                        $row = array_merge($row, $altmetricRow);
+                    }
+                }
             }
 
             if (!$recordId) {

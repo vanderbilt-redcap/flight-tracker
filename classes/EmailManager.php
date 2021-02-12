@@ -423,6 +423,7 @@ class EmailManager {
 
 	public static function getSurveyLinks($pid, $records, $instrument, $maxInstances = array()) {
 		$newInstances = array();
+		$_GET['pid'] = $pid;    // for the Application::link on the cron
 		foreach ($records as $recordId) {
 			if ($maxInstances[$recordId]) {
 				$newInstances[$recordId] = $maxInstances[$recordId] + 1;

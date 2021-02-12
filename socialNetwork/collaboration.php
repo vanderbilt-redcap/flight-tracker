@@ -9,6 +9,7 @@ use \Vanderbilt\CareerDevLibrary\Stats;
 use \Vanderbilt\CareerDevLibrary\BarChart;
 use \Vanderbilt\CareerDevLibrary\SocialNetworkChart;
 use \Vanderbilt\CareerDevLibrary\Citation;
+use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Download.php");
@@ -19,6 +20,7 @@ require_once(dirname(__FILE__)."/../classes/Stats.php");
 require_once(dirname(__FILE__)."/../classes/BarChart.php");
 require_once(dirname(__FILE__)."/../classes/SocialNetworkChart.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
+require_once(dirname(__FILE__)."/../classes/Grant.php");
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -33,6 +35,7 @@ $metadata = Download::metadata($token, $server);
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 $choices = REDCapManagement::getChoices($metadata);
 $metadataLabels = REDCapManagement::getLabels($metadata);
+$userids = Download::userids($token, $server);
 if ($_GET['cohort'] && ($_GET['cohort'] != "all")) {
     $records = Download::cohortRecordIds($token, $server, $metadata, $_GET['cohort']);
 } else if ($_GET['cohort'] == "all") {
@@ -58,12 +61,38 @@ $otherMentorsOnly = ($_GET['other_mentors'] == "on") && isForIndividualScholars(
 
 $cohorts = new Cohorts($token, $server, $metadata);
 
+if (isset($_GET['grants'])) {
+    $title = "Grant Collaborations Among Scholars";
+    $inlineDefinitions = [
+        "collaborations" => "Grants <u>with</u> others in network",
+    ];
+    $topDefinitions = [
+        "Scholar" => "The person whose grant is being examined.",
+        "Collaborator" => "A different person who has investigated a grant as a PI or Co-PI with the Scholar.",
+        "Connection" => "A grant awarded with a Scholar and a Collaborator. (One grant may have more than one connection.)",
+    ];
+} else {
+    $title = "Publishing Collaborations Among Scholars";
+    $inlineDefinitions = [
+        "given" => "Citations <u>to</u> others in network",
+        "received" => "Citations <u>by</u> others in network",
+    ];
+    $topDefinitions = [
+        "Scholar" => "The person whose publication is being examined.",
+        "Collaborator" => "A different person who has co-authored a paper with the Scholar.",
+        "Connection" => "A paper published with a Scholar and a Collaborator. (One paper may have more than one connection.)",
+    ];
+}
+
 if ($includeHeaders) {
-    echo "<h1>Publishing Collaborations Among Scholars</h1>\n";
-    list($url, $params) = REDCapManagement::splitURL(Application::link("socialNetwork/coauthorship.php"));
+    echo "<h1>$title</h1>\n";
+    list($url, $params) = REDCapManagement::splitURL(Application::link("socialNetwork/collaboration.php"));
     echo "<form method='GET' action='$url'>\n";
     foreach ($params as $param => $value) {
         echo "<input type='hidden' name='$param' value='$value'>";
+    }
+    if (isset($_GET['grants'])) {
+        echo "<input type='hidden' name='grants' value='1'>";
     }
     echo "<p class='centered'><a href='" . Application::link("cohorts/addCohort.php") . "'>Make a Cohort</a> to View a Sub-Group<br>";
     echo $cohorts->makeCohortSelect($_GET['cohort'], "", TRUE) . "<br>";
@@ -81,22 +110,14 @@ if ($includeHeaders) {
         }
     }
 
-    echo "<span class='mentorCheckbox'$style><input type='checkbox' name='mentors'{$checked['mentors']}> Include Mentors' Collaborations with Scholars<br></span>";
-    echo "<span class='mentorCheckbox'$style><input type='checkbox' name='other_mentors'{$checked['other_mentors']}> Show Only Collaborations with Multiple Mentors<br></span>";
+    if (!isset($_GET['grants'])) {
+        echo "<span class='mentorCheckbox'$style><input type='checkbox' name='mentors'{$checked['mentors']}> Include Mentors' Collaborations with Scholars<br></span>";
+        echo "<span class='mentorCheckbox'$style><input type='checkbox' name='other_mentors'{$checked['other_mentors']}> Show Only Collaborations with Multiple Mentors<br></span>";
+    }
     echo "<button>Go!</button></p></form>";
 }
 
 if (isset($_GET['cohort']) && !empty($records)) {
-    $inlineDefinitions = [
-        "given" => "Citations <u>to</u> others in network",
-        "received" => "Citations <u>by</u> others in network",
-    ];
-    $topDefinitions = [
-        "Scholar" => "The person whose publication is being examined.",
-        "Collaborator" => "A different person who has co-authored a paper with the Scholar.",
-        "Connection" => "A paper published with a Scholar and a Collaborator. (One paper may have more than one connection.)",
-    ];
-
     $names = Download::names($token, $server);
     if ($otherMentorsOnly) {
         $possibleLastNames = [];
@@ -110,9 +131,25 @@ if (isset($_GET['cohort']) && !empty($records)) {
         $mentors = Download::primaryMentors($token, $server);
         addMentorNamesForRecords($possibleFirstNames, $possibleLastNames, $records, $mentors, $highlightedRecord);
     }
-    $fields = ["record_id", "citation_include", "citation_authors", "citation_year", "citation_month", "citation_day"];
-    if (!in_array($indexByField, $fields)) {
-        $fields[] = $indexByField;
+    $citationFields = ["record_id", "citation_include", "citation_authors", "citation_year", "citation_month", "citation_day"];
+    if (!in_array($indexByField, $citationFields)) {
+        $citationFields[] = $indexByField;
+    }
+    $grantFields = [
+        "record_id",
+        "identifier_first_name",
+        "identifier_last_name",
+        "exporter_pi_names",
+        "exporter_full_project_num",
+        "reporter_contactpi",
+        "reporter_otherpis",
+        "reporter_projectnumber",
+        "coeus2_collaborators",
+        "coeus2_agency_grant_number",
+        "coeus2_award_status",
+        ];
+    if (!in_array($indexByField, $grantFields)) {
+        $grantFields[] = $indexByField;
     }
 
     $matches = [];
@@ -121,14 +158,22 @@ if (isset($_GET['cohort']) && !empty($records)) {
     if ($highlightedRecord) {
         foreach ($records as $fromRecordId) {
             if ($fromRecordId == $highlightedRecord) {
-                $matches[$highlightedRecord] = findMatchesForRecord($index, $pubs, $token, $server, $fields, $highlightedRecord, $possibleFirstNames, $possibleLastNames, $indexByField, $records);
+                if (isset($_GET['grants'])) {
+                    $matches[$highlightedRecord] = findGrantMatchesForRecord($index, $token, $server, $grantFields, $highlightedRecord, $indexByField, $records, $userids, $names);
+                } else {
+                    $matches[$highlightedRecord] = findMatchesForRecord($index, $pubs, $token, $server, $citationFields, $highlightedRecord, $possibleFirstNames, $possibleLastNames, $indexByField, $records);
+                }
             } else {
                 $matches[$fromRecordId] = [];
             }
         }
     } else {
         foreach ($records as $fromRecordId) {
-            $fromMatches = findMatchesForRecord($index, $pubs, $token, $server, $fields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records);
+            if (isset($_GET['grants'])) {
+                $fromMatches = findGrantMatchesForRecord($index, $token, $server, $grantFields, $fromRecordId, $indexByField, $records, $userids, $names);
+            } else {
+                $fromMatches = findMatchesForRecord($index, $pubs, $token, $server, $citationFields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records);
+            }
             if ($otherMentorsOnly) {
                 if (count($fromMatches) > 1) {
                     $matches[$fromRecordId] = $fromMatches;
@@ -149,12 +194,21 @@ if (isset($_GET['cohort']) && !empty($records)) {
         echo "<table style='margin: 30px auto; max-width: 800px;' class='bordered'>\n";
         echo "<tr><td colspan='2'><h4 class='nomargin'>Definitions</h4>";
         $lines = [];
-        foreach ($topDefinitions as $term => $def) {
-            $lines[] = "<b>$term</b> - $def";
+        foreach ($topDefinitions as $term => $definition) {
+            $lines[] = "<b>$term</b> - $definition";
         }
         echo "<div class='centered'>".implode("<br>", $lines)."</div>";
-        foreach (array_keys($connections) as $type) {
-            echo "<tr><td colspan='2' class='centered green'><h4 class='nomargin'>".ucfirst($type)."</h4>{$inlineDefinitions[$type]}</td></tr>";
+        if (isset($_GET['grants'])) {
+            $connections['collaborations'] = $connections['given'];
+            $stats['collaborations'] = $stats['given'];
+            $totalCollaborators['collaborations'] = $totalCollaborators['given'];
+            $maxCollaborators['collaborations'] = $maxCollaborators['given'];
+            $maxConnections['collaborations'] = $maxConnections['given'];
+            $maxNames['collaborations'] = $maxNames['given'];
+            $maxCollabNames['collaborations'] = $maxCollabNames['given'];
+        }
+        foreach ($inlineDefinitions as $type => $definition) {
+            echo "<tr><td colspan='2' class='centered green'><h4 class='nomargin'>".ucfirst($type)."</h4>$definition</td></tr>";
             if ($stats) {
                 echo "<tr><th>Total Connections</th><td>".REDCapManagement::pretty(array_sum($stats[$type]->getValues()))."</td></tr>\n";
                 echo "<tr><th>Number of Scholars with Connections</th><td>n = ".REDCapManagement::pretty($stats[$type]->getN())."</td></tr>\n";
@@ -166,7 +220,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
                 echo "<tr><th>Standard Deviation</th><td>&sigma; = ".REDCapManagement::pretty($stats[$type]->getSigma(), 1)."</td></tr>\n";
                 echo "<tr><th>Maximum Connections</th><td>max = ".REDCapManagement::pretty($maxConnections[$type])." (".REDCapManagement::makeConjunction($maxNames[$type]).")</td></tr>\n";
                 echo "<tr><th>Maximum Number of Collaborators</th><td>max = ".REDCapManagement::pretty($maxCollaborators[$type])." (".REDCapManagement::makeConjunction($maxCollabNames[$type]).")</td></tr>\n";
-                if ($includeMentors && ($type == "given")) {
+                if ($includeMentors && ($type != "received")) {
                     echo "<tr><th>Average Connections per Mentor with All Scholars</th><td>".REDCapManagement::pretty($mentorConnections, 1)."</td></tr>\n";
                 }
             }
@@ -180,7 +234,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
     echo $socialNetwork->getImportHTML();
     echo $socialNetwork->getHTML(900, 700);
 
-    if ($includeHeaders) {
+    if ($includeHeaders && !isset($_GET['grants'])) {
         echo "<br><br>";
         list($barChartCols, $barChartLabels) = makePublicationColsAndLabels($pubs);
         $chart = new BarChart($barChartCols, $barChartLabels, "barChart");
@@ -416,6 +470,91 @@ function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
         }
     }
     return [$connections, $chartData, $uniqueNames];
+}
+
+$grantFields = [
+    "record_id",
+    "identifier_first_name",
+    "identifier_last_name",
+    "exporter_pi_names",
+    "exporter_full_project_num",
+    "reporter_contactpi",
+    "reporter_otherpis",
+    "reporter_projectnumber",
+    "coeus2_collaborators",
+    "coeus2_agency_grant_number",
+    "coeus2_award_status",
+];
+
+function findGrantMatchesForRecord(&$index, $token, $server, $fields, $fromRecordId, $indexByField, $records, $userids, $names) {
+    $redcapData = Download::fieldsForRecords($token, $server, $fields, [$fromRecordId]);
+    $matches = [];
+    foreach ($redcapData as $row) {
+        if ($row['redcap_repeat_instrument'] == "") {
+            $index[$fromRecordId] = $row[$indexByField];
+        }
+    }
+    $authors = [];
+    # change to $grants->getGrants('all_pis')???
+    foreach ($redcapData as $row) {
+        $instance = $row['redcap_repeat_instance'];
+        $instrument = $row['redcap_repeat_instrument'];
+        $awardNo = "";
+        if ($instrument == "exporter") {
+            $awardNo = $row["exporter_full_project_num"];
+        } else if ($instrument == "reporter") {
+            $awardNo = $row["reporter_projectnumber"];
+        } else if ($instrument == "coeus2") {
+            $awardNo = $row["coeus2_agency_grant_number"];
+        }
+        if ($awardNo) {
+            $baseAwardNo = Grant::translateToBaseAwardNumber($awardNo);
+            if (!isset($authors[$baseAwardNo])) {
+                $authors[$baseAwardNo] = [];
+            }
+            $myAuthors = [];
+            if ($instrument == "exporter") {
+                $myAuthors = preg_split("/\s*;\s*/", $row['exporter_pi_names']);
+            } else if ($instrument == "reporter") {
+                if ($row['reporter_otherpis']) {
+                    $myAuthors = preg_split("/\s*;\s*/", $row["reporter_otherpis"]);
+                }
+                $myAuthors[] = $row['reporter_contactpi'];
+            } else if (($instrument == "coeus2") && ($row["coeus2_award_status"] == "Awarded")) {
+                foreach ($userids as $recordId => $userid) {
+                    if ($userid && $names[$recordId]
+                        && (preg_match("/\($userid;/", $row['coeus2_collaborators'])
+                            || preg_match("/$userid \(/", $row['coeus2_collaborators']))) {
+                        $myAuthors[] = $names[$recordId];
+                    }
+                }
+            }
+            for ($i = 0; $i < count($myAuthors); $i++) {
+                $myAuthors[$i] = trim($myAuthors[$i]);
+            }
+            foreach ($myAuthors as $myAuthor) {
+                list($myAuthorLast, $myAuthorFirst) = NameMatcher::splitName($myAuthor);
+                $authorAlreadyPresent = FALSE;
+                foreach ($authors[$baseAwardNo] as $author) {
+                    list($authorLast, $authorFirst) = NameMatcher::splitName($author);
+                    if (NameMatcher::matchByInitials($myAuthorLast, $myAuthorFirst, $authorLast, $authorFirst)) {
+                        $authorAlreadyPresent = TRUE;
+                        break;
+                    }
+                }
+                if (!$authorAlreadyPresent && ($matchRecordId = NameMatcher::matchName($myAuthorLast, $myAuthorFirst, $token, $server))) {
+                    if (($matchRecordId != $fromRecordId) && in_array($matchRecordId, $records)) {
+                        if (!isset($matches[$matchRecordId])) {
+                            $matches[$matchRecordId] = [];
+                        }
+                        $matches[$matchRecordId][] = $instance;
+                        $authors[$baseAwardNo][] = $myAuthor;
+                    }
+                }
+            }
+        }
+    }
+    return $matches;
 }
 
 function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records) {

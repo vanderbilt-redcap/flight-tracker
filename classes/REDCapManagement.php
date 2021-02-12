@@ -692,24 +692,50 @@ class REDCapManagement {
 	    return $newAry;
     }
 
-    public static function isDate($str) {
-	    if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
-	        $nodes = preg_split("/[\/\-]/", $str);
-	        $earliestYear = 1900;
-	        if (count($nodes) == 3) {
-                if (($nodes[0] >= $earliestYear) && ($nodes[1] <= 12) && ($nodes[2] <= 31)) {
-                    # YMD
-                    return TRUE;
-                } else if (($nodes[0] <= 12) && ($nodes[1] <= 31) && ($nodes[2] >= $earliestYear)) {
-                    # MDY
-                    return TRUE;
-                } else if (($nodes[0] <= 31) && ($nodes[1] <= 12) && ($nodes[2] >= $earliestYear)) {
+    public static function isDMY($str) {
+        if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
+            $nodes = preg_split("/[\/\-]/", $str);
+            $earliestYear = 1900;
+            if (count($nodes) == 3) {
+                if (($nodes[0] <= 31) && ($nodes[1] <= 12) && (($nodes[2] >= $earliestYear) || ($nodes[2] < 100))) {
                     # DMY
                     return TRUE;
                 }
             }
         }
         return FALSE;
+    }
+
+    public static function isMDY($str) {
+        if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
+            $nodes = preg_split("/[\/\-]/", $str);
+            $earliestYear = 1900;
+            if (count($nodes) == 3) {
+                if (($nodes[0] <= 12) && ($nodes[1] <= 31) && (($nodes[2] >= $earliestYear) || ($nodes[2] < 100))) {
+                    # MDY
+                    return TRUE;
+                }
+            }
+        }
+        return FALSE;
+    }
+
+    public static function isYMD($str) {
+        if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
+            $nodes = preg_split("/[\/\-]/", $str);
+            $earliestYear = 1900;
+            if (count($nodes) == 3) {
+                if ((($nodes[0] >= $earliestYear) || ($nodes[0] < 100)) && ($nodes[1] <= 12) && ($nodes[2] <= 31)) {
+                    # YMD
+                    return TRUE;
+                }
+            }
+        }
+	    return FALSE;
+    }
+
+    public static function isDate($str) {
+	    return self::isYMD($str) || self::isDMY($str) || self::isMDY($str);
     }
 
     public static function convertDollarsToNumber($value) {
@@ -732,6 +758,60 @@ class REDCapManagement {
             return (db_num_rows($q) > 0);
         }
 	    return FALSE;
+    }
+
+    public static function regexInDirectory($regex, $dir) {
+	    $files = scandir($dir);
+	    $foundFiles = [];
+	    foreach ($files as $file) {
+	        if (preg_match($regex, $file)) {
+	            $foundFiles[] = $file;
+            }
+        }
+	    return $foundFiles;
+    }
+
+    public static function deduplicateByKey($token, $server, $pid, $records, $field, $prefix, $instrument) {
+	    $fields = ["record_id", $field];
+	    foreach ($records as $recordId) {
+            $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+            $values = [];
+            foreach ($redcapData as $row) {
+                if ($row['redcap_repeat_instrument'] == $instrument) {
+                    if (!in_array($row[$field], $values)) {
+                        $values[] = $row[$field];
+                    } else {
+                        // duplicate => delete
+                        $instance = $row['redcap_repeat_instance'];
+                        Application::log("Removing instance $instance of $recordId because duplicate");
+                        Upload::deleteForm($token, $server, $pid, $prefix, $recordId, $instance);
+                    }
+                }
+            }
+        }
+    }
+
+    public static function copyTempFileToTimestamp($file, $timespanInSeconds) {
+	    if (strpos($file, APP_PATH_TEMP) === FALSE) {
+	        throw new \Exception("File $file must be in temporary directory");
+        }
+	    if (file_exists($file)) {
+	        $dir = dirname($file);
+	        $basename = preg_replace("/^\d\d\d\d\d\d\d\d\d\d\d\d\d\d_/", "", basename($file));
+	        $filename = date("YmdHis", time() + $timespanInSeconds)."_".$basename;
+            $newLocation = $dir."/".$filename;
+            Application::log("Copying $file to $newLocation");
+            $fpIn = fopen($file, "r");
+            $fpOut = fopen($newLocation, "w");
+            while ($line = fgets($fpIn)) {
+                fwrite($fpOut, $line);
+            }
+            fclose($fpOut);
+            fclose($fpIn);
+            return $newLocation;
+        } else {
+	        throw new \Exception("File $file does not exist");
+        }
     }
 
     public static function explodeInstitutions($institutions) {
@@ -992,13 +1072,13 @@ class REDCapManagement {
         return $row;
     }
 
-	public static function YMD2MDY($ymd) {
-	    $ts = strtotime($ymd);
-	    if ($ts) {
+    public static function YMD2MDY($ymd) {
+        $ts = strtotime($ymd);
+        if ($ts) {
             return date("m-d-Y", $ts);
         }
-	    echo "";
-	}
+        echo "";
+    }
 
     public static function prettyMoney($n, $displayCents = TRUE) {
         if ($displayCents) {
@@ -1097,27 +1177,43 @@ class REDCapManagement {
         }
     }
 
-
-
     public static function MDY2YMD($mdy) {
-		$nodes = preg_split("/[\/\-]/", $mdy);
-		if (count($nodes) == 3) {
-			$month = $nodes[0];
-			$day = $nodes[1];
-			$year = $nodes[2];
-			if ($year < 100) {
-				if ($year > 30) {
-					$year += 1900;
-				} else {
-					$year += 2000;
-				}
-			}
-			return $year."-".$month."-".$day;
-		}
-		return "";
-	}
+        $nodes = preg_split("/[\/\-]/", $mdy);
+        if (count($nodes) == 3) {
+            $month = $nodes[0];
+            $day = $nodes[1];
+            $year = $nodes[2];
+            if ($year < 100) {
+                if ($year > 30) {
+                    $year += 1900;
+                } else {
+                    $year += 2000;
+                }
+            }
+            return $year."-".$month."-".$day;
+        }
+        return "";
+    }
 
-	public static function addYears($date, $years) {
+    public static function DMY2YMD($mdy) {
+        $nodes = preg_split("/[\/\-]/", $mdy);
+        if (count($nodes) == 3) {
+            $day = $nodes[0];
+            $month = $nodes[1];
+            $year = $nodes[2];
+            if ($year < 100) {
+                if ($year > 30) {
+                    $year += 1900;
+                } else {
+                    $year += 2000;
+                }
+            }
+            return $year."-".$month."-".$day;
+        }
+        return "";
+    }
+
+    public static function addYears($date, $years) {
 	    $ts = strtotime($date);
 	    $year = date("Y", $ts);
 	    $year += $years;
@@ -1347,6 +1443,12 @@ class REDCapManagement {
 						"followup_prev3_primary_dept",
 						"followup_prev4_primary_dept",
 						"followup_prev5_primary_dept",
+                        "init_import_primary_dept",
+                        "init_import_prev1_primary_dept",
+                        "init_import_prev2_primary_dept",
+                        "init_import_prev3_primary_dept",
+                        "init_import_prev4_primary_dept",
+                        "init_import_prev5_primary_dept",
 						);
 		$fields["resources"] = array("resources_resource");
 		$fields["institutions"] = array("check_institution", "followup_institution");

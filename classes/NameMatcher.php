@@ -36,8 +36,22 @@ class NameMatcher {
     }
 
     private static function doNamesMatch($name1, $name2) {
+        if (isset($_GET['test'])) {
+            Application::log("doNamesMatch $name1 $name2");
+        }
         if (strtolower($name1) == strtolower($name2)) {
             return TRUE;
+        }
+        $nodes1 = preg_split("/[\s\-]+/", $name1);
+        $nodes2 = preg_split("/[\s\-]+/", $name2);
+        if ((count($nodes1) > 1) || (count($nodes2) > 1)) {
+            foreach ($nodes1 as $node1) {
+                foreach ($nodes2 as $node2) {
+                    if (!self::isInitial($node1) && !self::isInitial($node2) && strtolower($node1) == strtolower($node2)) {
+                        return TRUE;
+                    }
+                }
+            }
         }
         $pairs = [
             [$name1, $name2],
@@ -62,22 +76,35 @@ class NameMatcher {
                 preg_replace($compoundRegex, "", $name2),
             ];
         }
+        if (isset($_GET['test'])) {
+            Application::log("doNamesMatch $name1 $name2: ".json_encode($pairs));
+        }
         foreach ($pairs as $pair) {
             $n1 = $pair[0];
             $n2 = $pair[1];
-            if (!self::isShortLastName($n1)) {
+            if (!self::isShortName($n1)) {
                 if (preg_match("/".$n1."/i", $n2)) {
                     return TRUE;
                 }
-            } else if (strtolower($n1) == strtolower($n2)) {
+            }
+            if (!self::isShortName($n2)) {
+                if (preg_match("/".$n2."/i", $n1)) {
+                    return TRUE;
+                }
+            }
+            if (strtolower($n1) == strtolower($n2)) {
                 return TRUE;
             }
         }
         return FALSE;
     }
 
+    public static function isShortName($name) {
+        return (strlen($name) <= 4);
+    }
+
     public static function isShortLastName($lastName) {
-        return (strlen($lastName) <= 4);
+        return self::isShortName($lastName);
     }
 
     public static function makeUncommonDefinition() {
@@ -113,12 +140,73 @@ class NameMatcher {
                     $sFirst = self::prepareName($row['identifier_first_name']);
                     $sLast = self::prepareName($row['identifier_last_name']);
                     $found = FALSE;
-                    foreach (self::explodeAlternates($sFirst) as $sFirst) {
-                        foreach (self::explodeAlternates($sLast) as $sLast) {
-                            if (self::doNamesMatch($sFirst, $myFirst) && self::doNamesMatch($sLast, $myLast)) {
-                                $recordIds[$i] = $row['record_id'];
-                                $found = TRUE;
-                                break;  // inner
+                    foreach (self::explodeFirstName($sFirst) as $sFirst) {
+                        foreach (self::explodeLastName($sLast) as $sLast) {
+                            if (self::doNamesMatch($sLast, $myLast)) {
+                                if (isset($_GET['test'])) {
+                                    Application::log("Matched $sLast $myLast; comparing $sFirst $myFirst");
+                                }
+                                if (self::isInitialsOnly($myFirst)) {
+                                    if (isset($_GET['test'])) {
+                                        Application::log("isInitialsOnly $myFirst");
+                                    }
+                                    if (self::matchByInitials($sLast, $sFirst, $myLast, $myFirst)) {
+                                        $recordIds[$i] = $row['record_id'];
+                                        $found = TRUE;
+                                        break;  // inner
+                                    }
+                                }
+                                if (self::isFirstInitalMiddleName($myFirst) || self::isFirstInitalMiddleName($sFirst)) {
+                                    if (isset($_GET['test'])) {
+                                        Application::log("isFirstInitalMiddleName $myFirst and $sFirst");
+                                    }
+                                    $sFirstInitial = self::turnIntoOneInitial($sFirst);
+                                    $myFirstInitial = self::turnIntoOneInitial($myFirst);
+                                    if (self::matchByInitials($sLast, $sFirstInitial, $myLast, $myFirstInitial)) {
+                                        $recordIds[$i] = $row['record_id'];
+                                        $found = TRUE;
+                                        break;  // inner
+                                    }
+                                    $myNodes = preg_split("/\s+/", $myFirst);
+                                    $sNodes = preg_split("/\s+/", $sFirst);
+                                    if (isset($_GET['test'])) {
+                                        Application::log("isFirstInitalMiddleName nodes ".json_encode($myNodes)." and ".json_encode($sNodes));
+                                    }
+                                    if ((count($myNodes) > 1) && (count($sNodes) > 1)) {
+                                        $matchFound = FALSE;
+                                        foreach ($myNodes as $myNode) {
+                                            foreach ($sNodes as $sNode) {
+                                                if (self::doNamesMatch($myNode, $sNode)) {
+                                                    $matchFound = TRUE;
+                                                }
+                                            }
+                                        }
+                                        if ($matchFound) {
+                                            $recordIds[$i] = $row['record_id'];
+                                            $found = TRUE;
+                                            break;  // inner
+                                        }
+                                    } else if (count($myNodes) > 1) {
+                                        $myMiddleName = $myNodes[1];
+                                        if (self::doNamesMatch($sFirst, $myMiddleName)) {
+                                            $recordIds[$i] = $row['record_id'];
+                                            $found = TRUE;
+                                            break;  // inner
+                                        }
+                                    } else if (count($sNodes) > 1) {
+                                        $sMiddleName = $sNodes[1];
+                                        if (self::doNamesMatch($sMiddleName, $myFirst)) {
+                                            $recordIds[$i] = $row['record_id'];
+                                            $found = TRUE;
+                                            break;  // inner
+                                        }
+                                    }
+                                }
+                                if (self::doNamesMatch($sFirst, $myFirst)) {
+                                    $recordIds[$i] = $row['record_id'];
+                                    $found = TRUE;
+                                    break;  // inner
+                                }
                             }
                         }
                         if ($found) {
@@ -142,8 +230,8 @@ class NameMatcher {
 
 	public static function explodeFirstName($first) {
         $first = preg_replace("/[\(\)]/", "", $first);
-	    $nodes = preg_split("/\s+/", $first);
-	    $newNodes = array();
+	    $nodes = preg_split("/[\s\-]+/", $first);
+	    $newNodes = [$first];
 	    foreach ($nodes as $node) {
 	        if ($node && !in_array($node, $newNodes)) {
                 $newNodes[] = $node;
@@ -154,7 +242,7 @@ class NameMatcher {
 
     public static function explodeLastName($last) {
 	    $nodes = preg_split("/[\s\-]+/", $last);
-	    $newNodes = array($last);
+	    $newNodes = [$last];
 	    $i = 0;
 	    $suffixesInUpper = ["I", "II", "III", "IV", "JR", "JR.", "SR", "SR."];
 	    $prefixesInLower = ["van", "von", "de"];
@@ -486,8 +574,33 @@ class NameMatcher {
         return $returnValues;
     }
 
+    private static function isFirstInitalMiddleName($name) {
+        if (preg_match("/^\w\.[\s\-]\w+/", $name)) {
+            return TRUE;
+        }
+        if (preg_match("/^\w[\s\-]\w+/", $name)) {
+            return TRUE;
+        }
+        return FALSE;
+    }
+
+    // TRUE for E
+    // TRUE for E M or E. M.
+    // TRUE for W E B or W. E. B.
+    // FALSE for WEB or W.E.B.
+    // FALSE for Ryan
+    private static function isInitialsOnly($name) {
+        $nodes = preg_split("/[\s\-]+/", $name);
+        foreach ($nodes as $node) {
+            if (!self::isInitial($node)) {
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }
+
 	private static function isInitial($name) {
-        return preg_match("/^\w\.$/", $name);
+        return preg_match("/^\w\.?$/", $name);
     }
 
     private static function padWithSpaces($nodes, $parts) {

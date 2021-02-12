@@ -587,35 +587,38 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
         if ($row['coeus2_award_status'] == "Awarded") {
             list($pid, $event_id) = self::getProjectIdentifiers($token);
             $awardNo = self::cleanAwardNo($row['coeus2_agency_grant_number']);
-            $choices = REDCapManagement::getChoices($this->metadata);
-            $grant = new Grant($this->lexicalTranslator);
-            $roleText = $choices['coeus2_role'][$row['coeus2_role']];
+            if ($awardNo != '000') {
+                $choices = REDCapManagement::getChoices($this->metadata);
+                $grant = new Grant($this->lexicalTranslator);
+                $roleText = $choices['coeus2_role'][$row['coeus2_role']];
 
-            $grant->setNumber($awardNo);
-            $grant->setVariable('source', "coeus2");
-            $grant->setVariable('original_award_number', $row['coeus2_agency_grant_number']);
-            $grant->setVariable('person_name', $this->name);
-            $grant->setVariable('start', REDCapManagement::datetime2Date($row['coeus2_current_period_start']));
-            $grant->setVariable('end', REDCapManagement::datetime2Date($row['coeus2_current_period_end']));
-            $grant->setVariable('title', $row['coeus2_title']);
-            $grant->setVariable('budget', $row['coeus2_current_period_total_funding']);
-            $grant->setVariable('direct_budget', $row['coeus2_current_period_direct_funding']);
-            $grant->setVariable('last_update', $row['coeus2_last_update']);
-            $grant->setVariable('pi_flag', ($roleText == "Principal Investigator") ? "Y" : "N");
-            $grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
-            $grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
-            $grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus2&instance={$row['redcap_repeat_instance']}", "See Grant"));
-            if ($roleText == "Principal Investigator") {
-                $grant->setVariable("role", "PI");
-            } else if ($roleText == "Investigator") {
-                $grant->setVariable("role", "Co-I");
-            } else {
-                $grant->setVariable("role", $roleText);
+                $grant->setNumber($awardNo);
+                $grant->setVariable('source', "coeus2");
+                $grant->setVariable('original_award_number', $row['coeus2_agency_grant_number']);
+                $grant->setVariable('agency_name', $row['coeus2_agency_name']);
+                $grant->setVariable('person_name', $this->name);
+                $grant->setVariable('start', REDCapManagement::datetime2Date($row['coeus2_current_period_start']));
+                $grant->setVariable('end', REDCapManagement::datetime2Date($row['coeus2_current_period_end']));
+                $grant->setVariable('title', $row['coeus2_title']);
+                $grant->setVariable('budget', $row['coeus2_current_period_total_funding']);
+                $grant->setVariable('direct_budget', $row['coeus2_current_period_direct_funding']);
+                $grant->setVariable('last_update', $row['coeus2_last_update']);
+                $grant->setVariable('pi_flag', ($roleText == "Principal Investigator") ? "Y" : "N");
+                $grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
+                $grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
+                $grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus2&instance={$row['redcap_repeat_instance']}", "See Grant"));
+                if ($roleText == "Principal Investigator") {
+                    $grant->setVariable("role", "PI");
+                } else if ($roleText == "Investigator") {
+                    $grant->setVariable("role", "Co-I");
+                } else {
+                    $grant->setVariable("role", $roleText);
+                }
+
+                $grant->putInBins();
+                // Application::log("Coeus2GrantFactory adding ".json_encode($grant->toArray()));
+                array_push($this->grants, $grant);
             }
-
-            $grant->putInBins();
-            // Application::log("Coeus2GrantFactory adding ".json_encode($grant->toArray()));
-            array_push($this->grants, $grant);
         }
     }
 }
@@ -673,6 +676,10 @@ class RePORTERGrantFactory extends GrantFactory {
 class ExPORTERGrantFactory extends GrantFactory {
 	public function processRow($row, $token = "")
     {
+        $totalCosts = $row['exporter_total_cost'];
+        if (!$totalCosts) {
+            $totalCosts = $row['exporter_total_cost_sub_project'];
+        }
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $awardNo = self::cleanAwardNo($row['exporter_full_project_num']);
         $grant = new Grant($this->lexicalTranslator);
@@ -682,7 +689,7 @@ class ExPORTERGrantFactory extends GrantFactory {
         $grant->setVariable('project_start', RePORTERGrantFactory::getReporterDate($row['exporter_project_start']));
         $grant->setVariable('project_end', RePORTERGrantFactory::getReporterDate($row['exporter_project_end']));
         $grant->setVariable('title', $row['exporter_project_title']);
-        $grant->setVariable('budget', $row['exporter_total_cost']);
+        $grant->setVariable('budget', $totalCosts);
         $grant->setVariable('direct_budget', $row['exporter_direct_cost_amt']);
         $grant->setVariable('sponsor', $row['exporter_ic_name']);
         $grant->setVariable('sponsor_type', $row['exporter_ic_name']);

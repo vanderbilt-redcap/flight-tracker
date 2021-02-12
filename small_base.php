@@ -1517,6 +1517,13 @@ function importCustomFields($filename, $token, $server, $pid) {
 		while ($line = fgetcsv($fp)) {
 			foreach ($line as $j => $item) {
 				$line[$j] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $item);
+				if (REDCapManagement::isDate($line[$j]) && !REDCapManagement::isYMD($line[$j])) {
+				    if (REDCapManagement::isMDY($line[$j])) {
+                        $line[$j] = REDCapManagement::MDY2YMD($line[$j]);
+                    } else if (REDCapManagement::isDMY($line[$j])) {
+				        $line[$j] = REDCapManagement::DMY2YMD($line[$j]);
+                    }
+                }
 			}
 			if ($i > 0) {
 				$lines[$i] = $line;
@@ -1552,7 +1559,13 @@ function importCustomFields($filename, $token, $server, $pid) {
             }
             $pubsLine = " $numPubsAffected publications downloaded.";
         }
-		$html .= "<div class='green centered'>Success! Imported {$newCounts['new']} lines for new scholars and {$newCounts['existing']} lines for existing scholars.$pubsLine</div>\n";
+        if ($feedback['error']) {
+            $html .= "<div class='red centered'>Error: {$feedback['error']}</div>\n";
+        } else if ($feedback['errors']) {
+            $html .= "<div class='red centered'>Errors: ".implode("<br>", $feedback['errors'])."</div>\n";
+        } else {
+            $html .= "<div class='green centered'>Success! Imported {$newCounts['new']} lines for new scholars and {$newCounts['existing']} lines for existing scholars.$pubsLine</div>\n";
+        }
 	} else {
 		$html .= "<div class='red centered'>No action taken!</div>\n";
 	}

@@ -92,7 +92,9 @@ class NIHTables {
     public function getHTML($table) {
 		if (self::beginsWith($table, array("5A", "5B"))) {
 			$data = $this->get5Data($table);
-			return self::getHTMLPrefix($table).self::makeDataIntoHTML($data);
+            $namesPre = $this->downloadPredocNames();
+            $namesPost = $this->downloadPostdocNames($table);
+            return self::getHTMLPrefix($table).self::makeDataIntoHTML($data, $namesPre, $namesPost);
 		} else if (self::beginsWith($table, array("6A", "6B"))) {
 			$html = "";
 			$html .= self::getHTMLPrefix($table);
@@ -757,22 +759,42 @@ class NIHTables {
     private function getPostdocDegreesAndYears($recordId, $asText = TRUE) {
         $doctoralDegreesAndYears = $this->getTerminalDegreesAndYears($recordId, FALSE);
         $earliestDoctorate = FALSE;
+        $unknownYearFound = FALSE;
         foreach ($doctoralDegreesAndYears as $degree => $year) {
             if ($year < $earliestDoctorate) {
                 $earliestDoctorate = $year;
+            } else if ($year == self::$unknownYearText) {
+                $unknownYearFound = TRUE;
             }
         }
-        if ((count($doctoralDegreesAndYears) > 0) && !$earliestDoctorate) {
-            throw new \Exception("Could not find earliest doctorate for record $recordId!");
+        if ((count($doctoralDegreesAndYears) > 0) && !$earliestDoctorate && !$unknownYearFound) {
+            if ($asText) {
+                return "Unknown";
+            } else {
+                return ["Unknown" => ""];
+            }
         }
 
         $allDegreesAndYears = $this->getDegreesAndAddOns($recordId, TRUE, FALSE);
         $degreesAndYears = [];
+        $allUnknownYears = TRUE;
         foreach ($allDegreesAndYears as $degree => $year) {
             if (!isset($doctoralDegreesAndYears[$degree])
                 && (count($doctoralDegreesAndYears) > 0)
-                && ($year >= $earliestDoctorate)) {
-                $degreesAndYears[$degree] = $year;
+                && (($year == self::$unknownYearText) || ($year >= $earliestDoctorate))) {
+                if ($year != self::$unknownYearText) {
+                    $allUnknownYears = FALSE;
+                    $degreesAndYears[$degree] = $year;
+                }
+            }
+        }
+        if ($allUnknownYears) {
+            foreach ($allDegreesAndYears as $degree => $year) {
+                if (!isset($doctoralDegreesAndYears[$degree])
+                    && (count($doctoralDegreesAndYears) > 0)
+                    && (($year == self::$unknownYearText) || ($year >= $earliestDoctorate))) {
+                    $degreesAndYears[$degree] = $year;
+                }
             }
         }
         arsort($degreesAndYears);
@@ -885,6 +907,9 @@ class NIHTables {
                     }
                 }
             }
+        }
+        if (isset($_GET['test'])) {
+            echo "Returning for $recordId: ".json_encode($degreesAndAddOns)."<br>";
         }
         return $degreesAndAddOns;
 	}
@@ -1308,6 +1333,9 @@ class NIHTables {
 	    $part = self::getPartNumber($table);
 	    if (in_array($part, [1, 2, 3])) {
             $names = $this->downloadRelevantNames($table, $records);
+            if (isset($_GET['test'])) {
+                echo count($names)." names downloaded<br>";
+            }
 	        $firstNames = Download::firstnames($this->token, $this->server);
 	        $lastNames = Download::lastnames($this->token, $this->server);
             $mentors = Download::primaryMentors($this->token, $this->server);
@@ -1552,9 +1580,13 @@ class NIHTables {
 	    return self::integerToRoman($romanNumeral);
     }
 
-	private static function makeDataIntoHTML($data) {
+	private static function makeDataIntoHTML($data, $namesPre = [], $namesPost = []) {
 		if (count($data) == 0) {
-			return "<p class='centered'>No data available.</p>\n";
+		    $prefatoryRemarks = "";
+		    if (isset($_GET['test'])) {
+                $prefatoryRemarks = "<p class='centered'>".count($namesPre)." predoc names and ".count($namesPost)." postdoc names.</p>\n";
+            }
+			return $prefatoryRemarks."<p class='centered'>No data available.</p>\n";
 		}
 
 		$htmlRows = array();
@@ -1673,14 +1705,14 @@ class NIHTables {
         return $names;
     }
 
-    private static function getTrainingType() {
+    private static function getTrainingTypesForGrantClass() {
 	    global $grantClass;
         if (in_array($grantClass, ["T", "Other"])) {
-            return 10;   // Other is training grant
+            return [10];   // Other is training grant
         } else if (in_array($grantClass, ["K"])) {
-            return 2;
+            return [2, 10];
         } else if ($grantClass == "") {
-            return 2;    // K12 by default
+            return [2];    // K12 by default
         }
         throw new \Exception("Invalid Grant Class: $grantClass");
 	}
@@ -1702,6 +1734,14 @@ class NIHTables {
 		} else {
             $allNames = [];
 		}
+		if (isset($_GET['test'])) {
+		    echo "Returning ".count($allNames)." for ".count($records)." records.<br>";
+            if (self::isPredocTable($table)) {
+                echo "predoc table $table<br>";
+            } else if (self::isPostdocTable($table)) {
+                echo "postdoc table $table<br>";
+            }
+        }
 
 		$names = [];
 		foreach ($records as $record) {
@@ -1718,23 +1758,42 @@ class NIHTables {
             } else {
                 $part = self::getPartNumber($table);
             }
-		    $thisGrantType = self::getTrainingType();
+		    $thisGrantTypes = self::getTrainingTypesForGrantClass();
             $internalKType = 1;
+            if (isset($_GET['test'])) {
+                echo "Looking in part $part with grant types ".json_encode($thisGrantTypes)."<br>";
+            }
             if (in_array($part, [1, 3])) {
                 $trainingData = Download::trainingGrants($this->token, $this->server, [], [5, 6, 7], [], $this->metadata);
+                if (isset($_GET['test'])) {
+                    echo "Downloaded ".count($trainingData)." rows of training grants<br>";
+                }
                 foreach ($names as $recordId => $name) {
                     $currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
+                    if (isset($_GET['test'])) {
+                        echo count($currentGrants)." found for Record $recordId<br>";
+                    }
                     foreach ($currentGrants as $row) {
                         if ($row['redcap_repeat_instrument'] == "custom_grant") {
                             if ($part == 1) {
-                                if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15) && ($row['custom_type'] == $thisGrantType)) {
+                                if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15) && in_array($row['custom_type'], $thisGrantTypes)) {
+                                    if (isset($_GET['test'])) {
+                                        echo "Record $recordId ($name) is a recent graduate for part $part ".REDCapManagement::json_encode_with_spaces($row)."<br>";
+                                    }
                                     $filteredNames[$recordId] = $name;
+                                } else if (isset($_GET['test'])) {
+                                    echo "Record $recordId ($name) is not a recent graduate for part $part ".REDCapManagement::json_encode_with_spaces($row)."<br>";
                                 }
                             } else if ($part == 3) {
                                 # recent graduates - those whose appointments have ended
                                 # for new applications only (currently)
                                 if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 5) && ($row['custom_type'] == $internalKType)) {
+                                    if (isset($_GET['test'])) {
+                                        echo "Record $recordId ($name) is a recent graduate for part $part ".REDCapManagement::json_encode_with_spaces($row)."<br>";
+                                    }
                                     $filteredNames[$recordId] = $name;
+                                } else if (isset($_GET['test'])) {
+                                    echo "Record $recordId ($name) is not a recent graduate for part $part ".REDCapManagement::json_encode_with_spaces($row)."<br>";
                                 }
                             }
                         }
@@ -1742,6 +1801,9 @@ class NIHTables {
                 }
             } else if ($part == 2) {
                 # friends of the grant => fill in by hand
+            }
+            if (isset($_GET['test'])) {
+                echo "Returning ".count($filteredNames)." names<br>";
             }
             return $filteredNames;
         }
@@ -1768,9 +1830,18 @@ class NIHTables {
 	    $currYear -= $yearsAgo;
 	    $yearsAgoDate = $currYear.date("-m-d");
 	    $yearsAgoTs = strtotime($yearsAgoDate);
+        if (isset($_GET['test'])) {
+            echo "Comparing $end ($endTs) >= $yearsAgoDate ($yearsAgoTs) ($yearsAgo years ago)<br>";
+        }
 	    if ($endTs >= $yearsAgoTs) {
+	        if (isset($_GET['test'])) {
+                echo "Returning TRUE<br>";
+            }
 	        return TRUE;
         } else {
+            if (isset($_GET['test'])) {
+                echo "Returning FALSE<br>";
+            }
 	        return FALSE;
         }
     }
@@ -1827,6 +1898,9 @@ class NIHTables {
         $eligibleKs = [2];     // K12/KL2 only
         $data = array();
 		$names = $this->downloadRelevantNames($table, $records);
+		if (isset($_GET['test'])) {
+		    echo "<p class='centered'>".count($names)." being considered</p>";
+        }
 		if (!empty($names)) {
 			$lastNames = Download::lastNames($this->token, $this->server);
 			$firstNames = Download::firstNames($this->token, $this->server);
@@ -1849,6 +1923,9 @@ class NIHTables {
             }
 			$endTs = time();
 			$currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
+			if ($_GET['test']) {
+			    echo "Record $recordId has ".count($currentGrants)." grants.<br>";
+            }
 			if (empty($currentGrants)) {
 			    list($startYear, $startTs, $endYear, $endTs) = $this->getStartAndEndFromSummary($recordId, $eligibleKs);
             } else {
@@ -1927,6 +2004,9 @@ class NIHTables {
             );
 
             if ($pubs->getCitationCount() == 0) {
+                if (isset($_GET['test'])) {
+                    echo "Record $recordId has no confirmed pubs.<br>";
+                }
 				array_push($data, $noPubsRow);
 			} else {
 				$citations = $pubs->getSortedCitations("Included");

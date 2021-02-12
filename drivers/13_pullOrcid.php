@@ -84,7 +84,7 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
         $html = makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata);
 
         require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-        \REDCap::email($adminEmail, "noreply@vumc.org", CareerDev::getProgramName().": Multiple ORCIDs Found", $html);
+        \REDCap::email($adminEmail, Application::getSetting("default_from"), CareerDev::getProgramName().": Multiple ORCIDs Found", $html);
     }
     if (!empty($messages)) {
         throw new \Exception(count($messages)." messages: ".implode("; ", $messages));

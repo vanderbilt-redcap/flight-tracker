@@ -12,8 +12,6 @@ require_once(dirname(__FILE__)."/GrantLexicalTranslator.php");
 require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
-define('SHOW_GRANT_DEBUG', FALSE);
-
 class Grant {
 	public function __construct($lexicalTranslator) {
 		$this->translator = $lexicalTranslator;
@@ -23,38 +21,145 @@ class Grant {
         return preg_match("/VUMC\s*\d+/", $this->getNumber());
     }
 
-	public static function transformToBaseAwardNumber($num) {
-		$num = preg_replace("/^Individual K - Rec\. \d+ /", "", $num);
-		if (preg_match("/^Internal K/", $num)) {
-			return $num;
-		} else if (preg_match("/^K12/", $num)) {
-			return $num;
-		} else if (preg_match("/^KL2/", $num)) {
-			return $num;
-		} else if (preg_match("/^Individual K/", $num)) {
-			return $num;
-		} else if (preg_match("/^Unknown R01 - Rec. \d+/", $num)) {
-			return $num;
-		} else if (preg_match("/^Unknown/", $num)) {
-			return $num;
-		}
-		if (preg_match("/^\d+[A-Za-z]\d/", $num)) {
-			$num = preg_replace("/^\d+/", "", $num);
-		}
-		if (preg_match("/\s\d+[A-Za-z]\d/", $num)) {
-			$num = preg_replace("/\s\d+([A-Za-z]\d)/", "\\1", $num);
-		}
-		if (preg_match("/\S+[\(]\d*[A-Za-z]\d/", $num)) {
-			$num = preg_replace("/^\S+\(\d*([A-Za-z]\d)/", "\\1", $num);
-			$num = preg_replace("/(\d)\).*$/", "\\1", $num);
-		}
-		if (preg_match("/\d[A-Za-z]\d/", $num)) {
-			$num = preg_replace("/\s/", "", $num);
-		}
-		$num = preg_replace("/-[^\-]*$/", "", $num);
-		$num = preg_replace("/\s/", "", $num);
-		return $num;
-	}
+    public function getCurrentYearBudget($rows, $type) {
+	    return $this->getActiveBudgetAtTime($rows, $type, time());
+    }
+
+    # $type is an item of [Direct, Indirect, Total]
+    public function getActiveBudgetAtTime($rows, $type, $ts) {
+	    # Do not use Federal RePORTER because data are incomplete
+        $orderedSources = ["exporter", "coeus2", "reporter",]; // "followup", "custom" have numbers over all time period, not current budget
+        $baseNumber = $this->getBaseNumber();
+        if (self::getShowDebug()) {
+            echo "Looking for $baseNumber<br>";
+        }
+        $runningTotal = 0.0;     // able to count supplements
+        $sourceForRunningTotal = "";
+        foreach ($orderedSources as $source) {
+            foreach ($rows as $row) {
+                if ($source == "exporter") {
+                    if ($row['redcap_repeat_instrument'] == $source) {
+                        if ($type == "Direct") {
+                            $budgetField = 'exporter_direct_cost_amt';
+                        } else if ($type == "Indirect") {
+                            $budgetField = 'exporter_indirect_cost_amt';
+                        } else if ($type == "Total") {
+                            $budgetField = 'exporter_total_cost';
+                            if (!$row[$budgetField]) {
+                                $budgetField = 'exporter_total_cost_sub_project';
+                            }
+                        } else {
+                            $budgetField = "";
+                        }
+                        $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "exporter_full_project_num", "exporter_budget_start", "exporter_budget_end", $budgetField, $ts);
+                        if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                            $runningTotal += $dollars;
+                            $sourceForRunningTotal = $source;
+                        }
+                    }
+                } else if ($source == "coeus2") {
+                    if (($row['redcap_repeat_instrument'] == $source) && ($row['coeus2_award_status'] == "Awarded")) {
+                        if ($type == "Direct") {
+                            $budgetField = 'coeus2_current_period_direct_funding';
+                        } else if ($type == "Indirect") {
+                            $budgetField = 'coeus2_current_period_indirect_funding';
+                        } else if ($type == "Total") {
+                            $budgetField = 'coeus2_current_period_total_funding';
+                        } else {
+                            $budgetField = "";
+                        }
+                        $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "coeus2_agency_grant_number", "coeus2_current_period_start", "coeus2_current_period_end", $budgetField, $ts);
+                        if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                            $runningTotal += $dollars;
+                            $sourceForRunningTotal = $source;
+                        }
+                    }
+                } else if ($source == "reporter") {
+                    if ($row['redcap_repeat_instrument'] == $source) {
+                        if ($type == "Total") {
+                            $budgetField = 'reporter_totalcostamount';
+                        } else {
+                            $budgetField = "";
+                        }
+                        $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "reporter_projectnumber", "reporter_budgetstartdate", "reporter_budgetenddate", $budgetField, $ts);
+                        if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                            $runningTotal += $dollars;
+                            $sourceForRunningTotal = $source;
+                        }
+                    }
+                } else if ($source == "custom") {
+                    if ($type == "Direct") {
+                        $budgetField = 'custom_costs';
+                    } else if ($type == "Total") {
+                        $budgetField = 'custom_costs_total';
+                    } else {
+                        $budgetField = "";
+                    }
+                    $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "custom_number", "custom_start", "custom_end", $budgetField, $ts);
+                    if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                        $runningTotal += $dollars;
+                        $sourceForRunningTotal = $source;
+                    }
+                } else if ($source == "followup") {
+                    for ($i = 1; $i <= MAX_GRANTS; $i++) {
+                        if ($row['followup_grant'.$i.'_number']) {
+                            $currentBaseNumber = self::translateToBaseAwardNumber($row['followup_grant'.$i.'_number']);
+                            if ($baseNumber == $currentBaseNumber) {
+                                if ($type == "Direct") {
+                                    $budgetField = 'followup_grant'.$i.'_costs';
+                                } else {
+                                    $budgetField = "";
+                                }
+                                $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "followup_grant".$i."_number", "followup_grant".$i."_start", "followup_grant".$i."_end", $budgetField, $ts);
+                                if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                                    $runningTotal += $dollars;
+                                    $sourceForRunningTotal = $source;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return $runningTotal;
+    }
+
+    private static function getDollarAmountFromRowAtTime($row, $searchBaseNumber, $numberField, $startField, $endField, $budgetField, $ts) {
+	    if (!$budgetField || !$row[$budgetField]) {
+	        if (self::getShowDebug()) {
+	            echo "No budget in $budgetField with {$row[$numberField]}<br>";
+            }
+	        return FALSE;
+        }
+        $rowBaseNumber = self::translateToBaseAwardNumber($row[$numberField]);
+	    if (self::getShowDebug()) {
+            echo "Comparing '$rowBaseNumber' from $numberField and '$searchBaseNumber'<br>";
+        }
+        if ($rowBaseNumber == $searchBaseNumber) {
+            if (!$row[$startField] || !$row[$endField]) {
+                if (self::getShowDebug()) {
+                    echo "No start/end<br>";
+                }
+                return FALSE;
+            }
+            $startTs = strtotime($row[$startField]);
+            $endTs = strtotime($row[$endField]);
+            if (($startTs <= $ts) && ($endTs >= $ts)) {
+                if (self::getShowDebug()) {
+                    echo "Returning $budgetField: {$row[$budgetField]}<br>";
+                }
+                return $row[$budgetField];
+            } else {
+                if (self::getShowDebug()) {
+                    echo "Not current time<br>";
+                }
+            }
+        }
+        if (self::getShowDebug()) {
+            echo "Last<br>";
+        }
+        return FALSE;
+    }
 
 	public function isNIH() {
 	    # from https://era.nih.gov/files/Deciphering_NIH_Application.pdf
@@ -826,9 +931,10 @@ class Grant {
 
 	# https://www.nlm.nih.gov/bsd/grant_acronym.html
 	public static function getInstituteCode($awardNo) {
-		if (preg_match("/^\d[A-Z][A-Z\d]\d/", $awardNo)) {
+	    $activityCode = self::getActivityCode($awardNo);
+		if (preg_match("/^\d$activityCode/", $awardNo)) {
 			return substr($awardNo, 4, 2);
-		} else if (preg_match("/^[A-Z][A-Z\d]\d/", $awardNo)) {
+		} else if (preg_match("/^$activityCode/", $awardNo)) {
 			return substr($awardNo, 3, 2);
 		} else {
 			$baseAwardNo = self::translateToBaseAwardNumber($awardNo);
@@ -1048,7 +1154,53 @@ class Grant {
 			if (($isFederal[$primeSponsorType] == "Federal") && ($directSponsorType != "State - Tennessee")) {
 				return TRUE;
 			}
-		}
+		} else if ($src == "coeus2") {
+		    $agency = $this->getVariable("agency_name");
+		    $federalAgencies = [
+		        "Patient-Centered Outcomes Research Institute",
+                "National Science Foundation",
+                "National Oceanic and Atmospheric Administration",
+                "National Library of Medicine",
+                "National Institutes of Health/Unknown",
+                "National Institutes of Health/Office of the Director",
+                "National Institute on Minority Health and Health Disparities",
+                "National Institute on Drug Abuse",
+                "National Institute on Deafness and Communication Disorders",
+                "National Institute on Deafness and Other Communication Disor",
+                "National Institute on Alcohol Abuse and Alcoholism",
+                "National Institute on Aging",
+                "National Institute of Nursing Research",
+                "National Institute of Neurological Disorders and Stroke",
+                "National Institute of Mental Health",
+                "National Institute of General Medical Sciences",
+                "National Institute of Environmental Health Sciences",
+                "National Institute of Diabetes & Digestive & Kidney Disease",
+                "National Institute of Child Health and Human Development",
+                "National Institute of Dental and Craniofacial Research",
+                "National Institute of Biomedical Imaging and Bioengineering",
+                "National Institute of Arthritis, Musculoskeletal and Skin",
+                "National Institute of Allergy and Infectious Diseases",
+                "National Human Genome Research Institute",
+                "National Heart, Lung, and Blood Institute",
+                "National Eye Institute",
+                "National Center for Research Resources",
+                "National Center for Complementary and Integrative Health",
+                "National Center for Advancing Translational Sciences",
+                "National Cancer Institute",
+                "Food and Drug Administration/Other",
+                "Food and Drug Administration",
+                "Department of Defense",
+                "Congressionally Directed Medical Research Programs",
+                "Centers for Medicare and Medicaid Services",
+                "Centers For Disease Control and Prevention (CDC)",
+                "Agency for Healthcare Research and Quality",
+                "Department of Health and Human Services",
+                "NIH National Research Service Award",
+            ];
+            if (in_array($agency, $federalAgencies) && ($agency != "State of Tennessee")) {
+                return TRUE;
+            }
+        }
 		return FALSE;
 	}
 
@@ -1129,6 +1281,7 @@ class Grant {
 						"L1C",     // CMS
 						"C1C",     // CMS
 						"U2G",     // CDC
+                        "U2C",     // Cooperative Agreements
 						);
 		foreach ($specialActivityCodes as $activityCode) {
 			if (preg_match("/".$activityCode."[A-Z][A-Z]\d\d\d\d\d\d/", $numWithoutSpaces, $matches)) {
@@ -1288,11 +1441,11 @@ class Grant {
         $awardNo = $this->getNumber();
 
         if ($specs['pi_flag'] == 'N') {
-            if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": pi_flag is N"); }
+            if (self::getShowDebug()) { Application::log($awardNo.": pi_flag is N"); }
             return "N/A";
         }
 
-        if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": First Pass"); }
+        if (self::getShowDebug()) { Application::log($awardNo.": First Pass"); }
         if ($type = $this->lexicallyTranslate($awardNo)) {
             return $type;
         }
@@ -1303,7 +1456,7 @@ class Grant {
     public static function calculateAwardType($specs, $awardNo) {
         $coeusSources = self::getCoeusSources();
 
-		if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass"); }
+		if (self::getShowDebug()) { Application::log($awardNo.": Second Pass"); }
 		$trainingGrantSources = array("coeus", "reporter", "exporter");
 		if (($awardNo == "") || preg_match("/\b000\b/", $awardNo)) {
 			return "N/A";
@@ -1345,20 +1498,20 @@ class Grant {
                 $yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
                 if (($yearspan >= 3) && ($specs['direct_budget'] / $yearspan > 250000)) {
                     if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
-                        if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600))); }
+                        if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600))); }
                         return "R01 Equivalent";
                     } else {
-                        if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit D"); }
+                        if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit D"); }
                     }
                 } else {
-                    if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit C: ".REDCapManagement::pretty($yearspan, 1)." years"); }
+                    if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit C: ".REDCapManagement::pretty($yearspan, 1)." years"); }
                 }
             } else {
-                if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Second Pass - exit B"); }
+                if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit B"); }
             }
 		}
 
-		if (SHOW_GRANT_DEBUG) { Application::log($awardNo.": Third Pass"); }
+		if (self::getShowDebug()) { Application::log($awardNo.": Third Pass"); }
 		if (preg_match("/^[Kk]23 - /", $awardNo)) {
 			return "Individual K";
 		} else if (preg_match("/^\d?[Kk]24/", $awardNo)) {
@@ -1398,7 +1551,7 @@ class Grant {
 			}
 		}
 
-		if (SHOW_GRANT_DEBUG) {
+		if (self::getShowDebug()) {
 		    Application::log($awardNo.": Final Pass");
 		    Application::log($awardNo.": ".json_encode($specs));
         }
@@ -1549,7 +1702,16 @@ class Grant {
 		return $awardTypes;
 	}
 
+	public static function setShowDebug($b) {
+	    self::$showDebug = $b;
+    }
+
+    public static function getShowDebug() {
+	    return self::$showDebug;
+    }
+
 	private $specs = array();
 	private $translator;
+	private static $showDebug = FALSE;
 }
 

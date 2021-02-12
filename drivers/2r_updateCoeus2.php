@@ -61,6 +61,7 @@ function processCoeus2($token, $server, $pid, $records) {
             Upload::rows($upload, $token, $server);
         }
     }
+    REDCapManagement::deduplicateByKey($token, $server, $pid, $records, "coeus2_id", "coeus2", "coeus2");
     CareerDev::saveCurrentDate("Last StarBRITE COEUS Pull", $pid);
 }
 

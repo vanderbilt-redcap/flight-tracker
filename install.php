@@ -79,6 +79,7 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 				'internal_k_length' => '3',
 				'k12_kl2_length' => '3',
 				'individual_k_length' => '5',
+				'default_from' => 'noreply@vumc.org',
 				'run_tonight' => FALSE,
 				'grant_class' => $_POST['grant_class'],
 				'grant_number' => $_POST['grant_number'],

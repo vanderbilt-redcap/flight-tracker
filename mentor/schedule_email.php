@@ -1,6 +1,9 @@
 <?php
 
+use \Vanderbilt\CareerDevLibrary\Application;
+
 require_once(dirname(__FILE__)."/../small_base.php");
+require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/base.php");
 
 authenticate($userid, $_POST['menteeRecord']);
@@ -17,7 +20,7 @@ $to = "";
 if ($emails) {
     $to = implode(",", $emails);
 }
-$from = "noreply@vumc.org";
+$from = Application::getSetting("default_from");
 $subject = $_POST['subject'];
 $message = $_POST['message'];
 $datetimeToSend = $_POST['datetime'];

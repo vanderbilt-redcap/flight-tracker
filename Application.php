@@ -103,6 +103,12 @@ class Application {
         return REDCapManagement::screenForFields($metadata, CareerDev::$exporterFields);
     }
 
+    public static function getHelperInstitutions() {
+        return [
+            "Veterans Health Administration",
+        ];
+    }
+
     public static function getInstitution() {
 		$insts = self::getInstitutions();
 		if (count($insts) > 0) {

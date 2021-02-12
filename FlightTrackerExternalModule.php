@@ -184,8 +184,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	    return $instrumentsWithLabels;
     }
 
-	private function shareDataInternally($pids) {
-	    $markedAsComplete = [2];
+	public function shareDataInternally($pids) {
 	    # all test_fields must be equal and, if by self (i.e., list of one), non-blank
         $forms = self::getSharingInformation();
 	    $firstNames = [];
@@ -250,19 +249,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	        if ($tokens[$sourcePid] && $servers[$sourcePid]) {
                 $sourceToken = $tokens[$sourcePid];
                 $sourceServer = $servers[$sourcePid];
-                $sharedFormsForSource = $this->getProjectSetting("shared_forms", $sourcePid);
-                if (!$sharedFormsForSource) {
-                    $sharedFormsForSource = [];
-                }
                 foreach ($pids as $destPid) {
                     if (($destPid != $sourcePid) && $tokens[$destPid] && $servers[$destPid]) {
                         Application::log("Communicating between $sourcePid and $destPid", $destPid);
                         $destToken = $tokens[$destPid];
                         $destServer = $servers[$destPid];
-                        $sharedFormsForDest = $this->getProjectSetting("shared_forms", $destPid);
-                        if (!$sharedFormsForDest) {
-                            $sharedFormsForDest = [];
-                        }
                         foreach (array_keys($firstNames[$destPid]) as $destRecordId) {
                             $combos = [];
                             foreach (NameMatcher::splitName($firstNames[$destPid][$destRecordId]) as $firstName) {
@@ -277,114 +268,22 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                                 $lastName = $nameAry["last"];
                                 CareerDev::log("Searching for $firstName $lastName from $destPid in $sourcePid");
                                 if ($sourceRecordId = NameMatcher::matchName($firstName, $lastName, $sourceToken, $sourceServer)) {
-                                    CareerDev::log("Match in above");
-                                    $normativeRow = [
-                                        "record_id" => $destRecordId,
-                                        "redcap_repeat_instrument" => "",
-                                        "redcap_repeat_instance" => "",
+                                    CareerDev::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)");
+
+                                    $sourceInfo = [
+                                        "token" => $sourceToken,
+                                        "server" => $sourceServer,
+                                        "pid" => $sourcePid,
+                                        "record" => $sourceRecordId,
                                     ];
-                                    foreach (array_keys($forms) as $instrument) {
-                                        $field = $instrument . "_complete";
-                                        $completes[$instrument][$destPid] = Download::oneField($destToken, $destServer, $field);
-                                        $completes[$instrument][$sourcePid] = Download::oneField($sourceToken, $sourceServer, $field);
-                                    }
-                                    $uploadNormativeRow = FALSE;
-                                    $repeatingRows = [];
-                                    $sourceData = [];
-                                    $destData = [];
-                                    foreach ($completes as $instrument => $completeData) {
-                                        if (!in_array($completeData[$destPid][$destRecordId], $markedAsComplete)
-                                            && in_array($completeData[$sourcePid][$sourceRecordId], $markedAsComplete)) {
-                                            # copy over from source to dest and mark as same as $projectData[$sourceRecordId]
-                                            // CareerDev::log("Matched complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
-                                            if (empty($sourceData) || empty($destData)) {
-                                                $sourceData = Download::records($sourceToken, $sourceServer, array($sourceRecordId));
-                                                $destData = Download::records($destToken, $destServer, array($destRecordId));
-                                            }
-                                            $config = $forms[$instrument];
-                                            $newInstance = REDCapManagement::getMaxInstance($destData, $instrument, $destRecordId) + 1;
-                                            foreach ($sourceData as $sourceRow) {
-                                                $continueToCopyFromSource = TRUE;
-                                                foreach ($destData as $destRow) {
-                                                    if ($config["formType"] == "single") {
-                                                        if ($destRow["redcap_repeat_instrument"] == "") {
-                                                            if (!self::isValidToCopy($config["test_fields"], $sourceRow, $destRow, $choices[$sourcePid], $choices[$destPid])) {
-                                                                // CareerDev::log("Not valid to copy single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
-                                                                $continueToCopyFromSource = FALSE;
-                                                            }
-                                                        }
-                                                    } else if ($config["formType"] == "repeating") {
-                                                        if ($destRow["redcap_repeat_instrument"] == $instrument) {
-                                                            if (!self::isValidToCopy($config["test_fields"], $sourceRow, $destRow, $choices[$sourcePid], $choices[$destPid])) {
-                                                                // CareerDev::log("Not valid to repeating single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
-                                                                $continueToCopyFromSource = FALSE;
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                if ($continueToCopyFromSource
-                                                    && ($config["always_copy"]
-                                                        || (in_array($instrument, $sharedFormsForDest) && in_array($instrument, $sharedFormsForSource)))) {
-                                                    if ($config["formType"] == "single") {
-                                                        if ($sourceRow["redcap_repeat_instrument"] == "") {
-                                                            // CareerDev::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
-                                                            $hasChanged = self::copyDataFromRowToNormative($sourceRow,
-                                                                $completeData[$sourcePid][$sourceRecordId],
-                                                                $config["prefix"],
-                                                                $metadataFields[$destPid],
-                                                                $choices[$destPid],
-                                                                $normativeRow,
-                                                                $instrument);
-                                                            if ($hasChanged) {
-                                                                // CareerDev::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
-                                                                $uploadNormativeRow = TRUE;
-                                                            }
-                                                        }
-                                                    } else if ($config["formType"] == "repeating") {
-                                                        if ($sourceRow["redcap_repeat_instrument"] == $instrument) {
-                                                            // CareerDev::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
-                                                            $repeatingRow = self::copyDataFromRowToNewRow($sourceRow,
-                                                                $completeData[$sourcePid][$sourceRecordId],
-                                                                $config["prefix"],
-                                                                $metadataFields[$destPid],
-                                                                $choices[$destPid],
-                                                                $destRecordId,
-                                                                $instrument,
-                                                                $newInstance);
-                                                            if ($repeatingRow && is_array($repeatingRow)) {
-                                                                // CareerDev::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
-                                                                $repeatingRows[] = $repeatingRow;
-                                                                $newInstance++;
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            $upload = [];
-                                            if ($uploadNormativeRow) {
-                                                $upload[] = $normativeRow;
-                                            }
-                                            $upload = array_merge($upload, $repeatingRows);
-                                            if (!empty($upload)) {
-                                                // Application::log("Uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
-                                                try {
-                                                    $feedback = Upload::rows($upload, $destToken, $destServer);
-                                                    // Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId", $destPid);
-                                                    // Application::log(json_encode($upload), $destPid;
-                                                    if (!in_array($destPid, $pidsUpdated)) {
-                                                        $pidsUpdated[] = $destPid;
-                                                    }
-                                                } catch (\Exception $e) {
-                                                    Application::log("ERROR: Could not copy from $sourcePid record $sourceRecordId, into $destPid record $destRecordId");
-                                                    Application::log($e->getMessage());
-                                                }
-                                            } else {
-                                                // Application::log("Skipping uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
-                                            }
-                                        } else {
-                                            // Application::log("Could not match complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
-                                        }
-                                    }
+                                    $destInfo = [
+                                        "token" => $destToken,
+                                        "server" => $destServer,
+                                        "pid" => $destPid,
+                                        "record" => $destRecordId,
+                                    ];
+                                    $this->copyFormData($completes, $pidsUpdated, $forms, $sourceInfo, $destInfo, $metadataFields, $choices);
+                                    $this->copyWranglerData($pidsUpdated, $sourceInfo, $destInfo);
                                 }
                                 break; // combos foreach
                                 # if more than one match, match only first name matched
@@ -397,11 +296,244 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	    return $pidsUpdated;
 	}
 
+	public function copyWranglerData(&$pidsUpdated, $sourceInfo, $destInfo) {
+	    $hasCopiedPubData = $this->copyPubData($sourceInfo, $destInfo);
+	    $hasCopiedGrantData = $this->copyGrantData($sourceInfo, $destInfo);
+	    if ($hasCopiedGrantData || $hasCopiedPubData) {
+	        $pidsUpdated[] = $destInfo['pid'];
+        }
+    }
+
+    private function copyPubData($sourceInfo, $destInfo) {
+	    $fields = ['record_id', 'citation_pmid', 'citation_include'];
+        $sourceData = Download::fieldsForRecords($sourceInfo['token'], $sourceInfo['server'], $fields, [$sourceInfo['record']]);
+        $destData = Download::fieldsForRecords($destInfo['token'], $destInfo['server'], $fields, [$destInfo['record']]);
+        $sourcePMIDs = self::transformREDCapDataToPMIDsAndIncludes($sourceData, $sourceInfo['record']);
+        $destPMIDs = self::transformREDCapDataToPMIDsAndIncludes($destData, $destInfo['record']);
+
+        $uploadData = [];
+        foreach ($sourcePMIDs as $pmid => $sourceAry) {
+            $sourceIncludeStatus = $sourceAry['include'];
+            if (($sourceIncludeStatus !== "") && isset($destPMIDs[$pmid])) {
+                $destIncludeStatus = $destPMIDs[$pmid]['include'];
+                $destInstance = $destPMIDs[$pmid]['instance'];
+                if ($destIncludeStatus === "") {
+                    $uploadData[] = [
+                        "record_id" => $destInfo['record'],
+                        "redcap_repeat_instrument" => "citation",
+                        "redcap_repeat_instance" => $destInstance,
+                        "citation_include" => $sourceIncludeStatus,
+                    ];
+                }
+            }
+        }
+        if (!empty($uploadData)) {
+            Application::log("Sharing publication wrangling data from {$sourceInfo['pid']} (record {$sourceInfo['record']}) to {$destInfo['pid']}(record {$destInfo['record']})");
+            try {
+                Upload::rows($uploadData, $destInfo['token'], $destInfo['server']);
+                return TRUE;     // data shared
+            } catch (\Exception $e) {
+                Application::log("Warning: Data sharing publication upload failed! ".$e->getMessage());
+                return FALSE;    // data sharing failed
+            }
+        } else {
+            return FALSE;    // no data shared
+        }
+    }
+
+    private static function transformREDCapDataToPMIDsAndIncludes($redcapData, $recordId) {
+	    $pmids = [];
+	    foreach ($redcapData as $row) {
+	        if (($row['redcap_repeat_instrument'] == "citation") && ($row['record_id'] == $recordId) && $row['citation_pmid']) {
+	            $pmids[$row['citation_pmid']] = [
+	                "include" => $row['citation_include'],
+                    "instance" => $row['redcap_repeat_instance'],
+                ];
+            }
+        }
+	    return $pmids;
+    }
+
+    private static function getToImport($token, $server, $recordId) {
+        $fields = ["record_id", "summary_calculate_to_import"];
+        $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+        $normativeRow = REDCapManagement::getNormativeRow($redcapData);
+        $toImport = [];
+        if ($normativeRow['summary_calculate_to_import']) {
+            $toImport = json_decode($normativeRow['summary_calculate_to_import'], TRUE);
+            if ($toImport === FALSE) {
+                $toImport = [];
+            }
+        }
+        return $toImport;
+    }
+
+    private function copyGrantData($sourceInfo, $destInfo) {
+	    # ??? Custom Grants
+
+	    $sourceToImport = self::getToImport($sourceInfo['token'], $sourceInfo['server'], $sourceInfo['record']);
+        if (!empty($sourceToImport)) {
+            $destToImport = self::getToImport($destInfo['token'], $destInfo['server'], $destInfo['record']);
+            $destChanged = FALSE;
+            foreach ($sourceToImport as $key => $value) {
+                if (!isset($destToImport[$key])) {        // copies only new information; does not copy in case of conflict
+                    $destToImport[$key] = $value;
+                    $destChanged = TRUE;
+                }
+            }
+            if ($destChanged) {
+                $uploadRow = [
+                    "record_id" => $destInfo['record'],
+                    "redcap_repeat_instrument" => "",
+                    "redcap_repeat_instance" => "",
+                    "summary_calculate_to_import" => json_encode($destToImport),
+                ];
+                try {
+                    Upload::oneRow($uploadRow, $destInfo['token'], $destInfo['server']);
+                    return TRUE;     // data sharing succeeded
+                } catch (\Exception $e) {
+                    Application::log("Warning: Data sharing publication upload failed! ".$e->getMessage());
+                    return FALSE;    // data sharing failed
+                }
+            }
+        }
+        return FALSE;   // no data to copy
+    }
+
+	private function copyFormData(&$completes, &$pidsUpdated, $forms, $sourceInfo, $destInfo, $metadataFieldsByPid, $choicesByPid) {
+        $sourceToken = $sourceInfo['token'];
+        $sourceServer = $sourceInfo['server'];
+        $sourcePid = $sourceInfo['pid'];
+        $sourceRecordId = $sourceInfo['record'];
+        $destToken = $destInfo['token'];
+        $destServer = $destInfo['server'];
+        $destPid = $destInfo['pid'];
+        $destRecordId = $destInfo['record'];
+
+        $markedAsComplete = [2];
+        $sharedFormsForSource = $this->getProjectSetting("shared_forms", $sourcePid);
+        if (!$sharedFormsForSource) {
+            $sharedFormsForSource = [];
+        }
+        $sharedFormsForDest = $this->getProjectSetting("shared_forms", $destPid);
+        if (!$sharedFormsForDest) {
+            $sharedFormsForDest = [];
+        }
+
+        $normativeRow = [
+            "record_id" => $destRecordId,
+            "redcap_repeat_instrument" => "",
+            "redcap_repeat_instance" => "",
+        ];
+        foreach (array_keys($forms) as $instrument) {
+            $field = $instrument . "_complete";
+            $completes[$instrument][$destPid] = Download::oneField($destToken, $destServer, $field);
+            $completes[$instrument][$sourcePid] = Download::oneField($sourceToken, $sourceServer, $field);
+        }
+        $uploadNormativeRow = FALSE;
+        $repeatingRows = [];
+        $sourceData = [];
+        $destData = [];
+        foreach ($completes as $instrument => $completeData) {
+            if (!in_array($completeData[$destPid][$destRecordId], $markedAsComplete)
+                && in_array($completeData[$sourcePid][$sourceRecordId], $markedAsComplete)) {
+                # copy over from source to dest and mark as same as $projectData[$sourceRecordId]
+                // CareerDev::log("Matched complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                if (empty($sourceData) || empty($destData)) {
+                    $sourceData = Download::records($sourceToken, $sourceServer, array($sourceRecordId));
+                    $destData = Download::records($destToken, $destServer, array($destRecordId));
+                }
+                $config = $forms[$instrument];
+                $newInstance = REDCapManagement::getMaxInstance($destData, $instrument, $destRecordId) + 1;
+                foreach ($sourceData as $sourceRow) {
+                    $continueToCopyFromSource = TRUE;
+                    foreach ($destData as $destRow) {
+                        if ($config["formType"] == "single") {
+                            if ($destRow["redcap_repeat_instrument"] == "") {
+                                if (!self::isValidToCopy($config["test_fields"], $sourceRow, $destRow, $choicesByPid[$sourcePid], $choicesByPid[$destPid])) {
+                                    // CareerDev::log("Not valid to copy single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                    $continueToCopyFromSource = FALSE;
+                                }
+                            }
+                        } else if ($config["formType"] == "repeating") {
+                            if ($destRow["redcap_repeat_instrument"] == $instrument) {
+                                if (!self::isValidToCopy($config["test_fields"], $sourceRow, $destRow, $choicesByPid[$sourcePid], $choicesByPid[$destPid])) {
+                                    // CareerDev::log("Not valid to repeating single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                    $continueToCopyFromSource = FALSE;
+                                }
+                            }
+                        }
+                    }
+                    if ($continueToCopyFromSource
+                        && ($config["always_copy"]
+                            || (in_array($instrument, $sharedFormsForDest) && in_array($instrument, $sharedFormsForSource)))) {
+                        if ($config["formType"] == "single") {
+                            if ($sourceRow["redcap_repeat_instrument"] == "") {
+                                // CareerDev::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                $hasChanged = self::copyDataFromRowToNormative($sourceRow,
+                                    $completeData[$sourcePid][$sourceRecordId],
+                                    $config["prefix"],
+                                    $metadataFieldsByPid[$destPid],
+                                    $choicesByPid[$destPid],
+                                    $normativeRow,
+                                    $instrument);
+                                if ($hasChanged) {
+                                    // CareerDev::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                    $uploadNormativeRow = TRUE;
+                                }
+                            }
+                        } else if ($config["formType"] == "repeating") {
+                            if ($sourceRow["redcap_repeat_instrument"] == $instrument) {
+                                // CareerDev::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                $repeatingRow = self::copyDataFromRowToNewRow($sourceRow,
+                                    $completeData[$sourcePid][$sourceRecordId],
+                                    $config["prefix"],
+                                    $metadataFieldsByPid[$destPid],
+                                    $choicesByPid[$destPid],
+                                    $destRecordId,
+                                    $instrument,
+                                    $newInstance);
+                                if ($repeatingRow && is_array($repeatingRow)) {
+                                    // CareerDev::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                    $repeatingRows[] = $repeatingRow;
+                                    $newInstance++;
+                                }
+                            }
+                        }
+                    }
+                }
+                $upload = [];
+                if ($uploadNormativeRow) {
+                    $upload[] = $normativeRow;
+                }
+                $upload = array_merge($upload, $repeatingRows);
+                if (!empty($upload)) {
+                    // Application::log("Uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+                    try {
+                        $feedback = Upload::rows($upload, $destToken, $destServer);
+                        // Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId", $destPid);
+                        // Application::log(json_encode($upload), $destPid;
+                        if (!in_array($destPid, $pidsUpdated)) {
+                            $pidsUpdated[] = $destPid;
+                        }
+                    } catch (\Exception $e) {
+                        Application::log("ERROR: Could not copy from $sourcePid record $sourceRecordId, into $destPid record $destRecordId");
+                        Application::log($e->getMessage());
+                    }
+                } else {
+                    // Application::log("Skipping uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+                }
+            } else {
+                // Application::log("Could not match complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+            }
+        }
+    }
+
 	function cron() {
-        \System::increaseMaxExecTime(7200);   // 2 hours
+        \System::increaseMaxExecTime(14400);   // 4 hours
 
 		$this->setupApplication();
-		$pids = $this->framework->getProjectsWithModuleEnabled();
+        $pids = $this->framework->getProjectsWithModuleEnabled();
 		CareerDev::log($this->getName()." running for pids ".json_encode($pids));
 		$activePids = REDCapManagement::getActiveProjects($pids);
 		$pidsUpdated = [];
@@ -411,7 +543,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             try {
                 $pidsUpdated = $this->shareDataInternally($activePids);
             } catch (\Exception $e) {
-                \REDCap::email("scott.j.pearson@vumc.org", "noreply@vumc.org", "Error in sharing surveys on redcaptest", $e->getMessage());
+                \REDCap::email("scott.j.pearson@vumc.org", Application::getSetting("default_from"), "Error in sharing surveys on redcaptest", $e->getMessage());
             }
         } else if (date("N") == "6") {
             # only on Saturdays

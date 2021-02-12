@@ -78,6 +78,6 @@ $(document).ready(function() {
 .green { background-color: #8dc63f; }
 .red { background-color: #ffc3c4; }
 </style>".$html;
-        \REDCap::email($adminEmail, "no-reply@vumc.org", "Flight Tracker Connectivity Checker", $html);
+        \REDCap::email($adminEmail, Application::getSetting("default_from"), "Flight Tracker Connectivity Checker", $html);
     }
 }

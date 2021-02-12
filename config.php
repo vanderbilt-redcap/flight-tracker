@@ -332,11 +332,12 @@ function makeSettings($module) {
     array_push($ary["Installation Variables"], makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "Share Data Among the Following Resources?"));
     array_push($ary["Installation Variables"], makeSetting("auto_recalculate", "yesno", "Automatically Re-summarize After Data Saves? (No waits until overnight.)", 0));
 
-	$ary["Automated Emails"] = array();
-	array_push($ary["Automated Emails"], makeHelperText("An initial email can automatically be sent out during the first month after the new record is added to the database. If you desire to use this feature, please complete the following fields."));
-	array_push($ary["Automated Emails"], makeSetting("init_from", "text", "Initial Email From Address"));
-	array_push($ary["Automated Emails"], makeSetting("init_subject", "text", "Initial Email Subject"));
-	array_push($ary["Automated Emails"], makeSetting("init_message", "textarea", "Initial Email Message"));
+	$ary["Emails"] = array();
+//	array_push($ary["Emails"], makeHelperText("An initial email can automatically be sent out during the first month after the new record is added to the database. If you desire to use this feature, please complete the following fields."));
+//	array_push($ary["Emails"], makeSetting("init_from", "text", "Initial Email From Address"));
+//	array_push($ary["Emails"], makeSetting("init_subject", "text", "Initial Email Subject"));
+//	array_push($ary["Emails"], makeSetting("init_message", "textarea", "Initial Email Message"));
+    $ary["Emails"][] = makeSetting("default_from", "text", "Default From Address");
 
     $ary["Bibliometrics"] = array();
     array_push($ary["Bibliometrics"], makeSetting("wos_userid", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)")." User ID"));
