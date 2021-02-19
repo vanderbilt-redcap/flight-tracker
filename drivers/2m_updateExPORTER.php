@@ -68,16 +68,6 @@ function getExPORTERInstance($recordId, $redcapData, $upload, $uploadLine) {
 }
 
 function downloadURLAndUnzip($file) {
-    $baseName = preg_replace("/\.zip/", "", basename($file));
-    $regex = "/".$baseName."/";
-    if ($files = REDCapManagement::regexInDirectory($regex, APP_PATH_TEMP)) {
-        foreach ($files as $candidateFile) {
-            if (preg_match("/\.csv$/", $candidateFile)) {
-                return REDCapManagement::copyTempFileToTimestamp(APP_PATH_TEMP.$candidateFile, 4 * 3600);
-            }
-        }
-    }
-
     CareerDev::log("Downloading $file...");
 
     $url = "https://exporter.nih.gov/CSVs/final/".$file;
@@ -154,45 +144,57 @@ function updateAbstracts($token, $server, $pid) {
     $records = Download::recordIds($token, $server);
     $files = [];
     $abstractFiles = [];
-    $lifespanOfFileInHours = 4;
+    $lifespanOfFileInHours = 12;
 
     # find relevant zips
     # download relevent zips into APP_PATH_TEMP
     # unzip zip files
     for ($year = 1985; $year <= date("Y"); $year++) {
         $url = "RePORTER_PRJ_C_FY".$year.".zip";
-        $origFile = downloadURLAndUnzip($url);
-        if ($origFile) {
-            $file = REDCapManagement::copyTempFileToTimestamp($origFile, $lifespanOfFileInHours * 3600);
+        if ($file = searchForFileWithTimestamp($url)) {
             $files[$file] = $year;
-            unlink($origFile);
+        } else {
+            $origFile = downloadURLAndUnzip($url);
+            if ($origFile) {
+                $file = REDCapManagement::copyTempFileToTimestamp($origFile, $lifespanOfFileInHours * 3600);
+                $files[$file] = $year;
+            }
         }
 
         $abstractURL = "RePORTER_PRJABS_C_FY".$year.".zip";
-        $origAbstractFile = downloadURLAndUnzip($abstractURL);
-        if ($origAbstractFile) {
-            $abstractFile = REDCapManagement::copyTempFileToTimestamp($origAbstractFile, $lifespanOfFileInHours * 3600);
+        if ($abstractFile = searchForFileWithTimestamp($abstractURL)) {
             $abstractFiles[$file] = $abstractFile;
-            unlink($origAbstractFile);
+        } else {
+            $origAbstractFile = downloadURLAndUnzip($abstractURL);
+            if ($origAbstractFile) {
+                $abstractFile = REDCapManagement::copyTempFileToTimestamp($origAbstractFile, $lifespanOfFileInHours * 3600);
+                $abstractFiles[$file] = $abstractFile;
+            }
         }
    }
     for ($year = date("Y") - 1; $year <= date("Y") + 1; $year++) {
         for ($week = 1; $week <= 53; $week++) {
             $weekWithLeading0s = sprintf('%03d', $week);
             $url = "RePORTER_PRJ_C_FY".$year."_".$weekWithLeading0s.".zip";
-            $origFile = downloadURLAndUnzip($url);
-            if ($origFile) {
-                $file = REDCapManagement::copyTempFileToTimestamp($origFile, $lifespanOfFileInHours * 3600);
+            if ($file = searchForFileWithTimestamp($url)) {
                 $files[$file] = $year;
-                unlink($origFile);
+            } else {
+                $origFile = downloadURLAndUnzip($url);
+                if ($origFile) {
+                    $file = REDCapManagement::copyTempFileToTimestamp($origFile, $lifespanOfFileInHours * 3600);
+                    $files[$file] = $year;
+                }
             }
 
             $abstractURL = "RePORTER_PRJABS_C_FY".$year."_".$weekWithLeading0s.".zip";
-            $origAbstractFile = downloadURLAndUnzip($abstractURL);
-            if ($origAbstractFile) {
-                $abstractFile = REDCapManagement::copyTempFileToTimestamp($origAbstractFile, $lifespanOfFileInHours * 3600);
+            if ($abstractFile = searchForFileWithTimestamp($url)) {
                 $abstractFiles[$file] = $abstractFile;
-                unlink($origAbstractFile);
+            } else {
+                $origAbstractFile = downloadURLAndUnzip($abstractURL);
+                if ($origAbstractFile) {
+                    $abstractFile = REDCapManagement::copyTempFileToTimestamp($origAbstractFile, $lifespanOfFileInHours * 3600);
+                    $abstractFiles[$file] = $abstractFile;
+                }
             }
         }
     }
@@ -207,37 +209,53 @@ function updateExPORTER($token, $server, $pid, $records) {
 	# find relevant zips
 	# download relevent zips into APP_PATH_TEMP
 	# unzip zip files
-    $lifespanOfFileInHours = 4;
+    $lifespanOfFileInHours = 12;
     for ($year = 1985; $year <= date("Y"); $year++) {
 		$url = "RePORTER_PRJ_C_FY".$year.".zip";
-		$file = downloadURLAndUnzip($url);
-		if ($file) {
-            $file = REDCapManagement::copyTempFileToTimestamp($file, $lifespanOfFileInHours * 3600);
-			$files[$file] = $year;
-		}
+		if ($file = searchForFileWithTimestamp($url)) {
+            $files[$file] = $year;
+        } else {
+            $file = downloadURLAndUnzip($url);
+            if ($file) {
+                $file = REDCapManagement::copyTempFileToTimestamp($file, $lifespanOfFileInHours * 3600);
+                $files[$file] = $year;
+            }
+        }
 
 		$abstractURL = "RePORTER_PRJABS_C_FY".$year.".zip";
-        $abstractFile = downloadURLAndUnzip($abstractURL);
-        if ($abstractFile) {
-            $abstractFile = REDCapManagement::copyTempFileToTimestamp($abstractFile, $lifespanOfFileInHours * 3600);
+        if ($abstractFile = searchForFileWithTimestamp($abstractURL)) {
             $abstractFiles[$file] = $abstractFile;
+        } else {
+            $abstractFile = downloadURLAndUnzip($abstractURL);
+            if ($abstractFile) {
+                $abstractFile = REDCapManagement::copyTempFileToTimestamp($abstractFile, $lifespanOfFileInHours * 3600);
+                $abstractFiles[$file] = $abstractFile;
+            }
         }
 	}
 	for ($year = date("Y") - 1; $year <= date("Y") + 1; $year++) {
 		for ($week = 1; $week <= 53; $week++) {
 			$weekWithLeading0s = sprintf('%03d', $week);
 			$url = "RePORTER_PRJ_C_FY".$year."_".$weekWithLeading0s.".zip";
-			$file = downloadURLAndUnzip($url);
-			if ($file) {
-                $file = REDCapManagement::copyTempFileToTimestamp($file, $lifespanOfFileInHours * 3600);
-				$files[$file] = $year;
-			}
+            if ($file = searchForFileWithTimestamp($url)) {
+                $files[$file] = $year;
+            } else {
+                $file = downloadURLAndUnzip($url);
+                if ($file) {
+                    $file = REDCapManagement::copyTempFileToTimestamp($file, $lifespanOfFileInHours * 3600);
+                    $files[$file] = $year;
+                }
+            }
 
             $abstractURL = "RePORTER_PRJABS_C_FY".$year."_".$weekWithLeading0s.".zip";
-            $abstractFile = downloadURLAndUnzip($abstractURL);
-            if ($abstractFile) {
-                $abstractFile = REDCapManagement::copyTempFileToTimestamp($abstractFile, $lifespanOfFileInHours * 3600);
+            if ($abstractFile = searchForFileWithTimestamp($abstractURL)) {
                 $abstractFiles[$file] = $abstractFile;
+            } else {
+                $abstractFile = downloadURLAndUnzip($abstractURL);
+                if ($abstractFile) {
+                    $abstractFile = REDCapManagement::copyTempFileToTimestamp($abstractFile, $lifespanOfFileInHours * 3600);
+                    $abstractFiles[$file] = $abstractFile;
+                }
             }
 		}
 	}
@@ -289,7 +307,6 @@ function updateExPORTER($token, $server, $pid, $records) {
             fwrite($fp2, $line);
         }
         fclose($fp);
-        unlink($file);
         fclose($fp2);
 
         $fp2 = fopen($file2, "r");
@@ -401,7 +418,6 @@ function updateExPORTER($token, $server, $pid, $records) {
 		CareerDev::log("Inspected $i lines");
 		echo "Inspected $i lines\n";
 		fclose($fp2);
-		unlink($file2);
 	}
 
 	# add newUploads to uploads
@@ -444,13 +460,52 @@ function updateExPORTER($token, $server, $pid, $records) {
 	// $mssg = "NIH Exporter run\n\n".count($upload)." rows\n".$output."\n\n";
 	// \REDCap::email($adminEmail, "no-reply@vanderbilt.edu", "CareerDev NIH Exporter", $mssg);
 
-    foreach ($abstractFiles as $projectFile => $abstractFile) {
-        unlink($abstractFile);
-    }
-
     REDCapManagement::deduplicateByKey($token, $server, $pid, $records, "exporter_application_id", "exporter", "exporter");
 
 	CareerDev::saveCurrentDate("Last NIH ExPORTER Download", $pid);
+}
+
+function getSuffix($file) {
+    $nodes = preg_split("/\./", $file);
+    return $nodes[count($nodes) - 1];
+}
+
+function searchForFileWithTimestamp($filename) {
+    $suffix = getSuffix($filename);
+    $fileWithoutSuffix = preg_replace("/\.$suffix$/", "", $filename);
+    $fileRegex = "/$fileWithoutSuffix/";
+    $dir = APP_PATH_TEMP;
+    $files = REDCapManagement::regexInDirectory($fileRegex, $dir);
+    $foundFiles = [];
+    foreach ($files as $file) {
+        $fileSuffix = getSuffix($file);
+        if ($suffix == $fileSuffix) {
+            $foundFiles[] = $file;
+        }
+    }
+    $oneHour = 3600;
+    $minTimestamp = date("YmdHis", time() + $oneHour);
+    if (count($foundFiles) == 1) {
+        $file = $foundFiles[0];
+        $ts = REDCapManagement::getTimestampOfFile($file);
+        if ($ts > $minTimestamp) {
+            return $dir.$foundFiles[0];
+        }
+    } else if (count($foundFiles) > 1) {
+        $maxTimestamp = 0;
+        $maxFile = "";
+        foreach ($foundFiles as $file) {
+            $ts = REDCapManagement::getTimestampOfFile($file);
+            if (($ts >= $maxTimestamp) && ($ts > $minTimestamp)) {
+                $maxTimestamp = $ts;
+                $maxFile = $file;
+            }
+        }
+        if ($maxFile) {
+            return $dir.$maxFile;
+        }
+    }
+    return FALSE;
 }
 
 function readAbstracts($file) {

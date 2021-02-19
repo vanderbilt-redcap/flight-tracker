@@ -26,11 +26,8 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		$has = checkMetadataForFields($token, $server);
         $pid = CareerDev::getPid();
 
-        if ($pid == 126829) {
-            $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "2021-02-10");
-            $manager->addCron("drivers/2n_updateReporters.php", "updateReporter", "2021-02-10");
-        }
         $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
+        $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "2021-02-17");
 		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", "Tuesday");
 		if ($has['coeus']) {
 			// $manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", "Thursday");
@@ -65,6 +62,11 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		if ($has['vfrs']) {
 			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday");
 		}
+
+		# Research in Medicine -> Projects for Divisions
+		if (CareerDev::isVanderbilt() && in_array($pid, [126297])) {
+            $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Saturday");
+        }
 	}
 	echo $manager->getNumberOfCrons()." crons loaded\n";
 }

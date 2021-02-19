@@ -10,7 +10,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.31.0";
+		return "2.31.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -553,6 +553,27 @@ class CareerDev {
 
     public static function isTestGroup($pid) {
         return (SERVER_NAME == "redcap.vanderbilt.edu") && in_array($pid, [105963, 101785]);
+    }
+
+    public static function duplicateAllSettings($srcPid, $destPid, $defaultSettings = []) {
+	    if ($srcPid && $destPid) {
+	        self::setPid($srcPid);
+	        $module = self::getModule();
+	        $srcSettings = $module->getProjectSettings($srcPid);
+            $destSettings = $defaultSettings;
+            foreach ($srcSettings as $setting => $value) {
+                if (!$destSettings[$setting] && $value) {
+                    $destSettings[$setting] = $value;
+                }
+            }
+
+            foreach ($destSettings as $setting => $value) {
+                self::saveSetting($setting, $value, $destPid);
+            }
+            self::log("Copied ".count($destSettings)." settings from $srcPid to $destPid");
+        } else {
+	        throw new \Exception("Could not find source PID $srcPid or destination PID $destPid");
+        }
     }
 
 	public static function getMenu($menuName) {

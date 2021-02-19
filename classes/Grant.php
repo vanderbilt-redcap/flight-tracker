@@ -1125,6 +1125,9 @@ class Grant {
 
 	public function isFederal() {
 		$src = $this->getVariable("source");
+		if ($this->isNIH()) {
+		    return TRUE;
+        }
 		if (in_array($src, array("exporter", "reporter"))) {
 			return TRUE;
 		} else if ($src == "coeus") {
@@ -1164,38 +1167,62 @@ class Grant {
                 "National Institutes of Health/Unknown",
                 "National Institutes of Health/Office of the Director",
                 "National Institute on Minority Health and Health Disparities",
+                "National Institute on Minority Health & Health Disparities",
                 "National Institute on Drug Abuse",
                 "National Institute on Deafness and Communication Disorders",
                 "National Institute on Deafness and Other Communication Disor",
+                "National Institute on Deafness and Other Communication Disorders",
                 "National Institute on Alcohol Abuse and Alcoholism",
+                "National Institute on Alcohol Abuse & Alcoholism",
                 "National Institute on Aging",
                 "National Institute of Nursing Research",
                 "National Institute of Neurological Disorders and Stroke",
+                "National Institute of Neurological Disorders & Stroke",
                 "National Institute of Mental Health",
                 "National Institute of General Medical Sciences",
                 "National Institute of Environmental Health Sciences",
                 "National Institute of Diabetes & Digestive & Kidney Disease",
+                "National Institute of Diabetes and Digestive and Kidney Disease",
                 "National Institute of Child Health and Human Development",
+                "National Institute of Child Health & Human Development",
                 "National Institute of Dental and Craniofacial Research",
+                "National Institute of Dental & Craniofacial Research",
                 "National Institute of Biomedical Imaging and Bioengineering",
+                "National Institute of Biomedical Imaging & Bioengineering",
                 "National Institute of Arthritis, Musculoskeletal and Skin",
+                "National Institute of Arthritis and Musculoskeletal and Skin Diseases",
+                "National Institute of Arthritis & Musculoskeletal & Skin Diseases",
                 "National Institute of Allergy and Infectious Diseases",
+                "National Institute of Allergy & Infectious Diseases",
                 "National Human Genome Research Institute",
                 "National Heart, Lung, and Blood Institute",
+                "National Heart, Lung, & Blood Institute",
                 "National Eye Institute",
                 "National Center for Research Resources",
                 "National Center for Complementary and Integrative Health",
+                "National Center for Complementary & Integrative Health",
                 "National Center for Advancing Translational Sciences",
                 "National Cancer Institute",
+                "NIH Clinical Center",
+                "Center for Information Technology",
+                "Center for Scientific Review",
+                "Fogarty International Center",
                 "Food and Drug Administration/Other",
                 "Food and Drug Administration",
+                "Food & Drug Administration",
                 "Department of Defense",
                 "Congressionally Directed Medical Research Programs",
                 "Centers for Medicare and Medicaid Services",
+                "Centers for Medicare & Medicaid Services",
                 "Centers For Disease Control and Prevention (CDC)",
+                "Centers For Disease Control and Prevention",
                 "Agency for Healthcare Research and Quality",
+                "Agency for Healthcare Research & Quality",
                 "Department of Health and Human Services",
+                "Department of Health & Human Services",
                 "NIH National Research Service Award",
+                "NIH Office of the Director",
+
             ];
             if (in_array($agency, $federalAgencies) && ($agency != "State of Tennessee")) {
                 return TRUE;

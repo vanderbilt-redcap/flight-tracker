@@ -1267,47 +1267,24 @@ function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServe
 }
 
 function deleteRecords($token, $server, $records) {
-	if (!empty($records)) {
-		$data = array(
-			'token' => $token,
-			'action' => 'delete',
-			'content' => 'record',
-			'records' => $records
-		);
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $server);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, 0);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-		$output = curl_exec($ch);
-		curl_close($ch);
-
-		return json_decode($output, TRUE);
-	}
-	return array();
+    return Upload::deleteRecords($token, $server, $records);
 }
 
 function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
 	$allFeedback = array();
 	$destRecords = Download::recordIds($destToken, $server);
 	if (!empty($destRecords)) {
-		$feedback = deleteRecords($destToken, $server, $destRecords);
+		$feedback = \Vanderbilt\FlightTrackerExternalModule\deleteRecords($destToken, $server, $destRecords);
 		$output = json_encode($feedback);
 		CareerDev::log("Delete project: ".count($destRecords)." records: $output");
 		array_push($allFeedback, $feedback);
 	}
 
-	resetRepeatingInstruments($srcToken, $server, $destToken, $server);
+	\Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcToken, $server, $destToken, $server);
 
-	$feedback = Upload::metadata(cleanOutJSONs($metadata), $destToken, $server);
-	$calcFields = getFieldsOfType($metadata, "calc");
-	$timeFields = getFieldsOfType($metadata, "text", "datetime_ymd");
+	$feedback = Upload::metadata(\Vanderbilt\FlightTrackerExternalModule\cleanOutJSONs($metadata), $destToken, $server);
+	$calcFields = \Vanderbilt\FlightTrackerExternalModule\getFieldsOfType($metadata, "calc");
+	$timeFields = \Vanderbilt\FlightTrackerExternalModule\getFieldsOfType($metadata, "text", "datetime_ymd");
 
 	$records = Download::cohortRecordIds($srcToken, $server, $metadata, $cohort);
 	foreach ($records as $record) {

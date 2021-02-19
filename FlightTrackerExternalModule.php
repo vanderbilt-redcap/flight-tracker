@@ -530,7 +530,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     }
 
 	function cron() {
-        \System::increaseMaxExecTime(14400);   // 4 hours
+        \System::increaseMaxExecTime(28800);   // 8 hours
 
 		$this->setupApplication();
         $pids = $this->framework->getProjectsWithModuleEnabled();
@@ -555,10 +555,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $server = $this->getProjectSetting("server", $pid);
             $tokenName = $this->getProjectSetting("tokenName", $pid);
             $adminEmail = $this->getProjectSetting("admin_email", $pid);
+            $turnOffSet = $this->getProjectSetting("turn_off", $pid);
             $GLOBALS['namesForMatch'] = array();
             CareerDev::setPid($pid);
             CareerDev::log("Using $tokenName $adminEmail", $pid);
-            if ($token && $server) {
+            if ($token && $server && !$turnOffSet) {
                 # only have token and server in initialized projects
                 $mgr = new CronManager($token, $server, $pid);
                 if ($this->getProjectSetting("run_tonight", $pid)) {
@@ -573,6 +574,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
 			}
 		}
+		REDCapManagement::cleanupDirectory(APP_PATH_TEMP, "/RePORTER_PRJ/");
 	}
 
 	function setupApplication() {

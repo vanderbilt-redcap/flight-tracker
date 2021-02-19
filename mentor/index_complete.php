@@ -42,6 +42,7 @@ if ($_REQUEST['instance']) {
 list($firstName, $lastName) = getNameFromREDCap($username, $token, $server);
 $userids = Download::userids($token, $server);
 $metadata = Download::metadata($token, $server);
+$allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
 $metadata = filterMetadata($metadata);
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 $notesFields = getNotesFields($metadataFields);
@@ -144,6 +145,12 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
 
           ?>
       </div>
+        <?php
+        if (in_array("mentoring_agreement_evaluations", $allMetadataForms)) {
+            $link = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations");
+            echo "<h3><a href='$link'>When done, please provide feedback on the Mentoring Agreement</a></h3>";
+        }
+        ?>
     </div>
   </div>
 </section>

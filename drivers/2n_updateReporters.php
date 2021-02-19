@@ -51,7 +51,9 @@ function isNewItem($oldReporters, $item, $recordId) {
 
 function updateReporter($token, $server, $pid, $recordIds) {
 	# clear out old data
-	CareerDev::log("Clearing out old data");
+    if (isset($_GET['test'])) {
+        CareerDev::log("Clearing out old data");
+    }
 	$oldReporters = array();
 	$redcapRows = array();
 	$uploadRows = array();
@@ -102,7 +104,7 @@ function updateReporter($token, $server, $pid, $recordIds) {
 				}
 			}
 		} 
-		if ($firstName && $lastName && !in_array($firstName." ".$lastName, $listOfNames)) {
+		if ($firstName && $lastName && !in_array(strtoupper($firstName." ".$lastName), $listOfNames)) {
 			$listOfNames[] = strtoupper($firstName." ".$lastName);
 		}
 
@@ -119,7 +121,9 @@ function updateReporter($token, $server, $pid, $recordIds) {
 			}
 		}
         $institutions = REDCapManagement::explodeInstitutions($institutions);
-		Application::log("Institutions: ".REDCapManagement::json_encode_with_spaces($institutions));
+		if (isset($_GET['test'])) {
+            Application::log("Institutions: ".REDCapManagement::json_encode_with_spaces($institutions));
+        }
 
         $included = array();
 		foreach ($listOfNames as $myName) {
@@ -136,19 +140,36 @@ function updateReporter($token, $server, $pid, $recordIds) {
 				$url = "https://api.federalreporter.nih.gov".$query."&offset=".($max + 1);
                 list($resp, $output) = REDCapManagement::downloadURL($url);
                 $myData = json_decode($output, true);
-				if ($myData && $myData['items']) {
-						foreach ($myData['items'] as $item) {
-						$currData[] = $item;
-					}
-					$max = $myData['offset'] + $myData['limit'] - 1;
-						// echo "Checking {$myData['totalCount']} (".count($myData['items'])." here) and ".($myData['offset'] - 1 + $myData['limit'])."\n";
-					usleep(400000);     // up to 3 per second
-				} else {
-					$myData = array("totalCount" => 0, "limit" => 0, "offset" => 0);
-				}
-				CareerDev::log($myName." (".$lastName.") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}");
-			} while (($myData['totalCount'] > $myData['limit'] + $myData['offset']) || (($myData['offset'] == 0) && ($try < $maxTries)));
-			CareerDev::log("{$row['record_id']}: $lastName currData ".count($currData));
+                $currDataChanged = FALSE;
+                if ($myData) {
+                    if (isset($myData['items'])) {
+                        foreach ($myData['items'] as $item) {
+                            $currData[] = $item;
+                            $currDataChanged = TRUE;
+                        }
+                        // echo "Checking {$myData['totalCount']} (".count($myData['items'])." here) and ".($myData['offset'] - 1 + $myData['limit'])."\n";
+                    }
+                    if (isset($myData['offset']) && isset($myData['limit'])) {
+                        $max = $myData['offset'] + $myData['limit'] - 1;
+                    } else {
+                        $myData = FALSE;
+                    }
+                    if (!$currDataChanged) {
+                        # protect from infinite loops
+                        $try++;
+                    }
+                    usleep(400000);     // up to 3 per second
+                } else {
+                    $myData = FALSE;
+                    $try++;
+                }
+                if (isset($_GET['test'])) {
+                    Application::log($myName . " (" . $lastName . ") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}");
+                }
+            } while (!$myData || (count($currData) < $myData['totalCount']) && ($try <= 5));
+            if (isset($_GET['test'])) {
+                CareerDev::log("{$row['record_id']}: $lastName currData ".count($currData));
+            }
 
 			# dissect current data; must have first name to include
 			$pis = array();
@@ -182,14 +203,19 @@ function updateReporter($token, $server, $pid, $recordIds) {
 								$myFirstName = preg_replace("/^\(/", "", $myFirstName);
 								$myFirstName = preg_replace("/\)$/", "", $myFirstName);
 								if (preg_match("/".strtoupper($myFirstName)."/", $itemFirstName) && (preg_match("/$institution/i", $item['orgName']))) {
-									Application::log("Possible match $itemFirstName and $institution vs. '{$item['orgName']}'");
+									if (isset($_GET['test'])) {
+                                        Application::log("Possible match $itemFirstName and $institution vs. '{$item['orgName']}'");
+                                    }
 								    if (in_array($institution, $helperInstitutions)) {
-								        Application::log("Helper institution ($institution)?");
+								        if (isset($_GET['test'])) {
+                                            Application::log("Helper institution ($institution)?");
+                                        }
 									    $proceed = FALSE;
-                                        Application::log("Helper institution inspecting cities: ".json_encode(CareerDev::getCities())." vs. '".$item['orgCity']."'");
+								        if (isset($_GET['test'])) {
+                                            Application::log("Helper institution inspecting cities: ".json_encode(CareerDev::getCities())." vs. '".$item['orgCity']."'");
+                                        }
 									    foreach (CareerDev::getCities() as $city) {
                                             if (preg_match("/".$city."/i", $item['orgCity'])) {
-                                                Application::log("Matched city");
                                                 $proceed = TRUE;
                                             }
                                         }
@@ -201,7 +227,9 @@ function updateReporter($token, $server, $pid, $recordIds) {
                                         }
                                     }
 								    if ($proceed) {
-										CareerDev::log("Including $itemFirstName {$item['orgName']}");
+								        if (isset($_GET['test'])) {
+                                            CareerDev::log("Including $itemFirstName {$item['orgName']}");
+                                        }
 										$included[] = $item;
 										$found = true;
 										break;
@@ -220,7 +248,9 @@ function updateReporter($token, $server, $pid, $recordIds) {
 					}
 				}
 			}
-			CareerDev::log("{$row['record_id']}: $firstName $lastName included ".count($included));
+			if (isset($_GET['test'])) {
+                CareerDev::log("{$row['record_id']}: $firstName $lastName included ".count($included));
+            }
 			// echo "itemNames: ".json_encode($pis)."\n";
 		}
 
@@ -257,7 +287,9 @@ function updateReporter($token, $server, $pid, $recordIds) {
 				$notUpload[] = $item;
 			}
 		}
-		CareerDev::log($row['record_id']." ".count($upload)." rows to upload; skipped ".count($notUpload)." rows from original of ".getReporterCount($oldReporters, $row['record_id']));
+		if (isset($_GET['test'])) {
+            CareerDev::log($row['record_id']." ".count($upload)." rows to upload; skipped ".count($notUpload)." rows from original of ".getReporterCount($oldReporters, $row['record_id']));
+        }
 
 		foreach ($upload as $uploadRow) {
 			if (!isset($uploadRows[$uploadRow['record_id']])) {
@@ -270,7 +302,9 @@ function updateReporter($token, $server, $pid, $recordIds) {
 		if (!empty($upload)) {
 			$feedback = Upload::rows($upload, $token, $server);
 			$output = json_encode($feedback);
-			CareerDev::log("Upload $firstName $lastName ({$row['record_id']}): ".$output);
+			if (isset($_GET['test'])) {
+                CareerDev::log("Upload $firstName $lastName ({$row['record_id']}): ".$output);
+            }
 		}
 	}
 

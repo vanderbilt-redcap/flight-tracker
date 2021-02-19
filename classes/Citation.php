@@ -247,11 +247,15 @@ class Citation {
 	}
 
 	public function hasAuthor($name) {
-		list($firstName, $lastName) = NameMatcher::splitName($name);
+		list($firstName, $lastName) = NameMatcher::splitName($name, 2, isset($_GET['test']));
 		if ($lastName) {
 			$authorList = $this->getAuthorList();
 			foreach ($authorList as $author) {
+				list($currFirstName, $currLastName) = NameMatcher::splitName($author, 2, isset($_GET['test']));
 				list($currFirstName, $currLastName) = NameMatcher::splitName($author);
+                if (isset($_GET['test'])) {
+                    Application::log("Comparing $firstName $lastName against $currFirstName $currLastName");
+                }
                 if (NameMatcher::matchByInitials($currLastName, $currFirstName, $lastName, $firstName)) {
                     return TRUE;
                 }
@@ -283,7 +287,7 @@ class Citation {
         }
         $author = $authorList[$idx];
         list($authorFirstName, $authorLastName) = NameMatcher::splitName($author);
-        if (NameMatcher::matchByInitials($authorFirstName, $authorLastName, $lastName, $firstName)) {
+        if (NameMatcher::matchByInitials($authorLastName, $authorFirstName, $lastName, $firstName)) {
             return TRUE;
         }
         return FALSE;

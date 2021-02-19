@@ -48,6 +48,7 @@ $names = Download::names($token, $server);
 $menteeName = $names[$menteeRecordId];
 
 $metadata = Download::metadata($token, $server);
+$allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
 $metadata = filterMetadata($metadata);
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 $choices = REDCapManagement::getChoices($metadata);
@@ -210,6 +211,11 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
                     }
                     $htmlRows[] = "</tbody></table>";
                     echo implode("\n", $htmlRows)."\n";
+
+                    if (in_array("mentoring_agreement_evaluations", $allMetadataForms)) {
+                        $link = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations");
+                        echo "<h3><a href='$link'>When done, please provide feedback on the Mentoring Agreement</a></h3>";
+                    }
 
                     ?>
 

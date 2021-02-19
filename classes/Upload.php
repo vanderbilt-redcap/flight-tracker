@@ -54,7 +54,7 @@ class Upload
                     Application::log("SQL ERROR: " . $error);
                     throw new \Exception($error);
                 } else {
-                    Application::log("SQL: " . $q->affected_rows . " rows affected");
+                    Application::log("SQL: " . db_affected_rows() . " rows affected");
                 }
             } else {
                 throw new \Exception("Could not find record!");
@@ -74,29 +74,46 @@ class Upload
         return self::rows($newRecordData, $token, $server);
     }
 
-    public static function deleteForm($token, $server, $pid, $prefix, $recordId, $instance = NULL) {
+    public static function deleteFormInstances($token, $server, $pid, $prefix, $recordId, $instances) {
         $records = Download::recordIds($token, $server);
+        $batchSize = 10;
         if (Download::isCurrentServer($server)) {
             if (in_array($recordId, $records)) {
                 if (!preg_match("/_$/", $prefix)) {
                     $prefix .= "_";
                 }
-                $instanceClause = "";
-                if ($instance) {
-                    if ($instance == 1) {
-                        $instanceClause = " AND instance IS NULL";
-                    } else {
-                        $instanceClause = " AND instance = '$instance'";
+                if (!empty($instances)) {
+                    for ($i = 0; $i < count($instances); $i += $batchSize) {
+                        $batchInstances = [];
+                        for ($j = $i; ($j < $i + $batchSize) && ($j < count($instances)); $j++) {
+                            $batchInstances[] = $instances[$j];
+                        }
+                        $instanceClause = "";
+                        if (!empty($batchInstances)) {
+                            $addOnInstanceClause =  "";
+                            if (in_array(1, $batchInstances)) {
+                                $addOnInstanceClause = " OR instance IS NULL";
+                                $filteredInstances = [];
+                                foreach ($batchInstances as $instance) {
+                                    if ($instance != 1) {
+                                        $filteredInstances[] = $instance;
+                                    }
+                                }
+                            } else {
+                                $filteredInstances = $batchInstances;
+                            }
+                            $instanceClause = " AND (instance IN ('".implode("','", $filteredInstances)."')".$addOnInstanceClause.")";
+                        }
+                        $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name LIKE '$prefix%'".$instanceClause;
+                        Application::log("Running SQL $sql");
+                        $q = db_query($sql);
+                        if ($error = db_error()) {
+                            Application::log("SQL ERROR: " . $error);
+                            throw new \Exception($error);
+                        } else {
+                            Application::log("SQL: " . db_affected_rows() . " rows affected");
+                        }
                     }
-                }
-                $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name LIKE '$prefix%'".$instanceClause;
-                Application::log("Running SQL $sql");
-                $q = db_query($sql);
-                if ($error = db_error()) {
-                    Application::log("SQL ERROR: " . $error);
-                    throw new \Exception($error);
-                } else {
-                    Application::log("SQL: " . $q->affected_rows . " rows affected");
                 }
                 $completeField = REDCapManagement::prefix2CompleteField($prefix);
                 if ($completeField) {
@@ -107,7 +124,33 @@ class Upload
                         Application::log("SQL ERROR: " . $error);
                         throw new \Exception($error);
                     } else {
-                        Application::log("SQL: " . $q->affected_rows . " rows affected");
+                        Application::log("SQL: " . db_affected_rows() . " rows affected");
+                    }
+                }
+            } else {
+                throw new \Exception("Could not find record!");
+            }
+        } else {
+            throw new \Exception("Wrong server");
+        }
+    }
+
+    public static function deleteForm($token, $server, $pid, $prefix, $recordId, $instance = NULL) {
+        $records = Download::recordIds($token, $server);
+        $batchSize = 10;
+        if (Download::isCurrentServer($server)) {
+            if (in_array($recordId, $records)) {
+                if ($instance !== NULL) {
+                    self::deleteFormInstances($token, $server, $pid, $prefix, $recordId, [$instance]);
+                } else {
+                    $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name LIKE '$prefix%'";
+                    Application::log("Running SQL $sql");
+                    $q = db_query($sql);
+                    if ($error = db_error()) {
+                        Application::log("SQL ERROR: " . $error);
+                        throw new \Exception($error);
+                    } else {
+                        Application::log("SQL: " . db_affected_rows() . " rows affected");
                     }
                 }
             } else {
@@ -185,7 +228,9 @@ public static function metadata($metadata, $token, $server) {
 
 
 		self::$useAPIOnly[$token] = TRUE;
-		Application::log("Upload::metadata returning $output");
+		if (isset($_GET['test'])) {
+            Application::log("Upload::metadata returning $output");
+        }
 		return $feedback;
 	}
 
@@ -287,7 +332,9 @@ public static function metadata($metadata, $token, $server) {
         curl_close($ch);
 
 		self::$useAPIOnly[$token] = TRUE;
-		Application::log("Upload::projectSettings returning $output");
+		if (isset($_GET['test'])) {
+            Application::log("Upload::projectSettings returning $output");
+        }
 		return $feedback;
 	}
 
@@ -379,7 +426,9 @@ public static function metadata($metadata, $token, $server) {
 			throw new \Exception("No token or server supplied!");
 		}
         self::adaptToUTF8($rows);
-        Application::log("Upload::rows uploading ".count($rows)." rows");
+		if (isset($_GET['test'])) {
+            Application::log("Upload::rows uploading ".count($rows)." rows");
+        }
 		if (count($rows) > self::getRowLimit()) {
 			$rowsOfRows = array();
 			$i = 0;
@@ -444,11 +493,13 @@ public static function metadata($metadata, $token, $server) {
 				curl_close($ch);
 				$time3 = microtime(TRUE);
 			}
-			if ($method == "saveData") {
-				Application::log("Upload::rows $method for pid $pid returning $output in ".($time3 - $time2)." seconds");
-			} else {
-				Application::log("Upload::rows $method returning $output in ".($time3 - $time2)." seconds");
-			}
+			if (isset($_GET['test'])) {
+                if ($method == "saveData") {
+                    Application::log("Upload::rows $method for pid $pid returning $output in ".($time3 - $time2)." seconds");
+                } else {
+                    Application::log("Upload::rows $method returning $output in ".($time3 - $time2)." seconds");
+                }
+            }
 			$allFeedback = self::combineFeedback($allFeedback, $feedback);
 		}
 		return $allFeedback;

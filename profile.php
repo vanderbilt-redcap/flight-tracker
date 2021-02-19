@@ -97,6 +97,7 @@ $numGrants = $grants->getNumberOfGrants("prior");
 $numPublications = $pubs->getNumber("Original Included");
 $numFirstAuthors = $pubs->getNumberFirstAuthors();
 $numLastAuthors = $pubs->getNumberLastAuthors();
+$numMentorArticles = $pubs->getNumberWithPeople($mentors);
 $numCitations = $pubs->getNumberOfCitationsByOthers("Original Included");
 $dollarsSummaryTotal = $grants->getTotalDollars("prior");
 $dollarsSummaryDirect = $grants->getDirectDollars("prior");
@@ -217,13 +218,18 @@ if ($dollarsCompiledTotal) {
 	echo "<td class='label profileHeader'>Total Dollars<br>All Grants<br>(Internal and External;<br>recorded in COEUS):</td>\n";
 	echo "<td class='value profileHeader'>".REDCapManagement::prettyMoney($dollarsCompiledTotal)."</td>\n";
 }
+
+$numMentorArticlesHTML = "";
+if (!empty($mentors)) {
+    $numMentorArticlesHTML = "<br>[Collaborating on ".REDCapManagement::pretty($numMentorArticles)." articles]";
+}
 ?>
 		<td class='label profileHeader'>Total Dollars<br>from Grants<br>(External Sources Only):</td>
 		<td class='value profileHeader'><?= REDCapManagement::prettyMoney($dollarsSummaryTotal) ?></td>
 	</tr>
 	<tr>
 		<td class='label profileHeader'>Mentors:</td>
-		<td class='value profileHeader'><?= printList($mentors) ?></td>
+		<td class='value profileHeader'><?= printList($mentors).$numMentorArticlesHTML ?></td>
 		<td class='label profileHeader'>Resources Used:</td>
 		<td class='value profileHeader'><?= printList($resources) ?></td>
 	</tr>

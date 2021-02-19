@@ -760,6 +760,21 @@ class REDCapManagement {
 	    return FALSE;
     }
 
+    public static function cleanupDirectory($dir, $regex) {
+	    $files = self::regexInDirectory($regex, $dir);
+	    if (!preg_match("/\/$/", $dir)) {
+	        $dir .= "/";
+        }
+	    if (!empty($files)) {
+            Application::log("Removing files (".implode(", ", $files).") from $dir");
+            foreach ($files as $file) {
+                if (file_exists($dir.$file)) {
+                    unlink($dir.$file);
+                }
+            }
+        }
+    }
+
     public static function regexInDirectory($regex, $dir) {
 	    $files = scandir($dir);
 	    $foundFiles = [];
@@ -771,24 +786,56 @@ class REDCapManagement {
 	    return $foundFiles;
     }
 
-    public static function deduplicateByKey($token, $server, $pid, $records, $field, $prefix, $instrument) {
-	    $fields = ["record_id", $field];
-	    foreach ($records as $recordId) {
-            $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-            $values = [];
-            foreach ($redcapData as $row) {
-                if ($row['redcap_repeat_instrument'] == $instrument) {
-                    if (!in_array($row[$field], $values)) {
-                        $values[] = $row[$field];
-                    } else {
-                        // duplicate => delete
-                        $instance = $row['redcap_repeat_instance'];
-                        Application::log("Removing instance $instance of $recordId because duplicate");
-                        Upload::deleteForm($token, $server, $pid, $prefix, $recordId, $instance);
+    public static function deduplicateByKeys($token, $server, $pid, $records, $fields, $prefix, $instrument) {
+	    Application::log("Deduplicating $prefix/$instrument by keys: ".json_encode($fields)." for records ".json_encode($records), $pid);
+        if (!empty($fields)) {
+            $fieldsToDownload = array_unique(array_merge(["record_id"], $fields));
+            foreach ($records as $recordId) {
+                $redcapData = Download::fieldsForRecords($token, $server, $fieldsToDownload, [$recordId]);
+                $values = [];
+                $instancesToDelete = [];
+                foreach ($redcapData as $row) {
+                    if ($row['redcap_repeat_instrument'] == $instrument) {
+                        $fieldValues = [];
+                        $notBlank = FALSE;
+                        foreach ($fields as $field) {
+                            $fieldValues[] = $row[$field];
+                            if ($row[$field]) {
+                                $notBlank = TRUE;
+                            }
+                        }
+                        $encodedFieldValues = implode("|", $fieldValues);
+                        if (!in_array($encodedFieldValues, $values)) {
+                            if ($notBlank) {
+                                $values[] = $encodedFieldValues;
+                            }
+                        } else {
+                            // duplicate => delete
+                            $instancesToDelete[] = $row['redcap_repeat_instance'];
+                        }
                     }
+                }
+                Application::log("Removing instances ".implode(", ", $instancesToDelete)." from record $recordId because duplicates");
+                if (!empty($instancesToDelete)) {
+                    Upload::deleteFormInstances($token, $server, $pid, $prefix, $recordId, $instancesToDelete);
                 }
             }
         }
+    }
+
+    public static function deduplicateByKey($token, $server, $pid, $records, $field, $prefix, $instrument) {
+	    self::deduplicateByKeys($token, $server, $pid, $records, [$field], $prefix, $instrument);
+    }
+
+    public static function getTimestampOfFile($file) {
+	    $nodes = preg_split("/\//", $file);
+	    if (count($nodes) > 1) {
+	        $file = $nodes[count($nodes) - 1];
+        }
+	    if (preg_match("/^\d\d\d\d\d\d\d\d\d\d\d\d\d\d_/", $file, $matches)) {
+	        return preg_replace("/_$/", "", $matches[0]);
+        }
+	    return 0;
     }
 
     public static function copyTempFileToTimestamp($file, $timespanInSeconds) {
@@ -801,10 +848,12 @@ class REDCapManagement {
 	        $filename = date("YmdHis", time() + $timespanInSeconds)."_".$basename;
             $newLocation = $dir."/".$filename;
             Application::log("Copying $file to $newLocation");
+            flush();
             $fpIn = fopen($file, "r");
             $fpOut = fopen($newLocation, "w");
             while ($line = fgets($fpIn)) {
                 fwrite($fpOut, $line);
+                fflush($fpOut);
             }
             fclose($fpOut);
             fclose($fpIn);

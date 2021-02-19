@@ -245,7 +245,7 @@ class NameMatcher {
 	    $newNodes = [$last];
 	    $i = 0;
 	    $suffixesInUpper = ["I", "II", "III", "IV", "JR", "JR.", "SR", "SR."];
-	    $prefixesInLower = ["van", "von", "de"];
+	    $prefixesInLower = ["van", "von", "de", "der"];
 	    foreach ($nodes as $node) {
 	        if (in_array(strtoupper($node), $suffixesInUpper) && ($i == 1)) {
 	            return [$nodes[0]." ".$nodes[1]];
@@ -262,6 +262,9 @@ class NameMatcher {
 	public static function downloadNamesForMatch($token, $server) {
 		Application::log("Downloading new names for pid ".Application::getPID($token));
 		self::$namesForMatch = Download::fields($token, $server, array("record_id", "identifier_first_name", "identifier_last_name"));
+		if (self::$namesForMatch === NULL) {
+		    self::$namesForMatch = [[]];
+        }
         Application::log("Downloaded ".count(self::$namesForMatch)." rows");
 		self::$currToken = $token;
 		return self::$namesForMatch;
@@ -495,8 +498,14 @@ class NameMatcher {
                     $changed = FALSE;
                     if ($loggingOn) { echo "In do-while with ".count($nodes)." nodes<br>"; }
                     if (count($nodes) == $parts) {
-                        if ($loggingOn) { echo "Do-while A<br>"; }
-                        return $nodes;
+                        if (strlen($nodes[1]) <= 2) {
+                            # Initials
+                            if ($loggingOn) { echo "Do-while A Initials<br>"; }
+                            return [$nodes[1], $nodes[0]];
+                        } else {
+                            if ($loggingOn) { echo "Do-while A<br>"; }
+                            return $nodes;
+                        }
                     } else if ((count($nodes) == 3) && (self::isInitial($nodes[0]) || self::isInitial($nodes[1]))) {
                         if ($loggingOn) { echo "Do-while B<br>"; }
                         if ($parts == 2) {

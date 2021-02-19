@@ -130,13 +130,23 @@ class CronManager {
 		Application::log("Looking in ".$this->getNumberOfCrons()." cron jobs");
 		$run = [];
 		$toRun = [];
+        $makeSummaryCronJob = FALSE;
 		foreach ($keys as $key) {
-			if (isset($this->crons[$key])) {
+		    if (isset($this->crons[$key])) {
 				foreach ($this->crons[$key] as $cronjob) {
-					$toRun[] = $cronjob;
+				    if ($cronjob->getMethod() == "makeSummary") {
+				        # set as last
+				        $makeSummaryCronJob = $cronjob;
+                    } else {
+                        $toRun[] = $cronjob;
+                    }
 				}
 			}
 		}
+		if ($makeSummaryCronJob !== FALSE) {
+		    # set as last
+		    $toRun[] = $makeSummaryCronJob;
+        }
 
 		register_shutdown_function(["CronManager", "reportCronErrors"]);
 
@@ -239,6 +249,10 @@ class CronJob {
 	public function getTitle() {
 		return $this->file.": ".$this->method;
 	}
+
+	public function getMethod() {
+	    return $this->method;
+    }
 
 	public function run($passedToken, $passedServer, $passedPid, $records) {
 		if (!$passedToken || !$passedServer || !$passedPid) {

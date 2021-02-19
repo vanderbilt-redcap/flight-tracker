@@ -34,6 +34,7 @@ if(isset($_REQUEST['uid']) && DEBUG){
 }
 
 $metadata = Download::metadata($token, $server);
+$allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
 $metadata = filterMetadata($metadata, FALSE);
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 
@@ -202,6 +203,13 @@ line-height: 20px; font-family: proxima-nova}
               ?>
               </tbody>
           </table>
+
+            <?php
+            if (in_array("mentoring_agreement_evaluations", $allMetadataForms)) {
+                $link = \REDCap::getSurveyLink($menteeRecordIds[0], "mentoring_agreement_evaluations");
+                echo "<h3><a href='$link'>When done, please provide feedback on the Mentoring Agreement</a></h3>";
+            }
+            ?>
       </div>
     </div>
   </div>

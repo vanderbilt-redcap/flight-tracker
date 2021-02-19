@@ -23,6 +23,10 @@ class Cohorts {
 		$this->configs = $this->getConfigs();
 	}
 
+	public function makeCohortsSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
+	    return $this->makeCohortSelect($defaultCohort, $onchangeJS, $displayAllOption);
+    }
+
 	public function makeCohortSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
         $html = "<label for='cohort'>Cohort:</label> <select id='cohort' name='cohort'";
         if ($onchangeJS) {

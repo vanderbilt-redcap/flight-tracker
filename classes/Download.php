@@ -289,7 +289,9 @@ class Download {
 	}
 
 	public static function metadata($token, $server, $fields = array()) {
-		Application::log("Download::metadata");
+		if (isset($_GET['test'])) {
+            Application::log("Download::metadata");
+        }
 		$data = array(
 			'token' => $token,
 			'content' => 'metadata',
@@ -578,7 +580,9 @@ class Download {
 	}
 
 	public static function recordIds($token, $server) {
-		Application::log("Download::recordIds");
+		if (isset($_GET['test'])) {
+            Application::log("Download::recordIds");
+        }
 		$data = array(
 			'token' => $token,
 			'content' => 'record',
@@ -605,7 +609,9 @@ class Download {
 	public static function fieldsWithConfig($token, $server, $metadata, $fields, $cohortConfig) {
 		$filter = new Filter($token, $server, $metadata);
 		$records = $filter->getRecords($cohortConfig);
-		Application::log("Download::fieldsWithFilter ".count($records)." records; ".count($fields)." fields");
+		if (isset($_GET['test'])) {
+            Application::log("Download::fieldsWithFilter ".count($records)." records; ".count($fields)." fields");
+        }
 		return Download::fieldsForRecords($token, $server, $fields, $records);
 	}
 
@@ -614,7 +620,9 @@ class Download {
 	        Application::log("Error! Download::fields blank ".json_encode(debug_backtrace()));
 	        return [];
         }
-		Application::log("Download::fields ".count($fields)." fields");
+	    if (isset($_GET['test'])) {
+            Application::log("Download::fields ".count($fields)." fields");
+        }
 		$data = array(
             'token' => $token,
             'content' => 'record',
@@ -668,7 +676,9 @@ class Download {
 	}
 
 	public static function fieldsForRecords($token, $server, $fields, $records) {
-		Application::log("Download::fieldsForRecords ".count($fields)." fields with ".json_encode($records));
+	    if (isset($_GET['test'])) {
+            Application::log("Download::fieldsForRecords ".count($fields)." fields with ".json_encode($records));
+        }
 		$data = array(
 			'token' => $token,
 			'content' => 'record',
@@ -691,7 +701,9 @@ class Download {
 			# assume recordIds was meant if $records null
 			return Download::recordIds($token, $server);
 		}
-		Application::log("Download::records ".json_encode($records));
+		if (isset($_GET['test'])) {
+            Application::log("Download::records ".json_encode($records));
+        }
 		$data = array(
 			'token' => $token,
 			'content' => 'record',
