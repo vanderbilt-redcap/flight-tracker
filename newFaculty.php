@@ -9,7 +9,7 @@ header('Content-Type: text/csv');
 header('Content-Disposition: attachment; filename="newFaculty.csv"');
 
 $additionalFields = array();
-if (Application::getSetting("grant_class") == "T") {
+if (Application::getSetting("grant_class", $pid) == "T") {
     array_push($additionalFields, "First Day of Training at Institution (MM-DD-YYYY)");
 }
 

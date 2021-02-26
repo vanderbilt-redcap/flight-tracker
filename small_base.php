@@ -281,7 +281,8 @@ function pretty($n, $numDecimalPlaces = 3) {
 }
 
 function downloadURL($url) {
-    return REDCapManagement::downloadURL($url);
+    global $pid;
+    return REDCapManagement::downloadURL($url, $pid);
 }
 
 # given two timestamps (UNIX) $start, $end - let's call this duration.

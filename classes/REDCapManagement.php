@@ -498,11 +498,11 @@ class REDCapManagement {
 	    return FALSE;
     }
 
-	public static function applyProxyIfExists(&$ch) {
-        $proxyIP = Application::getSetting("proxy-ip");
-        $proxyPort = Application::getSetting("proxy-port");
-        $proxyUsername = Application::getSetting("proxy-user");
-        $proxyPassword = Application::getSetting("proxy-pass");
+	public static function applyProxyIfExists(&$ch, $pid) {
+        $proxyIP = Application::getSetting("proxy-ip", $pid);
+        $proxyPort = Application::getSetting("proxy-port", $pid);
+        $proxyUsername = Application::getSetting("proxy-user", $pid);
+        $proxyPassword = Application::getSetting("proxy-pass", $pid);
         if ($proxyIP && $proxyPort && is_numeric($proxyPort)&& $proxyPassword && $proxyUsername) {
             $proxyOpts = [
                 CURLOPT_HTTPPROXYTUNNEL => 1,
@@ -535,7 +535,7 @@ class REDCapManagement {
 	    return [];
     }
 
-	public static function downloadURL($url, $addlOpts = [], $autoRetriesLeft = 3) {
+	public static function downloadURL($url, $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
         Application::log("Contacting $url");
         $defaultOpts = [
             CURLOPT_RETURNTRANSFER => true,
@@ -559,7 +559,7 @@ class REDCapManagement {
         foreach ($addlOpts as $opt => $value) {
             curl_setopt($ch, $opt, $value);
         }
-        self::applyProxyIfExists($ch);
+        self::applyProxyIfExists($ch, $pid);
         $data = curl_exec($ch);
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         if(curl_errno($ch)){
@@ -567,7 +567,7 @@ class REDCapManagement {
             if ($autoRetriesLeft > 0) {
                 sleep(30);
                 Application::log("Retrying ($autoRetriesLeft left)...");
-                self::downloadURL($url, $addlOpts, $autoRetriesLeft - 1);
+                self::downloadURL($url, $pid, $addlOpts, $autoRetriesLeft - 1);
             } else {
                 Application::log("Error: ".curl_error($ch));
                 throw new \Exception(curl_error($ch));

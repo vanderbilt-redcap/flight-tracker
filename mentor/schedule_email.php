@@ -20,7 +20,7 @@ $to = "";
 if ($emails) {
     $to = implode(",", $emails);
 }
-$from = Application::getSetting("default_from");
+$from = Application::getSetting("default_from", $pid);
 $subject = $_POST['subject'];
 $message = $_POST['message'];
 $datetimeToSend = $_POST['datetime'];

@@ -13,8 +13,9 @@ define("INTERMEDIATE_4_FED", "R01AndEquivsList4_Fed.txt");
 define("PI_LIST_FED", "PIList_Fed.txt");
 
 class FederalExPORTER {
-	public function __construct() {
+	public function __construct($pid) {
 		$this->data = array();
+		$this->pid = $pid;
 	}
 
 	private static function clearBlanks($ary) {
@@ -28,12 +29,12 @@ class FederalExPORTER {
 	}
 
 	public function showDataSince($date) {
-		$this->data = self::filterForActivityCodeSinceDate("/\d[Kk]\d\d/", $date);
+		$this->data = self::filterForActivityCodeSinceDate("/\d[Kk]\d\d/", $date, $this->pid);
 		echo $this->display();
 	}
 
 	public function showR01DataSince($date, $names) {
-		self::filterForActivityCodeSinceDateOrR01EquivalentAtVUMC("/\dR01/", $date);
+		self::filterForActivityCodeSinceDateOrR01EquivalentAtVUMC("/\dR01/", $date, $this->pid);
 		self::filterOut("/R56/", "PROJECT_NUMBER");
 		self::filterOutNames($names);
 		self::printPIs();
@@ -171,8 +172,8 @@ class FederalExPORTER {
 		return $html;
 	}
 
-	public static function filterForR01EquivalentSinceDate($date) {
-		$files = self::getDataSince2008();
+	public static function filterForR01EquivalentSinceDate($date, $pid) {
+		$files = self::getDataSince2008($pid);
 		$outData = array();
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
@@ -188,8 +189,8 @@ class FederalExPORTER {
 		return $outData;
 	}
 
-	public static function filterForActivityCodeSinceDateOrR01EquivalentAtVUMC($regexActivityCode, $date) {
-		$files = self::getDataSince2008();
+	public static function filterForActivityCodeSinceDateOrR01EquivalentAtVUMC($regexActivityCode, $date, $pid) {
+		$files = self::getDataSince2008($pid);
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
 		$fp = fopen(DATA_DIRECTORY."/".INTERMEDIATE_1_FED, "w");
@@ -232,8 +233,8 @@ class FederalExPORTER {
 		}
 	}
 
-	public static function filterForActivityCodeSinceDate($regexActivityCode, $date) {
-		$files = self::getDataSince2008();
+	public static function filterForActivityCodeSinceDate($regexActivityCode, $date, $pid) {
+		$files = self::getDataSince2008($pid);
 		$outData = array();
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
@@ -416,7 +417,7 @@ class FederalExPORTER {
 	}
 
 	# full data kept since 2008; pre-2008 data does not contain much meaningful information
-	private static function getDataSince2008() {
+	private static function getDataSince2008($pid) {
 		# find relevant zips
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
@@ -425,7 +426,7 @@ class FederalExPORTER {
 		$files = array();
 		for ($fiscalYear = 2008; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "FedRePORTER_PRJ_C_FY".$fiscalYear.".zip";
-			$file = self::downloadURL($url);
+			$file = self::downloadURL($url, $pid);
 			echo "Returning ".$file."\n";
 			if ($file) {
 				$files[$file] = $fiscalYear;
@@ -435,7 +436,7 @@ class FederalExPORTER {
 		return $files;
 	}
 
-	private static function getDataSince2018() {
+	private static function getDataSince2018($pid) {
 		# find relevant zips
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
@@ -444,7 +445,7 @@ class FederalExPORTER {
 		$files = array();
 		for ($fiscalYear = 2018; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "FedRePORTER_PRJ_C_FY".$fiscalYear.".zip";
-			$file = self::downloadURL($url);
+			$file = self::downloadURL($url, $pid);
 			if ($file) {
 				$files[$file] = $fiscalYear;
 				$lastYear = $fiscalYear;
@@ -454,7 +455,7 @@ class FederalExPORTER {
 			for ($week = 1; $week <= 53; $week++) {
 				$weekWithLeading0s = sprintf('%03d', $week);
 				$url = "FedRePORTER_PRJ_C_FY".$fiscalYear."_".$weekWithLeading0s.".zip";
-				$file = self::downloadURL($url);
+				$file = self::downloadURL($url, $pid);
 				if ($file) {
 					$files[$file] = $fiscalYear;
 				}
@@ -463,7 +464,7 @@ class FederalExPORTER {
 		return $files;
 	}
 
-	private static function getDataSince2014() {
+	private static function getDataSince2014($pid) {
 		# find relevant zips
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
@@ -472,7 +473,7 @@ class FederalExPORTER {
 		$files = array();
 		for ($fiscalYear = 2014; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "FedRePORTER_PRJ_C_FY".$fiscalYear.".zip";
-			$file = self::downloadURL($url);
+			$file = self::downloadURL($url, $pid);
 			if ($file) {
 				$files[$file] = $fiscalYear;
 				$lastYear = $fiscalYear;
@@ -482,7 +483,7 @@ class FederalExPORTER {
 			for ($week = 1; $week <= 53; $week++) {
 				$weekWithLeading0s = sprintf('%03d', $week);
 				$url = "FedRePORTER_PRJ_C_FY".$fiscalYear."_".$weekWithLeading0s.".zip";
-				$file = self::downloadURL($url);
+				$file = self::downloadURL($url, $pid);
 				if ($file) {
 					$files[$file] = $fiscalYear;
 				}
@@ -496,7 +497,7 @@ class FederalExPORTER {
 	 * returns empty string if $file not found
 	 * @param string $file Filename without leading URL
 	 */
-	private static function downloadURL($file) {
+	private static function downloadURL($file, $pid) {
 		$downloadedCSVFile = preg_replace("/.zip/", ".csv", $file);
 		$csvfile = preg_replace("/.zip/", ".federal.csv", $file);
 		$federalFile = preg_replace("/.zip/", ".federal.zip", $file);
@@ -504,7 +505,7 @@ class FederalExPORTER {
 			Application::log("Downloading $file...");
 
 			$url = "https://federalreporter.nih.gov/FileDownload/DownloadFile?fileToDownload=".$file;
-			list($resp, $zip) = REDCapManagement::downloadURL($url);
+			list($resp, $zip) = REDCapManagement::downloadURL($url, $pid);
 
 			if (($resp == 200) && (!preg_match("/Not found/", $zip))) {
 				Application::log("Unzipping $file to ".APP_PATH_TEMP.$federalFile."...");

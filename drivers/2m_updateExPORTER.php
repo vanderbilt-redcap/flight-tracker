@@ -67,11 +67,11 @@ function getExPORTERInstance($recordId, $redcapData, $upload, $uploadLine) {
 	return array($maxInstance + 1, TRUE);
 }
 
-function downloadURLAndUnzip($file) {
+function downloadURLAndUnzip($file, $pid) {
     CareerDev::log("Downloading $file...");
 
     $url = "https://exporter.nih.gov/CSVs/final/".$file;
-    list($resp, $zip) = REDCapManagement::downloadURL($url);
+    list($resp, $zip) = REDCapManagement::downloadURL($url, $pid);
 
     if ($resp == 200) {
         CareerDev::log("Unzipping $file...");
@@ -154,7 +154,7 @@ function updateAbstracts($token, $server, $pid) {
         if ($file = searchForFileWithTimestamp($url)) {
             $files[$file] = $year;
         } else {
-            $origFile = downloadURLAndUnzip($url);
+            $origFile = downloadURLAndUnzip($url, $pid);
             if ($origFile) {
                 $file = REDCapManagement::copyTempFileToTimestamp($origFile, $lifespanOfFileInHours * 3600);
                 $files[$file] = $year;
@@ -165,7 +165,7 @@ function updateAbstracts($token, $server, $pid) {
         if ($abstractFile = searchForFileWithTimestamp($abstractURL)) {
             $abstractFiles[$file] = $abstractFile;
         } else {
-            $origAbstractFile = downloadURLAndUnzip($abstractURL);
+            $origAbstractFile = downloadURLAndUnzip($abstractURL, $pid);
             if ($origAbstractFile) {
                 $abstractFile = REDCapManagement::copyTempFileToTimestamp($origAbstractFile, $lifespanOfFileInHours * 3600);
                 $abstractFiles[$file] = $abstractFile;
@@ -179,7 +179,7 @@ function updateAbstracts($token, $server, $pid) {
             if ($file = searchForFileWithTimestamp($url)) {
                 $files[$file] = $year;
             } else {
-                $origFile = downloadURLAndUnzip($url);
+                $origFile = downloadURLAndUnzip($url, $pid);
                 if ($origFile) {
                     $file = REDCapManagement::copyTempFileToTimestamp($origFile, $lifespanOfFileInHours * 3600);
                     $files[$file] = $year;
@@ -190,7 +190,7 @@ function updateAbstracts($token, $server, $pid) {
             if ($abstractFile = searchForFileWithTimestamp($url)) {
                 $abstractFiles[$file] = $abstractFile;
             } else {
-                $origAbstractFile = downloadURLAndUnzip($abstractURL);
+                $origAbstractFile = downloadURLAndUnzip($abstractURL, $pid);
                 if ($origAbstractFile) {
                     $abstractFile = REDCapManagement::copyTempFileToTimestamp($origAbstractFile, $lifespanOfFileInHours * 3600);
                     $abstractFiles[$file] = $abstractFile;
@@ -215,7 +215,7 @@ function updateExPORTER($token, $server, $pid, $records) {
 		if ($file = searchForFileWithTimestamp($url)) {
             $files[$file] = $year;
         } else {
-            $file = downloadURLAndUnzip($url);
+            $file = downloadURLAndUnzip($url, $pid);
             if ($file) {
                 $file = REDCapManagement::copyTempFileToTimestamp($file, $lifespanOfFileInHours * 3600);
                 $files[$file] = $year;
@@ -240,7 +240,7 @@ function updateExPORTER($token, $server, $pid, $records) {
             if ($file = searchForFileWithTimestamp($url)) {
                 $files[$file] = $year;
             } else {
-                $file = downloadURLAndUnzip($url);
+                $file = downloadURLAndUnzip($url, $pid);
                 if ($file) {
                     $file = REDCapManagement::copyTempFileToTimestamp($file, $lifespanOfFileInHours * 3600);
                     $files[$file] = $year;
@@ -251,7 +251,7 @@ function updateExPORTER($token, $server, $pid, $records) {
             if ($abstractFile = searchForFileWithTimestamp($abstractURL)) {
                 $abstractFiles[$file] = $abstractFile;
             } else {
-                $abstractFile = downloadURLAndUnzip($abstractURL);
+                $abstractFile = downloadURLAndUnzip($abstractURL, $pid);
                 if ($abstractFile) {
                     $abstractFile = REDCapManagement::copyTempFileToTimestamp($abstractFile, $lifespanOfFileInHours * 3600);
                     $abstractFiles[$file] = $abstractFile;

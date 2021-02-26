@@ -138,7 +138,7 @@ function updateReporter($token, $server, $pid, $recordIds) {
 					$try = 0;
 				}
 				$url = "https://api.federalreporter.nih.gov".$query."&offset=".($max + 1);
-                list($resp, $output) = REDCapManagement::downloadURL($url);
+                list($resp, $output) = REDCapManagement::downloadURL($url, $pid);
                 $myData = json_decode($output, true);
                 $currDataChanged = FALSE;
                 if ($myData) {

@@ -186,7 +186,7 @@ class NIHTables {
             "Notes" => "",
         );
 
-        $grantClass = Application::getSetting("grant_class");
+        $grantClass = Application::getSetting("grant_class", $this->pid);
 	    if ($grantClass == "T") {
 	        $cols = array_merge($cols1, $cols2T, $cols3, $cols4);
         } else if ($grantClass == "K") {

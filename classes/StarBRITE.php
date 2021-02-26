@@ -94,7 +94,7 @@ class StarBRITE {
         return $uploadRow;
     }
 
-    static function accessSRI($resourcePath, $getParams) {
+    static function accessSRI($resourcePath, $getParams, $pid) {
         include "/app001/credentials/con_redcap_ldap_user.php";
         $resourcePath = preg_replace("/^\//", "", $resourcePath);
         $resourcePath = preg_replace("/\/$/", "", $resourcePath);
@@ -109,11 +109,11 @@ class StarBRITE {
             CURLOPT_USERPWD => $ldapuser . ':' . $ldappass,
             CURLOPT_CUSTOMREQUEST => "GET",
         ];
-        list($resp, $output) = REDCapManagement::downloadURL($url, $opts);
+        list($resp, $output) = REDCapManagement::downloadURL($url, $pid, $opts);
         return json_decode($output, TRUE);
     }
 
-    static function dataForUserid($userid) {
-        return self::accessSRI("project/vunet/", ["coeus", $userid]);
+    static function dataForUserid($userid, $pid) {
+        return self::accessSRI("project/vunet/", ["coeus", $userid], $pid);
     }
 }

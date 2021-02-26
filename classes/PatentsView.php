@@ -5,12 +5,13 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class PatentsView {
-    public function __construct($recordId, $startDate = "none") {
+    public function __construct($recordId, $pid, $startDate = "none") {
         if (!$recordId) {
             throw new \Exception("recordId is required to access a patent");
         }
 
         $this->recordId = $recordId;
+        $this->pid = $pid;
         if ($startDate == "none") {
             $this->startDate = "";
         } else if (REDCapManagement::isDate($startDate)) {
@@ -129,7 +130,7 @@ class PatentsView {
                 $page++;
                 $o = ["page" => $page, "per_page" => $numPerPage];
                 $url = "https://api.patentsview.org/patents/query?q=".json_encode($query)."&f=".json_encode($fields)."&o=".json_encode($o);
-                $json = REDCapManagement::downloadURL($url);
+                $json = REDCapManagement::downloadURL($url, $this->pid);
                 if (REDCapManagement::isJSON($json)) {
                     $data = json_decode($json, TRUE);
                     if (($data["patents"] === NULL) || empty($data["patents"])) {
@@ -158,4 +159,5 @@ class PatentsView {
     protected $firstName = "";
     protected $startDate = "";
     protected $recordId = "";
+    protected $pid;
 }

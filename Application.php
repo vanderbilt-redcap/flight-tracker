@@ -438,6 +438,7 @@ class Application {
         "citation_month",
         "citation_day",
         "citation_pages",
+        "citation_grants",
         "citation_abstract",
         "citation_is_research",
         "citation_num_citations",

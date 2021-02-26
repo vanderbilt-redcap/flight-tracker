@@ -2399,7 +2399,7 @@ class Scholar {
             $format = "application/json";
             if ($orcid = $this->getORCID()) {
                 $url = "https://api.elsevier.com/content/author/orcid/$orcid?httpAccept=" . urlencode($format) . "&apikey=" . $key;
-                $json = REDCapManagement::downloadURL($url);
+                $json = REDCapManagement::downloadURL($url, $this->pid);
                 $data = json_decode($json, TRUE);
 
 
@@ -2412,7 +2412,7 @@ class Scholar {
                         foreach ($institutions as $institution) {
                             $query = "AUTHFIRST($firstName) AND AUTHLASTNAME($lastName) AND AFFIL($institution)";
                             $url = "https://api.elsevier.com/content/search/author?httpAccept=" . urlencode($format) . "&query=" . urlencode($query) . "&apikey=" . $key;
-                            $json = REDCapManagement::downloadURL($url);
+                            $json = REDCapManagement::downloadURL($url, $this->pid);
                             $data = json_decode($json, TRUE);
                             if ($data['search-results']) {
                                 foreach ($data['search-results']['entry'] as $authorRow) {
@@ -2426,7 +2426,7 @@ class Scholar {
                             }
                             if ($authorId) {
                                 $url = "http://api.elsevier.com/content/author_id/" . $authorId . "?view=metrics&httpAccept=" . urlencode($format) . "&apikey=" . $key;
-                                $json = REDCapManagement::downloadURL($url);
+                                $json = REDCapManagement::downloadURL($url, $this->pid);
                                 $data = json_decode($json, TRUE);
                                 foreach ($data["author-retrieval-response"] as $authorRow) {
                                     if ($authorRow['h-index']) {

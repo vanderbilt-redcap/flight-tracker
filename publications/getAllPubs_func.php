@@ -146,7 +146,7 @@ function processUncategorizedRow($token, $server, $row) {
 	if ($pmid) {
 		CareerDev::log("Uncategorized row: {$row['record_id']}:{$row['redcap_repeat_instance']} $pmid");
 		echo "Uncategorized row: {$row['record_id']}:{$row['redcap_repeat_instance']} $pmid\n";
-		$iCite = new iCite($pmid);
+		$iCite = new iCite($pmid, Application::getPID($token));
 		if ($iCite->getVariable($pmid, "is_research_article")) {
 			$uploadRow = array(
 						"record_id" => $row['record_id'],
@@ -182,7 +182,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $rec
     foreach ($records as $recordId) {
         $vunet = $vunets[$recordId];
         if ($vunet) {
-            $data = StarBRITE::accessSRI("pub-match/vunet/", [$vunet]);
+            $data = StarBRITE::accessSRI("pub-match/vunet/", [$vunet], $pid);
             $pmids = fetchPMIDs($data);
             foreach ($pmids as $newCitationId) {
                 if ($recordId) {
@@ -254,7 +254,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
 		$pmids = array();
 		$orcidPMIDs = array();
         if ($orcids[$recordId]) {
-            $orcidPMIDs = Publications::searchPubMedForORCID($orcids[$recordId]);
+            $orcidPMIDs = Publications::searchPubMedForORCID($orcids[$recordId], $pid);
             addPMIDsIfNotFound($pmids, $citationIds, $orcidPMIDs, $recordId);
         }
 
@@ -267,7 +267,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
 						}
 						CareerDev::log("Searching $lastName $firstName at $institution");
 						echo "Searching $lastName $firstName at $institution\n";
-                        $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $institution);
+                        $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institution);
 						addPMIDsIfNotFound($pmids, $citationIds, $currPMIDs, $recordId);
 					}
 				}

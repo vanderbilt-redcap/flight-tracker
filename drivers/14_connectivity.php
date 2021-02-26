@@ -56,7 +56,7 @@ $(document).ready(function() {
         $numFailures = 0;
         $numTests = 0;
         foreach ($sites as $name => $server) {
-            $connStatus = new ConnectionStatus($name, $server);
+            $connStatus = new ConnectionStatus($name, $server, $pid);
             $results = $connStatus->test();
             foreach ($results as $key => $result) {
                 if (preg_match("/error/i", $result)) {
@@ -78,6 +78,6 @@ $(document).ready(function() {
 .green { background-color: #8dc63f; }
 .red { background-color: #ffc3c4; }
 </style>".$html;
-        \REDCap::email($adminEmail, Application::getSetting("default_from"), "Flight Tracker Connectivity Checker", $html);
+        \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), "Flight Tracker Connectivity Checker", $html);
     }
 }

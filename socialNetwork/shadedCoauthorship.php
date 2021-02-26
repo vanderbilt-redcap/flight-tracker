@@ -386,7 +386,7 @@ function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRe
         if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == '1')) {
             $authors = preg_split("/,\s*/", $row['citation_authors']);
             foreach ($authors as $author) {
-                list($authorLast, $authorInitials) = NameMatcher::splitName($author);
+                list($authorInitials, $authorLast) = NameMatcher::splitName($author);
                 foreach (array_keys($possibleFirstNames) as $toRecordId) {
                     if ($toRecordId != $fromRecordId && in_array($toRecordId, $records)) {
                         foreach ($possibleFirstNames[$toRecordId] as $firstName) {

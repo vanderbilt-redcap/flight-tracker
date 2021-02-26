@@ -436,9 +436,7 @@ class Grants {
 		foreach ($this->nativeGrants as $grant) {
 			if (self::getShowDebug()) { Application::log("1. nativeGrants: ".json_encode($grant->toArray())); }
 			if (in_array($grant->getVariable("source"), $coeusSources)) {
-				if ($grant->getVariable("title") != "000") {
-					array_push($coeusGrants, $grant);
-				}
+			    array_push($coeusGrants, $grant);
 			}
 		}
 

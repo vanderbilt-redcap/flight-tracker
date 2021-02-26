@@ -13,8 +13,9 @@ define("INTERMEDIATE_4", "R01AndEquivsList4.txt");
 define("PI_LIST", "PIList.txt");
 
 class NIHExPORTER {
-	public function __construct() {
-		$this->data = array();
+	public function __construct($pid) {
+		$this->data = [];
+		$this->pid = $pid;
 	}
 
 	private static function clearBlanks($ary) {
@@ -34,7 +35,7 @@ class NIHExPORTER {
 
 	public function showR01DataSince($date, $names) {
 		self::filterForActivityCodeSinceDateOrR01EquivalentAtVUMC("/\dR01/", $date);
-		self::grabAllGrantsForPIs($date);
+		self::grabAllGrantsForPIs($date, $this->pid);
 		self::filterOut("/R56/", "FULL_PROJECT_NUM");
 		self::filterOutNames($names);
 		self::printPIs();
@@ -173,8 +174,8 @@ class NIHExPORTER {
 		return $html;
 	}
 
-	public static function filterForR01EquivalentSinceDate($date) {
-		$files = self::getDataSince2009();
+	public static function filterForR01EquivalentSinceDate($date, $pid) {
+		$files = self::getDataSince2009($pid);
 		$outData = array();
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
@@ -190,8 +191,8 @@ class NIHExPORTER {
 		return $outData;
 	}
 
-	public static function grabAllGrantsForPIs($date) {
-		$files = self::getDataSince2009();
+	public static function grabAllGrantsForPIs($date, $pid) {
+		$files = self::getDataSince2009($pid);
 		$pis = array();
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
@@ -447,7 +448,7 @@ class NIHExPORTER {
 	}
 
 	# full data kept since 2009; pre-2009 data does not contain much meaningful information
-	private static function getDataSince2009() {
+	private static function getDataSince2009($pid) {
 		# find relevant zips
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
@@ -456,7 +457,7 @@ class NIHExPORTER {
 		$files = array();
 		for ($fiscalYear = 2009; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "RePORTER_PRJ_C_FY".$fiscalYear.".zip";
-			$file = self::downloadURL($url);
+			$file = self::downloadURL($url, $pid);
 			if ($file) {
 				$files[$file] = $fiscalYear;
 				$lastYear = $fiscalYear;
@@ -466,7 +467,7 @@ class NIHExPORTER {
 			for ($week = 1; $week <= 53; $week++) {
 				$weekWithLeading0s = sprintf('%03d', $week);
 				$url = "RePORTER_PRJ_C_FY".$fiscalYear."_".$weekWithLeading0s.".zip";
-				$file = self::downloadURL($url);
+				$file = self::downloadURL($url, $pid);
 				if ($file) {
 					$files[$file] = $fiscalYear;
 				}
@@ -475,7 +476,7 @@ class NIHExPORTER {
 		return $files;
 	}
 
-	private static function getDataSince2018() {
+	private static function getDataSince2018($pid) {
 		# find relevant zips
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
@@ -484,7 +485,7 @@ class NIHExPORTER {
 		$files = array();
 		for ($fiscalYear = 2018; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "RePORTER_PRJ_C_FY".$fiscalYear.".zip";
-			$file = self::downloadURL($url);
+			$file = self::downloadURL($url, $pid);
 			if ($file) {
 				$files[$file] = $fiscalYear;
 				$lastYear = $fiscalYear;
@@ -494,7 +495,7 @@ class NIHExPORTER {
 			for ($week = 1; $week <= 53; $week++) {
 				$weekWithLeading0s = sprintf('%03d', $week);
 				$url = "RePORTER_PRJ_C_FY".$fiscalYear."_".$weekWithLeading0s.".zip";
-				$file = self::downloadURL($url);
+				$file = self::downloadURL($url, $pid);
 				if ($file) {
 					$files[$file] = $fiscalYear;
 				}
@@ -503,7 +504,7 @@ class NIHExPORTER {
 		return $files;
 	}
 
-	private static function getDataSince2014() {
+	private static function getDataSince2014($pid) {
 		# find relevant zips
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
@@ -512,7 +513,7 @@ class NIHExPORTER {
 		$files = array();
 		for ($fiscalYear = 2014; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "RePORTER_PRJ_C_FY".$fiscalYear.".zip";
-			$file = self::downloadURL($url);
+			$file = self::downloadURL($url, $pid);
 			if ($file) {
 				$files[$file] = $fiscalYear;
 				$lastYear = $fiscalYear;
@@ -522,7 +523,7 @@ class NIHExPORTER {
 			for ($week = 1; $week <= 53; $week++) {
 				$weekWithLeading0s = sprintf('%03d', $week);
 				$url = "RePORTER_PRJ_C_FY".$fiscalYear."_".$weekWithLeading0s.".zip";
-				$file = self::downloadURL($url);
+				$file = self::downloadURL($url, $pid);
 				if ($file) {
 					$files[$file] = $fiscalYear;
 				}
@@ -536,13 +537,13 @@ class NIHExPORTER {
 	 * returns empty string if $file not found
 	 * @param string $file Filename without leading URL
 	 */
-	private static function downloadURL($file) {
+	private static function downloadURL($file, $pid) {
 		$csvfile = preg_replace("/.zip/", ".csv", $file);
 		if (!file_exists(APP_PATH_TEMP.$csvfile)) {
 			Application::log("Downloading $file...");
 	
 			$url = "https://exporter.nih.gov/CSVs/final/".$file;
-			list($resp, $zip) = REDCapManagement::downloadURL($url);
+			list($resp, $zip) = REDCapManagement::downloadURL($url, $pid);
 
 			if ($resp == 200) {
 				Application::log("Unzipping $file...");
@@ -564,4 +565,7 @@ class NIHExPORTER {
 			return APP_PATH_TEMP.$csvfile;
 		}
 	}
+
+	private $data = [];
+	private $pid;
 }

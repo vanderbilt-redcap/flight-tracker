@@ -48,7 +48,7 @@ class Publications {
         }
     }
 
-    public static function searchPubMedForName($first, $last, $institution = "") {
+    public static function searchPubMedForName($first, $last, $pid, $institution = "") {
         $first = preg_replace("/\s+/", "+", $first);
         $last = preg_replace("/\s+/", "+", $last);
         $institution = preg_replace("/\s+/", "+", $institution);
@@ -56,18 +56,18 @@ class Publications {
         if ($institution) {
             $term .= "+AND+" . strtolower($institution) . "%5Bad%5D";
         }
-        return self::queryPubMed($term);
+        return self::queryPubMed($term, $pid);
     }
 
-    public static function searchPubMedForORCID($orcid) {
+    public static function searchPubMedForORCID($orcid, $pid) {
         $term = $orcid . "%5Bauid%5D";
-        return self::queryPubMed($term);
+        return self::queryPubMed($term, $pid);
     }
 
-    public static function queryPubMed($term) {
+    public static function queryPubMed($term, $pid) {
         $url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=100000&retmode=json&term=".$term;
         Application::log($url);
-        list($resp, $output) = REDCapManagement::downloadURL($url);
+        list($resp, $output) = REDCapManagement::downloadURL($url, $pid);
         Application::log("$resp: Downloaded ".strlen($output)." bytes");
 
         $pmids = array();
@@ -141,6 +141,49 @@ class Publications {
 
     public static function getNumberLastAuthor($citations, $name) {
         return self::getNumberAuthorsHelper("last", $citations, $name);
+    }
+
+    public function getAllGrantCounts($type = "Included") {
+	    $citations = $this->getCitations($type);
+	    $awards = [];
+	    foreach ($citations as $citation) {
+            $awardNumbers = $citation->getGrants();
+            foreach ($awardNumbers as $awardNo) {
+                if (!isset($awards[$awardNo])) {
+                    $awards[$awardNo] = 0;
+                }
+                $awards[$awardNo]++;
+            }
+        }
+	    arsort($awards);
+	    return $awards;
+    }
+
+    public function getCitationsForGrants($awardNumbers, $type = "Included") {
+        if (!is_array($awardNumbers)) {
+            $awardNumbers = [$awardNumbers];
+        }
+        $citations = $this->getCitations($type);
+        $filteredCitations = [];
+        foreach ($citations as $citation) {
+            $grantAwardNumbers = $citation->getGrants();
+            if (isset($_GET['test'])) {
+                Application::log($citation->getPMID().": Looking for ".REDCapManagement::json_encode_with_spaces($awardNumbers)." in ".REDCapManagement::json_encode_with_spaces($grantAwardNumbers));
+            }
+            foreach ($awardNumbers as $awardNo) {
+                if (in_array($awardNo, $grantAwardNumbers)) {
+                    if (isset($_GET['test'])) {
+                        Application::log($citation->getPMID().": Matched $awardNo in ".REDCapManagement::json_encode_with_spaces($grantAwardNumbers));
+                    }
+                    $filteredCitations[] = $citation;
+                    if (isset($_GET['test'])) {
+                        Application::log("filteredCitations now has ".count($filteredCitations)." elements");
+                    }
+                    break;
+                }
+            }
+        }
+        return $filteredCitations;
     }
 
     public static function getSelectRecord($filterOutCopiedRecords = FALSE) {
@@ -217,16 +260,16 @@ class Publications {
             }
         }
         self::addTimesCited($upload, $this->pid, $pmids, $metadataFields);
-        self::updateAssocGrantsAndBibliometrics($upload, $pmids, $this->metadata, $this->recordId);
+        self::updateAssocGrantsAndBibliometrics($upload, $pmids, $this->metadata, $this->recordId, $this->pid);
 	    if (!empty($upload)) {
 	        Upload::rows($upload, $this->token, $this->server);
         }
     }
 
-    private static function getAltmetricRow($doi, $metadataFields) {
+    private static function getAltmetricRow($doi, $metadataFields, $pid) {
         $uploadRow = [];
         if ($doi) {
-            $altmetric = new Altmetric($doi);
+            $altmetric = new Altmetric($doi, $pid);
             if ($altmetric->hasData()) {
                 $almetricFields = [
                     "citation_altmetric_score" => "score",
@@ -467,7 +510,7 @@ class Publications {
             }
         }
 	    foreach ($blankPMCs as $instance => $pmcid) {
-            $pmid = self::PMCToPMID($pmcid);
+            $pmid = self::PMCToPMID($pmcid, Application::getPID($token));
             $blankPMIDs[$instance] = $pmid;
         }
 
@@ -643,8 +686,8 @@ class Publications {
                 array_push($upload, $row);
                 $instance++;
             }
-            $translateFromPMIDToPMC = self::PMIDsToPMCs($pmidsPulled);
-            $iCite = new iCite($pmidsPulled);
+            $translateFromPMIDToPMC = self::PMIDsToPMCs($pmidsPulled, $pid);
+            $iCite = new iCite($pmidsPulled, $pid);
 			foreach ($pmidsPulled as $pmid) {
                 for ($i = 0; $i < count($upload); $i++) {
                     if ($upload[$i]['citation_pmid'] == $pmid) {
@@ -667,7 +710,7 @@ class Publications {
                             $upload[$i]["citation_icite_last_update"] = date("Y-m-d");
                         }
 
-                        $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields);
+                        $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields, $pid);
                         $upload[$i] = array_merge($upload[$i], $altmetricRow);
                     }
                 }
@@ -684,7 +727,7 @@ class Publications {
 		return $upload;
 	}
 
-	private static function updateAssocGrantsAndBibliometrics(&$upload, $pmids, $metadata, $recordId) {
+	private static function updateAssocGrantsAndBibliometrics(&$upload, $pmids, $metadata, $recordId, $pid) {
 	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
         $rows = self::getCitationsFromPubMed($pmids, $metadata, "", $recordId);
         $fieldsToCopy = [
@@ -717,7 +760,7 @@ class Publications {
         $i = 0;
         foreach ($upload as $row) {
             if ($row['citation_doi']) {
-                $altmetricRow = self::getAltmetricRow($row['citation_doi'], $metadataFields);
+                $altmetricRow = self::getAltmetricRow($row['citation_doi'], $metadataFields, $pid);
                 $upload[$i] = array_merge($upload[$i], $altmetricRow);
             }
             $i++;
@@ -931,7 +974,7 @@ class Publications {
             }
         }
         if (!empty($affectedPMIDs)) {
-            $translator = self::PMIDsToPMCs(array_values($affectedPMIDs));
+            $translator = self::PMIDsToPMCs(array_values($affectedPMIDs), $this->pid);
             foreach ($affectedPMIDs as $instance => $pmid) {
                 $pmcid = $translator[$pmid];
                 if ($pmcid) {
@@ -948,15 +991,16 @@ class Publications {
         return $upload;
     }
 
-    public static function PMIDsToPMCs($pmids) {
+    public static function PMIDsToPMCs($pmids, $pid) {
         if (is_array($pmids) && !empty($pmids)) {
-            return self::runIDConverter($pmids);
+            return self::runIDConverter($pmids, $pid);
         }
         return [];
     }
-	public static function PMIDToPMC($pmid) {
+
+	public static function PMIDToPMC($pmid, $pid) {
 	    if ($pmid) {
-            $pmcs = self::PMIDsToPMCs([$pmid]);
+            $pmcs = self::PMIDsToPMCs([$pmid], $pid);
             if (count($pmcs) > 0) {
                 return $pmcs[0];
             }
@@ -964,7 +1008,7 @@ class Publications {
 		return "";
 	}
 
-	public static function PMCsToPMIDs($pmcids) {
+	public static function PMCsToPMIDs($pmcids, $pid) {
 	    if (is_array($pmcids)) {
             foreach ($pmcids as &$pmcid) {
                 if (!preg_match("/PMC/", $pmcid)) {
@@ -972,21 +1016,21 @@ class Publications {
                 }
             }
             if (!empty($pmcids)) {
-                return self::runIDConverter($pmcids);
+                return self::runIDConverter($pmcids, $pid);
             }
         }
 	    return [];
     }
 
-	public static function PMCToPMID($pmcid) {
-	    $translator = self::PMCsToPMIDs([$pmcid]);
+	public static function PMCToPMID($pmcid, $pid) {
+	    $translator = self::PMCsToPMIDs([$pmcid], $pid);
 	    if (isset($translator[$pmcid])) {
 	        return $translator[$pmcid];
         }
 		return "";
 	}
 
-	private static function runIDConverter($id) {
+	private static function runIDConverter($id, $pid) {
 	    if (is_array($id)) {
 	        $ids = $id;
 	        $newIds = [];
@@ -1000,7 +1044,7 @@ class Publications {
 		if ($id) {
 			$query = "ids=".$id."&format=json";
 			$url = "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?".$query;
-			list($resp, $output) = REDCapManagement::downloadURL($url);
+			list($resp, $output) = REDCapManagement::downloadURL($url, $pid);
 
 			Publications::throttleDown();
 

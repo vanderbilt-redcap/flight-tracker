@@ -1485,7 +1485,7 @@ class Grant {
 
 		if (self::getShowDebug()) { Application::log($awardNo.": Second Pass"); }
 		$trainingGrantSources = array("coeus", "reporter", "exporter");
-		if (($awardNo == "") || preg_match("/\b000\b/", $awardNo)) {
+		if ($awardNo == "") {
 			return "N/A";
 		} else if (($specs['pi_flag'] == "N") && !(preg_match("/\d[Kk][1L]2/", $awardNo))) {
 			return "N/A";
@@ -1740,5 +1740,6 @@ class Grant {
 	private $specs = array();
 	private $translator;
 	private static $showDebug = FALSE;
+	public static $noNameAssigned = "No Title Assigned";
 }
 

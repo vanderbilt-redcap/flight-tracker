@@ -51,7 +51,7 @@ function refreshCoeus2Numbers($token, $server, $pid) {
     foreach ($records as $recordId) {
         $vunet = $vunets[$recordId];
         if ($vunet && ($recordId >= $startingRecord)) {
-            $starbriteData = StarBRITE::dataForUserid($vunet);
+            $starbriteData = StarBRITE::dataForUserid($vunet, $pid);
             $redcapData = Download::fieldsForRecords($token, $server, $coeus2Fields, [$recordId]);
             $maxInstance = REDCapManagement::getMaxInstance($redcapData, "coeus2", $recordId);
             $instances = [];

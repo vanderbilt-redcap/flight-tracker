@@ -6,14 +6,14 @@ require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class Altmetric {
-    public function __construct($doi) {
+    public function __construct($doi, $pid) {
         $this->doi = $doi;
-        $this->data = self::getData($doi);
+        $this->data = self::getData($doi, $pid);
     }
 
-    private static function getData($doi) {
+    private static function getData($doi, $pid) {
         $url = "https://api.altmetric.com/v1/doi/".$doi;
-        list($resp, $json) = REDCapManagement::downloadURL($url);
+        list($resp, $json) = REDCapManagement::downloadURL($url, $pid);
 
         $data = json_decode($json, true);
         if (!$data || ($resp != 200)) {

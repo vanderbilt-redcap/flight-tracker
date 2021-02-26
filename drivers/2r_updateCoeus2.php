@@ -28,7 +28,7 @@ function processCoeus2($token, $server, $pid, $records) {
         $userid = $userids[$recordId];
         Application::log("Looking up COEUS information for Record $recordId");
         if ($userid) {
-            $starbriteData = StarBRITE::dataForUserid($userid);
+            $starbriteData = StarBRITE::dataForUserid($userid, $pid);
             $redcapData = Download::formForRecords($token, $server, $instrument, [$recordId]);
             $maxInstance = REDCapManagement::getMaxInstance($redcapData, $instrument, $recordId);
             $nextInstance = $maxInstance + 1;

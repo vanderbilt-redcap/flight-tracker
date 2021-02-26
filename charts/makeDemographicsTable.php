@@ -72,7 +72,8 @@ function translateChoices($choiceStr) {
 # gets external k-to-r01 conversion rate
 # currently replaced by a summary field
 function get_converted_k_to_r01($row) {
-    $extKLength = Application::getSetting("individual_k_length");
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
     if ($row['summary_first_external_k'] && $row['summary_first_r01']) {
 		return 1;
 	} else if ($row['summary_first_external_k']) {
@@ -90,7 +91,8 @@ function get_converted_k_to_r01($row) {
 # gets any k-to-r01 conversion rate
 # currently replaced by a summary field
 function get_converted_any_k_to_r01($row) {
-    $extKLength = Application::getSetting("individual_k_length");
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
     if ($row['summary_first_any_k'] && $row['summary_first_r01']) {
 		return 1;
 	} else if ($row['summary_first_any_k']) {
@@ -107,7 +109,8 @@ function get_converted_any_k_to_r01($row) {
 # called dynamically
 # categories for any k conversion rate
 function get_converted_any_k_to_r01_cats() {
-    $extKLength = Application::getSetting("individual_k_length");
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
 
     $ary = array();
 	$ary[1] = "Converted Any K to R01-or-Equivalent";
@@ -120,7 +123,8 @@ function get_converted_any_k_to_r01_cats() {
 # called dynamically
 # categories for external k conversion rate
 function get_converted_k_to_r01_cats() {
-    $extKLength = Application::getSetting("individual_k_length");
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
 
     $ary = array();
 	$ary[1] = "Converted External K to R01-or-Equivalent";
@@ -132,7 +136,8 @@ function get_converted_k_to_r01_cats() {
 
 # get timespan from any k to r01/equivalent
 function get_any_timespan_less_than_ext_k_length($row) {
-    $extKLength = Application::getSetting("individual_k_length");
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
 	if ($row['summary_first_any_k'] && $row['summary_first_r01']) {
 		$val = REDCapManagement::datediff($row['summary_first_any_k'], $row['summary_first_r01'], "y");
 		if ($val > $extKLength) {
@@ -156,7 +161,8 @@ function get_any_timespan_less_than_ext_k_length($row) {
 
 # get timespan from external k to r01/equivalent
 function get_timespan_less_than_ext_k_length($row) {
-    $extKLength = Application::getSetting("individual_k_length");
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
 	if ($row['summary_first_external_k'] && $row['summary_first_r01']) {
 		$val = REDCapManagement::datediff($row['summary_first_external_k'], $row['summary_first_r01'], "y");
 		if ($val > $extKLength) {
@@ -516,9 +522,10 @@ function get_total_publications($data) {
 
 # if $withinAllottedTime == true, counts if have first k within 5 years or first internal k within 3 years
 function get_current_cda($data, $withinAllottedTime = true) {
-    $intKLength = Application::getSetting("internal_k_length");
-    $k12Length = Application::getSetting("k12_kl2_length");
-    $extKLength = Application::getSetting("individual_k_length");
+    global $pid;
+    $intKLength = Application::getSetting("internal_k_length", $pid);
+    $k12Length = Application::getSetting("k12_kl2_length", $pid);
+    $extKLength = Application::getSetting("individual_k_length", $pid);
 	$ks = array(3, 4);
     $intK = array(1);
     $k12 = array(2);
@@ -586,7 +593,7 @@ function get_current_cda($data, $withinAllottedTime = true) {
 	return count($qualifiers)." (".(floor(count($qualifiers) / count($people) * 1000) / 10)."%)";
 }
 
-$extKLength = Application::getSetting("individual_k_length");
+$extKLength = Application::getSetting("individual_k_length", $pid);
 
 $tableRows = array("summary_degrees", "summary_gender", "summary_race_ethnicity", "summary_primary_dept", "summary_award_type_1","summary_ever_external_k_to_r01_equiv", "summary_ever_first_any_k_to_r01_equiv", "summary_ever_last_external_k_to_r01_equiv", "summary_ever_last_any_k_to_r01_equiv", "summary_ever_internal_k","summary_ever_individual_k_or_equiv","summary_ever_k12_kl2","summary_ever_r01_or_equiv","summary_disability","summary_disadvantaged","summary_urm");
 $summaries = array(
@@ -813,7 +820,8 @@ foreach($redcapData as $recordId => $rows) {
 
 # get label for the table
 function getLabel($field, $metadata) {
-    $extKLength = Application::getSetting("individual_k_length");
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
     foreach ($metadata as $row) {
 		if ($row['field_name'] == $field) {
 			return $row['field_label'];

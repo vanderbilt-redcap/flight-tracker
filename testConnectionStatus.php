@@ -11,7 +11,7 @@ $name = $_POST['name'];
 $server = $_POST['server'];
 
 if ($name && $server) {
-    $connStatus = new ConnectionStatus($name, $server);
+    $connStatus = new ConnectionStatus($name, $server, $pid);
     $results = $connStatus->test();
     foreach ($results as $key => $result) {
         if (preg_match("/error/i", $result)) {

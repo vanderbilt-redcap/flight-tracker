@@ -5,17 +5,18 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class ConnectionStatus {
-    public function __construct($name, $server) {
+    public function __construct($name, $server, $pid) {
         $this->server = $server;
         $method = "https";
         $this->url = $method."://".$server;
         $this->name = $name;
+        $this->pid = $pid;
     }
 
     public function test() {
         $tests = [];
 
-        list($returnCode, $data) = REDCapManagement::downloadURL($this->url);
+        list($returnCode, $data) = REDCapManagement::downloadURL($this->url, $this->pid);
         $bytes = strlen($data);
         if ($bytes > 0) {
             $tests['downloadURL'] = REDCapManagement::pretty($bytes)." bytes returned with response code of $returnCode.";
@@ -76,4 +77,5 @@ class ConnectionStatus {
     private $url;
     private $server;
     private $name;
+    private $pid;
 }

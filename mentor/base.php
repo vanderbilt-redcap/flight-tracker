@@ -589,16 +589,17 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
         $uidString = "&uid=$username";
     }
     $url = $_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
-    if (preg_match("/index_menteeview/", $url)) {
-        $verticalOffset = 1000;
-    } else {
-        $verticalOffset = 50;
-    }
+    $verticalOffset = 50;
 
+    $agreementSaveURL = Application::link("mentor/_agreement_save.php").$uidString;
+    $priorNotesJSON = json_encode($priorNotes);
+    $entryPageURL = Application::link("mentor/index.php");
+    $emailSendURL = Application::link("mentor/schedule_email.php").$uidString;
+    $changeURL = Application::link("mentor/change.php").$uidString;
     $html .="
 <script>
     var currcomment = '0';
-    var priorNotes = ".json_encode($priorNotes).";
+    var priorNotes = $priorNotesJSON;
 
     function minutes_with_leading_zeros(dt) {
         return (dt.getMinutes() < 10 ? '0' : '') + dt.getMinutes();
@@ -653,7 +654,7 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
                 }
             });
         }
-        $('.fauxcomment').css('top', offsettop + 'px').css('left', offsetleft + 'px').html(commentcontent);
+        $('.fauxcomment').css('top', offsettop + 'px').css('position', 'absolute').css('left', offsetleft + 'px').html(commentcontent);
         $('.fauxcomment').css('display', 'inline-block');
 
         currcomment = servicerequest_id;
@@ -671,7 +672,7 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
             .replace(/=on/g, '=1')
             .replace(/=off/g, '=0');
         $.ajax({
-            url: '".Application::link("mentor/_agreement_save.php").$uidString."',
+            url: '$agreementSaveURL',
             type : 'POST',
             //dataType : 'json', // data type
             data :  'record_id=$menteeRecordId&redcap_repeat_instance=$currentInstance&'+serialized,
@@ -719,7 +720,7 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
                 priorNotes[notesFieldName] = latestcomment;
             }
             console.log('Uploading to '+notesFieldName+' in instance $menteeInstance');
-            $.post('".Application::link("mentor/change.php").$uidString."', {
+            $.post('$changeURL', {
                 userid: '$username',
                 type: 'notes',
                 record: '$menteeRecordId',
@@ -733,7 +734,7 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
     }
     
     function getLinkForEntryPage() {
-        return '".Application::link("mentor/index.php")."';
+        return '$entryPageURL';
     }
     
     function scheduleMentorEmail(menteeRecord, menteeName) {
@@ -768,7 +769,7 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
         if (dateToSend == 'now') {
             datetimeToSend = 'now';
         }
-        $.post('".Application::link("mentor/schedule_email.php").$uidString."',
+        $.post('$emailSendURL',
             { menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend },
             function(html) {
             console.log(html);

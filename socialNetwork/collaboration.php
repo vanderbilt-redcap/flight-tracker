@@ -183,14 +183,24 @@ if (isset($_GET['cohort']) && !empty($records)) {
             }
         }
     }
+    if (isset($_GET['test'])) {
+        echo"Matches: ".REDCapManagement::json_encode_with_spaces($matches)."<br>";
+    }
 
     list($connections, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index, $pubs);
+    if (isset($_GET['test'])) {
+        echo "Connections: ".REDCapManagement::json_encode_with_spaces($connections)."<br>";
+    }
+
     if ($includeMentors) {
         $mentorConnections = getAvgMentorConnections($matches);
     }
     list($stats, $maxConnections, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators) = makeSummaryStats($connections, $names);
 
-    if ($includeHeaders) {
+    $noCollaborations = (getCollaborationsRepresented($stats) == 0);
+    if ($noCollaborations) {
+        echo "<h3>No collaborations are currently observed.</h3>";
+    } else if ($includeHeaders) {
         echo "<table style='margin: 30px auto; max-width: 800px;' class='bordered'>\n";
         echo "<tr><td colspan='2'><h4 class='nomargin'>Definitions</h4>";
         $lines = [];
@@ -228,20 +238,22 @@ if (isset($_GET['cohort']) && !empty($records)) {
         echo "</table>\n";
     }
 
-    echo makeLegendHTML($indexByField);
-    $socialNetwork = new SocialNetworkChart($networkChartName, $chartData);
-    $socialNetwork->setNonRibbon(count($uniqueNames) > 100);
-    echo $socialNetwork->getImportHTML();
-    echo $socialNetwork->getHTML(900, 700);
+    if (!$noCollaborations) {
+        echo makeLegendHTML($indexByField);
+        $socialNetwork = new SocialNetworkChart($networkChartName, $chartData);
+        $socialNetwork->setNonRibbon(count($uniqueNames) > 100);
+        echo $socialNetwork->getImportHTML();
+        echo $socialNetwork->getHTML(900, 700);
 
-    if ($includeHeaders && !isset($_GET['grants'])) {
-        echo "<br><br>";
-        list($barChartCols, $barChartLabels) = makePublicationColsAndLabels($pubs);
-        $chart = new BarChart($barChartCols, $barChartLabels, "barChart");
-        $chart->setXAxisLabel("Year");
-        $chart->setYAxisLabel("Number of Connections");
-        echo $chart->getImportHTML();
-        echo $chart->getHTML(500, 300);
+        if ($includeHeaders && !isset($_GET['grants'])) {
+            echo "<br><br>";
+            list($barChartCols, $barChartLabels) = makePublicationColsAndLabels($pubs);
+            $chart = new BarChart($barChartCols, $barChartLabels, "barChart");
+            $chart->setXAxisLabel("Year");
+            $chart->setYAxisLabel("Number of Connections");
+            echo $chart->getImportHTML();
+            echo $chart->getHTML(500, 300);
+        }
     }
 }
 
@@ -264,13 +276,17 @@ function makePublicationColsAndLabels($pubs) {
         }
         $data[$year]++;
     }
-    ksort($data);
-    for ($year = min(array_keys($data)); $year <= max(array_keys($data)); $year++) {
-        if (!isset($data[$year])) {
-            $data[$year] = 0;
+
+    # avoid infinite loop
+    if (!empty($data)) {
+        ksort($data);
+        for ($year = min(array_keys($data)); $year <= max(array_keys($data)); $year++) {
+            if (!isset($data[$year])) {
+                $data[$year] = 0;
+            }
         }
+        ksort($data);
     }
-    ksort($data);
 
     $labels = array_keys($data);
     $cols = array_values($data);
@@ -533,10 +549,10 @@ function findGrantMatchesForRecord(&$index, $token, $server, $fields, $fromRecor
                 $myAuthors[$i] = trim($myAuthors[$i]);
             }
             foreach ($myAuthors as $myAuthor) {
-                list($myAuthorLast, $myAuthorFirst) = NameMatcher::splitName($myAuthor);
+                list($myAuthorFirst, $myAuthorLast) = NameMatcher::splitName($myAuthor);
                 $authorAlreadyPresent = FALSE;
                 foreach ($authors[$baseAwardNo] as $author) {
-                    list($authorLast, $authorFirst) = NameMatcher::splitName($author);
+                    list($authorFirst, $authorLast) = NameMatcher::splitName($author);
                     if (NameMatcher::matchByInitials($myAuthorLast, $myAuthorFirst, $authorLast, $authorFirst)) {
                         $authorAlreadyPresent = TRUE;
                         break;
@@ -576,14 +592,16 @@ function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRe
         if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == '1')) {
             $authors = preg_split("/,\s*/", $row['citation_authors']);
             foreach ($authors as $author) {
-                list($authorLast, $authorInitials) = NameMatcher::splitName($author);
+                list($authorInitials, $authorLast) = NameMatcher::splitName($author);
                 foreach (array_keys($possibleFirstNames) as $toRecordId) {
                     if ($toRecordId != $fromRecordId && in_array($toRecordId, $records)) {
                         foreach ($possibleFirstNames[$toRecordId] as $firstName) {
                             foreach ($possibleLastNames[$toRecordId] as $lastName) {
                                 if (NameMatcher::matchByInitials($authorLast, $authorInitials, $lastName, $firstName) &&
                                     !NameMatcher::matchByInitials($authorLast, $authorInitials, $fromLastName, $fromFirstName)) {
-                                    // echo "Matched $fromRecordId $authorLast, $authorInitials to $toRecordId $lastName, $firstName<br>";
+                                    if (isset($_GET['test'])) {
+                                        echo "Matched $fromRecordId $authorLast, $authorInitials to $toRecordId $lastName, $firstName<br>";
+                                    }
                                     if (!isset($matches[$toRecordId])) {
                                         $matches[$toRecordId] = [];
                                     }
@@ -643,6 +661,9 @@ function makeSummaryStats($connections, $names) {
                 }
             }
         }
+        if (isset($_GET['test'])) {
+            echo "dataValues for $type: ".REDCapManagement::json_encode_with_spaces($dataValues)."<br>";
+        }
         $stats[$type] = new Stats($dataValues);
         $maxConnections[$type] = max($dataValues);
         $maxNames[$type] = [];
@@ -700,4 +721,12 @@ function addMentorNamesForRecords(&$firstNames, &$lastNames, &$records, $mentors
 
 function isForIndividualScholars($indexByField) {
     return in_array($indexByField, ["record_id", PUBYEAR_SELECT]);
+}
+
+function getCollaborationsRepresented($stats) {
+    $collaborationsRepresented = 0;
+    foreach ($stats as $type => $s) {
+        $collaborationsRepresented += array_sum($s->getValues());
+    }
+    return $collaborationsRepresented;
 }

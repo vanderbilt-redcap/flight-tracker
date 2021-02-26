@@ -6,12 +6,13 @@ require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/REDCapManagement.php");
 
 class iCite {
-	public function __construct($pmids) {
+	public function __construct($pmids, $pid) {
 		$this->pmids = $pmids;
-		$this->data = self::getData($pmids);
+		$this->pid = $pid;
+		$this->data = self::getData($pmids, $pid);
 	}
 
-	private static function getData($pmids) {
+	private static function getData($pmids, $pid) {
 	    if (!is_array($pmids)) {
 	        $pmids = [$pmids];
         }
@@ -23,7 +24,7 @@ class iCite {
             }
         }
 		$url = "https://icite.od.nih.gov/api/pubs?pmids=".implode(",", $queue)."&format=json";
-		list($resp, $json) = REDCapManagement::downloadURL($url);
+		list($resp, $json) = REDCapManagement::downloadURL($url, $pid);
 		Application::log("iCite ".$url.": $resp");
 
 		$data = json_decode($json, true);
@@ -74,4 +75,5 @@ class iCite {
 
 	private $pmids;
 	private $data;
+	private $pid;
 }

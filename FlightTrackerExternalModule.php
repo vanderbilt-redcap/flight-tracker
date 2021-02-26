@@ -256,8 +256,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         $destServer = $servers[$destPid];
                         foreach (array_keys($firstNames[$destPid]) as $destRecordId) {
                             $combos = [];
-                            foreach (NameMatcher::splitName($firstNames[$destPid][$destRecordId]) as $firstName) {
-                                foreach (NameMatcher::splitName($lastNames[$destPid][$destRecordId]) as $lastName) {
+                            foreach (NameMatcher::explodeFirstName($firstNames[$destPid][$destRecordId]) as $firstName) {
+                                foreach (NameMatcher::explodeLastName($lastNames[$destPid][$destRecordId]) as $lastName) {
                                     if ($firstName && $lastName) {
                                         $combos[] = ["first" => $firstName, "last" => $lastName];
                                     }
@@ -543,7 +543,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             try {
                 $pidsUpdated = $this->shareDataInternally($activePids);
             } catch (\Exception $e) {
-                \REDCap::email("scott.j.pearson@vumc.org", Application::getSetting("default_from"), "Error in sharing surveys on redcaptest", $e->getMessage());
+                if (count($activePids) > 0) {
+                    \REDCap::email("scott.j.pearson@vumc.org", Application::getSetting("default_from", $activePids[0]), "Error in sharing surveys on redcaptest", $e->getMessage());
+                }
             }
         } else if (date("N") == "6") {
             # only on Saturdays

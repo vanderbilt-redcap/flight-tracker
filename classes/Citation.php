@@ -14,7 +14,7 @@ require_once(dirname(__FILE__)."/NameMatcher.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
 class CitationCollection {
-	# type = [ Final, New, Omit ]
+	# type = [ Filtered, Final, New, Omit ]
 	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = array(), $lastNames = [], $firstNames = []) {
 		$this->token = $token;
 		$this->server = $server;
@@ -25,7 +25,9 @@ class CitationCollection {
             $this->metadata = $metadata;
         }
 		if (empty($redcapData)) {
-			$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($this->metadata), array($recordId));
+		    if ($type != "Filtered") {
+                $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($this->metadata), array($recordId));
+            }
 		}
 		if (empty($lastNames)) {
 		    $lastNames = Download::lastnames($token, $server);
@@ -33,14 +35,18 @@ class CitationCollection {
         if (empty($firstNames)) {
             $firstNames = Download::firstnames($token, $server);
         }
-		foreach ($redcapData as $row) {
-			if (($row['redcap_repeat_instrument'] == "citation") && ($row['record_id'] == $recordId)) {
-				$c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $lastNames[$recordId], $firstNames[$recordId]);
-				if ($c->getType() == $type) {
-					array_push($this->citations, $c);
-				}
-			}
-		}
+        if ($type != "Filtered") {
+            foreach ($redcapData as $row) {
+                if (($row['redcap_repeat_instrument'] == "citation") && ($row['record_id'] == $recordId)) {
+                    $c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $lastNames[$recordId], $firstNames[$recordId]);
+                    if ($c->getType() == $type) {
+                        array_push($this->citations, $c);
+                    }
+                }
+            }
+        } else {
+            # Filtered ==> Manually add
+        }
 	}
 
 	# citationClass is notDone, included, or omitted
@@ -147,10 +153,11 @@ class CitationCollection {
 	}
 
 	public function addCitation($citation) {
-		if (get_class($citation) == "Citation") {
+	    $validClasses = ["Citation", "Vanderbilt\CareerDevLibrary\Citation"];
+		if (in_array(get_class($citation), $validClasses)) {
 			array_push($this->citations, $citation);
 		} else {
-			throw new \Exception("addCitation tries to add a citation of class ".get_class($citation).", instead of class Citation!");
+			throw new \Exception("addCitation tries to add a citation of class ".get_class($citation).", instead of valid classes ".implode(", ", $validClasses)."!");
 		}
 	}
 
@@ -381,6 +388,23 @@ class Citation {
 	private static function shortenField($field) {
 		return preg_replace("/^citation_/", "", $field);
 	}
+
+	public function getGrants() {
+	    $grantStr = $this->getVariable("grants");
+        $grantStr = str_replace(" ", "", $grantStr);
+	    if (!$grantStr) {
+            return [];
+        }
+	    $grants = preg_split("/;/", $grantStr);
+        $filteredGrants = [];
+	    foreach ($grants as $grantNo) {
+	        $grantNo = strtoupper(Grant::translateToBaseAwardNumber($grantNo));
+	        if ($grantNo && !in_array($grantNo, $filteredGrants)) {
+	            $filteredGrants[] = $grantNo;
+            }
+        }
+	    return $filteredGrants;
+    }
 
 	public static function getNumericMonth($mon) {
 		$month = "";

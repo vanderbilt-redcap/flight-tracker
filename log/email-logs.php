@@ -22,7 +22,7 @@ if (is_numeric($pid)) {
 	}
 
 	$adminEmails = preg_split("/\s*,\s*/", $adminEmail);
-	$from = Application::getSetting("default_from");
+	$from = Application::getSetting("default_from", $pid);
 	if (count($adminEmails) > 0) {
 		$from = $adminEmails[0];
 	}

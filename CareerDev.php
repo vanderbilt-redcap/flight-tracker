@@ -10,7 +10,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.31.1";
+		return "2.32.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -143,6 +143,7 @@ class CareerDev {
 	}
 
 	public static function setPid($pid) {
+	    $_GET['pid'] = $pid;
 		self::$pid = $pid;
 	}
 
@@ -734,6 +735,7 @@ class CareerDev {
         "citation_month",
         "citation_day",
         "citation_pages",
+        "citation_grants",
         "citation_abstract",
         "citation_is_research",
         "citation_num_citations",

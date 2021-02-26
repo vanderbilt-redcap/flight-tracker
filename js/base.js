@@ -923,3 +923,19 @@ function removePMIDFromAutoApprove(record, instance, pmid) {
 	$('#record_'+record+':'+instance).val(0);
 	$('#record_'+record+'_pmid_'+pmid).hide();
 }
+
+function downloadUrlIntoPage(url, selector) {
+	let spinnerUrl = getPageUrl("img/loading.gif");
+	$(selector).html("<p class='centered'><img src='"+spinnerUrl+"' style='width: 25%;'></p>");
+	let startTs = Date.now();
+	$.ajax(url, {
+		success: function(html) {
+			let endTs = Date.now();
+			console.log("Success: "+((endTs - startTs) / 1000)+" seconds");
+			$(selector).html(html);
+		},
+		error: function (e) {
+			console.log("ERROR: "+JSON.stringify(e));
+		}
+	});
+}
