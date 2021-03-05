@@ -226,7 +226,7 @@ function updateExPORTER($token, $server, $pid, $records) {
         if ($abstractFile = searchForFileWithTimestamp($abstractURL)) {
             $abstractFiles[$file] = $abstractFile;
         } else {
-            $abstractFile = downloadURLAndUnzip($abstractURL);
+            $abstractFile = downloadURLAndUnzip($abstractURL, $pid);
             if ($abstractFile) {
                 $abstractFile = REDCapManagement::copyTempFileToTimestamp($abstractFile, $lifespanOfFileInHours * 3600);
                 $abstractFiles[$file] = $abstractFile;

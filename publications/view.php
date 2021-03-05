@@ -40,18 +40,32 @@ if (isset($_GET['grantCounts'])) {
     }
     $citationFields = ["record_id", "citation_pmid", "citation_include", "citation_grants"];
     $grantCounts = [];
-    foreach ($records as $recordId) {
-        $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
-        $pubs = new Publications($token, $server, $metadata);
-        $pubs->setRows($redcapData);
-        $recordGrantCounts = $pubs->getAllGrantCounts("Included");
-        foreach ($recordGrantCounts as $awardNo => $count) {
-            if (!isset($grantCounts[$awardNo])) {
-                $grantCounts[$awardNo] = 0;
+    $redcapData = Download::fieldsForRecords($token, $server, $citationFields, $records);
+    foreach ($redcapData as $row) {
+        $grantStr = preg_replace("/\s+/", "", $row['citation_grants']);
+        if ($row['citation_pmid'] && $grantStr && ($row['citation_include'] == "1")) {
+            $awardNumbers = preg_split("/;/", $grantStr);
+            foreach ($awardNumbers as $awardNo) {
+                if ($awardNo) {
+                    if (!isset($grantCounts[$awardNo])) {
+                        $grantCounts[$awardNo] = 0;
+                    }
+                    $grantCounts[$awardNo]++;
+                }
             }
-            $grantCounts[$awardNo] += $count;
         }
     }
+
+        # slow
+        // $pubs = new Publications($token, $server, $metadata);
+        // $pubs->setRows($redcapData);
+        // $recordGrantCounts = $pubs->getAllGrantCounts("Included");
+        // foreach ($recordGrantCounts as $awardNo => $count) {
+            // if (!isset($grantCounts[$awardNo])) {
+                // $grantCounts[$awardNo] = 0;
+            // }
+            // $grantCounts[$awardNo] += $count;
+        //}
     arsort($grantCounts);
 
     $html = "";
@@ -212,7 +226,7 @@ function makePublicationListHTML($citations, $names, $dates) {
                     if (isset($_GET['altmetrics'])) {
                         $html .= $citation->getImage("left");
                     }
-                    $html .= $citation->getCitationWithLink();
+                    $html .= $citation->getCitationWithLink(TRUE, TRUE);
                     $html .= "</p>\n";
                 }
             }

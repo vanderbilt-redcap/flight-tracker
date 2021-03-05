@@ -31,7 +31,7 @@ class NameMatcher {
 
     public static function eliminateInitials($name) {
         $name = preg_replace("/\b[A-Z]\b\.?/", "", $name);
-        trim($name);
+        $name = trim($name);
         return $name;
     }
 
@@ -47,8 +47,33 @@ class NameMatcher {
         if ((count($nodes1) > 1) || (count($nodes2) > 1)) {
             foreach ($nodes1 as $node1) {
                 foreach ($nodes2 as $node2) {
-                    if (!self::isInitial($node1) && !self::isInitial($node2) && strtolower($node1) == strtolower($node2)) {
+                    if (isset($_GET['test'])) {
+                        Application::log("doNamesMatch comparison of '$node1' and '$node2'");
+                    }
+                    if (!self::isInitial($node1) && !self::isInitial($node2) && (strtolower($node1) == strtolower($node2))) {
+                        if (isset($_GET['test'])) {
+                            Application::log("doNamesMatch comparison of '$node1' and '$node2' - returning TRUE");
+                        }
                         return TRUE;
+                    } else {
+                        if (isset($_GET['test'])) {
+                            Application::log("doNamesMatch comparison of '$node1' and '$node2' - continuing through FALSE");
+                        }
+                        if (self::isInitial($node1)) {
+                            if (isset($_GET['test'])) {
+                                Application::log("doNamesMatch comparison of 1 '$node1' is initial");
+                            }
+                        }
+                        if (self::isInitial($node2)) {
+                            if (isset($_GET['test'])) {
+                                Application::log("doNamesMatch comparison of 2 '$node2' is initial");
+                            }
+                        }
+                        if (strtolower($node1) != strtolower($node2)) {
+                            if (isset($_GET['test'])) {
+                                Application::log("doNamesMatch comparison of '$node1' and '$node2' not equal");
+                            }
+                        }
                     }
                 }
             }
@@ -123,20 +148,33 @@ class NameMatcher {
         return $list;
     }
 
-	public static function matchNames($firsts, $lasts, $token, $server) {
+	public static function matchNames($firsts, $lasts, $tokenOrFirst, $serverOrLast, $secondPairRecordId = -1) {
 		if (!$firsts || !$lasts) {
 			return "";
 		}
-		if (!self::$namesForMatch || empty(self::$namesForMatch) || ($token != self::$currToken)) {
-			self::downloadNamesForMatch($token, $server);
-		}
+		# Assumption: A first name is not 32 characters long and tokens never become more than 32 characters in REDCap
+		if (strlen($tokenOrFirst) == 32 && preg_match("/^[\da-zA-Z]+$/", $tokenOrFirst)) {
+		    $token = $tokenOrFirst;
+            $server = $serverOrLast;
+            if (!self::$namesForMatch || empty(self::$namesForMatch) || ($token != self::$currToken)) {
+                self::downloadNamesForMatch($token, $server);
+            }
+            $namesToSearch = self::$namesForMatch;
+        } else {
+		    $nameRow = [
+		        "record_id" => $secondPairRecordId,
+                "identifier_first_name" => $tokenOrFirst,
+                "identifier_last_name" => $serverOrLast,
+            ];
+		    $namesToSearch = [$nameRow];
+        }
 		$recordIds = array();
 		for ($i = 0; $i < count($firsts) && $i < count($lasts); $i++) {
 			$myFirst = self::prepareName($firsts[$i]);
 			$myLast = self::prepareName($lasts[$i]);
             $recordIds[$i] = FALSE;
 			if ($myFirst && $myLast) {
-                foreach (self::$namesForMatch as $row) {
+                foreach ($namesToSearch as $row) {
                     $sFirst = self::prepareName($row['identifier_first_name']);
                     $sLast = self::prepareName($row['identifier_last_name']);
                     $found = FALSE;
@@ -219,6 +257,9 @@ class NameMatcher {
                 }
             }
 		}
+		if (isset($_GET['test'])) {
+		    echo "Returning ".json_encode($recordIds)."<br>";
+        }
 		return $recordIds;
 	}
 
@@ -228,8 +269,15 @@ class NameMatcher {
         return $name;
     }
 
+    private static function removeParentheses($name) {
+        $name = preg_replace("/[\(\)]/", " ", $name);
+        $name = trim($name);
+        $name = preg_replace("/\s\s+/", " ", $name);
+        return $name;
+    }
+
 	public static function explodeFirstName($first) {
-        $first = preg_replace("/[\(\)]/", "", $first);
+        $first = self::removeParentheses($first);
 	    $nodes = preg_split("/[\s\-]+/", $first);
 	    $newNodes = [$first];
 	    foreach ($nodes as $node) {
@@ -241,6 +289,7 @@ class NameMatcher {
     }
 
     public static function explodeLastName($last) {
+        $last = self::removeParentheses($last);
 	    $nodes = preg_split("/[\s\-]+/", $last);
 	    $newNodes = [$last];
 	    $i = 0;
@@ -272,9 +321,10 @@ class NameMatcher {
 
 	# returns recordId that matches
 	# returns "" if no match
-	public static function matchName($first, $last, $token, $server) {
+    # $secondPairRecordId is for second pair if they are names
+	public static function matchName($first, $last, $tokenOrFirst, $serverOrLast, $secondPairRecordId = -1) {
         if ($first && $last) {
-            $ary = self::matchNames(array($first), array($last), $token, $server);
+            $ary = self::matchNames(array($first), array($last), $tokenOrFirst, $serverOrLast, $secondPairRecordId);
             if (count($ary) > 0) {
                 return $ary[0];
             }
@@ -288,7 +338,7 @@ class NameMatcher {
         return ($lastName1 == $lastName2);
     }
 
-	# case insensitive match based on last name and first initial only
+    # case insensitive match based on last name and first initial only
 	# returns TRUE/FALSE
 	public static function matchByInitials($lastName1, $firstName1, $lastName2, $firstName2) {
 		$lastName1 = strtolower($lastName1);
@@ -298,6 +348,10 @@ class NameMatcher {
 
 		$firstInitial1 = self::turnIntoOneInitial($firstName1);
 		$firstInitial2 = self::turnIntoOneInitial($firstName2);
+
+		if (isset($_GET['test'])) {
+		    Application::log("matchByInitials: Comparing $lastName1 vs $lastName2 and $firstInitial1 ($firstName1) vs. $firstInitial2 ($firstName2)");
+        }
 
 		return (($lastName1 == $lastName2) && ($firstInitial1 == $firstInitial2));
 	}
@@ -538,20 +592,31 @@ class NameMatcher {
                             $newNodes[] = $nodes[$lastNodeIdx - 2] . " " . $nodes[$lastNodeIdx - 1] . " " . $nodes[$lastNodeIdx];
                             $changed = TRUE;
                             $nodes = $newNodes;
-                        } else {
+                        } else if (preg_match("/^\((.+)\)$/", $nodes[$lastNodeIdx], $matches)) {
                             if ($loggingOn) {
                                 echo "Do-while E: ".json_encode($nodes)."<br>";
+                            }
+                            $newNodes = [];
+                            for ($i = 0; $i < $lastNodeIdx - 1; $i++) {
+                                $newNodes[] = $nodes[$i];
+                            }
+                            $newNodes[] = $nodes[$lastNodeIdx - 1] . " " . $matches[1];   # remove parentheses
+                            $changed = TRUE;
+                            $nodes = $newNodes;
+                        } else {
+                            if ($loggingOn) {
+                                echo "Do-while F: ".json_encode($nodes)."<br>";
                             }
                             return self::collapseNames($nodes, $parts);
                         }
                     } else if (count($nodes) < $parts) {
                         if ($loggingOn) {
-                            echo "Do-while F<br>";
+                            echo "Do-while G<br>";
                         }
                         return self::padWithSpaces($nodes, $parts);
                     } else {
                         if ($loggingOn) {
-                            echo "Do-while G<br>";
+                            echo "Do-while H<br>";
                         }
                     }
                 } while($changed);
@@ -593,12 +658,18 @@ class NameMatcher {
         return FALSE;
     }
 
-    // TRUE for E
-    // TRUE for E M or E. M.
+    // TRUE for E or E.
+    // TRUE for E M, EM, E.M., or E. M.
     // TRUE for W E B or W. E. B.
     // FALSE for WEB or W.E.B.
     // FALSE for Ryan
-    private static function isInitialsOnly($name) {
+    public static function isInitialsOnly($name) {
+        if (preg_match("/^[A-Z]\.?$/", $name)) {
+            return TRUE;
+        }
+        if (preg_match("/^[A-Z]\.?[A-Z]\.?$/", $name)) {
+            return TRUE;
+        }
         $nodes = preg_split("/[\s\-]+/", $name);
         foreach ($nodes as $node) {
             if (!self::isInitial($node)) {

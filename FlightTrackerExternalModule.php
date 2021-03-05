@@ -284,9 +284,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                                     ];
                                     $this->copyFormData($completes, $pidsUpdated, $forms, $sourceInfo, $destInfo, $metadataFields, $choices);
                                     $this->copyWranglerData($pidsUpdated, $sourceInfo, $destInfo);
+                                    break; // combos foreach
+                                    # if more than one match, match only first name matched
                                 }
-                                break; // combos foreach
-                                # if more than one match, match only first name matched
                             }
                         }
                     }

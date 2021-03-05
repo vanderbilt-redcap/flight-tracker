@@ -114,7 +114,7 @@ class LDAP {
 	public static function getName($uid) {
         $info = self::getLDAP("uid", $uid);
         if ($info['count'] > 0) {
-            return self::findField($info, "sn", 0)." ".self::findField($info, "givenname", 0);
+            return self::findField($info, "givenname", 0)." ".self::findField($info, "sn", 0);
         }
         return "";
     }
@@ -155,9 +155,19 @@ class LDAP {
 			}
 			array_push($values, $value);
 		}
-		if ($idx == "all") {
+		if (isset($_GET['test'])) {
+		    echo "findField values: ".json_encode($values)."<br>";
+		    echo "findField idx: $idx<br>";
+        }
+		if ($idx === "all") {
+            if (isset($_GET['test'])) {
+                echo "findField return all $idx<br>";
+            }
             return $values;
         } else if (isset($values[$idx])) {
+            if (isset($_GET['test'])) {
+                echo "findField return index $idx: ".json_encode($values[$idx])."<br>";
+            }
             return $values[$idx];
         } else {
 		    throw new \Exception("Could not find index $idx for uid $field");

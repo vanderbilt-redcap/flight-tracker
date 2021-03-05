@@ -558,7 +558,7 @@ function findGrantMatchesForRecord(&$index, $token, $server, $fields, $fromRecor
                         break;
                     }
                 }
-                if (!$authorAlreadyPresent && ($matchRecordId = NameMatcher::matchName($myAuthorLast, $myAuthorFirst, $token, $server))) {
+                if (!$authorAlreadyPresent && ($matchRecordId = NameMatcher::matchName($myAuthorFirst, $myAuthorLast, $token, $server))) {
                     if (($matchRecordId != $fromRecordId) && in_array($matchRecordId, $records)) {
                         if (!isset($matches[$matchRecordId])) {
                             $matches[$matchRecordId] = [];

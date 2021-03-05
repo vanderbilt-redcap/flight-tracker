@@ -132,3 +132,4 @@ td.leftAlignedCell p.citation { padding: 6px 0; margin: 0; }
 .sourceInCitation { font-weight: bold; color: #888; }
 .smallmargin { margin: 5px 0; }
 .bigger { font-size: 18px; }
+textarea.config { width: 400px; height: 400px; }

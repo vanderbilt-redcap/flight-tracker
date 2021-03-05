@@ -374,6 +374,25 @@ class REDCapManagement {
         return $htmlFriendly;
     }
 
+    public static function getUseridsFromCoeus2($collaborators) {
+        $userids = [];
+        $nodes = preg_split("/\s*,\s*/", $collaborators);
+        foreach ($nodes as $node) {
+            if (preg_match("/^([\w\s]+)\s\((.+)\)$/", $node, $matches)) {
+                $first = $matches[1];
+                $second = $matches[2];
+                if (preg_match("/;/", $second)) {
+                    $pair = preg_split("/\s*;\s*/", $second);
+                    $userid = $pair[0];
+                } else {
+                    $userid = $first;
+                }
+                $userids[] = $userid;
+            }
+        }
+        return $userids;
+    }
+
     public static function getRowForFieldFromMetadata($field, $metadata) {
 	    foreach ($metadata as $row) {
 	        if ($row['field_name'] == $field) {
@@ -567,7 +586,7 @@ class REDCapManagement {
             if ($autoRetriesLeft > 0) {
                 sleep(30);
                 Application::log("Retrying ($autoRetriesLeft left)...");
-                self::downloadURL($url, $pid, $addlOpts, $autoRetriesLeft - 1);
+                list($resp, $data) = self::downloadURL($url, $pid, $addlOpts, $autoRetriesLeft - 1);
             } else {
                 Application::log("Error: ".curl_error($ch));
                 throw new \Exception(curl_error($ch));
@@ -861,20 +880,6 @@ class REDCapManagement {
         } else {
 	        throw new \Exception("File $file does not exist");
         }
-    }
-
-    public static function explodeInstitutions($institutions) {
-	    $newInstitutions = [];
-	    foreach ($institutions as $inst) {
-	        $newInstitutions[] = $inst;
-	        if (preg_match("/university/i", $inst)) {
-	            $inst2 = preg_replace("/university/i", "univ", $inst);
-	            if ($inst != $inst2) {
-	                $newInstitutions[] = $inst2;
-                }
-            }
-        }
-	    return $newInstitutions;
     }
 
     public static function getUserNames($username) {

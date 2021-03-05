@@ -872,9 +872,15 @@ class NIHTables {
                     } else {
                         $degree = $row[$field];
                     }
+                    if (isset($_GET['test'])) {
+                        echo "Found Degree for $recordId: $degree; checking for year in ".json_encode($yearMatches[$field])."<br>";
+                    }
                     if ($getYear) {
                         $year = self::$unknownYearText;
                         foreach ($yearMatches[$field] as $yearField) {
+                            if (isset($_GET['test'])) {
+                                echo "Looking for year for $recordId: $degree; checking $yearField for '{$row[$yearField]}'<br>";
+                            }
                             if (intval($row[$yearField])) {
                                 $year = $row[$yearField];
                                 break;
@@ -886,6 +892,9 @@ class NIHTables {
                                 break;
                             }
                         }
+                        if (isset($_GET['test'])) {
+                            echo "Looking for year for $recordId: $degree using $year<br>";
+                        }
                     }
                     if ($getInstitution) {
                         $institution = self::$unknownInstitutionText;
@@ -896,14 +905,19 @@ class NIHTables {
                             }
                         }
                     }
-                    if ($numCategories == 1) {
-                        if ($getYear) {
-                            $degreesAndAddOns[$degree] = $year;
-                        } else if ($getInstitution) {
-                            $degreesAndAddOns[$degree] = $institution;
+                    if (self::hasMoreInfoInArray($degreesAndAddOns[$degree], $year != self::$unknownYearText, $institution != self::$unknownInstitutionText)) {
+                        if ($numCategories == 1) {
+                            if ($getYear) {
+                                $degreesAndAddOns[$degree] = $year;
+                            } else if ($getInstitution) {
+                                $degreesAndAddOns[$degree] = $institution;
+                            }
+                        } else {
+                            $degreesAndAddOns[$degree] = [$year, $institution];
                         }
-                    } else {
-                        $degreesAndAddOns[$degree] = [$year, $institution];
+                        if (isset($_GET['test'])) {
+                            echo "Setting degrees for $recordId: $degree; year=$year, institution=$institution; now ".json_encode($degreesAndAddOns)."<br>";
+                        }
                     }
                 }
             }
@@ -913,6 +927,50 @@ class NIHTables {
         }
         return $degreesAndAddOns;
 	}
+
+	private static function hasMoreInfoInArray($previousValue, $hasNewYearInfo, $hasNewInstitutionInfo) {
+	    if (!isset($previousValue)) {
+	        if ($hasNewYearInfo || $hasNewInstitutionInfo) {
+                return TRUE;
+            }
+	        return FALSE;
+        }
+
+	    $numNewValues = 0;
+	    if ($hasNewYearInfo) {
+	        $numNewValues++;
+        }
+	    if ($hasNewInstitutionInfo) {
+	        $numNewValues++;
+        }
+
+	    if (is_array($previousValue)) {
+	        $previousYear = $previousValue[0];
+	        $previousInstitution = $previousValue[1];
+	        $numPreviousValues = 0;
+            if ($previousYear != self::$unknownYearText) {
+                $numPreviousValues++;
+            }
+            if ($previousInstitution != self::$unknownInstitutionText) {
+                $numPreviousValues++;
+            }
+            if ($numPreviousValues < $numNewValues) {
+                return TRUE;
+            } else {
+                # if equal, then retain first value
+                return FALSE;
+            }
+        }
+
+	    if ($previousValue == self::$unknownYearText) {
+	        return $hasNewYearInfo;
+        }
+	    if ($previousValue == self::$unknownInstitutionText) {
+	        return $hasNewInstitutionInfo;
+        }
+
+	    return FALSE;
+    }
 
 	private function getTerminalDegreeAndYear($recordId) {
 	    $degreesAndYears = $this->getTerminalDegreesAndYears($recordId, FALSE);

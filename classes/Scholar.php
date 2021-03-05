@@ -1189,7 +1189,31 @@ class Scholar {
 	    return 4;
     }
 
-	# to get all, make $field == "all"
+    public static function explodeInstitutions($institutionString) {
+	    $institutions = preg_split("/\s*,\s*/", strtolower($institutionString));
+        $newInstitutions = [];
+        $replacementRegexes = [
+            "/^the university of /i" => "",
+            "/^university of /i" => "",
+            "/university/i" => "univ",
+            ];
+        foreach ($institutions as $inst) {
+            if ($inst) {
+                $newInstitutions[] = $inst;
+                foreach ($replacementRegexes as $regex => $replacement) {
+                    if (preg_match($regex, $inst)) {
+                        $inst2 = preg_replace($regex, $replacement, $inst);
+                        if ($inst2) {
+                            $newInstitutions[] = $inst2;
+                        }
+                    }
+                }
+            }
+        }
+        return $newInstitutions;
+    }
+
+    # to get all, make $field == "all"
 	# add new fields here and getCalculatedFields
 	public static function getDefaultOrder($field) {
 		$orders = array();
@@ -2399,7 +2423,7 @@ class Scholar {
             $format = "application/json";
             if ($orcid = $this->getORCID()) {
                 $url = "https://api.elsevier.com/content/author/orcid/$orcid?httpAccept=" . urlencode($format) . "&apikey=" . $key;
-                $json = REDCapManagement::downloadURL($url, $this->pid);
+                list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
                 $data = json_decode($json, TRUE);
 
 
@@ -2412,7 +2436,7 @@ class Scholar {
                         foreach ($institutions as $institution) {
                             $query = "AUTHFIRST($firstName) AND AUTHLASTNAME($lastName) AND AFFIL($institution)";
                             $url = "https://api.elsevier.com/content/search/author?httpAccept=" . urlencode($format) . "&query=" . urlencode($query) . "&apikey=" . $key;
-                            $json = REDCapManagement::downloadURL($url, $this->pid);
+                            list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
                             $data = json_decode($json, TRUE);
                             if ($data['search-results']) {
                                 foreach ($data['search-results']['entry'] as $authorRow) {
@@ -2426,7 +2450,7 @@ class Scholar {
                             }
                             if ($authorId) {
                                 $url = "http://api.elsevier.com/content/author_id/" . $authorId . "?view=metrics&httpAccept=" . urlencode($format) . "&apikey=" . $key;
-                                $json = REDCapManagement::downloadURL($url, $this->pid);
+                                list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
                                 $data = json_decode($json, TRUE);
                                 foreach ($data["author-retrieval-response"] as $authorRow) {
                                     if ($authorRow['h-index']) {

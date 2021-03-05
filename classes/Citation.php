@@ -865,7 +865,7 @@ class Citation {
 
 		$doi = $this->getVariable("doi");
 		if ($doi) {
-			$baseWithDOILink = str_replace("doi:".$doi, Links::makeLink("https://www.doi.org/".$doi, "doi:".$doi, TRUE), $base);
+			$baseWithDOILink = str_replace("doi:".$doi, Links::makeLink("https://www.doi.org/".$doi, "doi:".$doi, $newTarget), $base);
 		} else {
 			$baseWithDOILink = $base;
 		}
@@ -890,7 +890,7 @@ class Citation {
 		}
 
 		if ($pmcWithPrefix) {
-            $baseWithPMCLink = preg_replace("/".$pmcWithPrefix."/", Links::makeLink($this->getPMCURL(), $pmcWithPrefix), $baseWithPMC);
+            $baseWithPMCLink = preg_replace("/".$pmcWithPrefix."/", Links::makeLink($this->getPMCURL(), $pmcWithPrefix, $newTarget), $baseWithPMC);
         } else {
 		    $baseWithPMCLink = $baseWithPMC;
         }

@@ -140,13 +140,11 @@ function refreshProfile(page) {
 }
 
 $(document).ready(function() {
-	$('#searchProfile').keydown(function(e) {
+    $('#search').keydown(function(e) {
 		if ((e.keyCode == 13) || (e.keyCode == 9)) {
-			var url = window.location.href;
-			var pageWithGet = url.replace(/^.+\//, "");
-			var page = pageWithGet.replace(/\?.+$/, "");
+			var page = '<?= $_GET['page'] ?>';
 			var name = $(this).val();
-			search(page, '#searchProfileDiv', name);
+			search(page, '#searchDiv', name);
 		}
 	});
 });

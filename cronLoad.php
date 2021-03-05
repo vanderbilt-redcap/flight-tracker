@@ -58,7 +58,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday");
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday");
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday");
-		$manager->addCron("drivers/12_reportStats.php", "reportStats", "Saturday");
+        $manager->addCron("drivers/12_reportStats.php", "reportStats", "Saturday");
 		if ($has['vfrs']) {
 			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday");
 		}

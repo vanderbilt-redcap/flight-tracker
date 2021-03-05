@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Scholar;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
@@ -14,6 +15,7 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/../classes/Scholar.php");
 
 function getNewInstanceForRecord($oldReporters, $recordId) {
 	$max = 0;
@@ -112,7 +114,7 @@ function updateReporter($token, $server, $pid, $recordIds) {
 		$institutions = array();
 		$allInstitutions = array_unique(array_merge(CareerDev::getInstitutions(), $helperInstitutions));
 		if ($row['identifier_institution']) {
-			$institutions = preg_split('/\s*,\s*/', strtolower($row['identifier_institution']));
+			$institutions = Scholar::explodeInstitutions($row['identifier_institution']);
 		}
 		foreach ($allInstitutions as $inst) {
 			$inst = strtolower($inst);
@@ -120,7 +122,6 @@ function updateReporter($token, $server, $pid, $recordIds) {
 				array_push($institutions, $inst);
 			}
 		}
-        $institutions = REDCapManagement::explodeInstitutions($institutions);
 		if (isset($_GET['test'])) {
             Application::log("Institutions: ".REDCapManagement::json_encode_with_spaces($institutions));
         }

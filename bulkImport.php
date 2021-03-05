@@ -35,10 +35,11 @@ if (isset($_GET['positions'])) {
 if ($_FILES['bulk']) {
 	$longImportFile = dirname(__FILE__)."/".$importFile;
 	if (verifyFile($_FILES['bulk'], $longImportFile, $expectedItems)) {
-		$errors = array();
-		$lines = readCSV($_FILES['bulk']);
+		$errors = [];
+		list($headers, $lines, $startIdx) = readCSV($_FILES['bulk'], $title);
 
 		$metadata = Download::metadata($token, $server);
+		$records = Download::recordIds($token, $server);
 		$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		$choices = REDCapManagement::getChoices($metadata);
 		$matchedIndices = [0];
@@ -47,10 +48,18 @@ if ($_FILES['bulk']) {
 		$i = 0;
 		$customFields = Application::getCustomFields($metadata);
         foreach ($lines as $line) {
-            $firstName = $line[0];
-            $lastName = $line[1];
-            $recordId = NameMatcher::matchName($firstName, $lastName, $token, $server);
-            if ($recordId) {
+            if ($startIdx == 2) {
+                $firstName = $line[0];
+                $lastName = $line[1];
+                $recordId = NameMatcher::matchName($firstName, $lastName, $token, $server);
+            } else if ($startIdx == 1) {
+                $recordId = $headers[0];
+            } else if ($startIdx == 0) {
+                $recordId = FALSE;
+            } else {
+                throw new \Exception("This should never happen, a start index of $startIdx");
+            }
+            if ($recordId && in_array($recordId, $records)) {
                 if ($title == "Grants") {
                     $redcapData = Download::fieldsForRecords($token, $server,  array("record_id", "custom_last_update"), [$recordId]);
                     if (!$maxInstances[$recordId]) {
@@ -70,37 +79,37 @@ if ($_FILES['bulk']) {
                         "record_id" => $recordId,
                         "redcap_repeat_instrument" => "custom_grant",
                         "redcap_repeat_instance" => $maxInstances[$recordId],
-                        "custom_title" => $line[2],
-                        "custom_number" => $line[3],
-                        "custom_type" => translateTypeIntoIndex($line[4], $choices),
-                        "custom_org" => $line[5],
-                        "custom_recipient_org" => $line[6],
-                        "custom_role" => translateIntoIndex($line[7], $choices, "custom_role"),
-                        "custom_start" => $line[8],
-                        "custom_end" => $line[9],
-                        "custom_costs" => $line[10],
+                        "custom_title" => $line[$startIdx + 1],
+                        "custom_number" => $line[$startIdx + 2],
+                        "custom_type" => translateTypeIntoIndex($line[$startIdx + 3], $choices),
+                        "custom_org" => $line[$startIdx + 4],
+                        "custom_recipient_org" => $line[$startIdx + 5],
+                        "custom_role" => translateIntoIndex($line[$startIdx + 6], $choices, "custom_role"),
+                        "custom_start" => $line[$startIdx + 7],
+                        "custom_end" => $line[$startIdx + 8],
+                        "custom_costs" => $line[$startIdx + 9],
                         "custom_last_update" => date("Y-m-d"),
                         "custom_grant_complete" => "2",
                     ];
                     if (in_array("custom_costs_total", $customFields)) {
-                        $uploadRow["custom_costs_total"] = $line[11];
+                        $uploadRow["custom_costs_total"] = $line[$startIdx + 10];
                     }
                     $upload[] = $uploadRow;
                 } else if ($title == "Positions") {
-                    list($department, $other) = findDepartment($line[8], $choices, "promotion_department");
+                    list($department, $other) = findDepartment($line[$startIdx + 7], $choices, "promotion_department");
                     $uploadRow = [
                         "record_id" => $recordId,
                         "redcap_repeat_instrument" => "position_change",
                         "redcap_repeat_instance" => $maxInstances[$recordId],
-                        "promotion_in_effect" => $line[2],
-                        "promotion_job_title" => $line[3],
-                        "promotion_job_category" => translateIntoIndex($line[4], $choices, "promotion_job_category"),
-                        "promotion_rank" => translateIntoIndex($line[5], $choices, "promotion_rank"),
-                        "promotion_institution" => $line[6],
-                        "promotion_location" => $line[7],
+                        "promotion_in_effect" => $line[$startIdx + 1],
+                        "promotion_job_title" => $line[$startIdx + 2],
+                        "promotion_job_category" => translateIntoIndex($line[$startIdx + 3], $choices, "promotion_job_category"),
+                        "promotion_rank" => translateIntoIndex($line[$startIdx + 4], $choices, "promotion_rank"),
+                        "promotion_institution" => $line[$startIdx + 5],
+                        "promotion_location" => $line[$startIdx + 6],
                         "promotion_department" => $department,
                         "promotion_department_other" => $other,
-                        "promotion_division" => $line[9],
+                        "promotion_division" => $line[$startIdx + 8],
                         "promotion_date" => date("Y-m-d"),
                         "position_change_complete" => "2",
                     ];
@@ -144,11 +153,13 @@ if ($_FILES['bulk']) {
 } else if ($_POST['submit']) {
 	echo "<p class='red padded centered max-width'>ERROR! The file could not be found!</p>\n";
 }
+
+$downloadFile = "downloadCSV.php";
 ?>
 
 <h1>Import <?= $title ?> in Bulk</h1>
 
-<div style='width: 800px; margin: 14px auto;' class='green centered padded'>Please import a CSV (comma delimited) with one row per grant. Use <a href='<?= Application::link($importFile) ?>'>this template</a> to start with. Each line must match the first name and last name (exactly) as specified in the database.</div>
+<div style='width: 800px; margin: 14px auto;' class='green centered padded'>Please import a CSV (comma delimited) with one row per grant. Use <a href='<?= Application::link($downloadFile)."&file=".urlencode($importFile)."&match=names"  ?>'>this template (for matching by first and last names)</a> or <a href='<?= Application::link($downloadFile)."&file=".urlencode($importFile)."&match=record" ?>'>this template (for matching by record ids)</a> to start with. Each line must match the first name and last name (exactly) as specified in the database.</div>
 <form method='POST' action='<?= CareerDev::link("bulkImport.php").$suffix ?>' enctype='multipart/form-data'>
 <p class='centered'><input type='file' name='bulk'></p>
 <p class='centered'><input type='submit' name='submit' value='Upload'></p>
@@ -260,20 +271,24 @@ function inDateFormat($date) {
 	return FALSE;
 }
 
-function readCSV($fileinfo) {
+function readCSV($fileinfo, $validationType) {
 	$filename = $fileinfo['tmp_name'];
 	if (file_exists($filename)) {
 		$fp = fopen($filename, "r");
-		$lines = array();
+		$headers = fgetcsv($fp);
+        $startIdx = getStartIndex($headers);
+        $lines = array();
 		while ($line = fgetcsv($fp)) {
-			$line[8] = ensureDateIsYMD($line[8]);
-			$line[9] = ensureDateIsYMD($line[9]);
+		    if ($validationType == "Grants") {
+                $line[8] = ensureDateIsYMD($line[$startIdx + 7]);
+                $line[9] = ensureDateIsYMD($line[$startIdx + 8]);
+            }
 			array_push($lines, $line);
 		}
 		fclose($fp);
-		return $lines;
+		return [$headers, $lines, $startIdx];
 	}
-	return array();
+	return [];
 }
 
 function translateTypeIntoIndex($type, $allChoices) {
@@ -329,4 +344,14 @@ function getRecordsFromREDCapData($redcapData) {
 		}
 	}
 	return $records;
+}
+
+function getStartIndex($headers) {
+    if (($headers[0] == "First Name") && ($headers[1] == "Last Name")) {
+        return 2;
+    } else if (in_array($headers[0], ["Record ID", "Record Id", "record_id"])) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
