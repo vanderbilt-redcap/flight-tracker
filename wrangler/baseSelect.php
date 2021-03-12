@@ -78,6 +78,15 @@ require_once(dirname(__FILE__)."/css.php");
             }
         }
 
+        function checkSubmitButton(citationSelector, enabledSelector) {
+            let citations = $(citationSelector).val();
+            if (citations) {
+                $(enabledSelector+" button.includeButton").show();
+            } else {
+                $(enabledSelector+" button.includeButton").hide();
+            }
+        }
+
         function includeCitation(citation) {
             if (citation) {
                 includeCitations(citation);

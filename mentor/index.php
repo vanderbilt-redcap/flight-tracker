@@ -23,7 +23,7 @@ if (!$username || !DEBUG) {
 }
 
 $menteeRecordIds = getRecordsAssociatedWithUserid($username, $token, $server);
-authenticate($userid, $menteeRecordIds);
+authenticate($username, $menteeRecordIds);
 
 if(isset($_REQUEST['uid']) && DEBUG){
     $username = $_REQUEST['uid'];

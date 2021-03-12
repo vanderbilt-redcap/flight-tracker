@@ -14,9 +14,7 @@ class NameMatcher {
         if (!$lastName) {
             return [];
         }
-        if ((self::$namesForMatch === NULL) || ($token != self::$currToken)) {
-            self::downloadNamesForMatch($token, $server);
-        }
+        self::refreshNamesForMatch($token, $server);
 
         $names = [];
         $lastName = strtolower($lastName);
@@ -153,12 +151,10 @@ class NameMatcher {
 			return "";
 		}
 		# Assumption: A first name is not 32 characters long and tokens never become more than 32 characters in REDCap
-		if (strlen($tokenOrFirst) == 32 && preg_match("/^[\da-zA-Z]+$/", $tokenOrFirst)) {
+		if ((strlen($tokenOrFirst)) == 32 && preg_match("/^[\da-zA-Z]+$/", $tokenOrFirst)) {
 		    $token = $tokenOrFirst;
             $server = $serverOrLast;
-            if (!self::$namesForMatch || empty(self::$namesForMatch) || ($token != self::$currToken)) {
-                self::downloadNamesForMatch($token, $server);
-            }
+            self::refreshNamesForMatch($token, $server);
             $namesToSearch = self::$namesForMatch;
         } else {
 		    $nameRow = [
@@ -269,7 +265,7 @@ class NameMatcher {
         return $name;
     }
 
-    private static function removeParentheses($name) {
+    public static function removeParentheses($name) {
         $name = preg_replace("/[\(\)]/", " ", $name);
         $name = trim($name);
         $name = preg_replace("/\s\s+/", " ", $name);
@@ -308,12 +304,15 @@ class NameMatcher {
 	    return $newNodes;
     }
 
-	public static function downloadNamesForMatch($token, $server) {
+    public static function refreshNamesForMatch($token, $server) {
+        if ((self::$namesForMatch === NULL) || ($token != self::$currToken)) {
+            self::downloadNamesForMatch($token, $server);
+        }
+    }
+
+    public static function downloadNamesForMatch($token, $server) {
 		Application::log("Downloading new names for pid ".Application::getPID($token));
 		self::$namesForMatch = Download::fields($token, $server, array("record_id", "identifier_first_name", "identifier_last_name"));
-		if (self::$namesForMatch === NULL) {
-		    self::$namesForMatch = [[]];
-        }
         Application::log("Downloaded ".count(self::$namesForMatch)." rows");
 		self::$currToken = $token;
 		return self::$namesForMatch;
@@ -519,8 +518,13 @@ class NameMatcher {
         }
 
 		$nodes = preg_split("/\s*,\s*/", $name);
+		if ($loggingOn) { echo "Initial split into: ".json_encode($nodes); }
+		$nodes = self::clearOfDegrees($nodes);
+        if ($loggingOn) { echo "Cleared into: ".json_encode($nodes); }
 		if (count($nodes) == 1) {
-            $nodes = preg_split("/\s*\band\b\s*/", $name);
+		    if (preg_match("/\band\b/", $name)) {
+                $nodes = preg_split("/\s*\band\b\s*/", $name);
+            }
         }
 		if (count($nodes) >= 2) {
 		    if ($loggingOn) { echo "Comma delimited<br>"; }
@@ -545,9 +549,13 @@ class NameMatcher {
             }
 		} else if (count($nodes) == 1) {
             if ($parts >= 2) {
-                $nodes = preg_split("/\s+/", $nodes[0]);
+                $prevName = $nodes[0];
+                $nodes = preg_split("/\s+/", $prevName);
+                $nodes = self::clearOfDegrees($nodes);
+                $nodes = self::clearOfHonorifics($nodes);
                 $lastNodeIdx = count($nodes) - 1;
-                if ($loggingOn) { echo "Split into ".count($nodes)." nodes<br>"; }
+
+                if ($loggingOn) { echo "Split $prevName into ".count($nodes)." nodes<br>"; }
                 do {
                     $changed = FALSE;
                     if ($loggingOn) { echo "In do-while with ".count($nodes)." nodes<br>"; }
@@ -632,6 +640,53 @@ class NameMatcher {
 		}
 		return array("", "");
 	}
+
+	private static function clearOfHonorifics($nodes) {
+        $honorifics = [
+            "Mr.",
+            "Ms.",
+            "Mrs.",
+            "Miss",
+            "Dr.",
+            "Rev.",
+        ];
+
+        $newNodes = [];
+        $i = 0;
+        foreach ($nodes as $node) {
+            if (($i > 0) || !in_array($node, $honorifics)) {
+                $newNodes[] = $node;
+            }
+            $i++;
+        }
+        return $newNodes;
+    }
+
+	private static function clearOfDegrees($nodes) {
+        $degreesInUpperCase = [
+            "MD,",
+            "PHD,",
+            "MD",
+            "PHD",
+            "MD PHD",
+            "MD, PHD",
+            "MD,PHD",
+            "MD/PHD",
+            "MS",
+            "DPHIL",
+            "PSYD",
+            "PHARMD",
+            "RN",
+        ];
+        $newNodes = [];
+        foreach ($nodes as $node) {
+            $node = trim($node);
+            if ($node && !in_array(strtoupper($node), $degreesInUpperCase)) {
+                $newNodes[] = $node;
+            }
+        }
+        return $newNodes;
+    }
 
 	private static function collapseNames($nodes, $parts) {
         $first = $nodes[0];

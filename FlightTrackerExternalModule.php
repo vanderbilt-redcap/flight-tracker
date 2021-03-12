@@ -266,7 +266,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                             foreach ($combos as $nameAry) {
                                 $firstName = $nameAry["first"];
                                 $lastName = $nameAry["last"];
-                                CareerDev::log("Searching for $firstName $lastName from $destPid in $sourcePid");
+                                // CareerDev::log("Searching for $firstName $lastName from $destPid in $sourcePid");
                                 if ($sourceRecordId = NameMatcher::matchName($firstName, $lastName, $sourceToken, $sourceServer)) {
                                     CareerDev::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)");
 

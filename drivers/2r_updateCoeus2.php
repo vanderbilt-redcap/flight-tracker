@@ -27,13 +27,13 @@ function processCoeus2($token, $server, $pid, $records) {
     foreach ($records as $recordId) {
         $userid = $userids[$recordId];
         Application::log("Looking up COEUS information for Record $recordId");
+        $upload = [];
         if ($userid) {
             $starbriteData = StarBRITE::dataForUserid($userid, $pid);
             $redcapData = Download::formForRecords($token, $server, $instrument, [$recordId]);
             $maxInstance = REDCapManagement::getMaxInstance($redcapData, $instrument, $recordId);
             $nextInstance = $maxInstance + 1;
             $priorIDs = getPriorCOEUSAwardIds($redcapData);
-            $upload = [];
             $instancesToUpload = [];
             foreach ($starbriteData['data'] as $award) {
                 $id = $award['id'];

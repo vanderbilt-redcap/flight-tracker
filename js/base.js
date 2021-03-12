@@ -46,16 +46,20 @@ function resetCitationList(textId) {
 	} else {
 		$(textId).val('');
 	}
+	updateButtons(textId);
 }
 
 function submitPMCs(pmcs, textId, prefixHTML) {
 	if (!Array.isArray(pmcs)) {
 		pmcs = pmcs.split(/\n/);
 	}
+	pmcs = clearOutBlanks(pmcs);
 	if (pmcs && Array.isArray(pmcs)) {
 		resetCitationList(textId);
-		presentScreen("Downloading...");
-		downloadOnePMC(0, pmcs, textId, prefixHTML);
+		if (pmcs.length > 0) {
+			presentScreen("Downloading...");
+			downloadOnePMC(0, pmcs, textId, prefixHTML);
+		}
 	}
 }
 
@@ -163,6 +167,17 @@ function updateCitationList(textId, prefixHTML, text) {
 	} else {
 		$(textId).val(citations.join('\n'));
 	}
+	updateButtons(textId);
+}
+
+function updateButtons(textId) {
+	if ($(textId).val()) {
+		$('.list button.includeButton').show();
+		$('.oneAtATime button.includeButton').show();
+	} else {
+		$('.list button.includeButton').hide();
+		$('.oneAtATime button.includeButton').hide();
+	}
 }
 
 function getLocation(volume, issue, pages) {
@@ -255,6 +270,16 @@ function downloadOnePMID(i, pmids, textId, prefixHTML, doneCb) {
 	}
 }
 
+function clearOutBlanks(ary) {
+	var ary2 = [];
+	for (var i = 0; i < ary.length; i++) {
+		if (ary[i]) {
+			ary2.push(ary[i]);
+		}
+	}
+	return ary2;
+}
+
 // cb = callback
 function submitPMIDs(pmids, textId, prefixHTML, cb) {
 	if (!Array.isArray(pmids)) {
@@ -266,10 +291,13 @@ function submitPMIDs(pmids, textId, prefixHTML, cb) {
 	if (!cb) {
 		cb = function() { };
 	}
+	pmids = clearOutBlanks(pmids);
 	if (pmids && (Array.isArray(pmids))) {
 		resetCitationList(textId);
-		presentScreen("Downloading...");
-		downloadOnePMID(0, pmids, textId, prefixHTML, cb);
+		if (pmids.length > 0) {
+			presentScreen("Downloading...");
+			downloadOnePMID(0, pmids, textId, prefixHTML, cb);
+		}
 	}
 }
 

@@ -638,7 +638,7 @@ class Download {
 		);
 		$returnData = self::sendToServer($server, $data);
 		if (count($returnData) == 0) {
-            Application::log("ERROR: null return from data: ".json_encode($data));
+            Application::log("ERROR: empty return from data: ".json_encode($returnData));
         }
 		return $returnData;
 	}

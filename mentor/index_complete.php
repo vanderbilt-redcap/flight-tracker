@@ -17,7 +17,6 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once dirname(__FILE__)."/../classes/LDAP.php";
 require_once dirname(__FILE__)."/../classes/REDCapManagement.php";
 
-authenticate($userid, $_REQUEST['menteeRecord']);
 if ($_GET['uid']) {
     $username = $_GET['uid'];
     $uidString = "&uid=$username";
@@ -25,6 +24,7 @@ if ($_GET['uid']) {
     $username = $userid;
     $uidString = "";
 }
+authenticate($username, $_REQUEST['menteeRecord']);
 
 require_once dirname(__FILE__).'/_header.php';
 

@@ -183,7 +183,7 @@ if (CareerDev::getInstitutionCount() == 1) {
 	echo "<td class='label profileHeader'>Status:</td>\n";
 	echo "<td class='value profileHeader'>$status</td>\n";
 } else {
-	echo "<td class='label profileHeader'>Institution:</td>\n";
+	echo "<td class='label profileHeader'>Institution(s):</td>\n";
 	echo "<td class='value profileHeader'>$institution</td>\n";
 }
 ?>

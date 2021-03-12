@@ -568,6 +568,7 @@ class REDCapManagement {
             CURLOPT_SSL_VERIFYPEER => 0,
         ];
 
+        $time1 = microtime();
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         foreach ($defaultOpts as $opt => $value) {
@@ -593,7 +594,8 @@ class REDCapManagement {
             }
         }
         curl_close($ch);
-        Application::log("Response code $resp; ".strlen($data)." bytes");
+        $time2 = microtime();
+        Application::log("Response code $resp; ".strlen($data)." bytes in ".(($time2 - $time1) / 1000)." seconds");
         return array($resp, $data);
     }
 
@@ -834,8 +836,8 @@ class REDCapManagement {
                         }
                     }
                 }
-                Application::log("Removing instances ".implode(", ", $instancesToDelete)." from record $recordId because duplicates");
                 if (!empty($instancesToDelete)) {
+                    Application::log("Removing instances ".implode(", ", $instancesToDelete)." from record $recordId because duplicates");
                     Upload::deleteFormInstances($token, $server, $pid, $prefix, $recordId, $instancesToDelete);
                 }
             }

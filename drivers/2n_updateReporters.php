@@ -105,7 +105,8 @@ function updateReporter($token, $server, $pid, $recordIds) {
 					$listOfNames[] = strtoupper($fn." ".$ln);
 				}
 			}
-		} 
+		}
+		$lastName = NameMatcher::removeParentheses($lastName);
 		if ($firstName && $lastName && !in_array(strtoupper($firstName." ".$lastName), $listOfNames)) {
 			$listOfNames[] = strtoupper($firstName." ".$lastName);
 		}

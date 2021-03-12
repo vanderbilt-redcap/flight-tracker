@@ -83,7 +83,7 @@ class Scholar {
 	}
 
 	public static function getKLength($type) {
-		Application::log("Getting K Length for $type");
+		// Application::log("Getting K Length for $type");
 		if ($type == "Internal") {
 			return Application::getInternalKLength();
 		} else if ($type == 1) {

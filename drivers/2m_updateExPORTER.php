@@ -526,42 +526,47 @@ function readAbstracts($file) {
 }
 
 function uploadBlankAbstracts($token, $server, $records, $abstractFiles) {
+    $blankApplicationIds = [];
     foreach ($records as $recordId) {
+        Application::log("Searching for blank abstracts for Record $recordId");
         $fields = ["record_id", "exporter_application_id", "exporter_abstract"];
         $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-        $blankApplicationIds = [];
         foreach ($redcapData as $row) {
             if ($row['redcap_repeat_instrument'] == "exporter") {
                 if ($row['exporter_abstract'] == "") {
-                    $blankApplicationIds[$row['redcap_repeat_instance']] = $row['exporter_application_id'];
+                    if (!isset($blankApplicationIds[$row['record_id']])) {
+                        $blankApplicationIds[$row['record_id']] = [];
+                    }
+                    $blankApplicationIds[$row['record_id']][$row['redcap_repeat_instance']] = $row['exporter_application_id'];
                 }
             }
         }
+    }
 
-        $upload = [];
-        foreach ($blankApplicationIds as $instance => $applicationId) {
-            $found = FALSE;
-            foreach ($abstractFiles as $dataFile => $abstractFile) {
-                $fp = fopen($abstractFile, "r");
-                while (!$found && ($line = fgetcsv($fp))) {
-                    if ($line[1] && ($line[0] == $applicationId)) {
+    $upload = [];
+    $processedItems = [];
+    foreach ($abstractFiles as $dataFile => $abstractFile) {
+        Application::log("Reading $abstractFile");
+        $fp = fopen($abstractFile, "r");
+        while ($line = fgetcsv($fp)) {
+            foreach ($blankApplicationIds as $recordId => $applicationIds) {
+                foreach ($applicationIds as $instance => $applicationId) {
+                    if ($line[1] && ($line[0] == $applicationId) && !in_array("$recordId:$instance", $processedItems)) {
                         $upload[] = [
                             "record_id" => $recordId,
                             "redcap_repeat_instrument" => "exporter",
                             "redcap_repeat_instance" => $instance,
                             "exporter_abstract" => $line[1],
                         ];
-                        $found = TRUE;
+                        $processedItems[] = "$recordId:$instance";
                     }
-                }
-                fclose($fp);
-                if ($found) {
-                    break;   // inner
                 }
             }
         }
-        if (!empty($upload)) {
-            Upload::rows($upload, $token, $server);
-        }
+        fclose($fp);
+    }
+    if (!empty($upload)) {
+        Application::log("Uploading ".count($upload)." lines");
+        Upload::rows($upload, $token, $server);
     }
 }

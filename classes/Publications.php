@@ -381,14 +381,22 @@ class Publications {
 		return $output;
 	}
 
-	public static function downloadPMID($pmid) {
-		$output = self::pullFromEFetch($pmid);
+    public static function downloadPMID($pmid) {
+	    $ary = self::downloadPMIDs([$pmid]);
+	    if (count($ary) > 0) {
+            return $ary[0];
+        }
+	    return NULL;
+    }
+
+	public static function downloadPMIDs($pmids) {
+		$output = self::pullFromEFetch($pmids);
 		$xml = simplexml_load_string(utf8_encode($output));
 		$numRetries = 5;
 		$i = 0;
 		while (!$xml && ($numRetries > $i)) {
 			sleep(5);
-			$output = self::pullFromEFetch($pmid);
+			$output = self::pullFromEFetch($pmids);
 			$xml = simplexml_load_string(utf8_encode($output));
 			$i++;
 		}
@@ -396,72 +404,76 @@ class Publications {
 			throw new \Exception("Error: Cannot create object ".$output);
 		}
 
-		$pubTypes = array();
-		$keywords = array();
-		$abstract = "";
-		$meshTerms = array();
-		$title = "";
-		foreach ($xml->PubmedArticle as $medlineCitation) {
-			$article = $medlineCitation->MedlineCitation->Article;
-			$currPmid = "{$medlineCitation->MedlineCitation->PMID}";
+		$pubmedMatches = [];
+		foreach ($pmids as $pmid) {
+		    $pubmedMatch = NULL;
+            $pubTypes = [];
+            $keywords = [];
+            $abstract = "";
+            $meshTerms = [];
+            $title = "";
 
-			if ($currPmid == $pmid) {
-				if ($article->ArticleTitle) {
-					$title = "{$article->ArticleTitle}";
-				}
-				if ($article->Abstract) {
-					$text = "";
-					foreach ($article->Abstract->children() as $node) {
-						$attrs = $node->attributes();
-						if ($attrs['Label']) {
-							$text .= $attrs['Label']."\n";
-						}
-						$text .= "$node\n";
-					}
-					$abstract = $text;
-				}
+            foreach ($xml->PubmedArticle as $medlineCitation) {
+                $article = $medlineCitation->MedlineCitation->Article;
+                $currPmid = "{$medlineCitation->MedlineCitation->PMID}";
 
-				if ($article->PublicationTypeList) {
-					foreach ($article->PublicationTypeList->PublicationType as $pubType) {
-						array_push($pubTypes, $pubType);
-					}
-				}
+                if ($currPmid == $pmid) {
+                    if ($article->ArticleTitle) {
+                        $title = "{$article->ArticleTitle}";
+                    }
+                    if ($article->Abstract) {
+                        $text = "";
+                        foreach ($article->Abstract->children() as $node) {
+                            $attrs = $node->attributes();
+                            if ($attrs['Label']) {
+                                $text .= $attrs['Label']."\n";
+                            }
+                            $text .= "$node\n";
+                        }
+                        $abstract = $text;
+                    }
 
-				if ($medlineCitation->MedlineCitation->KeywordList) {
-					foreach ($medlineCitation->MedlineCitation->KeywordList->Keyword as $keyword) {
-						array_push($keywords, $keyword);
-					}
-				}
+                    if ($article->PublicationTypeList) {
+                        foreach ($article->PublicationTypeList->PublicationType as $pubType) {
+                            array_push($pubTypes, $pubType);
+                        }
+                    }
 
-				if ($medlineCitation->MedlineCitation->MeshHeadingList) {
-					foreach ($medlineCitation->MedlineCitation->MeshHeadingList->children() as $node) {
-						if ($node->DescriptorName) {
-							array_push($meshTerms, $node->DescriptorName);
-						}
-					}
-				}
-			}
-		}
+                    if ($medlineCitation->MedlineCitation->KeywordList) {
+                        foreach ($medlineCitation->MedlineCitation->KeywordList->Keyword as $keyword) {
+                            array_push($keywords, $keyword);
+                        }
+                    }
 
-		$pubmedMatch = new PubmedMatch($pmid);
-		if ($abstract) {
-			$pubmedMatch->setVariable("Abstract", $abstract);
-		}
-		if ($keywords) {
-			$pubmedMatch->setVariable("Keywords", $keywords);
-		}
-		if ($title) {
-			$pubmedMatch->setVariable("Title", $title);
-		}
-		if ($pubTypes) {
-			$pubmedMatch->setVariable("Publication Types", $pubTypes);
-		}
-		if ($meshTerms) {
-			$pubmedMatch->setVariable("MESH Terms", $meshTerms);
-		}
-		$pubmedMatch->fillInCategoryAndScore();
-
-		return $pubmedMatch;
+                    if ($medlineCitation->MedlineCitation->MeshHeadingList) {
+                        foreach ($medlineCitation->MedlineCitation->MeshHeadingList->children() as $node) {
+                            if ($node->DescriptorName) {
+                                array_push($meshTerms, $node->DescriptorName);
+                            }
+                        }
+                    }
+                    $pubmedMatch = new PubmedMatch($pmid);
+                    if ($abstract) {
+                        $pubmedMatch->setVariable("Abstract", $abstract);
+                    }
+                    if ($keywords) {
+                        $pubmedMatch->setVariable("Keywords", $keywords);
+                    }
+                    if ($title) {
+                        $pubmedMatch->setVariable("Title", $title);
+                    }
+                    if ($pubTypes) {
+                        $pubmedMatch->setVariable("Publication Types", $pubTypes);
+                    }
+                    if ($meshTerms) {
+                        $pubmedMatch->setVariable("MESH Terms", $meshTerms);
+                    }
+                    $pubmedMatch->fillInCategoryAndScore();
+                }
+            }
+            $pubmedMatches[] = $pubmedMatch;
+        }
+		return $pubmedMatches;
 	}
 
 	public function uploadSummary() {
@@ -556,9 +568,9 @@ class Publications {
 		$upload = [];
 		$instance = $startInstance;
 		$pullSize = self::getPMIDLimit();
-		for ($i = 0; $i < count($pmids); $i += $pullSize) {
+		for ($i0 = 0; $i0 < count($pmids); $i0 += $pullSize) {
 			$pmidsToPull = array();
-			for ($j = $i; ($j < count($pmids)) && ($j < $i + $pullSize); $j++) {
+			for ($j = $i0; ($j < count($pmids)) && ($j < $i0 + $pullSize); $j++) {
 				array_push($pmidsToPull, $pmids[$j]);
 			}
 			$output = self::pullFromEFetch($pmidsToPull);
@@ -689,29 +701,29 @@ class Publications {
             $translateFromPMIDToPMC = self::PMIDsToPMCs($pmidsPulled, $pid);
             $iCite = new iCite($pmidsPulled, $pid);
 			foreach ($pmidsPulled as $pmid) {
-                for ($i = 0; $i < count($upload); $i++) {
-                    if ($upload[$i]['citation_pmid'] == $pmid) {
+                for ($j = 0; $j < count($upload); $j++) {
+                    if ($upload[$j]['citation_pmid'] == $pmid) {
                         $pmcid = $translateFromPMIDToPMC[$pmid];
                         if ($pmcid) {
                             if (!preg_match("/PMC/", $pmcid)) {
                                 $pmcid = "PMC" . $pmcid;
                             }
-                            $upload[$i]['citation_pmcid'] = $pmcid;
+                            $upload[$j]['citation_pmcid'] = $pmcid;
                         }
-                        $upload[$i]["citation_doi"] = $iCite->getVariable($pmid, "doi");
-                        $upload[$i]["citation_is_research"] = $iCite->getVariable($pmid, "is_research_article");
-                        $upload[$i]["citation_num_citations"] = $iCite->getVariable($pmid, "citation_count");
-                        $upload[$i]["citation_citations_per_year"] = $iCite->getVariable($pmid, "citations_per_year");
-                        $upload[$i]["citation_expected_per_year"] = $iCite->getVariable($pmid, "expected_citations_per_year");
-                        $upload[$i]["citation_field_citation_rate"] = $iCite->getVariable($pmid, "field_citation_rate");
-                        $upload[$i]["citation_nih_percentile"] = $iCite->getVariable($pmid, "nih_percentile");
-                        $upload[$i]["citation_rcr"] = $iCite->getVariable($pmid, "relative_citation_ratio");
+                        $upload[$j]["citation_doi"] = $iCite->getVariable($pmid, "doi");
+                        $upload[$j]["citation_is_research"] = $iCite->getVariable($pmid, "is_research_article");
+                        $upload[$j]["citation_num_citations"] = $iCite->getVariable($pmid, "citation_count");
+                        $upload[$j]["citation_citations_per_year"] = $iCite->getVariable($pmid, "citations_per_year");
+                        $upload[$j]["citation_expected_per_year"] = $iCite->getVariable($pmid, "expected_citations_per_year");
+                        $upload[$j]["citation_field_citation_rate"] = $iCite->getVariable($pmid, "field_citation_rate");
+                        $upload[$j]["citation_nih_percentile"] = $iCite->getVariable($pmid, "nih_percentile");
+                        $upload[$j]["citation_rcr"] = $iCite->getVariable($pmid, "relative_citation_ratio");
                         if (in_array("citation_icite_last_update", $metadataFields)) {
-                            $upload[$i]["citation_icite_last_update"] = date("Y-m-d");
+                            $upload[$j]["citation_icite_last_update"] = date("Y-m-d");
                         }
 
                         $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields, $pid);
-                        $upload[$i] = array_merge($upload[$i], $altmetricRow);
+                        $upload[$j] = array_merge($upload[$j], $altmetricRow);
                     }
                 }
             }
@@ -724,6 +736,7 @@ class Publications {
 			Publications::throttleDown();
 		}
 		self::addTimesCited($upload, $pid, $pmids, $metadataFields);
+		Application::log("Returning ".count($upload)." lines from getCitationsFromPubMed");
 		return $upload;
 	}
 
@@ -930,16 +943,16 @@ class Publications {
 		$html .= "<table id='lookupTable' style='margin-left: auto; margin-right: auto; border-radius: 10px;' class='bin'><tr>\n";
 		$html .= "<td style='width: 250px; height: 200px; text-align: left; vertical-align: top;'>\n";
 		$html .= "<h4 style='margin-bottom: 0px;'>Lookup PMID</h4>\n";
-        $html .= "<p class='oneAtATime'><input type='text' id='pmid'> <button onclick='submitPMID($(\"#pmid\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide();'>Switch to Bulk</a></p>\n";
-        $html .= "<p class='list' style='display: none;'><textarea id='pmidList'></textarea> <button onclick='submitPMIDs($(\"#pmidList\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show();'>Switch to Single</a></p>\n";
+        $html .= "<p class='oneAtATime'><input type='text' id='pmid'> <button onclick='submitPMID($(\"#pmid\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide(); checkSubmitButton(\"#manualCitation\", \".list\");'>Switch to Bulk</a></p>\n";
+        $html .= "<p class='list' style='display: none;'><textarea id='pmidList'></textarea> <button onclick='submitPMIDs($(\"#pmidList\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show(); checkSubmitButton(\"#manualCitation\", \".oneAtATime\");'>Switch to Single</a></p>\n";
 		$html .= "<h4 style='margin-bottom: 0px;'>Lookup PMC</h4>\n";
-        $html .= "<p class='oneAtATime'><input type='text'> <button onclick='submitPMC($(\"#pmc\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide();'>Switch to Bulk</a></p>\n";
-        $html .= "<p class='list' style='display: none;'><textarea id='pmcList'></textarea> <button onclick='submitPMCs($(\"#pmcList\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show();'>Switch to Single</a></p>\n";
+        $html .= "<p class='oneAtATime'><input type='text' id='pmc'> <button onclick='submitPMC($(\"#pmc\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide(); checkSubmitButton(\"#manualCitation\", \".list\");'>Switch to Bulk</a></p>\n";
+        $html .= "<p class='list' style='display: none;'><textarea id='pmcList'></textarea> <button onclick='submitPMCs($(\"#pmcList\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show(); checkSubmitButton(\"#manualCitation\", \".oneAtATime\");'>Switch to Single</a></p>\n";
 		$html .= "</td><td style='width: 500px;'>\n";
 		$html .= "<div id='lookupResult'>\n";
 		$html .= "<p><textarea style='width: 100%; height: 150px; font-size: 16px;' id='manualCitation'></textarea></p>\n";
-        $html .= "<p class='oneAtATime'><button class='biggerButton green' onclick='includeCitation($(\"#manualCitation\").val()); return false;'>Include This Citation</button></p>\n";
-        $html .= "<p class='list' style='display: none;'><button class='biggerButton green' onclick='includeCitations($(\"#manualCitation\").val()); return false;'>Include These Citations</button></p>\n";
+        $html .= "<p class='oneAtATime'><button class='biggerButton green includeButton' style='display: none;' onclick='includeCitation($(\"#manualCitation\").val()); return false;'>Include This Citation</button></p>\n";
+        $html .= "<p class='list' style='display: none;'><button class='biggerButton green includeButton' style='display: none;' onclick='includeCitations($(\"#manualCitation\").val()); return false;'>Include These Citations</button></p>\n";
 		$html .= "</div>\n";
 		$html .= "</td>\n";
 		$html .= "</tr></table>\n";

@@ -37,6 +37,10 @@ function authenticate($username, $menteeRecords) {
             }
             $validUserids = array_unique(array_merge($validUserids, $userids[$menteeRecord], $mentorUserids[$menteeRecord]));
         }
+        if (isset($_GET['test'])) {
+            echo "Valid Userids: ".json_encode($validUserids)."<br>";
+            echo "Mentee Records: ".json_encode($menteeRecords)."<br>";
+        }
         if (!in_array($username, $validUserids) && (!DEBUG || !in_array($_GET['uid'], $validUserids))) {
             die("You do not have access to this record!");
         }
@@ -171,6 +175,9 @@ function getRecordsAssociatedWithUserid($userid, $token, $server) {
         if (in_array($userid, $mentorUserids)) {
             $menteeRecordIds[] = $recordId;
         }
+    }
+    if (isset($_GET['test'])) {
+        echo "Looking for $userid and found ".json_encode($menteeRecordIds)."<br>";
     }
     return $menteeRecordIds;
 }

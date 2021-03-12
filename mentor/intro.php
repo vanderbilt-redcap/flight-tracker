@@ -22,9 +22,13 @@ $username = $_GET['uid'];
 if (!$username || !DEBUG) {
     $username = $userid;
 }
+if (isset($_GET['test'])) {
+    echo "username: $username<br>";
+    echo "GET: ".$_GET['uid']."<br>";
+}
 
 $menteeRecordIds = getRecordsAssociatedWithUserid($username, $token, $server);
-authenticate($userid, $menteeRecordIds);
+authenticate($username, $menteeRecordIds);
 
 if(isset($_REQUEST['uid']) && DEBUG){
     $username = $_REQUEST['uid'];

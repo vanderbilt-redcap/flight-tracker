@@ -22,7 +22,6 @@ require_once dirname(__FILE__)."/../classes/LDAP.php";
 
 require_once dirname(__FILE__).'/_header.php';
 
-authenticate($userid, $_REQUEST['menteeRecord']);
 
 if ($_REQUEST['uid'] && DEBUG) {
     $userid2 = $_REQUEST['uid'];
@@ -31,6 +30,7 @@ if ($_REQUEST['uid'] && DEBUG) {
     $userid2 = $userid;
     $uidString = "";
 }
+authenticate($userid2, $_REQUEST['menteeRecord']);
 
 echo "<link rel='stylesheet' type='text/css' href='".Application::link("mentor/css/simptip.css")."' media='screen,projection' />\n";
 
