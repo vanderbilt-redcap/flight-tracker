@@ -210,6 +210,17 @@ class REDCapManagement {
         return $forms;
 	}
 
+	public static function getReporterDateInYMD($dt) {
+        if (!$dt) {
+            return "";
+        }
+        $nodes = preg_split("/T/", $dt);
+        if (count($nodes) != 2) {
+            return $nodes[0];
+        }
+        return $nodes[0];
+    }
+
 	public static function getPrefixFromInstrument($instrument) {
         if ($instrument == "initial_survey") {
             $prefix = "check";
@@ -1534,13 +1545,13 @@ class REDCapManagement {
         if (!is_array($ary1) || !is_array($ary2)) {
             return FALSE;
         }
-	    foreach ([$ary1 => $ary2, $ary2 => $ary1] as $aryA => $aryB) {
-            foreach ($aryA as $key => $valueA) {
-                if (!isset($aryB[$key])) {
+	    foreach ([[$ary1, $ary2], [$ary2, $ary1]] as $arys) {
+            foreach ($arys[0] as $key => $value0) {
+                if (!isset($arys[1][$key])) {
                     return FALSE;
                 }
-                $valueB = $aryB[$key];
-                if ($valueA !== $valueB) {
+                $value1 = $arys[1][$key];
+                if ($value0 !== $value1) {
                     return FALSE;
                 }
             }

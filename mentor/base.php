@@ -42,7 +42,8 @@ function authenticate($username, $menteeRecords) {
             echo "Mentee Records: ".json_encode($menteeRecords)."<br>";
         }
         if (!in_array($username, $validUserids) && (!DEBUG || !in_array($_GET['uid'], $validUserids))) {
-            die("You do not have access to this record!");
+            session_start();
+            die("You ($username) do not have access to this record! ".json_encode($_SESSION));
         }
     }
 }

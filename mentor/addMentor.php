@@ -13,7 +13,6 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
 
 $recordId = $_GET['menteeRecord'];
-authenticate($userid, $recordId);
 
 if(isset($_REQUEST['uid']) && DEBUG){
     $username = $_REQUEST['uid'];
@@ -22,6 +21,7 @@ if(isset($_REQUEST['uid']) && DEBUG){
     $username = $userid;
     $uidString = "";
 }
+authenticate($username, $recordId);
 $error = "";
 $message = "";
 if (!isMentee($recordId, $username)) {

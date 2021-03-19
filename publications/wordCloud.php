@@ -4,19 +4,21 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../classes/Cohorts.php");
 require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../CareerDev.php");
 
 ?>
     <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
     <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
     <script src="https://cdn.amcharts.com/lib/4/plugins/wordCloud.js"></script>
     <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
-    <link rel="stylesheet" href="https://use.typekit.net/nxh7lyk.css">
+    <link rel="stylesheet" href="<?= CareerDev::link("/css/typekit.css").CareerDev::getVersion() ?>">
     <style type="text/css">
 form label {
     font-size: 12px;
@@ -117,7 +119,7 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
         if ($cohort == "all") {
             $records = Download::recordIds($token, $server);
         } else {
-            $records = Download::cohortRecordIds($token, $server, $metadata, $cohort);
+            $records = Download::cohortRecordIds($token, $server, CareerDev::getModule(), $cohort);
         }
     } else {
         $records = Download::recordIds($token, $server);
@@ -159,7 +161,8 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
 
         series.data = [
             <?php  
-                $wc = "";  
+                $wc = "";
+                $tcount = 0;
                 foreach ($wordData as $key => $value) {
                     $wc .= '{"tag":"'.$key.'","count": '.$value.'},';
                     $tcount++;
@@ -273,7 +276,7 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCoho
     $html = "";
     $html .= "<h1>Which Field do You Want to Count Frequency with Publications?</h1>\n";
     $html .= "<form action='$link' method='POST'>";
-    $cohorts = new Cohorts($token, $server, $metadata);
+    $cohorts = new Cohorts($token, $server, CareerDev::getModule());
     $html .= "<p class='centered'><div class='form-group'>".$cohorts->makeCohortSelectUI($defaultCohort)."</div> <div class='form-group'><label for='field'>Field:</label><select name='field' id='field' class='form-control'><option value=''>---SELECT---</option>";
     foreach ($possibleFields as $field) {
         $label = $metadataLabels[$field];

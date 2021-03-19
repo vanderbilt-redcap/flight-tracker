@@ -74,55 +74,60 @@ if ($_FILES['bulk']) {
                     echo "<p class='red padded centered max-width'>ERROR! Could not match group!</p>\n";
                 }
                 $maxInstances[$recordId]++;
-                if ($title == "Grants") {
-                    $uploadRow = [
-                        "record_id" => $recordId,
-                        "redcap_repeat_instrument" => "custom_grant",
-                        "redcap_repeat_instance" => $maxInstances[$recordId],
-                        "custom_title" => $line[$startIdx + 1],
-                        "custom_number" => $line[$startIdx + 2],
-                        "custom_type" => translateTypeIntoIndex($line[$startIdx + 3], $choices),
-                        "custom_org" => $line[$startIdx + 4],
-                        "custom_recipient_org" => $line[$startIdx + 5],
-                        "custom_role" => translateIntoIndex($line[$startIdx + 6], $choices, "custom_role"),
-                        "custom_start" => $line[$startIdx + 7],
-                        "custom_end" => $line[$startIdx + 8],
-                        "custom_costs" => $line[$startIdx + 9],
-                        "custom_last_update" => date("Y-m-d"),
-                        "custom_grant_complete" => "2",
-                    ];
-                    if (in_array("custom_costs_total", $customFields)) {
-                        $uploadRow["custom_costs_total"] = $line[$startIdx + 10];
-                    }
-                    $upload[] = $uploadRow;
-                } else if ($title == "Positions") {
-                    list($department, $other) = findDepartment($line[$startIdx + 7], $choices, "promotion_department");
-                    $uploadRow = [
-                        "record_id" => $recordId,
-                        "redcap_repeat_instrument" => "position_change",
-                        "redcap_repeat_instance" => $maxInstances[$recordId],
-                        "promotion_in_effect" => $line[$startIdx + 1],
-                        "promotion_job_title" => $line[$startIdx + 2],
-                        "promotion_job_category" => translateIntoIndex($line[$startIdx + 3], $choices, "promotion_job_category"),
-                        "promotion_rank" => translateIntoIndex($line[$startIdx + 4], $choices, "promotion_rank"),
-                        "promotion_institution" => $line[$startIdx + 5],
-                        "promotion_location" => $line[$startIdx + 6],
-                        "promotion_department" => $department,
-                        "promotion_department_other" => $other,
-                        "promotion_division" => $line[$startIdx + 8],
-                        "promotion_date" => date("Y-m-d"),
-                        "position_change_complete" => "2",
-                    ];
-                    if (in_array("promotion_prior", $metadataFields)) {
-                        if ($line[10]) {
-                            $uploadRow["promotion_prior"] = "1";
-                        } else {
-                            $uploadRow["promotion_prior"] = "";
+                try {
+                    if ($title == "Grants") {
+                        $uploadRow = [
+                            "record_id" => $recordId,
+                            "redcap_repeat_instrument" => "custom_grant",
+                            "redcap_repeat_instance" => $maxInstances[$recordId],
+                            "custom_title" => $line[$startIdx],
+                            "custom_number" => $line[$startIdx + 1],
+                            "custom_type" => translateTypeIntoIndex($line[$startIdx + 2], $choices),
+                            "custom_org" => $line[$startIdx + 3],
+                            "custom_recipient_org" => $line[$startIdx + 4],
+                            "custom_role" => translateIntoIndex($line[$startIdx + 5], $choices, "custom_role"),
+                            "custom_start" => $line[$startIdx + 6],
+                            "custom_end" => $line[$startIdx + 7],
+                            "custom_costs" => $line[$startIdx + 8],
+                            "custom_last_update" => date("Y-m-d"),
+                            "custom_grant_complete" => "2",
+                        ];
+                        if (in_array("custom_costs_total", $customFields)) {
+                            $uploadRow["custom_costs_total"] = $line[$startIdx + 9];
                         }
+                        $upload[] = $uploadRow;
+                    } else if ($title == "Positions") {
+                        list($department, $other) = findDepartment($line[$startIdx + 6], $choices, "promotion_department");
+                        $uploadRow = [
+                            "record_id" => $recordId,
+                            "redcap_repeat_instrument" => "position_change",
+                            "redcap_repeat_instance" => $maxInstances[$recordId],
+                            "promotion_in_effect" => $line[$startIdx],
+                            "promotion_job_title" => $line[$startIdx + 1],
+                            "promotion_job_category" => translateIntoIndex($line[$startIdx + 2], $choices, "promotion_job_category"),
+                            "promotion_rank" => translateIntoIndex($line[$startIdx + 3], $choices, "promotion_rank"),
+                            "promotion_institution" => $line[$startIdx + 4],
+                            "promotion_location" => $line[$startIdx + 5],
+                            "promotion_department" => $department,
+                            "promotion_department_other" => $other,
+                            "promotion_division" => $line[$startIdx + 7],
+                            "promotion_date" => date("Y-m-d"),
+                            "position_change_complete" => "2",
+                        ];
+                        if (in_array("promotion_prior", $metadataFields)) {
+                            if ($line[10]) {
+                                $uploadRow["promotion_prior"] = "1";
+                            } else {
+                                $uploadRow["promotion_prior"] = "";
+                            }
+                        }
+                        $upload[] = $uploadRow;
+                    } else {
+                        echo "<p class='red padded centered max-width'>ERROR in Record $recordId! Could not match group!</p>\n";
+                        $unmatchedLines[] = $i;
                     }
-                    $upload[] = $uploadRow;
-                } else {
-                    echo "<p class='red padded centered max-width'>ERROR! Could not match group!</p>\n";
+                } catch (\Exception $e) {
+                    echo "<p class='red padded centered max-width'>ERROR in Record $recordId! ".$e->getMessage()."</p>\n";
                     $unmatchedLines[] = $i;
                 }
             } else if ($i != 0) {
@@ -133,7 +138,7 @@ if ($_FILES['bulk']) {
 		if (!empty($unmatchedLines)) {
 			echo "<div class='red padded max-width'>\n";
 			echo "<h4>Unmatched Lines!</h4>\n";
-			echo "<p class='centered'>The following lines could not be matched to a record. Please fix and submit again. No records were imported.</p>\n";
+			echo "<p class='centered'>The following lines could not be matched to a record, perhaps due to previous errors. Please fix and submit again. No records were imported.</p>\n";
 			foreach ($unmatchedLines as $i) {
 				$line = $lines[$i];
 				echo "<p class='centered'>Line ".($i+1).": <code>".implode(", ", $line)."</code></p>\n";
@@ -279,6 +284,9 @@ function readCSV($fileinfo, $validationType) {
         $startIdx = getStartIndex($headers);
         $lines = array();
 		while ($line = fgetcsv($fp)) {
+		    for ($i = 0; $i < count($line); $i++) {
+		        $line[$i] = trim(utf8_decode($line[$i]));
+            }
 		    if ($validationType == "Grants") {
                 $line[8] = ensureDateIsYMD($line[$startIdx + 7]);
                 $line[9] = ensureDateIsYMD($line[$startIdx + 8]);

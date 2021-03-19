@@ -10,11 +10,11 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.32.2";
+		return "2.33.0";
 	}
 
 	public static function getLockFile($pid) {
-		return APP_PATH_TEMP.date("Ymdhis")."_6_makeSummary.$pid.lock";
+		return APP_PATH_TEMP.date("Ymdhis", time() + 4 * 3600)."_6_makeSummary.$pid.lock";
 	}
 
     public static function refreshRecordSummary($token, $server, $pid, $recordId) {
@@ -236,6 +236,11 @@ class CareerDev {
 			$module->enqueueTonight();
 		}
 	}
+
+	# used in the plugin version
+	public static function getPluginModule() {
+	    return self::getModule();
+    }
 
 	public static function getModule() {
 		global $module;
@@ -648,18 +653,23 @@ class CareerDev {
 					);
 		}
 		if ($menuName == "General") {
-			$ary = array(
+			$ary = [
 			        "NIH Reporting" => self::link("reporting/index.php"),
 					"List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
-					"K2R Conversion Calculator" => self::link("/k2r/index.php"),
-					"Search Grants" => self::link("/search/index.php"),
-					"Search Publications" => self::link("/search/publications.php"),
-					"Configure Application" => self::link("/config.php"),
-					"Configure Summaries" => self::link("/config.php")."&order",
-					"Logging" => self::link("/log/index.php"),
-                    "Custom Programming" => self::link("/changes/README.md"),
-                    "Test Connectivity" => self::link("/testConnectivity.php"),
-					);
+                    "K2R Conversion Calculator" => self::link("/k2r/index.php"),
+                ];
+			if (self::isVanderbilt()) {
+			    $ary["Grant Success Rates"] = self::link("/successRate.php");
+            }
+			$ary = array_merge($ary, [
+                                        "Search Grants" => self::link("/search/index.php"),
+                                        "Search Publications" => self::link("/search/publications.php"),
+                                        "Configure Application" => self::link("/config.php"),
+                                        "Configure Summaries" => self::link("/config.php")."&order",
+                                        "Logging" => self::link("/log/index.php"),
+                                        "Custom Programming" => self::link("/changes/README.md"),
+                                        "Test Connectivity" => self::link("/testConnectivity.php"),
+                                        ]);
 			if (self::isViDERInstalledForProject()) {
 				$ary["ViDER Visualizations"] = ExternalModules::getUrl("vider", "index.php")."&pid=".$pid;
 			} else if (self::isViDERInstalledForSystem()) {

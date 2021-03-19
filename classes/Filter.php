@@ -13,11 +13,15 @@ define('GET_CHOICES', 'choices');
 define('GET_VALUE', 'values');
 
 class Filter {
-	public function __construct($token, $server, $metadata) {
+	public function __construct($token, $server, $metadataOrModule) {
 		$this->token = $token;
 		$this->server = $server;
-		$this->metadata = $metadata;
-		$this->choices = Scholar::getChoices($metadata);
+		if (is_array($metadataOrModule)) {
+            $this->metadata = $metadataOrModule;
+        } else {
+		    $this->metadata = Download::metadata($token, $server);
+        }
+		$this->choices = Scholar::getChoices($this->metadata);
 	}
 
 	# function used in dynamic variable

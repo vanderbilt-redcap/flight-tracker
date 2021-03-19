@@ -37,7 +37,7 @@ $choices = REDCapManagement::getChoices($metadata);
 $metadataLabels = REDCapManagement::getLabels($metadata);
 $userids = Download::userids($token, $server);
 if ($_GET['cohort'] && ($_GET['cohort'] != "all")) {
-    $records = Download::cohortRecordIds($token, $server, $metadata, $_GET['cohort']);
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
 } else if ($_GET['cohort'] == "all") {
     $records = Download::recordIds($token, $server);
 } else {
@@ -59,7 +59,7 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
 $includeMentors = ($_GET['mentors'] == "on") && isForIndividualScholars($indexByField);
 $otherMentorsOnly = ($_GET['other_mentors'] == "on") && isForIndividualScholars($indexByField);
 
-$cohorts = new Cohorts($token, $server, $metadata);
+$cohorts = new Cohorts($token, $server, Application::getModule());
 
 if (isset($_GET['grants'])) {
     $title = "Grant Collaborations Among Scholars";
@@ -293,6 +293,18 @@ function makePublicationColsAndLabels($pubs) {
     return [$cols, $labels];
 }
 
+function truncateFieldLabel($label) {
+    if (preg_match("/<br>/", $label)) {
+        $nodes = preg_split("/<br>/", $label);
+        $label = $nodes[0];
+    }
+    $limit = 30;
+    if (strlen($label) > $limit) {
+        $label = substr($label, 0, $limit)."...";
+    }
+    return $label;
+}
+
 function makeFieldSelect($selectedField, $fields, $metadataLabels) {
     $html = "";
     $pubyearSelect = PUBYEAR_SELECT;
@@ -302,7 +314,7 @@ function makeFieldSelect($selectedField, $fields, $metadataLabels) {
         if ($field == $selectedField) {
             $selected = " selected";
         }
-        $html .= "<option value='$field'$selected>".$metadataLabels[$field]."</option>";
+        $html .= "<option value='$field'$selected>".truncateFieldLabel($metadataLabels[$field])."</option>";
     }
     $selected = "";
     if ($selectedField == PUBYEAR_SELECT) {

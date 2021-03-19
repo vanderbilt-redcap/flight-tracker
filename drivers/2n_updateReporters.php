@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Scholar;
+use \Vanderbilt\CareerDevLibrary\FederalRePORTER;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
@@ -16,6 +17,7 @@ require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../classes/Scholar.php");
+require_once(dirname(__FILE__)."/../classes/FederalRePORTER.php");
 
 function getNewInstanceForRecord($oldReporters, $recordId) {
 	$max = 0;
@@ -127,133 +129,9 @@ function updateReporter($token, $server, $pid, $recordIds) {
             Application::log("Institutions: ".REDCapManagement::json_encode_with_spaces($institutions));
         }
 
-        $included = array();
+        $included = [];
 		foreach ($listOfNames as $myName) {
-			$query = "/v1/projects/search?query=PiName:".urlencode($myName);
-			$currData = array();
-			$try = 0;
-			$max = 0;   // reset with every new name
-			do {
-				if (isset($myData) && isset($myData['offset']) && $myData['offset'] == 0) {
-					$try++;
-				} else {
-					$try = 0;
-				}
-				$url = "https://api.federalreporter.nih.gov".$query."&offset=".($max + 1);
-                list($resp, $output) = REDCapManagement::downloadURL($url, $pid);
-                $myData = json_decode($output, true);
-                $currDataChanged = FALSE;
-                if ($myData) {
-                    if (isset($myData['items'])) {
-                        foreach ($myData['items'] as $item) {
-                            $currData[] = $item;
-                            $currDataChanged = TRUE;
-                        }
-                        // echo "Checking {$myData['totalCount']} (".count($myData['items'])." here) and ".($myData['offset'] - 1 + $myData['limit'])."\n";
-                    }
-                    if (isset($myData['offset']) && isset($myData['limit'])) {
-                        $max = $myData['offset'] + $myData['limit'] - 1;
-                    } else {
-                        $myData = FALSE;
-                    }
-                    if (!$currDataChanged) {
-                        # protect from infinite loops
-                        $try++;
-                    }
-                    usleep(400000);     // up to 3 per second
-                } else {
-                    $myData = FALSE;
-                    $try++;
-                }
-                if (isset($_GET['test'])) {
-                    Application::log($myName . " (" . $lastName . ") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}");
-                }
-            } while (!$myData || (count($currData) < $myData['totalCount']) && ($try <= 5));
-            if (isset($_GET['test'])) {
-                CareerDev::log("{$row['record_id']}: $lastName currData ".count($currData));
-            }
-
-			# dissect current data; must have first name to include
-			$pis = array();
-			if ($currData) {
-				foreach ($currData as $item) {
-					$itemName = $item['contactPi'];
-					if (!in_array($itemName, $pis)) {
-						$pis[] = $itemName;
-					}
-					if ($item['otherPis']) {
-						$otherPis = preg_split("/\s*;\s*/", $item['otherPis']);
-						foreach ($otherPis as $otherPi) {
-							$otherPi = trim($otherPi);
-							if ($otherPi && !in_array($otherPi, $pis)) {
-								$pis[] = $otherPi;
-							}
-						}
-					}
-					$found = false;
-					foreach ($pis as $itemName) {
-						$itemNames = preg_split("/\s*,\s*/", $itemName);
-						// $itemLastName = $itemNames[0];
-						if (count($itemNames) > 1) {
-							$itemFirstName = $itemNames[1];
-						} else {
-							$itemFirstName = $itemNames[0];
-						}
-						$listOfFirstNames = preg_split("/\s/", strtoupper($firstName));
-						foreach ($institutions as $institution) {
-							foreach ($listOfFirstNames as $myFirstName) {
-								$myFirstName = preg_replace("/^\(/", "", $myFirstName);
-								$myFirstName = preg_replace("/\)$/", "", $myFirstName);
-								if (preg_match("/".strtoupper($myFirstName)."/", $itemFirstName) && (preg_match("/$institution/i", $item['orgName']))) {
-									if (isset($_GET['test'])) {
-                                        Application::log("Possible match $itemFirstName and $institution vs. '{$item['orgName']}'");
-                                    }
-								    if (in_array($institution, $helperInstitutions)) {
-								        if (isset($_GET['test'])) {
-                                            Application::log("Helper institution ($institution)?");
-                                        }
-									    $proceed = FALSE;
-								        if (isset($_GET['test'])) {
-                                            Application::log("Helper institution inspecting cities: ".json_encode(CareerDev::getCities())." vs. '".$item['orgCity']."'");
-                                        }
-									    foreach (CareerDev::getCities() as $city) {
-                                            if (preg_match("/".$city."/i", $item['orgCity'])) {
-                                                $proceed = TRUE;
-                                            }
-                                        }
-                                    } else {
-									    $proceed = TRUE;
-									    if (CareerDev::isVanderbilt() && ((strtoupper($myFirstName) != "HAROLD") && (strtoupper($lastName) == "MOSES") && preg_match("/HAROLD L/i", $myFirstName))) {
-                                            # Hack: exclude HAROLD L MOSES since HAROLD MOSES JR is valid
-									        $proceed = FALSE;
-                                        }
-                                    }
-								    if ($proceed) {
-								        if (isset($_GET['test'])) {
-                                            CareerDev::log("Including $itemFirstName {$item['orgName']}");
-                                        }
-										$included[] = $item;
-										$found = true;
-										break;
-									}
-								} else {
-									// echo "Not including $itemFirstName {$item['orgName']}\n";
-								}
-							}
-							if ($found) {
-								break;
-							}
-						}
-						if ($found) {
-							break;
-						}
-					}
-				}
-			}
-			if (isset($_GET['test'])) {
-                CareerDev::log("{$row['record_id']}: $firstName $lastName included ".count($included));
-            }
-			// echo "itemNames: ".json_encode($pis)."\n";
+		    $included = array_merge($included, FederalRePORTER::searchPI($myName));
 		}
 
 		# format $included into REDCap infinitely repeating structures

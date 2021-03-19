@@ -31,7 +31,7 @@ $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 $choices = REDCapManagement::getChoices($metadata);
 $metadataLabels = REDCapManagement::getLabels($metadata);
 if ($_GET['cohort'] && ($_GET['cohort'] != "all")) {
-    $records = Download::cohortRecordIds($token, $server, $metadata, $_GET['cohort']);
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
 } else if ($_GET['cohort'] == "all") {
     $records = Download::recordIds($token, $server);
 } else {
@@ -51,7 +51,7 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
 $includeMentors = ($_GET['mentors'] == "on") && ($indexByField == 'record_id');
 $otherMentorsOnly = ($_GET['other_mentors'] == "on") && ($indexByField == 'record_id');
 
-$cohorts = new Cohorts($token, $server, $metadata);
+$cohorts = new Cohorts($token, $server, Application::getModule());
 
 if ($includeHeaders) {
     echo "<h1>Publishing Collaborations Among Scholars</h1>\n";

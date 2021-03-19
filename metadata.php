@@ -129,6 +129,7 @@ if ($_POST['process'] == "check") {
                     array_push($postedFields, $field);
                 }
             }
+            $metadata["REDCap"] = reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"]);
 
             try {
                 $feedback = REDCapManagement::mergeMetadataAndUpload($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
@@ -142,6 +143,32 @@ if ($_POST['process'] == "check") {
             }
         }
     }
+}
+
+function reverseMetadataOrder($instrument, $desiredFirstField, $metadata) {
+    $startI = 0;
+    $endI = count($metadata) - 1;
+    $started = FALSE;
+    $instrumentRows = [];
+    for ($i = 0; $i < count($metadata); $i++) {
+        if (($metadata[$i]['form_name'] == $instrument) && ($startI === 0)) {
+            $startI = $i;
+            $started = TRUE;
+        }
+        if ($started && ($metadata[$i]['form_name'] == $instrument)) {
+            $endI = $i;
+        }
+        if ($metadata[$i]['form_name'] == $instrument) {
+            $instrumentRows[] = $metadata[$i];
+        }
+    }
+    if ($metadata[$startI]['field_name'] != $desiredFirstField) {
+        $instrumentRows = array_reverse($instrumentRows);
+        for ($i = $startI; $i <= $endI; $i++) {
+            $metadata[$i] = $instrumentRows[$i - $startI];
+        }
+    }
+    return $metadata;
 }
 
 function changeFieldLabel($field, $label, $metadata) {

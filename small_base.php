@@ -10,7 +10,6 @@ use \Vanderbilt\CareerDevLibrary\Crons;
 use \Vanderbilt\CareerDevLibrary\Definitions;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\EmailManager;
-use \Vanderbilt\CareerDevLibrary\FederalExPORTER;
 use \Vanderbilt\CareerDevLibrary\Filter;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\GrantFactory;
@@ -389,14 +388,7 @@ function getReporterTime($dt) {
 # gets the date from a RePORTER formatting (YYYY-MM-DDThh:mm:ss);
 # returns YYYY-MM-DD
 function getReporterDate($dt) {
-	if (!$dt) {
-		return "";
-	}
-	$nodes = preg_split("/T/", $dt);
-	if (count($nodes) != 2) {
-		return $nodes[0];
-	}
-	return $nodes[0];
+    return REDCapManagement::getReporterDateInYMD($dt);
 }
 
 function getCohorts($row) {
@@ -1519,32 +1511,36 @@ function importCustomFields($filename, $token, $server, $pid) {
 	if (!empty($errors)) {
 		$html .= "<div class='red centered'>".implode("<br>", $errors)."</div>\n";
 	} else if (!empty($upload)) {
-		$feedback = Upload::rows($upload, $token, $server);
-		$hasCitation = FALSE;
-		foreach ($upload as $row) {
-		    if ($row['redcap_repeat_instrument'] == "citation") {
-		        $hasCitation = TRUE;
-		        break;
+	    try {
+            $feedback = Upload::rows($upload, $token, $server);
+            $hasCitation = FALSE;
+            foreach ($upload as $row) {
+                if ($row['redcap_repeat_instrument'] == "citation") {
+                    $hasCitation = TRUE;
+                    break;
+                }
             }
-        }
-		$pubsLine = "";
-		if ($hasCitation) {
-		    $metadata = Download::metadata($token, $server);
-            $indexedUpload = REDCapManagement::indexREDCapData($upload);
-            $numPubsAffected = 0;
-            foreach ($indexedUpload as $recordId => $rows) {
-                $numPubsAffected += Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $rows);
+            $pubsLine = "";
+            if ($hasCitation) {
+                $metadata = Download::metadata($token, $server);
+                $indexedUpload = REDCapManagement::indexREDCapData($upload);
+                $numPubsAffected = 0;
+                foreach ($indexedUpload as $recordId => $rows) {
+                    $numPubsAffected += Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $rows);
+                }
+                $pubsLine = " $numPubsAffected publications downloaded.";
             }
-            $pubsLine = " $numPubsAffected publications downloaded.";
+            if ($feedback['error']) {
+                $html .= "<div class='red centered'>Error: {$feedback['error']}</div>\n";
+            } else if ($feedback['errors']) {
+                $html .= "<div class='red centered'>Errors: " . implode("<br>", $feedback['errors']) . "</div>\n";
+            } else {
+                $html .= "<div class='green centered'>Success! Imported {$newCounts['new']} lines for new scholars and {$newCounts['existing']} lines for existing scholars.$pubsLine</div>\n";
+            }
+        } catch (\Exception $e) {
+            $html .= "<div class='red centered'>Error: ".$e->getMessage()."</div>\n";
         }
-        if ($feedback['error']) {
-            $html .= "<div class='red centered'>Error: {$feedback['error']}</div>\n";
-        } else if ($feedback['errors']) {
-            $html .= "<div class='red centered'>Errors: ".implode("<br>", $feedback['errors'])."</div>\n";
-        } else {
-            $html .= "<div class='green centered'>Success! Imported {$newCounts['new']} lines for new scholars and {$newCounts['existing']} lines for existing scholars.$pubsLine</div>\n";
-        }
-	} else {
+    } else {
 		$html .= "<div class='red centered'>No action taken!</div>\n";
 	}
 	return $html;

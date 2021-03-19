@@ -1,8 +1,10 @@
 <?php
 
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once dirname(__FILE__)."/../Application.php";
+require_once dirname(__FILE__)."/../CareerDev.php";
 
 $uidString = "";
 if ($_GET['uid']) {
@@ -31,7 +33,7 @@ if ($_GET['uid']) {
   <link href="<?= Application::link("mentor/vendor/simple-line-icons/css/simple-line-icons.css") ?>" rel="stylesheet" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css">
 
-<link rel="stylesheet" href="https://use.typekit.net/nxh7lyk.css">
+<link rel="stylesheet" href="<?= CareerDev::link("/css/typekit.css").CareerDev::getVersion() ?>">
 
   <!-- Custom styles for this template -->
   <link href="<?= Application::link("mentor/css/landing-page.css") ?>" rel="stylesheet">

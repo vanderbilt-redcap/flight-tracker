@@ -24,19 +24,19 @@ class Download {
 		return $indexedRedcapData;
 	}
 
-	public static function getIndexedRedcapData($token, $server, $fields, $cohort = "", $metadata = array()) {
-		$redcapData = self::getFilteredRedcapData($token, $server, $fields, $cohort, $metadata);
+	public static function getIndexedRedcapData($token, $server, $fields, $cohort = "", $metadataOrModule = array()) {
+		$redcapData = self::getFilteredRedcapData($token, $server, $fields, $cohort, $metadataOrModule);
 		return self::indexREDCapData($redcapData);
 	}
 
-	public static function predocNames($token, $server, $metadata = [], $cohort = "") {
+	public static function predocNames($token, $server, $metadataOrModule = [], $cohort = "") {
 		$names = self::names($token, $server);
 		$predocs = array();
 		$records = self::recordsWithTrainees($token, $server, array(6));
 		if ($cohort) {
-            $cohortConfig = self::getCohortConfig($token, $server, $metadata, $cohort);
+            $cohortConfig = self::getCohortConfig($token, $server, $metadataOrModule, $cohort);
             if ($cohortConfig) {
-                $filter = new Filter($token, $server, $metadata);
+                $filter = new Filter($token, $server, $metadataOrModule);
                 $allPredocs = $records;
                 $cohortRecords = $filter->getRecords($cohortConfig);
                 $records = [];
@@ -47,14 +47,15 @@ class Download {
                 }
             }
         }
-        $records = self::filterByManualInclusion($records, $token, $server, $metadata);
+        $records = self::filterByManualInclusion($records, $token, $server, $metadataOrModule);
         foreach ($records as $recordId) {
 			$predocs[$recordId] = $names[$recordId];
 		}
 		return $predocs;
 	}
 
-	private static function filterByManualInclusion($records, $token, $server, $metadata) {
+	private static function filterByManualInclusion($records, $token, $server, $metadataOrModule) {
+	    $metadata = self::metadata($token, $server);
 	    $field = "identifier_table_include";
 	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	    if (!in_array($field, $metadataFields)) {
@@ -71,13 +72,13 @@ class Download {
 	    return $includedRecords;
     }
 
-    public static function postdocAppointmentNames($token, $server, $metadata = [], $cohort = "") {
+    public static function postdocAppointmentNames($token, $server, $metadataOrModule = [], $cohort = "") {
         $names = self::names($token, $server);
         $postdocTrainees = self::recordsWithTrainees($token, $server, array(7));
         if ($cohort) {
-            $cohortConfig = self::getCohortConfig($token, $server, $metadata, $cohort);
+            $cohortConfig = self::getCohortConfig($token, $server, $metadataOrModule, $cohort);
             if ($cohortConfig) {
-                $filter = new Filter($token, $server, $metadata);
+                $filter = new Filter($token, $server, $metadataOrModule);
                 $cohortRecords = $filter->getRecords($cohortConfig);
                 $records = [];
                 foreach ($postdocTrainees as $recordId) {
@@ -91,21 +92,21 @@ class Download {
         } else {
             $records = $postdocTrainees;
         }
-        $records = self::filterByManualInclusion($records, $token, $server, $metadata);
+        $records = self::filterByManualInclusion($records, $token, $server, $metadataOrModule);
         $postdocs = [];
         foreach ($records as $recordId) {
             $postdocs[$recordId] = $names[$recordId];
         }
         return $postdocs;
     }
-    public static function postdocNames($token, $server, $metadata = [], $cohort = "") {
+    public static function postdocNames($token, $server, $metadataOrModule = [], $cohort = "") {
 		$names = self::names($token, $server);
 		$predocs = self::predocNames($token, $server);
 		$postdocs = array();
         if ($cohort) {
-            $cohortConfig = self::getCohortConfig($token, $server, $metadata, $cohort);
+            $cohortConfig = self::getCohortConfig($token, $server, $metadataOrModule, $cohort);
             if ($cohortConfig) {
-                $filter = new Filter($token, $server, $metadata);
+                $filter = new Filter($token, $server, $metadataOrModule);
                 $everyone = array_keys($names);
                 $cohortRecords = $filter->getRecords($cohortConfig);
                 $records = [];
@@ -260,10 +261,10 @@ class Download {
 		return $max;
 	}
 
-	public static function getFilteredRedcapData($token, $server, $fields, $cohort = "", $metadata = array()) {
+	public static function getFilteredRedcapData($token, $server, $fields, $cohort = "", $metadataOrModule = array()) {
 		if ($token && $server && $fields && !empty($fields)) {
 			if ($cohort) {
-				$records = self::cohortRecordIds($token, $server, $metadata, $cohort);
+				$records = self::cohortRecordIds($token, $server, $metadataOrModule, $cohort);
 			}
 			if (!$records) {
 				$records = self::recordIds($token, $server);
@@ -328,7 +329,11 @@ class Download {
 		return (strpos(strtolower($server), strtolower($currServer)) !== FALSE);
 	}
 
-	private static function sendToServer($server, $data) {
+	private static function sendToServer($server, $data, $try = 1) {
+	    $maxTries = 5;
+	    if ($try > $maxTries) {
+            return [];
+        }
 	    if (!$server) {
 	        throw new \Exception("No server specified");
         }
@@ -359,8 +364,13 @@ class Download {
 		}
 		$redcapData = json_decode($output, true);
 		if ($redcapData === NULL) {
-		    Application::log("ERROR: ".$output);
-		    throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
+		    Application::log("Retrying");
+		    usleep(500);
+		    $redcapData = self::sendToServer($server, $data, $try + 1);
+		    if (($redcapData === NULL) && ($try == $maxTries)) {
+                Application::log("ERROR: ".$output);
+                throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
+            }
         }
 		if (isset($redcapData['error']) && !empty($redcapData['error'])) {
 			throw new \Exception("Download Exception: ".$redcapData['error']);
@@ -606,8 +616,8 @@ class Download {
 		return $records;
 	}
 
-	public static function fieldsWithConfig($token, $server, $metadata, $fields, $cohortConfig) {
-		$filter = new Filter($token, $server, $metadata);
+	public static function fieldsWithConfig($token, $server, $metadataOrModule, $fields, $cohortConfig) {
+		$filter = new Filter($token, $server, $metadataOrModule);
 		$records = $filter->getRecords($cohortConfig);
 		if (isset($_GET['test'])) {
             Application::log("Download::fieldsWithFilter ".count($records)." records; ".count($fields)." fields");
@@ -736,12 +746,12 @@ class Download {
         return $lastNames;
     }
 
-    private static function getCohortConfig($token, $server, $metadata, $cohort)
+    private static function getCohortConfig($token, $server, $metadataOrModule, $cohort)
     {
         if ($module = Application::getModule()) {
             $cohorts = new Cohorts($token, $server, $module);
         } else {
-            $cohorts = new Cohorts($token, $server, $metadata);
+            $cohorts = new Cohorts($token, $server, $metadataOrModule);
         }
         $cohortNames = $cohorts->getCohortNames();
         if (in_array($cohort, $cohortNames)) {
@@ -750,10 +760,10 @@ class Download {
         return FALSE;
     }
 
-	public static function cohortRecordIds($token, $server, $metadata, $cohort) {
-		$cohortConfig = self::getCohortConfig($token, $server, $metadata, $cohort);
+	public static function cohortRecordIds($token, $server, $metadataOrModule, $cohort) {
+		$cohortConfig = self::getCohortConfig($token, $server, $metadataOrModule, $cohort);
         if ($cohortConfig) {
-            $redcapData = self::fieldsWithConfig($token, $server, $metadata, array("record_id"), $cohortConfig);
+            $redcapData = self::fieldsWithConfig($token, $server, $metadataOrModule, array("record_id"), $cohortConfig);
             $records = array();
             foreach ($redcapData as $row) {
                 array_push($records, $row['record_id']);

@@ -75,15 +75,17 @@ function getPubs($token, $server, $pid, $records) {
             $i = 0;
             foreach ($pmids as $instance => $pmid) {
                 $pubmedMatch = $pubmedMatches[$i];
-                $abstract = $pubmedMatch->getVariable("Abstract");
-                if ($abstract) {
-                    $uploadRow = [
-                        "record_id" => $recordId,
-                        "redcap_repeat_instrument" => "citation",
-                        "redcap_repeat_instance" => $instance,
-                        "citation_abstract" => $abstract,
-                    ];
-                    Upload::oneRow($uploadRow, $token, $server);
+                if ($pubmedMatch) {
+                    $abstract = $pubmedMatch->getVariable("Abstract");
+                    if ($abstract) {
+                        $uploadRow = [
+                            "record_id" => $recordId,
+                            "redcap_repeat_instrument" => "citation",
+                            "redcap_repeat_instance" => $instance,
+                            "citation_abstract" => $abstract,
+                        ];
+                        Upload::oneRow($uploadRow, $token, $server);
+                    }
                 }
                 $i++;
             }
