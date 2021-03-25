@@ -397,7 +397,7 @@ class Grant {
 		$ary = array();
 		if (preg_match("/[A-Z][A-Z\d]\d[A-Z][A-Z]\d\d\d\d\d\d/", $awardNo)) {
 			if (preg_match("/^\d[A-Z][A-Z\d]\d[A-Z][A-Z]\d\d\d\d\d\d/", $awardNo)) {
-				// $ary["application_type"] = self::getApplicationType($awardNo);
+				$ary["application_type"] = self::getApplicationType($awardNo);
 			} else {
 				$awardNo = "0".$awardNo;
 			}
@@ -406,8 +406,8 @@ class Grant {
 			$ary["funding_institute"] = self::getFundingInstitute($awardNo);
 			$ary["institute_code"] = self::getInstituteCode($awardNo);
 			$ary["serial_number"] = self::getSerialNumber($awardNo);
-			// $ary["support_year"] = self::getSupportYear($awardNo);
-			// $ary["other_suffixes"] = self::getOtherSuffixes($awardNo);
+			$ary["support_year"] = self::getSupportYear($awardNo);
+			$ary["other_suffixes"] = self::getOtherSuffixes($awardNo);
 		}
 
 		foreach ($ary as $type => $value) {
@@ -1049,18 +1049,18 @@ class Grant {
 		return "";
 	}
 
-	private static function getSupportYear($awardNo) {
+	public static function getSupportYear($awardNo) {
 		if (preg_match("/\-/", $awardNo)) {
 			$nodes = preg_split("/\-/", $awardNo);
 			$tail = $nodes[1];
 			if (strlen($tail) >= 2) {
-				return substr($awardNo, 0, 2);
+				return substr($tail, 0, 2);
 			}
 		}
 		return "";
 	}
 
-	private static function getOtherSuffixes($awardNo) {
+	public static function getOtherSuffixes($awardNo) {
 		if (preg_match("/\-/", $awardNo)) {
 			$nodes = preg_split("/\-/", $awardNo);
 			$tail = $nodes[1];
@@ -1084,7 +1084,7 @@ class Grant {
 		return "";
 	}
 
-	private static function getApplicationType($awardNo) {
+	public static function getApplicationType($awardNo) {
 		$appType = substr($awardNo, 0, 1);
 		switch ($appType) {
 			case "":

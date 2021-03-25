@@ -74,6 +74,7 @@ foreach ($redcapData as $row) {
 	}
 }
 
+$imgBase64 = $scholar->getImageBase64();
 $name = $scholar->getName("full");
 $firstName = $scholar->getName("first");
 $lastName = $scholar->getName("last");
@@ -88,6 +89,7 @@ if (preg_match("/^\d\d\d\d-\d+-\d+$/", $status)) {
 	$status = "Left ".INSTITUTION." on ".REDCapManagement::YMD2MDY($status);
 }
 $institution = $scholar->getInstitutionText();
+$division = $scholar->getCurrentDivisionText();
 $degrees = $scholar->getDegreesText();
 $dept = $scholar->getPrimaryDepartmentText();
 $mentors = $scholar->getAllMentors();
@@ -162,12 +164,17 @@ $(document).ready(function() {
 
 <div id='content'>
 <h1><?= $name ?></h1>
+    <?php
+        if ($imgBase64) {
+            echo "<p class='centered'><img src='$imgBase64' class='thumbnail' alt='Picture for $name'></p>";
+        }
+    ?>
 <table style='margin-left: auto; margin-right: auto; border-radius: 10px; padding: 8px;' class='blue'>
 	<tr>
 		<td class='label profileHeader'>First Name:</td>
 		<td class='value profileHeader'><?= $firstName ?></td>
 		<td class='label profileHeader'>Primary Department:</td>
-		<td class='value profileHeader'><?= $dept ?></td>
+		<td class='value profileHeader'><?= $dept.($division ? "<br>".$division : "") ?></td>
 	</tr>
 	<tr>
 		<td class='label profileHeader'>Last Name:</td>

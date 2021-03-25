@@ -93,6 +93,7 @@ function updateReporter($token, $server, $pid, $recordIds) {
 	foreach ($redcapData as $row) {
 		# for each REDCap Record, download data for each person
 		# search for PI of last_name and at Vanderbilt
+        $recordId = $row['record_id'];
 		$firstName = $row['identifier_first_name'];
 		$lastName = $row['identifier_last_name'];
         $firstNames = NameMatcher::explodeFirstName($row['identifier_first_name']);
@@ -131,7 +132,7 @@ function updateReporter($token, $server, $pid, $recordIds) {
 
         $included = [];
 		foreach ($listOfNames as $myName) {
-		    $included = array_merge($included, FederalRePORTER::searchPI($myName));
+		    $included = array_merge($included, FederalRePORTER::searchPI($myName, $pid, $recordId, $institutions));
 		}
 
 		# format $included into REDCap infinitely repeating structures

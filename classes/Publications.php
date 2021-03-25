@@ -390,88 +390,101 @@ class Publications {
     }
 
 	public static function downloadPMIDs($pmids) {
-		$output = self::pullFromEFetch($pmids);
-		$xml = simplexml_load_string(utf8_encode($output));
-		$numRetries = 5;
-		$i = 0;
-		while (!$xml && ($numRetries > $i)) {
-			sleep(5);
-			$output = self::pullFromEFetch($pmids);
-			$xml = simplexml_load_string(utf8_encode($output));
-			$i++;
-		}
-		if (!$xml) {
-			throw new \Exception("Error: Cannot create object ".$output);
-		}
-
-		$pubmedMatches = [];
-		foreach ($pmids as $pmid) {
-		    $pubmedMatch = NULL;
-            $pubTypes = [];
-            $keywords = [];
-            $abstract = "";
-            $meshTerms = [];
-            $title = "";
-
-            foreach ($xml->PubmedArticle as $medlineCitation) {
-                $article = $medlineCitation->MedlineCitation->Article;
-                $currPmid = "{$medlineCitation->MedlineCitation->PMID}";
-
-                if ($currPmid == $pmid) {
-                    if ($article->ArticleTitle) {
-                        $title = "{$article->ArticleTitle}";
-                    }
-                    if ($article->Abstract) {
-                        $text = "";
-                        foreach ($article->Abstract->children() as $node) {
-                            $attrs = $node->attributes();
-                            if ($attrs['Label']) {
-                                $text .= $attrs['Label']."\n";
-                            }
-                            $text .= "$node\n";
-                        }
-                        $abstract = $text;
-                    }
-
-                    if ($article->PublicationTypeList) {
-                        foreach ($article->PublicationTypeList->PublicationType as $pubType) {
-                            array_push($pubTypes, $pubType);
-                        }
-                    }
-
-                    if ($medlineCitation->MedlineCitation->KeywordList) {
-                        foreach ($medlineCitation->MedlineCitation->KeywordList->Keyword as $keyword) {
-                            array_push($keywords, $keyword);
-                        }
-                    }
-
-                    if ($medlineCitation->MedlineCitation->MeshHeadingList) {
-                        foreach ($medlineCitation->MedlineCitation->MeshHeadingList->children() as $node) {
-                            if ($node->DescriptorName) {
-                                array_push($meshTerms, $node->DescriptorName);
-                            }
-                        }
-                    }
-                    $pubmedMatch = new PubmedMatch($pmid);
-                    if ($abstract) {
-                        $pubmedMatch->setVariable("Abstract", $abstract);
-                    }
-                    if ($keywords) {
-                        $pubmedMatch->setVariable("Keywords", $keywords);
-                    }
-                    if ($title) {
-                        $pubmedMatch->setVariable("Title", $title);
-                    }
-                    if ($pubTypes) {
-                        $pubmedMatch->setVariable("Publication Types", $pubTypes);
-                    }
-                    if ($meshTerms) {
-                        $pubmedMatch->setVariable("MESH Terms", $meshTerms);
-                    }
-                    $pubmedMatch->fillInCategoryAndScore();
-                }
+	    $limit = self::getPMIDLimit();
+	    $pmidsInGroups = [];
+	    for ($i = 0; $i < count($pmids); $i += $limit) {
+	        $pmidGroup = [];
+	        for ($j = $i; ($j < $i + $limit) && ($j < count($pmids)); $j++) {
+	            $pmidGroup[] = $pmids[$j];
             }
-            $pubmedMatches[] = $pubmedMatch;
+	        if (!empty($pmidGroup)) {
+	            $pmidsInGroups[] = $pmidGroup;
+            }
+        }
+        $pubmedMatches = [];
+        foreach ($pmidsInGroups as $pmidGroup) {
+            $output = self::pullFromEFetch($pmidGroup);
+            $xml = simplexml_load_string(utf8_encode($output));
+            $numRetries = 5;
+            $i = 0;
+            while (!$xml && ($numRetries > $i)) {
+                sleep(5);
+                $output = self::pullFromEFetch($pmidGroup);
+                $xml = simplexml_load_string(utf8_encode($output));
+                $i++;
+            }
+            if (!$xml) {
+                throw new \Exception("Error: Cannot create object ".$output);
+            }
+
+            foreach ($pmidGroup as $pmid) {
+                $pubmedMatch = NULL;
+                $pubTypes = [];
+                $keywords = [];
+                $abstract = "";
+                $meshTerms = [];
+                $title = "";
+
+                foreach ($xml->PubmedArticle as $medlineCitation) {
+                    $article = $medlineCitation->MedlineCitation->Article;
+                    $currPmid = "{$medlineCitation->MedlineCitation->PMID}";
+
+                    if ($currPmid == $pmid) {
+                        if ($article->ArticleTitle) {
+                            $title = "{$article->ArticleTitle}";
+                        }
+                        if ($article->Abstract) {
+                            $text = "";
+                            foreach ($article->Abstract->children() as $node) {
+                                $attrs = $node->attributes();
+                                if ($attrs['Label']) {
+                                    $text .= $attrs['Label']."\n";
+                                }
+                                $text .= "$node\n";
+                            }
+                            $abstract = $text;
+                        }
+
+                        if ($article->PublicationTypeList) {
+                            foreach ($article->PublicationTypeList->PublicationType as $pubType) {
+                                array_push($pubTypes, $pubType);
+                            }
+                        }
+
+                        if ($medlineCitation->MedlineCitation->KeywordList) {
+                            foreach ($medlineCitation->MedlineCitation->KeywordList->Keyword as $keyword) {
+                                array_push($keywords, $keyword);
+                            }
+                        }
+
+                        if ($medlineCitation->MedlineCitation->MeshHeadingList) {
+                            foreach ($medlineCitation->MedlineCitation->MeshHeadingList->children() as $node) {
+                                if ($node->DescriptorName) {
+                                    array_push($meshTerms, $node->DescriptorName);
+                                }
+                            }
+                        }
+                        $pubmedMatch = new PubmedMatch($pmid);
+                        if ($abstract) {
+                            $pubmedMatch->setVariable("Abstract", $abstract);
+                        }
+                        if ($keywords) {
+                            $pubmedMatch->setVariable("Keywords", $keywords);
+                        }
+                        if ($title) {
+                            $pubmedMatch->setVariable("Title", $title);
+                        }
+                        if ($pubTypes) {
+                            $pubmedMatch->setVariable("Publication Types", $pubTypes);
+                        }
+                        if ($meshTerms) {
+                            $pubmedMatch->setVariable("MESH Terms", $meshTerms);
+                        }
+                        $pubmedMatch->fillInCategoryAndScore();
+                    }
+                }
+                $pubmedMatches[] = $pubmedMatch;
+            }
         }
 		return $pubmedMatches;
 	}

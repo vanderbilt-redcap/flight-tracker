@@ -34,8 +34,17 @@ if (isset($_POST['toImport']) && isset($_POST['record'])) {
 		$toImport = "{}";
 	}
 
+	# done to support leading 0s, which apparently aren't picked up by the POST
+	$records = Download::recordIds($token, $server);
+	$requestedRecord = $_POST['record'];
+	foreach ($records as $record) {
+	    if ($record == $requestedRecord) {
+	        $requestedRecord = $record;
+        }
+    }
+
 	$data = array();
-	$data['record_id'] = $_POST['record'];
+	$data['record_id'] = $requestedRecord;
 	$data['summary_calculate_to_import'] = $toImport;
 
 	$outputData = Upload::oneRow($data, $token, $server);

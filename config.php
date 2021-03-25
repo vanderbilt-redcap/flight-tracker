@@ -85,8 +85,11 @@ if (count($_POST) > 0) {
 		}
 		$lists["institutions"] = implode("\n", CareerDev::getInstitutions());
 		$metadata = Download::metadata($token, $server);
-		\Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $pid, $lists, CareerDev::getSetting("hasCoeus"), $metadata);
-		echo "<p class='centered green'>Saved ".count($_POST)." settings</p>\n";
+		$feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $pid, $lists, CareerDev::getSetting("hasCoeus"), $metadata);
+		if (is_array($feedback)) {
+		    $feedback = json_encode($feedback);
+        }
+		echo "<p class='centered green'>Saved ".count($_POST)." settings ($feedback)</p>\n";
 	}
 }
 

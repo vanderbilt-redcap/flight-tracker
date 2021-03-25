@@ -59,7 +59,7 @@ if ($_FILES['bulk']) {
             } else {
                 throw new \Exception("This should never happen, a start index of $startIdx");
             }
-            if ($recordId && in_array($recordId, $records)) {
+            if ($recordId && REDCapManagement::exactInArray($recordId, $records)) {
                 if ($title == "Grants") {
                     $redcapData = Download::fieldsForRecords($token, $server,  array("record_id", "custom_last_update"), [$recordId]);
                     if (!$maxInstances[$recordId]) {

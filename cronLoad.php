@@ -46,6 +46,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         }
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
         $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
+        $manager->addCron("publications/getAllPubs_func.php", "getPubs", "2021-03-23");
 
         # limited group because bibliometric updates take a lot of time due to rate limiters
 		$bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));

@@ -440,14 +440,36 @@ class Scholar {
 		return $choices["summary_degrees"][$degrees];
 	}
 
-	public function getPrimaryDepartmentText() {
-		$deptResult = $this->getPrimaryDepartment($this->rows);
-		$dept = $deptResult->getValue();
-		$choices = self::getChoices($this->metadata);
-		return $choices["summary_primary_dept"][$dept];
-	}
+    public function getPrimaryDepartmentText() {
+        $deptResult = $this->getPrimaryDepartment($this->rows);
+        $dept = $deptResult->getValue();
+        $choices = self::getChoices($this->metadata);
+        return $choices["summary_primary_dept"][$dept];
+    }
 
-	public function getName($type = "full") {
+    public function getCurrentDivisionText() {
+        $divResult = $this->getCurrentDivision($this->rows);
+        $div = $divResult->getValue();
+        return $div;
+    }
+
+    public function getImageBase64() {
+	    $field = "identifier_picture";
+	    $edocId = REDCapManagement::findField($this->rows, $this->recordId, $field);
+	    if ($edocId) {
+            $filename = REDCapManagement::getFileNameForEdoc($edocId);
+            if (file_exists($filename)) {
+                $binary = file_get_contents($filename);
+                $base64 = base64_encode($binary);
+                $mime = mime_content_type($filename);
+                $header = "data:$mime;charset=utf-8;base64, ";
+                return $header.$base64;
+            }
+        }
+	    return FALSE;
+    }
+
+    public function getName($type = "full") {
 		$nameAry = $this->getNameAry();
 
 		if ($type == "first") {
@@ -1591,26 +1613,56 @@ class Scholar {
 
 	private function getPrimaryDepartment($rows) {
 		$field = "summary_primary_dept";
-        $result = $this->getGenericValueForField($rows, $field);
-		$value = $result->getValue();
-		if ($result->getSource() == "vfrs") {
-			$value = self::transferVFRSDepartment($value);
-		}
+        $vars = self::getDefaultOrder($field);
+        $vars = $this->getOrder($vars, $field);
+        $previousField = "";
 
-		$choices = self::getChoices($this->metadata);
-		if (isset($choices[$field]) && !isset($choices[$field][$value])) {
-			foreach ($choices[$field] as $idx => $label) {
-				if ($label == $value) {
-					$value = $idx;
-					break;
-				}
-			}
-		}
-		if (!isset($choices[$field][$value])) {
-			# from text entry and no match with our databank
-			return new Result("", "");
-		}
+        # avoid conflict between a department and the choices
+        do {
+            $proceed = FALSE;
+            $filteredVars = [];
+            foreach ($vars as $varField => $source) {
+                if ($previousField === "") {
+                    $filteredVars[$varField] = $source;
+                } else if ($previousField == $varField) {
+                    $previousField = "";
+                }
+            }
 
+            $result = self::searchRowsForVars($rows, $filteredVars, FALSE, $this->pid, isset($_GET['test']));
+            if (isset($_GET['test'])) {
+                echo "A Got ".$result->getValue()." from ".$result->getSource()."<br>";
+            }
+            $value = $result->getValue();
+            if ($result->getSource() == "vfrs") {
+                $value = self::transferVFRSDepartment($value);
+            }
+            if ($value == "") {
+                return new Result("", "", "", "", $this->pid);
+            }
+
+            $choices = self::getChoices($this->metadata);
+            if (isset($choices[$field]) && !isset($choices[$field][$value])) {
+                foreach ($choices[$field] as $idx => $label) {
+                    if ($label == $value) {
+                        if (isset($_GET['test'])) {
+                            echo "Matched label, setting to $idx<br>";
+                        }
+                        $value = $idx;
+                        break;
+                    }
+                }
+            }
+            if (!isset($choices[$field][$value])) {
+                # from text entry and no match with our databank
+                if (isset($_GET['test'])) {
+                    echo "Moving to next because value of $value<br>";
+                }
+                $value = "";
+                $proceed = TRUE;
+                $previousField = $result->getField();
+            }
+        } while ($proceed);
 		return new Result($value, $result->getSource(), "", "", $this->pid);
 	}
 
@@ -2070,7 +2122,7 @@ class Scholar {
 		}
 	}
 
-	private function getCurrentDivision($rows) {
+	public function getCurrentDivision($rows) {
         $result = $this->getGenericValueForField($rows, "summary_current_division");
 		if ($result->getValue() == "N/A") {
 			return new Result("", "");

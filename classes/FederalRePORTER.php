@@ -21,6 +21,15 @@ class FederalRePORTER {
         return [];
     }
 
+    public static function getAssociatedAwardNumbers($awardNo, $pid, $recordId) {
+        $data = self::searchAward($awardNo, $pid, $recordId);
+        $awardNumbers = [];
+        foreach ($data as $item) {
+            $awardNumbers[] = $item['projectNumber'];
+        }
+        return $awardNumbers;
+    }
+
     private static function filterForInstitutionsAndName($currData, $institutions, $pid, $recordId, $name) {
         if (method_exists("Application", "getHelperInstitutions")) {
             $helperInstitutions = Application::getHelperInstitutions();

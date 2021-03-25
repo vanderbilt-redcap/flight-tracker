@@ -1495,7 +1495,7 @@ function importCustomFields($filename, $token, $server, $pid) {
                     }
                 }
 			}
-			if ($i > 0) {
+			if (($i > 0) && !REDCapManagement::isArrayBlank($line)) {
 				$lines[$i] = $line;
 			} else {
 				$headers = $line;

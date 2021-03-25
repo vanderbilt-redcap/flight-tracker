@@ -564,8 +564,7 @@ class REDCapManagement {
         }
 	    return [];
     }
-
-	public static function downloadURL($url, $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
+    public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
         Application::log("Contacting $url");
         $defaultOpts = [
             CURLOPT_RETURNTRANSFER => true,
@@ -591,6 +590,17 @@ class REDCapManagement {
             curl_setopt($ch, $opt, $value);
         }
         self::applyProxyIfExists($ch, $pid);
+        if (!empty($postdata)) {
+            if (is_string($postdata)) {
+                $json = $postdata;
+            } else {
+                $json = json_encode($postdata);
+            }
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        }
+
         $data = curl_exec($ch);
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         if(curl_errno($ch)){
@@ -598,7 +608,7 @@ class REDCapManagement {
             if ($autoRetriesLeft > 0) {
                 sleep(30);
                 Application::log("Retrying ($autoRetriesLeft left)...");
-                list($resp, $data) = self::downloadURL($url, $pid, $addlOpts, $autoRetriesLeft - 1);
+                list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, $autoRetriesLeft - 1);
             } else {
                 Application::log("Error: ".curl_error($ch));
                 throw new \Exception(curl_error($ch));
@@ -607,7 +617,11 @@ class REDCapManagement {
         curl_close($ch);
         $time2 = microtime();
         Application::log("Response code $resp; ".strlen($data)." bytes in ".(($time2 - $time1) / 1000)." seconds");
-        return array($resp, $data);
+        return [$resp, $data];
+    }
+
+	public static function downloadURL($url, $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
+	    return self::downloadURLWithPOST($url, [], $pid, $addlOpts, $autoRetriesLeft);
     }
 
     public static function stripNickname($firstName) {
@@ -1068,6 +1082,15 @@ class REDCapManagement {
         $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
         return $metadataFeedback;
 	}
+
+	public static function isArrayBlank($ary) {
+	    foreach ($ary as $item) {
+	        if ($item) {
+	            return FALSE;
+            }
+        }
+	    return TRUE;
+    }
 
 	private static function deleteRowsWithFieldName(&$metadata, $fieldName) {
 		$newMetadata = array();
@@ -1533,6 +1556,29 @@ class REDCapManagement {
 		}
 		return array();
 	}
+
+	public static function getFileNameForEdoc($edocId) {
+        $sql = "SELECT stored_name FROM redcap_edocs_metadata WHERE doc_id='".db_real_escape_string($edocId)."'";
+        $q = db_query($sql);
+        if ($row = db_fetch_assoc($q)) {
+            $filename = EDOC_PATH.$row['stored_name'];
+            if (file_exists($filename)) {
+                return $filename;
+            } else {
+                throw new \Exception("Could not find edoc file: ".$row['stored_name']);
+            }
+        }
+        return "";
+    }
+
+	public static function exactInArray($item, $ary) {
+	    foreach ($ary as $a) {
+	        if ($item === $a) {
+	            return TRUE;
+            }
+        }
+	    return FALSE;
+    }
 
 	public static function isValidToken($token) {
 		return (strlen($token) == 32);

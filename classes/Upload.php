@@ -510,6 +510,7 @@ public static function metadata($metadata, $token, $server) {
 		if (empty($metadata)) {
 			$metadata = Download::metadata($token, $server);
 		}
+		$choices = REDCapManagement::getChoices($metadata);
 
 		$errors = array();
 		$upload = array();
@@ -541,10 +542,12 @@ public static function metadata($metadata, $token, $server) {
 						$max = $recordId;
 					}
 				}
-	
+
+				$maxInstance = FALSE;
+				$records = Download::recordIds($token, $server);
 				foreach ($lines as $i => $line) {
 					if (self::isValidCSVLine($headers, $line)) {
-						list($recordId, $newErrors) = self::getRecordIdForCSVLine($headers, $line, $i, $token, $server);
+						list($recordId, $newErrors) = self::getRecordIdForCSVLine($headers, $line, $i, $token, $server, $records);
 						$errors = array_merge($errors, $newErrors);
 						if ($recordId) {
 							$newCounts['existing']++;
@@ -556,9 +559,12 @@ public static function metadata($metadata, $token, $server) {
 	
 						$uploadRow = array("record_id" => $recordId);
 						$formName = $repeatForms[0];
-						$maxInstance = "";
-						if ($formName != "") {
-							$maxInstance = Download::getMaxInstanceForRepeatingForm($token, $server, $formName, $recordId); 
+						if ($formName === "") {
+                            $maxInstance = "";
+                        } else {
+						    if (!$maxInstance) {
+                                $maxInstance = Download::getMaxInstanceForRepeatingForm($token, $server, $formName, $recordId);
+                            }
 							$maxInstance++;
 						}
 						$uploadRow['redcap_repeat_instrument'] = $formName;
@@ -568,7 +574,24 @@ public static function metadata($metadata, $token, $server) {
 							$j = 0;
 							foreach ($headers as $header) {
 								if (!in_array($header, $headerPrefices)) {
-									$uploadRow[$header] = $line[$j];
+								    if (isset($choices[$header])) {
+								        if (isset($metadata[$header][$line[$j]])) {
+                                            $uploadRow[$header] = $line[$j];
+                                        } else {
+								            foreach ($choices[$header] as $idx => $val) {
+								                if ($val == $line[$j]) {
+								                    $uploadRow[$header] = $idx;
+								                    break;
+                                                }
+                                            }
+								            if (!isset($uploadRow[$header])) {
+								                # invalid value
+                                                $uploadRow[$header] = $line[$j];
+                                            }
+                                        }
+                                    } else {
+                                        $uploadRow[$header] = $line[$j];
+                                    }
 								}
 								$j++;
 							}
@@ -599,7 +622,9 @@ public static function metadata($metadata, $token, $server) {
 								array_push($repeatFormsInList, $row['form_name']);
 							}
 						} else {
-							array_push($repeatFormsInList, "");   // normative row
+                            if (!in_array("", $repeatFormsInList)) {
+                                array_push($repeatFormsInList, "");   // normative row
+                            }
 						}
 					}
 				}
@@ -648,7 +673,10 @@ public static function metadata($metadata, $token, $server) {
 		return FALSE;
 	}
 
-	public static function getRecordIdForCSVLine($headers, $line, $i, $token, $server) {
+	public static function getRecordIdForCSVLine($headers, $line, $i, $token, $server, $records = []) {
+        if (empty($records)) {
+            $records = Download::recordIds($token, $server);
+        }
 		$recordId = FALSE;
 		$errors = array();
 		if (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {
@@ -665,7 +693,11 @@ public static function metadata($metadata, $token, $server) {
 			}
 		} else if ($headers[0] == "record_id") {
 			if (is_numeric($line[0])) {
-				$recordId = $line[0];
+			    if (REDCapManagement::exactInArray($line[0], $records)) {
+                    $recordId = $line[0];
+                } else {
+			        $errors[] = "On data line $i, your record {$line[0]} is not matching an existing record. Only existing records are supported.";
+                }
 			} else {
 				array_push($errors, "On data line $i, the record id must be numeric. It is {$line[0]}.");
 			}
