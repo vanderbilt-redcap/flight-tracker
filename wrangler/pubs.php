@@ -7,7 +7,6 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Publications.php");
@@ -16,7 +15,6 @@ require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
 require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
 require_once(dirname(__FILE__)."/../classes/Citation.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../Application.php");
@@ -47,7 +45,7 @@ if ($_POST['request']) {
             }
         }
         if (!empty($upload)) {
-            $feedback = Upload::rows($upload, $token, $server);
+            Upload::rows($upload, $token, $server);
         }
         $nextRecord = getNextRecordWithData($token, $server, 0);   // after upload
         header("Location: $url&record=".$nextRecord);
@@ -123,6 +121,7 @@ if (count($_POST) >= 1) {
         echo "<div class='green shadow centered note'>".$_GET['mssg']."</div>";
 	}
 	echo "<p class='green shadow' id='note' style='width: 600px; margin-left: auto; margin-right: auto; text-align: center; padding: 10px; border-radius: 10px; display: none; font-size: 16px;'></p>\n";
+	echo "<p class='centered'>To undo any actions made here, open the Citation form in the given REDCap record and change the answer for the <b>Include?</b> question. Yes means accepted; no means omitted; blank means yet-to-be wrangled.</p>";
 
 	$html = $pubs->getEditText();
 	$html .= autoResetTimeHTML($pid);

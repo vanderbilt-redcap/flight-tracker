@@ -4,11 +4,15 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Scholar;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
 
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Scholar.php");
+require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/../classes/Cohorts.php");
 
 if (isset($_GET['csv'])) {
 	require_once(dirname(__FILE__)."/../small_base.php");
@@ -17,13 +21,13 @@ if (isset($_GET['csv'])) {
 ?>
 
 <style>
-.red { color: red; font-weight: bold; }
+.red { color: black; font-weight: bold; }
 .green { color: green; font-weight: bold; }
 .yellow { color: #cbb600; font-weight: bold; }
 .purple { color: purple; font-weight: bold; }
-th { background-color: #c7b783; }
-td { background-color: white; }
-td,th { text-align: center; border: 1px solid #888888; min-width: 95px; }
+th { background-color: #f8e7b1; border: 1px solid #444444; }
+td { box-shadow: 0px 0px 6px 1px #444444 inset; padding: 3px 6px; }
+td,th { text-align: center; min-width: 95px; }
 h1,h2,h3,h4 { margin-top: 6px; margin-bottom: 6px; text-align: center; }
 table { border-collapse: collapse; }
 th.name { min-width: 300px; }
@@ -46,13 +50,12 @@ $_GLOBALS['allGreen'] = $allGreen;
 $_GLOBALS['skip'] = $skip;
 
 # returns string
-function generateDataColumns($recordData) {
-	global $pid;
+function generateDataColumns($recordData, $requestedFields, $potentialFields) {
 	global $allGreen, $skip;
 	$cols = array();
 	$data = array();
 
-	$row = $recordData[0];
+	$recordId = $recordData[0]["record_id"];
 
 	# fields and their types of sources
 	$fields = array(
@@ -135,28 +138,56 @@ function generateDataColumns($recordData) {
 								);
 
 	# flip the fields
-	$fieldSources = array();
+	$fieldSources = [];
 	foreach ($feederSources as $sourceType => $assocs) {
-		$fieldSources[$sourceType] = array();
+		$fieldSources[$sourceType] = [];
 		foreach ($assocs as $field => $form) {
 			$fieldSources[$sourceType][$form] = $field;
 		}
 	}
 
+	foreach ($requestedFields as $field) {
+	    if (!isset($fields[$field])) {
+	        $fields[$field] = [];
+        }
+    }
+    $allPotentialFields = [];
+	foreach ($potentialFields as $title => $possibleFields) {
+	    $allPotentialFields = array_unique(array_merge($allPotentialFields, $possibleFields));
+    }
+
 	# find the values
-	$values = array();
-	$colors = array();
-	$tooltips = array();
-	$colorValues = array();
+	$values = [];
+	$colors = [];
+	$colorValues = [];
 	foreach ($fields as $field => $sources) {
-		if (empty($sources)) {
-			if ($row[$field]) {
+	    if (in_array($field, $allPotentialFields)) {
+	        $siblingPotentialFields = [];
+	        foreach ($potentialFields as $title => $possibleFields) {
+	            if (in_array($field, $possibleFields)) {
+	                $siblingPotentialFields = array_unique(array_merge($siblingPotentialFields, $possibleFields));
+                }
+            }
+	        if (count($siblingPotentialFields) > 0) {
+	            $field = $siblingPotentialFields[0];
+            }
+            $colors[$field] = "red";
+            $values[$field] = "Absent";
+	        foreach ($siblingPotentialFields as $siblingField) {
+                $value = REDCapManagement::findField($recordData, $recordId, $siblingField);
+                if (isset($value) && ($value !== "")) {
+                    $colors[$field] = "green";
+                    $values[$field] = "Present";
+                    break;  // inner
+                }
+            }
+        } else if (empty($sources)) {
+		    $value = REDCapManagement::findField($recordData, $recordId, $field);
+			if (isset($value) && ($value !== "")) {
 				$colors[$field] = "green";
-				$tooltips[$field] = "";
 				$values[$field] = "Present";
 			} else {
 				$colors[$field] = "red";
-				$tooltips[$field] = "";
 				$values[$field] = "Absent";
 			}
 		} else {
@@ -166,8 +197,7 @@ function generateDataColumns($recordData) {
 				foreach ($fieldSources[$source] as $form => $sourceField) {
 					# most recent are first
 					$values[$field] = "Present";
-					$tooltips[$field] = $sourceField;
-					$colorValue = $row[$source];
+					$colorValue = REDCapManagement::findField($recordData, $recordId, $source);
 					if ($colorValue == 1 || in_array($field, $allGreen)) {
 						$colors[$field] = "green";
 					} else if ($colorValue == 2) {
@@ -175,12 +205,13 @@ function generateDataColumns($recordData) {
 					} else if ($colorValue === '0' || $colorValue === 0) {
 						$colors[$field] = "yellow";
 					} else {
-						$tooltips[$field] = "";
-						if ($row[$field]) {
+					    $value = REDCapManagement::findField($recordData, $recordId, $field);
+					    if ($value) {
 							# manual - no computed sourcetype
 							$colors[$field] = "purple";
 						} else if (Scholar::isDependentOnAcademia($field)) {
-							if (Scholar::isOutsideAcademe($row['identifier_left_job_category'])) {
+					        $jobCategory = REDCapManagement::findField($recordData, $recordId, "identifier_left_job_category");
+							if (Scholar::isOutsideAcademe($jobCategory)) {
 								$values[$field] = "N/A";
 								$colors[$field] = "grey";
 							} else {
@@ -208,9 +239,9 @@ function generateDataColumns($recordData) {
 	foreach ($values as $field => $date) {
 		if (!in_array($field, $skip)) {
 			if ($date != "Absent") {
-				$col = "<td title='{$tooltips[$field]}'><span class='{$colors[$field]}'>";
+				$col = "<td class='{$colors[$field]}'>";
 				$col .= $date; // . " (".$colorValues[$field].")";
-				$col .= "</span></td>";
+				$col .= "</td>";
 				switch($colors[$field]) {
 					case "green":
 						$data[] = "Self-Reported";
@@ -227,7 +258,7 @@ function generateDataColumns($recordData) {
 						break;
 				}
 			} else {
-				$col = "<td><span class='red'>Missing</span></td>";
+				$col = "<td class='red'>Missing</td>";
 				$data[] = "";
 				$nones++;
 			}
@@ -235,22 +266,23 @@ function generateDataColumns($recordData) {
 		}
 	}
 
-	return array(
-			"cols" => $data,
+	return [
+	        "cols" => $data,
 			"text" => implode("", $cols),
 			"missingCells" => $nones,
 			"missingRecords" => (($nones > 0) ? 1 : 0),
-			);
+			];
 }
 
 $metadata = Download::metadata($token, $server);
+$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 
 $records = array();
 for ($i = $start; $i < $start + $pull; $i++) {
 	$records[] = $i;
 }
 
-$fields = array(
+$fields = [
 		"identifier_email" => "Email",
 		"summary_survey" => "Survey?",
 		"summary_left_vanderbilt" => "Left VU/VUMC",
@@ -263,27 +295,47 @@ $fields = array(
 		"summary_current_rank" => "Rank",
 		"summary_current_start" => "Position Start",
 		"summary_current_tenure" => "Tenure",
-		);
-$addlFields = array();
-foreach ($fields as $field => $title) {
-	array_push($addlFields, $field);
-	if ($field == "summary_race_ethnicity") {
-		$field = "summary_race";
-		$addlFields[] = $field."_sourcetype";
-		$addlFields[] = $field."_source";
-		$field = "summary_ethnicity";
-		$addlFields[] = $field."_sourcetype";
-		$addlFields[] = $field."_source";
-	} else {
-		$addlFields[] = $field."_sourcetype";
-		$addlFields[] = $field."_source";
-	}
+		];
+$potentialFields = [
+    "Gender Identity" => ["check_gender", "followup_gender", ],
+    "Transgender?" => ["check_transgender", "followup_transgender"],
+    "Sexual Orientation" => ["check_sexual_orientation", "followup_sexual_orientation"],
+];
+foreach ($potentialFields as $title => $fieldsToCheck) {
+    foreach ($fieldsToCheck as $field) {
+        if (in_array($field, $metadataFields)) {
+            $fields[$field] = $title;
+        }
+    }
 }
-$nameFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_left_date", "identifier_left_job_category");
-$shortSummaryFields = array_unique(array_merge($nameFields, $addlFields));
-$filteredSummaryFields = \Vanderbilt\FlightTrackerExternalModule\filterFields($shortSummaryFields, $metadata);
 
-$redcapData = \Vanderbilt\FlightTrackerExternalModule\alphabetizeREDCapData(Download::getFilteredRedcapData($token, $server, $nameFields, $_GET['cohort'], $metadata));
+$contactFields = ["check_date", "followup_date"];
+$adminFields = ["promotion_date", "custom_last_update", "resources_date", "honor_date"];
+$contactFields = REDCapManagement::filterOutInvalidFields($metadata, $contactFields);
+$adminFields = REDCapManagement::filterOutInvalidFields($metadata, $adminFields);
+
+$addlFields = [];
+foreach ($fields as $field => $title) {
+    $addlFields[] = $field;
+    if ($field == "summary_race_ethnicity") {
+        $field = "summary_race";
+        $addlFields[] = $field."_sourcetype";
+        $addlFields[] = $field."_source";
+        $field = "summary_ethnicity";
+        $addlFields[] = $field."_sourcetype";
+        $addlFields[] = $field."_source";
+    } else {
+        $addlFields[] = $field."_sourcetype";
+        $addlFields[] = $field."_source";
+    }
+}
+$nameFields = ["record_id", "identifier_last_name", "identifier_first_name", "identifier_left_date", "identifier_left_job_category"];
+$shortSummaryFields = array_unique(array_merge($nameFields, $addlFields, $contactFields, $adminFields));
+$filteredSummaryFields = REDCapManagement::filterOutInvalidFields($metadata, $shortSummaryFields);
+
+$lastNames = Download::lastnames($token, $server);
+asort($lastNames);
+$redcapData = Download::indexREDCapData(Download::getFilteredRedcapData($token, $server, $nameFields, $_GET['cohort'], CareerDev::getPluginModule()));
 
 if (isset($_GET['csv'])) {
 	$cohort = "";
@@ -300,29 +352,33 @@ if (isset($_GET['csv'])) {
 	header("Content-Transfer-Encoding: binary");
 
 	$fp = fopen('php://output', 'w');
-	$headers = array("Record ID", "First Name", "Last Name",);
+	$headers = ["Record ID", "First Name", "Last Name",];
 	foreach ($fields as $field => $title) {
-		if (!in_array($field, $skip)) {
+		if (!in_array($field, $skip) && !isset($potentialFields[$title])) {
 			$headers[] = $title;
 		}
 	}
+	foreach (array_keys($potentialFields) as $title) {
+	    $headers[] = $title;
+    }
 	fputcsv($fp, $headers);
-	foreach ($redcapData as $row) {
-		$recordId = $row['record_id'];
-		$csvRow = array($recordId, $row['identifier_first_name'], $row['identifier_last_name']);
-		$recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($recordId));
-		$ary = generateDataColumns($recordData);
-		$csvRow = array_merge($csvRow, $ary['cols']);
-		fputcsv($fp, $csvRow);
-	}
+	foreach ($lastNames as $recordId => $lastName) {
+	    foreach ($redcapData[$recordId] as $row) {
+            $csvRow = [$recordId, $row['identifier_first_name'], $row['identifier_last_name']];
+            $recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, [$recordId]);
+            $ary = generateDataColumns($recordData, array_keys($fields), $potentialFields);
+            $csvRow = array_merge($csvRow, $ary['cols']);
+            fputcsv($fp, $csvRow);
+        }
+    }
 	fclose($fp);
 	exit();
 } else {
 	echo "<h1>State of Missing Data</h1>";
-	$spacing = "&nbsp;&nbsp;&nbsp;&nbsp;";
-	echo "<h4><span class='green'>Green = Self-Reported</span>$spacing<span class='yellow'>Yellow = Computer-Reported</span>$spacing<span class='purple'>Purple = Manual Entry</span>$spacing<span class='red'>Red = Missing</span></h4>";
+	echo "<table style='margin: 10px auto;'><tr><td class='green'>Green = Self-Reported</td><td class='yellow'>Yellow = Computer-Reported</td><td class='purple'>Purple = Manual Entry</td><td class='red'>Red = Missing</td></tr></table>";
 
-	echo "<p class='centered'>".\Vanderbilt\FlightTrackerExternalModule\getCohortSelect($token, $server, $pid, $metadata)."\n";
+	$cohorts = new Cohorts($token, $server, CareerDev::getModule());
+	echo "<p class='centered'>".$cohorts->makeCohortSelect("all")."\n";
 	$csvUrl = CareerDev::link("/tablesAndLists/missingness.php")."&csv";
 	$worksheetUrl = CareerDev::link("/tablesAndLists/missingnessWorksheet.php");
 	if ($_GET['cohort']) {
@@ -336,12 +392,18 @@ if (isset($_GET['csv'])) {
 	$headers = "";
 	$headers .= "<tr><th class='name'>Name</th>";
 	foreach ($fields as $field => $title) {
-		if (!in_array($field, $skip)) {
+		if (!in_array($field, $skip) && !isset($potentialFields[$title])) {
 			$headers .= "<th>$title</th>";
 		}
 	}
+	foreach (array_keys($potentialFields) as $title) {
+        $headers .= "<th>$title</th>";
+    }
+    $headers .= "<th>Last Admin Update</th>";
+	$headers .= "<th>Last Survey Contact</th>";
 	$headers .= "</tr>";
 	$html = "";
+    $html .= "<div class='horizontal-scroll'>";
 	$html .= "<table style='margin-left: auto; margin-right: auto; display: none;' class='sticky' id='stickyHeader'>";
 	$html .= "<thead>";
 	$html .= $headers;
@@ -356,28 +418,55 @@ if (isset($_GET['csv'])) {
 	# no repeating instruments
 	$missingCells = 0;
 	$missingRecords = 0;
-	foreach ($redcapData as $row) {
-		$recordId = $row['record_id'];
-		$recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($recordId));
-		$ary = generateDataColumns($recordData);
-		$html .= "<tr>";
-		$html .= "<th>";
-		$html .= Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name'])."<br>";
-		if ($ary['missingCells'] > 0) {
-			$html .= "<span style='font-size: 12px;'>".Links::makeLink(CareerDev::link("tablesAndLists/missingnessWorksheet.php")."&record=".$row['record_id'], "(Missingness Worksheet)")."</span>";
-		}
-		if ($row['identifier_left_date']) {
-			$html .= "<br>Left: ".$row['identifier_left_date'];
-		}
-		$html .= "</th>";
-		$html .= $ary['text'];
-		$missingCells += $ary['missingCells'];
-		$missingRecords += $ary['missingRecords'];
-		$html .= "</tr>";
+	foreach ($lastNames as $recordId => $lastName) {
+	    foreach ($redcapData[$recordId] as $row) {
+            $recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($recordId));
+            $ary = generateDataColumns($recordData, array_keys($fields), $potentialFields);
+            $html .= "<tr>";
+            $html .= "<th>";
+            $html .= Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['record_id'] . " " . $row['identifier_first_name'] . " " . $row['identifier_last_name']) . "<br>";
+            if ($ary['missingCells'] > 0) {
+                $html .= "<span style='font-size: 12px;'>" . Links::makeLink(CareerDev::link("tablesAndLists/missingnessWorksheet.php") . "&record=" . $row['record_id'], "(Missingness Worksheet)") . "</span><br>";
+            }
+            if ($row['identifier_left_date']) {
+                $html .= "<div class='red centered'>Left: " . $row['identifier_left_date']."</div>";
+            }
+            $html .= "</th>";
+            $html .= $ary['text'];
+
+            $latestAdminDate = findLatestDateForFields($recordData, $recordId, $adminFields, $metadata);
+            $latestContactDate = findLatestDateForFields($recordData, $recordId, $contactFields, $metadata);
+            foreach ([$latestAdminDate, $latestContactDate] as $latestDate) {
+                if ($latestDate) {
+                    $class = getColorClassForDate($latestDate);
+                    $classStr = "";
+                    if ($class) {
+                        $classStr = " class='$class'";
+                    }
+                    $html .= "<td$classStr>$latestDate</td>";
+                } else {
+                    $html .= "<td class='red'>N/A</td>";
+                }
+            }
+            $missingCells += $ary['missingCells'];
+            $missingRecords += $ary['missingRecords'];
+            $html .= "</tr>";
+        }
 	}
 	$html .= "</tbody></table>";
+	$html .= "</div>";
 
-	echo "<h4>$missingCells missing items across $missingRecords records</h4>";
+	$cellNoun = "items";
+	$recordNoun = "records";
+	if ($missingCells == 1) {
+	    $cellNoun = "item";
+    }
+	if ($missingRecords == 1) {
+	    $recordNoun = "record";
+    }
+
+	echo "<h4>$missingCells missing $cellNoun across $missingRecords $recordNoun</h4>";
+	echo "<p class='centered max-width'>To fill missing data, you can enter it yourself in the Manual Import form, electronically send them a survey, or print off a Missingness Worksheet for them to fill out themselves.</p>";
 	echo $html;
 }
 ?>
@@ -386,3 +475,49 @@ $(document).ready(function() {
 	$(window).scroll(function() { checkSticky(); });
 });
 </script>
+<?php
+
+function getColorClassForDate($date) {
+    $ts = strtotime($date);
+    if ($ts) {
+        $currYear = date("Y", $ts);
+        $currDay = date("d", $ts);
+        $currMonth = date("m", $ts);
+        if (($currMonth == 2) && ($currDay == 29)) {
+            $currMonth = 3;
+            $currDay = 1;
+        }
+        $prevYear = $currYear - 1;
+        $oneYearPriorTs = strtotime("$prevYear-$currMonth-$currDay");
+        if ($ts >= $oneYearPriorTs) {
+            # less than one year old
+            return "green";
+        } else {
+            # more than one year old
+            return "yellow";
+        }
+    }
+    return "";
+}
+
+function findLatestDateForFields($redcapData, $recordId, $fields, $metadata) {
+    $dates = [];
+    foreach ($fields as $field) {
+        $prefix = REDCapManagement::getPrefix($field);
+        $instrument = REDCapManagement::getInstrumentFromPrefix($prefix, $metadata);
+        $values = REDCapManagement::findField($redcapData, $recordId, $field, $instrument);
+        if (is_array($values)) {
+            $dates = array_merge($dates, $values);
+        } else if ($values && is_string($values)) {
+            $dates[] = $values;
+        }
+    }
+    if (count($dates) == 0) {
+        return FALSE;
+    } else if (count($dates) == 1) {
+        return $dates[0];
+    } else {
+        $latestDate = REDCapManagement::getLatestDate($dates);
+        return $latestDate;
+    }
+}

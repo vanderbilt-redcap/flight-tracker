@@ -556,7 +556,7 @@ class CoeusGrantFactory extends GrantFactory {
 		}
 		$grant->setVariable('title', $row['coeus_title']);
 		$grant->setVariable('sponsor', $row['coeus_direct_sponsor_name']);
-		$grant->setVariable('sponsor_type', $row['coeus_direct_sponsor_type']);
+		$grant->setVariable('sponsor_type', $row['coeus_direct_sponsor_name']);
 
 		# used in budgetary calculations
 		$grant->setVariable('prime_sponsor_type', $row['coeus_prime_sponsor_type']);
@@ -597,7 +597,7 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
             $grant->setNumber($awardNo);
             $grant->setVariable('source', "coeus2");
             $grant->setVariable('original_award_number', $row['coeus2_agency_grant_number']);
-            $grant->setVariable('agency_name', $row['coeus2_agency_name']);
+            $grant->setVariable('sponsor_type', $row['coeus2_agency_name']);
             $grant->setVariable('person_name', $this->name);
             $grant->setVariable('start', REDCapManagement::datetime2Date($row['coeus2_current_period_start']));
             $grant->setVariable('end', REDCapManagement::datetime2Date($row['coeus2_current_period_end']));
@@ -672,6 +672,53 @@ class RePORTERGrantFactory extends GrantFactory {
         }
 		return $dt;
 	}
+}
+
+class NIHRePORTERGrantFactory extends  GrantFactory {
+    public function processRow($row, $token = "")
+    {
+        $currentFY = REDCapManagement::getCurrentFY("Federal");
+        $totalCosts = "";
+        if ($row['nih_agency_ic_fundings'] && ($fundings = json_decode($row['nih_agency_ic_fundings']))) {
+            foreach ($fundings as $fy => $total) {
+                if ($fy == $currentFY) {
+                    $totalCosts = $total;
+                }
+            }
+        }
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
+        $awardNo = self::cleanAwardNo($row['nih_project_num']);
+        $grant = new Grant($this->lexicalTranslator);
+        $grant->setVariable('person_name', $row['nih_principal_investigators']);
+        $grant->setVariable('project_start', $row['nih_project_start_date']);
+        $grant->setVariable('project_end', $row['nih_project_end_date']);
+        $grant->setVariable('start', $row['nih_project_start_date']);
+        $grant->setVariable('end', $row['nih_project_end_date']);
+        $grant->setVariable('title', $row['nih_project_title']);
+        $grant->setVariable('budget', $totalCosts);
+        $grant->setVariable('sponsor', $row['nih_agency_ic_admin']);
+        $grant->setVariable('sponsor_type', $row['nih_agency_ic_admin']);
+        $grant->setVariable('original_award_number', $row['nih_project_num']);
+        $grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
+        $grant->setNumber($awardNo);
+        $grant->setVariable('source', "nih_reporter");
+        $grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
+        $grant->setVariable('link', Links::makeLink(APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=nih_reporter&instance={$row['redcap_repeat_instance']}", "See Grant"));
+        $grant->setVariable('pi_flag', "Y");
+        $grant->setVariable('last_update', $row['nih_last_update']);
+
+        $numNodes = self::numNodes("/\s*;\s*/", $row['nih_principal_investigators']);
+        if ($numNodes <= 1) {
+            $grant->setVariable("role", "PI");
+        } else if ($numNodes > 1) {
+            $grant->setVariable("role", "Co-PI");
+        } else {    // 0
+            $grant->setVariable("role", "");
+        }
+
+        $grant->putInBins();
+        array_push($this->grants, $grant);
+    }
 }
 
 class ExPORTERGrantFactory extends GrantFactory {

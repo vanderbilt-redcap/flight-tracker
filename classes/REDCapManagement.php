@@ -221,6 +221,33 @@ class REDCapManagement {
         return $nodes[0];
     }
 
+    public static function getCurrentFY($type) {
+        $y = date("Y");
+        $month = date("m");
+	    if ($type == "Federal") {
+	        if ($month >= 10) {
+	            $y++;
+            }
+        } else if (in_array($type, ["Academic", "Medical"])) {
+            if ($month >= 7) {
+                $y++;
+            }
+        }
+        return $y;
+    }
+
+    public static function getInstrumentFromPrefix($prefix, $metadata) {
+	    $forms = self::getFormsFromMetadata($metadata);
+	    $prefix = preg_replace("/_$/", "", $prefix);
+	    foreach ($forms as $instrument) {
+	        $currPrefix = self::getPrefixFromInstrument($instrument);
+	        if ($prefix == $currPrefix) {
+	            return $instrument;
+            }
+        }
+	    return "";
+    }
+
 	public static function getPrefixFromInstrument($instrument) {
         if ($instrument == "initial_survey") {
             $prefix = "check";
@@ -262,6 +289,8 @@ class REDCapManagement {
             $prefix = "reporter";
         } else if ($instrument == "exporter") {
             $prefix = "exporter";
+        } else if ($instrument == "nih_reporter") {
+            $prefix = "nih";
         } else if ($instrument == "citation") {
             $prefix = "citation";
         } else if ($instrument == "resources") {
@@ -566,6 +595,9 @@ class REDCapManagement {
     }
     public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
         Application::log("Contacting $url");
+        if (!empty($postdata)) {
+            Application::log("Posting ".self::json_encode_with_spaces($postdata));
+        }
         $defaultOpts = [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_VERBOSE => 0,
@@ -670,23 +702,50 @@ class REDCapManagement {
         return $values;
     }
 
-	public static function findField($redcapData, $recordId, $field, $instrument = FALSE, $instance = FALSE) {
+	public static function findField($redcapData, $recordId, $field, $repeatingInstrument = FALSE, $instance = FALSE) {
+	    if ($repeatingInstrument) {
+	        $values = [];
+        }
 	    foreach ($redcapData as $row) {
 	        if ($row['record_id'] == $recordId) {
-	            if ($instance && $instrument) {
-                    if (($instrument == $row['redcap_repeat_instrument']) && ($instance == $row['redcap_repeat_instance'])) {
+	            if ($instance && $repeatingInstrument) {
+                    if (($repeatingInstrument == $row['redcap_repeat_instrument']) && ($instance == $row['redcap_repeat_instance'])) {
                         return $row[$field];
                     }
-                } else if ($instrument) {
-                    if ($instrument == $row['redcap_repeat_instrument']) {
-                        return $row[$field];
+                } else if ($repeatingInstrument) {
+                    if ($repeatingInstrument == $row['redcap_repeat_instrument']) {
+                        $values[] = $row[$field];
                     }
                 } else if ($row[$field]) {
                     return $row[$field];
                 }
             }
         }
+	    if (!empty($values)) {
+	        if (count($values) == 1) {
+	            return $values[0];
+            } else {
+                return $values;
+            }
+        }
 	    return "";
+    }
+
+    public static function getLatestDate($dates) {
+	    $latestTs = 0;
+	    $latestDate = "";
+	    foreach ($dates as $date) {
+	        $ts = strtotime($date);
+	        if ($ts > $latestTs) {
+	            $latestDate = $date;
+	            $latestTs = $ts;
+            }
+        }
+	    if ($latestTs && $latestDate) {
+	        return $latestDate;
+        } else {
+	        return "";
+        }
     }
 
     public static function getParametersAsHiddenInputs($url) {
@@ -1061,18 +1120,27 @@ class REDCapManagement {
                 }
                 $tempMetadata = array();
                 $priorNewRowField = "";
-                foreach ($existingMetadata as $row) {
+                for ($i = 0; $i < count($existingMetadata); $i++) {
+                    $row = $existingMetadata[$i];
                     if (!preg_match($deletionRegEx, $row['field_name']) && !in_array($row['field_name'], $fieldsToDelete)) {
                         if ($priorNewRowField != $row['field_name']) {
-                            array_push($tempMetadata, $row);
+                            $tempMetadata[] = $row;
                         }
                     }
                     if (($priorRowField == $row['field_name']) && !preg_match($deletionRegEx, $newRow['field_name'])) {
                         $newRow = self::copyMetadataSettingsForField($newRow, $newMetadata, $upload, $token, $server);
 
+                        if ($row['form_name'] != $newRow['form_name']) {
+                            # finish current form
+                            while (($i+1 < count($existingMetadata)) && ($existingMetadata[$i+1]['form_name'] == $existingMetadata[$i]['form_name'])) {
+                                $i++;
+                                $tempMetadata[] = $existingMetadata[$i];
+                            }
+                        }
+
                         # delete already existing rows with same field_name
                         self::deleteRowsWithFieldName($tempMetadata, $newRow['field_name']);
-                        array_push($tempMetadata, $newRow);
+                        $tempMetadata[] = $newRow;
                         $priorNewRowField = $newRow['field_name'];
                     }
                 }

@@ -357,8 +357,10 @@ class Grants {
                     array_push($gfs, new Coeus2GrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 				} else if ($row['redcap_repeat_instrument'] == "reporter") {
 					array_push($gfs, new RePORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
-				} else if ($row['redcap_repeat_instrument'] == "exporter") {
-					array_push($gfs, new ExPORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+                } else if ($row['redcap_repeat_instrument'] == "exporter") {
+                    array_push($gfs, new ExPORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+                } else if ($row['redcap_repeat_instrument'] == "nih_reporter") {
+                    array_push($gfs, new NIHRePORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 				} else if ($row['redcap_repeat_instrument'] == "custom_grant") {
 					array_push($gfs, new CustomGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
 				} else if ($row['redcap_repeat_instrument'] == "followup") {
@@ -389,6 +391,7 @@ class Grants {
 	public static function getSourceOrderWithLabels() {
 		return [
             "modify" => "Manual Modifications",
+            "nih_reporter" => "NIH RePORTER",
             "exporter" => "NIH ExPORTER",
             "reporter" => "Federal RePORTER",
             "coeus2" => "COEUS",
@@ -409,7 +412,8 @@ class Grants {
 				"coeus2",
 				"coeus",
 				"custom",
-				"reporter",
+                "nih_reporter",
+                "reporter",
 				"exporter",
 				"followup",
 				"scholars",
@@ -419,14 +423,15 @@ class Grants {
 				);
 	}
 
-	# strategy = array("Conversion", "Financial");
+	# strategy = ["Conversion", "Financial", "All"];
 	public function compileGrants($strategy = "Conversion") {
 		if ($strategy == "Conversion") {
 			$this->compileGrantsForConversion();
-		} else {
-			# Financial
+		} else if ($strategy == "Financial") {
 			$this->compileGrantsForFinancial(FALSE);
-		}
+		} else {
+		    $this->compileAllGrants();
+        }
 	}
 
 	private function compileGrantsForFinancial($combine = FALSE) {
@@ -660,8 +665,13 @@ class Grants {
 	    return $newTimes;
     }
 
-	private function compileGrantsForConversion() {
-		# Strategy: Do not include N/A's. Sort by start timestamp and then look for duplicates
+    private function compileAllGrants() {
+        # like compileGrantsForConversion except include N/A's
+        $this->compileGrantsForConversion(TRUE);
+    }
+
+    private function compileGrantsForConversion($includeNAs = FALSE) {
+		# Strategy: Sort by start timestamp and then look for duplicates
 
 		# listOfAwards contain all the awards
 		# awardTimestamps contain the timestamps of the awards
@@ -831,19 +841,21 @@ class Grants {
 
         $awardsByType = ["deduped" => self::deepCopyGrants($awardsByBaseAwardNumber), "summary" => self::deepCopyGrants($awardsByBaseAwardNumber)];
 
-		# 7. remove N/A's from summaries
-		foreach ($awardsByType["summary"] as $baseNumber => $grant) {
-			if ($grant->getVariable("type") == "N/A") {
-				if (self::getShowDebug()) { Application::log("Removing ".json_encode($grant->toArray())); }
-				if (self::getShowDebug()) { Application::log("7. Removing because N/A ".$baseNumber); }
-				unset($awardsByType["summary"][$baseNumber]);
-			}
-		}
-        foreach ($awardsByType["deduped"] as $baseNumber => $grant) {
-            if ($grant->isInternalVanderbiltGrant()) {
-                if (self::getShowDebug()) { Application::log("Removing ".json_encode($grant->toArray())); }
-                if (self::getShowDebug()) { Application::log("7. Removing because isInternalVanderbiltGrant ".$baseNumber); }
-                unset($awardsByType["deduped"][$baseNumber]);
+		if (!$includeNAs) {
+            # 7. remove N/A's from summaries
+            foreach ($awardsByType["summary"] as $baseNumber => $grant) {
+                if ($grant->getVariable("type") == "N/A") {
+                    if (self::getShowDebug()) { Application::log("Removing ".json_encode($grant->toArray())); }
+                    if (self::getShowDebug()) { Application::log("7. Removing because N/A ".$baseNumber); }
+                    unset($awardsByType["summary"][$baseNumber]);
+                }
+            }
+            foreach ($awardsByType["deduped"] as $baseNumber => $grant) {
+                if ($grant->isInternalVanderbiltGrant()) {
+                    if (self::getShowDebug()) { Application::log("Removing ".json_encode($grant->toArray())); }
+                    if (self::getShowDebug()) { Application::log("7. Removing because isInternalVanderbiltGrant ".$baseNumber); }
+                    unset($awardsByType["deduped"][$baseNumber]);
+                }
             }
         }
 
@@ -1209,7 +1221,16 @@ class Grants {
         $sponsorNo = $grant->getBaseNumber();
         $abstracts = [];
         foreach ($this->rows as $row) {
-            if ($row['redcap_repeat_instrument'] == "exporter") {
+            if ($row['redcap_repeat_instrument'] == "nih_reporter") {
+                $reporterBaseAwardNo = Grant::translateToBaseAwardNumber($row['nih_project_num']);
+                if ($reporterBaseAwardNo == $sponsorNo) {
+                    $abstract = $row['nih_abstract_text'];
+                    if ($abstract && $row['nih_project_start_date']) {
+                        $ts = strtotime($row['nih_project_start_date']);
+                        $abstracts[$ts] = $abstract;
+                    }
+                }
+            } else if ($row['redcap_repeat_instrument'] == "exporter") {
                 $exporterBaseAwardNo = Grant::translateToBaseAwardNumber($row['exporter_full_project_num']);
                 if ($exporterBaseAwardNo == $sponsorNo) {
                     $abstract = $row['exporter_abstract'];
@@ -1677,6 +1698,9 @@ class Grants {
     }
 
     public static function getShowDebug() {
+	    if (isset($_GET['test'])) {
+	        self::setShowDebug(TRUE);
+        }
         return self::$showDebug;
     }
 

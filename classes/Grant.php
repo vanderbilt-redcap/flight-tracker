@@ -28,7 +28,7 @@ class Grant {
     # $type is an item of [Direct, Indirect, Total]
     public function getActiveBudgetAtTime($rows, $type, $ts) {
 	    # Do not use Federal RePORTER because data are incomplete
-        $orderedSources = ["exporter", "coeus2", "reporter",]; // "followup", "custom" have numbers over all time period, not current budget
+        $orderedSources = ["nih_reporter", "exporter", "coeus2", "reporter",]; // "followup", "custom" have numbers over all time period, not current budget
         $baseNumber = $this->getBaseNumber();
         if (self::getShowDebug()) {
             echo "Looking for $baseNumber<br>";
@@ -37,7 +37,27 @@ class Grant {
         $sourceForRunningTotal = "";
         foreach ($orderedSources as $source) {
             foreach ($rows as $row) {
-                if ($source == "exporter") {
+                if ($source == "nih_reporter") {
+                    if ($type == "Total") {
+                        $fy = REDCapManagement::getCurrentFY("Federal");
+                        $field = "nih_agency_ic_fundings";
+                        if ($row[$field]) {
+                            $entries = json_decode($row[$field], TRUE);
+                            foreach ($entries as $ary) {
+                                if (count($ary) >= 2) {
+                                    $currFY = $ary[0];
+                                    $currTotalFunding = $ary[1];
+                                    if ($currFY == $fy) {
+                                        if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                                            $runningTotal += $currTotalFunding;
+                                            $sourceForRunningTotal = $source;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if ($source == "exporter") {
                     if ($row['redcap_repeat_instrument'] == $source) {
                         if ($type == "Direct") {
                             $budgetField = 'exporter_direct_cost_amt';
@@ -1128,7 +1148,7 @@ class Grant {
 		if ($this->isNIH()) {
 		    return TRUE;
         }
-		if (in_array($src, array("exporter", "reporter"))) {
+		if (in_array($src, ["exporter", "reporter", "nih_reporter"])) {
 			return TRUE;
 		} else if ($src == "coeus") {
 			$isFederal = array(
@@ -1275,6 +1295,7 @@ class Grant {
             "coeus" => 0,
             "coeus2" => 0,
             "exporter" => 0,
+            "nih_reporter" => 0,
             "reporter" => 0,
             "ldap" => 0,
             "followup" => 1,
@@ -1484,7 +1505,7 @@ class Grant {
         $coeusSources = self::getCoeusSources();
 
 		if (self::getShowDebug()) { Application::log($awardNo.": Second Pass"); }
-		$trainingGrantSources = array("coeus", "reporter", "exporter");
+		$trainingGrantSources = ["coeus", "reporter", "exporter", "nih_reporter"];
 		if ($awardNo == "") {
 			return "N/A";
 		} else if (($specs['pi_flag'] == "N") && !(preg_match("/\d[Kk][1L]2/", $awardNo))) {

@@ -26,32 +26,215 @@ class RePORTER {
         }
     }
 
+    public function getProjectDatesForAward($baseNumber) {
+        $largestTimespan = 0;
+        $largestStartTs = 0;
+        $largestEndTs = 0;
+        foreach ($this->getData() as $row) {
+            if ($this->isFederal()) {
+                $awardNo = $row['projectNumber'];
+                $projectStart = REDCapManagement::getReporterDateInYMD($row['projectStartDate']);
+                $projectEnd = REDCapManagement::getReporterDateInYMD($row['projectEndDate']);
+            } else if ($this->isNIH()) {
+                $awardNo = $row['projectNumber'];
+                $projectStart = REDCapManagement::getReporterDateInYMD($row['projectStartDate']);
+                $projectEnd = REDCapManagement::getReporterDateInYMD($row['projectEndDate']);
+            } else {
+                $awardNo = "";
+                $projectEnd = "";
+                $projectStart = "";
+            }
+            if ($awardNo && $projectEnd && $projectStart) {
+                $projectStartTs = strtotime($projectStart);
+                $projectEndTs = strtotime($projectEnd);
+                if (preg_match("/$baseNumber/i", $awardNo) && ($projectEndTs - $projectStartTs > $largestTimespan)) {
+                    $largestTimespan = $projectEndTs - $projectStartTs;
+                    $largestEndTs = $projectEndTs;
+                    $largestStartTs = $projectStartTs;
+                }
+            }
+        }
+        if ($largestTimespan > 0) {
+            return [date("Y-m-d", $largestStartTs), date("Y-m-d", $largestEndTs)];
+        }
+        return ["", ""];
+    }
+
+    public function getRoleForCurrentAward($baseNumber) {
+        $currTs = time();
+        foreach ($this->getData() as $row) {
+            if ($this->isNIH()) {
+                $awardNo = $row['project_num'];
+                $startTs = strtotime(REDCapManagement::getReporterDateInYMD($row['project_start_date']));
+                $endTs = strtotime(REDCapManagement::getReporterDateInYMD($row['project_end_date']));
+                if ($row['principal_investigators']) {
+                    $numNodes = count(preg_split("/\s*;\s*/", $row['principal_investigators']));
+                } else {
+                    $numNodes = 0;
+                }
+                if ($row['subproject_id']) {
+                    $role = "Project PI";
+                } else if ($numNodes <= 1) {
+                    $role = "PI";
+                } else if ($numNodes > 1) {
+                    $role = "Co-PI";
+                } else {
+                    $role = "";
+                }
+            } else if ($this->isFederal()) {
+                $awardNo = $row['projectNumber'];
+                $startTs = strtotime(REDCapManagement::getReporterDateInYMD($row['budgetEndDate']));
+                $endTs = strtotime(REDCapManagement::getReporterDateInYMD($row['budgetStartDate']));
+                if ($row['otherPis']) {
+                    $role = "Co-PI";
+                } else  {
+                    $role = "PI";
+                }
+            }
+            if ($role && $awardNo && preg_match("/$baseNumber/i", $awardNo) && ($startTs <= $currTs) && ($endTs >= $currTs)) {
+                return $role;
+            }
+        }
+        return "";
+    }
+
+    public function getUploadRows(&$maxInstance, &$grantsToFilterOut) {
+        if ($this->isNIH()) {
+            return $this->getNIHUploadRows($maxInstance, $grantsToFilterOut);
+        } else if ($this->isFederal()) {
+            return $this->getFederalUploadRows($maxInstance, $grantsToFilterOut);
+        }
+        return [];
+    }
+
+    private function getNIHUploadRows(&$max, &$existingGrants) {
+        $arrayFields = [
+            "principal_investigators" => "full_name",
+            "program_officers" => "full_name",
+            "agency_ic_fundings" => ["fy", "total_cost"],
+            "agency_ic_admin" => "name",
+        ];
+        $dateFields = ["project_start_date", "project_end_date", "init_encumbrance_date", "award_notice_date",];
+        $skip = ["spending_categories", "organization_type", ];
+        $upload = [];
+        foreach ($this->getData() as $item) {
+            if (!in_array($item['project_num'], $existingGrants)) {
+                $max++;
+                $uploadRow = [
+                    "record_id" => $this->recordId,
+                    "redcap_repeat_instrument" => "nih_reporter",
+                    "redcap_repeat_instance" => $max,
+                    "nih_reporter_complete" => "2",
+                    "nih_last_update" => date("Y-m-d"),
+                ];
+                foreach ($item as $key => $value) {
+                    if (!in_array($key, $skip)) {
+                        $newField = "nih_" . strtolower($key);
+                        if (isset($arrayFields[$key])) {
+                            $valueKey = $arrayFields[$key];
+                            $items2 = [];
+                            if (is_string($valueKey) && isset($value[$valueKey])) {
+                                $items2[] = $value[$valueKey];
+                            } else {
+                                foreach ($value as $item2) {
+                                    if (is_array($valueKey)) {
+                                        $list = [];
+                                        foreach ($valueKey as $item2Key) {
+                                            if (isset($item2[$item2Key])) {
+                                                $list[$item2Key] = $item2[$item2Key];
+                                            } else {
+                                                $list[$item2Key] = "";
+                                            }
+                                        }
+                                        $items2[] = json_encode($list);
+                                    } else if (is_string($valueKey)) {
+                                        if (isset($item2[$valueKey])) {
+                                            $items2[] = $item2[$valueKey];
+                                        }
+                                    }
+                                }
+                            }
+                            if (is_array($valueKey)) {
+                                $value = json_encode($items2);
+                            } else {
+                                $value = implode("; ", $items2);
+                            }
+                        }
+                        if (in_array($key, $dateFields) && $value) {
+                            $value = REDCapManagement::getReporterDateInYMD($value);
+                        }
+                        $value = preg_replace("/\s+/", " ", $value);
+                        if (!$value) {
+                            $value = "";
+                        } else if ($value === TRUE) {
+                            $value = "1";
+                        }
+                        $uploadRow[$newField] = $value;
+                    }
+                }
+                $upload[] = $uploadRow;
+            }
+        }
+        return $upload;
+    }
+
+    private function getFederalUploadRows(&$max, &$existingGrants) {
+        $upload = [];
+        $dateFields = ["budgetStartDate", "budgetEndDate", "projectStartDate", "projectEndDate"];
+        // Application::log("existingGrants: ".json_encode($existingGrants));
+        // Application::log("Looking through ".count($this->getData())." items");
+        foreach ($this->getData() as $item) {
+            // Application::log("Federal: ".json_encode($item));
+            if (!in_array($item['projectNumber'], $existingGrants)) {
+                $existingGrants[] = $item['projectNumber'];
+                $max++;
+                $uploadRow = [
+                    "record_id" => $this->recordId,
+                    "redcap_repeat_instrument" => "reporter",
+                    "redcap_repeat_instance" => $max,
+                    "reporter_complete" => "2",
+                    "reporter_last_update" => date("Y-m-d"),
+                ];
+                $uploadRow["record_id"] = $this->recordId;
+                foreach ($item as $field => $value) {
+                    $newField = "reporter_" . strtolower($field);
+                    if (in_array($field, $dateFields) && $value) {
+                        $value = REDCapManagement::getReporterDateInYMD($value);
+                    }
+                    $uploadRow[$newField] = $value;
+                }
+                $upload[] = $uploadRow;
+            }
+        }
+        return $upload;
+    }
+
     public function searchAward($baseAwardNo) {
         if ($this->isFederal()) {
             $query = $this->server."/v1/projects/search?query=projectNumber:*".urlencode($baseAwardNo)."*";
-            $this->runGETQuery($query);
+            $this->currData = $this->runGETQuery($query);
         } else if ($this->isNIH()) {
             $payload = [
                 "criteria" => ["project_nums" => "?$baseAwardNo*"],
                 "include_fields" => $this->includeFields,
             ];
             $location = $this->server."/v1/projects/search";
-            $this->runPOSTQuery($location, $payload);
+            $this->currData = $this->runPOSTQuery($location, $payload);
         }
         return $this->getData();
     }
 
-    public function runPOSTQuery($url, $postdata, $limit = 25, $offset = 0) {
+    public function runPOSTQuery($url, $postdata, $limit = 100, $offset = 0) {
         $postdata['limit'] = $limit;
         $postdata['offset'] = $offset;
-        $this->currData = [];
+        $data = [];
         do {
             list($resp, $output) = $this->downloadPOST($url, $postdata);
             $this->sleep();
             $runAgain = FALSE;
             if ($resp == 200) {
                 $fullResults = json_decode($output, TRUE);
-                $this->currData = array_merge($this->currData, $fullResults['results']);
+                $data = array_merge($data, $fullResults['results']);
                 if (count($fullResults['results']) == $limit) {
                     $offset += $limit;
                     $postdata['offset'] = $offset;
@@ -59,7 +242,7 @@ class RePORTER {
                 }
             }
         } while ($runAgain);
-        return $this->getData();
+        return $data;
     }
 
     public function downloadPOST($url, $postdata) {
@@ -68,22 +251,71 @@ class RePORTER {
 
     public function searchPI($piName, $institutions) {
         if ($this->isFederal()) {
-            $query = "/v1/projects/search?query=PiName:".urlencode($piName);
-            $this->runGETQuery($query);
+            $query = $this->server."/v1/projects/search?query=PiName:".urlencode($piName);
+            $this->currData = $this->runGETQuery($query);
             return $this->filterForInstitutionsAndName($piName, $institutions);
         } else if ($this->isNIH()) {
             list($firstName, $lastName) = NameMatcher::splitName($piName, 2);
             $payload = [
                 "criteria" => [
-                    "pi_names" => [["any_name" => $firstName], ["first_name" => ""], ["any_name" => $lastName], ["last_name" => ""]],
+                    "pi_names" => [["first_name" => $firstName], ["last_name" => $lastName]],
                     "org_names" => $institutions,
                 ],
-                "include_fields" => $this->includeFields,
             ];
             $location = $this->server."/v1/projects/search";
-            $this->runPOSTQuery($location, $payload);
+            $data = $this->runPOSTQuery($location, $payload);
+            $this->currData = self::filterNIHDataForName($data, $firstName, $lastName);
         }
         return $this->getData();
+    }
+
+    public function deduplicateData() {
+        $filteredData = [];
+        foreach ($this->currData as $line) {
+            if ($this->isNIH()) {
+                $awardNo = $line['project_num'];
+            } else if ($this->isFederal()) {
+                $awardNo = $line['projectNumber'];
+            } else {
+                throw new \Exception("Invalid category " . $this->category);
+            }
+            if (!isset($filteredData[$awardNo])) {
+                $filteredData[$awardNo] = $line;
+            }
+        }
+        $this->currData = array_values($filteredData);
+    }
+
+    public function searchPIAndAddToList($piName, $institutions) {
+        $oldData = $this->getData();
+        $this->searchPI($piName, $institutions);
+        if (!empty($oldData)) {
+            $this->currData = array_merge($oldData, $this->currData);
+        }
+    }
+
+    private static function filterNIHDataForName($data, $firstName, $lastName) {
+        $newData = [];
+        foreach ($data as $line) {
+            $found = FALSE;
+            if ($line['contact_pi_name']) {
+                list($contactFirst, $contactLast) = NameMatcher::splitName($line['contact_pi_name']);
+                if (NameMatcher::matchName($contactFirst, $contactLast, $firstName, $lastName)) {
+                    $newData[] = $line;
+                    $found = TRUE;
+                }
+            }
+            if (!$found) {
+                foreach ($line['principal_investigators'] as $pi) {
+                    // Application::log("Inspecting PI ".json_encode($pi));
+                    if (NameMatcher::matchName($pi['first_name'], $pi['last_name'], $firstName, $lastName)) {
+                        $newData[] = $line;
+                        break;   // inner
+                    }
+                }
+            }
+        }
+        return $newData;
     }
 
     public function getAssociatedAwardNumbers($awardNo) {
@@ -138,9 +370,7 @@ class RePORTER {
                         $myFirstName = preg_replace("/^\(/", "", $myFirstName);
                         $myFirstName = preg_replace("/\)$/", "", $myFirstName);
                         if (preg_match("/".strtoupper($myFirstName)."/", $itemFirstName) && (preg_match("/$institution/i", $item['orgName']))) {
-                            if (isset($_GET['test'])) {
-                                Application::log("Possible match $itemFirstName and $institution vs. '{$item['orgName']}'", $this->pid);
-                            }
+                            // Application::log("Possible match $itemFirstName and $institution vs. '{$item['orgName']}'", $this->pid);
                             if (in_array($institution, $helperInstitutions)) {
                                 $proceed = FALSE;
                                 if (method_exists("Application", "getCities")) {
@@ -159,9 +389,7 @@ class RePORTER {
                                 }
                             }
                             if ($proceed) {
-                                if (isset($_GET['test'])) {
-                                    Application::log("Including $itemFirstName {$item['orgName']}", $this->pid);
-                                }
+                                // Application::log("Including $itemFirstName {$item['orgName']}", $this->pid);
                                 $included[] = $item;
                                 $found = true;
                                 break;
@@ -179,9 +407,7 @@ class RePORTER {
                 }
             }
         }
-        if (isset($_GET['test'])) {
-            Application::log($this->recordId.": $firstName $lastName included ".count($included), $this->pid);
-        }
+        // Application::log($this->recordId.": $firstName $lastName included ".count($included), $this->pid);
         // echo "itemNames: ".json_encode($pis)."\n";
         $this->currData = $included;
         return $included;
@@ -204,7 +430,7 @@ class RePORTER {
                             $currData[] = $item;
                             $currDataChanged = TRUE;
                         }
-                        // echo "Checking {$myData['totalCount']} (".count($myData['items'])." here) and ".($myData['offset'] - 1 + $myData['limit'])."\n";
+                        // Application::log("Checking {$myData['totalCount']} (".count($myData['items'])." here) and ".($myData['offset'] - 1 + $myData['limit']));
                     }
                     if (isset($myData['offset']) && isset($myData['limit'])) {
                         $max = $myData['offset'] + $myData['limit'] - 1;
@@ -220,14 +446,10 @@ class RePORTER {
                     $myData = FALSE;
                     $try++;
                 }
-                if (isset($_GET['test'])) {
-                    Application::log("$query $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}");
-                }
+                // Application::log("Try $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}");
             }
         } while (!$myData || (count($currData) < $myData['totalCount']) && ($try <= 5));
-        if (isset($_GET['test'])) {
-            Application::log($this->recordId.": currData ".count($currData));
-        }
+        // Application::log($this->recordId.": currData ".count($currData));
         return $currData;
     }
 

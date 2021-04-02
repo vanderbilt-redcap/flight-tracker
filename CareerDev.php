@@ -10,7 +10,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.33.1";
+		return "2.34.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -50,6 +50,7 @@ class CareerDev {
 	public static function getSites() {
         $sites = array(
             "NIH ExPORTER" => "exporter.nih.gov",
+            "NIH RePORTER" => "api.reporter.nih.gov",
             "Federal RePORTER" => "api.federalreporter.nih.gov",
             "PubMed" => "eutils.ncbi.nlm.nih.gov",
             "PubMed Central Converter" => "www.ncbi.nlm.nih.gov",
@@ -1743,7 +1744,56 @@ class CareerDev {
 						"summary_calculate_to_import",
 						);
 
-	private static $pid = "";
+    public static $nihreporterFields = [
+        "record_id",
+        "nih_appl_id",
+        "nih_subproject_id",
+        "nih_fiscal_year",
+        "nih_org_name",
+        "nih_org_city",
+        "nih_org_state",
+        "nih_org_state_name",
+        "nih_dept_type",
+        "nih_project_num",
+        "nih_project_serial_num",
+        "nih_org_country",
+        "nih_award_type",
+        "nih_activity_code",
+        "nih_award_amount",
+        "nih_is_active",
+        "nih_is_territory",
+        "nih_project_num_split",
+        "nih_principal_investigators",
+        "nih_contact_pi_name",
+        "nih_program_officers",
+        "nih_agency_ic_fundings",
+        "nih_cong_dist",
+        "nih_spending_categories",
+        "nih_project_start_date",
+        "nih_project_end_date",
+        "nih_all_text",
+        "nih_foa",
+        "nih_full_study_section",
+        "nih_award_notice_date",
+        "nih_is_new",
+        "nih_mechanism_code_dc",
+        "nih_core_project_num",
+        "nih_terms",
+        "nih_pref_terms",
+        "nih_abstract_text",
+        "nih_project_title",
+        "nih_phr_text",
+        "nih_spending_categories_desc",
+        "nih_awd_doc_num",
+        "nih_init_encumbrance_date",
+        "nih_can_task",
+        "nih_special_topic_code",
+        "nih_agency_code",
+        "nih_covid_response",
+        "nih_last_update",
+    ];
+
+    private static $pid = "";
 
 	private static $tokenTranslateToPid = [];
 	private static $mentorTokenTranslateToPid = [];

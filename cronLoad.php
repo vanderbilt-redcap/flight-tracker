@@ -27,8 +27,12 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $pid = CareerDev::getPid();
 
         $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
-        $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "2021-02-17");
-		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", "Tuesday");
+		$manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday");
+		if ($has['nih_reporter']) {
+            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday");
+        } else {
+            $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
+        }
 		if ($has['coeus']) {
 			// $manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", "Thursday");
 		}
@@ -121,6 +125,7 @@ function checkMetadataForFields($token, $server) {
 	$vars['vfrs'] = FALSE;
     $vars['news'] = FALSE;
     $vars['ldap'] = FALSE;
+    $vars['nih_reporter'] = FALSE;
 
     $regexes = [
         "/^coeus_/" => "coeus",
@@ -128,6 +133,7 @@ function checkMetadataForFields($token, $server) {
         "/^vfrs_/" => "vfrs",
         "/^ldap_/" => "ldap",
         "/^summary_news$/" => "news",
+        "/^nih_/" => "nih_reporter",
     ];
 
 	foreach ($metadata as $row) {

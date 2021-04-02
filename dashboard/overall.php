@@ -68,7 +68,7 @@ if ($_GET['cohort']) {
 	array_push($headers, "For Cohort ".$_GET['cohort']);
 } 
 
-$measurements["Number at ".INSTITUTION] = new Measurement($atInst, count($indexedRedcapData));
+// not accurate: $measurements["Number at ".INSTITUTION] = new Measurement($atInst, count($indexedRedcapData));
 $measurements["Converted (Overall)"] = new Measurement($convertedTotals["Converted while on K"] + $convertedTotals["Converted while not on K"], $eligible);
 foreach ($lexicon as $conv => $text) {
 	$total = $convertedTotals[$conv];

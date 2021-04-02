@@ -284,12 +284,16 @@ class NameMatcher {
 	    return $newNodes;
     }
 
+    private static function getSuffixes() {
+        return ["I", "II", "III", "IV", "JR", "JR.", "SR", "SR."];
+    }
+
     public static function explodeLastName($last) {
         $last = self::removeParentheses($last);
 	    $nodes = preg_split("/[\s\-]+/", $last);
 	    $newNodes = [$last];
 	    $i = 0;
-	    $suffixesInUpper = ["I", "II", "III", "IV", "JR", "JR.", "SR", "SR."];
+	    $suffixesInUpper = self::getSuffixes();
 	    $prefixesInLower = ["van", "von", "de", "der"];
 	    foreach ($nodes as $node) {
 	        if (in_array(strtoupper($node), $suffixesInUpper) && ($i == 1)) {
@@ -689,6 +693,33 @@ class NameMatcher {
     }
 
 	private static function collapseNames($nodes, $parts) {
+        $suffixes = self::getSuffixes();
+        $hasSuffix = FALSE;
+        for ($i = 1; $i < count($nodes); $i++) {
+            if (in_array(strtoupper($nodes[$i]), $suffixes)) {
+                $hasSuffix = TRUE;
+                break;
+            }
+        }
+        if ($hasSuffix) {
+            $newNodes = [];
+            foreach ($nodes as $node) {
+                if (in_array(strtoupper($node), $suffixes)) {
+                    if (count($newNodes) > 0) {
+                        $newNodes[count($newNodes) - 1] .=" ".$node;
+                    } else {
+                        throw new \Exception("This should never happen, a suffix at the beginning of a name: ".json_encode($nodes)." ".json_encode($newNodes)." on $node");
+                    }
+                } else {
+                    $newNodes[] = $node;
+                }
+            }
+            if (count($newNodes) <= $parts) {
+                return $newNodes;
+            } else {
+                return self::collapseNames($newNodes, $parts);
+            }
+        }
         $first = $nodes[0];
         for ($i = 1; $i <= count($nodes) - $parts; $i++) {
             $first .= " ".$nodes[$i];
