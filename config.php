@@ -320,8 +320,8 @@ function makeSettings($module) {
 	array_push($ary["Installation Variables"], makeSetting("short_institution", "text", "Short Name of Institution"));
 	array_push($ary["Installation Variables"], makeSetting("other_institutions", "text", "Other Institutions (if any); comma-separated"));
 	array_push($ary["Installation Variables"], makeSetting("token", "text", "API Token"));
-	array_push($ary["Installation Variables"], makeSetting("event_id", "text", "Event ID"));
-	array_push($ary["Installation Variables"], makeSetting("pid", "text", "Project ID"));
+	array_push($ary["Installation Variables"], makeSetting("event_id", "text", "Event ID"), "", [], TRUE);
+	array_push($ary["Installation Variables"], makeSetting("pid", "text", "Project ID"), "", [], TRUE);
 	array_push($ary["Installation Variables"], makeSetting("server", "text", "Server API Address"));
 	array_push($ary["Installation Variables"], makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated"));
 	array_push($ary["Installation Variables"], makeSetting("tokenName", "text", "Project Name"));
@@ -403,7 +403,7 @@ function makeCheckboxes($var, $fieldChoices, $label, $defaultChecked = []) {
     return $html;
 }
 
-function makeSetting($var, $type, $label, $default = "", $fieldChoices = array()) {
+function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $readonly = FALSE) {
 	$value = CareerDev::getSetting($var);
 	$html = "";
 	$spacing = "";
@@ -421,7 +421,11 @@ function makeSetting($var, $type, $label, $default = "", $fieldChoices = array()
 			}
 		}
 		$html .= "</td><td style='text-align: left;'>";
-		$html .= "<input type='$type' name='$var' value='$value'>\n";
+		$html .= "<input type='$type' name='$var' value='$value'";
+		if ($readonly) {
+		    $html .= " readonly";
+        }
+		$html .= ">\n";
 		$html .= "</td>";
 		$html .= "</tr>";
 	} else if (($type == "radio") || ($type == "yesno")) {

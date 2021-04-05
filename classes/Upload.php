@@ -490,8 +490,9 @@ public static function metadata($metadata, $token, $server) {
 				$output = curl_exec($ch);
                 $feedback = json_decode($output, true);
                 self::testFeedback($feedback, $output, $ch, $rows);
-				curl_close($ch);
-				$time3 = microtime(TRUE);
+                curl_close($ch);
+                $time3 = microtime(TRUE);
+                Download::throttleIfNecessary();
 			}
 			if (isset($_GET['test'])) {
                 if ($method == "saveData") {

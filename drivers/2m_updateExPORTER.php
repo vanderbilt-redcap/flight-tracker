@@ -18,29 +18,6 @@ require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 /**
- * Encode array from latin1 to utf8 recursively
- * @param $dat
- * @return array|string
- */
-function convert_from_latin1_to_utf8_recursively($dat)
-{
-	if (is_string($dat)) {
-		return utf8_encode($dat);
-	} elseif (is_array($dat)) {
-		$ret = [];
-		foreach ($dat as $i => $d) $ret[ $i ] = convert_from_latin1_to_utf8_recursively($d);
-
-		return $ret;
-	} elseif (is_object($dat)) {
-		foreach ($dat as $i => $d) $dat->$i = convert_from_latin1_to_utf8_recursively($d);
-
-		return $dat;
-	} else {
-		return $dat;
-	}
-}
-
-/**
   * gets the instance for the exporter form based on existing data
   * if none defined, returns [max + 1 or 1 (if there is no max), $new]
   * $new is boolean; TRUE if new instance; else FALSE
@@ -129,7 +106,7 @@ function makeUploadHoldingQueue($line, $headers, $abstracts, $hasAbstracts) {
 		if (in_array($field, $dates)) {
 			$item = REDCapManagement::MDY2YMD($item);
 		}
-		$uploadLineHoldingQueue[$field] = convert_from_latin1_to_utf8_recursively($item);
+		$uploadLineHoldingQueue[$field] = REDCapmanagement::convert_from_latin1_to_utf8_recursively($item);
 		$j++;
 	}
     if ($uploadLineHoldingQueue['exporter_application_id'] && $hasAbstracts) {

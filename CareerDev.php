@@ -10,7 +10,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.34.0";
+		return "2.34.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -538,6 +538,7 @@ class CareerDev {
             "resources" => "[resources_resource]: [resources_date]",
             "honors_and_awards" => "[honor_name]: [honor_date]",
             "manual_degree" => "[imported_degree]",
+            "nih_reporter" => "[nih_project_num]",
         ];
 
         if (empty($metadata)) {

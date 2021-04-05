@@ -24,6 +24,37 @@ class Download {
 		return $indexedRedcapData;
 	}
 
+	public static function throttleIfNecessary() {
+	    if (self::$rateLimitPerMinute === NULL) {
+	        $sql = "SELECT * FROM redcap_config WHERE field_name = 'page_hit_threshold_per_minute'";
+	        Application::log("Running SQL $sql");
+            $q = db_query($sql);
+            if ($error = db_error()) {
+                Application::log("ERROR: $error");
+            }
+            if ($row = db_fetch_assoc($q)) {
+                self::$rateLimitPerMinute = $row['value'];
+            }
+        }
+        if (!self::$rateLimitTs) {
+            self::$rateLimitTs = time();
+        }
+        $thresholdFraction = 0.75;
+	    if (self::$rateLimitPerMinute && (self::$rateLimitCounter * $thresholdFraction > self::$rateLimitPerMinute)) {
+	        $timespanExpended = time() - self::$rateLimitTs;
+	        $sleepTime = 60 - $timespanExpended + 5;
+	        Application::log("Sleeping $sleepTime seconds to avoid REDCap's API rate-limiter");
+	        sleep($sleepTime);
+	        self::$rateLimitCounter = 0;
+	        self::$rateLimitTs = time();
+        }
+	    if (self::$rateLimitTs < time() - 60) {
+	        self::$rateLimitTs = time();
+	        self::$rateLimitCounter = 0;
+        }
+	    self::$rateLimitCounter++;
+    }
+
 	public static function getIndexedRedcapData($token, $server, $fields, $cohort = "", $metadataOrModule = array()) {
 		$redcapData = self::getFilteredRedcapData($token, $server, $fields, $cohort, $metadataOrModule);
 		return self::indexREDCapData($redcapData);
@@ -361,6 +392,7 @@ class Download {
             $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $error = curl_error($ch);
             curl_close($ch);
+            self::throttleIfNecessary();
 		}
 		$redcapData = json_decode($output, true);
 		if ($redcapData === NULL) {
@@ -772,4 +804,8 @@ class Download {
         }
 		return false;
 	}
+
+	private static $rateLimitPerMinute = NULL;
+	private static $rateLimitCounter = 0;
+	private static $rateLimitTs = NULL;
 }
