@@ -9,7 +9,7 @@ require_once(dirname(__FILE__)."/../classes/ConnectionStatus.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 
 function testConnectivity($token, $server, $pid, $howToReturn = "Email") {
-    $sites = Application::getSites();
+    $sites = Application::getSites(FALSE);
     Application::log("Testing connection for ".count($sites)." servers");
     $html = "";
     if ($howToReturn == "HTML") {

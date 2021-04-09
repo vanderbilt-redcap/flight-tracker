@@ -539,7 +539,7 @@ class Download {
         $pid = Application::getPID($token);
         $scholar = new Scholar($token, $server, $metadata, $pid);
         $choices = REDCapManagement::getChoices($metadata);
-        $eligibleRegexes = array("/MD/", "/PhD/", "/PharmD/", "/PsyD/", );
+        $eligibleRegexes = Scholar::getDoctoralRegexes();
 
         $allInstitutionFields = $scholar->getAllInstitutionFields();
         $fields = array_unique(array_merge(array("record_id"), array_keys($allInstitutionFields)), array_values($allInstitutionFields));

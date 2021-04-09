@@ -734,7 +734,7 @@ class NIHTables {
             return $degreesAndYears;
         }
 
-        $doctorateRegExes = array("/MD/", "/PhD/i", "/DPhil/i", "/PharmD/i", "/PsyD/i");
+        $doctorateRegExes = Scholar::getDoctoralRegexes();
         $doctorateDegreesAndYears = array();
         foreach ($degreesAndYears as $degree => $year) {
             foreach ($doctorateRegExes as $regEx) {

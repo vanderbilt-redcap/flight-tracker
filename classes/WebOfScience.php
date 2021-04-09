@@ -157,7 +157,7 @@ class WebOfScience {
         return $results;
     }
 
-    private static function getCredentials($pid) {
+    public static function getCredentials($pid) {
         $file = "/app001/credentials/career_dev/wos.php";
         if (file_exists($file)) {
             require($file);

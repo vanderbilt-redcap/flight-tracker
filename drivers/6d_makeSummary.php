@@ -128,6 +128,7 @@ function makeSummary($token, $server, $pid, $records, $allRecordRows = array()) 
 		if (!empty($errors)) {
 			throw new \Exception("Errors in record $recordId!\n".implode("\n", $errors));
 		}
+        gc_collect_cycles();
 	}
 
 	unlock($pid);

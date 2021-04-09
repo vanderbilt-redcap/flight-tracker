@@ -168,6 +168,7 @@ class CronManager {
 				}
 				if (!$this->isDebug) {
                     $cronjob->run($this->token, $this->server, $this->pid, $records);
+                    gc_collect_cycles();
                 }
 				$run[$cronjob->getTitle()] = array("text" => "Succeeded", "ts" => self::getTimestamp());
 			} catch(\Throwable $e) {

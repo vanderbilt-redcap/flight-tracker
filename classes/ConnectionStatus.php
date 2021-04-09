@@ -13,9 +13,7 @@ class ConnectionStatus {
         $this->pid = $pid;
     }
 
-    public function test() {
-        $tests = [];
-
+    private function testDownloadURL(&$tests) {
         list($returnCode, $data) = REDCapManagement::downloadURL($this->url, $this->pid);
         $bytes = strlen($data);
         if ($bytes > 0) {
@@ -23,17 +21,19 @@ class ConnectionStatus {
         } else {
             $tests['downloadURL'] = "ERROR: No data returned with response code of $returnCode!";
         }
+    }
 
-        if ($returnCode != 404) {
-            $data = file_get_contents($this->url);
-            $bytes = strlen($data);
-            if ($bytes > 0) {
-                $tests['file_get_contents'] = REDCapManagement::pretty($bytes)." bytes returned.";
-            } else {
-                $tests['file_get_contents'] = "ERROR: No data returned!";
-            }
+    public function testFileGetContents(&$tests) {
+        $data = file_get_contents($this->url);
+        $bytes = strlen($data);
+        if ($bytes > 0) {
+            $tests['file_get_contents'] = REDCapManagement::pretty($bytes)." bytes returned.";
+        } else {
+            $tests['file_get_contents'] = "ERROR: No data returned!";
         }
+    }
 
+    public function testSocket(&$tests) {
         $timeout = 15;
         $fp = fsockopen($this->server, 80, $errno, $errstr, $timeout);
         if ($fp) {
@@ -42,6 +42,16 @@ class ConnectionStatus {
         } else {
             $tests['socket'] = "ERROR: Socket not opened ($errno: $errstr)";
         }
+    }
+
+    public function test() {
+        $tests = [];
+
+        $this->testDownloadURL($tests);
+
+        # disabled because extraneous tests - downloadURL is the only method used to access the web
+        // $this->testFileGetContents($tests);
+        // $this->testSocket($tests);
 
         return $tests;
     }

@@ -434,10 +434,32 @@ class Scholar {
 	}
 
 	public function getDegreesText() {
-		$degreesResult = $this->getDegrees($this->rows);
-		$degrees = $degreesResult->getValue();
-		$choices = self::getChoices($this->metadata);
-		return $choices["summary_degrees"][$degrees];
+        $choices = self::getChoices($this->metadata);
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
+        $degreeCheckboxField = "summary_all_degrees";
+        if (in_array($degreeCheckboxField, $metadataFields)) {
+            $checkedDegreesCoded = REDCapManagement::findField($this->rows, $this->recordId, $degreeCheckboxField);
+            if (!is_array($checkedDegreesCoded)) {
+                if ($checkedDegreesCoded) {
+                    $checkedDegreesCoded = [$checkedDegreesCoded];
+                } else {
+                    $checkedDegreesCoded = [];
+                }
+            }
+            $allDegrees = [];
+            foreach ($checkedDegreesCoded as $checkedCode) {
+                $allDegrees[] = $choices[$degreeCheckboxField][$checkedCode];
+            }
+            if (!empty($allDegrees)) {
+                return implode(", ", $allDegrees);
+            } else {
+                return "None";
+            }
+        } else {
+            $degreesResult = $this->getDegrees($this->rows);
+            $degrees = $degreesResult->getValue();
+            return $choices["summary_degrees"][$degrees];
+        }
 	}
 
     public function getPrimaryDepartmentText() {
@@ -556,7 +578,18 @@ class Scholar {
 	}
 
 	private static function isValidValue($metadataFields, $choices, $field, $value) {
-		if (in_array($field, $metadataFields)) {
+	    if (preg_match("/___/", $field)) {
+            if (!in_array($value, [0, 1, ""])) {
+                return FALSE;
+            }
+            $a = preg_split("/___/", $field);
+            if (count($a) != 2) {
+                return FALSE;
+            }
+            $field = $a[0];
+            $value = $a[1];
+        }
+        if (in_array($field, $metadataFields)) {
 			if (isset($choices[$field])) {
 				if (isset($choices[$field][$value])) {
 					return TRUE;
@@ -984,7 +1017,12 @@ class Scholar {
 
         $defaultOrder = self::getDefaultOrder("identifier_institution");
         $vars = $this->getOrder($defaultOrder, "identifier_institution");
-        foreach ($vars as $field => $source) {
+        $fields = array_unique(array_merge(
+            array_keys($vars),
+            self::getTrainingInstitutionFields(),
+            self::getPriorAppointmentInstitutionFields(),
+        ));
+        foreach ($fields as $field) {
             $values = REDCapManagement::findAllFields($rows, $this->recordId, $field);
             if ($showDebug) {
                 Application::log("In getAllOtherInstitutions for $field, found ".json_encode($values));
@@ -1011,6 +1049,66 @@ class Scholar {
         }
         return $seenInstitutions;
 	}
+
+	private static function getPriorAppointmentInstitutionFields() {
+        return [
+            "check_prev1_institution",
+            "check_prev2_institution",
+            "check_prev3_institution",
+            "check_prev4_institution",
+            "check_prev5_institution",
+            "followup_prev1_institution",
+            "followup_prev2_institution",
+            "followup_prev3_institution",
+            "followup_prev4_institution",
+            "followup_prev5_institution",
+            "init_import_prev1_institution",
+            "init_import_prev2_institution",
+            "init_import_prev3_institution",
+            "init_import_prev4_institution",
+            "init_import_prev5_institution",
+        ];
+    }
+
+	private static function getTrainingInstitutionFields() {
+	    return [
+	        "imported_degree",
+            "check_degree0_institution",
+            "check_degree1_institution",
+            "check_degree2_institution",
+            "check_degree3_institution",
+            "check_degree4_institution",
+            "check_degree5_institution",
+            "check_residency1_institution",
+            "check_residency2_institution",
+            "check_residency3_institution",
+            "check_residency4_institution",
+            "check_residency5_institution",
+            "check_fellow1_institution",
+            "check_fellow2_institution",
+            "check_fellow3_institution",
+            "check_fellow4_institution",
+            "check_fellow5_institution",
+            "followup_degree0_institution",
+            "followup_degree1_institution",
+            "init_import_degree0_institution",
+            "init_import_degree1_institution",
+            "init_import_degree2_institution",
+            "init_import_degree3_institution",
+            "init_import_degree4_institution",
+            "init_import_degree5_institution",
+            "init_import_residency1_institution",
+            "init_import_residency2_institution",
+            "init_import_residency3_institution",
+            "init_import_residency4_institution",
+            "init_import_residency5_institution",
+            "init_import_fellow1_institution",
+            "init_import_fellow2_institution",
+            "init_import_fellow3_institution",
+            "init_import_fellow4_institution",
+            "init_import_fellow5_institution",
+        ];
+    }
 
 	# returns a Result for when they left VUMC
 	# used for the Scholars' survey and Follow-Up surveys
@@ -1109,16 +1207,27 @@ class Scholar {
 
 
 	# transforms a degree select box to something usable by other variables
-	private static function transformSelectDegree($num) {
+	private static function transformSelectDegree($num, $methodology) {
 		if (!$num) {
 			return "";
 		}
-		$transform = array(
-				1 => 5,   # MS
-				2 => 4,   # MSCI
-				3 => 3,   # MPH
-				4 => 6,   # other
-				);
+		if ($methodology == "Old") {
+            $transform = [
+                1 => 5,   # MS
+                2 => 4,   # MSCI
+                3 => 3,   # MPH
+                4 => 6,   # other
+            ];
+        } else if ($methodology == "New") {
+            $transform = [
+                1 => "ms",   # MS
+                2 => "msci",   # MSCI
+                3 => "mph",   # MPH
+                4 => 99,   # other
+            ];
+        } else {
+		    throw new \Exception("Incorrect methodology $methodology");
+        }
 		return $transform[$num];
 	}
 
@@ -1347,6 +1456,7 @@ class Scholar {
             "identifier_institution" => "manual",
             "promotion_institution" => "manual",
             "imported_institution" => "manual",
+            "followup_institution" => "scholars",
             "check_institution" => "scholars",
             "check_undergrad_institution" => "scholars",
             "vfrs_current_degree_institution" => "vfrs",
@@ -1518,7 +1628,48 @@ class Scholar {
 	    return array_unique($fields);
     }
 
+    private function checkAllDegrees($rows) {
+	    $choices = REDCapManagement::getChoices($this->metadata);
+        $field = "summary_all_degrees";
+        if (isset($choices[$field])) {
+            $degrees = $this->findAllDegrees($rows);
+            $results = [];
+            foreach ($choices[$field] as $key => $label) {
+                if (in_array($key, $degrees)) {
+                    $newValue = 1;
+                } else {
+                    $newValue = 0;
+                }
+                $results[$field."___".$key] = new Result($newValue, "", "", "", $this->pid);
+            }
+        }
+        return [];
+    }
+
+    public static function getDoctoralRegexes() {
+        return ["/MD/", "/PhD/i", "/DPhil/i", "/PharmD/i", "/PsyD/i", "/DO/", "/AuD/i", "/DMP/", "/DNP/", "/DrPH/", "/DSW/", "/EdD/", "/SciD/"];
+    }
+
     public function findAllDegrees($rows) {
+        $choices = REDCapManagement::getChoices($this->metadata);
+        $exampleFields = ["check_degree0", "check_degree1"];
+        $methodology = FALSE;
+        foreach ($exampleFields as $exampleField) {
+            if (isset($choices[$exampleField][18])) {
+                $methodology = "Old";
+                break;
+            } else if (isset($choices[$exampleField]["md"])) {
+                $methodology = "New";
+                break;
+            }
+        }
+        if (!$methodology) {
+            throw new \Exception("Could not match field for ".json_encode($exampleFields)." in metadata!");
+        }
+        return $this->findAllDegreesHelper($rows, $methodology);
+    }
+
+    private function findAllDegreesHelper($rows, $methodology) {
         # move over and then down
         $order = self::getDefaultOrder("summary_degrees");
         $order = $this->getOrder($order, "summary_degrees");
@@ -1531,7 +1682,7 @@ class Scholar {
         foreach ($order as $variables) {
             foreach ($variables as $variable => $source) {
                 if ($variable == "vfrs_please_select_your_degree") {
-                    $normativeRow[$variable] = self::transformSelectDegree($normativeRow[$variable]);
+                    $normativeRow[$variable] = self::transformSelectDegree($normativeRow[$variable], $methodology);
                 }
                 if ($source == "followup") {
                     foreach ($followupRows as $row) {
@@ -1552,51 +1703,56 @@ class Scholar {
 	    $value = "";
         if (empty($degrees)) {
             return new Result("", "");
-        } else if (in_array(1, $degrees) || in_array(9, $degrees) || in_array(10, $degrees) || in_array(7, $degrees) || in_array(8, $degrees) || in_array(14, $degrees) || in_array(12, $degrees)) { # MD
-            if (in_array(2, $degrees) || in_array(9, $degrees) || in_array(10, $degrees)) {
+        } else if (in_array("mdphd", $degrees)) {
+            $value = 10;  # MD/PhD
+        } else if (in_array("md", $degrees) || in_array(1, $degrees) || in_array(9, $degrees) || in_array(10, $degrees) || in_array(7, $degrees) || in_array(8, $degrees) || in_array(14, $degrees) || in_array(12, $degrees)) { # MD
+            if (in_array("phd", $degrees) || in_array(2, $degrees) || in_array(9, $degrees) || in_array(10, $degrees)) {
                 $value = 10;  # MD/PhD
-            } else if (in_array(3, $degrees) || in_array(16, $degrees) || in_array(18, $degrees)) { # MPH
+            } else if (in_array("mph", $degrees) || in_array(3, $degrees) || in_array(16, $degrees) || in_array(18, $degrees)) { # MPH
                 $value = 7;
-            } else if (in_array(4, $degrees) || in_array(7, $degrees)) { # MSCI
+            } else if (in_array("msci", $degrees) || in_array(4, $degrees) || in_array(7, $degrees)) { # MSCI
                 $value = 8;
-            } else if (in_array(5, $degrees) || in_array(8, $degrees)) { # MS
+            } else if (in_array("ms", $degrees) || in_array(5, $degrees) || in_array(8, $degrees)) { # MS
                 $value = 9;
-            } else if (in_array(6, $degrees) || in_array(13, $degrees) || in_array(14, $degrees)) { # Other
+            } else if (in_array(99, $degrees) || in_array(6, $degrees) || in_array(13, $degrees) || in_array(14, $degrees)) { # Other
                 $value = 7;     # MD + other
-            } else if (in_array(11, $degrees) || in_array(12, $degrees)) { # MHS
+            } else if (in_array("mhs", $degrees) || in_array(11, $degrees) || in_array(12, $degrees)) { # MHS
                 $value = 12;
             } else {
                 $value = 1;   # MD only
             }
-        } else if (in_array(2, $degrees)) { # PhD
+        } else if (in_array("phd", $degrees) || in_array(2, $degrees)) { # PhD
             if (in_array(11, $degrees)) {
                 $value = 10;  # MD/PhD
-            } else if (in_array(3, $degrees)) { # MPH
+            } else if (in_array("mph", $degrees) || in_array(3, $degrees)) { # MPH
                 $value = 2;
-            } else if (in_array(4, $degrees)) { # MSCI
+            } else if (in_array("msci", $degrees) || in_array(4, $degrees)) { # MSCI
                 $value = 2;
-            } else if (in_array(5, $degrees)) { # MS
+            } else if (in_array("ms", $degrees) || in_array(5, $degrees)) { # MS
                 $value = 2;
-            } else if (in_array(6, $degrees)) { # Other
+            } else if (in_array(99, $degrees) || in_array(6, $degrees)) { # Other
                 $value = 2;
             } else {
                 $value = 2;     # PhD only
             }
-        } else if (in_array(6, $degrees)) {  # Other
-            if (in_array(1, $degrees)) {   # MD
+        } else if (in_array(99, $degrees) || in_array(6, $degrees)) {  # Other
+            if (in_array("md", $degrees) || in_array(1, $degrees)) {   # MD
                 $value = 7;  # MD + other
-            } else if (in_array(2, $degrees)) {  # PhD
+            } else if (in_array("phd", $degrees) || in_array(2, $degrees)) {  # PhD
                 $value = 2;
             } else {
                 $value = 6;
             }
-        } else if (in_array(3, $degrees)) {  # MPH
+        } else if (in_array("mph", $degrees) || in_array(3, $degrees)) {  # MPH
             $value = 6;
-        } else if (in_array(4, $degrees)) {  # MSCI
+        } else if (in_array("msci", $degrees) || in_array(4, $degrees)) {  # MSCI
             $value = 6;
-        } else if (in_array(5, $degrees)) {  # MS
+        } else if (in_array("ms", $degrees) || in_array(5, $degrees)) {  # MS
             $value = 6;
-        } else if (in_array(15, $degrees)) {  # PsyD
+        } else if (in_array("psyd", $degrees) || in_array(15, $degrees)) {  # PsyD
+            $value = 6;
+        } else {
+            Application::log("Unidentified degrees ".REDCapManagement::json_encode_with_spaces($degrees).". Assigning other.");
             $value = 6;
         }
 	    return $value;
@@ -1604,11 +1760,10 @@ class Scholar {
 
 	private function getDegrees($rows) {
 	    $degrees = $this->findAllDegrees($rows);
-	    $value = self::translateDegreesFromList($degrees);
+        $value = self::translateDegreesFromList($degrees);
 
-		$newValue = self::translateFirstDegree($value);
-		$newSource = "";
-		return new Result($newValue, $newSource, "", "", $this->pid);
+        $newValue = self::translateFirstDegree($value);
+        return new Result($newValue, "", "", "", $this->pid);
 	}
 
 	private function getPrimaryDepartment($rows) {
@@ -1825,7 +1980,13 @@ class Scholar {
 				$val = 6;
 			}
 			return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
-		}
+		} else if ($race == 6) {    # More Than One Race
+            $val = 11;
+            if (isset($choices[$field]) && !isset($choices[$field][$val])) {
+                $val = 6;
+            }
+            return new RaceEthnicityResult($val, $raceSource, "", $this->pid);
+        }
 		if ($eth == "") {
 			if ($race == 5) { # White
 				$val = 7;
@@ -2390,6 +2551,9 @@ class Scholar {
             "summary_mentor_userid" => "getMentorUserid",
             "identifier_ecommons_id" => "getEcommonsId",
         ];
+		if (in_array("summary_all_degrees", $metadataFields)) {
+		    $ary["summary_all_degrees"] = "checkAllDegrees";
+        }
         for ($i = 1; $i <= self::getNumStudySections(); $i++) {
             $ary["summary_study_section_name_".$i] = "getStudySection".$i;
             $ary["summary_other_standing_".$i] = "getStudySectionOther".$i;
@@ -2632,10 +2796,16 @@ class Scholar {
 					}
 				} else {
 					$result = $this->$func($rows);
-	
-					$this->demographics[$field] = $result->getValue();
-					$this->demographics[$field."_source"] = $result->getSource();
-					$this->demographics[$field."_sourcetype"] = $result->getSourceType();
+					if (is_array($result)) {
+					    $results = $result;
+					    foreach ($results as $resultField => $result) {
+                            $this->demographics[$resultField] = $result->getValue();
+                        }
+                    } else {
+                        $this->demographics[$field] = $result->getValue();
+                        $this->demographics[$field."_source"] = $result->getSource();
+                        $this->demographics[$field."_sourcetype"] = $result->getSourceType();
+                    }
 				}
 			}
 			# no else because they probably have not updated their metadata

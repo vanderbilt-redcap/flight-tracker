@@ -5,12 +5,13 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 use ExternalModules\ExternalModules;
 use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\WebOfScience;
 
 class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.34.1";
+		return "2.34.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -47,8 +48,8 @@ class CareerDev {
 		return FALSE;
 	}
 
-	public static function getSites() {
-        $sites = array(
+	public static function getSites($all = TRUE) {
+        $sites = [
             "NIH ExPORTER" => "exporter.nih.gov",
             "NIH RePORTER" => "api.reporter.nih.gov",
             "Federal RePORTER" => "api.federalreporter.nih.gov",
@@ -58,10 +59,32 @@ class CareerDev {
     	    "ORCID" => "pub.orcid.org",
             "Statistics Reporting" => "redcap.vanderbilt.edu",
             "Altmetric" => "api.altmetric.com",
-            "Scopus" => "api.elsevier.com",
-            "Web of Science" => "ws.isiknowledge.com",
-        );
+        ];
+        if ($all || self::isScopusEnabled()) {
+            $sites["Scopus"] = "api.elsevier.com";
+        }
+        if ($all || self::isWOSEnabled()) {
+            $sites["Web of Science"] = "ws.isiknowledge.com";
+        }
         return $sites;
+    }
+
+    public static function isWOSEnabled() {
+	    $pid = self::getPid();
+	    if ($pid) {
+            list($userid, $passwd) = WebOfScience::getCredentials($pid);
+            if ($userid && $passwd) {
+                return TRUE;
+            }
+        }
+	    return FALSE;
+    }
+
+    public static function isScopusEnabled() {
+	    if (self::getSetting("scopus_api_key")) {
+	        return TRUE;
+        }
+	    return FALSE;
     }
 
     public static function getSiteListHTML() {

@@ -718,6 +718,15 @@ class REDCapManagement {
                     }
                 } else if ($row[$field]) {
                     return $row[$field];
+                } else {
+	                foreach ($row as $rowField => $rowValue) {
+	                    if (preg_match("/___/", $rowField)) {
+	                        $a = preg_split("/___/", $rowField);
+	                        if (($a[0] == $field) && $rowValue) {
+	                            $values[] = $a[1];
+                            }
+                        }
+                    }
                 }
             }
         }

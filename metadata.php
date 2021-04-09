@@ -4,12 +4,14 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Upload.php");
 require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/Application.php");
 
 $files = [
     dirname(__FILE__)."/metadata.json",
@@ -137,10 +139,62 @@ if ($_POST['process'] == "check") {
                 $newMetadata = Download::metadata($token, $server);
                 $formsAndLabels = CareerDev::getRepeatingFormsAndLabels($newMetadata);
                 REDCapManagement::setupRepeatingForms($event_id, $formsAndLabels);   // runs a REPLACE
+
+                convertOldDegreeData($pid);
             } catch (\Exception $e) {
                 $feedback = array("Exception" => $e->getMessage());
                 echo json_encode($feedback);
             }
+        }
+    }
+}
+
+function convertOldDegreeData($pid) {
+    $fields = [
+        "check_degree0",
+        "check_degree1",
+        "check_degree2",
+        "check_degree3",
+        "check_degree4",
+        "check_degree5",
+        "followup_degree0",
+        "followup_degree",
+        "init_import_degree0",
+        "init_import_degree1",
+        "init_import_degree2",
+        "init_import_degree3",
+        "init_import_degree4",
+        "init_import_degree5",
+    ];
+    $convert =[
+        1 => "md",
+        2 => "phd",
+        18 => "mdphd",
+        3 => "mph",
+        4 => "msci",
+        5 => "ms",
+        11 => "mhs",
+        13 => "pharmd",
+        15 => "psyd",
+        17 => "rn",
+        19 => "bs",
+        6 => 99,
+    ];
+
+    $pid = db_real_escape_string($pid);
+    for ($i = 0; $i < count($fields); $i++) {
+        $fields[$i] = db_real_escape_string($fields[$i]);
+    }
+    $fieldsStr = "('".implode("','", $fields)."')";
+    foreach ($convert as $oldValue => $newValue) {
+        $oldValue = db_real_escape_string($oldValue);
+        $newValue = db_real_escape_string($newValue);
+        $sql = "UPDATE redcap_data SET value='$newValue' WHERE project_id='$pid' AND value='$oldValue' AND field_name IN $fieldsStr";
+        Application::log("Running SQL $sql");
+        db_query($sql);
+        if ($error = db_error()) {
+            Application::log("ERROR: $error");
+            return;
         }
     }
 }

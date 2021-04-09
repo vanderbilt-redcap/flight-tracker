@@ -250,6 +250,10 @@ class RePORTER {
     }
 
     public function searchPI($piName, $institutions) {
+        $piName = trim($piName);
+        if (!$piName || empty($institutions)) {
+            return [];
+        }
         if ($this->isFederal()) {
             $query = $this->server."/v1/projects/search?query=PiName:".urlencode($piName);
             $this->currData = $this->runGETQuery($query);

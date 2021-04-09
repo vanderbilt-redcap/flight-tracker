@@ -159,8 +159,8 @@ class Application {
 		return CareerDev::getSetting($field, $pid);
 	}
 
-	public static function getSites() {
-	    return CareerDev::getSites();
+	public static function getSites($all = TRUE) {
+	    return CareerDev::getSites($all);
     }
 
 	public static function getInternalKLength() {
