@@ -1020,7 +1020,7 @@ class Scholar {
         $fields = array_unique(array_merge(
             array_keys($vars),
             self::getTrainingInstitutionFields(),
-            self::getPriorAppointmentInstitutionFields(),
+            self::getPriorAppointmentInstitutionFields()
         ));
         foreach ($fields as $field) {
             $values = REDCapManagement::findAllFields($rows, $this->recordId, $field);
