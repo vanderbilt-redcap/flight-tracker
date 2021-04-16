@@ -163,7 +163,7 @@ function downloadORCID($recordId, $first, $last, $institutionList) {
     if ($first) {
         $params["given-names"] = NameMatcher::explodeFirstName($first);
     }
-    $params["affiliation-org-name"] = getInstitutionArray(preg_split("/\s*,\s*/", $institutionList));
+    $params["affiliation-org-name"] = getInstitutionArray(preg_split("/\s*[,\/]\s*/", $institutionList));
     // Test server $baseUrl = "https://pub.sandbox.orcid.org/v3.0/search/";
     $baseUrl = "https://pub.orcid.org/v3.0/search/";
     $q = makeQueryFromParams($params);

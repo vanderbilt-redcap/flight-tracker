@@ -196,7 +196,12 @@ class Grant {
 			$type = "budget";
 		}
 		if (isset($type) && isset($this->specs[$type])) {
-			$s = $this->specs[$type];
+            if (($type == "sponsor") && !$this->specs[$type]) {
+                $type = "sponsor_type";
+            } else if (($type == "sponsor_type") && !$this->specs[$type]) {
+                $type = "sponsor";
+            }
+            $s = $this->specs[$type];
 			if (preg_match("/budget/", $type) && is_numeric($s)) {
 				$s = round($s * 100) / 100;
 			}

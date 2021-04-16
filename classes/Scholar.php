@@ -252,16 +252,10 @@ class Scholar {
 	}
 
 	public static function nameInList($name, $list) {
-		$name = strtolower($name);
 		$nameAry = NameMatcher::splitName($name, 2);
-		$lowerList = array();
 		foreach ($list as $item) {
-		    $item = strtolower($item);
 		    $itemNameAry = NameMatcher::splitName($item, 2);
-			array_push($lowerList, $itemNameAry);
-		}
-		foreach ($lowerList as $itemNameAry) {
-		    if (($nameAry[0] == $itemNameAry[0]) && ($nameAry[1] == $itemNameAry[1])) {
+		    if (NameMatcher::matchName($nameAry[0], $nameAry[1], $itemNameAry[0], $itemNameAry[1])) {
 		        return TRUE;
             }
         }
@@ -998,7 +992,7 @@ class Scholar {
             $currentProjectInstitutions[$i] = trim(strtolower($currentProjectInstitutions[$i]));
         }
 
-        $splitterRegex = "/\s*[,;]\s*/";
+        $splitterRegex = "/\s*[,;\/]\s*/";
         $choices = self::getChoices($this->metadata);
 
 	    $priorInstitutionList = REDCapManagement::findField($rows, $this->recordId,"identifier_institution");
@@ -1321,7 +1315,7 @@ class Scholar {
     }
 
     public static function explodeInstitutions($institutionString) {
-	    $institutions = preg_split("/\s*,\s*/", strtolower($institutionString));
+	    $institutions = preg_split("/\s*[,\/]\s*/", strtolower($institutionString));
         $newInstitutions = [];
         $replacementRegexes = [
             "/^the university of /i" => "",
@@ -1655,7 +1649,7 @@ class Scholar {
         $exampleFields = ["check_degree0", "check_degree1"];
         $methodology = FALSE;
         foreach ($exampleFields as $exampleField) {
-            if (isset($choices[$exampleField][18])) {
+            if (($choices[$exampleField][18] == "MD/PhD") || ($choices[$exampleField][11] == "MHS")) {
                 $methodology = "Old";
                 break;
             } else if (isset($choices[$exampleField]["md"])) {
@@ -2572,7 +2566,8 @@ class Scholar {
 	private function getTrainingStart($rows) {
         $result = $this->getGenericValueForField($rows, "summary_training_start");
 		$fieldName = $result->getField();
-		if (preg_match("/^promotion_/", $fieldName)) {
+        Application::log("getTrainingStart found result in $fieldName");
+        if (preg_match("/^promotion_/", $fieldName)) {
 			$positionChanges = self::getOrderedPromotionRows($rows);
 			$trainingRanks = array(9, 10);
 			foreach ($positionChanges as $startTs => $row) {
@@ -2581,9 +2576,27 @@ class Scholar {
 				}
 			}
 			return new Result("", "");   // undecipherable
-		}
+        }
 		return $result;
 	}
+
+	private function getDoctoralRowsFromDegrees($rows) {
+	    $doctoralRegexes = self::getDoctoralRegexes();
+	    $choices = self::getChoices($this->metadata);
+	    $field = "imported_degree";
+	    $rowsToReturn = [];
+	    foreach ($rows as $row) {
+	        if ($row[$field] && ($row['redcap_repeat_instrument'] == "manual_degree")) {
+	            $degree = $choices[$field][$row[$field]];
+                foreach ($doctoralRegexes as $regex) {
+                    if (preg_match($regex, $degree)) {
+                        $rowsToReturn[] = $row;
+                    }
+                }
+            }
+        }
+	    return $rowsToReturn;
+    }
 
 	public static function getAwardTypeFields($metadata) {
 	    return REDCapManagement::getFieldsWithRegEx($metadata, "/^summary_award_type_/");
@@ -2609,6 +2622,7 @@ class Scholar {
 	private function getTrainingEnd($rows) {
         $result = $this->getGenericValueForField($rows, "summary_training_end");
 		$fieldName = $result->getField();
+		Application::log("getTrainingEnd found result in $fieldName");
 		if (preg_match("/^promotion_/", $fieldName)) {
 			$positionChanges = self::getOrderedPromotionRows($rows);
 			$trainingRanks = array(9, 10);

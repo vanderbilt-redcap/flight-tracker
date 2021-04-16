@@ -147,7 +147,7 @@ foreach ($redcapData as $row) {
 	}
 	$institutions = array();
 	if ($row['identifier_institution']) {
-		$institutions = preg_split('/\s*,\s*/', $row['identifier_institution']);
+		$institutions = preg_split('/\s*[,\/]\s*/', $row['identifier_institution']);
 	}
 	if (!in_array(INSTITUTION, $institutions)) {
 		$institutions[] = "Vanderbilt";

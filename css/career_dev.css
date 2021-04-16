@@ -136,3 +136,8 @@ textarea.config { width: 400px; height: 400px; }
 img.thumbnail { width: 125px; height: auto; }
 .horizontal-scroll { overflow-x: scroll; overflow-y: hidden; white-space: nowrap; }
 .horizontal-scroll div { display: inline-block; }
+.horizontal-scroll table { display: inline-block; }
+.horizontal-scroll table td div { display: block !important; }
+.top-horizontal-scroll { height: 20px; overflow-x: scroll; overflow-y:hidden; }
+.top-horizontal-scroll div { height: 20px; }
+.noBorderCollapse { border-collapse: separate; }

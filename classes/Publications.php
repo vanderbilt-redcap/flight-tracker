@@ -107,12 +107,21 @@ class Publications {
 		return "Last/Full Name:<br><input id='search' type='text' style='width: 100%;'><br><div style='width: 100%; color: #ff0000;' id='searchDiv'></div>";
 	}
 
-	public function getNumberFirstAuthors() {
+	public function getNumberFirstAuthors($startTs = NULL, $endTs = NULL, $asFraction = TRUE) {
         $type = "Included";
-        return self::getNumberAuthorsHelper("first", $this->getCitations($type), $this->getName());
+        if ($startTs) {
+            if ($endTs) {
+                $citations = $this->getSortedCitationsInTimespan($startTs, $endTs, $type);
+            }  else {
+                $citations = $this->getSortedCitationsInTimespan($startTs, FALSE, $type);
+            }
+        } else {
+            $citations = $this->getCitations($type);
+        }
+        return self::getNumberAuthorsHelper("first", $citations, $this->getName(), $asFraction);
     }
 
-    private static function getNumberAuthorsHelper($pos, $citations, $name) {
+    private static function getNumberAuthorsHelper($pos, $citations, $name, $asFraction = TRUE) {
         if ($pos == "first") {
             $method = "isFirstAuthor";
         } else if ($pos == "last") {
@@ -127,12 +136,25 @@ class Publications {
                 $num++;
             }
         }
-        return $num."/".$total;
+        if ($asFraction) {
+            return $num."/".$total;
+        } else {
+            return $num;
+        }
     }
 
-    public function getNumberLastAuthors() {
+    public function getNumberLastAuthors($startTs = NULL, $endTs = NULL, $asFraction = TRUE) {
         $type = "Included";
-        return self::getNumberAuthorsHelper("last", $this->getCitations($type), $this->getName());
+        if ($startTs) {
+            if ($endTs) {
+                $citations = $this->getSortedCitationsInTimespan($startTs, $endTs, $type);
+            }  else {
+                $citations = $this->getSortedCitationsInTimespan($startTs, FALSE, $type);
+            }
+        } else {
+            $citations = $this->getCitations($type);
+        }
+        return self::getNumberAuthorsHelper("last", $citations, $this->getName(), $asFraction);
     }
 
     public static function getNumberFirstAuthor($citations, $name) {
@@ -1165,8 +1187,10 @@ class Publications {
 	public function getSortedCitationsInTimespan($startTs, $endTs = FALSE, $type = "Included", $asc = TRUE) {
 	    $citations = $this->getSortedCitations($type, $asc);
 	    $includedCits = [];
+	    $dates = [];
 	    foreach ($citations as $citation) {
 	        $ts = $citation->getTimestamp();
+	        $dates[] = date("Y-m-d", $ts);
 	        if (($ts >= $startTs) && (($ts <= $endTs) || !$endTs)) {
 	            $includedCits[] = $citation;
             }

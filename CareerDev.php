@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.34.3";
+		return "2.35.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -309,7 +309,7 @@ class CareerDev {
 			array_push($institutions, $longInst);
 		}
 
-		$otherInsts = preg_split("/,\s*/", self::getSetting("other_institutions", $pid));
+		$otherInsts = preg_split("/\s*[,\/]\s*/", self::getSetting("other_institutions", $pid));
 		foreach ($otherInsts as $otherInst) {
 			if ($otherInst && !in_array($otherInst, $institutions)) {
 				array_push($institutions, $otherInst);
@@ -613,7 +613,8 @@ class CareerDev {
 		if (($menuName == "View") || ($menuName == "View Data") || ($menuName == "Data")) {
 			$ary = [
 					"Demographics Table" => self::link("/charts/makeDemographicsTable.php"),
-					"Stylized CDA Table" => self::link("/charts/makeCDATable.php"),
+                    "Stylized CDA Table" => self::link("/charts/makeGrantTable.php")."&CDA",
+                    "Stylized Table of Grants" => self::link("/charts/makeGrantTable.php"),
 					"Publication List" => self::link("/publications/view.php"),
 					"Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
 					"REDCap Reports" => $r."/DataExport/index.php",
@@ -1467,6 +1468,33 @@ class CareerDev {
 						"check_date",
 						"initial_survey_complete",
 						);
+
+	public static $coeus2Fields = [
+        "coeus2_id",
+        "coeus2_altid",
+        "coeus2_title",
+        "coeus2_collaborators",
+        "coeus2_role",
+        "coeus2_in_progress",
+        "coeus2_approval_in_progress",
+        "coeus2_award_status",
+        "coeus2_submitted_to_agency",
+        "coeus2_awaiting_pi_approval",
+        "coeus2_status",
+        "coeus2_center_number",
+        "coeus2_lead_department",
+        "coeus2_agency_id",
+        "coeus2_agency_name",
+        "coeus2_agency_grant_number",
+        "coeus2_grant_award_type",
+        "coeus2_current_period_indirect_funding",
+        "coeus2_current_period_total_funding",
+        "coeus2_current_period_start",
+        "coeus2_current_period_end",
+        "coeus2_grant_activity_type",
+        "coeus2_current_period_direct_funding",
+        "coeus2_last_update",
+    ];
 
 	public static $coeusFields = array(
 						"coeus_org",

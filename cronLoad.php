@@ -103,8 +103,12 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
             $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", $date, $records);
         }
 
-		$manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", $date, $records);
-		$manager->addCron("drivers/2n_updateReporters.php", "updateReporter", $date, $records);
+        $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday");
+        if ($has['nih_reporter']) {
+            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday");
+        } else {
+            $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
+        }
 		$manager->addCron("publications/getAllPubs_func.php", "getPubs", $date, $records);
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records);
 

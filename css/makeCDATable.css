@@ -6,6 +6,7 @@ h3,h4 { margin: 2px; }
 .date { font-size: 14px; text-align: center; }
 .small_date { font-size: 10px; text-align: center; }
 .source { font-size: 12px; text-align: center; }
+.role { font-size: 12px; text-align: center; font-style: italic; }
 .type { font-size: 16px; font-weight: bold; text-align: center; }
 .awardno { font-size: 11px; text-align: center; }
 .awardno_large { width: 100%; font-size: 13px; text-align: center; }
@@ -20,8 +21,10 @@ div.spacerYear { font-size: 11px; text-align: center; }
 .link { vertical-align: middle; padding-top: 4px; font-size: 13px; text-align: center; color: black; }
 .mechanism { vertical-align: middle; font-size: 13px; text-align: center; color: black; }
 .budget { vertical-align: middle; font-size: 13px; text-align: center; color: black; }
-.genericAward { background-color: #ffffff; }
-.internalK { background-color: #eeeeee; }
+.trainingAppt { background-color: #ffffff; border: 1px dotted #888888; }
+.genericAward { background-color: #eeeeee; }
+.fellowship { background-color: #eeeeee; }
+.internalK { background-color: #dddddd; }
 .k12kl2 { background-color: #cccccc; }
 .individualK { background-color: #aaaaaa; }
 .kEquivalent { background-color: #aaaaaa; }
@@ -29,7 +32,6 @@ div.spacerYear { font-size: 11px; text-align: center; }
 .rEquivalent { background-color: #ffd545; }
 .k99r00{ background-color: #ffedaf; }
 .trainingAdmin { background-color: #ffd545; }
-.fellowship { background-color: #dddddd; }
 .leftBox { background-color: #9fdcf8; width: 225px; min-width: 225px; max-width: 225px; }
 a { color: black; }
 table { margin-left:auto; margin-right:auto; }

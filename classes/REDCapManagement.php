@@ -692,6 +692,11 @@ class REDCapManagement {
         return "";
     }
 
+    public function getFileSuffix($file) {
+        $nodes = preg_split("/\./", $file);
+        return $nodes[count($nodes) - 1];
+    }
+
     public static function findAllFields($redcapData, $recordId, $field) {
 	    $values = [];
         foreach ($redcapData as $row) {

@@ -341,6 +341,10 @@ class NameMatcher {
         return ($lastName1 == $lastName2);
     }
 
+    public static function dashes2Spaces($name) {
+        return preg_replace("/\-/", " ", $name);
+    }
+
     # case insensitive match based on last name and first initial only
 	# returns TRUE/FALSE
 	public static function matchByInitials($lastName1, $firstName1, $lastName2, $firstName2) {
@@ -349,14 +353,25 @@ class NameMatcher {
 		$lastName2 = strtolower($lastName2);
 		$firstName2 = strtolower($firstName2);
 
+        $lastName1 = self::dashes2Spaces($lastName1);
+        $lastName2 = self::dashes2Spaces($lastName2);
+
 		$firstInitial1 = self::turnIntoOneInitial($firstName1);
 		$firstInitial2 = self::turnIntoOneInitial($firstName2);
 
-		if (isset($_GET['test'])) {
-		    Application::log("matchByInitials: Comparing $lastName1 vs $lastName2 and $firstInitial1 ($firstName1) vs. $firstInitial2 ($firstName2)");
+		$lastNames1 = self::explodeLastName($lastName1);
+		$lastNames2 = self::explodeLastName($lastName2);
+		foreach ($lastNames1 as $ln1) {
+		    foreach ($lastNames2 as $ln2) {
+                if (isset($_GET['test'])) {
+                    Application::log("matchByInitials: Comparing $ln1 vs $ln2 and $firstInitial1 ($firstName1) vs. $firstInitial2 ($firstName2)");
+                }
+                if (($ln1 == $ln2) && ($firstInitial1 == $firstInitial2)) {
+                    return TRUE;
+                }
+            }
         }
-
-		return (($lastName1 == $lastName2) && ($firstInitial1 == $firstInitial2));
+		return FALSE;
 	}
 
 	public static function turnIntoOneInitial($name) {
@@ -575,7 +590,19 @@ class NameMatcher {
                     } else if ((count($nodes) == 3) && (self::isInitial($nodes[0]) || self::isInitial($nodes[1]))) {
                         if ($loggingOn) { echo "Do-while B<br>"; }
                         if ($parts == 2) {
-                            return [$nodes[0] . " " . $nodes[1], $nodes[2]];
+                            if (self::isInitial($nodes[1])) {
+                                if ($loggingOn) {
+                                    echo "Do-while B: Getting rid of initial {$nodes[1]}<br>";
+                                }
+                                return [$nodes[0], $nodes[2]];
+                            } else if (self::isInitial($nodes[0])) {
+                                if ($loggingOn) {
+                                    echo "Do-while B: Getting rid of initial {$nodes[0]}<br>";
+                                }
+                                return [$nodes[1], $nodes[2]];
+                            } else {
+                                return [$nodes[0] . " " . $nodes[1], $nodes[2]];
+                            }
                         } else if ($parts > 3) {
                             return self::padWithSpaces($nodes, $parts);
                         } else if ($parts == 3) {

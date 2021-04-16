@@ -596,8 +596,8 @@ function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRe
     foreach ($redcapData as $row) {
         if ($row['redcap_repeat_instrument'] == "") {
             $index[$fromRecordId] = $row[$indexByField];
-            $fromFirstName = $row['identifier_last_name'];
-            $fromLastName = $row['identifier_first_name'];
+            $fromFirstName = $row['identifier_first_name'];
+            $fromLastName = $row['identifier_last_name'];
         }
     }
     foreach ($redcapData as $row) {
@@ -711,6 +711,8 @@ function addMentorNamesForRecords(&$firstNames, &$lastNames, &$records, $mentors
             $i = 1;
             foreach ($mentorList as $mentor) {
                 list($first, $last) = NameMatcher::splitName($mentor);
+                $first = NameMatcher::dashes2Spaces($first);
+                $last = NameMatcher::dashes2Spaces($last);
                 $alreadyPresent = FALSE;
                 foreach ($firstNames as $currRecordId => $currFirst) {
                     $currLast = $lastNames[$currRecordId];
@@ -720,7 +722,7 @@ function addMentorNamesForRecords(&$firstNames, &$lastNames, &$records, $mentors
                     }
                 }
                 if (!$alreadyPresent) {
-                    $key = "Mentor $mentor";
+                    $key = "Mentor $first $last";
                     $records[] = $key;
                     $firstNames[$key] = NameMatcher::explodeFirstName($first);
                     $lastNames[$key] = NameMatcher::explodeLastName($last);

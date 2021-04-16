@@ -53,7 +53,7 @@ function isNewItem($oldReporters, $item, $recordId) {
 	return true;
 }
 
-function updateReporter($token, $server, $pid, $recordIds) {
+function updateReporterOld($token, $server, $pid, $recordIds) {
 	# clear out old data
     if (isset($_GET['test'])) {
         CareerDev::log("Clearing out old data");

@@ -188,9 +188,28 @@ class Download {
 		return $menteeNames;
 	}
 
+	public static function allMentors($token, $server, $metadata = []) {
+	    if (empty($metadata)) {
+            $metadata = self::metadata($token, $server);
+        }
+	    $scholar = new Scholar($token, $server, $metadata, Application::getPID($token));
+	    $fields = $scholar->getMentorFields();
+	    if (!in_array("record_id", $fields)) {
+	        $fields[] = "record_id";
+        }
+	    $indexedREDCapData = self::indexREDCapData(self::fields($token, $server, $fields));
+	    $mentors = [];
+	    foreach ($indexedREDCapData as $recordId => $rows) {
+            $scholar = new Scholar($token, $server, $metadata, Application::getPID($token));
+            $scholar->setRows($rows);
+            $mentors[$recordId] = $scholar->getAllMentors();
+        }
+	    return $mentors;
+    }
+
 	# returns a hash with recordId => array of mentorNames
 	public static function primaryMentors($token, $server) {
-		$mentors = Download::oneField($token, $server, "summary_mentor");
+		$mentors = self::oneField($token, $server, "summary_mentor");
 		foreach ($mentors as $recordId => $mentor) {
 			if ($mentor) {
                 $regex = "/\s*;\s*/";

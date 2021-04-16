@@ -115,16 +115,10 @@ class VICTRPubMedConnection extends OracleConnection {
 class COEUSConnection extends OracleConnection {
 	public function __construct() {
 		$usedFile = "None";
-		$file = dirname(__FILE__)."/../coeusDB.php";
+		$file = "/app001/credentials/career_dev/coeusDB.php";
 		if (file_exists($file)) {
-			require($file);
+			include($file);
 			$usedFile = $file;
-		} else {
-			$file = dirname(__FILE__)."/../../../plugins/career_dev/coeusDB.php";
-			if (file_exists($file)) {
-				require($file);
-				$usedFile = $file;
-			}
 		}
 		if (!$userid || !$passwd || !$serverAddress) {
 			throw new \Exception("Cannot find userid: $userid; passwd ".strlen($passwd)." characters; server: $serverAddress from file $usedFile in directory ".dirname(__FILE__));
