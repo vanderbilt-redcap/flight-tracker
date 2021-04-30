@@ -6,7 +6,6 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/base.php");
 
-authenticate($userid, $_POST['menteeRecord']);
 $userid2 = $userid;
 
 $emails = [];

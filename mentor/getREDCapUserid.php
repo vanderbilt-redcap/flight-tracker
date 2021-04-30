@@ -9,7 +9,6 @@ require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/base.php");
 
 $recordId = $_GET['menteeRecord'];
-authenticate($userid, $recordId);
 
 if ($_POST['name']) {
     list($firstName, $lastName) = NameMatcher::splitName($_POST['name']);

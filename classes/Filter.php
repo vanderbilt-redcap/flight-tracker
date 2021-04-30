@@ -337,6 +337,7 @@ class Filter {
 				"summary_gender" => "Gender",
 				"summary_race_ethnicity" => "Race/Ethnicity",
 				"summary_primary_dept" => "Primary Department",
+                "summary_current_division" => "Current Academic Division",
 				"summary_dob" => "Date of Birth",
 				"summary_degrees" => "Academic Degrees",
 				"summary_citizenship" => "Citizenship",
@@ -606,7 +607,9 @@ class Filter {
 					$html .= "\t\t\tif (i == 1) { $('#commitButton').show(); }\n";
 					$html .= "\t\t\tcomparisons = ".json_encode($calcSettings->getComparisons()).";\n";
 					$html .= "\t\t\t$('#value'+i).prop('type', '$inputType');\n";
-				}
+				} else {
+				    Application::log("Warning! Could not find values for $var ($calcSettingsType $inputType)");
+                }
 			}
 			$html .= "\t\t}\n";
 		}

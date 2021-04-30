@@ -73,7 +73,11 @@ class NavigationBar {
 			if (is_array($item)) {
 				$ary = $item;
 				$html .= "<div class='w3-dropdown-hover w3-mobile'>\n";
-				$html .= "<button class='w3-button'>$title</button>\n";
+				if (preg_match("/<img/", $title)) {
+                    $html .= "<button class='w3-button with-image'>$title</button>\n";
+                } else {
+                    $html .= "<button class='w3-button'>$title</button>\n";
+                }
 				$html .= "<div class='w3-dropdown-content w3-bar-block w3-dark-grey'>\n";
 				foreach ($ary as $menuTitle => $menuLink) {
 					if (self::isJavascript($menuLink)) {

@@ -10,6 +10,15 @@ require_once(dirname(__FILE__)."/../Application.php");
 require_once(dirname(__FILE__)."/Download.php");
 
 class NameMatcher {
+    public static function matchInstitution($institution, $allInstitutions) {
+        foreach ($allInstitutions as $inst) {
+            if (self::doNamesMatch($inst, $institution)) {
+                return TRUE;
+            }
+        }
+        return FALSE;
+    }
+
     public static function matchLastName($lastName, $token, $server) {
         if (!$lastName) {
             return [];

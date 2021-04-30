@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\EmailManager;
 
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/Links.php");
@@ -13,6 +14,7 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Scholar.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../classes/Cohorts.php");
+require_once(dirname(__FILE__)."/../classes/EmailManager.php");
 
 if (isset($_GET['csv'])) {
 	require_once(dirname(__FILE__)."/../small_base.php");
@@ -329,7 +331,7 @@ foreach ($fields as $field => $title) {
         $addlFields[] = $field."_source";
     }
 }
-$nameFields = ["record_id", "identifier_last_name", "identifier_first_name", "identifier_left_date", "identifier_left_job_category"];
+$nameFields = ["record_id", "identifier_last_name", "identifier_first_name", "identifier_email", "identifier_left_date", "identifier_left_job_category"];
 $shortSummaryFields = array_unique(array_merge($nameFields, $addlFields, $contactFields, $adminFields));
 $filteredSummaryFields = REDCapManagement::filterOutInvalidFields($metadata, $shortSummaryFields);
 
@@ -377,8 +379,9 @@ if (isset($_GET['csv'])) {
 	echo "<h1>State of Missing Data</h1>";
 	echo "<table style='margin: 10px auto;'><tr><td class='green'>Green = Self-Reported</td><td class='yellow'>Yellow = Computer-Reported</td><td class='purple'>Purple = Manual Entry</td><td class='red'>Red = Missing</td></tr></table>";
 
-	$cohorts = new Cohorts($token, $server, CareerDev::getModule());
-	echo "<p class='centered'>".$cohorts->makeCohortSelect("all")."\n";
+	$cohorts = new Cohorts($token, $server, CareerDev::getPluginModule());
+	$url = CareerDev::link("tablesAndLists/missingness.php");
+	echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'], "window.location = \"$url&cohort=\" + encodeURIComponent($(this).val());")."\n";
 	$csvUrl = CareerDev::link("/tablesAndLists/missingness.php")."&csv";
 	$worksheetUrl = CareerDev::link("/tablesAndLists/missingnessWorksheet.php");
 	if ($_GET['cohort']) {
@@ -390,7 +393,9 @@ if (isset($_GET['csv'])) {
 	echo "</p>\n";
 
 	$headers = "";
-	$headers .= "<tr><th class='name'>Name</th>";
+	$headers .= "<tr>";
+    $headers .= "<th><button style='font-size: 12px;' onclick='submitEmailAddresses(); return false;'>Set Up Email</button></th>";
+	$headers .= "<th class='name'>Name</th>";
 	foreach ($fields as $field => $title) {
 		if (!in_array($field, $skip) && !isset($potentialFields[$title])) {
 			$headers .= "<th>$title</th>";
@@ -403,6 +408,7 @@ if (isset($_GET['csv'])) {
 	$headers .= "<th>Last Survey Contact</th>";
 	$headers .= "</tr>";
 	$html = "";
+    $html .= "<div class='top-horizontal-scroll'><div class='inner-top-horizontal-scroll'></div></div>";
     $html .= "<div class='horizontal-scroll'>";
 	$html .= "<table style='margin-left: auto; margin-right: auto; display: none;' class='sticky' id='stickyHeader'>";
 	$html .= "<thead>";
@@ -422,7 +428,9 @@ if (isset($_GET['csv'])) {
 	    foreach ($redcapData[$recordId] as $row) {
             $recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($recordId));
             $ary = generateDataColumns($recordData, array_keys($fields), $potentialFields);
+            $emailName = EmailManager::makeEmailIntoID($row['identifier_email']);
             $html .= "<tr>";
+            $html .= "<td onclick='var isChecked = $(this).find(\"input.who_to\").attr(\"checked\"); if (isChecked) { $(this).find(\"input.who_to\").attr(\"checked\", false); } else { $(this).find(\"input.who_to\").attr(\"checked\", true); }'><input class='who_to' name='$emailName' type='checkbox'></td>";
             $html .= "<th>";
             $html .= Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['record_id'] . " " . $row['identifier_first_name'] . " " . $row['identifier_last_name']) . "<br>";
             if ($ary['missingCells'] > 0) {
@@ -473,6 +481,7 @@ if (isset($_GET['csv'])) {
 <script>
 $(document).ready(function() {
 	$(window).scroll(function() { checkSticky(); });
+    setupHorizontalScroll($('.horizontal-scroll table').width());
 });
 </script>
 <?php

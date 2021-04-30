@@ -22,8 +22,7 @@ if (!$username || !DEBUG) {
     $username = $userid;
 }
 
-$menteeRecordIds = getRecordsAssociatedWithUserid($username, $token, $server);
-authenticate($username, $menteeRecordIds);
+$menteeRecordIds = $module->getRecordsAssociatedWithUserid($username, $token, $server);
 
 if(isset($_REQUEST['uid']) && DEBUG){
     $username = $_REQUEST['uid'];
@@ -203,22 +202,15 @@ line-height: 20px; font-family: proxima-nova}
               ?>
               </tbody>
           </table>
-
-            <?php
-            if (in_array("mentoring_agreement_evaluations", $allMetadataForms)) {
-                $link = \REDCap::getSurveyLink($menteeRecordIds[0], "mentoring_agreement_evaluations");
-                echo "<h3><a href='$link'>When done, please provide feedback on the Mentoring Agreement</a></h3>";
-            }
-            ?>
+          <?php
+          if (empty($menteeRecordIds)) {
+              echo "<div style='text-align: center;'>No Mentees Active For You</div>";
+          }
+          ?>
       </div>
     </div>
   </div>
 </section>
-
-
-
-
-
 
 <?php include dirname(__FILE__).'/_footer.php'; ?>
 <script type="text/javascript">

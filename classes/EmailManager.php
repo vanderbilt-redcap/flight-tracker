@@ -464,6 +464,10 @@ class EmailManager {
 		$token = $this->token;
 		$server = $this->server;
 
+		if (empty($this->metadata)) {
+		    $this->metadata = Download::metadata($token, $server);
+        }
+
 		$mssg = $what["message"];
 
 		$mssgs = array();
@@ -613,6 +617,11 @@ class EmailManager {
 		}
 		return $rows;
 	}
+
+	# coordinate with emailMgmtNew.js
+	public static function makeEmailIntoID($email) {
+	    return preg_replace("/\@/", "_at_", $email);
+    }
 
 	public function getAllCheckedEmails($who) {
 		# checked off emails, specified in who

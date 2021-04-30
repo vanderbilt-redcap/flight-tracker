@@ -585,9 +585,11 @@ function submitChanges(nextRecord) {
 	var resets = [];
 	$('#finalize').hide();
 	$('#uploading').show();
+	var type = "";
 	$('[type=hidden]').each(function(idx, elem) {
 		var id = $(elem).attr("id");
 		if ((typeof id != "undefined") && id.match(/^PMID/)) {
+			type = "Publications";
 			var value = $(elem).val();
 			var pmid = id.replace(/^PMID/, "");
 			if (!isNaN(pmid)) {
@@ -601,56 +603,79 @@ function submitChanges(nextRecord) {
 					resets.push(pmid);
 				}
 			}
-		}
-	});
-	var url = getPageUrl("wrangler/savePubs.php");
-	let postdata = {
-		record_id: recordId,
-		omissions: JSON.stringify(newOmits),
-		resets: JSON.stringify(resets),
-		finalized: JSON.stringify(newFinalized)
-	};
-	console.log('Posting '+JSON.stringify(postdata));
-	$.ajax({
-		url: url,
-		method: 'POST',
-		data: postdata,
-		dataType: 'json',
-		success: function(data) {
-			if (data['count'] && (data['count'] > 0)) {
-				var str = "items";
-				if (data['item_count'] == 1) {
-					str = "item";
+		} else 	if ((typeof id != "undefined") && id.match(/^USPO/)) {
+			type = "Patents";
+			var value = $(elem).val();
+			var patentNumber = id.replace(/^USPO/, "");
+			if (!isNaN(patentNumber)) {
+				if (value == "include") {
+					// checked => put in finalized
+					newFinalized.push(patentNumber);
+				} else if (value == "exclude") {
+					// unchecked => put in omits
+					newOmits.push(patentNumber);
+				} else if (value == "reset") {
+					resets.push(patentNumber);
 				}
-				var mssg = data['count']+" "+str+" uploaded";
-				window.location.href = getPageUrl("wrangler/pubs.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord;
-			} else if (data['item_count'] && (data['item_count'] > 0)) {
-				var str = "items";
-				if (data['item_count'] == 1) {
-					str = "item";
-				}
-				var mssg = data['item_count']+" "+str+" uploaded";
-				window.location.href = getPageUrl("wrangler/pubs.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord;
-			} else if (data['error']) {
-				$('#uploading').hide();
-				$('#finalize').show();
-				alert('ERROR: '+data['error']);
-			} else {
-				$('#uploading').hide();
-				$('#finalize').show();
-				console.log("Unexplained return value. "+JSON.stringify(data));
-			}
-		},
-		error: function(e) {
-			if (!e.status || (e.status != 200)) {
-				$('#uploading').hide();
-				$('#finalize').show();
-				alert("ERROR: "+JSON.stringify(e));
-			} else {
-				console.log(JSON.stringify(e));
 			}
 		}
 	});
+
+	var url = "";
+	if (type == "Patents") {
+		url = getPageUrl("wrangler/savePatents.php");
+	} else if (type == "Publications") {
+		url = getPageUrl("wrangler/savePubs.php");
+	}
+	if (url) {
+		let postdata = {
+			record_id: recordId,
+			omissions: JSON.stringify(newOmits),
+			resets: JSON.stringify(resets),
+			finalized: JSON.stringify(newFinalized)
+		};
+		console.log('Posting '+JSON.stringify(postdata));
+		$.ajax({
+			url: url,
+			method: 'POST',
+			data: postdata,
+			dataType: 'json',
+			success: function(data) {
+				if (data['count'] && (data['count'] > 0)) {
+					var str = "items";
+					if (data['item_count'] == 1) {
+						str = "item";
+					}
+					var mssg = data['count']+" "+str+" uploaded";
+					window.location.href = getPageUrl("wrangler/pubs.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord;
+				} else if (data['item_count'] && (data['item_count'] > 0)) {
+					var str = "items";
+					if (data['item_count'] == 1) {
+						str = "item";
+					}
+					var mssg = data['item_count']+" "+str+" uploaded";
+					window.location.href = getPageUrl("wrangler/pubs.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord;
+				} else if (data['error']) {
+					$('#uploading').hide();
+					$('#finalize').show();
+					alert('ERROR: '+data['error']);
+				} else {
+					$('#uploading').hide();
+					$('#finalize').show();
+					console.log("Unexplained return value. "+JSON.stringify(data));
+				}
+			},
+			error: function(e) {
+				if (!e.status || (e.status != 200)) {
+					$('#uploading').hide();
+					$('#finalize').show();
+					alert("ERROR: "+JSON.stringify(e));
+				} else {
+					console.log(JSON.stringify(e));
+				}
+			}
+		});
+	}
 	console.log("Done");
 }
 
@@ -706,8 +731,12 @@ function submitOrder(selector, resultsSelector) {
 }
 
 function presentScreen(mssg) {
+	if ($('#overlay').length == 0) {
+		$('body').prepend('<div id="overlay"></div>');
+	}
 	if ($('#overlay').length > 0) {
-		$('#overlay').html('<br><br><br><br><h1 class=\"warning\">'+mssg+'</h1>');
+		let imageUrl = getPageUrl('img/loading.gif');
+		$('#overlay').html('<br><br><br><br><h1 class=\"warning\">'+mssg+'</h1><p class=\"centered\"><img src=\"'+imageUrl+'\" alt=\"Wating\"></p>');
 		$('#overlay').show();
 	}
 }
@@ -966,4 +995,148 @@ function downloadUrlIntoPage(url, selector) {
 			console.log("ERROR: "+JSON.stringify(e));
 		}
 	});
+}
+
+function submitEmailAddresses() {
+	let selector = 'input[type=checkbox].who_to:checked';
+	var checkedEmails = [];
+	let post = {};
+	post['recipient'] = 'individuals';
+	post['name'] = 'Email composed at '+new Date().toUTCString();
+	post['noalert'] = '1';
+	$(selector).each( function() {
+		let name = $(this).attr('name');
+		post[name] = 'checked';
+		checkedEmails.push(name);
+	});
+	if (checkedEmails.length > 0) {
+		postValues(getPageUrl("emailMgmt/configure.php"), post);
+	}
+}
+
+function createCohortProject(cohort, src) {
+	if (src) {
+		$(src).dialog("close");
+	}
+	presentScreen("Creating project...<br>May take some time to set up project");
+	$.post(getPageUrl("cohorts/createCohortProject.php"), { "cohort": cohort }, function(mssg) {
+		clearScreen();
+		console.log(mssg);
+		alert(mssg);
+	});
+}
+
+// https://stackoverflow.com/questions/133925/javascript-post-request-like-a-form-submit
+function postValues(path, parameters) {
+	var form = $('<form></form>');
+	form.attr("method", "post");
+	form.attr("action", path);
+
+	$.each(parameters, function(key, value) {
+		var field = $('<input></input>');
+		field.attr("type", "hidden");
+		field.attr("name", key);
+		field.attr("value", value);
+		form.append(field);
+	});
+
+	// The form needs to be a part of the document in
+	// order for us to be able to submit it.
+	$(document.body).append(form);
+	form.submit();
+}
+
+function setupHorizontalScroll(tableWidth) {
+	$('.top-horizontal-scroll').scroll(function(){
+		$('.horizontal-scroll').scrollLeft($('.top-horizontal-scroll').scrollLeft());
+	});
+	$('.horizontal-scroll').scroll(function(){
+		$('.top-horizontal-scroll').scrollLeft($('.horizontal-scroll').scrollLeft());
+	});
+	let horScrollWidth = $('.horizontal-scroll').width();
+	$('.top-horizontal-scroll').css({ 'width': horScrollWidth });
+	$('.top-horizontal-scroll div').css({ 'width': tableWidth });
+}
+
+function submitPatent(patent, textId, prefixHTML, cb) {
+	submitPatents([patent], textId, prefixHTML, cb);
+}
+
+function submitPatents(patents, textId, prefixHTML, cb) {
+	if (!Array.isArray(patents)) {
+		patents = pmids.split(/\n/);
+	}
+	if (!prefixHTML) {
+		prefixHTML = '';
+	}
+	if (!cb) {
+		cb = function() { };
+	}
+	if (patents && (Array.isArray(patents))) {
+		resetCitationList(textId);
+		presentScreen("Downloading...");
+		downloadOnePatent(0, patents, textId, prefixHTML, cb);
+	}
+}
+
+function downloadOnePatent(i, patents, textId, prefixHTML, doneCb) {
+	var patentNumber = patents[i];
+	if (patentNumber) {
+		let o = {"page": 1, "per_page": 50};
+		let q = {"patent_number": patentNumber };
+		let f = ["patent_number", "patent_date", "patent_title"];
+
+		var url = "https://api.patentsview.org/patents/query?q="+JSON.stringify(q)+"&f="+JSON.strigify(f)+"&o=".JSON.stringify(o);
+		// AJAX call will return in uncertain order => append, not overwrite, results
+		$.ajax({
+			url: url,
+			success: function(json) {
+				let data = JSON.parse(json);
+				var listings = [];
+				for (let i=0; i < data.length; i++) {
+					let entry = data[i];
+					if (entry['patent_number']) {
+						var listing = "Patent "+entry['patent_number']+' '+entry['patent_title']+' ('+entry['patent_date']+')';
+						listings.push(listing);
+					}
+				}
+
+				updatePatentList(textId, prefixHTML, listings.join('\n'));
+				let nextI = i + 1;
+				if (nextI < patents.length) {
+					setTimeout(function() {
+						downloadOnePatent(nextI, patents, textId, prefixHTML, doneCb);
+					}, 500);    // rate limiter
+				} else if (nextI === patents.length) {
+					clearScreen();
+					doneCb();
+				}
+			},
+			error: function(e) {
+				updatePatentList(textId, prefixHTML, 'ERROR: '+JSON.stringify(e));
+				let nextI = i + 1;
+				if (nextI < patents.length) {
+					setTimeout(function () {
+						downloadOnePatent(nextI, patents, textId, prefixHTML, doneCb);
+					}, 500);    // rate limiter
+				} else {
+					clearScreen();
+				}
+			}
+		});
+	}
+}
+
+function getPatentNumber(patent) {
+	var matches = patent.match(/Patent \d+/);
+	if (matches && (matches.length >= 1)) {
+		var str = matches[0];
+		var patentNumber = str.replace(/Patent /, '');
+		return patentNumber;
+	}
+	return '';
+}
+
+function updatePatentList(textId, prefixHTML, text) {
+	updateCitationList(textId, prefixHTML, text);
 }

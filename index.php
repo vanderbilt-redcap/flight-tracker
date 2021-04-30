@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Consortium;
 
@@ -13,6 +14,12 @@ $bottomPadding = "<br><br><br><br><br>\n";
 $grantNumberHeader = "";
 if ($grantNumber = CareerDev::getSetting("grant_number")) {
 	$grantNumberHeader = " - ".Grant::transformToBaseAwardNumber($grantNumber);
+}
+
+$projectSettings = Download::getProjectSettings($token, $server);
+$projectNotes = "";
+if ($projectSettings['project_notes']) {
+    $projectNotes = "<p class='centered'>".$projectSettings['project_notes']."</p>";
 }
 
 ?>
@@ -28,11 +35,16 @@ td { vertical-align: top; padding: 8px; }
 input[type=text] { font-size: 18px; width: 300px; }
 input[type=submit] { font-size: 18px; }
 </style>
-<script>
+<?php
+if (!CareerDev::getSetting("turn_off", $pid)) {
+    $currTs = time();
+    echo "<script>
 $(document).ready(function() {
-	checkMetadata(<?= time() ?>);
+	checkMetadata($currTs);
 });
-</script>
+</script>";
+}
+?>
 
 <h1 style='margin-bottom: 0;'>Flight Tracker Central</h1>
 <h3 class='nomargin' style='background-color: transparent;'>v<?= CareerDev::getVersion() ?></h3>
@@ -40,6 +52,8 @@ $(document).ready(function() {
 <h5>from <img src="<?= Application::link("img/efs_small_logoonly.png") ?>" alt="Edge for Scholars" style="width: 27px; height: 20px;"> <a href='https://edgeforscholars.org'>Edge for Scholars</a></h5>
 
 <h2><?= $tokenName.$grantNumberHeader ?></h2>
+
+<?= $projectNotes ?>
 
 <div class='centered' id='metadataWarning'></div>
 

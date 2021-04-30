@@ -27,6 +27,7 @@ if (isset($_POST['finalized'])) {
 
     $citationFields = Application::getCitationFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
+    $maxInstance = REDCapManagement::getMaxInstance($redcapData, "citation", $recordId);
 
     $priorPMIDs = [];
     $upload = array();
@@ -51,7 +52,6 @@ if (isset($_POST['finalized'])) {
             }
             if (!$matched) {
                 # new citation
-                $maxInstance = REDCapManagement::getMaxInstance($redcapData, "citation", $recordId);
                 $maxInstance++;
                 $uploadRows = Publications::getCitationsFromPubMed(array($pmid), $metadata,"manual", $recordId, $maxInstance, [], $pid);
                 array_push($priorPMIDs, $pmid);

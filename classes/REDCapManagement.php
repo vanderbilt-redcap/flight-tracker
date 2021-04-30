@@ -410,7 +410,7 @@ class REDCapManagement {
 
     public static function makeHTMLId($id) {
         $htmlFriendly = preg_replace("/[\s\-]+/", "_", $id);
-        $htmlFriendly = preg_replace("/[\+\"\/\[\]'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;]/", "", $htmlFriendly);
+        $htmlFriendly = preg_replace("/[\:\+\"\/\[\]'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;]/", "", $htmlFriendly);
         return $htmlFriendly;
     }
 
@@ -650,6 +650,36 @@ class REDCapManagement {
         $time2 = microtime();
         Application::log("Response code $resp; ".strlen($data)." bytes in ".(($time2 - $time1) / 1000)." seconds");
         return [$resp, $data];
+    }
+
+    public static function versionGreaterThanOrEqualTo($version1, $version2) {
+	    $versionRegex = "/^\d+\.\d+\.\d+$/";
+	    if (preg_match($versionRegex, $version1) && preg_match($versionRegex, $version2)) {
+	        $nodes1 = preg_split("/\./", $version1);
+	        $nodes2 = preg_split("/\./", $version2);
+	        for ($i = 0; $i < count($nodes1) && $i < count($nodes2); $i++) {
+                if ($nodes1[$i] > $nodes2[$i]) {
+                    return TRUE;
+                }
+                if ($nodes1[$i] < $nodes2[$i]) {
+                    return FALSE;
+                }
+            }
+	        return TRUE;   // equal
+        }
+	    return FALSE;
+    }
+
+    public static function getFieldsOfType($metadata, $fieldType, $validationType = "") {
+        $fields = array();
+        foreach ($metadata as $row) {
+            if ($row['field_type'] == $fieldType) {
+                if (!$validationType || ($validationType == $row['text_validation_type_or_show_slider_number'])) {
+                    array_push($fields, $row['field_name']);
+                }
+            }
+        }
+        return $fields;
     }
 
 	public static function downloadURL($url, $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
@@ -1114,6 +1144,12 @@ class REDCapManagement {
 		$fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx, TRUE);
 		$existingMetadata = $originalMetadata;
 
+		# TODO
+		# delete rows/fields
+        # update fields
+        # add in new fields with existing forms
+        # add in new forms
+
 		if (empty($fields)) {
 			$selectedRows = $newMetadata;
 		} else {
@@ -1129,9 +1165,10 @@ class REDCapManagement {
 						$priorRowField = $row['field_name'];
 					}
 				}
-				if (self::atEndOfMetadata($priorRowField, $selectedRows, $newMetadata)) {
-                    $priorRowField = end($originalMetadata)['field_name'];
-                }
+				# no longer needed because now allow to finish current form
+				// if (self::atEndOfMetadata($priorRowField, $selectedRows, $newMetadata)) {
+                    // $priorRowField = end($originalMetadata)['field_name'];
+                // }
                 $tempMetadata = array();
                 $priorNewRowField = "";
                 for ($i = 0; $i < count($existingMetadata); $i++) {
@@ -1682,6 +1719,20 @@ class REDCapManagement {
             }
         }
 	    return FALSE;
+    }
+
+    public static function isMetadataFilled($metadata) {
+        if (count($metadata) < 10) {
+            return FALSE;
+        }
+        if ($metadata[0]['field_name'] != "record_id") {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    public static function isValidSupertoken($supertoken) {
+        return (strlen($supertoken) == 64);
     }
 
 	public static function isValidToken($token) {

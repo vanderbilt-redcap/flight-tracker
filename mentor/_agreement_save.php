@@ -9,11 +9,9 @@ require_once(dirname(__FILE__)."/../classes/Upload.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 
-authenticate($userid, $_POST['record_id']);
-
 $metadata = Download::metadata($token, $server);
 $records = Download::recordIds($token, $server);
-if (!in_array($_POST['record_id'], $records)) {
+if (!$_POST['record_id'] || !in_array($_POST['record_id'], $records)) {
     die("Improper Record Id");
 }
 

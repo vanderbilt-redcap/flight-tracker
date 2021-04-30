@@ -58,11 +58,12 @@ class Application {
 	}
 
     public static function getPatentFields($metadata) {
-        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
         $possibleFields = [
             "record_id",
             "patent_number",
             "patent_include",
+            "patent_title",
+            "patent_abstract",
             "patent_date",
             "patent_inventors",
             "patent_inventor_ids",
@@ -70,13 +71,7 @@ class Application {
             "patent_assignee_ids",
             "patent_last_update",
         ];
-        $fields = [];
-        foreach ($possibleFields as $field) {
-            if (in_array($field, $metadataFields)) {
-                $fields[] = $field;
-            }
-        }
-        return $fields;
+        return REDCapManagement::filterOutInvalidFields($metadata, $possibleFields);
     }
 
     public static function log($mssg, $pid = FALSE) {

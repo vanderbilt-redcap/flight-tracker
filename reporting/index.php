@@ -15,6 +15,9 @@ require_once(dirname(__FILE__)."/../classes/Cohorts.php");
 function makeLink($tableNum) {
 	if ($text = NIHTables::getTableHeader($tableNum)) {
 		$baseLink = Application::link("reporting/table.php");
+		if ($_GET['cohort']) {
+		    $baseLink .= "&cohort=".urlencode($_GET['cohort']);
+        }
 		if (formatTableNum($tableNum) == $text) {
 			$htmlText = $text;
 		} else {
@@ -54,7 +57,7 @@ $predocNames = implode(", ", array_values($predocs));
 $postdocNames = implode(", ", array_values($postdocs));
 $emptyNames = "None";
 
-$cohorts = new Cohorts($token, $server, $metadata);
+$cohorts = new Cohorts($token, $server, Application::getModule());
 
 ?>
 

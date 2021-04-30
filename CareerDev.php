@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "2.35.0";
+		return "3.0.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -115,6 +115,9 @@ class CareerDev {
 
 
 	public static function log($mssg, $pid = FALSE) {
+	    if (!$mssg) {
+	        return;
+        }
         if (isset($_GET['test'])) {
             echo $mssg . "<br>\n";
         } else {
@@ -182,10 +185,10 @@ class CareerDev {
 		if (self::$pid) {
 			return self::$pid;
 		}
-// 		if ($_GET['pid']) {
-//			# least reliable because REDCap can sometimes change this value in other crons
-//			return $_GET['pid'];
-//		}
+ 		if ($_GET['pid']) {
+			# least reliable because REDCap can sometimes change this value in other crons
+			return $_GET['pid'];
+		}
 		return NULL;
 	}
 
@@ -278,6 +281,17 @@ class CareerDev {
 	}
 
 	public static function getLink($relativeUrl) {
+	    if ($relativeUrl == "this") {
+            $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+            $url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+            $paramKeys = ["page", "pid", "prefix"];
+            $initialSeparator = "?";
+            foreach ($paramKeys as $key) {
+                $url .= "$initialSeparator$key=".urlencode($_GET[$key]);
+                $initialSeparator = "&";
+            }
+            return $url;
+        }
 		$relativeUrl = preg_replace("/^\//", "", $relativeUrl);
 		if ($module = self::getModule()) {
 		    return $module->getUrl($relativeUrl);
@@ -479,7 +493,10 @@ class CareerDev {
 
 	public static function getMenuBackgrounds() {
 		return array(
-				"View" => "view.css",
+                "View" => "view.css",
+                "Grants" => "view.css",
+                "Pubs" => "view.css",
+                "Patents" => "view.css",
 				"Scholars" => "scholars.css",
 				"Dashboards" => "dashboards.css",
 				"Cohorts / Filters" => "cohorts.css",
@@ -562,6 +579,7 @@ class CareerDev {
             "honors_and_awards" => "[honor_name]: [honor_date]",
             "manual_degree" => "[imported_degree]",
             "nih_reporter" => "[nih_project_num]",
+            "patent" => "[patent_number] [patent_title]",
         ];
 
         if (empty($metadata)) {
@@ -592,9 +610,10 @@ class CareerDev {
 	        $module = self::getModule();
 	        $srcSettings = $module->getProjectSettings($srcPid);
             $destSettings = $defaultSettings;
+            $skip = ["version"];
             foreach ($srcSettings as $setting => $value) {
-                if (!$destSettings[$setting] && $value) {
-                    $destSettings[$setting] = $value;
+                if (!isset($destSettings[$setting]) && isset($value['value']) && !isset($value['system_value']) && !in_array($setting, $skip)) {
+                    $destSettings[$setting] = $value['value'];
                 }
             }
 
@@ -607,30 +626,59 @@ class CareerDev {
         }
     }
 
+    public static function has($instrument) {
+	    if ($instrument == "patent") {
+            return Download::hasField(self::getPid(), "patent_number", $instrument);
+        }
+	    return FALSE;
+    }
+
 	public static function getMenu($menuName) {
-		global $pid;
+		$pid = self::getPid();
 		$r = self::getREDCapDir();
-		if (($menuName == "View") || ($menuName == "View Data") || ($menuName == "Data")) {
-			$ary = [
-					"Demographics Table" => self::link("/charts/makeDemographicsTable.php"),
-                    "Stylized CDA Table" => self::link("/charts/makeGrantTable.php")."&CDA",
-                    "Stylized Table of Grants" => self::link("/charts/makeGrantTable.php"),
-					"Publication List" => self::link("/publications/view.php"),
-					"Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
-					"REDCap Reports" => $r."/DataExport/index.php",
-					"Missingness Report<br>(Computationally Expensive)" => self::link("/tablesAndLists/missingness.php"),
-					"Search Within a Timespan" => self::link("/search/inTimespan.php"),
-                    "Brag: Publications Widget" => self::link("/brag.php")."&showHeaders",
-                    "Social Network of Co-Authorship" => self::link("/socialNetwork/collaboration.php"),
-                    "Social Network of Grant Collaboration" => self::link("/socialNetwork/collaboration.php")."&grants",
-                    "Word Clouds of Publications" => self::link("/publications/wordCloud.php"),
-                    "Active Grant Budgets at a Time" => self::link("/financial/activeBudget.php"),
+        if ($menuName == "Grants") {
+            $ary = [
+                "Stylized CDA Table" => self::link("/charts/makeGrantTable.php")."&CDA",
+                "Stylized Table of Grants" => self::link("/charts/makeGrantTable.php"),
+                "Social Network of Grant Collaboration" => self::link("/socialNetwork/collaboration.php")."&grants",
+                "Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
+                "Search Grants" => self::link("/search/index.php"),
+                "Search Within a Timespan" => self::link("/search/inTimespan.php"),
+                "Active Grant Budgets at a Time" => self::link("/financial/activeBudget.php"),
             ];
-			if (self::isVanderbilt()) {
+            if (self::isVanderbilt()) {
+                $ary["Grant Success Rates"] = self::link("/successRate.php");
                 $ary['Evaluate Grant Submissions'] = self::link("/submissions.php");
             }
             return $ary;
-		}
+        }
+        if ($menuName == "Pubs") {
+            $ary = [
+                "Publication List" => self::link("/publications/view.php"),
+                "Brag: Publications Widget" => self::link("/brag.php")."&showHeaders",
+                "Social Network of Co-Authorship" => self::link("/socialNetwork/collaboration.php"),
+                "Word Clouds of Publications" => self::link("/publications/wordCloud.php"),
+                "Search Publications" => self::link("/search/publications.php"),
+                "Search Within a Timespan" => self::link("/search/inTimespan.php"),
+            ];
+            return $ary;
+        }
+        if ($menuName == "View") {
+            $ary = [
+                "Demographics Table" => self::link("/charts/makeDemographicsTable.php"),
+                "REDCap Reports" => $r."/DataExport/index.php",
+                "Missingness Report<br>(Computationally Expensive)" => self::link("/tablesAndLists/missingness.php"),
+            ];
+            if (self::has("patent")) {
+                $ary["Patent Viewer"] = self::link("patents/view.php");
+            }
+            if (self::isViDERInstalledForProject()) {
+                $ary["ViDER Visualizations"] = ExternalModules::getUrl("vider", "index.php")."&pid=".$pid;
+            } else if (self::isViDERInstalledForSystem()) {
+                $ary["Enable ViDER Visualizations"] = $r."/ExternalModules/manager/project.php?pid=".$pid;
+            }
+            return $ary;
+        }
 		if (($menuName == "Mentoring") || ($menuName == "Mentor") || ($menuName == "Mentors")) {
 			return array(
 					"List of Mentors" => self::link("/tablesAndLists/mentorList.php"),
@@ -655,7 +703,7 @@ class CareerDev {
             return $ary;
         }
 		if ($menuName == "Dashboards") {
-			return array(
+			$ary = [
 					"Overall" => self::link("/dashboard/overall.php"),
 					"Grants" => self::link("/dashboard/grants.php"),
 					"Grant Budgets" => self::link("/dashboard/grantBudgets.php"),
@@ -665,7 +713,8 @@ class CareerDev {
 					"Demographics" => self::link("/dashboard/demographics.php"),
 					"Dates" => self::link("/dashboard/dates.php"),
 					"Resources" => self::link("/dashboard/resources.php"),
-					);
+					];
+            return $ary;
 		}
 		if (($menuName == "Cohorts / Filters") || ($menuName == "Cohorts")) {
 			return array(
@@ -684,23 +733,13 @@ class CareerDev {
 					"List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
                     "K2R Conversion Calculator" => self::link("/k2r/index.php"),
                 ];
-			if (self::isVanderbilt()) {
-			    $ary["Grant Success Rates"] = self::link("/successRate.php");
-            }
 			$ary = array_merge($ary, [
-                                        "Search Grants" => self::link("/search/index.php"),
-                                        "Search Publications" => self::link("/search/publications.php"),
                                         "Configure Application" => self::link("/config.php"),
                                         "Configure Summaries" => self::link("/config.php")."&order",
                                         "Logging" => self::link("/log/index.php"),
                                         "Custom Programming" => self::link("/changes/README.md"),
                                         "Test Connectivity" => self::link("/testConnectivity.php"),
                                         ]);
-			if (self::isViDERInstalledForProject()) {
-				$ary["ViDER Visualizations"] = ExternalModules::getUrl("vider", "index.php")."&pid=".$pid;
-			} else if (self::isViDERInstalledForSystem()) {
-				$ary["Enable ViDER Visualizations"] = $r."/ExternalModules/manager/project.php?pid=".$pid;
-			}
 			// if (self::isVanderbilt()) {
                 // $ary["Sync VUNet List to COEUS"] = self::link("/syncVUNet.php");
 			// }
@@ -728,7 +767,7 @@ class CareerDev {
 		}
 		if ($menuName == "Help") {
 			$currPage = self::getCurrPage();
-			return array(
+			return [
 					"Toggle Help" => "toggleHelp(\"".self::getHelpLink()."\", \"".self::getHelpHiderLink()."\", \"$currPage\");",
 					"Flight Tracker Consortium" => self::link("/community.php"),
 					"About Flight Tracker" => self::link("/help/about.php"),
@@ -740,18 +779,22 @@ class CareerDev {
 					"How to Extend?" => self::link("/help/extend.php"),
 					"Brand Your Project" => self::link("/help/brand.php"),
 					"Feedback" => self::link("/help/feedback.php"),
-					);
+					];
 		}
 		if (($menuName == "Wrangle Data") || ($menuName == "Wrangle") || ($menuName == "Wrangler")) {
-			return array(
+			$ary = [
 					"Add a Custom Grant" => self::link("/customGrants.php"),
 					"Add Custom Grants by Bulk" => self::link("/bulkImport.php")."&grants",
 					"Grant Wrangler" => self::link("/wrangler/index.php"),
-					"Publication Wrangler" => self::link("/wrangler/pubs.php"),
+					"Publication Wrangler" => self::link("/wrangler/include.php")."&wranglerType=Publications",
 					"Lexical Translator" => self::link("/lexicalTranslator.php"),
-					);
+					];
+			if (self::has("patent")) {
+                $ary["Patent Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Patents";
+            }
+			return $ary;
 		}
-		return array();
+		return [];
 	}
 
 	public static $citationFields = [

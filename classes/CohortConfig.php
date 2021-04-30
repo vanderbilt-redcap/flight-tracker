@@ -110,10 +110,10 @@ class CohortConfig {
 	private static function compare($value1, $comparison, $value2) {
 		switch($comparison) {
             case "contains":
-                return strpos($value1, $value2);
+                return (strpos($value1, $value2) !== FALSE);
                 break;
             case "not_contains":
-                return !strpos($value1, $value2);
+                return (strpos($value1, $value2) === FALSE);
                 break;
 		    case "gt":
 				return ($value1 > $value2);

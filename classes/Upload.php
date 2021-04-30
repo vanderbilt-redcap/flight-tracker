@@ -35,6 +35,59 @@ class Upload
         return $mixed;
     }
 
+    public static function userRights($userRights, $token, $server) {
+        $data = [
+            "token" => $token,
+            "content" => "user",
+            "format" => "json",
+            "data" => json_encode($userRights),
+        ];
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $server);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+        $output = curl_exec($ch);
+        $feedback = json_decode($output, TRUE);
+        self::testFeedback($feedback, $output, $ch);
+        curl_close($ch);
+        return $feedback;
+    }
+
+    public static function createProject($supertoken, $server, $projectSetup) {
+        $data = [
+            'token' => $supertoken,
+            'content' => 'project',
+            'format' => 'json',
+            'data' => json_encode([$projectSetup]),
+        ];
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $server);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+        $newProjectToken = curl_exec($ch);
+        curl_close($ch);
+        if (REDCapManagement::isValidToken($newProjectToken)) {
+            return $newProjectToken;
+        } else {
+            Application::log("Invalid project creation: $newProjectToken");
+        }
+    }
+
     public static function deleteField($token, $server, $pid, $field, $recordId, $instance = NULL) {
         $records = Download::recordIds($token, $server);
         if (Download::isCurrentServer($server)) {
@@ -235,7 +288,7 @@ public static function metadata($metadata, $token, $server) {
 	}
 
 	private static function testFeedback($feedback, $originalText, $curlHandle, $rows = array()) {
-        if (!$feedback) {
+        if (!$feedback && $curlHandle) {
             $returnCode = curl_getinfo($curlHandle, CURLINFO_RESPONSE_CODE);
             $curlError = curl_error($curlHandle);
             throw new \Exception("Upload error (non-JSON): $originalText [$returnCode] - $curlError");
@@ -406,21 +459,49 @@ public static function metadata($metadata, $token, $server) {
 		return $priorFeedback;
 	}
 
+	public static function rowsByPid($rows, $pid) {
+        if (!self::checkRows($rows)) {
+            return "";
+        }
+        if (!is_numeric($pid)) {
+            Application::log("Non-numeric pid $pid");
+            echo "Non-numeric pid $pid\n";
+            die();
+        }
+        $feedback = \REDCap::saveData($pid, "json", json_encode($rows), TRUE);
+        $output = json_encode($feedback);
+        self::testFeedback($feedback, $output, FALSE);
+        return $feedback;
+    }
+
+    private static function checkRows($rows) {
+        if (!is_array($rows)) {
+            Application::log("Upload::rows: first parameter should be array (= '$rows')");
+            echo "Upload::rows: first parameter should be array (= '$rows')!\n";
+            die();
+        }
+        if (empty($rows)) {
+            Application::log("WARNING! Upload::rows input is empty!");
+            echo "WARNING! Upload::rows input is empty!\n";
+            return "";
+        }
+        return TRUE;
+    }
+
 	public static function rows($rows, $token, $server) {
-		if (!is_array($rows)) {
-			Application::log("Upload::rows: first parameter should be array (= '$rows')");
-			echo "Upload::rows: first parameter should be array (= '$rows')!\n";
-			die();
-		}
-		if (strlen($token) != 32) {
+        if (!self::checkRows($rows)) {
+            if (isset($_GET['test'])) {
+                echo "Failed test: ".json_encode($rows)."<br>";
+            }
+            return "";
+        }
+        if (isset($_GET['test'])) {
+            echo "Passed test: ".count($rows)."<br>";
+        }
+		if (!REDCapManagement::isValidToken($token)) {
 			Application::log("Upload::rows: second parameter should be token (= '$token')");
 			echo "Upload::rows: second parameter should be token (= '$token')\n";
 			die();
-		}
-		if (empty($rows)) {
-			Application::log("WARNING! Upload::rows input is empty!");
-			echo "WARNING! Upload::rows input is empty!\n";
-			return "";
 		}
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");

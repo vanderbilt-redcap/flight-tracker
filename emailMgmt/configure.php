@@ -36,7 +36,9 @@ if (count($_POST) > 0) {
 			$noteClass = "green";
 		}
 	}
-	echo "<div id='note' class='$noteClass centered padded'>$html</div>\n";
+    if (!isset($_POST['noalert'])) {
+        echo "<div id='note' class='$noteClass centered padded'>$html</div>\n";
+    }
 	$metadata = Download::metadata($token, $server);  // must load on save and reload after save
 }
 
@@ -166,7 +168,7 @@ $(document).ready(function() {
 			$('#message .ql-editor').html(messages[val]);
 		}
 	});
-	$('input').on('change', function() { updateAll(this, '<?= $pid ?>', <?= json_encode($realPost) ?>); });
+	$('input.who_to').on('change', function() { updateAll(this, '<?= $pid ?>', <?= json_encode($realPost) ?>); });
 	$("form").on("submit",function(){
 		if ($("#message .ql-editor").length > 0) {
 			$("[name=message]").val($("#message .ql-editor").html());

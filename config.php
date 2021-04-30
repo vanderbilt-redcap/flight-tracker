@@ -319,9 +319,10 @@ function makeSettings($module) {
 	array_push($ary["Installation Variables"], makeSetting("institution", "text", "Full Name of Institution"));
 	array_push($ary["Installation Variables"], makeSetting("short_institution", "text", "Short Name of Institution"));
 	array_push($ary["Installation Variables"], makeSetting("other_institutions", "text", "Other Institutions (if any); comma-separated"));
-	array_push($ary["Installation Variables"], makeSetting("token", "text", "API Token"));
-	array_push($ary["Installation Variables"], makeSetting("event_id", "text", "Event ID"), "", [], TRUE);
-	array_push($ary["Installation Variables"], makeSetting("pid", "text", "Project ID"), "", [], TRUE);
+    array_push($ary["Installation Variables"], makeSetting("token", "text", "API Token"));
+    array_push($ary["Installation Variables"], makeSetting("supertoken", "text", "REDCap Supertoken (optional, from REDCap Administrator, for turning on Cohort Portals)"));
+	array_push($ary["Installation Variables"], makeSetting("event_id", "text", "Event ID (read-only)", "", [], TRUE));
+	array_push($ary["Installation Variables"], makeSetting("pid", "text", "Project ID (read-only)", "", [], TRUE));
 	array_push($ary["Installation Variables"], makeSetting("server", "text", "Server API Address"));
 	array_push($ary["Installation Variables"], makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated"));
 	array_push($ary["Installation Variables"], makeSetting("tokenName", "text", "Project Name"));

@@ -4,6 +4,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Grants;
+use \Vanderbilt\CareerDevLibrary\Patents;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Publications;
@@ -17,6 +18,7 @@ require_once(dirname(__FILE__)."/Application.php");
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Download.php");
 require_once(dirname(__FILE__)."/classes/Grants.php");
+require_once(dirname(__FILE__)."/classes/Patents.php");
 require_once(dirname(__FILE__)."/classes/Scholar.php");
 require_once(dirname(__FILE__)."/classes/Links.php");
 require_once(dirname(__FILE__)."/classes/Publications.php");
@@ -34,16 +36,22 @@ if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 }
 
 $nextRecord = REDCapManagement::getNextRecord($record, $token, $server);
-$redcapData = Download::records($token, $server, array($record));
+$redcapData = Download::records($token, $server, [$record]);
 $metadata = Download::metadata($token, $server);
+$institutions = Download::institutionsAsArray($token, $server);
 
 $grants = new Grants($token, $server, $metadata);
 $grants->setRows($redcapData);
 $scholar = new Scholar($token, $server, $metadata);
 $scholar->setRows($redcapData);
 $scholar->setGrants($grants);
+$firstName = $scholar->getName("first");
+$lastName = $scholar->getName("last");
+
 $pubs = new Publications($token, $server, $metadata);
 $pubs->setRows($redcapData);
+$patents = new Patents($record, $pid, $firstName, $lastName, $institutions[$record]);
+$patents->setRows($redcapData);
 
 $trainingStats = [];
 $trainingStartDate = REDCapManagement::findField($redcapData, $record, "summary_training_start");
@@ -76,8 +84,6 @@ foreach ($redcapData as $row) {
 
 $imgBase64 = $scholar->getImageBase64();
 $name = $scholar->getName("full");
-$firstName = $scholar->getName("first");
-$lastName = $scholar->getName("last");
 $email = $scholar->getEmail();
 if ($email) {
 	$email = "<a href='mailto:$email'>$email</a>";
@@ -106,6 +112,7 @@ $dollarsSummaryDirect = $grants->getDirectDollars("prior");
 $grants->compileGrants("Financial");
 $dollarsCompiledTotal = $grants->getTotalDollars("compiled");
 $dollarsCompiledDirect = $grants->getDirectDollars("compiled");
+$numPatents = $patents->getCount();
 
 ?>
 <style>
@@ -232,12 +239,16 @@ if (!empty($mentors)) {
 		<td class='label profileHeader'>Total Dollars<br>from Grants<br>(External Sources Only):</td>
 		<td class='value profileHeader'><?= REDCapManagement::prettyMoney($dollarsSummaryTotal) ?></td>
 	</tr>
-	<tr>
-		<td class='label profileHeader'>Mentors:</td>
-		<td class='value profileHeader'><?= printList($mentors).$numMentorArticlesHTML ?></td>
-		<td class='label profileHeader'>Resources Used:</td>
-		<td class='value profileHeader'><?= printList($resources) ?></td>
-	</tr>
+    <tr>
+        <td class='label profileHeader'>Mentors:</td>
+        <td class='value profileHeader'><?= printList($mentors).$numMentorArticlesHTML ?></td>
+        <td class='label profileHeader'>Resources Used:</td>
+        <td class='value profileHeader'><?= printList($resources) ?></td>
+    </tr>
+    <tr>
+        <td class='label profileHeader'>Number of Confirmed Patents:</td>
+        <td class='value profileHeader'><?= $numPatents ?></td>
+    </tr>
     <?php
 
     $bibliometricScores = [];

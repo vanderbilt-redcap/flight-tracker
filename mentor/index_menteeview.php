@@ -30,7 +30,8 @@ if ($_REQUEST['uid'] && DEBUG) {
     $userid2 = $userid;
     $uidString = "";
 }
-authenticate($userid2, $_REQUEST['menteeRecord']);
+
+$dateToRemind = "now";
 
 echo "<link rel='stylesheet' type='text/css' href='".Application::link("mentor/css/simptip.css")."' media='screen,projection' />\n";
 
@@ -46,7 +47,7 @@ if ($_REQUEST['menteeRecord']) {
 
 $metadata = Download::metadata($token, $server);
 $allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
-$metadata = filterMetadata($metadata);
+$metadata = REDCapManagement::filterMetadataForForm($metadata, "mentoring_agreement");
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 $choices = REDCapManagement::getChoices($metadata);
 $notesFields = getNotesFields($metadataFields);
@@ -74,6 +75,8 @@ foreach ($redcapData as $row) {
 list($priorNotes, $instances) = makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $currInstance);
 
 $welcomeText = "<p>Below is the Mentee-Mentor Agreement with <strong>$otherMentors</strong>. Once completed, $otherMentors will be notified to complete the agreement on their end.</p>";
+$secHeaders = getSectionHeadersWithMenteeQuestions($metadata);
+$sectionsToShow = getSectionsToShow($userid2, $secHeaders, $redcapData, $menteeRecordId, $currInstance);
 
 ?>
 
@@ -190,7 +193,7 @@ $('.viewagreement').hover(
 <div class="row col-lg-12 tdata" style="text-align: center;">
     <?= (!empty($surveysAvailableToPrefill)) ? makePrefillHTML($surveysAvailableToPrefill, $uidString) : "" ?>
     <?= (!empty($instances)) ? makePriorInstancesDropdown($instances, $currInstance) : "" ?>
-    <h4 style="margin: 0 auto; width: 100%;">Please fill out the checklist below</h4>
+    <h4 style="margin: 0 auto; width: 100%;">Please fill out the checklist below. Suggested tables are open. Click on a header to expand the table.</h4>
 </div>
 <form id="tsurvey" name="tsurvey">
       <section class="bg-light">
@@ -201,16 +204,21 @@ $('.viewagreement').hover(
 <div style="display: none"><table><tbody>
 <?php
 $skipFieldTypes = ["file", "text"];
-$secHeaders = getSectionHeadersWithMenteeQuestions($metadata);
 foreach ($metadata as $row) {
   $sec_header =  $row['section_header'];
   $fieldName = $row['field_name'];
   $rowName = $fieldName."-tr";
-  if(in_array($sec_header, $secHeaders) && !in_array($row['field_type'], $skipFieldTypes)) { ?>
+  if(in_array($sec_header, $secHeaders) && !in_array($row['field_type'], $skipFieldTypes)) {
+      $encodedSection = REDCapManagement::makeHTMLId($sec_header);
+      $displayCSS = "";
+      if (!in_array($encodedSection, $sectionsToShow)) {
+          $displayCSS = " display: none;";
+      }
+      ?>
             </tbody></table></div>
           <div class="tabledquestions">
-            <div class="mainHeader"><?php echo strip_tags($sec_header); ?></div>
-          <table id="quest1" class="table" style="margin-left: 0px;">
+            <div class="mainHeader" onclick="toggleSectionTable('.<?= $encodedSection ?>');"><?= strip_tags($sec_header) ?></div>
+          <table id="quest1" class="table <?= $encodedSection ?>" style="margin-left: 0px;<?= $displayCSS ?>">
               <thead>
               <tr>
                   <th style="text-align: left;" scope="col"></th>
@@ -290,18 +298,12 @@ foreach ($metadata as $row) {
 ?>
               </tbody>
           </table>
-              <?php
-              if (in_array("mentoring_agreement_evaluations", $allMetadataForms)) {
-                  $link = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations");
-                  echo "<h3><a href='$link'>When done, please provide feedback on the Mentoring Agreement</a></h3>";
-              }
-              ?>
-
 
           </div>
       </div>
       </div>
       </section>
+
 </form>
 <div class="fauxcomment" style="display: none;"></div>
 <style type="text/css">
@@ -484,6 +486,7 @@ foreach ($metadata as $row) {
               letter-spacing: 7px;
               font-size: 24px;
               font-family: proxima-nova;
+                cursor: pointer;
             }
 
             .tabledquestions:nth-of-type(1) {
@@ -938,7 +941,7 @@ foreach ($metadata as $row) {
 
 </script>
 
-<?= makeCommentJS($userid2, $menteeRecordId, $currInstance, $currInstance, $priorNotes) ?>
+<?= makeCommentJS($userid2, $menteeRecordId, $currInstance, $currInstance, $priorNotes, $names[$menteeRecordId], $dateToRemind, TRUE) ?>
 
 
 <style type="text/css">

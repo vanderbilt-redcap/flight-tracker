@@ -39,7 +39,7 @@ div.right { border-left: 1px dotted black; border-right: 1px solid #888888; padd
 div.centered,table.centered { margin: 0px auto; }
 table { border-collapse: collapse; }
 .duplicated { background-color: #fff360; }
-.citation,.finalCitation,.finalOmit { padding: 5px; }
+.citation,.finalCitation,.finalOmit,.patent { padding: 5px; }
 .citationCategories { float: right; background-color: white; padding: 6px 3px 6px 3px; font-weight: bold; position: relative; display: inline-block; }
 .citationCategories .tooltiptext { font-size: 13px; font-weight: normal; visibility: hidden; width: 250px; background-color: #555; color: #fff; text-align: center; padding: 5px 0; border-radius: 6px; position: absolute; z-index: 1; bottom: 100%; left: 50%; margin-left: -125px; opacity: 0; transition: opacity 0.3s; }
 .citationCategories .tooltiptext b { font-size: 14px; font-weight: bold; }
@@ -128,7 +128,7 @@ p.bordered,div.bordered { border: 1px solid #888; }
 .nounderline { text-decoration: none; }
 .alignright { text-align: right; }
 td.leftAlignedCell,th.leftAlignedCell { text-align: left; padding-top: 15px; padding-bottom: 15px; }
-td.leftAlignedCell p.citation { padding: 6px 0; margin: 0; }
+td.leftAlignedCell p.citation,p.patent { padding: 6px 0; margin: 0; }
 .sourceInCitation { font-weight: bold; color: #888; }
 .smallmargin { margin: 5px 0; }
 .bigger { font-size: 18px; }
@@ -141,3 +141,4 @@ img.thumbnail { width: 125px; height: auto; }
 .top-horizontal-scroll { height: 20px; overflow-x: scroll; overflow-y:hidden; }
 .top-horizontal-scroll div { height: 20px; }
 .noBorderCollapse { border-collapse: separate; }
+.ui-dialog-titlebar { background-color: #d4d4eb; }

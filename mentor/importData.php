@@ -8,9 +8,6 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 
-$recordId = $_REQUEST['record'];
-authenticate($userid, $recordId);
-
 $instance = $_REQUEST['instance'];
 
 $metadata = Download::metadata($token, $server);

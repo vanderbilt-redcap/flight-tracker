@@ -180,6 +180,10 @@ function updateAbstracts($token, $server, $pid) {
 }
 
 function updateExPORTER($token, $server, $pid, $records) {
+    if (empty($records)) {
+        return [];
+    }
+
 	$files = [];
 	$abstractFiles = [];
 

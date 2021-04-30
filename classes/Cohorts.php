@@ -20,8 +20,44 @@ class Cohorts {
 		}
 
 		$this->settingName = "configs";
+		$this->readonlySettingName = "readonlySettings";
 		$this->configs = $this->getConfigs();
+		$this->readonlySettings = $this->getReadonlyConfiguration();
 	}
+
+	public function addReadonlyPid($cohort, $readonlyPid, $readonlyToken) {
+	    $this->readonlySettings[$cohort] = [ "pid" => $readonlyPid, "token" => $readonlyToken, ];
+	    $this->save();
+    }
+
+    public function hasReadonlyProjectsEnabled() {
+	    $supertoken = Application::getSetting("supertoken", Application::getPid($this->token));
+	    if (!$supertoken) {
+	        return FALSE;
+        }
+	    if (preg_match("/v\d+\.\d+\.\d+/", APP_PATH_WEBROOT, $matches)) {
+	        $version = preg_replace("/^v/", "", $matches[0]);
+	        if (REDCapManagement::versionGreaterThanOrEqualTo($version, "9.10.0")) {
+	            return TRUE;
+            }
+        }
+	    return FALSE;
+    }
+
+    public function getExternalModuleFields() {
+	    return [$this->hijackedField, $this->readonlySettingName];
+    }
+
+	private function getReadonlyConfiguration() {
+	    if (!$this->module) {
+	        return [];
+        }
+	    $readonlySettings = $this->module->getProjectSetting($this->readonlySettingName);
+	    if (!$readonlySettings) {
+	        return [];
+        }
+	    return $readonlySettings;
+    }
 
 	public function makeCohortsSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
 	    return $this->makeCohortSelect($defaultCohort, $onchangeJS, $displayAllOption);
@@ -58,6 +94,19 @@ class Cohorts {
 
 	public function makeCohortSelectUI($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
 	    return $this->makeCohortSelect($defaultCohort, $onchangeJS, $displayAllOption);
+    }
+
+    public function getReadonlyPortalValue($cohort, $key) {
+	    $cohortNames = $this->getCohortNames();
+	    if (!in_array($cohort, $cohortNames)) {
+	        return "";
+        }
+	    if (($key == "pid") && isset($this->readonlySettings[$cohort]["pid"])) {
+	        return $this->readonlySettings[$cohort]["pid"];
+        } else if (($key == "token") && isset($this->readonlySettings[$cohort]["token"])) {
+	        return $this->readonlySettings[$cohort]["token"];
+        }
+	    return "";
     }
 
 	private function getConfigs() {
@@ -168,8 +217,10 @@ class Cohorts {
 
 	private function save() {
 		if ($this->module) {
-			$this->module->setProjectSetting($this->settingName, $this->configs);
+            $this->module->setProjectSetting($this->settingName, $this->configs);
+            $this->module->setProjectSetting($this->readonlySettingName, $this->readonlySettings);
 		} else if ($this->metadata) {
+		    # do not save readonly pids because this methodology is depracated
 			$json = json_encode($this->configs);
 			$newMetadata = array();
 			foreach ($this->metadata as $row) {
@@ -191,4 +242,6 @@ class Cohorts {
 	private $metadata;
 	private $hijackedField;
 	private $configs;
+	private $readonlySettings;
+	private $readonlySettingName;
 }

@@ -17,8 +17,8 @@ if (isset($_POST['title'])) {
 	$name = $_POST['title'];
 	$config = $_POST['config'];
 
-	if (preg_match("/['\"#]/", $name)) {
-		echo "Invalid name. Title cannot contain single-quotes, hashtags, or double-quotes."; 
+	if (preg_match("/['\"#&]/", $name)) {
+		echo "Invalid name. Title cannot contain single-quotes, hashtags, ampersands, or double-quotes.";
 	} else {
 		$cohorts = new Cohorts($token, $server, CareerDev::getModule());
 		$feedback = $cohorts->addCohort($name, $config);

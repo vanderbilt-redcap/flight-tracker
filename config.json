@@ -29,6 +29,66 @@
 				"name": "Flight Tracker",
 				"icon": "report",
 				"url": "index.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/intro.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/index.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/index_menteeview.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/index_mentorview.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/index_complete.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/addMentor.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/change.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/getREDCapUserid.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/importData.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/schedule_email.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/uploadSignature.php"
+			},
+			{
+				"name": "Mentoring Agreement",
+				"icon": "",
+				"url": "mentor/_agreement_save.php"
 			}
 		]
 	},
@@ -53,18 +113,6 @@
    "no-auth-pages": [
        "brag",
 	   "wrangler/certifyPub",
-	   "mentor/_agreement_save",
-	   "mentor/addMentor",
-	   "mentor/intro",
-	   "mentor/index",
-	   "mentor/index_mentorview",
-	   "mentor/getREDCapUserid",
-	   "mentor/index_complete",
-	   "mentor/schedule_email",
-	   "mentor/change",
-	   "mentor/uploadSignature",
-	   "mentor/importData",
-	   "mentor/index_menteeview",
 	   "reporting/getData",
 	   "js/xtract.js",
 	   "emailMgmt/makeSurveyLinks"

@@ -94,6 +94,56 @@ require_once(dirname(__FILE__)."/css.php");
                 alert("Please specify a citation!");
             }
         }
+
+        function resetPatent(id) {
+            resetCitation(id);
+        }
+
+        function selectAllPatents(divSelector) {
+            selectAllCitations(divSelector);
+        }
+
+        function unselectAllPatents(divSelector) {
+            unselectAllCitations(divSelector);
+        }
+
+        function includePatents(patents) {
+            let splitPatents = patents.split(/\n/);
+            let numbers = [];
+            for (let i = 0; i < splitPatents.length; i++) {
+                let patent = splitPatents[i];
+                if (patent) {
+                    let number = getPatentNumber(patent);
+                    if (number) {
+                        numbers.push(number);
+                    }
+                }
+            }
+            if (numbers.length > 0) {
+                presentScreen("Saving...");
+                $.post('<?= Application::link("wrangler/savePatents.php") ?>', { record_id: '<?= $_GET['record'] ?>', numbers: numbers }, function(data) {
+                    console.log("Save complete "+JSON.stringify(data));
+                    clearScreen();
+                    if (data['error']) {
+                        makeNote(data['error']);
+                    } else if (data['errors']) {
+                        makeNote(data['errors']);
+                    } else {
+                        makeNote();
+                    }
+                });
+            } else {
+                alert("Please specify a patent!");
+            }
+        }
+
+        function includePatent(patent) {
+            if (patent) {
+                includePatents(patent);
+            } else {
+                alert("Please specify a patent!");
+            }
+        }
     </script>
 <?php
 

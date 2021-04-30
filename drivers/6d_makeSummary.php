@@ -56,78 +56,10 @@ function makeSummary($token, $server, $pid, $records, $allRecordRows = array()) 
 	CareerDev::log("6d CareerDev downloaded metadata: ".count($metadata));
 
 	# done in batches of 1 records
-	$errors = array();
 	$returnREDCapData = array();
 	foreach ($records as $recordId) {
-		$time1 = microtime(TRUE);
-		$rows = array();
-		$realRecord = FALSE;
-		foreach ($allRecordRows as $row) {
-			if ($row['record_id'] == $recordId) {
-				array_push($rows, $row);
-			}
-		}
-		if (empty($rows)) {
-			$rows = Download::records($token, $server, array($recordId));
-			$realRecord = TRUE;
-		}
-		$time2 = microtime(TRUE);
-		// CareerDev::log("6d CareerDev downloading $recordId took ".($time2 - $time1));
-		// echo "6d CareerDev downloading $recordId took ".($time2 - $time1)."\n";
-	
-		$time1 = microtime(TRUE);
-		$grants = new Grants($token, $server, $metadata);
-		$grants->setRows($rows);
-		$grants->compileGrants();
-		if ($realRecord) {
-			$result = $grants->uploadGrants();
-			$myErrors = Upload::isolateErrors($result);
-			$errors = array_merge($errors, $myErrors);
-		} else {
-			$row = $grants->makeUploadRow();
-			array_push($returnREDCapData, $row);
-		}
-		$time2 = microtime(TRUE);
-		// CareerDev::log("6d CareerDev processing grants $recordId took ".($time2 - $time1));
-		// echo "6d CareerDev processing grants $recordId took ".($time2 - $time1)."\n";
-
-		# update rows with new data
-		$time1 = microtime(TRUE);
-		$scholar = new Scholar($token, $server, $metadata, $pid);
-		$scholar->setGrants($grants);   // save compute time
-		if ($realRecord) {
-			$scholar->downloadAndSetup($recordId);
-		} else {
-			$scholar->setRows($rows);
-		}
-		$scholar->process();
-		if ($realRecord) {
-			$result = $scholar->upload();
-		} else {
-			$row = $scholar->makeUploadRow();
-			array_push($returnREDCapData, $row);
-		}
-		$time2 = microtime(TRUE);
-		// CareerDev::log("6d CareerDev processing scholar $recordId took ".($time2 - $time1));
-		// echo "6d CareerDev processing scholar $recordId took ".($time2 - $time1)."\n";
-		$myErrors = Upload::isolateErrors($result);
-		$errors = array_merge($errors, $myErrors);
-
-		$time1 = microtime(TRUE);
-		$pubs = new Publications($token, $server, $metadata);
-		$pubs->setRows($rows);
-		if ($realRecord) {
-			$result = $pubs->uploadSummary();
-		}
-		$time2 = microtime(TRUE);
-		// CareerDev::log("6d CareerDev processing publications $recordId took ".($time2 - $time1));
-		// echo "6d CareerDev processing publications $recordId took ".($time2 - $time1)."\n";
-		$myErrors = Upload::isolateErrors($result);
-		$errors = array_merge($errors, $myErrors);
-
-		if (!empty($errors)) {
-			throw new \Exception("Errors in record $recordId!\n".implode("\n", $errors));
-		}
+        $newData = summarizeRecord($token, $server, $recordId, $metadata, $allRecordRows);
+	    $returnREDCapData = array_merge($returnREDCapData, $newData);
         gc_collect_cycles();
 	}
 
@@ -137,6 +69,82 @@ function makeSummary($token, $server, $pid, $records, $allRecordRows = array()) 
 	if (!empty($allRecordRows)) {
 		return mergeNormativeRows($returnREDCapData);
 	}
+}
+
+function summarizeRecord($token, $server, $recordId, $metadata, $allRecordRows) {
+    $errors = [];
+    $returnREDCapData = [];
+
+    $time1 = microtime(TRUE);
+    $rows = array();
+    $realRecord = FALSE;
+    foreach ($allRecordRows as $row) {
+        if ($row['record_id'] == $recordId) {
+            array_push($rows, $row);
+        }
+    }
+    if (empty($rows)) {
+        $rows = Download::records($token, $server, array($recordId));
+        $realRecord = TRUE;
+    }
+    $time2 = microtime(TRUE);
+    // CareerDev::log("6d CareerDev downloading $recordId took ".($time2 - $time1));
+    // echo "6d CareerDev downloading $recordId took ".($time2 - $time1)."\n";
+
+    $time1 = microtime(TRUE);
+    $grants = new Grants($token, $server, $metadata);
+    $grants->setRows($rows);
+    $grants->compileGrants();
+    if ($realRecord) {
+        $result = $grants->uploadGrants();
+        $myErrors = Upload::isolateErrors($result);
+        $errors = array_merge($errors, $myErrors);
+    } else {
+        $row = $grants->makeUploadRow();
+        array_push($returnREDCapData, $row);
+    }
+    $time2 = microtime(TRUE);
+    // CareerDev::log("6d CareerDev processing grants $recordId took ".($time2 - $time1));
+    // echo "6d CareerDev processing grants $recordId took ".($time2 - $time1)."\n";
+
+    # update rows with new data
+    $time1 = microtime(TRUE);
+    $scholar = new Scholar($token, $server, $metadata, $pid);
+    $scholar->setGrants($grants);   // save compute time
+    if ($realRecord) {
+        $scholar->downloadAndSetup($recordId);
+    } else {
+        $scholar->setRows($rows);
+    }
+    $scholar->process();
+    if ($realRecord) {
+        $result = $scholar->upload();
+    } else {
+        $row = $scholar->makeUploadRow();
+        array_push($returnREDCapData, $row);
+    }
+    $time2 = microtime(TRUE);
+    // CareerDev::log("6d CareerDev processing scholar $recordId took ".($time2 - $time1));
+    // echo "6d CareerDev processing scholar $recordId took ".($time2 - $time1)."\n";
+    $myErrors = Upload::isolateErrors($result);
+    $errors = array_merge($errors, $myErrors);
+
+    $time1 = microtime(TRUE);
+    $pubs = new Publications($token, $server, $metadata);
+    $pubs->setRows($rows);
+    if ($realRecord) {
+        $result = $pubs->uploadSummary();
+    }
+    $time2 = microtime(TRUE);
+    // CareerDev::log("6d CareerDev processing publications $recordId took ".($time2 - $time1));
+    // echo "6d CareerDev processing publications $recordId took ".($time2 - $time1)."\n";
+    $myErrors = Upload::isolateErrors($result);
+    $errors = array_merge($errors, $myErrors);
+
+    if (!empty($errors)) {
+        throw new \Exception("Errors in record $recordId!\n".implode("\n", $errors));
+    }
+    return $returnREDCapData;
 }
 
 function mergeNormativeRows($unmerged) {

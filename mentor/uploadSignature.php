@@ -17,8 +17,6 @@ $mimeType = $_REQUEST['mime_type'];
 $instance = $_REQUEST['instance'];
 $date = $_REQUEST['date'];
 
-authenticate($userid, $menteeRecord);
-
 $dateField = $field."_date";
 $metadata = Download::metadata($token, $server);
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);

@@ -44,13 +44,9 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         }
         if ($has['coeus2']) {
             $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday");
-            if (date("Y-m-d") == "2020-11-19") {
-                $manager->addCron("drivers/refreshCOEUSFailedNumbers.php", "refreshCoeus2Numbers", "Thursday");
-            }
         }
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
         $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
-        $manager->addCron("publications/getAllPubs_func.php", "getPubs", "2021-03-23");
 
         # limited group because bibliometric updates take a lot of time due to rate limiters
 		$bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
@@ -67,11 +63,12 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		if ($has['vfrs']) {
 			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday");
 		}
-
-		# Research in Medicine -> Projects for Divisions
-		if (CareerDev::isVanderbilt() && in_array($pid, [126297])) {
-            $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Saturday");
+        if ($has['patent']) {
+            $manager->addCron("drivers/18_getPatents.php", "getPatents", "Tuesday");
         }
+
+        $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Saturday");
+        $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "2021-04-30");
 	}
 	echo $manager->getNumberOfCrons()." crons loaded\n";
 }
@@ -102,6 +99,9 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         if ($has['ldap']) {
             $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", $date, $records);
         }
+        if ($has['patent']) {
+            $manager->addCron("drivers/18_getPatents.php", "getPatents", $date, $records);
+        }
 
         $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday");
         if ($has['nih_reporter']) {
@@ -130,6 +130,7 @@ function checkMetadataForFields($token, $server) {
     $vars['news'] = FALSE;
     $vars['ldap'] = FALSE;
     $vars['nih_reporter'] = FALSE;
+    $vars['patent'] = FALSE;
 
     $regexes = [
         "/^coeus_/" => "coeus",
@@ -138,6 +139,7 @@ function checkMetadataForFields($token, $server) {
         "/^ldap_/" => "ldap",
         "/^summary_news$/" => "news",
         "/^nih_/" => "nih_reporter",
+        "/^patent_/" => "patent",
     ];
 
 	foreach ($metadata as $row) {

@@ -5,6 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 # This class handles publication data from PubMed, the VICTR fetch routine, and surveys.
 # It also provides HTML for data-wrangling the publication data
 
+require_once(dirname(__FILE__)."/Wrangler.php");
 require_once(dirname(__FILE__)."/Upload.php");
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Scholar.php");
@@ -219,7 +220,7 @@ class Citation {
 	}
 
 	public static function getImageSize() {
-		return 26;
+		return Wrangler::getImageSize();
 	}
 
 	# citationClass is notDone, included, or omitted
@@ -245,7 +246,7 @@ class Citation {
 		$pmid = $this->getPMID();
 		$html .= "<div class='citation $citationClass' id='citation_".$citationClass."$id'>";
 		$html .= "<div class='citationCategories'><span class='tooltiptext'>".$this->makeTooltip()."</span>".$this->getCategory()."</div>";
-		$html .= self::makeCheckbox($id, $checkboxClass)." ".$source.$this->getCitationWithLink();
+		$html .= Wrangler::makeCheckbox($id, $checkboxClass)." ".$source.$this->getCitationWithLink();
 		if (in_array($citationClass, $ableToReset)) {
             $html .= "<div style='text-align: right;' class='smallest'><span onclick='resetCitation(\"$id\");' class='finger'>reset</span></div>";
         }
@@ -332,34 +333,6 @@ class Citation {
 
 		return $html;
 	}
-
-	# img is unchecked, checked, or readonly
-	private static function makeCheckbox($id, $img) {
-	    $validImages = ["unchecked", "checked", "readonly"];
-	    if (!in_array($img, $validImages)) {
-	        throw new \Exception("Image ($img) must be in: ".implode(", ", $validImages));
-        }
-		$imgFile = "wrangler/".$img.".png";
-		$size = self::getImageSize()."px";
-		$js = "if ($(this).attr(\"src\").match(/unchecked/)) { $(\"#$id\").val(\"include\"); $(this).attr(\"src\", \"".Application::link("wrangler/checked.png")."\"); } else { $(\"#$id\").val(\"exclude\"); $(this).attr(\"src\", \"".Application::link("wrangler/unchecked.png")."\"); }";
-		if ($img == "unchecked") {
-			$value = "exclude";
-		} else if ($img == "checked") {
-			$value = "include";
-		} else {
-			$value = "";
-		}
-		$input = "<input type='hidden' id='$id' value='$value'>";
-		if (($img == "unchecked") || ($img == "checked")) {
-			return "<img src='".Application::link($imgFile)."' id='image_$id' onclick='$js' style='width: $size; height: $size;' align='left'>".$input;
-		}
-		if ($img == "readonly") {
-			return "<img src='".Application::link($imgFile)."' id='image_$id' style='width: $size; height: $size;' align='left'>".$input;
-		}
-		return "";
-	}
-
-
 
 	public function hasChanged() {
 		if (empty($this->origRow) && !empty($this->data)) {

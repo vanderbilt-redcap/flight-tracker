@@ -30,7 +30,6 @@ if ($_REQUEST['uid'] && DEBUG) {
     $userid2 = $userid;
     $uidString = "";
 }
-authenticate($userid2, $_REQUEST['menteeRecord']);
 
 $userids = Download::userids($token, $server);
 
@@ -58,7 +57,7 @@ list($firstName, $lastName) = getNameFromREDCap($userid2, $token, $server);
 $otherMentors = REDCapManagement::makeConjunction($myMentors["name"]);
 $otherMentees = REDCapManagement::makeConjunction($myMentees["name"]);
 
-$fields = array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields);
+$fields = array_merge(["record_id", "mentoring_userid", "mentoring_last_update", "mentor_panel_names", "mentoring_userid"], $metadataFields);
 $redcapData = Download::fieldsForRecords($token, $server, $fields, [$menteeRecordId]);
 if ($_REQUEST['instance']) {
     $currInstance = $_REQUEST['instance'];
@@ -66,6 +65,7 @@ if ($_REQUEST['instance']) {
     $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId);
     $currInstance = $maxInstance + 1;
 }
+$dateToRemind = getDateToRemind($redcapData, $menteeRecordId, $currInstance);
 $menteeInstance = getMaxInstanceForUserid($redcapData, $menteeRecordId, $userids[$menteeRecordId]);
 $surveysAvailableToPrefill = getMySurveys($userid2, $token, $server, $menteeRecordId, $currInstance);
 list($priorNotes, $instances) = makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $menteeInstance);
@@ -104,11 +104,12 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
                     foreach ($metadata as $row) {
                         if ($row['section_header'] && !in_array($row['field_type'], $skipFieldTypes)) {
                             $sections[$tableNum] = $row['section_header'];
+                            $encodedSection = REDCapManagement::makeHTMLId($row['section_header']);
 
                             if ($tableNum > 1) {
                                 $htmlRows[] = "</tbody></table>";
                             }
-                            $htmlRows[] = "<table id='quest$tableNum' class='table' style='margin-left: 0px;'>";
+                            $htmlRows[] = "<table id='quest$tableNum' class='table $encodedSection' style='margin-left: 0px;'>";
                             $htmlRows[] = '<thead>';
                             $htmlRows[] = '<tr>';
                             $htmlRows[] = '<th style="text-align: left;" scope="col"></th>';
@@ -211,11 +212,6 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
                     }
                     $htmlRows[] = "</tbody></table>";
                     echo implode("\n", $htmlRows)."\n";
-
-                    if (in_array("mentoring_agreement_evaluations", $allMetadataForms)) {
-                        $link = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations");
-                        echo "<h3><a href='$link'>When done, please provide feedback on the Mentoring Agreement</a></h3>";
-                    }
 
                     ?>
 
@@ -618,10 +614,13 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
 
 
     <?php
+        $sectionsToShow = getSectionsToShow($userid2, array_values($sections), $redcapData, $menteeRecordId, $currInstance);
         foreach ($sections as $tableNum => $header) {
+            $encodedSection = REDCapManagement::makeHTMLId($header);
             $header = strtolower($header);
             $header = beautifyHeader($header);
-            echo "\$('#quest".$tableNum."').before('<div class=\"verticalheader\" id=\"vh$tableNum\">$header</div>'); ";
+            echo "var header$tableNum = '$encodedSection';\n";
+            echo "\$('#quest".$tableNum."').before('<div class=\"verticalheader\" id=\"vh$tableNum\" onclick=\"toggleSectionTable(header$tableNum);\">$header</div>');\n";
         }
         ?>
     });
@@ -883,7 +882,7 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
 
 </style>
 
-<?= makeCommentJS($userid2, $menteeRecordId, $menteeInstance, $currInstance, $priorNotes) ?>
+<?= makeCommentJS($userid2, $menteeRecordId, $menteeInstance, $currInstance, $priorNotes, $menteeName, $dateToRemind, FALSE) ?>
 
 <style type="text/css">
     body {

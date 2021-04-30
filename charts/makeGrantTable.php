@@ -402,15 +402,6 @@ echo "</div>";
 echo "<script>
 $(document).ready(function() {
     $('td.timelineCell').attr('colspan', '$maxCols');
-    $('.top-horizontal-scroll').scroll(function(){
-        $('.horizontal-scroll').scrollLeft($('.top-horizontal-scroll').scrollLeft());
-    });
-    $('.horizontal-scroll').scroll(function(){
-        $('.top-horizontal-scroll').scrollLeft($('.horizontal-scroll').scrollLeft());
-    });
-    let horScrollWidth = $('.horizontal-scroll').width();
-    let tableWidth = $('.horizontal-scroll table').width();
-    $('.top-horizontal-scroll').css({ 'width': horScrollWidth });
-    $('.top-horizontal-scroll div').css({ 'width': tableWidth });
+    setupHorizontalScroll($('.horizontal-scroll table').width());
 });
 </script>";

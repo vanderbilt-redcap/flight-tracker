@@ -11,43 +11,6 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
 
-function authenticate($username, $menteeRecords) {
-    if (!is_array($menteeRecords)) {
-        $menteeRecords = [$menteeRecords];
-    }
-    if (!$username) {
-        # login to REDCap
-        require APP_PATH_DOCROOT.'/Config/init_functions.php';
-        System::initGlobalPage();
-    } else {
-        $token = Application::getSetting("token", $_GET['pid']);
-        $server = Application::getSetting("server", $_GET['pid']);
-        $userids = Download::userids($token, $server);
-        $mentorUserids = Download::primaryMentorUserids($token, $server);
-
-        $validUserids = [];
-        foreach ($menteeRecords as $menteeRecord) {
-            if (!$userids[$menteeRecord]) {
-                $userids[$menteeRecord] = [];
-            } else {
-                $userids[$menteeRecord] = [$userids[$menteeRecord]];
-            }
-            if (!$mentorUserids[$menteeRecord]) {
-                $mentorUserids[$menteeRecord] = [];
-            }
-            $validUserids = array_unique(array_merge($validUserids, $userids[$menteeRecord], $mentorUserids[$menteeRecord]));
-        }
-        if (isset($_GET['test'])) {
-            echo "Valid Userids: ".json_encode($validUserids)."<br>";
-            echo "Mentee Records: ".json_encode($menteeRecords)."<br>";
-        }
-        if (!in_array($username, $validUserids) && (!DEBUG || !in_array($_GET['uid'], $validUserids))) {
-            session_start();
-            die("You ($username) do not have access to this record! ".json_encode($_SESSION));
-        }
-    }
-}
-
 function makePercentCompleteJS() {
     $html = "<script>
     function getPercentComplete() {
@@ -160,27 +123,6 @@ function getLatestRow($recordId, $usernames, $redcapData) {
         }
     }
     return $latestRow;
-}
-
-function getRecordsAssociatedWithUserid($userid, $token, $server) {
-    $menteeUserids = Download::userids($token, $server);
-    $allMentorUserids = Download::primaryMentorUserids($token, $server);
-
-    $menteeRecordIds = [];
-    foreach ($menteeUserids as $recordId => $menteeUserid) {
-        if ($userid == $menteeUserid) {
-            $menteeRecordIds[] = $recordId;
-        }
-    }
-    foreach ($allMentorUserids as $recordId => $mentorUserids) {
-        if (in_array($userid, $mentorUserids)) {
-            $menteeRecordIds[] = $recordId;
-        }
-    }
-    if (isset($_GET['test'])) {
-        echo "Looking for $userid and found ".json_encode($menteeRecordIds)."<br>";
-    }
-    return $menteeRecordIds;
 }
 
 function getMenteesAndMentors($menteeRecordId, $userid, $token, $server) {
@@ -399,12 +341,40 @@ function getDateToRemind($data, $recordId, $instance) {
     return "";
 }
 
+function isFirstEntryForUser($data, $userid, $recordId, $instance) {
+    $firstInstance = 1e6;
+    $existingInstances = [];
+    foreach ($data as $row) {
+        if (($row['record_id'] == $recordId) && ($row['mentoring_userid'] == $userid)) {
+            if ($firstInstance > $row['redcap_repeat_instance']) {
+                $firstInstance = $row['redcap_repeat_instance'];
+            }
+            $existingInstances[] = $instance;
+        }
+    }
+    if (!in_array($instance, $existingInstances)) {
+        return TRUE;
+    } else {
+        return ($instance == $firstInstance);
+    }
+}
+
 # returns MDY
 function getDateToRevisit($data, $recordId, $instance) {
-    $monthsInFuture = REDCapManagement::findField($data, $recordId, "mentoring_revisit", "mentoring_agreement", $instance);
+    $module = Application::getModule();
+    $userid = $module->getUsername();
+    if (isFirstEntryForUser($data, $userid, $recordId, $instance)) {
+        $monthsInFuture = 6;
+    } else {
+        $monthsInFuture = 12;
+    }
     $lastUpdate = REDCapManagement::findField($data, $recordId, "mentoring_last_update", "mentoring_agreement", $instance);
-    $ts = strtotime($lastUpdate);
-    if (!$ts || !$lastUpdate) {
+    if ($lastUpdate) {
+        $ts = strtotime($lastUpdate);
+    } else {
+        $ts = FALSE;
+    }
+    if (!$ts) {
         $ts = time();
     }
     if ($monthsInFuture) {
@@ -465,6 +435,7 @@ function makeSurveyHTML($partners, $partnerRelationship, $row, $metadata) {
     $html .= "<p>Welcome to the Mentoring Agreement. The first step to completing the Mentoring Agreement is to reflect on what is important to you in a successful mentee-mentor relationship. Through a series of questions on topics such as meetings, communication, research, and approach to scholarly products, to name a few, this survey will help guide you through that process and provide you with a tool to capture your thoughts. The survey should take about 30 minutes to complete. Your $partnerRelationship ($partners) will also complete a survey.</p>";
     $html .= "<p><img src='$imageLink' style='float: left; margin-right: 39px;width: 296px;'>The mentee should complete the agreement first. An email will alert the mentor(s) whenever the agreement is submitted. The mentor(s) should arrange a time to meet with the mentee to fill out their part of the agreement, which will act as the final authorized/completed agreement. Then the completed agreement can be viewed, signed, and printed. A follow-up email will be scheduled for when the agreement should be revisited.</p>";
     $html .= "<p>Each section below will explore expectations and goals regarding relevant topics for the relationship, such as the approach to direct one-on-one meetings.</p>";
+    $html .= "<p>All sections recommended for you to fill out now are open, and other sections that aren't as timely are collapsed. You may revisit these collapsed sections as you wish by clicking on the header.</p>";
 
     $html .= "<script src='$scriptLink'></script>";
     $html .= "<script>
@@ -570,7 +541,7 @@ function getUseridsForRecord($token, $server, $recordId, $recipientType) {
             $userids = array_unique(array_merge($userids, $menteeUserids[$recordId]));
         }
     }
-    if (in_array($recipientType, ["mentors", "all"])) {
+    if (in_array($recipientType, ["mentor", "mentors", "all"])) {
         $mentorUserids = Download::primaryMentorUserids($token, $server);
         if ($mentorUserids[$recordId]) {
             $userids = array_unique(array_merge($userids, $mentorUserids[$recordId]));
@@ -590,25 +561,74 @@ function getEmailAddressesForRecord($userids) {
     return array_unique($emails);
 }
 
-function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInstance, $priorNotes) {
+function getSectionsToShow($username, $secHeaders, $redcapData, $menteeRecordId, $currInstance) {
+    $isFirstTime = isFirstEntryForUser($redcapData, $username, $menteeRecordId, $currInstance);
+    $firstTimeSections = [
+        "<h3>Mentee-Mentor 1:1 Meetings</h3>",
+        "<h3>Lab Meetings</h3>",
+        "<h3>Communication</h3>",
+    ];
+    $fillOutOnce = [
+        "h3Mentor_Panelh3" => "mentoring_panel_names",
+    ];
+    $sectionsToShow = [];
+    if ($isFirstTime) {
+        foreach ($firstTimeSections as $section) {
+            $encodedSection = REDCapManagement::makeHTMLId($section);
+            $sectionsToShow[] = $encodedSection;
+        }
+    } else {
+        foreach ($secHeaders as $secHeader) {
+            $encodedSection = REDCapManagement::makeHTMLId($secHeader);
+            if (!in_array($encodedSection, $firstTimeSections) && !isset($fillOutOnce[$encodedSection])) {
+                $sectionsToShow[] = $encodedSection;
+            }
+        }
+        foreach ($fillOutOnce as $section => $fieldToCheck) {
+            $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldToCheck, "mentoring_agreement", $currInstance);
+            if (!$value && !in_array($section, $sectionsToShow)) {
+                $sectionsToShow[] = $section;
+            }
+        }
+    }
+    return $sectionsToShow;
+}
+
+function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInstance, $priorNotes, $menteeName, $dateToRemind, $isMenteePage) {
     $html = "";
     $uidString = "";
     if (isset($_GET['uid'])) {
         $uidString = "&uid=$username";
     }
-    $url = $_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
     $verticalOffset = 50;
+    $recordString = "&record=".$menteeRecordId;
 
-    $agreementSaveURL = Application::link("mentor/_agreement_save.php").$uidString;
+    if ($isMenteePage) {
+        $functionToCall = "scheduleMentorEmail";
+    } else {
+        $functionToCall = "scheduleReminderEmail";
+    }
+
+    $agreementSaveURL = Application::link("mentor/_agreement_save.php").$uidString.$recordString;
     $priorNotesJSON = json_encode($priorNotes);
     $entryPageURL = Application::link("mentor/index.php");
-    $emailSendURL = Application::link("mentor/schedule_email.php").$uidString;
-    $changeURL = Application::link("mentor/change.php").$uidString;
+    $emailSendURL = Application::link("mentor/schedule_email.php").$uidString.$recordString;
+    $changeURL = Application::link("mentor/change.php").$uidString.$recordString;
     $html .="
 <script>
     var currcomment = '0';
     var priorNotes = $priorNotesJSON;
 
+    function toggleSectionTable(selector) {
+        if ($(selector).is(':visible')) {
+            console.log('Hiding '+selector);
+            $(selector).hide();
+        } else {
+            console.log('Showing '+selector);
+            $(selector).show();
+        }
+    }
+    
     function minutes_with_leading_zeros(dt) {
         return (dt.getMinutes() < 10 ? '0' : '') + dt.getMinutes();
     }
@@ -686,10 +706,12 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
             data :  'record_id=$menteeRecordId&redcap_repeat_instance=$currentInstance&'+serialized,
             success : function(result) {
                 console.log(result);
-                $('.sweet-modal-overlay').remove();
-                $.sweetModal({
-                    content: 'We\'ve saved your agreement. You can update your responses or return to Flight Tracker. Thank you!',
-                    icon: $.sweetModal.ICON_SUCCESS
+                $functionToCall(\"$menteeRecordId\", \"$menteeName\", \"$dateToRemind\", function(html) {
+                    $('.sweet-modal-overlay').remove();
+                    $.sweetModal({
+                        content: 'We\'ve saved your agreement. You can update your responses or return to Flight Tracker. Thank you!',
+                        icon: $.sweetModal.ICON_SUCCESS
+                    });
                 });
             },
             error: function(xhr, resp, text) {
@@ -745,34 +767,26 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
         return '$entryPageURL';
     }
     
-    function scheduleMentorEmail(menteeRecord, menteeName) {
+    function scheduleMentorEmail(menteeRecord, menteeName, dateToRemind, cb) {
         let link = getLinkForEntryPage();
         let subject = menteeName+'\'s Mentoring Agreement';
-        let paragraph1 = '<p>Your mentee ('+menteeName+') has completed an initial mentoring agreement and would like you to review the following Mentee-Mentor Agreement. Please schedule a time with your mentee (included on this email) to follow up and finalize this agreement.</p>';
+        let paragraph1 = '<p>Your mentee ('+menteeName+') has completed an entry in her/his mentoring agreement and would like you to review the following Mentee-Mentor Agreement. Please schedule a time with your mentee (included on this email) to follow up and finalize this agreement.</p>';
         let paragraph2 = '<p><a href=\"'+link+'\">'+link+'</p>';
         let message = paragraph1 + paragraph2;
-        scheduleEmail('all', menteeRecord, subject, message, 'now');
+        scheduleEmail('all', menteeRecord, subject, message, dateToRemind, cb);
     }
 
-    function scheduleMenteeEmail(menteeRecord, menteeName) {
+    function scheduleReminderEmail(menteeRecord, menteeName, dateToSend, cb) {
         let link = getLinkForEntryPage();
-        let subject = 'Your Mentoring Agreement';
-        let paragraph1 = '<p>'+menteeName+',</p><p>Your mentor(s) have/has completed their Mentoring Agreement. You may view the completed agreement at the link below. It is highly recommended that you discuss the agreement face-to-face soon.</p>';
+        let subject = 'Reminder: Your Mentoring Agreement';
+        let dear = '<p>Dear '+menteeName+',</p>';
+        let paragraph1 = '<p>A follow-up meeting with your mentor is requested. Please fill out a survey via the below link and then schedule a meeting to review your mentoring agreement with your mentor.</p>';
         let paragraph2 = '<p><a href=\"'+link+'\">'+link+'</p>';
-        let message = paragraph1 + paragraph2;
-        scheduleEmail('mentee', menteeRecord, subject, message, 'now');
-    }
-
-    function scheduleReminderEmail(menteeRecord, menteeName, dateToSend) {
-        let link = getLinkForEntryPage();
-        let subject = 'Reminder: '+menteeName+'\'s Mentoring Agreement';
-        let paragraph1 = '<p>Your mentee ('+menteeName+') has completed an initial mentoring agreement and would like you to review the following Mentee-Mentor Agreement.</p>';
-        let paragraph2 = '<p><a href=\"'+link+'\">'+link+'</p>';
-        let message = paragraph1 + paragraph2;
-        scheduleEmail('all', menteeRecord, subject, message, dateToSend);
+        let message = dear + paragraph1 + paragraph2;
+        scheduleEmail('mentee', menteeRecord, subject, message, dateToSend, cb);
     }
     
-    function scheduleEmail(recipientType, menteeRecord, subject, message, dateToSend) {
+    function scheduleEmail(recipientType, menteeRecord, subject, message, dateToSend, cb) {
         var datetimeToSend = dateToSend+' 09:00';
         if (dateToSend == 'now') {
             datetimeToSend = 'now';
@@ -781,6 +795,9 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
             { menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend },
             function(html) {
             console.log(html);
+            if (cb) {
+                cb(html);
+            }
         });
     }
 

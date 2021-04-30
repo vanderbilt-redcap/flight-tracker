@@ -522,9 +522,38 @@ class Download {
 
 	}
 
+	public static function hasField($pid, $field, $instrument) {
+	    $json = \REDCap::getDataDictionary($pid, "json", TRUE, NULL, $instrument);
+	    $limitedMetadata = json_decode($json, TRUE);
+	    $metadataFields = REDCapManagement::getFieldsFromMetadata($limitedMetadata);
+	    return in_array($field, $metadataFields);
+    }
+
+	public static function userRights($token, $server) {
+	    $data = [
+	        "token" => $token,
+            "content" => "user",
+            "format" => "json",
+        ];
+	    return self::sendToServer($server, $data);
+    }
+
 	public static function institutions($token, $server) {
 		return Download::oneField($token, $server, "identifier_institution");
 	}
+
+	public static function institutionsAsArray($token, $server) {
+	    $asStrings = self::institutions($token, $server);
+	    $institutions = [];
+	    foreach ($asStrings as $recordId => $str) {
+	        if ($str) {
+                $institutions[$recordId] = preg_split("/\s*[,\/;]\s*/", $str);
+            } else {
+	            $institutions[$recordId] = [];
+            }
+        }
+	    return $institutions;
+    }
 
 	public static function lastnames($token, $server) {
 		return Download::oneField($token, $server, "identifier_last_name");

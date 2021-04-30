@@ -56,14 +56,14 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 	$newToken = $_POST['token'];
 	$newServer = APP_PATH_WEBROOT_FULL."api/";
 	if (isValidToken($newToken)) {
-		$feedback = uploadProjectSettings($newToken, $newServer, $_POST['title']);
-		$projectId = getPIDFromToken($newToken, $newServer);
-		$eventId = getEventIdForClassical($projectId);
+		$feedback = \Vanderbilt\FlightTrackerExternalModule\uploadProjectSettings($newToken, $newServer, $_POST['title']);
+		$projectId = REDCapManagement::getPIDFromToken($newToken, $newServer);
+		$eventId = REDCapManagement::getEventIdForClassical($projectId);
 
 		displayInstallHeaders(CareerDev::getModule(), $newToken, $newServer, $projectId, $_POST['title']);
 		echo "<h1>Academic Departments</h1>\n";
 
-		$settingFields = array(
+		$settingFields = [
 				'institution' => $_POST['institution'],
 				'short_institution' => $_POST['short_institution'],
 				'other_institutions' => $_POST['other_institutions'],
@@ -79,14 +79,14 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 				'internal_k_length' => '3',
 				'k12_kl2_length' => '3',
 				'individual_k_length' => '5',
-				'default_from' => 'noreply@vumc.org',
+				'default_from' => 'noreply.flighttracker@vumc.org',
 				'run_tonight' => FALSE,
 				'grant_class' => $_POST['grant_class'],
 				'grant_number' => $_POST['grant_number'],
                 'auto_recalculate' => '1',
                 'shared_forms' => [],
-				);
-		setupModuleSettings($projectId, $settingFields);
+				];
+        \Vanderbilt\FlightTrackerExternalModule\setupModuleSettings($projectId, $settingFields);
 
 		$metadata = Download::metadata($newToken, $newServer);
         $formsAndLabels = CareerDev::getRepeatingFormsAndLabels($metadata);
@@ -99,7 +99,7 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 						"initial_survey" => "Flight Tracker Initial Survey",
 						"followup" => "Flight Tracker Followup Survey",
 						);
-		setupSurveys($projectId, $surveysAndLabels);
+		REDCapManagement::setupSurveys($projectId, $surveysAndLabels);
 
 		echo makeDepartmentPrompt($projectId);
 		echo makeInstallFooter();
@@ -118,41 +118,6 @@ function redirectToAddScholars() {
 
 function isValidToken($token) {
 	return REDCapManagement::isValidToken($token);
-}
-
-function uploadProjectSettings($token, $server, $title) {
-	$redcapData = array(
-				"is_longitudinal" => 0,
-				"surveys_enabled" => 1,
-				"record_autonumbering_enabled" => 1,
-				"project_title" => "Flight Tracker - ".$title,
-				"custom_record_label" => "[identifier_first_name] [identifier_last_name]",
-				);
-	$feedback = Upload::projectSettings($redcapData, $token, $server);
-	return $feedback;
-}
-
-
-function getPIDFromToken($token, $server) {
-	return REDCapManagement::getPIDFromToken($token, $server);
-}
-
-function getEventIdForClassical($projectId) {
-	return REDCapManagement::getEventIdForClassical($projectId);
-}
-
-function getExternalModuleId($prefix) {
-	return REDCapManagement::getExternalModuleId($prefix);
-}
-
-function setupModuleSettings($projectId, $fields) {
-	foreach ($fields as $field => $value) {
-		CareerDev::setSetting($field, $value, $projectId);
-	}
-}
-
-function setupSurveys($projectId, $surveysAndLabels) {
-	REDCapManagement::setupSurveys($projectId, $surveysAndLabels);
 }
 
 function sendErrorMessage($mssg) {

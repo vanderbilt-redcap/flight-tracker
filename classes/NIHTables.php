@@ -94,7 +94,13 @@ class NIHTables {
 			$data = $this->get5Data($table);
             $namesPre = $this->downloadPredocNames();
             $namesPost = $this->downloadPostdocNames($table);
-            return self::getHTMLPrefix($table).self::makeDataIntoHTML($data, $namesPre, $namesPost);
+            $html = "";
+            if (isset($_GET['test'])) {
+                $html .= "<p class='centered'>Predoc Names: ".REDCapManagement::json_encode_with_spaces($namesPre)."</p>";
+                $html .= "<p class='centered'>Postdoc Names: ".REDCapManagement::json_encode_with_spaces($namesPost)."</p>";
+            }
+            $html .= self::getHTMLPrefix($table).self::makeDataIntoHTML($data, $namesPre, $namesPost);
+            return $html;
 		} else if (self::beginsWith($table, array("6A", "6B"))) {
 			$html = "";
 			$html .= self::getHTMLPrefix($table);
@@ -1793,7 +1799,7 @@ class NIHTables {
             $allNames = [];
 		}
 		if (isset($_GET['test'])) {
-		    echo "Returning ".count($allNames)." for ".count($records)." records.<br>";
+		    echo "Returning ".count($allNames)." for ".json_encode($records)." records.<br>";
             if (self::isPredocTable($table)) {
                 echo "predoc table $table<br>";
             } else if (self::isPostdocTable($table)) {
@@ -1822,7 +1828,7 @@ class NIHTables {
                 echo "Looking in part $part with grant types ".json_encode($thisGrantTypes)."<br>";
             }
             if (in_array($part, [1, 3])) {
-                $trainingData = Download::trainingGrants($this->token, $this->server, [], [5, 6, 7], [], $this->metadata);
+                $trainingData = Download::trainingGrants($this->token, $this->server, [], [5, 6, 7], $records, $this->metadata);
                 if (isset($_GET['test'])) {
                     echo "Downloaded ".count($trainingData)." rows of training grants<br>";
                 }

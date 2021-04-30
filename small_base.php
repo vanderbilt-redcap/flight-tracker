@@ -1108,15 +1108,7 @@ function makeHelpLink() {
 }
 
 function getFieldsOfType($metadata, $fieldType, $validationType = "") {
-	$fields = array();
-	foreach ($metadata as $row) {
-		if ($row['field_type'] == $fieldType) {
-			if (!$validationType || ($validationType == $row['text_validation_type_or_show_slider_number'])) {
-				array_push($fields, $row['field_name']);
-			}
-		}
-	}
-	return $fields;
+    return REDCapManagement::getFieldsOfType($metadata, $fieldType, $validationType);
 }
 
 function findMaxInstance($data, $instrument) {
@@ -1263,44 +1255,104 @@ function deleteRecords($token, $server, $records) {
     return Upload::deleteRecords($token, $server, $records);
 }
 
+function copyExternalModuleSettings($module, $srcPid, $destPid, $overwriteList, $omitList) {
+    $projectSettings = $module->getProjectSettings($srcPid);
+    $copiedKeys = [];
+    foreach ($projectSettings as $key => $value) {
+        if (!in_array($key, $omitList)) {
+            $copiedKeys[] = $key;
+            if (isset($overwriteList[$key])) {
+                $module->setProjectSetting($key, $overwriteList[$key], $destPid);
+            } else if (isset($value['value'])) {
+                $module->setProjectSetting($key, $value['value'], $destPid);
+            } else {
+                $module->setProjectSetting($key, $value, $destPid);
+            }
+        }
+    }
+    Application::log("Copied External Module Settings from $srcPid to $destPid: ".implode(", ", $copiedKeys));
+}
+
+function uploadProjectSettings($token, $server, $title) {
+    $redcapData = [
+        "is_longitudinal" => 0,
+        "surveys_enabled" => 1,
+        "record_autonumbering_enabled" => 1,
+        "project_title" => Application::getProgramName()." - ".$title,
+        "custom_record_label" => "[identifier_first_name] [identifier_last_name]",
+    ];
+    $feedback = Upload::projectSettings($redcapData, $token, $server);
+    return $feedback;
+}
+
+
+function getPIDFromToken($token, $server) {
+    return REDCapManagement::getPIDFromToken($token, $server);
+}
+
+function getEventIdForClassical($projectId) {
+    return REDCapManagement::getEventIdForClassical($projectId);
+}
+
+function getExternalModuleId($prefix) {
+    return REDCapManagement::getExternalModuleId($prefix);
+}
+
+function setupModuleSettings($projectId, $fields) {
+    foreach ($fields as $field => $value) {
+        CareerDev::setSetting($field, $value, $projectId);
+    }
+}
+
+function setupSurveys($projectId, $surveysAndLabels) {
+    REDCapManagement::setupSurveys($projectId, $surveysAndLabels);
+}
+
 function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
 	$allFeedback = array();
 	$destRecords = Download::recordIds($destToken, $server);
 	if (!empty($destRecords)) {
-		$feedback = \Vanderbilt\FlightTrackerExternalModule\deleteRecords($destToken, $server, $destRecords);
-		$output = json_encode($feedback);
-		CareerDev::log("Delete project: ".count($destRecords)." records: $output");
+		$feedback = Upload::deleteRecords($destToken, $server, $destRecords);
+		CareerDev::log("Delete project: ".count($destRecords)." records: ".json_encode($feedback));
 		array_push($allFeedback, $feedback);
 	}
 
-	\Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcToken, $server, $destToken, $server);
+    # turn off autonumbering in new project
+    $projectSettings = [
+        "record_autonumbering_enabled" => 0,
+        "project_title" => Application::getProgramName()." - ".$cohort,
+        ];
+    Upload::projectSettings($projectSettings, $destToken, $server);
 
-	$feedback = Upload::metadata(\Vanderbilt\FlightTrackerExternalModule\cleanOutJSONs($metadata), $destToken, $server);
-	$calcFields = \Vanderbilt\FlightTrackerExternalModule\getFieldsOfType($metadata, "calc");
-	$timeFields = \Vanderbilt\FlightTrackerExternalModule\getFieldsOfType($metadata, "text", "datetime_ymd");
+    $feedback = Upload::metadata(cleanOutJSONs($metadata), $destToken, $server);
+    $calcFields = REDCapManagement::getFieldsOfType($metadata, "calc");
+    $timeFields = REDCapManagement::getFieldsOfType($metadata, "text", "datetime_ymd");
 
-	$records = Download::cohortRecordIds($srcToken, $server, $metadata, $cohort);
-	foreach ($records as $record) {
-		$recordData = Download::records($srcToken, $server, array($record));
-		$newRecordData = array();
-		foreach ($recordData as $row) {
-			$newRow = array();
-			foreach ($row as $field => $value) {
-				if (!in_array($field, $calcFields) && !in_array($field, $timeFields)) {
-					$newRow[$field] = $value;
-				}
-			}
-			if (!empty($newRow)) {
-				array_push($newRecordData, $newRow);
-			}
-		}
-		if (!empty($newRecordData)) {
-			$feedback = Upload::rows($newRecordData, $destToken, $server);
-			CareerDev::log("Copy project: Record $record: ".json_encode($feedback));
-			array_push($allFeedback, $feedback);
-		}
-	}
-	return $allFeedback;
+    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcToken, $server, $destToken, $server);
+    CareerDev::log("Reset Repeating Instruments: ".json_encode($feedback));
+
+    $cohortRecords = Download::cohortRecordIds($srcToken, $server, CareerDev::getModule(), $cohort);
+    foreach ($cohortRecords as $record) {
+        $recordData = Download::records($srcToken, $server, array($record));
+        $newRecordData = array();
+        foreach ($recordData as $row) {
+            $newRow = array();
+            foreach ($row as $field => $value) {
+                if (!in_array($field, $calcFields) && !in_array($field, $timeFields)) {
+                    $newRow[$field] = $value;
+                }
+            }
+            if (!empty($newRow)) {
+                array_push($newRecordData, $newRow);
+            }
+        }
+        if (!empty($newRecordData)) {
+            $feedback = Upload::rows($newRecordData, $destToken, $server);
+            CareerDev::log("Copy project: Record $record: ".json_encode($feedback));
+            array_push($allFeedback, $feedback);
+        }
+    }
+    return $allFeedback;
 }
 
 function getQuestionsForForm($token, $server, $form) {

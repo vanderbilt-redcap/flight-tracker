@@ -223,33 +223,37 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             }
         }
 
-        foreach ($pids as $pid) {
+        foreach ($pids as $i => $pid) {
             if ($tokens[$pid] && $servers[$pid]) {
-                Application::log("Downloading data for pid $pid", $pid);
                 $token = $tokens[$pid];
                 $server = $servers[$pid];
-                $firstNames[$pid] = Download::firstnames($token, $server);
-                $lastNames[$pid] = Download::lastnames($token, $server);
                 $metadata = Download::metadata($token, $server);
-                $choices[$pid] = REDCapManagement::getChoices($metadata);
-                $metadataFields[$pid] = REDCapManagement::getFieldsFromMetadata($metadata);
-                foreach (array_keys($forms) as $instrument) {
-                    $field = $instrument."_complete";
-                    if (!isset($completes[$instrument])) {
-                        $completes[$instrument] = [];
+                if (REDCapManagement::isMetadataFilled($metadata)) {
+                    Application::log("Downloading data for pid $pid", $pid);
+                    $firstNames[$pid] = Download::firstnames($token, $server);
+                    $lastNames[$pid] = Download::lastnames($token, $server);
+                    $choices[$pid] = REDCapManagement::getChoices($metadata);
+                    $metadataFields[$pid] = REDCapManagement::getFieldsFromMetadata($metadata);
+                    foreach (array_keys($forms) as $instrument) {
+                        $field = $instrument."_complete";
+                        if (!isset($completes[$instrument])) {
+                            $completes[$instrument] = [];
+                        }
+                        $completes[$instrument][$pid] = Download::oneField($token, $server, $field);
                     }
-                    $completes[$instrument][$pid] = Download::oneField($token, $server, $field);
+                } else {
+                    unset($pids[$i]);
                 }
             }
         }
 
 	    # push
-	    foreach ($pids as $sourcePid) {
+	    foreach ($pids as $i => $sourcePid) {
 	        Application::log("Searching through pid $sourcePid", $sourcePid);
 	        if ($tokens[$sourcePid] && $servers[$sourcePid]) {
                 $sourceToken = $tokens[$sourcePid];
                 $sourceServer = $servers[$sourcePid];
-                foreach ($pids as $destPid) {
+                foreach ($pids as $i2 => $destPid) {
                     if (($destPid != $sourcePid) && $tokens[$destPid] && $servers[$destPid]) {
                         Application::log("Communicating between $sourcePid and $destPid", $destPid);
                         $destToken = $tokens[$destPid];
@@ -529,7 +533,20 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
     }
 
-	function cron() {
+    function cron() {
+	    if (CareerDev::isVanderbilt()) {
+	        try {
+	            $this->executeCron();
+            } catch (\Exception $e) {
+                \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", "Error in Flight Tracker cron", $e->getMessage()."<br><br>".$e->getTraceAsString());
+            }
+        } else {
+	        # Send bugs to REDCap Administrator
+            $this->executeCron();
+        }
+    }
+
+	function executeCron() {
         \System::increaseMaxExecTime(28800);   // 8 hours
 
 		$this->setupApplication();
@@ -540,16 +557,18 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         CareerDev::log("Checking for redcaptest in ".SERVER_NAME);
         if (preg_match("/redcaptest.vanderbilt.edu/", SERVER_NAME)) {
             CareerDev::log("Sharing because redcaptest");
+            $pidsUpdated = $this->shareDataInternally($activePids);
+        } else if (date("N") == "6") {
+            # only on Saturdays
             try {
                 $pidsUpdated = $this->shareDataInternally($activePids);
             } catch (\Exception $e) {
-                if (count($activePids) > 0) {
-                    \REDCap::email("scott.j.pearson@vumc.org", Application::getSetting("default_from", $activePids[0]), "Error in sharing surveys on redcaptest", $e->getMessage());
+                if ((count($activePids) > 0) && CareerDev::isVanderbilt()) {
+                    \REDCap::email("scott.j.pearson@vumc.org", Application::getSetting("default_from", $activePids[0]), Application::getProgramName().": Error in sharing surveys", $e->getMessage());
+                } else {
+                    Application::log("Error in data sharing", $activePids[0]);
                 }
             }
-        } else if (date("N") == "6") {
-            # only on Saturdays
-            $pidsUpdated = $this->shareDataInternally($activePids);
         }
 		foreach ($activePids as $pid) {
             $this->cleanupLogs($pid);
@@ -562,19 +581,24 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             CareerDev::setPid($pid);
             CareerDev::log("Using $tokenName $adminEmail", $pid);
             if ($token && $server && !$turnOffSet) {
-                # only have token and server in initialized projects
-                $mgr = new CronManager($token, $server, $pid);
-                if ($this->getProjectSetting("run_tonight", $pid)) {
-                    $this->setProjectSetting("run_tonight", FALSE, $pid);
-                    loadInitialCrons($mgr, FALSE, $token, $server);
-                } else {
-                    loadCrons($mgr, FALSE, $token, $server);
+                try {
+                    # only have token and server in initialized projects
+                    $mgr = new CronManager($token, $server, $pid);
+                    if ($this->getProjectSetting("run_tonight", $pid)) {
+                        $this->setProjectSetting("run_tonight", FALSE, $pid);
+                        loadInitialCrons($mgr, FALSE, $token, $server);
+                    } else {
+                        loadCrons($mgr, FALSE, $token, $server);
+                    }
+                    CareerDev::log($this->getName().": Running ".$mgr->getNumberOfCrons()." crons for pid $pid", $pid);
+                    $addlEmailText = in_array($pid, $pidsUpdated) ? "Surveys shared from other Flight Tracker projects" : "";
+                    $mgr->run($adminEmail, $tokenName, $addlEmailText);
+                    CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
+                } catch(\Exception $e) {
+                    Application::log("Error in cron logic", $pid);
+                    \REDCap::email($adminEmail, Application::getSetting("default_from"), Application::getProgramName()." Error in Cron", $e->getMessage());
                 }
-                CareerDev::log($this->getName().": Running ".$mgr->getNumberOfCrons()." crons for pid $pid", $pid);
-                $addlEmailText = in_array($pid, $pidsUpdated) ? "Surveys shared from other Flight Tracker projects" : "";
-                $mgr->run($adminEmail, $tokenName, $addlEmailText);
-                CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
-			}
+            }
 		}
 		REDCapManagement::cleanupDirectory(APP_PATH_TEMP, "/RePORTER_PRJ/");
 	}
@@ -583,16 +607,60 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		CareerDev::$passedModule = $this;
 	}
 
+	function getUsername() {
+        if (method_exists("ExternalModules", "getUsername")) {
+            return ExternalModules::getUsername();
+        }
+        if (USERID) {
+            return USERID;
+        }
+        return "";
+    }
+
 	function redcap_module_link_check_display($project_id, $link) {
-		if (SUPER_USER) {
-			return $link;
+	    $url = $link['url'];
+        $userid = $this->getUsername();
+        $isSuperUser = FALSE;
+        if (method_exists("ExternalModules", "isSuperUser")) {
+            $isSuperUser = ExternalModules::isSuperUser();
+        }
+
+        # hide mentor links by returning $emptyLink
+        $isMentorPage = preg_match("/mentor/", $url);
+        $emptyLink = [
+            "name" => "",
+            "icon" => "",
+			"url" => "",
+        ];
+
+        if ($isSuperUser || SUPER_USER) {
+            if (!$isMentorPage) {
+                return $link;
+            } else {
+                return $emptyLink;
+            }
 		}
 
-		if (!empty($project_id) && self::hasAppropriateRights(USERID, $project_id)) {
-			return $link;
+		if (empty($project_id)) {
+		    return null;
+        }
+
+        if (self::hasAppropriateRights($userid, $project_id)) {
+            if (!$isMentorPage) {
+                return $link;
+            } else {
+                return $emptyLink;
+            }
 		}
 
-		return null;
+        if ($isMentorPage) {
+            $params = REDCapManagement::getParameters($url);
+            if (preg_match("/^mentor\//", urldecode($params['page'])) && $this->hasMentorAgreementRights($project_id, $userid)) {
+                return $emptyLink;
+            }
+        }
+
+        return NULL;
 	}
 
 	function hook_every_page_before_render($project_id) {
@@ -658,7 +726,66 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		}
 	}
 
-	function makeHeaders($token, $server, $pid, $tokenName) {
+    function getRecordsAssociatedWithUserid($userid, $token, $server) {
+        $menteeUserids = Download::userids($token, $server);
+        $allMentorUserids = Download::primaryMentorUserids($token, $server);
+
+        $menteeRecordIds = [];
+        foreach ($menteeUserids as $recordId => $menteeUserid) {
+            if ($userid == $menteeUserid) {
+                $menteeRecordIds[] = $recordId;
+            }
+        }
+        foreach ($allMentorUserids as $recordId => $mentorUserids) {
+            if (in_array($userid, $mentorUserids)) {
+                $menteeRecordIds[] = $recordId;
+            }
+        }
+        if (isset($_GET['test'])) {
+            echo "Looking for $userid and found ".json_encode($menteeRecordIds)."<br>";
+        }
+        return $menteeRecordIds;
+    }
+
+    function hasMentorAgreementRights($project_id, $userid)
+    {
+        $token = $this->getProjectSetting("token", $project_id);
+        $server = $this->getProjectSetting("server", $project_id);
+        if (isset($_REQUEST['menteeRecord'])) {
+            $menteeRecord = $_REQUEST['menteeRecord'];
+        } else if (isset($_REQUEST['record'])) {
+            $menteeRecord = $_REQUEST['record'];
+        } else {
+            $records = $this->getRecordsAssociatedWithUserid($userid, $token, $server);
+            // Application::log("Got records ".json_encode($records));
+            if (!empty($records)) {
+                return TRUE;
+            }
+        }
+        $mentorUserids = Download::primaryMentorUserids($token, $server);
+        $menteeUserids = Download::userids($token, $server);
+        $validUserids = [];
+        if (!$menteeUserids[$menteeRecord]) {
+            $menteeUserids[$menteeRecord] = [];
+        } else {
+            $menteeUserids[$menteeRecord] = [$menteeUserids[$menteeRecord]];
+        }
+        if (!$mentorUserids[$menteeRecord]) {
+            $mentorUserids[$menteeRecord] = [];
+        }
+        $validUserids = array_unique(array_merge($validUserids, $menteeUserids[$menteeRecord], $mentorUserids[$menteeRecord]));
+
+        // Application::log("Comparing $userid to ".json_encode($validUserids));
+        if (in_array($userid, $validUserids)) {
+            return TRUE;
+        }
+        if (DEBUG && in_array($_GET['uid'], $validUserids)) {
+            return TRUE;
+        }
+        return FALSE;
+    }
+
+    function makeHeaders($token, $server, $pid, $tokenName) {
 		$str = "";
 		$str .= "<link rel='stylesheet' href='".CareerDev::link("/css/w3.css")."'>\n";
 		$str .= "<style>\n";
@@ -667,19 +794,20 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$str .= "@font-face { font-family: 'Museo Sans'; font-style: normal; font-weight: normal; src: url('".CareerDev::link("/fonts/exljbris - MuseoSans-500.otf")."'); }\n";
 
 		$str .= ".w3-dropdown-hover { display: inline-block !important; float: none !important; }\n";
-		$str .= ".w3-dropdown-hover button,a.w3-bar-link { font-size: 14px; }\n";
-			$str .= "a.w3-bar-link { display: inline-block !important; float: none !important; }\n";
+		$str .= ".w3-dropdown-hover button,a.w3-bar-link { font-size: 12px; }\n";
+		$str .= "a.w3-bar-link { display: inline-block !important; float: none !important; }\n";
 		$str .= ".w3-bar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; text-align: center !important; }\n";
-		$str .= "a.w3-button,button.w3-button { padding: 8px 12px !important; }\n";
+        $str .= "a.w3-button,button.w3-button { padding: 6px 4px !important; }\n";
+        $str .= "a.w3-button,button.w3-button.with-image { padding: 8px 4px 6px 4px !important; }\n";
 		$str .= "a.w3-button { color: black !important; float: none !important; }\n";
-		$str .= ".w3-button a,.w3-dropdown-content a { color: white !important; font-size: 16px !important; }\n";
+		$str .= ".w3-button a,.w3-dropdown-content a { color: white !important; font-size: 13px !important; }\n";
 		$str .= "p.recessed { font-size: 12px; color: #888888; font-size: 11px; margin: 4px 12px 4px 12px; }\n";
 		$str .= ".topHeaderWrapper { background-color: white; height: 80px; top: 0px; width: 100%; }\n";
 		$str .= ".topHeader { margin: 0 auto; max-width: 1200px; }\n";
 		$str .= ".topBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 0px; }\n";
 		if (!CareerDev::isREDCap()) {
 			$str .= "body { margin-bottom: 60px; }\n";    // for footer
-			$str .= ".bottomFooter { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; background-color: white; }\n";
+                $str .= ".bottomFooter { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; background-color: white; }\n";
 			$str .= ".bottomBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 5px; }\n";
 		}
 		$str .= "a.nounderline { text-decoration: none; }\n";
@@ -722,10 +850,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$navBar = new \Vanderbilt\CareerDevLibrary\NavigationBar();
 		$navBar->addFALink("home", "Home", CareerDev::getHomeLink());
 		$navBar->addFAMenu("clinic-medical", "General", CareerDev::getMenu("General"));
-		$navBar->addFAMenu("table", "View", CareerDev::getMenu("Data"));
+        $navBar->addMenu("<img src='".CareerDev::link("/img/grant_small.png")."'>Grants", CareerDev::getMenu("Grants"));
+        $navBar->addFAMenu("sticky-note", "Pubs", CareerDev::getMenu("Pubs"));
+        $navBar->addFAMenu("table", "View", CareerDev::getMenu("View"));
 		$navBar->addFAMenu("calculator", "Wrangle", CareerDev::getMenu("Wrangler"));
 		$navBar->addFAMenu("school", "Scholars", CareerDev::getMenu("Scholars"));
-		$navBar->addMenu("<img src='".CareerDev::link("/img/redcap_translucent_small.png")."'> REDCap", CareerDev::getMenu("REDCap"));
+		$navBar->addMenu("<img src='".CareerDev::link("/img/redcap_translucent_small.png")."'>REDCap", CareerDev::getMenu("REDCap"));
 		$navBar->addFAMenu("tachometer-alt", "Dashboards", CareerDev::getMenu("Dashboards"));
 		$navBar->addFAMenu("filter", "Cohorts / Filters", CareerDev::getMenu("Cohorts"));
 		$navBar->addFAMenu("chalkboard-teacher", "Mentors", CareerDev::getMenu("Mentors"));
@@ -809,8 +939,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		return FALSE;
 	}
 
-	private static function isModuleEnabled($pid) {
-		return \ExternalModules\ExternalModules::getProjectSetting("flightTracker", $pid, \ExternalModules\ExternalModules::KEY_ENABLED);
+	public function getDirectoryPrefix() {
+	    return $this->prefix;
+    }
+
+	private function isModuleEnabled($pid) {
+		return ExternalModules::getProjectSetting($this->getDirectoryPrefix(), $pid, \ExternalModules\ExternalModules::KEY_ENABLED);
 	}
 
 	private static function hasAppropriateRights($userid, $pid) {

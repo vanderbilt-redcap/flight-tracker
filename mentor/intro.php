@@ -27,8 +27,7 @@ if (isset($_GET['test'])) {
     echo "GET: ".$_GET['uid']."<br>";
 }
 
-$menteeRecordIds = getRecordsAssociatedWithUserid($username, $token, $server);
-authenticate($username, $menteeRecordIds);
+$menteeRecordIds = $module->getRecordsAssociatedWithUserid($username, $token, $server);
 
 if(isset($_REQUEST['uid']) && DEBUG){
     $username = $_REQUEST['uid'];

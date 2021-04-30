@@ -16,9 +16,13 @@ if (!$tableNum || !NIHTables::getTableHeader($tableNum)) {
 
 $metadata = Download::metadata($token, $server);
 $table = new NIHTables($token, $server, $pid, $metadata);
+$cohortStr = "";
+if ($_GET['cohort']) {
+    $cohortStr = "&cohort=".urlencode($_GET['cohort']);
+}
 
 echo "<h1>Table ".NIHTables::formatTableNum($tableNum)."</h1>\n";
-echo "<p class='centered'><a href='".Application::link("reporting/index.php")."'>Back to All Tables</a></p>";
+echo "<p class='centered'><a href='".Application::link("reporting/index.php").$cohortStr."'>Back to All Tables</a></p>";
 $note = "";
 if ($tableNum != "Common Metrics") {
     $note = " Its information must be re-keyed and uploaded through xTRACT.";

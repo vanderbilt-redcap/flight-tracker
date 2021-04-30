@@ -10,8 +10,6 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");
 
-authenticate($userid, $_REQUEST['record']);
-
 $recordId = $_REQUEST['record'];
 $value = $_REQUEST['value'];
 $fieldName = $_REQUEST['field_name'];

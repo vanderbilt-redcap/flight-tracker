@@ -24,7 +24,6 @@ if ($_GET['uid']) {
     $username = $userid;
     $uidString = "";
 }
-authenticate($username, $_REQUEST['menteeRecord']);
 
 require_once dirname(__FILE__).'/_header.php';
 
@@ -145,12 +144,6 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
 
           ?>
       </div>
-        <?php
-        if (in_array("mentoring_agreement_evaluations", $allMetadataForms)) {
-            $link = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations");
-            echo "<h3><a href='$link'>When done, please provide feedback on the Mentoring Agreement</a></h3>";
-        }
-        ?>
     </div>
   </div>
 </section>

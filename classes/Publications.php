@@ -7,6 +7,7 @@ namespace Vanderbilt\CareerDevLibrary;
 # It also provides HTML for data-wrangling the publication data
 
 require_once(dirname(__FILE__)."/Upload.php");
+require_once(dirname(__FILE__)."/Wrangler.php");
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Links.php");
 require_once(dirname(__FILE__)."/iCite.php");
@@ -56,7 +57,22 @@ class Publications {
         if ($institution) {
             $term .= "+AND+" . strtolower($institution) . "%5Bad%5D";
         }
-        return self::queryPubMed($term, $pid);
+        $pmids = self::queryPubMed($term, $pid);
+
+        $maximumThreshold = 2000;
+        if (count($pmids) > $maximumThreshold) {
+            $adminEmail = Application::getSetting("admin_email", $pid);
+            $defaultFrom = Application::getSetting("default_from", $pid);
+            $mssg = "Searching PubMed for $first $last returned ".count($pmids)." PMIDs in pid $pid! This is likely an error as it is above the threshold of $maximumThreshold. Data not uploaded.";
+            if ($adminEmail) {
+                \REDCap::email($adminEmail, $defaultFrom, Application::getProgramName()." Error", $mssg);
+                return [];
+            } else {
+                throw new \Exception($mssg);
+            }
+        } else {
+            return $pmids;
+        }
     }
 
     public static function searchPubMedForORCID($orcid, $pid) {
@@ -885,40 +901,6 @@ class Publications {
 		return "<input type='hidden' id=$idQuote$id$idQuote value=$valueQuote$value$valueQuote>";
 	}
 
-	private function rightColumnText() {
-		$html = "<button class='sticky biggerButton green' id='finalize' style='display: none; font-weight: bold;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'>Finalize Citations</button><br>\n";
-		$html .= "<div class='sticky red shadow' style='height: 180px; padding: 5px; vertical-align: middle; text-align: center; display: none;' id='uploading'>\n";
-		$html .= "<p>Uploading Changes...</p>\n";
-		$html .= "<p style='font-size: 12px;'>Redownloading citations from PubMed to ensure accuracy. May take up to one minute.</p>\n";
-		$html .= "</div>\n";
-
-		# make button show/hide at various pixelations
-		$html .= "<script>\n";
-
-		$html .= "\tfunction adjustFinalizeButton() {\n";
-		$html .= "\t\tvar mainTable = $('#main').position();\n";
-		$html .= "\t\tvar scrollTop = $(window).scrollTop();\n";
-		$html .= "\t\tvar finalizeTop = mainTable.top - scrollTop;\n";
-		# 100px is fixed position of the sticky class
-		$html .= "\t\tvar finalLoc = 100;\n";
-		$html .= "\t\tvar spacing = 20;\n";
-		$html .= "\t\tvar buttonSize = 40;\n";
-		$html .= "\t\tif (finalizeTop > finalLoc) { $('#finalize').css({ top: (finalizeTop+spacing)+'px' }); $('#uploading').css({ top: (finalizeTop+spacing+buttonSize)+'px' }); }\n";
-		$html .= "\t\telse { $('#finalize').css({ top: finalLoc+'px' }); $('#uploading').css({ top: (finalLoc+buttonSize)+'px' }); }\n";
-		$html .= "\t}\n";
-
-		$html .= "$(document).ready(function() {\n";
-		$html .= "\tadjustFinalizeButton();\n";
-		# timeout to overcome API rate limit; 1.5 seconds seems adeqate; 1.0 seconds fails with immediate click
-		$html .= "\tsetTimeout(function() {\n";
-		$html .= "\t\t$('#finalize').show();\n";
-		$html .= "\t}, 1500)\n";
-		$html .= "\t$(document).scroll(function() { adjustFinalizeButton(); });\n";
-		$html .= "});\n";
-		$html .= "</script>\n";
-		return $html;
-	}
-
 	public static function makeUncommonDefinition() {
 	    return NameMatcher::makeUncommonDefinition();
     }
@@ -929,45 +911,17 @@ class Publications {
 
     # returns HTML to edit the publication; used in data wrangling
 	public function getEditText() {
-		$html = "";
-		$html .= "<h1>Publication Wrangler</h1>\n";
-		$html .= "<p class='centered'>This page is meant to confirm the association of papers with authors. Please confirm all authors regardless of how the article is categorized.</p>\n";
-		if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
-			$html .= "<h2>".$this->recordId.": ".$this->name."</h2>\n";
-		}
-
         $notDone = $this->getCitationCollection("Not Done");
         $notDoneCount = $notDone->getCount();
-		if (!NameMatcher::isCommonLastName($this->lastName) && ($notDoneCount > 0)) {
-		    $html .= "<p class='centered bolded'>";
-		    $html .= $this->lastName." is an ".self::makeUncommonDefinition()." last name in the United States.<br>";
-		    $html .= "You likely can approve these publications without close review.<br>";
-		    $html .= "<a href='javascript:;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'><span class='green bolded'>Click here to approve all the publications for this record automatically.</span></a>";
-		    $html .= "</p>";
-        }
-
-		$included = $this->getCitationCollection("Included");
-		$includedCount = $included->getCount();
-		if ($includedCount == 1) {
-			$html .= "<h3 class='newHeader'>$includedCount Existing Citation | ";
-		} else if ($includedCount == 0) {
-			$html .= "<h3 class='newHeader'>No Existing Citations | ";
-		} else {
-			$html .= "<h3 class='newHeader'>$includedCount Existing Citations | ";
-		}
-
-		if ($notDoneCount == 1) {
-			$html .= "$notDoneCount New Citation</h3>\n";
-		} else if ($notDoneCount == 0) {
-			$html .= "No New Citations</h3>\n";
-		} else {
-			$html .= "$notDoneCount New Citations</h3>\n";
-		}
+        $included = $this->getCitationCollection("Included");
+        $includedCount = $included->getCount();
+        $wrangler = new Wrangler("Publications");
+		$html = $wrangler->getEditText($notDoneCount, $includedCount, $this->recordId, $this->name, $this->lastName);
 
 		$html .= self::manualLookup();
 		$html .= "<table style='width: 100%;' id='main'><tr>\n";
 		$html .= "<td class='twoColumn yellow' id='left'>".$this->leftColumnText()."</td>\n";
-		$html .= "<td id='right'>".$this->rightColumnText()."</td>\n";
+		$html .= "<td id='right'>".$wrangler->rightColumnText()."</td>\n";
 		$html .= "</tr></table>\n";
 
 		return $html;

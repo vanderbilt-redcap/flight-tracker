@@ -21,7 +21,6 @@ if(isset($_REQUEST['uid']) && DEBUG){
     $username = $userid;
     $uidString = "";
 }
-authenticate($username, $recordId);
 $error = "";
 $message = "";
 if (!isMentee($recordId, $username)) {

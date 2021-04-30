@@ -4,6 +4,7 @@ use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\CohortConfig;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Filter;
+use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 # rename, delete, reorder
@@ -16,6 +17,7 @@ require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Cohorts.php");
 require_once(dirname(__FILE__)."/../classes/CohortConfig.php");
 require_once(dirname(__FILE__)."/../classes/Filter.php");
+require_once(dirname(__FILE__)."/../classes/Links.php");
 
 echo \Vanderbilt\FlightTrackerExternalModule\getCohortHeaderHTML();
 
@@ -112,8 +114,13 @@ if (!empty($cohortTitles)) {
 	$redcapData = Download::getIndexedRedcapData($token, $server, $allFields);
 }
 if (count($cohortTitles) > 0) {
+    echo "<div id='cohortDialog' title='Create Cohort'><p>Are you sure that you want to create a project for Cohort <span id='cohortTitle' class='bolded'></span>?</p><p><button onclick='createCohortProject($(\"#cohortTitle\").html(), \"#cohortDialog\");'>Yes</button> <button onclick='$(\"#cohortDialog\").dialog(\"close\");'>Cancel</button></p></div>";
 	echo "<table class='centered'>\n";
-	echo "<tr class='paddedRow borderedRow whiteRow centeredRow'><td></td><th>Cohort Size</th><th>Delete</th><th>Rename</th></tr>\n";
+	echo "<tr class='paddedRow borderedRow whiteRow centeredRow'><td></td><th>Cohort Size</th><th>Delete</th><th>Rename</th>";
+	if ($cohorts->hasReadonlyProjectsEnabled()) {
+	    echo "<th>Make Cohort Project</th>";
+    }
+	echo "</tr>\n";
 	$metadata = Download::metadata($token, $server);
 	foreach ($cohortTitles as $title) {
 		$filter = new Filter($token, $server, $metadata);
@@ -126,9 +133,17 @@ if (count($cohortTitles) > 0) {
 		echo "<td>".count($records)." Scholars</td>\n";
 		echo "<td><button class='red biggerButton' onclick='deleteCohort(\"$title\", \"#$htmlTitle\");' style='font-weight: bold;'>X</button></td>\n";
 		echo "<td><button class='biggerButton' onclick='rename(\"#$htmlTitle\", this);'>Rename</button></td>\n";
+        if ($cohorts->hasReadonlyProjectsEnabled()) {
+            if ($cohortPid = $cohorts->getReadonlyPortalValue($title, "pid")) {
+                echo "<td>Project Enabled (".Links::makeProjectHomeLink($cohortPid, "PID $cohortPid").")</td>";
+            } else {
+                echo "<td><button onclick='$(\"#cohortTitle\").html(\"$title\"); $(\"#cohortDialog\").dialog(\"open\"); return false;'>Create Project</button></td>";
+            }
+        }
 		echo "</tr>\n";
 	}
 	echo "</table>\n";
+	echo "<script>$(document).ready(function() { $(\"#cohortDialog\").dialog({ autoOpen: false }); });</script>\n";
 } else {
 	echo "<p class='centered'>No Cohorts Available</p>\n";
 }

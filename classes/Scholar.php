@@ -2566,7 +2566,7 @@ class Scholar {
 	private function getTrainingStart($rows) {
         $result = $this->getGenericValueForField($rows, "summary_training_start");
 		$fieldName = $result->getField();
-        Application::log("getTrainingStart found result in $fieldName");
+        // Application::log("getTrainingStart found result in $fieldName");
         if (preg_match("/^promotion_/", $fieldName)) {
 			$positionChanges = self::getOrderedPromotionRows($rows);
 			$trainingRanks = array(9, 10);
@@ -2622,7 +2622,7 @@ class Scholar {
 	private function getTrainingEnd($rows) {
         $result = $this->getGenericValueForField($rows, "summary_training_end");
 		$fieldName = $result->getField();
-		Application::log("getTrainingEnd found result in $fieldName");
+		// Application::log("getTrainingEnd found result in $fieldName");
 		if (preg_match("/^promotion_/", $fieldName)) {
 			$positionChanges = self::getOrderedPromotionRows($rows);
 			$trainingRanks = array(9, 10);
