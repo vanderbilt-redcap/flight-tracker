@@ -28,8 +28,10 @@ if ($to && $from && $subject && $message && $datetimeToSend) {
         $ts = time() + 60;
         $datetimeToSend = date("Y-m-d h:I");
     }
-    scheduleEmail($to, $from, $subject, $message, $datetimeToSend);
-    echo "Message enqueued.";
+    if (!DEBUG) {
+        scheduleEmail($to, $from, $subject, $message, $datetimeToSend);
+    }
+    echo "Message enqueued for $datetimeToSend.";
 } else {
     echo "Improper fields.";
 }
