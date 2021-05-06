@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Altmetric;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../Application.php");
@@ -17,10 +18,15 @@ require_once(dirname(__FILE__)."/../classes/Citation.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../classes/Altmetric.php");
 require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/../classes/Cohorts.php");
 
 if ($_GET['record']) {
     if ($_GET['record'] == "all") {
-        $records = Download::recordIds($token, $server);
+        if ($_GET['cohort']) {
+            $records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
+        } else {
+            $records = Download::recordIds($token, $server);
+        }
     } else {
         $records = array($_GET['record']);
     }
@@ -68,7 +74,12 @@ if (isset($_GET['grantCounts'])) {
         //}
     arsort($grantCounts);
 
+    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end"]);
+    list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
+
     $html = "";
+    $html .= "<form method='GET' action='$url'>";
+    $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
     $html .= "<h4>Pubs Associated With a Grant</h4>";
     $allSelected = "";
     if (!$_GET['grant'] || $_GET['grant'] == "all") {
@@ -101,6 +112,7 @@ if (isset($_GET['grantCounts'])) {
     }
     $html .= "</select>";
     $html .= "<br><button>Re-Configure</button></p>";
+    $html .= "</form>";
     echo $html;
     exit;
 }
@@ -179,6 +191,18 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
                 # do not filter
                 $dates[$record] = "Training period not recorded";
             }
+        } else if ($_GET['begin']) {
+            $startTs = strtotime($_GET['begin']);
+            if ($_GET['end']) {
+                $endTs = strtotime($_GET['end']);
+            } else {
+                $endTs = time();
+            }
+            if ($startTs && $endTs) {
+                $included->filterForTimespan($startTs, $endTs);
+                $notDone->filterForTimespan($startTs, $endTs);
+                $dates[$record] = date("m-d-Y", $startTs)." - ".date("m-d-Y", $endTs);
+            }
         }
 
         if (isset($_GET['test'])) {
@@ -239,7 +263,7 @@ function makePublicationListHTML($citations, $names, $dates) {
 
 function makeExtraURLParams($exclude = []) {
     $additionalParams = "";
-    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grant"];
+    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grant", "begin", "end", "cohort"];
     foreach ($_GET as $key => $value) {
         if (isset($_GET[$key]) && in_array($key, $expected) && !in_array($key, $exclude)) {
             if ($value === "") {
@@ -253,14 +277,18 @@ function makeExtraURLParams($exclude = []) {
 }
 
 function makeCustomizeTable($token, $server, $metadata) {
+    $cohorts = new Cohorts($token, $server, Application::getModule());
     $html = "";
     $style = "style='width: 250px; padding: 15px; vertical-align: top;'";
     $defaultDays = "";
     if (isset($_GET['trainingPeriodPlusDays']) && is_numeric($_GET['trainingPeriodPlusDays'])) {
         $defaultDays = $_GET['trainingPeriodPlusDays'];
     }
-    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays"]);
+    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end"]);
     list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
+    $fullURLMinusCohort = preg_replace("/&cohort=[^\&]+/", "", $fullURL);
+    $begin = $_GET['begin'];
+    $end = $_GET['end'];
 
     $html .= "<table class='centered'>\n";
     $html .= "<tr>\n";
@@ -268,19 +296,35 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= "</tr>\n";
     $html .= "<tr>\n";
     $html .= "<td $style>".Altmetric::makeClickText()."</td>\n";
-    $html .= "<td $style><form action='$url' method='GET'>";
-    $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
+    $html .= "<td $style>";
     $html .= "<h4>Show Pubs During Training</h4>";
-    $html .= "<p class='centered'>Additional Days: <input type='number' name='trainingPeriodPlusDays' style='width: 60px;' value='$defaultDays'><br><button>Re-Configure</button></p>";
+    $html .= "<form action='$url' method='GET'>";
+    $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
+    $html .= "<p class='centered'>Additional Days After Training: <input type='number' name='trainingPeriodPlusDays' style='width: 60px;' value='$defaultDays'><br><button>Re-Configure</button></p>";
+    $html .= "</form>";
+    $html .= "</td>";
+    $html .= "</tr>";
+    $html .= "<tr>";
+    $html .= "<td>";
+    $html .= $cohorts->makeCohortSelect($_GET['cohort'], "location.href=\"$fullURLMinusCohort\"+\"&cohort=\"+encodeURIComponent($(this).val());");
+    $html .= "</td>";
+    $html .= "<td>";
+    $html .= "<h4>Show Pubs During Timespan</h4>";
+    $html .= "<form action='$url' method='GET'>";
+    $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
+    $html .= "<p class='centered'>Start Date: <input type='date' name='begin' style='width: 150px;' value='$begin'><br>";
+    $html .= "End Date: <input type='date' name='end' value='$end' style='width: 150px;'><br>";
+    $html .= "<button>Re-Configure</button></p>";
+    $html .= "</form>";
     $html .= "<div id='grantCounts'>";
-    $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays"])."&grantCounts";
+    $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end"])."&grantCounts";
     if ($_GET['grant'] && ($_GET['grant'] != "all")) {
         $html .= "<script>$(document).ready(function() { downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\"); });</script>";
     } else {
         $html .= "<p class='centered'><a href='javascript:;' onclick='downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\");'>Get Counts to Select a Grant</a><br>(Computationally Expensive)</p>";
     }
     $html .= "</div>";
-    $html .= "</form></td>\n";
+    $html .= "</td>\n";
     $html .= "</tr>\n";
     $html .= "</table>\n";
 

@@ -78,21 +78,36 @@ class Links {
 	}
 
 	# synonym to makeDataWranglingLink
-	public static function makeSelectLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
-		return self::makeDataWranglingLink($pid, $text, $recordId, $markAsNew, $linkClass);
-	}
+    public static function makeSelectLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
+        return self::makeDataWranglingLink($pid, $text, $recordId, $markAsNew, $linkClass);
+    }
 
-	# synonym to makeSelectLink
-	public static function makeDataWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
-		$url = self::link("wrangler/index.php");
-		if ($recordId) {
-			$url = $url."&record=".$recordId;
-		}
-		if ($markAsNew) {
-			$url = $url."&new";
-		}
-		return self::makeLink($url, $text, FALSE, $linkClass);
-	}
+    public static function makeGrantWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
+        return self::makeDataWranglingLink($pid, $text, $recordId, $markAsNew, $linkClass);
+    }
+
+    # synonym to makeSelectLink
+    public static function makeDataWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
+        $url = self::link("wrangler/index.php");
+        if ($recordId) {
+            $url = $url."&record=".$recordId;
+        }
+        if ($markAsNew) {
+            $url = $url."&new";
+        }
+        return self::makeLink($url, $text, FALSE, $linkClass);
+    }
+
+    public static function makePatentWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
+        $url = self::link("wrangler/include.php")."&wranglerType=Patents";
+        if ($recordId) {
+            $url = $url."&record=".$recordId;
+        }
+        if ($markAsNew) {
+            $url = $url."&new";
+        }
+        return self::makeLink($url, $text, FALSE, $linkClass);
+    }
 
     public static function makeOnlineDesignerLink($pid, $text, $markAsNew = FALSE, $linkClass = "") {
         $url = APP_PATH_WEBROOT."Design/online_designer.php?pid=".$pid;
@@ -117,7 +132,7 @@ class Links {
 	}
 
 	public static function makePubWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
-		$url = self::link("wrangler/pubs.php");
+		$url = self::link("wrangler/include.php")."&wranglerType=Publications";
 		if ($recordId) {
 			$url = $url."&record=".$recordId;
 		}

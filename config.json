@@ -29,66 +29,6 @@
 				"name": "Flight Tracker",
 				"icon": "report",
 				"url": "index.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/intro.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/index.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/index_menteeview.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/index_mentorview.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/index_complete.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/addMentor.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/change.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/getREDCapUserid.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/importData.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/schedule_email.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/uploadSignature.php"
-			},
-			{
-				"name": "Mentoring Agreement",
-				"icon": "",
-				"url": "mentor/_agreement_save.php"
 			}
 		]
 	},

@@ -3,6 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \ExternalModules\ExternalModules;
 
 require_once(dirname(__FILE__)."/debug.php");
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -10,6 +11,17 @@ require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 require_once(dirname(__FILE__)."/../classes/Download.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
+$module = Application::getModule();
+$username = $module->getUsername();
+if (DEBUG && isset($_GET['uid'])) {
+    $username = $_GET['uid'];
+}
+if (!$module) {
+    die("No module.");
+}
+if (!$module->hasMentorAgreementRights($pid, $username) && !ExternalModules::isSuperUser()) {
+    die("Access Denied.");
+}
 
 function makePercentCompleteJS() {
     $html = "<script>

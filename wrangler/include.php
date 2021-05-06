@@ -138,7 +138,9 @@ if (count($_POST) >= 1) {
 
 	if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
 		echo "<div class='subnav'>\n";
-		echo Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green")."\n";
+        echo Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green")."\n";
+        echo Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green")."\n";
+        echo Links::makePatentWranglingLink($pid, "Patent Wrangler", $record, FALSE, "green")."\n";
 		echo Links::makeProfileLink($pid, "Scholar Profile", $record, FALSE, "green")."\n";
 		echo "<a class='yellow'>".Publications::getSelectRecord()."</a>\n";
 		echo "<a class='yellow'>".Publications::getSearch()."</a>\n";

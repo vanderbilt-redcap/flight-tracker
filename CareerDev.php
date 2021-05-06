@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.0.1";
+		return "3.1.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -170,7 +170,8 @@ class CareerDev {
 	}
 
 	public static function setPid($pid) {
-	    $_GET['pid'] = $pid;
+        $_GET['pid'] = $pid;
+        $_GET['project_id'] = $pid;
 		self::$pid = $pid;
 	}
 
@@ -185,10 +186,13 @@ class CareerDev {
 		if (self::$pid) {
 			return self::$pid;
 		}
- 		if ($_GET['pid']) {
+ 		if (isset($_GET['pid'])) {
 			# least reliable because REDCap can sometimes change this value in other crons
 			return $_GET['pid'];
 		}
+ 		if (isset($_GET['project_id'])) {
+ 		    return $_GET['project_id'];
+        }
 		return NULL;
 	}
 
@@ -284,17 +288,27 @@ class CareerDev {
 	    if ($relativeUrl == "this") {
             $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
             $url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-            $paramKeys = ["page", "pid", "prefix"];
+            $paramKeys = ["page", "pid", "prefix", "project_id"];
             $initialSeparator = "?";
             foreach ($paramKeys as $key) {
-                $url .= "$initialSeparator$key=".urlencode($_GET[$key]);
-                $initialSeparator = "&";
+                if (isset($_GET[$key])) {
+                    $url .= "$initialSeparator$key=".urlencode($_GET[$key]);
+                    $initialSeparator = "&";
+                }
             }
             return $url;
         }
 		$relativeUrl = preg_replace("/^\//", "", $relativeUrl);
 		if ($module = self::getModule()) {
-		    return $module->getUrl($relativeUrl);
+		    $url = $module->getUrl($relativeUrl);
+		    if (isset($_GET['project_id'])) {
+		        if (preg_match("/pid=/", $url)) {
+                    $url = preg_replace("/pid=/", "project_id=", $url);
+                } else {
+		            $url .= "&project_id=".$_GET['project_id'];
+                }
+            }
+		    return $url;
 		}
 		return "";
 	}
@@ -652,14 +666,13 @@ class CareerDev {
             }
             return $ary;
         }
-        if ($menuName == "Pubs") {
+        if (in_array($menuName, ["Pubs", "Publications"])) {
             $ary = [
                 "Publication List" => self::link("/publications/view.php"),
                 "Brag: Publications Widget" => self::link("/brag.php")."&showHeaders",
                 "Social Network of Co-Authorship" => self::link("/socialNetwork/collaboration.php"),
                 "Word Clouds of Publications" => self::link("/publications/wordCloud.php"),
                 "Search Publications" => self::link("/search/publications.php"),
-                "Search Within a Timespan" => self::link("/search/inTimespan.php"),
             ];
             return $ary;
         }
@@ -680,11 +693,12 @@ class CareerDev {
             return $ary;
         }
 		if (($menuName == "Mentoring") || ($menuName == "Mentor") || ($menuName == "Mentors")) {
-			return array(
+			return [
 					"List of Mentors" => self::link("/tablesAndLists/mentorList.php"),
 					"Mentor Performance" => self::link("/tablesAndLists/mentorConversion.php"),
 					"All Mentor Data" => self::link("/tablesAndLists/generateMentoringCSV.php"),
-					);
+                    "Trainees Becoming Mentors" => self::link("/tablesAndLists/trainee2mentor.php"),
+					];
 		}
 		if ($menuName == "Scholars") {
             $ary = [

@@ -609,6 +609,9 @@ class NIHTables {
                 if ($row['redcap_repeat_instrument'] == "custom_grant") {
                     $dateUnderConsideration = $row['custom_start'];
                 }
+                if (isset($_GET['test'])) {
+                    echo "Testing {$row['custom_start']} for earliest start date for $recordId<br>";
+                }
                 if ($dateUnderConsideration) {
                     $startTs = strtotime($dateUnderConsideration);
                     if (!$ts || ($ts < $startTs)) {
@@ -620,7 +623,11 @@ class NIHTables {
         if (!$ts) {
             return "";
         }
-        return date("Y-m-d", $ts);
+        $earliestStartDate = date("Y-m-d", $ts);
+        if (isset($_GET['test'])) {
+            echo "Returning $earliestStartDate for earliest start date for $recordId<br>";
+        }
+        return $earliestStartDate;
     }
 
 	private function getAllDegreeFieldsIndexed($year = TRUE, $institution = FALSE) {
@@ -1421,12 +1428,8 @@ class NIHTables {
                 if (!$startDate) {
                     $countingStartDate = $baseLineStart;
                 } else {
-                    if (strtotime($startDate) > strtotime($baseLineStart)) {
-                        $countingStartDate = $startDate;
-                    } else {
-                        $countingStartDate = $baseLineStart;
-                    }
-                }
+                    $countingStartDate = $startDate;
+    	        }
                 $startingDates[$recordId] = strtotime($countingStartDate);
             }
             asort($startingDates);

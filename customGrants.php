@@ -13,8 +13,6 @@ require_once(dirname(__FILE__)."/Application.php");
 
 if ($_GET['record']) {
 	$record = $_GET['record'];
-	$pid = $_GET['pid'];
-
 	$metadata = Download::metadata($token, $server);
 	$redcapData = Download::fieldsForRecords($token, $server, Application::getCustomFields($metadata), [$record]);
 	$max = 0;
