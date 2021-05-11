@@ -8,14 +8,13 @@
 	"authors": [
 		{
 			"name": "Scott J. Pearson",
-			"email": "datacore@vumc.org",
+			"email": "scott.j.pearson@vumc.org",
 			"institution": "Vanderbilt University Medical Center"
 		}
 	],
 
 	
 	"permissions": [
-			"redcap_module_link_check_display",
 			"hook_data_entry_form",
 			"hook_every_page_before_render",
 			"hook_every_page_top",
