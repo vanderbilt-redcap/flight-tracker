@@ -1408,7 +1408,13 @@ class Grant {
 		return "";
 	}
 
-	# uses private variable specs
+	# coordinated with wrangler/index.php
+	public static function getIndex($awardno, $sponsor, $startDate) {
+        $sep = "____";
+        return $awardno . $sep . $sponsor . $sep . $startDate;
+    }
+
+    # uses private variable specs
 	public function getFundingSource() {
 		$specs = $this->specs;
 

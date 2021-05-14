@@ -8,10 +8,11 @@ require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
+$version = CareerDev::getVersion();
 
 ?>
 <h1>About</h1>
-<p class='centered'><img style='width: 500px;' src='<?= CareerDev::link("img/flight_tracker_logo_medium.png") ?>'></p>
+<p class='centered'><img style='width: 500px;' src='<?= CareerDev::link("img/flight_tracker_logo_medium.png") ?>'><br>Version <?= $version ?></p>
 
 <h2>Thanks</h2>
 <p class='centered'>We are grateful for those who have gone before us and for those who assist, advise, and teach us. We extend special thanks to:</p>

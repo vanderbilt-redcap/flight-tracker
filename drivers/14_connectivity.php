@@ -31,7 +31,7 @@ $(document).ready(function() {
         $.post('" . Application::link('testConnectionStatus.php') . "', { name: name, server: server }, function(json) {
             let results = JSON.parse(json)
             let html = ''
-            html += '<h2>'+name+' (<a href=\"'+server+'\">'+server+'</a>)</h2>'
+            html += '<h2>'+name+' (<a href=\"https://'+server+'\">'+server+'</a>)</h2>'
             html += '<div class=\"centered bordered shadow\" style=\"max-width: 500px; margin 0 auto;\">'
             for (const key in results) {
                 let result = results[key]

@@ -14,7 +14,7 @@ require_once(dirname(__FILE__)."/classes/Grant.php");
 
 $bottomPadding = "<br><br><br><br><br>\n";
 $grantNumberHeader = "";
-if ($grantNumber = CareerDev::getSetting("grant_number")) {
+if ($grantNumber = CareerDev::getSetting("grant_number", $pid)) {
 	$grantNumberHeader = " - ".Grant::translateToBaseAwardNumber($grantNumber);
 }
 

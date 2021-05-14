@@ -10,7 +10,7 @@ abstract class OracleConnection {
 		if (!$this->connection) {
 			throw new \Exception("Unable to connect: ".$this->getUserId()." ".$this->getServer()." ".json_encode(oci_error()));
 		}
-		Application::log("Has connection to ".$this->getUserId()." ".$this->getPassword()." ".$this->getServer());
+		Application::log("Has connection to ".$this->getUserId()." ".strlen($this->getPassword())." ".$this->getServer());
 		Application::log("oci_error: ".json_encode(oci_error()));
 	}
 

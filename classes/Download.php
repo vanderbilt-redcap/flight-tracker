@@ -343,17 +343,27 @@ class Download {
 		if (isset($_GET['test'])) {
             Application::log("Download::metadata");
         }
-		$data = array(
-			'token' => $token,
-			'content' => 'metadata',
-			'format' => 'json',
-			'returnFormat' => 'json'
-		);
-		if (!empty($fields)) {
-			$data['fields'] = $fields;
-		}
-		$rows = self::sendToServer($server, $data);
-		return $rows;
+		$pid = Application::getPID($token);
+		if (preg_match("/".SERVER_NAME."/", $server) && $pid) {
+		    if (!empty($fields)) {
+                $json = \REDCap::getDataDictionary($pid, "json", TRUE, $fields);
+            } else {
+                $json = \REDCap::getDataDictionary($pid, "json");
+            }
+            return json_decode($json, TRUE);
+        } else {
+            $data = array(
+                'token' => $token,
+                'content' => 'metadata',
+                'format' => 'json',
+                'returnFormat' => 'json'
+            );
+            if (!empty($fields)) {
+                $data['fields'] = $fields;
+            }
+            $rows = self::sendToServer($server, $data);
+            return $rows;
+        }
 	}
 
 	public static function projectTitle($token, $server) {

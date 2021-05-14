@@ -42,6 +42,16 @@ class ComparisonStudy extends Study {
         return $num;
     }
 
+    public function getRelativeRisk() {
+        $numExposedHealthy = $this->getNumberHealthy("Treatment");
+        $numExposedDiseased = $this->getNumberDiseased("Treatment");
+        $numNotExposedHealthy = $this->getNumberHealthy("Control");
+        $numNotExposedDiseased = $this->getNumberDiseased("Control");
+        $numer = $numExposedDiseased / ($numExposedDiseased + $numExposedHealthy);
+        $denom = $numNotExposedDiseased / ($numNotExposedDiseased + $numNotExposedHealthy);
+        return $numer / $denom;
+    }
+
     # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2938757/
     # Healthy = case (+)
     public function getOddsRatio() {

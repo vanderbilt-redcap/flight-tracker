@@ -20,7 +20,7 @@ class Wrangler {
         $lcWranglerType = strtolower($this->wranglerType);
 
         $html = "";
-        $html .= "<h1>$singularWranglerType Wrangler</h1>\n";
+        $html .= "<h1>".ucfirst($singularWranglerType)." Wrangler</h1>\n";
         $html .= "<p class='centered'>This page is meant to confirm the association of $lcWranglerType with $people.</p>\n";
         if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
             $html .= "<h2>".$recordId.": ".$name."</h2>\n";

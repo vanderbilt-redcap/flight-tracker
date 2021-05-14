@@ -23,7 +23,12 @@ class GrantLexicalTranslator {
 		$this->data = array();
 		$this->hijackedField = "identifier_last_name";
 		if ($this->module) {
-			$this->data = $this->module->getSystemSetting($this->settingName);
+		    if ($this->module->PREFIX == "flight_tracker") {
+                $this->data = $this->module->getSystemSetting($this->settingName);
+            } else {
+		        $pid = Application::getPID($this->token);
+		        $this->data = $this->module->getProjectSetting($this->settingName, $pid);
+            }
 		} else if ($this->metadata) {
 			foreach ($this->metadata as $row) {
 				if ($row['field_name'] == $this->hijackedField) {
@@ -82,7 +87,12 @@ class GrantLexicalTranslator {
 
 	private function writeData() {
 		if ($this->module) {
-			$this->module->setSystemSetting($this->settingName, $this->data);
+		    if ($this->module->PREFIX == "flight_tracker") {
+                $this->module->setSystemSetting($this->settingName, $this->data);
+            } else {
+                $pid = Application::getPID($this->token);
+                $this->module->setProjectSetting($this->settingName, $this->data, $pid);
+            }
 		} else if ($this->metadata) {
 			$feedback = Upload::metadata($this->metadata, $this->token, $this->server);
 		} else {

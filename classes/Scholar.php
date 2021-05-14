@@ -5,6 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/Grants.php");
+require_once(dirname(__FILE__)."/Publications.php");
 require_once(dirname(__FILE__)."/Upload.php");
 require_once(dirname(__FILE__)."/Download.php");
 require_once(dirname(__FILE__)."/Links.php");
@@ -937,7 +938,97 @@ class Scholar {
 		}
 	}
 
-	private function calculateCOEUSName($rows) {
+    private function getTimestamps($rows, $func) {
+        $timestamps = [];
+	    if (method_exists($this, $func)) {
+            $dates = $this->$func($rows, FALSE);
+            foreach ($dates as $date) {
+                $ts = strtotime($date);
+                if ($ts) {
+                    $timestamps[] = $ts;
+                }
+            }
+        }
+        return $timestamps;
+    }
+
+    public function getPubDates($rows, $withLink = FALSE) {
+	    $pubs = new Publications($this->token, $this->server, $this->metadata);
+	    $pubs->setRows($rows);
+	    $dates = [];
+	    $event_id = Application::getSetting("event_id", $this->pid);
+	    foreach ($pubs->getCitations("Included") as $citation) {
+	        $ts = $citation->getTimestamp();
+	        if ($ts) {
+	            if ($withLink) {
+	                $link = Links::makePublicationsLink($this->pid, $this->recordId, $event_id, "See Publication", $citation->getInstance(), TRUE);
+                    $dates[$link] = date("Y-m-d", $ts);
+                } else {
+                    $dates[] = date("Y-m-d", $ts);
+                }
+            }
+        }
+	    return $dates;
+    }
+
+    public function getGrantDates($rows, $withLink = FALSE) {
+        $grants = new Grants($this->token, $this->server, $this->metadata);
+        $grants->setRows($rows);
+        $grants->compileGrants("Conversion");
+        $dates = [];
+        $event_id = Application::getSetting("event_id", $this->pid);
+        foreach ([$grants->getGrants("all"), $grants->getGrants("submissions")] as $grantList) {
+            foreach ($grantList as $grant) {
+                $date = $grant->getVariable("start");
+                if ($date) {
+                    if ($withLink) {
+                        $link = $grant->getVariable("link");
+                        $dates[$link] = $date;
+                    } else {
+                        $dates[] = $date;
+                    }
+                }
+            }
+        }
+        return $dates;
+    }
+
+    private function calculateFirstGrantActivity($rows) {
+        return $this->calculateActivity($rows, "first", "Grants");
+    }
+
+    private function calculateLastGrantActivity($rows) {
+        return $this->calculateActivity($rows, "last", "Grants");
+    }
+
+    private function calculateFirstPubActivity($rows) {
+        return $this->calculateActivity($rows, "first", "Publications");
+    }
+
+    private function calculateLastPubActivity($rows) {
+        return $this->calculateActivity($rows, "last", "Publications");
+    }
+
+    private function calculateActivity($rows, $lastOrFirst, $entity) {
+	    if ($entity == "Grants") {
+            $timestamps = $this->getTimestamps($rows, "getGrantDates");
+        } else if ($entity == "Publications") {
+            $timestamps = $this->getTimestamps($rows, "getPubDates");
+        } else {
+	        $timestamps = [];
+        }
+	    if (count($timestamps) > 0) {
+	        if ($lastOrFirst == "last") {
+                rsort($timestamps);
+            } else if ($lastOrFirst == "first") {
+	            sort($timestamps);
+            }
+	        return new Result(date("Y-m-d", $timestamps[0]), "");
+        }
+	    return new Result("", "");
+    }
+
+    private function calculateCOEUSName($rows) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "coeus") {
 				new Result($row['coeus_person_name'], "", "", "", $this->pid);
@@ -2506,10 +2597,88 @@ class Scholar {
 		return self::getCalculatedFields($metadata);
 	}
 
+	public function getEarliestDateInResearch($type) {
+        return $this->getDateInResearch($type, "first");
+    }
+
+    public function getLatestDateInResearch($type) {
+        return $this->getDateInResearch($type, "last");
+    }
+
+    private function getDateInResearch($type, $variableType) {
+        if (in_array($type, ["Publications", "Publication", "Pub", "Pubs"])) {
+            return REDCapManagement::findField($this->rows, $this->recordId, "summary_$variableType"."_pub_activity");
+        } else if (in_array($type, ["Grants", "Grant"])) {
+            return REDCapManagement::findField($this->rows, $this->recordId, "summary_$variableType"."_grant_activity");
+        } else if ($type == "Both") {
+            $dates = [
+                REDCapManagement::findField($this->rows, $this->recordId, "summary_$variableType"."_grant_activity"),
+                REDCapManagement::findField($this->rows, $this->recordId, "summary_$variableType"."_pub_activity"),
+            ];
+            $timestamps = [];
+            foreach ($dates as $date) {
+                if ($date && REDCapManagement::isDate($date)) {
+                    $ts = strtotime($date);
+                    if ($ts) {
+                        $timestamps[] = $ts;
+                    }
+                }
+            }
+            if (count($timestamps) > 0) {
+                sort($timestamps);
+                return date("Y-m-d", $timestamps[0]);
+            }
+            return "";
+        } else {
+            return "";
+        }
+    }
+
+    public function getInactiveTimeInResearch($type = "Both", $measurement = "days") {
+        $latest = $this->getLatestDateInResearch($type);
+        $now = date("Y-m-d");
+        return self::getDateDiff($latest, $now, $measurement);
+    }
+
+    public function getTimeInResearch($type = "Both", $measurement = "days")
+    {
+        $earliest = $this->getEarliestDateInResearch($type);
+        $latest = $this->getLatestDateInResearch($type);
+        return self::getDateDiff($earliest, $latest, $measurement);
+    }
+
+    public static function getDateDiff($date1, $date2, $measurement) {
+        if (REDCapManagement::isDate($date1) && REDCapManagement::isDate($date2)) {
+            if ($measurement == "days") {
+                $unit = "d";
+            } else if ($measurement == "months") {
+                # convention: unit = m for minute; M for month
+                $unit = "M";
+            } else if ($measurement == "years") {
+                $unit = "y";
+            } else if ($measurement == "hours") {
+                $unit = "h";
+            } else if ($measurement == "minutes") {
+                # convention: unit = m for minute; M for month
+                $unit = "m";
+            } else if ($measurement == "seconds") {
+                $unit = "s";
+            } else {
+                throw new \Exception("Invalid measurement $measurement");
+            }
+            return REDCapManagement::datediff($date1, $date2, $unit);
+        }
+        return FALSE;
+    }
+
 	# add new fields here and getDefaultOrder
 	private static function getCalculatedFields($metadata) {
 	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		$ary = [
+            "summary_first_grant_activity" => "calculateFirstGrantActivity",
+            "summary_last_grant_activity" => "calculateLastGrantActivity",
+            "summary_first_pub_activity" => "calculateFirstPubActivity",
+            "summary_last_pub_activity" => "calculateLastPubActivity",
             "summary_coeus_name" => "calculateCOEUSName",
             "summary_survey" => "getSurvey",
             "identifier_left_date" => "getWhenLeftInstitution",
@@ -2557,7 +2726,6 @@ class Scholar {
         } else {
             $ary["identifier_vunet"] = "lookupVUNet";
         }
-
 
 		return $ary;
 	}

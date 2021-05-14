@@ -305,6 +305,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
             addPMIDsIfNotFound($pmids, $citationIds, $orcidPMIDs, $recordId);
         }
 
+        $uniquePMIDs = [];
         foreach ($lastNames as $lastName) {
 			foreach ($firstNames as $firstName) {
 				foreach ($institutions as $institution) {
@@ -315,7 +316,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
 						CareerDev::log("Searching $lastName $firstName at $institution");
 						echo "Searching $lastName $firstName at $institution\n";
                         $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institution);
-						addPMIDsIfNotFound($pmids, $citationIds, $currPMIDs, $recordId);
+                        $uniquePMIDs = array_unique(array_merge($uniquePMIDs, $currPMIDs));
 					}
 				}
 
@@ -324,6 +325,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
                 // addPMIDsIfNotFound($pmids, $citationIds, $currPMIDs, $recordId);
 			}
 		}
+        addPMIDsIfNotFound($pmids, $citationIds, $uniquePMIDs, $recordId);
 		CareerDev::log("$recordId at ".count($pmids)." new PMIDs");
 
 		if (!isset($maxInstances[$recordId])) {
@@ -351,7 +353,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
             if (!isset($choices["citation_source"][$src])) {
                 $src = "pubmed";
             }
-            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $max, [], $pid);
+            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $max, $orcidPMIDs, $pid);
         }
         Application::log("Combining ".count($pubmedRows)." PubMed rows with ".count($orcidRows)." ORCID rows");
         $uploadRows = array_merge($pubmedRows, $orcidRows);

@@ -948,11 +948,25 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	private static function hasAppropriateRights($userid, $pid) {
-		$sql = "SELECT design FROM redcap_user_rights WHERE project_id = '".db_real_escape_string($pid)."' AND username = '".db_real_escape_string($userid)."'"; 
+		$sql = "SELECT design, role_id FROM redcap_user_rights WHERE project_id = '".db_real_escape_string($pid)."' AND username = '".db_real_escape_string($userid)."'";
 		$q =  db_query($sql);
+		$roleId = FALSE;
 		if ($row = db_fetch_assoc($q)) {
-			return $row['design'];
+			if ($row['design']) {
+			    return TRUE;
+            }
+			$roleId = $row['role_id'];
 		}
+		if ($roleId) {
+		    $sql = "SELECT roles.design AS design FROM redcap_user_rights AS rights INNER JOIN redcap_user_roles AS roles ON rights.role_id = roles.role_id WHERE rights.project_id = '".db_real_escape_string($pid)."' AND rights.username = '".db_real_escape_string($userid)."'";
+            $q =  db_query($sql);
+            if ($row = db_fetch_assoc($q)) {
+                if ($row['design']) {
+                    return TRUE;
+                }
+            }
+        }
+
 		return FALSE;
 	}
 

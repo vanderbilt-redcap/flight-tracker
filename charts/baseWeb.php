@@ -89,9 +89,14 @@ function refreshForRecord(page) {
 			echo "  newStr = '&new';";
 		}
 	}
+	if (isset($_GET['wranglerType'])) {
+        echo "let wranglerType = '&wranglerType={$_GET['wranglerType']}';\n";
+	} else {
+        echo "let wranglerType = '';\n";
+    }
 ?>
 	if (rec != '') {
-		window.location.href = page + '?pid=<?= $_GET['pid'] ?>&page=<?= urlencode($_GET['page']) ?>&prefix=<?= $_GET['prefix'] ?>&record='+rec+newStr;
+		window.location.href = page + '?pid=<?= $_GET['pid'] ?>&page=<?= urlencode($_GET['page']) ?>&prefix=<?= $_GET['prefix'] ?>&record='+rec+newStr+wranglerType;
 	}
 }
 
@@ -128,8 +133,9 @@ function search(page, div, name) {
 		}
 		if (numFoundRecs == 1) {
 			$('#searchDiv').html("Name found.");
+			let wranglerType = '<?= $_GET['wranglerType'] ? "&wranglerType=".$_GET['wranglerType'] : "" ?>';
 			for (rec in foundRecs) {
-				window.location.href = '?pid=<?= $_GET['pid'] ?>&prefix=<?= $_GET['prefix'] ?>&page='+encodeURIComponent(page)+'&record='+rec;
+				window.location.href = '?pid=<?= $_GET['pid'] ?>&prefix=<?= $_GET['prefix'] ?>&page='+encodeURIComponent(page)+'&record='+rec+wranglerType;
 			}
 		} else  if (numFoundRecs > 1) {
 			var list = "";

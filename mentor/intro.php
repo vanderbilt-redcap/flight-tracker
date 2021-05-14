@@ -98,7 +98,7 @@ list($firstName, $lastName) = getNameFromREDCap($username, $token, $server);
 
                 <?= makePopupJS() ?>
 
-                <p>Welcome to a new way to think about the agreement of collaboration between a Mentee (also referred to here as ‘Scholar’) and Mentor. Mentee-Mentor Scholar Agreements (‘Mentoring Agreement’), or contracts, function to define a mutually agreed upon set of goals and parameters which provide a foundation for the mentoring relationship.  Ideally, a formal agreement will address a broad range of domains, including the Scholar’s research and education, professional development and career advancement and interactions between the scholar and mentor with respect to support, communication, personal conduct and interpersonal interactions.</p>
+                <p>Welcome to a new way to think about the agreement of collaboration between a Mentee (also referred to here as ‘Scholar’) and Mentor. Mentee-Mentor Scholar Agreements (‘Mentoring Agreement’) function to define a mutually agreed upon set of goals and parameters which provide a foundation for the mentoring relationship.  Ideally, a formal agreement will address a broad range of domains, including the Scholar’s research and education, professional development and career advancement and interactions between the scholar and mentor with respect to support, communication, personal conduct and interpersonal interactions.</p>
                 <p>While seen as a valuable mechanism to align expectations between scholars and mentors, and provide a road map for collaboration, agreements are not uniformly employed.  One possible reason for the lack of universal use is the need for a more user friendly, relevant document which may serve as an active guidepost applicable to all levels of the scholar’s career development.  This program was created to provide an improved foundation for the development of agreement documents, and a site for their ongoing access and update.</p>
 
                 <h3>Background</h3>
@@ -159,9 +159,13 @@ list($firstName, $lastName) = getNameFromREDCap($username, $token, $server);
         background-color: #dddddd;
         padding: 20px;
         font-size: 18px;
-        max-width: 800px
+        max-width: 750px;
     }
-
+    @media screen and (max-width: 1200px) {
+        .characteristics {
+            max-width: 630px;
+        }
+    }
     .bg-light {
         background-color: #ffffff!important;
     }

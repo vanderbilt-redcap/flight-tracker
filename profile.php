@@ -294,7 +294,7 @@ echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".A
 
 if (!CareerDev::isCopiedProject()) {
 	echo "<iframe class='centered' style='height: 600px;' id='grant_wrangler' src='".Application::link("wrangler/index.php")."&record=$record&headers=false'></iframe><br><br>\n";
-	echo "<iframe class='centered' style='height: 600px;' id='pub_wrangler' src='".Application::link("wrangler/pubs.php")."&record=$record&headers=false'></iframe><br><br>\n";
+    echo "<iframe class='centered' style='height: 600px;' id='pub_wrangler' src='".Application::link("wrangler/include.php")."&wranglerType=Publications&record=$record&headers=false'></iframe><br><br>\n";
 }
 echo "<iframe class='centered' style='height: 600px;' id='data_sources' src='".Application::link("tablesAndLists/dataSourceCompare.php")."&record=$record&headers=false'></iframe><br><br>\n";
 

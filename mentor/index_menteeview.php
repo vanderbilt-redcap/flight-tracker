@@ -205,7 +205,14 @@ $('.viewagreement').hover(
 <?php
 $skipFieldTypes = ["file", "text"];
 foreach ($metadata as $row) {
-  $sec_header =  $row['section_header'];
+    $sectionHeaderLines =  preg_split("/<br>/", $row['section_header']);
+    $sec_header = $sectionHeaderLines[0];
+    $sectionDescriptionLines = [];
+    for ($i = 1; $i < count($sectionHeaderLines); $i++) {
+        $sectionDescriptionLines[] = $sectionHeaderLines[$i];
+    }
+    $sectionDescription = implode("\n", $sectionDescriptionLines);
+
   $fieldName = $row['field_name'];
   $rowName = $fieldName."-tr";
   if(in_array($sec_header, $secHeaders) && !in_array($row['field_type'], $skipFieldTypes)) {
@@ -217,7 +224,9 @@ foreach ($metadata as $row) {
       ?>
             </tbody></table></div>
           <div class="tabledquestions">
-            <div class="mainHeader" onclick="toggleSectionTable('.<?= $encodedSection ?>');"><?= strip_tags($sec_header) ?></div>
+            <div class="mainHeader" onclick="toggleSectionTable('.<?= $encodedSection ?>');"><?= strip_tags($sec_header) ?>
+                <div class="subHeader"><?= $sectionDescription ?></div>
+            </div>
           <table id="quest1" class="table <?= $encodedSection ?>" style="margin-left: 0px;<?= $displayCSS ?>">
               <thead>
               <tr>
@@ -478,6 +487,15 @@ foreach ($metadata as $row) {
             .row_red th,
             .row_red td {
               background-color: #ea0e0e30
+            }
+
+            .subHeader {
+                text-transform: none;
+                font-weight: 500;
+                letter-spacing: normal;
+                font-size: 16px;
+                font-family: proxima-nova;
+                cursor: pointer;
             }
 
             .mainHeader {

@@ -24,12 +24,13 @@ if (isset($_GET['positions'])) {
     $importFile = "import.csv";
     $title = "Grants";
     $suffix = "&grants";
+    $expectedItems = 12;
 } else {
     # default
     $importFile = "import.csv";
     $title = "Grants";
     $suffix = "&grants";
-    $expectedItems = 11;
+    $expectedItems = 12;
 }
 
 if ($_FILES['bulk']) {

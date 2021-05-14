@@ -583,8 +583,21 @@ class CoeusGrantFactory extends GrantFactory {
 }
 
 class Coeus2GrantFactory extends CoeusGrantFactory {
+    public function __construct($name, $lexicalTranslator, $metadata, $type = "Grant") {
+        parent::__construct($name, $lexicalTranslator, $metadata);
+        $this->type = $type;
+    }
+
     public function processRow($row, $token = "") {
-        if ($row['coeus2_award_status'] == "Awarded") {
+        $addGrant = FALSE;
+        if (in_array($this->type, ["Grant", "Grants"])) {
+            $addGrant = ($row['coeus2_award_status'] == "Awarded");
+        } else if (in_array($this->type, ["Submissions", "Submission"])) {
+            $addGrant = ($row['coeus2_award_status'] != "Awarded");
+        } else {
+            throw new \Exception("Improper type ".$this->type);
+        }
+        if ($addGrant) {
             list($pid, $event_id) = self::getProjectIdentifiers($token);
             $awardNo = self::cleanAwardNo($row['coeus2_agency_grant_number']);
             $choices = REDCapManagement::getChoices($this->metadata);
@@ -622,6 +635,8 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
             array_push($this->grants, $grant);
         }
     }
+
+    protected $type = "Grant";
 }
 
 class RePORTERGrantFactory extends GrantFactory {
@@ -794,7 +809,7 @@ class CustomGrantFactory extends GrantFactory {
 		$grant->setVariable('original_award_number', $row['custom_number']);
 		$grant->setNumber($awardNo);
 		$grant->setVariable('source', "custom");
-		if (($row['custom_role'] == 1) || ($row['custom_role'] == 2) || ($row['custom_role'] == '')) {
+		if (in_array($row['custom_role'], [1, 2, ''])) {
 			$grant->setVariable('pi_flag', 'Y');
             $type = $row['custom_type'];
             $reverseAwardTypes = Grant::getReverseAwardTypes();

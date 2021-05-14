@@ -28,7 +28,7 @@ $redcapData = \Vanderbilt\FlightTrackerExternalModule\alphabetizeREDCapData(Down
 
 <?php
 
-echo "<h1>Current Newman Society Members and Their Mentors</h1>\n";
+echo "<h1>Current Scholars and Their Mentors</h1>\n";
 $cnt = 1;
 $revAwardTypes = \Vanderbilt\FlightTrackerExternalModule\getReverseAwardTypes();
 $numScholars = 0;

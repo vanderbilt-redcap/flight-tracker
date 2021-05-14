@@ -641,20 +641,25 @@ function submitChanges(nextRecord) {
 			data: postdata,
 			dataType: 'json',
 			success: function(data) {
+				var params = getUrlVars();
+				var wranglerType = "";
+				if (params['wranglerType']) {
+					wranglerType = '&wranglerType='+params['wranglerType'];
+				}
 				if (data['count'] && (data['count'] > 0)) {
 					var str = "items";
 					if (data['item_count'] == 1) {
 						str = "item";
 					}
 					var mssg = data['count']+" "+str+" uploaded";
-					window.location.href = getPageUrl("wrangler/pubs.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord;
+					window.location.href = getPageUrl("wrangler/include.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord+wranglerType;
 				} else if (data['item_count'] && (data['item_count'] > 0)) {
 					var str = "items";
 					if (data['item_count'] == 1) {
 						str = "item";
 					}
 					var mssg = data['item_count']+" "+str+" uploaded";
-					window.location.href = getPageUrl("wrangler/pubs.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord;
+					window.location.href = getPageUrl("wrangler/include.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord+wranglerType;
 				} else if (data['error']) {
 					$('#uploading').hide();
 					$('#finalize').show();
@@ -1140,3 +1145,30 @@ function getPatentNumber(patent) {
 function updatePatentList(textId, prefixHTML, text) {
 	updateCitationList(textId, prefixHTML, text);
 }
+
+function omitPublication(recordId, instance, pmid) {
+	presentScreen('Omitting');
+	$.post(getPageUrl('publications/omit.php'), { record: recordId, instance: instance, pmid: pmid }, function(html) {
+		clearScreen();
+		console.log(html);
+		if (html.match(/error/i)) {
+			alert(html);
+		} else {
+			alert('Publication successfully omitted!');
+		}
+	});
+}
+
+function omitGrant(recordId, grantNumber, source) {
+	presentScreen('Omitting');
+	$.post(getPageUrl('wrangler/omitGrant.php'), { record: recordId, grantNumber: grantNumber, source: source }, function(html) {
+		clearScreen();
+		console.log(html);
+		if (html.match(/error/i)) {
+			alert(html);
+		} else {
+			alert('Grant successfully omitted!');
+		}
+	});
+}
+

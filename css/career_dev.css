@@ -142,3 +142,4 @@ img.thumbnail { width: 125px; height: auto; }
 .top-horizontal-scroll div { height: 20px; }
 .noBorderCollapse { border-collapse: separate; }
 .ui-dialog-titlebar { background-color: #d4d4eb; }
+canvas.kaplanMeier { width: 800px !important; height: 600px !important; margin: 0 auto; }

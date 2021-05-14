@@ -32,11 +32,7 @@ class Grants {
 			$tempHolder[$row['field_name']] = $row;
 		}
 		$this->metadata = $tempHolder;
-		if ($module = Application::getModule()) {
-			$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule());
-		} else {
-			$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, $metadata);
-		}
+		$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule());
 	}
 
 	public function excludeUnnamedGrants_test($tester) {
@@ -103,6 +99,9 @@ class Grants {
         if ($type == "all") {
             return count($this->dedupedGrants);
         }
+        if ($type == "submissions") {
+            return count($this->grantSubmissions);
+        }
 		return 0;
 	}
 
@@ -132,6 +131,9 @@ class Grants {
                 }
             }
             return $filteredGrants;
+        }
+        if ($type == "submissions") {
+            return $this->grantSubmissions;
         }
 
 		$allSources = [];
@@ -291,6 +293,7 @@ class Grants {
 			$this->recordId = 0;
             $this->nativeGrants = [];
             $this->dedupedGrants = [];
+            $this->grantSubmissions = [];
 			$this->compiledGrants = [];
 			$this->priorGrants = [];
 			foreach ($rows as $row) {
@@ -300,7 +303,8 @@ class Grants {
 				}
 			}
 			foreach ($rows as $row) {
-				$gfs = array();
+				$gfs = [];
+				$submissionGfs = [];
 				if ($row['redcap_repeat_instrument'] == "") {
 					$hasCoeus = FALSE;
 					foreach ($row as $field => $value) {
@@ -352,30 +356,37 @@ class Grants {
 						}
 					}
                 } else if ($row['redcap_repeat_instrument'] == "coeus") {
-                    array_push($gfs, new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+                    $gfs[] = new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
                 } else if ($row['redcap_repeat_instrument'] == "coeus2") {
-                    array_push($gfs, new Coeus2GrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+                    $gfs[] = new Coeus2GrantFactory($this->name, $this->lexicalTranslator, $this->metadata, "Grants");
+                    $submissionGfs[] = new Coeus2GrantFactory($this->name, $this->lexicalTranslator, $this->metadata, "Submissions");
 				} else if ($row['redcap_repeat_instrument'] == "reporter") {
-					array_push($gfs, new RePORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+					$gfs[] = new RePORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
                 } else if ($row['redcap_repeat_instrument'] == "exporter") {
-                    array_push($gfs, new ExPORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+                    $gfs[] = new ExPORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
                 } else if ($row['redcap_repeat_instrument'] == "nih_reporter") {
-                    array_push($gfs, new NIHRePORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+                    $gfs[] = new NIHRePORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
 				} else if ($row['redcap_repeat_instrument'] == "custom_grant") {
-					array_push($gfs, new CustomGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+					$gfs[] = new CustomGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
 				} else if ($row['redcap_repeat_instrument'] == "followup") {
-					array_push($gfs, new FollowupGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+					$gfs[] = new FollowupGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
 				}
-				foreach ($gfs as $gf) {
-					$gf->processRow($row);
-					$gs = $gf->getGrants();
-					foreach ($gs as $g) {
-						# combine all grants into one unordered list
-						if (self::getShowDebug()) { Application::log("Prospective grant ".json_encode($g->toArray())); }
-                        $this->setupAbstracts($g);
-						$this->nativeGrants[] = $g;
-					}
-				}
+				$grantFactories = [
+				    "nativeGrants" => $gfs,
+                    "grantSubmissions" => $submissionGfs,
+                    ];
+				foreach ($grantFactories as $variable => $gfList) {
+                    foreach ($gfList as $gf) {
+                        $gf->processRow($row);
+                        $gs = $gf->getGrants();
+                        foreach ($gs as $g) {
+                            # combine all grants into one unordered list
+                            if (self::getShowDebug()) { Application::log("Prospective grant ".json_encode($g->toArray())); }
+                            $this->setupAbstracts($g);
+                            $this->$variable[] = $g;
+                        }
+                    }
+                }
 			}
 		}
 	}
@@ -772,6 +783,7 @@ class Grants {
 				$baseNumber = $change->getBaseNumber();
 				foreach ($awardsBySource as $awardNo => $grant) {
 					if ($baseNumber == $awardsBySource[$awardNo]->getBaseNumber()) {
+					    if (self::getShowDebug()) { Application::log("Setting N/A to $awardNo"); }
 						$awardsBySource[$awardNo]->setVariable("type", "N/A");
 					}
 				}
@@ -1711,6 +1723,7 @@ class Grants {
 	private $compiledGrants;
 	private $priorGrants;
 	private $dedupedGrants;
+	private $grantSubmissions;
 	private $token;
 	private $server;
 	private $calculate;
