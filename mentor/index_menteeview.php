@@ -193,7 +193,7 @@ $('.viewagreement').hover(
 <div class="row col-lg-12 tdata" style="text-align: center;">
     <?= (!empty($surveysAvailableToPrefill)) ? makePrefillHTML($surveysAvailableToPrefill, $uidString) : "" ?>
     <?= (!empty($instances)) ? makePriorInstancesDropdown($instances, $currInstance) : "" ?>
-    <h4 style="margin: 0 auto; width: 100%;">Please fill out the checklist below. Suggested tables are open. Click on a header to expand the table.</h4>
+    <h4 style="margin: 0 auto; width: 100%;">Please independently fill out the checklist below. Suggested tables are open. Click on a header to expand the table. When complete, click on the button to alert your mentor.</h4>
 </div>
 <form id="tsurvey" name="tsurvey">
       <section class="bg-light">
@@ -205,13 +205,7 @@ $('.viewagreement').hover(
 <?php
 $skipFieldTypes = ["file", "text"];
 foreach ($metadata as $row) {
-    $sectionHeaderLines =  preg_split("/<br>/", $row['section_header']);
-    $sec_header = $sectionHeaderLines[0];
-    $sectionDescriptionLines = [];
-    for ($i = 1; $i < count($sectionHeaderLines); $i++) {
-        $sectionDescriptionLines[] = $sectionHeaderLines[$i];
-    }
-    $sectionDescription = implode("\n", $sectionDescriptionLines);
+  list($sec_header, $sectionDescription) = parseSectionHeader($row['section_header']);
 
   $fieldName = $row['field_name'];
   $rowName = $fieldName."-tr";
@@ -225,7 +219,12 @@ foreach ($metadata as $row) {
             </tbody></table></div>
           <div class="tabledquestions">
             <div class="mainHeader" onclick="toggleSectionTable('.<?= $encodedSection ?>');"><?= strip_tags($sec_header) ?>
-                <div class="subHeader"><?= $sectionDescription ?></div>
+                <?php
+                if ($sectionDescription) {
+                    echo "<div class='subHeader'>".strip_tags($sectionDescription)."</div>";
+                }
+                ?>
+                <div class="smallHeader"><?= getSectionExpandMessage() ?></div>
             </div>
           <table id="quest1" class="table <?= $encodedSection ?>" style="margin-left: 0px;<?= $displayCSS ?>">
               <thead>
@@ -494,6 +493,15 @@ foreach ($metadata as $row) {
                 font-weight: 500;
                 letter-spacing: normal;
                 font-size: 16px;
+                font-family: proxima-nova;
+                cursor: pointer;
+            }
+
+            .smallHeader {
+                text-transform: none;
+                font-weight: 400;
+                letter-spacing: normal;
+                font-size: 12px;
                 font-family: proxima-nova;
                 cursor: pointer;
             }

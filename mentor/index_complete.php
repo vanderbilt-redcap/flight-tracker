@@ -80,6 +80,7 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
           $skipFieldTypes = ["file", "text"];
           foreach ($metadata as $metadataRow) {
               if ($metadataRow['section_header']) {
+                  list($sec_header, $sec_descript) = parseSectionHeader($metadataRow['section_header']);
                   if (!empty($htmlRows)) {
                       if (!$hasRows) {
                           $htmlRows[] = "<div>$noInfo</div>";
@@ -87,7 +88,7 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
                       $htmlRows[] = $closing;
                   }
                   $htmlRows[] = '<p class="catquestions">';
-                  $htmlRows[] = '<div class="categ">'.$metadataRow['section_header'].'</div>';
+                  $htmlRows[] = "<div class='categ'>$sec_header</div>";
                   $htmlRows[] = '<div style="width: 100%;"><ul>';
                   $hasRows = FALSE;
               }

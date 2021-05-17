@@ -101,6 +101,24 @@ function scheduleEmail($to, $from, $subject, $message, $datetime) {
     // TODO
 }
 
+function parseSectionHeader($sectionHeader) {
+    $sectionHeaderLines =  preg_split("/>\s*<p/", $sectionHeader);
+    if (count($sectionHeaderLines) > 1) {
+        $sec_header = $sectionHeaderLines[0].">";
+        $sectionDescriptionLines = [];
+        for ($i = 1; $i < count($sectionHeaderLines); $i++) {
+            $sectionDescriptionLines[] = $sectionHeaderLines[$i];
+        }
+        $sectionDescription = "";
+        if (!empty($sectionDescriptionLines)) {
+            $sectionDescription = "<p".implode("><p", $sectionDescriptionLines);
+        }
+        return [$sec_header, $sectionDescription];
+    } else {
+        return [$sectionHeader, ""];
+    }
+}
+
 function isMentee($recordId, $username) {
     global $token, $server;
     $userids = Download::userids($token, $server);
@@ -256,6 +274,7 @@ function makePopupJS() {
 
     $resources = [];
     // TODO Additional, Custom Resources - put at top
+    $resources[] = "Brown NJ. Developing Physician-Scientists. <i>Circ Res</i>. 2018 Aug 31;123(6):645-647. https://doi.org/10.1161/circresaha.118.313473";
     $resources[] = "Huskins WC, Silet K, Weber-Main AM, Begg MD, Fowler VG, Jr., Hamilton J and Fleming M. Identifying and aligning expectations in a mentoring relationship. <i>Clinical and translational science</i>. 2011;4:439-47. https://doi.org/10.1111/j.1752-8062.2011.00356.x";
     $resources[] = "Ramanan RA, Taylor WC, Davis RB and Phillips RS. Mentoring matters. Mentoring and career preparation in internal medicine residency training. <i>J Gen Intern Med</i>. 2006;21:340-5. https://doi.org/10.1111/j.1525-1497.2006.00346_1.x";
     $resources[] = "Ramanan RA, Phillips RS, Davis RB, Silen W and Reede JY. Mentoring in medicine: keys to satisfaction. <i>The American journal of medicine</i>. 2002;112:336-41. https://doi.org/10.1016/s0002-9343%2802%2901032-x";
@@ -275,6 +294,11 @@ function makePopupJS() {
     $resources[] = "Cho CS, Ramanan RA and Feldman MD. Defining the ideal qualities of mentorship: a qualitative analysis of the characteristics of outstanding mentors. <i>The American journal of medicine</i>. 2011;124:453-8. https://doi.org/10.1016/j.amjmed.2010.12.007";
     $resources[] = "Carey EC and Weissman DE. Understanding and finding mentorship: a review for junior faculty. <i>Journal of palliative medicine</i>. 2010;13:1373-9. https://doi.org/10.1089/jpm.2010.0091";
     $resources[] = "Feldman AM. The National Institutes of Health Physician-Scientist Workforce Working Group report: a roadmap for preserving the physician-scientist. <i>Clinical and translational science</i>. 2014;7:289-90. https://doi.org/10.1111/cts.12209";
+    $resources[] = "Bhagia J, Tinsley JA. The mentoring partnership. <i>Mayo Clin Proc</i>. 2000 May;75:535-7. https://doi.org/10.4065/75.5.535";
+    $resources[] = "Carey EC, Weissman DE. Understanding and finding mentorship: a review for junior faculty. <i>J Palliat Med</i> 2010 Nov;13:1373-9. https://doi.org/10.1089/jpm.2010.0091";
+    $resources[] = "Flores G, Mendoza FS, DeBaun MR, Fuentes-Afflick E, Jones VF, Mendoza JA, Raphael JL, Wang CJ. Keys to academic success for under-represented minority young investigators: recommendations from the Research in Academic Pediatrics Initiative on Diversity (RAPID) National Advisory Committee. <i>Int J Equity Health</i>. 2019 Jun;18;18(1):93. https://doi.org/10.1186/s12939-019-0995-1";
+    $resources[] = "Geraci SA, Thigpen SC. A review of mentoring in academic medicine. <i>Am J Med Sci</i>. 2017 Feb;353(2):151-7. https://doi.org/10.1016/j.amjms.2016.12.002";
+    $resources[] = "Sambunjak D, Straus SE, Marusic A. A systematic review of qualitative research on the meaning and characteristics of mentoring in academic medicine. <i>J Gen Intern Med</i>. 2010 Jan;25(1):72-8. https://doi.org/10.1007/s11606-009-1165-8";
 
     foreach ($resources as $i => $resource) {
         $resource = REDCapManagement::fillInLinks($resource);
@@ -579,6 +603,7 @@ function getSectionsToShow($username, $secHeaders, $redcapData, $menteeRecordId,
         "<h3>Mentee-Mentor 1:1 Meetings</h3>",
         "<h3>Lab Meetings</h3>",
         "<h3>Communication</h3>",
+        "<h3>Mentor Panel</h3>",
     ];
     $fillOutOnce = [
         "h3Mentor_Panelh3" => "mentoring_panel_names",
@@ -703,9 +728,10 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
         if (element) {
             element.scrollTop = element.scrollHeight;
         }
+        $('.addcomment').focus();
     }
 
-    saveagreement=function(){
+    saveagreement=function(cb){
         let serialized = $('#tsurvey').serialize()
             .replace(/exampleRadiosh/g, '')
             .replace(/exampleChecksh/g, '')
@@ -720,10 +746,14 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
                 console.log(result);
                 $functionToCall(\"$menteeRecordId\", \"$menteeName\", \"$dateToRemind\", function(html) {
                     $('.sweet-modal-overlay').remove();
-                    $.sweetModal({
-                        content: 'We\'ve saved your agreement. You can update your responses or return to Flight Tracker. Thank you!',
-                        icon: $.sweetModal.ICON_SUCCESS
-                    });
+                    if (cb) {
+                        cb();
+                    } else {
+                        $.sweetModal({
+                            content: 'We\'ve saved your agreement. You can update your responses or return to Flight Tracker\'s Mentoring Agreement. Thank you!',
+                            icon: $.sweetModal.ICON_SUCCESS
+                        });
+                    }
                 });
             },
             error: function(xhr, resp, text) {
@@ -832,7 +862,8 @@ function getSectionHeadersWithMenteeQuestions($metadata) {
     $sectionHeaders = [];
     foreach ($sectionHeaderCounts as $header => $numMenteeItems) {
         if ($numMenteeItems > 0) {
-            $sectionHeaders[] = $header;
+            list($secHeader, $secDescript) = parseSectionHeader($header);
+            $sectionHeaders[] = $secHeader;
         }
     }
     return $sectionHeaders;
@@ -932,9 +963,14 @@ function getEmailFromREDCap($userid) {
     return "";
 }
 
+function getSectionExpandMessage() {
+    return "If desired, you may click on this header to toggle the section.";
+}
+
 function beautifyHeader($str) {
     $str = preg_replace("/Career and Professional Development/i", "Development", $str);
     $str = preg_replace("/Approach to Scholarly Products/i", "Scholarship", $str);
+    $str = preg_replace("/Research Development/i", "Research", $str);
     $str = preg_replace("/Financial Support/i", "Financials", $str);
     $str = preg_replace("/Mentee-Mentor 1:1 Meetings/i", "Meetings", $str);
     $str = preg_replace("/Next/i", "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Next", $str);

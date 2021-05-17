@@ -73,6 +73,8 @@ $currInstanceRow = [];
 $currInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $currInstance);
 $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance);
 
+$completeURL = Application::link("mentor/index_complete.php").$uidString."&menteeRecord=$menteeRecordId&instance=$currInstance";
+
 ?>
 <section class="bg-light">
     <div class="container">
@@ -90,7 +92,7 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
 
         <div class="row">
             <div class="col-lg-12 tdata">
-                <h4>Please review below:</h4>
+                <h4>Please fill out the checklist below while dialoging with your mentee. The mentee's responses have been pre-filled.</h4>
                 <?= (!empty($surveysAvailableToPrefill)) ? makePrefillHTML($surveysAvailableToPrefill, $uidString) : "" ?>
 
                     <?php
@@ -103,12 +105,14 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
                     $agreementSigned = agreementSigned($redcapData, $menteeRecordId, $currInstance);
                     foreach ($metadata as $row) {
                         if ($row['section_header'] && !in_array($row['field_type'], $skipFieldTypes)) {
-                            $sections[$tableNum] = $row['section_header'];
+                            list($sec_header, $sectionDescription) = parseSectionHeader($row['section_header']);
+                            $sections[$tableNum] = $sec_header;
                             $encodedSection = REDCapManagement::makeHTMLId($row['section_header']);
 
                             if ($tableNum > 1) {
                                 $htmlRows[] = "</tbody></table>";
                             }
+                            // $htmlRows[] = "<div class='subHeader'>$sectionDescription</div>";
                             $htmlRows[] = "<table id='quest$tableNum' class='table $encodedSection' style='margin-left: 0px;'>";
                             $htmlRows[] = '<thead>';
                             $htmlRows[] = '<tr>';
@@ -402,6 +406,15 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
                         padding-bottom: 1.5em;
                     }
 
+                    .subHeader {
+                        text-transform: none;
+                        font-weight: 500;
+                        letter-spacing: normal;
+                        font-size: 16px;
+                        font-family: proxima-nova;
+                        cursor: pointer;
+                    }
+
                     .verticalheader {
                         text-align: right;
                         width: 0px;
@@ -498,8 +511,8 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
 
 
 
-
-<p style="text-align: center;"><button type="button" class="btn btn-info" onclick="window.location='<?= Application::link("mentor/index_complete.php").$uidString."&menteeRecord=$menteeRecordId&instance=$currInstance" ?>';">save, view &amp; sign final agreement</button></p
+<p style="text-align: center;">Saving will enqueue an automated email to follow up, sent on <?= $dateToRemind ?>.</p>
+<p style="text-align: center;"><button type="button" class="btn btn-info" onclick="saveagreement(function() { window.location='<?= $completeURL ?>'; });">save, view &amp; sign final agreement</button></p
 <p style="height: 200px"></p>
 <div class="fauxcomment" style="display: none;"></div>
 
