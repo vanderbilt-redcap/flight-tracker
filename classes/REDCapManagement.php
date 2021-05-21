@@ -1169,7 +1169,7 @@ class REDCapManagement {
 				// if (self::atEndOfMetadata($priorRowField, $selectedRows, $newMetadata)) {
                     // $priorRowField = end($originalMetadata)['field_name'];
                 // }
-                $tempMetadata = array();
+                $tempMetadata = [];
                 $priorNewRowField = "";
                 for ($i = 0; $i < count($existingMetadata); $i++) {
                     $row = $existingMetadata[$i];
@@ -1188,7 +1188,6 @@ class REDCapManagement {
                                 $tempMetadata[] = $existingMetadata[$i];
                             }
                         }
-
                         # delete already existing rows with same field_name
                         self::deleteRowsWithFieldName($tempMetadata, $newRow['field_name']);
                         $tempMetadata[] = $newRow;
@@ -1555,6 +1554,8 @@ class REDCapManagement {
 	    if ($metadataField == "field_annotation" && self::isJSON($oldValue)) {
 	        return FALSE;
         }
+	    $oldValue = trim($oldValue);
+	    $newValue = trim($newValue);
 	    if (isset($oldValue) && isset($newValue) && ($oldValue != $newValue)) {
             return TRUE;
         }
@@ -1610,6 +1611,36 @@ class REDCapManagement {
             }
         }
 	    return $newAry;
+    }
+
+    public static function MDY2LongDate($mdy) {
+        $ymd = self::MDY2YMD($mdy);
+        return self::YMD2LongDate($ymd);
+    }
+
+    public static function YMD2LongDate($ymd) {
+        $ts = strtotime($ymd);
+        if ($ts) {
+            return date("F j, Y", $ts);
+        }
+        return "";
+    }
+
+    public static function getFieldsUnderSection($metadata, $sectionHeader) {
+        $fields = [];
+        $inHeader = FALSE;
+        foreach ($metadata as $row) {
+            if ($row['section_header'] == $sectionHeader) {
+                $inHeader = TRUE;
+            }
+            if ($inHeader) {
+                $fields[] = $row['field_name'];
+            }
+            if ($inHeader && $row['section_header'] && ($row['section_header'] != $sectionHeader)) {
+                $inHeader = FALSE;
+            }
+        }
+        return $fields;
     }
 
     public static function setupRepeatingForms($eventId, $formsAndLabels) {

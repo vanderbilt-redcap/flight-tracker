@@ -193,7 +193,7 @@ $('.viewagreement').hover(
 <div class="row col-lg-12 tdata" style="text-align: center;">
     <?= (!empty($surveysAvailableToPrefill)) ? makePrefillHTML($surveysAvailableToPrefill, $uidString) : "" ?>
     <?= (!empty($instances)) ? makePriorInstancesDropdown($instances, $currInstance) : "" ?>
-    <h4 style="margin: 0 auto; width: 100%;">Please independently fill out the checklist below. Suggested tables are open. Click on a header to expand the table. When complete, click on the button to alert your mentor.</h4>
+    <h4 style="margin: 0 auto; width: 100%; max-width: 800px;">Please independently fill out the checklist below. Suggested tables are open. Click on a header to expand the table. When complete, click on the button to alert your mentor.</h4>
 </div>
 <form id="tsurvey" name="tsurvey">
       <section class="bg-light">
@@ -1003,7 +1003,10 @@ h4{
     border-left-color: #056c7d;
     opacity: 0.7;
 }
-.form-check-input { margin-right: 6px !important; }
+.form-check-input {
+    margin-right: 6px !important;
+    position: absolute !important;
+}
 </style>
 
 <script>

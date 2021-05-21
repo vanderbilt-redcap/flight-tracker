@@ -49,6 +49,35 @@ class Publications {
         }
     }
 
+    public static function filterExcludeList($rows, $recordExcludeList) {
+	    if (empty($recordExcludeList)) {
+	        return $rows;
+        }
+	    $newRows = [];
+	    foreach ($rows as $row) {
+	        $excludeThisRow = FALSE;
+	        if ($row['citation_authors']) {
+                $authors = preg_split("/\s*[,;]\s*/", $row['citation_authors']);
+                foreach ($authors as $author) {
+                    $author = trim($author);
+                    foreach ($recordExcludeList as $excludeName) {
+                        if (strtolower($author) == strtolower($excludeName)) {
+                            $excludeThisRow = TRUE;
+                            break;
+                        }
+                    }
+                    if ($excludeThisRow) {
+                        break;
+                    }
+                }
+            }
+	        if (!$excludeThisRow) {
+	            $newRows[] = $row;
+            }
+        }
+	    return $newRows;
+    }
+
     public static function searchPubMedForName($first, $last, $pid, $institution = "") {
         $first = preg_replace("/\s+/", "+", $first);
         $last = preg_replace("/\s+/", "+", $last);

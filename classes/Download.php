@@ -27,7 +27,6 @@ class Download {
 	public static function throttleIfNecessary() {
 	    if (self::$rateLimitPerMinute === NULL) {
 	        $sql = "SELECT * FROM redcap_config WHERE field_name = 'page_hit_threshold_per_minute'";
-	        Application::log("Running SQL $sql");
             $q = db_query($sql);
             if ($error = db_error()) {
                 Application::log("ERROR: $error");
@@ -129,7 +128,8 @@ class Download {
             $postdocs[$recordId] = $names[$recordId];
         }
         return $postdocs;
-    }
+	}
+
     public static function postdocNames($token, $server, $metadataOrModule = [], $cohort = "") {
 		$names = self::names($token, $server);
 		$predocs = self::predocNames($token, $server);
@@ -159,6 +159,15 @@ class Download {
 		}
 		return $postdocs;
 	}
+
+	public static function redcapVersion($token, $server) {
+	    $data = [
+	        "token" => $token,
+            "content" => "version",
+            "format" => "json",
+        ];
+	    return self::sendToServer($server, $data);
+    }
 
 	# returns a hash with recordId => array of mentorUserids
 	public static function primaryMentorUserids($token, $server) {
@@ -592,6 +601,29 @@ class Download {
 			return Download::fieldsForRecords($token, $server, array("record_id", "resources_date", "resources_resource"), $records);
 		}
 	}
+
+	public static function excludeList($token, $server, $field, $metadata) {
+	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+	    if (in_array($field, $metadataFields)) {
+            $oneFieldData = self::oneField($token, $server, $field);
+            $excludeList = [];
+            foreach ($oneFieldData as $recordId => $fieldData) {
+                if ($fieldData) {
+                    $excludeList[$recordId] = preg_split("/\s*[,;]\s*/", $fieldData);
+                } else {
+                    $excludeList[$recordId] = [];
+                }
+            }
+            return $excludeList;
+	    } else {
+	        $recordIds = self::recordIds($token, $server);
+	        $excludeList = [];
+	        foreach ($recordIds as $recordId) {
+	            $excludeList[$recordId] = [];
+            }
+	        return $excludeList;
+        }
+    }
 
 	public static function doctorateInstitutions($token, $server, $metadata) {
         $pid = Application::getPID($token);

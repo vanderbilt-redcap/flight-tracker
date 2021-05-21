@@ -327,35 +327,71 @@ class Scholar {
 				return $r;
 			}
 		}
-		if (CareerDev::isVanderbilt() && $mentorResult->getValue()) {
-            try {
-                list($firstName, $lastName) = NameMatcher::splitName($mentorResult->getValue());
-                $firstName = NameMatcher::eliminateInitials($firstName);
-                $key = LDAP::getNameAssociations($firstName, $lastName);
-                $info = LDAP::getLDAPByMultiple(array_keys($key), array_values($key));
-                if ($info) {
-                    $allUIDs = LDAP::findField($info, "uid");
-                    $jobs = LDAP::findField($info, "vanderbiltpersonjobname");
-                    $uids = [];
-                    if (count($allUIDs) == 1) {
-                        $uids = $allUIDs;
-                    } else {
-                        for ($i = 0; ($i < count($allUIDs)) && ($i < count($jobs)); $i++) {
-                            if (!in_array($jobs[$i], self::$skipJobs)) {
-                                $uids[] = $allUIDs[$i];
+
+		$uids = [];
+		if ($mentorResult->getValue()) {
+            if (CareerDev::isVanderbilt()) {
+                try {
+                    list($firstName, $lastName) = NameMatcher::splitName($mentorResult->getValue());
+                    $firstName = NameMatcher::eliminateInitials($firstName);
+                    $key = LDAP::getNameAssociations($firstName, $lastName);
+                    $info = LDAP::getLDAPByMultiple(array_keys($key), array_values($key));
+                    if ($info) {
+                        $allUIDs = LDAP::findField($info, "uid");
+                        $jobs = LDAP::findField($info, "vanderbiltpersonjobname");
+                        if (count($allUIDs) == 1) {
+                            $uids = $allUIDs;
+                        } else {
+                            for ($i = 0; ($i < count($allUIDs)) && ($i < count($jobs)); $i++) {
+                                if (!in_array($jobs[$i], self::$skipJobs)) {
+                                    $uids[] = $allUIDs[$i];
+                                }
                             }
                         }
                     }
-                    if (count($uids) == 1) {
-                        return new Result($uids[0], "ldap", "Computer-Generated", "", $this->pid);
-                    }
+                    $source = "ldap";
+                    $sourceName = "LDAP";
+                } catch(\Exception $e) {
+                    Application::log("LDAP mentor lookup ERROR: ".$e->getMessage(), $this->pid);
                 }
-            } catch(\Exception $e) {
-                Application::log("LDAP mentor lookup ERROR: ".$e->getMessage(), $this->pid);
+            }
+            if (empty($uids)) {
+                list($firstName, $lastName) = NameMatcher::splitName($mentorResult->getValue());
+                $firstName = NameMatcher::eliminateInitials($firstName);
+                $uids = self::getREDCapUseridsForName($firstName, $lastName);
+                $sourceName = "REDCap";
+                $source = "";
+            }
+        }
+		if (!empty($uids)) {
+            if (count($uids) == 1) {
+                return new Result($uids[0], $source, "Computer-Generated", "", $this->pid);
+            } else if (count($uids) > 1) {
+                Application::log("Warning: Lookup $sourceName userids for $firstName $lastName generated multiple: ".implode(", ", $uids), $this->pid);
+                return new Result(implode(", ", $uids), $source, "Computer-Generated", "", $this->pid);
+            } else {
+                Application::log("Lookup $sourceName userids for $firstName $lastName generated no results.", $this->pid);
             }
         }
 		return new Result("", "");
 	}
+
+	public static function getREDCapUseridsForName($firstName, $lastName) {
+	    if ($firstName && $lastName) {
+	        #MySQL performs case-insensitive searches
+	        $sql = "SELECT username FROM redcap_user_information WHERE user_firstname = '".db_real_escape_string($firstName)."' AND user_lastname = '".db_real_escape_string($lastName)."'";
+            $q = db_query($sql);
+            $userids = [];
+            while ($row = db_fetch_assoc($q)) {
+                $userid = $row['username'];
+                if (!in_array($userid, $userids)) {
+                    $userids[] = $userid;
+                }
+            }
+            return $userids;
+        }
+	    return [];
+    }
 
 	private function getMentorText($rows) {
         return $this->getGenericValueForField($rows, "summary_mentor");
@@ -979,13 +1015,17 @@ class Scholar {
         $event_id = Application::getSetting("event_id", $this->pid);
         foreach ([$grants->getGrants("all"), $grants->getGrants("submissions")] as $grantList) {
             foreach ($grantList as $grant) {
-                $date = $grant->getVariable("start");
-                if ($date) {
-                    if ($withLink) {
-                        $link = $grant->getVariable("link");
-                        $dates[$link] = $date;
-                    } else {
-                        $dates[] = $date;
+                $startDate = $grant->getVariable("start");
+                $endDate = $grant->getVariable("end");
+                foreach ([$endDate, $startDate] as $date) {
+                    if ($date) {
+                        if ($withLink) {
+                            $link = $grant->getVariable("link");
+                            $dates[$link] = $date;
+                        } else {
+                            $dates[] = $date;
+                        }
+                        break;
                     }
                 }
             }
@@ -1023,7 +1063,9 @@ class Scholar {
             } else if ($lastOrFirst == "first") {
 	            sort($timestamps);
             }
-	        return new Result(date("Y-m-d", $timestamps[0]), "");
+	        $date = date("Y-m-d", $timestamps[0]);
+	        Application::log("calculateActivity {$this->recordId}: $lastOrFirst $entity returning $date", $this->pid);
+	        return new Result($date, "");
         }
 	    return new Result("", "");
     }
@@ -2625,8 +2667,18 @@ class Scholar {
                 }
             }
             if (count($timestamps) > 0) {
-                sort($timestamps);
-                return date("Y-m-d", $timestamps[0]);
+                if ($variableType == "last") {
+                    rsort($timestamps);
+                } else if ($variableType == "first") {
+                    sort($timestamps);
+                } else {
+                    throw new \Exception("Could not locate variable type $variableType");
+                }
+                $date = date("Y-m-d", $timestamps[0]);
+                if (isset($_GET['test'])) {
+                    echo $this->recordId." $variableType: dates=".json_encode($dates)." with timestamps=".json_encode($timestamps)." returning $date<br>";
+                }
+                return $date;
             }
             return "";
         } else {
@@ -2647,6 +2699,7 @@ class Scholar {
         return self::getDateDiff($earliest, $latest, $measurement);
     }
 
+    # returns date2 - date1
     public static function getDateDiff($date1, $date2, $measurement) {
         if (REDCapManagement::isDate($date1) && REDCapManagement::isDate($date2)) {
             if ($measurement == "days") {
@@ -2666,7 +2719,12 @@ class Scholar {
             } else {
                 throw new \Exception("Invalid measurement $measurement");
             }
-            return REDCapManagement::datediff($date1, $date2, $unit);
+            $diff = REDCapManagement::datediff($date1, $date2, $unit);
+            if (REDCapManagement::dateCompare($date1, ">", $date2)) {
+                return 0-$diff;
+            } else {
+                return $diff;
+            }
         }
         return FALSE;
     }

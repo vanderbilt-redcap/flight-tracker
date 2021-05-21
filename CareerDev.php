@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.1.4";
+		return "3.2.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -477,6 +477,19 @@ class CareerDev {
 			throw new \Exception("Could not find module!");
 		}
 	}
+
+	public static function getAllSettings($pid = "") {
+        $module = self::getModule();
+        if ($module) {
+            if (!$pid) {
+                $pid = self::getPid();
+            }
+            if ($pid) {
+                return $module->getProjectSettings($pid);
+            }
+        }
+        return [];
+    }
 
 	public static function getSetting($field, $pid = "") {
 		$module = self::getModule();

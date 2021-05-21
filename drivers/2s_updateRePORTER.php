@@ -48,6 +48,7 @@ function updateRePORTER($cat, $token, $server, $pid, $records) {
         $applicationField = "reporter_smapplid";
     }
 
+    $excludeList = Download::excludeList($token, $server, "exclude_grants", $metadata);
     $universalInstitutions = array_unique(array_merge(CareerDev::getInstitutions(), Application::getHelperInstitutions()));
 	foreach ($records as $recordId) {
 	    $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge(Application::getCustomFields($metadata), $reporterFields, ["identifier_institution"])), [$recordId]);
@@ -67,7 +68,7 @@ function updateRePORTER($cat, $token, $server, $pid, $records) {
 	    $firstNames = NameMatcher::explodeFirstName($allFirstNames[$recordId]);
 	    $myInstitutions = Scholar::explodeInstitutions(REDCapManagement::findField($redcapData, $recordId, "identifier_institution"));
 	    $institutions = array_unique(array_merge($universalInstitutions, $myInstitutions));
-	    $reporter = new RePORTER($pid, $recordId, $cat);
+	    $reporter = new RePORTER($pid, $recordId, $cat, $excludeList[$recordId]);
 	    $upload = [];
 	    foreach ($lastNames as $lastName) {
 	        foreach ($firstNames as $firstName) {

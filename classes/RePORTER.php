@@ -7,7 +7,7 @@ require_once(dirname(__FILE__)."/NameMatcher.php");
 require_once(dirname(__FILE__)."/../Application.php");
 
 class RePORTER {
-    public function __construct($pid, $recordId, $category) {
+    public function __construct($pid, $recordId, $category, $recordExcludeList = []) {
         $this->pid = $pid;
         $this->recordId = $recordId;
         $this->category = $category;
@@ -17,6 +17,7 @@ class RePORTER {
             "ProjectNumSplit","ContactPiName","AllText","FullStudySection",
             "ProjectStartDate","ProjectEndDate",
         ];
+        $this->excludeList = $recordExcludeList;
         if ($this->category == "NIH") {
             $this->server = "https://api.reporter.nih.gov";
         } else if ($this->category == "Federal") {
@@ -117,6 +118,7 @@ class RePORTER {
         $dateFields = ["project_start_date", "project_end_date", "init_encumbrance_date", "award_notice_date",];
         $skip = ["spending_categories", "organization_type", ];
         $upload = [];
+
         foreach ($this->getData() as $item) {
             if (!in_array($item['project_num'], $existingGrants)) {
                 $max++;
@@ -257,6 +259,7 @@ class RePORTER {
         if ($this->isFederal()) {
             $query = $this->server."/v1/projects/search?query=PiName:".urlencode($piName);
             $this->currData = $this->runGETQuery($query);
+            $this->currData = $this->filterForExcludeList();
             return $this->filterForInstitutionsAndName($piName, $institutions);
         } else if ($this->isNIH()) {
             list($firstName, $lastName) = NameMatcher::splitName($piName, 2);
@@ -269,6 +272,7 @@ class RePORTER {
             $location = $this->server."/v1/projects/search";
             $data = $this->runPOSTQuery($location, $payload);
             $this->currData = self::filterNIHDataForName($data, $firstName, $lastName);
+            $this->currData = $this->filterForExcludeList();
         }
         return $this->getData();
     }
@@ -343,9 +347,9 @@ class RePORTER {
         }
         list($firstName, $lastName) = NameMatcher::splitName($name, 2);
         # dissect current data; must have first name to include
-        $pis = [];
         $included = [];
         foreach ($this->getData() as $item) {
+            $pis = [];
             $itemName = $item['contactPi'];
             if (!in_array($itemName, $pis)) {
                 $pis[] = $itemName;
@@ -466,6 +470,75 @@ class RePORTER {
     }
 
     public function getData() {
+        return $this->filterForExcludeList();
+    }
+
+    private function filterForExcludeList() {
+        if (empty($this->excludeList)) {
+            return $this->currData;
+        }
+        $newData = [];
+        foreach ($this->currData as $item) {
+            if ($this->isNIH()) {
+                $excludeThisItem = FALSE;
+                foreach ($this->excludeList as $excludeName) {
+                    if (strtolower($excludeName) == strtolower($item['contact_pi_name'])) {
+                        $excludeThisItem = TRUE;
+                        break;
+                    }
+                    foreach ($item['principal_investigators'] as $pi) {
+                        $piNames = [
+                            $pi['first_name']." ".$pi['last_name'],
+                            $pi['last_name']." ".$pi['first_name'],
+                            $pi['last_name'].", ".$pi['first_name'],
+                        ];
+                        foreach ($piNames as $piName) {
+                            if ($piName == $excludeName) {
+                                $excludeThisItem = TRUE;
+                                break;
+                            }
+                        }
+                        if ($excludeThisItem) {
+                            break;
+                        }
+                    }
+                }
+                if (!$excludeThisItem) {
+                    $newData[] = $item;
+                }
+            } else if ($this->isFederal()) {
+                $pis = [];
+                if ($item['contactPi']) {
+                    $pis[] = trim($item['contactPi']);
+                }
+                if ($item['otherPis']) {
+                    foreach (preg_split("/\s*;\s*/", $item['otherPis']) as $pi) {
+                        $pi = trim($pi);
+                        if ($pi) {
+                            $pis[] = $pi;
+                        }
+                    }
+                }
+                $excludeThisItem = FALSE;
+                foreach ($this->excludeList as $excludeName) {
+                    foreach ($pis as $pi) {
+                        if ($pi && (strtolower($pi) == strtolower($excludeName))) {
+                            $excludeThisItem = TRUE;
+                            break;
+                        }
+                    }
+                    if ($excludeThisItem) {
+                        break;
+                    }
+                }
+                if (!$excludeThisItem) {
+                    $newData[] = $item;
+                }
+            } else {
+                $newData[] = $item;
+            }
+        }
+        $this->currData = $newData;
         return $this->currData;
     }
 
@@ -483,4 +556,5 @@ class RePORTER {
     private $currData;
     private $category;
     private $includeFields;
+    private $excludeList;
 }

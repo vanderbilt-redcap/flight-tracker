@@ -368,10 +368,19 @@ function characteristicsPopup(entity) {
 # one month prior
 function getDateToRemind($data, $recordId, $instance) {
     $dateToRevisit = getDateToRevisit($data, $recordId, $instance);
+    $dateToRevisit = REDCapManagement::MDY2YMD($dateToRevisit);
     if (REDCapManagement::isDate($dateToRevisit)) {
         $tsToRevisit = strtotime($dateToRevisit);
         if ($tsToRevisit) {
-            return adjustDate($tsToRevisit, -1);
+            $dateToReturn = adjustDate($tsToRevisit, -1);
+            if (isset($_GET['test'])) {
+                echo "dateToReturn: $dateToReturn<br>";
+            }
+            return $dateToReturn;
+        } else {
+            if (isset($_GET['test'])) {
+                echo "Could not transform $dateToRevisit into $tsToRevisit<br>";
+            }
         }
     }
     return "";
@@ -414,7 +423,11 @@ function getDateToRevisit($data, $recordId, $instance) {
         $ts = time();
     }
     if ($monthsInFuture) {
-        return adjustDate($ts, $monthsInFuture);
+        $dateToRevisit = adjustDate($ts, $monthsInFuture);
+        if (isset($_GET['test'])) {
+            echo "dateToRevisit: $dateToRevisit<br>";
+        }
+        return $dateToRevisit;
     } else {
         return "An Unspecified Date";
     }
@@ -603,10 +616,10 @@ function getSectionsToShow($username, $secHeaders, $redcapData, $menteeRecordId,
         "<h3>Mentee-Mentor 1:1 Meetings</h3>",
         "<h3>Lab Meetings</h3>",
         "<h3>Communication</h3>",
-        "<h3>Mentor Panel</h3>",
+        "<h3>Mentoring Panel</h3>",
     ];
     $fillOutOnce = [
-        "h3Mentor_Panelh3" => "mentoring_panel_names",
+        "h3Mentoring_Panelh3" => "mentoring_panel_names",
     ];
     $sectionsToShow = [];
     if ($isFirstTime) {
@@ -968,9 +981,9 @@ function getSectionExpandMessage() {
 }
 
 function beautifyHeader($str) {
-    $str = preg_replace("/Career and Professional Development/i", "Development", $str);
+    $str = preg_replace("/Career and Professional Development/i", "Career Dev't", $str);
     $str = preg_replace("/Approach to Scholarly Products/i", "Scholarship", $str);
-    $str = preg_replace("/Research Development/i", "Research", $str);
+    $str = preg_replace("/Scientific Development/i", "Scientific Dev't", $str);
     $str = preg_replace("/Financial Support/i", "Financials", $str);
     $str = preg_replace("/Mentee-Mentor 1:1 Meetings/i", "Meetings", $str);
     $str = preg_replace("/Next/i", "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Next", $str);

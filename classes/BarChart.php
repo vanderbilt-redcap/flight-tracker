@@ -11,6 +11,14 @@ class BarChart extends Chart {
         $this->name = $name;
     }
 
+    public function setColor($color) {
+        if ((strlen($color) == 6) && preg_match("/^[0-9A-Fa-f]{6}$/", $color)) {
+            $this->color = "#".$color;
+        } else {
+            $this->color = $color;
+        }
+    }
+
     public function setXAxisLabel($str) {
         $this->xAxisLabel = $str;
     }
@@ -45,7 +53,7 @@ var {$this->name}"."_chart = new Chart({$this->name}"."_ctx, {
       datasets: [{
         label: '',
         data: ".json_encode($this->cols).",
-        backgroundColor: '#d4d4eb',
+        backgroundColor: '{$this->color}',
       }]
     },
     options: {
@@ -93,5 +101,5 @@ var {$this->name}"."_chart = new Chart({$this->name}"."_ctx, {
     protected $name = "";
     protected $cols = [];
     protected $labels = [];
-
+    protected $color = "#d4d4eb";
 }

@@ -58,10 +58,13 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
         }
     }
 
-    $upload = array();
-    foreach ($newOrcids as $recordId => $orcid) {
-        if (in_array("identifier_orcid", $metadataFields)) {
-            array_push($upload, array("record_id" => $recordId, "identifier_orcid" => $orcid));
+    if (in_array("identifier_orcid", $metadataFields)) {
+        $excludeList = Download::excludeList($token, $server, "exclude_orcid", $metadata);
+        $upload = [];
+        foreach ($newOrcids as $recordId => $orcid) {
+            if (!in_array($orcid, $excludeList[$recordId])) {
+                $upload[] = ["record_id" => $recordId, "identifier_orcid" => $orcid];
+            }
         }
     }
 

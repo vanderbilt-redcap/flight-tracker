@@ -57,7 +57,7 @@ list($firstName, $lastName) = getNameFromREDCap($userid2, $token, $server);
 $otherMentors = REDCapManagement::makeConjunction($myMentors["name"]);
 $otherMentees = REDCapManagement::makeConjunction($myMentees["name"]);
 
-$fields = array_merge(["record_id", "mentoring_userid", "mentoring_last_update", "mentor_panel_names", "mentoring_userid"], $metadataFields);
+$fields = array_merge(["record_id", "mentoring_userid", "mentoring_last_update", "mentoring_panel_names", "mentoring_userid"], $metadataFields);
 $redcapData = Download::fieldsForRecords($token, $server, $fields, [$menteeRecordId]);
 if ($_REQUEST['instance']) {
     $currInstance = $_REQUEST['instance'];
@@ -99,6 +99,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
 
                     $htmlRows = [];
                     $sections = [];
+                    $tablesShown = [];
                     $tableNum = 1;
                     $i = 0;
                     $skipFieldTypes = ["file", "text"];
@@ -113,7 +114,16 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                                 $htmlRows[] = "</tbody></table>";
                             }
                             // $htmlRows[] = "<div class='subHeader'>$sectionDescription</div>";
-                            $htmlRows[] = "<table id='quest$tableNum' class='table $encodedSection' style='margin-left: 0px;'>";
+                            $tableId = "quest$tableNum";
+                            // $hasAnswers = hasDataInSection($metadata, $row['section_header'], $menteeRecordId, $menteeInstance, "mentoring_agreement", $menteeInstanceRow);
+                            $hasAnswers = TRUE;
+                            if ($hasAnswers) {
+                                $tablesShown[] = $tableId;
+                                $displayTable = "";
+                            } else {
+                                $displayTable = " display: none;";
+                            }
+                            $htmlRows[] = "<table id='$tableId' class='table $encodedSection' style='margin-left: 0px;$displayTable'>";
                             $htmlRows[] = '<thead>';
                             $htmlRows[] = '<tr>';
                             $htmlRows[] = '<th style="text-align: left;" scope="col"></th>';
@@ -511,7 +521,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
 
 
 
-<p style="text-align: center;">Saving will enqueue an automated email to follow up, sent on <?= $dateToRemind ?>.</p>
+<p style="text-align: center;">Saving will enqueue an automated email to follow up, to be sent on <?= REDCapManagement::MDY2LongDate($dateToRemind) ?>.</p>
 <p style="text-align: center;"><button type="button" class="btn btn-info" onclick="saveagreement(function() { window.location='<?= $completeURL ?>'; });">save, view &amp; sign final agreement</button></p
 <p style="height: 200px"></p>
 <div class="fauxcomment" style="display: none;"></div>
@@ -631,9 +641,9 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
         foreach ($sections as $tableNum => $header) {
             $encodedSection = REDCapManagement::makeHTMLId($header);
             $header = strtolower($header);
-            $header = beautifyHeader($header);
+            $header = addslashes(beautifyHeader($header));
             echo "var header$tableNum = '$encodedSection';\n";
-            echo "\$('#quest".$tableNum."').before('<div class=\"verticalheader\" id=\"vh$tableNum\" onclick=\"toggleSectionTable(header$tableNum);\">$header</div>');\n";
+            echo "\$('#quest".$tableNum."').before('<div class=\"verticalheader\" id=\"vh$tableNum\">$header</div>');\n";
         }
         ?>
     });
@@ -969,3 +979,29 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
         opacity: 1 !important;
     }
 </style>
+
+
+<?php
+
+function hasDataInSection($metadata, $sectionHeader, $recordId, $instance, $instrument, $dataRow) {
+    $sectionFields = REDCapManagement::getFieldsUnderSection($metadata, $sectionHeader);
+    $indexedMetadata = REDCapManagement::indexMetadata($metadata);
+    $choices = REDCapManagement::getChoices($metadata);
+    foreach ($sectionFields as $field) {
+        if ($indexedMetadata[$field]['field_type'] == "checkbox") {
+            foreach ($choices[$field] as $index => $value) {
+                $value = REDCapManagement::findField([$dataRow], $recordId, $field."___".$index, $instrument, $instance);
+                if ($value) {
+                    $hasAnswers = TRUE;
+                    break; // choices
+                }
+            }
+        } else {
+            $value = REDCapManagement::findField([$dataRow], $recordId, $field, $instrument, $instance);
+            if ($value) {
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
+}

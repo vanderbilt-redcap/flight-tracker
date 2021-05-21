@@ -150,6 +150,10 @@ class Application {
 		return CareerDev::link($loc);
 	}
 
+	public static function getAllSettings($pid = "") {
+	    return CareerDev::getAllSettings($pid);
+    }
+
 	public static function getSetting($field, $pid = "") {
 		return CareerDev::getSetting($field, $pid);
 	}

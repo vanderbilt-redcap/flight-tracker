@@ -1309,19 +1309,19 @@ function setupSurveys($projectId, $surveysAndLabels) {
 }
 
 function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
-	$allFeedback = array();
-	$destRecords = Download::recordIds($destToken, $server);
-	if (!empty($destRecords)) {
-		$feedback = Upload::deleteRecords($destToken, $server, $destRecords);
-		CareerDev::log("Delete project: ".count($destRecords)." records: ".json_encode($feedback));
-		array_push($allFeedback, $feedback);
-	}
+    $allFeedback = array();
+    $destRecords = Download::recordIds($destToken, $server);
+    if (!empty($destRecords)) {
+        $feedback = Upload::deleteRecords($destToken, $server, $destRecords);
+        CareerDev::log("Delete project: ".count($destRecords)." records: ".json_encode($feedback));
+        array_push($allFeedback, $feedback);
+    }
 
     # turn off autonumbering in new project
     $projectSettings = [
         "record_autonumbering_enabled" => 0,
         "project_title" => Application::getProgramName()." - ".$cohort,
-        ];
+    ];
     Upload::projectSettings($projectSettings, $destToken, $server);
 
     $feedback = Upload::metadata(cleanOutJSONs($metadata), $destToken, $server);
@@ -1353,6 +1353,81 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
         }
     }
     return $allFeedback;
+}
+
+function getValidProjectSettingsForUpload() {
+    return [
+        "project_title",
+        "project_language",
+        "purpose",
+        "purpose_other",
+        "project_notes",
+        "custom_record_label",
+        "secondary_unique_field",
+        "is_longitudinal",
+        "surveys_enabled",
+        "scheduling_enabled",
+        "record_autonumbering_enabled",
+        "randomization_enabled",
+        "project_irb_number",
+        "project_grant_number",
+        "project_pi_firstname",
+        "project_pi_lastname",
+        "display_today_now_button",
+    ];
+}
+
+function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer) {
+    $metadata = Download::metadata($srcToken, $srcServer);
+
+    $allFeedback = [];
+    $destRecords = Download::recordIds($destToken, $destServer);
+    if (!empty($destRecords)) {
+        $feedback = Upload::deleteRecords($destToken, $destServer, $destRecords);
+        Application::log("Delete project: ".count($destRecords)." records: ".json_encode($feedback));
+        $allFeedback[] = $feedback;
+    }
+
+    $projectSettings = Download::getProjectSettings($srcToken, $srcServer);
+    $validProjectSettingsForUpload = getValidProjectSettingsForUpload();
+    foreach ($projectSettings as $key => $value) {
+        if (!in_array($key, $validProjectSettingsForUpload)) {
+            unset($projectSettings[$key]);
+        }
+    }
+    Upload::projectSettings($projectSettings, $destToken, $destServer);
+    $destProjectSettings = Download::getProjectSettings($destToken, $destServer);
+    $destPid = $destProjectSettings['project_id'];
+
+    $feedback = Upload::metadata(cleanOutJSONs($metadata), $destToken, $destServer);
+    $calcFields = REDCapManagement::getFieldsOfType($metadata, "calc");
+    $timeFields = REDCapManagement::getFieldsOfType($metadata, "text", "datetime_ymd");
+
+    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer);
+    Application::log("Reset Repeating Instruments: ".json_encode($feedback));
+
+    $records = Download::recordIds($srcToken, $srcServer);
+    foreach ($records as $record) {
+        $recordData = Download::records($srcToken, $srcServer, array($record));
+        $newRecordData = [];
+        foreach ($recordData as $row) {
+            $newRow = [];
+            foreach ($row as $field => $value) {
+                if (!in_array($field, $calcFields) && !in_array($field, $timeFields)) {
+                    $newRow[$field] = $value;
+                }
+            }
+            if (!empty($newRow)) {
+                $newRecordData[] = $newRow;
+            }
+        }
+        if (!empty($newRecordData)) {
+            $feedback = Upload::rows($newRecordData, $destToken, $destServer);
+            Application::log("Copy project: Record $record: ".json_encode($feedback));
+            $allFeedback[] = $feedback;
+        }
+    }
+    return [$destPid, $destEventId];
 }
 
 function getQuestionsForForm($token, $server, $form) {

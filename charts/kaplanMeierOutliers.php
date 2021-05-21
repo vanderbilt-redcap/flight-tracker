@@ -129,14 +129,15 @@ if (empty($possibleRecords)) {
                                 if (!isset($outliers[$recordId])) {
                                     $outliers[$recordId] = ["Grants" => [], "Publications" => []];
                                 }
+                                $sourceInstrument = getParamFromLink($link, "page");
                                 $summary = "";
                                 if ($type == "Grants") {
+                                    $summary = "from $sourceInstrument";
                                     $grants = new Grants($token, $server, $metadata);
                                     $grants->setRows($redcapData);
                                     $grants->compileGrants();
-                                    $sourceInstrument = getParamFromLink($link, "page");
                                     foreach ($grants->getGrants("all") as $grant) {
-                                        if (($grant->getVariable("start") == $date) && ($sourceInstrument == $grant->getVariable("source"))) {
+                                        if ((($grant->getVariable("start") == $date) || ($grant->getVariable("end") == $date)) && ($sourceInstrument == $grant->getVariable("source"))) {
                                             $summary = $grant->getNumber()." from ".$sourceInstrument;
                                             if (!isset($grantNumbers[$recordId])) {
                                                 $grantNumbers[$recordId] = [];
@@ -151,7 +152,7 @@ if (empty($possibleRecords)) {
                                     foreach ($pubs->getCitations("Included") as $citation) {
                                         $pubTs = $citation->getTimestamp();
                                         if ($date == date("Y-m-d", $pubTs)) {
-                                            $summary = $citation->getCitation();
+                                            $summary = $citation->getCitationWithLink(FALSE, TRUE);
                                             if (!isset($pmids[$recordId])) {
                                                 $pmids[$recordId] = [];
                                             }
@@ -179,7 +180,7 @@ if (empty($possibleRecords)) {
             }
         }
     }
-    $definition = "<p class='centered max-width'>A <b>group of outliers</b> is defined as one grant or 1-{$maxCluster["Publications"]} publications before $thresholdYear with a &gt; $maxYearGapInPublishing-year gap before the next grant/publication.</p>";
+    $definition = "<p class='centered max-width'>A <b>group of outliers</b> is defined as 1 grant or 1-{$maxCluster["Publications"]} publications before $thresholdYear with a &gt; $maxYearGapInPublishing-year gap before the next grant/publication.</p>";
     if (empty($outliers)) {
         echo "<p>No outliers have been found.</p>";
         echo $definition;
@@ -222,8 +223,14 @@ if (empty($possibleRecords)) {
 
 
 function getParamFromLink($link, $param) {
-    if (preg_match("<a[^>]+href\s*=\s*([\"\'][^\"^\']+[\"\'])", $link, $matches)) {
-        $url = preg_replace("/[\"\']/g", "", $matches[0]);
+    if (preg_match("/<a[^>]+href\s*=\s*([\"\'][^\"^\']+[\"\'])/", $link, $matches)) {
+        if (isset($_GET['test'])) {
+            echo "Got matches[1]: ".$matches[1]."<br>";
+        }
+        $url = preg_replace("/[\"\']/", "", $matches[1]);
+        if (isset($_GET['test'])) {
+            echo "Got $url to parse for $param<br>";
+        }
         $params = REDCapManagement::getParameters($url);
         if (isset($params[$param])) {
             return $params[$param];

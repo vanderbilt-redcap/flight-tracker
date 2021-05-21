@@ -276,6 +276,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
     }
     $choices = REDCapManagement::getChoices($metadata);
     $defaultInstitutions = array_unique(array_merge(Application::getInstitutions(), Application::getHelperInstitutions()));
+    $excludeList = Download::excludeList($token, $server, "exclude_publications", $metadata);
 
 	foreach ($records as $recordId) {
         $recLastName = $allLastNames[$recordId];
@@ -358,6 +359,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         Application::log("Combining ".count($pubmedRows)." PubMed rows with ".count($orcidRows)." ORCID rows");
         $uploadRows = array_merge($pubmedRows, $orcidRows);
 		if (!empty($uploadRows)) {
+		    $uploadRows = Publications::filterExcludeList($uploadRows, $excludeList[$recordId]);
 		    $instances = [];
 		    foreach ($uploadRows as $row) {
 		        $instances[] = $row['redcap_repeat_instance'];
