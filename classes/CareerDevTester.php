@@ -2,11 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/Scholar.php");
-require_once(dirname(__FILE__)."/REDCapManagement.php");
-require_once(dirname(__FILE__)."/Consortium.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class CareerDevTester {
 	public function __construct($token, $server, $pid) {

@@ -4,8 +4,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\EmailManager;
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../classes/EmailManager.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $dates = array(
 		"Spring 2018" => array(

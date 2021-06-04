@@ -1,6 +1,6 @@
 <?php
 
-require_once(dirname(__FILE__)."/../classes/Publications.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $pmid = $_POST['pmid'];
 $pmid = preg_replace("/^PMID/i", "", $pmid);

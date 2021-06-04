@@ -10,16 +10,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Scholar.php");
-require_once(dirname(__FILE__)."/../classes/Publications.php");
-require_once(dirname(__FILE__)."/../classes/Citation.php");
-require_once(dirname(__FILE__)."/../classes/Grants.php");
-require_once(dirname(__FILE__)."/../classes/Grant.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 $fields = [
@@ -61,13 +52,16 @@ if (strpos($csslink, "?") !== FALSE) {
 }
 echo "<link rel='stylesheet' href='$csslink'>";
 
-$jslink = Application::link("js/base.js");
-if (strpos($jslink, "?") !== FALSE) {
-    $jslink .= "&".CareerDev::getVersion();
-} else {
-    $jslink .= "?".CareerDev::getVersion();
+$jsLocs = ["js/base.js", "js/jquery.min.js"];
+foreach ($jsLocs as $jsLoc) {
+    $jslink = Application::link($jsLoc);
+    if (strpos($jslink, "?") !== FALSE) {
+        $jslink .= "&".CareerDev::getVersion();
+    } else {
+        $jslink .= "?".CareerDev::getVersion();
+    }
+    echo "<script src='$jslink'></script>";
 }
-echo "<script src='$jslink'></script>";
 
 if (empty($possibleRecords)) {
     echo "<p>All grants and publications are dated on-or-after $thresholdYear.</p>";

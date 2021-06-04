@@ -11,12 +11,10 @@
     error_reporting(E_ALL);
 
     require_once(dirname(__FILE__)."/../small_base.php");
-	require_once(dirname(__FILE__)."/UnitTester.php");
+	require_once(__DIR__ . '/ClassLoader.php');
 
 	echo "<h1>Email Manager Unit Tests</h1>\n";
 	$color = "#b1d8ff";
-	require_once(dirname(__FILE__)."/EmailManager.php");
-	require_once(dirname(__FILE__)."/Download.php");
 
 	try {
 		$metadata = Download::metadata($token, $server);

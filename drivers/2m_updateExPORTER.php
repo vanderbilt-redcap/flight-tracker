@@ -9,12 +9,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 define('NOAUTH', true);
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 /**

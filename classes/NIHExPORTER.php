@@ -2,8 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/REDCapManagement.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 define("DATA_DIRECTORY", "filterData/");
 define("INTERMEDIATE_1", "R01AndEquivsList.txt");

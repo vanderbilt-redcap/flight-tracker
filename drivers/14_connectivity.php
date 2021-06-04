@@ -4,9 +4,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\ConnectionStatus;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../classes/ConnectionStatus.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 function testConnectivity($token, $server, $pid, $howToReturn = "Email") {
     $sites = Application::getSites(FALSE);

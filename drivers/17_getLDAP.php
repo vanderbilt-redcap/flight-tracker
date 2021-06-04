@@ -9,13 +9,7 @@ use \Vanderbilt\CareerDevLibrary\LDAP;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
-require_once(dirname(__FILE__)."/../classes/LDAP.php");
-require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 function getLDAPs($token, $server, $pid, $records) {
     $metadata = Download::metadata($token, $server);

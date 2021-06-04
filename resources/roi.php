@@ -9,13 +9,7 @@ use \Vanderbilt\CareerDevLibrary\ComparisonStudy;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../classes/Stats.php");
-require_once(dirname(__FILE__)."/../classes/CohortStudy.php");
-require_once(dirname(__FILE__)."/../classes/ComparisonStudy.php");
-require_once(dirname(__FILE__)."/../classes/Cohorts.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 if ($_GET['cohort']) {

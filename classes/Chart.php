@@ -2,7 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 abstract class Chart {
     abstract public function getHTML($width, $height);

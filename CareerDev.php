@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.2.0";
+		return "3.3.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -61,7 +61,8 @@ class CareerDev {
             "Altmetric" => "api.altmetric.com",
         ];
         if ($all || self::isScopusEnabled()) {
-            $sites["Scopus"] = "api.elsevier.com";
+            $sites["Scopus (API)"] = "api.elsevier.com";
+            $sites["Scopus (Dev)"] = "dev.elsevier.com";
         }
         if ($all || self::isWOSEnabled()) {
             $sites["Web of Science"] = "ws.isiknowledge.com";
@@ -386,15 +387,19 @@ class CareerDev {
 		return "";
 	}
 
-	# to distinguish between Vanderbilt servers (which pull straight from the git repo) and those from the REDCap repo
+    # to distinguish between Vanderbilt servers (which pull straight from the git repo) and those from the REDCap repo
     # flightTracker = Vanderbilt
     # flight_tracker = from REDCap Repo
-	public static function getModuleId() {
-	    if (self::isVanderbilt()) {
-            return ExternalModules::getIdForPrefix("flightTracker");
+	public static function getPrefix() {
+        if (self::isVanderbilt()) {
+            return "flightTracker";
         } else {
-            return ExternalModules::getIdForPrefix("flight_tracker");
+            return "flight_tracker";
         }
+    }
+
+	public static function getModuleId() {
+	    return ExternalModules::getIdForPrefix(self::getPrefix());
     }
 
 	public static function getPidFromDatabase($localToken) {
@@ -671,7 +676,8 @@ class CareerDev {
                 "Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
                 "Search Grants" => self::link("/search/index.php"),
                 "Search Within a Timespan" => self::link("/search/inTimespan.php"),
-                "Active Grant Budgets at a Time" => self::link("/financial/activeBudget.php"),
+                "Grant Budgets, Active at a Time" => self::link("/financial/budget.php")."&timespan=active",
+                "All-Time Grant Budgets" => self::link("/financial/budget.php")."&timespan=all",
             ];
             if (self::isVanderbilt()) {
                 $ary["Grant Success Rates"] = self::link("/successRate.php");
@@ -756,17 +762,17 @@ class CareerDev {
 		}
 		if ($menuName == "General") {
 			$ary = [
-			        "NIH Reporting" => self::link("reporting/index.php"),
-					"List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
-                    "K2R Conversion Calculator" => self::link("/k2r/index.php"),
-                ];
-			$ary = array_merge($ary, [
-                                        "Configure Application" => self::link("/config.php"),
-                                        "Configure Summaries" => self::link("/config.php")."&order",
-                                        "Logging" => self::link("/log/index.php"),
-                                        "Custom Programming" => self::link("/changes/README.md"),
-                                        "Test Connectivity" => self::link("/testConnectivity.php"),
-                                        ]);
+                "NIH Reporting" => self::link("reporting/index.php"),
+                "List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
+                "K2R Conversion Calculator" => self::link("/k2r/index.php"),
+                "Kaplan-Meier Conversion Curve" => self::link("/charts/kaplanMeierCurve.php"),
+                "Configure Application" => self::link("/config.php"),
+                "Configure Summaries" => self::link("/config.php")."&order",
+                "Logging" => self::link("/log/index.php"),
+                "Custom Programming" => self::link("/changes/README.md"),
+                "Test Connectivity" => self::link("/testConnectivity.php"),
+                "Copy Project to Another Server" => self::link("/copyProject.php"),
+            ];
 			// if (self::isVanderbilt()) {
                 // $ary["Sync VUNet List to COEUS"] = self::link("/syncVUNet.php");
 			// }

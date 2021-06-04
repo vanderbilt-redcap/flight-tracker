@@ -2,10 +2,7 @@
  
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/Upload.php");
-require_once(dirname(__FILE__)."/REDCapManagement.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class EmailManager {
 	public function __construct($token, $server, $pid, $module = NULL, $metadata = array()) {

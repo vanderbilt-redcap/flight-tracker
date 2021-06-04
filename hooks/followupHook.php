@@ -24,13 +24,7 @@ $(document).ready(function() {
 <?php
 
 require_once(dirname(__FILE__)."/surveyHook.php");
-require_once(dirname(__FILE__)."/../classes/Grants.php");
-require_once(dirname(__FILE__)."/../classes/Grant.php");
-require_once(dirname(__FILE__)."/../classes/Publications.php");
-require_once(dirname(__FILE__)."/../classes/Citation.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Scholar.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $GLOBALS['data'] = Download::records($token, $server, array($record));
 $metadata = Download::metadata($token, $server);
@@ -170,7 +164,7 @@ function getTenureStatus($value) {
 	foreach ($grants->getGrants("compiled") as $grant) {
 		$beginDate = $grant->getVariable("start");
 		$endDate = $grant->getVariable("end");
-		if (($j <= MAX_GRANTS) && (($beginDate && strtotime($beginDate) >= $priorTs) || ($endDate && strtotime($endDate) >= $priorTs))) {
+		if (($j <= self::$MAX_GRANTS) && (($beginDate && strtotime($beginDate) >= $priorTs) || ($endDate && strtotime($endDate) >= $priorTs))) {
 			if ($j == 1) {
 				echo "	presetValue('followup_grant0_another', '1');\n";
 			}
@@ -183,7 +177,7 @@ function getTenureStatus($value) {
 			echo "	presetValue('followup_grant{$j}_org', '".$grant->getVariable("sponsor")."');\n";
 			echo "	presetValue('followup_grant{$j}_costs', '".Grant::convertToMoney($grant->getVariable("direct_budget"))."');\n";
 			echo "	presetValue('followup_grant{$j}_role', '1');\n";
-			if (($j < MAX_GRANTS) && ($j < $grants->getNumberOfGrants("compiled"))) {
+			if (($j < self::$MAX_GRANTS) && ($j < $grants->getNumberOfGrants("compiled"))) {
 				echo "	presetValue('followup_grant{$j}_another', '1');\n";
 			}
 			$j++;

@@ -2,12 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/Cohorts.php");
-require_once(dirname(__FILE__)."/CohortConfig.php");
-require_once(dirname(__FILE__)."/Scholar.php");
-require_once(dirname(__FILE__)."/Grants.php");
-require_once(dirname(__FILE__)."/Publications.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 define('GET_CHOICES', 'choices');
 define('GET_VALUE', 'values');
@@ -99,7 +94,7 @@ class Filter {
 		$func = "getActivityCodes";
 		if ($type == GET_CHOICES) {
 			$fields = array();
-			for ($i = 1; $i < MAX_GRANTS; $i++) {
+			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
 				array_push($fields, "summary_award_sponsorno_".$i);
 			}
 			return $this->getCalcSettingsChoicesFromData($fields, $func);
@@ -289,7 +284,7 @@ class Filter {
 	private function getSponsorNumbers($rows) {
 		$numbers = array();
 		foreach ($rows as $row) {
-			for ($i = 1; $i < MAX_GRANTS; $i++) {
+			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
 				$field = "summary_award_sponsorno_".$i;
 				if ($row[$field]) {
 					if (!in_array($row[$field], $numbers)) {
@@ -304,7 +299,7 @@ class Filter {
 	private function getAwardTypes($rows) {
 		$types = array();
 		foreach ($rows as $row) {
-			for ($i = 1; $i < MAX_GRANTS; $i++) {
+			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
 				$field = "summary_award_type_".$i;
 				if ($row[$field]) {
 					if (!in_array($row[$field], $types)) {
@@ -319,7 +314,7 @@ class Filter {
 	private function getActivityCodes($rows) {
 		$codes = array();
 		foreach ($rows as $row) {
-			for ($i = 1; $i < MAX_GRANTS; $i++) {
+			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
 				$field = "summary_award_sponsorno_".$i;
 				if ($row[$field]) {
 					if ($code = Grant::getActivityCode($row[$field])) {

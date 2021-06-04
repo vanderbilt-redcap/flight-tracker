@@ -12,17 +12,8 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\CitationCollection;
 
-require_once(dirname(__FILE__)."/small_base.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/Application.php");
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/Grants.php");
-require_once(dirname(__FILE__)."/classes/Patents.php");
-require_once(dirname(__FILE__)."/classes/Scholar.php");
-require_once(dirname(__FILE__)."/classes/Links.php");
-require_once(dirname(__FILE__)."/classes/Publications.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 	$record = $_GET['record'];

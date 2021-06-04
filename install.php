@@ -11,11 +11,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once(dirname(__FILE__)."/CareerDev.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/small_base.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/classes/Upload.php");
 
 if (isset($_POST['departments']) && isset($_POST['resources'])) {
 	$module = CareerDev::getModule();

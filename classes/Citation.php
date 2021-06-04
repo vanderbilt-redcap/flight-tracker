@@ -5,14 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 # This class handles publication data from PubMed, the VICTR fetch routine, and surveys.
 # It also provides HTML for data-wrangling the publication data
 
-require_once(dirname(__FILE__)."/Wrangler.php");
-require_once(dirname(__FILE__)."/Upload.php");
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/Scholar.php");
-require_once(dirname(__FILE__)."/Links.php");
-require_once(dirname(__FILE__)."/iCite.php");
-require_once(dirname(__FILE__)."/NameMatcher.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class CitationCollection {
 	# type = [ Filtered, Final, New, Omit ]
@@ -259,8 +252,7 @@ class Citation {
 		if ($lastName) {
 			$authorList = $this->getAuthorList();
 			foreach ($authorList as $author) {
-				list($currFirstName, $currLastName) = NameMatcher::splitName($author, 2, isset($_GET['test']));
-				list($currFirstName, $currLastName) = NameMatcher::splitName($author);
+				list($currFirstName, $currLastName) = NameMatcher::splitName($author, 2, isset($_GET['test']), FALSE);
                 if (isset($_GET['test'])) {
                     Application::log("Comparing $firstName $lastName against $currFirstName $currLastName");
                 }
@@ -294,7 +286,7 @@ class Citation {
 	        throw new \Exception("You must specify the first or the last author!");
         }
         $author = $authorList[$idx];
-        list($authorFirstName, $authorLastName) = NameMatcher::splitName($author);
+        list($authorFirstName, $authorLastName) = NameMatcher::splitName($author, 2, FALSE, FALSE);
         if (NameMatcher::matchByInitials($authorLastName, $authorFirstName, $lastName, $firstName)) {
             return TRUE;
         }

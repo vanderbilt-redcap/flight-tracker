@@ -6,10 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../classes/NIHTables.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Cohorts.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 
 function makeLink($tableNum) {

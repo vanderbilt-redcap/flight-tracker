@@ -6,10 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Filter;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Cohorts.php");
-require_once(dirname(__FILE__)."/../classes/Filter.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 if (isset($_POST['title'])) {
 	# no CSS or JS

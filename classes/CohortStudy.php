@@ -2,8 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/Stats.php");
-require_once(dirname(__FILE__)."/Study.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class CohortStudy extends Study {
     # types include unpaired, paired, left-tailed paired, right-tailed paired

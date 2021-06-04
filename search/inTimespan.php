@@ -5,9 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $hasType = false;
 foreach ($_POST as $variable => $value) {

@@ -2,8 +2,7 @@
 
 use \Vanderbilt\CareerDevLibrary\Download;
 
-require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/base.php");
 
 $metadata = Download::metadata($token, $server);

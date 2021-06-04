@@ -3,8 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\COEUSConnection;
 use \Vanderbilt\CareerDevLibrary\Download;
 
-require_once(dirname(__FILE__)."/classes/OracleConnection.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 
 echo "<h1>Synching VUNets to COEUS</h1>\n";

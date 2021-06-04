@@ -10,12 +10,7 @@ use \Vanderbilt\CareerDevLibrary\NameMatcher;
 define('NOAUTH', TRUE);
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../classes/NIHTables.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../classes/Scholar.php");
-require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $fullUrl = $_POST['origin'];
 list($originUrl, $params) = explode("?", $fullUrl);

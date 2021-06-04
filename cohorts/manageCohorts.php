@@ -9,15 +9,8 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 # rename, delete, reorder
 
-require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../wrangler/css.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Cohorts.php");
-require_once(dirname(__FILE__)."/../classes/CohortConfig.php");
-require_once(dirname(__FILE__)."/../classes/Filter.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
 
 echo \Vanderbilt\FlightTrackerExternalModule\getCohortHeaderHTML();
 

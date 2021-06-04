@@ -2,12 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/REDCapManagement.php");
-require_once(dirname(__FILE__)."/Upload.php");
-require_once(dirname(__FILE__)."/Links.php");
-require_once(dirname(__FILE__)."/NameMatcher.php");
-require_once(dirname(__FILE__)."/Wrangler.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class Patents {
     public function __construct($recordId, $pid, $firstName = "", $lastName = "", $institutions = []) {

@@ -2,7 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/Chart.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class BarChart extends Chart {
     public function __construct($cols, $labels, $name) {

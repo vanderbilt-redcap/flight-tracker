@@ -7,11 +7,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../classes/Cohorts.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 ?>
     <script src="https://cdn.amcharts.com/lib/4/core.js"></script>

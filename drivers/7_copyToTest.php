@@ -5,8 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 # This script copies the master project to a test project
 

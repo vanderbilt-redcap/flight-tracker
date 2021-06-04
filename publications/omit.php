@@ -4,8 +4,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $recordId = $_POST['record'];
 $instance = $_POST['instance'];

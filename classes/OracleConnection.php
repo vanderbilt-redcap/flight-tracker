@@ -2,7 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 abstract class OracleConnection {
 	public function connect() {
@@ -30,8 +30,8 @@ abstract class OracleConnection {
 
 		$result = oci_execute($stmt);
 		Application::log("Statement returned ".oci_num_rows($stmt)." rows");
-		if (!$result) {
-			throw new \Exception("Unable to execute statement. ".json_encode(oci_error($stmt)));
+		if ($error = oci_error($stmt)) {
+			throw new \Exception("Unable to execute statement. ".json_encode($error));
 		}
 
 		$data = array();
@@ -177,15 +177,19 @@ class COEUSConnection extends OracleConnection {
 		return $this->query($sql);
 	}
 
+	public function pullProposals() {
+	    $sql = "SELECT * FROM SRIADM.RC_IP_VW";
+	    return $this->query($sql);
+    }
+
 	public function pullAllRecords() {
 		$data = array();
 
 		$data["awards"] = $this->pullAwards();
-
 		$sql = "SELECT * FROM SRIADM.SRI_CAREER WHERE CAREER_ACTIVE = 1";
 		$data["membership"] = $this->query($sql);
-
 		$data["investigators"] = $this->pullPis();
+		$data["proposals"] = $this->pullProposals();
 
 		return $data;
 	}

@@ -6,10 +6,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $options = array(
 		"1234" => "Any &amp; All Ks",
@@ -61,7 +58,7 @@ function getTypeOfLastK($data, $recordId) {
 			);
 	foreach ($data as $row) {
 		if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "")) {
-			for ($i = MAX_GRANTS; $i >= 1; $i--) {
+			for ($i = self::$MAX_GRANTS; $i >= 1; $i--) {
 				if (in_array($row['summary_award_type_'.$i], array_keys($ks))) {
 					return $ks[$row['summary_award_type_'.$i]];
 				}
@@ -189,7 +186,7 @@ function isRowInKRange($row, $orderK, $kType, $kStartDate, $kEndDate) {
     }
     $ks = breakUpKs($kType);
     $kDate = "";
-    for ($i = 0; $i < MAX_GRANTS; $i++) {
+    for ($i = 0; $i < self::$MAX_GRANTS; $i++) {
         if (in_array($row['summary_award_type_'.$i], $ks)) {
             $rowField = "summary_award_date_".$i;
             if ($orderK == "first_k") {

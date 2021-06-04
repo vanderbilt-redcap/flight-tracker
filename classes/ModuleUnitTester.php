@@ -2,7 +2,7 @@
 
 namespace Vanderbilt\ModuleUnitTester;
 
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 use Vanderbilt\CareerDevLibrary;
 use ExternalModules\AbstractExternalModule;

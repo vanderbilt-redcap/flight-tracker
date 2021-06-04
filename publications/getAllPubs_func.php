@@ -12,16 +12,7 @@ use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
-require_once(dirname(__FILE__)."/../classes/iCite.php");
-require_once(dirname(__FILE__)."/../classes/Publications.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../classes/StarBRITE.php");
-require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
-require_once(dirname(__FILE__)."/../classes/Scholar.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 function getPubs($token, $server, $pid, $records) {
 	$cleanOldData = FALSE;

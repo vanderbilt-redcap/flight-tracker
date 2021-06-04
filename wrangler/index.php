@@ -7,13 +7,12 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\ExcludeList;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/baseSelect.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $daysForNew = 60;
 if (isset($_GET['new']) && is_numeric($_GET['new'])) {
@@ -25,8 +24,6 @@ $url = Application::link("wrangler/index.php");
 if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 	$url .= "&headers=false";
 }
-
-$eventIds = array(68465 => 159386, 66635 => 155946);
 
 if (isset($_POST['toImport']) && isset($_POST['record'])) {
 	$toImport = $_POST['toImport'];
@@ -116,7 +113,8 @@ function getTransformArray() {
 	$ary['nih_mechanism'] = "NIH Mechanism";
 	$ary['pi_flag'] = "PI Flag";
 	$ary['takeover'] = "Took Over From Previous PI";
-	$ary['link'] = "Link";
+    $ary['link'] = "Link";
+    $ary['role'] = "Role";
 	$ary['last_update'] = "Last Update";
 	$ary['fAndA'] = "F and A";
 	$ary['finance_type'] = "Finance Type";
@@ -304,37 +302,38 @@ function generateAwardIndex($awardno, $sponsor) {
 
 
 function transformAward($ary, $takeovers, $i = -1, $selectName = "") {
-	$elems = array();
-	$startName = preg_replace("/redcap_type/", "start_date", $selectName);
-	$endName = preg_replace("/redcap_type/", "end_date", $selectName);
-	$awardTypes = \Vanderbilt\FlightTrackerExternalModule\getAwardTypes();
-	$transform = getTransformArray();
-	foreach ($ary as $key => $value) {
-		$elem = "<th><b>".$transform[$key]."</b></th>";
-		if ($selectName && ($key == "redcap_type")) {
-			$elem .= "<td><select id='$selectName' onchange='toggleChange(\"$value\", $(this), $i);'>";
-			foreach ($awardTypes as $type => $num) {
-				if ($value == $type) {
-					$elem .= "<option value='$type' selected>$type</option>"; 
-				} else {
-					$elem .= "<option value='$type'>$type</option>"; 
-				}
-			}
-			$elem .= "</select></td>";
-			$elems[] = $elem;
-		} else if ($selectName && ($key == "start_date")) {
-			$elems[] = $elem."<td><input type='text' class='dates' onkeydown='$(\"#change_$i\").show();' id='$startName' value='$value'></td>";
-		} else if ($selectName && ($key == "end_date")) {
-			$elems[] = $elem."<td><input type='text' class='dates' onkeydown='$(\"#change_$i\").show();' id='$endName' value='$value'></td>";
-		} else {
-			$elems[] = $elem."<td>'$value'</td>";
-		}
-	}
-	$backgroundClass = "small_padding";
-	if ($ary['takeover'] || in_array($ary['base_award_no'], $takeovers)) {
-		$backgroundClass = "tookover";
-	}
-	return "<table style='width: 100%;'><tr class='$backgroundClass'>".implode("</tr><tr class='$backgroundClass'>", $elems)."</tr></table>";
+    $skip = ["url"];
+    $elems = [];
+    $startName = preg_replace("/redcap_type/", "start_date", $selectName);
+    $endName = preg_replace("/redcap_type/", "end_date", $selectName);
+    $awardTypes = \Vanderbilt\FlightTrackerExternalModule\getAwardTypes();
+    $transform = getTransformArray();
+    foreach ($ary as $key => $value) {
+        $elem = "<th><b>".$transform[$key]."</b></th>";
+        if ($selectName && ($key == "redcap_type")) {
+            $elem .= "<td><select id='$selectName' onchange='toggleChange(\"$value\", $(this), $i);'>";
+            foreach ($awardTypes as $type => $num) {
+                if ($value == $type) {
+                    $elem .= "<option value='$type' selected>$type</option>";
+                } else {
+                    $elem .= "<option value='$type'>$type</option>";
+                }
+            }
+            $elem .= "</select></td>";
+            $elems[] = $elem;
+        } else if ($selectName && ($key == "start_date")) {
+            $elems[] = $elem."<td><input type='text' class='dates' onkeydown='$(\"#change_$i\").show();' id='$startName' value='$value'></td>";
+        } else if ($selectName && ($key == "end_date")) {
+            $elems[] = $elem."<td><input type='text' class='dates' onkeydown='$(\"#change_$i\").show();' id='$endName' value='$value'></td>";
+        } else if (!in_array($key, $skip)) {
+            $elems[] = $elem."<td>'$value'</td>";
+        }
+    }
+    $backgroundClass = "small_padding";
+    if ($ary['takeover'] || in_array($ary['base_award_no'], $takeovers)) {
+        $backgroundClass = "tookover";
+    }
+    return "<table style='width: 100%;'><tr class='$backgroundClass'>".implode("</tr><tr class='$backgroundClass'>", $elems)."</tr></table>";
 }
 
 function findNumberOfSimilarAwards($baseAwardNo, $originalKey, $listOfAwards) {
@@ -389,8 +388,8 @@ if (isset($_GET['new'])) {
 	}
 }
 
-array_push($links, Links::makeSummaryLink($_GET['pid'], $record, $eventIds[$pid], "Summary Data for REDCap Record ".$record, "orange"));
-array_push($links, Links::makeCustomGrantLink($_GET['pid'], $record, $eventIds[$_GET['pid']], "Add New Grants for REDCap Record ".$record, 1, "orange"));
+$links[] = Links::makeSummaryLink($_GET['pid'], $record, REDCapManagement::getEventIdForClassical($pid), "Summary Data for REDCap Record ".$record, "orange");
+$links[] = Links::makeCustomGrantLink($_GET['pid'], $record, REDCapManagement::getEventIdForClassical($pid), "Add New Grants for REDCap Record ".$record, 1, "orange");
 if (isset($_GET['new'])) {
 	array_push($links, "<a class='orange' href='".$url."&record=$record'>See All Grants Here</a>");
 } else if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
@@ -489,24 +488,26 @@ function addAward(selectName, i, award) {
 }
 
 function transformAwardJS(award) {
-	award = cleanAward(award);
-	var html = "";
-	var cnt = 0;
-	for (var key in award) {
-		cnt++;
-	}
+    award = cleanAward(award);
+    var html = "";
+    var cnt = 0;
+    for (var key in award) {
+        cnt++;
+    }
 
-	var transform = <?= json_encode(getTransformArray()); ?>;
+    var transform = <?= json_encode(getTransformArray()); ?>;
 
-	var i = 0;
-	for (var key in award) {
-		var value = award[key];
-		html += "<tr class='small_padding'><th><b>"+transform[key]+"</b></th><td>'"+value+"'</td></tr>";
-		i++;
-	} 
-	html = "<table style='width: 100%;'>"+html+"</table>";
+    var i = 0;
+    for (var key in award) {
+        var value = award[key];
+        if (key != 'url') {
+            html += "<tr class='small_padding'><th><b>"+transform[key]+"</b></th><td>'"+value+"'</td></tr>";
+            i++;
+        }
+    }
+    html = "<table style='width: 100%;'>"+html+"</table>";
 
-	return html;
+    return html;
 }
 
 function find_i(awardno) {
@@ -684,6 +685,7 @@ function addToImport(award, action) {
 }
 </script>
 <?php
+$excludeList = new ExcludeList("Grants", $pid);
 foreach ($redcapData as $row) {
 	if (($row['record_id'] == $record) && ($row['redcap_repeat_instrument'] == "")) {
 		$takeovers = array();
@@ -698,6 +700,7 @@ foreach ($redcapData as $row) {
 		} else {
 			echo "<h1>Grant Wrangler</h1>";
 		}
+		echo $excludeList->makeEditForm($record);
 
 		if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
 			echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();

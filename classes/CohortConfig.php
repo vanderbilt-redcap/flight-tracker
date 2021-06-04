@@ -2,9 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/Filter.php");
-require_once(dirname(__FILE__)."/Scholar.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class CohortConfig {
 	public function __construct($name, $configAry = array()) {

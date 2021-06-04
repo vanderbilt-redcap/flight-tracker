@@ -2,9 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/REDCapManagement.php");
-require_once(dirname(__FILE__)."/NameMatcher.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class RePORTER {
     public function __construct($pid, $recordId, $category, $recordExcludeList = []) {

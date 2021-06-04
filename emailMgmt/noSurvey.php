@@ -5,13 +5,9 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Application;
 
-require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../wrangler/baseSelect.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Scholar.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $surveyFields = array("initial_survey_complete", "followup_complete", "followup_date", "identifier_email", "identifier_last_name", "identifier_first_name", "check_name_first", "record_id", "summary_ever_last_any_k_to_r01_equiv");
 $surveyTypes = \Vanderbilt\FlightTrackerExternalModule\getSurveyTypes();

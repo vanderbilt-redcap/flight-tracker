@@ -10,15 +10,7 @@ use \Vanderbilt\CareerDevLibrary\Stats;
 use \Vanderbilt\CareerDevLibrary\BarChart;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
-require_once(dirname(__FILE__)."/Application.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/classes/Publications.php");
-require_once(dirname(__FILE__)."/classes/Grant.php");
-require_once(dirname(__FILE__)."/classes/Grants.php");
-require_once(dirname(__FILE__)."/classes/GrantFactory.php");
-require_once(dirname(__FILE__)."/classes/Stats.php");
-require_once(dirname(__FILE__)."/classes/BarChart.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 define('NUM_BARS', 10);
 

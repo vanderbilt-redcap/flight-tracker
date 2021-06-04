@@ -7,11 +7,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/small_base.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/Upload.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/Application.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $files = [
     dirname(__FILE__)."/metadata.json",
@@ -36,6 +32,7 @@ if ($_POST['process'] == "check") {
         $changed = array();
         $metadata = array();
         $metadata['REDCap'] = Download::metadata($token, $server);
+        $genderFieldsToHandleForVanderbilt = ["summary_gender", "summary_gender_source", "check_gender"];
         foreach ($files as $filename) {
             $fp = fopen($filename, "r");
             $json = "";
@@ -65,6 +62,7 @@ if ($_POST['process'] == "check") {
             $metadataFields = REDCapManagement::getMetadataFieldsToScreen();
             $specialFields = REDCapManagement::getSpecialFields("all");
             foreach ($fieldList["file"] as $field => $choiceStr) {
+                $isSpecialGenderField = !CareerDev::isVanderbilt() || !in_array($field, $genderFieldsToHandleForVanderbilt);
                 if (!in_array($field, $specialFields)) {
                     if (!isset($fieldList["REDCap"][$field])) {
                         if (!preg_match("/^coeus_/", $field)) {
@@ -74,14 +72,17 @@ if ($_POST['process'] == "check") {
                             }
                         }
                     } else if ($choices["file"][$field] && $choices["REDCap"][$field] && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])) {
-                        array_push($missing, $field);
-                        array_push($changed, $field);
-
+                        if ($isSpecialGenderField) {
+                            array_push($missing, $field);
+                            array_push($changed, $field);
+                        }
                     } else {
                         foreach ($metadataFields as $metadataField) {
                             if (REDCapManagement::hasMetadataChanged($indexedMetadata["REDCap"][$field][$metadataField], $indexedMetadata["file"][$field][$metadataField], $metadataField)) {
-                                array_push($missing, $field);
-                                array_push($changed, $field);
+                                if ($isSpecialGenderField) {
+                                    array_push($missing, $field);
+                                    array_push($changed, $field);
+                                }
                                 break; // metadataFields loop
                             }
                         }

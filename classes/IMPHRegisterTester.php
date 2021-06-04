@@ -2,9 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/LDAP.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class IMPHRegisterTester {
 	public function __construct($token, $server, $pid) {

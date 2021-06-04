@@ -5,9 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/Links.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $fields = array_unique(array_merge(CareerDev::$followupFields, array("check_date", "initial_survey_complete")));
 $redcapData = Download::fields($token, $server, $fields);

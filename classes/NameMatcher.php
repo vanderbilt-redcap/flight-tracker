@@ -6,8 +6,7 @@ namespace Vanderbilt\CareerDevLibrary;
 # This class handles commonly occuring downloads from the REDCap API.
 
 // require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/Download.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class NameMatcher {
     public static function matchInstitution($institution, $allInstitutions) {
@@ -46,7 +45,9 @@ class NameMatcher {
         if (isset($_GET['test'])) {
             Application::log("doNamesMatch $name1 $name2");
         }
-        if (strtolower($name1) == strtolower($name2)) {
+        $name1WithoutApostrophes = str_replace("'", "", $name1);
+        $name2WithoutApostrophes = str_replace("'", "", $name2);
+        if (strtolower($name1WithoutApostrophes) == strtolower($name2WithoutApostrophes)) {
             return TRUE;
         }
         $nodes1 = preg_split("/[\s\-]+/", $name1);
@@ -527,7 +528,7 @@ class NameMatcher {
     }
 
 	# returns list($firstName, $lastName)
-	public static function splitName($name, $parts = 2, $loggingOn = FALSE) {
+	public static function splitName($name, $parts = 2, $loggingOn = FALSE, $clearOfExtraTitles = TRUE) {
         $simpleLastNamePrefixes = ["von", "van", "de"];
         $complexLastNamePrefixes = [["von", "van", "de"], ["der", "la"]];
 
@@ -547,7 +548,9 @@ class NameMatcher {
 
 		$nodes = preg_split("/\s*,\s*/", $name);
 		if ($loggingOn) { echo "Initial split into: ".json_encode($nodes); }
-		$nodes = self::clearOfDegrees($nodes);
+		if ($clearOfExtraTitles) {
+            $nodes = self::clearOfDegrees($nodes);
+        }
         if ($loggingOn) { echo "Cleared into: ".json_encode($nodes); }
 		if (count($nodes) == 1) {
 		    if (preg_match("/\band\b/", $name)) {
@@ -579,8 +582,10 @@ class NameMatcher {
             if ($parts >= 2) {
                 $prevName = $nodes[0];
                 $nodes = preg_split("/\s+/", $prevName);
-                $nodes = self::clearOfDegrees($nodes);
-                $nodes = self::clearOfHonorifics($nodes);
+                if ($clearOfExtraTitles) {
+                    $nodes = self::clearOfDegrees($nodes);
+                    $nodes = self::clearOfHonorifics($nodes);
+                }
                 $lastNodeIdx = count($nodes) - 1;
 
                 if ($loggingOn) { echo "Split $prevName into ".count($nodes)." nodes<br>"; }

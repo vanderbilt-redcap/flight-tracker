@@ -6,10 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Result;
 
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Scholar.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 require_once(dirname(__FILE__)."/../small_base.php");
 ?>

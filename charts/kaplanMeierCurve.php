@@ -9,12 +9,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 
 require_once(dirname(__FILE__)."/baseWeb.php");
-require_once(dirname(__FILE__)."/../classes/Scholar.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Cohorts.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 define("CENSORED_DATA_LABEL", "CENSORED DATA");
 
@@ -147,7 +142,7 @@ if ($showRealGraph) {
                 "numer" => count($groupRecords),
                 "denom" => count($groupRecords),
                 "percent" => 100.0,
-                "pretty_percent" => 100.0,
+                "pretty_percent" => 0.0,
                 "censored" => 0,
                 "events" => 0,
                 "this_fraction" => 1.0,
@@ -174,7 +169,7 @@ if ($showRealGraph) {
                 $curveData[$label][$i]["numer"] = $curveData[$label][$i]["denom"] - $numEventsInTimespan;
                 $curveData[$label][$i]["this_fraction"] = $curveData[$label][$i]["numer"] / $curveData[$label][$i]["denom"];
                 $curveData[$label][$i]["percent"] = $curveData[$label][$startI]["percent"] * $curveData[$label][$i]["this_fraction"];
-                $curveData[$label][$i]["pretty_percent"] = REDCapManagement::pretty($curveData[$label][$i]["percent"], 1);
+                $curveData[$label][$i]["pretty_percent"] = REDCapManagement::pretty(100.0 - $curveData[$label][$i]["percent"], 1);
             }
         }
         if (isset($_GET['test'])) {
@@ -223,7 +218,7 @@ list($url, $params) = REDCapManagement::splitURL($fullURL);
 
 $cohorts = new Cohorts($token, $server, Application::getModule());
 
-echo "<h1>Kaplan-Meier Curve</h1>";
+echo "<h1>Kaplan-Meier Conversion Curve</h1>";
 echo "<p class='centered max-width'>A <a href='https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3932959/'>Kaplan-Meier survival plot</a> is used in epidemiology to track deaths over time due to a disease. It's a good way to track the effectiveness of a treatment. In Career Development, deaths are not tracked, but rather whether someone converts from K to R (event), is lost to follow-up (censored), or is still active (censored). This curve will hopefully allow you to gauge the effectiveness of scholarship-promoting efforts.</p>";
 echo "<form action='$url' method='GET'>";
 echo REDCapManagement::makeHiddenInputs($params);
@@ -382,9 +377,12 @@ function redrawChart(ctx, data) {
             scales: {
                 y: {
                     title: {
-                        text: 'Percent Attempting K-to-R',
+                        text: 'Percent Converting from K to R',
                         display: true
                     },
+                    reverse: true,
+                    suggestedMin: 0.0,
+                    suggestedMax: 100.0,
                     beginAtZero: true
                 }
             }

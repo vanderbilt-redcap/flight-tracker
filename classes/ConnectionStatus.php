@@ -2,7 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/REDCapManagement.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class ConnectionStatus {
     public function __construct($name, $server, $pid) {

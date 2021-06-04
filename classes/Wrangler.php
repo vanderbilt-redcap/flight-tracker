@@ -2,7 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/NameMatcher.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class Wrangler {
     public function __construct($wranglerType) {

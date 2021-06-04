@@ -6,10 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/EmailManager.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 $names = Download::names($token, $server);

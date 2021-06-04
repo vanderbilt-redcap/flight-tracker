@@ -1151,11 +1151,7 @@ function omitPublication(recordId, instance, pmid) {
 	$.post(getPageUrl('publications/omit.php'), { record: recordId, instance: instance, pmid: pmid }, function(html) {
 		clearScreen();
 		console.log(html);
-		if (html.match(/error/i)) {
-			alert(html);
-		} else {
-			alert('Publication successfully omitted!');
-		}
+		alert('Publication successfully omitted!');
 	});
 }
 
@@ -1164,11 +1160,23 @@ function omitGrant(recordId, grantNumber, source) {
 	$.post(getPageUrl('wrangler/omitGrant.php'), { record: recordId, grantNumber: grantNumber, source: source }, function(html) {
 		clearScreen();
 		console.log(html);
-		if (html.match(/error/i)) {
-			alert(html);
-		} else {
-			alert('Grant successfully omitted!');
-		}
+		alert('Grant successfully omitted!');
 	});
 }
 
+function copyProject(token, server) {
+	if (token && server && (token.length == 32)) {
+		presentScreen('Copying project...<br>May take some time depending on size');
+		$.post(getPageUrl('copyProject.php'), { token: token, server: server }, function(html) {
+			clearScreen();
+			console.log(html);
+			if (html.match(/error/i)) {
+				alert('Error '+html);
+			} else {
+				alert('Successfully copied');
+			}
+		});
+	} else {
+		alert('Invalid settings');
+	}
+}

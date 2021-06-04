@@ -2,8 +2,8 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+require_once(__DIR__ . '/ClassLoader.php');
 
-require_once(dirname(__FILE__)."/Links.php");
 class Definitions {
 
 	public function __construct($subtext = "") {

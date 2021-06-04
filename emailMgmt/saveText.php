@@ -2,7 +2,7 @@
   
 require_once(dirname(__FILE__)."/base.php");
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 $surveySettings = getAllEmailSettings($metadata);

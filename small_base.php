@@ -32,19 +32,7 @@ use \Vanderbilt\CareerDevLibrary\iCite;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\ConnectionStatus;
 
-
-require_once(dirname(__FILE__)."/classes/Publications.php");
-require_once(dirname(__FILE__)."/classes/Grants.php");
-require_once(dirname(__FILE__)."/classes/Grant.php");
-require_once(dirname(__FILE__)."/classes/EmailManager.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/Upload.php");
-require_once(dirname(__FILE__)."/classes/NavigationBar.php");
-require_once(dirname(__FILE__)."/classes/NameMatcher.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/classes/Consortium.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/Application.php");
+require_once(__DIR__."/autoload.php");
 
 ini_set("memory_limit", "4096M");
 if (!Application::isWebBrowser()) {
@@ -1207,7 +1195,7 @@ function cleanOutJSONs($metadata) {
 	return $metadata;
 }
 
-function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer) {
+function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $metadata) {
 	$data = array(
 		'token' => $srcToken,
 		'content' => 'repeatingFormsEvents',
@@ -1228,11 +1216,21 @@ function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServe
 	$output = curl_exec($ch);
 	curl_close($ch);
 
+	$metadataForms = REDCapManagement::getFormsFromMetadata($metadata);
+	Application::log("Metadata forms: ".implode(", ", $metadataForms));
+	$data = json_decode($output, TRUE);
+	$newData = [];
+	foreach ($data as $row) {
+	    if (in_array($row['form_name'], $metadataForms)) {
+	        $newData[] = $row;
+        }
+    }
+
 	$data = array(
 		'token' => $destToken,
 		'content' => 'repeatingFormsEvents',
 		'format' => 'json',
-		'data' => $output,
+		'data' => json_encode($newData),
 		'returnFormat' => 'json'
 	);
 	$ch = curl_init();
@@ -1328,8 +1326,9 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
     $calcFields = REDCapManagement::getFieldsOfType($metadata, "calc");
     $timeFields = REDCapManagement::getFieldsOfType($metadata, "text", "datetime_ymd");
 
-    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcToken, $server, $destToken, $server);
+    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcToken, $server, $destToken, $server, $metadata);
     CareerDev::log("Reset Repeating Instruments: ".json_encode($feedback));
+    echo "Reset Repeating Instruments: ".json_encode($feedback)."<br>";
 
     $cohortRecords = Download::cohortRecordIds($srcToken, $server, CareerDev::getModule(), $cohort);
     foreach ($cohortRecords as $record) {
@@ -1403,12 +1402,12 @@ function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer) 
     $calcFields = REDCapManagement::getFieldsOfType($metadata, "calc");
     $timeFields = REDCapManagement::getFieldsOfType($metadata, "text", "datetime_ymd");
 
-    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer);
+    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $metadata);
     Application::log("Reset Repeating Instruments: ".json_encode($feedback));
 
     $records = Download::recordIds($srcToken, $srcServer);
     foreach ($records as $record) {
-        $recordData = Download::records($srcToken, $srcServer, array($record));
+        $recordData = Download::records($srcToken, $srcServer, [$record]);
         $newRecordData = [];
         foreach ($recordData as $row) {
             $newRow = [];

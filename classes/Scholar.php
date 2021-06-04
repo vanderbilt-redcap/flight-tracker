@@ -4,14 +4,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
-require_once(dirname(__FILE__)."/Grants.php");
-require_once(dirname(__FILE__)."/Publications.php");
-require_once(dirname(__FILE__)."/Upload.php");
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/Links.php");
-require_once(dirname(__FILE__)."/LDAP.php");
-require_once(dirname(__FILE__)."/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 define("SOURCETYPE_FIELD", "additional_source_types");
 define("SHOW_DEBUG_FOR_INSTITUTIONS", FALSE);
@@ -330,7 +323,7 @@ class Scholar {
 
 		$uids = [];
 		if ($mentorResult->getValue()) {
-            if (CareerDev::isVanderbilt()) {
+            if (Application::isVanderbilt()) {
                 try {
                     list($firstName, $lastName) = NameMatcher::splitName($mentorResult->getValue());
                     $firstName = NameMatcher::eliminateInitials($firstName);
@@ -831,7 +824,7 @@ class Scholar {
         $ks = [1, 2, 3, 4];
         $lastK = "";
         foreach ($this->rows as $row) {
-            for ($i = 1; $i <= MAX_GRANTS; $i++) {
+            for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
                 if (in_array($row['summary_award_type_' . $i], $ks) && $row['summary_award_date_' . $i]) {
                     $lastK = $row['summary_award_date_'.$i];
                 }
@@ -2487,7 +2480,7 @@ class Scholar {
                     $oneDayBeforeStartOfR = date("Y-m-d", $ts);
                 }
 	            # get end of last K
-	            for ($i = 1; $i < MAX_GRANTS; $i++) {
+	            for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
 	                $type = $row['summary_award_type_'.$i];
 	                if (in_array($type, $kTypes)) {
                         $startDate = $row['summary_award_date_'.$i];

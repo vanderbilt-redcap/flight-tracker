@@ -7,10 +7,7 @@ namespace Vanderbilt\CareerDevLibrary;
 # It should remove duplicate grants as well.
 # Unit-testable.
 
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/GrantLexicalTranslator.php");
-require_once(dirname(__FILE__)."/Links.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class Grant {
 	public function __construct($lexicalTranslator) {
@@ -25,8 +22,26 @@ class Grant {
 	    return $this->getActiveBudgetAtTime($rows, $type, time());
     }
 
+    public function getBudget($rows, $type, $sourcesToExclude = []) {
+        if ($type == "Direct") {
+            return $this->getVariable("direct_budget");
+        } else if ($type == "Total") {
+            $total = $this->getVariable("total_budget");
+            if ($total) {
+                return $total;
+            } else {
+                $total = $this->getVariable("budget");
+                if ($total) {
+                    return $total;
+                }
+            }
+        }
+	    return 0.0;
+    }
+
     # $type is an item of [Direct, Indirect, Total]
-    public function getActiveBudgetAtTime($rows, $type, $ts) {
+    # if $ts === FALSE, then calculate for all time
+    public function getActiveBudgetAtTime($rows, $type, $ts, $sourcesToExclude = []) {
 	    # Do not use Federal RePORTER because data are incomplete
         $orderedSources = ["nih_reporter", "exporter", "coeus2", "reporter",]; // "followup", "custom" have numbers over all time period, not current budget
         $baseNumber = $this->getBaseNumber();
@@ -36,104 +51,156 @@ class Grant {
         $runningTotal = 0.0;     // able to count supplements
         $sourceForRunningTotal = "";
         foreach ($orderedSources as $source) {
-            foreach ($rows as $row) {
-                if ($source == "nih_reporter") {
-                    if ($type == "Total") {
-                        $fy = REDCapManagement::getCurrentFY("Federal");
-                        $field = "nih_agency_ic_fundings";
-                        if ($row[$field]) {
-                            $entries = json_decode($row[$field], TRUE);
-                            foreach ($entries as $ary) {
-                                if (count($ary) >= 2) {
-                                    $currFY = $ary[0];
-                                    $currTotalFunding = $ary[1];
-                                    if ($currFY == $fy) {
-                                        if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                                            $runningTotal += $currTotalFunding;
-                                            $sourceForRunningTotal = $source;
+            if (!in_array($source, $sourcesToExclude)) {
+                foreach ($rows as $row) {
+                    if ($source == "nih_reporter") {
+                        if ($type == "Total") {
+                            $fy = REDCapManagement::getCurrentFY("Federal");
+                            if ($ts === FALSE) {
+                                if ($row['nih_award_amount']) {
+                                    $currTotalFunding = $row['nih_award_amount'];
+                                    if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                                        $runningTotal = $currTotalFunding;    // do not total
+                                        $sourceForRunningTotal = $source;
+                                    }
+                                }
+                            } else {
+                                $field = "nih_agency_ic_fundings";
+                                if ($row[$field]) {
+                                    $entries = json_decode($row[$field], TRUE);
+                                    foreach ($entries as $ary) {
+                                        if (count($ary) >= 2) {
+                                            $currFY = $ary[0];
+                                            $currTotalFunding = $ary[1];
+                                            if ($currFY == $fy) {
+                                                if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                                                    $runningTotal += $currTotalFunding;
+                                                    $sourceForRunningTotal = $source;
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                } else if ($source == "exporter") {
-                    if ($row['redcap_repeat_instrument'] == $source) {
+                    } else if ($source == "exporter") {
+                        if ($row['redcap_repeat_instrument'] == $source) {
+                            if ($type == "Direct") {
+                                $budgetField = 'exporter_direct_cost_amt';
+                            } else if ($type == "Indirect") {
+                                $budgetField = 'exporter_indirect_cost_amt';
+                            } else if ($type == "Total") {
+                                $budgetField = 'exporter_total_cost';
+                                if (!$row[$budgetField]) {
+                                    $budgetField = 'exporter_total_cost_sub_project';
+                                }
+                            } else {
+                                $budgetField = "";
+                            }
+                            if ($ts === FALSE) {
+                                if ($budgetField) {
+                                    $dollars = $row[$budgetField];
+                                } else {
+                                    $dollars = 0;
+                                }
+                            } else {
+                                $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "exporter_full_project_num", "exporter_budget_start", "exporter_budget_end", $budgetField, $ts);
+                            }
+                            if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                                $runningTotal += $dollars;
+                                $sourceForRunningTotal = $source;
+                            }
+                        }
+                    } else if ($source == "coeus2") {
+                        if (($row['redcap_repeat_instrument'] == $source) && ($row['coeus2_award_status'] == "Awarded")) {
+                            if ($type == "Direct") {
+                                $budgetField = 'coeus2_current_period_direct_funding';
+                            } else if ($type == "Indirect") {
+                                $budgetField = 'coeus2_current_period_indirect_funding';
+                            } else if ($type == "Total") {
+                                $budgetField = 'coeus2_current_period_total_funding';
+                            } else {
+                                $budgetField = "";
+                            }
+                            if ($ts === FALSE) {
+                                if ($budgetField) {
+                                    $dollars = $row[$budgetField];
+                                } else {
+                                    $dollars = 0;
+                                }
+                            } else {
+                                $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "coeus2_agency_grant_number", "coeus2_current_period_start", "coeus2_current_period_end", $budgetField, $ts);
+                            }
+                            if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                                $runningTotal += $dollars;
+                                $sourceForRunningTotal = $source;
+                            }
+                        }
+                    } else if ($source == "reporter") {
+                        if ($row['redcap_repeat_instrument'] == $source) {
+                            if ($type == "Total") {
+                                $budgetField = 'reporter_totalcostamount';
+                            } else {
+                                $budgetField = "";
+                            }
+                            if ($ts === FALSE) {
+                                if ($budgetField) {
+                                    $dollars = $row[$budgetField];
+                                } else {
+                                    $dollars = 0;
+                                }
+                            } else {
+                                $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "reporter_projectnumber", "reporter_budgetstartdate", "reporter_budgetenddate", $budgetField, $ts);
+                            }
+                            if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                                $runningTotal += $dollars;
+                                $sourceForRunningTotal = $source;
+                            }
+                        }
+                    } else if ($source == "custom") {
                         if ($type == "Direct") {
-                            $budgetField = 'exporter_direct_cost_amt';
-                        } else if ($type == "Indirect") {
-                            $budgetField = 'exporter_indirect_cost_amt';
+                            $budgetField = 'custom_costs';
                         } else if ($type == "Total") {
-                            $budgetField = 'exporter_total_cost';
-                            if (!$row[$budgetField]) {
-                                $budgetField = 'exporter_total_cost_sub_project';
+                            $budgetField = 'custom_costs_total';
+                        } else {
+                            $budgetField = "";
+                        }
+                        if ($ts === FALSE) {
+                            if ($budgetField) {
+                                $dollars = $row[$budgetField];
+                            } else {
+                                $dollars = 0;
                             }
                         } else {
-                            $budgetField = "";
+                            $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "custom_number", "custom_start", "custom_end", $budgetField, $ts);
                         }
-                        $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "exporter_full_project_num", "exporter_budget_start", "exporter_budget_end", $budgetField, $ts);
                         if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
                             $runningTotal += $dollars;
                             $sourceForRunningTotal = $source;
                         }
-                    }
-                } else if ($source == "coeus2") {
-                    if (($row['redcap_repeat_instrument'] == $source) && ($row['coeus2_award_status'] == "Awarded")) {
-                        if ($type == "Direct") {
-                            $budgetField = 'coeus2_current_period_direct_funding';
-                        } else if ($type == "Indirect") {
-                            $budgetField = 'coeus2_current_period_indirect_funding';
-                        } else if ($type == "Total") {
-                            $budgetField = 'coeus2_current_period_total_funding';
-                        } else {
-                            $budgetField = "";
-                        }
-                        $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "coeus2_agency_grant_number", "coeus2_current_period_start", "coeus2_current_period_end", $budgetField, $ts);
-                        if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                            $runningTotal += $dollars;
-                            $sourceForRunningTotal = $source;
-                        }
-                    }
-                } else if ($source == "reporter") {
-                    if ($row['redcap_repeat_instrument'] == $source) {
-                        if ($type == "Total") {
-                            $budgetField = 'reporter_totalcostamount';
-                        } else {
-                            $budgetField = "";
-                        }
-                        $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "reporter_projectnumber", "reporter_budgetstartdate", "reporter_budgetenddate", $budgetField, $ts);
-                        if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                            $runningTotal += $dollars;
-                            $sourceForRunningTotal = $source;
-                        }
-                    }
-                } else if ($source == "custom") {
-                    if ($type == "Direct") {
-                        $budgetField = 'custom_costs';
-                    } else if ($type == "Total") {
-                        $budgetField = 'custom_costs_total';
-                    } else {
-                        $budgetField = "";
-                    }
-                    $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "custom_number", "custom_start", "custom_end", $budgetField, $ts);
-                    if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                        $runningTotal += $dollars;
-                        $sourceForRunningTotal = $source;
-                    }
-                } else if ($source == "followup") {
-                    for ($i = 1; $i <= MAX_GRANTS; $i++) {
-                        if ($row['followup_grant'.$i.'_number']) {
-                            $currentBaseNumber = self::translateToBaseAwardNumber($row['followup_grant'.$i.'_number']);
-                            if ($baseNumber == $currentBaseNumber) {
-                                if ($type == "Direct") {
-                                    $budgetField = 'followup_grant'.$i.'_costs';
-                                } else {
-                                    $budgetField = "";
-                                }
-                                $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "followup_grant".$i."_number", "followup_grant".$i."_start", "followup_grant".$i."_end", $budgetField, $ts);
-                                if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                                    $runningTotal += $dollars;
-                                    $sourceForRunningTotal = $source;
+                    } else if ($source == "followup") {
+                        for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
+                            if ($row['followup_grant'.$i.'_number']) {
+                                $currentBaseNumber = self::translateToBaseAwardNumber($row['followup_grant'.$i.'_number']);
+                                if ($baseNumber == $currentBaseNumber) {
+                                    if ($type == "Direct") {
+                                        $budgetField = 'followup_grant'.$i.'_costs';
+                                    } else {
+                                        $budgetField = "";
+                                    }
+                                    if ($ts === FALSE) {
+                                        if ($budgetField) {
+                                            $dollars = $row[$budgetField];
+                                        } else {
+                                            $dollars = 0;
+                                        }
+                                    } else {
+                                        $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "followup_grant".$i."_number", "followup_grant".$i."_start", "followup_grant".$i."_end", $budgetField, $ts);
+                                    }
+                                    if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                                        $runningTotal += $dollars;
+                                        $sourceForRunningTotal = $source;
+                                    }
                                 }
                             }
                         }

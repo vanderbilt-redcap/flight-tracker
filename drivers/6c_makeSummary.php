@@ -12,11 +12,7 @@ if (isset($_GET['pid']) || (isset($argv[1]) && ($argv[1] == "prod_cron"))) {
 	$screen = false;
 }
 
-require_once(dirname(__FILE__)."/../classes/Scholar.php");
-require_once(dirname(__FILE__)."/../classes/Grants.php");
-require_once(dirname(__FILE__)."/../classes/SummaryGrants.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 define("NOAUTH", true);
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");

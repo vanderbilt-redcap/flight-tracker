@@ -4,13 +4,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/Citation.php");
-require_once(dirname(__FILE__)."/Grants.php");
-require_once(dirname(__FILE__)."/Publications.php");
-require_once(dirname(__FILE__)."/Scholar.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/REDCapManagement.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class NIHTables {
 	public function __construct($token, $server, $pid, $metadata = array()) {
@@ -328,7 +322,7 @@ class NIHTables {
         $fields = array();
         if (preg_match("/_\*/", $field)) {
             $master = $field;
-            for ($i = 1; $i <= MAX_GRANTS; $i++) {
+            for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
                 $field = preg_replace("/_\*/", "_" . $i, $master);
                 if (!in_array($field, $fields)) {
                     array_push($fields, $field);
@@ -1021,7 +1015,7 @@ class NIHTables {
             $kTypes = array(1, 2, 3, 4);
             $lastValidKTitle = "";
             foreach ($redcapData as $row) {
-                for ($i = 1; $i <= MAX_GRANTS; $i++) {
+                for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
                     if (in_array($row['summary_award_type_'.$i], $kTypes) && $row['summary_award_title_'.$i]) {
                         $lastValidKTitle = $row['summary_award_title_'.$i];
                     }
@@ -1941,7 +1935,7 @@ class NIHTables {
         $summaryData = Download::fieldsForRecords($this->token, $this->server, $awardFields, [$recordId]);
         $kDates = [];
         foreach ($summaryData as $row) {
-            for ($i = 1; $i <= MAX_GRANTS; $i++) {
+            for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
                 if ($row['summary_award_type_' . $i] && in_array($row['summary_award_type_' . $i], $eligibleKs)) {
                     $kDates[] = ["begin" => $row['summary_award_date_' . $i], "end" => $row['summary_award_end_date_' . $i]];
                 }
@@ -2080,7 +2074,7 @@ class NIHTables {
 				$nihFormatCits = array();
 				foreach ($citations as $citation) {
                     if ($citation->inTimespan($startTs, $endTs)) {
-                        $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId], $firstNames[$recordId], CareerDev::isVanderbilt());
+                        $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId], $firstNames[$recordId], Application::isVanderbilt());
                     }
 				}
 				if (count($nihFormatCits) == 0) {
@@ -2116,7 +2110,7 @@ class NIHTables {
         $offTrainingStartDate = FALSE;
         $offTrainingTypes = [3, 5, 6];
         $transformedEnd = FALSE;
-        for ($i = 1; $i <= MAX_GRANTS; $i++) {
+        for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
             $startDate = $row["summary_award_date_".$i];
             $type = $row["summary_award_type_".$i];
             if (!$transformedEnd && $startDate && $type && in_array($type, $eligibleKs)) {
@@ -2168,7 +2162,7 @@ class NIHTables {
         $summaryData = Download::fieldsForRecords($this->token, $this->server, $awardFields, [$recordId]);
         $eligibleKs = [3];
         foreach ($summaryData as $row) {
-            for ($i = 1; $i <= MAX_GRANTS; $i++) {
+            for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
                 if ($row['summary_award_type_'.$i] && in_array($row['summary_award_type_'.$i], $eligibleKs) && $row['summary_award_date_'.$i]) {
                     $oneDay = 24 * 3600;
                     $ts = strtotime($row['summary_award_date_'.$i]);

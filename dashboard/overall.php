@@ -4,20 +4,16 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Patents;
 use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\FlightTrackerExternalModule\Measurement;
-use \Vanderbilt\FlightTrackerExternalModule\MoneyMeasurement;
-use \Vanderbilt\FlightTrackerExternalModule\ObservedMeasurement;
-use \Vanderbilt\FlightTrackerExternalModule\DateMeasurement;
+use \Vanderbilt\CareerDevLibrary\Measurement;
+use \Vanderbilt\CareerDevLibrary\DateMeasurement;
+use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
+use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/base.php");
 require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Scholar.php");
-require_once(dirname(__FILE__)."/../classes/Patents.php");
 
 define("FOLLOWUP_LOST", "Followup Lost to Other Institution");
 define("PATENTS_INCLUDED", "Number of Patents");
@@ -27,7 +23,7 @@ $measurements = [];
 $metadata = Download::metadata($token, $server);
 $fields = array_unique(array_merge(
     CareerDev::$summaryFields,
-    Application::getPatentFields($metadata),
+    Application::getPatentFields($metadata)
 ));
 $indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $_GET['cohort'], $metadata);
 

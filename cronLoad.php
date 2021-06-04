@@ -6,9 +6,7 @@ use Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\CronManager;
 
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/Crons.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 # supply day of the week or YYYY-MM-DD
 function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
@@ -104,11 +102,11 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
             $manager->addCron("drivers/18_getPatents.php", "getPatents", $date, $records);
         }
 
-        $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday");
+        $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", $date, $records);
         if ($has['nih_reporter']) {
-            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday");
+            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", $date, $records);
         } else {
-            $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
+            $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", $date, $records);
         }
 		$manager->addCron("publications/getAllPubs_func.php", "getPubs", $date, $records);
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records);

@@ -3,9 +3,8 @@
 use \Vanderbilt\CareerDevLibrary\ConnectionStatus;
 use \Vanderbilt\CareerDevLibrary\Application;
 
-require_once(dirname(__FILE__)."/Application.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/small_base.php");
-require_once(dirname(__FILE__)."/classes/ConnectionStatus.php");
 
 $name = $_POST['name'];
 $server = $_POST['server'];

@@ -7,14 +7,8 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Cohorts.php");
-require_once(dirname(__FILE__)."/../classes/Grants.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 
 function copyAllCohortProjects($token, $server, $pid, $records) {
     $metadata = Download::metadata($token, $server);

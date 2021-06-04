@@ -6,10 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/../classes/EmailManager.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $startTs = time();
 $metadata = Download::metadata($token, $server);

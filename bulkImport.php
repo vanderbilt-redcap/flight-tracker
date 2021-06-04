@@ -8,12 +8,7 @@ use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
-require_once(dirname(__FILE__)."/classes/Upload.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/classes/NameMatcher.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/Application.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 if (isset($_GET['positions'])) {
     $importFile = "import_positions.csv";

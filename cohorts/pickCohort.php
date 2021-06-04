@@ -6,11 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Cohorts.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
 $recordsIncluded = [];

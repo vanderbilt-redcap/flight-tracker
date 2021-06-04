@@ -8,18 +8,11 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
+use \Vanderbilt\CareerDevLibrary\ExcludeList;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
-require_once(dirname(__FILE__)."/../classes/Publications.php");
-require_once(dirname(__FILE__)."/../classes/Patents.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
-require_once(dirname(__FILE__)."/../classes/Citation.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../Application.php");
 
 $url = Application::link("wrangler/include.php");
 $wranglerType = $_GET['wranglerType'];
@@ -116,10 +109,12 @@ $redcapData = Download::fieldsForRecords($token, $server, $fields, [$record]);
 $nextRecord = getNextRecordWithData($token, $server, $record, $wranglerType);
 
 if ($wranglerType == "Publications") {
+    $excludeList = new ExcludeList("Publications", $pid, [], $metadata);
     $pubs = new Publications($token, $server);
     $pubs->setRows($redcapData);
-    $html = $pubs->getEditText();
+    $html = $excludeList->makeEditForm($record).$pubs->getEditText();
 } else if ($wranglerType == "Patents") {
+    # no exclude list (yet)
     $lastNames = Download::lastnames($token, $server);
     $firstNames = Download::firstnames($token, $server);
     $patents = new Patents($record, $pid, $firstNames[$record], $lastNames[$record], $institutions[$record]);
@@ -196,7 +191,7 @@ function autoResetTimeHTML($pid) {
 
 function getNextRecordWithData($token, $server, $currRecord, $wranglerType) {
 	$records = Download::recordIds($token, $server);
-	if (method_exists("CareerDev", "filterOutCopiedRecords")) {
+	if (method_exists("\\Vanderbilt\\FlightTrackerExternalModule\\CareerDev", "filterOutCopiedRecords")) {
         $records = CareerDev::filterOutCopiedRecords($records);
     }
 	$pos = 0;
@@ -278,7 +273,7 @@ function getNewNumbers($token, $server, $recordId, $wranglerType) {
 function checkForApprovals($token, $server, $records, $nextRecord, $url, $wranglerType) {
     $html = "";
     $names = Download::names($token, $server);
-    if (method_exists("CareerDev", "filterOutCopiedRecords")) {
+    if (method_exists("\\Vanderbilt\\FlightTrackerExternalModule\\CareerDev", "filterOutCopiedRecords")) {
         $records = CareerDev::filterOutCopiedRecords($records);
     }
     $lastNames = Download::lastnames($token, $server);

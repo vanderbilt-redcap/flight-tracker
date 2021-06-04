@@ -5,18 +5,14 @@
 # for aggregate data
 
 use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__).'/baseWeb.php');
-require_once(dirname(__FILE__).'/../CareerDev.php');
-require_once(dirname(__FILE__).'/../Application.php');
-require_once(dirname(__FILE__).'/../classes/Links.php');
-require_once(dirname(__FILE__).'/../classes/Download.php');
-require_once(dirname(__FILE__).'/../classes/Grants.php');
-require_once(dirname(__FILE__).'/../classes/REDCapManagement.php');
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__).'/../../../redcap_connect.php');
 
 $nameForAll = "Entire Society";
@@ -551,7 +547,7 @@ function get_current_cda($data, $withinAllottedTime = true) {
 				}
 				if (!$first_r) {
 					$first_k = "";
-					for ($i = 1; $i <= MAX_GRANTS; $i++) {
+					for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 						if (in_array($row['summary_award_type_'.$i], $ks)) {
 							if (!$first_k) {
 								if (!$withinAllottedTime) {
@@ -955,7 +951,7 @@ foreach ($tableData as $tableRow => $ary) {
 }
 
 # print table
-echo "<table class='fixedHeaders'>";
+echo "<table class='fixedHeaders max-width'>";
 echo "<tr class='fixed'><th class='border left'>Category</th>";
 foreach ($cda as $i => $years) {
 	$onclick = "";

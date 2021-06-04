@@ -6,7 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Links;
 
-require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 ?>
 <script src="<?= CareerDev::link("/charts/vis.min.js") ?>"></script>
@@ -15,10 +15,6 @@ require_once(dirname(__FILE__)."/../CareerDev.php");
 <?php
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Grants.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Publications.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
 
 ?>
 

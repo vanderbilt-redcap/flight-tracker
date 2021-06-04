@@ -6,10 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
-require_once(dirname(__FILE__)."/classes/Links.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/Application.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 if ($_GET['record']) {
 	$record = $_GET['record'];

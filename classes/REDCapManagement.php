@@ -2,11 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/Upload.php");
-require_once(dirname(__FILE__)."/Stats.php");
-require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 # for datediff
 $redcapFile = APP_PATH_DOCROOT.'/ProjectGeneral/math_functions.php';
@@ -628,6 +624,7 @@ class REDCapManagement {
             } else {
                 $json = json_encode($postdata);
             }
+            Application::log("Posting $json", $pid);
             curl_setopt($ch, CURLOPT_POST, 1);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
@@ -650,6 +647,16 @@ class REDCapManagement {
         $time2 = microtime();
         Application::log("Response code $resp; ".strlen($data)." bytes in ".(($time2 - $time1) / 1000)." seconds");
         return [$resp, $data];
+    }
+
+    public static function isGoodURL($url) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        curl_exec($ch);
+        $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        return ($resp == 200);
     }
 
     public static function versionGreaterThanOrEqualTo($version1, $version2) {

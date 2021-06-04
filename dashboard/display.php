@@ -22,7 +22,6 @@ td.header { padding: 5px; }
 use \Vanderbilt\CareerDevLibrary\Download;
 
 require_once(dirname(__FILE__)."/base.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
 
 function makeHTML($headers, $measurements, $lines = array(), $cohort = "", $metadata = array(), $numInRow = 4) {
 	global $pid;

@@ -6,17 +6,7 @@ namespace Vanderbilt\CareerDevLibrary;
 # It should remove duplicate grants as well.
 # Unit-testable.
 
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/Links.php");
-require_once(dirname(__FILE__)."/Grant.php");
-require_once(dirname(__FILE__)."/Scholar.php");
-require_once(dirname(__FILE__)."/GrantFactory.php");
-require_once(dirname(__FILE__)."/GrantLexicalTranslator.php");
-
-define('MAX_GRANTS', 15);
-define('NUM_GRANT_TESTS', 20);
-define('MIN_TITLE_CHARS', 15);
+require_once(__DIR__ . '/ClassLoader.php');
 
 class Grants {
 	public function __construct($token, $server, $metadata = array()) {
@@ -34,10 +24,15 @@ class Grants {
 		$this->metadata = $tempHolder;
 		$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule());
 	}
+	
+	public static $MAX_GRANTS = 15;
+	public static $NUM_GRANT_TESTS = 20;
+	public static $MIN_TITLE_CHARS = 15;
+
 
 	public function excludeUnnamedGrants_test($tester) {
 		$patterns = array("/K12\/KL2 - Rec\./", "/Internal K - Rec\./");
-		for ($i = 1; $i <= NUM_GRANT_TESTS; $i++) {
+		for ($i = 1; $i <= self::$NUM_GRANT_TESTS; $i++) {
 			$recordId = $this->setupTests();
 			$this->compileGrants();
 			foreach ($this->getGrants() as $grant) {
@@ -104,6 +99,17 @@ class Grants {
         }
 		return 0;
 	}
+
+	public function excludeSources($sources) {
+	    if (!is_array($sources)) {
+	        $sources = [$sources];
+        }
+        $this->sourcesToExclude = $sources;
+    }
+
+    public function getSourcesToExclude() {
+	    return $this->sourcesToExclude;
+    }
 
 	public function getGrants($type = "compiled") {
 		if ($type == "precompiled") {
@@ -721,6 +727,9 @@ class Grants {
 					}
 				}
 			}
+			if (in_array($grant->getVariable("source"), $this->sourcesToExclude)) {
+			    $filterOut = TRUE;
+            }
 			if (!$filterOut) {
 				array_push($filteredGrants, $grant);
 			}
@@ -1109,11 +1118,11 @@ class Grants {
     }
 
     private static function copyTitleIfBlank(&$basisGrant, $grants) {
-        if (strlen($basisGrant->getVariable("title")) < MIN_TITLE_CHARS) {
+        if (strlen($basisGrant->getVariable("title")) < self::$MIN_TITLE_CHARS) {
             for ($i = 1; $i < count($grants); $i++) {
                 $currGrant = $grants[$i];
                 $title = $currGrant->getVariable("title");
-                if (strlen($title) >= MIN_TITLE_CHARS) {
+                if (strlen($title) >= self::$MIN_TITLE_CHARS) {
                     $basisGrant->setVariable("title", $title);
                     if (self::getShowDebug()) { Application::log("Setting title of ".$basisGrant->getNumber()." to ".$title." from ".$currGrant->getNumber()); }
                     break;
@@ -1121,7 +1130,7 @@ class Grants {
                 if (($title != "") && ($basisGrant->getVariable("title") == "")) {
                     $basisGrant->setVariable("title", $title);
                     if (self::getShowDebug()) { Application::log("Temporarily setting title of ".$basisGrant->getNumber()." to ".$title." from ".$currGrant->getNumber()); }
-                    # no break because less than MIN_TITLE_CHARS => examine more titles
+                    # no break because less than self::$MIN_TITLE_CHARS => examine more titles
                 }
             }
         }
@@ -1283,7 +1292,7 @@ class Grants {
 				'summary_ever_first_any_k_to_r01_equiv',
 				'summary_ever_last_any_k_to_r01_equiv',
 				);
-		for ($i = 1; $i <= MAX_GRANTS; $i++) {
+		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
 			array_push($fields, 'summary_award_type_'.$i);
 		}
 		foreach ($fields as $field) {
@@ -1419,7 +1428,7 @@ class Grants {
     private static function getLastKType($row) {
 		$kTypes = array(1, 2, 3, 4);
 		$lastK = FALSE;
-		for ($i = 1; $i <= MAX_GRANTS; $i++) {
+		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
 			if (in_array($row['summary_award_type_'.$i], $kTypes)) {
 				$lastK = $row['summary_award_type_'.$i];
 			}
@@ -1437,7 +1446,7 @@ class Grants {
 	#		   6, No K; No R01-or-Equivalent
 	#			  7, Used K99/R00
 	private static function converted($row, $typeOfK) {
-		for ($i = 1; $i <= MAX_GRANTS; $i++) {
+		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
 			if ($row['summary_award_type_'.$i] == 9) {
 				# K99/R00
 				return 7;
@@ -1514,7 +1523,7 @@ class Grants {
 		$endKTsFromR01 = $r01 - $oneDay;
 		$endKDateFromR01 = date("Y-m-d", $endKTsFromR01);
 
-		for ($i = 1; $i <= MAX_GRANTS; $i++) {
+		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
 			$type = $row['summary_award_type_'.$i];
 			$endDate = strtotime($row['summary_award_end_date_'.$i]);
 			if (in_array($type, $kTypes) && ($r01 < $endDate)) {
@@ -1567,7 +1576,7 @@ class Grants {
             }
 			$i = 1;
 			foreach ($this->compiledGrants as $grant) {
-				if ($i <= MAX_GRANTS) {
+				if ($i <= self::$MAX_GRANTS) {
 					$v = $grant->getREDCapVariables($i);
 					if (self::getShowDebug()) { Application::log("Grant $i: ".json_encode($v)); }
 					foreach ($v as $key => $value) {
@@ -1587,7 +1596,7 @@ class Grants {
 				}
 			}
 			$blankGrant = new Grant($this->lexicalTranslator);
-			for ($grant_i = $i; $grant_i <= MAX_GRANTS; $grant_i++) {
+			for ($grant_i = $i; $grant_i <= self::$MAX_GRANTS; $grant_i++) {
 				$v = $blankGrant->getREDCapVariables($grant_i);
 				foreach ($v as $key => $value) {
                     $value = self::translateSourcesIntoSourceOrder($key, $value);
@@ -1729,6 +1738,7 @@ class Grants {
 	private $calculate;
 	private $changes;
 	private static $showDebug = FALSE;
+	private $sourcesToExclude = [];
 }
 
 class ImportedChange {

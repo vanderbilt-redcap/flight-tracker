@@ -2,13 +2,10 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-
 # This class handles commonly occuring downloads from the REDCap API.
 
 // require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/NameMatcher.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class Upload
 {
@@ -291,7 +288,9 @@ public static function metadata($metadata, $token, $server) {
         if (!$feedback && $curlHandle) {
             $returnCode = curl_getinfo($curlHandle, CURLINFO_RESPONSE_CODE);
             $curlError = curl_error($curlHandle);
-            throw new \Exception("Upload error (non-JSON): $originalText [$returnCode] - $curlError");
+            if ($returnCode != 200) {
+                throw new \Exception("Upload error (non-JSON): $originalText [$returnCode] - $curlError");
+            }
         } else if (isset($feedback['error']) && $feedback['error']) {
             Application::log("Upload error: ".$feedback['error']);
 			throw new \Exception("Error: ".$feedback['error']."\n".json_encode($rows));

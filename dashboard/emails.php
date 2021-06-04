@@ -1,12 +1,14 @@
 <?php
 
 use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\FlightTrackerExternalModule\Measurement;
+use \Vanderbilt\CareerDevLibrary\Measurement;
+use \Vanderbilt\CareerDevLibrary\DateMeasurement;
+use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
+use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
 require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
 
 $headers = array();
 array_push($headers, "Emails");

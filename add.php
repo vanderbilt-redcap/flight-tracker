@@ -8,12 +8,7 @@ use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/Application.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/Upload.php");
-require_once(dirname(__FILE__)."/classes/NameMatcher.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 	# get starting record_id
@@ -36,9 +31,13 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 			$i = 0;
 			while ($line = fgetcsv($fp)) {
 				if ($i > 0) {
-					$lines[] = $line;
-				}
-				$i++;
+				    if ($line[0] != "") {
+                        $lines[] = $line;
+                        $i++;
+                    }
+				} else {
+                    $i++;
+                }
 			}
 			fclose($fp);
 		}
@@ -130,13 +129,13 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 }
 
 function processLines($lines, $nextRecordId, $token, $server) {
-	$upload = array();
+	$upload = [];
 	$lineNum = 1;
 	$metadata = Download::metadata($token, $server);
 	$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	$recordIds = [];
 	foreach ($lines as $nodes) {
-		if (count($nodes) >= 6) {
+		if ((count($nodes) >= 6) && $nodes[0] && $nodes[3]) {
 			$firstName = $nodes[0];
 			$middle = $nodes[2];
 			$lastName = $nodes[3];

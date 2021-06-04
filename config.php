@@ -8,12 +8,7 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule;
 
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/Upload.php");
-require_once(dirname(__FILE__)."/classes/Scholar.php");
-require_once(dirname(__FILE__)."/classes/Links.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 define('MAX_DEGREE_SOURCES', 5);
 

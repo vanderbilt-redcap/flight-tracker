@@ -6,10 +6,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 ?>
 <style>
@@ -74,7 +71,7 @@ function addToMentors($value, $mentors) {
 	return $mentors;
 }
 
-echo "<h1>Current Newman Society Members and Their Mentors</h1>";
+echo "<h1>Current Scholars and Their Mentors</h1>";
 echo "<table style='display: none; margin-left: auto; margin-right: auto;'><tr class='even'><th>Record</th><th>Scholar</th><th>Mentor(s)</th><th>Qualifying Award</th><th>Converted On</th></tr>";
 $cnt = 1;
 $revAwardTypes = \Vanderbilt\FlightTrackerExternalModule\getReverseAwardTypes();

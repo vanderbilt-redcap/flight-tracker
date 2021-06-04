@@ -10,14 +10,7 @@ use Vanderbilt\CareerDevLibrary\RePORTER;
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
-require_once(dirname(__FILE__)."/Application.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/Grant.php");
-require_once(dirname(__FILE__)."/classes/Cohorts.php");
-require_once(dirname(__FILE__)."/classes/Links.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/classes/RePORTER.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $coeus2Fields = ["record_id", "coeus2_agency_grant_number", "coeus2_award_status", "coeus2_submitted_to_agency", "coeus2_role"];
 $cohort = $_GET['cohort'] ? $_GET['cohort'] : "";

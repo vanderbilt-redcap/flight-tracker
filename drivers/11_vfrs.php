@@ -3,8 +3,7 @@
 # must be run on server with access to its database
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 define("NOAUTH", true);

@@ -2,7 +2,7 @@
 use \Vanderbilt\CareerDevLibrary\COEUSConnection;
 
 require_once(dirname(__FILE__)."/small_base.php");
-require_once(dirname(__FILE__)."/classes/OracleConnection.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 function pullCoeus($token, $server, $pid) {
 	$conn = new COEUSConnection();

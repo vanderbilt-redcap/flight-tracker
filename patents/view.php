@@ -6,10 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Patents;
 use \Vanderbilt\CareerDevLibrary\Download;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../classes/Cohorts.php");
-require_once(dirname(__FILE__)."/../classes/Patents.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $module = Application::getModule();
 if ($_GET['cohort']) {

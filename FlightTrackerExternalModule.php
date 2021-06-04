@@ -13,13 +13,7 @@ use Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\CareerDevLibrary\NameMatcher;
 use Vanderbilt\CareerDevLibrary\Upload;
 
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/classes/Crons.php");
-require_once(dirname(__FILE__)."/classes/EmailManager.php");
-require_once(dirname(__FILE__)."/classes/NavigationBar.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/NameMatcher.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/cronLoad.php");
 require_once(APP_PATH_DOCROOT."Classes/System.php");
 
@@ -608,7 +602,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	function getUsername() {
-        if (method_exists("ExternalModules", "getUsername")) {
+        if (method_exists("\ExternalModules\ExternalModules", "getUsername")) {
             return ExternalModules::getUsername();
         }
         if (USERID) {
@@ -621,7 +615,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	    $url = $link['url'];
         $userid = $this->getUsername();
         $isSuperUser = FALSE;
-        if (method_exists("ExternalModules", "isSuperUser")) {
+        if (method_exists("\ExternalModules\ExternalModules", "isSuperUser")) {
             $isSuperUser = ExternalModules::isSuperUser();
         }
 
@@ -690,7 +684,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			# turn off for surveys and login pages
 			$url = $_SERVER['PHP_SELF'];
 			if (!preg_match("/surveys/", $url) && !isset($_GET['s'])) {
-				echo $this->makeHeaders($this, $token, $server, $project_id, $tokenName);
+				echo $this->makeHeaders($token, $server, $project_id, $tokenName);
 			}
 		} else {
 			if (self::canRedirectToInstall()) {

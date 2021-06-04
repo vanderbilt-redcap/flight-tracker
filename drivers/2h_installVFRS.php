@@ -4,8 +4,7 @@
 # performs an upload of the VFRS data to the REDCap database
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 echo "SERVER: ".$server."\n";
 echo "TOKEN: ".$token."\n";

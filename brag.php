@@ -13,13 +13,7 @@ if (!isset($_GET['showHeaders'])) {
 }
 
 require_once(dirname(__FILE__)."/small_base.php");
-require_once(dirname(__FILE__)."/classes/Publications.php");
-require_once(dirname(__FILE__)."/classes/Citation.php");
-require_once(dirname(__FILE__)."/classes/Download.php");
-require_once(dirname(__FILE__)."/classes/Cohorts.php");
-require_once(dirname(__FILE__)."/classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/classes/Altmetric.php");
-require_once(dirname(__FILE__)."/Application.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 if ($_GET['cohort'] && ($_GET['cohort'] != 'all')) {

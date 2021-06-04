@@ -6,8 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Links;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $redcapData = \Vanderbilt\FlightTrackerExternalModule\alphabetizeREDCapData(Download::fields($token, $server, array("record_id", "identifier_first_name", "identifier_last_name", "identifier_email")));
 

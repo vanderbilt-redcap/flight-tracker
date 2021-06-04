@@ -54,7 +54,8 @@
 	   "wrangler/certifyPub",
 	   "reporting/getData",
 	   "js/xtract.js",
-	   "emailMgmt/makeSurveyLinks"
+	   "emailMgmt/makeSurveyLinks",
+	   "copyProject"
    ],
 
 

@@ -5,11 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 # This class handles commonly occuring downloads from the REDCap API.
 
 // require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-require_once(dirname(__FILE__)."/../Application.php");
-require_once(dirname(__FILE__)."/Filter.php");
-require_once(dirname(__FILE__)."/CohortConfig.php");
-require_once(dirname(__FILE__)."/Cohorts.php");
-require_once(dirname(__FILE__)."/Scholar.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class Download {
 	public static function indexREDCapData($redcapData) {
@@ -163,8 +159,7 @@ class Download {
 	public static function redcapVersion($token, $server) {
 	    $data = [
 	        "token" => $token,
-            "content" => "version",
-            "format" => "json",
+            "content" => "version"
         ];
 	    return self::sendToServer($server, $data);
     }
@@ -432,20 +427,37 @@ class Download {
             curl_close($ch);
             self::throttleIfNecessary();
 		}
-		$redcapData = json_decode($output, true);
-		if ($redcapData === NULL) {
-		    Application::log("Retrying");
-		    usleep(500);
-		    $redcapData = self::sendToServer($server, $data, $try + 1);
-		    if (($redcapData === NULL) && ($try == $maxTries)) {
+		if (!$output) {
+            Application::log("Retrying because no output");
+            usleep(500);
+            $redcapData = self::sendToServer($server, $data, $try + 1);
+            if (($redcapData === NULL) && ($try == $maxTries)) {
                 Application::log("ERROR: ".$output);
                 throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
             }
+            if (isset($redcapData['error']) && !empty($redcapData['error'])) {
+                throw new \Exception("Download Exception: ".$redcapData['error']);
+            }
+            return $redcapData;
         }
-		if (isset($redcapData['error']) && !empty($redcapData['error'])) {
-			throw new \Exception("Download Exception: ".$redcapData['error']);
-		}
-		return $redcapData;
+		if (REDCapManagement::isJSON($output)) {
+            $redcapData = json_decode($output, true);
+            if ($redcapData === NULL) {
+                Application::log("Retrying because undecipherable output");
+                usleep(500);
+                $redcapData = self::sendToServer($server, $data, $try + 1);
+                if (($redcapData === NULL) && ($try == $maxTries)) {
+                    Application::log("ERROR: ".$output);
+                    throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
+                }
+            }
+            if (isset($redcapData['error']) && !empty($redcapData['error'])) {
+                throw new \Exception("Download Exception: ".$redcapData['error']);
+            }
+            return $redcapData;
+        } else {
+            return $output;
+        }
 	}
 
 	public static function userid($token, $server) {

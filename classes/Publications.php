@@ -6,17 +6,7 @@ namespace Vanderbilt\CareerDevLibrary;
 # This class handles publication data from PubMed, the VICTR fetch routine, and surveys.
 # It also provides HTML for data-wrangling the publication data
 
-require_once(dirname(__FILE__)."/Upload.php");
-require_once(dirname(__FILE__)."/Wrangler.php");
-require_once(dirname(__FILE__)."/Download.php");
-require_once(dirname(__FILE__)."/Links.php");
-require_once(dirname(__FILE__)."/iCite.php");
-require_once(dirname(__FILE__)."/Citation.php");
-require_once(dirname(__FILE__)."/Scholar.php");
-require_once(dirname(__FILE__)."/REDCapManagement.php");
-require_once(dirname(__FILE__)."/Altmetric.php");
-require_once(dirname(__FILE__)."/WebOfScience.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 class Publications {
 	public function __construct($token, $server, $metadata = array()) {

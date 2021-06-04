@@ -8,14 +8,8 @@ use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../CareerDev.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
-require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
 
 define("NO_MATCHES", "NO_MATCHES");
 define("MORE_THAN_ONE", "MORE_THAN_ONE");

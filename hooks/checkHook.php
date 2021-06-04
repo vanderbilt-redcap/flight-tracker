@@ -5,9 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Grants.php");
-require_once(dirname(__FILE__)."/../classes/Grant.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/surveyHook.php");
 
 # This is the hook used for the scholars' survey. It is referenced in the hooks file.
@@ -344,7 +342,7 @@ function filterSponsorNumber($name) {
 
 	$i = 1;
 	foreach ($grants->getGrants("compiled") as $grant) {
-		if ($i <= MAX_GRANTS) {
+		if ($i <= self::$MAX_GRANTS) {
 			echo "	presetValue('check_grant{$i}_start', '".REDCapManagement::YMD2MDY($grant->getVariable("start"))."');\n";
 			echo "	presetValue('check_grant{$i}_end', '".REDCapManagement::YMD2MDY($grant->getVariable("end"))."');\n";
 			echo "	presetValue('check_grant{$i}_number', '".filterSponsorNumber($grant->getBaseNumber())."');\n";
@@ -352,7 +350,7 @@ function filterSponsorNumber($name) {
 			echo "	presetValue('check_grant{$i}_org', '".$grant->getVariable("sponsor")."');\n";
 			echo "	presetValue('check_grant{$i}_costs', '".Grant::convertToMoney($grant->getVariable("direct_budget"))."');\n";
 			echo "	presetValue('check_grant{$i}_role', '1');\n";
-			if (($i < MAX_GRANTS) && ($i < $grants->getNumberOfGrants("compiled"))) {
+			if (($i < self::$MAX_GRANTS) && ($i < $grants->getNumberOfGrants("compiled"))) {
 				echo "	presetValue('check_grant{$i}_another', '1');\n";
 			}
 		}

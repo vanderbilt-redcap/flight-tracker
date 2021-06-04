@@ -13,7 +13,7 @@ body { font-family: Arial, Helvetica, sans-serif; }
 
 <?php
 	require_once(dirname(__FILE__)."/../small_base.php");
-	require_once(dirname(__FILE__)."/UnitTester.php");
+	require_once(__DIR__ . '/ClassLoader.php');
 
 	ini_set('display_errors', 1);
 	ini_set('display_startup_errors', 1);

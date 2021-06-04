@@ -9,7 +9,7 @@ try {
 	# code as most of this code is the only reliable copy of it. 2a and others were used only in the past.
 
 	require_once(dirname(__FILE__)."/../small_base.php");
-	require_once(dirname(__FILE__)."/../classes/Links.php");
+    require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 	define("NOAUTH", "true");
 	require_once(dirname(__FILE__)."/../../../redcap_connect.php");
