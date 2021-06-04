@@ -1762,6 +1762,7 @@ class Scholar {
                 }
                 $results[$field."___".$key] = new Result($newValue, "", "", "", $this->pid);
             }
+            return $results;
         }
         return [];
     }
@@ -1794,6 +1795,9 @@ class Scholar {
         $order = self::getDefaultOrder("summary_degrees");
         $order = $this->getOrder($order, "summary_degrees");
 
+        $choices = self::getChoices($this->metadata);
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
+
         $normativeRow = self::getNormativeRow($rows);
         $followupRows = self::selectFollowupRows($rows);
 
@@ -1812,7 +1816,28 @@ class Scholar {
                     }
                 }
                 if ($normativeRow[$variable] && !in_array($normativeRow[$variable], $degrees)) {
-                    $degrees[] = $normativeRow[$variable];
+                    if (in_array("summary_all_degrees", $metadataFields) && isset($choices[$variable])) {
+                        $foundIdx = FALSE;
+                        foreach ($choices["summary_all_degrees"] as $idx => $label) {
+                            if ($label == $choices[$variable][$normativeRow[$variable]]) {
+                                $foundIdx = $idx;
+                                break;
+                            }
+                        }
+                        if ($foundIdx === FALSE) {
+                            if (!in_array($normativeRow[$variable], $degrees)) {
+                                $degrees[] = $normativeRow[$variable];
+                            }
+                        } else {
+                            if (!in_array($foundIdx, $degrees)) {
+                                $degrees[] = $foundIdx;
+                            }
+                        }
+                    } else {
+                        if (!in_array($normativeRow[$variable], $degrees)) {
+                            $degrees[] = $normativeRow[$variable];
+                        }
+                    }
                 }
             }
         }
@@ -2766,6 +2791,7 @@ class Scholar {
             "identifier_ecommons_id" => "getEcommonsId",
         ];
 		if (in_array("summary_all_degrees", $metadataFields)) {
+		    Application::log("Adding summary_all_degrees");
 		    $ary["summary_all_degrees"] = "checkAllDegrees";
         }
         for ($i = 1; $i <= self::getNumStudySections(); $i++) {
@@ -2874,8 +2900,11 @@ class Scholar {
                 $url = "https://api.elsevier.com/content/author/orcid/$orcid?httpAccept=" . urlencode($format) . "&apikey=" . $key;
                 list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
                 $data = json_decode($json, TRUE);
-
-
+                foreach ($data["author-retrieval-response"] as $authorRow) {
+                    if ($authorRow['h-index']) {
+                        return new Result($authorRow['h-index'], "");
+                    }
+                }
             } else {
                 $firstNames = NameMatcher::explodeFirstName($this->getName("first"));
                 $lastNames = NameMatcher::explodeLastName($this->getName("last"));
@@ -3010,7 +3039,7 @@ class Scholar {
 
 		$metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
 
-		$specialCases = array("summary_degrees", "summary_coeus_name", "summary_survey", "summary_race_ethnicity");
+		$specialCases = array("summary_degrees", "summary_coeus_name", "summary_survey", "summary_race_ethnicity", "summary_all_degrees");
 		foreach ($fields as $field => $func) {
 			if (in_array($field, $metadataFields)) {
 				if (in_array($field, $specialCases)) {
@@ -3026,7 +3055,12 @@ class Scholar {
 						$this->demographics["summary_race_sourcetype"] = $result->getRaceSourceType();
 						$this->demographics["summary_ethnicity_source"] = $result->getEthnicitySource();
 						$this->demographics["summary_ethnicity_sourcetype"] = $result->getEthnicitySourceType();
-					}
+					} else if ($field == "summary_all_degrees") {
+					    $results = $this->$func($rows);
+					    foreach ($results as $checkboxField => $result) {
+					        $this->demographics[$checkboxField] = $result->getValue();
+                        }
+                    }
 				} else {
 					$result = $this->$func($rows);
 					if (is_array($result)) {

@@ -13,5 +13,8 @@ spl_autoload_register(function ($class_name) {
         $path = "../$path";
     }
 
-    require_once(__DIR__ . "/$path");
+    $filename = __DIR__."/$path";
+    if (file_exists($filename)) {
+        require_once($filename);
+    }
 });

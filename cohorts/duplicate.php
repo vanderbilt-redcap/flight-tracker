@@ -160,7 +160,7 @@ if ($supertoken && in_array($cohort, $cohortNames)) {
     echo "<h1>Input a Supertoken</h1>";
     $link = CareerDev::link("cohorts/duplicate.php");
     echo "<form action='$link' method='POST'>";
-    echo "<p class='centered'><input type='text' name='supertoken' value='' style='width: 200px;'></p>"
+    echo "<p class='centered'><input type='text' name='supertoken' value='' style='width: 200px;'></p>";
     echo "<p class='centered'><button>Go!</button></p>";
     echo "</form>";
 } else {

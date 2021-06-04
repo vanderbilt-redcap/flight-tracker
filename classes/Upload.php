@@ -546,14 +546,21 @@ public static function metadata($metadata, $token, $server) {
 				'returnContent' => 'count',
 				'returnFormat' => 'json'
 				);
+			$runAPI = TRUE;
 			if ($saveDataEligible) {
 				$method = "saveData";
+				Application::log($method);
 				$time2 = microtime(TRUE);
-				$feedback = \REDCap::saveData($pid, "json", $data['data'], $data['overwriteBehavior']);
-				$time3 = microtime(TRUE);
-				$output = json_encode($feedback);
-			} else {
+				if (method_exists("\\REDCap", "saveData")) {
+				    $feedback = \REDCap::saveData($pid, "json", $data['data'], $data['overwriteBehavior']);
+                    $time3 = microtime(TRUE);
+                    $output = json_encode($feedback);
+                    $runAPI = FALSE;
+                }
+			}
+			if ($runAPI) {
 				$method = "API";
+                Application::log($method);
 				$ch = curl_init();
 				curl_setopt($ch, CURLOPT_URL, $server);
 				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
