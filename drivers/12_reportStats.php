@@ -60,14 +60,14 @@ function getTotalNumberOfConfirmedPublications($token, $server) {
 function getTotalNumberOfGrantsAfterCombination($token, $server) {
 	$fields = array();
 	$prefix = "summary_award_sponsorno";
-	for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
+	for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 		array_push($fields, $prefix."_".$i);
 	}
 	$redcapData = Download::fields($token, $server, $fields);
 
 	$numGrants = 0;
 	foreach ($redcapData as $row) {
-		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
+		for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 			if ($row[$prefix."_".$i]) {
 				$numGrants++;
 			}

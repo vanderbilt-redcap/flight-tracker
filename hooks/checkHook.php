@@ -342,7 +342,7 @@ function filterSponsorNumber($name) {
 
 	$i = 1;
 	foreach ($grants->getGrants("compiled") as $grant) {
-		if ($i <= self::$MAX_GRANTS) {
+		if ($i <= Grants::$MAX_GRANTS) {
 			echo "	presetValue('check_grant{$i}_start', '".REDCapManagement::YMD2MDY($grant->getVariable("start"))."');\n";
 			echo "	presetValue('check_grant{$i}_end', '".REDCapManagement::YMD2MDY($grant->getVariable("end"))."');\n";
 			echo "	presetValue('check_grant{$i}_number', '".filterSponsorNumber($grant->getBaseNumber())."');\n";
@@ -350,7 +350,7 @@ function filterSponsorNumber($name) {
 			echo "	presetValue('check_grant{$i}_org', '".$grant->getVariable("sponsor")."');\n";
 			echo "	presetValue('check_grant{$i}_costs', '".Grant::convertToMoney($grant->getVariable("direct_budget"))."');\n";
 			echo "	presetValue('check_grant{$i}_role', '1');\n";
-			if (($i < self::$MAX_GRANTS) && ($i < $grants->getNumberOfGrants("compiled"))) {
+			if (($i < Grants::$MAX_GRANTS) && ($i < $grants->getNumberOfGrants("compiled"))) {
 				echo "	presetValue('check_grant{$i}_another', '1');\n";
 			}
 		}
