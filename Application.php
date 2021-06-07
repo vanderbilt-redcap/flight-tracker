@@ -11,6 +11,10 @@ class Application {
 		return CareerDev::getPID($token);
 	}
 
+	public static function isVanderbilt() {
+	    return CareerDev::isVanderbilt();
+    }
+
     public static function getProjectTitle() {
         return \REDCap::getProjectTitle();
     }
