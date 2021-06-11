@@ -7,29 +7,15 @@ foreach ($files as $file) {
         $fullFilename = __DIR__."/".$file;
         if (hasClassAndNamespaceDefined($fullFilename)) {
             require_once($fullFilename);
-            if (isset($_GET['test'])) {
-                echo "Requiring $fullFilename<br>";
-            }
-        } else {
-            if (isset($_GET['test'])) {
-                echo "Skipping $fullFilename<br>";
-            }
         }
     }
 }
-$applicationClass = __DIR__."/../Application.php";
-if (file_exists($applicationClass) && hasClassAndNamespaceDefined($applicationClass)) {
-    require_once($applicationClass);
-}
-
-$careerDev = __DIR__."/../CareerDev.php";
-if (file_exists($careerDev)) {
-    require_once($careerDev);
-}
-
-$redcapConnect = __DIR__."/../../../redcap_connect.php";
-if (file_exists($redcapConnect)) {
-    require_once($redcapConnect);
+$includeLocs = ["/../Application.php", "/../CareerDev.php", "/../../../redcap_connect.php"];
+foreach ($includeLocs as $loc) {
+    $loc = __DIR__.$loc;
+    if (file_exists($loc)) {
+        require_once($loc);
+    }
 }
 
 function hasClassAndNamespaceDefined($filename) {

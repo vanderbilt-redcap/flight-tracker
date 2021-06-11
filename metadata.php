@@ -48,6 +48,10 @@ if ($_POST['process'] == "check") {
                 $choices[$type] = REDCapManagement::getChoices($md);
             }
 
+            if (!CareerDev::isVanderbilt()) {
+                insertDeletesForPrefix($metadata['file'], "/^coeus_/");
+            }
+
             $fieldList = array();
             $indexedMetadata = array();
             foreach ($metadata as $type => $metadataRows) {
@@ -63,13 +67,18 @@ if ($_POST['process'] == "check") {
             $specialFields = REDCapManagement::getSpecialFields("all");
             foreach ($fieldList["file"] as $field => $choiceStr) {
                 $isSpecialGenderField = !CareerDev::isVanderbilt() || !in_array($field, $genderFieldsToHandleForVanderbilt);
+                $isFieldOfSources = preg_match("/_source$/", $field) && isset($choices["REDCap"][$field]["scholars"]);
                 if (!in_array($field, $specialFields)) {
                     if (!isset($fieldList["REDCap"][$field])) {
-                        if (!preg_match("/^coeus_/", $field)) {
+                        array_push($missing, $field);
+                        if (!preg_match($deletionRegEx, $field)) {
+                            array_push($additions, $field);
+                        }
+                    } else if ($isFieldOfSources) {
+                        $sourceChoices = CareerDev::getRelevantChoices();
+                        if (!REDCapManagement::arraysEqual($choices["REDCap"][$field], $sourceChoices)) {
                             array_push($missing, $field);
-                            if (!preg_match($deletionRegEx, $field)) {
-                                array_push($additions, $field);
-                            }
+                            array_push($changed, $field);
                         }
                     } else if ($choices["file"][$field] && $choices["REDCap"][$field] && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])) {
                         if ($isSpecialGenderField) {
@@ -110,7 +119,7 @@ if ($_POST['process'] == "check") {
         }
         fclose($fp);
 
-        $metadata = array();
+        $metadata = [];
         $metadata['file'] = json_decode($json, TRUE);
         $metadata['REDCap'] = Download::metadata($token, $server);
         if ($metadata['file']) {
@@ -121,18 +130,28 @@ if ($_POST['process'] == "check") {
             } else {
                 $mentorLabel = "Primary mentor (current)";
             }
-            $fieldLabels = array();
+            $fieldLabels = [];
             foreach ($metadata as $type => $md) {
                 $fieldLabels[$type] = REDCapManagement::getLabels($md);
             }
-            $fieldsForMentorLabel = array("check_primary_mentor", "followup_primary_mentor", );
+            $fieldsForMentorLabel = ["check_primary_mentor", "followup_primary_mentor", ];
             foreach ($fieldsForMentorLabel as $field) {
                 $metadata['file'] = changeFieldLabel($field, $mentorLabel, $metadata['file']);
                 if ($fieldLabels['file'][$field] != $fieldLabels['REDCap'][$field]) {
-                    array_push($postedFields, $field);
+                    $postedFields[] = $field;
                 }
             }
             $metadata["REDCap"] = reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"]);
+            $choices = ["REDCap" => REDCapManagement::getChoices($metadata["REDCap"])];
+            $newChoices = CareerDev::getRelevantChoices();
+            $newChoiceStr = REDCapManagement::makeChoiceStr($newChoices);
+            for ($i = 0; $i < count($metadata['file']); $i++) {
+                $field = $metadata['file'][$i]['field_name'];
+                $isFieldOfSources = preg_match("/_source$/", $field) && isset($choices["REDCap"][$field]["scholars"]);
+                if ($isFieldOfSources) {
+                    $metadata['file'][$i]['select_choices_or_calculations'] = $newChoiceStr;
+                }
+            }
 
             try {
                 $feedback = REDCapManagement::mergeMetadataAndUpload($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
@@ -143,7 +162,7 @@ if ($_POST['process'] == "check") {
 
                 convertOldDegreeData($pid);
             } catch (\Exception $e) {
-                $feedback = array("Exception" => $e->getMessage());
+                $feedback = ["Exception" => $e->getMessage()];
                 echo json_encode($feedback);
             }
         }
@@ -235,4 +254,12 @@ function changeFieldLabel($field, $label, $metadata) {
 		$i++;
 	}
 	return $metadata;
+}
+
+function insertDeletesForPrefix(&$metadata, $regExToTurnIntoDeletes) {
+    for ($i = 0; $i < count($metadata); $i++) {
+        if (preg_match($regExToTurnIntoDeletes, $metadata[$i]['field_name'])) {
+            $metadata[$i]['field_name'] .= "___delete";
+        }
+    }
 }

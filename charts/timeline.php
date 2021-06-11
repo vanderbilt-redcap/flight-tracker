@@ -4,7 +4,9 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
@@ -48,8 +50,19 @@ body { font-size: 12px; }
 	$minTs = time();
 
 	if (CareerDev::isVanderbilt()) {
-	    list($coeus2Submissions, $submissionTimestamps) = makeCoeus2Submissions($rows, $recordId, $pid, $event_id, $id);
-        $grantsAndPubs = array_merge($grantsAndPubs, $coeus2Submissions);
+	    $fieldsWithData = REDCapManagement::getFieldsWithData($rows, $recordId);
+	    $submissionTimestamps = [];
+	    if (in_array("coeussubmission_ip_number", $fieldsWithData)) {
+	        # first priority
+            list($coeusSubmissions, $coeusSubmissionTimestamps) = makeCoeusSubmissions($rows, $recordId, $pid, $event_id, $id);
+            list($coeusAwards, $coeusAwardTimestamps) = makeCoeusAwards($rows, $recordId, $pid, $event_id, $id);
+            $grantsAndPubs = array_merge($grantsAndPubs, $coeusSubmissions, $coeusAwards);
+            $submissionTimestamps = array_merge($coeusSubmissionTimestamps, $coeusAwardTimestamps);
+        } else if (in_array("coeus2_id", $fieldsWithData)) {
+            # second priority
+	        list($coeus2Submissions, $submissionTimestamps) = makeCoeus2Submissions($rows, $recordId, $pid, $event_id, $id);
+            $grantsAndPubs = array_merge($grantsAndPubs, $coeus2Submissions);
+        }
         foreach ($submissionTimestamps as $submissionTs) {
             if ($submissionTs) {
                 if ($maxTs < $submissionTs) {
@@ -120,42 +133,82 @@ window.onload = function() {
 
 <?php
 
-function makeCoeus2Submissions($rows, $recordId, $pid, $event_id, &$id) {
-    $skipNumbers = ["000"];
-    $validStatuses = ["Awarded", "Unfunded"];
+function makeCoeusAwards($rows, $recordId, $pid, $event_id, &$id) {
     $grantsAndPubs = [];
     $submissionTimestamps = [];
     foreach ($rows as $row) {
-        if (($row['redcap_repeat_instrument'] == "coeus2")
-            && !in_array($row['coeus2_agency_grant_number'], $skipNumbers)
-            && in_array($row['coeus2_award_status'], $validStatuses)) {
-
-            $submissionTs = strtotime($row['coeus2_submitted_to_agency']);
-            $submissionTimestamps[] = $submissionTs;
-
-            $grantAry = [];
-            $grantAry['id'] = $id;
-            $grantAry['start'] = date("Y-m-d", $submissionTs);
-            $grantAry['className'] = $row['coeus2_award_status'];
-            $grantAry['type'] = "point";
-            $grantNumber = $row['coeus2_agency_grant_number'];
-            $titleLength = 25;
-            if (strlen($row['coeus2_title']) > $titleLength) {
-                $truncatedTitle = substr($row['coeus2_title'], 0, $titleLength)."...";
-            } else {
-                $truncatedTitle = $row['coeus2_title'];
-            }
-            if ($grantNumber) {
-                $grantNumber .= " Application";
-            } else {
-                $grantNumber = $row['coeus2_award_status'].": ".$truncatedTitle;
-            }
-            $grantAry['content'] = Links::makeFormLink($pid, $recordId, $event_id, $grantNumber, "coeus2", $row['redcap_repeat_instance']);
-            $grantsAndPubs[] = $grantAry;
-            $id++;
-        }
+        $awardStatus = "Awarded";
+        $awardNo = $row['coeus_award_no'];
+        $title = $row['coeus_title'];
+        $instrument = "coeus";
+        $instance = $row['redcap_repeat_instance'];
+        $submissionDate = $row['coeus_award_create_date'];
+        checkRowForValidity($row, $pid, $recordId, $event_id, $grantsAndPubs, $submissionTimestamps, $id, $instrument, $instance, $submissionDate, $awardNo, $awardStatus, $title);
     }
-    return [$grantsAndPubs, $id, $submissionTimestamps];
+    return [$grantsAndPubs, $submissionTimestamps];
+}
+
+function makeCoeusSubmissions($rows, $recordId, $pid, $event_id, &$id) {
+    $grantsAndPubs = [];
+    $submissionTimestamps = [];
+    foreach ($rows as $row) {
+        $awardStatus = $row['coeussubmission_proposal_status'];
+        $awardNo = $row['coeussubmission_sponsor_proposal_number'];
+        $title = $row['coeussubmission_title'];
+        $instrument = "coeus_submission";
+        $instance = $row['redcap_repeat_instance'];
+        $submissionDate = $row['coeussubmission_proposal_create_date'];
+        checkRowForValidity($row, $pid, $recordId, $event_id, $grantsAndPubs, $submissionTimestamps, $id, $instrument, $instance, $submissionDate, $awardNo, $awardStatus, $title);
+    }
+    return [$grantsAndPubs, $submissionTimestamps];
+}
+
+function makeCoeus2Submissions($rows, $recordId, $pid, $event_id, &$id) {
+    $grantsAndPubs = [];
+    $submissionTimestamps = [];
+    foreach ($rows as $row) {
+        $awardStatus = $row['coeus2_award_status'];
+        $awardNo = $row['coeus2_agency_grant_number'];
+        $title = $row['coeus2_title'];
+        $instrument = "coeus2";
+        $instance = $row['redcap_repeat_instance'];
+        $submissionDate = $row['coeus2_submitted_to_agency'];
+        checkRowForValidity($row, $pid, $recordId, $event_id, $grantsAndPubs, $submissionTimestamps, $id, $instrument, $instance, $submissionDate, $awardNo, $awardStatus, $title);
+    }
+    return [$grantsAndPubs, $submissionTimestamps];
+}
+
+function checkRowForValidity($row, $pid, $recordId, $event_id, &$grantsAndPubs, &$submissionTimestamps, &$id, $instrument, $instance, $submissionDate, $awardNo, $awardStatus, $title) {
+    $skipNumbers = [];
+    $validStatuses = ["Awarded", "Unfunded"];
+    if (($row['redcap_repeat_instrument'] == $instrument)
+        && !in_array($awardNo, $skipNumbers)
+        && in_array($awardStatus, $validStatuses)) {
+
+        $submissionTs = strtotime($submissionDate);
+        $submissionTimestamps[] = $submissionTs;
+
+        $grantAry = [];
+        $grantAry['id'] = $id;
+        $grantAry['start'] = date("Y-m-d", $submissionTs);
+        $grantAry['className'] = $awardStatus;
+        $grantAry['type'] = "point";
+        $grantNumber = $awardNo;
+        $titleLength = 25;
+        if (strlen($title) > $titleLength) {
+            $truncatedTitle = substr($title, 0, $titleLength)."...";
+        } else {
+            $truncatedTitle = $title;
+        }
+        if ($grantNumber) {
+            $grantNumber .= " Application";
+        } else {
+            $grantNumber = $awardStatus.": ".$truncatedTitle;
+        }
+        $grantAry['content'] = Links::makeFormLink($pid, $recordId, $event_id, $grantNumber, $instrument, $instance);
+        $grantsAndPubs[] = $grantAry;
+        $id++;
+    }
 }
 
 function makeTrainingDatesBar($rows, &$id, &$minTs, &$maxTs, $isCurrentTrainee) {

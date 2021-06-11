@@ -2893,6 +2893,20 @@ class Scholar {
 		return $result;
 	}
 
+	private function checkForScopusError($data) {
+	    if (isset($data["service-error"]) && isset($data["service-error"]["status"])) {
+            if (isset($data["service-error"]["status"]["statusText"])) {
+                Application::log("ERROR: ".$data["service-error"]["status"]["statusText"], $this->pid);
+            } else if (isset($data["service-error"]["status"]["statusCode"])) {
+                Application::log("ERROR: ".$data["service-error"]["status"]["statusCode"], $this->pid);
+            } else {
+                Application::log("ERROR: Could not parse ".json_encode($data), $this->pid);
+            }
+            return TRUE;
+        }
+	    return FALSE;
+    }
+
     private function getScopusHIndex($rows) {
         if ($key = Application::getSetting("scopus_api_key", $this->pid)) {
             $format = "application/json";
@@ -2900,9 +2914,13 @@ class Scholar {
                 $url = "https://api.elsevier.com/content/author/orcid/$orcid?httpAccept=" . urlencode($format) . "&apikey=" . $key;
                 list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
                 $data = json_decode($json, TRUE);
-                foreach ($data["author-retrieval-response"] as $authorRow) {
-                    if ($authorRow['h-index']) {
-                        return new Result($authorRow['h-index'], "");
+                if ($this->checkForScopusError($data)) {
+                    return new Result("", "");
+                } else {
+                    foreach ($data["author-retrieval-response"] as $authorRow) {
+                        if ($authorRow['h-index']) {
+                            return new Result($authorRow['h-index'], "");
+                        }
                     }
                 }
             } else {
@@ -2916,7 +2934,9 @@ class Scholar {
                             $url = "https://api.elsevier.com/content/search/author?httpAccept=" . urlencode($format) . "&query=" . urlencode($query) . "&apikey=" . $key;
                             list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
                             $data = json_decode($json, TRUE);
-                            if ($data['search-results']) {
+                            if ($this->checkForScopusError($data)) {
+                                return new Result("", "");
+                            } else if ($data['search-results']) {
                                 foreach ($data['search-results']['entry'] as $authorRow) {
                                     if ($authorRow['dc:identifier']) {
                                         $authorId = preg_replace("/^AUTHOR_ID:/", "", $authorRow['dc:identifier']);
@@ -2925,14 +2945,14 @@ class Scholar {
                                         }
                                     }
                                 }
-                            }
-                            if ($authorId) {
-                                $url = "http://api.elsevier.com/content/author_id/" . $authorId . "?view=metrics&httpAccept=" . urlencode($format) . "&apikey=" . $key;
-                                list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
-                                $data = json_decode($json, TRUE);
-                                foreach ($data["author-retrieval-response"] as $authorRow) {
-                                    if ($authorRow['h-index']) {
-                                        return new Result($authorRow['h-index'], "");
+                                if ($authorId) {
+                                    $url = "http://api.elsevier.com/content/author_id/" . $authorId . "?view=metrics&httpAccept=" . urlencode($format) . "&apikey=" . $key;
+                                    list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
+                                    $data = json_decode($json, TRUE);
+                                    foreach ($data["author-retrieval-response"] as $authorRow) {
+                                        if ($authorRow['h-index']) {
+                                            return new Result($authorRow['h-index'], "");
+                                        }
                                     }
                                 }
                             }

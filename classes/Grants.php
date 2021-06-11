@@ -411,8 +411,8 @@ class Grants {
             "nih_reporter" => "NIH RePORTER",
             "exporter" => "NIH ExPORTER",
             "reporter" => "Federal RePORTER",
-            "coeus2" => "COEUS",
             "coeus" => "COEUS",
+            "coeus2" => "COEUS",
             "custom" => "REDCap Custom Grants",
             "followup" => "Follow-Up Survey",
             "scholars" => "Initial Scholar's Survey",
@@ -550,12 +550,16 @@ class Grants {
 		foreach ($sourceOrder as $source) {
 			foreach ($grants as $grant) {
 				if ($grant->getVariable("source") == $source) {
-					$awardNo = $grant->getNumber();
-					if (!isset($awardsBySource[$awardNo])) {
-						$awardsBySource[$awardNo] = array();
-					}
-					$awardsBySource[$awardNo][] = $grant;
-					if (self::getShowDebug()) { Application::log("combineBySource setup: ".$awardNo." adding ".$grant->getVariable("type")); }
+				    if ($grant->getVariable("start")) {
+                        $awardNo = $grant->getNumber();
+                        if (!isset($awardsBySource[$awardNo])) {
+                            $awardsBySource[$awardNo] = array();
+                        }
+                        $awardsBySource[$awardNo][] = $grant;
+                        if (self::getShowDebug()) { Application::log("combineBySource setup: ".$awardNo." adding ".$grant->getVariable("type")); }
+                    } else {
+                        if (self::getShowDebug()) { Application::log("combineBySource setup: omitting ".$awardNo." because no start"); }
+                    }
 				}
 			}
 		}

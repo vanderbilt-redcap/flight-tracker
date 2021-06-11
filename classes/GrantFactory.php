@@ -71,8 +71,11 @@ class InitialGrantFactory extends GrantFactory {
         $prefix = $this->prefix;
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= Grants::$MAX_GRANTS; $i++) {
-			if (($row[$prefix."_grant$i"."_start"] != "") && ($row[$prefix."_grant$i"."_notmine"] != '1')) {
-				$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=initial_survey";
+			if (($row[$prefix."_grant$i"."_start"] != "")
+                && ($row[$prefix."_grant$i"."_notmine"] != '1')
+                && in_array($row[$prefix."_grant".$i."_role"], [1, 2])) {
+
+			    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=initial_survey";
 			    $awardno = $row[$prefix.'_grant'.$i.'_number'];
 				$grant = new Grant($this->lexicalTranslator);
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
@@ -119,7 +122,10 @@ class FollowupGrantFactory extends GrantFactory {
 	public function processRow($row, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= Grants::$MAX_GRANTS; $i++) {
-			if (($row["followup_grant$i"."_start"] != "") && ($row["followup_grant$i"."_notmine"] != '1')) {
+			if (($row["followup_grant$i"."_start"] != "")
+                && ($row["followup_grant$i"."_notmine"] != '1')
+                && in_array($row["followup_grant$i"."_role"], [1, 2])) {
+
 			    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=followup&instance={$row['redcap_repeat_instance']}";
 				$awardno = $row['followup_grant'.$i.'_number'];
 
@@ -718,8 +724,8 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         $grant->setVariable('person_name', $row['nih_principal_investigators']);
         $grant->setVariable('project_start', $row['nih_project_start_date']);
         $grant->setVariable('project_end', $row['nih_project_end_date']);
-        $grant->setVariable('start', $row['nih_project_start_date']);
-        $grant->setVariable('end', $row['nih_project_end_date']);
+        // $grant->setVariable('start', $row['nih_project_start_date']);
+        // $grant->setVariable('end', $row['nih_project_end_date']);
         $grant->setVariable('title', $row['nih_project_title']);
         $grant->setVariable('budget', $row['nih_award_amount']);
         $grant->setVariable('total_budget', $row['nih_award_amount']);

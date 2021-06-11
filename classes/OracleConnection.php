@@ -20,16 +20,17 @@ abstract class OracleConnection {
 		if (!$this->connection) {
 			throw new \Exception("Unable to connect! ".json_encode(oci_error()));
 		}
-		Application::log("Has connection to ".$this->getServer());
-		Application::log("oci_error: ".json_encode(oci_error()));
+		// Application::log("Has connection to ".$this->getServer());
+		// Application::log("oci_error: ".json_encode(oci_error()));
 
 		$stmt = oci_parse($this->connection, $sql);
 		if (!$stmt) {
 			throw new \Exception("Unable to parse ".$sql.": ".json_encode(oci_error()));
 		}
 
-		$result = oci_execute($stmt);
-		Application::log("Statement returned ".oci_num_rows($stmt)." rows");
+        Application::log($sql);
+		oci_execute($stmt);
+		// Application::log("Statement returned ".oci_num_rows($stmt)." rows");
 		if ($error = oci_error($stmt)) {
 			throw new \Exception("Unable to execute statement. ".json_encode($error));
 		}
@@ -141,19 +142,30 @@ class COEUSConnection extends OracleConnection {
 	}
 
 	public function insertNewIds($ids) {
-		foreach ($ids as $id) {
-			$sql = "INSERT INTO SRIADM.SRI_CAREER (CAREER_VUNET, CAREER_ACTIVE) VALUES ('$id', '1')";
-			$this->query($sql);
-		}
+	    $rowsOfRows = [];
+	    $row = [];
+	    $limit = 1;
+	    foreach ($ids as $id) {
+	        $row[] = $id;
+	        if (count($row) == $limit) {
+	            $rowsOfRows[] = $row;
+	            $row = [];
+            }
+        }
+	    if (!empty($row)) {
+	        $rowsOfRows[] = $row;
+        }
+
+	    foreach ($rowsOfRows as $row) {
+	        if (!empty($row)) {
+                $sql = "INSERT INTO SRIADM.SRI_CAREER (CAREER_VUNET, CAREER_ACTIVE) VALUES ('".implode("', '1'),('", $row)."', '1')";
+                $this->query($sql);
+            }
+        }
 	}
 
-	public function getCurrentIds() {
-		$sql = "SELECT * FROM SRIADM.SRI_CAREER";
-		return $this->query($sql);
-	}
-
-	public function pullAwards() {
-		$sql = "SELECT * FROM SRIADM.RC_AWARDS_VW";
+    public function pullAwards() {
+		$sql = "SELECT * FROM SRIADM.RC_AWARDS_VW INNER JOIN SRIADM.RC_AWARD_INVESTIGATORS_VW ON (RC_AWARD_INVESTIGATORS_VW.AWARD_NO = RC_AWARDS_VW.AWARD_NO) and (RC_AWARD_INVESTIGATORS_VW.AWARD_SEQ = RC_AWARDS_VW.AWARD_SEQ) WHERE PI_FLAG = 'Y'";
 		return $this->query($sql);
 	}
 
@@ -178,17 +190,20 @@ class COEUSConnection extends OracleConnection {
 	}
 
 	public function pullProposals() {
-	    $sql = "SELECT * FROM SRIADM.RC_IP_VW";
+	    $sql = "SELECT * FROM SRIADM.RC_IP_VW INNER JOIN SRIADM.RC_IP_INVESTIGATORS_VW ON RC_IP_INVESTIGATORS_VW.IP_NUMBER = RC_IP_VW.IP_NUMBER";
 	    return $this->query($sql);
     }
 
 	public function pullAllRecords() {
-		$data = array();
+		$data = [];
 
 		$data["awards"] = $this->pullAwards();
 		$sql = "SELECT * FROM SRIADM.SRI_CAREER WHERE CAREER_ACTIVE = 1";
 		$data["membership"] = $this->query($sql);
-		$data["investigators"] = $this->pullPis();
+		$data["ids"] = [];
+		foreach ($data["membership"] as $row) {
+		    $data["ids"][] = $row['CAREER_VUNET'];
+        }
 		$data["proposals"] = $this->pullProposals();
 
 		return $data;

@@ -295,8 +295,12 @@ class REDCapManagement {
             $prefix = "honor";
         } else if ($instrument == "ldap") {
             $prefix = "ldap";
+        } else if ($instrument == "coeus_submission") {
+            $prefix = "coeussubmission";
         } else if ($instrument == "position_change") {
             $prefix = "promotion";
+        } else if ($instrument == "exclude_lists") {
+            $prefix = "exclude";
         } else {
             $prefix = "";
         }
@@ -1307,6 +1311,61 @@ class REDCapManagement {
             }
         }
         return $row;
+    }
+
+    public static function isOracleDate($d) {
+        return preg_match("/^\d\d-[A-Z]{3}-\d\d$/", $d);
+    }
+
+    # includes _complete's
+    public static function getFieldsWithData($rows, $recordId) {
+        $fieldsWithData = [];
+        $skip = ["redcap_repeat_instrument", "redcap_repeat_instance"];
+        foreach ($rows as $row) {
+            foreach ($row as $field => $value) {
+                if ($value && !in_array($field, $skip) && !in_array($field, $fieldsWithData)) {
+                    $fieldsWithData[] = $field;
+                }
+            }
+        }
+        return $fieldsWithData;
+    }
+
+    public static function oracleDate2YMD($d) {
+        if ($d === "") {
+            return "";
+        }
+        $nodes = preg_split("/\-/", $d);
+        $day = $nodes[0];
+        $month = $nodes[1];
+        $year = $nodes[2];
+        if ($year < 40) {
+            $year += 2000;
+        } else if ($year < 100) {
+            $year += 1900;
+        }
+        if (($day < 10) && (strlen($day) <= 1)) {
+            $day = "0".$day;
+        }
+        $months = array(
+            "JAN" => "01",
+            "FEB" => "02",
+            "MAR" => "03",
+            "APR" => "04",
+            "MAY" => "05",
+            "JUN" => "06",
+            "JUL" => "07",
+            "AUG" => "08",
+            "SEP" => "09",
+            "OCT" => "10",
+            "NOV" => "11",
+            "DEC" => "12",
+        );
+        if (!isset($months[$month])) {
+            throw new \Exception("Invalid month $month");
+        }
+        $month = $months[$month];
+        return $year."-".$month."-".$day;
     }
 
     public static function YMD2MDY($ymd) {

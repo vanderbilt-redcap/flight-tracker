@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.3.3";
+		return "3.4.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -627,9 +627,45 @@ class CareerDev {
         if (self::isVanderbilt()) {
             $formsAndLabels["ldap"] = "[ldap_vanderbiltpersonjobname]";
             $formsAndLabels["coeus2"] = "[coeus2_award_status]: [coeus2_agency_grant_number]";
+            $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
+            $formsAndLabels["coeus_submission"] = "[coeussubmission_proposal_status]: [coeussubmission_sponsor_proposal_number]";
         }
 
         return $formsAndLabels;
+    }
+
+    public static function getRelevantChoices() {
+	    $itemChoices = [
+            "scholars" => "Initial Survey (self-survey)",
+            "followup" => "Follow-Up Survey (self-survey)",
+            "custom" => "New Custom Grants (REDCap)",
+            "modify" => "Manual Modification Field (REDCap)",
+            "manual" => "Manual Form (REDCap)",
+            "pubmed" => "PubMed (online database)",
+            "reporter" => "Federal Reporter (online database)",
+            "exporter" => "NIH ExPORTER (online database)",
+            "nih_reporter" => "NIH RePORTER (online database)",
+        ];
+	    if (self::isVanderbilt()) {
+	        $itemChoices = array_merge($itemChoices, [
+                "coeus" => "COEUS (online database)",
+                "vfrs" => "VFRS Survey (self-survey)",
+                "accessvu" => "AccessVU (online database)",
+                "ldap" => "University Directory",
+            ]);
+	        if (self::getPid() == 66635) {
+                $itemChoices = array_merge($itemChoices, [
+                    "data" => "Newman Data (spreadsheet)",
+                    "sheet2" => "Newman Sheet2 (spreadsheet)",
+                    "demographics" => "Newman Demographics (spreadsheet)",
+                    "expertise" => "Expertise Survey (self-survey)",
+                    "new2017" => "2017 New Scholars (spreadsheet)",
+                    "k12", "K12 List (spreadsheet)",
+                    "nonrespondents" => "Nonrespondents (spreadsheet)",
+                ]);
+            }
+        }
+	    return $itemChoices;
     }
 
     public static function isTestGroup($pid) {

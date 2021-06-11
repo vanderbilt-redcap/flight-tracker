@@ -549,18 +549,17 @@ public static function metadata($metadata, $token, $server) {
 			$runAPI = TRUE;
 			if ($saveDataEligible) {
 				$method = "saveData";
-				Application::log($method);
 				$time2 = microtime(TRUE);
 				if (method_exists("\\REDCap", "saveData")) {
 				    $feedback = \REDCap::saveData($pid, "json", $data['data'], $data['overwriteBehavior']);
                     $time3 = microtime(TRUE);
                     $output = json_encode($feedback);
+                    self::testFeedback($feedback, $output, NULL);
                     $runAPI = FALSE;
                 }
 			}
 			if ($runAPI) {
 				$method = "API";
-                Application::log($method);
 				$ch = curl_init();
 				curl_setopt($ch, CURLOPT_URL, $server);
 				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -590,6 +589,7 @@ public static function metadata($metadata, $token, $server) {
             }
 			$allFeedback = self::combineFeedback($allFeedback, $feedback);
 		}
+		Application::log($method.": ".REDCapManagement::json_encode_with_spaces($allFeedback), $pid);
 		return $allFeedback;
 	}
 

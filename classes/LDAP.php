@@ -110,6 +110,14 @@ class LDAP {
 		return array($vunets, $departments);
 	}
 
+	public static function getUIDFromEmployeeID($employeeId) {
+	    $info = self::getLDAP("vanderbiltpersonemployeeid", $employeeId);
+        if ($info['count'] > 0) {
+            return self::findField($info, "uid", 0);
+        }
+        return "";
+    }
+
 	public static function getName($uid) {
         $info = self::getLDAP("uid", $uid);
         if ($info['count'] > 0) {
@@ -155,17 +163,17 @@ class LDAP {
 			array_push($values, $value);
 		}
 		if (isset($_GET['test'])) {
-		    echo "findField values: ".json_encode($values)."<br>";
-		    echo "findField idx: $idx<br>";
+		    echo "findField values: ".json_encode($values)."<br>\n";
+		    echo "findField idx: $idx<br>\n";
         }
 		if ($idx === "all") {
             if (isset($_GET['test'])) {
-                echo "findField return all $idx<br>";
+                echo "findField return all $idx<br>\n";
             }
             return $values;
         } else if (isset($values[$idx])) {
             if (isset($_GET['test'])) {
-                echo "findField return index $idx: ".json_encode($values[$idx])."<br>";
+                echo "findField return index $idx: ".json_encode($values[$idx])."<br>\n";
             }
             return $values[$idx];
         } else {
