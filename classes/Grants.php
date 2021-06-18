@@ -1584,6 +1584,31 @@ class Grants {
 					$v = $grant->getREDCapVariables($i);
 					if (self::getShowDebug()) { Application::log("Grant $i: ".json_encode($v)); }
 					foreach ($v as $key => $value) {
+					    if (preg_match("/_budget_/", $key) && ($value == 0)) {
+					        # NIH RePORTER has 0 for total budget; Federal RePORTER has 0 for direct budget
+                            $baseAwardNo = $grant->getBaseAwardNumber();
+                            if (preg_match("/_direct_budget_/", $key)) {
+                                $otherInstrument = "nih_reporter";
+                                $otherField = "direct_budget";
+                            } else if (preg_match("/_total_budget_/", $key)) {
+                                $otherInstrument = "reporter";
+                                $otherField = "budget";
+                            } else {
+                                throw new \Exception("Could not find budget entry for $key");
+                            }
+                            # combine all values together
+                            $value2 = 0;
+                            foreach ($this->getGrants($otherInstrument) as $grant2) {
+                                $baseAwardNo2 = $grant2->getBaseAwardNumber();
+                                if ($baseAwardNo == $baseAwardNo2) {
+                                    $v2 = $grant2->getVariable($otherField);
+                                    if ($v2) {
+                                        $value2 += $v2;
+                                    }
+                                }
+                            }
+                            $value = $value2;
+                        }
                         $value = self::translateSourcesIntoSourceOrder($key, $value);
 						if (isset($this->metadata[$key])) {
 							$uploadRow[$key] = $value;

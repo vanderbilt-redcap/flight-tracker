@@ -39,7 +39,10 @@ if (!Application::isWebBrowser()) {
     date_default_timezone_set(CareerDev::getTimezone());
 }
 
-$pid = CareerDev::getSetting("pid");
+$pid = $_GET['pid'];
+if (!$pid) {
+    $pid = CareerDev::getSetting("pid");
+}
 define('INSTITUTION', CareerDev::getInstitution($pid));
 define('PROGRAM_NAME', CareerDev::getProgramName());
 define("ENVIRONMENT", "prod");      // for Oracle database connectivity

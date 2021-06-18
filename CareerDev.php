@@ -5,13 +5,14 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 use ExternalModules\ExternalModules;
 use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\WebOfScience;
 
 class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.4.0";
+		return "3.4.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -122,19 +123,32 @@ class CareerDev {
         if (isset($_GET['test'])) {
             echo $mssg . "<br>\n";
         } else {
+            if (!is_array($pid)) {
+                $pids = [$pid];
+            } else if (!$pid) {
+                $pid = self::getPid();
+                if ($pid) {
+                    $pids = [$pid];
+                } else {
+                    $pids = [];
+                    error_log($mssg);
+                }
+            } else {
+                $pids = $pid;
+            }
             $module = self::getModule();
             if ($module) {
-                if (!$pid) {
-                    $pid = self::getPid();
-                }
-                if ($pid) {
-                    $params = array("project_id" => $pid);
-                    $module->log($mssg, $params);
-                    if (self::isVanderbilt()) {
-                        error_log($pid.": ".$mssg);
+                foreach ($pids as $pid) {
+                    if ($pid) {
+                        $params = array("project_id" => $pid);
+                        $module->log($mssg, $params);
+                        if (self::isVanderbilt()) {
+                            $rcTs = date("Ymdhis");
+                            error_log($pid." ($rcTs): ".$mssg);
+                        }
+                    } else {
+                        error_log($mssg);
                     }
-                } else {
-                    error_log($mssg);
                 }
             } else {
                 error_log($mssg);
@@ -171,6 +185,7 @@ class CareerDev {
 	}
 
 	public static function setPid($pid) {
+	    // self::log("Setting pid to $pid", $pid);
         $_GET['pid'] = $pid;
         $_GET['project_id'] = $pid;
 		self::$pid = $pid;

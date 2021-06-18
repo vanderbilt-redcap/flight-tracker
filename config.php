@@ -84,7 +84,7 @@ if (count($_POST) > 0) {
 		if (is_array($feedback)) {
 		    $feedback = json_encode($feedback);
         }
-		echo "<p class='centered green'>Saved ".count($_POST)." settings ($feedback)</p>\n";
+		echo "<p class='centered green'>Saved ".count($_POST)." settings into pid $pid ($feedback)</p>\n";
 	}
 }
 

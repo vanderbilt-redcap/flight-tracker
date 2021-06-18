@@ -198,7 +198,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $token = $this->getProjectSetting("token", $pid);
             $server = $this->getProjectSetting("server", $pid);
             if ($token && $server) {
-                Application::log("Got token with length of ".strlen($token)." for pid $pid", $pid);
+                // Application::log("Got token with length of ".strlen($token)." for pid $pid", $pid);
                 $tokens[$pid] = $token;
                 $servers[$pid] = $server;
             }
@@ -219,11 +219,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
         foreach ($pids as $i => $pid) {
             if ($tokens[$pid] && $servers[$pid]) {
+                CareerDev::setPid($pid);
                 $token = $tokens[$pid];
                 $server = $servers[$pid];
                 $metadata = Download::metadata($token, $server);
                 if (REDCapManagement::isMetadataFilled($metadata)) {
-                    Application::log("Downloading data for pid $pid", $pid);
+                    // Application::log("Downloading data for pid $pid", $pid);
                     $firstNames[$pid] = Download::firstnames($token, $server);
                     $lastNames[$pid] = Download::lastnames($token, $server);
                     $choices[$pid] = REDCapManagement::getChoices($metadata);
@@ -243,13 +244,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	    # push
 	    foreach ($pids as $i => $sourcePid) {
-	        Application::log("Searching through pid $sourcePid", $sourcePid);
+	        // Application::log("Searching through pid $sourcePid", $sourcePid);
 	        if ($tokens[$sourcePid] && $servers[$sourcePid]) {
                 $sourceToken = $tokens[$sourcePid];
                 $sourceServer = $servers[$sourcePid];
                 foreach ($pids as $i2 => $destPid) {
                     if (($destPid != $sourcePid) && $tokens[$destPid] && $servers[$destPid]) {
-                        Application::log("Communicating between $sourcePid and $destPid", $destPid);
+                        // Application::log("Communicating between $sourcePid and $destPid", $destPid);
                         $destToken = $tokens[$destPid];
                         $destServer = $servers[$destPid];
                         foreach (array_keys($firstNames[$destPid]) as $destRecordId) {
@@ -264,9 +265,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                             foreach ($combos as $nameAry) {
                                 $firstName = $nameAry["first"];
                                 $lastName = $nameAry["last"];
-                                // CareerDev::log("Searching for $firstName $lastName from $destPid in $sourcePid");
+                                // Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $sourcePid);
+                                // Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $destPid);
+                                $originalPid = CareerDev::getPid();
+                                CareerDev::setPid($sourcePid);
                                 if ($sourceRecordId = NameMatcher::matchName($firstName, $lastName, $sourceToken, $sourceServer)) {
-                                    CareerDev::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)");
+                                    // Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $sourcePid);
+                                    // Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $destPid);
 
                                     $sourceInfo = [
                                         "token" => $sourceToken,
@@ -285,6 +290,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                                     break; // combos foreach
                                     # if more than one match, match only first name matched
                                 }
+                                CareerDev::setPid($originalPid);
                             }
                         }
                     }
@@ -304,8 +310,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
     private function copyPubData($sourceInfo, $destInfo) {
 	    $fields = ['record_id', 'citation_pmid', 'citation_include'];
+	    $originalPid = CareerDev::getPid();
+        CareerDev::setPid($sourceInfo['pid']);
         $sourceData = Download::fieldsForRecords($sourceInfo['token'], $sourceInfo['server'], $fields, [$sourceInfo['record']]);
+        CareerDev::setPid($destInfo['pid']);
         $destData = Download::fieldsForRecords($destInfo['token'], $destInfo['server'], $fields, [$destInfo['record']]);
+        CareerDev::setPid($originalPid);
         $sourcePMIDs = self::transformREDCapDataToPMIDsAndIncludes($sourceData, $sourceInfo['record']);
         $destPMIDs = self::transformREDCapDataToPMIDsAndIncludes($destData, $destInfo['record']);
 
@@ -423,11 +433,18 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             "redcap_repeat_instrument" => "",
             "redcap_repeat_instance" => "",
         ];
+        $originalPid = CareerDev::getPid();
+        CareerDev::setPid($destPid);
         foreach (array_keys($forms) as $instrument) {
             $field = $instrument . "_complete";
             $completes[$instrument][$destPid] = Download::oneField($destToken, $destServer, $field);
+        }
+        CareerDev::setPid($sourcePid);
+        foreach (array_keys($forms) as $instrument) {
+            $field = $instrument . "_complete";
             $completes[$instrument][$sourcePid] = Download::oneField($sourceToken, $sourceServer, $field);
         }
+        CareerDev::setPid($originalPid);
         $uploadNormativeRow = FALSE;
         $repeatingRows = [];
         $sourceData = [];
@@ -435,12 +452,16 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         foreach ($completes as $instrument => $completeData) {
             if (!in_array($completeData[$destPid][$destRecordId], $markedAsComplete)
                 && in_array($completeData[$sourcePid][$sourceRecordId], $markedAsComplete)) {
+                if (empty($sourceData) || empty($destData)) {
+                    $originalPid = CareerDev::getPid();
+                    CareerDev::setPid($sourcePid);
+                    $sourceData = Download::records($sourceToken, $sourceServer, array($sourceRecordId));
+                    CareerDev::setPid($destPid);
+                    $destData = Download::records($destToken, $destServer, array($destRecordId));
+                    CareerDev::setPid($originalPid);
+                }
                 # copy over from source to dest and mark as same as $projectData[$sourceRecordId]
                 // CareerDev::log("Matched complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
-                if (empty($sourceData) || empty($destData)) {
-                    $sourceData = Download::records($sourceToken, $sourceServer, array($sourceRecordId));
-                    $destData = Download::records($destToken, $destServer, array($destRecordId));
-                }
                 $config = $forms[$instrument];
                 $newInstance = REDCapManagement::getMaxInstance($destData, $instrument, $destRecordId) + 1;
                 foreach ($sourceData as $sourceRow) {
@@ -449,14 +470,16 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         if ($config["formType"] == "single") {
                             if ($destRow["redcap_repeat_instrument"] == "") {
                                 if (!self::isValidToCopy($config["test_fields"], $sourceRow, $destRow, $choicesByPid[$sourcePid], $choicesByPid[$destPid])) {
-                                    // CareerDev::log("Not valid to copy single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                    Application::log("Not valid to copy single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+                                    Application::log("Not valid to copy single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
                                     $continueToCopyFromSource = FALSE;
                                 }
                             }
                         } else if ($config["formType"] == "repeating") {
                             if ($destRow["redcap_repeat_instrument"] == $instrument) {
                                 if (!self::isValidToCopy($config["test_fields"], $sourceRow, $destRow, $choicesByPid[$sourcePid], $choicesByPid[$destPid])) {
-                                    // CareerDev::log("Not valid to repeating single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                    Application::log("Not valid to repeating single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+                                    Application::log("Not valid to repeating single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
                                     $continueToCopyFromSource = FALSE;
                                 }
                             }
@@ -467,7 +490,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                             || (in_array($instrument, $sharedFormsForDest) && in_array($instrument, $sharedFormsForSource)))) {
                         if ($config["formType"] == "single") {
                             if ($sourceRow["redcap_repeat_instrument"] == "") {
-                                // CareerDev::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                Application::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+                                Application::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
                                 $hasChanged = self::copyDataFromRowToNormative($sourceRow,
                                     $completeData[$sourcePid][$sourceRecordId],
                                     $config["prefix"],
@@ -476,13 +500,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                                     $normativeRow,
                                     $instrument);
                                 if ($hasChanged) {
-                                    // CareerDev::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                    Application::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+                                    Application::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
                                     $uploadNormativeRow = TRUE;
                                 }
                             }
                         } else if ($config["formType"] == "repeating") {
                             if ($sourceRow["redcap_repeat_instrument"] == $instrument) {
-                                // CareerDev::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                Application::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+                                Application::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
                                 $repeatingRow = self::copyDataFromRowToNewRow($sourceRow,
                                     $completeData[$sourcePid][$sourceRecordId],
                                     $config["prefix"],
@@ -492,7 +518,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                                     $instrument,
                                     $newInstance);
                                 if ($repeatingRow && is_array($repeatingRow)) {
-                                    // CareerDev::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
+                                    Application::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+                                    Application::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
                                     $repeatingRows[] = $repeatingRow;
                                     $newInstance++;
                                 }
@@ -509,20 +536,24 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     // Application::log("Uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
                     try {
                         $feedback = Upload::rows($upload, $destToken, $destServer);
-                        // Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId", $destPid);
+                        Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId", $destPid);
+                        Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId", $sourcePid);
                         // Application::log(json_encode($upload), $destPid;
                         if (!in_array($destPid, $pidsUpdated)) {
                             $pidsUpdated[] = $destPid;
                         }
                     } catch (\Exception $e) {
-                        Application::log("ERROR: Could not copy from $sourcePid record $sourceRecordId, into $destPid record $destRecordId");
+                        Application::log("ERROR: Could not copy from $sourcePid record $sourceRecordId, into $destPid record $destRecordId", $sourcePid);
+                        Application::log("ERROR: Could not copy from $sourcePid record $sourceRecordId, into $destPid record $destRecordId", $destPid);
                         Application::log($e->getMessage());
                     }
                 } else {
-                    // Application::log("Skipping uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+                    Application::log("Skipping uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
+                    Application::log("Skipping uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
                 }
             } else {
-                // Application::log("Could not match complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+                Application::log("Could not match complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
+                Application::log("Could not match complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
             }
         }
     }

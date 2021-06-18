@@ -181,7 +181,24 @@ class LDAP {
         }
 	}
 
-	public static function getFields() {
+    public static function getEmailFromName($first, $last) {
+        $key = self::getNameAssociations($first, $last);
+        $info = self::getLDAPByMultiple(array_keys($key), array_values($key));
+        if ($info['count'] > 0) {
+            return self::findField($info, "mail", 0);
+        }
+        return "";
+    }
+
+    public static function getEmailFromUid($uid) {
+        $info = self::getLDAP("uid", $uid);
+        if ($info['count'] > 0) {
+            return self::findField($info, "mail", 0);
+        }
+        return "";
+    }
+
+    public static function getFields() {
 		return [
             "modifytimestamp",
             "modifiersname",
@@ -303,7 +320,6 @@ class LdapLookup {
                                 break;
                             }
                             if ($currTry == self::MAX_RETRIES) {
-                                echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
                                 throw new \Exception(ldap_error($ldapConn)." ".$searchFilter);
                             }
                         }
@@ -390,7 +406,6 @@ class LdapLookup {
 				}
 			} else {
 				if(ldap_error($ldapConn) != "") {
-					echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
 					throw new \Exception(ldap_error($ldapConn));
 				}
 			}
@@ -421,7 +436,7 @@ class LdapLookup {
 				$data = ldap_get_entries($ldapConn, $sr);
 				$allData = self::mergeAndDiscardDups($allData, $data);
 			} else {
-				echo "<pre>";var_dump(ldap_error($ldapConn));echo "</pre><br /><Br />";
+			    throw new \Exception(ldap_error($ldapConn));
 			}
 		}
 		return $allData;

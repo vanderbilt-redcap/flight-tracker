@@ -12,8 +12,17 @@ use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
-$coeus2Fields = ["record_id", "coeus2_agency_grant_number", "coeus2_award_status", "coeus2_submitted_to_agency", "coeus2_role"];
-$cohort = $_GET['cohort'] ? $_GET['cohort'] : "";
+$metadata = Download::metadata($token, $server);
+$metadataForms = REDCapManagement::getFormsFromMetadata($metadata);
+if (in_array("coeus_submission", $metadataForms)) {
+    $attemptInstrument = "coeus_submission";
+    $coeusFields = ["record_id", 'coeus_sponsor_award_number', 'coeus_award_create_date', 'coeus_pi_flag', 'coeussubmission_sponsor_proposal_number', 'coeussubmission_proposal_create_date', 'coeussubmission_proposal_status', 'coeussubmission_pi_flag'];
+} else {
+    $attemptInstrument = "coeus2";
+    $coeusFields = ["record_id", "coeus2_agency_grant_number", "coeus2_award_status", "coeus2_submitted_to_agency", "coeus2_role"];
+}
+
+$cohort = $_GET['cohort'];
 $thresholdTs = $_GET['date'] ? strtotime($_GET['date']) : 0;
 if (isset($_GET['page'])) {
     $module = Application::getModule();
@@ -45,7 +54,7 @@ for ($i = 0; $i < count($records); $i += $pullSize) {
             $recordStats[$recordId]["Test"] = ["Attempts" => [], "Successes" => []];
         }
     }
-    $redcapData = Download::fieldsForRecords($token, $server, $coeus2Fields, $pullRecords);
+    $redcapData = Download::fieldsForRecords($token, $server, $coeusFields, $pullRecords);
     $codedAccepts = ["000", ""];
     $awardedStatuses = ["Awarded", "Supplement Funded"];
     $priorDates = [];
@@ -63,27 +72,54 @@ for ($i = 0; $i < count($records); $i += $pullSize) {
         if (!isset($awardNumbers[$recordId])) {
             $awardNumbers[$recordId] = [];
         }
-        if ($row['redcap_repeat_instrument'] == "coeus2") {
+        if (($attemptInstrument == "coeus2") && ($row['redcap_repeat_instrument'] == "coeus2")) {
             if (in_array($row['coeus2_award_status'], $awardedStatuses)) {
                 $awardNumbers[$recordId][] = $row['coeus2_agency_grant_number'];
             }
+        } else if (($attemptInstrument == "coeus_submission") && ($row['redcap_repeat_instrument'] == "coeus")) {
+            $awardNumbers[$recordId][] = $row['coeus_sponsor_award_number'];
         }
     }
 
     foreach ($redcapData as $row) {
         $recordId = $row['record_id'];
-        if ($row['redcap_repeat_instrument'] == "coeus2") {
+        $awardNo = FALSE;
+        if (($row['redcap_repeat_instrument'] == $attemptInstrument) && ($attemptInstrument == "coeus2")) {
             $awardNo = $row['coeus2_agency_grant_number'];
+            $submissionDate = $row['coeus2_submitted_to_agency'];
+            $status = $row['coeus2_award_status'];
+            $role = $row['coeus2_role'];
+            $isPI = in_array($role, ['3']);
+        } else if (($attemptInstrument == "coeus_submission") && in_array($row['redcap_repeat_instrument'], ["coeus", "coeus_submission"])) {
+            if ($row['redcap_repeat_instrument'] == "coeus") {
+                $awardNo = $row['coeus_sponsor_award_number'];
+                $submissionDate = $row['coeus_award_create_date'];
+                $status = "Awarded";
+                $isPI = in_array($row['coeus_pi_flag'], ['1', 'Y']);
+                if ($isPI) {
+                    $role = 3;
+                } else {
+                    $role = 2;
+                }
+            } else if ($row['redcap_repeat_instrument'] == "coeus_submission") {
+                $awardNo = $row['coeussubmission_sponsor_proposal_number'];
+                $submissionDate = $row['coeussubmission_proposal_create_date'];
+                $status = $row['coeussubmission_proposal_status'];
+                $isPI = ($row['coeussubmission_pi_flag'] == "1");
+                if ($isPI) {
+                    $role = 3;
+                } else {
+                    $role = 2;
+                }
+            }
+        }
+        if ($awardNo !== FALSE) {
             $baseAwardNo = Grant::translateToBaseAwardNumber($awardNo);
             $isDenomOverall = 0;
             $isDenomRetries = 0;
             $isNumer = 0;
-            $submissionDate = $row['coeus2_submitted_to_agency'];
             $submissionTs = $submissionDate ? strtotime($submissionDate) : FALSE;
-            $status = $row['coeus2_award_status'];
             $seenAlready = in_array($baseAwardNo, $seen[$recordId]);
-            $role = $row['coeus2_role'];
-            $isPI = in_array($role, ['3']);
             if ((!$submissionTs || ($submissionTs > $thresholdTs)) && !isInternalAward($awardNo) && $isPI && !isTrainingGrant($awardNo, $role)) {
                 $applicationType = Grant::getApplicationType($awardNo);
                 $awardYear = Grant::getSupportYear($awardNo);

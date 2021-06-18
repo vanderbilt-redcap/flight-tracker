@@ -395,11 +395,16 @@ class Scholar {
 		$mentors = array();
 		foreach ($this->rows as $row) {
 			foreach ($row as $field => $value) {
-				if ($value && in_array($field, $mentorFields)) {
-					if (!self::nameInList($value, $mentors)) {
-						$mentors[] = $value;
-					}
-				}
+			    if (preg_match("/\s*[\/;]\s*/", $value)) {
+                    $values = preg_split("/\s*[\/;]\s*/", $value);
+                } else {
+                    $values = [$value];
+                }
+			    foreach ($values as $v) {
+                    if ($v && !is_numeric($v) && in_array($field, $mentorFields) && !self::nameInList($v, $mentors)) {
+                        $mentors[] = $v;
+                    }
+                }
 			}
 		}
 		return $mentors;

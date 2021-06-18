@@ -160,7 +160,7 @@ class CronManager {
                 }
             }
 			Application::log("Running ".$cronjob->getTitle()." with ".count($records)." records");
-			$run[$cronjob->getTitle()] = array("text" => "Attempted", "ts" => self::getTimestamp());
+			$run[$cronjob->getTitle()] = array("text" => "Attempted", "start" => self::getTimestamp());
 			try {
 				if (!$this->token || !$this->server) {
 					throw new \Exception("Could not pass token '".$this->token."' or server '".$this->server."' to cron job");
@@ -169,10 +169,13 @@ class CronManager {
                     $cronjob->run($this->token, $this->server, $this->pid, $records);
                     gc_collect_cycles();
                 }
-				$run[$cronjob->getTitle()] = array("text" => "Succeeded", "ts" => self::getTimestamp());
+				$run[$cronjob->getTitle()]["text"] = "Succeeded";
+				$run[$cronjob->getTitle()]["end"] = self::getTimestamp();
 			} catch(\Throwable $e) {
+                $run[$cronjob->getTitle()]["end"] = self::getTimestamp();
 				$this->handle($e, $adminEmail, $cronjob);
 			} catch(\Exception $e) {
+                $run[$cronjob->getTitle()]["end"] = self::getTimestamp();
 				$this->handle($e, $adminEmail, $cronjob);
 			}
 		}
@@ -184,11 +187,21 @@ class CronManager {
                 Application::log("Done attempting to save current date");
             }
 
-			$text = $tokenName." ".$this->server."<br><br>";
+		    $projectTitle = Download::projectTitle($this->token, $this->server);
+			$text = "Project: $projectTitle<br>";
+			$text .= "Pid: ".$this->pid."<br>";
+			$text .= "Server: ".$this->server."<br><br>";
 			foreach ($run as $title => $mssgAry) {
 				$mssg = $mssgAry['text'];
-				$ts = $mssgAry['ts'];
-				$text .= $title."<br>".$mssg."<br>".$ts."<br><br>";
+                $start = $mssgAry['start'];
+                $end = $mssgAry['end'];
+				$text .= $title."<br>";
+				$text .= $mssg."<br>";
+                $text .= "Started: $start<br>";
+                if ($end) {
+                    $text .= "Ended: $end<br>";
+                }
+                $text .= "<br>";
 			}
 			if ($additionalEmailText) {
 			    $text .= "<br><br>".$additionalEmailText;
@@ -225,7 +238,14 @@ class CronManager {
 			$adminEmail .= ",".Application::getFeedbackEmail();
 		}
 
-		\REDCap::email($adminEmail, Application::getSetting("default_from", $this->pid), Application::getProgramName()." Cron Error", $cronjob->getTitle()."<br><br>".$e->getMessage()."<br>".$e->getTraceAsString());
+		$projectTitle = Download::projectTitle($this->token, $this->server);
+		$mssg = "";
+		$mssg .= "Cron: ".$cronjob->getTitle()."<br>";
+		$mssg .= "PID: ".$this->pid."<br>";
+		$mssg .= "Project: $projectTitle<br><br>";
+		$mssg .= $e->getMessage()."<br>".$e->getTraceAsString();
+
+		\REDCap::email($adminEmail, Application::getSetting("default_from", $this->pid), Application::getProgramName()." Cron Error", $mssg);
 		Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".$e->getTraceAsString());
 	}
 

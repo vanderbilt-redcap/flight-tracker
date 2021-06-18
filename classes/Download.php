@@ -20,12 +20,12 @@ class Download {
 		return $indexedRedcapData;
 	}
 
-	public static function throttleIfNecessary() {
+	public static function throttleIfNecessary($pid) {
 	    if (self::$rateLimitPerMinute === NULL) {
 	        $sql = "SELECT * FROM redcap_config WHERE field_name = 'page_hit_threshold_per_minute'";
             $q = db_query($sql);
             if ($error = db_error()) {
-                Application::log("ERROR: $error");
+                Application::log("ERROR: $error", $pid);
             }
             if ($row = db_fetch_assoc($q)) {
                 self::$rateLimitPerMinute = $row['value'];
@@ -38,7 +38,7 @@ class Download {
 	    if (self::$rateLimitPerMinute && (self::$rateLimitCounter * $thresholdFraction > self::$rateLimitPerMinute)) {
 	        $timespanExpended = time() - self::$rateLimitTs;
 	        $sleepTime = 60 - $timespanExpended + 5;
-	        Application::log("Sleeping $sleepTime seconds to avoid REDCap's API rate-limiter");
+	        Application::log("Sleeping $sleepTime seconds to avoid REDCap's API rate-limiter", $pid);
 	        sleep($sleepTime);
 	        self::$rateLimitCounter = 0;
 	        self::$rateLimitTs = time();
@@ -408,7 +408,6 @@ class Download {
 		    $output = \REDCap::getData($pid, "json", $data['records'], $data['fields']);
 		    $resp = "getData";
 		} else {
-            // Application::log("sendToServer: ".$pid." CURL ".$data['token']." server=".$server);
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_URL, $server);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -425,7 +424,7 @@ class Download {
             $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $error = curl_error($ch);
             curl_close($ch);
-            self::throttleIfNecessary();
+            self::throttleIfNecessary($pid);
 		}
 		if (!$output) {
             Application::log("Retrying because no output");

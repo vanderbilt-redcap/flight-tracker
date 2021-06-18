@@ -9,15 +9,18 @@ require_once(dirname(__FILE__)."/../small_base.php");
 
 session_start();
 
+$pid = $_GET['pid'];
+if (!$pid) {
+    $pid = CareerDev::getSetting("pid");
+}
 if (!$module) {
         $module = CareerDev::getModule();
 }
-$token = CareerDev::getSetting("token");
-$server = CareerDev::getSetting("server");
-$pid = CareerDev::getSetting("pid");
-$event_id = CareerDev::getSetting("event_id");
-$tokenName = CareerDev::getSetting("tokenName");
-$adminEmail = CareerDev::getSetting("admin_email");
+$token = CareerDev::getSetting("token", $pid);
+$server = CareerDev::getSetting("server", $pid);
+$event_id = CareerDev::getSetting("event_id", $pid);
+$tokenName = CareerDev::getSetting("tokenName", $pid);
+$adminEmail = CareerDev::getSetting("admin_email", $pid);
 
 $lastNames = Download::lastnames($token, $server);
 $firstNames = Download::firstnames($token, $server);

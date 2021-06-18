@@ -26,7 +26,6 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $has = checkMetadataForFields($token, $server);
         $pid = CareerDev::getPid();
 
-        $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
         $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday");
         if ($has['nih_reporter']) {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday");
