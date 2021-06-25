@@ -174,6 +174,11 @@ function insertName() {
 	appendToMessage(name);
 }
 
+function insertMentoringLink() {
+	var name = "[mentoring_agreement]";
+	appendToMessage(name);
+}
+
 function insertSurveyLink(selectId) {
 	var form = $('#'+selectId+' option:selected').val();
 	if (form) {

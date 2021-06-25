@@ -108,7 +108,7 @@ class DateMeasurement extends Measurement {
             preg_match("/-\d+-/", $date, $matches);
             $this->day = str_replace("-", "", $matches[0]);
         } else {
-            throw new Exception("Date must be in MDY or YMD format!");
+            throw new \Exception("Date must be in MDY or YMD format!");
         }
     }
 

@@ -51,7 +51,7 @@ class WebOfScience {
                     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
                     $result = curl_exec($curl);
                     if (curl_errno($curl)) {
-                        throw new Exception(curl_error($curl));
+                        throw new \Exception(curl_error($curl));
                     }
                     curl_close($curl);
                     Application::log("Got ".strlen($result)." bytes from ".$url);

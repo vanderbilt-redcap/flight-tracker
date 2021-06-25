@@ -270,6 +270,9 @@ $(document).ready(function() {
 		echo "<button $isDisabled onclick='insertSurveyLink(\"$surveySelectId\"); return false;'>Insert Survey Link</button></div>\n";
 		echo "<div style='display: inline-block;'><button $isDisabled onclick='insertName(); return false;'>Insert Name</button></div>\n";
 		echo "<div style='display: inline-block;'><button $isDisabled onclick='insertLastName(); return false;'>Insert Last Name</button></div>\n";
+		if (CareerDev::has("mentoring_agreement")) {
+            echo "<div style='display: inline-block;'><button $isDisabled onclick='insertMentoringLink(); return false;'>Insert Mentoring Agreement Link</button></div>\n";
+        }
 		echo "</div>\n";
 		if (!empty($messages) && !$isDisabled) {
 			echo "<div style='text-align: center; margin: 16px 0px;'>Load Prior Message:<br>".$mgr->getSelectForExistingNames($messageSelectName)."</div>\n";

@@ -5,9 +5,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/base.php";
-require_once(dirname(__FILE__)."/../classes/Upload.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 $records = Download::recordIds($token, $server);
@@ -16,6 +14,7 @@ if (!$_POST['record_id'] || !in_array($_POST['record_id'], $records)) {
 }
 
 $uploadRow = transformCheckboxes($_POST, $metadata);
+$uploadRow = handleTimestamps($uploadRow, $token, $server, $metadata);
 $uploadRow["redcap_repeat_instrument"] = "mentoring_agreement";
 
 try {
@@ -40,4 +39,18 @@ function transformCheckboxes($row, $metadata) {
         $newUploadRow[$key] = $value;
     }
     return $newUploadRow;
+}
+
+function handleTimestamps($row, $token, $server, $metadata) {
+    $agreementFields = REDCapManagement::getFieldsFromMetadata($metadata, "mentoring_agreement");
+    $instance = $row['redcap_repeat_instance'];
+    $recordId = $row['record_id'];
+    $redcapData = Download::fieldsForRecords($token, $server, $agreementFields, [$recordId]);
+    if (REDCapManagement::findField($redcapData, $recordId, "mentoring_start", $instance)) {
+        unset($row['mentoring_start']);
+    }
+    if (!REDCapManagement::findField($redcapData, $recordId, "mentoring_end", $instance)) {
+        $row['mentoring_end'] = date("Y-m-d H:i:s");
+    }
+    return $row;
 }

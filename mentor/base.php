@@ -7,9 +7,8 @@ use \ExternalModules\ExternalModules;
 
 require_once(dirname(__FILE__)."/debug.php");
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../Application.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+require_once dirname(__FILE__)."/../CareerDev.php";
 
 $module = Application::getModule();
 $username = $module->getUsername();
@@ -743,6 +742,8 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
         }
         $('.addcomment').focus();
     }
+    
+    function pad2(n) { return n < 10 ? '0' + n : n }
 
     saveagreement=function(cb){
         let serialized = $('#tsurvey').serialize()

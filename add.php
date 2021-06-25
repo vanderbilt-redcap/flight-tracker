@@ -6,22 +6,35 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\REDCapLookup;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
-if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
-	# get starting record_id
-	$maxRecordId = 0;
-	$recordIds = Download::recordIds($token, $server);
-	foreach ($recordIds as $recordId) {
-		if ($recordId > $maxRecordId) {
-			$maxRecordId = $recordId;
-		}
-	}
-	$recordId = $maxRecordId + 1;
-
-	$lines = array();
+if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
+    list($lines, $matchedMentorUids, $newMentorNames) = parsePostForLines($_POST);
+    $newLines = [];
+    $originalMentorNames = [];
+    if (!empty($newMentorUids)) {
+        $mentorCol = 13;
+        for ($i = 0; $i < count($lines); $i++) {
+            if ($newMentorNames[$i]) {
+                $originalMentorNames[$i] = $lines[$i][$mentorCol];
+                $lines[$i][$mentorCol] = $newMentorNames[$i];
+                $newLines[$i] = $lines[$i];
+            } else {
+                $newLines[$i] = [];
+            }
+        }
+        $newUids = getUidsForMentors($newLines);
+        echo makeAdjudicationTable($lines, $newUids, $matchedMentorUids, $originalMentorNames);
+    } else if ($lines) {
+        commitChanges($token, $server, $lines, $matchedMentorUids);
+    } else {
+        echo "<p class='centered'>No data to upload.</p>";
+    }
+} else if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
+	$lines = [];
 	if (isset($_FILES['csv'])) {
 		if (is_uploaded_file($_FILES['csv']['tmp_name'])) {
 			$fp = fopen($_FILES['csv']['tmp_name'], "rb");
@@ -43,9 +56,6 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 		}
 	} else {
 		$rows = explode("\n", $_POST['newnames']);
-		$upload = array();
-		$emails = array();
-		$names = array();
 		foreach ($rows as $row) {
 			if ($row) {
 				$nodes = preg_split("/\s*[,\t]\s*/", $row);
@@ -58,38 +68,8 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 			}
 		}
 	}
-	list($upload, $emails, $newRecordIds) = processLines($lines, $recordId, $token, $server);
-	$feedback = array();
-	if (!empty($upload)) {
-		$feedback = Upload::rows($upload, $token, $server);
-		foreach ($newRecordIds as $recordId) {
-            Application::refreshRecordSummary($token, $server, $pid, $recordId);
-        }
-    } else {
-		$mssg = "No data specified.";
-		header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
-	}
-	if (isset($feedback['error'])) {
-		$mssg = "People <b>not added</b>". $feedback['error'];
-		header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
-	}
-	if (isset($_GET['mssg'])) {
-		echo "<p class='red centered'>{$_GET['mssg']}</p>";
-	}
-
-	$timespan = 3;
-	echo "<h1>Adding New Scholars or Modifying Existing Scholars</h1>";
-	echo "<div style='margin: 0 auto; max-width: 800px'>";
-	echo "<p class='centered'>".count($upload).(count($upload) == 1 ? " person" : " people")." added/modified.</p>";
-	echo "<p class='centered'>Going to Flight Tracker Central in ".$timespan." seconds...</p>";
-	echo "<script>\n";
-	echo "$(document).ready(function() {\n";
-	echo "\tsetTimeout(function() {\n";
-	echo "\t\twindow.location.href='".CareerDev::link("index.php")."';\n";
-	echo "\t}, ".floor($timespan * 1000).");\n";
-	echo "});\n";
-	echo "</script>\n";
-	echo "</div>";
+	$mentorUids = getUidsForMentors($lines);
+    echo makeAdjudicationTable($lines, $mentorUids, [], []);
 } else {                //////////////////// default setup
 	if (isset($_GET['mssg'])) {
 		echo "<p class='red centered'><b>{$_GET['mssg']}</b></p>";
@@ -128,13 +108,14 @@ if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 <?php
 }
 
-function processLines($lines, $nextRecordId, $token, $server) {
+function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
 	$upload = [];
 	$lineNum = 1;
 	$metadata = Download::metadata($token, $server);
 	$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	$recordIds = [];
 	foreach ($lines as $nodes) {
+	    $mentorUid = $mentorUids[$lineNum - 1];
 		if ((count($nodes) >= 6) && $nodes[0] && $nodes[3]) {
 			$firstName = $nodes[0];
 			$middle = $nodes[2];
@@ -295,4 +276,171 @@ function importMDY2YMD($mdyDate, $col) {
         echo "<p>The $col column contains an invalid value ($mdyDate). Import not successful.</p>";
         throw new \Exception("The $col column contains an invalid value ({$mdyDate}). Import not successful.");
     }
+}
+
+function getUidsForMentors($lines) {
+    $mentorUids = [];
+    $mentorCol = 13;
+    for ($i = 0; $i < count($lines); $i++) {
+        $line = $lines[$i];
+        if (isset($line) && isset($line[$mentorCol]) && $line[$mentorCol]) {
+            list($mentorFirst, $mentorLast) = NameMatcher::splitName($line[$mentorCol], 2);
+            $lookup = new REDCapLookup($mentorFirst, $mentorLast);
+            $currentUids = $lookup->getUidsAndNames();
+            if (count($currentUids) == 0) {
+                $lookup = new REDCapLookup("", $mentorLast);
+                $currentUids = $lookup->getUidsAndNames();
+            }
+            $mentorUids[$i] = $currentUids;
+        } else {
+            $mentorUids[$i] = [];
+        }
+    }
+    return $mentorUids;
+}
+
+function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMentorNames) {
+    $headers = [
+        "Scholar Name",
+        "Mentor Name",
+        "Mentor User-id",
+    ];
+    $url = Application::link("this")."&upload=table";
+    $foundMentor = FALSE;
+
+    $html = "";
+    $html .= "<form action='$url' method='POST'>";
+    $html .= "<table class='bordered centered max-width'>";
+    $html .= "<thead>";
+    $html .= "<tr><th>".implode("</th><th>", $headers)."</th></tr>";
+    $html .= "</thead>";
+    $html .= "<tbody>";
+    for ($i = 0; $i < count($lines); $i++) {
+        $currLine = $lines[$i];
+        $json = json_encode($currLine);
+        $hiddenHTML = "<input type='hidden' name='line___$i' value='$json'>";
+        $currMentorUids = $mentorUids[$i];
+        $currMentorName = "";
+        if (isset($currLine[13])) {
+            $currMentorName = $currLine[13];
+        }
+        if ($originalMentorNames[$i]) {
+            $html .= "<input type='hidden' name='mentorname___$i' value='".preg_replace("/'/", "\\'", $originalMentorNames[$i])."'>";
+        }
+        if (isset($existingUids[$i])) {
+            $html .= "<input type='hidden' name='mentor___$i' value='".preg_replace("/'/", "\\'", $existingUids[$i])."'>";
+        } else if ($currMentorName) {
+            $foundMentor = TRUE;
+            $html .= "<tr>";
+            $html .= "<th>{$currLine[0]} {$currLine[3]}$hiddenHTML</th>";
+            $html .= "<td>$currMentorName</td>";
+            if (count($currMentorUids) == 0) {
+                $escapedMentorName = preg_replace("/'/", "\\'", $currMentorName);
+                $hiddenField = "<input type='hidden' name='originalmentorname___$i' value='$escapedMentorName'>";
+                $html .= "<td class='red'><strong>No mentors matched with $currMentorName.</strong><br>Will not upload this mentor.<br>Perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'></td>";
+            } else if (count($currMentorUids) == 1) {
+                $uid = array_keys($currMentorUids)[0];
+                $yesId = "mentor___$i" . "___yes";
+                $noId = "mentor___$i" . "___no";
+                $yesno = "<input type='radio' name='mentor___$i' id='$yesId' value='$uid' checked> <label for='$yesId'>Yes</label><br>";
+                $yesno .= "<input type='radio' name='mentor___$i' id='$noId' value=''> <label for='$noId'>No</label>";
+                $html .= "<td class='green'>Matched: $uid<br>$yesno</td>";
+            } else {
+                $radios = [];
+                $selected = " checked";
+                foreach ($currMentorUids as $uid => $mentorName) {
+                    $id = "mentor___" . $i . "___" . $uid;
+                    $radios[] = "<input type='radio' name='mentor___$i' id='$id' value='$uid'$selected> <label for='$id'>$mentorName</label>";
+                    $selected = "";
+                }
+                $html .= "<td class='yellow'>" . implode("<br>", $radios) . "</td>";
+            }
+            $html .= "</tr>";
+        } else {
+            $html .= $hiddenHTML;
+        }
+    }
+    $html .= "</tbody>";
+    $html .= "</table>";
+    $html .= "<p class='centered'><button>Add Mentors</button></p>";
+    $html .= "</form>";
+
+    if ($foundMentor) {
+        return $html;
+    } else {
+        return "";
+    }
+}
+
+function parsePostForLines($post) {
+    $lines = [];
+    $mentorUids = [];
+    $newMentorNames = [];
+    $mentorCol = 13;
+    foreach ($post as $key => $value) {
+        if (preg_match("/^line___\d+$/", $key)) {
+            $i = preg_replace("/^line___/", "", $key);
+            $lines[$i] = json_decode($value, TRUE);
+            if ($post["mentorname___".$i]) {
+                $lines[$i][$mentorCol] = $post["mentorname___".$i];
+            }
+        } else if (preg_match("/^mentor___\d+$/", $key)) {
+            $i = preg_replace("/^mentor___/", "", $key);
+            $mentorUids[$i] = $value;
+        } else if (preg_match("/^newmentorname___\d+$/", $key)) {
+            $i = preg_replace("/^newmentorname___/", "", $key);
+            $origMentorName = $post['originalmentorname___'.$i];
+            if ($origMentorName != $value) {
+                $newMentorNames[$i] = $value;
+            }
+        }
+    }
+    ksort($lines);
+    ksort($mentorUids);
+    ksort($newMentorNames);
+    return [$lines, $mentorUids, $newMentorNames];
+}
+
+function commitChanges($token, $server, $lines, $mentorUids) {
+    $maxRecordId = 0;
+    $recordIds = Download::recordIds($token, $server);
+    foreach ($recordIds as $recordId) {
+        if ($recordId > $maxRecordId) {
+            $maxRecordId = $recordId;
+        }
+    }
+    $recordId = $maxRecordId + 1;
+
+    list($upload, $emails, $newRecordIds) = processLines($lines, $recordId, $token, $server, $mentorUids);
+    $feedback = [];
+    if (!empty($upload)) {
+        $feedback = Upload::rows($upload, $token, $server);
+        foreach ($newRecordIds as $recordId) {
+            Application::refreshRecordSummary($token, $server, $pid, $recordId);
+        }
+    } else {
+        $mssg = "No data specified.";
+        header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
+    }
+    if (isset($feedback['error'])) {
+        $mssg = "People <b>not added</b>". $feedback['error'];
+        header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
+    }
+    if (isset($_GET['mssg'])) {
+        echo "<p class='red centered'>{$_GET['mssg']}</p>";
+    }
+
+    $timespan = 3;
+    echo "<h1>Adding New Scholars or Modifying Existing Scholars</h1>";
+    echo "<div style='margin: 0 auto; max-width: 800px'>";
+    echo "<p class='centered'>".count($upload).(count($upload) == 1 ? " person" : " people")." added/modified.</p>";
+    echo "<p class='centered'>Going to Flight Tracker Central in ".$timespan." seconds...</p>";
+    echo "<script>\n";
+    echo "$(document).ready(function() {\n";
+    echo "\tsetTimeout(function() {\n";
+    echo "\t\twindow.location.href='".Application::link("index.php")."';\n";
+    echo "\t}, ".floor($timespan * 1000).");\n";
+    echo "});\n";
+    echo "</script>\n";
+    echo "</div>";
 }

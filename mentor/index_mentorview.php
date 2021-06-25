@@ -12,13 +12,8 @@ use \Vanderbilt\CareerDevLibrary\LdapLookup;
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/base.php";
 require_once dirname(__FILE__)."/debug.php";
-require_once dirname(__FILE__)."/../Application.php";
 require_once dirname(__FILE__)."/../CareerDev.php";
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
-require_once dirname(__FILE__)."/../classes/LDAP.php";
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 require_once dirname(__FILE__).'/_header.php';
 
@@ -76,6 +71,8 @@ $menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "men
 $completeURL = Application::link("mentor/index_complete.php").$uidString."&menteeRecord=$menteeRecordId&instance=$currInstance";
 
 ?>
+<form id="tsurvey" name="tsurvey">
+<input type="hidden" class="form-hidden-data" name="mentoring_start" id="mentoring_start" value="<?= date("Y-m-d H:i:s") ?>">
 <section class="bg-light">
     <div class="container">
         <div class="row">
@@ -93,6 +90,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
         <div class="row">
             <div class="col-lg-12 tdata">
                 <h4>Please fill out the checklist below while dialoging with your mentee. The mentee's responses have been pre-filled.</h4>
+                <input type="hidden" class="form-hidden-data" name="mentoring_start" id="mentoring_start" value="<?= date("Y-m-d h:i:s") ?>">
                 <?= (!empty($surveysAvailableToPrefill)) ? makePrefillHTML($surveysAvailableToPrefill, $uidString) : "" ?>
 
                     <?php
@@ -518,7 +516,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
 
     </div>
 </section>
-
+</form>
 
 
 <p style="text-align: center;">Saving will enqueue an automated email to follow up, to be sent on <?= REDCapManagement::MDY2LongDate($dateToRemind) ?>.</p>

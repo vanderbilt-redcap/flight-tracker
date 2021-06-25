@@ -5,10 +5,20 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class BarChart extends Chart {
-    public function __construct($cols, $labels, $name) {
+    public function __construct($cols, $labels, $id) {
         $this->cols = $cols;
         $this->labels = $labels;
-        $this->name = $name;
+        $this->id = REDCapManagement::makeHTMLId($id);
+    }
+
+    public function isCategoricalData() {
+        $isAllNumeric = TRUE;
+        foreach ($this->labels as $i => $label) {
+            if (!is_numeric($label)) {
+                $isAllNumeric = FALSE;
+            }
+        }
+        return !$isAllNumeric;
     }
 
     public function setColor($color) {
@@ -35,6 +45,10 @@ class BarChart extends Chart {
         return [];
     }
 
+    public function addDataset($colsWithLabels, $color, $title) {
+        $this->additionalDatasets[] = ["data" => $colsWithLabels, "color" => $color, "title" => $title];
+    }
+
     public function getHTML($width, $height) {
         $bars = count($this->cols);
         if (empty($this->labels) || empty($this->cols)) {
@@ -42,11 +56,11 @@ class BarChart extends Chart {
         }
         $html = "";
         $html .= "<div style='margin: 0 auto; width: {$width}px; height: {$height}px;' class='chartWrapper'>";
-        $html .= "<canvas id='{$this->name}'></canvas>";
+        $html .= "<canvas id='{$this->id}'></canvas>";
         $html .= "<script>
-    const {$this->name}"."_ctx = document.getElementById('{$this->name}').getContext('2d');
+    const {$this->id}"."_ctx = document.getElementById('{$this->id}').getContext('2d');
 
-var {$this->name}"."_chart = new Chart({$this->name}"."_ctx, {
+var {$this->id}"."_chart = new Chart({$this->id}"."_ctx, {
     type: 'bar',
     data: {
       labels: ".json_encode($this->labels).",
@@ -54,31 +68,52 @@ var {$this->name}"."_chart = new Chart({$this->name}"."_ctx, {
         label: '',
         data: ".json_encode($this->cols).",
         backgroundColor: '{$this->color}',
-      }]
+      }";
+        foreach ($this->additionalDatasets as $dataset) {
+            $orderedData = [];
+            foreach ($this->labels as $label) {
+                $value = $dataset['data'][$label];
+                if (!$value) {
+                    $value = 0;
+                }
+                $orderedData[] = $value;
+            }
+            $html .= ",
+            {
+                label: '{$dataset['title']}',
+                data: ".json_encode($orderedData).",
+                backgroundColor: '{$dataset['color']}',
+            }";
+        }
+        $html .= "]
     },
     options: {
       legend: {
         display: false,
       },
-      scales: {
-        xAxes: [{
-          display: false,
-          barPercentage: 1,
-          ticks: {
-            max: $bars,
-          }
-        }, {
-          display: true,
-          scaleLabel: {
-            display: true,
-            labelString: '{$this->xAxisLabel}',
-          },
-          ticks: {
-            autoSkip: true,
-            beginAtZero: true,
-            max: $bars,
-          }
-        }],
+      scales: {";
+        if (!$this->isCategoricalData()) {
+            $html .= "
+                xAxes: [{
+                  display: false,
+                  barPercentage: 1,
+                  ticks: {
+                    max: $bars,
+                  }
+                }, {
+                  display: true,
+                  scaleLabel: {
+                    display: true,
+                    labelString: '{$this->xAxisLabel}',
+                  },
+                  ticks: {
+                    autoSkip: true,
+                    beginAtZero: true,
+                    max: $bars,
+                  }
+                }],";
+        }
+        $html .= "
         yAxes: [{
           scaleLabel: {
             display: true,
@@ -98,8 +133,9 @@ var {$this->name}"."_chart = new Chart({$this->name}"."_ctx, {
 
     protected $xAxisLabel = "";
     protected $yAxisLabel = "";
-    protected $name = "";
     protected $cols = [];
     protected $labels = [];
     protected $color = "#d4d4eb";
+    protected $id = "";
+    protected $additionalDatasets = [];
 }

@@ -578,7 +578,7 @@ public static function metadata($metadata, $token, $server) {
                 self::testFeedback($feedback, $output, $ch, $rows);
                 curl_close($ch);
                 $time3 = microtime(TRUE);
-                Download::throttleIfNecessary();
+                Download::throttleIfNecessary($pid);
 			}
 			if (isset($_GET['test'])) {
                 if ($method == "saveData") {

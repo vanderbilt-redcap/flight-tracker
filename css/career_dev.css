@@ -143,3 +143,5 @@ img.thumbnail { width: 125px; height: auto; }
 .noBorderCollapse { border-collapse: separate; }
 .ui-dialog-titlebar { background-color: #d4d4eb; }
 canvas.kaplanMeier { width: 800px !important; height: 600px !important; margin: 0 auto; }
+.alignTop { vertical-align: top; }
+.alignLeft { text-align: left !important; }

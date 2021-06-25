@@ -13,16 +13,8 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 define("CENSORED_DATA_LABEL", "CENSORED DATA");
 
-$alphas = ["1.0", "0.6", "0.2"];
-$colors = ["rgba(0, 0, 0, 1)"];
-foreach ($alphas as $alpha) {
-    # Flight Tracker RGBs
-    $colors[] = "rgba(240, 86, 93, $alpha)";
-    $colors[] = "rgba(141, 198, 63, $alpha)";
-    $colors[] = "rgba(87, 100, 174, $alpha)";
-    $colors[] = "rgba(247, 151, 33, $alpha)";
-    $colors[] = "rgba(145, 148, 201, $alpha)";
-}
+
+$colors = array_merge(["rgba(0, 0, 0, 1)"], Application::getApplicationColors(["1.0", "0.6", "0.2"]));
 
 $showRealGraph = ($_GET['measType'] && $_GET['measurement']);
 $firstTime = FALSE;

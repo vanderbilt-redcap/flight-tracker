@@ -10,12 +10,8 @@ use \Vanderbilt\CareerDevLibrary\LdapLookup;
 
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/base.php";
-require_once dirname(__FILE__)."/../Application.php";
 require_once dirname(__FILE__)."/../CareerDev.php";
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once dirname(__FILE__)."/../classes/LDAP.php";
-require_once dirname(__FILE__)."/../classes/REDCapManagement.php";
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 if ($_GET['uid']) {
     $username = $_GET['uid'];

@@ -345,10 +345,14 @@ class NameMatcher {
 		return "";
 	}
 
-	public static function matchByLastName($lastName1, $lastName2) {
+    public static function matchByLastName($lastName1, $lastName2) {
         $lastName1 = strtolower($lastName1);
         $lastName2 = strtolower($lastName2);
         return ($lastName1 == $lastName2);
+    }
+
+    public static function matchByFirstName($firstName1, $firstName2) {
+        return self::matchByLastName($firstName1, $firstName2);
     }
 
     public static function dashes2Spaces($name) {
@@ -686,33 +690,62 @@ class NameMatcher {
 		return array("", "");
 	}
 
-	private static function clearOfHonorifics($nodes) {
+	public static function clearOfHonorifics($nodes) {
+        $returnString = FALSE;
+        if (is_string($nodes)) {
+            $returnString = TRUE;
+            $nodes = preg_split("/\s+/", $nodes);
+        }
         $honorifics = [
             "Mr.",
             "Ms.",
+            "Mx.",
             "Mrs.",
             "Miss",
             "Dr.",
             "Rev.",
+            "Mr",
+            "Ms",
+            "Mx",
+            "Mrs",
+            "Dr",
+            "Rev",
         ];
+        $suffixes = self::getSuffixes();
 
         $newNodes = [];
         $i = 0;
         foreach ($nodes as $node) {
             if (($i > 0) || !in_array($node, $honorifics)) {
-                $newNodes[] = $node;
+                if (!in_array(strtoupper($node), $suffixes)) {
+                    $newNodes[] = $node;
+                }
             }
             $i++;
         }
-        return $newNodes;
+        if ($returnString) {
+            return implode(" ", $newNodes);
+        } else {
+            return $newNodes;
+        }
     }
 
-	private static function clearOfDegrees($nodes) {
+	public static function clearOfDegrees($nodes) {
+        $returnString = FALSE;
+        if (is_string($nodes)) {
+            $returnString = TRUE;
+            $nodes = preg_split("/\s+/", $nodes);
+        }
         $degreesInUpperCase = [
             "MD,",
             "PHD,",
             "MD",
             "PHD",
+            "MSC",
+            "DSC",
+            "DRPH",
+            "MSCI",
+            "MPH",
             "MD PHD",
             "MD, PHD",
             "MD,PHD",
@@ -722,15 +755,23 @@ class NameMatcher {
             "PSYD",
             "PHARMD",
             "RN",
+            "FACP",
+            "FRCP",
+            "MBCHB",
         ];
         $newNodes = [];
         foreach ($nodes as $node) {
             $node = trim($node);
-            if ($node && !in_array(strtoupper($node), $degreesInUpperCase)) {
+            $nodeToTest = preg_replace("/[\,\;\.]+$/", "", strtoupper($node));
+            if ($node && !in_array($nodeToTest, $degreesInUpperCase)) {
                 $newNodes[] = $node;
             }
         }
-        return $newNodes;
+        if ($returnString) {
+            return preg_replace("/[\,\;\.]+$/", "", implode(" ", $newNodes));
+        } else {
+            return $newNodes;
+        }
     }
 
 	private static function collapseNames($nodes, $parts) {
@@ -806,7 +847,7 @@ class NameMatcher {
         return TRUE;
     }
 
-	private static function isInitial($name) {
+	public static function isInitial($name) {
         return preg_match("/^\w\.?$/", $name);
     }
 

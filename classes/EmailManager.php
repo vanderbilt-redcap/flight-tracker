@@ -218,7 +218,7 @@ class EmailManager {
 			throw new \Exception("Email setting invalid! A who, what, and when must be specified.");
 		}
 		$this->data[$name] = $emailSetting;    // overwrites if previously exist
-		$this->saveData();
+		return $this->saveData();
 	}
 
 	public function getMessageHash() {
@@ -529,11 +529,14 @@ class EmailManager {
 
 				$mssgs[$recordId] = str_replace("[survey_link_".$formName."]", $surveyLink, $mssgs[$recordId]);
 			}
-			if (preg_match("/\[name\]/", $mssgs[$recordId])) {
-				if ($names[$recordId]) {
-					$mssgs[$recordId] = str_replace("[name]", $names[$recordId], $mssgs[$recordId]);
-				}
-			}
+            if (preg_match("/\[name\]/", $mssgs[$recordId])) {
+                if ($names[$recordId]) {
+                    $mssgs[$recordId] = str_replace("[name]", $names[$recordId], $mssgs[$recordId]);
+                }
+            }
+            if (preg_match("/\[mentoring_agreement\]/", $mssgs[$recordId])) {
+                $mssgs[$recordId] = str_replace("[mentoring_agreement]", Application::link("mentor/intro.php"), $mssgs[$recordId]);
+            }
 			if (preg_match("/\[last_name\]/", $mssgs[$recordId])) {
 				if ($lastNames[$recordId]) {
 					$mssgs[$recordId] = str_replace("[last_name]", $lastNames[$recordId], $mssgs[$recordId]);
@@ -1034,6 +1037,7 @@ class EmailManager {
 			$this->metadata = $newMetadata;
 			$feedback = Upload::metadata($newMetadata, $this->token, $this->server);
 			Application::log("Email Manager save: ".json_encode($feedback));
+			return $feedback;
 		} else {
 			throw new \Exception("Could not save settings to $settingName! No module available!");
 		}

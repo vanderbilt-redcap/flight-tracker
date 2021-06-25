@@ -11,6 +11,23 @@ class Application {
 		return CareerDev::getPID($token);
 	}
 
+	public static function has($instrument) {
+	    return CareerDev::has($instrument);
+    }
+
+	public static function getApplicationColors($alphas = ["1.0"]) {
+        $colors = [];
+        foreach ($alphas as $alpha) {
+            # Flight Tracker RGBs
+            $colors[] = "rgba(240, 86, 93, $alpha)";
+            $colors[] = "rgba(141, 198, 63, $alpha)";
+            $colors[] = "rgba(87, 100, 174, $alpha)";
+            $colors[] = "rgba(247, 151, 33, $alpha)";
+            $colors[] = "rgba(145, 148, 201, $alpha)";
+        }
+        return $colors;
+    }
+
 	public static function isVanderbilt() {
 	    return CareerDev::isVanderbilt();
     }

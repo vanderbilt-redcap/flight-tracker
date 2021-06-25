@@ -12,7 +12,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.4.1";
+		return "3.5.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -317,7 +317,8 @@ class CareerDev {
 		$relativeUrl = preg_replace("/^\//", "", $relativeUrl);
 		if ($module = self::getModule()) {
 		    $url = $module->getUrl($relativeUrl);
-		    if (isset($_GET['project_id'])) {
+		    $isMentorAgreementPage = preg_match("/^mentor\//", $relativeUrl) && !preg_match("/^mentor\/dashboard/", $relativeUrl);
+		    if (isset($_GET['project_id']) || $isMentorAgreementPage) {
 		        if (preg_match("/pid=/", $url)) {
                     $url = preg_replace("/pid=/", "project_id=", $url);
                 } else {
@@ -710,8 +711,10 @@ class CareerDev {
     }
 
     public static function has($instrument) {
-	    if ($instrument == "patent") {
+        if ($instrument == "patent") {
             return Download::hasField(self::getPid(), "patent_number", $instrument);
+        } else if ($instrument == "mentoring_agreement") {
+            return Download::hasField(self::getPid(), "mentoring_frequency", $instrument);
         }
 	    return FALSE;
     }
@@ -763,12 +766,18 @@ class CareerDev {
             return $ary;
         }
 		if (($menuName == "Mentoring") || ($menuName == "Mentor") || ($menuName == "Mentors")) {
-			return [
+		    $ary = [];
+		    if (self::has("mentoring_agreement")) {
+                $ary["Add Mentors for Existing Scholars"] = self::link("addMentor.php");
+                $ary["Mentee Agreements Dashboard"] = self::link("/mentor/dashboard.php");
+            }
+			$ary = array_merge($ary, [
 					"List of Mentors" => self::link("/tablesAndLists/mentorList.php"),
 					"Mentor Performance" => self::link("/tablesAndLists/mentorConversion.php"),
 					"All Mentor Data" => self::link("/tablesAndLists/generateMentoringCSV.php"),
                     "Trainees Becoming Mentors" => self::link("/tablesAndLists/trainee2mentor.php"),
-					];
+					]);
+		    return $ary;
 		}
 		if ($menuName == "Scholars") {
             $ary = [
@@ -798,6 +807,9 @@ class CareerDev {
 					"Dates" => self::link("/dashboard/dates.php"),
 					"Resources" => self::link("/dashboard/resources.php"),
 					];
+			if (self::has("mentoring_agreement")) {
+			    $ary["Mentee Agreements"] = self::link("mentor/dashboard.php");
+            }
             return $ary;
 		}
 		if (($menuName == "Cohorts / Filters") || ($menuName == "Cohorts")) {

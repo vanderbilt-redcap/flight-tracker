@@ -410,7 +410,7 @@ class REDCapManagement {
 
     public static function makeHTMLId($id) {
         $htmlFriendly = preg_replace("/[\s\-]+/", "_", $id);
-        $htmlFriendly = preg_replace("/[\:\+\"\/\[\]'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;]/", "", $htmlFriendly);
+        $htmlFriendly = preg_replace("/[\:\+\"\/\[\]'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;\?]/", "", $htmlFriendly);
         return $htmlFriendly;
     }
 
@@ -1040,15 +1040,9 @@ class REDCapManagement {
         );
     }
     public static function getUseridsFromREDCap($firstName, $lastName) {
-        $firstName = strtolower($firstName);
-        $lastName = strtolower($lastName);
-        $sql = "select username from redcap_user_information WHERE LOWER(user_firstname) = '".db_real_escape_string($firstName)."' AND LOWER(user_lastname) = '".db_real_escape_string($lastName)."'";
-        $q = db_query($sql);
-        $userids = [];
-        while ($row = db_fetch_assoc($q)) {
-            $userids[] = $row['username'];
-        }
-        return $userids;
+	    $lookup = new REDCapLookup($firstName, $lastName);
+	    $uidsAndNames = $lookup->getUidsAndNames();
+	    return array_keys($uidsAndNames);
     }
 
     public static function getEmailFromUseridFromREDCap($userid) {

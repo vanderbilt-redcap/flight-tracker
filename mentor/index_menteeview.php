@@ -12,13 +12,8 @@ use \Vanderbilt\CareerDevLibrary\LdapLookup;
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/base.php";
 require_once dirname(__FILE__)."/debug.php";
-require_once dirname(__FILE__)."/../Application.php";
 require_once dirname(__FILE__)."/../CareerDev.php";
-require_once(dirname(__FILE__)."/../classes/Links.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../classes/NameMatcher.php");
-require_once dirname(__FILE__)."/../classes/LDAP.php";
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 require_once dirname(__FILE__).'/_header.php';
 
@@ -196,6 +191,7 @@ $('.viewagreement').hover(
     <h4 style="margin: 0 auto; width: 100%; max-width: 800px;">Please independently fill out the checklist below. Suggested tables are open. Click on a header to expand the table. When complete, click on the button to alert your mentor.</h4>
 </div>
 <form id="tsurvey" name="tsurvey">
+      <input type="hidden" class="form-hidden-data" name="mentoring_start" id="mentoring_start" value="<?= date("Y-m-d H:i:s") ?>">
       <section class="bg-light">
       <div class="container">
       <div class="row">

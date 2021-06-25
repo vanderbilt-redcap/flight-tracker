@@ -6,9 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
-require_once(dirname(__FILE__)."/../classes/Download.php");
-require_once(dirname(__FILE__)."/../classes/REDCapManagement.php");
-require_once(dirname(__FILE__)."/../classes/Upload.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $recordId = $_REQUEST['record'];
 $value = $_REQUEST['value'];
