@@ -15,7 +15,7 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
     list($lines, $matchedMentorUids, $newMentorNames) = parsePostForLines($_POST);
     $newLines = [];
     $originalMentorNames = [];
-    if (!empty($newMentorUids)) {
+    if (!empty($matchedMentorUids)) {
         $mentorCol = 13;
         for ($i = 0; $i < count($lines); $i++) {
             if ($newMentorNames[$i]) {
@@ -27,7 +27,11 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
             }
         }
         $newUids = getUidsForMentors($newLines);
-        echo makeAdjudicationTable($lines, $newUids, $matchedMentorUids, $originalMentorNames);
+        if (!empty($newUids)) {
+            echo makeAdjudicationTable($lines, $newUids, $matchedMentorUids, $originalMentorNames);
+        } else {
+            commitChanges($token, $server, $lines, $matchedMentorUids);
+        }
     } else if ($lines) {
         commitChanges($token, $server, $lines, $matchedMentorUids);
     } else {
@@ -69,9 +73,13 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 		}
 	}
 	$mentorUids = getUidsForMentors($lines);
-    echo makeAdjudicationTable($lines, $mentorUids, [], []);
+	if (!empty($mentorUids)) {
+        echo makeAdjudicationTable($lines, $mentorUids, [], []);
+    } else {
+	    commitChanges($token, $server, $lines, $mentorUids);
+    }
 } else {                //////////////////// default setup
-	if (isset($_GET['mssg'])) {
+    if (isset($_GET['mssg'])) {
 		echo "<p class='red centered'><b>{$_GET['mssg']}</b></p>";
 	}
 	echo "<p class='centered'>".CareerDev::makeLogo()."</p>\n";
@@ -291,9 +299,9 @@ function getUidsForMentors($lines) {
                 $lookup = new REDCapLookup("", $mentorLast);
                 $currentUids = $lookup->getUidsAndNames();
             }
-            $mentorUids[$i] = $currentUids;
-        } else {
-            $mentorUids[$i] = [];
+            if (!empty($currentUids)) {
+                $mentorUids[$i] = $currentUids;
+            }
         }
     }
     return $mentorUids;
@@ -324,7 +332,7 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
         if (isset($currLine[13])) {
             $currMentorName = $currLine[13];
         }
-        if ($originalMentorNames[$i]) {
+        if (isset($originalMentorNames[$i]) && REDCapManagement::hasValue($originalMentorNames[$i])) {
             $html .= "<input type='hidden' name='mentorname___$i' value='".preg_replace("/'/", "\\'", $originalMentorNames[$i])."'>";
         }
         if (isset($existingUids[$i])) {
@@ -364,6 +372,7 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
     $html .= "</table>";
     $html .= "<p class='centered'><button>Add Mentors</button></p>";
     $html .= "</form>";
+
 
     if ($foundMentor) {
         return $html;

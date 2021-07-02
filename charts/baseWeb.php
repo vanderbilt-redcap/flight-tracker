@@ -132,7 +132,7 @@ function search(page, div, name) {
 		}
 		if (numFoundRecs == 1) {
 			$('#searchDiv').html("Name found.");
-			let wranglerType = '<?= $_GET['wranglerType'] ? "&wranglerType=".$_GET['wranglerType'] : "" ?>';
+			let wranglerType = '<?= isset($_GET['wranglerType']) ? "&wranglerType=".$_GET['wranglerType'] : "" ?>';
 			for (rec in foundRecs) {
 				window.location.href = '?pid=<?= $_GET['pid'] ?>&prefix=<?= $_GET['prefix'] ?>&page='+encodeURIComponent(page)+'&record='+rec+wranglerType;
 			}

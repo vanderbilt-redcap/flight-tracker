@@ -12,7 +12,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.6.0";
+		return "3.6.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -564,7 +564,7 @@ class CareerDev {
 		$bgs = self::getMenuBackgrounds();
 		$r = self::getREDCapDir();
 
-		if ($_GET['headers'] && ($_GET['headers'] == "false")) {
+		if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 			return self::link("/css/white.css");
 		}
 		if ($_GET['page'] == "index") {
