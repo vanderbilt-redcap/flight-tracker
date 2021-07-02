@@ -45,15 +45,29 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     $adminEmail = $this->getProjectSetting("admin_email", $pid);
                     $cronStatus = $this->getProjectSetting("send_cron_status", $pid);
                     if ($cronStatus) {
-                        $mgr = new CronManager($token, $server, $pid);
+                        $mgr = new CronManager($token, $server, $pid, $this);
                         loadTestingCrons($mgr);
                         $mgr->run($adminEmail, $tokenName);
                     }
 
-                    $mgr = new EmailManager($token, $server, $pid, $this);
-                    $mgr->sendRelevantEmails();
+                    try {
+                        $mgr = new EmailManager($token, $server, $pid, $this);
+                        $mgr->sendRelevantEmails();
+                    } catch (\Exception $e) {
+                        # should only happen in rarest of circumstances
+                        $mssg = $e->getMessage()."<br><br>".$e->getTraceAsString();
+                        \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Email Exception", $mssg);
+                    }
                 }
 			}
+		}
+        try {
+            CronManager::sendEmails($activePids, $this);
+            CronManager::runBatchJobs($this);
+        } catch (\Exception $e) {
+            # should only happen in rarest of circumstances
+            $mssg = $e->getMessage()."<br><br>".$e->getTraceAsString();
+            \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Batch Job Exception", $mssg);
 		}
 	}
 
@@ -608,24 +622,24 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             if ($token && $server && !$turnOffSet) {
                 try {
                     # only have token and server in initialized projects
-                    $mgr = new CronManager($token, $server, $pid);
+                    $mgr = new CronManager($token, $server, $pid, $this);
                     if ($this->getProjectSetting("run_tonight", $pid)) {
                         $this->setProjectSetting("run_tonight", FALSE, $pid);
                         loadInitialCrons($mgr, FALSE, $token, $server);
                     } else {
                         loadCrons($mgr, FALSE, $token, $server);
                     }
-                    CareerDev::log($this->getName().": Running ".$mgr->getNumberOfCrons()." crons for pid $pid", $pid);
+                    // CareerDev::log($this->getName().": Running ".$mgr->getNumberOfCrons()." crons for pid $pid", $pid);
                     $addlEmailText = in_array($pid, $pidsUpdated) ? "Surveys shared from other Flight Tracker projects" : "";
-                    $mgr->run($adminEmail, $tokenName, $addlEmailText);
-                    CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
+//                     $mgr->run($adminEmail, $tokenName, $addlEmailText);
+                    // CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
                 } catch(\Exception $e) {
                     Application::log("Error in cron logic", $pid);
                     \REDCap::email($adminEmail, Application::getSetting("default_from"), Application::getProgramName()." Error in Cron", $e->getMessage());
                 }
             }
 		}
-		REDCapManagement::cleanupDirectory(APP_PATH_TEMP, "/RePORTER_PRJ/");
+		CronManager::runBatchJobs($this);
 	}
 
 	function setupApplication() {
@@ -688,7 +702,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         return NULL;
 	}
 
-	function hook_every_page_before_render($project_id) {
+	function hook_every_page_before_render() {
 		$this->setupApplication();
 		if (PAGE == "DataExport/index.php") {
 			echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
@@ -707,21 +721,23 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	function hook_every_page_top($project_id) {
-		$this->setupApplication();
-		$tokenName = $this->getProjectSetting("tokenName", $project_id);
-		$token = $this->getProjectSetting("token", $project_id);
-		$server = $this->getProjectSetting("server", $project_id);
-		if ($tokenName) {
-			# turn off for surveys and login pages
-			$url = $_SERVER['PHP_SELF'];
-			if (!preg_match("/surveys/", $url) && !isset($_GET['s'])) {
-				echo $this->makeHeaders($token, $server, $project_id, $tokenName);
-			}
-		} else {
-			if (self::canRedirectToInstall()) {
-				header("Location: ".$this->getUrl("install.php"));
-			}
-		}
+	    if ($project_id) {
+            $this->setupApplication();
+            $tokenName = $this->getProjectSetting("tokenName", $project_id);
+            $token = $this->getProjectSetting("token", $project_id);
+            $server = $this->getProjectSetting("server", $project_id);
+            if ($tokenName) {
+                # turn off for surveys and login pages
+                $url = $_SERVER['PHP_SELF'];
+                if (!preg_match("/surveys/", $url) && !isset($_GET['s'])) {
+                    echo $this->makeHeaders($token, $server, $project_id, $tokenName);
+                }
+            } else {
+                if (self::canRedirectToInstall()) {
+                    header("Location: ".$this->getUrl("install.php"));
+                }
+            }
+        }
 	}
 
 	function hook_data_entry_form($project_id, $record, $instrument, $event_id, $group_id, $repeat_instance) {

@@ -317,7 +317,7 @@ class Publications {
             }
         }
         self::addTimesCited($upload, $this->pid, $pmids, $metadataFields);
-        self::updateAssocGrantsAndBibliometrics($upload, $pmids, $this->metadata, $this->recordId, $this->pid);
+        $this->updateAssocGrantsAndBibliometrics($upload, $pmids);
 	    if (!empty($upload)) {
 	        Upload::rows($upload, $this->token, $this->server);
         }
@@ -631,10 +631,121 @@ class Publications {
 	    return $numPubsMatched."/".$this->getCount($cat);
     }
 
+    private static function xml2REDCap($xml, $recordId, &$instance, $src, $confirmedPMIDs, $metadataFields) {
+        $hasAbstract = in_array("citation_abstract", $metadataFields);
+        $pmidsPulled = [];
+        $upload = [];
+        foreach ($xml->PubmedArticle as $medlineCitation) {
+            $article = $medlineCitation->MedlineCitation->Article;
+            $abstract = "";
+            if ($article->Abstract && $article->Abstract->AbstractText) {
+                $abstract = strval($article->Abstract->AbstractText);
+            }
+            $authors = [];
+            if ($article->AuthorList->Author) {
+                foreach ($article->AuthorList->Author as $authorXML) {
+                    $author = $authorXML->LastName . " " . $authorXML->Initials;
+                    if ($author != " ") {
+                        $authors[] = $author;
+                    } else {
+                        $authors[] = strval($authorXML->CollectiveName);
+                    }
+                }
+            }
+            $title = strval($article->ArticleTitle);
+            $title = preg_replace("/\.$/", "", $title);
+
+            $pubTypes = array();
+            if ($article->PublicationTypeList) {
+                foreach ($article->PublicationTypeList->PublicationType as $pubType) {
+                    array_push($pubTypes, strval($pubType));
+                }
+            }
+
+            $assocGrants = array();
+            if ($article->GrantList) {
+                foreach ($article->GrantList->Grant as $grant) {
+                    array_push($assocGrants, strval($grant->GrantID));
+                }
+            }
+
+            $meshTerms = array();
+            if ($medlineCitation->MedlineCitation->MeshHeadingList) {
+                foreach ($medlineCitation->MedlineCitation->MeshHeadingList->MeshHeading as $mesh) {
+                    array_push($meshTerms, strval($mesh->DescriptorName));
+                }
+            }
+
+            $journal = strval($article->Journal->ISOAbbreviation);
+            $journal = preg_replace("/\.$/", "", $journal);
+
+            $issue = $article->Journal->JournalIssue;    // not a strval but node!!!
+            $year = "";
+            $month = "";
+            $day = "";
+
+            $date = $issue->PubDate->Year . " " . $issue->PubDate->Month;
+            if ($issue->PubDate->Year) {
+                $year = strval($issue->PubDate->Year);
+            }
+            if ($issue->PubDate->Month) {
+                $month = strval($issue->PubDate->Month);
+            }
+            if ($issue->PubDate->Day) {
+                $day = "{$issue->PubDate->Day}";
+            }
+            $vol = "";
+            if ($issue->Volume) {
+                $vol = strval($issue->Volume);
+            }
+            $iss = "";
+            if ($issue->Issue) {
+                $iss = strval($issue->Issue);
+            }
+            $pages = "";
+            if ($article->Pagination->MedlinePgn) {
+                $pages = strval($article->Pagination->MedlinePgn);
+            }
+            $pmid = strval($medlineCitation->MedlineCitation->PMID);
+            $pmidsPulled[] = $pmid;
+
+            $row = [
+                "record_id" => "$recordId",
+                "redcap_repeat_instrument" => "citation",
+                "redcap_repeat_instance" => "$instance",
+                "citation_pmid" => $pmid,
+                "citation_include" => "",
+                "citation_source" => $src,
+                "citation_authors" => implode(", ", $authors),
+                "citation_title" => $title,
+                "citation_pub_types" => implode("; ", $pubTypes),
+                "citation_mesh_terms" => implode("; ", $meshTerms),
+                "citation_journal" => $journal,
+                "citation_issue" => $iss,
+                "citation_volume" => $vol,
+                "citation_year" => $year,
+                "citation_month" => $month,
+                "citation_day" => $day,
+                "citation_pages" => $pages,
+                "citation_grants" => implode("; ", $assocGrants),
+                "citation_complete" => "2",
+            ];
+            if ($hasAbstract) {
+                $row['citation_abstract'] = $abstract;
+            }
+
+            if (in_array($pmid, $confirmedPMIDs)) {
+                $row['citation_include'] = '1';
+            }
+            $row = REDCapManagement::filterForREDCap($row, $metadataFields);
+            array_push($upload, $row);
+            $instance++;
+        }
+        return [$upload, $pmidsPulled];
+    }
+
 	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = array(), $pid = NULL) {
         $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-        $hasAbstract = in_array("citation_abstract", $metadataFields);
-
 		$upload = [];
 		$instance = $startInstance;
 		$pullSize = self::getPMIDLimit();
@@ -657,117 +768,8 @@ class Publications {
 			if (!$xml && ($tries >= $maxTries)) {
 				throw new \Exception("Cannot pull from eFetch! Attempted $tries times. ".$output);
 			}
-			$pmidsPulled = [];
-			foreach ($xml->PubmedArticle as $medlineCitation) {
-                $article = $medlineCitation->MedlineCitation->Article;
-                $abstract = "";
-                if ($article->Abstract && $article->Abstract->AbstractText) {
-                    $abstract = strval($article->Abstract->AbstractText);
-                }
-                $authors = [];
-                if ($article->AuthorList->Author) {
-                    foreach ($article->AuthorList->Author as $authorXML) {
-                        $author = $authorXML->LastName . " " . $authorXML->Initials;
-                        if ($author != " ") {
-                            $authors[] = $author;
-                        } else {
-                            $authors[] = strval($authorXML->CollectiveName);
-                        }
-                    }
-                }
-                $title = strval($article->ArticleTitle);
-                $title = preg_replace("/\.$/", "", $title);
-
-                $pubTypes = array();
-                if ($article->PublicationTypeList) {
-                    foreach ($article->PublicationTypeList->PublicationType as $pubType) {
-                        array_push($pubTypes, strval($pubType));
-                    }
-                }
-
-                $assocGrants = array();
-                if ($article->GrantList) {
-                    foreach ($article->GrantList->Grant as $grant) {
-                        array_push($assocGrants, strval($grant->GrantID));
-                    }
-                }
-
-                $meshTerms = array();
-                if ($medlineCitation->MedlineCitation->MeshHeadingList) {
-                    foreach ($medlineCitation->MedlineCitation->MeshHeadingList->MeshHeading as $mesh) {
-                        array_push($meshTerms, strval($mesh->DescriptorName));
-                    }
-                }
-
-                $journal = strval($article->Journal->ISOAbbreviation);
-                $journal = preg_replace("/\.$/", "", $journal);
-
-                $issue = $article->Journal->JournalIssue;    // not a strval but node!!!
-                $year = "";
-                $month = "";
-                $day = "";
-
-                $date = $issue->PubDate->Year . " " . $issue->PubDate->Month;
-                if ($issue->PubDate->Year) {
-                    $year = strval($issue->PubDate->Year);
-                }
-                if ($issue->PubDate->Month) {
-                    $month = strval($issue->PubDate->Month);
-                }
-                if ($issue->PubDate->Day) {
-                    $date = $date . " " . $issue->PubDate->Day;
-                    $day = "{$issue->PubDate->Day}";
-                }
-                $journalIssue = strval($issue->Volume);
-                $vol = "";
-                if ($issue->Volume) {
-                    $vol = strval($issue->Volume);
-                }
-                $iss = "";
-                if ($issue->Issue) {
-                    $journalIssue .= "(" . strval($issue->Issue) . ")";
-                    $iss = strval($issue->Issue);
-                }
-                $pages = "";
-                if ($article->Pagination->MedlinePgn) {
-                    $journalIssue .= ":" . $article->Pagination->MedlinePgn;
-                    $pages = strval($article->Pagination->MedlinePgn);
-                }
-                $pmid = strval($medlineCitation->MedlineCitation->PMID);
-                $pmidsPulled[] = $pmid;
-
-                $row = [
-                    "record_id" => "$recordId",
-                    "redcap_repeat_instrument" => "citation",
-                    "redcap_repeat_instance" => "$instance",
-                    "citation_pmid" => $pmid,
-                    "citation_include" => "",
-                    "citation_source" => $src,
-                    "citation_authors" => implode(", ", $authors),
-                    "citation_title" => $title,
-                    "citation_pub_types" => implode("; ", $pubTypes),
-                    "citation_mesh_terms" => implode("; ", $meshTerms),
-                    "citation_journal" => $journal,
-                    "citation_issue" => $iss,
-                    "citation_volume" => $vol,
-                    "citation_year" => $year,
-                    "citation_month" => $month,
-                    "citation_day" => $day,
-                    "citation_pages" => $pages,
-                    "citation_grants" => implode("; ", $assocGrants),
-                    "citation_complete" => "2",
-                ];
-                if ($hasAbstract) {
-                    $row['citation_abstract'] = $abstract;
-                }
-
-                if (in_array($pmid, $confirmedPMIDs)) {
-                    $row['citation_include'] = '1';
-                }
-                $row = REDCapManagement::filterForREDCap($row, $metadataFields);
-                array_push($upload, $row);
-                $instance++;
-            }
+			list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, $recordId, $instance, $src, $confirmedPMIDs, $metadataFields);
+			$upload = array_merge($upload, $parsedRows);
             $translateFromPMIDToPMC = self::PMIDsToPMCs($pmidsPulled, $pid);
             $iCite = new iCite($pmidsPulled, $pid);
 			foreach ($pmidsPulled as $pmid) {
@@ -801,18 +803,18 @@ class Publications {
             if (!$recordId) {
                 throw new \Exception("Please specify a record id!");
             } else if (empty($pmidsPulled)) {     // $pmidsPulled is empty
-			    Application::log("ERROR: No PMIDs pulled from ".json_encode($pmidsToPull));
+			    Application::log("ERROR: No PMIDs pulled from ".json_encode($pmidsToPull), $pid);
             }
 			Publications::throttleDown();
 		}
 		self::addTimesCited($upload, $pid, $pmids, $metadataFields);
-		Application::log("Returning ".count($upload)." lines from getCitationsFromPubMed");
+		Application::log("Returning ".count($upload)." lines from getCitationsFromPubMed", $pid);
 		return $upload;
 	}
 
-	private static function updateAssocGrantsAndBibliometrics(&$upload, $pmids, $metadata, $recordId, $pid) {
-	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-        $rows = self::getCitationsFromPubMed($pmids, $metadata, "", $recordId);
+	private function updateAssocGrantsAndBibliometrics(&$upload, $pmids) {
+	    $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
+        $rows = self::getCitationsFromPubMed($pmids, $this->metadata, "", $this->recordId, 1, [], $this->pid);
         $fieldsToCopy = [
             "citation_grants",      // associated grants
             "citation_doi",
@@ -843,7 +845,7 @@ class Publications {
         $i = 0;
         foreach ($upload as $row) {
             if ($row['citation_doi']) {
-                $altmetricRow = self::getAltmetricRow($row['citation_doi'], $metadataFields, $pid);
+                $altmetricRow = self::getAltmetricRow($row['citation_doi'], $metadataFields, $this->pid);
                 $upload[$i] = array_merge($upload[$i], $altmetricRow);
             }
             $i++;

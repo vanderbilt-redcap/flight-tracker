@@ -258,7 +258,7 @@ class LdapLookup {
 	private static $ldapConns;
 	private static $ldapBinds;
 
-	private function resetConnections($includeVU) {
+	private static function resetConnections($includeVU) {
 	    self::initialize($includeVU, TRUE);
     }
 
@@ -443,10 +443,16 @@ class LdapLookup {
 	}
 
 	public static function initialize($includeVU = FALSE, $force = FALSE) {
-		if(!self::$ldapBinds || $force) {
-			include "/app001/credentials/con_redcap_ldap_user.php";
+	    $includeFile = "/app001/credentials/con_redcap_ldap_user.php";
+		if((!self::$ldapBinds || $force) && file_exists($includeFile)) {
+			include $includeFile;
 
-			self::$ldapConns = array();
+            self::$ldapConns = [];
+            self::$ldapBinds = [];
+			if (!isset($ldapuser) || !isset($ldappass)) {
+			    return;
+            }
+
 			array_push(self::$ldapConns, ldap_connect("ldaps://ldap.vunetid.mc.vanderbilt.edu"));
 			if ($includeVU) {
 				array_push(self::$ldapConns, ldap_connect("ldaps://ldap.vunetid.vanderbilt.edu"));
@@ -454,7 +460,6 @@ class LdapLookup {
 
 			# assume same userid/password
 			# Bind to LDAP server
-			self::$ldapBinds = array();
 			for ($i = 0; $i < count(self::$ldapConns); $i++) {
 			    # $ldapuser and $ldappass defined in the credentials file, included above
 				self::$ldapBinds[$i] = ldap_bind(self::$ldapConns[$i], "uid=".$ldapuser.",ou=special users,dc=vanderbilt,dc=edu", $ldappass);

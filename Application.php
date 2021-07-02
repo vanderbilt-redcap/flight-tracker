@@ -164,6 +164,10 @@ class Application {
         return $_SERVER['REQUEST_URI'];
     }
 
+    public static function isLocalhost() {
+	    return CareerDev::isLocalhost();
+    }
+
     public static function getModule() {
 		return CareerDev::getModule();
 	}

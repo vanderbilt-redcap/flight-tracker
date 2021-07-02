@@ -1081,12 +1081,12 @@ class Grants {
 
 					# only combine moneys if sources are the same; e.g., cannot combine money from coeus and reporter
 					if ($currGrant->getVariable("source") == $basisGrant->getVariable("source")) {
-						$currDirectBudget = $currGrant->getVariable("direct_budget");
-						$grantDirectBudget = $basisGrant->getVariable("direct_budget");
+						$currDirectBudget = is_numeric($currGrant->getVariable("direct_budget")) ? $currGrant->getVariable("direct_budget") : 0;
+						$grantDirectBudget = is_numeric($basisGrant->getVariable("direct_budget")) ? $basisGrant->getVariable("direct_budget") : 0;
 						$basisGrant->setVariable("direct_budget", Grant::convertToMoney($grantDirectBudget + $currDirectBudget));
 
-						$currBudget = $currGrant->getVariable("budget");
-						$grantBudget = $basisGrant->getVariable("budget");
+						$currBudget = is_numeric($currGrant->getVariable("budget")) ? $currGrant->getVariable("budget") : 0;
+						$grantBudget = is_numeric($basisGrant->getVariable("budget")) ? $basisGrant->getVariable("budget") : 0;
 						if (self::getShowDebug()) { Application::log("combineGrants: ".$basisGrant->getBaseNumber()." (".$currGrant->getNumber()." from ".$currGrant->getVariable("source").") Adding ".$currBudget." to ".$grantBudget." = ".Grant::convertToMoney($grantBudget + $currBudget)); }
 						$basisGrant->setVariable("budget", Grant::convertToMoney($grantBudget + $currBudget));
 					}
@@ -1433,7 +1433,7 @@ class Grants {
 		$kTypes = array(1, 2, 3, 4);
 		$lastK = FALSE;
 		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
-			if (in_array($row['summary_award_type_'.$i], $kTypes)) {
+			if (REDCapManagement::hasValue($row['summary_award_type_'.$i]) && in_array($row['summary_award_type_'.$i], $kTypes)) {
 				$lastK = $row['summary_award_type_'.$i];
 			}
 		}
@@ -1451,14 +1451,14 @@ class Grants {
 	#			  7, Used K99/R00
 	private static function converted($row, $typeOfK) {
 		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
-			if ($row['summary_award_type_'.$i] == 9) {
+			if (isset($row['summary_award_type_'.$i]) && ($row['summary_award_type_'.$i] == 9)) {
 				# K99/R00
 				return 7;
 			}
 		}
 
 		$value = "";
-		if ($row['summary_'.$typeOfK.'_k'] && $row['summary_first_r01_or_equiv']) {
+		if (isset($row['summary_'.$typeOfK.'_k']) && $row['summary_'.$typeOfK.'_k'] && isset($row['summary_first_r01_or_equiv']) && $row['summary_first_r01_or_equiv']) {
 			if (preg_match('/last_/', $typeOfK)) {
 				$prefix = "last";
 			} else {
@@ -1480,7 +1480,7 @@ class Grants {
 					$value = 2;
 				}
 			}
-		} else if ($row['summary_'.$typeOfK.'_k']) {
+		} else if (isset($row['summary_'.$typeOfK.'_k']) && $row['summary_'.$typeOfK.'_k']) {
 			if (preg_match('/last_/', $typeOfK)) {
 				$prefix = "last";
 			} else {
@@ -1505,7 +1505,7 @@ class Grants {
 				}
 			}
 		} else {
-			if ($row['summary_first_r01_or_equiv']) {
+			if (isset($row['summary_first_r01_or_equiv']) && $row['summary_first_r01_or_equiv']) {
 				$value = 5;
 			} else {
 				$value = 6;

@@ -252,7 +252,7 @@ class Grant {
 	    # from https://era.nih.gov/files/Deciphering_NIH_Application.pdf
         $nihInstituteCodes = ["TW", "TR", "AT", "CA", "EY", "HG", "HL", "AG", "AA", "AI", "AR", "EB", "HD", "DA", "DC", "DE", "DK", "ES", "GM", "MH", "MD", "NS", "NR", "LM"];
 	    $ary = self::parseNumber($this->getNumber());
-        return in_array($ary['institute_code'], $nihInstituteCodes);
+        return isset($ary['institute_code']) && in_array($ary['institute_code'], $nihInstituteCodes);
     }
 
 	public function getVariable($type) {
@@ -1610,7 +1610,7 @@ class Grant {
             return "R01";
 		} else if (preg_match("/^\d?[Tt]\d\d/", $awardNo) || preg_match("/^\d?[Dd]43/", $awardNo)) {
 			return "Training Grant Admin";
-		} else if ($specs['direct_budget'] && ($specs['direct_budget'] >= 750000)) {
+		} else if (REDCapManagement::hasValue($specs['direct_budget']) && ($specs['direct_budget'] >= 750000)) {
 			# not R01 or R00
 			if ($specs['project_start'] && $specs['project_end']) {
                 $projStart = strtotime($specs['project_start']);
@@ -1671,7 +1671,7 @@ class Grant {
 			}
 		} else if (isset($specs['sponsor']) && $specs['sponsor'] == "Veterans Administration, Tennessee") {
 			return "K Equivalent";
-		} else if ($specs['sponsor_type'] && ($specs['sponsor_type'] == "Non-Profit - Foundations/ Associations")) {
+		} else if (isset($specs['sponsor_type']) && ($specs['sponsor_type'] == "Non-Profit - Foundations/ Associations")) {
 			if (($specs['percent_effort'] >= 50) && ($specs['direct_budget'] >= 50000)) {
 				return "K Equivalent";
 			}

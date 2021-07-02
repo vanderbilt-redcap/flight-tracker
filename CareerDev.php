@@ -12,7 +12,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.5.0";
+		return "3.6.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -60,6 +60,7 @@ class CareerDev {
     	    "ORCID" => "pub.orcid.org",
             "Statistics Reporting" => "redcap.vanderbilt.edu",
             "Altmetric" => "api.altmetric.com",
+            "Patents View (US Patent Office)" => "api.patentsview.org",
         ];
         if ($all || self::isScopusEnabled()) {
             $sites["Scopus (API)"] = "api.elsevier.com";
@@ -143,8 +144,8 @@ class CareerDev {
                         $params = array("project_id" => $pid);
                         $module->log($mssg, $params);
                         if (self::isVanderbilt()) {
-                            $rcTs = date("Ymdhis");
-                            error_log($pid." ($rcTs): ".$mssg);
+                            $currTime = date("Y-m-d H:i:s");
+                            error_log($pid." ($currTime): ".$mssg);
                         }
                     } else {
                         error_log($mssg);
@@ -612,6 +613,9 @@ class CareerDev {
 	}
 
 	public static function isVanderbilt() {
+	    if (Application::isLocalhost()) {
+	        return TRUE;
+        }
 		return preg_match("/vanderbilt.edu/", SERVER_NAME);
 	}
 
@@ -682,6 +686,10 @@ class CareerDev {
             }
         }
 	    return $itemChoices;
+    }
+
+    public static function isLocalhost() {
+	    return (SERVER_NAME == "localhost");
     }
 
     public static function isTestGroup($pid) {

@@ -47,8 +47,8 @@ class NavigationBar {
 				$link .= "pid=".$pid;
 			}
 		}
-		if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isRecordPage") && Application::isRecordPage($link) && ($_GET['id'] || $_GET['record'])) {
-		    if ($_GET['record']) {
+		if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isRecordPage") && Application::isRecordPage($link) && (isset($_GET['id']) || isset($_GET['record']))) {
+		    if (isset($_GET['record'])) {
 		        $record = $_GET['record'];
             } else {
 		        $record = $_GET['id'];

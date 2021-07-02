@@ -403,9 +403,10 @@ class Download {
         }
 		$pid = Application::getPID($data['token']);
         $error = "";
-		if ($pid && $_GET['pid'] && ($pid == $_GET['pid']) && ($data['content'] == "record") && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
+		if ($pid && isset($_GET['pid']) && ($pid == $_GET['pid']) && ($data['content'] == "record") && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
 			// Application::log("sendToServer: ".$pid." ".$data['token']." REDCap::getData");
-		    $output = \REDCap::getData($pid, "json", $data['records'], $data['fields']);
+            $records = isset($data['records']) ? $data['records'] : NULL;
+		    $output = \REDCap::getData($pid, "json", $records, $data['fields']);
 		    $resp = "getData";
 		} else {
 			$ch = curl_init();

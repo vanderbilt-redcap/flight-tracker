@@ -19,9 +19,11 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		// $manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", date("Y-m-d"));
 		// $manager->addCron("publications/getAllPubs_func.php", "getPubs", date("Y-m-d"));
 		// $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", date("Y-m-d"));
-        $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", date("Y-m-d"));
-        $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", date("Y-m-d"));
-        $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", date("Y-m-d"));
+        if (!Application::isLocalhost()) {
+            $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", date("Y-m-d"));
+            $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", date("Y-m-d"));
+            $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", date("Y-m-d"));
+        }
 	} else if ($token && $server) {
         $has = checkMetadataForFields($token, $server);
         $pid = CareerDev::getPid();
@@ -32,22 +34,21 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         } else {
             $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
         }
-        if ($has['coeus']) {
-            // $manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", "Thursday");
-        }
         if ($has['news']) {
             $manager->addCron("news/getNewsItems_func.php", "getNewsItems", "Friday");
         }
         if ($has['ldap']) {
             $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Wednesday");
         }
-        if ($has['coeus']) {
-            $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", "Wednesday");
-        } else if ($has['coeus2']) {
-            $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday");
-        }
-        if ($has['coeus_submissions']) {
-            $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday");
+        if (!Application::isLocalhost()) {
+            if ($has['coeus']) {
+                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", "Wednesday");
+            } else if ($has['coeus2']) {
+                $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday");
+            }
+            if ($has['coeus_submissions']) {
+                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday");
+            }
         }
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
         $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
@@ -64,7 +65,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday");
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday");
         $manager->addCron("drivers/12_reportStats.php", "reportStats", "Saturday");
-        if (Application::isVanderbilt()) {
+        if (Application::isVanderbilt() && !Application::isLocalhost()) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Wednesday");
         }
 		if ($has['vfrs']) {

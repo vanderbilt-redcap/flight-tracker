@@ -22,7 +22,8 @@ if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 	if (count($recordIds) > 0) {
         	$record = $recordIds[0];
 	} else {
-		$record = 1;
+	    echo "<p class='centered'>No records stored.</p>";
+	    exit;
 	}
 }
 

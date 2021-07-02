@@ -28,6 +28,9 @@ class GrantLexicalTranslator {
 		        $pid = Application::getPID($this->token);
 		        $this->data = $this->module->getProjectSetting($this->settingName, $pid);
             }
+		    if (!$this->data) {
+		        $this->data = [];
+            }
 		} else if ($this->metadata) {
 			foreach ($this->metadata as $row) {
 				if ($row['field_name'] == $this->hijackedField) {
@@ -63,12 +66,16 @@ class GrantLexicalTranslator {
 
 	public function getCategory($awardNo) {
 		$awardNoLc = strtolower($awardNo);
-		foreach ($this->data as $key => $value) {
-			if (strpos($awardNoLc, strtolower($key)) !== FALSE) {
-				// Application::log("Returning $value ($key) for $awardNo");
-				return $value;
-			}
-		}
+		if (is_array($this->data)) {
+            foreach ($this->data as $key => $value) {
+                if (strpos($awardNoLc, strtolower($key)) !== FALSE) {
+                    // Application::log("Returning $value ($key) for $awardNo");
+                    return $value;
+                }
+            }
+        } else if ($this->data) {
+		    Application::log("Warning: Invalid data ".$this->data);
+        }
 		// Application::log("Returning blank for $awardNo");
 		return "";
 	}

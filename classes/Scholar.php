@@ -314,7 +314,7 @@ class Scholar {
 		$mentorField = $mentorResult->getField();
 		$mentorUseridField = $mentorField."_userid";
 		foreach ($rows as $row) {
-			if ($row[$mentorUseridField]) {
+			if (REDCapManagement::hasValue($row[$mentorUseridField])) {
 				$r = new Result($row[$mentorUseridField], $mentorResult->getSource(), "", "", $this->pid);
 				$r->setField($mentorUseridField);
 				return $r;
@@ -2280,7 +2280,7 @@ class Scholar {
 		foreach ($vars as $var => $source) {
 			$splitVar = explode("/", $var);
 			foreach ($rows as $row) {
-				if ($row[$var] || ((count($splitVar) > 1) && $row[$splitVar[0]] && $row[$splitVar[1]])) {
+				if ((isset($row[$var]) && $row[$var]) || ((count($splitVar) > 1) && isset($row[$splitVar[0]]) && $row[$splitVar[0]] && isset($row[$splitVar[1]]) && $row[$splitVar[1]])) {
 				    if ($showDebug) {
 				        if ($row[$var]) {
 				            Application::log("Found at $var: ".$row[$var]);
@@ -2620,7 +2620,7 @@ class Scholar {
         $vars = $this->getOrder($vars, "identifier_institution");
 
         foreach ($vars as $field => $source) {
-            if ($row[$field] == $value) {
+            if (isset($row[$field]) && ($row[$field] == $value)) {
                 return $field;
             }
         }

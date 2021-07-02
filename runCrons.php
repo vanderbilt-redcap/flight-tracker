@@ -1,6 +1,7 @@
 <?php
 
 use \Vanderbilt\CareerDevLibrary\CronManager;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/small_base.php");
@@ -8,7 +9,7 @@ require_once(dirname(__FILE__)."/cronLoad.php");
 
 define('REDIRECT_EMAILS', FALSE);
 
-$manager = new CronManager($token, $server, $pid);
+$manager = new CronManager($token, $server, $pid, Application::getModule());
 $specialOnly = FALSE;
 if (isset($argv[2]) && ($argv[2] = "special")) {
 	$specialOnly = TRUE;
@@ -22,4 +23,5 @@ error_log($manager->getNumberOfCrons()." total crons loaded in");
 if (REDIRECT_EMAILS) {
     $adminEmail = "scott.j.pearson@vumc.org";
 }
-$manager->run($adminEmail, $tokenName, $pid);
+CronManager::runBatchJobs(Application::getModule());
+// $manager->run($adminEmail, $tokenName, $pid);

@@ -45,7 +45,7 @@
 			"cron_description": "Flight Tracker Emails; runs every minute",
 			"method": "emails",
 			"cron_frequency": "60",
-			"cron_max_run_time": "600"
+			"cron_max_run_time": "300"
 		}
 	],
 

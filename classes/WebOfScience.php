@@ -6,6 +6,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class WebOfScience {
     public function __construct($pid) {
+        $this->pid = $pid;
         list($this->userid, $this->passwd) = self::getCredentials($pid);
     }
 
@@ -37,11 +38,11 @@ class WebOfScience {
             $data = [];
             foreach ($batchedPmids as $pmids) {
                 if (empty($pmids)) {
-                    Application::log("No PMIDs");
+                    Application::log("No PMIDs", $this->pid);
                 } else {
-                    Application::log("Downloading for ".count($pmids)." PMIDs");
+                    Application::log("Web of Science Downloading for ".count($pmids)." PMIDs", $this->pid);
                     $xml = $this->makeXML($pmids);
-                    // Application::log("Uploading ".$xml);
+                    // Application::log("Uploading ".$xml, $this->pid);
                     $url = 'https://ws.isiknowledge.com/cps/xrpc';
 
                     $curl = curl_init($url);
@@ -54,8 +55,8 @@ class WebOfScience {
                         throw new \Exception(curl_error($curl));
                     }
                     curl_close($curl);
-                    Application::log("Got ".strlen($result)." bytes from ".$url);
-                    // Application::log($result);
+                    Application::log("Got ".strlen($result)." bytes from ".$url, $this->pid);
+                    // Application::log($result, $this->pid);
 
                     $maxTries = 5;
                     $tryNum = 0;
@@ -64,10 +65,10 @@ class WebOfScience {
                         $tryNum++;
                         try {
                             $values = $this->parseXML($result);
-                            Application::log("On try $tryNum, got ".count($values)." values from XML");
+                            Application::log("On try $tryNum, got ".count($values)." values from XML", $this->pid);
                             $done = TRUE;
                         } catch (\Exception $e) {
-                            Application::log("parseXML try $tryNum: ".$e->getMessage());
+                            Application::log("parseXML try $tryNum: ".$e->getMessage(), $this->pid);
                             sleep(120);    // "wait a couple of minutes in case of error"
                         }
                     }
@@ -152,7 +153,7 @@ class WebOfScience {
         } else {
             throw new \Exception("Could not parse XML!");
         }
-        Application::log("Returning results: ".REDCapManagement::json_encode_with_spaces($results));
+        Application::log("Returning results: ".REDCapManagement::json_encode_with_spaces($results), $this->pid);
         return $results;
     }
 
@@ -185,5 +186,6 @@ class WebOfScience {
     protected $data;
     protected $userid;
     protected $passwd;
+    protected $pid = NULL;
 }
 

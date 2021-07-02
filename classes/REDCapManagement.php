@@ -593,10 +593,15 @@ class REDCapManagement {
         }
 	    return [];
     }
+
+    public static function hasValue($value) {
+	    return (isset($value) && ($value !== ""));
+    }
+
     public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
-        Application::log("Contacting $url");
+        Application::log("Contacting $url", $pid);
         if (!empty($postdata)) {
-            Application::log("Posting ".self::json_encode_with_spaces($postdata));
+            Application::log("Posting ".self::json_encode_with_spaces($postdata), $pid);
         }
         $defaultOpts = [
             CURLOPT_RETURNTRANSFER => true,
@@ -637,19 +642,19 @@ class REDCapManagement {
         $data = curl_exec($ch);
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         if(curl_errno($ch)){
-            Application::log(curl_error($ch));
+            Application::log(curl_error($ch), $pid);
             if ($autoRetriesLeft > 0) {
                 sleep(30);
-                Application::log("Retrying ($autoRetriesLeft left)...");
+                Application::log("Retrying ($autoRetriesLeft left)...", $pid);
                 list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, $autoRetriesLeft - 1);
             } else {
-                Application::log("Error: ".curl_error($ch));
+                Application::log("Error: ".curl_error($ch), $pid);
                 throw new \Exception(curl_error($ch));
             }
         }
         curl_close($ch);
         $time2 = microtime();
-        Application::log("Response code $resp; ".strlen($data)." bytes in ".(($time2 - $time1) / 1000)." seconds");
+        Application::log("Response code $resp; ".strlen($data)." bytes in ".(($time2 - $time1) / 1000)." seconds", $pid);
         return [$resp, $data];
     }
 
@@ -741,7 +746,7 @@ class REDCapManagement {
     public static function findAllFields($redcapData, $recordId, $field) {
 	    $values = [];
         foreach ($redcapData as $row) {
-            if (($row['record_id'] == $recordId) && $row[$field]) {
+            if (($row['record_id'] == $recordId) && isset($row[$field]) && self::hasValue($row[$field])) {
                 $values[] = $row[$field];
             }
         }

@@ -172,7 +172,7 @@ class EmailManager {
 		}
 		foreach ($this->data as $name => $emailSetting) {
 			if (in_array($name, $names) || empty($names)) {
-                Application::log("Checking if $name is enabled");
+                // Application::log("Checking if $name is enabled");
 				if ($emailSetting['enabled'] || ($func == "prepareEmail")) {
 				    Application::log("$name is enabled");
                     $when = $emailSetting["when"];

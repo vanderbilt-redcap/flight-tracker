@@ -24,7 +24,7 @@ class iCite {
         }
 		$url = "https://icite.od.nih.gov/api/pubs?pmids=".implode(",", $queue)."&format=json";
 		list($resp, $json) = REDCapManagement::downloadURL($url, $pid);
-		Application::log("iCite ".$url.": $resp");
+		Application::log("iCite ".$url.": $resp", $pid);
 
 		$data = json_decode($json, true);
 		if (!$data || !$data['data'] || count($data['data']) == 0) {

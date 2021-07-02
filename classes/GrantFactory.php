@@ -97,7 +97,7 @@ class InitialGrantFactory extends GrantFactory {
 				$grant->setVariable('url', $url);
 				$grant->setVariable('link', Links::makeLink($url, "See Grant"));
 				# Co-PI or PI, not Co-I or Other
-				if (in_array($row[$prefix.'grant'.$i.'_role'], [1, 2, ''])) {
+				if (in_array($row[$prefix.'_grant'.$i.'_role'], [1, 2, ''])) {
 					$grant->setVariable('pi_flag', 'Y');
 				} else {
 					$grant->setVariable('pi_flag', 'N');
@@ -806,13 +806,13 @@ class CustomGrantFactory extends GrantFactory {
         $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=custom_grant&instance={$row['redcap_repeat_instance']}";
 		$awardNo = self::cleanAwardNo($row['custom_number']);
 		$directCosts = $row['custom_costs'];
-		if ($row['custom_costs_total']) {
+		if (REDCapManagement::hasValue($row['custom_costs_total'])) {
 		    $totalCosts = $row['custom_costs_total'];
 		    if (!$directCosts) {
 		        $directCosts = Grants::directCostsFromTotal($totalCosts, $awardNo, $row['custom_start']);
             }
         } else {
-		    if ($directCosts) {
+		    if (REDCapManagement::hasValue($directCosts)) {
                 $totalCosts = Grants::totalCostsFromDirect($directCosts, $awardNo, $row['custom_start']);
             } else {
 		        $totalCosts = '';
