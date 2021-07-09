@@ -5,14 +5,13 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 use ExternalModules\ExternalModules;
 use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\WebOfScience;
 
 class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.6.1";
+		return "3.6.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -121,6 +120,14 @@ class CareerDev {
 	    if (!$mssg) {
 	        return;
         }
+	    if (self::isLocalhost()) {
+	        if ($pid) {
+                error_log("$pid: $mssg");
+            } else {
+	            error_log($mssg);
+            }
+	        return;
+        }
         if (isset($_GET['test'])) {
             echo $mssg . "<br>\n";
         } else {
@@ -173,7 +180,10 @@ class CareerDev {
 	}
 
 	public static function getCurrPage() {
-		return $_GET['page'].".php";
+	    if (isset($_GET['page'])) {
+            return $_GET['page'].".php";
+        }
+	    return "";
 	}
 
 	public static function isFAQ() {

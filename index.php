@@ -11,8 +11,6 @@ use \Vanderbilt\CareerDevLibrary\Grant;
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
-testToKill($_GET['terminate'], "A");
-
 $bottomPadding = "<br><br><br><br><br>\n";
 $grantNumberHeader = "";
 if ($grantNumber = CareerDev::getSetting("grant_number", $pid)) {
@@ -25,7 +23,7 @@ if ($projectSettings['project_notes']) {
     $projectNotes = "<p class='centered'>".$projectSettings['project_notes']."</p>";
 }
 
-testToKill($_GET['terminate'], "B");
+
 ?>
 <html>
 <head>
@@ -62,7 +60,6 @@ $(document).ready(function() {
 <div class='centered' id='metadataWarning'></div>
 
 <?php
-testToKill($_GET['terminate'], "C");
 	################ Overhead with External Module
 	$module = CareerDev::getModule();
 	if ($module) {
@@ -82,9 +79,7 @@ testToKill($_GET['terminate'], "C");
 			if ($lockDate) {
 				$lockTs = strtotime($lockDate);
 				if ($lockTs && ($lockTs < time() - $lockHours * 3600)) {
-                    testToKill($_GET['terminate'], "D");
 					unlink($lockFile);
-                    testToKill($_GET['terminate'], "E");
 				}
 			}
 			fclose($fp);
@@ -155,7 +150,6 @@ testToKill($_GET['terminate'], "C");
 	}
 	echo "</table>\n";
 	echo $bottomPadding;
-    testToKill($_GET['terminate'], "F");
 
 ?>
 </div>
@@ -192,12 +186,6 @@ testToKill($_GET['terminate'], "C");
 </html>
 
 <?php
-
-function testToKill($getParam, $point) {
-    if ($getParam && ($point == $getParam)) {
-        die("Script terminated at after section ".$point);
-    }
-}
 
 function makeWarning($str) {
     return "<div class='centered red'>$str</div>\n";

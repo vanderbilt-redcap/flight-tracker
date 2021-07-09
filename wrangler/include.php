@@ -17,7 +17,7 @@ require_once(dirname(__FILE__)."/../small_base.php");
 $url = Application::link("wrangler/include.php");
 $wranglerType = $_GET['wranglerType'];
 $wranglerTypeParam = "&wranglerType=".urlencode($wranglerType);
-if ($_POST['request']) {
+if (isset($_POST['request'])) {
     $html = "";
     if ($_POST['request'] == "check") {
         $records = Download::recordIds($token, $server);

@@ -7,8 +7,6 @@ use \Vanderbilt\CareerDevLibrary\Links;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 
-session_start();
-
 $pid = $_GET['pid'];
 if (!$pid) {
     $pid = CareerDev::getSetting("pid");

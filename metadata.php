@@ -80,7 +80,7 @@ if ($_POST['process'] == "check") {
                             array_push($missing, $field);
                             array_push($changed, $field);
                         }
-                    } else if ($choices["file"][$field] && $choices["REDCap"][$field] && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])) {
+                    } else if (!empty($choices["file"][$field]) && !empty($choices["REDCap"][$field]) && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])) {
                         if ($isSpecialGenderField) {
                             array_push($missing, $field);
                             array_push($changed, $field);
@@ -137,7 +137,9 @@ if ($_POST['process'] == "check") {
             $fieldsForMentorLabel = ["check_primary_mentor", "followup_primary_mentor", ];
             foreach ($fieldsForMentorLabel as $field) {
                 $metadata['file'] = changeFieldLabel($field, $mentorLabel, $metadata['file']);
-                if ($fieldLabels['file'][$field] != $fieldLabels['REDCap'][$field]) {
+                $fileValue = isset($fieldLabels['file'][$field]) ? $fieldLabels['file'][$field] : "";
+                $redcapValue = isset($fieldLabels['REDCap'][$field]) ? $fieldLabels['REDCap'][$field] : "";
+                if ($fileValue != $redcapValue) {
                     $postedFields[] = $field;
                 }
             }

@@ -27,6 +27,9 @@ if (isset($_GET['positions'])) {
     $suffix = "&grants";
     $expectedItems = 12;
 }
+if (isset($_GET['test'])) {
+    $suffix .= "&test";
+}
 
 if ($_FILES['bulk']) {
 	$longImportFile = dirname(__FILE__)."/".$importFile;
@@ -44,6 +47,9 @@ if ($_FILES['bulk']) {
 		$i = 0;
 		$customFields = Application::getCustomFields($metadata);
         foreach ($lines as $line) {
+            if (isset($_GET['test'])) {
+                echo "<p>".REDCapManagement::json_encode_with_spaces($line)."</p>";
+            }
             if ($startIdx == 2) {
                 $firstName = $line[0];
                 $lastName = $line[1];
@@ -141,12 +147,21 @@ if ($_FILES['bulk']) {
 			}
 			echo "</div>\n";
 		} else {
-			$feedback = Upload::rows($upload, $token, $server);
-			if ($feedback['error'])	{
-				echo "<p class='red padded centered max-width'>ERROR! ".$feedback['error']."</p>\n";
-			} else {
-				echo "<p class='green padded centered max-width'>Upload successful!</p>\n";
-			}
+		    try {
+                $feedback = Upload::rows($upload, $token, $server);
+                if ($feedback['error'])	{
+                    echo "<p class='red padded centered max-width'>ERROR! ".$feedback['error']."</p>\n";
+                } else {
+                    echo "<p class='green padded centered max-width'>Upload successful!</p>\n";
+                }
+            } catch (\Exception $e) {
+                if (isset($_GET['test'])) {
+                    foreach ($upload as $row) {
+                        echo "<p>".REDCapManagement::json_encode_with_spaces($row)."</p>";
+                    }
+                }
+                echo "<p class='red padded centered max-width'>ERROR! ".$e->getMessage()."</p>\n";
+            }
 		}
 	} else {
 		echo "<p class='red padded centered max-width'>ERROR! The file is not in the right format. ".detectFirstError($_FILES['bulk'], $longImportFile, $expectedItems)."</p>\n";
@@ -284,8 +299,10 @@ function readCSV($fileinfo, $validationType) {
 		        $line[$i] = trim(utf8_decode($line[$i]));
             }
 		    if ($validationType == "Grants") {
-                $line[8] = ensureDateIsYMD($line[$startIdx + 7]);
-                $line[9] = ensureDateIsYMD($line[$startIdx + 8]);
+                $line[$startIdx + 6] = ensureDateIsYMD($line[$startIdx + 6]);
+                $line[$startIdx + 7] = ensureDateIsYMD($line[$startIdx + 7]);
+                $line[$startIdx + 8] = REDCapManagement::removeMoneyFormatting($line[$startIdx + 8]);
+                $line[$startIdx + 9] = REDCapManagement::removeMoneyFormatting($line[$startIdx + 9]);
             }
 			array_push($lines, $line);
 		}

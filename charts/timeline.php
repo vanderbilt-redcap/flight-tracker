@@ -34,7 +34,7 @@ body { font-size: 12px; }
 
 	$recordId = $records[0];
 	for ($i = 0; $i < count($records); $i++) {
-		if ($records[$i] == $_GET['record']) {
+		if (isset($_GET['record']) && ($records[$i] == $_GET['record'])) {
 			$recordId = $records[$i];
 			if ($i + 1 < count($records)) {
 				$nextRecord = $records[$i + 1];

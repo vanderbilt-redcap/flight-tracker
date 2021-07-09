@@ -35,7 +35,7 @@ use \Vanderbilt\CareerDevLibrary\ConnectionStatus;
 require_once(__DIR__."/autoload.php");
 
 ini_set("memory_limit", "4096M");
-if (!Application::isWebBrowser()) {
+if (!Application::isWebBrowser() && CareerDev::getPid()) {
     date_default_timezone_set(CareerDev::getTimezone());
 }
 
@@ -618,7 +618,7 @@ function getNextRecord($record) {
 	$i = 0;
 	foreach ($records as $rec) {
 		if ($rec == $record) {
-			if ($i < count($records)) {
+			if ($i + 1 < count($records)) {
 				return $records[$i + 1];
 			} else {
 				return $records[0];

@@ -547,6 +547,7 @@ class Grants {
 	}
 
 	private static function combineBySource($sourceOrder, $grants, $combine = TRUE) {
+	    $awardsBySource = [];
 		foreach ($sourceOrder as $source) {
 			foreach ($grants as $grant) {
 				if ($grant->getVariable("source") == $source) {
@@ -1321,8 +1322,8 @@ class Grants {
 		$overrideFirstR01OrEquiv = "";
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "") {
-				$overrideFirstR01 = $row['override_first_r01'];
-				$overrideFirstR01OrEquiv = $row['override_first_r01_or_equiv'];
+				$overrideFirstR01 = isset($row['override_first_r01']) ? $row['override_first_r01'] : NULL;
+				$overrideFirstR01OrEquiv = isset($row['override_first_r01_or_equiv']) ? $row['override_first_r01_or_equiv'] : NULL;
 				break;
 			}
 		}

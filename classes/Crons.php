@@ -227,6 +227,7 @@ class CronManager {
     }
 
     public static function runBatchJobs($module) {
+	    $validBatchStatuses = ["DONE", "ERROR", "RUN", "WAIT"];
         $batchQueue = self::getBatchQueueFromDB($module);
 
         if (empty($batchQueue)) {
@@ -262,6 +263,7 @@ class CronManager {
         if (empty($batchQueue)) {
             return;
         }
+        self::saveBatchQueueToDB($batchQueue, $module);
 
         if ($batchQueue[0]['status'] == "WAIT") {
             register_shutdown_function(["CronManager", "reportCronErrors"]);
@@ -295,7 +297,7 @@ class CronManager {
                 Application::log($e->getMessage()."\n".$e->getTraceAsString());
                 self::handleBatchError($batchQueue, $module, $startTimestamp, $e);
             }
-        } else {
+        } else if (!in_array($batchQueue[0]['status'], $validBatchStatuses)) {
             throw new \Exception("Improper batch status ".$batchQueue[0]['status']);
         }
     }

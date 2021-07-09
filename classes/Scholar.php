@@ -495,7 +495,10 @@ class Scholar {
         $deptResult = $this->getPrimaryDepartment($this->rows);
         $dept = $deptResult->getValue();
         $choices = self::getChoices($this->metadata);
-        return $choices["summary_primary_dept"][$dept];
+        if (isset($choices['summary_primary_dept'][$dept])) {
+            return $choices["summary_primary_dept"][$dept];
+        }
+        return "";
     }
 
     public function getCurrentDivisionText() {

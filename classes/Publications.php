@@ -130,12 +130,16 @@ class Publications {
 	    foreach ($this->getCitations($type) as $citation) {
 	        $scores[] = $citation->getVariable("altmetric_score");
         }
-	    $maxRoundedUp = ceil(max($scores));
-	    $minRoundedDown = floor(min($scores));
-	    if ($minRoundedDown == $maxRoundedUp) {
-	        return $minRoundedDown;
+	    if (!empty($scores)) {
+            $maxRoundedUp = ceil(max($scores));
+            $minRoundedDown = floor(min($scores));
+            if ($minRoundedDown == $maxRoundedUp) {
+                return $minRoundedDown;
+            }
+            return $minRoundedDown."-".$maxRoundedUp;
+        } else {
+            return "";
         }
-	    return $minRoundedDown."-".$maxRoundedUp;
     }
 
 	public static function getSearch() {

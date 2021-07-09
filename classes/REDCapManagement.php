@@ -743,6 +743,15 @@ class REDCapManagement {
         return $nodes[count($nodes) - 1];
     }
 
+    public static function removeMoneyFormatting($amount) {
+	    if (($amount === "") || is_numeric($amount)) {
+	        return $amount;
+        }
+	    $amount = preg_replace("/^\\\$/", "", $amount);
+	    $amount = str_replace(",", "", $amount);
+	    return $amount;
+    }
+
     public static function findAllFields($redcapData, $recordId, $field) {
 	    $values = [];
         foreach ($redcapData as $row) {
@@ -767,7 +776,7 @@ class REDCapManagement {
                     if ($repeatingInstrument == $row['redcap_repeat_instrument']) {
                         $values[] = $row[$field];
                     }
-                } else if ($row[$field]) {
+                } else if (isset($row[$field]) && self::hasValue($row[$field])) {
                     return $row[$field];
                 } else {
 	                foreach ($row as $rowField => $rowValue) {
@@ -1407,7 +1416,7 @@ class REDCapManagement {
         $i = 0;
         foreach ($records as $rec) {
             if ($rec == $record) {
-                if ($i < count($records)) {
+                if ($i + 1 < count($records)) {
                     return $records[$i + 1];
                 } else {
                     return $records[0];

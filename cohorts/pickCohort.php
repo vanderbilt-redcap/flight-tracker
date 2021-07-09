@@ -17,18 +17,21 @@ foreach ($_POST as $key => $value) {
     }
 }
 $name = "";
+$mssg = "";
 if ($_POST['cohort']) {
     $name = $_POST['cohort'];
+    $mssg = "<p class='green centered'>New Cohort $name Added</p>";
 }
 if (!empty($recordsIncluded) && $name) {
     $config = ["records" => $recordsIncluded];
-    $metadata = Download::metadata($token, $server);
-    $cohorts = new Cohorts($token, $server, $metadata);
+    $cohorts = new Cohorts($token, $server, Application::getModule());
     $cohorts->addCohort($name, $config);
 }
 
+$link = Application::link("cohorts/pickCohort.php");
+echo $mssg;
 echo "<h1>Hand-Pick a Cohort</h1>\n";
-echo "<form action='".Application::link("cohorts/pickCohort.php")."' method='POST'>\n";
+echo "<form action='$link' method='POST'>\n";
 echo "<p class='centered'>Cohort Name: <input type='text' id='cohort' name='cohort' value='$name'></p>";
 echo "<p class='centered'><button>Add Cohort</button></p>";
 $checkboxes = [];

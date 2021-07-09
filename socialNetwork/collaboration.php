@@ -46,8 +46,8 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
 } else {
     $indexByField = "record_id";
 }
-$includeMentors = ($_GET['mentors'] == "on") && isForIndividualScholars($indexByField);
-$otherMentorsOnly = ($_GET['other_mentors'] == "on") && isForIndividualScholars($indexByField);
+$includeMentors = isset($_GET['mentors']) && ($_GET['mentors'] == "on") && isForIndividualScholars($indexByField);
+$otherMentorsOnly = isset($_GET['other_mentors']) && ($_GET['other_mentors'] == "on") && isForIndividualScholars($indexByField);
 
 $cohorts = new Cohorts($token, $server, Application::getModule());
 
@@ -329,7 +329,10 @@ function getAvgMentorConnections($matches) {
             }
         }
     }
-    return $mentorConnections / count($mentorCollaborators);
+    if (count($mentorCollaborators) > 0) {
+        return $mentorConnections / count($mentorCollaborators);
+    }
+    return 0;
 }
 
 function generateColorWheel($numColors, $startYear, $endYear) {
