@@ -1758,7 +1758,7 @@ class Grants {
     private $metadata;	// keyed by field_name in constructor
 	private $lexicalTranslator;
 	private $rows;
-	private $nativeGrants;
+	private $nativeGrants = [];
 	private $compiledGrants;
 	private $priorGrants;
 	private $dedupedGrants;
