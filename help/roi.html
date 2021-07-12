@@ -1,0 +1,18 @@
+<h3>Return on Investment</h3>
+
+<p>This page measures how desirable outcomes are affected by the use of specific resources. Many entities invest a lot of effort and dollars into scholars’ success, and this provides some way of gauging this investment’s effectiveness. (Resources can be set up in Flight Tracker’s Configure Application page under the General menu. Examples of resources are attending a workshop or accessing prior grant applications.)</p>
+
+<p>This approach forms two groups (a cohort and a control group) based on whether or not each scholar has used the resource. This can thus be structured as a cohort-control study. Obviously, confounding is at work here in that scholars who use the resource are more likely to be overachievers, and overachievers are more likely to have positive outcomes.</p>
+
+<p>The four measured outcomes are:</p>
+
+<ul>
+    <li>Grants: A Boolean value whether or not the scholar has converted from a K grant to an R grant. This datum is discrete, and an odds ratio measures the difference between the groups.</li>
+    <li>Grant: The time required to convert from K to R among those who convert. This datum is continuous, and a p value and a confidence interval measure the difference between the groups.</li>
+    <li>Publications: The number (quantity) of publications. This datum is continuous and reports in a p value and a confidence interval.</li>
+    <li>Publications: The quality of publications as measured by bibliometrics. The bibliometric used is the average Relative Citation Ratio (from the NIH’s iCite). This datum is continuous and reports in a p value and a confidence interval.</li>
+</ul>
+
+<p>Each resource tracked in your Flight Tracker instance is reported in its own table. A comparison-of-means test is made on each paired outcome, and the result is displayed in the table. The table also contains a suggested plain-language interpretation.</p>
+
+<p><img alt='Image of Return on Investment Page'></p>

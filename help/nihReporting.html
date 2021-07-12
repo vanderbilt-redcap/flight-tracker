@@ -1,0 +1,74 @@
+<h3>Reporting to the NIH (General &rarr; NIH Reporting)</h3>
+
+<p>As a time-saver, Flight Tracker can reorganize your data so that some NIH reporting tables can automatically be produced. Specifically, much of tables 5 (publications), 6 (applicants and entrants), and 8 (outcomes) can be produced. These tables can be copied-and-pasted into your word processing application, or you can set up Flight Tracker to talk directly with the xTRACT reporting system, a part of the <a href="https://era.nih.gov/">NIH's eRA Commons</a>.</p>
+
+<p>Start with the Flight Tracker set up for your group of scholars. The next step is to sign up each scholar to your training grant either as a pre-doctoral scholar or a post-doctoral scholar. To do this, you must create a Custom Grant on each scholar’s record and select the role as “Pre-doctoral Scholar” or “Post-doctoral Scholar.” The Start and End Dates are used in the tables, too. You can create these Custom Grants en masse via a spreadsheet program (like MS Excel) and the Add Custom Grants in Bulk page under the Wrangle menu.</p>
+
+<p><img alt='Image of Adding Custom Grants In Bulk'></p>
+
+<p>To confirm, you should be able to see, after adding Custom Grants, all the scholars’ names in a list on the NIH Reporting page.</p>
+
+<p><img alt='Image of Scholar Names on NIH Reporting Page'></p>
+
+
+
+
+<h4>Table 5</h4>
+
+<p>Table 5 houses publications data for each scholar and her/his mentor. Each scholar should have her/his name bolded, and the appropriate mentor listed. The mentor is from the summary_mentor field, summarized from anywhere mentor information is collected. Publications should appear in chronological order, and only publications that have been accepted by the Publication Wrangler will be included in the list. Dates are gathered from the Custom Grant entry.</p>
+
+<p><img alt='Image of Table 5'></p>
+
+<p>We encourage you to take a deep glance at these publications to ensure correct information. Some publications could be wrongly paired, and others could be missing. Flight Tracker’s goal is to bring you 80-90% along the way, but you retain final editorial approval for your institution!</p>
+
+
+
+
+<h4>Table 6</h4>
+
+<p>Table 6 reports recent applicants and entrants. Applicants are not currently tracked with Flight Tracker, but entrants should be the same as the scholars you sign up for the training grant. (Thus, applicant fields are left blank for you to fill in.)</p>
+
+<ul>
+    <li>Flight Tracker gathers information about prior institutions from various fields and stores it in the identifier_institution field.</li>
+    <li>Information about disabilities are gathered from the initial survey and stored in the summary_disability field.</li>
+    <li>URM status is gathered from race/ethnicity fields and stored in the summary_urm field.</li>
+    <li>Months of prior research experience is stored in field check_degree0_prior_rsch as a part of the Initial Survey. Your scholar will be asked for this amount if they fill out an Initial Survey.</li>
+    <li>Likewise, mean GPA is stored in the field check_undergrad_gpa as a part of the Initial Survey.</li>
+</ul>
+
+<p>These are divided into the past five years based on the start date in the Custom Grant.</p>
+
+
+
+
+<h4>Table 8</h4>
+
+<p>Table 8 reports outcomes – namely, degrees, research projects, career positions, and grants. Missing information is in red. Data sources are varied and are reported below.</p>
+
+<ul>
+    <li>The Doctoral Degree and Year are pulled from many possible Flight Tracker fields (cf. degree fields below).</li>
+    <li>The Faculty Member is pulled from the summary_mentor field.</li>
+    <li>Start Date is pulled from the Custom Grant’s start date.</li>
+    <li>Summary of Support During Training is not collected as a part of Flight Tracker’s forms and surveys. However, any data that you enter here can be saved and reused from year-to-year.</li>
+    <li>Degree(s) Resulting from Postdoctoral Training and Year(s) pulls from the degree fields (cf. below) and looks for degrees after the earliest doctorate.</li>
+    <li>The Topic of Research Project is gleaned from the grant title of the K Award. Some of these may need to be changed if the grant title was not entered.</li>
+    <li>The Initial Position and the Current Position are pulled from Flight Tracker’s Position Change form. Flight Tracker categories are mapped into NIH categories. All position changes are placed in order of effect. The earliest change serves as the Initial Position. The latest change serves as the Current Position.</li>
+    <li>Subsequent Grants are collected from the Career Development Awards (CDAs). They can be individually excluded by clicking the red “X.” Missing and helper information about these grants are in red and may be deleted.</li>
+</ul>
+
+<p><img alt='Image of Table 8'></p>
+
+<p>Again, some manual work is required after these tables are electronically produced, but Flight Tracker can help you move the ball down the road some.</p>
+
+
+
+
+<h4>xTRACT</h4>
+
+<p><a href="https://era.nih.gov/erahelp/xtract/">xTRACT</a>, standing for Extramural Trainee Reporting and Career Tracker and functioning as a part of eRA Commons, is the NIH’s automatic upload feature for reporting. It hopes to streamline the process of report submission, much as Flight Tracker seeks to streamline report generation.</p>
+
+<p>xTRACT integration currently works via a JavaScript bookmarklet. Instructions for using this bookmarklet are on the webpage. It should be activated while on the xTRACT site, on a scholar’s particular record. The bookmarklet will attempt to match the scholar’s name to Flight Tracker. It will report if there is no match, and you will be presented the option to manually match to a Flight Tracker record, too.</p>
+
+<p>Then, you can proceed to fill out the forms in xTRACT. A link will be provided in each form that has data available. The link can copy information from Flight Tracker. Incomplete information will be left as-is, and you will have an opportunity to review the suggestions and overwrite any misinformation.</p>
+
+<p>xTRACT relies on integration with individual scholars’ eRA Commons. Thus, there is some overlap in the information that Flight Tracker captures, and only selected information is required to copy over. Don’t forget to submit each dialog box before proceeding!</p>
