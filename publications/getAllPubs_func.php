@@ -335,6 +335,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         $max++;
         if (!empty($nonOrcidPMIDs)) {
             $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDs, $metadata, "pubmed", $recordId, $max, $orcidPMIDs, $pid);
+            $pubmedRows = Publications::filterOutAuthorMismatchesFromNewData($pubmedRows, $firstNames, $lastNames);
         }
         if (!empty($orcidPMIDs)) {
             if (!empty($pubmedRows)) {

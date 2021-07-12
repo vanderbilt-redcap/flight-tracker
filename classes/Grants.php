@@ -1762,7 +1762,7 @@ class Grants {
 	private $compiledGrants;
 	private $priorGrants;
 	private $dedupedGrants;
-	private $grantSubmissions;
+	private $grantSubmissions = [];
 	private $token;
 	private $server;
 	private $calculate;

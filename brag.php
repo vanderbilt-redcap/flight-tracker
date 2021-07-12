@@ -17,7 +17,7 @@ require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 if ($_GET['cohort'] && ($_GET['cohort'] != 'all')) {
-    $recordIds = Download::cohortRecordIds($token, $server, $metadata, $_GET['cohort']);
+    $recordIds = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
 } else {
     $recordIds = Download::recordIds($token, $server);
 }
@@ -105,7 +105,7 @@ foreach ($allCitations as $citation) {
         // Application::log("Calling getCitation $pmid with multiple: ".REDCapManagement::json_encode_with_spaces($multipleScholarPMIDs[$pmid]));
         $citationStr .= $citation->getCitation($multipleScholarPMIDs[$pmid]);
     } else {
-        $citationStr .= $citation->getCitation();
+        $citationStr .= $citation->getCitationWithLink(FALSE, TRUE);
     }
     $citationsWithTs[$citationStr] = $citation->getTimestamp();
 }

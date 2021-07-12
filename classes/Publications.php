@@ -748,6 +748,45 @@ class Publications {
         return [$upload, $pmidsPulled];
     }
 
+    public static function filterOutAuthorMismatchesFromNewData($rows, $firstNames, $lastNames) {
+	    $newRows = [];
+	    foreach ($rows as $row) {
+	        $found = FALSE;
+	        foreach ($firstNames as $firstName) {
+	            foreach ($lastNames as $lastName) {
+	                $authors = preg_split("/\s*[,;]\s*/", $row['citation_authors']);
+	                foreach ($authors as $author) {
+	                    if ($author) {
+                            list($authorFirst, $authorLast) = NameMatcher::splitName($author, 2);
+                            if (NameMatcher::matchByInitials($lastName, $firstName, $authorLast, $authorFirst)) {
+                                $found = TRUE;
+                                break;
+                            }
+                        }
+                    }
+	                if ($found) {
+	                    break;
+                    }
+                }
+	            if ($found) {
+	                break;
+                }
+            }
+	        if ($found) {
+	            $newRows[] = $row;
+            }
+        }
+
+	    $firstInstance = 0;
+	    if (count($rows) > 0) {
+	        $firstInstance = $rows[0]['redcap_repeat_instance'];
+        }
+	    for ($i=0; $i < count($newRows); $i++) {
+	        $newRows[$i]['redcap_repeat_instance'] = $firstInstance + $i;
+        }
+	    return $newRows;
+    }
+
 	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = array(), $pid = NULL) {
         $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		$upload = [];

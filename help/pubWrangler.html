@@ -1,25 +1,25 @@
-<h3>Manual Curation: Publication Wrangler</h3>
+<h3>Manual Curation: Publication and Patent Wrangler</h3>
 
-<p>Publications are automatically downloaded for a given scholar from PubMed and from <a href='https://icite.od.nih.gov/'>iCite (a project on publication metrics from the NIH)</a> every week. It uses the institution field to match the scholar’s name more accurately. However, it is a known problem that a name is not always a unique identifier, even within an institution. This <b>disambiguation problem</b> requires each publication to be manually verified as matched to a scholar. This is the (only) job of the Publication Wrangler.</p>
+<p>Publications and patents are added via an opt-in method: You must choose to include an item in order for it to factor into Flight Tracker’s computations.</p>
 
-<p><img src='img/pubWrangler1.png' alt='Publication Wrangler interface'></p>
+<p><strong>Step 1 – Automatic Approvals</strong>. To speed up inclusion of publications and patents, Flight Tracker suggests automatically approving matches that are based on uncommon, long last-names. Uncommon names are names that appear for less than 200,000 Americans in the 2010 US Census. Long last names are longer than four characters.</p>
 
-<p>The interface is built so that each citation is listed along with whether iCite considers it Original Research (i.e., peer-reviewed original research) or Not Original Research (i.e., a review or a letter to the editor). iCite information will be downloaded afresh weekly as these data can change slightly over time. If iCite information is unavailable, these fields will be blank; this happens mainly for recent papers and for papers published earlier than 1995 (as of the time of this writing - June 2019).</p> 
+<p>Automatically approved items appear with a green checkmark. Those recommended to be handled manually appear with a hand. Hopefully, this will expedite a significant segment of your scholars.</p>
 
-<p>You can look for the following criteria to see whether the citation is matched with the correct scholar. (In our experience, the answer is usually yes, but not always.)</p>
-<ul>
-<li>The title and/or journal of the paper is in the author’s field of interest. For instance, a nephrologist (kidney researcher) might publish all of her/his works on the kidney or on a related field. Therefore, an article on the H1N1 flu is suspect.</li>
-<li>The dates of the paper make sense. If, say, all of a scholar’s writings are published after 2015, an article from 2005 is suspect.</li>
-</ul>
-<p>The goal is to match or unmatch almost all of the papers from the citations alone. Thus, only a select few might need detailed inspection by looking up the original research paper. This speeds up the process.</p>
+<p><strong>Step 2 – Manual Approvals</strong>. After automatic approval, remaining scholars are handled one-by-one. You can check or uncheck each item. (They are all checked by default.) The highlighted name appears bolded in the citation.</p>
 
-<p>Each citation has its information (citation data from PubMed and metrics from iCite) stored on the <b>Citation</b> form. The variable <code>citation_included</code> stores the result of the Publication Wrangler. Its value is:</p>
-<ul>
-<li>1 (Yes/Checked) if the publication’s authorship has been matched with the scholar.</li>
-<li>0 (No/Unchecked) if the publication’s authorship is incorrect (i.e., rejecting a match).</li>
-<li>[BLANK] if the publication wrangling has not taken place.</li>
-</ul>
-<p>You can filter for <code>citation_included = 1</code> to get all of the citations for a scholar in a REDCap report.</p>
+<p>Names are matched by institution name and by author name. Thus, only last names especially common at your institution might be mismatched. However, certain names are still prone to problems, like Smith, Xu, or Williams. It’s recommended slowing down and handling these cases carefully.</p>
 
-<p>At first, verifying the publications will take some time. Once the initial uptake is completed, only new publications will need to be matched. This process will be fairly quick and can happen once a month or so.</p>
+<p>New items appear at the top while already approved items appear at the bottom. If you want to change the approval of an item, you can open it up in REDCap and change the answer to the question “Include?” Yes means approved; No means unapproved; [blank] returns it to the new items queue.</p>
 
+<p>Best practice is to quickly glance through the title and/or journal name of the patent/publication to affirm the field. You can launch an external viewer to glean more details about the item.</p>
+
+<p>Some names are especially prone to mismatch. You can manually exclude a name from matching with a certain scholar by adding it to an Exclude List. This entry, when supported by Flight Tracker, can be modified in a text box at the top of the Wrangler page.</p>
+
+<p>Publications can also be pulled via an ORCID identifier. This is modified on the Identifiers form and may be automatically pulled in via a weekly automated sweep. Publications matched by an ORCID are automatically approved since it does not have the difficult problems of name matching.</p>
+
+<p>PubMed only began tracking institutional information for all authors in late 2014. (Before that, institutional information only for first authors was tracked.) Since institutional information is part of the matching process, publications prior to this will not be automatically added.</p>
+
+<p>If you want to add a new item (from a CV or some other list), you can enter its id (Patent Number, PMID, or PMC-ID) to pull in a citation. If the citation is correct, click the button to include it in your list.</p>
+
+<p>When the wrangling information looks correct, click the green button on the right. This will move the approved new items in your queue to the bottom. Then, you will be moved to the next record with new items. Made a mistake? Please see above on how to override your finalized choices manually via a REDCap data form.</p>
