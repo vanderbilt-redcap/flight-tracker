@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.6.4";
+		return "3.6.5";
 	}
 
 	public static function getLockFile($pid) {
@@ -123,8 +123,10 @@ class CareerDev {
 	    if (self::isLocalhost()) {
 	        if ($pid) {
                 error_log("$pid: $mssg");
+                echo "$pid: $mssg\n";
             } else {
 	            error_log($mssg);
+                echo "$mssg\n";
             }
 	        return;
         }
@@ -314,7 +316,8 @@ class CareerDev {
 	public static function getLink($relativeUrl) {
 	    if ($relativeUrl == "this") {
             $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-            $url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+            $fullURL = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+            $url = explode("?", $fullURL)[0];
             $paramKeys = ["page", "pid", "prefix", "project_id"];
             $initialSeparator = "?";
             foreach ($paramKeys as $key) {
@@ -328,7 +331,9 @@ class CareerDev {
 		$relativeUrl = preg_replace("/^\//", "", $relativeUrl);
 		if ($module = self::getModule()) {
 		    $url = $module->getUrl($relativeUrl);
-		    $isMentorAgreementPage = preg_match("/^mentor\//", $relativeUrl) && !preg_match("/^mentor\/dashboard/", $relativeUrl);
+		    $isMentorAgreementPage = preg_match("/^mentor\//", $relativeUrl)
+                && !preg_match("/^mentor\/dashboard/", $relativeUrl)
+                && !preg_match("/^mentor\/config/", $relativeUrl);
 		    if (isset($_GET['project_id']) || $isMentorAgreementPage) {
 		        if (preg_match("/pid=/", $url)) {
                     $url = preg_replace("/pid=/", "project_id=", $url);
@@ -404,7 +409,7 @@ class CareerDev {
 			if (($row['token'] == $localToken) && (strpos($row['server'], SERVER_NAME) !== FALSE)) {
 				return $row['pid'];
 			}
-            if (($row['mentorToken'] == $localToken) && (strpos($row['server'], SERVER_NAME) !== FALSE)) {
+            if (isset($row['mentorToken']) && ($row['mentorToken'] == $localToken) && (strpos($row['server'], SERVER_NAME) !== FALSE)) {
                 return $row['mentorPid'];
             }
 		}
@@ -418,7 +423,7 @@ class CareerDev {
     # flightTracker = Vanderbilt
     # flight_tracker = from REDCap Repo
 	public static function getPrefix() {
-        if (self::isVanderbilt()) {
+        if (self::isVanderbilt() && !self::isLocalhost()) {
             return "flightTracker";
         } else {
             return "flight_tracker";
@@ -786,6 +791,7 @@ class CareerDev {
 		if (($menuName == "Mentoring") || ($menuName == "Mentor") || ($menuName == "Mentors")) {
 		    $ary = [];
 		    if (self::has("mentoring_agreement")) {
+                $ary["Configure Mentee Agreements"] = self::link("/mentor/config.php");
                 $ary["Add Mentors for Existing Scholars"] = self::link("addMentor.php");
                 $ary["Mentee Agreements Dashboard"] = self::link("/mentor/dashboard.php");
             }

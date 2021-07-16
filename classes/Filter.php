@@ -341,6 +341,7 @@ class Filter {
 				"summary_disadvantaged" => "Disadvantaged Status",
 				"summary_training_start" => "Start of Training Program",
 				"summary_training_end" => "End of Training Program",
+                "summary_current_tenure" => "Recorded Tenure Status",
 				// "calc_institution" => "Institution",
 				"summary_current_rank" => "Current Academic Rank",
 				"calc_employment" => "Employment Status",

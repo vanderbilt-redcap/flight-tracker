@@ -47,7 +47,7 @@ define('INSTITUTION', CareerDev::getInstitution($pid));
 define('PROGRAM_NAME', CareerDev::getProgramName());
 define("ENVIRONMENT", "prod");      // for Oracle database connectivity
 
-if (!$module) {
+if (!isset($module) || !$module) {
 	$module = CareerDev::getModule();
 }
 $token = CareerDev::getSetting("token", $pid);
@@ -1051,7 +1051,9 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
 
 	$newMetadata = array();
 	foreach ($metadata as $row) {
-		$isCoeusRow = preg_match("/^coeus_/", $row['field_name']);
+		$isCoeusRow = preg_match("/^coeus_/", $row['field_name'])
+            || preg_match("/^coeus2_/", $row['field_name'])
+            || preg_match("/^coeussubmission_/", $row['field_name']);
 		if (($installCoeus && $isCoeusRow || !$isCoeusRow) && !preg_match("/___delete/", $row['field_name'])) {
 			foreach ($fields as $type => $relevantFields) {
 				if (in_array($row['field_name'], $relevantFields) && isset($lists[$type])) {

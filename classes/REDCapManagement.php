@@ -603,18 +603,7 @@ class REDCapManagement {
         if (!empty($postdata)) {
             Application::log("Posting ".self::json_encode_with_spaces($postdata), $pid);
         }
-        $defaultOpts = [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_VERBOSE => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_AUTOREFERER => true,
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_FRESH_CONNECT => 1,
-            CURLOPT_TIMEOUT => 120,
-            CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_SSL_VERIFYPEER => 0,
-        ];
-
+        $defaultOpts = self::getDefaultCURLOpts();
         $time1 = microtime();
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -658,10 +647,31 @@ class REDCapManagement {
         return [$resp, $data];
     }
 
+    private static function getDefaultCURLOpts() {
+        return [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_VERBOSE => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_AUTOREFERER => true,
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_FRESH_CONNECT => 1,
+            CURLOPT_TIMEOUT => 120,
+            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => 0,
+        ];
+    }
+
+    public static function isValidURL($url) {
+	    return self::isGoodURL($url);
+    }
+
     public static function isGoodURL($url) {
         $ch = curl_init();
+        $defaultOpts = self::getDefaultCURLOpts();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        foreach ($defaultOpts as $opt => $value) {
+            curl_setopt($ch, $opt, $value);
+        }
         curl_exec($ch);
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         curl_close($ch);
@@ -1786,7 +1796,10 @@ class REDCapManagement {
                         "init_import_prev4_primary_dept",
                         "init_import_prev5_primary_dept",
 						);
-		$fields["resources"] = array("resources_resource");
+		$fields["resources"] = [
+		    "resources_resource",
+            "mentoring_local_resources",
+            ];
 		$fields["institutions"] = array("check_institution", "followup_institution");
 
 		if (isset($fields[$type])) {

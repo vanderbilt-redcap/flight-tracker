@@ -34,7 +34,9 @@ function lock($pid) {
 function unlock($pid) {
 	$lockFile = getLockFile($pid);
 	# close the lockFile
-	unlink($lockFile);
+    if (file_exists($lockFile)) {
+        unlink($lockFile);
+    }
 }
 
 # $allRecordRows is for testing purposes only
@@ -53,7 +55,7 @@ function makeSummary($token, $server, $pid, $records, $allRecordRows = array()) 
 	# done in batches of 1 records
 	$returnREDCapData = array();
 	foreach ($records as $recordId) {
-        $newData = summarizeRecord($token, $server, $recordId, $metadata, $allRecordRows);
+        $newData = summarizeRecord($token, $server, $pid, $recordId, $metadata, $allRecordRows);
 	    $returnREDCapData = array_merge($returnREDCapData, $newData);
         gc_collect_cycles();
 	}
@@ -66,7 +68,7 @@ function makeSummary($token, $server, $pid, $records, $allRecordRows = array()) 
 	}
 }
 
-function summarizeRecord($token, $server, $recordId, $metadata, $allRecordRows) {
+function summarizeRecord($token, $server, $pid, $recordId, $metadata, $allRecordRows) {
     $errors = [];
     $returnREDCapData = [];
 

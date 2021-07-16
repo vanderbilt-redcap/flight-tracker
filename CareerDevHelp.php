@@ -229,45 +229,57 @@ class CareerDevHelp {
 	}
 
 	private static function getHelpHash() {
-		$help = array();
-		$help[""] = array(
-					"Front Page" => array("useCaseSearches.html", "changes.html"),
-					);
-		$help["General"] = array(
-					"K2R Conversion Calculator" => array("useCaseConversion.html"),
-					);
-		$help["View"] = array(
-					"Demographics Table" => array("useCaseDemographics.html", "useCaseStats.html"),
-					"Stylized CDA Table" => array("useCaseBins.html"),
-					"Compare Data Sources" => array("useCaseBins.html"),
-					"Missingness Report" => array("missingness.html"),
-					);
-		$help["Wrangle"] = array(
-					"Grant Wrangler" => array("grantWrangler.html", "bins.html"),
-					"Publication Wrangler" => array("pubWrangler.html"),
-					"Add a Custom Grant" => array("addNewGrants.html"),
-					"Add Custom Grants by Bulk" => array("addNewGrants.html"),
-					);
-		$help["Scholars"] = array(
-						"Scholar Profiles" => array("useCaseProfiles.html", "useCasePubs.html"),
-						"Add a New Scholar" => array("addScholars.html"),
-						"Configure an Email" => array("emailMgmt.html"),
-						);
-		$help["Dashboards"] = array(
-						"Resources" => array("useCaseResources.html"),
-						);
-		$help["Mentors"] = array(
-					"Mentor Performance" => array("useCaseMentors.html"),
-					);
-		$help["Cohorts / Filters"] = array(
-							"Add a New Cohort" => array("cohortDesign.html", "useCaseStats.html", "useCaseGrantsAndPubs.html", "bins.html"),
-							"View Cohort Metrics" => array("useCaseCohortMetrics.html"),
-							);
-		$help["Resources"] = array(
-						"Manage" => array("useCaseResources.html"),
-						"Participation Roster" => array("useCaseResources.html"),
-						"Dashboard Metrics" => array("useCaseResources.html"),
-						);
-		return $help;
+        $help = [];
+        $help[""] = [
+            "Front Page" => ["useCaseSearches.html", "changes.html"],
+        ];
+        $help["General"] = [
+            "K2R Conversion Calculator" => ["useCaseConversion.html"],
+            "Kaplan-Meier Conversion Curve" => ["kaplanMeierCurves.html"],
+            "Configure Application" => ["copyProject.html"],
+            "Copy Project to Another Server" => ["copyProject.html"],
+            "NIH Reporting" => ["nihReporting.html"],
+        ];
+        $help["View"] = [
+            "Demographics Table" => ["useCaseDemographics.html", "useCaseStats.html"],
+            "Missingness Report" => ["missingness.html"],
+        ];
+        $help["Grants"] = [
+            "Stylized CDA Table" => ["useCaseBins.html"],
+            "Social Network of Grant Collaboration" => ["socialNetworks.html"],
+            "Compare Data Sources" => ["useCaseBins.html"],
+        ];
+        $help["Pubs"] = [
+            "Social Network of Co-Authorship" => ["socialNetworks.html"],
+        ];
+        $help["Wrangle"] = [
+            "Grant Wrangler" => ["grantWrangler.html", "bins.html"],
+            "Publication Wrangler" => ["pubWrangler.html"],
+            "Patent Wrangler" => ["pubWrangler.html"],
+            "Add a Custom Grant" => ["addNewGrants.html"],
+            "Add Custom Grants by Bulk" => ["addNewGrants.html", "nihReporting.html"],
+        ];
+        $help["Scholars"] = [
+            "Scholar Profiles" => ["useCaseProfiles.html", "useCasePubs.html"],
+            "Add a New Scholar" => ["addScholars.html"],
+            "Configure an Email" => ["emailMgmt.html"],
+        ];
+        $help["Dashboards"] = [
+            "Resources" => ["useCaseResources.html"],
+        ];
+        $help["Mentors"] = [
+            "Mentor Performance" => ["useCaseMentors.html"],
+        ];
+        $help["Cohorts / Filters"] = [
+            "Add a New Cohort" => ["cohortDesign.html", "useCaseStats.html", "useCaseGrantsAndPubs.html", "bins.html"],
+            "View Cohort Metrics" => ["useCaseCohortMetrics.html"],
+        ];
+        $help["Resources"] = [
+            "Manage" => ["useCaseResources.html"],
+            "Participation Roster" => ["useCaseResources.html"],
+            "Dashboard Metrics" => ["useCaseResources.html"],
+            "Measure ROI" => ["roi.html"],
+        ];
+        return $help;
 	}
 }

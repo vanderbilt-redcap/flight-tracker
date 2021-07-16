@@ -103,6 +103,10 @@ class Application {
 		return CareerDev::getInstitutions($pid);
 	}
 
+	public static function getDefaultVanderbiltMenteeAgreementLink() {
+	    return "https://medschool.vanderbilt.edu/msci/current-trainees/resources-for-funding-research-and-grant-assistance/";
+    }
+
 	public static function getEmailName($record) {
 		return CareerDev::getEmailName($record);
 	}

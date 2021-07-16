@@ -1610,7 +1610,7 @@ class Grant {
             return "R01";
 		} else if (preg_match("/^\d?[Tt]\d\d/", $awardNo) || preg_match("/^\d?[Dd]43/", $awardNo)) {
 			return "Training Grant Admin";
-		} else if (REDCapManagement::hasValue($specs['direct_budget']) && ($specs['direct_budget'] >= 750000)) {
+		} else if (isset($specs['direct_budget']) && ($specs['direct_budget'] >= 750000)) {
 			# not R01 or R00
 			if ($specs['project_start'] && $specs['project_end']) {
                 $projStart = strtotime($specs['project_start']);

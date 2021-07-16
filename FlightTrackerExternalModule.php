@@ -63,7 +63,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		}
         try {
             CronManager::sendEmails($activePids, $this);
-            CronManager::runBatchJobs($this);
+            $mgr = new CronManager($token, $server, $pid, $this);
+            $mgr->runBatchJobs();
         } catch (\Exception $e) {
             # should only happen in rarest of circumstances
             $mssg = $e->getMessage()."<br><br>".$e->getTraceAsString();
@@ -635,11 +636,22 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     // CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
                 } catch(\Exception $e) {
                     Application::log("Error in cron logic", $pid);
-                    \REDCap::email($adminEmail, Application::getSetting("default_from"), Application::getProgramName()." Error in Cron", $e->getMessage());
+                    \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Error in Cron", $e->getMessage());
                 }
             }
 		}
-		CronManager::runBatchJobs($this);
+		if (!empty($activePids)) {
+		    try {
+                $pid = $activePids[0];
+                $token = $this->getProjectSetting("token", $pid);
+                $server = $this->getProjectSetting("server", $pid);
+                $mgr = new CronManager($token, $server, $pid, $this);
+                $mgr->runBatchJobs();
+            } catch (\Exception $e) {
+                $adminEmail = $this->getProjectSetting("admin_email", $pid);
+                \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Error in Cron", $e->getMessage()."<br>".$e->getTraceAsString());
+            }
+        }
 	}
 
 	function setupApplication() {

@@ -389,7 +389,13 @@ class Grants {
                             # combine all grants into one unordered list
                             if (self::getShowDebug()) { Application::log("Prospective grant ".json_encode($g->toArray())); }
                             $this->setupAbstracts($g);
-                            $this->$variable[] = $g;
+                            if ($variable == "nativeGrants") {
+                                $this->nativeGrants[] = $g;
+                            } else if ($variable == "grantSubmissions") {
+                                $this->grantSubmissions[] = $g;
+                            } else {
+                                throw new \Exception("Invalid variable $variable");
+                            }
                         }
                     }
                 }

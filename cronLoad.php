@@ -78,7 +78,6 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Saturday");
         $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "2021-04-30");
 	}
-	echo $manager->getNumberOfCrons()." crons loaded\n";
 }
 
 function loadTestingCrons(&$manager) {
@@ -133,7 +132,6 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 			$manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", $date);
 		}
 	}
-	echo $manager->getNumberOfCrons()." crons loaded\n";
 }
 
 function checkMetadataForFields($token, $server) {

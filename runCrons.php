@@ -23,5 +23,5 @@ error_log($manager->getNumberOfCrons()." total crons loaded in");
 if (REDIRECT_EMAILS) {
     $adminEmail = "scott.j.pearson@vumc.org";
 }
-CronManager::runBatchJobs(Application::getModule());
+$manager->runBatchJobs();
 // $manager->run($adminEmail, $tokenName, $pid);

@@ -1029,9 +1029,9 @@ class NIHTables {
                 return $topics[$recordId];
             }
             $redcapData = Download::fieldsForRecords($this->token, $this->server, ["record_id", "custom_type", "custom_title"], [$recordId]);
-            $kType = self::getTrainingType();
+            $tTypes = self::getTrainingTypesForGrantClass();
             foreach ($redcapData as $row) {
-                if ($row['custom_title'] && ($row['custom_type'] == $kType)) {
+                if ($row['custom_title'] && (in_array($row['custom_type'], $tTypes))) {
                     return $row['custom_title'];
                 }
             }

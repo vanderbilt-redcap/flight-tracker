@@ -20,6 +20,7 @@ class CronManager {
 
         $this->adminEmail = Application::getSetting("admin_email", $pid);
         $this->sendErrorLogs = Application::getSetting("send_error_logs", $pid);
+        self::$lastPid = $pid;
         self::$lastAdminEmail = Application::getSetting("admin_email", $pid);
         self::$lastSendErrorLogs = Application::getSetting("send_error_logs", $pid);
 	}
@@ -226,7 +227,8 @@ class CronManager {
 	    self::saveRunResultsToDB($runJobs, $module);
     }
 
-    public static function runBatchJobs($module) {
+    public function runBatchJobs() {
+	    $module = $this->module;
 	    $validBatchStatuses = ["DONE", "ERROR", "RUN", "WAIT"];
         $batchQueue = self::getBatchQueueFromDB($module);
 
@@ -266,7 +268,7 @@ class CronManager {
         self::saveBatchQueueToDB($batchQueue, $module);
 
         if ($batchQueue[0]['status'] == "WAIT") {
-            register_shutdown_function(["CronManager", "reportCronErrors"]);
+            register_shutdown_function([$this, "reportCronErrors"]);
             $startTimestamp = self::getTimestamp();
             $cronjob = new CronJob($batchQueue[0]['file'], $batchQueue[0]['method']);
             $cronjob->setRecords($batchQueue[0]['records']);
@@ -342,8 +344,14 @@ class CronManager {
                 if ($errorJob['pid'] == $pid) {
                     $text .= "ERROR ".$errorJob['method']."<br>";
                     $text .= "Records: ".implode(", ", $errorJob['records'])."<br>";
-                    $text .= $errorJob['error']."<br>";
-                    $text .= $errorJob['error_location']."<br>";
+                    if (isset($errorJob['error'])) {
+                        $text .= $errorJob['error']."<br>";
+                        if (isset($errorJob['error_location'])) {
+                            $text .= $errorJob['error_location']."<br>";
+                        }
+                    } else {
+                        $text .= REDCapManagement::json_encode_with_spaces($errorJob)."<br><br>";
+                    }
                     $text .= "<br>";
                 } else {
                     $remainingErrors[] = $errorJob;
@@ -403,8 +411,12 @@ class CronManager {
                 if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
                     throw new \Exception("Could not instantiate REDCap class!");
                 }
+                $addlSubject = "";
+                if (Application::isLocalhost()) {
+                    $addlSubject = " from localhost";
+                }
                 Application::log("Sending ".Application::getProgramName()." email for pid ".$pid." to $adminEmail");
-                \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Cron Report", $text);
+                \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Cron Report".$addlSubject, $text);
             }
 
             if (empty($remainingJobs)) {
@@ -454,25 +466,32 @@ class CronManager {
 	}
 
 	public static function reportCronErrors() {
-		error_log("reportCronErrors");
-		# no DB access
-		if ($module = Application::getModule()) {
+        $error = error_get_last();
+
+        if ($error && Application::getModule()) {
+    		# no DB access???
 			$adminEmail = self::$lastAdminEmail;
 			$sendErrorLogs = self::$lastSendErrorLogs;
-			$error = error_get_last();
-
-			$message = "Your cron job failed with the following error message:<br>";
-			$message .= 'Error Message: ' . $error['message'] . "<br>";
-			$message .= 'File: ' . $error['file'] . "<br>";
-			$message .= 'Line: ' . $error['line'] . "<br>";
-			# stack trace???
+			$pid = self::$lastPid;
+            $message = "<p>Your cron job failed for pid $pid with the following error message:<br>";
+            $message .= 'Error Message: ' . $error['message'] . "<br>";
+            $message .= 'File: ' . $error['file'] . "<br>";
+            $message .= 'Line: ' . $error['line'] . "<br>";
+            $message .= REDCapManagement::json_encode_with_spaces($error);
+            $message .= "</p>";
+            # stack trace???
 
 			if ($sendErrorLogs) {
 				$adminEmail .= ",".Application::getFeedbackEmail();
 			}
 
-			error_log("reportCronErrors: ".$message);
-			\REDCap::email($adminEmail, Application::getSetting("default_from"),  Application::getProgramName()." Cron Improper Shutdown", $message);
+			Application::log("reportCronErrors: ".$message);
+			if (Application::isLocalhost()) {
+			    $addlSubject = " from localhost";
+            } else {
+			    $addlSubject = "";
+            }
+			\REDCap::email($adminEmail, Application::getSetting("default_from", $pid),  Application::getProgramName()." Cron Improper Shutdown".$addlSubject, $message);
 		}
 	}
 
@@ -504,7 +523,7 @@ class CronManager {
 		    $toRun[] = $makeSummaryCronJob;
         }
 
-		register_shutdown_function(["CronManager", "reportCronErrors"]);
+		register_shutdown_function([$this, "reportCronErrors"]);
 
 		Application::log("Running ".count($toRun)." crons for pid ".$this->pid." with keys ".json_encode($keys));
 		foreach ($toRun as $cronjob) {
@@ -571,8 +590,12 @@ class CronManager {
 				throw new \Exception("Could not instantiate REDCap class!");
 			}
 			if (!$this->isDebug) {
+			    $addlSubject = "";
+			    if (Application::isLocalhost()) {
+			        $addlSubject = " from localhost";
+                }
                 Application::log("Sending ".Application::getProgramName()." email for pid ".$this->pid." to $adminEmail");
-                \REDCap::email($adminEmail, Application::getSetting("default_from", $this->pid), Application::getProgramName()." Cron Report", $text);
+                \REDCap::email($adminEmail, Application::getSetting("default_from", $this->pid), Application::getProgramName()." Cron Report".$addlSubject, $text);
             }
 		}
 	}
@@ -614,6 +637,7 @@ class CronManager {
 	private $sendErrorLogs;
 	private static $lastAdminEmail;
 	private static $lastSendErrorLogs;
+	private static $lastPid;
 	private $isDebug = FALSE;
     private $module = NULL;
     private static $batchSetting = "batchCronJobs";

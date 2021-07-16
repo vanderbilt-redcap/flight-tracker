@@ -314,7 +314,7 @@ class Scholar {
 		$mentorField = $mentorResult->getField();
 		$mentorUseridField = $mentorField."_userid";
 		foreach ($rows as $row) {
-			if (REDCapManagement::hasValue($row[$mentorUseridField])) {
+			if (isset($row[$mentorUseridField]) && $row[$mentorUseridField]) {
 				$r = new Result($row[$mentorUseridField], $mentorResult->getSource(), "", "", $this->pid);
 				$r->setField($mentorUseridField);
 				return $r;
@@ -1329,7 +1329,10 @@ class Scholar {
 				4 => 6,
 				5 => 6,
 				);
-		return $translate[$num];
+		if (isset($translate[$num])) {
+            return $translate[$num];
+        }
+		return NULL;
 	}
 
 
@@ -1784,7 +1787,8 @@ class Scholar {
         $exampleFields = ["check_degree0", "check_degree1"];
         $methodology = FALSE;
         foreach ($exampleFields as $exampleField) {
-            if (($choices[$exampleField][18] == "MD/PhD") || ($choices[$exampleField][11] == "MHS")) {
+            if ((isset($choices[$exampleField][18]) && ($choices[$exampleField][18] == "MD/PhD"))
+                || (isset($choices[$exampleField][11]) && ($choices[$exampleField][11] == "MHS"))) {
                 $methodology = "Old";
                 break;
             } else if (isset($choices[$exampleField]["md"])) {
@@ -1823,7 +1827,7 @@ class Scholar {
                         }
                     }
                 }
-                if ($normativeRow[$variable] && !in_array($normativeRow[$variable], $degrees)) {
+                if (isset($normativeRow[$variable]) && $normativeRow[$variable] && !in_array($normativeRow[$variable], $degrees)) {
                     if (in_array("summary_all_degrees", $metadataFields) && isset($choices[$variable])) {
                         $foundIdx = FALSE;
                         foreach ($choices["summary_all_degrees"] as $idx => $label) {

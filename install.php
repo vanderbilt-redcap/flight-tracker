@@ -2,8 +2,8 @@
 
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \ExternalModules\ExternalModules;
 
 ini_set("memory_limit", "4096M");
@@ -60,6 +60,11 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 		displayInstallHeaders(CareerDev::getModule(), $newToken, $newServer, $projectId, $_POST['title']);
 		echo "<h1>Academic Departments</h1>\n";
 
+		$menteeAgreementLink = "";
+		if (CareerDev::isVanderbilt()) {
+		    $menteeAgreementLink = Application::getDefaultVanderbiltMenteeAgreementLink();
+        }
+
 		$settingFields = [
 				'institution' => $_POST['institution'],
 				'short_institution' => $_POST['short_institution'],
@@ -82,6 +87,7 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 				'grant_number' => $_POST['grant_number'],
                 'auto_recalculate' => '1',
                 'shared_forms' => [],
+                'mentee_agreement_link' => $menteeAgreementLink,
 				];
         \Vanderbilt\FlightTrackerExternalModule\setupModuleSettings($projectId, $settingFields);
 

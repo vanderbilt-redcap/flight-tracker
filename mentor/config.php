@@ -1,0 +1,121 @@
+<?php
+
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+
+if (!Application::has("mentoring_agreement")) {
+    throw new \Exception("The Mentoring Agreement is not set up in this project.");
+}
+
+$metadata = Download::metadata($token, $server);
+$choices = REDCapManagement::getChoices($metadata);
+$resourceField = "mentoring_local_resources";
+
+$mssg = "";
+$defaultList = implode("\n", array_values($choices[$resourceField]));
+$rightWidth = 500;
+$defaultLink = Application::getSetting("mentee_agreement_link", $pid);
+
+if (isset($_POST['resourceList'])) {
+    $continue = TRUE;
+    if (isset($_POST['linkToSave'])) {
+        $defaultLink = $_POST['linkToSave'];
+        if ($defaultLink) {
+            if (!preg_match("/^https?:\/\//i", $defaultLink)) {
+                $defaultLink = "https://".$defaultLink;
+            }
+            if (REDCapManagement::isGoodURL($defaultLink)) {
+                CareerDev::saveSetting("mentee_agreement_link", $defaultLink, $pid);
+            } else {
+                $mssg = "<p class='red centered max-width'>Improper URL</p>";
+                $continue = FALSE;
+            }
+        } else {
+            CareerDev::saveSetting("mentee_agreement_link", "", $pid);
+        }
+    } else {
+        $mssg = "<p class='red centered max-width'>Invalid parameters</p>";
+        $continue = FALSE;
+    }
+    if ($continue) {
+        $resources = preg_split("/[\n\r]+/", $_POST['resourceList']);
+        $reverseResourceChoices = [];
+        foreach ($choices[$resourceField] as $idx => $label) {
+            $reverseResourceChoices[$label] = $idx;
+        }
+
+        $newResources = [];
+        $existingResources = [];
+        foreach ($resources as $resource) {
+            if ($resource !== "") {
+                if (!isset($reverseResourceChoices[$resource])) {
+                    $newResources[] = $resource;
+                } else {
+                    $existingResources[] = $resource;
+                }
+            }
+        }
+        $deletedResourceIndexes = [];
+        foreach ($choices[$resourceField] as $idx => $label) {
+            if (!in_array($label, $existingResources)) {
+                $deletedResourceIndexes[] = $idx;
+            }
+        }
+        if (!empty($newResources) || !empty($deletedResourceIndexes)) {
+            if (!empty($choices[$resourceField])) {
+                $maxIndex = max(array_keys($choices[$resourceField]));
+            } else {
+                $maxIndex = 0;
+            }
+            $resourcesByIndex = $choices[$resourceField];
+            foreach ($deletedResourceIndexes as $idx) {
+                unset($resourcesByIndex[$idx]);
+            }
+            $nextIndex = $maxIndex + 1;
+            foreach ($newResources as $resource) {
+                $resourcesByIndex[$nextIndex] = $resource;
+                $nextIndex++;
+            }
+            for ($i = 0; $i < count($metadata); $i++) {
+                if ($metadata[$i]['field_name'] == $resourceField) {
+                    $metadata[$i]['select_choices_or_calculations'] = REDCapManagement::makeChoiceStr($resourcesByIndex);
+                }
+            }
+            Upload::metadata($metadata, $token, $server);
+            $mssg = "<p class='max-width centered green'>Changes made.</p>";
+            $defaultList = implode("\n", array_values($resourcesByIndex));
+        } else {
+            $mssg = "<p class='max-width centered green'>No changes needed.</p>";
+        }
+    }
+}
+$vanderbiltLinkText = "";
+if (Application::isVanderbilt()) {
+    $vumcLink = Application::getDefaultVanderbiltMenteeAgreementLink();
+    $vanderbiltLinkText = "<br><a href='$vumcLink'>Default for Vanderbilt Medical Center</a>";
+}
+
+echo $mssg;
+
+?>
+<h1>Configure Mentee Agreements</h1>
+
+<form action="<?= Application::link("this") ?>" method="POST">
+    <table class="max-width centered padded">
+        <tr>
+            <td class="alignright bolded"><label for="resourceList">Institutional Resources for Mentoring<br>(One Per Line Please.)<br>These will be offered to the mentee.</label></td>
+            <td><textarea name="resourceList" id="resourceList" style="width: <?= $rightWidth ?>px; height: 300px;"><?= $defaultList ?></textarea></td>
+        </tr>
+        <tr>
+            <td class="alignright bolded"><label for="linkToSave">Link to Further Resources<?= $vanderbiltLinkText ?></label></td>
+            <td><input type="text" style="width: <?= $rightWidth ?>px;" name="linkToSave" id="linkToSave" value="<?= $defaultLink ?>"></td>
+        </tr>
+    </table>
+    <p class="centered"><button>Change Configuration</button></p>
+</form>
