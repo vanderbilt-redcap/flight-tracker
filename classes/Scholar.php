@@ -147,7 +147,24 @@ class Scholar {
         if ($result->getSource() == "ldap") {
             return $this->getLDAPResult($rows, "ldap_uid", $result);
         }
-        return $result;
+        $firstName = NameMatcher::eliminateInitials($this->getName("first"));
+        $lastName = $this->getName("last");
+        $uids = self::getREDCapUseridsForName($firstName, $lastName);
+        $sourceName = "REDCap";
+        $source = "";
+        if (!empty($uids)) {
+            if (count($uids) == 1) {
+                return new Result($uids[0], $source, "Computer-Generated", "", $this->pid);
+            } else if (count($uids) > 1) {
+                Application::log("Warning: Lookup $sourceName userids for $firstName $lastName generated multiple: ".implode(", ", $uids), $this->pid);
+                return new Result(implode(", ", $uids), $source, "Computer-Generated", "", $this->pid);
+            } else {
+                Application::log("Lookup $sourceName userids for $firstName $lastName generated no results.", $this->pid);
+            }
+        }
+        return new Result("", "");
+
+return $result;
     }
 
     public function lookupEmail($rows) {
@@ -371,17 +388,9 @@ class Scholar {
 
 	public static function getREDCapUseridsForName($firstName, $lastName) {
 	    if ($firstName && $lastName) {
-	        #MySQL performs case-insensitive searches
-	        $sql = "SELECT username FROM redcap_user_information WHERE user_firstname = '".db_real_escape_string($firstName)."' AND user_lastname = '".db_real_escape_string($lastName)."'";
-            $q = db_query($sql);
-            $userids = [];
-            while ($row = db_fetch_assoc($q)) {
-                $userid = $row['username'];
-                if (!in_array($userid, $userids)) {
-                    $userids[] = $userid;
-                }
-            }
-            return $userids;
+	        $lookup = new REDCapLookup($firstName, $lastName);
+	        $uidsAndNames = $lookup->getUidsAndNames();
+            return array_keys($uidsAndNames);
         }
 	    return [];
     }
@@ -1329,7 +1338,7 @@ class Scholar {
 				4 => 6,
 				5 => 6,
 				);
-		if (isset($translate[$num])) {
+		if (is_numeric($num) && isset($translate[$num])) {
             return $translate[$num];
         }
 		return NULL;

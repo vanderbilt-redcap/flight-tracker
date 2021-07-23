@@ -9,7 +9,7 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 # Reports *de-identified, generic stats* back to home office on a weekly basis.
 # Reports figures like number of scholars for each project.
 
-function reportStats($token, $server, $pid) {
+function reportStats($token, $server, $pid, $records) {
 	$url = "https://redcap.vanderbilt.edu/plugins/career_dev/receiveStats.php";
 
 	# do NOT report details of records; just report: number of records/scholars
@@ -17,31 +17,34 @@ function reportStats($token, $server, $pid) {
 	// $numGrants = getTotalNumberOfGrantsAfterCombination($token, $server);
 	// $numPubs = getTotalNumberOfConfirmedPublications($token, $server);
 
-	$post = [
-        "pid" => $pid,
-        "server" => $server,
-        "scholars" => count($recordIds),
-        "date" => date("Y-m-d"),
-        "version" => CareerDev::getVersion(),
-        "grant_class" => CareerDev::getSetting("grant_class"),
-    ];
-			// "grants" => $numGrants,
-			// "publications" => $numPubs,
+    # prevent sending duplicates
+    if (in_array($recordIds[0], $records)) {
+        $post = [
+            "pid" => $pid,
+            "server" => $server,
+            "scholars" => count($recordIds),
+            "date" => date("Y-m-d"),
+            "version" => CareerDev::getVersion(),
+            "grant_class" => CareerDev::getSetting("grant_class"),
+        ];
+        // "grants" => $numGrants,
+        // "publications" => $numPubs,
 
-	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL, $url);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-	curl_setopt($ch, CURLOPT_VERBOSE, 0);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post, '', '&'));
-	$output = curl_exec($ch);
-	CareerDev::log($output);
-	curl_close($ch);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post, '', '&'));
+        $output = curl_exec($ch);
+        CareerDev::log($output);
+        curl_close($ch);
+    }
 }
 
 function getTotalNumberOfConfirmedPublications($token, $server) {

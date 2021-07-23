@@ -12,7 +12,9 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
-define("NOAUTH", true);
+if (!defined("NOAUTH")) {
+    define("NOAUTH", true);
+}
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 function getLockFile($pid) {

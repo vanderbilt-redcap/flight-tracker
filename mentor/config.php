@@ -104,7 +104,7 @@ if (Application::isVanderbilt()) {
 echo $mssg;
 
 ?>
-<h1>Configure Mentee Agreements</h1>
+<h1>Configure Mentee-Mentor Agreements</h1>
 
 <form action="<?= Application::link("this") ?>" method="POST">
     <table class="max-width centered padded">

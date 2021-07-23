@@ -20,7 +20,7 @@ $names = $mgr->getNames($who);
 if (empty($names)) {
 	echo "No names match your description.";
 } else {
-	if ($who['recipient'] && ($who['recipient'] == "individuals")) {
+	if (isset($who['recipient']) && ($who['recipient'] == "individuals")) {
 		$emails = $mgr->getEmails($who);
 
 		$lines = array();

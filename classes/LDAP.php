@@ -144,8 +144,11 @@ class LDAP {
     # $info is line from getLDAP
 	# returns array from $info with the field $field
 	public static function findField($info, $field, $idx = "all") {
+	    if (!isset($info['count'])) {
+	        return [];
+        }
 		$separator = ";";
-		$values = array();
+		$values = [];
 		for ($i = 0; $i < $info['count']; $i++) {
 			$line = $info[$i];
 			$value = "";
@@ -444,11 +447,11 @@ class LdapLookup {
 
 	public static function initialize($includeVU = FALSE, $force = FALSE) {
 	    $includeFile = "/app001/credentials/con_redcap_ldap_user.php";
+        self::$ldapConns = [];
+        self::$ldapBinds = [];
 		if((!self::$ldapBinds || $force) && file_exists($includeFile)) {
 			include $includeFile;
 
-            self::$ldapConns = [];
-            self::$ldapBinds = [];
 			if (!isset($ldapuser) || !isset($ldappass)) {
 			    return;
             }

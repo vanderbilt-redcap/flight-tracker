@@ -145,7 +145,7 @@ class WebOfScience {
                             }
                         }
                     }
-                    if ($node['pmid'] && $node['timesCited']) {
+                    if (isset($node['pmid']) && isset($node['timesCited'])) {
                         $results[$node['pmid']] = $node['timesCited'];
                     }
                 }

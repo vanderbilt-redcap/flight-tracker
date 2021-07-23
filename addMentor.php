@@ -272,8 +272,13 @@ function makeMainForm($token, $server) {
     $mentorJSON = json_encode($primaryMentors);
     $thisUrl = Application::link("this");
 
+    $url = Application::link("signupToREDCap");
+    $text = getInviteText();
+    $inviteText = "<a href='$url' target='_NEW'>$text</a>.";
+
     $html = "";
     $html .= "<p class='centered max-width'>REDCap user-ids are automatically looked up so that mentees and mentors can use the mentoring agreement. In case of multiple matches, you must confirm each user-id. Be wary that certain mentors might alternately have listed a formal name or a nickname.</p>";
+    $html .= "<p class='centered smaller'>Or $inviteText</p>";
     $html .= "<h1>Upload Mentors in Bulk</h1>";
     $html .= "<div class='max-width centered'>";
     $html .= "<p class='centered'>Please follow <a href='$thisUrl&download=csv'>this template</a> and upload the resulting CSV.</p>";
@@ -412,4 +417,13 @@ function makeMentorJS($scholarJSON, $mentorJSON) {
 </script>";
 
     return $js;
+}
+
+function getInviteText() {
+    if (Application::isVanderbilt()) {
+        return "request a user-id from the REDCap Team";
+    } else {
+        global $homepage_contact;
+        return "contact $homepage_contact";
+    }
 }

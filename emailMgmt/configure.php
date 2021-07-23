@@ -21,11 +21,11 @@ if (count($_POST) > 0) {
 		$hasErrors = TRUE;
 	} else {
 	    $feedback = $mgr->saveSetting($settingName, $emailSetting);
-		if ($feedback['error']) {
+		if (isset($feedback['error'])) {
 			$html = "Error! ".$feedback['error'];
 			$noteClass = "red";
 			$hasErrors = TRUE;
-		} else if ($feedback['errors']) {
+		} else if (isset($feedback['errors'])) {
 			$html = "Errors! ".implode("; ", $feedback['errors']);
 			$noteClass = "red";
 			$hasErrors = TRUE;
@@ -48,9 +48,9 @@ $spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 $messages = $mgr->getMessageHash();
 
 $currSettingName = "";
-if ($_POST['name']) {
+if (isset($_POST['name'])) {
 	$currSettingName = $_POST['name'];
-} else if ($_GET[$selectName]) {
+} else if (isset($_GET[$selectName])) {
 	$currSettingName = $_GET[$selectName];
 }
 $currSetting = $mgr->getItem($currSettingName);
@@ -69,42 +69,44 @@ $surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "$isDisabled"; $surveyCo
 $lastCompleteMonths = 12; $maxEmails = 5; $newRecordsSince = 6;
 $maxSpecified = "$isDisabled"; $newRecordsSinceSpecified = "$isDisabled";
 $r01No = "$isDisabled"; $r01Yes = "$isDisabled"; $r01Agnostic = "checked";
-if ($_POST['recipient'] == "individuals") {
-	$indivs = "checked"; $filteredGroup = "$isDisabled";
-} else if ($_POST['recipient'] == "filtered_group") {
-	if ($_POST['filter'] == "some") {
-		$all = "$isDisabled"; $some = "checked";
-		if ($_POST['survey_complete'] == "yes") {
-			$surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "checked"; $surveyCompleteNoMatter = "$isDisabled";
-			if ($_POST['last_complete_months']) {
-				$lastCompleteMonths = $_POST['last_complete_months'];
-			}
-        } else if ($_POST['survey_complete'] == "no") {
-            $surveyCompleteNo = "checked"; $surveyCompleteYes = "$isDisabled"; $surveyCompleteNoMatter = "$isDisabled";
-		}
-		if ($_POST['r01_or_equiv'] == "yes") {
-			$r01No = "$isDisabled"; $r01Yes = "checked"; $r01Agnostic = "$isDisabled";
-		} else if ($_POST['r01_or_equiv'] == "no") {
-			$r01No = "checked"; $r01Yes = "$isDisabled"; $r01Agnostic = "$isDisabled";
-		}
-		if ($_POST['max_emails']) {
-			$maxEmails = $_POST['max_emails'];
-			$maxSpecified = "checked";
-		}
-        if (($_POST['newRecords'] == "new") && $_POST['new_records_since']) {
-			$newRecordsSince = $_POST['new_records_since'];
-			$newRecordsSinceSpecified = "checked";
-		}
-	}
+if (isset($_POST['recipient'])) {
+    if ($_POST['recipient'] == "individuals") {
+        $indivs = "checked"; $filteredGroup = "$isDisabled";
+    } else if ($_POST['recipient'] == "filtered_group") {
+        if ($_POST['filter'] == "some") {
+            $all = "$isDisabled"; $some = "checked";
+            if ($_POST['survey_complete'] == "yes") {
+                $surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "checked"; $surveyCompleteNoMatter = "$isDisabled";
+                if ($_POST['last_complete_months']) {
+                    $lastCompleteMonths = $_POST['last_complete_months'];
+                }
+            } else if ($_POST['survey_complete'] == "no") {
+                $surveyCompleteNo = "checked"; $surveyCompleteYes = "$isDisabled"; $surveyCompleteNoMatter = "$isDisabled";
+            }
+            if ($_POST['r01_or_equiv'] == "yes") {
+                $r01No = "$isDisabled"; $r01Yes = "checked"; $r01Agnostic = "$isDisabled";
+            } else if ($_POST['r01_or_equiv'] == "no") {
+                $r01No = "checked"; $r01Yes = "$isDisabled"; $r01Agnostic = "$isDisabled";
+            }
+            if ($_POST['max_emails']) {
+                $maxEmails = $_POST['max_emails'];
+                $maxSpecified = "checked";
+            }
+            if (($_POST['newRecords'] == "new") && $_POST['new_records_since']) {
+                $newRecordsSince = $_POST['new_records_since'];
+                $newRecordsSinceSpecified = "checked";
+            }
+        }
+    }
 }
 
-if ($currSetting["who"]["individuals"]) {
+if (isset($currSetting["who"]["individuals"])) {
 	$indivs = "checked"; $filteredGroup = "";
 	$listOfEmailsToCheck = preg_split("/,/", $currSetting["who"]["individuals"]);
 	foreach ($listOfEmailsToCheck as $email) {
 		$realPost[$email] = "1";
 	}
-} else if ($currSetting["who"]["filter"]) {
+} else if (isset($currSetting["who"]["filter"])) {
 	switch($currSetting["who"]["filter"]) {
 		case "some":
 			$all = "$isDisabled";
@@ -212,7 +214,7 @@ $(document).ready(function() {
 	<tr><td class='oneThird'>
 		<h2 class='green'>Who?</h2>
 			<h3 class='green'>From Email Address</h3>
-			<p class='centered'><input <?= $isReadonly ?> type='text' id='from' name='from' class='long' value='<?= $_POST['from'] ? $_POST['from'] : $currSetting['who']['from'] ?>'></p>
+			<p class='centered'><input <?= $isReadonly ?> type='text' id='from' name='from' class='long' value='<?= isset($_POST['from']) ? $_POST['from'] : (isset($currSetting['who']['from']) ? $currSetting['who']['from'] : "") ?>'></p>
 
 			<h3 class='green'>To (Recipients)</h3>
 			<p class='centered'>Who Do You Want to Receive Your Email?<br>
@@ -264,7 +266,7 @@ $(document).ready(function() {
 <?php
 		$surveySelectId = "survey";
 		echo "<h3 class='yellow'>Format Message</h3>\n";
-		echo "<p class='centered'>Subject: <input $isReadonly type='text' id='subject' class='long' name='subject' value='".($_POST['subject'] ? $_POST['subject'] : $currSetting['what']['subject'])."'></p>\n";
+		echo "<p class='centered'>Subject: <input $isReadonly type='text' id='subject' class='long' name='subject' value='".(isset($_POST['subject']) ? $_POST['subject'] : (isset($currSetting['what']['subject']) ? $currSetting['what']['subject'] : ""))."'></p>\n";
 		echo "<div style='text-align: center; margin: 16px 0px;'>\n";
 		echo "<div style='display: inline-block;'>".$mgr->getSurveySelect($surveySelectId)."<br>\n";
 		echo "<button $isDisabled onclick='insertSurveyLink(\"$surveySelectId\"); return false;'>Insert Survey Link</button></div>\n";
@@ -277,9 +279,9 @@ $(document).ready(function() {
 		if (!empty($messages) && !$isDisabled) {
 			echo "<div style='text-align: center; margin: 16px 0px;'>Load Prior Message:<br>".$mgr->getSelectForExistingNames($messageSelectName)."</div>\n";
 		}
-		if ($_POST['message']) {
+		if (isset($_POST['message'])) {
 			$mssg = $_POST['message'];
-		} else if ($currSetting['what']['message']) {
+		} else if (isset($currSetting['what']['message'])) {
 			$mssg = $currSetting['what']['message'];
 		} else {
 			$mssg = "";
@@ -305,6 +307,7 @@ $(document).ready(function() {
 			echo makeDateTime("followup_time", $currSetting['when'], $isReadonly)."\n";
 		}
 
+		$intro = "";
 		if (($currSetting != EmailManager::getBlankSetting()) && !$currSetting['enabled']) {
 			$testStyle = "";
 			$intro = "Re-";
@@ -315,7 +318,7 @@ $(document).ready(function() {
 			$testStyle = " display: none;";
 		}
 		echo "<div style='margin-top: 50px;' id='status' class='blue padded'>\n";
-		if ($currSetting['enabled']) {
+		if (isset($currSetting['enabled'])) {
 			echo "<h2 class='blue'>Current Status: Activated</h2>\n";
 			echo "<p class='centered'><button onclick='disableEmailSetting(); return true;'>Modify Email</button></p>\n";   // button should resubmit entire page
 			$stageText = "Update &amp; Re-Stage to Test";
@@ -449,9 +452,9 @@ function translatePostToEmailSetting($post) {
 
 function makeDateTime($field, $when, $isReadonly = "") {
 	$value = "";
-	if ($_POST[$field]) {
+	if (isset($_POST[$field])) {
 		$value = $_POST[$field];
-	} else if ($when[$field]) {
+	} else if (isset($when[$field])) {
 		$value = $when[$field];
 	}
 
@@ -467,7 +470,11 @@ function getRealInput($source) {
 	foreach ($pairs as $pair) {
 		$nv = explode("=", $pair);
 		$name = urldecode($nv[0]);
-		$value = urldecode($nv[1]);
+		if (isset($nv[1])) {
+            $value = urldecode($nv[1]);
+        } else {
+		    $value = "";
+        }
 		$vars[$name] = $value;
 	}
 	return $vars;

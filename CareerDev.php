@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.6.5";
+		return "3.6.6";
 	}
 
 	public static function getLockFile($pid) {
@@ -327,6 +327,17 @@ class CareerDev {
                 }
             }
             return $url;
+        } else if ($relativeUrl == "signupToREDCap") {
+	        if (self::isVanderbilt()) {
+	            return 'https://redcap.vanderbilt.edu/surveys/?s=L4R3NJ8XME';
+            } else {
+                global $homepage_contact_url, $homepage_contact_email;
+                if ($homepage_contact_url) {
+                    return $homepage_contact_url;
+                } else {
+                    return "mailto:$homepage_contact_email";
+                }
+            }
         }
 		$relativeUrl = preg_replace("/^\//", "", $relativeUrl);
 		if ($module = self::getModule()) {
@@ -791,9 +802,9 @@ class CareerDev {
 		if (($menuName == "Mentoring") || ($menuName == "Mentor") || ($menuName == "Mentors")) {
 		    $ary = [];
 		    if (self::has("mentoring_agreement")) {
-                $ary["Configure Mentee Agreements"] = self::link("/mentor/config.php");
+                $ary["Configure Mentee-Mentor Agreements"] = self::link("/mentor/config.php");
                 $ary["Add Mentors for Existing Scholars"] = self::link("addMentor.php");
-                $ary["Mentee Agreements Dashboard"] = self::link("/mentor/dashboard.php");
+                $ary["Mentee-Mentor Agreements Dashboard"] = self::link("/mentor/dashboard.php");
             }
 			$ary = array_merge($ary, [
 					"List of Mentors" => self::link("/tablesAndLists/mentorList.php"),
@@ -832,7 +843,7 @@ class CareerDev {
 					"Resources" => self::link("/dashboard/resources.php"),
 					];
 			if (self::has("mentoring_agreement")) {
-			    $ary["Mentee Agreements"] = self::link("mentor/dashboard.php");
+			    $ary["Mentee-Mentor Agreements"] = self::link("mentor/dashboard.php");
             }
             return $ary;
 		}
@@ -852,7 +863,7 @@ class CareerDev {
                 "NIH Reporting" => self::link("reporting/index.php"),
                 "List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
                 "K2R Conversion Calculator" => self::link("/k2r/index.php"),
-                "Kaplan-Meier Conversion Curve" => self::link("/charts/kaplanMeierCurve.php"),
+                "Kaplan-Meier Conversion Success Curve" => self::link("/charts/kaplanMeierCurve.php"),
                 "Configure Application" => self::link("/config.php"),
                 "Configure Summaries" => self::link("/config.php")."&order",
                 "Logging" => self::link("/log/index.php"),

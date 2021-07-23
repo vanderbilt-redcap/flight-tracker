@@ -210,7 +210,7 @@ list($url, $params) = REDCapManagement::splitURL($fullURL);
 
 $cohorts = new Cohorts($token, $server, Application::getModule());
 
-echo "<h1>Kaplan-Meier Conversion Curve</h1>";
+echo "<h1>Kaplan-Meier Conversion Success Curve</h1>";
 echo "<p class='centered max-width'>A <a href='https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3932959/'>Kaplan-Meier survival plot</a> is used in epidemiology to track deaths over time due to a disease. It's a good way to track the effectiveness of a treatment. In Career Development, deaths are not tracked, but rather whether someone converts from K to R (event), is lost to follow-up (censored), or is still active (censored). This curve will hopefully allow you to gauge the effectiveness of scholarship-promoting efforts.</p>";
 echo "<form action='$url' method='GET'>";
 echo REDCapManagement::makeHiddenInputs($params);
@@ -372,7 +372,7 @@ function redrawChart(ctx, data) {
                         text: 'Percent Converting from K to R',
                         display: true
                     },
-                    reverse: true,
+                    reverse: false,
                     suggestedMin: 0.0,
                     suggestedMax: 100.0,
                     beginAtZero: true

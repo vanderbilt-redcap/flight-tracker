@@ -387,7 +387,7 @@ class EmailManager {
 
 	public function getSettingsNames() {
 		$allEmailKeys = array_keys($this->data);
-		Application::log("Email keys: ".json_encode($allEmailKeys));
+		// Application::log("Email keys: ".json_encode($allEmailKeys));
 		if (method_exists("Application", "getEmailName")) {
 			$allRecords = Download::recordIds($this->token, $this->server);
 			$unmatchedKeys = array();

@@ -475,7 +475,7 @@ class Publications {
                 $i++;
             }
             if (!$xml) {
-                throw new \Exception("Error: Cannot create object ".$output);
+                throw new \Exception("Error: Cannot create object after $i iterations (xml = '".$output."') for PMIDS ".implode(", ", $pmidGroup));
             }
 
             foreach ($pmidGroup as $pmid) {
@@ -1123,7 +1123,7 @@ class Publications {
                         $item = $newIds[$j];
                         if (preg_match("/PMC/", $item)) {
                             $translator[$item] = $record['pmid'];
-                        } else {
+                        } else if (isset($record['pmcid'])) {
                             $translator[$item] = $record['pmcid'];
                         }
                     }

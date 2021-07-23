@@ -175,6 +175,7 @@ class Application {
     public static function getModule() {
 		return CareerDev::getModule();
 	}
+
 	public static function link($loc) {
 		return CareerDev::link($loc);
 	}
