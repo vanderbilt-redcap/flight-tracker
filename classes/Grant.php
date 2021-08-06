@@ -1418,13 +1418,19 @@ class Grant {
 		}
 		if (preg_match("/[A-Z][A-Z\d]\d[A-Z][A-Z]\d+/", $numWithoutSpaces, $matches)) {
 			$ary = self::parseNumber($matches[0]);
-			return $ary['activity_code'].$ary['institute_code'].$ary['serial_number'];
+			$activityCode = $ary['activity_code'] ?? "";
+			$instituteCode = $ary['institute_code'] ?? "";
+			$serialNumber = $ary['serial_number'] ?? "";
+			return $activityCode.$instituteCode.$serialNumber;
 		} else if (preg_match("/^VUMC\d+\(.+\)$/", $numWithoutSpaces)) {
 			$numWithoutSpaces = preg_replace("/^VUMC\d+\(/", "", $numWithoutSpaces);
 			$numWithoutSpaces = preg_replace("/\)$/", "", $numWithoutSpaces);
 			$ary = self::parseNumber($numWithoutSpaces);
 			if (!empty($ary)) {
-				return $ary['activity_code'].$ary['institute_code'].$ary['serial_number'];
+                $activityCode = $ary['activity_code'] ?? "";
+                $instituteCode = $ary['institute_code'] ?? "";
+                $serialNumber = $ary['serial_number'] ?? "";
+                return $activityCode.$instituteCode.$serialNumber;
 			} else {
 				return $numWithoutSpaces;
 			}

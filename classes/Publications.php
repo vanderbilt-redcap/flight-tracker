@@ -475,76 +475,76 @@ class Publications {
                 $i++;
             }
             if (!$xml) {
-                throw new \Exception("Error: Cannot create object after $i iterations (xml = '".$output."') for PMIDS ".implode(", ", $pmidGroup));
-            }
+                Application::log("Warning: Cannot create object after $i iterations (xml = '".$output."') for PMIDS ".implode(", ", $pmidGroup), $pid);
+            } else {
+                foreach ($pmidGroup as $pmid) {
+                    $pubmedMatch = NULL;
+                    $pubTypes = [];
+                    $keywords = [];
+                    $abstract = "";
+                    $meshTerms = [];
+                    $title = "";
 
-            foreach ($pmidGroup as $pmid) {
-                $pubmedMatch = NULL;
-                $pubTypes = [];
-                $keywords = [];
-                $abstract = "";
-                $meshTerms = [];
-                $title = "";
+                    foreach ($xml->PubmedArticle as $medlineCitation) {
+                        $article = $medlineCitation->MedlineCitation->Article;
+                        $currPmid = "{$medlineCitation->MedlineCitation->PMID}";
 
-                foreach ($xml->PubmedArticle as $medlineCitation) {
-                    $article = $medlineCitation->MedlineCitation->Article;
-                    $currPmid = "{$medlineCitation->MedlineCitation->PMID}";
-
-                    if ($currPmid == $pmid) {
-                        if ($article->ArticleTitle) {
-                            $title = "{$article->ArticleTitle}";
-                        }
-                        if ($article->Abstract) {
-                            $text = "";
-                            foreach ($article->Abstract->children() as $node) {
-                                $attrs = $node->attributes();
-                                if ($attrs['Label']) {
-                                    $text .= $attrs['Label']."\n";
+                        if ($currPmid == $pmid) {
+                            if ($article->ArticleTitle) {
+                                $title = "{$article->ArticleTitle}";
+                            }
+                            if ($article->Abstract) {
+                                $text = "";
+                                foreach ($article->Abstract->children() as $node) {
+                                    $attrs = $node->attributes();
+                                    if ($attrs['Label']) {
+                                        $text .= $attrs['Label']."\n";
+                                    }
+                                    $text .= "$node\n";
                                 }
-                                $text .= "$node\n";
+                                $abstract = $text;
                             }
-                            $abstract = $text;
-                        }
 
-                        if ($article->PublicationTypeList) {
-                            foreach ($article->PublicationTypeList->PublicationType as $pubType) {
-                                array_push($pubTypes, $pubType);
-                            }
-                        }
-
-                        if ($medlineCitation->MedlineCitation->KeywordList) {
-                            foreach ($medlineCitation->MedlineCitation->KeywordList->Keyword as $keyword) {
-                                array_push($keywords, $keyword);
-                            }
-                        }
-
-                        if ($medlineCitation->MedlineCitation->MeshHeadingList) {
-                            foreach ($medlineCitation->MedlineCitation->MeshHeadingList->children() as $node) {
-                                if ($node->DescriptorName) {
-                                    array_push($meshTerms, $node->DescriptorName);
+                            if ($article->PublicationTypeList) {
+                                foreach ($article->PublicationTypeList->PublicationType as $pubType) {
+                                    array_push($pubTypes, $pubType);
                                 }
                             }
+
+                            if ($medlineCitation->MedlineCitation->KeywordList) {
+                                foreach ($medlineCitation->MedlineCitation->KeywordList->Keyword as $keyword) {
+                                    array_push($keywords, $keyword);
+                                }
+                            }
+
+                            if ($medlineCitation->MedlineCitation->MeshHeadingList) {
+                                foreach ($medlineCitation->MedlineCitation->MeshHeadingList->children() as $node) {
+                                    if ($node->DescriptorName) {
+                                        array_push($meshTerms, $node->DescriptorName);
+                                    }
+                                }
+                            }
+                            $pubmedMatch = new PubmedMatch($pmid);
+                            if ($abstract) {
+                                $pubmedMatch->setVariable("Abstract", $abstract);
+                            }
+                            if ($keywords) {
+                                $pubmedMatch->setVariable("Keywords", $keywords);
+                            }
+                            if ($title) {
+                                $pubmedMatch->setVariable("Title", $title);
+                            }
+                            if ($pubTypes) {
+                                $pubmedMatch->setVariable("Publication Types", $pubTypes);
+                            }
+                            if ($meshTerms) {
+                                $pubmedMatch->setVariable("MESH Terms", $meshTerms);
+                            }
+                            $pubmedMatch->fillInCategoryAndScore();
                         }
-                        $pubmedMatch = new PubmedMatch($pmid);
-                        if ($abstract) {
-                            $pubmedMatch->setVariable("Abstract", $abstract);
-                        }
-                        if ($keywords) {
-                            $pubmedMatch->setVariable("Keywords", $keywords);
-                        }
-                        if ($title) {
-                            $pubmedMatch->setVariable("Title", $title);
-                        }
-                        if ($pubTypes) {
-                            $pubmedMatch->setVariable("Publication Types", $pubTypes);
-                        }
-                        if ($meshTerms) {
-                            $pubmedMatch->setVariable("MESH Terms", $meshTerms);
-                        }
-                        $pubmedMatch->fillInCategoryAndScore();
                     }
+                    $pubmedMatches[] = $pubmedMatch;
                 }
-                $pubmedMatches[] = $pubmedMatch;
             }
         }
 		return $pubmedMatches;
@@ -808,47 +808,51 @@ class Publications {
 				$output = self::pullFromEFetch($pmidsToPull);
                 $xml = simplexml_load_string(utf8_encode($output));
 			}
-			if (!$xml && ($tries >= $maxTries)) {
-				throw new \Exception("Cannot pull from eFetch! Attempted $tries times. ".$output);
-			}
-			list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, $recordId, $instance, $src, $confirmedPMIDs, $metadataFields);
-			$upload = array_merge($upload, $parsedRows);
-            $translateFromPMIDToPMC = self::PMIDsToPMCs($pmidsPulled, $pid);
-            $iCite = new iCite($pmidsPulled, $pid);
-			foreach ($pmidsPulled as $pmid) {
-                for ($j = 0; $j < count($upload); $j++) {
-                    if ($upload[$j]['citation_pmid'] == $pmid) {
-                        $pmcid = $translateFromPMIDToPMC[$pmid];
-                        if ($pmcid) {
-                            if (!preg_match("/PMC/", $pmcid)) {
-                                $pmcid = "PMC" . $pmcid;
+			if (!$xml) {
+			    if ($tries >= $maxTries) {
+                    Application::log("Warning: Cannot pull from eFetch! Attempted $tries times. " . implode(", ", $pmidsToPull) . " " . $output);
+                }
+			} else {
+                list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, $recordId, $instance, $src, $confirmedPMIDs, $metadataFields);
+                $upload = array_merge($upload, $parsedRows);
+                $translateFromPMIDToPMC = self::PMIDsToPMCs($pmidsPulled, $pid);
+                $iCite = new iCite($pmidsPulled, $pid);
+                foreach ($pmidsPulled as $pmid) {
+                    for ($j = 0; $j < count($upload); $j++) {
+                        if ($upload[$j]['citation_pmid'] == $pmid) {
+                            if (isset($translateFromPMIDToPMC[$pmid])) {
+                                $pmcid = $translateFromPMIDToPMC[$pmid];
+                                if ($pmcid) {
+                                    if (!preg_match("/PMC/", $pmcid)) {
+                                        $pmcid = "PMC" . $pmcid;
+                                    }
+                                    $upload[$j]['citation_pmcid'] = $pmcid;
+                                }
                             }
-                            $upload[$j]['citation_pmcid'] = $pmcid;
-                        }
-                        $upload[$j]["citation_doi"] = $iCite->getVariable($pmid, "doi");
-                        $upload[$j]["citation_is_research"] = $iCite->getVariable($pmid, "is_research_article");
-                        $upload[$j]["citation_num_citations"] = $iCite->getVariable($pmid, "citation_count");
-                        $upload[$j]["citation_citations_per_year"] = $iCite->getVariable($pmid, "citations_per_year");
-                        $upload[$j]["citation_expected_per_year"] = $iCite->getVariable($pmid, "expected_citations_per_year");
-                        $upload[$j]["citation_field_citation_rate"] = $iCite->getVariable($pmid, "field_citation_rate");
-                        $upload[$j]["citation_nih_percentile"] = $iCite->getVariable($pmid, "nih_percentile");
-                        $upload[$j]["citation_rcr"] = $iCite->getVariable($pmid, "relative_citation_ratio");
-                        if (in_array("citation_icite_last_update", $metadataFields)) {
-                            $upload[$j]["citation_icite_last_update"] = date("Y-m-d");
-                        }
+                            $upload[$j]["citation_doi"] = $iCite->getVariable($pmid, "doi");
+                            $upload[$j]["citation_is_research"] = $iCite->getVariable($pmid, "is_research_article");
+                            $upload[$j]["citation_num_citations"] = $iCite->getVariable($pmid, "citation_count");
+                            $upload[$j]["citation_citations_per_year"] = $iCite->getVariable($pmid, "citations_per_year");
+                            $upload[$j]["citation_expected_per_year"] = $iCite->getVariable($pmid, "expected_citations_per_year");
+                            $upload[$j]["citation_field_citation_rate"] = $iCite->getVariable($pmid, "field_citation_rate");
+                            $upload[$j]["citation_nih_percentile"] = $iCite->getVariable($pmid, "nih_percentile");
+                            $upload[$j]["citation_rcr"] = $iCite->getVariable($pmid, "relative_citation_ratio");
+                            if (in_array("citation_icite_last_update", $metadataFields)) {
+                                $upload[$j]["citation_icite_last_update"] = date("Y-m-d");
+                            }
 
-                        $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields, $pid);
-                        $upload[$j] = array_merge($upload[$j], $altmetricRow);
+                            $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields, $pid);
+                            $upload[$j] = array_merge($upload[$j], $altmetricRow);
+                        }
                     }
                 }
+                if (!$recordId) {
+                    throw new \Exception("Please specify a record id!");
+                } else if (empty($pmidsPulled)) {     // $pmidsPulled is empty
+                    Application::log("ERROR: No PMIDs pulled from ".json_encode($pmidsToPull), $pid);
+                }
             }
-
-            if (!$recordId) {
-                throw new \Exception("Please specify a record id!");
-            } else if (empty($pmidsPulled)) {     // $pmidsPulled is empty
-			    Application::log("ERROR: No PMIDs pulled from ".json_encode($pmidsToPull), $pid);
-            }
-			Publications::throttleDown();
+            Publications::throttleDown();
 		}
 		self::addTimesCited($upload, $pid, $pmids, $metadataFields);
 		Application::log("Returning ".count($upload)." lines from getCitationsFromPubMed", $pid);
@@ -1105,9 +1109,24 @@ class Publications {
 	                $newIds[] = $item;
                 }
             }
-	        $id = implode(",", $newIds);
+        } else {
+	        $newIds = [$id];
         }
-		if ($id) {
+        $idsBatched = [];
+	    $pullSize = 20;
+	    for ($i = 0; $i < count($newIds); $i++) {
+	        $batch = [];
+	        for ($j = $i; ($j < count($newIds)) && ($j < $i + $pullSize); $j++) {
+	            $batch[] = $newIds[$j];
+            }
+	        if (!empty($batch)) {
+                $idsBatched[] = $batch;
+            }
+        }
+
+        $translator = [];
+	    foreach ($idsBatched as $batch) {
+	        $id = implode(",", $batch);
 			$query = "ids=".$id."&format=json";
 			$url = "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?".$query;
 			list($resp, $output) = REDCapManagement::downloadURL($url, $pid);
@@ -1116,23 +1135,15 @@ class Publications {
 
 			$results = json_decode($output, true);
 			if ($results) {
-			    $j = 0;
-			    $translator = [];
 			    foreach ($results['records'] as $record) {
-                    if ($newIds[$j]) {
-                        $item = $newIds[$j];
-                        if (preg_match("/PMC/", $item)) {
-                            $translator[$item] = $record['pmid'];
-                        } else if (isset($record['pmcid'])) {
-                            $translator[$item] = $record['pmcid'];
-                        }
+			        if ($record['pmcid'] && $record['pmid']) {
+                        $translator[$record['pmcid']] = $record['pmid'];
+                        $translator[$record['pmid']] = $record['pmcid'];
                     }
-                    $j++;
                 }
-			    return $translator;
             }
 		}
-		return "";
+        return $translator;
 	}
 
 	public function getNumberOfCitationsByOthers($type = "Original Included") {

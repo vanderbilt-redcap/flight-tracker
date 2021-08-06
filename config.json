@@ -46,6 +46,13 @@
 			"method": "emails",
 			"cron_frequency": "60",
 			"cron_max_run_time": "300"
+		},
+		{
+			"cron_name": "flight_tracker_batch",
+			"cron_description": "Flight Tracker Batch Cron; runs every minute",
+			"method": "batch",
+			"cron_frequency": "60",
+			"cron_max_run_time": "3600"
 		}
 	],
 

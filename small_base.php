@@ -1040,7 +1040,11 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
             }
             fclose($fp);
             $newLines = json_decode($json, true);
-            $metadata = array_merge($metadata, $newLines);
+            if ($newLines !== NULL) {
+                $metadata = array_merge($metadata, $newLines);
+            } else {
+                throw new \Exception("Could not unpack json: ".json_last_error_msg()." $json");
+            }
         }
 	}
 

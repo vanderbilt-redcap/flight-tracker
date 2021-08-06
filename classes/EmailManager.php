@@ -174,7 +174,9 @@ class EmailManager {
 			if (in_array($name, $names) || empty($names)) {
                 // Application::log("Checking if $name is enabled");
 				if ($emailSetting['enabled'] || ($func == "prepareEmail")) {
-				    Application::log("$name is enabled");
+                    if (!Application::isLocalhost()) {
+                        Application::log("$name is enabled");
+                    }
                     $when = $emailSetting["when"];
 					foreach ($when as $type => $datetime) {
 						$ts = self::transformToTS($datetime);
@@ -186,7 +188,9 @@ class EmailManager {
 							}
 						} else {
 							if ($this->isReadyToSend($ts, $currTime)) {
-                                Application::log("Sending $name");
+							    if (!Application::isLocalhost()) {
+                                    Application::log("Sending $name");
+                                }
                                 $result = $this->$func($emailSetting, $name, $type);
 							}
 						}

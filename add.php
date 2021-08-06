@@ -139,12 +139,16 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
 				$firstName .= " (".$preferred.")";
 			}
 			$email = trim($nodes[4]);
-			if ($email) {
-				$emails[$recordId] = $email;
-			}
 			$names[$recordId] = $preferred." ".$lastName;
 			$institution = trim($nodes[5]);
-			$uploadRow = array("record_id" => $recordId, "identifier_institution" => $institution, "identifier_middle" => $middle, "identifier_first_name" => $firstName, "identifier_last_name" => $lastName, "identifier_email" => $email);
+			$uploadRow = [
+			    "record_id" => $recordId,
+                "identifier_institution" => $institution,
+                "identifier_middle" => $middle,
+                "identifier_first_name" => $firstName,
+                "identifier_last_name" => $lastName,
+                "identifier_email" => $email,
+            ];
 			if (count($nodes) >= 13) {
 				if (preg_match("/female/i", $nodes[6])) {
 					$gender = 1;
@@ -265,7 +269,7 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
 		}
 		$lineNum++;
 	}
-	return array($upload, $emails, $recordIds);
+	return [$upload, $recordIds];
 }
 
 function importMDY2YMD($mdyDate, $col) {
@@ -420,7 +424,7 @@ function commitChanges($token, $server, $lines, $mentorUids) {
     }
     $recordId = $maxRecordId + 1;
 
-    list($upload, $emails, $newRecordIds) = processLines($lines, $recordId, $token, $server, $mentorUids);
+    list($upload, $newRecordIds) = processLines($lines, $recordId, $token, $server, $mentorUids);
     $feedback = [];
     if (!empty($upload)) {
         $feedback = Upload::rows($upload, $token, $server);

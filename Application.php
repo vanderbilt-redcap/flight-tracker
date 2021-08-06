@@ -188,6 +188,10 @@ class Application {
 		return CareerDev::getSetting($field, $pid);
 	}
 
+	public static function saveSetting($field, $value, $pid = "") {
+	    CareerDev::saveSetting($field, $value, $pid);
+    }
+
 	public static function getSites($all = TRUE) {
 	    return CareerDev::getSites($all);
     }

@@ -10,9 +10,13 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 
 function makeLink($tableNum) {
+    if ($tableNum == "Common Metrics") {
+        $link = Application::link("reporting/commonMetrics.php");
+        return "<a href='$link'>Common Metrics Table</a>";
+    }
 	if ($text = NIHTables::getTableHeader($tableNum)) {
 		$baseLink = Application::link("reporting/table.php");
-		if ($_GET['cohort']) {
+		if (isset($_GET['cohort']) && $_GET['cohort']) {
 		    $baseLink .= "&cohort=".urlencode($_GET['cohort']);
         }
 		if (formatTableNum($tableNum) == $text) {
@@ -78,19 +82,30 @@ if (file_exists(dirname(__FILE__)."/../customGrants.php")) {
     $note = "(You can <a href='".Application::link("customGrants.php")."'>setup these in bulk</a>, too.)";
 }
 
+$cohort = $_GET['cohort'] ?? "";
+
 ?>
 
-<p class="centered"><?= $cohorts->makeCohortSelect($_GET['cohort'], "if ($(this).val()) { window.location.href = \"".Application::link("reporting/index.php")."&cohort=\" + $(this).val(); } else { window.location.href = \"".Application::link("reporting/index.php")."\"; }") ?></p>
+<p class="centered"><?= $cohorts->makeCohortSelect($cohort, "if ($(this).val()) { window.location.href = \"".Application::link("reporting/index.php")."&cohort=\" + $(this).val(); } else { window.location.href = \"".Application::link("reporting/index.php")."\"; }") ?></p>
+
+<h2>Sign Up Scholars</h2>
 <p class="centered max-width red">To sign up scholars to these lists, fill out a Custom Grant for each scholar. <?= $note ?> Under role, sign them up to your grant as a General Trainee, Pre-Doctoral Trainee, or Post-Doctoral Trainee. Then verify that the scholar is a part of the lists below.</p>
+<h4><a href="<?= Application::link('reporting/signup.php') ?>">Quick Sign Up</a></h4>
 
-<h2>Predoctoral Scholars (<?= count($predocs) ?>)</h2>
-<p class='centered max-width'><?= $predocNames ? $predocNames : $emptyNames ?></p>
-
-<h2>Postdoctoral Scholars (<?= count($postdocs) ?>)</h2>
-<p class='centered max-width'><?= $postdocNames ? $postdocNames : $emptyNames ?></p>
-
-<h2><?= makeTableHeader("Common Metrics") ?></h2>
-<p class='centered'><?= makeLink("Common Metrics") ?></p>
+<table class="centered max-width bordered">
+    <tbody>
+    <tr>
+        <td style="vertical-align: top;">
+            <h3>Predoctoral Scholars (<?= count($predocs) ?>)</h3>
+            <p class='centered max-width'><?= $predocNames ? $predocNames : $emptyNames ?></p>
+        </td>
+        <td style="vertical-align: top;">
+            <h3>Postdoctoral Scholars (<?= count($postdocs) ?>)</h3>
+            <p class='centered max-width'><?= $postdocNames ? $postdocNames : $emptyNames ?></p>
+        </td>
+    </tr>
+    </tbody>
+</table>
 
 <h2><?= makeTableHeader("5") ?></h2>
 <p class='centered'><?= makeLink("5A") ?></p>
@@ -125,10 +140,17 @@ if (isset($_GET['appointments'])) {
     echo "<p class='centered'>".makeLink("8CIII")."</p>\n";
 }
 
+?>
+
+<h2><?= makeTableHeader("CTSA Common Metrics") ?></h2>
+<p class='centered'><a href="<?= Application::link("reporting/commonMetrics.php") ?>">CTSA Common Metrics Table</a></p>
+
+<?php
+
 $bookmarkletJSURL = Application::link("js/xtract.js");
 $cohortParam = "";
-if ($_GET['cohort']) {
-    $cohortParam = "&cohort=".$_GET['cohort'];
+if ($cohort) {
+    $cohortParam = "&cohort=".$cohort;
 }
 $appointmentParam = "";
 if (isset($_GET['appointments'])) {

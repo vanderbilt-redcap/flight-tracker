@@ -11,11 +11,12 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.6.6";
+		return "3.7.0";
 	}
 
 	public static function getLockFile($pid) {
-		return APP_PATH_TEMP.date("Ymdhis", time() + 4 * 3600)."_6_makeSummary.$pid.lock";
+	    $numHours = 4;
+		return APP_PATH_TEMP.date("Ymdhis", time() + $numHours * 3600)."_6_makeSummary.$pid.lock";
 	}
 
     public static function refreshRecordSummary($token, $server, $pid, $recordId) {
@@ -208,7 +209,7 @@ class CareerDev {
 		if ($token) {
 			$pid = self::getPidFromToken($token);
 			if (!$pid) {
-			    self::log("ERROR: Could not find pid $pid for $token");
+			    self::log("ERROR: Could not find pid $pid for $token: ".json_encode(debug_backtrace()));
             }
 			return $pid;
 		}
@@ -322,7 +323,7 @@ class CareerDev {
             $initialSeparator = "?";
             foreach ($paramKeys as $key) {
                 if (isset($_GET[$key])) {
-                    $url .= "$initialSeparator$key=".urlencode($_GET[$key]);
+                    $url .= "$initialSeparator$key=".urlencode(urldecode($_GET[$key]));
                     $initialSeparator = "&";
                 }
             }
@@ -506,6 +507,12 @@ class CareerDev {
 		self::setSetting(self::getGeneralSettingName(), $ary, $pid);
 	}
 
+	public static function clearDate($setting, $pid) {
+        $ary = self::getSetting(self::getGeneralSettingName(), $pid);
+        unset($ary[$setting]);
+        self::setSetting(self::getGeneralSettingName(), $ary, $pid);
+    }
+
 	public static function saveSetting($field, $value, $pid = NULL) {
 	    self::setSetting($field, $value, $pid);
     }
@@ -601,6 +608,9 @@ class CareerDev {
 		if (preg_match("/search\//", $_GET['page'])) {
 			$default = self::link("/css/env.css");
 		}
+        if (preg_match("/reporting\//", $_GET['page'])) {
+            $default = self::link("/css/general.css");
+        }
 
 		foreach ($bgs as $menu => $css) {
 			if ($css && ($menu != "Environment")) {
@@ -780,6 +790,7 @@ class CareerDev {
                 "Social Network of Co-Authorship" => self::link("/socialNetwork/collaboration.php"),
                 "Word Clouds of Publications" => self::link("/publications/wordCloud.php"),
                 "Search Publications" => self::link("/search/publications.php"),
+                "Publication Impact Measures" => self::link("/publications/scoreDistribution.php"),
             ];
             return $ary;
         }

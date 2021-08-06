@@ -1,10 +1,9 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
-use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 
@@ -12,19 +11,22 @@ require_once(dirname(__FILE__)."/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 define("CENSORED_DATA_LABEL", "CENSORED DATA");
+$maxKGrants = 4;
+define("NUM_GRANTS_TO_PULL", $maxKGrants < Grants::$MAX_GRANTS ? $maxKGrants : Grants::$MAX_GRANTS);
 
 
 $colors = array_merge(["rgba(0, 0, 0, 1)"], Application::getApplicationColors(["1.0", "0.6", "0.2"]));
 
 $showRealGraph = ($_GET['measType'] && $_GET['measurement']);
 $firstTime = FALSE;
-if ($_GET['measType']) {
+if (isset($_GET['measType'])) {
     $measType = $_GET['measType'];
 } else {
     $firstTime = TRUE;
     $measType = "Both";
 }
-if ($_GET['measurement']) {
+$startDateSource = isset($_GET['startDateSource']) ? $_GET['startDateSource'] : "end_last_any_k";
+if (isset($_GET['measurement'])) {
     $meas = $_GET['measurement'];
     if ($meas == "years") {
         $measUnit = "y";
@@ -35,7 +37,7 @@ if ($_GET['measurement']) {
     $meas = "years";
     $measUnit = "y";
 }
-if (($_GET['showAllResources'] == "on") || $firstTime) {
+if ((isset($_GET['showAllResources']) && ($_GET['showAllResources'] == "on")) || $firstTime) {
     $showAllResources = TRUE;
     $showAllResourcesText = " checked";
 } else {
@@ -63,8 +65,12 @@ if ($showRealGraph) {
         "summary_last_pub_activity",
         "summary_ever_last_any_k_to_r01_equiv",
         "summary_first_r01_or_equiv",
+        "summary_last_any_k",
         "resources_resource",
         ];
+    for ($i = 1; $i <= NUM_GRANTS_TO_PULL; $i++) {
+        $fields[] = "summary_award_type_".$i;
+    }
     $startDates = [];
     $endDates = [];
     $serialTimes = [];
@@ -73,7 +79,7 @@ if ($showRealGraph) {
     $indexedREDCapData = Download::indexREDCapData(Download::fields($token, $server, $fields));
     foreach ($records as $record) {
         $redcapData = $indexedREDCapData[$record];
-        $earliestStartDate = findEarliestStartDate($redcapData, $record, $measType);
+        $earliestStartDate = findEarliestStartDate($redcapData, $record, $startDateSource);
         if ($earliestStartDate) {
             $startDates[$record] = $earliestStartDate;
         } else {
@@ -159,7 +165,7 @@ if ($showRealGraph) {
                 $curveData[$label][$i]["events"] = $numEventsInTimespan;
                 $curveData[$label][$i]["denom"] = $curveData[$label][$startI]["numer"] - $numCensoredInTimespan;
                 $curveData[$label][$i]["numer"] = $curveData[$label][$i]["denom"] - $numEventsInTimespan;
-                $curveData[$label][$i]["this_fraction"] = $curveData[$label][$i]["numer"] / $curveData[$label][$i]["denom"];
+                $curveData[$label][$i]["this_fraction"] = ($curveData[$label][$i]["denom"] > 0) ? $curveData[$label][$i]["numer"] / $curveData[$label][$i]["denom"] : 0;
                 $curveData[$label][$i]["percent"] = $curveData[$label][$startI]["percent"] * $curveData[$label][$i]["this_fraction"];
                 $curveData[$label][$i]["pretty_percent"] = REDCapManagement::pretty(100.0 - $curveData[$label][$i]["percent"], 1);
             }
@@ -239,6 +245,22 @@ foreach ($measurementTypes as $measurementType => $measurementLabel) {
 }
 echo "</select></p>";
 echo "<p class='centered skinnymargins'><input type='checkbox' name='showAllResources' id='showAllResources' $showAllResourcesText> <label for='showAllResources'>Show All Resources</label></p>";
+
+$startDateOptions = [
+    "end_last_any_k" => "End of Last K",
+    "first_any" => "Either First Grant or First Publication Activity",
+    "first_grant" => "First Grant Activity",
+    "first_publication" => "First Publication Activity",
+    ];
+echo "<p class='centered skinnymargins'>Start Date: <select name='startDateSource'>";
+foreach ($startDateOptions as $val => $label) {
+    $sel = "";
+    if ($startDateSource == $val) {
+        $sel = " selected";
+    }
+    echo "<option value='$val'$sel>$label</option>";
+}
+echo "</select></p>";
 
 echo "<p class='centered skinnymargins'><button>Re-Configure</button></p>";
 echo "</form>";
@@ -416,14 +438,40 @@ function getResourceRecords($idx, $resources) {
     return $records;
 }
 
-function findEarliestStartDate($data, $recordId, $measType) {
+function findLastKType($data, $recordId) {
+    $kTypes = [1, 2, 3, 4];
+    for ($i = 1; $i <= NUM_GRANTS_TO_PULL; $i++) {
+        $grantType = REDCapManagement::findField($data, $recordId, "summary_award_type_".$i);
+        if (in_array($grantType, $kTypes)) {
+            return $grantType;
+        }
+    }
+    return FALSE;
+}
+
+function findEarliestStartDate($data, $recordId, $startDateSource) {
     $grantDate = REDCapManagement::findField($data, $recordId, "summary_first_grant_activity");
     $pubDate = REDCapManagement::findField($data, $recordId, "summary_first_pub_activity");
-    if ($measType == "Grants") {
+    $lastAnyKStart = REDCapManagement::findField($data, $recordId, "summary_last_any_k");
+    $lastKType = findLastKType($data, $recordId);
+    if ($startDateSource == "first_grant") {
         return $grantDate;
-    } else if ($measType == "Publications") {
+    } else if ($startDateSource == "first_publication") {
         return $pubDate;
-    } else if ($measType == "Both") {
+    } else if ($startDateSource == "end_last_any_k") {
+        if ($lastKType && $lastAnyKStart && REDCapManagement::isDate($lastAnyKStart)) {
+            if ($lastKType == 1) {
+                $years = Application::getInternalKLength();
+            } else if ($lastKType == 2) {
+                $years = Application::getK12KL2Length();
+            } else if (in_array($lastKType, [3, 4])) {
+                $years = Application::getIndividualKLength();
+            } else {
+                throw new \Exception("Invalid K Type $lastKType!");
+            }
+            return REDCapManagement::addYears($lastAnyKStart, $years);
+        }
+    } else if ($startDateSource == "first_any") {
         if (!$grantDate) {
             return $pubDate;
         }

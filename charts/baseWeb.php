@@ -20,14 +20,15 @@ $event_id = CareerDev::getSetting("event_id", $pid);
 $tokenName = CareerDev::getSetting("tokenName", $pid);
 $adminEmail = CareerDev::getSetting("admin_email", $pid);
 
-$lastNames = Download::lastnames($token, $server);
-$firstNames = Download::firstnames($token, $server);
-$fullNames = array();
+$oneFieldAry = Download::arraysOfFields($token, $server, ["identifier_last_name", "identifier_first_name"]);
+$lastNames = $oneFieldAry["identifier_last_name"];
+$firstNames = $oneFieldAry["identifier_first_name"];
+$allMyRecords = array_keys($firstNames);
+$fullNames = [];
 foreach ($lastNames as $rec => $ln) {
 	$fn = $firstNames[$rec];
 	$fullNames[$rec] = $fn." ".$ln;
 }
-$allMyRecords = Download::recordIds($token, $server);
 if (CareerDev::isWrangler()) {
     $allMyRecords = CareerDev::filterOutCopiedRecords($allMyRecords);
 }

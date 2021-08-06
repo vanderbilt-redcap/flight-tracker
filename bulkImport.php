@@ -55,13 +55,13 @@ if ($_FILES['bulk']) {
                 $lastName = $line[1];
                 $recordId = NameMatcher::matchName($firstName, $lastName, $token, $server);
             } else if ($startIdx == 1) {
-                $recordId = $headers[0];
+                $recordId = $line[0];
             } else if ($startIdx == 0) {
                 $recordId = FALSE;
             } else {
                 throw new \Exception("This should never happen, a start index of $startIdx");
             }
-            if ($recordId && REDCapManagement::exactInArray($recordId, $records)) {
+            if ($recordId && in_array($recordId, $records)) {
                 if ($title == "Grants") {
                     $redcapData = Download::fieldsForRecords($token, $server,  array("record_id", "custom_last_update"), [$recordId]);
                     if (!$maxInstances[$recordId]) {
@@ -133,6 +133,7 @@ if ($_FILES['bulk']) {
                     $unmatchedLines[] = $i;
                 }
             } else if ($i != 0) {
+                echo "<p class='red padded centered max-width'>Could not match $recordId with start index of $startIdx.</p>";
                 $unmatchedLines[] = $i;
             }
             $i++;
@@ -207,6 +208,12 @@ function detectFirstError($fileinfo, $importFile, $expected) {
 
 	$fp = fopen($filename, "r");
     $firstLine = fgetcsv($fp);
+
+    if ($firstLine[0] == "Record ID") {
+        array_shift($headers);
+        $headers[0] = "Record ID";
+        $expected--;
+    }
 
 	if (preg_match("/import_positions/", $importFile)) {
         if (count($headers) + 1 == count($firstLine)) {

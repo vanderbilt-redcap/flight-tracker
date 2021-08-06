@@ -687,6 +687,7 @@ class NIHTables {
             $degreeFields = [$degreeFields];
         }
 	    $degreeMatches = $this->getAllDegreeFieldsIndexed($year, $institution);
+	    $degreeYearFields = [];
 	    foreach ($degreeFields as $currField) {
             $degreeYearFields = array_merge($degreeYearFields, $degreeMatches[$currField]);
         }
@@ -856,23 +857,48 @@ class NIHTables {
         }
     }
 
-    # years are in MM/YYYY if possible
-    private function getDegreesAndAddOns($recordId, $getYear = TRUE, $getInstitution = FALSE) {
-	    $numCategories = 0;
-	    if ($getYear) { $numCategories++; }
-	    if ($getInstitution) { $numCategories++; }
+    private function getDegreesAndAddOns($recordId, $getYear = TRUE, $getInstitution = FALSE, $getDate = FALSE) {
+        $values = $this->getDegreesAndAddOnsFromMultipleRecords([$recordId], $getYear, $getInstitution, $getDate);
+        return $values[$recordId];
+    }
 
+    private function getDegreesAndAddOnsFromMultipleRecords($records, $getYear = TRUE, $getInstitution = FALSE, $getDate = FALSE) {
         $degreeMatches = $this->getAllDegreeFieldsIndexed();
-        $yearMatches = $this->getAllDegreeFieldsIndexed(TRUE, FALSE);
-        $institutionMatches = $this->getAllDegreeFieldsIndexed(FALSE, TRUE);
         $degreeFields = array_keys($degreeMatches);
         $degreeYearFields = $this->separateAllDegreeSubFields($degreeFields, $getYear, $getInstitution);
         $fields = array_unique(array_merge(["record_id"], $degreeFields, $degreeYearFields));
-        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
+        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, $records);
+        $values = $this->getDegreesAndAddOnsFromData($redcapData, $getYear, $getInstitution, $getDate);
+        return $values;
+    }
+
+    # years are in MM/YYYY if possible
+    private function getDegreesAndAddOnsFromData($redcapData, $getYear = TRUE, $getInstitution = FALSE, $getDate = FALSE) {
+        $numCategories = 0;
+        if ($getYear) {
+            $numCategories++;
+        }
+        if ($getInstitution) {
+            $numCategories++;
+        }
+        if ($getDate) {
+            $numCategories++;
+        }
+
+        $yearMatches = $this->getAllDegreeFieldsIndexed(TRUE, FALSE);
+        $institutionMatches = $this->getAllDegreeFieldsIndexed(FALSE, TRUE);
+        $degreeMatches = $this->getAllDegreeFieldsIndexed();
+        $degreeFields = array_keys($degreeMatches);
+
         $choices = $this->getAlteredChoices();
         $degreesAndAddOns = [];
+        $year = self::$unknownYearText;
         foreach ($degreeFields as $field) {
             foreach ($redcapData as $row) {
+                $recordId = $row['record_id'];
+                if (!isset($degreesAndAddOns[$recordId])) {
+                    $degreesAndAddOns[$recordId] = [];
+                }
                 if ($row[$field]) {
                     if ($choices[$field] && isset($choices[$field][$row[$field]])) {
                         $degree = $choices[$field][$row[$field]];
@@ -912,15 +938,52 @@ class NIHTables {
                             }
                         }
                     }
-                    if (self::hasMoreInfoInArray($degreesAndAddOns[$degree], $year != self::$unknownYearText, $institution != self::$unknownInstitutionText)) {
+                    if ($getDate) {
+                        $date = self::$unknownDateText;
+                        if (isset($yearMatches[$field])) {
+                            foreach ($yearMatches[$field] as $yearField) {
+                                if (isset($row[$yearField])) {
+                                    if (strtotime($row[$yearField])) {
+                                        $date = $row[$yearField];
+                                        break;
+                                    } else if (intval($row[$yearField])) {
+                                        $date = $row[$yearField]."-06-01";
+                                        break;
+                                    } else if ($row[$yearField]) {
+                                        if (REDCapManagement::isMY($row[$yearField])) {
+                                            $date = REDCapManagement::MY2YMD($row[$yearField]);
+                                        } else {
+                                            $date = $row[$yearField];
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (self::hasMoreInfoInArray($degreesAndAddOns[$degree] ?? "", !isset($year) || ($year != self::$unknownYearText), !isset($institution) || ($institution != self::$unknownInstitutionText))) {
                         if ($numCategories == 1) {
                             if ($getYear) {
                                 $degreesAndAddOns[$degree] = $year;
                             } else if ($getInstitution) {
                                 $degreesAndAddOns[$degree] = $institution;
+                            } else if ($getDate) {
+                                $degreesAndAddOns[$degree] = $date;
                             }
-                        } else {
-                            $degreesAndAddOns[$degree] = [$year, $institution];
+                        } else if ($numCategories == 2) {
+                            $results = [];
+                            if ($getYear) {
+                                $results[] = $year;
+                            }
+                            if ($getInstitution) {
+                                $results[] = $institution;
+                            }
+                            if ($getDate) {
+                                $results[] = $date;
+                            }
+                            $degreesAndAddOns[$recordId][$degree] = $results;
+                        } else if ($numCategories == 3) {
+                            $degreesAndAddOns[$recordId][$degree] = [$year, $institution, $date];
                         }
                         if (isset($_GET['test'])) {
                             echo "Setting degrees for $recordId: $degree; year=$year, institution=$institution; now ".json_encode($degreesAndAddOns)."<br>";
@@ -1740,30 +1803,81 @@ class NIHTables {
         return FALSE;
     }
 
-    public function downloadPostdocNames($table = "") {
+    public function downloadPostdocNames($table = "", $earliestDateCompletingTraining = "") {
+        Application::log("downloading postdoc names at beginning ".date("Y-m-d H:i:s"), $this->pid);
         if (preg_match("/-VUMC$/", $table)) {
-            if ($_GET['cohort']) {
-                $names = Download::postdocAppointmentNames($this->token, $this->server, $this->metadata, $_GET['cohort']);
+            if (isset($_GET['cohort']) && $_GET['cohort']) {
+                $names = Download::postdocAppointmentNames($this->token, $this->server, Application::getModule(), $_GET['cohort']);
             } else {
                 $names = Download::postdocAppointmentNames($this->token, $this->server);
             }
         } else {
-            if ($_GET['cohort']) {
-                $names = Download::postdocNames($this->token, $this->server, $this->metadata, $_GET['cohort']);
+            if (isset($_GET['cohort']) && $_GET['cohort']) {
+                $names = Download::postdocNames($this->token, $this->server, Application::getModule(), $_GET['cohort']);
             } else {
                 $names = Download::postdocNames($this->token, $this->server);
             }
         }
-        return $names;
+        if ($earliestDateCompletingTraining) {
+            Application::log("downloading postdoc names pre-filter ".date("Y-m-d H:i:s"), $this->pid);
+            $ary = $this->filterForEarliestDateCompletingTraining($names, $earliestDateCompletingTraining);
+            Application::log("downloading postdoc names post-filter ".date("Y-m-d H:i:s"), $this->pid);
+            return $ary;
+        } else {
+            return $names;
+        }
     }
 
-    public function downloadPredocNames() {
-        if ($_GET['cohort']) {
-            $names = Download::predocNames($this->token, $this->server, $this->metadata, $_GET['cohort']);
+    public function downloadPredocNames($earliestDateCompletingTraining = "") {
+        if (isset($_GET['cohort']) && $_GET['cohort']) {
+            $names = Download::predocNames($this->token, $this->server, Application::getModule(), $_GET['cohort']);
         } else {
             $names = Download::predocNames($this->token, $this->server);
         }
-        return $names;
+        if ($earliestDateCompletingTraining) {
+            return $this->filterForEarliestDateCompletingTraining($names, $earliestDateCompletingTraining);
+        } else {
+            return $names;
+        }
+    }
+
+    private function filterForEarliestDateCompletingTraining($names, $earliestDate) {
+	    if (!$earliestDate) {
+	        return $names;
+        }
+
+	    $newNames = [];
+	    $recordsPartitioned = [];
+	    $records = array_keys($names);
+	    $partitionSize = 10;
+	    for ($i = 0; $i < count($records); $i += $partitionSize) {
+	        $partition = [];
+	        for ($j = $i; $j < count($records) && $j < $i + $partitionSize; $j++) {
+	            $partition[] = $records[$j];
+            }
+	        $recordsPartitioned[] = $partition;
+        }
+
+	    foreach ($recordsPartitioned as $recordsToPull) {
+            $degreesAndAddOns = $this->getDegreesAndAddOnsFromMultipleRecords($recordsToPull, FALSE, FALSE, TRUE);
+            $hasDegreeDate = FALSE;
+            foreach ($degreesAndAddOns as $recordId => $degreesForOneRecord) {
+                $name = $names[$recordId];
+                foreach (array_values($degreesForOneRecord) as $degreeDate) {
+                    if ($degreeDate) {
+                        $hasDegreeDate = TRUE;
+                        if (REDCapManagement::dateCompare($earliestDate, "<=", $degreeDate)) {
+                            $newNames[$recordId] = $name;
+                            break;   // inner
+                        }
+                    }
+                }
+                if (!$hasDegreeDate) {
+                    $newNames[$recordId] = $name;
+                }
+            }
+        }
+	    return $newNames;
     }
 
     private static function getTrainingTypesForGrantClass() {
@@ -2205,6 +2319,7 @@ class NIHTables {
 	private static $blank = "[Blank]";
 	private static $presentMarker = "Present";
 	private static $unknownYearText = "Unknown Year";
+	private static $unknownDateText = "Unknown Date";
 	private static $unknownInstitutionText = "Unknown Institution";
 	public static $maxYearsOfGrantReporting = 15;
 }

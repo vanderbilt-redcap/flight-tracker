@@ -357,6 +357,23 @@ class REDCapManagement {
 	    return $prefixes;
     }
 
+    public static function isMY($str) {
+	    if (!$str) {
+	        return FALSE;
+        }
+        $nodes = preg_split("/[\-\/]/", $str);
+	    if (count($nodes) == 2) {
+	        $month = $nodes[0];
+	        $year = $nodes[1];
+	        if (($month >= 1) && ($month <= 12)) {
+                if (is_numeric($year)) {
+                    return TRUE;
+                }
+            }
+        }
+	    return FALSE;
+    }
+
     public static function MY2YMD($my) {
 	    if (!$my) {
 	        return "";
@@ -643,7 +660,11 @@ class REDCapManagement {
         }
         curl_close($ch);
         $time2 = microtime();
-        Application::log("Response code $resp; ".strlen($data)." bytes in ".(($time2 - $time1) / 1000)." seconds", $pid);
+        $timeStmt = "";
+        if (is_numeric($time1) && is_numeric($time2)) {
+            $timeStmt = " in ".(($time2 - $time1) / 1000)." seconds";
+        }
+        Application::log("Response code $resp; ".strlen($data)." bytes".$timeStmt, $pid);
         return [$resp, $data];
     }
 
@@ -831,6 +852,7 @@ class REDCapManagement {
         $params = self::getParameters($url);
         $html = [];
         foreach ($params as $key => $value) {
+            $value = urldecode($value);
             $html[] = "<input type='hidden' name='$key' value='$value'>";
         }
         return implode("\n", $html);

@@ -55,8 +55,10 @@ class Download {
 		return self::indexREDCapData($redcapData);
 	}
 
-	public static function predocNames($token, $server, $metadataOrModule = [], $cohort = "") {
-		$names = self::names($token, $server);
+	public static function predocNames($token, $server, $metadataOrModule = [], $cohort = "", $names = []) {
+	    if (empty($names)) {
+            $names = self::names($token, $server);
+        }
 		$predocs = array();
 		$records = self::recordsWithTrainees($token, $server, array(6));
 		if ($cohort) {
@@ -81,7 +83,11 @@ class Download {
 	}
 
 	private static function filterByManualInclusion($records, $token, $server, $metadataOrModule) {
-	    $metadata = self::metadata($token, $server);
+	    if (is_array($metadataOrModule)) {
+            $metadata = $metadataOrModule;
+        } else {
+            $metadata = self::metadata($token, $server);
+        }
 	    $field = "identifier_table_include";
 	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	    if (!in_array($field, $metadataFields)) {
@@ -100,7 +106,7 @@ class Download {
 
     public static function postdocAppointmentNames($token, $server, $metadataOrModule = [], $cohort = "") {
         $names = self::names($token, $server);
-        $postdocTrainees = self::recordsWithTrainees($token, $server, array(7));
+        $postdocTrainees = self::recordsWithTrainees($token, $server, [7]);
         if ($cohort) {
             $cohortConfig = self::getCohortConfig($token, $server, $metadataOrModule, $cohort);
             if ($cohortConfig) {
@@ -128,7 +134,7 @@ class Download {
 
     public static function postdocNames($token, $server, $metadataOrModule = [], $cohort = "") {
 		$names = self::names($token, $server);
-		$predocs = self::predocNames($token, $server);
+		$predocs = self::predocNames($token, $server, $metadataOrModule, $cohort, $names);
 		$postdocs = array();
         if ($cohort) {
             $cohortConfig = self::getCohortConfig($token, $server, $metadataOrModule, $cohort);
@@ -274,7 +280,7 @@ class Download {
     }
 
 	public static function recordsWithTrainees($token, $server, $traineeTypes = [5, 6, 7], $metadata = []) {
-		$redcapData = self::trainingGrants($token, $server, array("record_id", "custom_role"), $traineeTypes, $metadata);
+		$redcapData = self::trainingGrants($token, $server, ["record_id", "custom_role"], $traineeTypes, $metadata);
 		$records = array();
 		foreach ($redcapData as $row) {
 		    $recordId = $row['record_id'];
@@ -401,15 +407,32 @@ class Download {
 	    if (!$server) {
 	        throw new \Exception("No server specified");
         }
-		$pid = Application::getPID($data['token']);
+	    if ($data['content'] == "record") {
+            $pid = Application::getPID($data['token']);
+        } else {
+	        # no need to check for pid because won't use REDCap::getData
+            # this was causing an issue with install.php
+	        $pid = FALSE;
+        }
         $error = "";
-		if ($pid && isset($_GET['pid']) && ($pid == $_GET['pid']) && ($data['content'] == "record") && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
-			// Application::log("sendToServer: ".$pid." ".$data['token']." REDCap::getData");
-            $records = isset($data['records']) ? $data['records'] : NULL;
-            $fields = isset($data['fields']) ? $data['fields'] : NULL;
+		if ($pid && isset($_GET['pid']) && ($pid == $_GET['pid']) && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
+            $records = $data['records'] ?? NULL;
+            $fields = $data['fields'] ?? NULL;
+            if (isset($_GET['test'])) {
+                $numFields = $fields ? count($fields) : 0;
+                $numRecords = $records ? count($records) : 0;
+                if (($numFields > 0) && ($numFields <= 5)) {
+                    $numFields = json_encode($fields);
+                }
+                Application::log("sendToServer: ".$pid." REDCap::getData $numFields fields $numRecords records", $pid);
+            }
 		    $output = \REDCap::getData($pid, "json", $records, $fields);
-		    $resp = "getData";
+            $resp = "getData";
+            if (isset($_GET['test'])) {
+                Application::log("sendToServer: ".$pid." REDCap::getData done", $pid);
+            }
 		} else {
+		    $time1 = microtime();
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_URL, $server);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -427,6 +450,10 @@ class Download {
             $error = curl_error($ch);
             curl_close($ch);
             self::throttleIfNecessary($pid);
+            $time2 = microtime();
+            if (isset($_GET['test'])) {
+                Application::log("sendToServer: API in ".($time2 - $time1)." seconds");
+            }
 		}
 		if (!$output) {
             Application::log("Retrying because no output");
@@ -674,24 +701,53 @@ class Download {
         return $institutions;
     }
 
+    public static function arraysOfFields($token, $server, $fields) {
+	    if (count($fields) === 0) {
+	        throw new \Exception("Array of Fields is empty");
+        }
+	    $newFields = array_merge(["record_id"], $fields);
+        $data = [
+            'token' => $token,
+            'content' => 'record',
+            'format' => 'json',
+            'type' => 'flat',
+            'rawOrLabel' => 'raw',
+            'fields' => $newFields,
+            'rawOrLabelHeaders' => 'raw',
+            'exportCheckboxLabel' => 'false',
+            'exportSurveyFields' => 'false',
+            'exportDataAccessGroups' => 'false',
+            'returnFormat' => 'json'
+        ];
+        $redcapData = self::sendToServer($server, $data);
+        $ary = [];
+        foreach ($fields as $field) {
+            $ary[$field] = [];
+            foreach ($redcapData as $row) {
+                $ary[$field][$row['record_id']] = $row[$field] ?? "";
+            }
+        }
+        return $ary;
+    }
+
 	public static function oneField($token, $server, $field) {
-		$data = array(
+		$data = [
 			'token' => $token,
 			'content' => 'record',
 			'format' => 'json',
 			'type' => 'flat',
 			'rawOrLabel' => 'raw',
-			'fields' => array("record_id", $field),
+			'fields' => ["record_id", $field],
 			'rawOrLabelHeaders' => 'raw',
 			'exportCheckboxLabel' => 'false',
 			'exportSurveyFields' => 'false',
 			'exportDataAccessGroups' => 'false',
 			'returnFormat' => 'json'
-		);
+		];
 		$redcapData = self::sendToServer($server, $data);
-		$ary = array();
+		$ary = [];
 		foreach ($redcapData as $row) {
-			$ary[$row['record_id']] = $row[$field];
+			$ary[$row['record_id']] = $row[$field] ?? "";
 		}
 		return $ary;
 	}

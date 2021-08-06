@@ -51,7 +51,7 @@ echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
 $searchIfLeft = TRUE;
 
 if (isset($_POST['average']) || isset($_POST['list'])) {
-    $myFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_institution", "identifier_left_date");
+    $myFields = ["record_id", "identifier_last_name", "identifier_first_name", "identifier_email", "identifier_institution", "identifier_left_date"];
 	$redcapData = Download::getFilteredREDCapData($token, $server, array_unique(array_merge(Application::$summaryFields, $myFields)), $cohort, CareerDev::getPluginModule());
 
 	if (isset($_POST['average'])) {
@@ -89,6 +89,9 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 		echo "<li class='k2r'>Omit anyone with a K99/R00</li>";
 		if ($searchIfLeft) {
             echo "<li class='k2r'>Omit anyone who has left ".INSTITUTION." who has not converted and who did not fill out an Initial Survey</li>";
+            if (Application::isVanderbilt()) {
+                echo "<li class='k2r'>Omit anyone who does not have a <strong>vanderbilt.edu</strong> or <strong>vumc.org</strong> email address who has not converted</li>";
+            }
         }
 		if ($kLength) {
 			echo "<li class='k2r'>Omit anyone with a CDA of the given type that is less than $kLength years old</li>";

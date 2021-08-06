@@ -26,11 +26,12 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         }
 	} else if ($token && $server) {
         $has = checkMetadataForFields($token, $server);
-        $pid = CareerDev::getPid();
+        $pid = CareerDev::getPid($token);
 
         $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday");
         if ($has['nih_reporter']) {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday");
+            $manager->addCron("drivers/deleteScripts.php", "deleteExPORTERNotice", "Monday");
         } else {
             $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
         }
@@ -43,6 +44,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         if (!Application::isLocalhost()) {
             if ($has['coeus']) {
                 $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", "Wednesday");
+                $manager->addCron("drivers/deleteScripts.php", "deleteCoeus2Notice", "Wednesday");
             } else if ($has['coeus2']) {
                 $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday");
             }
@@ -52,18 +54,20 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         }
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
         $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
+        if (!Application::getSetting("fixedPMCs", $pid)) {
+            $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"));
+            Application::saveSetting("fixedPMCs", TRUE, $pid);
+        }
+        if (Application::isVanderbilt() && !Application::getSetting("initializedLexTranslator", $pid)) {
+            $manager->addCron("drivers/initializeLexicalTranslator.php", "initialize", date("Y-m-d"));
+            Application::saveSetting("initializedLexTranslator", TRUE, $pid);
+        }
 
         # limited group because bibliometric updates take a lot of time due to rate limiters
 		$bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
 		if (!empty($bibliometricRecordsToUpdate)) {
             $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
         }
-		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday");
-		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday");
-		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday");
-		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday");
-		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday");
-		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday");
         $manager->addCron("drivers/12_reportStats.php", "reportStats", "Saturday");
         if (Application::isVanderbilt() && !Application::isLocalhost()) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Wednesday");
@@ -77,6 +81,13 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 
         $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Saturday");
         $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "2021-04-30");
+
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday");
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday");
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday");
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday");
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday");
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday");
 	}
 }
 
@@ -90,10 +101,13 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 
 	$date = date("Y-m-d");
 
-	$records = [];
-
 	if ($token && $server) {
 		$has = checkMetadataForFields($token, $server);
+		$records = Download::recordIds($token, $server);
+
+		# summarize institutions first
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records);
+
 		if ($has['vfrs']) {
 			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records);
 		}
@@ -125,6 +139,7 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
             $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", $date, $records);
         }
 		$manager->addCron("publications/getAllPubs_func.php", "getPubs", $date, $records);
+        $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", $date, $records);
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records);
 
 		# last because may not have setup. Will fail last

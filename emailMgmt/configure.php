@@ -318,7 +318,7 @@ $(document).ready(function() {
 			$testStyle = " display: none;";
 		}
 		echo "<div style='margin-top: 50px;' id='status' class='blue padded'>\n";
-		if (isset($currSetting['enabled'])) {
+		if (isset($currSetting['enabled']) && $currSetting['enabled']) {
 			echo "<h2 class='blue'>Current Status: Activated</h2>\n";
 			echo "<p class='centered'><button onclick='disableEmailSetting(); return true;'>Modify Email</button></p>\n";   // button should resubmit entire page
 			$stageText = "Update &amp; Re-Stage to Test";

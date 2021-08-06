@@ -806,7 +806,7 @@ class CustomGrantFactory extends GrantFactory {
         $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=custom_grant&instance={$row['redcap_repeat_instance']}";
 		$awardNo = self::cleanAwardNo($row['custom_number']);
 		$directCosts = $row['custom_costs'];
-		if (REDCapManagement::hasValue($row['custom_costs_total'])) {
+		if (isset($row['custom_costs_total']) && $row['custom_costs_total']) {
 		    $totalCosts = $row['custom_costs_total'];
 		    if (!$directCosts) {
 		        $directCosts = Grants::directCostsFromTotal($totalCosts, $awardNo, $row['custom_start']);

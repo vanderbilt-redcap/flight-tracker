@@ -141,6 +141,15 @@ function isConverted($row, $kLength, $orderK, $kType, $searchIfLeft) {
             // echo "D ".$row['record_id']." ".$row['identifier_first_name']." ".$row['identifier_last_name']."<br>";
             return false;
         }
+        $hasNonVanderbiltEmail = isset($row['identifier_email']) && $row['identifier_email'] &&
+            !preg_match("/vanderbilt\.edu/i", $row['identifier_email']) &&
+            !preg_match("/vumc\.org/i", $row['identifier_email']);
+        if (Application::isVanderbilt() && $searchIfLeft && $hasNonVanderbiltEmail) {
+            # lost to follow up because has non-Vanderbilt email
+            # will not implement for other domains because we don't know their setups
+            # for other domains, rely on identifier_left_date
+            return false;
+        }
         # no R and no reason to throw out => not converted
         return "denom";
     }

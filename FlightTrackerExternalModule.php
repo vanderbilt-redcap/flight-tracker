@@ -14,6 +14,7 @@ use Vanderbilt\CareerDevLibrary\NameMatcher;
 use Vanderbilt\CareerDevLibrary\Upload;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
+require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/cronLoad.php");
 require_once(APP_PATH_DOCROOT."Classes/System.php");
 
@@ -31,10 +32,32 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$this->setProjectSetting("run_tonight", TRUE);
 	}
 
+	function batch() {
+        $this->setupApplication();
+        $activePids = $this->framework->getProjectsWithModuleEnabled();
+        foreach ($activePids as $pid) {
+            # note return at end of successful run because only need to run once
+            $token = $this->getProjectSetting("token", $pid);
+            $server = $this->getProjectSetting("server", $pid);
+            $adminEmail = $this->getProjectSetting("admin_email", $pid);
+            if ($token && $server) {
+                try {
+                    CronManager::sendEmails($activePids, $this);
+                    $mgr = new CronManager($token, $server, $pid, $this);
+                    $mgr->runBatchJobs();
+                } catch (\Exception $e) {
+                    # should only happen in rarest of circumstances
+                    $mssg = $e->getMessage()."<br><br>".$e->getTraceAsString();
+                    \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Batch Job Exception", $mssg);
+                }
+                return;
+            }
+        }
+    }
+
 	function emails() {
 	    $this->setupApplication();
-        $pids = $this->framework->getProjectsWithModuleEnabled();
-        $activePids = REDCapManagement::getActiveProjects($pids);
+        $activePids = $this->framework->getProjectsWithModuleEnabled();
         // CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		foreach ($activePids as $pid) {
 			if (REDCapManagement::isActiveProject($pid)) {
@@ -49,7 +72,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         loadTestingCrons($mgr);
                         $mgr->run($adminEmail, $tokenName);
                     }
-
                     try {
                         $mgr = new EmailManager($token, $server, $pid, $this);
                         $mgr->sendRelevantEmails();
@@ -60,15 +82,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     }
                 }
 			}
-		}
-        try {
-            CronManager::sendEmails($activePids, $this);
-            $mgr = new CronManager($token, $server, $pid, $this);
-            $mgr->runBatchJobs();
-        } catch (\Exception $e) {
-            # should only happen in rarest of circumstances
-            $mssg = $e->getMessage()."<br><br>".$e->getTraceAsString();
-            \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Batch Job Exception", $mssg);
 		}
 	}
 
@@ -590,16 +603,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         \System::increaseMaxExecTime(28800);   // 8 hours
 
 		$this->setupApplication();
-        $pids = $this->framework->getProjectsWithModuleEnabled();
+        $activePids = $this->framework->getProjectsWithModuleEnabled();
 		CareerDev::log($this->getName()." running for pids ".json_encode($pids));
-		$activePids = REDCapManagement::getActiveProjects($pids);
 		$pidsUpdated = [];
         CareerDev::log("Checking for redcaptest in ".SERVER_NAME);
         if (preg_match("/redcaptest.vanderbilt.edu/", SERVER_NAME)) {
             CareerDev::log("Sharing because redcaptest");
             $pidsUpdated = $this->shareDataInternally($activePids);
-        } else if (date("N") == "6") {
-            # only on Saturdays
+        } else if ((date("N") == "6") || $this->hasProjectToRunTonight($activePids)) {
+            # only on Saturdays or when data update is requested
             try {
                 $pidsUpdated = $this->shareDataInternally($activePids);
             } catch (\Exception $e) {
@@ -617,7 +629,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $tokenName = $this->getProjectSetting("tokenName", $pid);
             $adminEmail = $this->getProjectSetting("admin_email", $pid);
             $turnOffSet = $this->getProjectSetting("turn_off", $pid);
-            $GLOBALS['namesForMatch'] = array();
+            $GLOBALS['namesForMatch'] = [];
             CareerDev::setPid($pid);
             CareerDev::log("Using $tokenName $adminEmail", $pid);
             if ($token && $server && !$turnOffSet) {
@@ -653,6 +665,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             }
         }
 	}
+
+	function hasProjectToRunTonight($pids) {
+	    foreach ($pids as $pid) {
+            if ($this->getProjectSetting("run_tonight", $pid)) {
+                return TRUE;
+            }
+        }
+	    return FALSE;
+    }
 
 	function setupApplication() {
 		CareerDev::$passedModule = $this;
@@ -932,7 +953,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	public function canRedirectToInstall() {
-		$bool = !self::isAJAXPage() && !self::isAPITokenPage() && !self::isUserRightsPage() && !self::isExternalModulePage() && ($_GET['page'] != "install");
+		$bool = !self::isAJAXPage() && !self::isAPITokenPage() && !self::isUserRightsPage() && !self::isExternalModulePage() && (!isset($_GET['page']) || ($_GET['page'] != "install"));
 		if ($_GET['pid']) {
 			# project context
 			$bool = $bool && self::hasAppropriateRights(USERID, $_GET['pid']);

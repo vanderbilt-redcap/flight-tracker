@@ -9,7 +9,7 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Grants {
-	public function __construct($token, $server, $metadata = array()) {
+	public function __construct($token, $server, $metadata = []) {
 		$this->token = $token;
 		$this->server = $server;
 		if (empty($metadata)) {
@@ -1440,7 +1440,7 @@ class Grants {
 		$kTypes = array(1, 2, 3, 4);
 		$lastK = FALSE;
 		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
-			if (REDCapManagement::hasValue($row['summary_award_type_'.$i]) && in_array($row['summary_award_type_'.$i], $kTypes)) {
+			if (isset($row['summary_award_type_'.$i]) && in_array($row['summary_award_type_'.$i], $kTypes)) {
 				$lastK = $row['summary_award_type_'.$i];
 			}
 		}

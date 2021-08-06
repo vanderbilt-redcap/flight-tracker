@@ -179,17 +179,9 @@ class CronManager {
     }
 
     private static function saveBatchQueueToDB($batchQueue, $module) {
-	    $summaryQueue = [];
 	    $newBatchQueue = [];
 	    for ($i = 0; $i < count($batchQueue); $i++) {
-	        if ($batchQueue[$i]['method'] == "makeSummary") {
-	            $summaryQueue[] = $batchQueue[$i];
-            } else {
-	            $newBatchQueue[] = $batchQueue[$i];
-            }
-        }
-	    for ($i = 0; $i < count($summaryQueue); $i++) {
-	        $newBatchQueue[] = $summaryQueue[$i];
+	        $newBatchQueue[] = $batchQueue[$i];
         }
 	    $module->setSystemSetting(self::$batchSetting, $newBatchQueue);
     }
@@ -227,6 +219,20 @@ class CronManager {
 	    self::saveRunResultsToDB($runJobs, $module);
     }
 
+    public static function upgradeBatchQueueIfNecessary(&$batchQueue, $module) {
+	    $madeChanges = FALSE;
+	    $currentVersion = $module->getSystemSetting("version");
+        for ($i = 0; $i < count($batchQueue); $i++) {
+            if (isset($batchQueue[$i]['file']) && !preg_match("/$currentVersion/", $batchQueue[$i]['file'])) {
+                $batchQueue[$i]['file'] = preg_replace("/_v\d+\.\d+\.\d+\//", "_$currentVersion/", $batchQueue[$i]['file']);
+                $madeChanges = TRUE;
+            }
+        }
+        if ($madeChanges) {
+            self::saveBatchQueueToDB($batchQueue, $module);
+        }
+    }
+
     public function runBatchJobs() {
 	    $module = $this->module;
 	    $validBatchStatuses = ["DONE", "ERROR", "RUN", "WAIT"];
@@ -235,6 +241,7 @@ class CronManager {
         if (empty($batchQueue)) {
             return;
         }
+        self::upgradeBatchQueueIfNecessary($batchQueue, $module);
         if ((count($batchQueue) == 1) && in_array($batchQueue[0]['status'], ["ERROR", "DONE"])) {
             self::saveBatchQueueToDB([], $module);
             return;
@@ -505,23 +512,13 @@ class CronManager {
 		Application::log("Looking in ".$this->getNumberOfCrons()." cron jobs");
 		$run = [];
 		$toRun = [];
-        $makeSummaryCronJob = FALSE;
 		foreach ($keys as $key) {
 		    if (isset($this->crons[$key])) {
 				foreach ($this->crons[$key] as $cronjob) {
-				    if ($cronjob->getMethod() == "makeSummary") {
-				        # set as last
-				        $makeSummaryCronJob = $cronjob;
-                    } else {
-                        $toRun[] = $cronjob;
-                    }
+				    $toRun[] = $cronjob;
 				}
 			}
 		}
-		if ($makeSummaryCronJob !== FALSE) {
-		    # set as last
-		    $toRun[] = $makeSummaryCronJob;
-        }
 
 		register_shutdown_function([$this, "reportCronErrors"]);
 
