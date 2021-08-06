@@ -132,7 +132,7 @@ class CronManager {
     }
 
     private static function getNumberOfRecordsForMethod($method) {
-        if (in_array($method, ["updateBibliometrics", "getPubs"])) {
+        if (in_array($method, ["updateBibliometrics", "getPubs", "updatePMCs"])) {
             return 10;
         } else if (in_array($method, ["makeSummary", "updateNIHRePORTER"])) {
             return 20;
