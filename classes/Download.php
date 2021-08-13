@@ -428,8 +428,9 @@ class Download {
             }
 		    $output = \REDCap::getData($pid, "json", $records, $fields);
             $resp = "getData";
+            $redcapData = json_decode($output, true);
             if (isset($_GET['test'])) {
-                Application::log("sendToServer: ".$pid." REDCap::getData done", $pid);
+                Application::log("sendToServer: ".$pid." REDCap::getData done with ".count($redcapData)." rows", $pid);
             }
 		} else {
 		    $time1 = microtime();
@@ -446,13 +447,14 @@ class Download {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 			$output = curl_exec($ch);
+            $redcapData = json_decode($output, true);
             $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $error = curl_error($ch);
             curl_close($ch);
             self::throttleIfNecessary($pid);
             $time2 = microtime();
             if (isset($_GET['test'])) {
-                Application::log("sendToServer: API in ".($time2 - $time1)." seconds");
+                Application::log("sendToServer: API in ".($time2 - $time1)." seconds with ".count($redcapData)." rows");
             }
 		}
 		if (!$output) {
@@ -468,24 +470,19 @@ class Download {
             }
             return $redcapData;
         }
-		if (REDCapManagement::isJSON($output)) {
-            $redcapData = json_decode($output, true);
-            if ($redcapData === NULL) {
-                Application::log("Retrying because undecipherable output");
-                usleep(500);
-                $redcapData = self::sendToServer($server, $data, $try + 1);
-                if (($redcapData === NULL) && ($try == $maxTries)) {
-                    Application::log("ERROR: ".$output);
-                    throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
-                }
+        if ($redcapData === NULL) {
+            Application::log("Retrying because undecipherable output");
+            usleep(500);
+            $redcapData = self::sendToServer($server, $data, $try + 1);
+            if (($redcapData === NULL) && ($try == $maxTries)) {
+                Application::log("ERROR: ".$output);
+                throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
             }
-            if (isset($redcapData['error']) && !empty($redcapData['error'])) {
-                throw new \Exception("Download Exception: ".$redcapData['error']);
-            }
-            return $redcapData;
-        } else {
-            return $output;
         }
+        if (isset($redcapData['error']) && !empty($redcapData['error'])) {
+            throw new \Exception("Download Exception: ".$redcapData['error']);
+        }
+        return $redcapData;
 	}
 
 	public static function userid($token, $server) {

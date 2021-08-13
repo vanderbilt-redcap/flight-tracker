@@ -9,7 +9,7 @@ spl_autoload_register(function ($class_name) {
     $classNameWithoutNamespace = array_pop($parts);
     $path =  "$classNameWithoutNamespace.php";
 
-    if(in_array($class_name, ['Application'])){
+    if(in_array($class_name, ['Application', 'CareerDev'])){
         $path = "../$path";
     }
 

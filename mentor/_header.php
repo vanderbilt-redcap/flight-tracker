@@ -3,6 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
+require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/../classes/Autoload.php";
 require_once dirname(__FILE__)."/../CareerDev.php";
 

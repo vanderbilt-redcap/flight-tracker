@@ -952,29 +952,38 @@ function isFAQ() {
 # returns false if ineligible
 # else returns index (1-15) of summary award
 function findEligibleAward($row) {
+    if (isset($_GET['test'])) {
+        echo "findEligibleAward with ".$row['record_id']."<br>";
+    }
 	if ($row['redcap_repeat_instance'] !== "") {
 		return false;
 	}
 
 	$rs = array(5, 6);
 	$hasR = false;
-	for ($i = 1; $i <= 15; $i++) {
+	for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 		if (in_array($row['summary_award_type_'.$i], $rs)) {
 			$hasR = true;
 		}
 	}
 	if ($hasR) {
+	    if (isset($_GET['test'])) {
+	        echo $row['record_id']." has R<br>";
+        }
 		return false;
 	}
 
 	$extKs = array(3, 4);
-	for ($i = 1; $i <= 15; $i++) {
+	for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 		if (in_array($row['summary_award_type_'.$i], $extKs)) {
 			$diff = Grants::datediff(date("Y-m-d"), $row['summary_award_date_'.$i], "y");
-			$intendedYearSpan = 5;
+			$intendedYearSpan = Application::getIndividualKLength();
 			if ($row['summary_award_end_date_'.$i]) {
 				$intendedYearSpan = Grants::datediff($row['summary_award_end_date_'.$i], $row['summary_award_date_'.$i], "y");
 			}
+            if (isset($_GET['test'])) {
+                echo $row['record_id']." comparing $diff and $intendedYearSpan for $i<br>";
+            }
 			if ($diff <= $intendedYearSpan) {
 				return $i;
 			}
@@ -982,19 +991,29 @@ function findEligibleAward($row) {
 	}
 
 	$intKs = array(1, 2);
-	for ($i = 1; $i <= 15; $i++) {
+	for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 		if (in_array($row['summary_award_type_'.$i], $intKs)) {
 			$diff = Grants::datediff(date("Y-m-d"), $row['summary_award_date_'.$i], "y");
-			$intendedYearSpan = 3;
+			if ($row['summary_award_type_'.$i] == 1) {
+                $intendedYearSpan = Application::getInternalKLength();
+            } else if ($row['summary_award_type_'.$i] == 2) {
+			    $intendedYearSpan = Application::getK12KL2Length();
+            }
 			if ($row['summary_award_end_date_'.$i]) {
 				$intendedYearSpan = Grants::datediff($row['summary_award_end_date_'.$i], $row['summary_award_date_'.$i], "y");
 			}
+            if (isset($_GET['test'])) {
+                echo $row['record_id']." comparing $diff and $intendedYearSpan for $i<br>";
+            }
 			if ($diff <= $intendedYearSpan) {
 				return $i;
 			}
 		}
 	}
 
+	if (isset($_GET['test'])) {
+        echo $row['record_id']." returning FALSE<br>";
+    }
 	return false;
 }
 

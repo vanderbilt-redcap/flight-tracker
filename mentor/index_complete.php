@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\LDAP;
 use \Vanderbilt\CareerDevLibrary\LdapLookup;
 
+require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/base.php";
 require_once dirname(__FILE__)."/../CareerDev.php";

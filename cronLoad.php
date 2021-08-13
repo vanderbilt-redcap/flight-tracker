@@ -27,39 +27,40 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 	} else if ($token && $server) {
         $has = checkMetadataForFields($token, $server);
         $pid = CareerDev::getPid($token);
+        $records = Download::recordIds($token, $server);
 
-        $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday");
+        $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
         if ($has['nih_reporter']) {
-            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday");
-            $manager->addCron("drivers/deleteScripts.php", "deleteExPORTERNotice", "Monday");
+            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 40);
+            $manager->addCron("drivers/deleteScripts.php", "deleteExPORTERNotice", "Monday", $records, 10000);
         } else {
-            $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday");
+            $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday", $records, 20);
         }
         if ($has['news']) {
-            $manager->addCron("news/getNewsItems_func.php", "getNewsItems", "Friday");
+            $manager->addCron("news/getNewsItems_func.php", "getNewsItems", "Friday", $records, 100);
         }
         if ($has['ldap']) {
-            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Wednesday");
+            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Wednesday", $records, 10000);
         }
         if (!Application::isLocalhost()) {
             if ($has['coeus']) {
-                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", "Wednesday");
-                $manager->addCron("drivers/deleteScripts.php", "deleteCoeus2Notice", "Wednesday");
+                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", "Wednesday", $records, 100);
+                $manager->addCron("drivers/deleteScripts.php", "deleteCoeus2Notice", "Wednesday", $records, 10000);
             } else if ($has['coeus2']) {
-                $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday");
+                $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
             }
             if ($has['coeus_submissions']) {
-                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday");
+                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $records, 100);
             }
         }
-        $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday");
-        $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday");
+        $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday", $records, 40);
+        $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday", $records, 10);
         if (!Application::getSetting("fixedPMCs", $pid)) {
-            $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"));
+            $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"), $records, 10);
             Application::saveSetting("fixedPMCs", TRUE, $pid);
         }
         if (Application::isVanderbilt() && !Application::getSetting("initializedLexTranslator", $pid)) {
-            $manager->addCron("drivers/initializeLexicalTranslator.php", "initialize", date("Y-m-d"));
+            $manager->addCron("drivers/initializeLexicalTranslator.php", "initialize", date("Y-m-d"), $records, 10);
             Application::saveSetting("initializedLexTranslator", TRUE, $pid);
         }
 
@@ -70,24 +71,23 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         }
         $manager->addCron("drivers/12_reportStats.php", "reportStats", "Saturday");
         if (Application::isVanderbilt() && !Application::isLocalhost()) {
-            $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Wednesday");
+            $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Wednesday", $records, 500);
         }
 		if ($has['vfrs']) {
-			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday");
+			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $records, 40);
 		}
         if ($has['patent']) {
-            $manager->addCron("drivers/18_getPatents.php", "getPatents", "Tuesday");
+            $manager->addCron("drivers/18_getPatents.php", "getPatents", "Tuesday", $records, 100);
         }
 
-        $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Saturday");
-        $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "2021-04-30");
+        $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Saturday", $records, 100000);
 
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday");
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday");
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday");
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday");
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday");
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday");
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday", $records, 20);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $records, 20);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday", $records, 20);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday", $records, 20);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $records, 20);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday", $records, 20);
 	}
 }
 

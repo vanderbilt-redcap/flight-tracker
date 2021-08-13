@@ -95,8 +95,8 @@ function getPubs($token, $server, $pid, $records) {
             $pubmedMatches = Publications::downloadPMIDs(array_values($pmidsByInstance));
             $i = 0;
             foreach ($pmidsByInstance as $instance => $pmid) {
-                $pubmedMatch = $pubmedMatches[$i];
-                if ($pubmedMatch) {
+                if (isset($pubmedMatches[$i]) && $pubmedMatches[$i]) {
+                    $pubmedMatch = $pubmedMatches[$i];
                     $abstract = $pubmedMatch->getVariable("Abstract");
                     if ($abstract) {
                         $uploadRow = [

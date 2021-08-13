@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.7.1";
+		return "3.7.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -283,8 +283,8 @@ class CareerDev {
 		return "<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'><img src='".self::link("img/flight_tracker_logo_medium.png")."' alt='Flight Tracker for Scholars'></a>";
 	}
 
-	public static function link($relativeUrl) {
-		return self::getLink($relativeUrl);
+	public static function link($relativeUrl, $pid = "", $withWebroot = FALSE) {
+		return self::getLink($relativeUrl, $pid, $withWebroot);
 	}
 
 	public static function getCities() {
@@ -314,7 +314,7 @@ class CareerDev {
 		return NULL;
 	}
 
-	public static function getLink($relativeUrl) {
+	public static function getLink($relativeUrl, $pid = "", $withWebroot = FALSE) {
 	    if ($relativeUrl == "this") {
             $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
             $fullURL = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];

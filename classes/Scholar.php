@@ -1662,6 +1662,7 @@ return $result;
             "followup_primary_mentor_userid" => "followup",
             "check_primary_mentor_userid" => "scholars",
             "init_import_primary_mentor_userid" => "manual",
+            "vfrs_mentor1_vunet" => "vfrs",
         );
         $orders["summary_mentor"] = array(
             "override_mentor" => "manual",
@@ -1669,6 +1670,7 @@ return $result;
             "followup_primary_mentor" => "followup",
             "check_primary_mentor" => "scholars",
             "init_import_primary_mentor" => "manual",
+            "vfrs_mentor1" => "vfrs",
         );
         $orders["summary_disability"] = array(
             "check_disability" => "scholars",
@@ -2307,19 +2309,7 @@ return $result;
 					$date = "";
 					if (count($splitVar) > 1) {
 						# YYYY-mm-dd
-						$varValues = array();
-						foreach ($splitVar as $v) {
-							array_push($varValues, $row[$v]);
-						}
-						if (count($varValues) == 3) {
-							$date = implode("-", $varValues);
-						} else if (count($varValues) == 2) {
-							# YYYY-mm
-							$startDay = "01";
-							$date = implode("-", $varValues)."-".$startDay;
-						} else {
-							throw new \Exception("Cannot interpret split variables: ".json_encode($varValues));
-						}
+                        $date = self::transformSplitDatesToYMD($splitVar, $row);
 					} else {
 						$dateField = self::getDateFieldForSource($source, $var);
 						if ($dateField && $row[$dateField]) {
@@ -2364,9 +2354,14 @@ return $result;
 								$aryInstance = $row['redcap_repeat_instance'];
 							}
 						} else {
-							$result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
-							$result->setField($var);
-							return $result;
+						    if (count($splitVar) > 1) {
+                                $date = self::transformSplitDatesToYMD($splitVar, $row);
+                                $result = new Result($date, $source, "", $date, $pid);
+                            } else {
+                                $result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
+                                $result->setField($var);
+                            }
+                            return $result;
 						}
 					}
 				}
@@ -2386,6 +2381,27 @@ return $result;
         }
 		return new Result("", "");
 	}
+
+	private static function transformSplitDatesToYMD($splitVar, $row) {
+        $varValues = [];
+        foreach ($splitVar as $v) {
+            array_push($varValues, $row[$v]);
+        }
+        if (count($varValues) == 3) {
+            return implode("-", $varValues);
+        } else if (count($varValues) == 2) {
+            $startDay = "01";
+            if ($varValues[0] > 1900) {
+                # YYYY-mm => YMD
+                return implode("-", $varValues)."-".$startDay;
+            } else {
+                # mm-YYYY => YMD
+                return $varValues[1]."-".$varValues[0]."-".$startDay;
+            }
+        } else {
+            throw new \Exception("Cannot interpret split variables: ".json_encode($varValues));
+        }
+    }
 
 	private static function transformIfDate($value) {
 		if (preg_match("/^(\d+)[\/\-](\d\d\d\d)$/", $value, $matches)) {

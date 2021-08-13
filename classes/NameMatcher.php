@@ -28,7 +28,7 @@ class NameMatcher {
         $lastName = strtolower($lastName);
         foreach (self::$namesForMatch as $row) {
             $sLast = strtolower($row['identifier_last_name']);
-            if (preg_match("/".$sLast."/", $lastName) || preg_match("/".$lastName."/", $sLast)) {
+            if (preg_match("/".preg_quote($sLast, "/")."/", $lastName) || preg_match("/".preg_quote($lastName, "/")."/", $sLast)) {
                 $names[$row['record_id']] = $row['identifier_first_name']." ".$row['identifier_last_name'];
             }
         }
@@ -116,12 +116,12 @@ class NameMatcher {
             $n1 = $pair[0];
             $n2 = $pair[1];
             if (!self::isShortName($n1)) {
-                if (preg_match("/".$n1."/i", $n2)) {
+                if (preg_match("/".preg_quote($n1, "/")."/i", $n2)) {
                     return TRUE;
                 }
             }
             if (!self::isShortName($n2)) {
-                if (preg_match("/".$n2."/i", $n1)) {
+                if (preg_match("/".preg_quote($n2, "/")."/i", $n1)) {
                     return TRUE;
                 }
             }

@@ -7,7 +7,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 
 use \Vanderbilt\CareerDevLibrary\LDAP;
 
-require_once dirname(__FILE__)."/debug.php";
+require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/base.php";
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/../classes/Autoload.php";
@@ -24,7 +24,7 @@ if (isset($_GET['test'])) {
     echo "GET: ".$_GET['uid']."<br>";
 }
 
-$menteeRecordIds = $module->getRecordsAssociatedWithUserid($username, $token, $server);
+$menteeRecordIds = getRecordsAssociatedWithUserid($username, $token, $server);
 
 if(isset($_REQUEST['uid']) && DEBUG){
     $username = $_REQUEST['uid'];

@@ -224,7 +224,7 @@ function makeTableFromData($tableRows, $totalCompleted, $blankRow, $token, $serv
             $html .= "<th>$rowHeader</th>";
             $records = [];
             foreach (array_keys($blankRow) as $header) {
-                $html .= "<td style='vertical-align: top; padding-top: 1em;'>".count($items[$header])."</td>";
+                $html .= "<td style='vertical-align: top;'>".count($items[$header])."</td>";
                 $records = array_unique(array_merge($records, $items[$header]));
             }
             $nameList = [];
@@ -250,7 +250,7 @@ function makeDataTableRows($categories, $blankRow, $records, $token, $server, $p
     $engagedField = "identifier_is_engaged";
     $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
     if (in_array($engagedField, $metadataFields)) {
-        $engagedStatus = Download::oneField($token, $server, "identifer_is_engaged");
+        $engagedStatus = Download::oneField($token, $server, $engagedField);
     } else {
         $engagedStatus = [];
     }
@@ -263,10 +263,17 @@ function makeDataTableRows($categories, $blankRow, $records, $token, $server, $p
         $tableRows[$cat]["Non-URP + Not Engaged"] = $blankRow;
     }
 
-    # TODO need only for those completing their training after July 1, 2012
     $earliestThresholdDate = "2012-07-01";
     $predocNames = $nihTables->downloadPredocNames($earliestThresholdDate);
     $postdocNames = $nihTables->downloadPostdocNames("", $earliestThresholdDate);
+    if (isset($_GET['test'])) {
+        echo "eligible records: ".count($records)."<br>".REDCapManagement::json_encode_with_spaces($records)."<br>";
+        echo "eligible predocs: ".count($predocNames)."<br>".REDCapManagement::json_encode_with_spaces($predocNames)."<br>";
+        echo "eligible postdocs: ".count($postdocNames)."<br>".REDCapManagement::json_encode_with_spaces($postdocNames)."<br>";
+        echo "engaged status: <br>".REDCapManagement::json_encode_with_spaces($engagedStatus)."<br>";
+        echo "gender: <br>".REDCapManagement::json_encode_with_spaces($gender)."<br>";
+        echo "urm status: <br>".REDCapManagement::json_encode_with_spaces($urm)."<br>";
+    }
 
     $totalCompleted = ["TL1" => [], "KL2" => []];
 
@@ -293,9 +300,9 @@ function makeDataTableRows($categories, $blankRow, $records, $token, $server, $p
             if ($gender[$recordId] === "") {
                 $genderKey = "";
             } else {
-                $genderKey = $choices[$recordId][$gender[$recordId]];
+                $genderKey = $choices["summary_gender"][$gender[$recordId]];
             }
-            if (!in_array($genderKey, ["Female", "Male"])) {
+            if (!in_array($genderKey, ["Female", "Male", ""])) {
                 $genderKey = "Non-Binary";
             }
         }
@@ -303,11 +310,14 @@ function makeDataTableRows($categories, $blankRow, $records, $token, $server, $p
         if (isset($urm[$recordId]) && ($urm[$recordId] !== "")) {
             if ($urm[$recordId] == 1) {
                 $urmStatus = "URP";
-            } else if ($urm[$recordId] === 0) {
+            } else if (($urm[$recordId] === "0") || ($urm[$recordId] === 0)) {
                 $urmStatus = "Non-URP";
             } else {
                 $urmStatus = "";
             }
+        }
+        if (isset($_GET['test'])) {
+            echo "Record $recordId has URM $urmStatus and gender $genderKey<br>";
         }
         if ($urmStatus) {
             $engagedIdx = $engagedStatus[$recordId];

@@ -176,11 +176,21 @@ class Application {
 		return CareerDev::getModule();
 	}
 
-	public static function link($loc) {
-		return CareerDev::link($loc);
+	public static function link($loc, $pid = "", $withWebroot = FALSE) {
+		return CareerDev::link($loc, $pid, $withWebroot);
 	}
 
-	public static function getAllSettings($pid = "") {
+    public static function isExternalModule() {
+        $module = self::getModule();
+        if (!$module) {
+            return FALSE;
+        }
+        $moduleClassWithNamespaceNodes = explode("\\", get_class($module));
+        $moduleClass = array_pop($moduleClassWithNamespaceNodes);
+        return $moduleClass == "FlightTrackerExternalModule";
+    }
+
+    public static function getAllSettings($pid = "") {
 	    return CareerDev::getAllSettings($pid);
     }
 

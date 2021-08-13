@@ -2,6 +2,7 @@
 
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -15,8 +16,10 @@ foreach ($metadata as $row) {
 		$fields[] = $row['field_name'];
 	}
 }
+$fields[] = "summary_training_start";
+$fields[] = "summary_training_end";
 
-$redcapData = \Vanderbilt\FlightTrackerExternalModule\alphabetizeREDCapData(Download::fields($token, $server, $fields));
+$names = Download::names($token, $server);
 
 ?>
 <style>
@@ -27,16 +30,8 @@ $redcapData = \Vanderbilt\FlightTrackerExternalModule\alphabetizeREDCapData(Down
 <?php
 
 echo "<h1>Current Scholars and Their Mentors</h1>\n";
-$cnt = 1;
 $revAwardTypes = \Vanderbilt\FlightTrackerExternalModule\getReverseAwardTypes();
-$numScholars = 0;
-foreach ($redcapData as $row) {
-	if ($i = \Vanderbilt\FlightTrackerExternalModule\findEligibleAward($row)) {
-		$numScholars++;
-	}
-}
-echo "<h2>$numScholars Scholars</h2>\n";
-echo "<h3>Only for Current Members; Graduated Members are Omitted</h3>\n";
+echo "<p class='centered'>Only for Currently Active Scholars (on a Training Grant)</p>";
 $sources = array(
 		"/^newman_/" => "Newman Data",
 		"/^vfrs_/" => "VFRS",
@@ -52,57 +47,47 @@ $skipRegex = array(
 			); 
 echo "<table style='margin-left: auto; margin-right: auto;'>\n";
 echo "<tr class='even'><th>Record</th><th>Scholar</th><th>Reported Mentor(s)</th><th>Qualifying Award</th></tr>\n";
-foreach ($redcapData as $row) {
-	if ($i = \Vanderbilt\FlightTrackerExternalModule\findEligibleAward($row)) {
-		if ($cnt % 2 == 1) {
-			$rowClass = "odd";
-		} else {
-			$rowClass = "even";
-		}
-		$cnt++;
-		echo "<tr class='$rowClass'>\n";
-		echo "<td class='centered'>".Links::makeRecordHomeLink($pid, $row['record_id'], $row['record_id'])."</td>\n";
-		echo "<td class='centered'>{$row['identifier_first_name']} {$row['identifier_last_name']}</td>";
+$cnt = 1;
+foreach ($names as $recordId => $name) {
+    $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+    foreach ($redcapData as $row) {
+        if (($i = \Vanderbilt\FlightTrackerExternalModule\findEligibleAward($row)) || currentlyInTraining($row)) {
+            if ($cnt % 2 == 1) {
+                $rowClass = "odd";
+            } else {
+                $rowClass = "even";
+            }
+            $cnt++;
+            echo "<tr class='$rowClass'>\n";
+            echo "<td class='centered'>".Links::makeRecordHomeLink($pid, $recordId, "Record ".$recordId)."</td>\n";
+            echo "<td class='centered'>$name</td>";
 
-		$mentors = array();
-
-		foreach ($row as $field => $value) {
-			if (preg_match("/mentor/", $field) && ($value != '')) {
-				$source = "";
-				foreach ($sources as $regex => $sourceName) {
-					if (preg_match($regex, $field)) {
-						$source = $sourceName;
-						break;
-					}
-				}
-				foreach ($skipRegex as $regex) {
-					if (preg_match($regex, $field)) {
-						$source = "";
-						break;
-					}
-				}
-				if ($source) {
-					if (!isset($mentors[$value])) {
-						$mentors[$value] = array();
-					}
-					if (!in_array($source, $mentors[$value])) {
-						array_push($mentors[$value], $source);
-					}
-				} else {
-					array_push($mentors[$value], $field);
-				}
-			}
-		}
-		echo "<td class='centered'>\n";
-		foreach ($mentors as $name => $dataSources) {
-			if (!empty($dataSources)) {
-				echo "<p class='halfMargin'>$name<br><span class='small centered'>".implode("<br>", $dataSources)."</span></p>\n";
-			}
-		}
-		echo "</td>\n";
-		echo "<td class='small centered'>{$row['summary_award_sponsorno_'.$i]}<br>{$revAwardTypes[$row['summary_award_type_'.$i]]}<br>{$row['summary_award_date_'.$i]}</td>\n";
-		echo "</tr>\n";
-	}
+            $scholar = new Scholar($token, $server, $metadata, $pid);
+            $scholar->setRows($redcapData);
+            $mentors = $scholar->getAllMentors();
+            echo "<td class='centered'>".implode("<br>", $mentors)."</td>";
+            if ($i) {
+                echo "<td class='small centered'>K ($i): {$row['summary_award_sponsorno_'.$i]}<br>{$revAwardTypes[$row['summary_award_type_'.$i]]}<br>{$row['summary_award_date_'.$i]}</td>\n";
+            } else {
+                echo "<td class='small centered'>In Training</td>";
+            }
+            echo "</tr>\n";
+        }
+    }
 }
 echo "</table>\n";
 
+function currentlyInTraining($row) {
+    if ($row['summary_training_start']) {
+        if (!$row['summary_training_end']) {
+            return TRUE;
+        }
+
+        $startTs = strtotime($row['summary_training_start']);
+        $endTs = strtotime($row['summary_training_end']);
+        $currTs = time();
+
+        return (($currTs >= $startTs) && ($currTs <= $endTs));
+    }
+    return FALSE;
+}

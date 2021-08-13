@@ -2068,4 +2068,14 @@ class REDCapManagement {
         }
         return NAN;
     }
+
+    public static function getMedian($ary) {
+        sort($ary);
+        $size = count($ary);
+        if ($size % 2 == 0) {
+            return ($ary[$size / 2 - 1] + $ary[$size / 2]) / 2;
+        } else {
+            return $ary[($size - 1) / 2];
+        }
+    }
 }

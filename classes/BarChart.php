@@ -9,6 +9,7 @@ class BarChart extends Chart {
         $this->cols = $cols;
         $this->labels = $labels;
         $this->id = REDCapManagement::makeHTMLId($id);
+        $this->displayLegend = FALSE;
     }
 
     public function isCategoricalData() {
@@ -19,6 +20,10 @@ class BarChart extends Chart {
             }
         }
         return !$isAllNumeric;
+    }
+
+    public function showLegend($b) {
+        $this->displayLegend = $b;
     }
 
     public function setColor($color) {
@@ -51,6 +56,7 @@ class BarChart extends Chart {
 
     public function getHTML($width, $height) {
         $bars = count($this->cols);
+        $displayLegendText = json_encode($this->displayLegend);
         if (empty($this->labels) || empty($this->cols)) {
             return "";
         }
@@ -89,7 +95,7 @@ var {$this->id}"."_chart = new Chart({$this->id}"."_ctx, {
     },
     options: {
       legend: {
-        display: false,
+        display: $displayLegendText,
       },
       scales: {";
         if (!$this->isCategoricalData()) {
@@ -137,5 +143,6 @@ var {$this->id}"."_chart = new Chart({$this->id}"."_ctx, {
     protected $labels = [];
     protected $color = "#d4d4eb";
     protected $id = "";
+    protected $displayLegend = TRUE;
     protected $additionalDatasets = [];
 }

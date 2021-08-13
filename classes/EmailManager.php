@@ -438,7 +438,7 @@ class EmailManager {
 				"instances" => $newInstances,
 				);
 		$ch = curl_init();
-		$url = Application::link("emailMgmt/makeSurveyLinks.php")."&NOAUTH";
+		$url = Application::link("emailMgmt/makeSurveyLinks.php", $pid, TRUE)."&NOAUTH";
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_VERBOSE, 0);
@@ -526,7 +526,7 @@ class EmailManager {
 		foreach ($recordIds as $recordId) {
 			while (preg_match("/\[survey_link_(.+?)\]/", $mssgs[$recordId], $matches)) {
 				$formName = $matches[1];
-				$surveyLink = FALSE;
+				$surveyLink = "NOT FOUND: ".json_encode($surveyLinks);
 				if ($surveyLinks[$formName] && $surveyLinks[$formName][$recordId]) {
 					$surveyLink = $surveyLinks[$formName][$recordId];
 				}
@@ -773,12 +773,8 @@ class EmailManager {
             $steps["4"] = $queue;
 		}
 		if ($who['max_emails'] || $who['new_records_since']) {
-			foreach ($queue as $recordId) {
-				$createDate = self::findRecordCreateDate($this->pid, $recordId);
-				if ($createDate) {
-					$created[$recordId] = strtotime($createDate);
-				}
-			}
+            $created = self::findRecordCreateDates($this->pid, $queue);
+            # no change in queue
             $steps["5"] = $queue;
 		}
 		if ($who['max_emails']) {
@@ -914,7 +910,7 @@ class EmailManager {
 
 		$newQueue = array();
 		foreach ($queue as $recordId) {
-			$createdTs = $created[$recordId];
+			$createdTs = strtotime($created[$recordId]);
 			if ($createdTs > $sinceTs) {
 				array_push($newQueue, $recordId);
 			}
@@ -1109,38 +1105,72 @@ class EmailManager {
 		}
 	}
 
-	public static function findRecordCreateDate($pid, $record) {
+	public static function findRecordCreateDates($pid, $records) {
+	    $pullSize = 100;
+	    $batchedRecords = [];
+	    for ($i = 0; $i < count($records); $i += $pullSize) {
+	        $batch = [];
+	        for ($j = $i; $j < $i + $pullSize && $j < count($records); $j++) {
+	            $batch[] = db_real_escape_string($records[$j]);
+            }
+	        if (!empty($batch)) {
+                $batchedRecords[] = $batch;
+            }
+        }
+
 		$logEventTable = method_exists('\REDCap', 'getLogEventTable') ? \REDCap::getLogEventTable(pid) : "redcap_log_event";
 		if (!function_exists("db_query")) {
 			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 		}
-		$sql = "SELECT ts FROM $logEventTable WHERE project_id = '".$pid."' AND pk='".db_real_escape_string($record)."' AND event='INSERT' ORDER BY log_event_id";
-		$q = db_query($sql);
-		if ($error = db_error()) {
-			throw new \Exception("ERROR: ".$error);
-		}
-		$allTimestamps = array();
-		while ($row = db_fetch_assoc($q)) {
-			array_push($allTimestamps, $row['ts']);
-		}
-		asort($allTimestamps);
 
-		if (count($allTimestamps) > 0) {
-			$nodes = array();
-			$ts = $allTimestamps[0];
-			$i = 0;
-			$len = 2;
-			while ($i < strlen($ts)) {
-				$sub = substr($ts, $i, $len);
-				array_push($nodes, $sub);
-				$i += $len;
-			}
-			if (count($nodes) >= 7) {
-				$date = $nodes[0].$nodes[1]."-".$nodes[2]."-".$nodes[3]." ".$nodes[4].":".$nodes[5].":".$nodes[6];
-				return $date;
-			}
+        $allTimestamps = [];
+		$createTimestamps = [];
+		foreach ($batchedRecords as $batch) {
+            $sql = "SELECT pk, ts, description FROM $logEventTable WHERE project_id = '".$pid."' AND pk IN ('".implode("','", $batch)."') AND event='INSERT' ORDER BY log_event_id";
+            $q = db_query($sql);
+            if ($error = db_error()) {
+                throw new \Exception("ERROR: ".$error);
+            }
+            while ($row = db_fetch_assoc($q)) {
+                if (!isset($allTimestamps[$row['pk']])) {
+                    $allTimestamps[$row['pk']] = [];
+                }
+                $allTimestamps[$row['pk']][] = $row['ts'];
+
+                if ($row['description'] == "Create record") {
+                    if (!isset($createTimestamps[$row['pk']])) {
+                        $createTimestamps[$row['pk']] = [];
+                    }
+                    $createTimestamps[$row['pk']][] = $row['ts'];
+                }
+            }
+            foreach (array_keys($allTimestamps) as $recordId) {
+                asort($allTimestamps[$recordId]);       // get earliest
+                if (isset($createTimestamps[$recordId])) {
+                    rsort($createTimestamps[$recordId]);   // get latest
+                }
+            }
+        }
+
+        $created = [];
+        foreach (array_keys($allTimestamps) as $recordId) {
+		    if (count($allTimestamps[$recordId]) > 0) {
+                $nodes = [];
+                $ts = isset($createTimestamps[$recordId]) ? $createTimestamps[$recordId][0] : $allTimestamps[$recordId][0];
+                $i = 0;
+                $len = 2;
+                while ($i < strlen($ts)) {
+                    $sub = substr($ts, $i, $len);
+                    $nodes[] = $sub;
+                    $i += $len;
+                }
+                if (count($nodes) >= 7) {
+                    $date = $nodes[0] . $nodes[1] . "-" . $nodes[2] . "-" . $nodes[3] . " " . $nodes[4] . ":" . $nodes[5] . ":" . $nodes[6];
+                    $created[$recordId] = $date;
+                }
+            }
 		}
-		return FALSE;
+		return $created;
 	}
 
 	private static function filterForTeams($field, $values, $redcapData, $queue) {

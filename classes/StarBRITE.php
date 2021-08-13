@@ -94,22 +94,26 @@ class StarBRITE {
     }
 
     static function accessSRI($resourcePath, $getParams, $pid) {
-        include "/app001/credentials/con_redcap_ldap_user.php";
-        $resourcePath = preg_replace("/^\//", "", $resourcePath);
-        $resourcePath = preg_replace("/\/$/", "", $resourcePath);
-        $server = self::getServer();
-        $url = "https://$server/s/sri/api/$resourcePath";
-        $url .= '/' . implode('/', array_map('urlencode', $getParams));
-        $opts = [
-            CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_SSL_VERIFYPEER => 0,
-            CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
-            CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
-            CURLOPT_USERPWD => $ldapuser . ':' . $ldappass,
-            CURLOPT_CUSTOMREQUEST => "GET",
-        ];
-        list($resp, $output) = REDCapManagement::downloadURL($url, $pid, $opts);
-        return json_decode($output, TRUE);
+        $filename = "/app001/credentials/con_redcap_ldap_user.php";
+        if (file_exists($filename)) {
+            include $filename;
+            $resourcePath = preg_replace("/^\//", "", $resourcePath);
+            $resourcePath = preg_replace("/\/$/", "", $resourcePath);
+            $server = self::getServer();
+            $url = "https://$server/s/sri/api/$resourcePath";
+            $url .= '/' . implode('/', array_map('urlencode', $getParams));
+            $opts = [
+                CURLOPT_RETURNTRANSFER => 1,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
+                CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
+                CURLOPT_USERPWD => $ldapuser . ':' . $ldappass,
+                CURLOPT_CUSTOMREQUEST => "GET",
+            ];
+            list($resp, $output) = REDCapManagement::downloadURL($url, $pid, $opts);
+            return json_decode($output, TRUE);
+        }
+        return [];
     }
 
     static function dataForUserid($userid, $pid) {

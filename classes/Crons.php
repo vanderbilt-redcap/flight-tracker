@@ -28,9 +28,16 @@ class CronManager {
 	# file is relative to career_dev's root
 	# dayOfWeek is in string format - "Monday", "Tuesday", etc. or a date in form Y-M-D
     # records here, if specified, overrides the records specified in function run
-	public function addCron($file, $method, $dayOfWeek, $records = []) {
-        if ($this->module) {
-            $this->addCronForBatch($file, $method, $dayOfWeek, $records);
+	public function addCron($file, $method, $dayOfWeek, $records = [], $numRecordsAtATime = FALSE) {
+	    if ($this->module) {
+            if (is_numeric($records)) {
+                $numRecordsAtATime = $records;
+                $records = [];
+            }
+            if (!$numRecordsAtATime) {
+                $numRecordsAtATime = self::getNumberOfRecordsForMethod($method);
+            }
+            $this->addCronForBatch($file, $method, $dayOfWeek, $records, $numRecordsAtATime);
         } else {
             $this->addCronToRunOnce($file, $method, $dayOfWeek, $records);
         }
@@ -86,7 +93,7 @@ class CronManager {
         }
  	}
 
-	private function addCronForBatch($file, $method, $dayOfWeek, $records) {
+	private function addCronForBatch($file, $method, $dayOfWeek, $records, $numRecordsAtATime) {
         if (empty($records)) {
             $records = Download::recordIds($this->token, $this->server);
         }
@@ -108,7 +115,7 @@ class CronManager {
         if (in_array($dayOfWeek, $possibleDays)) {
             # Weekday
             if (date("l") == $dayOfWeek) {
-                $this->enqueueBatch($absFile, $method, $records);
+                $this->enqueueBatch($absFile, $method, $records, $numRecordsAtATime);
                 if ($this->isDebug) {
                     Application::log("Assigned cron for $method on $dayOfWeek");
                 }
@@ -117,7 +124,7 @@ class CronManager {
             # Y-M-D
             $date = date(self::getDateFormat(), $dateTs);
             if ($date == date(self::getDateFormat())) {
-                $this->enqueueBatch($absFile, $method, $records);
+                $this->enqueueBatch($absFile, $method, $records, $numRecordsAtATime);
                 if ($this->isDebug) {
                     Application::log("Assigned cron for $date");
                 }
@@ -140,15 +147,14 @@ class CronManager {
             return 100;
         } else if (in_array($method, ["sendUseridsToCOEUS", "getLDAPs", "updateVFRS"])) {
             return 500;
-        } else if (in_array($method, ["copyAllCohortProjects"])) {
+        } else if (in_array($method, ["copyAllCohortProjects", "initialize"])) {
             return 10000;     // not used => run once
         } else {
             return 40;
         }
     }
 
-	private function enqueueBatch($file, $method, $records) {
-	    $numRecordsAtATime = self::getNumberOfRecordsForMethod($method);
+	private function enqueueBatch($file, $method, $records, $numRecordsAtATime) {
         $batchQueue = self::getBatchQueueFromDB($this->module);
         for ($i = 0; $i < count($records); $i += $numRecordsAtATime) {
             $subRecords = [];

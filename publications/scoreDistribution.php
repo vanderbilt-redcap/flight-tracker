@@ -4,11 +4,12 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\BarChart;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Citation;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
-$numBars = $_GET['numBars'] ?? 10;
+$thresholdRCR = $_GET['thresholdRCR'] ?? 2.0;
 
 $fields = [
     "record_id",
@@ -27,9 +28,48 @@ foreach ($fields as $field) {
         $dist[$field] = [];
         foreach ($redcapData as $row) {
             if ($row[$field]) {
-                $dist[$field][] = $row[$field];
+                $dist[$field][$row['record_id'].":".$row['redcap_repeat_instance']] = $row[$field];
             }
         }
+    }
+}
+
+$recordsToDownload = [];
+$foundList = [];
+foreach ($dist['citation_rcr'] as $location => $rcr) {
+    if ($rcr > $thresholdRCR) {
+        list($recordId, $instance) = preg_split("/:/", $location);
+        if (!in_array($recordId, $recordsToDownload)) {
+            $recordsToDownload[] = $recordId;
+        }
+        $foundList[] = $location;
+    }
+}
+if (!empty($foundList)) {
+    $lastNames = Download::lastnames($token, $server);
+    $firstNames = Download::firstnames($token, $server);
+    $citationFields = Application::getCitationFields($metadata);
+    $citationData = Download::fieldsForRecords($token, $server, $citationFields, $recordsToDownload);
+    $pertinentCitations = [];
+    foreach ($citationData as $row) {
+        $recordId = $row['record_id'];
+        $instance = $row['redcap_repeat_instance'];
+        if (in_array("$recordId:$instance", $foundList)) {
+            $citation = new Citation($token, $server, $recordId, $instance, $row, $metadata, $lastNames[$recordId], $firstNames[$recordId]);
+            $rcr = $row['citation_rcr'];
+            $altmetricScore = $row['citation_altmetric_score'] ? "Altmetric Score: ".$row['citation_altmetric_score']."." : "";
+            if (!isset($pertinentCitations[$rcr])) {
+                $pertinentCitations[$rcr] = [];
+            }
+            $pertinentCitations[$rcr][] = "<p style='text-align: left;'>".$citation->getImage("left").$citation->getCitationWithLink(FALSE, TRUE)." RCR: $rcr. $altmetricScore</p>";
+        }
+    }
+}
+krsort($pertinentCitations);
+$sortedCitations = [];
+foreach ($pertinentCitations as $rcr => $cits) {
+    foreach ($cits as $cit) {
+        $sortedCitations[] = $cit;
     }
 }
 
@@ -38,19 +78,29 @@ $link = Application::link("this");
 $baseLink = REDCapManagement::splitURL($link)[0];
 echo "<form action='$baseLink' method='GET'>";
 echo REDCapManagement::getParametersAsHiddenInputs($link);
-echo "<p class='centered'><label for='numBars'>Number of Bars: </label><input type='number' id='numBars' name='numBars' value='$numBars' style='width: 60px;'><br>";
-echo "<button>Re-Configure</button></p>";
+echo "<p class='centered'>";
+echo "<label for='thresholdRCR'>Threshold Relative Citation Ratio (RCR) for List</label>: <input type='number' id='thresholdRCR' name='thresholdRCR' value='$thresholdRCR' style='width: 100px;'><br>";
+echo "<button>Re-Configure</button>";
+echo "</p>";
 echo "</form>";
 
 $colorWheel = Application::getApplicationColors();
 $i = 0;
 foreach ($dist as $field => $values) {
     $label = $fieldLabels[$field];
-    list($cols, $colLabels) = buildDistribution($values, $numBars);
+    $dataPoints = array_values($values);
+    sort($dataPoints);
+    list($cols, $colLabels) = buildDistribution($dataPoints, $field);
     $colorIdx = $i % count($colorWheel);
     $color = $colorWheel[$colorIdx];
+    $median = REDCapManagement::getMedian($dataPoints);
+    $n = REDCapManagement::pretty(count($dataPoints));
 
     echo "<h2>$label</h2>";
+    echo "<h4>Median: $median (n = $n)</h4>";
+    if (isset($_GET['test'])) {
+        echo REDCapManagement::json_encode_with_spaces($dataPoints)."<br><br>";
+    }
     $barChart = new BarChart($cols, $colLabels, $field);
     if ($i == 0) {
         $jsLocs = $barChart->getJSLocations();
@@ -65,44 +115,50 @@ foreach ($dist as $field => $values) {
     $barChart->setColor($color);
     $barChart->setXAxisLabel($label);
     $barChart->setYAxisLabel("Number of Articles");
+    $barChart->showLegend(FALSE);
     echo "<div class='centered max-width'>".$barChart->getHTML(800, 500)."</div>";
     $i++;
 }
 
-function buildDistribution($values, $numBars) {
+echo "<h2>High-Performing Citations (Above RCR of $thresholdRCR, Count of ".REDCapManagement::pretty(count($sortedCitations)).")</h2>";
+echo "<div class='max-width centered'>".implode("", $sortedCitations)."</div>";
+
+function buildDistribution($values, $field) {
     $low = floor(min($values));
     $high = ceil(max($values));
-    $step = ($high - $low) / $numBars;
-    if ($step > 3) {
-        $step = ceil($step);
-        $usePretty = FALSE;
-    } else if (is_integer($step)) {
-        $usePretty = FALSE;
-    } else {
-        $usePretty = TRUE;
-    }
 
     $cols = [];
     $colLabels = [];
     $i = 0;
-    $numDecimals = 2;
-    for ($start = $low; $start < $high; $start += $step) {
+    $numBars = 8;
+    if ($field == "citation_rcr") {
+        $step = 1;
+        $decimals = ".0";
+    } else if ($field == "citation_altmetric_score") {
+        $step = 15;
+        $decimals = "";
+    } else {
+        throw new \Exception("Invalid field $field");
+    }
+    $singlePointEnd = $numBars * $step;
+    for ($start = 0; $start < $singlePointEnd; $start += $step) {
         $end = $start + $step;
 
         $cols[$i] = 0;
-        if ($high == $end) {
-            $trailingFigure = "]";
-        } else {
-            $trailingFigure = ")";
-        }
-        if ($usePretty) {
-            $colLabels[$i] = "[".REDCapManagement::pretty($start, $numDecimals).", ".REDCapManagement::pretty($end, $numDecimals).$trailingFigure;
-        } else {
-            $colLabels[$i] = "[$start, $end".$trailingFigure;
-        }
+        $colLabels[$i] = "[".$start.$decimals.", ".$end.$decimals.")";
 
         foreach ($values as $val) {
-            if ((($val >= $start) && ($val < $end)) || (($val == $end) && ($trailingFigure == "]"))) {
+            if (($val >= $start) && ($val < $end)) {
+                $cols[$i]++;
+            }
+        }
+        $i++;
+    }
+    if ($high >= $singlePointEnd) {
+        $colLabels[$i] = ">= $singlePointEnd$decimals";
+        $cols[$i] = 0;
+        foreach ($values as $val) {
+            if ($val >= $singlePointEnd) {
                 $cols[$i]++;
             }
         }

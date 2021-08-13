@@ -604,7 +604,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 		$this->setupApplication();
         $activePids = $this->framework->getProjectsWithModuleEnabled();
-		CareerDev::log($this->getName()." running for pids ".json_encode($pids));
+		CareerDev::log($this->getName()." running for pids ".json_encode($activePids));
 		$pidsUpdated = [];
         CareerDev::log("Checking for redcaptest in ".SERVER_NAME);
         if (preg_match("/redcaptest.vanderbilt.edu/", SERVER_NAME)) {
@@ -800,27 +800,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		}
 	}
 
-    function getRecordsAssociatedWithUserid($userid, $token, $server) {
-        $menteeUserids = Download::userids($token, $server);
-        $allMentorUserids = Download::primaryMentorUserids($token, $server);
-
-        $menteeRecordIds = [];
-        foreach ($menteeUserids as $recordId => $menteeUserid) {
-            if ($userid == $menteeUserid) {
-                $menteeRecordIds[] = $recordId;
-            }
-        }
-        foreach ($allMentorUserids as $recordId => $mentorUserids) {
-            if (in_array($userid, $mentorUserids)) {
-                $menteeRecordIds[] = $recordId;
-            }
-        }
-        if (isset($_GET['test'])) {
-            echo "Looking for $userid and found ".json_encode($menteeRecordIds)."<br>";
-        }
-        return $menteeRecordIds;
-    }
-
     function hasMentorAgreementRights($project_id, $userid)
     {
         $token = $this->getProjectSetting("token", $project_id);
@@ -829,25 +808,27 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $menteeRecord = $_REQUEST['menteeRecord'];
         } else if (isset($_REQUEST['record'])) {
             $menteeRecord = $_REQUEST['record'];
-        } else {
-            $records = $this->getRecordsAssociatedWithUserid($userid, $token, $server);
+        } else if (function_exists("getRecordsAssociatedWithUserid")) {
+            $records = getRecordsAssociatedWithUserid($userid, $token, $server);
             // Application::log("Got records ".json_encode($records));
             if (!empty($records)) {
                 return TRUE;
             }
         }
-        $mentorUserids = Download::primaryMentorUserids($token, $server);
-        $menteeUserids = Download::userids($token, $server);
         $validUserids = [];
-        if (!$menteeUserids[$menteeRecord]) {
-            $menteeUserids[$menteeRecord] = [];
-        } else {
-            $menteeUserids[$menteeRecord] = [$menteeUserids[$menteeRecord]];
+        if ($menteeRecord) {
+            $mentorUserids = Download::primaryMentorUserids($token, $server);
+            $menteeUserids = Download::userids($token, $server);
+            if (!$menteeUserids[$menteeRecord]) {
+                $menteeUserids[$menteeRecord] = [];
+            } else {
+                $menteeUserids[$menteeRecord] = [$menteeUserids[$menteeRecord]];
+            }
+            if (!$mentorUserids[$menteeRecord]) {
+                $mentorUserids[$menteeRecord] = [];
+            }
+            $validUserids = array_unique(array_merge($validUserids, $menteeUserids[$menteeRecord], $mentorUserids[$menteeRecord]));
         }
-        if (!$mentorUserids[$menteeRecord]) {
-            $mentorUserids[$menteeRecord] = [];
-        }
-        $validUserids = array_unique(array_merge($validUserids, $menteeUserids[$menteeRecord], $mentorUserids[$menteeRecord]));
 
         // Application::log("Comparing $userid to ".json_encode($validUserids));
         if (in_array($userid, $validUserids)) {

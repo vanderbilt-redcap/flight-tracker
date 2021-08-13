@@ -1471,7 +1471,8 @@ class Grants {
 			} else {
 				$prefix = "first";
 			}
-			if ($row['summary_'.$prefix.'_external_k'] == $row['summary_'.$prefix.'_any_k']) {
+			if (isset($row['summary_'.$prefix.'_external_k']) && isset($row['summary_'.$prefix.'_any_k'])
+                && ($row['summary_'.$prefix.'_external_k'] == $row['summary_'.$prefix.'_any_k'])) {
 				$intendedYearSpan = self::findYearSpan("External K");
 				if (self::datediff($row['summary_'.$typeOfK.'_k'], $row['summary_first_r01_or_equiv'], "y") <= $intendedYearSpan) {
 					$value = 1;
@@ -1495,7 +1496,8 @@ class Grants {
 			}
 			$diffToToday = self::datediff($row['summary_'.$typeOfK.'_k'], date('Y-m-d'), "y");
 			if (self::getShowDebug()) { Application::log($typeOfK.": ".$diffToToday); }
-			if ($row["summary_".$prefix."_external_k"] == $row["summary_".$prefix."_any_k"]) {
+			if (isset($row["summary_".$prefix."_external_k"]) && isset($row["summary_".$prefix."_any_k"])
+			    && ($row["summary_".$prefix."_external_k"] == $row["summary_".$prefix."_any_k"])) {
 				$intendedYearSpan = self::findYearSpan("External K");
 				if ($diffToToday <= $intendedYearSpan) {
 					$value = 3;

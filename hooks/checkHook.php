@@ -3,6 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Download;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -57,6 +58,22 @@ function findInCheck($fields) {
 		}
 	}
 	return "";
+}
+
+function translateFromVFRS($vfrsField, $destField, $choices) {
+    $vfrsValue = findInCheck($vfrsField);
+    if ($vfrsValue && isset($choices[$vfrsField])) {
+        $vfrsLabel = $choices[$vfrsField][$vfrsValue];
+        if (isset($choices[$destField])) {
+            foreach ($choices[$destField] as $destValue => $destLabel) {
+                if ($destLabel == $vfrsLabel) {
+                    return $destValue;
+                }
+            }
+            return "";
+        }
+    }
+    return "";
 }
 
 # returns the value for $coeusField in the first COEUS repeatable instance that matches
@@ -161,11 +178,13 @@ $(document).ready(function() {
 
 <?php
 	if (findInCheck("vfrs_graduate_degree")) {
+	    $metadata = Download::metadata($token, $server);
+	    $choices = REDCapManagement::getChoices($metadata);
 		#VFRS
 ?>
 		<?php $curr = "vfrs_degree1"; $checkI = 1; ?>
 		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo findInCheck("vfrs_graduate_degree" ); ?>");
+		presetValue(base, "<?php echo translateFromVFRS("vfrs_graduate_degree" , 'check_degree'.$checkI, $choices); ?>");
 		<?php if (findInCheck("vfrs_graduate_degree") == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify")."');\n"; } ?>
 		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
 		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
@@ -175,7 +194,7 @@ $(document).ready(function() {
 
 		<?php $curr = "vfrs_degree2"; if (findInCheck($curr)) { $checkI++; } ?>
 		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo findInCheck($curr); ?>");
+		presetValue(base, "<?php echo translateFromVFRS($curr, 'check_degree'.$checkI, $choices); ?>");
 		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify2")."');\n"; } ?>
 		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
 		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
@@ -184,7 +203,7 @@ $(document).ready(function() {
 
 		<?php $curr = "vfrs_degree3"; if (findInCheck($curr)) { $checkI++; } ?>
 		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo findInCheck($curr); ?>");
+		presetValue(base, "<?php echo translateFromVFRS($curr, 'check_degree'.$checkI, $choices); ?>");
 		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify3")."');\n"; } ?>
 		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
 		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
@@ -193,7 +212,7 @@ $(document).ready(function() {
 
 		<?php $curr = "vfrs_degree4"; if (findInCheck($curr)) { $checkI++; } ?>
 		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo findInCheck($curr); ?>");
+		presetValue(base, "<?php echo translateFromVFRS($curr, 'check_degree'.$checkI, $choices); ?>");
 		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify4")."');\n"; } ?>
 		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
 		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
@@ -202,7 +221,7 @@ $(document).ready(function() {
 
 		<?php $curr = "vfrs_degree5"; if (findInCheck($curr)) { $checkI++; } ?>
 		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo findInCheck($curr); ?>");
+		presetValue(base, "<?php echo translateFromVFRS($curr, 'check_degree'.$checkI, $choices); ?>");
 		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify5")."');\n"; } ?>
 		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
 		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");

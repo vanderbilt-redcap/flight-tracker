@@ -4,22 +4,161 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \ExternalModules\ExternalModules;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
-require_once(dirname(__FILE__)."/debug.php");
+require_once(dirname(__FILE__)."/preliminary.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once dirname(__FILE__)."/../CareerDev.php";
 
-$module = Application::getModule();
-$username = $module->getUsername();
-if (DEBUG && isset($_GET['uid'])) {
-    $username = $_GET['uid'];
+if (Application::isExternalModule()) {
+    $module = Application::getModule();
+    $username = $module->getUsername();
+    if (DEBUG && isset($_GET['uid'])) {
+        $username = $_GET['uid'];
+        $isSuperuser = FALSE;
+    } else {
+        $isSuperuser = ExternalModules::isSuperUser();
+    }
+    if (!$module) {
+        die("No module.");
+    }
+    if (!$module->hasMentorAgreementRights($pid, $username) && !$isSuperuser) {
+        die("Access Denied.");
+    }
+} else {
+    $username = Application::getUsername();
+    if (DEBUG && isset($_GET['uid'])) {
+        $username = $_GET['uid'];
+        $isSuperuser = FALSE;
+    } else {
+        $isSuperuser = defined('SUPER_USER') && (SUPER_USER == '1');
+    }
+
+    if (!hasMentorAgreementRightsForPlugin($pid, $username) && !$isSuperuser) {
+        die("Access Denied.");
+    }
 }
-if (!$module) {
-    die("No module.");
+
+function hasMentorAgreementRightsForPlugin($pid, $username) {
+    $menteeRecord = FALSE;
+    if (isset($_REQUEST['menteeRecord'])) {
+        $menteeRecord = $_REQUEST['menteeRecord'];
+    } else if (isset($_REQUEST['record'])) {
+        $menteeRecord = $_REQUEST['record'];
+    } else if (function_exists("getRecordsAssociatedWithUserid")) {
+        $records = getRecordsAssociatedWithUserid($username, $pid);
+        if (!empty($records)) {
+            return TRUE;
+        }
+    }
+
+    list($redcapData, $useridField) = getUseridDataFromREDCap($pid);
+    list($menteeUserids, $allMentorUserids) = getMenteeMentorUserids($redcapData, $useridField);
+
+    $validUserids = [];
+    if ($menteeRecord) {
+        if (isset($menteeUserids[$menteeRecord])) {
+            $validUserids[] = $menteeUserids[$menteeRecord];
+        }
+        if (isset($allMentorUserids[$menteeRecord])) {
+            foreach ($allMentorUserids[$menteeRecord] as $mentorUserids) {
+                foreach ($mentorUserids as $mentorUserid) {
+                    $validUserids[] = $mentorUserid;
+                }
+            }
+        }
+    }
+    if (in_array($username, $validUserids)) {
+        return TRUE;
+    }
+    if (DEBUG && isset($_GET['uid']) && in_array($_GET['uid'], $validUserids)) {
+        return TRUE;
+    }
+    return FALSE;
 }
-if (!$module->hasMentorAgreementRights($pid, $username) && !ExternalModules::isSuperUser()) {
-    die("Access Denied.");
+
+function getRecordsAssociatedWithUserid($username, $pidOrToken, $server = FALSE) {
+    if (!$username) {
+        return [];
+    }
+
+    if (is_numeric($pidOrToken)) {
+        $pid = $pidOrToken;
+    } else if (REDCapManagement::isValidToken($pidOrToken) && $server) {
+        $token = $pidOrToken;
+    } else {
+        throw new \Exception("Invalid parameters");
+    }
+
+    if (isset($pid)) {
+        list($redcapData, $useridField) = getUseridDataFromREDCap($pid);
+        if (isset($_GET['test'])) {
+            echo "Downloaded ".count($redcapData)." rows of REDCap data<br>";
+        }
+        list($menteeUserids, $allMentorUserids) = getMenteeMentorUserids($redcapData, $useridField);
+    } else if (isset($token)) {
+        $menteeUserids = Download::userids($token, $server);
+        $allMentorUserids = Download::primaryMentorUserids($token, $server);
+    } else {
+        throw new \Exception("This should never happen - no token or pid");
+    }
+
+    if (isset($_GET['test'])) {
+        echo count($menteeUserids)." mentee userids and ".count($allMentorUserids)." mentees with mentor userids<br>";
+    }
+    
+    if (isset($menteeUserids) && isset($allMentorUserids)) {
+        $menteeRecordIds = [];
+        foreach ($menteeUserids as $recordId => $menteeUserid) {
+            if ($username == $menteeUserid) {
+                $menteeRecordIds[] = $recordId;
+            }
+        }
+        foreach ($allMentorUserids as $recordId => $mentorUserids) {
+            if (in_array($username, $mentorUserids)) {
+                $menteeRecordIds[] = $recordId;
+            }
+        }
+        if (isset($_GET['test'])) {
+            echo "Looking for $username and found ".json_encode($menteeRecordIds)."<br>";
+        }
+        return $menteeRecordIds;
+    } else {
+        throw new \Exception("Could not find mentee/mentor userids");
+    }
+}
+
+function getMenteeMentorUserids($redcapData, $useridField) {
+    $menteeUserids = [];
+    $mentorUserids = [];
+    foreach ($redcapData as $row) {
+        $recordId = $row['record_id'];
+        if ($row[$useridField]) {
+            $menteeUserids[$recordId] = $row[$useridField];
+        }
+        if ($row['summary_mentor_userid']) {
+            $mentorUserids[$recordId] = preg_split("/\s*,\s*/", $row['summary_mentor_userid']);
+        }
+    }
+    return [$menteeUserids, $mentorUserids];
+}
+
+function getUseridDataFromREDCap($pid) {
+    $json = \REDCap::getDataDictionary($pid, "json");
+    $metadata = json_decode($json, TRUE);
+    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+    if (in_array("identifier_userid", $metadataFields)) {
+        $useridField = "identifier_userid";
+    } else if (in_array("identifier_vunet", $metadataFields)) {
+        $useridField = "identifier_vunet";
+    } else {
+        throw new \Exception("Could not find userid field in ".implode(", ", $metadataFields)." from $json");
+    }
+
+    $json = \REDCap::getData($pid, "json", NULL, ["record_id", "summary_mentor_userid", $useridField]);
+    $redcapData = json_decode($json, TRUE);
+    return [$redcapData, $useridField];
 }
 
 function makePercentCompleteJS() {
@@ -139,6 +278,9 @@ function getNotesFields($fields) {
 }
 
 function getLatestRow($recordId, $usernames, $redcapData) {
+    if (!isset($usernames) || empty($usernames)) {
+        return [];
+    }
     $latestRow = [];
     $latestInstance = 0;
     foreach ($redcapData as $row) {
