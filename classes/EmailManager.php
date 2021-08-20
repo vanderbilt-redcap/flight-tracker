@@ -662,7 +662,7 @@ class EmailManager {
         if (count($this->metadata) == 0) {
             $this->metadata = Download::metadata($this->token, $this->server);
         }
-		$fields = array("record_id", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv");
+		$fields = array("record_id", "summary_training_start", "summary_training_end", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv");
 		$surveys = $this->getSurveys();
         $steps = [];
         $steps["surveys"] = $surveys;
@@ -678,10 +678,12 @@ class EmailManager {
         $steps["fields 2"] = $fields;
 		$redcapData = Download::fields($this->token, $this->server, $fields);
 		$steps["redcapData"] = count($redcapData);
-		$identifiers = array();
-		$lastUpdate = array();
-		$complete = array();
-		$converted = array();
+		$identifiers = [];
+		$lastUpdate = [];
+		$complete = [];
+		$converted = [];
+		$trainingEnds = [];
+		$trainingStarts = [];
 		foreach ($redcapData as $row) {
 			$recordId = $row['record_id'];
 			if ($row['redcap_repeat_instrument'] == "") {
@@ -693,6 +695,12 @@ class EmailManager {
 								"first_name" => $row['identifier_first_name'],
 								"email" => $row['identifier_email'],
 								);
+			    if ($row['summary_training_start']) {
+                    $trainingStarts[$recordId] = $row['summary_training_start'];
+                }
+			    if ($row['summary_training_end']) {
+                    $trainingEnds[$recordId] = $row['summary_training_end'];
+                }
 			}
 			foreach ($surveys as $currForm => $title) {
 				$dateField = self::getDateField($currForm);
@@ -789,6 +797,10 @@ class EmailManager {
 			$queue = self::filterOutSurveysCompleted($this->getForms($what), $when, $complete, $lastUpdate, $queue);
             $steps["8"] = $queue;
 		}
+		if ($who['trainee_class']) {
+            $queue = self::filterByTraineeClass($who['trainee_class'], $trainingStarts, $trainingEnds, $queue);
+		    $steps["9"] = $queue;
+        }
 
 		# build row of names and emails
 		$rows = array();
@@ -802,6 +814,54 @@ class EmailManager {
 
         return $rows;
 	}
+
+	public static function getFieldForCurrentEmailSetting() {
+	    return "existingName";
+    }
+
+	private static function filterByTraineeClass($traineeClass, $trainingStarts, $trainingEnds, $records) {
+	    if ($traineeClass == "current") {
+	        $currTs = time();
+	        $filteredRecords = [];
+	        foreach ($records as $recordId) {
+                $include = FALSE;
+	            if (isset($trainingStarts[$recordId])) {
+	                $startTs = strtotime($trainingStarts[$recordId]);
+	                if ($startTs <= $currTs) {
+                        $include = TRUE;
+                    }
+                }
+	            if ($include && isset($trainingEnds[$recordId])) {
+	                $endTs = $trainingEnds[$recordId];
+	                if ($endTs < $currTs) {
+	                    $include = FALSE;
+                    }
+                }
+	            if ($include) {
+	                $filteredRecords[] = $recordId;
+                }
+            }
+	        return $filteredRecords;
+        } else  if ($traineeClass == "alumni") {
+            $currTs = time();
+            $filteredRecords = [];
+            foreach ($records as $recordId) {
+                $include = FALSE;
+                if (isset($trainingEnds[$recordId])) {
+                    $endTs = $trainingEnds[$recordId];
+                    if ($endTs < $currTs) {
+                        $include = TRUE;
+                    }
+                }
+                if ($include) {
+                    $filteredRecords[] = $recordId;
+                }
+            }
+            return $filteredRecords;
+        } else {
+	        return $records;
+        }
+    }
 
 	public function getRows($who, $whenType = "", $when = array(), $what = array()) {
 		if (($who['filter'] == "all") || ($who['recipient'] == "individuals")) {

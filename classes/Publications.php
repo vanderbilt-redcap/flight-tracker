@@ -306,7 +306,11 @@ class Publications {
 	    $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
 	    $pmids = [];
 	    foreach($this->rows as $row) {
-	        if (($row['redcap_repeat_instrument'] == "citation") && $row["citation_pmid"]) {
+	        if (
+	            ($row['record_id'] == $this->getRecordId())
+                && ($row['redcap_repeat_instrument'] == "citation")
+                && $row["citation_pmid"]
+            ) {
                 $pmid = $row['citation_pmid'];
 	            if ($pmid) {
                     $pmids[] = $pmid;
@@ -475,7 +479,7 @@ class Publications {
                 $i++;
             }
             if (!$xml) {
-                Application::log("Warning: Cannot create object after $i iterations (xml = '".$output."') for PMIDS ".implode(", ", $pmidGroup), $pid);
+                Application::log("Warning: Cannot create object after $i iterations (xml = '".$output."') for PMIDS ".implode(", ", $pmidGroup));
             } else {
                 foreach ($pmidGroup as $pmid) {
                     $pubmedMatch = NULL;
@@ -567,14 +571,65 @@ class Publications {
 		return [];
 	}
 
+	public static function deleteMismatchedRows($token, $server, $pid, $recordId, $allFirstNames, $allLastNames) {
+        # download citation_authors
+	    $redcapData = Download::fieldsForRecords($token, $server, ["record_id", "citation_authors"], [$recordId]);
+
+	    # find items that don't match current record AND match some other record
+        $currFirstName = $allFirstNames[$recordId];
+        $currLastName = $allLastNames[$recordId];
+        $instances = [];
+        foreach ($redcapData as $row) {
+            if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
+                $instance = $row['redcap_repeat_instance'];
+                $authors = preg_split("/\s*[,;]\s*/", $row['citation_authors']);
+                for ($i = 0; $i < count($authors); $i++) {
+                    $author = trim($authors[$i]);
+                    list($first, $last) = NameMatcher::splitName($author, 2);
+                    $authors[$i] = ["first" => $first, "last" => $last];
+                }
+                $foundCurrInAuthorList = FALSE;
+                $foundAnotherInAuthorList = FALSE;
+                foreach ($authors as $author) {
+                    if (NameMatcher::matchByInitials($currLastName, $currFirstName, $author['last'], $author['first'])) {
+                        $foundCurrInAuthorList = TRUE;
+                        Application::log("Found current $currFirstName $currLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance", $pid);
+                        break;
+                    }
+                }
+                if (!$foundCurrInAuthorList) {
+                    Application::log("Did not find current $currFirstName $currLastName in author list in $recordId:$instance", $pid);
+                    foreach ($authors as $author) {
+                        foreach ($allLastNames as $recordId2 => $otherLastName) {
+                            $otherFirstName = $allFirstNames[$recordId2];
+                            if (NameMatcher::matchByInitials($author['last'], $author['first'], $otherLastName, $otherFirstName)) {
+                                Application::log("Found other $otherFirstName $otherLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance", $pid);
+                                $foundAnotherInAuthorList = TRUE;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if ($foundAnotherInAuthorList) {
+                    $instances[] = $instance;
+                } else {
+                    Application::log("Did not find other in author list in $recordId:$instance", $pid);
+                }
+            }
+        }
+        if (!empty($instances)) {
+            Application::log("Deleting instances ".json_encode($instances)." for citations for Record $recordId", $pid);
+            Upload::deleteFormInstances($token, $server, $pid, "citation", $recordId, $instances);
+        }
+	}
+
 	# returns number of citations filled in
 	public static function uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $redcapData) {
 	    $blankPMIDs = [];
 	    $blankPMCs = [];
 	    $skip = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance", "citation_pmid", "citation_pmcid"];
 	    foreach ($redcapData as $row) {
-            $recordId = $row['record_id'];
-            if ($row['redcap_repeat_instrument'] == "citation") {
+            if (($recordId == $row['record_id']) && ($row['redcap_repeat_instrument'] == "citation")) {
                 $numFilled = 0;
                 foreach ($row as $field => $value) {
                     if (!in_array($field, $skip)) {
@@ -793,9 +848,9 @@ class Publications {
 		$instance = $startInstance;
 		$pullSize = self::getPMIDLimit();
 		for ($i0 = 0; $i0 < count($pmids); $i0 += $pullSize) {
-			$pmidsToPull = array();
+			$pmidsToPull = [];
 			for ($j = $i0; ($j < count($pmids)) && ($j < $i0 + $pullSize); $j++) {
-				array_push($pmidsToPull, $pmids[$j]);
+				$pmidsToPull[] = $pmids[$j];
 			}
 			$output = self::pullFromEFetch($pmidsToPull);
             $xml = simplexml_load_string(utf8_encode($output));
@@ -855,7 +910,7 @@ class Publications {
             Publications::throttleDown();
 		}
 		self::addTimesCited($upload, $pid, $pmids, $metadataFields);
-		Application::log("Returning ".count($upload)." lines from getCitationsFromPubMed", $pid);
+		Application::log("$recordId: Returning ".count($upload)." lines from getCitationsFromPubMed", $pid);
 		return $upload;
 	}
 
@@ -877,13 +932,15 @@ class Publications {
 
         $i = 0;
         foreach ($upload as $row) {
-            $pmid = $row['citation_pmid'];
-            foreach ($rows as $row2) {
-                if ($pmid == $row2['citation_pmid']) {
-                    foreach ($fieldsToCopy as $field) {
-                        $upload[$i][$field] = $row2[$field];
+            if ($row['record_id'] == $this->recordId) {
+                $pmid = $row['citation_pmid'];
+                foreach ($rows as $row2) {
+                    if (($pmid == $row2['citation_pmid']) && ($row2['record_id'] == $row['record_id'])) {
+                        foreach ($fieldsToCopy as $field) {
+                            $upload[$i][$field] = $row2[$field];
+                        }
+                        $upload[$i] = REDCapManagement::filterForREDCap($upload[$i], $metadataFields);
                     }
-                    $upload[$i] = REDCapManagement::filterForREDCap($upload[$i], $metadataFields);
                 }
             }
             $i++;
@@ -1114,7 +1171,7 @@ class Publications {
         }
         $idsBatched = [];
 	    $pullSize = 20;
-	    for ($i = 0; $i < count($newIds); $i++) {
+	    for ($i = 0; $i < count($newIds); $i += $pullSize) {
 	        $batch = [];
 	        for ($j = $i; ($j < count($newIds)) && ($j < $i + $pullSize); $j++) {
 	            $batch[] = $newIds[$j];

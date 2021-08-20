@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\CareerDevLibrary;
+
 $files = scandir(__DIR__);
 $skip = [".", ".."];
 foreach ($files as $file) {

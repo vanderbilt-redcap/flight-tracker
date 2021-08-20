@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.7.2";
+		return "3.8.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -547,6 +547,10 @@ class CareerDev {
     }
 
 	public static function getSetting($field, $pid = "") {
+	    if (self::isVanderbilt() && ($pid == 66635)) {
+	        $module = ExternalModules::getModuleInstance("vanderbilt_plugin-settings");
+	        return $module->getProjectSetting($field, $pid);
+        }
 		$module = self::getModule();
 		if ($module) {
 		    if (!$pid) {
@@ -829,13 +833,11 @@ class CareerDev {
             $ary = [
                 "Add a New Scholar" => self::link("/addNewScholar.php"),
                 "Scholar Profiles" => self::link("/profile.php"),
-                "Add a New Survey" => self::link("/emailMgmt/add.php"),
             ];
             $ary["Configure an Email"] = self::link("/emailMgmt/configure.php");
             $ary["View Email Log"] = self::link("/emailMgmt/log.php");
             $ary["View Email Queue"] = self::link("/emailMgmt/viewQueue.php");
-            $ary["List of Nonrespondents"] = self::link("/emailMgmt/noSurvey.php");
-            $ary["Survey Responses"] = self::link("/surveyResponses.php");
+            $ary["Who Has Responded to Surveys?"] = self::link("/emailMgmt/surveySubmissions.php");
             $ary["Import General Data"] = self::link("/import.php");
             $ary["Import Positions"] = self::link("/bulkImport.php") . "&positions";
 

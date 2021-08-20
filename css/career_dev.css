@@ -129,6 +129,7 @@ p.bordered,div.bordered { border: 1px solid #888; }
 .oneAtATime input[type=text],.list textarea { font-size: 20px; width: 150px; }
 .list textarea { height: 100px; }
 .nounderline { text-decoration: none; }
+.underline { text-decoration: underline; }
 .alignright { text-align: right; }
 td.leftAlignedCell,th.leftAlignedCell { text-align: left; padding-top: 15px; padding-bottom: 15px; }
 td.leftAlignedCell p.citation,p.patent { padding: 6px 0; margin: 0; }

@@ -1,5 +1,9 @@
 <?php
 
+# The following line is necessary to allow for cross-project POSTing.
+# It is turned off (for now) for security reasons.
+// header("access-control-allow-origin: *");
+
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
@@ -11,6 +15,10 @@ $otherToken = $_POST['token'];
 $otherServer = $_POST['server'];
 if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
     $pid = $_GET['project_id'];
+    if (empty($_POST)) {
+        echo "Error: No data are posted.";
+        exit;
+    }
     if (verifyToken($otherToken, $pid)) {
         try {
             $projectTitle = Download::projectTitle($otherToken, $otherServer);
@@ -29,13 +37,13 @@ if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
                 }
                 echo "Project $pid successfully set up on server.";
             } else {
-                echo "Not enabled.";
+                echo "Error: Module not enabled.";
             }
         } catch (\Exception $e) {
             echo "Error: " . $e->getMessage();
         }
     } else {
-        echo "Invalid token. ".REDCapManagement::json_encode_with_spaces($_POST);
+        echo "Error: Invalid token. ".REDCapManagement::json_encode_with_spaces($_POST);
     }
 } else if ($otherServer && $otherToken && REDCapManagement::isValidToken($otherToken)) {
     require_once(dirname(__FILE__)."/small_base.php");
@@ -54,6 +62,7 @@ if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
     $allSettings["token"] = $otherToken;
     $allSettings["server"] = $otherServerAPI;
     $allSettings["pid"] = $otherPid;
+    $allSettings["tokenName"] = "Copy of ".$tokenName;
     $allSettings["supertoken"] = "";
     $allSettings["event_id"] = "";
     unset($allSettings["enabled"]);
@@ -64,7 +73,7 @@ if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
         $url = $url2;
     }
     list($resp, $output) = REDCapManagement::downloadURLWithPOST($url, $allSettings, $pid);
-    echo "allSettings: ".REDCapManagement::json_encode_with_spaces($allSettings)."<br>\n";
+    // echo "allSettings: ".REDCapManagement::json_encode_with_spaces($allSettings)."<br>\n";
     echo $url."<br>\n";
     echo json_encode($output);
 } else {
@@ -86,11 +95,11 @@ if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
 
 function verifyToken($token, $pid) {
     if (!is_numeric($pid)) {
-        echo "Invalid pid $pid";
+        echo "ERROR Invalid pid $pid";
         return FALSE;
     }
     if (!REDCapManagement::isValidToken($token)) {
-        echo "Invalid token $token";
+        echo "ERROR Invalid token $token";
         return FALSE;
     }
 

@@ -34,7 +34,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	function batch() {
         $this->setupApplication();
-        $activePids = $this->framework->getProjectsWithModuleEnabled();
+        $activePids = $this->getPids();
         foreach ($activePids as $pid) {
             # note return at end of successful run because only need to run once
             $token = $this->getProjectSetting("token", $pid);
@@ -55,9 +55,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
     }
 
+    function getPids() {
+	    return $this->framework->getProjectsWithModuleEnabled();
+    }
+
 	function emails() {
 	    $this->setupApplication();
-        $activePids = $this->framework->getProjectsWithModuleEnabled();
+        $activePids = $this->getPids();
         // CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		foreach ($activePids as $pid) {
 			if (REDCapManagement::isActiveProject($pid)) {

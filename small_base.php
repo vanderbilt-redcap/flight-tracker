@@ -902,7 +902,7 @@ function saveBrandLogo($base64) {
 }
 
 function getFieldForCurrentEmailSetting() {
-	return "existingName";
+	return EmailManager::getFieldForCurrentEmailSetting();
 }
 
 function isEmailAddress($str) {

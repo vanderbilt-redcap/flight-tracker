@@ -88,6 +88,13 @@ if (isset($_POST['recipient'])) {
             } else if ($_POST['r01_or_equiv'] == "no") {
                 $r01No = "checked"; $r01Yes = "$isDisabled"; $r01Agnostic = "$isDisabled";
             }
+            if ($_POST['trainee_class'] == "alumni") {
+                $traineeClassAlumni = "checked"; $traineeClassCurrent = "$isDisabled"; $traineeClassAll = "$isDisabled";
+            } else if ($_POST['trainee_class'] == "current") {
+                $traineeClassAlumni = "$isDisabled"; $traineeClassCurrent = "current"; $traineeClassAll = "$isDisabled";
+            } else {
+                $traineeClassAlumni = "$isDisabled"; $traineeClassCurrent = "$isDisabled"; $traineeClassAll = "current";
+            }
             if ($_POST['max_emails']) {
                 $maxEmails = $_POST['max_emails'];
                 $maxSpecified = "checked";
@@ -250,9 +257,13 @@ $(document).ready(function() {
 						</p>
 					</p>
 
-					<p class='centered'>Filter: Has the Scholar Received an R01-or-Equivalent Grant?<br>
-						<span class='nowrap'><input class='who_to' type='radio' name='r01_or_equiv' id='r01_no' value='no' <?= $r01No ?>><label for='r01_no'> No, Only K</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='r01_or_equiv' id='r01_yes' value='yes' <?= $r01Yes ?>><label for='r01_yes'> Yes</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='r01_or_equiv' id='r01_agnostic' value='agnostic' <?= $r01Agnostic ?>><label for='r01_agnostic'> Doesn't Matter</label></span>
-					</p>
+                    <p class='centered'>Filter: Has the Scholar Received an R01-or-Equivalent Grant?<br>
+                        <span class='nowrap'><input class='who_to' type='radio' name='r01_or_equiv' id='r01_no' value='no' <?= $r01No ?>><label for='r01_no'> No, Only K</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='r01_or_equiv' id='r01_yes' value='yes' <?= $r01Yes ?>><label for='r01_yes'> Yes</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='r01_or_equiv' id='r01_agnostic' value='agnostic' <?= $r01Agnostic ?>><label for='r01_agnostic'> Doesn't Matter</label></span>
+                    </p>
+
+                    <p class='centered'>Filter: Is the Scholar a Current Trainee or an Alumnus/Alumna?<br>
+                        <span class='nowrap'><input class='who_to' type='radio' name='trainee_class' id='trainee_class_all' value='all' <?= $traineeClassAll ?>><label for='trainee_class_all'> All Scholars</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='trainee_class' id='trainee_class_current' value='current' <?= $traineeClassCurrent ?>><label for='trainee_class_current'> Current Trainee</label></span><?= $spacing ?><span class='nowrap'><input class='who_to' type='radio' name='trainee_class' id='trainee_class_alumni' value='alumni' <?= $traineeClassAlumni ?>><label for='trainee_class_alumni'> Alumni</label></span>
+                    </p>
 				</div>
 
 				<h4 style='margin-bottom: 0;'>List of Filtered Names<span class='namesCount'></span></h4>
@@ -368,7 +379,7 @@ function translatePostToEmailSetting($post) {
 	if ($post['name']) {
 		$settingName = $post['name'];
 	} else {
-		return array("A name for the setting was not specified", "", EmailManager::getBlankSetting());
+		return ["A name for the setting was not specified", "", EmailManager::getBlankSetting()];
 	}
 
 	if ($post['enabled'] == "true") {
@@ -382,23 +393,23 @@ function translatePostToEmailSetting($post) {
 			foreach ($post as $key => $value) {
                 $key = decodeEmail($key);
                 if ($value && EmailManager::isEmailAddress($key)) {
-					array_push($checkedEmails, $key);
+					$checkedEmails[] = $key;
 				}
 			}
 			if (!empty($checkedEmails)) {
 				$emailSetting["who"]["individuals"] = implode(",", $checkedEmails);
 			} else {
-				return array("No individuals are checked", "", EmailManager::getBlankSetting());
+				return ["No individuals are checked", "", EmailManager::getBlankSetting()];
 			}
 		}
 	} else {
-		return array("No recipient is specified", "", EmailManager::getBlankSetting());
+		return ["No recipient is specified", "", EmailManager::getBlankSetting()];
 	}
 	if ($post['recipient'] == "filtered_group") {
 		if ($post['filter']) {
 			$emailSetting["who"]["filter"] = $post["filter"];
 		} else {
-			return array("The Filter for Some vs. All was not specified", "", EmailManager::getBlankSetting());
+			return ["The Filter for Some vs. All was not specified", "", EmailManager::getBlankSetting()];
 		}
 		if ($post["survey_complete"]) {
 			if ($post["last_complete_months"] && ($post["survey_complete"] == "yes")) {
@@ -410,7 +421,7 @@ function translatePostToEmailSetting($post) {
                 $emailSetting["who"]["none_complete"] = "nomatter";
 			} else {
 				# only happens if the months are not specified; returns blank setting; better than throwing an exception
-				return array("The Months were not specified", "", EmailManager::getBlankSetting());
+				return ["The Months were not specified", "", EmailManager::getBlankSetting()];
 			}
 		}
 		if ($post["max_emails"]) {
@@ -421,12 +432,14 @@ function translatePostToEmailSetting($post) {
         }
 		if ($post["r01_or_equiv"]) {
 			$emailSetting["who"]["converted"] = $post["r01_or_equiv"];
-		}
+		}if ($post['trainee_class']) {
+		    $emailSetting["who"]["trainee_class"] = $post['trainee_class'];
+        }
 	}
 	if ($post["from"]) {
 		$emailSetting["who"]["from"] = $post["from"];
 	} else {
-		return array("From address is not specified", "", EmailManager::getBlankSetting());
+		return ["From address is not specified", "", EmailManager::getBlankSetting()];
 	}
 
 	# WHAT
@@ -434,20 +447,20 @@ function translatePostToEmailSetting($post) {
 		$emailSetting["what"]["message"] = $post["message"];
 		$emailSetting["what"]["subject"] = $post["subject"];
 	} else {
-		return array("The Message or Subject were not specified", "", EmailManager::getBlankSetting());
+		return ["The Message or Subject were not specified", "", EmailManager::getBlankSetting()];
 	}
 
 	# WHEN
 	if ($post["initial_time"]) {
 		$emailSetting["when"]["initial_time"] = $post['initial_time'];
 	} else {
-		return array("The time for Initial Survey was not specified", "", EmailManager::getBlankSetting());
+		return ["The time for Initial Survey was not specified", "", EmailManager::getBlankSetting()];
 	}
 	if ($post["followup_time"]) {
 		$emailSetting["when"]["followup_time"] = $post['followup_time'];
 	}
 
-	return array("", $settingName, $emailSetting);
+	return ["", $settingName, $emailSetting];
 }
 
 function makeDateTime($field, $when, $isReadonly = "") {

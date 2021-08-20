@@ -187,6 +187,7 @@ function convertOldDegreeData($pid) {
         "init_import_degree3",
         "init_import_degree4",
         "init_import_degree5",
+        "imported_degree",
     ];
     $convert =[
         1 => "md",

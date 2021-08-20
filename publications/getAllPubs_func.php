@@ -23,14 +23,16 @@ function getPubs($token, $server, $pid, $records) {
     if (empty($records)) {
         $records = Download::recordIds($token, $server);
     }
+    $firstNames = Download::firstnames($token, $server);
+    $lastNames = Download::lastnames($token, $server);
 
-	$citationIds = array();
+	$citationIds = [];
 	$pullSize = 1;
-	$maxInstances = array();
+	$maxInstances = [];
 	for ($i0 = 0; $i0 < count($records); $i0 += $pullSize) {
-		$pullRecords = array();
+		$pullRecords = [];
 		for ($j = $i0; $j < count($records) && $j < $i0 + $pullSize; $j++) {
-			array_push($pullRecords, $records[$j]);
+			$pullRecords[] = $records[$j];
 		}
 
 		if ($cleanOldData && $pid) {
@@ -111,8 +113,13 @@ function getPubs($token, $server, $pid, $records) {
                 $i++;
             }
 		}
-
-        Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $redcapData);
+        foreach ($pullRecords as $recordId) {
+            $cnt = Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $redcapData);
+            if ($cnt > 0) {
+                Application::log("Uploaded $cnt blank rows for $recordId", $pid);
+            }
+            Publications::deleteMismatchedRows($token, $server, $pid, $recordId, $firstNames, $lastNames);
+        }
 		binREDCapRows($redcapData, $citationIds);
 	}
 	foreach ($citationIds as $type => $typeCitationIds) {
@@ -134,21 +141,21 @@ function postprocess($token, $server, $records) {
 	$metadata = Download::metadata($token, $server);
 	$pullSize = 3;
 	for ($i = 0; $i < count($records); $i += $pullSize) {
-		$pullRecords = array();
+		$pullRecords = [];
 		for ($j = $i; ($j < count($records)) && ($j < $i + $pullSize); $j++) {
 			array_push($pullRecords, $records[$j]);
 		}
 		$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), $pullRecords);
-		$indexedData = array();
+		$indexedData = [];
 		foreach ($redcapData as $row) {
 			$recordId = $row['record_id'];
 			if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_is_research'] === "") && ($row['citation_pmid'])) {
 				// processUncategorizedRow($token, $server, $row);
 			}
 			if (!isset($indexedData[$recordId])) {
-				$indexedData[$recordId] = array();
+				$indexedData[$recordId] = [];
 			}
-			array_push($indexedData[$recordId], $row);
+			$indexedData[$recordId][] = $row;
 		}
 		foreach ($indexedData as $recordId => $rows) {
 			removeDuplicates($token, $server, $rows, $recordId);
@@ -318,19 +325,19 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
 			}
 		}
         addPMIDsIfNotFound($pmids, $citationIds, $uniquePMIDs, $recordId);
-		CareerDev::log("$recordId at ".count($pmids)." new PMIDs");
+		CareerDev::log("$recordId at ".count($pmids)." new PMIDs ".json_encode($pmids));
 
 		if (!isset($maxInstances[$recordId])) {
 			$maxInstances[$recordId] = 0;
 		}
-        $nonOrcidPMIDs = array();
+        $nonOrcidPMIDs = [];
         foreach ($pmids as $pmid) {
             if (!in_array($pmid, $orcidPMIDs)) {
-                array_push($nonOrcidPMIDs, $pmid);
+                $nonOrcidPMIDs[] = $pmid;
             }
         }
-        $pubmedRows = array();
-        $orcidRows = array();
+        $pubmedRows = [];
+        $orcidRows = [];
         $max = $maxInstances[$recordId];
         $max++;
         if (!empty($nonOrcidPMIDs)) {
@@ -348,7 +355,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
             }
             $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $max, $orcidPMIDs, $pid);
         }
-        Application::log("Combining ".count($pubmedRows)." PubMed rows with ".count($orcidRows)." ORCID rows");
+        Application::log("$recordId: Combining ".count($pubmedRows)." PubMed rows with ".count($orcidRows)." ORCID rows", $pid);
         $uploadRows = array_merge($pubmedRows, $orcidRows);
 		if (!empty($uploadRows)) {
 		    $uploadRows = Publications::filterExcludeList($uploadRows, $excludeList[$recordId]);
@@ -356,7 +363,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
 		    foreach ($uploadRows as $row) {
 		        $instances[] = $row['redcap_repeat_instance'];
             }
-		    Application::log("Uploading ".count($uploadRows)." rows: ".json_encode($instances));
+		    Application::log("$recordId: Uploading ".count($uploadRows)." rows: ".json_encode($instances), $pid);
 			upload($uploadRows, $token, $server);
 		}
 	}

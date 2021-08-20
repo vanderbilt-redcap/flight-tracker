@@ -1170,8 +1170,8 @@ function copyProject(token, server) {
 		$.post(getPageUrl('copyProject.php'), { token: token, server: server }, function(html) {
 			clearScreen();
 			console.log(html);
-			if (html.match(/error/i)) {
-				alert('Error '+html);
+			if (html.match(/error:/i) || html.match(/ERROR/)) {
+				alert('Error: '+html);
 			} else {
 				alert('Successfully copied');
 			}

@@ -640,9 +640,12 @@ class REDCapManagement {
                 $json = json_encode($postdata);
             }
             Application::log("Posting $json", $pid);
-            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
             curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen($json),
+                ]);
         }
 
         $data = curl_exec($ch);
@@ -665,6 +668,9 @@ class REDCapManagement {
             $timeStmt = " in ".(($time2 - $time1) / 1000)." seconds";
         }
         Application::log("Response code $resp; ".strlen($data)." bytes".$timeStmt, $pid);
+        if (strlen($data) < 100) {
+            Application::log("Result: ".$data, $pid);
+        }
         return [$resp, $data];
     }
 
@@ -1067,6 +1073,21 @@ class REDCapManagement {
         } else {
 	        throw new \Exception("File $file does not exist");
         }
+    }
+
+    public static function getDesignUseridsForProject($pid) {
+	    $sql = "SELECT username FROM redcap_user_rights WHERE project_id = '".db_real_escape_string($pid)."' AND design = '1'";
+	    $q = db_query($sql);
+	    if ($error = db_error()) {
+	        throw new \Exception("SQL Error: $error $sql");
+        }
+	    $userids = [];
+	    while ($row = db_fetch_assoc($q)) {
+	        if ($row['username']) {
+	            $userids[] = $row['username'];
+            }
+        }
+	    return $userids;
     }
 
     public static function getUserNames($username) {
@@ -1910,11 +1931,18 @@ class REDCapManagement {
 	    return $activeProjects;
     }
 
+    public static function isCompletionField($field) {
+        return preg_match("/_complete$/", $field);
+    }
+
 	public static function isActiveProject($pid) {
-		$sql = "SELECT date_deleted FROM redcap_projects WHERE project_id = '".db_real_escape_string($pid)."' LIMIT 1";
+        if (!$pid) {
+            return FALSE;
+        }
+		$sql = "SELECT date_deleted, completed_time FROM redcap_projects WHERE project_id = '".db_real_escape_string($pid)."' LIMIT 1";
 		$q = db_query($sql);
 		if ($row = db_fetch_assoc($q)) {
-			if (!$row['date_deleted']) {
+			if (!$row['date_deleted'] && !$row['completed_time']) {
 				return TRUE;
 			}
 		}

@@ -141,6 +141,28 @@ class COEUSConnection extends OracleConnection {
 		return $this->server;
 	}
 
+	public function sendUseridsToCOEUS($redcapUserids, $records, $pid) {
+        $data = $this->pullAllRecords();
+        $coeusIds = $data['ids'];
+        Application::log("COEUS is pulling ".count($coeusIds)." ids", $pid);
+        $idsToAdd = [];
+        foreach ($records as $recordId) {
+            $userid = $redcapUserids[$recordId];
+            if ($userid && !in_array($userid, $coeusIds)) {
+                $idsToAdd[] = $userid;
+            }
+        }
+        if (!empty($idsToAdd)) {
+            Application::log("Inserting ".count($idsToAdd)." ids", $pid);
+            $this->insertNewIds($idsToAdd);
+            $data = $this->pullAllRecords();
+            $coeusIds = $data['ids'];
+            Application::log("COEUS is now pulling ".count($coeusIds)." ids", $pid);
+        } else {
+            Application::log("No new ids to upload", $pid);
+        }
+    }
+
 	public function insertNewIds($ids) {
 	    $rowsOfRows = [];
 	    $row = [];

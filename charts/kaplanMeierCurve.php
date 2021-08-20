@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
+define('ALL_SCHOLARS_LABEL', 'All Scholars');
 
 require_once(dirname(__FILE__)."/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -116,7 +117,7 @@ if ($showRealGraph) {
     }
     $curveData = [];
     if ($maxLife > 0) {
-        $groups = ["all" => "All Scholars"];
+        $groups = ["all" => ALL_SCHOLARS_LABEL];
         if ($showAllResources) {
             foreach ($choices['resources_resource'] as $idx => $label) {
                 $groups[$idx] = $label;
@@ -182,26 +183,40 @@ if ($showRealGraph) {
     $curveData = [];
 }
 
-$linePoints = [];
-$labels = [];
+$hazardData = [];
+$step = 1;
+foreach ($curveData as $label => $rows) {
+    if ($label == ALL_SCHOLARS_LABEL) {
+        $hazardData[$label] = [];
+        for ($start = 0; $start < count($rows) - 1; $start++) {
+            $end = $start + $step;
+            $idx = $start + $step / 2;
+            $dS = REDCapManagement::pretty($rows[$end]["pretty_percent"] - $rows[$start]["pretty_percent"], 1) / $step;
+            if (isset($_GET['test'])) {
+                echo "Index: $idx has $dS<br>";
+            }
+            $hazardData[$label]["$idx"] = $dS;
+        }
+    }
+}
+
+if (isset($_GET['test'])) {
+    echo "survivalData: ".json_encode($curveData)."<br><br>";
+    echo "hazardData: ".json_encode($hazardData)."<br><br>";
+}
+
+$survivalLinePoints = [];
+$survivalLabels = [];
 $totalDataPoints = 0;
 $censored = [];
 foreach ($curveData as $label => $curvePoints) {
-    $linePoints[$label] = [];
+    $survivalLinePoints[$label] = [];
     $censored[$label] = [];
     foreach ($curvePoints as $cnt => $ary) {
-        if (count($labels) < $maxLife) {
-            if ($meas == "days") {
-                $labels[] = "Day $cnt";
-            } else if ($meas == "months") {
-                $labels[] = "Month $cnt";
-            } else if ($meas == "years") {
-                $labels[] = "Year $cnt";
-            } else {
-                throw new \Exception("Improper measurement $meas");
-            }
+        if (count($survivalLabels) < $maxLife) {
+            $survivalLabels[] = makeXAxisLabel($cnt, $meas);
         }
-        $linePoints[$label][] = $ary['pretty_percent'];
+        $survivalLinePoints[$label][] = $ary['pretty_percent'];
         if ($ary['censored'] > 0) {
             $censored[$label][] = $ary['pretty_percent'];
         } else {
@@ -265,36 +280,45 @@ echo "</select></p>";
 echo "<p class='centered skinnymargins'><button>Re-Configure</button></p>";
 echo "</form>";
 
+$plots = [
+    "survival" => ["title" => "Kaplan-Meier Success Curve", "yAxisTitle" => "Percent Converting from K to R"],
+    "hazard" => ["title" => "Rate of Conversion Success", "yAxisTitle" => "Rate of Change in Conversion Percent Per Unit Time (dS/dT)"],
+    ];
+$labelsJSON = [];
 if ($showRealGraph) {
     if ($totalDataPoints > 0) {
-        echo "<canvas class='kaplanMeier' id='lineChart' width='800' height='600' style='width: 800px !important; height: 600px !important;'></canvas>";
-        $link = Application::link("js/Chart.min.js");
+        foreach ($plots as $id => $titles) {
+            echo "<h2>".$titles['title']."</h2>";
+            echo "<canvas class='kaplanMeier' id='$id' width='800' height='600' style='width: 800px !important; height: 600px !important;'></canvas>";
+        }
         $projectTitle = Application::getProjectTitle();
-        $datasets = [];
+
+        $survivalDatasets = [];
         $i = 0;
         $blankColor = "rgba(0, 0, 0, 0.0)";
-        foreach ($linePoints as $label => $linePointValues) {
+        $colorByLabel = [];
+        foreach ($survivalLinePoints as $label => $linePointValues) {
             if ($n[$label] > 0) {
-                $color = $colors[$i % count($colors)];
-                $datasets[] = [
-                    "label" => $label." (n=".$n[$label].")",
+                $colorByLabel[$label] = $colors[$i % count($colors)];
+                $survivalDatasets[] = [
+                    "label" => makeDatasetLabel($label, $n[$label]),
                     "data" => $linePointValues,
                     "fill" => false,
-                    "borderColor" => $color,
-                    "backgroundColor" => $color,
+                    "borderColor" => $colorByLabel[$label],
+                    "backgroundColor" => $colorByLabel[$label],
                     "stepped" => true,
                 ];
 
                 $censoredColors = [];
                 foreach ($censored[$label] as $percentCensored) {
                     if ($percentCensored) {
-                        $censoredColors[] = $color;
+                        $censoredColors[] = $colorByLabel[$label];
                     } else {
                         $censoredColors[] = $blankColor;
                     }
                 }
 
-                $datasets[] = [
+                $survivalDatasets[] = [
                     "label" => CENSORED_DATA_LABEL,
                     "data" => $censored[$label],
                     "fill" => false,
@@ -306,8 +330,29 @@ if ($showRealGraph) {
             }
         }
 
-        $labelsJSON = json_encode($labels);
-        $datasetsJSON = json_encode($datasets);
+        $hazardDatasets = [];
+        $hazardLabels = [];
+        foreach ($hazardData as $label => $points) {
+            if ($n[$label] > 0) {
+                foreach (array_keys($points) as $x) {
+                    if (count($hazardLabels) < $maxLife) {
+                        $hazardLabels[] = makeXAxisLabel($x, $meas);
+                    }
+                }
+                $hazardDatasets[] = [
+                    "label" => makeDatasetLabel($label, $n[$label]),
+                    "data" => array_values($points),
+                    "fill" => false,
+                    "borderColor" => $colorByLabel[$label],
+                    "tension" => 0.1,
+                ];
+            }
+        }
+
+        $labelsJSON["survival"] = json_encode($survivalLabels);
+        $datasetsJSON["survival"] = json_encode($survivalDatasets);
+        $labelsJSON["hazard"] = json_encode($hazardLabels);
+        $datasetsJSON["hazard"] = json_encode($hazardDatasets);
 
         $outlierLink = Application::link("charts/kaplanMeierOutliers.php");
         echo "<p class='centered'><a href='$outlierLink' target='_blank'>Check for Outliers (Computationally Expensive)</a></p>";
@@ -337,17 +382,28 @@ if ($showRealGraph) {
         echo "</tbody>";
         echo "</table>";
 
+        $link = Application::link("js/Chart.min.js");
         echo "<script src='$link'></script>";
+
+        $chartLineJS = "";
+        $initJS = "";
+        foreach (array_keys($plots) as $id) {
+            $yAxisTitle = $plots[$id]['yAxisTitle'];
+            $chartLineJS .= "ctx['$id'] = document.getElementById('$id').getContext('2d');\n";
+            $chartLineJS .= "data['$id'] = { labels: {$labelsJSON[$id]}, datasets: {$datasetsJSON[$id]} };\n";
+            $initJS .= "    redrawChart(ctx['$id'], data['$id'], '$id', '$yAxisTitle');\n";
+        }
+
         echo "<script>
-let ctx = document.getElementById('lineChart').getContext('2d');
-let data = { labels: $labelsJSON, datasets: $datasetsJSON };
-let lineChart = null;
+let ctx = {};
+let data = {};
+$chartLineJS
+let lineCharts = {};
 $(document).ready(function() {
-    redrawChart(ctx, data);
+    $initJS
 });
-</script>
-<script>
-function redrawChart(ctx, data) {
+
+function redrawChart(ctx, data, id, yAxisTitle) {
     const config = {
         type: 'line',
         data: data,
@@ -391,18 +447,20 @@ function redrawChart(ctx, data) {
             scales: {
                 y: {
                     title: {
-                        text: 'Percent Converting from K to R',
+                        text: yAxisTitle,
                         display: true
                     },
                     reverse: false,
                     suggestedMin: 0.0,
-                    suggestedMax: 100.0,
                     beginAtZero: true
                 }
             }
         }
     };
-    lineChart = new Chart(ctx, config);
+    if (yAxisTitle == 'Percent Converting from K to R') {
+        config.options.scales.y.suggestedMax = 100.0;
+    }
+    lineCharts[id] = new Chart(ctx, config);
 }
 </script>";
     } else {
@@ -510,3 +568,21 @@ function findLatestEndDate($data, $recordId, $measType) {
     return "";
 }
 
+function makeXAxisLabel($cnt, $meas) {
+    if (!is_integer($cnt)) {
+        $cnt = floor($cnt)."-".ceil($cnt);
+    }
+    if ($meas == "days") {
+        return "Day $cnt";
+    } else if ($meas == "months") {
+        return "Month $cnt";
+    } else if ($meas == "years") {
+        return "Year $cnt";
+    } else {
+        throw new \Exception("Improper measurement $meas");
+    }
+}
+
+function makeDatasetLabel($label, $n) {
+    return $label." (n=".$n.")";
+}

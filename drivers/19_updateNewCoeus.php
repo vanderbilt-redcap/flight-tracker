@@ -169,28 +169,44 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
 function sendUseridsToCOEUS($token, $server, $pid, $records) {
     if (Application::isVanderbilt()) {
         $redcapUserids = Download::userids($token, $server);
+        putUseridsIntoArray($redcapUserids);
+        $errors = filterUseridsForSize($redcapUserids);
         $conn = new COEUSConnection();
         $conn->connect();
-        $data = $conn->pullAllRecords();
-        $coeusIds = $data['ids'];
-        Application::log("COEUS is pulling ".count($coeusIds)." ids", $pid);
-        $idsToAdd = [];
-        foreach ($records as $recordId) {
-            $userid = $redcapUserids[$recordId];
-            if ($userid && !in_array($userid, $coeusIds)) {
-                $idsToAdd[] = $userid;
+        $conn->sendUseridsToCOEUS($redcapUserids, $records, $pid);
+        $conn->close();
+        if (!empty($errors)) {
+            $adminEmail = Application::getSetting("admin_email", $pid);
+            $defaultFrom = Application::getSetting("default_from", $pid);
+            if ($adminEmail && $defaultFrom) {
+                $projectTitle = Application::getProjectTitle();
+                $preamble = "<strong>Flight Tracker Project $pid - $projectTitle</strong><br>$server";
+                \REDCap::email($adminEmail, $defaultFrom, "Flight Tracker - Invalid userid", $preamble."<br><br>".implode("<br>", $errors));
             }
         }
-        if (!empty($idsToAdd)) {
-            Application::log("Inserting ".count($idsToAdd)." ids", $pid);
-            $conn->insertNewIds($idsToAdd);
-            $data = $conn->pullAllRecords();
-            $coeusIds = $data['ids'];
-            Application::log("COEUS is now pulling ".count($coeusIds)." ids", $pid);
-        } else {
-            Application::log("No new ids to upload", $pid);
-        }
-        $conn->close();
     }
 }
 
+function putUseridsIntoArray(&$userids) {
+    foreach (array_keys($userids) as $recordId) {
+        if (preg_match("/[,;]/", $userids[$recordId])) {
+            $userids[$recordId] = preg_split("/\s*[,;]\s*/", $userids[$recordId]);
+        } else if (!is_array($userids[$recordId])) {
+            $userids[$recordId] = [$userids[$recordId]];
+        }
+    }
+}
+
+function filterUseridsForSize(&$userids) {
+    $maxChars = 10;   // SRIADM.SRI_CAREER's CAREER_VUNET is VARCHAR2(10)
+    $errors = [];
+    foreach ($userids as $recordId => $useridAry) {
+        foreach ($useridAry as $userid) {
+            if (strlen($userid) > $maxChars) {
+                $errors[] = "Record $recordId has userid $userid, which is greater than $maxChars characters.";
+                unset($userids[$recordId]);
+            }
+        }
+    }
+    return $errors;
+}
