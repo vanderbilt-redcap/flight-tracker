@@ -40,6 +40,9 @@ if (count($_POST) > 0) {
 			$code = $_POST['code'];
 			$type = $_POST['type'];
 			$metadata = Download::metadata($token, $server);
+			if (isset($_GET['test'])) {
+			    echo "In config 1, metadata has ".count($metadata)." rows<br>";
+            }
 			$choices = Scholar::getChoices($metadata);
 
 			if (!isset($choices[$exampleField][$code])) {
@@ -80,7 +83,10 @@ if (count($_POST) > 0) {
 		}
 		$lists["institutions"] = implode("\n", CareerDev::getInstitutions());
 		$metadata = Download::metadata($token, $server);
-		$feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $pid, $lists, CareerDev::getSetting("hasCoeus"), $metadata);
+        if (isset($_GET['test'])) {
+            echo "In config 2, metadata has ".count($metadata)." rows<br>";
+        }
+        $feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $pid, $lists, CareerDev::getSetting("hasCoeus"), $metadata);
 		if (is_array($feedback)) {
 		    $feedback = json_encode($feedback);
         }
@@ -89,7 +95,7 @@ if (count($_POST) > 0) {
 }
 
 if (isset($_GET['order'])) {
-	echo makeOrder($metadata);
+	echo makeOrder($token, $server, $pid, $metadata);
 } else {
 	echo makeSettings(CareerDev::getModule());
 }
@@ -133,13 +139,16 @@ function getExistingChoicesTexts($existingChoices, $scholar, $allFields) {
 	return $texts;
 }
 
-function makeOrder($metadata = array()) {
-	global $token, $server, $pid;
+function makeOrder($token, $server, $pid, $metadata = []) {
 	$exampleField = getExampleField();
 	$delim = \Vanderbilt\FlightTrackerExternalModule\getUploadDelim();
 
 	if (empty($metadata)) {
-		$metadata = Download::metadata($token, $server, $pid);
+		$metadata = Download::metadata($token, $server);
+        if (isset($_GET['test'])) {
+            echo "In config 3, metadata has ".count($metadata)." rows<br>";
+            echo "$token, $server, $pid<br>";
+        }
 	}
 	$scholar = new Scholar($token, $server, $metadata, $pid);
 	$orders = Scholar::getDefaultOrder("all");
@@ -153,6 +162,10 @@ function makeOrder($metadata = array()) {
 	}
 
 	list($sources, $sourceTypes) = \Vanderbilt\FlightTrackerExternalModule\produceSourcesAndTypes($scholar, $metadata);
+	if (isset($_GET['test'])) {
+	    echo "sources: ".REDCapManagement::json_encode_with_spaces($sources)."<br>";
+    }
+
 	$existingChoicesTexts = getExistingChoicesTexts($choices[$exampleField], $scholar, $allFields);
 
 	$button = "<p class='centered'><button onclick='commitOrder(); return false;'>Commit All Changes</button></p>\n";
@@ -193,63 +206,67 @@ function makeOrder($metadata = array()) {
 	$html .= $button;
 	foreach ($sources as $fieldForOrder => $sourceList) {
 		$fieldLabel = $fieldLabels[$fieldForOrder];
-		$html .= "<div style='margin: 14px auto; max-width: 600px;'>\n";
-		$html .= "<h3>$fieldLabel</h3>\n";
-		if ($fieldForOrder == "summary_race_ethnicity") {
-			$numEntries = 2;
-		} else {
-			$numEntries = 1;
-		}
-		if ($numEntries == 1) {
-			$html .= "<ul class='sortable nobullets' id='$fieldForOrder'>\n";
-		}
-		foreach ($sourceList as $field => $source) {
-			if (is_array($source)) {
-				$sourceRow = $source;
-				$type = $field;
-				$html .= "<h4>".ucfirst($type)."</h4>\n";
-				$html .= "<ul class='sortable nobullets' id='$fieldForOrder$delim$type'>\n";
-				foreach ($sourceRow as $field => $source) {
-					if ($choices[$exampleField][$source]) {
-						$sourceName = $choices[$exampleField][$source];
-					} else {
-						$sourceName = $source;
-					}
-					$sourceTypeForField = $sourceTypes[$fieldForOrder][$type][$field];
-					$html .= makeLI($field, $sourceTypeForField, $sourceName, $field);
-				}
-				$html .= "</ul>\n";
-				$html .= makeNewSourceHTML($allFields, $choices[$exampleField], 1);
-			} else {
-				$sourceTypeForField = $sourceTypes[$fieldForOrder][$field];
-				if ($choices[$exampleField][$source]) {
-					$sourceName = $choices[$exampleField][$source];
-				} else {
-					$sourceName = $source;
-				}
-				$fields = explode($delim, $field);
-				if (count($fields) > 1) {
-					# summary_degrees
-					$fieldText = implode(", ", $fields);
-					$fieldID = implode($delim, $fields);
-				} else {
-					$fieldText = $fields[0];
-					$fieldID = $fields[0];
-				}
+		if ($fieldLabel) {
+            $html .= "<div style='margin: 14px auto; max-width: 600px;'>\n";
+            $html .= "<h3>$fieldLabel</h3>\n";
+            if ($fieldForOrder == "summary_race_ethnicity") {
+                $numEntries = 2;
+            } else {
+                $numEntries = 1;
+            }
+            if ($numEntries == 1) {
+                $html .= "<ul class='sortable nobullets' id='$fieldForOrder'>\n";
+            }
+            foreach ($sourceList as $field => $source) {
+                if (is_array($source)) {
+                    $sourceRow = $source;
+                    $type = $field;
+                    $html .= "<div>";
+                    $html .= "<h4>".ucfirst($type)."</h4>\n";
+                    $html .= "<ul class='sortable nobullets' id='$fieldForOrder$delim$type'>\n";
+                    foreach ($sourceRow as $field => $source) {
+                        if ($choices[$exampleField][$source]) {
+                            $sourceName = $choices[$exampleField][$source];
+                        } else {
+                            $sourceName = $source;
+                        }
+                        $sourceTypeForField = $sourceTypes[$fieldForOrder][$type][$field];
+                        $html .= makeLI($field, $sourceTypeForField, $sourceName, $field);
+                    }
+                    $html .= "</ul>\n";
+                    $html .= "</div>";
+                    $html .= makeNewSourceHTML($allFields, $choices[$exampleField], 1);
+                } else {
+                    $sourceTypeForField = $sourceTypes[$fieldForOrder][$field];
+                    if ($choices[$exampleField][$source]) {
+                        $sourceName = $choices[$exampleField][$source];
+                    } else {
+                        $sourceName = $source;
+                    }
+                    $fields = explode($delim, $field);
+                    if (count($fields) > 1) {
+                        # summary_degrees
+                        $fieldText = implode(", ", $fields);
+                        $fieldID = implode($delim, $fields);
+                    } else {
+                        $fieldText = $fields[0];
+                        $fieldID = $fields[0];
+                    }
 
-				$html .= makeLI($fieldID, $sourceTypeForField, $sourceName, $fieldText);
-			}
-		}
-		if ($numEntries == 1) {
-			$html .= "</ul>\n";
-			if ($fieldForOrder == "summary_degrees") {
-				$numAdditionalSources = MAX_DEGREE_SOURCES;
-			} else {
-				$numAdditionalSources = 1;
-			}
-			$html .= makeNewSourceHTML($allFields, $choices[$exampleField], $numAdditionalSources);
-		}
-		$html .= "</div>\n";
+                    $html .= makeLI($fieldID, $sourceTypeForField, $sourceName, $fieldText);
+                }
+            }
+            if ($numEntries == 1) {
+                $html .= "</ul>\n";
+                if ($fieldForOrder == "summary_degrees") {
+                    $numAdditionalSources = MAX_DEGREE_SOURCES;
+                } else {
+                    $numAdditionalSources = 1;
+                }
+                $html .= makeNewSourceHTML($allFields, $choices[$exampleField], $numAdditionalSources);
+            }
+            $html .= "</div>\n";
+        }
 	}
 	$html .= $button;
 

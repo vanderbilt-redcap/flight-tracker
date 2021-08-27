@@ -403,7 +403,7 @@ class Publications {
 		foreach ($redcapData as $row) {
 			$currItems = Citation::explodeList($row[$field]);
 			foreach ($currItems as $currItem) {
-				if (!in_array($currItems, $currItem)) {
+				if (!in_array($currItem, $currItems)) {
 					array_push($list, $currItem);
 				}
 			}

@@ -35,7 +35,6 @@ $omitted = $pubs->getCitationCollection("Omitted");
 
 $headerStyle = "text-align: center; margin: 16px 0; padding: 4px;";
 $html = "";
-$html .= "<script src='".Application::link("js/base.js")."&".CareerDev::getVersion()."'></script>\n";
 $html .= "<script>
 let extmod_base_url = '".ExternalModules::$BASE_URL."'
 </script>\n";
@@ -67,6 +66,8 @@ if ($finalized->getCount() > 0) {
 }
 $html .= "<div style='text-align: center;'><label for='pmid'>PMID</label>: <input type='number' id='pmid' value=''><br><button type='button' class='purple' onclick='addPMID($(\"#pmid\").val()); return false;'>Add PMID</button></div>\n";
 $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
+
+echo "<script src='".Application::link("js/base.js")."&".CareerDev::getVersion()."'></script>\n";
 ?>
 <script>
 var checkedImg = "<?= Application::link("wrangler/checked.png") ?>";

@@ -631,8 +631,8 @@ class NIHTables {
         $scholar->getOrder($vars, $field);
         $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
         $fields = array();
-        foreach ($vars as $ary) {
-            foreach ($ary as $field => $source) {
+        foreach ($vars as $fieldAry) {
+            foreach ($fieldAry as $field => $source) {
                 if (in_array($field, $metadataFields)) {
                     $ary = [];
                     if ($field == "override_degrees") {
@@ -742,6 +742,10 @@ class NIHTables {
             return $degreesAndYears;
         }
 
+        if (isset($_GET['test'])) {
+            echo "getDoctoralDegreesAndYears Record $recordId pre-regex: ".REDCapManagement::json_encode_with_spaces($degreesAndYears)."<br>";
+        }
+
         $doctorateRegExes = Scholar::getDoctoralRegexes();
         $doctorateDegreesAndYears = array();
         foreach ($degreesAndYears as $degree => $year) {
@@ -757,6 +761,10 @@ class NIHTables {
         }
 
         arsort($doctorateDegreesAndYears);
+        if (isset($_GET['test'])) {
+            echo "getDoctoralDegreesAndYears Record $recordId post-regex: ".REDCapManagement::json_encode_with_spaces($doctorateDegreesAndYears)."<br>";
+        }
+
         if ($asText) {
             return self::formatDegreesAndYears($doctorateDegreesAndYears, FALSE);
         } else {
@@ -818,6 +826,9 @@ class NIHTables {
         if ((count($degreesAndYears) == 1) && ((isset($degreesAndYears["None Received"])) || (isset($degreesAndYears["In Training"])))) {
             return $degreesAndYears;
         }
+        if (isset($_GET['test'])) {
+            echo "getTerminalDegreesAndYears Record $recordId initial: ".REDCapManagement::json_encode_with_spaces($degreesAndYears)."<br>";
+        }
 
         $doctorateDegreesAndYears = $this->getDoctoralDegreesAndYears($recordId, FALSE);
         foreach ($degreesAndYears as $degree => $year) {
@@ -825,7 +836,13 @@ class NIHTables {
                 $predocDegreesAndYears[$degree] = $year;
             }
         }
+        if (isset($_GET['test'])) {
+            echo "getTerminalDegreesAndYears Record $recordId predoc: ".REDCapManagement::json_encode_with_spaces($predocDegreesAndYears)."<br>";
+        }
         if (empty($doctorateDegreesAndYears) && empty($predocDegreesAndYears)) {
+            if (isset($_GET['test'])) {
+                echo "getTerminalDegreesAndYears Record $recordId empty<br>";
+            }
             $fields = ["record_id", "summary_training_start", "summary_training_end"];
             $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$recordId]);
             if (REDCapManagement::findField($redcapData, $recordId, "summary_training_end")) {
@@ -843,12 +860,18 @@ class NIHTables {
             }
         }
         if (!empty($doctorateDegreesAndYears)) {
+            if (isset($_GET['test'])) {
+                echo "getTerminalDegreesAndYears Record $recordId use doctoral: ".REDCapManagement::json_encode_with_spaces($doctorateDegreesAndYears)."<br>";
+            }
             if ($asText) {
                 return self::formatDegreesAndYears($doctorateDegreesAndYears, FALSE);
             } else {
                 return $doctorateDegreesAndYears;
             }
         } else {
+            if (isset($_GET['test'])) {
+                echo "getTerminalDegreesAndYears Record $recordId use predoc: ".REDCapManagement::json_encode_with_spaces($predocDegreesAndYears)."<br>";
+            }
             if ($asText) {
                 return self::formatDegreesAndYears($predocDegreesAndYears, FALSE);
             } else {

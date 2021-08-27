@@ -11,7 +11,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.8.0";
+		return "3.8.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -862,7 +862,7 @@ class CareerDev {
 		}
 		if (($menuName == "Cohorts / Filters") || ($menuName == "Cohorts")) {
 			return array(
-					"Add a New Cohort" => self::link("/cohorts/addCohort.php"),
+					"Add/Modify a Cohort" => self::link("/cohorts/addCohort.php"),
 					"View Existing Cohorts" => self::link("/cohorts/viewCohorts.php"),
 					"Manage Cohorts" => self::link("/cohorts/manageCohorts.php"),
 					"Cohort Profiles" => self::link("/cohorts/profile.php"),

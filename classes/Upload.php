@@ -214,31 +214,40 @@ class Upload
     public static function deleteRecords($token, $server, $records) {
         Application::log("Deleting ".count($records)." records");
         if (!empty($records)) {
-            $data = array(
-                'token' => $token,
-                'action' => 'delete',
-                'content' => 'record',
-                'records' => $records
-            );
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $server);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_VERBOSE, 0);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-            curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-            curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            $output = curl_exec($ch);
-            $feedback = json_decode($output, TRUE);
-            self::testFeedback($feedback, $output, $ch);
-            curl_close($ch);
-            Application::log("Deleted ".$output);
+            $pid = Application::getPID($token);
+            if ($pid && Download::isCurrentServer($server) && method_exists("\REDCap", "deleteRecord")) {
+                $feedback = [];
+                foreach ($records as $recordId) {
+                    $feedback[] = \REDCap::deleteRecord($pid, $recordId);
+                }
+                return $feedback;
+            } else {
+                $data = array(
+                    'token' => $token,
+                    'action' => 'delete',
+                    'content' => 'record',
+                    'records' => $records
+                );
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $server);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_VERBOSE, 0);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+                curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+                curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                $output = curl_exec($ch);
+                $feedback = json_decode($output, TRUE);
+                self::testFeedback($feedback, $output, $ch);
+                curl_close($ch);
+                Application::log("Deleted ".$output);
 
-            return $feedback;
+                return $feedback;
+            }
         }
         return array();
     }

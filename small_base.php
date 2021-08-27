@@ -1529,18 +1529,28 @@ function produceNewOrderForMetadata($post, $metadata) {
 
 function produceSourcesAndTypes($scholar, $metadata) {
 	$choices = Scholar::getChoices($metadata);
+	if (isset($_GET['test'])) {
+	    echo "choices: ".REDCapManagement::json_encode_with_spaces($choices)."<br>";
+	    echo "metadata has ".count($metadata)." rows<br>";
+    }
 	$exampleField = Scholar::getExampleField();
 	$orders = Scholar::getDefaultOrder("all");
-	$sources = array();
-	$sourceTypes = array();
+	$sources = [];
+	$sourceTypes = [];
 	$delim = getUploadDelim();
 	$allFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	foreach ($orders as $fieldForOrder => $order) {
 		$newOrder = $scholar->getOrder($order, $fieldForOrder);
+		if (isset($_GET['test'])) {
+		    echo "newOrder for $fieldForOrder: ".REDCapManagement::json_encode_with_spaces($newOrder)."<br>";
+        }
 		foreach ($newOrder as $field => $source) {
 			if (!isset($sources[$fieldForOrder])) {
-				$sources[$fieldForOrder] = array();
-				$sourceTypes[$fieldForOrder] = array();
+			    if (isset($_GET['test'])) {
+			        echo "Resetting sources and sourceTypes for $fieldForOrder under $field<br>";
+                }
+				$sources[$fieldForOrder] = [];
+				$sourceTypes[$fieldForOrder] = [];
 			}
 			if (is_array($source)) {
 				$sourceRow = $source;
@@ -1570,7 +1580,7 @@ function produceSourcesAndTypes($scholar, $metadata) {
 				} else {
 					# race/ethnicity
 					$type = $field;
-					$sources[$fieldForOrder][$type] = array();
+					$sources[$fieldForOrder][$type] = [];
 					foreach ($sourceRow as $field => $source) {
 						if (in_array($field, $allFields)) {
 							if ($choices[$exampleField][$source]) {
@@ -1583,7 +1593,7 @@ function produceSourcesAndTypes($scholar, $metadata) {
 								$sourceType = "original";
 							}
 							if (!isset($sourceTypes[$fieldForOrder][$type])) {
-								$sourceTypes[$fieldForOrder][$type] = array();
+								$sourceTypes[$fieldForOrder][$type] = [];
 							}
 							$sourceTypes[$fieldForOrder][$type][$field] = $sourceType;
 						}
@@ -1626,12 +1636,13 @@ function produceSourcesAndTypes($scholar, $metadata) {
 			}
 		}
 	}
-	return array($sources, $sourceTypes);
+	return [$sources, $sourceTypes];
 }
 
 function importCustomFields($filename, $token, $server, $pid) {
-	$lines = array();
-	$headers = array();
+	$lines = [];
+	$headers = [];
+	$errors = [];
 	if (is_uploaded_file($filename)) {
 		$fp = fopen($filename, "rb");
 		if (!$fp) {

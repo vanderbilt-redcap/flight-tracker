@@ -177,6 +177,11 @@ class CronManager {
     }
 
     private static function saveErrorsToDB($errorQueue, $module) {
+	    for ($i = 0; $i < count($errorQueue); $i++) {
+	        if (isset($errorQueue[$i]['token'])) {
+	            unset($errorQueue[$i]['token']);
+            }
+        }
         $module->setSystemSetting(self::$errorSetting, $errorQueue);
     }
 
@@ -441,10 +446,17 @@ class CronManager {
     }
 
     private static function handleBatchError($batchQueue, $module, $startTimestamp, $exception) {
-	    Application::log("handleBatchError: ".json_encode($batchQueue[0]));
+	    $mssg = $exception->getMessage();
+	    $trace = $exception->getTraceAsString();
+        Application::log("handleBatchError: ".json_encode($batchQueue[0]));
+	    Application::log($mssg." ".$trace);
+
         $batchQueue[0]['status'] = "ERROR";
         $batchQueue[0]['endTs'] = time();
+        $batchQueue[0]['error'] = $mssg;
+        $batchQueue[0]['error_location'] = $trace;
         self::saveBatchQueueToDB($batchQueue, $module);
+
         $runJob = [
             "method" => $batchQueue[0]['method'],
             "text" => "Attempted",
@@ -452,8 +464,8 @@ class CronManager {
             "start" => $startTimestamp,
             "end" => self::getTimestamp(),
             "pid" => $batchQueue[0]['pid'],
-            "error" => $exception->getMessage(),
-            "error_location" => $exception->getTraceAsString(),
+            "error" => $mssg,
+            "error_location" => $trace,
         ];
         self::addRunJobToDB($runJob, $module);
     }

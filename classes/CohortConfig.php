@@ -5,14 +5,14 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class CohortConfig {
-	public function __construct($name, $configAry = array()) {
+	public function __construct($name, $configAry = []) {
 		$this->name = $name;
 		if (self::isValidConfigArray($configAry)) {
 			$this->config = $configAry;
 		} else {
-			$this->config = array(
-						"rows" => array(),
-						);
+			$this->config = [
+						"rows" => [],
+						];
 		}
 	}
 

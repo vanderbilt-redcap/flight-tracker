@@ -72,6 +72,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $manager->addCron("drivers/12_reportStats.php", "reportStats", "Saturday");
         if (Application::isVanderbilt() && !Application::isLocalhost()) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Wednesday", $records, 500);
+            $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "2021-08-28", $records, 500);
         }
 		if ($has['vfrs']) {
 			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $records, 40);

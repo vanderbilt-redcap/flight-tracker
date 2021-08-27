@@ -360,7 +360,14 @@ class Download {
             } else {
                 $json = \REDCap::getDataDictionary($pid, "json");
             }
-            return json_decode($json, TRUE);
+            $rows = json_decode($json, TRUE);
+		    if (isset($_GET['test'])) {
+		        Application::log("Download::metadata JSON returning ".count($rows)." rows");
+		        if (count($rows) === 0) {
+		            Application::log($json);
+                }
+            }
+		    return $rows;
         } else {
             $data = array(
                 'token' => $token,
@@ -372,6 +379,9 @@ class Download {
                 $data['fields'] = $fields;
             }
             $rows = self::sendToServer($server, $data);
+            if (isset($_GET['test'])) {
+                Application::log("Download::metadata API returning ".count($rows)." rows");
+            }
             return $rows;
         }
 	}

@@ -147,9 +147,20 @@ class COEUSConnection extends OracleConnection {
         Application::log("COEUS is pulling ".count($coeusIds)." ids", $pid);
         $idsToAdd = [];
         foreach ($records as $recordId) {
-            $userid = $redcapUserids[$recordId];
-            if ($userid && !in_array($userid, $coeusIds)) {
-                $idsToAdd[] = $userid;
+            if (is_array($redcapUserids[$recordId])) {
+                $userids = $redcapUserids[$recordId];
+                foreach ($userids as $userid) {
+                    if ($userid && !in_array($userid, $coeusIds)) {
+                        $idsToAdd[] = $userid;
+                    }
+                }
+            } else if (is_string($redcapUserids[$recordId])) {
+                $userid = $redcapUserids[$recordId];
+                if ($userid && !in_array($userid, $coeusIds)) {
+                    $idsToAdd[] = $userid;
+                }
+            } else {
+                throw new \Exception("Wrong data type: ".json_encode($redcapUserids[$recordId]));
             }
         }
         if (!empty($idsToAdd)) {

@@ -781,7 +781,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$this->setupApplication();
 		if ($instrument == "summary") {
 			require_once(dirname(__FILE__)."/hooks/summaryHook.php");
-		} else if ($instrument == "initial_survey") {
+		} else if (in_array($instrument, ["initial_survey", "initial_short_survey"])) {
 			require_once(dirname(__FILE__)."/hooks/checkHook.php");
 		} else if ($instrument == "followup") {
 			require_once(dirname(__FILE__)."/hooks/followupHook.php");
@@ -797,7 +797,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$this->setupApplication();
 		if ($instrument == "summary") {
 			require_once(dirname(__FILE__)."/hooks/summaryHook.php");
-		} else if ($instrument == "initial_survey") {
+		} else if (in_array($instrument, ["initial_survey", "initial_short_survey"])) {
 			require_once(dirname(__FILE__)."/hooks/checkHook.php");
 		} else if ($instrument == "followup") {
 			require_once(dirname(__FILE__)."/hooks/followupHook.php");

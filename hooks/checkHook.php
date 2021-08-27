@@ -11,6 +11,11 @@ require_once(dirname(__FILE__)."/surveyHook.php");
 
 # This is the hook used for the scholars' survey. It is referenced in the hooks file.
 
+$prefix = "check";
+if ($instrument == "initial_short_survey") {
+    $prefix = "checkshort";
+}
+
 ?>
 <script>
 $(document).ready(function() {
@@ -142,13 +147,13 @@ function getDisability($value) {
 ?>
 <script>
 $(document).ready(function() {
-	presetValue("check_name_first", "<?php echo findInCheck('identifier_first_name'); ?>");
-	presetValue("check_name_middle", "<?php echo findInCheck('identifier_middle'); ?>");
-	presetValue("check_name_last", "<?php echo findInCheck('identifier_last_name'); ?>");
-	presetValue("check_email", "<?php echo findInCheck('identifier_email'); ?>");
-	presetValue("check_date_of_birth", "<?php echo REDCapManagement::YMD2MDY(findInCheck('summary_dob')); ?>");
-	$('#check_date_of_birth-tr td .ui-button').hide();
-	presetValue("check_gender", "<?php echo findInCheck('summary_gender'); ?>");
+	presetValue("<?= $prefix ?>_name_first", "<?php echo findInCheck('identifier_first_name'); ?>");
+	presetValue("<?= $prefix ?>_name_middle", "<?php echo findInCheck('identifier_middle'); ?>");
+	presetValue("<?= $prefix ?>_name_last", "<?php echo findInCheck('identifier_last_name'); ?>");
+	presetValue("<?= $prefix ?>_email", "<?php echo findInCheck('identifier_email'); ?>");
+	presetValue("<?= $prefix ?>_date_of_birth", "<?php echo REDCapManagement::YMD2MDY(findInCheck('summary_dob')); ?>");
+	$('#<?= $prefix ?>_date_of_birth-tr td .ui-button').hide();
+	presetValue("<?= $prefix ?>_gender", "<?php echo findInCheck('summary_gender'); ?>");
     <?php
 	$re = findInCheck('summary_race_ethnicity');
 	if ($re != '') {
@@ -168,13 +173,13 @@ $(document).ready(function() {
 				    5 => 2,
 				    6 => 2,
 				    );
-	    echo "  presetValue('check_race', '{$raceTranslate[$re]}');\n";
-	    echo "  presetValue('check_ethnicity', '{$ethnTranslate[$re]}');\n";
+	    echo "  presetValue('$prefix"."_race', '{$raceTranslate[$re]}');\n";
+	    echo "  presetValue('$prefix"."_ethnicity', '{$ethnTranslate[$re]}');\n";
 	}
     ?>
-	presetValue("check_citizenship", "<?php echo findInCheck('summary_citizenship'); ?>");
-	presetValue("check_primary_mentor", "<?php echo findInCheck('summary_mentor'); ?>");
-	presetValue("check_institution", "<?php echo getInstitution(findInCheck('identifier_institution', 'check_institution')); ?>");
+	presetValue("<?= $prefix ?>_citizenship", "<?php echo findInCheck('summary_citizenship'); ?>");
+	presetValue("<?= $prefix ?>_primary_mentor", "<?php echo findInCheck('summary_mentor'); ?>");
+	presetValue("<?= $prefix ?>_institution", "<?php echo getInstitution(findInCheck('identifier_institution', $prefix.'_institution')); ?>");
 
 <?php
 	if (findInCheck("vfrs_graduate_degree")) {
@@ -183,9 +188,9 @@ $(document).ready(function() {
 		#VFRS
 ?>
 		<?php $curr = "vfrs_degree1"; $checkI = 1; ?>
-		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo translateFromVFRS("vfrs_graduate_degree" , 'check_degree'.$checkI, $choices); ?>");
-		<?php if (findInCheck("vfrs_graduate_degree") == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify")."');\n"; } ?>
+		var base = '<?php echo $prefix."_degree".$checkI; ?>';
+		presetValue(base, "<?php echo translateFromVFRS("vfrs_graduate_degree" , $prefix.'_degree'.$checkI, $choices); ?>");
+		<?php if (findInCheck("vfrs_graduate_degree") == 6) { echo "presetValue($prefix.'_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify")."');\n"; } ?>
 		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
 		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
 		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
@@ -193,36 +198,36 @@ $(document).ready(function() {
 		presetValue(base+"_another", "<?php if (findInCheck('vfrs_degree2') != '') { echo "1"; } ?>");
 
 		<?php $curr = "vfrs_degree2"; if (findInCheck($curr)) { $checkI++; } ?>
-		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo translateFromVFRS($curr, 'check_degree'.$checkI, $choices); ?>");
-		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify2")."');\n"; } ?>
+		var base = '<?php echo $prefix."_degree".$checkI; ?>';
+		presetValue(base, "<?php echo translateFromVFRS($curr, $prefix.'_degree'.$checkI, $choices); ?>");
+		<?php if (findInCheck($curr) == 6) { echo "presetValue($prefix.'_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify2")."');\n"; } ?>
 		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
 		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
 		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
 		presetValue(base+"_another", "<?php if (findInCheck('vfrs_degree3') != '') { echo "1"; } ?>");
 
 		<?php $curr = "vfrs_degree3"; if (findInCheck($curr)) { $checkI++; } ?>
-		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo translateFromVFRS($curr, 'check_degree'.$checkI, $choices); ?>");
-		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify3")."');\n"; } ?>
+		var base = '<?php echo $prefix."_degree".$checkI; ?>';
+		presetValue(base, "<?php echo translateFromVFRS($curr, $prefix.'_degree'.$checkI, $choices); ?>");
+		<?php if (findInCheck($curr) == 6) { echo "presetValue($prefix.'_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify3")."');\n"; } ?>
 		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
 		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
 		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
 		presetValue(base+"_another", "<?php if (findInCheck('vfrs_degree4') != '') { echo "1"; } ?>");
 
 		<?php $curr = "vfrs_degree4"; if (findInCheck($curr)) { $checkI++; } ?>
-		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo translateFromVFRS($curr, 'check_degree'.$checkI, $choices); ?>");
-		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify4")."');\n"; } ?>
+		var base = '<?php echo $prefix."_degree".$checkI; ?>';
+		presetValue(base, "<?php echo translateFromVFRS($curr, $prefix.'_degree'.$checkI, $choices); ?>");
+		<?php if (findInCheck($curr) == 6) { echo "presetValue($prefix.'_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify4")."');\n"; } ?>
 		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
 		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
 		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
 		presetValue(base+"_another", "<?php if (findInCheck('vfrs_degree5') != '') { echo "1"; } ?>");
 
 		<?php $curr = "vfrs_degree5"; if (findInCheck($curr)) { $checkI++; } ?>
-		var base = '<?php echo "check_degree".$checkI; ?>';
-		presetValue(base, "<?php echo translateFromVFRS($curr, 'check_degree'.$checkI, $choices); ?>");
-		<?php if (findInCheck($curr) == 6) { echo "presetValue('check_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify5")."');\n"; } ?>
+		var base = '<?php echo $prefix."_degree".$checkI; ?>';
+		presetValue(base, "<?php echo translateFromVFRS($curr, $prefix.'_degree'.$checkI, $choices); ?>");
+		<?php if (findInCheck($curr) == 6) { echo "presetValue($prefix.'_degree".$checkI."_oth', '".findInCheck("vfrs_please_specify5")."');\n"; } ?>
 		presetValue(base+"_month", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[0]; ?>");
 		presetValue(base+"_year", "<?php $v = findInCheck($curr.'_year'); $nodes = preg_split("/[\/\-]/", $v); echo $nodes[1]; ?>");
 		presetValue(base+"_institution", "<?php echo findInCheck($curr.'_institution') ?>");
@@ -281,13 +286,13 @@ $(document).ready(function() {
 
 		for ($i = 0; $i < 5; $i++) {
 			$index = $i + 1;
-			if ($degree[$i] != '') {
-				echo "	presetValue('check_degree{$index}', '{$degrees[$i]}');\n";
+			if ($degrees[$i] != '') {
+				echo "	presetValue('$prefix"."_degree{$index}', '{$degrees[$i]}');\n";
 			}
-			if ($degree[$i+1] != '') {
-				echo "	presetValue('check_degree{$index}_another', '1');\n";
+			if ($degrees[$i+1] != '') {
+				echo "	presetValue('$prefix"."_degree{$index}_another', '1');\n";
 			} else {
-				echo "	presetValue('check_degree{$index}_another', '');\n";
+				echo "	presetValue('$prefix"."_degree{$index}_another', '');\n";
 			}
 		}
 		echo "\n";
@@ -316,13 +321,13 @@ $(document).ready(function() {
 				$rDate = $residencyYears[$i];
 				$rNodes = preg_split("/[\/\-]/", $rDate);
 				if ((count($rNodes) >= 2) && ($rNodes[0])) {
-					echo "	presetValue('check_residency{$index}_month', '{$rNodes[0]}');\n";
+					echo "	presetValue('$prefix"."_residency{$index}_month', '{$rNodes[0]}');\n";
 				}
 				if ((count($rNodes) >= 2) && ($rNodes[1])) {
-					echo "	presetValue('check_residency{$index}_year', '{$rNodes[1]}');\n";
+					echo "	presetValue('$prefix"."_residency{$index}_year', '{$rNodes[1]}');\n";
 				}
 				if (($i < 4) && ($residencyYears[$i + 1] != '')) {
-					echo "	presetValue('check_residency{$index}_another', '1');\n";
+					echo "	presetValue('$prefix"."_residency{$index}_another', '1');\n";
 				}
 			}
 
@@ -330,24 +335,24 @@ $(document).ready(function() {
 				$fDate = $fellowYears[$i];
 				$fNodes = preg_split("/[\/\-]/", $fDate);
 				if ((count($fNodes) >= 2) && ($fNodes[0])) {
-					echo "	presetValue('check_fellow{$index}_month', '{$fNodes[0]}');\n";
+					echo "	presetValue('$prefix"."_fellow{$index}_month', '{$fNodes[0]}');\n";
 				}
 				if ((count($fNodes) >= 2) && ($fNodes[1])) {
-					echo "	presetValue('check_fellow{$index}_year', '{$fNodes[1]}');\n";
+					echo "	presetValue('$prefix"."_fellow{$index}_year', '{$fNodes[1]}');\n";
 				}
 				if (($i < 4) && ($fellowYears[$i + 1] != '')) {
-					echo "	presetValue('check_fellow{$index}_another', '1');\n";
+					echo "	presetValue('$prefix"."_fellow{$index}_another', '1');\n";
 				}
 			}
 		}
 	}
 ?>
 
-	presetValue('check_primary_dept', '<?php echo findInCheck('summary_primary_dept'); ?>');
-	presetValue('check_division', '<?php echo findInCheck(array('identifier_starting_division')); ?>');
-	presetValue("check_orcid_id", "<?php echo findInCheck(array('identifier_orcid')); ?>");
-	presetValue("check_disadvantaged", "<?php echo findInCheck(array('summary_disadvantaged')); ?>");
-	presetValue("check_disability", "<?php echo findInCheck(array('summary_disability')); ?>");
+	presetValue('<?= $prefix ?>_primary_dept', '<?php echo findInCheck('summary_primary_dept'); ?>');
+	presetValue('<?= $prefix ?>_division', '<?php echo findInCheck(array('identifier_starting_division')); ?>');
+	presetValue("<?= $prefix ?>_orcid_id", "<?php echo findInCheck(array('identifier_orcid')); ?>");
+	presetValue("<?= $prefix ?>_disadvantaged", "<?php echo findInCheck(array('summary_disadvantaged')); ?>");
+	presetValue("<?= $prefix ?>_disability", "<?php echo findInCheck(array('summary_disability')); ?>");
 
 <?php
 # Get rid of my extra verbiage
@@ -362,15 +367,15 @@ function filterSponsorNumber($name) {
 	$i = 1;
 	foreach ($grants->getGrants("compiled") as $grant) {
 		if ($i <= Grants::$MAX_GRANTS) {
-			echo "	presetValue('check_grant{$i}_start', '".REDCapManagement::YMD2MDY($grant->getVariable("start"))."');\n";
-			echo "	presetValue('check_grant{$i}_end', '".REDCapManagement::YMD2MDY($grant->getVariable("end"))."');\n";
-			echo "	presetValue('check_grant{$i}_number', '".filterSponsorNumber($grant->getBaseNumber())."');\n";
-			echo "	presetValue('check_grant{$i}_title', '".preg_replace("/'/", "\\'", $grant->getVariable("title"))."');\n";
-			echo "	presetValue('check_grant{$i}_org', '".$grant->getVariable("sponsor")."');\n";
-			echo "	presetValue('check_grant{$i}_costs', '".Grant::convertToMoney($grant->getVariable("direct_budget"))."');\n";
-			echo "	presetValue('check_grant{$i}_role', '1');\n";
+			echo "	presetValue('$prefix"."_grant{$i}_start', '".REDCapManagement::YMD2MDY($grant->getVariable("start"))."');\n";
+			echo "	presetValue('$prefix"."_grant{$i}_end', '".REDCapManagement::YMD2MDY($grant->getVariable("end"))."');\n";
+			echo "	presetValue('$prefix"."_grant{$i}_number', '".filterSponsorNumber($grant->getBaseNumber())."');\n";
+			echo "	presetValue('$prefix"."_grant{$i}_title', '".preg_replace("/'/", "\\'", $grant->getVariable("title"))."');\n";
+			echo "	presetValue('$prefix"."_grant{$i}_org', '".$grant->getVariable("sponsor")."');\n";
+			echo "	presetValue('$prefix"."_grant{$i}_costs', '".Grant::convertToMoney($grant->getVariable("direct_budget"))."');\n";
+			echo "	presetValue('$prefix"."_grant{$i}_role', '1');\n";
 			if (($i < Grants::$MAX_GRANTS) && ($i < $grants->getNumberOfGrants("compiled"))) {
-				echo "	presetValue('check_grant{$i}_another', '1');\n";
+				echo "	presetValue('$prefix"."_grant{$i}_another', '1');\n";
 			}
 		}
 		$i++;
@@ -379,6 +384,6 @@ function filterSponsorNumber($name) {
 	# also .*_d\d+
 ?>
 	doBranching();
-	$('[name="check_name_first"]').blur();
+	$('[name="<?= $prefix ?>name_first"]').blur();
 });
 </script>

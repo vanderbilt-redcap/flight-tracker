@@ -430,128 +430,148 @@ class Filter {
 		return $html;
 	}
 
-	public function getHTML() {
+	public function getHTML($prefillCohort = "") {
 		$num = self::getMaxNumberOfVariables();
 		$html = "";
 
 		$html .= "<p class='centered' style='font-size: 16px;'>\n";
-		$html .= "<b>Title</b>: <input type='text' id='title' onblur='checkForDuplicates(\"#title\"); return false;'><br>\n";
+		$html .= "<b>Title</b>: <input type='text' id='title' onblur='checkForDuplicates(\"#title\"); return false;' value='$prefillCohort'><br>\n";
 		$html .= "<b>Precedence Rules</b>: XOR &gt; AND &gt; OR\n";
 		$html .= "</p>\n";
 
 		$html .= "<br><br>\n";
 
 		$cohorts = new Cohorts($this->token, $this->server, Application::getModule());
+		if ($prefillCohort && in_array($prefillCohort, $cohorts->getCohortNames())) {
+            $editableCohort = $cohorts->getCohort($prefillCohort);
+        } else {
+		    $editableCohort = NULL;
+        }
 
 		$workshopChoices = $this->getChoices('resources_resource');
-		$blankOption = array("" => "---SELECT---");
+		$blankOption = ["" => "---SELECT---"];
 
-		$html .= "<script>\n";
-		$html .= "function commit() {\n";
-		$html .= "\tvar title = $('#title').val();\n";
-		$html .= "\tif (!title) {\n";
-		$html .= "\t\talert('No title specified!')\n";
-		$html .= "\t} else {\n";
-		$html .= "\t\tvar config = {};\n";
-		# the below line is the original configuration; must be able to parse in order to maintain backwards-compatibility
-		// $html .= "\t\tconfig['combiner'] = $('#combination').val();\n";
-		$html .= "\t\tconfig['rows'] = [];\n";
-		$html .= "\t\tfor (var i = 1; i <= ".$num."; i++) {\n";
-		$html .= "\t\t\tif (($('#type'+i).val() != '') && ($('#variable'+i).val() != '')) {\n";
-		$html .= "\t\t\t\tvar row = {};\n";
-		$html .= "\t\t\t\trow['type'] = $('#type'+i).val();\n";
-		$html .= "\t\t\t\trow['variable'] = $('#variable'+i).val();\n";
-		$html .= "\t\t\t\tif ((i > 1) && $('#combination'+i).is(':visible')) {\n";
-		$html .= "\t\t\t\t\trow['combiner'] = $('#combination'+i).val();\n";
-		$html .= "\t\t\t\t}\n";
-		$html .= "\t\t\t\tif ($('#choice'+i).val()) {\n";
-		$html .= "\t\t\t\t\trow['choice'] = $('#choice'+i).val();\n";
-		$html .= "\t\t\t\t\trow['comparison'] = $('#comparison'+i).val();\n";
-		$html .= "\t\t\t\t\tconfig['rows'].push(row);\n";
-		$html .= "\t\t\t\t} else if ($('#value'+i).val() != '') {\n";
-		$html .= "\t\t\t\t\trow['value'] = $('#value'+i).val();\n";
-		$html .= "\t\t\t\t\trow['comparison'] = $('#comparison'+i).val();\n";
-		$html .= "\t\t\t\t\tconfig['rows'].push(row);\n";
-		$html .= "\t\t\t\t} else if ($('#type'+i).val() == 'resources') {\n";
-		$html .= "\t\t\t\t\tconfig['rows'].push(row);\n";
-		$html .= "\t\t\t\t}\n";
-		$html .= "\t\t\t}\n";
-		$html .= "\t\t}\n";
-		$html .= "\t\tif (config['rows'].length > 0) {\n";
-		$html .= "\t\t\tpresentScreen('Saving...');\n";
-		$html .= "\t\t\t$.post('".Application::link("cohorts/addCohort.php")."', { title: title, config: config }, function(data) {\n";
-		$html .= "\t\t\t\tclearScreen();\n";
-		$html .= "\t\t\t\tif (data.match(/success/)) {\n";
-		$html .= "\t\t\t\t\tvar mssg = 'Upload successful!';\n";
-		$html .= "\t\t\t\t\twindow.location.href = '".Application::link("cohorts/viewCohort.php")."&title='+encodeURI(title)+'&mssg='+encodeURI(mssg);\n";
-		$html .= "\t\t\t\t} else {\n";
-		$html .= "\t\t\t\t\talert(data);\n";
-		$html .= "\t\t\t\t}\n";
-		$html .= "\t\t\t});\n";
-		$html .= "\t\t}\n";
-		$html .= "\t}\n";
-		$html .= "}\n";
-		$html .= "function checkForDuplicates(selector) {\n";
-		$html .= "\tvar existing = ".json_encode($cohorts->getCohortNames()).";\n";
-		$html .= "\tvar found = false;\n";
-		$html .= "\tfor (var i=0; i < existing.length; i++) {\n";
-		$html .= "\t\tif (existing[i].toLowerCase() == $(selector).val().toLowerCase()) {\n";
-		$html .= "\t\t\tfound = true;\n";
-		$html .= "\t\t}\n";
-		$html .= "\t}\n";
-		$html .= "\tif (found) {\n";
-		$html .= "\t\t$(selector).addClass('red');\n";
-		$html .= "\t\talert('Duplicate name found! Please change the name of your configuration.');\n";
-		$html .= "\t} else {\n";
-		$html .= "\t\t$(selector).removeClass('red');\n";
-		$html .= "\t}\n";
-		$html .= "}\n";
-		// $html .= "function changeCombine(val) {\n";
-		// $html .= "\t$('.combinator').html(val);\n";
-		// $html .= "}\n";
-		$html .= "function add(selector, i) {\n";
-		$html .= "\t$(selector).prop('disabled', true);\n";
-		$html .= "\t$('#filter'+(parseInt(i)+1)).show();\n";
-		$html .= "\t$('#combiner'+(parseInt(i)+1)).show();\n";
-		$html .= "\t$('#commitButton').show();\n";
-		$html .= "}\n";
-		$html .= "function combineHashes(hash1, hash2) {\n";
-		$html .= "\tvar newHash = {};\n";
-		$html .= "\tvar key;\n";
-		$html .= "\tfor (key in hash1) {\n";
-		$html .= "\t\tnewHash[key] = hash1[key];\n";
-		$html .= "\t}\n";
-		$html .= "\tfor (key in hash2) {\n";
-		$html .= "\t\tnewHash[key] = hash2[key];\n";
-		$html .= "\t}\n";
-		$html .= "\treturn newHash;\n";
-		$html .= "}\n";
-		$html .= "function change(selector, i) {\n";
-		$html .= "\tvar val = $(selector).val();\n";
-		$html .= "\tvar options = {};\n";
-		$html .= "\tvar comparisons = false;\n";
-		$html .= "\tvar nextSelector = '';\n";
-		$html .= "\tvar hideSelector = '';\n";
-		$html .= "\tif (selector.match(/type/)) {\n";
-		$html .= "\t\tif (val == 'demographic') {\n";
-		$html .= "\t\t\toptions = ".json_encode(array_merge($blankOption, self::getDemographicChoices())).";\n";
-		$html .= "\t\t} else if (val == 'grant') {\n";
-		$html .= "\t\t\toptions = ".json_encode(array_merge($blankOption, self::getGrantChoices())).";\n";
-		$html .= "\t\t} else if (val == 'publication') {\n";
-		$html .= "\t\t\toptions = ".json_encode(array_merge($blankOption, self::getPublicationChoices())).";\n";
-		$html .= "\t\t} else if (val == 'resources') {\n";
-		$html .= "\t\t\toptions = ".json_encode(array_merge($blankOption, $workshopChoices)).";\n";
-		$html .= "\t\t}\n"; 
-		$html .= "\t\tnextSelector = '#variable'+i;\n";
-		$html .= "\t\t$('#comparison'+i).hide();\n";
-		$html .= "\t\t$('#choice'+i).hide();\n";
-		$html .= "\t\t$('#choice'+i).parent().find('.custom-combobox').hide();\n";
-		$html .= "\t\t$('#value'+i).hide();\n";
-		$html .= "\t\t$('#button'+i).hide();\n";
-		$html .= "\t} else if (selector.match(/variable/)) {\n";
+		$link = Application::link("this");
+		$viewLink = Application::link("cohorts/viewCohort.php");
+		$existingCohortJSON = json_encode($cohorts->getCohortNames());
+        $demographicChoicesJSON = json_encode(array_merge($blankOption, self::getDemographicChoices()));
+        $grantChoicesJSON = json_encode(array_merge($blankOption, self::getGrantChoices()));
+        $publicationChoicesJSON = json_encode(array_merge($blankOption, self::getPublicationChoices()));
+        $workshopChoicesJSON = json_encode(array_merge($blankOption, $workshopChoices));
+		$html .= "<script>
+		function commit() {
+		    let title = $('#title').val();
+		    if (!title) {
+		        alert('No title specified!')
+		    } else {
+                let config = {};
+                // the below line is the original configuration; must be able to parse in order to maintain backwards-compatibility
+		        // config['combiner'] = $('#combination').val();
+		        config['rows'] = [];
+		        for (let i = 1; i <= ".$num."; i++) {
+		            if (($('#type'+i).val() != '') && ($('#variable'+i).val() != '')) {
+		                let row = {};
+		                row['type'] = $('#type'+i).val();
+		                row['variable'] = $('#variable'+i).val();
+		                if ((i > 1) && $('#combination'+i).is(':visible')) {
+		                    row['combiner'] = $('#combination'+i).val();
+		                }
+		                if ($('#choice'+i).val()) {
+		                    row['choice'] = $('#choice'+i).val();
+		                    row['comparison'] = $('#comparison'+i).val();
+		                    config['rows'].push(row);
+		                } else if ($('#value'+i).val() != '') {
+		                    row['value'] = $('#value'+i).val();
+		                    row['comparison'] = $('#comparison'+i).val();
+		                    config['rows'].push(row);
+		                } else if ($('#type'+i).val() == 'resources') {
+		                    config['rows'].push(row);
+		                }
+		            }
+		        }
+		        if (config['rows'].length > 0) {
+		            console.log('saving rows: '+JSON.stringify(config['rows']));
+		            presentScreen('Saving...');
+		            $.post('$link', { title: title, config: config }, function(data) {
+		                clearScreen();
+		                if (data.match(/success/)) {
+		                    let mssg = 'Upload successful!';
+		                    window.location.href = '$viewLink&title='+encodeURI(title)+'&mssg='+encodeURI(mssg);
+		                } else {
+		                    alert(data);
+		                }
+		            });
+		        }
+		    }
+		}
+		
+		function checkForDuplicates(selector) {
+		    let existing = $existingCohortJSON;
+		    let found = false;
+		    for (let i=0; i < existing.length; i++) {
+		        if (existing[i].toLowerCase() == $(selector).val().toLowerCase()) {
+		            found = true;
+		        }
+		    }
+		    if (found) {
+		        $(selector).addClass('red');
+		            alert('Duplicate name found! Please change the name of your configuration.');
+		        } else {
+		            $(selector).removeClass('red');
+		        }
+		    }
+		    
+		// function changeCombine(val) {
+		//     $('.combinator').html(val);
+		// }
+		
+		function showNextRow(selector, i) {
+		    // $(selector).prop('disabled', true);
+		    $('#filter'+(parseInt(i)+1)).show();
+		    $('#combiner'+(parseInt(i)+1)).show();
+		    $('#commitButton').show();
+		}
+		
+		function combineHashes(hash1, hash2) {
+		    let newHash = {};
+		    let key;
+		    for (key in hash1) {
+		        newHash[key] = hash1[key];
+		    }
+		    for (key in hash2) {
+		        newHash[key] = hash2[key];
+		    }
+		    return newHash;
+		}
+		
+		function change(selector, i) {
+            let val = $(selector).val();
+		    console.log('change '+selector+' '+i+'; val='+val);
+		    let options = {};
+		    let comparisons = false;
+		    let nextSelector = '';
+		    let hideSelector = '';
+		    if (selector.match(/type/)) {
+		        if (val == 'demographic') {
+		            options = $demographicChoicesJSON;
+		        } else if (val == 'grant') {
+		            options = $grantChoicesJSON;
+		        } else if (val == 'publication') {
+		            options = $publicationChoicesJSON;
+		        } else if (val == 'resources') {
+		            options = $workshopChoicesJSON;
+		        }
+		        nextSelector = '#variable'+i;
+		        $('#comparison'+i).hide();
+		        $('#choice'+i).hide();
+		        $('#choice'+i).parent().find('.custom-combobox').hide();
+		        $('#value'+i).hide();
+		        $('#button'+i).hide();
+		    } else if (selector.match(/variable/)) {
+		    ";
 
-		$textChoices = array("string", "number");
-		$dateChoices = array("date");
+		$textChoices = ["string", "number"];
+		$dateChoices = ["date"];
 		$allChoices = array_merge(self::getAllChoices(), $workshopChoices); 
 		foreach ($allChoices as $var => $label) {
 			$html .= "\t\tif (val == '$var') {\n";
@@ -559,92 +579,144 @@ class Filter {
 				$calcSettings = $this->$var(GET_CHOICES);
 				$calcSettingsType = $calcSettings->getType();
 				if ($calcSettingsType == "choices") {
-					$html .= "\t\t\toptions = ".json_encode($calcSettings->getChoices()).";\n";
-					$html .= "\t\t\tnextSelector = '#choice'+i;\n";
-					$html .= "\t\t\t$('#value'+i).hide();\n";
-					$html .= "\t\t\t$('#button'+i).hide();\n";
-					$html .= "\t\t\tcomparisons = ".json_encode(self::getContainsSettings()).";\n";
+				    $optionsJSON = json_encode($calcSettings->getChoices());
+				    $comparisonsJSON = json_encode(self::getContainsSettings());
+					$html .= "
+					options = $optionsJSON;
+					nextSelector = '#choice'+i;
+					$('#value'+i).hide();
+					$('#button'+i).hide();
+					comparisons = $comparisonsJSON;
+					";
 				} else if (in_array($calcSettingsType, array_merge($dateChoices, $textChoices))) {
 					$inputType = CalcSettings::transformToInputType($calcSettingsType);
 					if ($inputType) {
 						$html .= "\t\t\t$('#value'+i).prop('type', '$inputType');\n";
 					}
+					$comparisonsJSON = json_encode($calcSettings->getComparisons());
 
-					$html .= "\t\t\toptions = false;\n";
-					$html .= "\t\t\tnextSelector = '#value'+i;\n";
-					$html .= "\t\t\t$('#choice'+i).hide();\n";
-					$html .= "\t\t\t$('#choice'+i).parent().find('.custom-combobox').hide();\n";
-					$html .= "\t\t\t$('#button'+i).show();\n";
-					$html .= "\t\t\tif (i == 1) { $('#commitButton').show(); }\n";
-					$html .= "\t\t\tcomparisons = ".json_encode($calcSettings->getComparisons()).";\n";
+					$html .= "
+					options = false;
+					nextSelector = '#value'+i;
+					$('#choice'+i).hide();
+					$('#choice'+i).parent().find('.custom-combobox').hide();
+					$('#button'+i).show();
+					if (i == 1) { $('#commitButton').show(); }
+					comparisons = $comparisonsJSON;
+					";
 				}
 			} else if (isset($workshopChoices[$var])) {
-				$html .= "\t\t\toptions = false;\n";
-				$html .= "\t\t\t$('#button'+i).show();\n";
-				$html .= "\t\t\tif (i == 1) { $('#commitButton').show(); }\n";
-				$html .= "\t\t\tcomparisons = ".json_encode(self::getContainsSettings()).";\n";
+			    $comparisonsJSON = json_encode(self::getContainsSettings());
+				$html .= "
+				options = false;
+				$('#button'+i).show();
+				if (i == 1) { $('#commitButton').show(); }
+				comparisons = $comparisonsJSON;
+				";
 			} else if ($this->getChoices($var)) {
-				$html .= "\t\t\toptions = ".json_encode($this->getChoices($var)).";\n";
-				$html .= "\t\t\tnextSelector = '#choice'+i;\n";
-				$html .= "\t\t\t$('#value'+i).hide();\n";
-				$html .= "\t\t\t$('#button'+i).hide();\n";
-				$html .= "\t\t\tcomparisons = ".json_encode(self::getContainsSettings()).";\n";
+			    $optionsJSON = json_encode($this->getChoices($var));
+			    $comparisonsJSON = json_encode(self::getContainsSettings());
+				$html .= "
+				options = $optionsJSON;
+				nextSelector = '#choice'+i;
+				$('#value'+i).hide();
+				$('#button'+i).hide();
+				comparisons = $comparisonsJSON;
+				";
 			} else {
 				# number, string, or date
 				$calcSettingsType = CalcSettings::getTypeFromMetadata($var, $this->metadata);
 				$inputType = CalcSettings::transformToInputType($calcSettingsType);
 				if ($calcSettingsType && $inputType) {
 					$calcSettings = new CalcSettings($calcSettingsType);
-					$html .= "\t\t\toptions = false;\n";
-					$html .= "\t\t\tnextSelector = '#value'+i;\n";
-					$html .= "\t\t\t$('#choice'+i).hide();\n";
-					$html .= "\t\t\t$('#choice'+i).parent().find('.custom-combobox').hide();\n";
-					$html .= "\t\t\t$('#button'+i).show();\n";
-					$html .= "\t\t\tif (i == 1) { $('#commitButton').show(); }\n";
-					$html .= "\t\t\tcomparisons = ".json_encode($calcSettings->getComparisons()).";\n";
-					$html .= "\t\t\t$('#value'+i).prop('type', '$inputType');\n";
-				} else {
+					$comparisonsJSON = json_encode($calcSettings->getComparisons());
+					$html .= "
+					options = false;
+					nextSelector = '#value'+i;
+					$('#choice'+i).hide();
+					$('#choice'+i).parent().find('.custom-combobox').hide();
+					$('#button'+i).show();
+					if (i == 1) { $('#commitButton').show(); }
+					comparisons = $comparisonsJSON;
+					$('#value'+i).prop('type', '$inputType');
+					";
+				} else if ($var) {
 				    Application::log("Warning! Could not find values for $var ($calcSettingsType $inputType)");
                 }
 			}
 			$html .= "\t\t}\n";
 		}
 
-		$html .= "\t} else if (selector.match(/choice/)) {\n";
-		$html .= "\t\t$('#button'+i).show();\n";
-		$html .= "\t\tif (i == 1) { $('#commitButton').show(); }\n";
-		$html .= "\t}\n";
-		$html .= "\tif (comparisons) {\n";
-		$html .= "\t\t$('#comparison'+i).find('option').remove();\n";
-		$html .= "\t\tfor (var value in comparisons) {\n";
-		$html .= "\t\t\t$('#comparison'+i).append('<option value=\"'+value+'\">'+comparisons[value]+'</option>');\n";
-		$html .= "\t\t}\n";
-		$html .= "\t\t$('#comparison'+i).show();\n";
-		$html .= "\t} else if (nextSelector && (nextSelector.match(/type/) || nextSelector.match(/variable/))) {\n";
-		$html .= "\t\t$('#comparison'+i).hide();\n";
-		$html .= "\t}\n";
-		$html .= "\tif (nextSelector) {\n";
-		$html .= "\t\tif (options) {\n";
-		$html .= "\t\t\t$(nextSelector).find('option').remove();\n";
-		$html .= "\t\t\tif (typeof options[''] != 'undefined') {\n";
-		$html .= "\t\t\t\t$(nextSelector).append('<option value=\"\" selected>---SELECT---</option>');\n";
-		$html .= "\t\t\t}\n";
-		$html .= "\t\t\tfor (var value in options) {\n";
-		$html .= "\t\t\t\tif (value !== '') {\n";
-		$html .= "\t\t\t\t\t$(nextSelector).append('<option value=\"'+value+'\">'+options[value]+'</option>');\n";
-		$html .= "\t\t\t\t}\n";
-		$html .= "\t\t\t}\n";
-		$html .= "\t\t\tif (nextSelector.match(/choice/)) {\n";
-		$html .= "\t\t\t\t$(nextSelector).parent().find('.custom-combobox').show();\n";
-		$html .= "\t\t\t} else {\n";
-		$html .= "\t\t\t\t$(nextSelector).show();\n";
-		$html .= "\t\t\t}\n";
-		$html .= "\t\t} else {\n";
-		$html .= "\t\t\t$(nextSelector).show();\n";
-		$html .= "\t\t}\n";
-		$html .= "\t}\n";
-		$html .= "}\n";
-		$html .= "</script>\n";
+		$html .= "
+		} else if (selector.match(/choice/)) {
+		    $('#button'+i).show();
+		    if (i == 1) { $('#commitButton').show(); }
+		}
+		if (comparisons) {
+		    $('#comparison'+i).find('option').remove();
+		    for (let value in comparisons) {
+		        $('#comparison'+i).append('<option value=\"'+value+'\">'+comparisons[value]+'</option>');
+		    }
+		    $('#comparison'+i).show();
+		} else if (nextSelector && (nextSelector.match(/type/) || nextSelector.match(/variable/))) {
+		    $('#comparison'+i).hide();
+		}
+		if (nextSelector) {
+		    if (options) {
+		        $(nextSelector).find('option').remove();
+		        if (typeof options[''] != 'undefined') {
+		            $(nextSelector).append('<option value=\"\" selected>---SELECT---</option>');
+		        }
+		        for (let value in options) {
+		            if (value !== '') {
+		                $(nextSelector).append('<option value=\"'+value+'\">'+options[value]+'</option>');
+		            }
+		        }
+		        if (nextSelector.match(/choice/)) {
+		            $(nextSelector).parent().find('.custom-combobox').show();
+		        } else {
+		            $(nextSelector).show();
+		        }
+		    } else {
+		        $(nextSelector).show();
+		    }
+		}
+    }
+    ";
+		if ($editableCohort) {
+            $defaultRows = $editableCohort->getRows();
+            if (!empty($defaultRows)) {
+                $html .= "
+    		    $(document).ready(function() {
+	    	    ";
+
+                # order is important
+                $fields = ["type", "variable", "choice", "comparison", "value"];
+                for ($i = 1; $i <= count($defaultRows); $i++) {
+                    $defaultRow = $defaultRows[$i - 1];
+                    if (!empty($defaultRow)) {
+                        foreach ($fields as $field) {
+                            if ($defaultRow[$field]) {
+                                $html .= "\t\t\t\t\t$('#$field$i').val('{$defaultRow[$field]}').trigger('change');\n";
+                                if ($field == "choice") {
+                                    $html .= "\t\t\t\t\tlet text = $('#$field$i option:selected').text();\n";
+                                    $html .= "\t\t\t\t\t$('#$field$i').parent().find('.custom-combobox-input').val(text).trigger('change');\n";
+                                }
+                            }
+                        }
+                        $combiner = $defaultRow['combiner'] ?? $editableCohort->getCombiner();
+                        $html .= "\t\t\t\t\t$('#combiner$i').val('$combiner').trigger('change');\n";
+                        $html .= "\t\t\t\t\tshowNextRow('.options$i', '$i');\n";
+                    }
+                }
+
+                $html .= "
+		        });
+		        ";
+            }
+        } 
+
+		$html .= "</script>";
 
 		$html .= "<table style='width: 1100px; margin-left: auto; margin-right: auto; border: 1px dotted #888888; border-radius: 10px;'>\n";
 
@@ -656,7 +728,7 @@ class Filter {
 		$html .= "<th></th>\n";
 		$html .= "</tr>\n";
 
-		for ($i = 1; $i <= $num; $i++) {
+        for ($i = 1; $i <= $num; $i++) {
 			$html .= "<tr id='filter$i' class='filter'";
 			if ($i > 1) {
 				$html .= " style='display: none;'";
@@ -678,7 +750,7 @@ class Filter {
 			$html .= "<input type='date' class='options$i' style='display: none;' id='value$i'>\n";
 			$html .= "</td>\n";
 			$html .= "<td class='cells' style='width: 90px;'>\n";
-			$html .= "<button onclick='add(\".options$i\", \"$i\"); return false;' class='biggerButton' style='display: none;' id='button$i'>Add Row</button>\n";
+			$html .= "<button onclick='showNextRow(\".options$i\", \"$i\"); return false;' class='biggerButton' style='display: none;' id='button$i'>Add Row</button>\n";
 			$html .= "</td>\n";
 			$html .= "</tr>\n";
 			if ($i != $num) {
@@ -689,6 +761,7 @@ class Filter {
 		}
 
 		$html .= "</table>\n";
+		$html .= "<br><br><br><br><br><br>";
 
 		return $html;
 	}

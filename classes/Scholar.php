@@ -1596,7 +1596,7 @@ return $result;
             "identifier_institution" => "manual",
             "promotion_institution" => "manual",
             "imported_institution" => "manual",
-            "followup_institution" => "scholars",
+            "followup_institution" => "followup",
             "check_institution" => "scholars",
             "check_undergrad_institution" => "scholars",
             "vfrs_current_degree_institution" => "vfrs",
@@ -1605,13 +1605,13 @@ return $result;
         ];
         $orders["identifier_left_job_title"] = array(
             "promotion_job_title" => "manual",
-            "followup_job_title" => "scholars",
+            "followup_job_title" => "followup",
             "check_job_title" => "scholars",
             "init_import_job_title" => "manual",
         );
         $orders["identifier_left_job_category"] = array(
             "promotion_job_category" => "manual",
-            "followup_job_category" => "scholars",
+            "followup_job_category" => "followup",
             "check_job_category" => "scholars",
             "init_import_job_category" => "manual",
         );
@@ -1790,7 +1790,21 @@ return $result;
     }
 
     public static function getDoctoralRegexes() {
-        return ["/MD/", "/PhD/i", "/DPhil/i", "/PharmD/i", "/PsyD/i", "/DO/", "/AuD/i", "/DMP/", "/DNP/", "/DrPH/", "/DSW/", "/EdD/", "/SciD/"];
+        return [
+            "/MD/",
+            "/PhD/i",
+            "/DPhil/i",
+            "/PharmD/i",
+            "/PsyD/i",
+            "/DO/",
+            "/AuD/i",
+            "/DMP/",
+            "/DNP/",
+            "/DrPH/",
+            "/DSW/",
+            "/EdD/",
+            "/SciD/",
+            ];
     }
 
     public function findAllDegrees($rows) {
