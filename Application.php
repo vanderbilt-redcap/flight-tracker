@@ -32,8 +32,18 @@ class Application {
 	    return CareerDev::isVanderbilt();
     }
 
-    public static function getProjectTitle() {
-        return \REDCap::getProjectTitle();
+    public static function getProjectTitle($pid = NULL) {
+	    if ($pid) {
+            $token = self::getSetting("token", $pid);
+            $server = self::getSetting("server", $pid);
+        } else {
+            $token = self::getSetting("token");
+            $server = self::getSetting("server");
+        }
+	    if ($token && $server) {
+            return Download::projectTitle($token, $server);
+        }
+	    return "";
     }
 
     public static function getGrantClasses() {
@@ -95,6 +105,11 @@ class Application {
         return REDCapManagement::filterOutInvalidFields($metadata, $possibleFields);
     }
 
+    public static function isPluginProject() {
+        $link = self::link("index.php");
+        return preg_match("/plugins/", $link);
+    }
+
     public static function log($mssg, $pid = FALSE) {
 		CareerDev::log($mssg, $pid);
 	}
@@ -103,7 +118,30 @@ class Application {
 		return CareerDev::getInstitutions($pid);
 	}
 
-	public static function getDefaultVanderbiltMenteeAgreementLink() {
+    public static function getMenteeAgreementLink() {
+	    $token = self::getSetting("token");
+	    $myPid = self::getPID($token);
+	    $defaultLink = self::link("mentor/intro.php", $myPid, TRUE);
+        if (self::isPluginProject()) {
+            if (isset($_GET['test'])) {
+                echo "plugin project<br>";
+            }
+            global $info;
+            if (isset($info['prod'])) {
+                $sourcePid = $info['prod']['pid'];
+                return self::link("mentor/intro.php", $sourcePid, TRUE);
+            }
+            Application::log("Warning! Could not find prod in info!");
+        } else if (CareerDev::isCopiedProject()) {
+            if ($sourcePid = CareerDev::getSourcePid($myPid)) {
+                return self::link("mentor/intro.php", $sourcePid, TRUE);
+            }
+            Application::log("Warning! Could not find sourcePid in copied project!");
+        }
+        return $defaultLink;
+    }
+
+    public static function getDefaultVanderbiltMenteeAgreementLink() {
 	    return "https://medschool.vanderbilt.edu/msci/current-trainees/resources-for-funding-research-and-grant-assistance/";
     }
 

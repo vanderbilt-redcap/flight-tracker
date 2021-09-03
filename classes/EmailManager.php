@@ -539,7 +539,7 @@ class EmailManager {
                 }
             }
             if (preg_match("/\[mentoring_agreement\]/", $mssgs[$recordId])) {
-                $mssgs[$recordId] = str_replace("[mentoring_agreement]", Application::link("mentor/intro.php"), $mssgs[$recordId]);
+                $mssgs[$recordId] = str_replace("[mentoring_agreement]", Application::getMenteeAgreementLink(), $mssgs[$recordId]);
             }
 			if (preg_match("/\[last_name\]/", $mssgs[$recordId])) {
 				if ($lastNames[$recordId]) {

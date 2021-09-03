@@ -5,13 +5,15 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 use ExternalModules\ExternalModules;
 use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\WebOfScience;
+use Vanderbilt\CareerDevLibrary\Cohorts;
 
 class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.8.1";
+		return "3.8.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -45,9 +47,38 @@ class CareerDev {
 		return FALSE;
 	}
 
-	public static function isCopiedProject() {
-		return FALSE;
+	public static function isCopiedProject($pid = NULL) {
+	    if ($pid) {
+            return self::getSetting("turn_off", $pid);
+        } else {
+            return self::getSetting("turn_off");
+        }
 	}
+
+	public static function getSourcePid($destPid) {
+	    if (self::isCopiedProject($destPid)) {
+	        if ($sourcePid = self::getSetting("sourcePid", $destPid)) {
+	            return $sourcePid;
+            }
+	        $module = self::getModule();
+	        foreach ($module->getPids() as $pid) {
+	            if (REDCapManagement::isActiveProject($pid)) {
+	                $token = self::getSetting("token", $pid);
+	                $server = self::getSetting("server", $pid);
+                    $cohorts = new Cohorts($token, $server, $module);
+                    foreach ($cohorts->getCohortNames() as $cohort) {
+                        $destPid2 = $cohorts->getReadonlyPortalValue($cohort, "pid");
+                        if ($destPid2 == $destPid) {
+                            $sourcePid = $pid;
+                            self::saveSetting("sourcePid", $sourcePid, $destPid);
+                            return $sourcePid;
+                        }
+                    }
+                }
+            }
+        }
+	    return "";
+    }
 
 	public static function getSites($all = TRUE) {
         $sites = [
@@ -352,6 +383,10 @@ class CareerDev {
                 } else {
 		            $url .= "&project_id=".$_GET['project_id'];
                 }
+            }
+		    if ($pid && is_numeric($pid)) {
+                $url = preg_replace("/pid=\d+/", "pid=$pid", $url);
+                $url = preg_replace("/project_id=\d+/", "project_id=$pid", $url);
             }
 		    return $url;
 		}
@@ -741,11 +776,13 @@ class CareerDev {
 	        self::setPid($srcPid);
 	        $module = self::getModule();
 	        $srcSettings = $module->getProjectSettings($srcPid);
+	        self::log("Got srcSettings for $srcPid ".substr( json_encode($srcSettings), 0, 50))."...";
             $destSettings = $defaultSettings;
             $skip = ["version"];
             foreach ($srcSettings as $setting => $value) {
-                if (!isset($destSettings[$setting]) && isset($value['value']) && !isset($value['system_value']) && !in_array($setting, $skip)) {
-                    $destSettings[$setting] = $value['value'];
+                $v = isset($value['value']) ? $value['value'] : $value;
+                if (!isset($destSettings[$setting]) && !isset($value['system_value']) && !in_array($setting, $skip)) {
+                    $destSettings[$setting] = $v;
                 }
             }
 

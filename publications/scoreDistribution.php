@@ -49,19 +49,23 @@ if (!empty($foundList)) {
     $lastNames = Download::lastnames($token, $server);
     $firstNames = Download::firstnames($token, $server);
     $citationFields = Application::getCitationFields($metadata);
+    $pmidsUsed = [];
     $citationData = Download::fieldsForRecords($token, $server, $citationFields, $recordsToDownload);
     $pertinentCitations = [];
     foreach ($citationData as $row) {
         $recordId = $row['record_id'];
         $instance = $row['redcap_repeat_instance'];
-        if (in_array("$recordId:$instance", $foundList)) {
-            $citation = new Citation($token, $server, $recordId, $instance, $row, $metadata, $lastNames[$recordId], $firstNames[$recordId]);
+        $pmid = $row['citation_pmid'];
+        if ($pmid && !in_array($pmid, $pmidsUsed) && in_array("$recordId:$instance", $foundList)) {
+            # do not bold name because multiple names might be used
+            $citation = new Citation($token, $server, $recordId, $instance, $row);
             $rcr = $row['citation_rcr'];
             $altmetricScore = $row['citation_altmetric_score'] ? "Altmetric Score: ".$row['citation_altmetric_score']."." : "";
             if (!isset($pertinentCitations[$rcr])) {
                 $pertinentCitations[$rcr] = [];
             }
             $pertinentCitations[$rcr][] = "<p style='text-align: left;'>".$citation->getImage("left").$citation->getCitationWithLink(FALSE, TRUE)." RCR: $rcr. $altmetricScore</p>";
+            $pmidsUsed[] = $pmid;
         }
     }
 }

@@ -220,7 +220,8 @@ if ($numMentors > $numInvited["mentors"]) {
 }
 
 echo "<h1>Mentoring Agreement Responses</h1>";
-$homeLink = Application::link("/mentor/intro.php");
+
+$homeLink = Application::getMenteeAgreementLink();
 $addLink = Application::link("addMentor.php");
 echo "<p class='centered max-width'><strong><a class='smaller' href='$homeLink'>$homeLink</a></strong><br>Pass along this link to any mentee or mentor that (A) has a REDCap userid and (B) is registered in your Flight Tracker as a Scholar/Mentee or a Primary Mentor (with a <a href='$addLink'>registered userid</a>). With this link, they can access their relevant mentoring information anytime.</p>";
 echo "<h2>Submissions</h2>";

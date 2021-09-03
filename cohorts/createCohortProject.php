@@ -49,6 +49,7 @@ if ($pid && $cohort && in_array($cohort, $cohortNames) && $cohorts->hasReadonlyP
                     "event_id" => $newEventId,
                     "token" => $newToken,
                     "supertoken" => "",
+                    "sourcePid" => $pid,
                     ];
                 CareerDev::duplicateAllSettings($pid, $newPid, $defaultSettings);
                 Upload::metadata($metadata, $newToken, $newServer);

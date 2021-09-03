@@ -388,10 +388,11 @@ if ($showRealGraph) {
         $chartLineJS = "";
         $initJS = "";
         foreach (array_keys($plots) as $id) {
+            $reverseBool = "false";
             $yAxisTitle = $plots[$id]['yAxisTitle'];
             $chartLineJS .= "ctx['$id'] = document.getElementById('$id').getContext('2d');\n";
             $chartLineJS .= "data['$id'] = { labels: {$labelsJSON[$id]}, datasets: {$datasetsJSON[$id]} };\n";
-            $initJS .= "    redrawChart(ctx['$id'], data['$id'], '$id', '$yAxisTitle');\n";
+            $initJS .= "    redrawChart(ctx['$id'], data['$id'], '$id', '$yAxisTitle', $reverseBool);\n";
         }
 
         echo "<script>
@@ -403,7 +404,7 @@ $(document).ready(function() {
     $initJS
 });
 
-function redrawChart(ctx, data, id, yAxisTitle) {
+function redrawChart(ctx, data, id, yAxisTitle, reverseBool) {
     const config = {
         type: 'line',
         data: data,
@@ -450,7 +451,7 @@ function redrawChart(ctx, data, id, yAxisTitle) {
                         text: yAxisTitle,
                         display: true
                     },
-                    reverse: false,
+                    reverse: reverseBool,
                     suggestedMin: 0.0,
                     beginAtZero: true
                 }

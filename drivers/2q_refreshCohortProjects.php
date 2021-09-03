@@ -14,12 +14,14 @@ function copyAllCohortProjects($token, $server, $pid, $records) {
     $metadata = Download::metadata($token, $server);
     $module = CareerDev::getModule();
 	$cohorts = new Cohorts($token, $server, $module);
-	$cohortNames = $cohorts->getCohortNames();
-
-	foreach ($cohortNames as $cohort) {
+	foreach ($cohorts->getCohortNames() as $cohort) {
 	    $destPid = $cohorts->getReadonlyPortalValue($cohort, "pid");
 	    $destToken = $cohorts->getReadonlyPortalValue($cohort, "token");
-        if ($cohorts->hasReadonlyProjectsEnabled() && $destPid && $destToken && REDCapManagement::isActiveProject($destPid)) {
+        if (
+            $cohorts->hasReadonlyProjectsEnabled()
+            && $destPid && $destToken
+            && REDCapManagement::isActiveProject($destPid)
+        ) {
             CareerDev::log("Copying project to cohort $cohort. From pid $pid, to pid $destPid");
             \Vanderbilt\FlightTrackerExternalModule\copyEntireProject($token, $destToken, $server, $metadata, $cohort);
 
@@ -30,6 +32,7 @@ function copyAllCohortProjects($token, $server, $pid, $records) {
                 "event_id" => REDCapManagement::getEventIdForClassical($destPid),
                 "token" => $destToken,
                 "supertoken" => "",
+                "sourcePid" => $pid,
             ];
             CareerDev::duplicateAllSettings($pid, $destPid, $defaultSettings);
         }

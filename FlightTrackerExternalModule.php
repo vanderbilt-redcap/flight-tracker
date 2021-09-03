@@ -21,6 +21,9 @@ require_once(APP_PATH_DOCROOT."Classes/System.php");
 class FlightTrackerExternalModule extends AbstractExternalModule
 {
 	function getPrefix() {
+	    if (Application::isLocalhost()) {
+	        return "flight_tracker";
+        }
 		return $this->prefix;
 	}
 
@@ -999,7 +1002,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	public function getDirectoryPrefix() {
-	    return $this->prefix;
+	    return $this->getPrefix();
     }
 
 	private function isModuleEnabled($pid) {

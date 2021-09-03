@@ -131,7 +131,7 @@ if (count($cohortTitles) > 0) {
             if ($cohortPid = $cohorts->getReadonlyPortalValue($title, "pid")) {
                 echo "<td>Project Enabled (".Links::makeProjectHomeLink($cohortPid, "PID $cohortPid").")</td>";
             } else {
-                echo "<td><button onclick='$(\"#cohortTitle\").html(\"$title\"); $(\"#cohortDialog\").dialog(\"open\"); return false;'>Create Project</button></td>";
+                echo "<td><button onclick='$(\"#cohortTitle\").html(\"$title\"); $(\"#cohortDialog\").dialog(\"open\"); location.reload(); return false;'>Create Project</button></td>";
             }
         }
 		echo "</tr>\n";
