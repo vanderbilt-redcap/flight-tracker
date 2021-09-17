@@ -445,6 +445,10 @@ class CronManager {
         }
     }
 
+    public function getBatchQueue() {
+	    return self::getBatchQueueFromDB($this->module);
+    }
+
     private static function handleBatchError($batchQueue, $module, $startTimestamp, $exception) {
 	    $mssg = $exception->getMessage();
 	    $trace = $exception->getTraceAsString();

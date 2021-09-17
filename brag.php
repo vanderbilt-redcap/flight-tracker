@@ -116,8 +116,13 @@ if ($asc) {
     arsort($citationsWithTs);
 }
 
+$classInfo = "";
+if (!defined("NOAUTH")) {
+    $classInfo = "class='max-width'";
+}
+
 echo "<h4>".getTimespanHeader($daysPrior)."</h4>\n";
-echo "<div style='padding: 8px;'>\n";
+echo "<div $classInfo style='padding: 8px;'>\n";
 if (empty($citationsWithTs)) {
     echo "<p class='centered'>None</p>";
 } else {

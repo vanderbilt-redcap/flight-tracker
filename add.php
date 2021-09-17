@@ -362,7 +362,7 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
                 $selected = " checked";
                 foreach ($currMentorUids as $uid => $mentorName) {
                     $id = "mentor___" . $i . "___" . $uid;
-                    $radios[] = "<input type='radio' name='mentor___$i' id='$id' value='$uid'$selected> <label for='$id'>$mentorName</label>";
+                    $radios[] = "<input type='radio' name='mentor___$i' id='$id' value='$uid'$selected> <label for='$id'>$mentorName ($uid)</label>";
                     $selected = "";
                 }
                 $html .= "<td class='yellow'>" . implode("<br>", $radios) . "</td>";

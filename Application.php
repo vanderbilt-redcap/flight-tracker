@@ -118,6 +118,11 @@ class Application {
 		return CareerDev::getInstitutions($pid);
 	}
 
+	public static function getPids() {
+	    $module = self::getModule();
+	    return $module->getPids();
+    }
+
     public static function getMenteeAgreementLink() {
 	    $token = self::getSetting("token");
 	    $myPid = self::getPID($token);

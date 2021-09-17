@@ -571,6 +571,20 @@ class Publications {
 		return [];
 	}
 
+	public static function deleteEmptySources($token, $server, $pid, $recordId) {
+        $redcapData = Download::fieldsForRecords($token, $server, ["record_id", "citation_source", "citation_pmid"], [$recordId]);
+        $instances = [];
+        foreach ($redcapData as $row) {
+            if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_source'] == "")) {
+                $instances[] = $row['redcap_repeat_instance'];
+            }
+        }
+        if (!empty($instances)) {
+            Application::log("Deleting instances due to empty source ".json_encode($instances)." for citations for Record $recordId", $pid);
+            Upload::deleteFormInstances($token, $server, $pid, "citation", $recordId, $instances);
+        }
+    }
+
 	public static function deleteMismatchedRows($token, $server, $pid, $recordId, $allFirstNames, $allLastNames) {
         # download citation_authors
 	    $redcapData = Download::fieldsForRecords($token, $server, ["record_id", "citation_authors"], [$recordId]);
@@ -618,7 +632,7 @@ class Publications {
             }
         }
         if (!empty($instances)) {
-            Application::log("Deleting instances ".json_encode($instances)." for citations for Record $recordId", $pid);
+            Application::log("Deleting instances due to mismatched name ".json_encode($instances)." for citations for Record $recordId", $pid);
             Upload::deleteFormInstances($token, $server, $pid, "citation", $recordId, $instances);
         }
 	}

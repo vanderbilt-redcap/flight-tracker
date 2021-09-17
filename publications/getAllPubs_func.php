@@ -14,6 +14,12 @@ use \Vanderbilt\CareerDevLibrary\Scholar;
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
+function cleanEmptySources($token, $server, $pid, $records) {
+    foreach ($records as $recordId) {
+        Publications::deleteEmptySources($token, $server, $pid, $recordId);
+    }
+}
+
 function getPubs($token, $server, $pid, $records) {
 	$cleanOldData = FALSE;
     $metadata = Download::metadata($token, $server);
@@ -118,6 +124,7 @@ function getPubs($token, $server, $pid, $records) {
             if ($cnt > 0) {
                 Application::log("Uploaded $cnt blank rows for $recordId", $pid);
             }
+            Publications::deleteEmptySources($token, $server, $pid, $recordId);
             Publications::deleteMismatchedRows($token, $server, $pid, $recordId, $firstNames, $lastNames);
         }
 		binREDCapRows($redcapData, $citationIds);

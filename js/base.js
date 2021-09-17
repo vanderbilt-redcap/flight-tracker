@@ -483,6 +483,7 @@ function refresh() {
 
 // page is blank if current page is requested
 function getPageUrl(page) {
+	page = page.replace(/^\//, "");
 	var params = getUrlVars();
 	if (params['page']) {
 		var url = "?pid="+params['pid'];

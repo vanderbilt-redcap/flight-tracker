@@ -751,6 +751,7 @@ class NameMatcher {
             "MD,PHD",
             "MD/PHD",
             "MS",
+            "MHS",
             "DPHIL",
             "PSYD",
             "PHARMD",

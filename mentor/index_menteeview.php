@@ -302,7 +302,6 @@ foreach ($metadata as $row) {
 ?>
               </tbody>
           </table>
-
           </div>
       </div>
       </div>

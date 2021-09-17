@@ -54,6 +54,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
             }
         }
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday", $records, 40);
+        $manager->addCron("publications/getAllPubs_func.php", "cleanEmptySources", "2021-09-16", $records, 1000);
         $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday", $records, 10);
         if (!Application::getSetting("fixedPMCs", $pid)) {
             $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"), $records, 10);

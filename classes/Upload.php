@@ -132,6 +132,7 @@ class Upload
                 if (!preg_match("/_$/", $prefix)) {
                     $prefix .= "_";
                 }
+                $completeField = REDCapManagement::prefix2CompleteField($prefix);
                 if (!empty($instances)) {
                     for ($i = 0; $i < count($instances); $i += $batchSize) {
                         $batchInstances = [];
@@ -163,18 +164,18 @@ class Upload
                         } else {
                             Application::log("SQL: " . db_affected_rows() . " rows affected");
                         }
-                    }
-                }
-                $completeField = REDCapManagement::prefix2CompleteField($prefix);
-                if ($completeField) {
-                    $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name = '$completeField'".$instanceClause;
-                    Application::log("Running SQL $sql");
-                    $q = db_query($sql);
-                    if ($error = db_error()) {
-                        Application::log("SQL ERROR: " . $error);
-                        throw new \Exception($error);
-                    } else {
-                        Application::log("SQL: " . db_affected_rows() . " rows affected");
+
+                        if ($completeField) {
+                            $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name = '$completeField'".$instanceClause;
+                            Application::log("Running SQL $sql");
+                            $q = db_query($sql);
+                            if ($error = db_error()) {
+                                Application::log("SQL ERROR: " . $error);
+                                throw new \Exception($error);
+                            } else {
+                                Application::log("SQL: " . db_affected_rows() . " rows affected");
+                            }
+                        }
                     }
                 }
             } else {
