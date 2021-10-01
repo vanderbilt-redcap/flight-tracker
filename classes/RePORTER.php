@@ -61,6 +61,10 @@ class RePORTER {
 
     public function getRoleForCurrentAward($baseNumber) {
         $currTs = time();
+        $role = "";
+        $awardNo = "";
+        $startTs = time();
+        $endTs = 0;
         foreach ($this->getData() as $row) {
             if ($this->isNIH()) {
                 $awardNo = $row['project_num'];
@@ -160,14 +164,15 @@ class RePORTER {
                                 $value = implode("; ", $items2);
                             }
                         }
+                        if ($value === TRUE) {
+                            $value = "1";
+                        }
                         if (in_array($key, $dateFields) && $value) {
                             $value = REDCapManagement::getReporterDateInYMD($value);
                         }
                         $value = preg_replace("/\s+/", " ", $value);
                         if (!$value) {
                             $value = "";
-                        } else if ($value === TRUE) {
-                            $value = "1";
                         }
                         $uploadRow[$newField] = $value;
                     }
@@ -423,6 +428,7 @@ class RePORTER {
         $currData = [];
         $try = 0;
         $max = 0;   // reset with every new name
+        $myData = FALSE;
         do {
             $try++;
             $url = $location."&offset=".($max + 1);

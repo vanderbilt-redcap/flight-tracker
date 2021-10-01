@@ -176,9 +176,9 @@ class CohortConfig {
 				foreach ($postStep1 as $evalRow) {
 					if (!$previous) {
 						$previous = $evalRow;
-					} else if ($evalRow['combiner'] == "XOR") {
-						$newEvalRow = array();
-						$newEvalRow['combiner'] = $previous['combiner'];
+					} else if (isset($evalRow['combiner']) && ($evalRow['combiner'] == "XOR")) {
+						$newEvalRow = [];
+						$newEvalRow['combiner'] = $previous['combiner'] ?? "";
 						$cnt = 0;
 						if ($previous['value']) {
 							$cnt++;
@@ -206,9 +206,9 @@ class CohortConfig {
 				foreach ($postStep2 as $evalRow) {
 					if (!$previous) {
 						$previous = $evalRow;
-					} else if ($evalRow['combiner'] == "AND") {
+					} else if (isset($evalRow['combiner']) && ($evalRow['combiner'] == "AND")) {
 						$newEvalRow = array();
-						$newEvalRow['combiner'] = $previous['combiner'];
+						$newEvalRow['combiner'] = $previous['combiner'] ?? "";
 						$newEvalRow['value'] = ($previous['value'] && $evalRow['value']);
 						$previous = $newEvalRow;
 					} else {

@@ -2,6 +2,8 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+
 class CareerDevHelp {
 	public static function getHelp($title, $menu) {
 		$help = self::getHelpHash();
@@ -110,7 +112,7 @@ class CareerDevHelp {
 	}
 
 	private static function readFile($file) {
-		$filepath = dirname(__FILE__)."/help/".$file;
+		$filepath = dirname(__FILE__)."/help/".REDCapManagement::makeSafeFilename($file);
 		if (file_exists($filepath)) {
 			$fp = fopen($filepath, "r");
 			$currText = "";

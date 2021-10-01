@@ -9,12 +9,12 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$recordId = $_REQUEST['record'];
-$value = $_REQUEST['value'];
-$fieldName = $_REQUEST['field_name'];
-$instance = $_REQUEST['instance'];
-$type = $_REQUEST['type'];
-$userid = $_REQUEST['userid'];
+$recordId = REDCapManagement::sanitize($_REQUEST['record']);
+$value = REDCapManagement::sanitize($_REQUEST['value']);
+$fieldName = REDCapManagement::sanitize($_REQUEST['field_name']);
+$instance = REDCapManagement::sanitize($_REQUEST['instance']);
+$type = REDCapManagement::sanitize($_REQUEST['type']);
+$userid = REDCapManagement::sanitize($_REQUEST['userid']);
 $instrument = "mentoring_agreement";
 
 $recordIds = Download::recordIds($token, $server);
@@ -113,8 +113,8 @@ if (!empty($uploadRow)) {
         $feedback = Upload::oneRow($uploadRow, $token, $server);
         echo json_encode($feedback);
     } catch (\Exception $e) {
-        echo "Exception: ".$e->getMessage()."<br>\n".$e->getTraceAsString();
+        echo "Exception: ".$e->getMessage()."<br>\n".REDCapManagement::sanitize($e->getTraceAsString());
     }
 } else {
-    echo "No inputs! ".REDCapManagement::json_encode_with_spaces($_REQUEST);
+    echo "No inputs!";
 }

@@ -6,14 +6,14 @@ use \Vanderbilt\CareerDevLibrary\Application;
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/small_base.php");
 
-$name = $_POST['name'];
-$server = $_POST['server'];
+$name = htmlentities($_POST['name'], ENT_QUOTES);
+$server = htmlentities($_POST['server'], ENT_QUOTES);
 
 if ($name && $server) {
     $connStatus = new ConnectionStatus($name, $server, $pid);
     $results = $connStatus->test();
     foreach ($results as $key => $result) {
-        if (preg_match("/error/i", $result)) {
+        if (preg_match("/error/i", $result) && !Application::isLocalhost()) {
             Application::log("$server: $key - ".$result);
         }
     }

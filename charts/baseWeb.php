@@ -14,6 +14,7 @@ if (!$pid) {
 if (!$module) {
         $module = CareerDev::getModule();
 }
+$validWranglerTypes = ["Patents", "Publications", "Grants"];
 $token = CareerDev::getSetting("token", $pid);
 $server = CareerDev::getSetting("server", $pid);
 $event_id = CareerDev::getSetting("event_id", $pid);
@@ -82,19 +83,19 @@ function refreshForRecord(page) {
 <?php
 	if (isset($_GET['new'])) {
 		if (is_numeric($_GET['new'])) {
-			echo "  newStr = '&new=".$_GET['new']."';";
+			echo "  newStr = '&new=".htmlentities((string) $_GET['new'], ENT_QUOTES)."';";
 		} else {
 			echo "  newStr = '&new';";
 		}
 	}
-	if (isset($_GET['wranglerType'])) {
-        echo "let wranglerType = '&wranglerType={$_GET['wranglerType']}';\n";
+	if (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) {
+        echo "let wranglerType = '&wranglerType=".htmlentities($_GET['wranglerType'], ENT_QUOTES)."';\n";
 	} else {
         echo "let wranglerType = '';\n";
     }
 ?>
 	if (rec != '') {
-		window.location.href = page + '?pid=<?= $_GET['pid'] ?>&page=<?= urlencode($_GET['page']) ?>&prefix=<?= $_GET['prefix'] ?>&record='+rec+newStr+wranglerType;
+		window.location.href = page + '?pid=<?= urlencode(htmlentities($_GET['pid'])) ?>&page=<?= urlencode(htmlentities($_GET['page'])) ?>&prefix=<?= urlencode(htmlentities($_GET['prefix'])) ?>&record='+rec+newStr+wranglerType;
 	}
 }
 
@@ -131,9 +132,9 @@ function search(page, div, name) {
 		}
 		if (numFoundRecs == 1) {
 			$('#searchDiv').html("Name found.");
-			let wranglerType = '<?= isset($_GET['wranglerType']) ? "&wranglerType=".$_GET['wranglerType'] : "" ?>';
+			let wranglerType = '<?= (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) ? htmlentities($_GET['wranglerType'], ENT_QUOTES) : "" ?>';
 			for (rec in foundRecs) {
-				window.location.href = '?pid=<?= $_GET['pid'] ?>&prefix=<?= $_GET['prefix'] ?>&page='+encodeURIComponent(page)+'&record='+rec+wranglerType;
+				window.location.href = '?pid=<?= urlencode(htmlentities($_GET['pid'])) ?>&prefix=<?= urlencode(htmlentities($_GET['prefix'])) ?>&page='+encodeURIComponent(page)+'&record='+rec+wranglerType;
 			}
 		} else  if (numFoundRecs > 1) {
 			var list = "";

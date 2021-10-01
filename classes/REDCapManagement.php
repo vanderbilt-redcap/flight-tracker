@@ -45,6 +45,12 @@ class REDCapManagement {
 	    return $forms;
     }
 
+    public static function makeSafeFilename($filename) {
+	    $filename = str_replace("..", "", $filename);
+	    $filename = preg_replace("/[\\\/]/", "", $filename);
+	    return $filename;
+    }
+
 	public static function filterOutInvalidFields($metadata, $fields) {
 	    $metadataFields = self::getFieldsFromMetadata($metadata);
 	    $metadataForms = self::getFormsFromMetadata($metadata);
@@ -616,7 +622,9 @@ class REDCapManagement {
     }
 
     public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
-        Application::log("Contacting $url", $pid);
+        if (!Application::isLocalhost()) {
+            Application::log("Contacting $url", $pid);
+        }
         if (!empty($postdata)) {
             Application::log("Posting ".self::json_encode_with_spaces($postdata), $pid);
         }
@@ -648,7 +656,7 @@ class REDCapManagement {
                 ]);
         }
 
-        $data = curl_exec($ch);
+        $data = (string) curl_exec($ch);
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         if(curl_errno($ch)){
             Application::log(curl_error($ch), $pid);
@@ -667,9 +675,11 @@ class REDCapManagement {
         if (is_numeric($time1) && is_numeric($time2)) {
             $timeStmt = " in ".(($time2 - $time1) / 1000)." seconds";
         }
-        Application::log("Response code $resp; ".strlen($data)." bytes".$timeStmt, $pid);
-        if (strlen($data) < 100) {
-            Application::log("Result: ".$data, $pid);
+        if (!Application::isLocalhost()) {
+            Application::log("Response code $resp; ".strlen($data)." bytes".$timeStmt, $pid);
+            if (strlen($data) < 100) {
+                Application::log("Result: ".$data, $pid);
+            }
         }
         return [$resp, $data];
     }
@@ -800,9 +810,7 @@ class REDCapManagement {
     }
 
 	public static function findField($redcapData, $recordId, $field, $repeatingInstrument = FALSE, $instance = FALSE) {
-	    if ($repeatingInstrument) {
-	        $values = [];
-        }
+        $values = [];
 	    foreach ($redcapData as $row) {
 	        if ($row['record_id'] == $recordId) {
 	            if ($instance && $repeatingInstrument) {
@@ -883,6 +891,23 @@ class REDCapManagement {
         return $params;
     }
 
+    public static function sanitize($str) {
+	    if (!isset($str)) {
+	        return "";
+        }
+	    return htmlentities((string) $str, ENT_QUOTES);
+    }
+
+    # requestedRecord is from GET/POST
+    public static function getSanitizedRecord($requestedRecord, $records) {
+	    foreach ($records as $r) {
+	        if ($r == $requestedRecord) {
+	            return $r;
+            }
+        }
+	    return "";
+    }
+
     public static function getPage($url) {
 	    $nodes = explode("?", $url);
 	    return $nodes[0];
@@ -891,6 +916,7 @@ class REDCapManagement {
     public static function json_encode_with_spaces($data) {
         $str = json_encode($data);
         $str = preg_replace("/,/", ", ", $str);
+        $str = self::sanitize($str);
         return $str;
     }
 
@@ -1057,7 +1083,7 @@ class REDCapManagement {
 	    if (file_exists($file)) {
 	        $dir = dirname($file);
 	        $basename = preg_replace("/^\d\d\d\d\d\d\d\d\d\d\d\d\d\d_/", "", basename($file));
-	        $filename = date("YmdHis", time() + $timespanInSeconds)."_".$basename;
+	        $filename = self::makeSafeFilename(date("YmdHis", time() + (int) $timespanInSeconds)."_".$basename);
             $newLocation = $dir."/".$filename;
             Application::log("Copying $file to $newLocation");
             flush();
@@ -1275,8 +1301,6 @@ class REDCapManagement {
 
     /**
      * Encode array from latin1 to utf8 recursively
-     * @param $dat
-     * @return array|string
      */
     public static function convert_from_latin1_to_utf8_recursively($dat) {
         if (is_string($dat)) {
@@ -1338,7 +1362,19 @@ class REDCapManagement {
                                 # merge conflict => reassign all data values
                                 $field = $row['field_name'];
                                 $oldIdx = $idx;
-                                $newIdx = max(array_keys($mergedChoices)) + 1;
+
+                                $numericMergedChoicesKeys = [];
+                                foreach (array_keys($mergedChoices) as $key) {
+                                    if (is_numeric($key)) {
+                                        $numericMergedChoicesKeys[] = $key;
+                                    }
+                                }
+
+                                if (!empty($numericMergedChoicesKeys)) {
+                                    $newIdx = max($numericMergedChoicesKeys) + 1;
+                                } else {
+                                    $newIdx = 1;
+                                }
                                 Application::log("Merge conflict for field $field: Moving $oldIdx to $newIdx ($label)");
 
                                 $mergedChoices[$newIdx] = $label;
@@ -1397,36 +1433,41 @@ class REDCapManagement {
             return "";
         }
         $nodes = preg_split("/\-/", $d);
-        $day = $nodes[0];
-        $month = $nodes[1];
-        $year = $nodes[2];
-        if ($year < 40) {
-            $year += 2000;
-        } else if ($year < 100) {
-            $year += 1900;
+        if (is_numeric($nodes[0]) && is_numeric($nodes[2])) {
+            $day = $nodes[0];
+            $month = $nodes[1];
+            $year = $nodes[2];
+            if ($year < 40) {
+                $year += 2000;
+            } else if ($year < 100) {
+                $year += 1900;
+            }
+            if (($day < 10) && (strlen($day) <= 1)) {
+                $day = "0".$day;
+            }
+            $months = array(
+                "JAN" => "01",
+                "FEB" => "02",
+                "MAR" => "03",
+                "APR" => "04",
+                "MAY" => "05",
+                "JUN" => "06",
+                "JUL" => "07",
+                "AUG" => "08",
+                "SEP" => "09",
+                "OCT" => "10",
+                "NOV" => "11",
+                "DEC" => "12",
+            );
+            if (!isset($months[$month])) {
+                throw new \Exception("Invalid month $month");
+            }
+            $month = $months[$month];
+            return $year."-".$month."-".$day;
+        } else {
+            throw new \Exception("Invalid date $d");
         }
-        if (($day < 10) && (strlen($day) <= 1)) {
-            $day = "0".$day;
-        }
-        $months = array(
-            "JAN" => "01",
-            "FEB" => "02",
-            "MAR" => "03",
-            "APR" => "04",
-            "MAY" => "05",
-            "JUN" => "06",
-            "JUL" => "07",
-            "AUG" => "08",
-            "SEP" => "09",
-            "OCT" => "10",
-            "NOV" => "11",
-            "DEC" => "12",
-        );
-        if (!isset($months[$month])) {
-            throw new \Exception("Invalid month $month");
-        }
-        $month = $months[$month];
-        return $year."-".$month."-".$day;
+        return "";
     }
 
     public static function YMD2MDY($ymd) {
@@ -1534,12 +1575,21 @@ class REDCapManagement {
         }
     }
 
+    public static function isArrayNumeric($nodes) {
+        foreach ($nodes as $node) {
+            if (!is_numeric($node)) {
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }
+
     public static function MDY2YMD($mdy) {
         $nodes = preg_split("/[\/\-]/", $mdy);
-        if (count($nodes) == 3) {
-            $month = $nodes[0];
-            $day = $nodes[1];
-            $year = $nodes[2];
+        if ((count($nodes) == 3) && self::isArrayNumeric($nodes)) {
+            $month = (int) $nodes[0];
+            $day = (int) $nodes[1];
+            $year = (int) $nodes[2];
             if ($year < 100) {
                 if ($year > 30) {
                     $year += 1900;
@@ -1554,10 +1604,10 @@ class REDCapManagement {
 
     public static function DMY2YMD($mdy) {
         $nodes = preg_split("/[\/\-]/", $mdy);
-        if (count($nodes) == 3) {
-            $day = $nodes[0];
-            $month = $nodes[1];
-            $year = $nodes[2];
+        if ((count($nodes) == 3) && self::isArrayNumeric($nodes)) {
+            $day = (int) $nodes[0];
+            $month = (int) $nodes[1];
+            $year = (int) $nodes[2];
             if ($year < 100) {
                 if ($year > 30) {
                     $year += 1900;
@@ -2070,8 +2120,8 @@ class REDCapManagement {
         $dt1 = explode("-", $d1);
         $dt2 = explode("-", $d2);
         // Convert the dates to seconds (conversion varies due to dateformat)
-        $dat1 = mktime(0,0,0,$dt1[1],$dt1[2],$dt1[0]) + $d1sec;
-        $dat2 = mktime(0,0,0,$dt2[1],$dt2[2],$dt2[0]) + $d2sec;
+        $dat1 = mktime(0,0,0,(int)$dt1[1],(int)$dt1[2],(int)$dt1[0]) + $d1sec;
+        $dat2 = mktime(0,0,0,(int)$dt2[1],(int)$dt2[2],(int)$dt2[0]) + $d2sec;
         // Get the difference in seconds
         return self::secondDiff($dat1, $dat2, $unit, $returnSigned);
     }
@@ -2101,9 +2151,11 @@ class REDCapManagement {
         sort($ary);
         $size = count($ary);
         if ($size % 2 == 0) {
-            return ($ary[$size / 2 - 1] + $ary[$size / 2]) / 2;
+            $idx = (int) ($size / 2);
+            return ($ary[$idx - 1] + $ary[$idx]) / 2;
         } else {
-            return $ary[($size - 1) / 2];
+            $idx = (int) (($size - 1) / 2);
+            return $ary[$idx];
         }
     }
 }

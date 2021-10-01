@@ -307,7 +307,7 @@ class NameMatcher {
 	    $prefixesInLower = ["van", "von", "de", "der"];
 	    foreach ($nodes as $node) {
 	        if (in_array(strtoupper($node), $suffixesInUpper) && ($i == 1)) {
-	            return [$nodes[0]." ".$nodes[1]];
+	            return [$nodes[0], $nodes[0]." ".$nodes[1]];
             } else if (in_array(strtolower($node), $prefixesInLower) && ($i == 0) && (count($nodes) >= 2)) {
                 return self::collapseNames($nodes, 1);
             } else if ($node && !in_array($node, $newNodes)) {
@@ -551,11 +551,11 @@ class NameMatcher {
         }
 
 		$nodes = preg_split("/\s*,\s*/", $name);
-		if ($loggingOn) { echo "Initial split into: ".json_encode($nodes); }
+		if ($loggingOn) { echo "Initial split into: ".htmlentities(json_encode($nodes)); }
 		if ($clearOfExtraTitles) {
             $nodes = self::clearOfDegrees($nodes);
         }
-        if ($loggingOn) { echo "Cleared into: ".json_encode($nodes); }
+        if ($loggingOn) { echo "Cleared into: ".htmlentities(json_encode($nodes)); }
 		if (count($nodes) == 1) {
 		    if (preg_match("/\band\b/", $name)) {
                 $nodes = preg_split("/\s*\band\b\s*/", $name);
@@ -566,8 +566,6 @@ class NameMatcher {
 			# last-name, first-name
             if ($parts == 2) {
                 return [$nodes[1], $nodes[0]];
-            } else if ($parts == 1) {
-                return [$nodes[0]];
             } else if (count($nodes) >= $parts) {
                 $returnValues = [$nodes[1], $nodes[0]];
                 for ($i = 2; $i < $parts; $i++) {
@@ -592,7 +590,7 @@ class NameMatcher {
                 }
                 $lastNodeIdx = count($nodes) - 1;
 
-                if ($loggingOn) { echo "Split $prevName into ".count($nodes)." nodes<br>"; }
+                if ($loggingOn) { echo "Split ".htmlentities($prevName)." into ".count($nodes)." nodes<br>"; }
                 do {
                     $changed = FALSE;
                     if ($loggingOn) { echo "In do-while with ".count($nodes)." nodes<br>"; }
@@ -615,7 +613,7 @@ class NameMatcher {
                                 return [$nodes[0], $nodes[2]];
                             } else if (self::isInitial($nodes[0])) {
                                 if ($loggingOn) {
-                                    echo "Do-while B: Getting rid of initial {$nodes[0]}<br>";
+                                    echo "Do-while B: Getting rid of initial ".htmlentities($nodes[0])."<br>";
                                 }
                                 return [$nodes[1], $nodes[2]];
                             } else {
@@ -651,7 +649,7 @@ class NameMatcher {
                             $nodes = $newNodes;
                         } else if (preg_match("/^\((.+)\)$/", $nodes[$lastNodeIdx], $matches)) {
                             if ($loggingOn) {
-                                echo "Do-while E: ".json_encode($nodes)."<br>";
+                                echo "Do-while E: ".htmlentities(json_encode($nodes))."<br>";
                             }
                             $newNodes = [];
                             for ($i = 0; $i < $lastNodeIdx - 1; $i++) {
@@ -662,7 +660,7 @@ class NameMatcher {
                             $nodes = $newNodes;
                         } else {
                             if ($loggingOn) {
-                                echo "Do-while F: ".json_encode($nodes)."<br>";
+                                echo "Do-while F: ".htmlentities(json_encode($nodes))."<br>";
                             }
                             return self::collapseNames($nodes, $parts);
                         }
@@ -810,6 +808,7 @@ class NameMatcher {
         # collapse initials
         $first = preg_replace("/\b(\w)\b\s\b(\w)\b/", "$1$2", $first);
 
+        $returnValues = [];
         $returnValues[] = $first;
         for ($i = count($nodes) - $parts + 1; $i < count($nodes); $i++) {
             $returnValues[] = $nodes[$i];

@@ -9,13 +9,13 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
 
-$recordId = $_GET['menteeRecord'];
+$recordId = REDCapManagement::sanitize($_GET['menteeRecord']);
 
 if(isset($_REQUEST['uid']) && DEBUG){
-    $username = $_REQUEST['uid'];
+    $username = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$username";
 } else {
-    $username = $userid;
+    $username = Application::getUsername();
     $uidString = "";
 }
 $error = "";
@@ -33,8 +33,8 @@ $myPrimaryMentors = $allPrimaryMentors[$recordId];
 $myPrimaryMentorUserids = $allPrimaryMentorUserids[$recordId];
 
 if ($_POST['newMentorName'] && $_POST['newMentorUserid']) {
-    $newName = $_POST['newMentorName'];
-    $newUserid = $_POST['newMentorUserid'];
+    $newName = REDCapManagement::sanitize($_POST['newMentorName']);
+    $newUserid = REDCapManagement::sanitize($_POST['newMentorUserid']);
     if (in_array($newUserid, $myPrimaryMentorUserids)) {
         $error = "Name already added";
     } else {

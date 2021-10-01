@@ -63,6 +63,7 @@ $measurements["Number of Unconfirmed Publications"] = new Measurement($numUnconf
 $measurements["Records with Unconfirmed Publications"] = new Measurement($notDoneRecords);
 
 $categories = Citation::getCategories();
+$label = "";
 foreach ($categories as $cat) {
 	if (!$label) {
 		$label = "[BLANK]";

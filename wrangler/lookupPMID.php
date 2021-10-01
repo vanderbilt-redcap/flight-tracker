@@ -1,5 +1,7 @@
 <?php
 
+use \Vanderbilt\CareerDevLibrary\Publications;
+
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $pmid = $_POST['pmid'];

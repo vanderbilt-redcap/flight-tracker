@@ -11,6 +11,7 @@ require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
 $recordsIncluded = [];
 foreach ($_POST as $key => $value) {
+    $key = REDCapManagement::sanitize($key);
     if ($value && preg_match("/^record_/", $key)) {
         $recordId = preg_replace("/^record_/", "", $key);
         $recordsIncluded[] = $recordId;
@@ -19,7 +20,7 @@ foreach ($_POST as $key => $value) {
 $name = "";
 $mssg = "";
 if ($_POST['cohort']) {
-    $name = $_POST['cohort'];
+    $name = REDCapManagement::sanitize($_POST['cohort']);
     $mssg = "<p class='green centered'>New Cohort $name Added</p>";
 }
 if (!empty($recordsIncluded) && $name) {

@@ -186,7 +186,7 @@ class GrantLexicalTranslator {
 	public function getEditHTML() {
 		$html = "";
 
-		$page = "?prefix=".urlencode($_GET['prefix'])."&page=".urlencode($_GET['page'])."&pid=".$_GET['pid'];
+		$page = Application::link("this");
 		$middle = "&nbsp;&nbsp;&rarr;&nbsp;&nbsp;";
 
 		$html .= "<p class='centered'>Each Award Number Parcel must contain a direct (case-insensitive) match to part of the Grant's award number.</p>\n"; 

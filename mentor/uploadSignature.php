@@ -9,12 +9,12 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$field = $_REQUEST['field'];
-$menteeRecord = $_REQUEST['menteeRecord'];
-$b64image = $_REQUEST['b64image'];
-$mimeType = $_REQUEST['mime_type'];
-$instance = $_REQUEST['instance'];
-$date = $_REQUEST['date'];
+$field = REDCapManagement::sanitize($_REQUEST['field']);
+$menteeRecord = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
+$b64image = REDCapManagement::sanitize($_REQUEST['b64image']);
+$mimeType = REDCapManagement::sanitize($_REQUEST['mime_type']);
+$instance = REDCapManagement::sanitize($_REQUEST['instance']);
+$date = REDCapManagement::sanitize($_REQUEST['date']);
 
 $dateField = $field."_date";
 $metadata = Download::metadata($token, $server);

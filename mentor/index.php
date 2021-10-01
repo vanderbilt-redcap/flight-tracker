@@ -13,18 +13,18 @@ require_once dirname(__FILE__)."/../classes/Autoload.php";
 
 require_once dirname(__FILE__).'/_header.php';
 
-$username = $_GET['uid'];
+$username = REDCapManagement::sanitize($_GET['uid']);
 if (!$username || !DEBUG) {
-    $username = $userid;
+    $username = Application::getUsername();
 }
 
 $menteeRecordIds = getRecordsAssociatedWithUserid($username, $token, $server);
 
 if(isset($_REQUEST['uid']) && DEBUG){
-    $username = $_REQUEST['uid'];
+    $username = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$username";
 } else {
-    $username = $userid;
+    $username = Application::getUsername();
     $uidString = "";
 }
 
@@ -135,7 +135,7 @@ line-height: 20px; font-family: proxima-nova}
               $i = 1;
               foreach ($menteeRecordIds as $menteeRecordId) {
                   $menteeName = $names[$menteeRecordId];
-                  $menteeUserid = $userids[$menteeRecordId];
+                  $menteeUserids = preg_split("/\s*[,;]\s*/", strtolower($userids[$menteeRecordId]));
                   $namesOfMentors = $allMentors[$menteeRecordId];
                   $useridsOfMentors = $allMentorUids[$menteeRecordId];
                   $myRow = getLatestRow($menteeRecordId, [$username], $redcapData);
@@ -155,7 +155,7 @@ line-height: 20px; font-family: proxima-nova}
                   }
                   $newMentorInstance = $instance + 1;
                   $trailerURL = $uidString."&menteeRecord=$menteeRecordId&instance=$instance";
-                  if ($menteeUserid == $username) {
+                  if (in_array($username, $menteeUserids)) {
                       $surveyPage = Application::link("mentor/index_menteeview.php").$trailerURL;
                   } else {
                       $surveyPage = Application::link("mentor/index_mentorview.php").$trailerURL;

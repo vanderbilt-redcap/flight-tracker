@@ -10,6 +10,7 @@ class Wrangler {
     }
 
     public function getEditText($notDoneCount, $includedCount, $recordId, $name, $lastName) {
+        $person = "person";
         if ($this->wranglerType == "Publications") {
             $person = "author";
         } else if ($this->wranglerType == "Patents") {

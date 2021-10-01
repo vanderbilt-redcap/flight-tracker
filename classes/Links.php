@@ -38,6 +38,7 @@ class Links {
 				$url = $server."/".$url;
 			}
 		}
+		$url = htmlentities($url, ENT_QUOTES);
 
 		$html = "";
 		$html .= "<a href='$url'";

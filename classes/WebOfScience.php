@@ -50,7 +50,7 @@ class WebOfScience {
                     curl_setopt($curl, CURLOPT_POST, true);
                     curl_setopt($curl, CURLOPT_POSTFIELDS, $xml);
                     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-                    $result = curl_exec($curl);
+                    $result = (string) curl_exec($curl);
                     if (curl_errno($curl)) {
                         throw new \Exception(curl_error($curl));
                     }
@@ -61,6 +61,7 @@ class WebOfScience {
                     $maxTries = 5;
                     $tryNum = 0;
                     $done = FALSE;
+                    $values = [];
                     while (($tryNum < $maxTries) && !$done) {
                         $tryNum++;
                         try {
@@ -158,6 +159,8 @@ class WebOfScience {
     }
 
     public static function getCredentials($pid) {
+        $userid = "";
+        $passwd = "";
         $file = "/app001/credentials/career_dev/wos.php";
         if (file_exists($file)) {
             require($file);

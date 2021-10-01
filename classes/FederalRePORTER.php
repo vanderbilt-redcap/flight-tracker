@@ -119,8 +119,9 @@ class FederalRePORTER {
         $currData = array();
         $try = 0;
         $max = 0;   // reset with every new name
+        $myData = NULL;
         do {
-            if (isset($myData) && isset($myData['offset']) && $myData['offset'] == 0) {
+            if (isset($myData) && $myData && isset($myData['offset']) && $myData['offset'] == 0) {
                 $try++;
             } else {
                 $try = 0;
@@ -151,7 +152,7 @@ class FederalRePORTER {
                 $myData = FALSE;
                 $try++;
             }
-            if (isset($_GET['test'])) {
+            if (isset($_GET['test']) && $myData) {
                 Application::log("$query $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}");
             }
         } while (!$myData || (count($currData) < $myData['totalCount']) && ($try <= 5));

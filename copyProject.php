@@ -11,13 +11,15 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
-$otherToken = $_POST['token'];
-$otherServer = $_POST['server'];
+$otherToken = REDCapManagement::sanitize($_POST['token']);
+$otherServer = REDCapManagement::sanitize($_POST['server']);
 if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
-    $pid = $_GET['project_id'];
+    $pid = is_numeric($_GET['project_id']) ? REDCapManagement::sanitize($_GET['project_id']) : FALSE;
     if (empty($_POST)) {
-        echo "Error: No data are posted.";
-        exit;
+        die("Error: No data are posted.");
+    }
+    if (!$pid) {
+        die("Error: No project id.");
     }
     if (verifyToken($otherToken, $pid)) {
         try {
@@ -51,7 +53,7 @@ if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
         $otherServer .= "/";
     }
     $otherServerAPI = $otherServer."api/";
-    list($otherPid, $otherEventId) = \Vanderbilt\FlightTrackerExternalModule\copyProjectToNewServer($token, $server, $otherToken, $otherServerAPI);
+    $otherPid = \Vanderbilt\FlightTrackerExternalModule\copyProjectToNewServer($token, $server, $otherToken, $otherServerAPI);
 
     $otherREDCapVersion = Download::redcapVersion($otherToken, $otherServerAPI);
     $urlParams = "?prefix=".CareerDev::getPrefix()."&page=copyProject&NOAUTH&project_id=".$otherPid."&action=setupSettings";

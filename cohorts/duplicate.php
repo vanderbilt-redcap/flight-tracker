@@ -4,15 +4,16 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $messages = array();
 if ($_POST['cohort']) {
-    $cohort = $_POST['cohort'];
+    $cohort = htmlentities($_POST['cohort'], ENT_QUOTES);
 } else {
-    $cohort = $_GET['cohort'];
+    $cohort = htmlentities($_GET['cohort'], ENT_QUOTES);
 }
 
 $metadata = Download::metadata($token, $server);
@@ -20,8 +21,12 @@ $cohorts = new Cohorts($token, $server, $metadata);
 $cohortNames = $cohorts->getCohortNames();
 
 if ($_POST['supertoken']) {
-    $supertoken = $_POST['supertoken'];
-    CareerDev::saveSetting("supertoken", $supertoken);
+    $supertoken = htmlentities($_POST['supertoken']);
+    if (REDCapManagement::isValidSupertoken($supertoken)) {
+        CareerDev::saveSetting("supertoken", $supertoken);
+    } else {
+        throw new \Exception("Invalid supertoken!");
+    }
 }
 if (!$supertoken) {
     $supertoken = CareerDev::getSetting("supertoken");
@@ -79,7 +84,7 @@ if ($supertoken && in_array($cohort, $cohortNames)) {
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-		$output = curl_exec($ch);
+		$output = (string) curl_exec($ch);
 		curl_close($ch);
 		$projectData = json_decode($output, TRUE);
 		$newProjectPid = $projectData['project_id'];

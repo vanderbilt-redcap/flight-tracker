@@ -33,6 +33,7 @@ body { font-size: 12px; }
 	$grantsAndPubs = array();
 
 	$recordId = $records[0];
+	$nextRecord = $records[0];
 	for ($i = 0; $i < count($records); $i++) {
 		if (isset($_GET['record']) && ($records[$i] == $_GET['record'])) {
 			$recordId = $records[$i];
@@ -87,7 +88,7 @@ body { font-size: 12px; }
         $grantsAndPubs = array_merge($grantsAndPubs, $grantBars);
     }
 
-    $pubDots = makePubDots($rows, $token, $server, $id);
+    $pubDots = makePubDots($rows, $token, $server, $id, $minTs, $maxTs);
     $grantsAndPubs = array_merge($grantsAndPubs, $pubDots);
 
 	$currTs = time();
@@ -295,7 +296,7 @@ function makeGrantBars($grants, &$id, &$minTs, &$maxTs) {
     return $grantsAndPubs;
 }
 
-function makePubDots($rows, $token, $server, &$id) {
+function makePubDots($rows, $token, $server, &$id, &$minTs, &$maxTs) {
     $pubs = new Publications($token, $server);
     $pubs->setRows($rows);
     $citations = $pubs->getCitations("Included");

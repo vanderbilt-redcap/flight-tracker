@@ -11,6 +11,7 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 $pmids = [];
+$numbers = [];
 if (isset($_POST['finalized'])) {
 	$newFinalized = json_decode($_POST['finalized']);
     $newOmissions = json_decode($_POST['omissions']);

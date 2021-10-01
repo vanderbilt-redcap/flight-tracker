@@ -206,7 +206,7 @@ class Filter {
 	private function getPubTimestamps($rows) {
 		$pubs = new Publications($this->token, $this->server, $this->metadata);
 		$pubs->setRows($rows);
-		$cits = self::getOriginals($pubs->getCitations("Included"));
+		$cits = $pubs->getCitations("Included");
 
 		$timestamps = array();
 		foreach ($cits as $cit) {

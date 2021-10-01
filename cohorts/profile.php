@@ -32,7 +32,7 @@ td.profileHeader div a:hover { color: #0000FF; }
 <?php
 
 if (isset($_POST['title'])) {
-	$title = $_POST['title'];
+	$title = htmlentities($_POST['title'], ENT_QUOTES);
 	$metadata = Download::metadata($token, $server);
 	$config = $cohorts->getCohort($title); 
 

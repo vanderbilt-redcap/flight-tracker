@@ -5,16 +5,19 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
 $module = Application::getModule();
 if ($_GET['cohort']) {
-    $records = Download::cohortRecordIds($token, $server, $module, $_GET['cohort']);
-    $cohortStr = " (Cohort ".$_GET['cohort'].")";
+    $cohort = REDCapManagement::sanitize($_GET['cohort']);
+    $records = Download::cohortRecordIds($token, $server, $module, $cohort);
+    $cohortStr = " (Cohort ".$cohort.")";
 } else {
     $records = Download::recordIds($token, $server);
+    $cohortStr = "";
 }
 $metadata = Download::metadata($token, $server);
 $firstNames = Download::firstnames($token, $server);

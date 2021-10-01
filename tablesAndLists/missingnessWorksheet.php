@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Result;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
@@ -22,7 +23,7 @@ th { text-align: left; padding: 4px; }
 
 <?php
 $skip = array("identifier_institution", "summary_left_vanderbilt", "summary_survey", "summary_mentor");
-$_GLOBALS['skip'] = $skip;
+$GLOBALS['skip'] = $skip;
 
 $metadata = Download::metadata($token, $server);
 $choices = Scholar::getChoices($metadata);
@@ -31,7 +32,7 @@ if ($_GET['record']) {
 	$records = array($_GET['record']);
 } else if ($_GET['cohort']) {
 	$names = Download::names($token, $server);
-	$cohortRecords = Download::cohortRecordIds($token, $server, $metadata, $_GET['cohort']);
+	$cohortRecords = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
 	$records = array();
 	foreach ($names as $record => $name) {
 		if (in_array($record, $cohortRecords)) {
@@ -178,7 +179,7 @@ function generateWorksheetColumns($data, $orders, $metadata) {
 		} else {
 			$value = findValue($field, $data);
 			if ($value) {
-				if (isset($choices[$sourceField])) {
+				if (isset($choices[$field])) {
 					$value = $choices[$field][$value];
 				}
 				if ($metadataRow['text_validation_type_or_show_slider_number'] == "date_ymd") {

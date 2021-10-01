@@ -64,10 +64,10 @@ if (count($_POST) > 0) {
 					$feedback = Upload::metadata($metadata, $token, $server);
 					echo "<p class='green centered'>$rowsAffected fields affected.</p>\n";
 				} else {
-					echo "<p class='red centered'>Could not add $code to data sources!</p>\n";
+					echo "<p class='red centered'>Could not add ".htmlentities($code, ENT_QUOTES)." to data sources!</p>\n";
 				}
 			} else {
-				echo "<p class='red centered'>Could not add because code ('$code') already exists.</p>\n";
+				echo "<p class='red centered'>Could not add because code ('".htmlentities($code, ENT_QUOTES)."') already exists.</p>\n";
 			}
 		} else {
 			echo "<p class='red centered'>You must specify the text, a value for its code, and a type.</p>\n";
@@ -95,6 +95,9 @@ if (count($_POST) > 0) {
 }
 
 if (isset($_GET['order'])) {
+    if (!isset($metadata)) {
+        $metadata = Download::metadata($token, $server);
+    }
 	echo makeOrder($token, $server, $pid, $metadata);
 } else {
 	echo makeSettings(CareerDev::getModule());
@@ -339,7 +342,6 @@ function makeSettings($module) {
 	array_push($ary["Installation Variables"], makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated"));
 	array_push($ary["Installation Variables"], makeSetting("tokenName", "text", "Project Name"));
 	array_push($ary["Installation Variables"], makeSetting("timezone", "text", "Timezone"));
-	array_push($ary["Installation Variables"], makeSetting("cities", "text", "City or Cities"));
 	array_push($ary["Installation Variables"], makeSetting("grant_class", "radio", "Grant Class", "", CareerDev::getGrantClasses()));
 	array_push($ary["Installation Variables"], makeSetting("grant_number", "text", "Grant Number"));
 	array_push($ary["Installation Variables"], makeSetting("departments", "textarea", "Department Names"));

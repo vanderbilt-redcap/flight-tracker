@@ -44,6 +44,7 @@ $authorPos = [
 $type = "Included";
 $numForMetric = array();
 $ts = time();
+$numUnconfirmedPubs = 0;
 foreach ($indexedRedcapData as $recordId => $rows) {
 	$pubs = new Publications($token, $server, $metadata);
 	$pubs->setRows($rows);
@@ -105,12 +106,12 @@ foreach ($numForMetric as $origMetric => $ary) {
 			sort($ary);
 			if ($cnt % 2 == 0) {
 				# even
-				$n1 = $ary[floor($cnt / 2)];
-				$n2 = $ary[floor($cnt / 2) + 1];
+				$n1 = $ary[(int) floor($cnt / 2)];
+				$n2 = $ary[(int) floor($cnt / 2) + 1];
 				$median = ($n1 + $n2) / 2;
 			} else {
 				# odd
-				$median = $ary[floor($cnt / 2) + 1];
+				$median = $ary[(int) floor($cnt / 2) + 1];
 			}
 			$measurements[$metric] = new ObservedMeasurement($median, $cnt);
 		} else if (preg_match("/\bAvg\b/i", $metric) || preg_match("/\bAverage\b/i", $metric)) {

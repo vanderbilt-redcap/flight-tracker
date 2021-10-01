@@ -113,11 +113,11 @@ foreach ($allData as $bin => $recordData) {
     $totalCount += count($recordData);
 }
 
+$averages = [];
+$counts = [];
+$stddev = [];
+$dataPoints = [];
 if ($totalCount > 0) {
-    $averages = [];
-    $counts = [];
-    $stddev = [];
-    $dataPoints = [];
     foreach ($allData as $bin => $recordData) {
         if (count($recordData) > 0) {
             $transformedData = [];
@@ -184,8 +184,13 @@ foreach ($averages as $bin => $binData) {
                     $i2++;
                 }
             }
-            $min = floor(min($allData));
-            $max = ceil(max($allData));
+            if (!empty($allData)) {
+                $min = (int) floor(min($allData));
+                $max = (int) ceil(max($allData));
+            } else {
+                $min = 0;
+                $max = 0;
+            }
             if ($n > 0) {
                 echo "<h2 class='blue'>$bin</h2>";
                 echo "<h3>$col</h3>";
@@ -244,11 +249,15 @@ function getNumBeforeTs($orderedGrants, $thresholdTs) {
     $num = 0;
     $log = [];
     $log[] = REDCapManagement::json_encode_with_spaces($orderedGrants);
+    $thresholdDate = date("Y-m-d", $thresholdTs);
     foreach ($orderedGrants as $instance => $ts) {
-        $log[] = "Viewing $instance with ".date("Y-m-d", $ts)." and comparing to ".date("Y-m-d", $thresholdTs);
-        if ($ts <= $thresholdTs) {
-            $num++;
-            $log[] = "Less than: incrementing num to $num";
+        $tsDate = date("Y-m-d", $ts);
+        if (is_numeric($instance) && $tsDate && $thresholdDate) {
+            $log[] = "Viewing $instance with ".$tsDate." and comparing to ".$thresholdDate;
+            if ($ts <= $thresholdTs) {
+                $num++;
+                $log[] = "Less than: incrementing num to $num";
+            }
         }
     }
     $log[] = "Returning $num";

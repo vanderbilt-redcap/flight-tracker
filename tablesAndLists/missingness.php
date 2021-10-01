@@ -42,8 +42,8 @@ if (isset($_POST['pull'])) {
 }
 $allGreen = array();
 $skip = array("summary_left_vanderbilt", "summary_survey");
-$_GLOBALS['allGreen'] = $allGreen;
-$_GLOBALS['skip'] = $skip;
+$GLOBALS['allGreen'] = $allGreen;
+$GLOBALS['skip'] = $skip;
 
 # returns string
 function generateDataColumns($recordData, $requestedFields, $potentialFields) {
@@ -52,6 +52,7 @@ function generateDataColumns($recordData, $requestedFields, $potentialFields) {
 	$data = array();
 
 	$recordId = $recordData[0]["record_id"];
+	$feederSources = [];
 
 	# fields and their types of sources
 	$fields = array(
@@ -333,12 +334,12 @@ $lastNames = Download::lastnames($token, $server);
 asort($lastNames);
 $redcapData = Download::indexREDCapData(Download::getFilteredRedcapData($token, $server, $nameFields, $_GET['cohort'], CareerDev::getPluginModule()));
 
+$cohort = "";
+if ($_GET['cohort']) {
+    $cohort = REDCapManagement::sanitize($_GET['cohort']);
+}
 if (isset($_GET['csv'])) {
-	$cohort = "";
-	if ($_GET['cohort']) {
-		$cohort = "_".$_GET['cohort'];
-	}
-	$filename = "missingness".$cohort.".csv";
+	$filename = "missingness.csv";
 	header("Pragma: public");
 	header("Expires: 0");
 	header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
@@ -375,13 +376,22 @@ if (isset($_GET['csv'])) {
 
 	$cohorts = new Cohorts($token, $server, CareerDev::getPluginModule());
 	$url = CareerDev::link("tablesAndLists/missingness.php");
-	echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'], "window.location = \"$url&cohort=\" + encodeURIComponent($(this).val());")."\n";
+	echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort, "window.location = \"$url&cohort=\" + encodeURIComponent($(this).val());")."\n";
 	$csvUrl = CareerDev::link("/tablesAndLists/missingness.php")."&csv";
 	$worksheetUrl = CareerDev::link("/tablesAndLists/missingnessWorksheet.php");
-	if ($_GET['cohort']) {
-		$csvUrl .= "&cohort=".$_GET['cohort'];
-		$worksheetUrl .= "&cohort=".$_GET['cohort'];
-	}
+    if ($cohort) {
+        $cohortNames = $cohorts->getCohortNames();
+        $matchedCohort = FALSE;
+        foreach ($cohortNames as $cohortName) {
+            if ($cohortName == $cohort) {
+                $matchedCohort = $cohortName;
+            }
+        }
+        if ($matchedCohort) {
+            $csvUrl .= "&cohort=".$matchedCohort;
+            $worksheetUrl .= "&cohort=".$matchedCohort;
+        }
+    }
 	echo "<br>".Links::makeLink($csvUrl, "Export to CSV")."\n";
 	echo "<br>".Links::makeLink($worksheetUrl, "View All Missingness Worksheets")."\n";
 	echo "</p>\n";

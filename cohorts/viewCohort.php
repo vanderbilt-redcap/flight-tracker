@@ -5,16 +5,18 @@ use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\CohortConfig;
 use \Vanderbilt\CareerDevLibrary\Filter;
 use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../wrangler/css.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
-$requestedTitle = $_GET['title'];
+$requestedTitle = REDCapManagement::sanitize($_GET['title']);
 $mssg = "";
 if ($_GET['mssg']) {
-	$mssg = \Vanderbilt\FlightTrackerExternalModule\makeSafe($_GET['mssg']);
+    $mssg = REDCapManagement::sanitize($mssg);
+	$mssg = \Vanderbilt\FlightTrackerExternalModule\makeSafe($mssg);
 }
 
 echo \Vanderbilt\FlightTrackerExternalModule\getCohortHeaderHTML();
@@ -54,7 +56,7 @@ if ($requestedTitle) {
 		$i = 0;
 		$numInCol = ceil(count($nameLinks) / count($cols));
 		foreach ($nameLinks as $nameLink) {
-			array_push($cols[floor($i / $numInCol)], $nameLink);
+			array_push($cols[(int) floor($i / $numInCol)], $nameLink);
 			$i++;
 		}
 

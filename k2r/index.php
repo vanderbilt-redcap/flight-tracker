@@ -11,9 +11,9 @@ require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/base.php");
 
 if ($_GET['cohort']) {
-    $cohort = $_GET['cohort'];
+    $cohort = REDCapManagement::sanitize($_GET['cohort']);
 } else if ($_POST['cohort']) {
-    $cohort = $_POST['cohort'];
+    $cohort = REDCapManagement::sanitize($_POST['cohort']);
 } else {
     $cohort = "";
 }
@@ -57,8 +57,8 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 	if (isset($_POST['average'])) {
         $searchIfLeft = isset($_POST['excludeIfLeft']) && ($_POST['excludeIfLeft'] == "on");
 		$kLength = '';
-		if (isset($_POST['k'])) {
-			$kLength = $_POST['k'];
+		if (isset($_POST['k']) && is_numeric($_POST['k'])) {
+			$kLength = REDCapManagement::sanitize($_POST['k']);
 		}
 		$avgs = getAverages($redcapData, $kLength, $_POST['k_number'], $_POST['k_type'], $_POST['start'], $_POST['end'], $_POST['excludeUnconvertedKsBefore'], $searchIfLeft);
 
@@ -97,7 +97,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 			echo "<li class='k2r'>Omit anyone with a CDA of the given type that is less than $kLength years old</li>";
 		}
 		if ($_POST['excludeUnconvertedKsBefore']) {
-            echo "<li class='k2r'>Omit anyone who hasn't converted with a K before ".$_POST['excludeUnconvertedKsBefore']."</li>";
+            echo "<li class='k2r'>Omit anyone who hasn't converted with a K before ".REDCapManagement::sanitize($_POST['excludeUnconvertedKsBefore'])."</li>";
         }
 		echo "</ul>";
 		echo "</th><td>{$avgs['conversion']}</td></tr>";

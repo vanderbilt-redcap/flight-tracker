@@ -73,3 +73,34 @@ class REDCapLookup {
     private $firstName = "";
     private $lastName = "";
 }
+
+class REDCapLookupByUserid {
+    public function __construct($userid) {
+        $this->userid = $userid;
+    }
+
+    public function getEmail() {
+        if ($this->userid) {
+            $sql = "SELECT user_email FROM redcap_user_information WHERE lower(username) = '".db_real_escape_string(strtolower($this->userid))."'";
+            $q = db_query($sql);
+            if ($row = db_fetch_assoc($q)) {
+                return $row['user_email'];
+            }
+        }
+        return "";
+    }
+
+    public function getName() {
+        if ($this->userid) {
+            $sql = "SELECT user_firstname, user_lastname FROM redcap_user_information WHERE lower(username) = '".db_real_escape_string(strtolower($this->userid))."'";
+            $q = db_query($sql);
+            if ($row = db_fetch_assoc($q)) {
+                return $row['user_firstname']." ".$row['user_lastname'];
+            }
+        }
+        return "";
+    }
+
+    private $userid = "";
+}
+

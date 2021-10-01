@@ -24,7 +24,7 @@ $names = Download::names($token, $server);
 $cohortNames = $cohorts->getCohortNames();
 
 $redcapData = array();
-if (empty($cohorts->getCohortNames())) {
+if (empty($cohortNames)) {
 	echo "<h4>No cohorts have been created.</h4>\n";
 } else {
 	$allFields = $cohorts->getAllFields();
@@ -55,16 +55,17 @@ foreach ($cohortNames as $title) {
 	$i = 0;
 	$numInCol = ceil(count($nameLinks) / count($cols));
 	foreach ($nameLinks as $nameLink) {
-		array_push($cols[floor($i / $numInCol)], $nameLink);
+		array_push($cols[(int) floor($i / $numInCol)], $nameLink);
 		$i++;
 	}
 
 	$htmlTitle = \Vanderbilt\FlightTrackerExternalModule\makeHTMLId("table_".$title);
 	$size = count($nameLinks);
+	$link = CareerDev::link("cohorts/exportCohort.php");
 	echo "<h3>Size of Cohort $title: $size Scholars</h3>\n";
 	echo "<table style='margin-left: auto; margin-right: auto;'><tr class='centeredRow'>\n";
 	echo "<td><button class='biggerButton' onclick='$(\"#$htmlTitle\").show();'>Show Names</button></td>\n";
-	echo "<td><button class='biggerButton' onclick='window.location.href=\"exportCohort.php?pid=$pid&cohort=$title\";'>Export Names</button></td>\n";
+	echo "<td><button class='biggerButton' onclick='window.location.href=\"$link&cohort=$title\";'>Export Names</button></td>\n";
 	echo "</tr></table>\n";
 	echo "<table style='margin-left: auto; margin-right: auto; display: none;' id='$htmlTitle'>\n";
 	echo "<tr>\n";

@@ -12,10 +12,15 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once dirname(__FILE__)."/../CareerDev.php";
 
 if (Application::isExternalModule()) {
+    if (($pid == 101785) && Application::isVanderbilt()) {
+        $thisUrl = Application::link("this");
+        $thisUrl = str_replace("project_id=101785", "project_id=117692", $thisUrl);
+        header("Location: $thisUrl");
+    }
     $module = Application::getModule();
     $username = $module->getUsername();
     if (DEBUG && isset($_GET['uid'])) {
-        $username = $_GET['uid'];
+        $username = REDCapManagement::sanitize($_GET['uid']);
         $isSuperuser = FALSE;
     } else {
         $isSuperuser = ExternalModules::isSuperUser();
@@ -29,7 +34,7 @@ if (Application::isExternalModule()) {
 } else {
     $username = Application::getUsername();
     if (DEBUG && isset($_GET['uid'])) {
-        $username = $_GET['uid'];
+        $username = REDCapManagement::sanitize($_GET['uid']);
         $isSuperuser = FALSE;
     } else {
         $isSuperuser = defined('SUPER_USER') && (SUPER_USER == '1');
@@ -111,8 +116,15 @@ function getRecordsAssociatedWithUserid($username, $pidOrToken, $server = FALSE)
     if (isset($menteeUserids) && isset($allMentorUserids)) {
         $menteeRecordIds = [];
         foreach ($menteeUserids as $recordId => $menteeUserid) {
-            if ($username == $menteeUserid) {
-                $menteeRecordIds[] = $recordId;
+            $useridList = preg_split("/\s*[,;]\s*/", strtolower($menteeUserid));
+            if (isset($_GET['test'])) {
+                echo "Record $recordId: Checking mentee ".json_encode($useridList)." vs. $username<br>";
+            }
+            foreach ($useridList as $userid) {
+                if ($username == $userid) {
+                    $menteeRecordIds[] = $recordId;
+                    break;
+                }
             }
         }
         foreach ($allMentorUserids as $recordId => $mentorUserids) {
@@ -260,7 +272,8 @@ function parseSectionHeader($sectionHeader) {
 function isMentee($recordId, $username) {
     global $token, $server;
     $userids = Download::userids($token, $server);
-    if (strtolower($userids[$recordId]) == strtolower($username)) {
+    $recordUserids = preg_split("/\s*[,;]\s*/", strtolower($userids[$recordId]));
+    if (in_array(strtolower($username), $recordUserids)) {
         return TRUE;
     } else {
         return FALSE;
@@ -301,16 +314,16 @@ function getMenteesAndMentors($menteeRecordId, $userid, $token, $server) {
     $allMentors = Download::primaryMentors($token, $server);
     $allMentorUserids = Download::primaryMentorUserids($token, $server);
 
-    $menteeUid = $menteeUserids[$menteeRecordId];
+    $menteeUids = preg_split("/\s*[,;]\s*/", strtolower($menteeUserids[$menteeRecordId]));
     $mentorUids = $allMentorUserids[$menteeRecordId];
     $myMentees = [];
     $myMentors = [];
     $myMentees["name"] = Download::menteesForMentor($token, $server, $userid);
-    if ($userid == $menteeUid) {
+    if (in_array(strtolower($userid), $menteeUids)) {
         # Mentee
         $myMentors["name"] = $allMentors[$menteeRecordId];
         $myMentors["uid"] = $allMentorUserids[$menteeRecordId];
-    } else if (in_array($userid, $mentorUids)) {
+    } else if (in_array(strtolower($userid), $mentorUids)) {
         # Mentor
         $myMentors["name"] = $allMentors[$menteeRecordId];
         $myMentors["uid"] = $allMentorUserids[$menteeRecordId];
@@ -382,7 +395,8 @@ function getNameFromREDCap($username, $token = "", $server = "") {
         $lastNames = Download::lastnames($token, $server);
         $userids = Download::userids($token, $server);
         foreach ($userids as $recordId => $userid) {
-            if ($userid == $username) {
+            $recordUserids = preg_split("/\s*[,;]\s*/", strtolower($userid));
+            if (in_array(strtolower($username), $recordUserids)) {
                 return [$firstNames[$recordId], $lastNames[$recordId]];
             }
         }
@@ -679,7 +693,8 @@ function getMySurveys($username, $token, $server, $currentRecordId, $currentInst
     $surveyLocations = [];
     foreach ($redcapData as $row) {
         if(($row['mentoring_userid'] == $username) && (($row['record_id'] != $currentRecordId) || ($row['redcap_repeat_instance'] != $currentInstance))) {
-            if ($userids[$row['record_id']] == $username) {
+            $recordUserids = preg_split("/\s*[,;]\s*/", strtolower($userids[$row['record_id']]));
+            if (in_array(strtolower($username), $recordUserids)) {
                 $menteeName = "yourself";
             } else {
                 $menteeName = "mentee ".$names[$row['record_id']];
@@ -728,7 +743,7 @@ function getUseridsForRecord($token, $server, $recordId, $recipientType) {
     if (in_array($recipientType, ["mentee", "all"])) {
         $menteeUserids = Download::userids($token, $server);
         if ($menteeUserids[$recordId]) {
-            $userids = array_unique(array_merge($userids, $menteeUserids[$recordId]));
+            $userids = array_unique(array_merge($userids, preg_split("/\s*[,;]\s*/", strtolower($menteeUserids[$recordId]))));
         }
     }
     if (in_array($recipientType, ["mentor", "mentors", "all"])) {
@@ -785,7 +800,7 @@ function getSectionsToShow($username, $secHeaders, $redcapData, $menteeRecordId,
     return $sectionsToShow;
 }
 
-function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInstance, $priorNotes, $menteeName, $dateToRemind, $isMenteePage) {
+function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInstance, $priorNotes, $menteeName, $dateToRemind, $isMenteePage, $hasEvaluationComponent, $pid) {
     $html = "";
     $uidString = "";
     if (isset($_GET['uid'])) {
@@ -798,6 +813,35 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
         $functionToCall = "scheduleMentorEmail";
     } else {
         $functionToCall = "scheduleReminderEmail";
+    }
+
+    $mainScheduleEmailCall = "scheduleEmail('mentee', menteeRecord, subject, message, dateToSend, cb);";
+    if ($hasEvaluationComponent && Application::isVanderbilt()) {
+        # getSurveyLink has the fifth parameter in REDCap versions >= 10.4.0
+        $menteeEvalLink = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations", NULL, getEvalInstance("mentee"), $pid);
+        $mentorEvalLink = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations", NULL, getEvalInstance("mentor"), $pid);
+        $menteeEvalMessage = makeEvaluationMessage($menteeEvalLink);
+        $mentorEvalMessage = makeEvaluationMessage($mentorEvalLink);
+        $evalSubject = "Short Feedback Survey for Mentee-Mentor Agreements";
+        $evalSendTime = "now";
+        $scheduleEmailHTML = "
+            const mainCallback = function() {
+                $mainScheduleEmailCall
+            }
+            const mentorCallback = function() {
+                const evalSubject = '$evalSubject';
+                const evalMessage = '$mentorEvalMessage';
+                const evalSendTime = '$evalSendTime';
+                scheduleEmail('mentor', menteeRecord, evalSubject, evalMessage, evalSendTime, mainCallback);            
+            }
+            
+            const evalSubject = '$evalSubject';
+            const evalMessage = '$menteeEvalMessage';
+            const evalSendTime = '$evalSendTime';
+            scheduleEmail('mentee', menteeRecord, evalSubject, evalMessage, evalSendTime, mentorCallback);
+            ";
+    } else {
+        $scheduleEmailHTML = $mainScheduleEmailCall;
     }
 
     $agreementSaveURL = Application::link("mentor/_agreement_save.php").$uidString.$recordString;
@@ -948,16 +992,18 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
                 priorNotes[notesFieldName] = latestcomment;
             }
             console.log('Uploading to '+notesFieldName+' in instance $menteeInstance');
-            $.post('$changeURL', {
-                userid: '$username',
-                type: 'notes',
-                record: '$menteeRecordId',
-                instance: '$menteeInstance',
-                field_name: notesFieldName,
-                value: latestcomment
-            }, function(html) {
-                console.log(html);
-            });
+            if ($menteeInstance > 0) {
+                $.post('$changeURL', {
+                    userid: '$username',
+                    type: 'notes',
+                    record: '$menteeRecordId',
+                    instance: '$menteeInstance',
+                    field_name: notesFieldName,
+                    value: latestcomment
+                }, function(html) {
+                    console.log(html);
+                });
+            }
         }
     }
     
@@ -975,13 +1021,13 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
     }
 
     function scheduleReminderEmail(menteeRecord, menteeName, dateToSend, cb) {
-        let link = getLinkForEntryPage();
-        let subject = 'Reminder: Your Mentoring Agreement';
-        let dear = '<p>Dear '+menteeName+',</p>';
-        let paragraph1 = '<p>A follow-up meeting with your mentor is requested. Please fill out a survey via the below link and then schedule a meeting to review your mentoring agreement with your mentor.</p>';
-        let paragraph2 = '<p><a href=\"'+link+'\">'+link+'</p>';
-        let message = dear + paragraph1 + paragraph2;
-        scheduleEmail('mentee', menteeRecord, subject, message, dateToSend, cb);
+        const link = getLinkForEntryPage();
+        const subject = 'Reminder: Your Mentoring Agreement';
+        const dear = '<p>Dear '+menteeName+',</p>';
+        const paragraph1 = '<p>A follow-up meeting with your mentor is requested. Please fill out a survey via the below link and then schedule a meeting to review your mentoring agreement with your mentor.</p>';
+        const paragraph2 = '<p><a href=\"'+link+'\">'+link+'</p>';
+        const message = dear + paragraph1 + paragraph2;
+        $scheduleEmailHTML
     }
     
     function scheduleEmail(recipientType, menteeRecord, subject, message, dateToSend, cb) {
@@ -1001,6 +1047,11 @@ function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInst
 
 </script>";
     return $html;
+}
+
+function makeEvaluationMessage($evalLink) {
+    # REMINDER: No single quotes because of the way the JS is formed
+    return "Thank you for filling out a mentee-mentor agreement. Because this is a pilot, we are interested in your feedback. Can you fill out the following six-question survey?<br/><a href=\"$evalLink\">$evalLink</a><br/><br/>Thanks!<br/>The Flight Tracker Team";
 }
 
 function getSectionHeadersWithMenteeQuestions($metadata) {
@@ -1186,4 +1237,14 @@ function makeReminderJS($from) {
     }
     </script>";
     return $html;
+}
+
+function getEvalInstance($type) {
+    if ($type == "mentee") {
+        return 1;
+    } else if ($type == "mentor") {
+        return 2;
+    } else {
+        return "";
+    }
 }

@@ -24,6 +24,10 @@ class ConnectionStatus {
     }
 
     public function testFileGetContents(&$tests) {
+
+        /*
+         * Disabled due to security hole using file_get_contents
+         *
         $data = file_get_contents($this->url);
         $bytes = strlen($data);
         if ($bytes > 0) {
@@ -31,6 +35,7 @@ class ConnectionStatus {
         } else {
             $tests['file_get_contents'] = "ERROR: No data returned!";
         }
+        */
     }
 
     public function testSocket(&$tests) {

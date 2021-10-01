@@ -11,7 +11,7 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 if (isset($_GET['cohort']) && $_GET['cohort']) {
-    $cohort = $_GET['cohort'];
+    $cohort = REDCapManagement::sanitize($_GET['cohort']);
     $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $cohort = "";
@@ -32,11 +32,11 @@ list($tableRows, $totalCompleted) = makeDataTableRows($categories, $blankRow, $r
 $names = Download::names($token, $server);
 
 if ((isset($_GET['download'])) && in_array($_GET['download'], ["TL1", "KL2"])) {
-    $catClass = $_GET['download'];
+    $catClass = REDCapManagement::sanitize($_GET['download']);
     $allData = getFieldDataToDownload($tableRows, $totalCompleted, $catClass);
     $projectName = Application::getProjectTitle();
     if (!empty($allData)) {
-        outputCSVFromData($allData, $projectName . " " . $catClass . "-" . date("Y-m-d") . ".csv");
+        outputCSVFromData($allData, $projectName . " Common Metrics -" . date("Y-m-d") . ".csv");
     } else {
         require_once(dirname(__FILE__)."/../charts/baseWeb.php");
         echo makeTableFromData($tableRows, $totalCompleted, $blankRow, $token, $server, $grantClass, $names);
@@ -44,8 +44,10 @@ if ((isset($_GET['download'])) && in_array($_GET['download'], ["TL1", "KL2"])) {
 } else if (isset($_POST['Engaged']) && isset($_POST['Not Engaged'])) {
     require_once(dirname(__FILE__)."/../charts/baseWeb.php");
     if ($_POST['Engaged'] || $_POST['Not Engaged']) {
-        $engagedNames = preg_split("/[\n\r]+/", $_POST["Engaged"]);
-        $notEngagedNames = preg_split("/[\n\r]+/", $_POST["Not Engaged"]);
+        $engagedList = REDCapManagement::sanitize($_POST['Engaged']);
+        $notEngagedList = REDCapManagement::sanitize($_POST['Not Engaged']);
+        $engagedNames = preg_split("/[\n\r]+/", $engagedList);
+        $notEngagedNames = preg_split("/[\n\r]+/", $notEngagedList);
         $values = ["1" => $engagedNames, "2" => $notEngagedNames];
         $upload = [];
         $lastNames = Download::lastnames($token, $server);
@@ -75,7 +77,7 @@ if ((isset($_GET['download'])) && in_array($_GET['download'], ["TL1", "KL2"])) {
             echo "<p class='centered max-width red'>No one signed up!</p>";
         }
         if (!empty($unmatchedNames["1"]) || !empty($unmatchedNames["2"])) {
-            $allUnmatchedNames = array_merge($unmatchedNames["1"], $unmatchedNames["2"]);
+            $allUnmatchedNames = array_merge($unmatchedNames["1"] ?? [], $unmatchedNames["2"] ?? []);
             $numNames = count($allUnmatchedNames);
             echo "<p class='centered max-width red'>$numNames unmatched names!<br>".implode("<br>", $allUnmatchedNames)."</p>";
         }
@@ -296,10 +298,9 @@ function makeDataTableRows($categories, $blankRow, $records, $token, $server, $p
             }
         }
 
+        $genderKey = "";
         if (isset($gender[$recordId])) {
-            if ($gender[$recordId] === "") {
-                $genderKey = "";
-            } else {
+            if ($gender[$recordId] !== "") {
                 $genderKey = $choices["summary_gender"][$gender[$recordId]];
             }
             if (!in_array($genderKey, ["Female", "Male", ""])) {

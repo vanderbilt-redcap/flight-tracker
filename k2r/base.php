@@ -3,19 +3,20 @@
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Grants;
 
 require_once(dirname(__FILE__)."/../autoload.php");
 
 $ind_ks = array(3, 4);
-$_GLOBAL['ind_ks'] = $ind_ks;
+$GLOBALS['ind_ks'] = $ind_ks;
 $int_ks = array(1, 2);
-$_GLOBAL['int_ks'] = $int_ks;
+$GLOBALS['int_ks'] = $int_ks;
 if ($_POST['r01equivtype'] == "r01") {
     $rs = array(5);
 } else {
     $rs = array(5, 6);
 }
-$_GLOBAL['rs'] = $rs;
+$GLOBALS['rs'] = $rs;
 
 function getTypeOfLastK($data, $recordId) {
     $ks = array(

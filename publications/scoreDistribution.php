@@ -9,7 +9,7 @@ use \Vanderbilt\CareerDevLibrary\Citation;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
-$thresholdRCR = $_GET['thresholdRCR'] ?? 2.0;
+$thresholdRCR = $_GET['thresholdRCR'] ? REDCapManagement::sanitize($_GET['thresholdRCR']) : 2.0;
 
 $fields = [
     "record_id",
@@ -45,13 +45,13 @@ foreach ($dist['citation_rcr'] as $location => $rcr) {
         $foundList[] = $location;
     }
 }
+$pertinentCitations = [];
 if (!empty($foundList)) {
     $lastNames = Download::lastnames($token, $server);
     $firstNames = Download::firstnames($token, $server);
     $citationFields = Application::getCitationFields($metadata);
     $pmidsUsed = [];
     $citationData = Download::fieldsForRecords($token, $server, $citationFields, $recordsToDownload);
-    $pertinentCitations = [];
     foreach ($citationData as $row) {
         $recordId = $row['record_id'];
         $instance = $row['redcap_repeat_instance'];

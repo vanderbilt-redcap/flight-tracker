@@ -108,7 +108,7 @@ form input, form select {
 $possibleFields = ["citation_grants", "citation_mesh_terms", "citation_journal"];
 $metadata = Download::metadata($token, $server);
 if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
-    $field = $_POST['field'];
+    $field = REDCapManagement::sanitize($_POST['field']);
     $fields = ["record_id", "citation_include", $field];
     if ($_POST['cohort']) {
         $cohort = $_POST['cohort'];

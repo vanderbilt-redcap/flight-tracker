@@ -15,7 +15,9 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 if ($_GET['record']) {
-    $highlightedRecord = $_GET['record'];
+    $highlightedRecord = REDCapManagement::sanitize($_GET['record']);
+} else {
+    $highlightedRecord = FALSE;
 }
 
 define('PUBYEAR_SELECT', '---pub_year---');
@@ -184,11 +186,14 @@ if (isset($_GET['cohort']) && !empty($records)) {
 
     if ($includeMentors) {
         $mentorConnections = getAvgMentorConnections($matches);
+    } else {
+        $mentorConnections = 0;
     }
     list($stats, $maxConnections, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators) = makeSummaryStats($connections, $names);
 
     $noCollaborations = (getCollaborationsRepresented($stats) == 0);
     if ($noCollaborations) {
+        echo "<br><br><br><br><br><br><br><br><br><br>";
         echo "<h3>No collaborations are currently observed.</h3>";
     } else if ($includeHeaders) {
         echo "<table style='margin: 30px auto; max-width: 800px;' class='bordered'>\n";
@@ -220,7 +225,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
                 echo "<tr><th>Standard Deviation</th><td>&sigma; = ".REDCapManagement::pretty($stats[$type]->getSigma(), 1)."</td></tr>\n";
                 echo "<tr><th>Maximum Connections</th><td>max = ".REDCapManagement::pretty($maxConnections[$type])." (".REDCapManagement::makeConjunction($maxNames[$type]).")</td></tr>\n";
                 echo "<tr><th>Maximum Number of Collaborators</th><td>max = ".REDCapManagement::pretty($maxCollaborators[$type])." (".REDCapManagement::makeConjunction($maxCollabNames[$type]).")</td></tr>\n";
-                if ($includeMentors && ($type != "received")) {
+                if ($includeMentors && ($type != "received") && $mentorConnections) {
                     echo "<tr><th>Average Connections per Mentor with All Scholars</th><td>".REDCapManagement::pretty($mentorConnections, 1)."</td></tr>\n";
                 }
             }
@@ -412,6 +417,7 @@ function makeLegendHTML($indexByField) {
 }
 
 function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
+    $totalConnections = 0;
     $colorWheel = generateColorWheel(8, START_YEAR, date("Y"));
     $combine = ["VCTRS", "VPSD", "VFRS"];
     $connections = ["given" => [], "received" => [], ];
@@ -670,7 +676,7 @@ function makeSummaryStats($connections, $names) {
             echo "dataValues for $type: ".REDCapManagement::json_encode_with_spaces($dataValues)."<br>";
         }
         $stats[$type] = new Stats($dataValues);
-        $maxConnections[$type] = max($dataValues);
+        $maxConnections[$type] = !empty($dataValues) ? max($dataValues) : 0;
         $maxNames[$type] = [];
         $maxCollabNames[$type] = [];
         foreach ($typeConnections as $recordId => $indivConnections) {

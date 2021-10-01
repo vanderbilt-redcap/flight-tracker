@@ -15,10 +15,10 @@ use \Vanderbilt\CareerDevLibrary\CitationCollection;
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
+$recordIds = Download::recordIds($token, $server);
 if (isset($_GET['record']) && is_numeric($_GET['record'])) {
-	$record = $_GET['record'];
+	$record = REDCapManagement::getSanitizedRecord($_GET['record'], $recordIds);
 } else {
-	$recordIds = Download::recordIds($token, $server);
 	if (count($recordIds) > 0) {
         	$record = $recordIds[0];
 	} else {
@@ -143,7 +143,7 @@ function refreshProfile(page) {
 $(document).ready(function() {
     $('#search').keydown(function(e) {
 		if ((e.keyCode == 13) || (e.keyCode == 9)) {
-			var page = '<?= $_GET['page'] ?>';
+			var page = '<?= REDCapManagement::sanitize($_GET['page']) ?>';
 			var name = $(this).val();
 			search(page, '#searchDiv', name);
 		}

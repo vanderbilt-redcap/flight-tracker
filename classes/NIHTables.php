@@ -83,6 +83,23 @@ class NIHTables {
 		return $table;
 	}
 
+	public function isValidTable($table) {
+        if (self::beginsWith($table, array("5A", "5B"))) {
+            return TRUE;
+        } else if (self::beginsWith($table, array("6A", "6B"))) {
+            return TRUE;
+        } else if (self::beginsWith($table, array("8A", "8C"))) {
+            return TRUE;
+        } else if ($table == "Common Metrics") {
+            return TRUE;
+        } else if (self::beginsWith($table, array("1"))) {
+            return TRUE;
+        } else if (in_array($table, [2, 3, 4])) {
+            return TRUE;
+        }
+	    return FALSE;
+    }
+
     public function getHTML($table) {
 		if (self::beginsWith($table, array("5A", "5B"))) {
 			$data = $this->get5Data($table);
@@ -831,6 +848,7 @@ class NIHTables {
         }
 
         $doctorateDegreesAndYears = $this->getDoctoralDegreesAndYears($recordId, FALSE);
+        $predocDegreesAndYears = [];
         foreach ($degreesAndYears as $degree => $year) {
             if (!isset($doctorateDegreesAndYears[$degree])) {
                 $predocDegreesAndYears[$degree] = $year;
@@ -907,6 +925,8 @@ class NIHTables {
         if ($getDate) {
             $numCategories++;
         }
+        $institution = "";
+        $date = "";
 
         $yearMatches = $this->getAllDegreeFieldsIndexed(TRUE, FALSE);
         $institutionMatches = $this->getAllDegreeFieldsIndexed(FALSE, TRUE);
@@ -916,6 +936,7 @@ class NIHTables {
         $choices = $this->getAlteredChoices();
         $degreesAndAddOns = [];
         $year = self::$unknownYearText;
+        $recordId = "";
         foreach ($degreeFields as $field) {
             foreach ($redcapData as $row) {
                 $recordId = $row['record_id'];
@@ -984,7 +1005,7 @@ class NIHTables {
                             }
                         }
                     }
-                    if (self::hasMoreInfoInArray($degreesAndAddOns[$degree] ?? "", !isset($year) || ($year != self::$unknownYearText), !isset($institution) || ($institution != self::$unknownInstitutionText))) {
+                    if (self::hasMoreInfoInArray($degreesAndAddOns[$degree] ?? "", !isset($year) || ($year != self::$unknownYearText), ($institution != self::$unknownInstitutionText))) {
                         if ($numCategories == 1) {
                             if ($getYear) {
                                 $degreesAndAddOns[$degree] = $year;
@@ -1586,7 +1607,7 @@ class NIHTables {
 	    $predocs = $this->downloadPredocNames();
         $trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");
 
-	    $yearspan = 10;
+	    $yearspan = 10.0;
 	    $today = date("Y-m-d");
 	    $recordsForLast10Years = array();
 	    $recordsFor10YearsAgo = array();
@@ -2094,7 +2115,7 @@ class NIHTables {
 
 	public function get5Data($table, $records = []) {
         $eligibleKs = [2];     // K12/KL2 only
-        $data = array();
+        $data = [];
 		$names = $this->downloadRelevantNames($table, $records);
 		if (isset($_GET['test'])) {
 		    echo "<p class='centered'>".count($names)." being considered</p>";
@@ -2105,15 +2126,21 @@ class NIHTables {
 			$mentors = Download::primaryMentors($this->token, $this->server); 
 			$trainingData = Download::trainingGrants($this->token, $this->server, [], [5, 6, 7], [], $this->metadata);
             $trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");
+        } else {
+            $mentors = [];
+            $lastNames = [];
+            $firstNames = [];
+		    $trainingStarts = [];
+		    $trainingData = [];
         }
 		$fields = array_unique(array_merge(Application::getCitationFields($this->metadata), array("record_id")));
 		foreach ($names as $recordId => $name) {
 			$pubData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
 			$traineeName = $name;
 
-			# fill $trainingPeriod, $pastOrCurrent, $startTs, $startYear, $endTs, $endYear
-            $pastOrCurrent = "";
-			$trainingPeriod = "";
+			# fill $startTs, $startYear, $endTs, $endYear
+            $startYear = "";
+			$endYear = "";
 			$startTs = 0;
 			if ($trainingStarts[$recordId]) {
 			    $startTs = strtotime($trainingStarts[$recordId]);
@@ -2121,7 +2148,7 @@ class NIHTables {
             }
 			$endTs = time();
 			$currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
-			if ($_GET['test']) {
+			if (isset($_GET['test'])) {
 			    echo "Record $recordId has ".count($currentGrants)." grants.<br>";
             }
 			if (empty($currentGrants)) {
@@ -2192,7 +2219,7 @@ class NIHTables {
 			$pubs = new Publications($this->token, $this->server, $this->metadata);
 			$pubs->setRows($pubData);
 
-            $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId]);
+            $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId] ?? []);
             $noPubsRow = array(
                 "Trainee Name" => $traineeName,
                 "Faculty Member" => "<p>".implode("</p><p>", $transformedFacultyNames)."</p>",
@@ -2211,13 +2238,13 @@ class NIHTables {
 				$nihFormatCits = array();
 				foreach ($citations as $citation) {
                     if ($citation->inTimespan($startTs, $endTs)) {
-                        $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId], $firstNames[$recordId], Application::isVanderbilt());
+                        $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId] ?? "", $firstNames[$recordId] ?? "", Application::isVanderbilt());
                     }
 				}
 				if (count($nihFormatCits) == 0) {
                     array_push($data, $noPubsRow);
                 } else {
-                    $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId]);
+                    $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId] ?? []);
                     $dataRow = array(
                         "Trainee Name" => $traineeName,
                         "Faculty Member" => "<p>".implode("</p><p>", $transformedFacultyNames)."</p>",

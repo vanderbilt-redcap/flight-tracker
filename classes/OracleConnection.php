@@ -62,7 +62,10 @@ abstract class OracleConnection {
 
 class VICTRPubMedConnection extends OracleConnection {
 	public function __construct() {
-		$file = dirname(__FILE__)."/../victrPubMedDB.php";
+	    $userid = "";
+	    $passwd = "";
+	    $serverAddress = "";
+	    $file = dirname(__FILE__)."/../victrPubMedDB.php";
 		if (file_exists($file)) {
 			Application::log("Using $file");
 			require($file);
@@ -115,6 +118,10 @@ class VICTRPubMedConnection extends OracleConnection {
 
 class COEUSConnection extends OracleConnection {
 	public function __construct() {
+	    $userid = "";
+	    $passwd = "";
+	    $serverAddress = "";
+
 		$usedFile = "None";
 		$file = "/app001/credentials/career_dev/coeusDB.php";
 		if (file_exists($file)) {

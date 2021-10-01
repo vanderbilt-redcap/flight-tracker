@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Measurement;
 use \Vanderbilt\CareerDevLibrary\DateMeasurement;
 use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -18,10 +19,9 @@ if ($_GET['cohort']) {
 
 $metadata = Download::metadata($token, $server);
 if ($_GET['cohort']) {
-	$records = Download::cohortRecordIds($token, $server, $metadata, $_GET['cohort']);
-}
-if (!$records) {
-	$records = Download::recordIds($token, $server);
+	$records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
+} else {
+    $records = Download::recordIds($token, $server);
 }
 
 $resourceField = "resources_resource";

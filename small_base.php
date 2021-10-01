@@ -39,7 +39,7 @@ if (!Application::isWebBrowser() && CareerDev::getPid()) {
     date_default_timezone_set(CareerDev::getTimezone());
 }
 
-$pid = $_GET['pid'];
+$pid = htmlentities($_GET['pid']);
 if (!$pid) {
     $pid = CareerDev::getSetting("pid");
 }
@@ -77,10 +77,11 @@ $GLOBALS['grantClass'] = $grantClass;
 ############# FUNCTIONS ################
 
 function getBaseAwardNumber($num) {
-	return Grant::transformToBaseAwardNumber($num);
+	return Grant::translateToBaseAwardNumber($num);
 }
 
 function getDepartmentChoices() {
+    $choices2 = [];
 		$choices2[104300] = "Anesthesiology [104300]";
 		$choices2[104250] = "Biochemistry [104250]";
 		$choices2[120450] = "Biological Sciences [120450]";
@@ -733,11 +734,10 @@ function indexREDCapData($redcapData) {
 function getIndexedRedcapData($token, $server, $fields, $cohort = "", $metadata = array()) {
 	if ($token && $server && $fields && !empty($fields)) {
 		if ($cohort) {
-			$records = Download::cohortRecordIds($token, $server, $metadata, $cohort);
-		}
-		if (!$records) {
-			$records = Download::recordIds($token, $server);
-		}
+			$records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
+		} else {
+            $records = Download::recordIds($token, $server);
+        }
 
 		$redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
 		return indexREDCapData($redcapData);
@@ -782,7 +782,9 @@ function makeHTMLId($id) {
 }
 
 function makeSafe($htmlStr) {
-	return preg_replace("/<[^>]+>/", "", $htmlStr);
+    $htmlStr = REDCapManagement::stripHTML($htmlStr);
+    $htmlStr = htmlentities($htmlStr);
+	return $htmlStr;
 }
 
 function changeTextColorOfLink($str, $color) {
@@ -872,7 +874,7 @@ function quartile($ary, $quartile) {
 			return getMedian($ary);
 		case 3:
 			$ary2 = array();
-			for ($i = ceil($size / 2); $i < $size; $i++) {
+			for ($i = (int) ceil($size / 2); $i < $size; $i++) {
 				array_push($ary2, $ary[$i]);
 			}
 			return getMedian($ary2);
@@ -885,9 +887,11 @@ function getMedian($ary) {
 	sort($ary);
 	$size = count($ary);
 	if ($size % 2 == 0) {
-		return ($ary[$size / 2 - 1] + $ary[$size / 2]) / 2;
+	    $idx = (int) ($size / 2);
+		return ($ary[$idx - 1] + $ary[$idx]) / 2;
 	} else {
-		return $ary[($size - 1) / 2];
+        $idx = (int) (($size - 1) / 2);
+		return $ary[$idx];
 	}
 }
 
@@ -994,6 +998,7 @@ function findEligibleAward($row) {
 	for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 		if (in_array($row['summary_award_type_'.$i], $intKs)) {
 			$diff = Grants::datediff(date("Y-m-d"), $row['summary_award_date_'.$i], "y");
+			$intendedYearSpan = 0;
 			if ($row['summary_award_type_'.$i] == 1) {
                 $intendedYearSpan = Application::getInternalKLength();
             } else if ($row['summary_award_type_'.$i] == 2) {
@@ -1241,7 +1246,7 @@ function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServe
 	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-	$output = curl_exec($ch);
+	$output = (string) curl_exec($ch);
 	curl_close($ch);
 
 	$metadataForms = REDCapManagement::getFormsFromMetadata($metadata);
@@ -1272,7 +1277,7 @@ function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServe
 	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-	$output = curl_exec($ch);
+	$output = (string) curl_exec($ch);
 	curl_close($ch);
 	return json_decode($output, TRUE);
 }
@@ -1382,6 +1387,168 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
     return $allFeedback;
 }
 
+function copyBackAnyMentoringAgreements($srcToken, $destToken, $destServer, $destMetadata, $cohort = "all", $srcServer = NULL) {
+    Application::log("copyBackAnyMentoringAgreements");
+    if (!$srcServer) {
+        $srcServer = $destServer;
+    }
+    $srcMetadata = Download::metadata($srcToken, $srcServer);
+    $srcMetadataForms = REDCapManagement::getFormsFromMetadata($srcMetadata);
+    $destMetadataForms = REDCapManagement::getFormsFromMetadata($destMetadata);
+
+    $relevantFormsWithFields = [
+        "mentoring_agreement" => REDCapManagement::getFieldsFromMetadata($srcMetadata, "mentoring_agreement"),
+    ];
+    $evalFields = [
+        "mentoring_agreement" => ["mentoring_last_update", "mentoring_userid", "mentoring_start"],
+    ];
+    if (in_array("mentoring_agreement_evaluations", $srcMetadataForms)) {
+        $fields = REDCapManagement::getFieldsFromMetadata($srcMetadata, "mentoring_agreement_evaluations");
+        $relevantFormsWithFields["mentoring_agreement_evaluations"] = $fields;
+        $evalFields["mentoring_agreement_evaluations"] = $fields;
+    }
+    $srcRecords = Download::recordIds($srcToken, $srcServer);
+    $destRecords = Download::recordIds($destToken, $destServer);
+    if ($cohort == "all") {
+        $srcCohortRecords = $srcRecords;
+        $destCohortRecords = $destRecords;
+    } else {
+        $srcCohorts = new Cohorts($srcToken, $srcServer, Application::getModule());
+        if (in_array($cohort, $srcCohorts->getCohortNames())) {
+            $srcCohortRecords = Download::cohortRecordIds($srcToken, $srcServer, Application::getModule(), $cohort);
+        } else {
+            $srcCohortRecords = $srcRecords;
+        }
+        $destCohortRecords = Download::cohortRecordIds($destToken, $destServer, Application::getModule(), $cohort);
+    }
+    foreach ($relevantFormsWithFields as $instrument => $fields) {
+        if (in_array($instrument, $destMetadataForms)) {
+            if (!in_array("record_id", $fields)) {
+                $fields[] = "record_id";
+                $fields[] = "summary_mentor";
+                $fields[] = "summary_mentor_userid";
+            }
+            foreach ($srcCohortRecords as $recordId) {
+                if (in_array($recordId, $destCohortRecords)) {
+                    $destUploadRows = [];
+                    $redcapData = [ "src" => [], "dest" => []];
+                    $redcapData["src"] = Download::fieldsForRecords($srcToken, $srcServer, $fields, [$recordId]);
+                    $redcapData["dest"] = Download::fieldsForRecords($destToken, $destServer, $fields, [$recordId]);
+
+                    $srcMentor = REDCapManagement::findField($redcapData['src'], $recordId, "summary_mentor");
+                    $destMentor = REDCapManagement::findField($redcapData['dest'], $recordId, "summary_mentor");
+                    $srcMentorUserid = REDCapManagement::findField($redcapData['src'], $recordId, "summary_mentor_userid");
+                    $destMentorUserid = REDCapManagement::findField($redcapData['dest'], $recordId, "summary_mentor_userid");
+
+                    if (($srcMentor != $destMentor) || ($srcMentorUserid != $destMentorUserid)) {
+                        $regex = "/\s*[,;]\s*/";
+                        $mentors = [
+                            "src" => $srcMentor ? preg_split($regex, $srcMentor) : [],
+                            "dest" => $destMentor ? preg_split($regex, $destMentor) : [],
+                        ];
+                        $mentorUserids = [
+                            "src" => $srcMentorUserid ? preg_split($regex, $srcMentorUserid) : [],
+                            "dest" => $destMentorUserid ? preg_split($regex, $destMentorUserid) : [],
+                        ];
+
+                        $mentors['new'] = array_unique(array_merge($mentors['src'], $mentors['dest']));
+                        $mentorUserids['new'] = array_unique(array_merge($mentorUserids['src'], $mentorUserids['dest']));
+                        $blankRow = [
+                            "record_id" => $recordId,
+                            "redcap_repeat_instrument" => "",
+                            "redcap_repeat_instance" => "",
+                        ];
+                        $uploadRow = [
+                            'src' => $blankRow,
+                            'dest' => $blankRow,
+                        ];
+                        foreach (array_keys($uploadRow) as $category) {
+                            if (count($mentors['new']) > count($mentors[$category])) {
+                                $uploadRow[$category]["summary_mentor"] = implode(", ", $mentors['new']);
+                            }
+                            if (count($mentorUserids['new']) > count($mentorUserids[$category])) {
+                                $uploadRow[$category]["summary_mentor_userid"] = implode(", ", $mentorUserids['new']);
+                            }
+                        }
+                        if (count($uploadRow['dest']) > count($blankRow)) {
+                            $destUploadRows[] = $uploadRow['dest'];
+                        }
+                        if (count($uploadRow['src']) > count($blankRow)) {
+                            Upload::oneRow($uploadRow['src'], $srcToken, $srcServer);
+                        }
+                    }
+
+                    $instances = [];
+                    foreach ($redcapData as $category => $rows) {
+                        $instances[$category] = [];
+                        foreach ($rows as $row) {
+                            if ($row['redcap_repeat_instrument'] == $instrument) {
+                                $instances[$category][] = $row['redcap_repeat_instance'];
+                            }
+                        }
+                    }
+                    foreach ($redcapData['src'] as $srcRow) {
+                        if ($srcRow['redcap_repeat_instrument'] == $instrument) {
+                            $foundRow = FALSE;
+                            $fieldsToCompare = $evalFields[$instrument] ?? [];
+                            foreach ($redcapData['dest'] as $destRow) {
+                                $allFieldsSame = FALSE;
+                                if ($destRow['redcap_repeat_instrument'] == $instrument) {
+                                    $allFieldsSame = !empty($fieldsToCompare);
+                                    foreach ($fieldsToCompare as $field) {
+                                        if ($srcRow[$field] != $destRow[$field]) {
+                                            $allFieldsSame = FALSE;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if ($allFieldsSame) {
+                                    $foundRow = TRUE;
+                                }
+                            }
+                            if (!$foundRow) {
+                                # copy from src to dest
+                                $newDestInstance = $srcRow['redcap_repeat_instance'];
+                                if (in_array($newDestInstance, $instances['dest'])) {
+                                    $destInstances = [];
+                                    foreach ($instances['dest'] as $instance) {
+                                        if (is_numeric($instance)) {
+                                            $destInstances[] = $instance;
+                                        }
+                                    }
+                                    if (!empty($destInstances)) {
+                                        $destMax = max($destInstances);
+                                    } else {
+                                        $destMax = 0;
+                                    }
+                                    $newDestInstance = $destMax + 1;
+                                }
+                                $instances['dest'][] = $newDestInstance;
+                                $destUploadRow = $srcRow;
+                                $destUploadRow["redcap_repeat_instance"] = $newDestInstance;
+                                $destUploadRow[$instrument."_complete"] = "2";
+                                $destUploadRows[] = $destUploadRow;
+                            }
+                        }
+                    }
+                    if (!empty($destUploadRows)) {
+                        $uploadInstances = [];
+                        foreach ($destUploadRows as $row) {
+                            if ($row['redcap_repeat_instance']) {
+                                $uploadInstances[] = $row['redcap_repeat_instance'];
+                            } else {
+                                $uploadInstances[] = "[blank]";
+                            }
+                        }
+                        Application::log("Record $recordId: Copying instances on $instrument to destination: ".implode(", ", $uploadInstances));
+                        Upload::rows($destUploadRows, $destToken, $destServer);
+                    }
+                }
+            }
+        }
+    }
+}
+
 function getValidProjectSettingsForUpload() {
     return [
         "project_title",
@@ -1454,7 +1621,7 @@ function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer) 
             $allFeedback[] = $feedback;
         }
     }
-    return [$destPid, $destEventId];
+    return $destPid;
 }
 
 function getQuestionsForForm($token, $server, $form) {
@@ -1581,21 +1748,21 @@ function produceSourcesAndTypes($scholar, $metadata) {
 					# race/ethnicity
 					$type = $field;
 					$sources[$fieldForOrder][$type] = [];
-					foreach ($sourceRow as $field => $source) {
-						if (in_array($field, $allFields)) {
-							if ($choices[$exampleField][$source]) {
-								$sources[$fieldForOrder][$type][$field] = $choices[$exampleField][$source];
+					foreach ($sourceRow as $field2 => $source2) {
+						if (in_array($field2, $allFields)) {
+							if ($choices[$exampleField][$source2]) {
+								$sources[$fieldForOrder][$type][$field2] = $choices[$exampleField][$source2];
 							} else {
-								$sources[$fieldForOrder][$type][$field] = $source;
+								$sources[$fieldForOrder][$type][$field2] = $source2;
 							}
 							$sourceType = "custom";
-							if (isset($order[$type]) && isset($order[$type][$field])) {
+							if (isset($order[$type]) && isset($order[$type][$field2])) {
 								$sourceType = "original";
 							}
 							if (!isset($sourceTypes[$fieldForOrder][$type])) {
 								$sourceTypes[$fieldForOrder][$type] = [];
 							}
-							$sourceTypes[$fieldForOrder][$type][$field] = $sourceType;
+							$sourceTypes[$fieldForOrder][$type][$field2] = $sourceType;
 						}
 					}
 				}

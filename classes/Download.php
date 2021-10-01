@@ -325,10 +325,9 @@ class Download {
 		if ($token && $server && $fields && !empty($fields)) {
 			if ($cohort) {
 				$records = self::cohortRecordIds($token, $server, $metadataOrModule, $cohort);
-			}
-			if (!$records) {
-				$records = self::recordIds($token, $server);
-			}
+			} else {
+                $records = self::recordIds($token, $server);
+            }
 
 			$redcapData = self::fieldsForRecords($token, $server, $fields, $records);
 			return $redcapData;
@@ -443,7 +442,7 @@ class Download {
                 Application::log("sendToServer: ".$pid." REDCap::getData done with ".count($redcapData)." rows", $pid);
             }
 		} else {
-		    $time1 = microtime();
+		    $time1 = microtime(TRUE);
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_URL, $server);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -457,12 +456,12 @@ class Download {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 			$output = curl_exec($ch);
-            $redcapData = json_decode($output, true);
+            $redcapData = json_decode((string) $output, true);
             $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $error = curl_error($ch);
             curl_close($ch);
             self::throttleIfNecessary($pid);
-            $time2 = microtime();
+            $time2 = microtime(TRUE);
             if (isset($_GET['test'])) {
                 Application::log("sendToServer: API in ".($time2 - $time1)." seconds with ".count($redcapData)." rows");
             }
@@ -679,7 +678,7 @@ class Download {
         $eligibleRegexes = Scholar::getDoctoralRegexes();
 
         $allInstitutionFields = $scholar->getAllInstitutionFields();
-        $fields = array_unique(array_merge(array("record_id"), array_keys($allInstitutionFields)), array_values($allInstitutionFields));
+        $fields = array_unique(array_merge(["record_id"], array_keys($allInstitutionFields), array_values($allInstitutionFields)));
         $redcapData = Download::fields($token, $server, $fields);
 
         $institutions = array();

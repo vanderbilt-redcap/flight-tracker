@@ -23,6 +23,7 @@ for ($year = date("Y"); $year >= 2001; $year--) {
 	$yearTotals[$year] = 0;
 }
 $totalBudget = 0;
+$totals = [];
 foreach ($indexedRedcapData as $recordId => $rows) {
 	$grants = new Grants($token, $server, $metadata);
 	$grants->setRows($rows);

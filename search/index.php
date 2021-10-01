@@ -4,6 +4,8 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -26,7 +28,9 @@ function getNumber($field) {
 
 echo "<h1>Search ".CareerDev::getProgramName()." Grants</h1>\n";
 
+$postQuery = "";
 if (isset($_POST['q']) && $_POST['q']) {
+    $postQuery = REDCapManagement::sanitize($_POST['q']);
 	$recordIds = Download::recordIds($token, $server);
 	$metadata = Download::metadata($token, $server);
 
@@ -45,7 +49,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 	$matchAwards = array();
 	$nameFields = array("identifier_first_name", "identifier_last_name");
 	foreach ($recordIds as $recordId) {
-		$recordData = Download::fieldsForRecords($token, $server, array_unique(array_merge(array("record_id"), $summaryFields)), array($recordId));
+		$recordData = Download::fieldsForRecords($token, $server, array_unique(array_merge(array("record_id"), Application::$summaryFields)), array($recordId));
 		foreach ($recordData as $row) {
 			if ($row['redcap_repeat_instrument'] === "") {
                 		$names[$row['record_id']] = $row['identifier_first_name']." ".$row['identifier_last_name'];
@@ -117,7 +121,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 	}
 ?>
 <form action='<?= CareerDev::link("search/index.php") ?>' method='POST'>
-<p class='centered'><input type='text' value='<?= preg_replace("/'/", "\'", $_POST['q']) ?>' name='q' id='q'> <input type='submit' value='Search'</p>
+<p class='centered'><input type='text' value='<?= preg_replace("/'/", "\'", $postQuery) ?>' name='q' id='q'> <input type='submit' value='Search'</p>
 </form>
 <?php
 	$forms = array(
@@ -133,7 +137,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 		$nodes = preg_split("/_/", $field);
 		$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id=$recordId&event_id=$event_id&page=".$forms[$nodes[0]]."#".$field."-tr";
 		echo "<p>";
-		$name = preg_replace("/$term/i", "<span class='highlighted'>$0</span>", $names[$recordId]);
+		$name = $names[$recordId];
 		echo "<a class='header' href='$url'>Record $recordId - $name <span class='small'>[$field]</span></a> - ".$matchValues[$recordId][$field];
 		$n = getNumber($field);
 		foreach ($order as $item) {

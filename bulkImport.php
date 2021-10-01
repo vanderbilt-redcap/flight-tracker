@@ -46,9 +46,10 @@ if ($_FILES['bulk']) {
 		$maxInstances = [];
 		$i = 0;
 		$customFields = Application::getCustomFields($metadata);
+		$upload = [];
         foreach ($lines as $line) {
             if (isset($_GET['test'])) {
-                echo "<p>".REDCapManagement::json_encode_with_spaces($line)."</p>";
+                echo "<p>".htmlentities(REDCapManagement::json_encode_with_spaces($line))."</p>";
             }
             if ($startIdx == 2) {
                 $firstName = $line[0];
@@ -158,7 +159,7 @@ if ($_FILES['bulk']) {
             } catch (\Exception $e) {
                 if (isset($_GET['test'])) {
                     foreach ($upload as $row) {
-                        echo "<p>".REDCapManagement::json_encode_with_spaces($row)."</p>";
+                        echo "<p>".htmlentities(REDCapManagement::json_encode_with_spaces($row))."</p>";
                     }
                 }
                 echo "<p class='red padded centered max-width'>ERROR! ".$e->getMessage()."</p>\n";
@@ -262,7 +263,7 @@ function ensureDateIsYMD($date) {
 	if (preg_match("/^\d\d?[\-\/]\d\d?[\-\/]\d\d$/", $date)) {
 		# assume MDY
 		$nodes = preg_split("/[\-\/]/", $date);
-		if (count($nodes) == 3) {
+		if ((count($nodes) == 3) && is_numeric($nodes[0]) && is_numeric($nodes[1]) && is_numeric($nodes[2])) {
 			$year = $nodes[2];
 			if ($year > 80) {
 				$year += 1900;

@@ -56,7 +56,7 @@ class CronManager {
         }
 
         $cronjob = new CronJob($absFile, $method);
-        if (!empty($recorCronJobds)) {
+        if (!empty($records)) {
             $cronjob->setRecords($records);
         }
         if ($this->isDebug) {
@@ -260,7 +260,7 @@ class CronManager {
 
         Application::log("Currently running ".$batchQueue[0]['method']." for pid ".$batchQueue[0]['pid']." with status ".$batchQueue[0]['status']);
         if ($batchQueue[0]['status'] == "RUN") {
-            $startTs = $batchQueue[0]['startTs'];
+            $startTs = isset($batchQueue[0]['startTs']) && is_numeric($batchQueue[0]['startTs']) ? $batchQueue[0]['startTs'] : 0;
             $timespan = 60 * 60;   // max of 60 minutes per segment
             Application::log("Running until ".date("Y-m-d H:i:s", $startTs + $timespan));
             if (time() > $startTs + $timespan) {
@@ -394,7 +394,7 @@ class CronManager {
                         ];
                     }
                     $prefix = strtolower($job['text']);
-                    $methods[$method][$prefix."Records"] = array_merge($methods[$method][$prefix."Records"], $job['records']);
+                    $methods[$method][$prefix."Records"] = array_merge($methods[$method][$prefix."Records"] ?? [], $job['records']);
                     $endTs = strtotime($job['end']);
                     if ($endTs > $methods[$method][$prefix."LastTs"]) {
                         $methods[$method][$prefix."LastTs"] = $endTs;
@@ -414,8 +414,12 @@ class CronManager {
                         $hasData = TRUE;
                         $text .= "$method<br>";
                         $text .= ucfirst($prefix)."<br>";
-                        $text .= "Start: ".date("Y-m-d H:i:s", $settings[$prefix.'FirstTs'])."<br>";
-                        $text .= "End: ".date("Y-m-d H:i:s", $settings[$prefix.'LastTs'])."<br>";
+                        if (is_numeric($settings[$prefix.'FirstTs'])) {
+                            $text .= "Start: ".date("Y-m-d H:i:s", $settings[$prefix.'FirstTs'])."<br>";
+                        }
+                        if (is_numeric($settings[$prefix.'LastTs'])) {
+                            $text .= "End: ".date("Y-m-d H:i:s", $settings[$prefix.'LastTs'])."<br>";
+                        }
                         $text .= "<br>";
                     }
                 }
@@ -575,13 +579,6 @@ class CronManager {
 			}
 		}
 		if (count($toRun) > 0) {
-		    if ($this->isDebug) {
-		        Application::log("Attempting to save current date");
-		        Application::saveCurrentDate("Test", $this->pid);
-		        Application::removeCurrentDate("Test", $this->pid);
-                Application::log("Done attempting to save current date");
-            }
-
 		    $projectTitle = Download::projectTitle($this->token, $this->server);
 			$text = "Project: $projectTitle<br>";
 			$text .= "Pid: ".$this->pid."<br>";
@@ -589,12 +586,11 @@ class CronManager {
 			foreach ($run as $title => $mssgAry) {
 				$mssg = $mssgAry['text'];
                 $start = $mssgAry['start'];
-                $end = $mssgAry['end'];
 				$text .= $title."<br>";
 				$text .= $mssg."<br>";
                 $text .= "Started: $start<br>";
-                if ($end) {
-                    $text .= "Ended: $end<br>";
+                if (isset($mssgAry['end'])) {
+                    $text .= "Ended: {$mssgAry['end']}<br>";
                 }
                 $text .= "<br>";
 			}
@@ -683,7 +679,7 @@ class CronJob {
 			throw new \Exception("In cronjob at beginning, could not find token '$passedToken' and/or server '$passedServer' and/or pid '$passedPid'");
 		}
 		error_reporting(E_ALL);
-		ini_set('display_errors', 1);
+		ini_set('display_errors', '1');
         $_GET['pid'] = $passedPid;
 		require_once($this->file);
 		if ($this->method) {

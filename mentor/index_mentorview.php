@@ -19,10 +19,10 @@ require_once dirname(__FILE__).'/_header.php';
 
 
 if ($_REQUEST['uid'] && DEBUG) {
-    $userid2 = $_REQUEST['uid'];
+    $userid2 = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$userid2";
 } else {
-    $userid2 = $userid;
+    $userid2 = Application::getUsername();
     $uidString = "";
 }
 
@@ -30,7 +30,7 @@ $userids = Download::userids($token, $server);
 
 $menteeRecordId = FALSE;
 if ($_REQUEST['menteeRecord']) {
-    $menteeRecordId = $_REQUEST['menteeRecord'];
+    $menteeRecordId = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
     list($myMentees, $myMentors) = getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");
@@ -55,18 +55,25 @@ $otherMentees = REDCapManagement::makeConjunction($myMentees["name"]);
 $fields = array_merge(["record_id", "mentoring_userid", "mentoring_last_update", "mentoring_panel_names", "mentoring_userid"], $metadataFields);
 $redcapData = Download::fieldsForRecords($token, $server, $fields, [$menteeRecordId]);
 if ($_REQUEST['instance']) {
-    $currInstance = $_REQUEST['instance'];
+    $currInstance = REDCapManagement::sanitize($_REQUEST['instance']);
 } else {
     $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId);
     $currInstance = $maxInstance + 1;
 }
 $dateToRemind = getDateToRemind($redcapData, $menteeRecordId, $currInstance);
-$menteeInstance = getMaxInstanceForUserid($redcapData, $menteeRecordId, $userids[$menteeRecordId]);
+$menteeUsernames = preg_split("/\s*[,;]\s*/", strtolower($userids[$menteeRecordId]));
+$menteeInstance = FALSE;
+foreach ($menteeUsernames as $menteeUsername) {
+    $menteeInstance = getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);
+    if ($menteeInstance) {
+        break;
+    }
+}
 $surveysAvailableToPrefill = getMySurveys($userid2, $token, $server, $menteeRecordId, $currInstance);
-list($priorNotes, $instances) = makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $menteeInstance);
+list($priorNotes, $instances) = $menteeInstance ? makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $menteeInstance) : [[], []];
 $currInstanceRow = [];
 $currInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $currInstance);
-$menteeInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance);
+$menteeInstanceRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance) : [];
 
 $completeURL = Application::link("mentor/index_complete.php").$uidString."&menteeRecord=$menteeRecordId&instance=$currInstance";
 
@@ -148,7 +155,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                             $menteeFieldValues = [];
                             $mentorFieldValues = [];
                             if (($row['field_type'] == "radio") || ($row['field_type'] == "notes")) {
-                                $menteeValue = REDCapManagement::findField([$menteeInstanceRow], $menteeRecordId, $field, "mentoring_agreement", $menteeInstance);
+                                $menteeValue = $menteeInstance ? REDCapManagement::findField([$menteeInstanceRow], $menteeRecordId, $field, "mentoring_agreement", $menteeInstance) : "";
                                 $mentorValue = REDCapManagement::findField([$currInstanceRow], $menteeRecordId, $field, "mentoring_agreement", $currInstance);
                                 if ($menteeValue) {
                                     $menteeFieldValues = [$menteeValue];
@@ -158,7 +165,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                                 }
                             } else if ($row['field_type'] == "checkbox") {
                                 foreach ($choices[$field] as $index => $label) {
-                                    $value = REDCapManagement::findField([$menteeInstanceRow], $menteeRecordId, $field."___".$index, "mentoring_agreement", $menteeInstance);
+                                    $value = $menteeInstance ? REDCapManagement::findField([$menteeInstanceRow], $menteeRecordId, $field."___".$index, "mentoring_agreement", $menteeInstance) : "";
                                     if ($value) {
                                         $menteeFieldValues[] = $index;
                                     }
@@ -204,7 +211,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                                     $name = $prefix.$field.$spec['suffix'];
                                     $id = $name;
                                     $mentorValue = $spec['values'][0];
-                                    $menteeValue = REDCapManagement::findField($redcapData, $menteeRecordId, $field, "mentoring_agreement", $menteeInstance);
+                                    $menteeValue = $menteeInstance ? REDCapManagement::findField($redcapData, $menteeRecordId, $field, "mentoring_agreement", $menteeInstance) : "";
                                     if ($mentorValue) {
                                         $value = $mentorValue;
                                     } else {
@@ -216,7 +223,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                                     $htmlRows[] = '</td>';
                                 }
                                 if ($key == "mentor") {
-                                    $htmlRows[] = makeNotesHTML($field, [$menteeInstanceRow], $menteeRecordId, $menteeInstance, $notesFields);
+                                    $htmlRows[] = $menteeInstance ? makeNotesHTML($field, [$menteeInstanceRow], $menteeRecordId, $menteeInstance, $notesFields) : "";
                                 }
                             }
                         }
@@ -903,7 +910,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
 
 </style>
 
-<?= makeCommentJS($userid2, $menteeRecordId, $menteeInstance, $currInstance, $priorNotes, $menteeName, $dateToRemind, FALSE) ?>
+<?= makeCommentJS($userid2, $menteeRecordId, $menteeInstance, $currInstance, $priorNotes, $menteeName, $dateToRemind, FALSE, in_array("mentoring_agreement_evaluations", $allMetadataForms), $pid) ?>
 
 <style type="text/css">
     body {

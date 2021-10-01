@@ -4,6 +4,7 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Consortium;
 use \Vanderbilt\CareerDevLibrary\Grant;
@@ -71,8 +72,9 @@ $(document).ready(function() {
 		}
 
 		$lockHours = 4;
-		# remove old-style lock files; new lock files should be picked up by the REDCap clean-up cron 
-		$lockFile = APP_PATH_TEMP."6_makeSummary.{$_GET['pid']}.lock";
+		# remove old-style lock files; new lock files should be picked up by the REDCap clean-up cron
+        $lockFilename = REDCapManagement::makeSafeFilename("6_makeSummary.$pid.lock");
+		$lockFile = APP_PATH_TEMP.$lockFilename;
 		if (file_exists($lockFile)) {
 			$fp = fopen($lockFile, "r");
 			$lockDate = trim(fgets($fp));
@@ -97,7 +99,7 @@ $(document).ready(function() {
 		echo "<h3><i class='fa fa-info-circle'></i> Getting Started</h3>\n";
 		echo "<ul class='larger'>\n";
 		echo "<li><b>\"Where's my Data?\"</b> Flight Tracker is housed seemlessly in REDCap. Your new scholar records are already added. <i>Automated data collection</i> will start overnight and will continue overnight from here forward. When your data are collected, you will see the latest download information in this box. (We collect data <i>overnight</i> so as not to unduly burden the NIH's servers, which give us the information.)</li>\n";
-		echo "<li><b>Manually Start Collection Tonight:</b> If you want to start collecting all of your data <i>tonight</i>, <a href='javascript:;' onclick='startTonight(".$_GET['pid'].");'>click here</a>.</li>\n";
+		echo "<li><b>Manually Start Collection Tonight:</b> If you want to start collecting all of your data <i>tonight</i>, <a href='javascript:;' onclick='startTonight($pid);'>click here</a>.</li>\n";
 		echo "<li><b>Menus</b> - In the meantime, explore by clicking around the menus above to see the wide array of viewing options.</li>\n";
 		echo "<li><b>Help Menu</b> - The <i>Toggle Help</i> item will show if there are any relevant help topics on your current page. The <i>Brand Your Project</i> item will allow you to put your own logo in the upper-right corner.</li>\n";
 		// DISABLED echo "<li><b>Emails</b> - If you wish to email your scholars an initial survey, click on <i>Scholars &rarr; Configure an Email</i>. It's recommended to wait a week or two for your data to populate until you email your scholars.</li>\n";
@@ -145,7 +147,7 @@ $(document).ready(function() {
 		}
 		echo "</tr>\n";
 		echo "<tr>\n";
-		echo "<td colspan='$numCols' class='centered'><a href='javascript:;' onclick='startTonight(".$_GET['pid'].");'>Click to Run All Updates Tonight</a><br><span class='small'>(Otherwise, updates will run over the course of the week.)</span></td>\n";
+		echo "<td colspan='$numCols' class='centered'><a href='javascript:;' onclick='startTonight(".$pid.");'>Click to Run All Updates Tonight</a><br><span class='small'>(Otherwise, updates will run over the course of the week.)</span></td>\n";
 		echo "</tr>\n";
 	}
 	echo "</table>\n";

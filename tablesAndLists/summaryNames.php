@@ -24,7 +24,9 @@ foreach ($redcapData as $row) {
 		$myclass = "even";
 	} else if ($i % 2 == 1) {
 		$myclass = "odd";
-	}
+	} else {
+	    throw new \Exception("This should never happen for $i!");
+    }
 	$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=summary";
 	$email = "";
 	if ($row['identifier_email']) {

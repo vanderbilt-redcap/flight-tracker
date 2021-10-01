@@ -51,7 +51,7 @@ class Upload
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-        $output = curl_exec($ch);
+        $output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch);
         curl_close($ch);
@@ -241,7 +241,7 @@ class Upload
                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                $output = curl_exec($ch);
+                $output = (string) curl_exec($ch);
                 $feedback = json_decode($output, TRUE);
                 self::testFeedback($feedback, $output, $ch);
                 curl_close($ch);
@@ -281,7 +281,7 @@ public static function metadata($metadata, $token, $server) {
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-		$output = curl_exec($ch);
+		$output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch, $metadata);
 		curl_close($ch);
@@ -321,7 +321,8 @@ public static function metadata($metadata, $token, $server) {
         $contents = base64_decode($base64);
         if ($contents) {
             $file = [];
-            $file['tmp_name'] = APP_PATH_TEMP.$field."_".$record."_".substr(sha1(rand()), 0, 6)."_".$filename;
+            $fullFilename = REDCapManagement::makeSafeFilename(substr(sha1((string) rand()), 0, 6)."_".$filename);
+            $file['tmp_name'] = APP_PATH_TEMP.$fullFilename;
             $file['size'] = strlen($contents);
             $file['name'] = $filename;
 
@@ -388,7 +389,7 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $output = curl_exec($ch);
+        $output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch, $settings);
         curl_close($ch);
@@ -485,6 +486,7 @@ public static function metadata($metadata, $token, $server) {
 
     private static function checkRows($rows) {
         if (!is_array($rows)) {
+            $rows = htmlentities($rows, ENT_QUOTES);
             Application::log("Upload::rows: first parameter should be array (= '$rows')");
             echo "Upload::rows: first parameter should be array (= '$rows')!\n";
             die();
@@ -500,7 +502,7 @@ public static function metadata($metadata, $token, $server) {
 	public static function rows($rows, $token, $server) {
         if (!self::checkRows($rows)) {
             if (isset($_GET['test'])) {
-                echo "Failed test: ".json_encode($rows)."<br>";
+                echo "Failed test: ".REDCapManagement::json_encode_with_spaces($rows)."<br>";
             }
             return "";
         }
@@ -544,8 +546,11 @@ public static function metadata($metadata, $token, $server) {
 			$saveDataEligible = FALSE;
 		}
 
+        $method = "";
 		$allFeedback = array();
 		foreach ($rowsOfRows as $rows) {
+            $method = "";
+            $feedback = [];
 			$data = array(
 				'token' => $token,
 				'content' => 'record',
@@ -557,6 +562,9 @@ public static function metadata($metadata, $token, $server) {
 				'returnFormat' => 'json'
 				);
 			$runAPI = TRUE;
+			$output = "";
+			$time2 = FALSE;
+			$time3 = FALSE;
 			if ($saveDataEligible) {
 				$method = "saveData";
 				$time2 = microtime(TRUE);
@@ -583,21 +591,23 @@ public static function metadata($metadata, $token, $server) {
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 $time2 = microtime(TRUE);
-				$output = curl_exec($ch);
+				$output = (string) curl_exec($ch);
                 $feedback = json_decode($output, true);
                 self::testFeedback($feedback, $output, $ch, $rows);
                 curl_close($ch);
                 $time3 = microtime(TRUE);
                 Download::throttleIfNecessary($pid);
 			}
-			if (isset($_GET['test'])) {
+			if (isset($_GET['test']) && $time3 && $time2) {
                 if ($method == "saveData") {
                     Application::log("Upload::rows $method for pid $pid returning $output in ".($time3 - $time2)." seconds");
                 } else {
                     Application::log("Upload::rows $method returning $output in ".($time3 - $time2)." seconds");
                 }
             }
-			$allFeedback = self::combineFeedback($allFeedback, $feedback);
+			if (!empty($feedback)) {
+                $allFeedback = self::combineFeedback($allFeedback, $feedback);
+            }
 		}
 		Application::log($method.": ".REDCapManagement::json_encode_with_spaces($allFeedback), $pid);
 		return $allFeedback;

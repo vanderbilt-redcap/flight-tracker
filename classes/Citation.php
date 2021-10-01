@@ -371,6 +371,37 @@ class Citation {
 	    return $filteredGrants;
     }
 
+    public static function getFullMonth($mon) {
+	    $num = self::getNumericMonth($mon);
+	    $translate = [
+            "01" => "January",
+            "02" => "February",
+            "03" => "March",
+            "04" => "April",
+            "05" => "May",
+            "06" => "June",
+            "07" => "July",
+            "08" => "August",
+            "09" => "September",
+            "1" => "January",
+            "2" => "February",
+            "3" => "March",
+            "4" => "April",
+            "5" => "May",
+            "6" => "June",
+            "7" => "July",
+            "8" => "August",
+            "9" => "September",
+            "10" => "October",
+            "11" => "November",
+            "12" => "December",
+        ];
+	    if (isset($translate[$num])) {
+	        return $translate[$num];
+        }
+	    return $mon;
+    }
+
 	public static function getNumericMonth($mon) {
 		$month = "";
 		if (!$mon) {
@@ -382,7 +413,32 @@ class Citation {
 				$month = "0".intval($month);
 			}
 		} else {
-			$months = array("Jan" => "01", "Feb" => "02", "Mar" => "03", "Apr" => "04", "May" => "05", "Jun" => "06", "Jul" => "07", "Aug" => "08", "Sep" => "09", "Oct" => "10", "Nov" => "11", "Dec" => "12");
+			$months = [
+                "Jan" => "01",
+                "Feb" => "02",
+                "Mar" => "03",
+                "Apr" => "04",
+                "May" => "05",
+                "Jun" => "06",
+                "Jul" => "07",
+                "Aug" => "08",
+                "Sep" => "09",
+                "Sept" => "09",
+                "Oct" => "10",
+                "Nov" => "11",
+                "Dec" => "12",
+                "January" => "01",
+                "February" => "02",
+                "March" => "03",
+                "April" => "04",
+                "June" => "06",
+                "July" => "07",
+                "August" => "08",
+                "September" => "09",
+                "October" => "10",
+                "November" => "11",
+                "December" => "12",
+            ];
 			if (isset($months[$mon])) {
 				$month = $months[$mon];
 			}
@@ -596,7 +652,7 @@ class Citation {
 
 	private function getDate() {
 		$year = $this->getYear();
-		$month = $this->getVariable("month");
+		$month = self::getFullMonth($this->getVariable("month"));
 		$day = $this->getVariable("day");
 		return self::transformIntoDate($year, $month, $day);
 	}

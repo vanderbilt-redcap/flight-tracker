@@ -146,6 +146,7 @@ foreach ($names as $recordId => $name) {
             $isRepeating = FALSE;
             foreach ($fields as $field) {
                 $value = "";
+                $instance = FALSE;
                 if ($repeatingFieldValues[$field]) {
                     $isRepeating = TRUE;
                     if (count($repeatingFieldValues[$field]) == 1) {

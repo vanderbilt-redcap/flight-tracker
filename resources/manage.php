@@ -125,23 +125,25 @@ function showMssg(str) {
 	echo "<table class='centered'>\n";
 	echo "<tr class='extraPaddedRow'><th>Resource</th><th>Number of Participants</th></tr>\n";
 	foreach ($options as $num => $option) {
-		$instances = $resourceInstances[$num];
-		echo "<tr class='extraPaddedRow'><td class='centered'>$option</td><td>";
-		if (count($instances) > 0) {
-			echo "<div class='tooltip centered'>".count($instances)." participants<span class='widetooltiptext smaller'>";
-			$namesForOption = array();
-			foreach ($instances as $recordId) {
-				$name = $names[$recordId];
-				$nameWithLink = Links::makeProfileLink($pid, $name, $recordId);
-				array_push($namesForOption, $nameWithLink);
-			}
-			echo implode("<br>", $namesForOption);
-			echo "</span></div>";
-		} else {
-			echo "No instances<br>";
-			echo "<button onclick='deleteOption($num);'>Delete</button>";
-		}
-		echo "</td></tr>\n";
+	    if (isset($resourceInstances[$num])) {
+            $instances = $resourceInstances[$num];
+            echo "<tr class='extraPaddedRow'><td class='centered'>$option</td><td>";
+            if (count($instances) > 0) {
+                echo "<div class='tooltip centered'>".count($instances)." participants<span class='widetooltiptext smaller'>";
+                $namesForOption = array();
+                foreach ($instances as $recordId) {
+                    $name = $names[$recordId];
+                    $nameWithLink = Links::makeProfileLink($pid, $name, $recordId);
+                    array_push($namesForOption, $nameWithLink);
+                }
+                echo implode("<br>", $namesForOption);
+                echo "</span></div>";
+            } else {
+                echo "No instances<br>";
+                echo "<button onclick='deleteOption($num);'>Delete</button>";
+            }
+            echo "</td></tr>\n";
+        }
 	}
 	echo "<tr class='extraPaddedRow'><td class='centered'><input type='text' id='title' value=''></td><td class='centered'><button onclick='addOption($(\"#title\").val());'>Add</button></td></tr>\n";
 	echo "</table>\n";

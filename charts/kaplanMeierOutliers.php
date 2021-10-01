@@ -67,7 +67,7 @@ if (empty($possibleRecords)) {
     echo "<p>All grants and publications are dated on-or-after $thresholdYear.</p>";
 } else {
     if (isset($_GET['test'])) {
-        echo "<p>Possible Records: ".REDCapManagement::json_encode_with_spaces($possibleRecords)."</p>";
+        echo "<p>Possible Records: ".htmlentities(REDCapManagement::json_encode_with_spaces($possibleRecords))."</p>";
     }
     $grantNumbers = [];
     $pmids = [];
@@ -105,8 +105,12 @@ if (empty($possibleRecords)) {
                 $foundOutliers = [];
                 for ($i = 1; ($i <= $maxCluster[$type]) && ($i < count($timestamps)); $i++) {
                     $lastTimestamp = $timestamps[$i];
-                    $clusterTimestamp = $timestamps[$i - 1];
-                    if (($clusterTimestamp < $thresholdTs) && ($clusterTimestamp + $yearSpan < $lastTimestamp)) {
+                    $clusterTimestamp = $timestamps[$i - 1] ?? 0;
+                    if (
+                        $clusterTimestamp
+                        && ($clusterTimestamp < $thresholdTs)
+                        && ($clusterTimestamp + $yearSpan < $lastTimestamp)
+                    ) {
                         for ($j = 0; $j < $i; $j++) {
                             $foundOutliers[] = $timestamps[$j];
                         }
@@ -114,7 +118,7 @@ if (empty($possibleRecords)) {
                 }
                 if (!empty($foundOutliers)) {
                     foreach ($foundOutliers as $outlierTs) {
-                        $outlierDate = date("Y-m-d", $outlierTs);
+                        $outlierDate = $outlierTs ? date("Y-m-d", $outlierTs) : "Unknown";
                         if (isset($_GET['test'])) {
                             echo "<p>Record $recordId: Looking for $outlierDate among " . count(array_values($linksWithDates)) . " items</p>";
                         }
@@ -165,7 +169,7 @@ if (empty($possibleRecords)) {
                 } else {
                     $examinedDates = [];
                     for ($i = 0; $i < $maxCluster[$type]; $i++) {
-                        $examinedDates[] = date("Y-m-d", $timestamps[$i]);
+                        $examinedDates[] = $timestamps[$i] ? date("Y-m-d", $timestamps[$i]) : "Unknown";
                     }
                     if (isset($_GET['test'])) {
                         echo "<p>Record $recordId has no outliers, but examined the dates: ".implode(", ", $examinedDates)."</p>";

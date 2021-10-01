@@ -45,7 +45,12 @@ class Stats
                 }
                 $counts[$item]++;
             }
-            $max = max(array_values($counts));
+            $countValues = array_values($counts);
+            if (!empty($countValues) && REDCapManagement::isArrayNumeric($countValues)) {
+                $max = max($countValues);
+            } else {
+                $max = 0;
+            }
             $maxItems = [];
             foreach ($counts as $item => $count) {
                 if ($count == $max) {
@@ -89,7 +94,7 @@ class Stats
     // Function to find standard deviation of given array.
     public function standardDeviation() {
         $n = $this->getN();
-        if ($n == 0) {
+        if (in_array($n, [0, 1])) {
             return self::$nan;
         }
         $sum = 0;

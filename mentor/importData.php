@@ -9,6 +9,7 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $instance = $_REQUEST['instance'];
+$recordId = $_REQUEST['record'];
 
 $metadata = Download::metadata($token, $server);
 $metadata = filterMetadata($metadata);

@@ -16,17 +16,21 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 if ($_GET['record']) {
     if ($_GET['record'] == "all") {
         if ($_GET['cohort']) {
-            $records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
+            $cohort = REDCapManagement::sanitize($_GET['cohort']);
+            $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
         } else {
             $records = Download::recordIds($token, $server);
         }
     } else {
-        $records = array($_GET['record']);
+        $records = [REDCapManagement::sanitize($_GET['record'])];
     }
+} else {
+    $records = [];
 }
 
 $names = Download::names($token, $server);
 if (isset($_GET['download']) && $records) {
+    $metadata = Download::metadata($token, $server);
     list($citations, $dates) = getCitationsForRecords($records, $token, $server, $metadata);
     $html = makePublicationListHTML($citations, $names, $dates);
     Application::writeHTMLToDoc($html, "Publications ".date("Y-m-d").".docx");
@@ -185,9 +189,9 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
                 $dates[$record] = "Training period not recorded";
             }
         } else if ($_GET['begin']) {
-            $startTs = strtotime($_GET['begin']);
+            $startTs = strtotime(REDCapManagement::sanitize($_GET['begin']));
             if ($_GET['end']) {
-                $endTs = strtotime($_GET['end']);
+                $endTs = strtotime(REDCapManagement::sanitize($_GET['end']));
             } else {
                 $endTs = time();
             }
@@ -239,7 +243,7 @@ function makePublicationListHTML($citations, $names, $dates) {
 
                 $citations = $citColl->getCitations();
                 foreach ($citations as $citation) {
-                    $html .= "<p style='text-align: left;'>";
+                    $html .= "<p style='text-align: left; padding: 2px 0;'>";
                     if (isset($_GET['altmetrics'])) {
                         $html .= $citation->getImage("left");
                     }
@@ -259,10 +263,11 @@ function makeExtraURLParams($exclude = []) {
     $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grant", "begin", "end", "cohort"];
     foreach ($_GET as $key => $value) {
         if (isset($_GET[$key]) && in_array($key, $expected) && !in_array($key, $exclude)) {
+            $key = REDCapManagement::sanitize($key);
             if ($value === "") {
                 $additionalParams .= "&".$key;
             } else {
-                $additionalParams .= "&$key=".urlencode($value);
+                $additionalParams .= "&$key=".urlencode(REDCapManagement::sanitize($value));
             }
         }
     }
@@ -270,18 +275,19 @@ function makeExtraURLParams($exclude = []) {
 }
 
 function makeCustomizeTable($token, $server, $metadata) {
+    $cohort = isset($_GET['cohort']) ? REDCapManagement::sanitize($_GET['cohort']) : "";
     $cohorts = new Cohorts($token, $server, Application::getModule());
     $html = "";
     $style = "style='width: 250px; padding: 15px; vertical-align: top;'";
     $defaultDays = "";
     if (isset($_GET['trainingPeriodPlusDays']) && is_numeric($_GET['trainingPeriodPlusDays'])) {
-        $defaultDays = $_GET['trainingPeriodPlusDays'];
+        $defaultDays = REDCapManagement::sanitize($_GET['trainingPeriodPlusDays']);
     }
     $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end"]);
     list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
     $fullURLMinusCohort = preg_replace("/&cohort=[^\&]+/", "", $fullURL);
-    $begin = $_GET['begin'];
-    $end = $_GET['end'];
+    $begin = REDCapManagement::sanitize($_GET['begin']);
+    $end = REDCapManagement::sanitize($_GET['end']);
 
     $html .= "<table class='centered'>\n";
     $html .= "<tr>\n";
@@ -299,7 +305,7 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= "</tr>";
     $html .= "<tr>";
     $html .= "<td>";
-    $html .= $cohorts->makeCohortSelect($_GET['cohort'], "location.href=\"$fullURLMinusCohort\"+\"&cohort=\"+encodeURIComponent($(this).val());");
+    $html .= $cohorts->makeCohortSelect($cohort, "location.href=\"$fullURLMinusCohort\"+\"&cohort=\"+encodeURIComponent($(this).val());");
     $html .= "</td>";
     $html .= "<td>";
     $html .= "<h4>Show Pubs During Timespan</h4>";

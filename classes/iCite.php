@@ -16,22 +16,28 @@ class iCite {
 	        $pmids = [$pmids];
         }
 	    $maxSize = 10;
+	    $queueOfQueues = [];
 	    for ($i = 0; $i < count($pmids); $i += $maxSize) {
 	        $queue = [];
 	        for ($j = $i; ($j < count($pmids)) && ($j < $i + $maxSize); $j++) {
 	            $queue[] = $pmids[$j];
             }
+	        $queueOfQueues[] = $queue;
         }
-		$url = "https://icite.od.nih.gov/api/pubs?pmids=".implode(",", $queue)."&format=json";
-		list($resp, $json) = REDCapManagement::downloadURL($url, $pid);
-		Application::log("iCite ".$url.": $resp", $pid);
+	    $results = [];
+	    foreach ($queueOfQueues as $queue) {
+            $url = "https://icite.od.nih.gov/api/pubs?pmids=".implode(",", $queue)."&format=json";
+            list($resp, $json) = REDCapManagement::downloadURL($url, $pid);
+            Application::log("iCite ".$url.": $resp", $pid);
 
-		$data = json_decode($json, true);
-		if (!$data || !$data['data'] || count($data['data']) == 0) {
-			return array();
-		}
-		// Application::log(json_encode($data['data'][0]));
-		return $data['data'];
+            $data = json_decode($json, true);
+            if (!$data || !$data['data'] || count($data['data']) == 0) {
+                continue;
+            }
+            // Application::log(json_encode($data['data'][0]));
+            $results = array_merge($results, $data['data']);
+        }
+	    return $results;
 	}
 
 	public function getPMIDs() {

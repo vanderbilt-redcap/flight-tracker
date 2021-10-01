@@ -294,7 +294,6 @@ class Grants {
 
 	public function setRows($rows) {
 		if ($rows) {
-			$this->specs = [];
 			$this->rows = $rows;
 			$this->recordId = 0;
             $this->nativeGrants = [];
@@ -565,7 +564,7 @@ class Grants {
                         $awardsBySource[$awardNo][] = $grant;
                         if (self::getShowDebug()) { Application::log("combineBySource setup: ".$awardNo." adding ".$grant->getVariable("type")); }
                     } else {
-                        if (self::getShowDebug()) { Application::log("combineBySource setup: omitting ".$awardNo." because no start"); }
+                        if (self::getShowDebug()) { Application::log("combineBySource setup: omitting ".$grant->getNumber()." because no start"); }
                     }
 				}
 			}
@@ -760,7 +759,6 @@ class Grants {
 			$awardno = $grant->getNumber();
 			$grant->setVariable('source', "modify");
 			if ($action == "ADD") {
-				$listOfAwards[$awardno] = $grant;
 				if ($grant->getVariable('type') != "N/A") {
 					$change = new ImportedChange($awardno);
 					$change->setChange("type", $grant->getVariable('type'));
@@ -775,7 +773,7 @@ class Grants {
 				$change2->setChange("start", $grant->getVariable("start"));
 				array_push($this->changes, $change2);
 
-				if (isset($award['end_date'])) {
+				if ($grant->getVariable("end")) {
 					$change3 = new ImportedChange($awardno);
 					$change3->setChange("end", $grant->getVariable("end"));
 					array_push($this->changes, $change3);
@@ -1004,7 +1002,9 @@ class Grants {
 	private static function deepCopyGrants($awardsByBaseAwardNumber) {
         $newAwards = [];
         foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
-            $newAwards[$baseNumber] = clone $grant;
+            if (get_class($grant) == "Vanderbilt\\CareerDevLibrary\\Grant") {
+                $newAwards[$baseNumber] = clone $grant;
+            }
         }
         return $newAwards;
     }
@@ -1538,8 +1538,8 @@ class Grants {
 
 		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
 			$type = $row['summary_award_type_'.$i];
-			$endDate = strtotime($row['summary_award_end_date_'.$i]);
-			if (in_array($type, $kTypes) && ($r01 < $endDate)) {
+			$endDate = $row['summary_award_end_date_'.$i] ? strtotime($row['summary_award_end_date_'.$i]) : 0;
+			if (in_array($type, $kTypes) && ($r01 < $endDate) && $row['summary_award_date_'.$i]) {
 				# compare ending from R01 to year length of Ks
 				$yearLength = Scholar::getKLength($type);
 				$startKTs = strtotime($row['summary_award_date_'.$i]);
@@ -1550,7 +1550,7 @@ class Grants {
 					# not adjusting for leap years
 					$endKDateFromYearLength = date("Y-m-d", $startKTs + $yearLength * 365 * $oneDay);
 				}
-				$endKTsFromYearLength = strtotime($endKDateFromYearLength);
+				$endKTsFromYearLength = $endKDateFromYearLength ? strtotime($endKDateFromYearLength) : time();
 				if ($endKTsFromYearLength < $endKTsFromR01) { 
 					$row['summary_award_end_date_'.$i] = $endKDateFromYearLength;
 				} else {
@@ -1766,6 +1766,8 @@ class Grants {
     private $metadata;	// keyed by field_name in constructor
 	private $lexicalTranslator;
 	private $rows;
+	private $recordId;
+	private $name;
 	private $nativeGrants = [];
 	private $compiledGrants;
 	private $priorGrants;
@@ -1827,7 +1829,7 @@ class ImportedChange {
 
 	public function toString() {
 		$remove = "";
-		if ($this->isRemove) {
+		if ($this->isRemove()) {
 			$remove = " REMOVE";
 		}
 		return $this->changeType." ".$this->changeValue.": ".$this->awardNo.$remove;

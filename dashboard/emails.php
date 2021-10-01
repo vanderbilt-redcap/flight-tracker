@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Measurement;
 use \Vanderbilt\CareerDevLibrary\DateMeasurement;
 use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -18,10 +19,10 @@ if ($_GET['cohort']) {
 
 if ($_GET['cohort']) {
 	$metadata = Download::metadata($token, $server);
-	$records = Download::cohortRecordIds($token, $server, $metadata, $_GET['cohort']);
-}
-if (!$records) {
-	$records = Download::recordIds($token, $server);
+	$records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
+} else {
+    $records = Download::recordIds($token, $server);
+    $metadata = [];
 }
 $redcapData = Download::fieldsForRecords($token, $server, array("record_id", "identifier_email", "followup_date", "followup_complete", "initial_survey_complete"), $records);
 

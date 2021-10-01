@@ -32,7 +32,8 @@ if (isset($_GET['page'])) {
 if ($cohort) {
     $records = Download::cohortRecordIds($token, $server, $module, $cohort);
 } else if ($_GET['record']) {
-    $records = [$_GET['record']];
+    $recordId = htmlentities($_GET['record'], ENT_QUOTES);
+    $records = [$recordId];
 } else {
     $records = Download::recordIds($token, $server);
 }
@@ -43,7 +44,9 @@ $pullSize = 10;
 for ($i = 0; $i < count($records); $i += $pullSize) {
     $pullRecords = [];
     for ($j = $i; ($j < count($records)) && ($j < $i + $pullSize); $j++) {
-        $pullRecords[] = $records[$j];
+        if (isset($records[$j])) {
+            $pullRecords[] = $records[$j];
+        }
     }
     foreach ($pullRecords as $recordId) {
         $recordStats[$recordId] = [
@@ -84,6 +87,11 @@ for ($i = 0; $i < count($records); $i += $pullSize) {
     foreach ($redcapData as $row) {
         $recordId = $row['record_id'];
         $awardNo = FALSE;
+        $submissionDate = FALSE;
+        $isPI = FALSE;
+        $role = "";
+        $status = "";
+        $source = "";
         if (($row['redcap_repeat_instrument'] == $attemptInstrument) && ($attemptInstrument == "coeus2")) {
             $awardNo = $row['coeus2_agency_grant_number'];
             $submissionDate = $row['coeus2_submitted_to_agency'];
@@ -152,7 +160,7 @@ for ($i = 0; $i < count($records); $i += $pullSize) {
                                 $currAwardSuffix = Grant::getOtherSuffixes($currAwardNo);
                                 if ($currAwardYear == "01") {
                                     if (preg_match("/Amendment Number \d/", $currAwardSuffix)) {
-                                        $numAmendments = str_replace("Amendment Number ", "", $currAwardSuffix);
+                                        $numAmendments = (int) str_replace("Amendment Number ", "", $currAwardSuffix);
                                         $awardNumbers[$recordId][] = $currAwardNo;
                                         $isDenomRetries = 1 + $numAmendments;
                                         $isDenomOverall = 1;
@@ -252,7 +260,7 @@ echo "<h1>Grant Success Rates from COEUS</h1>";
 $url = Application::link("successRate.php");
 $link = REDCapManagement::splitURL($url)[0];
 $params = REDCapManagement::getParameters($url);
-$defaultDate = $_GET['date'] ? $_GET['date'] : "";
+$defaultDate = isset($_GET['date']) ? REDCapManagement::sanitize($_GET['date']) : "";
 $skip = ["cohort", "date"];
 echo "<form method='GET' action='$link'>";
 foreach ($params as $key => $value) {
@@ -351,7 +359,7 @@ function isTrainingGrant($awardNo, $role) {
 
 function getDenoms($baseAwardNo, $awardYear, $otherSuffixes, $recordAwardNumbers) {
     if (preg_match("/Amendment Number \d/", $otherSuffixes)) {
-        $numAmendments = str_replace("Amendment Number ", "", $otherSuffixes);
+        $numAmendments = (int) str_replace("Amendment Number ", "", $otherSuffixes);
         return [1, 1 + $numAmendments];
     } else {
         foreach ($recordAwardNumbers as $currAwardNo) {

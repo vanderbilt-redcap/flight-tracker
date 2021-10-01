@@ -54,7 +54,7 @@ foreach ($queue as $i => $row) {
                     } else {
                         echo "<td></td>";
                     }
-                } else if (preg_match("/Ts$/", $header)) {
+                } else if (preg_match("/Ts$/", $header) && $row[$header] && is_numeric($row[$header])) {
                     echo "<td>".date("Y-m-d H:i:s", $row[$header])."</td>";
                 } else if (is_array($row[$header])) {
                     echo "<td style='max-width: 300px; overflow: auto;'>".implode(", ", $row[$header])."</td>";

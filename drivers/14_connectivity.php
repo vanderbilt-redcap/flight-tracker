@@ -27,6 +27,7 @@ $(document).ready(function() {
         const server = sites[name]
         let encodedName = encodeName(name)
         $.post('" . Application::link('testConnectionStatus.php') . "', { name: name, server: server }, function(json) {
+            console.log(json);
             let results = JSON.parse(json)
             let html = ''
             html += '<h2>'+name+' (<a href=\"https://'+server+'\">'+server+'</a>)</h2>'

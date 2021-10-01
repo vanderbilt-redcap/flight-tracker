@@ -3,14 +3,16 @@
 use \Vanderbilt\CareerDevLibrary\NIHTables;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$tableNum = @$_GET['table'];
+$tableNum = isset($_GET['table']) ? htmlentities($_GET['table'], ENT_QUOTES) : "";
 if (!$tableNum || !NIHTables::getTableHeader($tableNum)) {
 	die("Could not find $tableNum!");
 }
+$cohort = isset($_GET['cohort']) ? REDCapManagement::sanitize($_GET['cohort']) : "";
 
 $metadata = Download::metadata($token, $server);
 $table = new NIHTables($token, $server, $pid, $metadata);
@@ -27,7 +29,7 @@ if ($tableNum != "Common Metrics") {
 }
 echo "<p class='centered max-width'>A tool to expedite reporting to the NIH, this table should be considered <b>preliminary</b> and requiring manual verification.$note Try copying and pasting the table into MS Word for further customization.</p>";
 echo "<h2>".NIHTables::getTableHeader($tableNum)."</h2>\n";
-if ($_GET['cohort']) {
-    echo "<h3>Cohort ".$_GET['cohort']."</h3>\n";
+if ($cohort) {
+    echo "<h3>Cohort $cohort</h3>\n";
 }
 echo $table->getHTML($tableNum);

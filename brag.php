@@ -16,14 +16,19 @@ require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
-if ($_GET['cohort'] && ($_GET['cohort'] != 'all')) {
-    $recordIds = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
+if ($_GET['cohort']) {
+    $cohort = htmlentities($_GET['cohort'], ENT_QUOTES);
+} else {
+    $cohort = "";
+}
+if ($cohort && ($cohort != 'all')) {
+    $recordIds = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $recordIds = Download::recordIds($token, $server);
 }
 
 if (isset($_GET['daysPrior']) && is_numeric($_GET['daysPrior']) && ($_GET['daysPrior'] >= 0)) {
-    $daysPrior = $_GET['daysPrior'];
+    $daysPrior = (int) htmlentities((string) $_GET['daysPrior']);
 } else {
     $daysPrior = 180;
 }
@@ -49,7 +54,7 @@ if (isset($_GET['showHeaders'])) {
             <?= REDCapManagement::getParametersAsHiddenInputs(Application::link("brag.php")) ?>
             <?php
             $cohorts = new Cohorts($token, $server, Application::getModule());
-            echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'])."</p>";
+            echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort)."</p>";
             ?>
             <?= isset($_GET['showHeaders']) ? "<input type='hidden' name='showHeaders' value='' />" : "" ?>
             <p class="centered">What Time Period Should Show? Days Prior: <input type="number" name="daysPrior" style="width: 75px;" value="<?= $daysPrior ?>"></p>
@@ -127,7 +132,7 @@ if (empty($citationsWithTs)) {
     echo "<p class='centered'>None</p>";
 } else {
     foreach ($citationsWithTs as $citationStr => $ts) {
-        echo "<p class='smaller'>".$citationStr."</p>\n";
+        echo "<p class='smaller' style='padding: 2px 0;'>".$citationStr."</p>\n";
     }
 }
 echo "</div>\n";

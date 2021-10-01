@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../wrangler/baseSelect.php");
@@ -15,11 +16,40 @@ function addHTMLForParens($header) {
 	return str_replace(")", ")</span>", $str);
 }
 
+function getPossibleLayouts() {
+    return [
+        "dates",
+        "demographics",
+        "emails",
+        "grantBudgets",
+        "grantBudgetsByYear",
+        "grants",
+        "overall",
+        "publicationsByCategory",
+        "publicationsByJournal",
+        "publicationsByMESHTerms",
+        "publicationsByMetrics",
+        "publicationsByPublicationType",
+        "publicationsByYear",
+        "resources",
+    ];
+}
+
 function getTarget() {
 	if (!$_GET['layout']) {
 		return "display";
 	}
-	return $_GET['layout'];
+	$possibleLayouts = getPossibleLayouts();
+	$layout = htmlentities($_GET['layout'], ENT_QUOTES);
+	if (in_array($layout, $possibleLayouts)) {
+	    foreach ($possibleLayouts as $possibleLayout) {
+	        if ($possibleLayout == $layout) {
+	            return $possibleLayout;
+            }
+        }
+        return "";
+    }
+	throw new \Exception("Invalid layout ".$layout);
 }
 
 function makeLineGraph($lines) {
@@ -84,6 +114,7 @@ function makeLineGraph($lines) {
 }
 
 function displayDashboardHeader($target, $otherTarget, $pid, $cohort = "", $metadata = array()) {
+    global $token, $server;
 	$html = "";
 
 	$cohortUrl = "";

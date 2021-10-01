@@ -3,6 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -47,9 +48,9 @@ foreach ($choicesStrs as $type => $choicesStr) {
 <?php
 
 if ($hasType && isset($_POST['begin']) && ($_POST['begin'] != "")) {
-	$begin = strtotime($_POST['begin']);
+	$begin = strtotime(REDCapManagement::sanitize($_POST['begin']));
 	if (isset($_POST['end']) && ($_POST['end'] != "")) {
-		$end = strtotime($_POST['end']);
+		$end = strtotime(REDCapManagement::sanitize($_POST['end']));
 	} else {
 		$end = time();
 	}
@@ -57,21 +58,22 @@ if ($hasType && isset($_POST['begin']) && ($_POST['begin'] != "")) {
 	$types = array();
 	foreach ($_POST as $variable => $value) {
 		if (preg_match("/^type___/", $variable)) {
-			$types[] = $value;
+			$types[] = REDCapManagement::sanitize($value);
 		}
 	}
 
 	$redcapData = Download::fields($token, $server, CareerDev::$summaryFields);
 	echo "<h1>Timespan Search Results</h1>";
-	echo "<h2>".$_POST['begin']." - ";
+	echo "<h2>".REDCapManagement::sanitize($_POST['begin'])." - ";
 	if (isset($_POST['end']) && $_POST['end']) {
-		echo $_POST['end'];
+		echo REDCapManagement::sanitize($_POST['end']);
 	} else {
 		echo "now";
 	}
 	echo "</h2>";
 	$hasResults = false;
 	$j = 0;
+	$names = [];
 	foreach ($redcapData as $row) {
 		for ($i = 1; $i <= 15; $i++) {
 			if ($row['summary_award_date_'.$i] && in_array($row['summary_award_type_'.$i], $types)) {
@@ -100,7 +102,7 @@ if ($hasType && isset($_POST['begin']) && ($_POST['begin'] != "")) {
 		}
 
 		echo "<tr class='$rowClass'>";
-		echo "<td>".Links::makeSummaryLink($_GET['pid'], $row['record_id'], $event_id, $row['identifier_first_name']." ".$row['identifier_last_name'])."</td>";
+		echo "<td>".Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['identifier_first_name']." ".$row['identifier_last_name'])."</td>";
 		echo "<td>".$row['summary_award_sponsorno_'.$i]."</td>";
 		echo "<td style='padding-right: 10px;'>Start: ".$row['summary_award_date_'.$i]."</td>";
 		if ($row['summary_award_end_date_'.$i]) {

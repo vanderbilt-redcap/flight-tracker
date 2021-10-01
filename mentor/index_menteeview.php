@@ -19,10 +19,10 @@ require_once dirname(__FILE__).'/_header.php';
 
 
 if ($_REQUEST['uid'] && DEBUG) {
-    $userid2 = $_REQUEST['uid'];
-    $uidString = "&uid=".$_REQUEST['uid'];
+    $userid2 = REDCapManagement::sanitize($_REQUEST['uid']);
+    $uidString = "&uid=".$userid2;
 } else {
-    $userid2 = $userid;
+    $userid2 = Application::getUsername();
     $uidString = "";
 }
 
@@ -34,7 +34,7 @@ $names = Download::names($token, $server);
 
 $menteeRecordId = FALSE;
 if ($_REQUEST['menteeRecord']) {
-    $menteeRecordId = $_REQUEST['menteeRecord'];
+    $menteeRecordId = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
     list($myMentees, $myMentors) = getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");
@@ -52,7 +52,7 @@ $otherMentors = REDCapManagement::makeConjunction($myMentors["name"]);
 
 $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id"], $metadataFields), [$menteeRecordId]);
 if ($_REQUEST['instance']) {
-    $currInstance = $_REQUEST['instance'];
+    $currInstance = REDCapManagement::sanitize($_REQUEST['instance']);
 } else {
     $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId);
     $currInstance = $maxInstance + 1;
@@ -874,7 +874,7 @@ foreach ($metadata as $row) {
             let value = $('select#instances option:selected').val()
             <?php
                 if ($_REQUEST['uid']) {
-                    echo "let uidStr = '&uid='+encodeURI('".$_REQUEST['uid']."')\n";
+                    echo "let uidStr = '&uid='+encodeURI('".REDCapManagement::sanitize($_REQUEST['uid'])."')\n";
                 } else {
                     echo "let uidStr = ''\n";
                 }
@@ -962,7 +962,7 @@ foreach ($metadata as $row) {
 
 </script>
 
-<?= makeCommentJS($userid2, $menteeRecordId, $currInstance, $currInstance, $priorNotes, $names[$menteeRecordId], $dateToRemind, TRUE) ?>
+<?= makeCommentJS($userid2, $menteeRecordId, $currInstance, $currInstance, $priorNotes, $names[$menteeRecordId], $dateToRemind, TRUE, in_array("mentoring_agreement_evaluations", $allMetadataForms), $pid) ?>
 
 
 <style type="text/css">

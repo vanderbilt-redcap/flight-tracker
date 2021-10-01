@@ -46,12 +46,21 @@ if ((isset($_GET['showAllResources']) && ($_GET['showAllResources'] == "on")) ||
     $showAllResourcesText = "";
 }
 
+$cohort = isset($_GET['cohort']) ? REDCapManagement::sanitize($_GET['cohort']) : "";
+
+$maxLife = 0;
+$n = [];
+$names = [];
+$serialTimes = [];
+$statusAtSerialTime = [];    // event or censored
+$resourcesUsedIdx = [];
+$groups = ["all" => ALL_SCHOLARS_LABEL];
+$cohortTitle = "";
 if ($showRealGraph) {
-    if ($_GET['cohort']) {
-        $cohortTitle = " (Cohort ".$_GET['cohort'].")";
-        $records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
+    if ($cohort) {
+        $cohortTitle = " (Cohort $cohort)";
+        $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
     } else {
-        $cohortTitle = "";
         $records = Download::recordIds($token, $server);
     }
     $names = Download::names($token, $server);
@@ -74,9 +83,6 @@ if ($showRealGraph) {
     }
     $startDates = [];
     $endDates = [];
-    $serialTimes = [];
-    $statusAtSerialTime = [];    // event or censored
-    $resourcesUsedIdx = [];
     $indexedREDCapData = Download::indexREDCapData(Download::fields($token, $server, $fields));
     foreach ($records as $record) {
         $redcapData = $indexedREDCapData[$record];
@@ -111,13 +117,14 @@ if ($showRealGraph) {
     }
 
     $curveData = [];
-    $maxLife = max(array_values($serialTimes));
+    if (!empty($serialTimes)) {
+        $maxLife = max(array_values($serialTimes));
+    }
     if (isset($_GET['test'])) {
         echo "maxLife: $maxLife<br>";
     }
     $curveData = [];
     if ($maxLife > 0) {
-        $groups = ["all" => ALL_SCHOLARS_LABEL];
         if ($showAllResources) {
             foreach ($choices['resources_resource'] as $idx => $label) {
                 $groups[$idx] = $label;
@@ -126,7 +133,6 @@ if ($showRealGraph) {
         if (isset($_GET['test'])) {
             echo "groups: ".json_encode($groups)."<br>";
         }
-        $n = [];
         foreach ($groups as $idx => $label) {
             $curveData[$label] = [];
             if (isset($_GET['test'])) {
@@ -134,7 +140,7 @@ if ($showRealGraph) {
             }
             $groupRecords = getResourceRecords($idx, $resourcesUsedIdx);
             if (isset($_GET['test'])) {
-                echo "$idx $label has groupRecords (".count($groupRecords)."): ".json_encode_with_spaces($groupRecords)."<br>";
+                echo "$idx $label has groupRecords (".count($groupRecords)."): ".REDCapManagement::json_encode_with_spaces($groupRecords)."<br>";
             }
             $n[$label] = count($groupRecords);
             $curveData[$label][0] = [
@@ -161,20 +167,22 @@ if ($showRealGraph) {
                         }
                     }
                 }
+                $startNumer = $curveData[$label][$startI]["numer"] ?? 0;
+                $startPerc = $curveData[$label][$startI]["percent"] ?? 0;
                 $curveData[$label][$i] = [];
                 $curveData[$label][$i]["censored"] = $numCensoredInTimespan;
                 $curveData[$label][$i]["events"] = $numEventsInTimespan;
-                $curveData[$label][$i]["denom"] = $curveData[$label][$startI]["numer"] - $numCensoredInTimespan;
+                $curveData[$label][$i]["denom"] = $startNumer - $numCensoredInTimespan;
                 $curveData[$label][$i]["numer"] = $curveData[$label][$i]["denom"] - $numEventsInTimespan;
                 $curveData[$label][$i]["this_fraction"] = ($curveData[$label][$i]["denom"] > 0) ? $curveData[$label][$i]["numer"] / $curveData[$label][$i]["denom"] : 0;
-                $curveData[$label][$i]["percent"] = $curveData[$label][$startI]["percent"] * $curveData[$label][$i]["this_fraction"];
+                $curveData[$label][$i]["percent"] = $startPerc * $curveData[$label][$i]["this_fraction"];
                 $curveData[$label][$i]["pretty_percent"] = REDCapManagement::pretty(100.0 - $curveData[$label][$i]["percent"], 1);
             }
         }
         if (isset($_GET['test'])) {
             foreach ($curveData as $label => $lines) {
                 foreach ($lines as $i => $line) {
-                    echo "curveData[$label][$i]: ".REDCapManagement::json_encode_with_spaces($line)."<br>";
+                    echo "curveData[$label][$i]: ".htmlentities(REDCapManagement::json_encode_with_spaces($line))."<br>";
                 }
             }
         }
@@ -191,11 +199,13 @@ foreach ($curveData as $label => $rows) {
         for ($start = 0; $start < count($rows) - 1; $start++) {
             $end = $start + $step;
             $idx = $start + $step / 2;
-            $dS = REDCapManagement::pretty($rows[$end]["pretty_percent"] - $rows[$start]["pretty_percent"], 1) / $step;
-            if (isset($_GET['test'])) {
-                echo "Index: $idx has $dS<br>";
+            if (isset($rows[$end]['pretty_percent']) && isset($rows[$start]['pretty_percent'])) {
+                $dS = REDCapManagement::pretty($rows[$end]["pretty_percent"] - $rows[$start]["pretty_percent"], 1) / $step;
+                if (isset($_GET['test'])) {
+                    echo "Index: $idx has $dS<br>";
+                }
+                $hazardData[$label]["$idx"] = $dS;
             }
-            $hazardData[$label]["$idx"] = $dS;
         }
     }
 }
@@ -216,13 +226,15 @@ foreach ($curveData as $label => $curvePoints) {
         if (count($survivalLabels) < $maxLife) {
             $survivalLabels[] = makeXAxisLabel($cnt, $meas);
         }
-        $survivalLinePoints[$label][] = $ary['pretty_percent'];
-        if ($ary['censored'] > 0) {
-            $censored[$label][] = $ary['pretty_percent'];
-        } else {
-            $censored[$label][] = 0;
+        if (isset($ary['pretty_percent']) && isset($ary['censored'])) {
+            $survivalLinePoints[$label][] = $ary['pretty_percent'];
+            if ($ary['censored'] > 0) {
+                $censored[$label][] = $ary['pretty_percent'];
+            } else {
+                $censored[$label][] = 0;
+            }
+            $totalDataPoints++;
         }
-        $totalDataPoints++;
     }
 }
 
@@ -230,12 +242,13 @@ $fullURL = Application::link("charts/kaplanMeierCurve.php");
 list($url, $params) = REDCapManagement::splitURL($fullURL);
 
 $cohorts = new Cohorts($token, $server, Application::getModule());
+$cohort = htmlentities($_GET['cohort'], ENT_QUOTES);
 
 echo "<h1>Kaplan-Meier Conversion Success Curve</h1>";
 echo "<p class='centered max-width'>A <a href='https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3932959/'>Kaplan-Meier survival plot</a> is used in epidemiology to track deaths over time due to a disease. It's a good way to track the effectiveness of a treatment. In Career Development, deaths are not tracked, but rather whether someone converts from K to R (event), is lost to follow-up (censored), or is still active (censored). This curve will hopefully allow you to gauge the effectiveness of scholarship-promoting efforts.</p>";
 echo "<form action='$url' method='GET'>";
 echo REDCapManagement::makeHiddenInputs($params);
-echo "<p class='centered skinnymargins'>".$cohorts->makeCohortSelect($_GET['cohort'])."</p>";
+echo "<p class='centered skinnymargins'>".$cohorts->makeCohortSelect($cohort)."</p>";
 
 // $measurements = ["days", "months", "years"];
 $measurements = ["months", "years"];
@@ -285,6 +298,7 @@ $plots = [
     "hazard" => ["title" => "Rate of Conversion Success", "yAxisTitle" => "Rate of Change in Conversion Percent Per Unit Time (dS/dT)"],
     ];
 $labelsJSON = [];
+$datasetsJSON = [];
 if ($showRealGraph) {
     if ($totalDataPoints > 0) {
         foreach ($plots as $id => $titles) {

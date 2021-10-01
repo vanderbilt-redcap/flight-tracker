@@ -7,8 +7,8 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \ExternalModules\ExternalModules;
 
 ini_set("memory_limit", "4096M");
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -25,8 +25,8 @@ if (isset($_POST['departments']) && isset($_POST['resources'])) {
 		$installCoeus = CareerDev::getSetting("hasCoeus");
 		$institutions = CareerDev::getInstitutions();
 		displayInstallHeaders($module, $token, $server, $pid, $tokenName);
-        $departments = trim($_POST['departments']);
-        $resources = trim($_POST['resources']);
+        $departments = trim(REDCapManagement::sanitize($_POST['departments']));
+        $resources = trim(REDCapManagement::sanitize($_POST['resources']));
 		if ($resources && $departments) {
 			$lists = array(
 					"departments" => $departments,
@@ -43,21 +43,22 @@ if (isset($_POST['departments']) && isset($_POST['resources'])) {
 	}
 }
 if (isset($_POST['token']) && isset($_POST['title'])) {
-	$requiredFields = array("title", "token", "institution", "short_institution", "timezone", "email", "cities");
+	$requiredFields = ["title", "token", "institution", "short_institution", "timezone", "email"];
 	foreach ($requiredFields as $field) {
 		if (!$_POST[$field]) {
 			sendErrorMessage("Please provide a value for the field '".$field."'!");
 		}
 	}
 
-	$newToken = $_POST['token'];
+	$newToken = REDCapManagement::sanitize($_POST['token']);
 	$newServer = APP_PATH_WEBROOT_FULL."api/";
 	if (isValidToken($newToken)) {
-		$feedback = \Vanderbilt\FlightTrackerExternalModule\uploadProjectSettings($newToken, $newServer, $_POST['title']);
+	    $title = REDCapManagement::sanitize($_POST['title']);
+		$feedback = \Vanderbilt\FlightTrackerExternalModule\uploadProjectSettings($newToken, $newServer, $title);
 		$projectId = REDCapManagement::getPIDFromToken($newToken, $newServer);
 		$eventId = REDCapManagement::getEventIdForClassical($projectId);
 
-		displayInstallHeaders(CareerDev::getModule(), $newToken, $newServer, $projectId, $_POST['title']);
+		displayInstallHeaders(CareerDev::getModule(), $newToken, $newServer, $projectId, $title);
 		echo "<h1>Academic Departments</h1>\n";
 
 		$menteeAgreementLink = "";
@@ -66,25 +67,24 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
         }
 
 		$settingFields = [
-				'institution' => $_POST['institution'],
-				'short_institution' => $_POST['short_institution'],
-				'other_institutions' => $_POST['other_institutions'],
+				'institution' => REDCapManagement::sanitize($_POST['institution']),
+				'short_institution' => REDCapManagement::sanitize($_POST['short_institution']),
+				'other_institutions' => REDCapManagement::sanitize($_POST['other_institutions']),
 				'token' => $newToken,
 				'event_id' => $eventId,
 				'pid' => $projectId,
 				'server' => $newServer,
-				'admin_email' => $_POST['email'],
-				'tokenName' => $_POST['title'],
-				'timezone' => $_POST['timezone'],
-				'cities' => $_POST['cities'],
-				'hasCoeus' => $_POST['coeus'],
+				'admin_email' => REDCapManagement::sanitize($_POST['email']),
+				'tokenName' => REDCapManagement::sanitize($_POST['title']),
+				'timezone' => REDCapManagement::sanitize($_POST['timezone']),
+				'hasCoeus' => REDCapManagement::sanitize($_POST['coeus']),
 				'internal_k_length' => '3',
 				'k12_kl2_length' => '3',
 				'individual_k_length' => '5',
 				'default_from' => 'noreply.flighttracker@vumc.org',
 				'run_tonight' => FALSE,
-				'grant_class' => $_POST['grant_class'],
-				'grant_number' => $_POST['grant_number'],
+				'grant_class' => REDCapManagement::sanitize($_POST['grant_class']),
+				'grant_number' => REDCapManagement::sanitize($_POST['grant_number']),
                 'auto_recalculate' => '1',
                 'shared_forms' => [],
                 'mentee_agreement_link' => $menteeAgreementLink,
@@ -111,7 +111,7 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 	}
 } else {
 	displayInstallHeaders();
-	echo makeIntroPage($_GET['pid']);
+	echo makeIntroPage(htmlentities($_GET['pid']));
 	echo makeInstallFooter();
 }
 
@@ -292,11 +292,6 @@ function makeIntroPage($projectId) {
 	$html .= "<tr>\n";
 	$html .= "<td style='text-align: right;'>Admin Email(s):<br><span class='small'>(List Separated by Commas)</span></td>\n";
 	$html .= "<td><input type='text' name='email'></td>\n";
-	$html .= "</tr>\n";
-
-	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'>Home Cities of Institutions:<br><span class='small'>(No States, just Cities)<br>(List Separated by Commas)</span></td>\n";
-	$html .= "<td><input type='text' name='cities'></td>\n";
 	$html .= "</tr>\n";
 
 	// turn off COEUS since few use it

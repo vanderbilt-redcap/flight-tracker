@@ -32,7 +32,9 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
         if ($has['nih_reporter']) {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 40);
-            $manager->addCron("drivers/deleteScripts.php", "deleteExPORTERNotice", "Monday", $records, 10000);
+            if (time() < strtotime("2021-10-15")) {
+                $manager->addCron("drivers/deleteScripts.php", "deleteExPORTERNotice", "Monday", $records, 10000);
+            }
         } else {
             $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday", $records, 20);
         }
@@ -45,7 +47,9 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         if (!Application::isLocalhost()) {
             if ($has['coeus']) {
                 $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", "Wednesday", $records, 100);
-                $manager->addCron("drivers/deleteScripts.php", "deleteCoeus2Notice", "Wednesday", $records, 10000);
+                if (time() < strtotime("2021-10-15")) {
+                    $manager->addCron("drivers/deleteScripts.php", "deleteCoeus2Notice", "Wednesday", $records, 10000);
+                }
             } else if ($has['coeus2']) {
                 $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
             }

@@ -76,7 +76,18 @@ class Application {
 	    return CareerDev::getProgramName();
     }
 
-	public static function getUnknown() {
+    public static function getUsername() {
+        if (defined('USERID')) {
+            return USERID;
+        }
+        global $userid;
+        if ($userid) {
+            return $userid;
+        }
+        return "";
+    }
+
+    public static function getUnknown() {
 		return CareerDev::getUnknown();
 	}
 
@@ -196,6 +207,7 @@ class Application {
             $section = $phpWord->addSection();
             \PhpOffice\PhpWord\Shared\Html::addHtml($section, $html);
 
+            $filename = REDCapManagement::makeSafeFilename($filename);
             header('Content-Type: application/octet-stream');
             header('Content-Disposition: attachment;filename="'.$filename.'"');
             $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');

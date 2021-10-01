@@ -221,8 +221,6 @@ class Patents {
         } else {
             if ($notDoneCount == 1) {
                 $html .= $notDoneCount." New Patent";
-            } else if ($notDoneCount == 0) {
-                $html .= "No New Patents";
             } else {
                 $html .= $notDoneCount." New Patents";
             }
@@ -275,4 +273,5 @@ class Patents {
     private $lastName;
     private $firstName;
     private $institutions;
+    private $name;
 }

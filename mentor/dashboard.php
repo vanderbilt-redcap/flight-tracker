@@ -7,8 +7,12 @@ use \Vanderbilt\CareerDevLibrary\BarChart;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\REDCapLookup;
+use \Vanderbilt\CareerDevLibrary\REDCapLookupByUserid;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
+require_once(dirname(__FILE__)."/base.php");
+
+$numWeeks = 3;
 
 if ($_POST['newUids']) {
     require_once(dirname(__FILE__)."/../small_base.php");
@@ -16,6 +20,7 @@ if ($_POST['newUids']) {
     $mentorUserids = Download::primaryMentorUserids($token, $server);
     foreach ($_POST['newUids'] as $recordId => $uids) {
         $addedNew = FALSE;
+        $newUidList = [];
         foreach ($uids as $uid) {
             if (!$mentorUserids[$recordId]) {
                 $newUidList = [];
@@ -147,8 +152,11 @@ $numMentors = getElementCount($mentorNames);
 
 $selectFieldTypes = ["dropdown", "radio", "checkbox", ];
 $metadata = Download::metadata($token, $server);
+$allForms = REDCapManagement::getFormsFromMetadata($metadata);
+$hasEvaluationsEnabled = in_array("mentoring_agreement_evaluations", $allForms);
 $choices = REDCapManagement::getChoices($metadata);
 $agreementFields = REDCapManagement::getFieldsFromMetadata($metadata, "mentoring_agreement");
+$agreementFields[] = "record_id";
 $selectFieldsAndLabels = [];
 $selectFieldsAndTypes = [];
 foreach ($metadata as $row) {
@@ -158,7 +166,6 @@ foreach ($metadata as $row) {
     }
 }
 
-$userids = Download::userids($token, $server);
 $values = [];
 foreach ($records as $recordId) {
     $redcapData = Download::fieldsForRecords($token, $server, $agreementFields, [$recordId]);
@@ -179,15 +186,22 @@ foreach ($records as $recordId) {
 
     $isFirstMentor = TRUE;
     $isFirstMentee = TRUE;
+    if (isset($_GET['test']) && (count($redcapData) > 0)) {
+        echo "Record $recordId: ".REDCapManagement::json_encode_with_spaces($redcapData)."<br>";
+    }
     foreach ($redcapData as $row) {
         if ($row['redcap_repeat_instrument'] == "mentoring_agreement") {
             $useridOfRespondant = $row['mentoring_userid'];
-            if ($userids[$recordId] == $useridOfRespondant) {
+            $menteeUserids = preg_split("/\s*[,;]\s*/", $userids[$recordId]);
+            if (in_array($useridOfRespondant, $menteeUserids)) {
                 $respondantClass = "mentees";
-            } else if (in_array($userids, $mentorUserids[$recordId])) {
+            } else if (in_array($useridOfRespondant, $mentorUserids[$recordId])) {
                 $respondantClass = "mentors";
             } else {
                 $respondantClass = "unknown";
+            }
+            if (isset($_GET['test'])) {
+                echo "Record $recordId: $respondantClass $useridOfRespondant<br>";
             }
 
             if ($isFirstMentee && ($respondantClass == "mentees")) {
@@ -234,8 +248,8 @@ echo "</tr></thead>";
 echo "<tbody>";
 echo makeGeneralTableRow("Number of Mentors Filled In", $numMentors, "Mentors");
 echo makeGeneralTableRow("People with Unique User-ids Involved", $numInvited, "Individuals");
-echo makeGeneralTableRow("Number Completed Initial Survey", $numCompletedInitial, "");
-echo makeGeneralTableRow("Number Completed Follow-up Survey", $numCompletedFollowup, "");
+echo makeGeneralTableRow("Number Completed Initial<br>Mentee-Mentor Agreement Survey", $numCompletedInitial, "");
+echo makeGeneralTableRow("Number Completed Follow-up<br>Mentee-Mentor Agreement Survey", $numCompletedFollowup, "");
 echo makeGeneralTableRow("Average Time to Complete", $averageTimesToComplete, "Minutes");
 echo "</tbody>";
 echo "</table>";
@@ -296,6 +310,103 @@ foreach ($sourceData as $fieldName => $cols) {
 }
 echo "</tbody>";
 echo "</table>";
+if ($hasEvaluationsEnabled) {
+    $evalFields = REDCapManagement::getFieldsFromMetadata($metadata, "mentoring_agreement_evaluations");
+    $evalFields[] = "record_id";
+    $recordsWithoutEvals = ["mentor" => [], "mentee" => []];
+    foreach ($records as $recordId) {
+        $redcapData = Download::fieldsForRecords($token, $server, $evalFields, [$recordId]);
+        $hasEval = [];
+        foreach (array_keys($recordsWithoutEvals) as $type) {
+            $hasEval[$type] = FALSE;
+        }
+        foreach ($redcapData as $row) {
+            if ($row['redcap_repeat_instrument'] == "mentoring_agreement_evaluations") {
+                $instance = $row['redcap_repeat_instance'];
+                foreach (array_keys($recordsWithoutEvals) as $type) {
+                    if ($instance == getEvalInstance($type)) {
+                        $hasEval[$type] = TRUE;
+                    }
+                }
+            }
+        }
+        if (!$hasEval["mentee"] && !$hasEval["mentor"]) {
+            $redcapData = Download::fieldsForRecords($token, $server, ["record_id", "mentoring_last_update"], [$recordId]);
+            $minTime = time() - $numWeeks * 7 * 24 * 3600;
+            $updatedRecently = FALSE;
+            $updatedAtAll = FALSE;
+            foreach ($redcapData as $row) {
+                if ($row['redcap_repeat_instrument'] == "mentoring_agreement") {
+                    $updatedAtAll = TRUE;
+                    if ($row['mentoring_last_update']) {
+                        if (strtotime($row['mentoring_last_update']) > $minTime) {
+                            $updatedRecently = TRUE;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!$updatedAtAll && !$updatedRecently) {
+                $recordsWithoutEvals["mentor"][] = $recordId;
+                $recordsWithoutEvals["mentee"][] = $recordId;
+            }
+        } else if (!$hasEval["mentor"]) {
+            $recordsWithoutEvals["mentor"][] = $recordId;
+        } else if (!$hasEval["mentee"]) {
+            $recordsWithoutEvals["mentee"][] = $recordId;
+        }
+    }
+    if (!empty(array_merge($recordsWithoutEvals['mentor'], $recordsWithoutEvals['mentee']))) {
+        $names = Download::names($token, $server);
+        $emails = Download::emails($token, $server);
+        echo "<table class='centered bordered'><tbody><tr>";
+        foreach ($recordsWithoutEvals as $type => $recordsWithoutEval) {
+            $typeLabel = ucfirst($type);
+            $recordJSON = json_encode($recordsWithoutEval);
+            $count = count($recordsWithoutEval);
+            if ($count >= 2) {
+                $countStr = "$count Scholars Without an Eval from a $typeLabel";
+            } else if ($count == 1) {
+                $countStr = "$count Scholar Without an Eval from a $typeLabel";
+            } else {
+                $countStr = "No Scholars Without an Eval from a $typeLabel";
+            }
+            echo "<td>";
+            echo "<p class='centered skinnymargins'><span class='bolded'>$countStr</span><br><span class='smaller'>(no response in over $numWeeks weeks)</span></p>";
+            if ($count > 0) {
+                $mailtos = [];
+                foreach ($recordsWithoutEval as $recordId) {
+                    $email = "";
+                    if ($type == "mentee") {
+                        $email = $emails[$recordId];
+                        $name = $names[$recordId];
+                    } else if ($type == "mentor") {
+                        $mentorEmails = [];
+                        foreach ($mentorUserids[$recordId] as $mentorUserid) {
+                            $lookup = new REDCapLookupByUserid($mentorUserid);
+                            $mentorEmail = $lookup->getEmail();
+                            if ($mentorEmail) {
+                                $mentorEmails[] = $mentorEmail;
+                            }
+                        }
+                        $name = implode(", ", $mentorNames[$recordId]);
+                        $email = implode(",", $mentorEmails);
+                    } else {
+                        throw new \Exception("Invalid type $type");
+                    }
+                    if ($email) {
+                        $mailtos[] = "<a href='mailto:$email'>$name</a>";
+                    } else {
+                        $mailtos[] = $name;
+                    }
+                }
+                echo "<p class='centered skinnymargins'>".implode("<br>", $mailtos)."</p>";
+            }
+            echo "</td>";
+        }
+        echo "</tr></tbody></table>";
+    }
+}
 echo "<script>
 function checkForNewMentorUserids(link) {
     $('#results').html('');

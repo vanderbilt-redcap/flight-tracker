@@ -1,6 +1,7 @@
 <?php
 
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once dirname(__FILE__)."/preliminary.php";
@@ -9,7 +10,7 @@ require_once dirname(__FILE__)."/../CareerDev.php";
 
 $uidString = "";
 if ($_GET['uid']) {
-    $uidString = "&uid=".$_GET['uid'];
+    $uidString = "&uid=".REDCapManagement::sanitize($_GET['uid']);
 }
 
 ?>

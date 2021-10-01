@@ -10,6 +10,8 @@ if ($_POST['turn_on'] || $_POST['turn_off']) {
         $value = "1";
     } else if ($_POST['turn_off']) {
         $value = "";
+    } else {
+        throw new \Exception("This should never happen: ".implode(", ", array_keys($_POST)));
     }
     CareerDev::setSetting("send_cron_status", $value, $pid);
     echo "send_cron_status = $value";

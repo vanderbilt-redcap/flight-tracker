@@ -11,7 +11,7 @@ use \ExternalModules\ExternalModules;
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$cohort = $_POST['cohort'];
+$cohort = htmlentities($_POST['cohort'], ENT_QUOTES);
 $module = Application::getModule();
 $cohorts = new Cohorts($token, $server, $module);
 $cohortNames = $cohorts->getCohortNames();

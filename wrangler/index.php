@@ -9,6 +9,7 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\ExcludeList;
+use \Vanderbilt\CareerDevLibrary\Grant;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/baseSelect.php");
@@ -16,29 +17,34 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $daysForNew = 60;
 if (isset($_GET['new']) && is_numeric($_GET['new'])) {
-	$daysForNew = $_GET['new'];
+	$daysForNew = (int) REDCapManagement::sanitize($_GET['new']);
 }
-$_GLOBALS['daysForNew'] = $daysForNew;
+$GLOBALS['daysForNew'] = $daysForNew;
 
 $url = Application::link("wrangler/index.php");
 if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 	$url .= "&headers=false";
 }
 
+$records = Download::recordIds($token, $server);
+# done to support leading 0s, which apparently aren't picked up by the POST
+$requestedRecord = "";
+if ($_POST['record']) {
+    $requestedRecord = REDCapManagement::sanitize($_POST['record']);
+} else if ($_GET['record']) {
+    $requestedRecord = REDCapManagement::sanitize($_GET['record']);
+}
+foreach ($records as $record) {
+    if ($record == $requestedRecord) {
+        $requestedRecord = $record;
+    }
+}
+
 if (isset($_POST['toImport']) && isset($_POST['record'])) {
-	$toImport = $_POST['toImport'];
+	$toImport = REDCapManagement::sanitize($_POST['toImport']);
 	if (($toImport == "") || ($toImport == "[]")) {
 		$toImport = "{}";
 	}
-
-	# done to support leading 0s, which apparently aren't picked up by the POST
-	$records = Download::recordIds($token, $server);
-	$requestedRecord = $_POST['record'];
-	foreach ($records as $record) {
-	    if ($record == $requestedRecord) {
-	        $requestedRecord = $record;
-        }
-    }
 
 	$data = array();
 	$data['record_id'] = $requestedRecord;
@@ -49,7 +55,7 @@ if (isset($_POST['toImport']) && isset($_POST['record'])) {
 		echo "<p class='green centered shadow note'>";
 		if (isset($outputData['count']) || isset($outputData['item_count'])) {
 			echo "Upload Success!";
-            Application::refreshRecordSummary($token, $server, $pid, $record);
+            Application::refreshRecordSummary($token, $server, $pid, $requestedRecord);
         }
 		echo "</p>\n";
 	} else {
@@ -58,14 +64,22 @@ if (isset($_POST['toImport']) && isset($_POST['record'])) {
 }
 
 $record = 1;
-if (isset($_GET['record'])) {
-	$record = $_GET['record'];
+$requestedRecord = FALSE;
+if (isset($_GET['record']) && is_numeric($_GET['record'])) {
+	$requestedRecord = REDCapManagement::sanitize($_GET['record']);
 }
 if (isset($_POST['refresh'])) {
 	# override GET parameter
-	$record = $_POST['record'];
-} else if (isset($_POST['empty']) && $_POST['empty_record']) {
-	$record = $_POST['empty_record'];
+    $requestedRecord = REDCapManagement::sanitize($_POST['record']);
+} else if (isset($_POST['empty']) && $_POST['empty_record'] && is_numeric($_POST['empty_record'])) {
+    $requestedRecord = (int) REDCapManagement::sanitize($_POST['empty_record']);
+}
+if ($requestedRecord) {
+    foreach ($records as $r) {
+        if ($requestedRecord == $r) {
+            $record = $r;
+        }
+    }
 }
 
 $myFields = array(
@@ -138,7 +152,7 @@ function getAwardNumber($row) {
 	$awardFields = array( "coeus_sponsor_award_number", "custom_number", "reporter_projectnumber",);
 	foreach ($row as $field => $value) {
 		if ($value && in_array($field, $awardFields)) {
-			return getBaseAwardNumber($value);
+			return Grant::translateToBaseAwardNumber($value);
 		}
 	}
 }
@@ -208,7 +222,11 @@ function getNextRecordWithNewData($includeCurrentRecord) {
 					foreach ($listOfAwards as $key => $specs) {
 						$specsMinAge = getMinAgeOfUpdate($specs);
 						$grantAge = getAgeOfGrant($specs);    // ensure that not in the distant past
-						if (($specsMinAge <= $daysForNew) && ($grantAge <= $daysForNew) && (findNumberOfSimilarAwards($specs['base_award_no'], $idx, $listOfAwards) == 0)) {
+						if (
+						        ($specsMinAge <= $daysForNew)
+                                && ($grantAge <= $daysForNew)
+                                && (findNumberOfSimilarAwards($specs['base_award_no'], $key, $listOfAwards) == 0)
+                        ) {
 							return $row['record_id'];
 						}
 					}
@@ -388,8 +406,8 @@ if (isset($_GET['new'])) {
 	}
 }
 
-$links[] = Links::makeSummaryLink($_GET['pid'], $record, REDCapManagement::getEventIdForClassical($pid), "Summary Data for REDCap Record ".$record, "orange");
-$links[] = Links::makeCustomGrantLink($_GET['pid'], $record, REDCapManagement::getEventIdForClassical($pid), "Add New Grants for REDCap Record ".$record, 1, "orange");
+$links[] = Links::makeSummaryLink($pid, $record, REDCapManagement::getEventIdForClassical($pid), "Summary Data for REDCap Record ".$record, "orange");
+$links[] = Links::makeCustomGrantLink($pid, $record, REDCapManagement::getEventIdForClassical($pid), "Add New Grants for REDCap Record ".$record, 1, "orange");
 if (isset($_GET['new'])) {
 	array_push($links, "<a class='orange' href='".$url."&record=$record'>See All Grants Here</a>");
 } else if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
@@ -414,13 +432,13 @@ function refreshToDays() {
 		days = '<?= $daysForNew ?>';
 	}
 
-	var rec = '<?= $_GET['record'] ?>';
+	var rec = '<?= $record ?>';
 	if (!rec) {
 		rec = '1';
 	}
 
-	if (days != <?= $daysForNew ?>) {
-		window.location.href = 'index.php?pid=<?= $_GET['pid'] ?>&record='+rec+'&new='+days;
+	if (days != '<?= $daysForNew ?>') {
+		window.location.href = 'index.php?pid=<?= $pid ?>&record='+rec+'&new='+days;
 	}
 }
 

@@ -18,7 +18,7 @@ textarea { font-size: 16px; }
 
 
 if ($_POST['date']) {
-    $requestedDate = $_POST['date'];
+    $requestedDate = REDCapManagement::sanitize($_POST['date']);
 } else {
     $requestedDate = date("Y-m-d");
 }
@@ -26,7 +26,8 @@ if ($_POST['date']) {
 echo "<h1>Resource Participation Roster</h1>";
 
 if (isset($_POST['resource']) && $_POST['resource'] && isset($_POST['matched']) && $_POST['matched']) {
-	$records = \Vanderbilt\FlightTrackerExternalModule\getUploadAryFromRoster($_POST['matched']);
+    $matched = REDCapManagement::sanitize($_POST['matched']);
+	$records = \Vanderbilt\FlightTrackerExternalModule\getUploadAryFromRoster($matched);
 
 	$numUploaded = 0;
 	foreach ($records as $recordId) {
@@ -80,7 +81,9 @@ foreach ($redcapData as $row) {
 
 foreach ($resources as $value => $dateAry) {
     foreach ($dateAry as $date => $ary) {
-    	$resources[$value][$date] = implode("<br>", $resources[$value][$date]);
+        if (is_array($ary)) {
+            $resources[$value][$date] = implode("<br>", $ary);
+        }
     }
 }
 

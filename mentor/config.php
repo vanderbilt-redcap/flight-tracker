@@ -25,7 +25,7 @@ $defaultLink = Application::getSetting("mentee_agreement_link", $pid);
 if (isset($_POST['resourceList'])) {
     $continue = TRUE;
     if (isset($_POST['linkToSave'])) {
-        $defaultLink = $_POST['linkToSave'];
+        $defaultLink = REDCapManagement::sanitize($_POST['linkToSave']);
         if ($defaultLink) {
             if (!preg_match("/^https?:\/\//i", $defaultLink)) {
                 $defaultLink = "https://".$defaultLink;
@@ -68,10 +68,17 @@ if (isset($_POST['resourceList'])) {
             }
         }
         if (!empty($newResources) || !empty($deletedResourceIndexes)) {
-            if (!empty($choices[$resourceField])) {
-                $maxIndex = max(array_keys($choices[$resourceField]));
+            $resourceIndexes = array_keys($choices[$resourceField]);
+            if (REDCapManagement::isArrayNumeric($resourceIndexes)) {
+                $maxIndex = !empty($resourceIndexes) ? max($resourceIndexes) : 0;
             } else {
-                $maxIndex = 0;
+                $numericResourceIndexes = [];
+                foreach ($resourceIndexes as $idx) {
+                    if (is_numeric($idx)) {
+                        $numericResourceIndexes[] = $idx;
+                    }
+                }
+                $maxIndex = !empty($numericResourceIndexes) ? max($numericResourceIndexes) : 0;
             }
             $resourcesByIndex = $choices[$resourceField];
             foreach ($deletedResourceIndexes as $idx) {
@@ -89,7 +96,11 @@ if (isset($_POST['resourceList'])) {
             }
             Upload::metadata($metadata, $token, $server);
             $mssg = "<p class='max-width centered green'>Changes made.</p>";
-            $defaultList = implode("\n", array_values($resourcesByIndex));
+            $resourceLabels = array_values($resourcesByIndex);
+            for ($i = 0; $i < count($resourceLabels); $i++) {
+                $resourceLabels[$i] = (string) $resourceLabels[$i];
+            }
+            $defaultList = implode("\n", $resourceLabels);
         } else {
             $mssg = "<p class='max-width centered green'>No changes needed.</p>";
         }

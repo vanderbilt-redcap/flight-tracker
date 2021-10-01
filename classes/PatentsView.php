@@ -86,7 +86,7 @@ class PatentsView {
         foreach ($patents as $patent) {
             $instance++;
             $row = ["record_id" => $this->recordId, "redcap_repeat_instrument" => "patent", "redcap_repeat_instance" => $instance];
-            $inventors = ["lastNames" => [], "ids" => []];
+            $inventors = ["names" => [], "ids" => []];
 
             foreach ($patent['inventors'] as $inventor) {
                 $inventors["names"][] = $inventor['inventor_first_name']." ".$inventor['inventor_last_name'];
@@ -98,8 +98,8 @@ class PatentsView {
                 $assignees["ids"][] = $assignee['assignee_key_id'];
             }
 
-            $row['patent_number'] = $patent["patent_number"] ? $patent["patent_number"] : "";
-            $row['patent_date'] = $patent["patent_date"] ? $patent["patent_date"] : "";
+            $row['patent_number'] = $patent["patent_number"] ?? "";
+            $row['patent_date'] = $patent["patent_date"] ?? "";
             $row['patent_title'] = $patent["patent_title"];
             $row['patent_abstract'] = $patent["patent_abstract"];
             $row['patent_inventors'] = implode(", ", $inventors["names"]);

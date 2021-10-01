@@ -1,6 +1,17 @@
 <?php
 
-$file = $_GET['file'];
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+
+require_once(dirname(__FILE__)."/classes/Autoload.php");
+
+if ($_GET['file'] == "import.csv") {
+    $file = "import.csv";
+} else if ($_GET['file'] == "import_positions.csv") {
+    $file = "import_positions.csv";
+} else {
+    die("Invalid request.");
+}
+$file = REDCapManagement::makeSafeFilename($file);
 $match = $_GET['match'];
 
 $validFiles = ["import.csv", "import_positions.csv"];

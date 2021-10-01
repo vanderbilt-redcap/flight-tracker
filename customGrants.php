@@ -3,23 +3,37 @@
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 if ($_GET['record']) {
-	$record = $_GET['record'];
-	$metadata = Download::metadata($token, $server);
-	$redcapData = Download::fieldsForRecords($token, $server, Application::getCustomFields($metadata), [$record]);
-	$max = 0;
-	foreach ($redcapData as $row) {
-		if (($row['redcap_repeat_instrument'] == "custom_grant") && ($row['redcap_repeat_instance'] > $max)) {
-			$max = $row['redcap_repeat_instance'];
-		}
-	}
+	$requestedRecord = (int) REDCapManagement::sanitize($_GET['record']);
+    $records = Download::recordIds($token, $server);
+    $record = FALSE;
+    if (!in_array($requestedRecord, $records)) {
+        throw new \Exception("Could not locate record $record");
+    } else {
+        foreach ($records as $r) {
+            if ($r == $requestedRecord) {
+                $record = $r;
+            }
+        }
+    }
+    if ($record) {
+        $metadata = Download::metadata($token, $server);
+        $redcapData = Download::fieldsForRecords($token, $server, Application::getCustomFields($metadata), [$record]);
+        $max = 0;
+        foreach ($redcapData as $row) {
+            if (($row['redcap_repeat_instrument'] == "custom_grant") && ($row['redcap_repeat_instance'] > $max)) {
+                $max = $row['redcap_repeat_instance'];
+            }
+        }
 
-	header("Location: ".Links::makeFormUrl($pid, $record, $event_id, "custom_grant", $max + 1));
+        header("Location: ".Links::makeFormUrl($pid, $record, $event_id, "custom_grant", $max + 1));
+    }
 } else {
 	$names = Download::names($token, $server);
 

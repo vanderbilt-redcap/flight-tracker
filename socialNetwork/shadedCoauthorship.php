@@ -14,7 +14,9 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 if ($_GET['record']) {
-    $highlightedRecord = $_GET['record'];
+    $highlightedRecord = REDCapManagement::sanitize($_GET['record']);
+} else {
+    $highlightedRecord = FALSE;
 }
 
 $metadata = Download::metadata($token, $server);
@@ -128,6 +130,8 @@ if (isset($_GET['cohort']) && !empty($records)) {
     list($connections, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index, $token, $server);
     if ($includeMentors) {
         $mentorConnections = getAvgMentorConnections($matches);
+    } else {
+        $mentorConnections = 0;
     }
     list($stats, $maxConnections, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators) = makeSummaryStats($connections, $names);
 
@@ -189,16 +193,27 @@ function getCitationTimestamp($row) {
 function makePublicationColsAndLabels($pubs) {
     $data = [];
     foreach ($pubs as $loc => $ts) {
-        $year = date("Y", $ts);
+        $year = (int) date("Y", $ts);
         if (!isset($data[$year])) {
             $data[$year] = 0;
         }
         $data[$year]++;
     }
     ksort($data);
-    for ($year = min(array_keys($data)); $year <= max(array_keys($data)); $year++) {
-        if (!isset($data[$year])) {
-            $data[$year] = 0;
+    if (!empty($data)) {
+        $dataKeys = [];
+        foreach (array_keys($data) as $key) {
+            $dataKeys[] = $key;
+        }
+
+        if (!empty($dataKeys)) {
+            $min = min($dataKeys);
+            $max = max($dataKeys);
+            for ($year = $min; $year <= $max; $year++) {
+                if (!isset($data[$year])) {
+                    $data[$year] = 0;
+                }
+            }
         }
     }
     ksort($data);
@@ -333,6 +348,7 @@ function makeEdges($matches, $indexByField, $names, $choices, $index, $token, $s
             }
         }
     }
+    $totalConnections = 0;
     foreach (array_keys($matches) as $fromRecordId) {
         $connections["given"][$fromRecordId] = [];
         list($from, $fromType) = makeNodeName($fromRecordId, $indexByField, $colorData, $combine, $choices, $index, $names);
@@ -444,7 +460,7 @@ function makeSummaryStats($connections, $names) {
             }
         }
         $stats[$type] = new Stats($dataValues);
-        $maxConnections[$type] = max($dataValues);
+        $maxConnections[$type] = !empty($dataValues) ? max($dataValues) : 0;
         $maxNames[$type] = [];
         $maxCollabNames[$type] = [];
         foreach ($typeConnections as $recordId => $indivConnections) {

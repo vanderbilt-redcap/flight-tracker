@@ -12,6 +12,8 @@ use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Links;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -19,10 +21,9 @@ require_once(dirname(__FILE__)."/../wrangler/baseSelect.php");
 
 $records = Download::recordIds($token, $server);
 
+$record = $records[0];
 if (isset($_GET['record'])) {
-	$record = $_GET['record'];
-} else {
-	$record = 1;
+	$record = REDCapManagement::getSanitizedRecord($_GET['record'], $records);
 }
 $nextRecord = \Vanderbilt\FlightTrackerExternalModule\getNextRecord($record);
 
@@ -34,13 +35,12 @@ if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
 
 $recordIndex = 0;
 $i = 0;
+$nextRecordIndex = 0;
 foreach ($records as $rec) {
 	if ($rec == $record) {
 		$recordIndex = $i;
 		if ($i + 1 < count($records)) {
 			$nextRecordIndex = $i + 1;
-		} else {
-			$nextRecordIndex = 0;
 		}
 		break;
 	}

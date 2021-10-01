@@ -6,12 +6,13 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class ComparisonStudy extends Study {
     public function getNumberHealthy($type) {
+        $ary = [];
         if ($type == "Treatment") {
             $ary = $this->getTreatment()->getValues();
         } else if ($type == "Control") {
             $ary = $this->getControl()->getValues();
         }
-        if (!$ary) {
+        if (empty($ary)) {
             return 0;
         }
         $num = 0;
@@ -24,12 +25,13 @@ class ComparisonStudy extends Study {
     }
 
     public function getNumberDiseased($type) {
+        $ary = [];
         if ($type == "Treatment") {
             $ary = $this->getTreatment()->getValues();
         } else if ($type == "Control") {
             $ary = $this->getControl()->getValues();
         }
-        if (!$ary) {
+        if (empty($ary)) {
             return 0;
         }
         $num = 0;

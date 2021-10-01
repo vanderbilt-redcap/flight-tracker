@@ -12,11 +12,11 @@ define('NOAUTH', TRUE);
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$fullUrl = $_POST['origin'];
+$fullUrl = REDCapManagement::sanitize($_POST['origin']);
 list($originUrl, $params) = explode("?", $fullUrl);
-$cohort = $_GET['cohort'];
-$record = $_POST['record'];
-$modalId = $_POST['modalId'];
+$cohort = REDCapManagement::sanitize($_GET['cohort']);
+$record = REDCapManagement::sanitize($_POST['record']);
+$modalId = REDCapManagement::sanitize($_POST['modalId']);
 $data = [];
 
 if ($token != $_POST['token']) {
@@ -25,7 +25,7 @@ if ($token != $_POST['token']) {
 
 $metadata = Download::metadata($token, $server);
 if ($cohort) {
-    $records = Download::cohortRecordIds($token, $server, $metadata, $cohort);
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $records = Download::recordIds($token, $server);
 }
@@ -36,7 +36,8 @@ $provideNameUrls = [
 ];
 if ($_POST['row']) {
     if (in_array($record, $records)) {
-        $data = translateModal($modalId, $record, $metadata, [$_POST['row']]);
+        $row = [REDCapManagement::sanitize($_POST['row'])];
+        $data = translateModal($modalId, $record, $metadata, $row);
     }
 } else if (in_array($originUrl, $provideNameUrls)) {
     if (in_array($record, $records)) {
@@ -87,7 +88,7 @@ function translateModal($modalId, $record, $metadata, $tableData = NULL) {
         # target? - Mentors
     } else if ($modalId == "addPublicationRecord") {
         if ($_POST['row']) {
-            $row = $_POST['row'];
+            $row = REDCapManagement::sanitize($_POST['row']);
             $data["PMID"] = $row["PMID"];
         } else if ($_POST['step'] == "2") {
             $row = $tableData[0];
@@ -135,7 +136,7 @@ function translateModal($modalId, $record, $metadata, $tableData = NULL) {
                 }
             }
             $data['startDateInProgram'] = $row['Start Date'];   // already in mm/yyyy
-            if ($data['inTraining'] == "Yes") {
+            if (isset($data['inTraining']) && ($data['inTraining'] == "Yes")) {
                 $data['endDateInProgram'] = "";
             } else {
                 $grantClass = Application::getSetting("grant_class", $pid);
@@ -256,7 +257,10 @@ function translateModal($modalId, $record, $metadata, $tableData = NULL) {
                 $data['ms-employmentposition'] = $pos['title'];
                 $data['employmentStartDateStr'] = "";  // mm/yyyy
                 $data['employmentEndDateStr'] = ""; // mm/yyyy
-                if ($data['currentInitialEmployment'] || $data['primaryInitialEmployment']) {
+                if (
+                    (isset($data['currentInitialEmployment']) && $data['currentInitialEmployment'])
+                    || (isset($data['primaryInitialEmployment']) && $data['primaryInitialEmployment'])
+                ) {
                     $data['primaryEmploymentCode'] = "Y";   // Y/N
                 } else {
                     $data['primaryEmploymentCode'] = "";   // Y/N

@@ -13,12 +13,12 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
-
+$pmids = [];
 if (isset($_POST['finalized'])) {
-    $newFinalized = json_decode($_POST['finalized']);
-    $newOmissions = json_decode($_POST['omissions']);
-    $newResets = json_decode($_POST['resets']);
-    $recordId = $_POST['record_id'];
+    $newFinalized = json_decode(REDCapManagement::sanitize($_POST['finalized']));
+    $newOmissions = json_decode(REDCapManagement::sanitize($_POST['omissions']));
+    $newResets = json_decode(REDCapManagement::sanitize($_POST['resets']));
+    $recordId = REDCapManagement::sanitize($_POST['record_id']);
 
     $citationFields = Application::getCitationFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
@@ -68,13 +68,17 @@ if (isset($_POST['finalized'])) {
         echo json_encode($data);
     }
 } else if (isset($_POST['pmid'])) {
-    $pmids = [$_POST['pmid']];
+    $pmids = [REDCapManagement::sanitize($_POST['pmid'])];
 } else if (isset($_POST['pmids'])) {
-    $pmids = $_POST['pmids'];
+    $pmids = [];
+    foreach ($_POST['pmids'] as $pmid) {
+        $pmids[] = REDCapManagement::sanitize($pmid);
+    }
 } else {
     $data = array("error" => "You don't have any input! This should never happen.");
     echo json_encode($data);
 }
+
 
 if ($pmids && !empty($pmids)) {
     $recordId = $_POST['record_id'];

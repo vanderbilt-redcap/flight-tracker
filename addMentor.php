@@ -27,7 +27,8 @@ if ($_GET['download'] && ($_GET['download'] == "csv")) {
     echo $html;
 } else if ($_POST['mentorName']) {
     require_once(dirname(__FILE__) . "/small_base.php");
-    list($mentorFirst, $mentorLast) = NameMatcher::splitName($_POST['mentorName']);
+    $mentorName = htmlentities($_POST['mentorName'], ENT_QUOTES);
+    list($mentorFirst, $mentorLast) = NameMatcher::splitName($mentorName);
     $lookup = new REDCapLookup($mentorFirst, $mentorLast);
     $uids = $lookup->getUidsAndNames();
     if (count($uids) == 0) {
@@ -42,7 +43,13 @@ if ($_GET['download'] && ($_GET['download'] == "csv")) {
     $recordId = $_POST['recordId'];
     $records = Download::recordIds($token, $server);
     if (in_array($recordId, $records) && $newMentorName && $newMentorUid) {
-        $uploadRow = ["record_id" => $recordId, "imported_mentor" => $newMentorName, "imported_mentor_userid" => $newMentorUid, ];
+        $uploadRow = [
+            "record_id" => $recordId,
+            "imported_mentor" => $newMentorName,
+            "imported_mentor_userid" => $newMentorUid,
+            "summary_mentor" => $newMentorName,
+            "summary_mentor_userid" => $newMentorUid,
+        ];
         $feedback = Upload::oneRow($uploadRow, $token, $server);
     } else {
         $feedback = ["error" => "Invalid record"];
@@ -50,9 +57,9 @@ if ($_GET['download'] && ($_GET['download'] == "csv")) {
     echo json_encode($feedback);
 } else if ($_POST['scholarName']) {
     require_once(dirname(__FILE__) . "/small_base.php");
-    $name = $_POST['scholarName'];
+    $name = htmlentities($_POST['scholarName'], ENT_QUOTES);
     $nodes = preg_split("/\s+/", $name);
-    if (!$name) {
+    if (!isset($_POST['scholarName']) || ($name === "")) {
         echo "[]";
     } else if (count($nodes) == 1) {
         $firstNames = Download::firstnames($token, $server);
@@ -313,14 +320,14 @@ function makeMentorJS($scholarJSON, $mentorJSON) {
     let mentorNames = $mentorJSON;
 
     function changeMentor(recordId) {
-        let radiosOb = $('[name=chooseMentor]');
-        var mentorUid = '';
-        var mentorName = '';
+        const radiosOb = $('[name=chooseMentor]');
+        let mentorUid = '';
+        let mentorName = '';
         if (radiosOb.length > 0) {
             mentorUid = radiosOb.val();
             mentorName = radiosOb.text();
         } else {
-            let yesNoOb = $('[name=verifyMentor]');
+            const yesNoOb = $('[name=verifyMentor]');
             if (yesNoOb.val() === '0') {
                 return;
             }
@@ -329,12 +336,17 @@ function makeMentorJS($scholarJSON, $mentorJSON) {
         }
         $.post('$thisUrl', { 'recordId': recordId, 'newMentorName': mentorName, 'newMentorUid': mentorUid }, function(json) {
             console.log(json);
-            let data = JSON.parse(json);
-            let ob = $('#mssg');
+            const data = JSON.parse(json);
+            const ob = $('#mssg');
             if (data['errors'].length === 0) {
-                ob.html('Upload successful');
+                const numSecs = 3;
+                ob.html('Upload successful! Refreshing in '+numSecs+' seconds...');
                 ob.removeClass('red');
                 ob.addClass('green');
+                window.scrollTo(0,document.body.scrollHeight);
+                setTimeout(function() {
+                    location.href = '$thisUrl';
+                }, numSecs * 1000);
             } else {
                 ob.html(data['errors'].join('<br>'));
                 ob.removeClass('green');
@@ -380,7 +392,8 @@ function makeMentorJS($scholarJSON, $mentorJSON) {
     }
 
     function fillPrimaryMentor(recordId) {
-        $('#primaryMentor').val(mentorNames[recordId].join(', '));
+        const mentors = mentorNames[recordId] ? mentorNames[recordId].join(', ') : '';
+        $('#primaryMentor').val(mentors);
     }
 
     function searchForMentor(mentorSel, resultsSel, existingMentorSel) {

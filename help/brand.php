@@ -1,6 +1,9 @@
 <?php
 
+use \Vanderbilt\CareerDevLibrary\Application;
+
 require_once(dirname(__FILE__)."/../small_base.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 if (count($_FILES) > 0) {
 	$filename = $_FILES['logo']['tmp_name'];
@@ -44,14 +47,15 @@ function makePrompt($mssg = "") {
 		$html .= "<p class='centered'>No logo currently saved.</p>\n";
 	}
 
+	$thisLink = Application::link("this");
 	$html .= "<div class='centered' style='max-width: 800px;'>\n";
 	$html .= "<p>You can brand your instance of Flight Tracker for Scholars with your logo. It will be displayed 40-pixels tall. Just upload a file here, and it will appear in the upper-left corner in your project.</p>\n";
-	$html .= "<form action='?page=".urlencode($_GET['page'])."&prefix=".$_GET['prefix']."&pid=".$_GET['pid']."' method='POST' enctype='multipart/form-data'>\n";  
+	$html .= "<form action='$thisLink' method='POST' enctype='multipart/form-data'>\n";
 	$html .= "<p class='centered'><input type='file' name='logo'></p>\n";
 	$html .= "<p class='centered'><button>Submit Logo</button></p>\n";
 	$html .= "</form>\n";
 	if ($base64) {
-		$html .= "<p class='centered'><a href='?pid=".$_GET['pid']."&page=".$_GET['page']."&prefix=".$_GET['prefix']."&removeBrand'>Remove Brand Image</a></p>\n";
+		$html .= "<p class='centered'><a href='$thisLink&removeBrand'>Remove Brand Image</a></p>\n";
 	}
 	$html .= "</div>\n";
 

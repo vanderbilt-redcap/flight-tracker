@@ -179,7 +179,7 @@ $(document).ready(function() {
     ?>
 	presetValue("<?= $prefix ?>_citizenship", "<?php echo findInCheck('summary_citizenship'); ?>");
 	presetValue("<?= $prefix ?>_primary_mentor", "<?php echo findInCheck('summary_mentor'); ?>");
-	presetValue("<?= $prefix ?>_institution", "<?php echo getInstitution(findInCheck('identifier_institution', $prefix.'_institution')); ?>");
+	presetValue("<?= $prefix ?>_institution", "<?php echo getInstitution(findInCheck(['identifier_institution', $prefix.'_institution'])); ?>");
 
 <?php
 	if (findInCheck("vfrs_graduate_degree")) {

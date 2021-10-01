@@ -9,23 +9,34 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\ExcludeList;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
 $url = Application::link("wrangler/include.php");
-$wranglerType = $_GET['wranglerType'];
-$wranglerTypeParam = "&wranglerType=".urlencode($wranglerType);
+$wranglerType = "";
+$wranglerTypeParam = "";
+$validWranglerTypes = ["Publications", "Patents", "Grants"];
+foreach ($validWranglerTypes as $wt) {
+    if ($wt == REDCapManagement::sanitize($_GET['wranglerType'])) {
+        $wranglerType = $wt;
+        $wranglerTypeParam = "&wranglerType=".urlencode($wranglerType);
+        break;
+    }
+}
+if (!in_array($wranglerType, $validWranglerTypes)) {
+    throw new \Exception("Invalid wrangler type!");
+}
+$html = "";
+$records = Download::recordIds($token, $server);
 if (isset($_POST['request'])) {
-    $html = "";
     if ($_POST['request'] == "check") {
-        $records = Download::recordIds($token, $server);
-        $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType);
+        $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);
         $html = checkForApprovals($token, $server, $records, $nextRecord, $url.$wranglerTypeParam, $wranglerType);
         echo $html;
     } else if ($_POST['request'] == "approve") {
-        $records = Download::recordIds($token, $server);
         $upload = [];
         if ($wranglerType == "Publications") {
             foreach ($_POST as $key => $value) {
@@ -63,7 +74,7 @@ if (isset($_POST['request'])) {
         if (!empty($upload)) {
             Upload::rows($upload, $token, $server);
         }
-        $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType);   // after upload
+        $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);   // after upload
         header("Location: $url$wranglerTypeParam&record=".$nextRecord);
     } else {
         throw new \Exception("Improper request: ".$_POST['request']);
@@ -76,9 +87,11 @@ if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 }
 
 if ($_GET['record']) {
-	$record = $_GET['record'];
+    $record = REDCapManagement::getSanitizedRecord($_GET['record'], $records);
+	$autoApproveHTML = "";
 } else {
-	$nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType);
+    $record = FALSE;
+	$nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);
     $autoApproveHTML = getAutoApproveHTML($nextRecord, $url.$wranglerTypeParam);
 }
 
@@ -106,7 +119,7 @@ if ($wranglerType == "Publications") {
 }
 
 $redcapData = Download::fieldsForRecords($token, $server, $fields, [$record]);
-$nextRecord = getNextRecordWithData($token, $server, $record, $wranglerType);
+$nextRecord = getNextRecordWithData($token, $server, $record, $wranglerType, $records);
 
 if ($wranglerType == "Publications") {
     $excludeList = new ExcludeList("Publications", $pid, [], $metadata);
@@ -155,7 +168,8 @@ if (count($_POST) >= 1) {
 	}
 
 	if (isset($_GET['mssg'])) {
-        echo "<div class='green shadow centered note'>".$_GET['mssg']."</div>";
+	    $mssg = REDCapManagement::sanitize($_GET['mssg']);
+        echo "<div class='green shadow centered note'>$mssg</div>";
 	}
 	echo "<p class='green shadow' id='note' style='width: 600px; margin-left: auto; margin-right: auto; text-align: center; padding: 10px; border-radius: 10px; display: none; font-size: 16px;'></p>\n";
 	echo "<p class='centered'>To undo any actions made here, open the Citation form in the given REDCap record and change the answer for the <b>Include?</b> question. Yes means accepted; no means omitted; blank means yet-to-be wrangled.</p>";
@@ -189,8 +203,7 @@ function autoResetTimeHTML($pid) {
     return $html;
 }
 
-function getNextRecordWithData($token, $server, $currRecord, $wranglerType) {
-	$records = Download::recordIds($token, $server);
+function getNextRecordWithData($token, $server, $currRecord, $wranglerType, $records) {
 	if (method_exists("\\Vanderbilt\\FlightTrackerExternalModule\\CareerDev", "filterOutCopiedRecords")) {
         $records = CareerDev::filterOutCopiedRecords($records);
     }

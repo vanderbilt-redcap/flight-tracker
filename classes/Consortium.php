@@ -28,16 +28,6 @@ class Consortium {
 			return $firstWedTs;
 		}
 
-		if ($meetTwiceAMonth) {
-            $thirdWedTs = self::findXthWednesdayTs(3, $startTime);
-            if ($thirdWedTs > $midnightTs) {
-                return $thirdWedTs;
-            }
-            if (self::formatLongDate($thirdWedTs) == self::formatLongDate($startTime)) {
-                return $thirdWedTs;
-            }
-        }
-
 		$month = date("m");
 		$year = date("Y");
 		$month++;

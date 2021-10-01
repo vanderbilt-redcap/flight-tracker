@@ -15,22 +15,22 @@ require_once dirname(__FILE__)."/../CareerDev.php";
 
 require_once dirname(__FILE__).'/_header.php';
 
-$username = $_GET['uid'];
+$username = REDCapManagement::sanitize($_GET['uid']);
 if (!$username || !DEBUG) {
-    $username = $userid;
+    $username = Application::getUsername();
 }
 if (isset($_GET['test'])) {
     echo "username: $username<br>";
-    echo "GET: ".$_GET['uid']."<br>";
+    echo "GET: ".REDCapManagement::sanitize($_GET['uid'])."<br>";
 }
 
 $menteeRecordIds = getRecordsAssociatedWithUserid($username, $token, $server);
 
 if(isset($_REQUEST['uid']) && DEBUG){
-    $username = $_REQUEST['uid'];
+    $username = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$username";
 } else {
-    $username = $userid;
+    $username = Application::getUsername();
     $uidString = "";
 }
 

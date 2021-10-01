@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -43,7 +44,9 @@ function splitTerms($regex, $str) {
 echo "<h1>Search <?= CareerDev::getProgramName() ?> Publications</h1>\n";
 echo "<h4>Specify initial(s) <u>after</u> a name</h4>";
 
+$postQuery = "";
 if (isset($_POST['q']) && $_POST['q']) {
+    $postQuery = REDCapManagement::sanitize($_POST['q']);
 	$metadata = Download::metadata($token, $server);
 
 	$fields = array("record_id", "identifier_first_name", "identifier_last_name");
@@ -92,9 +95,9 @@ if (isset($_POST['q']) && $_POST['q']) {
 					if ($score > 0) {
 						$scores[$recordId.":".$citation->getInstance()] = $score;
 						if (!isset($matchedCitations[$recordId])) {
-							$matchedCitations[$recordId] = array();
+							$matchedCitations[$recordId] = [];
 						}
-						$matchedCitations[$recordId][$instance] = $citation;
+						$matchedCitations[$recordId][(string) $instance] = $citation;
 					}
 				} else {
 					throw new \Exception("$instance is not numeric! Record $recordId. ".$citationText."<br>".json_encode($citationData));
@@ -115,7 +118,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 ?>
 
 <form action='<?= CareerDev::link("search/publications.php") ?>' method='POST'>
-<p class='centered'><input type='text' value='<?= preg_replace("/'/", "\'", $_POST['q']) ?>' name='q' id='q'> <input type='submit' value='Search'</p>
+<p class='centered'><input type='text' value='<?= preg_replace("/'/", "\'", $postQuery) ?>' name='q' id='q'> <input type='submit' value='Search'</p>
 </form>
 <?php
 	echo "<p class='centered header'>".\Vanderbilt\FlightTrackerExternalModule\pretty(count($scores))." citations in ".\Vanderbilt\FlightTrackerExternalModule\pretty(count($matchedCitations))." profiles matched.</p>";
@@ -125,8 +128,9 @@ if (isset($_POST['q']) && $_POST['q']) {
 		foreach ($names as $recordId => $name) {
 			foreach ($idAry as $id) {
 				list($record_id, $instance) = preg_split("/:/", $id);
-				if ($record_id == $recordId) {
-					$citation = $matchedCitations[$record_id][$instance];
+				$record_id = (int) $record_id;
+				if (($record_id == $recordId) && isset($matchedCitations[$record_id])) {
+					$citation = $matchedCitations[$record_id][$instance] ?? FALSE;
 					if ($citation) {
 						$pmid = $citation->getPMID();
 						$citationText = $citation->getCitationWithLink();

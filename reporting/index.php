@@ -4,6 +4,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NIHTables;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -45,6 +46,7 @@ function makeTableHeader($tableNum) {
 	return "";
 }
 
+$cohort = isset($_GET['cohort']) ? REDCapManagement::sanitize($_GET['cohort']) :  "";
 $metadata = Download::metadata($token, $server);
 $tables = new NIHTables($token, $server, $pid, $metadata);
 $predocs = $tables->downloadPredocNames();
@@ -81,8 +83,6 @@ $note = "";
 if (file_exists(dirname(__FILE__)."/../customGrants.php")) {
     $note = "(You can <a href='".Application::link("customGrants.php")."'>setup these in bulk</a>, too.)";
 }
-
-$cohort = $_GET['cohort'] ?? "";
 
 ?>
 

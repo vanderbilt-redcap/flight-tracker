@@ -12,6 +12,7 @@ $metadata = Download::metadata($token, $server);
 $records = Download::records($token, $server);
 $names = Download::names($token, $server);
 $choices = REDCapManagement::getChoices($metadata);
+$possibleRoles = [];
 foreach ([5, 6, 7] as $roleIndex) {
     $roleName = $choices['custom_role'][$roleIndex];
     $possibleRoles[$roleIndex] = $roleName;

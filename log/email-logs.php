@@ -21,11 +21,11 @@ if (is_numeric($pid)) {
 		$rows[] = $row;
 	}
 
-	$adminEmails = preg_split("/\s*,\s*/", $adminEmail);
-	$from = Application::getSetting("default_from", $pid);
-	if (count($adminEmails) > 0) {
-		$from = $adminEmails[0];
-	}
+    $from = Application::getSetting("default_from", $pid);
+	if ($adminEmail) {
+        $adminEmails = preg_split("/\s*,\s*/", $adminEmail);
+        $from = $adminEmails[0];
+    }
 
 	$mssg = "";
 	$mssg .= "<h1>".$module->getName()." Error Report</h1>\n";

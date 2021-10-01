@@ -93,7 +93,7 @@ class LDAP {
             }
         }
 	    if ($debug) {
-	        Application::log("getREDCapRows Returning ".json_encode_with_spaces($rows));
+	        Application::log("getREDCapRows Returning ".REDCapManagement::json_encode_with_spaces($rows));
         }
 	    return $rows;
     }
@@ -271,7 +271,7 @@ class LdapLookup {
 	 * @param $and bool - if true ANDs the search filters; otherwise ORs them
 	 * @param $oneLine bool - return one line
 	 * @return array|bool
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public static function lookupUserDetailsByKeys($values,$keys,$and,$oneLine = true, $includeVU = false) {
 		self::initialize($includeVU);
@@ -388,7 +388,7 @@ class LdapLookup {
 	 * @param $key string
 	 * @param $oneLine bool
 	 * @return array|bool
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public static function lookupUserDetailsByKey($value,$key,$oneLine=true,$includeVU=false) {
 		self::initialize($includeVU);
@@ -446,13 +446,15 @@ class LdapLookup {
 	}
 
 	public static function initialize($includeVU = FALSE, $force = FALSE) {
+	    $ldappass = "";
+	    $ldapuser = "";
 	    $includeFile = "/app001/credentials/con_redcap_ldap_user.php";
         self::$ldapConns = [];
         self::$ldapBinds = [];
 		if((!self::$ldapBinds || $force) && file_exists($includeFile)) {
 			include $includeFile;
 
-			if (!isset($ldapuser) || !isset($ldappass)) {
+			if (!$ldapuser || !$ldappass) {
 			    return;
             }
 

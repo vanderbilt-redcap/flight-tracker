@@ -43,7 +43,7 @@ abstract class GrantFactory {
     protected function getProjectIdentifiers($token) {
         if ($token) {
             $pid = Application::getPid($token);
-            $event_id = Application::getEventId($token);
+            global $event_id;
         } else {
             global $pid, $event_id;
         }

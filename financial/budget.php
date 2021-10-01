@@ -79,8 +79,11 @@ $figures = [];
 $notes = ["No-Cost Extensions are not represented in these data."];
 $d = array_values($recordsByDept);
 foreach ($recordsByDept as $dept => $records) {
-    $table[$dept]['numFaculty'] = count($records);
-    $table["Total"]['numFaculty'] += count($records);
+    $numRecords = count($records);
+    if (is_numeric($numRecords)) {
+        $table[$dept]['numFaculty'] = $numRecords;
+        $table["Total"]['numFaculty'] += $numRecords;
+    }
     foreach ($records as $recordId) {
         $redcapData = Download::records($token, $server, [$recordId]);
         $grants = new Grants($token, $server, $metadata);

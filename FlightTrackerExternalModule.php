@@ -818,7 +818,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $menteeRecord = $_REQUEST['record'];
         } else if (function_exists("getRecordsAssociatedWithUserid")) {
             $records = getRecordsAssociatedWithUserid($userid, $token, $server);
-            // Application::log("Got records ".json_encode($records));
+            if (isset($_GET['test'])) {
+                Application::log("Got records ".json_encode($records));
+            }
             if (!empty($records)) {
                 return TRUE;
             }
@@ -830,7 +832,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             if (!$menteeUserids[$menteeRecord]) {
                 $menteeUserids[$menteeRecord] = [];
             } else {
-                $menteeUserids[$menteeRecord] = [$menteeUserids[$menteeRecord]];
+                $menteeUserids[$menteeRecord] = preg_split("/\s*[,;]\s*/", $menteeUserids[$menteeRecord]);
             }
             if (!$mentorUserids[$menteeRecord]) {
                 $mentorUserids[$menteeRecord] = [];
@@ -838,7 +840,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $validUserids = array_unique(array_merge($validUserids, $menteeUserids[$menteeRecord], $mentorUserids[$menteeRecord]));
         }
 
-        // Application::log("Comparing $userid to ".json_encode($validUserids));
+        if (isset($_GET['test'])) {
+            Application::log("Comparing $userid to " . json_encode($validUserids));
+        }
         if (in_array($userid, $validUserids)) {
             return TRUE;
         }

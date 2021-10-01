@@ -231,6 +231,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $rec
     $vunets = Download::vunets($token, $server);
     include "/app001/credentials/con_redcap_ldap_user.php";
 
+    $upload = [];
     foreach ($records as $recordId) {
         $vunet = $vunets[$recordId];
         if ($vunet) {
@@ -312,11 +313,12 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         }
 
         $uniquePMIDs = [];
+        $middle = "";     // can set at some future point as this is searchable
         foreach ($lastNames as $lastName) {
 			foreach ($firstNames as $firstName) {
 				foreach ($institutions as $institution) {
 					if ($institution) {
-						if (isset($middle) && $middle) {
+						if ($middle) {
 							$firstName .= " ".$middle;
 						}
 						CareerDev::log("Searching $lastName $firstName at $institution");

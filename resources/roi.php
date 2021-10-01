@@ -13,7 +13,7 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 if ($_GET['cohort']) {
-    $records = Download::cohortRecordIds($token, $server, $metadata, $_GET['cohort']);
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
 } else {
     $records = Download::records($token, $server);
 }
@@ -66,7 +66,7 @@ foreach ($records as $recordId) {
     }
     $dataRow["Number of Publications"] = $numIncludedPubs;
     if (!empty($rcrs)) {
-        $dataRow["Average Relative Citation Ratio"] = avg($rcrs);
+        $dataRow["Average Relative Citation Ratio"] = array_sum($rcrs) / count($rcrs);
     }
     $data[$recordId] = $dataRow;
     $resources[$recordId] = $resourcesUsed;
@@ -222,10 +222,10 @@ foreach ($dataByResource as $resource => $groups) {
                     echo "<td class='centered' colspan='2'>" . implode("<br>", $lines) . "</td>";
                     echo "</tr>";
                     if ($p != Stats::$nan) {
-                        foreach (array_keys($ci) as $ciPercent) {
+                        foreach ($ci as $ciPercent => $ciAry) {
                             echo "<tr>";
                             echo "<th>$ciPercent% Confidence Interval (CI)</th>";
-                            echo "<td class='centered' colspan='2'>CI = [" . REDCapManagement::pretty($ci[$ciPercent][0], 2) . ", " . REDCapManagement::pretty($ci[$ciPercent][1], 2) . "]</td>";
+                            echo "<td class='centered' colspan='2'>CI = [" . REDCapManagement::pretty($ciAry[0], 2) . ", " . REDCapManagement::pretty($ciAry[1], 2) . "]</td>";
                             echo "</tr>";
                         }
                     }

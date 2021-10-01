@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.9.0";
+		return "3.10.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -152,6 +152,9 @@ class CareerDev {
 	    if (!$mssg) {
 	        return;
         }
+        $mssg = htmlentities($mssg);
+	    $mssg = htmlentities($mssg, ENT_QUOTES);
+	    $pid = htmlentities($pid, ENT_QUOTES);
 	    if (self::isLocalhost()) {
 	        if ($pid) {
                 error_log("$pid: $mssg");
@@ -215,7 +218,7 @@ class CareerDev {
 
 	public static function getCurrPage() {
 	    if (isset($_GET['page'])) {
-            return $_GET['page'].".php";
+            return htmlentities($_GET['page'], ENT_QUOTES).".php";
         }
 	    return "";
 	}
@@ -247,12 +250,22 @@ class CareerDev {
 		if (self::$pid) {
 			return self::$pid;
 		}
+		$requestedPid = FALSE;
  		if (isset($_GET['pid'])) {
 			# least reliable because REDCap can sometimes change this value in other crons
-			return $_GET['pid'];
+            $requestedPid = REDCapManagement::sanitize($_GET['pid']);
 		}
  		if (isset($_GET['project_id'])) {
- 		    return $_GET['project_id'];
+            $requestedPid = REDCapManagement::sanitize($_GET['project_id']);
+        }
+ 		if ($requestedPid && is_numeric($requestedPid)) {
+ 		    $module = self::getModule();
+ 		    $possiblePids = $module->getPids();
+ 		    foreach ($possiblePids as $possiblePid) {
+ 		        if ($possiblePid == $requestedPid) {
+ 		            return $possiblePid;
+                }
+            }
         }
 		return NULL;
 	}
@@ -295,19 +308,22 @@ class CareerDev {
 
 	public static function parseGetParams($url) {
 		$comps = parse_url($url);
-		$pairs = preg_split("/\&/", $comps['query']);
-		$params = array();
-		foreach ($pairs as $pair) {
-			$a = preg_split("/=/", $pair);
-			if (count($a) == 2) {
-				$params[$a[0]] = urldecode($a[1]);
-			} else if (count($a) == 1) {
-				$params[$a[0]] = TRUE;
-			} else {
-				throw new \Exception("GET parameter '$pair' could not be interpreted!");
-			}
-		}
-		return $params;
+		if (isset($comps['query'])) {
+            $pairs = preg_split("/\&/", $comps['query']);
+            $params = [];
+            foreach ($pairs as $pair) {
+                $a = preg_split("/=/", $pair);
+                if (count($a) == 2) {
+                    $params[$a[0]] = urldecode($a[1]);
+                } else if (count($a) == 1) {
+                    $params[$a[0]] = TRUE;
+                } else {
+                    throw new \Exception("GET parameter '$pair' could not be interpreted!");
+                }
+            }
+            return $params;
+        }
+		return [];
 	}
 
 	public static function makeLogo() {
@@ -318,6 +334,7 @@ class CareerDev {
 		return self::getLink($relativeUrl, $pid, $withWebroot);
 	}
 
+	# deprecated
 	public static function getCities() {
 		return self::getSetting("cities");
 	}
@@ -354,7 +371,7 @@ class CareerDev {
             $initialSeparator = "?";
             foreach ($paramKeys as $key) {
                 if (isset($_GET[$key])) {
-                    $url .= "$initialSeparator$key=".urlencode(urldecode($_GET[$key]));
+                    $url .= "$initialSeparator$key=".urlencode(urldecode(htmlentities($_GET[$key], ENT_QUOTES)));
                     $initialSeparator = "&";
                 }
             }
@@ -377,11 +394,16 @@ class CareerDev {
 		    $isMentorAgreementPage = preg_match("/^mentor\//", $relativeUrl)
                 && !preg_match("/^mentor\/dashboard/", $relativeUrl)
                 && !preg_match("/^mentor\/config/", $relativeUrl);
-		    if (isset($_GET['project_id']) || $isMentorAgreementPage) {
+		    if (
+		        (isset($_GET['project_id']) && is_numeric($_GET['project_id']))
+                || $isMentorAgreementPage
+            ) {
 		        if (preg_match("/pid=/", $url)) {
                     $url = preg_replace("/pid=/", "project_id=", $url);
-                } else {
-		            $url .= "&project_id=".$_GET['project_id'];
+                } else if (is_numeric($_GET['project_id'])) {
+		            $projectId = (int) $_GET['project_id'];
+		            $projectId = htmlentities((string) $projectId, ENT_QUOTES);
+		            $url .= "&project_id=".$projectId;
                 }
             }
 		    if ($pid && is_numeric($pid)) {
@@ -632,7 +654,7 @@ class CareerDev {
 	}
 
 	public static function getBackgroundCSS() {
-		$currPage = urlencode($_GET['page']);
+		$currPage = urlencode(htmlentities($_GET['page']));
 		$bgs = self::getMenuBackgrounds();
 		$r = self::getREDCapDir();
 

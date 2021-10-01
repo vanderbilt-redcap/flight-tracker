@@ -2,12 +2,13 @@
 
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$record = $_POST['record'];
-$text = $_POST['text'];
+$record = REDCapManagement::sanitize($_POST['record']);
+$text = REDCapManagement::sanitize($_POST['text']);
 $field = "identifier_support_summary";
 
 $recordIds = Download::recordIds($token, $server);

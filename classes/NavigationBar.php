@@ -49,9 +49,9 @@ class NavigationBar {
 		}
 		if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isRecordPage") && Application::isRecordPage($link) && (isset($_GET['id']) || isset($_GET['record']))) {
 		    if (isset($_GET['record'])) {
-		        $record = $_GET['record'];
+		        $record = htmlentities($_GET['record']);
             } else {
-		        $record = $_GET['id'];
+		        $record = htmlentities($_GET['id']);
             }
 		    $link .= "&record=$record";
         }

@@ -327,6 +327,15 @@ return $result;
     }
 
 	private function getMentorUserid($rows) {
+	    $mentorUseridField = "summary_mentor_userid";
+        foreach ($rows as $row) {
+            if (isset($row[$mentorUseridField]) && $row[$mentorUseridField]) {
+                $r = new Result($row[$mentorUseridField], "", "", "", $this->pid);
+                $r->setField($mentorUseridField);
+                return $r;
+            }
+        }
+
 		$mentorResult = $this->getMentorText($rows);
 		$mentorField = $mentorResult->getField();
 		$mentorUseridField = $mentorField."_userid";
@@ -339,6 +348,10 @@ return $result;
 		}
 
 		$uids = [];
+		$source = "";
+		$sourceName = "";
+		$lastName = "";
+		$firstName = "";
 		if ($mentorResult->getValue()) {
             if (Application::isVanderbilt()) {
                 try {
@@ -873,6 +886,8 @@ return $result;
 	public function onK($r01Only = FALSE, $makeKLengthLongest = FALSE) {
 	    if ($makeKLengthLongest) {
             $kLengthInSeconds = self::calculateMaxKLengthInSeconds();
+        } else {
+	        $kLengthInSeconds = NULL;
         }
         if (!$this->hasMetaVariables()) {
             $this->getMetaVariables();
@@ -889,14 +904,14 @@ return $result;
         if ($this->hasK()) {
             $lastTime = strtotime($this->metaVariables['summary_last_any_k']);
             if ($this->isLastKExternal()) {
-                $kLength = $makeKLengthLongest ? $kLengthInSeconds : self::calculateKLengthInSeconds("External");
+                $kLength = $kLengthInSeconds ?? self::calculateKLengthInSeconds("External");
                 if (time() > $lastTime + $kLength) {
                     return FALSE;
                 } else {
                     return TRUE;
                 }
             } else {
-                if ($makeKLengthLongest) {
+                if ($kLengthInSeconds) {
                     $kLength = $kLengthInSeconds;
                 } else if ($this->isLastKK12KL2()) {
                     $kLength = self::calculateKLengthInSeconds("K12/KL2");
@@ -925,6 +940,8 @@ return $result;
 	public function isConverted($autoCalculate = TRUE, $makeKLengthLongest = FALSE) {
         if ($makeKLengthLongest) {
             $kLengthInSeconds = self::calculateMaxKLengthInSeconds();
+        } else {
+            $kLengthInSeconds = NULL;
         }
 		if ($this->hasMetaVariables()) {
 			if ($this->hasK99R00()) {
@@ -934,14 +951,14 @@ return $result;
 					$lastTime = strtotime($this->metaVariables['summary_last_any_k']);
 					$rTime = strtotime($this->metaVariables['summary_first_r01_or_equiv']);
 					if ($this->isLastKExternal()) {
-					    $kLength = $makeKLengthLongest ? $kLengthInSeconds : self::calculateKLengthInSeconds("External");
+					    $kLength = $kLengthInSeconds ?? self::calculateKLengthInSeconds("External");
 						if ($rTime > $lastTime + $kLength) {
 							return "Converted while not on K";
 						} else {
 							return "Converted while on K";
 						}
 					} else {
-					    if ($makeKLengthLongest) {
+					    if ($kLengthInSeconds) {
 					        $kLength = $kLengthInSeconds;
                         } else if ($this->isLastKK12KL2()) {
 							$kLength = self::calculateKLengthInSeconds("K12/KL2");
@@ -1317,8 +1334,10 @@ return $result;
 
 	# translates from innate ordering into new categories in summary_degrees
 	private static function translateFirstDegree($num) {
+	    if ($num === "") {
+	        return "";
+        }
 		$translate = array(
-				"" => "",
 				1 => 1,
 				2 => 4,
 				6 => 6,
@@ -1338,8 +1357,8 @@ return $result;
 				4 => 6,
 				5 => 6,
 				);
-		if (is_numeric($num) && isset($translate[$num])) {
-            return $translate[$num];
+		if (is_numeric($num) && isset($translate[(int) $num])) {
+            return $translate[(int) $num];
         }
 		return NULL;
 	}
@@ -2208,21 +2227,24 @@ return $result;
 	# convert date
 	private static function convertToYYYYMMDD($date) {
 		$nodes = preg_split("/[\-\/]/", $date);
-		if (($nodes[0] == 0) || ($nodes[1] == 0)) {
-			return "";
-		}
-		if ($nodes[0] > 1900) {
-			return $nodes[0]."-".$nodes[1]."-".$nodes[2];
-		}
-		if ($nodes[2] < 1900) {
-			if ($nodes[2] < 20) {
-				$nodes[2] = 2000 + $nodes[2];
-			} else {
-				$nodes[2] = 1900 + $nodes[2];
-			}
-		}
-		// from MDY
-		return $nodes[2]."-".$nodes[0]."-".$nodes[1];
+		if ((count($nodes) == 3) && REDCapManagement::isArrayNumeric($nodes)) {
+            if (($nodes[0] == 0) || ($nodes[1] == 0)) {
+                return "";
+            }
+            if ($nodes[0] > 1900) {
+                return $nodes[0]."-".$nodes[1]."-".$nodes[2];
+            }
+            if ($nodes[2] < 1900) {
+                if ($nodes[2] < 20) {
+                    $nodes[2] = 2000 + (int) $nodes[2];
+                } else {
+                    $nodes[2] = 1900 + (int) $nodes[2];
+                }
+            }
+            // from MDY
+            return $nodes[2]."-".$nodes[0]."-".$nodes[1];
+        }
+		return "";
 	}
 
 	# finds date-of-birth
@@ -2547,6 +2569,7 @@ return $result;
 
 	public function getEndOfK($kTypes = [1, 2, 3, 4]) {
 	    $lastEndDate = "";
+        $oneDayBeforeStartOfR = FALSE;
 	    foreach ($this->rows as $row) {
 	        if (($row['redcap_repeat_instrument'] == "") && ($row['redcap_repeat_instance'] == "")) {
                 $startOfR = $row['summary_first_r01_or_equiv'];
@@ -2981,6 +3004,7 @@ return $result;
                 foreach ($firstNames as $firstName) {
                     foreach ($lastNames as $lastName) {
                         foreach ($institutions as $institution) {
+                            $authorId = FALSE;
                             $query = "AUTHFIRST($firstName) AND AUTHLASTNAME($lastName) AND AFFIL($institution)";
                             $url = "https://api.elsevier.com/content/search/author?httpAccept=" . urlencode($format) . "&query=" . urlencode($query) . "&apikey=" . $key;
                             list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
@@ -3167,7 +3191,7 @@ return $result;
 
 	private function initGrants() {
 		$grants = new Grants($this->token, $this->server);
-		if (iset($this->rows)) {
+		if (isset($this->rows)) {
 			$grants->setRows($this->rows);
 			$grants->compileGrants();
 			$this->grants = $grants;
@@ -3178,6 +3202,7 @@ return $result;
 		return "identifier_left_date_source";
 	}
 
+	private $pid;
 	private $token;
 	private $server;
 	private $metadata;

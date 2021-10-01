@@ -28,12 +28,12 @@ class NIHExPORTER {
 	}
 
 	public function showDataSince($date) {
-		$this->data = self::filterForActivityCodeSinceDate("/\d[Kk]\d\d/", $date);
+		$this->data = self::filterForActivityCodeSinceDate("/\d[Kk]\d\d/", $date, $this->pid);
 		echo $this->display();
 	}
 
 	public function showR01DataSince($date, $names) {
-		self::filterForActivityCodeSinceDateOrR01EquivalentAtVUMC("/\dR01/", $date);
+		self::filterForActivityCodeSinceDateOrR01EquivalentAtVUMC("/\dR01/", $date, $this->pid);
 		self::grabAllGrantsForPIs($date, $this->pid);
 		self::filterOut("/R56/", "FULL_PROJECT_NUM");
 		self::filterOutNames($names);
@@ -226,8 +226,8 @@ class NIHExPORTER {
 		fclose($fp);
 	}
 
-	public static function filterForActivityCodeSinceDateOrR01EquivalentAtVUMC($regexActivityCode, $date) {
-		$files = self::getDataSince2009();
+	public static function filterForActivityCodeSinceDateOrR01EquivalentAtVUMC($regexActivityCode, $date, $pid) {
+		$files = self::getDataSince2009($pid);
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
 		$fp = fopen(DATA_DIRECTORY.INTERMEDIATE_1, "w");
@@ -235,6 +235,7 @@ class NIHExPORTER {
 		foreach ($files as $file => $fiscalYear) {
 			if ($fiscalYear >= $tsYear - 1) {
 				$data = self::parseFile($file);
+				$headers = [];
 				if ($first) {
 					$headers = array_keys($data[0]);
 					fputcsv($fp, $headers);
@@ -269,8 +270,8 @@ class NIHExPORTER {
 		}
 	}
 
-	public static function filterForActivityCodeSinceDate($regexActivityCode, $date) {
-		$files = self::getDataSince2009();
+	public static function filterForActivityCodeSinceDate($regexActivityCode, $date, $pid) {
+		$files = self::getDataSince2009($pid);
 		$outData = array();
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
@@ -434,8 +435,10 @@ class NIHExPORTER {
 				$row = array();
 				$i = 0;
 				foreach ($line as $item) {
-					$header = $headers[$i];
-					$row[$header] = $item;
+					if ($headers[$i]) {
+                        $header = $headers[$i];
+                        $row[$header] = $item;
+                    }
 					$i++;
 				}
 				array_push($data, $row);
@@ -452,9 +455,10 @@ class NIHExPORTER {
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
 
-		$lastYear = "";
+        $startYear = 2009;
+		$lastYear = $startYear;
 		$files = array();
-		for ($fiscalYear = 2009; $fiscalYear <= date("Y"); $fiscalYear++) {
+		for ($fiscalYear = $startYear; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "RePORTER_PRJ_C_FY".$fiscalYear.".zip";
 			$file = self::downloadURL($url, $pid);
 			if ($file) {
@@ -480,9 +484,10 @@ class NIHExPORTER {
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
 
-		$lastYear = "";
+        $startYear = 2018;
+		$lastYear = $startYear;
 		$files = array();
-		for ($fiscalYear = 2018; $fiscalYear <= date("Y"); $fiscalYear++) {
+		for ($fiscalYear = $startYear; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "RePORTER_PRJ_C_FY".$fiscalYear.".zip";
 			$file = self::downloadURL($url, $pid);
 			if ($file) {
@@ -508,9 +513,10 @@ class NIHExPORTER {
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
 
-		$lastYear = "";
+        $startYear = 2014;
+		$lastYear = $startYear;
 		$files = array();
-		for ($fiscalYear = 2014; $fiscalYear <= date("Y"); $fiscalYear++) {
+		for ($fiscalYear = $startYear; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "RePORTER_PRJ_C_FY".$fiscalYear.".zip";
 			$file = self::downloadURL($url, $pid);
 			if ($file) {
@@ -551,7 +557,7 @@ class NIHExPORTER {
 				fclose($fp);
 				unset($zip);
 
-				$za = new ZipArchive;
+				$za = new \ZipArchive;
 				if ($za->open(APP_PATH_TEMP.$file) === TRUE) {
 					$za->extractTo(APP_PATH_TEMP);
 					$za->close();

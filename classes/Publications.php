@@ -111,10 +111,15 @@ class Publications {
             # if the errorlist is not blank, it might search for simplified
             # it might search for simplified names and produce bad results
             $pmidCount = count($pmData['esearchresult']['idlist']);
-            if (!isset($pmData['esearchresult']['errorlist'])
+            if (
+                !isset($pmData['esearchresult']['errorlist'])
                 || !$pmData['esearchresult']['errorlist']
-                || !$pmData['esearchresult']['errorlist']['phrasesnotfound']
-                || empty($pmData['esearchresult']['errorlist']['phrasesnotfound'])) {
+                || !isset($pmData['esearchresult']['errorlist']['phrasesnotfound'])
+                || (
+                    is_array($pmData['esearchresult']['errorlist']['phrasesnotfound'])
+                    && empty($pmData['esearchresult']['errorlist']['phrasesnotfound'])
+                )
+            ) {
                 foreach ($pmData['esearchresult']['idlist'] as $pmid) {
                     array_push($pmids, $pmid);
                 }
@@ -128,11 +133,14 @@ class Publications {
     public function getAltmetricRange($type = "included") {
 	    $scores = [];
 	    foreach ($this->getCitations($type) as $citation) {
-	        $scores[] = $citation->getVariable("altmetric_score");
+	        $score = $citation->getVariable("altmetric_score");
+	        if (is_numeric($score) && ($score > 0)) {
+                $scores[] = $score;
+            }
         }
 	    if (!empty($scores)) {
-            $maxRoundedUp = ceil(max($scores));
-            $minRoundedDown = floor(min($scores));
+            $maxRoundedUp = ceil((float) max($scores));
+            $minRoundedDown = floor((float) min($scores));
             if ($minRoundedDown == $maxRoundedUp) {
                 return $minRoundedDown;
             }
@@ -596,11 +604,12 @@ class Publications {
         foreach ($redcapData as $row) {
             if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
                 $instance = $row['redcap_repeat_instance'];
-                $authors = preg_split("/\s*[,;]\s*/", $row['citation_authors']);
-                for ($i = 0; $i < count($authors); $i++) {
-                    $author = trim($authors[$i]);
-                    list($first, $last) = NameMatcher::splitName($author, 2);
-                    $authors[$i] = ["first" => $first, "last" => $last];
+                $authorList = preg_split("/\s*[,;]\s*/", $row['citation_authors']);
+                $authors = [];
+                foreach ($authorList as $authorName) {
+                    $authorName = trim($authorName);
+                    list($first, $last) = NameMatcher::splitName($authorName, 2);
+                    $authors[] = ["first" => $first, "last" => $last];
                 }
                 $foundCurrInAuthorList = FALSE;
                 $foundAnotherInAuthorList = FALSE;
@@ -1005,8 +1014,6 @@ class Publications {
 		} else {
 			if ($notDoneCount == 1) {
 				$html .= $notDoneCount." New Citation";
-			} else if ($notDoneCount == 0) {
-				$html .= "No New Citations";
 			} else {
 				$html .= $notDoneCount." New Citations";
 			}
@@ -1377,7 +1384,6 @@ class Publications {
 					break;
 				}
 			}
-			$this->hasChanged = FALSE;
 		}
 	}
 
@@ -1394,15 +1400,6 @@ class Publications {
 	public function getEditText_test($tester) {
 		$html = $this->getEditText();
 		$tester->assertMatch("/<form/", $html);
-	}
-
-	# unit test: default variables
-	public function defaultVariables_test($tester) {
-		$this->setupTests();
-		$this->process();
-
-		$tester->assertNotBlank($this->name);
-		$tester->assertTrue(!$this->hasChanged);
 	}
 
 	# unit test: get number of citations for a random record
@@ -1424,6 +1421,7 @@ class Publications {
 	private $pid;
     private $names;
     private $lastNames;
+    private $firstNames;
     private $lastName;
 }
 

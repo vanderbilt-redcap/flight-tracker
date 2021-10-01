@@ -24,6 +24,7 @@ function copyAllCohortProjects($token, $server, $pid, $records) {
         ) {
             CareerDev::log("Copying project to cohort $cohort. From pid $pid, to pid $destPid");
             \Vanderbilt\FlightTrackerExternalModule\copyEntireProject($token, $destToken, $server, $metadata, $cohort);
+            \Vanderbilt\FlightTrackerExternalModule\copyBackAnyMentoringAgreements($token, $destToken, $server, $metadata, $cohort);
 
             $defaultSettings = [
                 "turn_off" => TRUE,

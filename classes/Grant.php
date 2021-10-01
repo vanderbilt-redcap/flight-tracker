@@ -304,9 +304,9 @@ class Grant {
 
 	public function prettyMoney($n) {
 		if (!$n) {
-			return "$0";
+			return "\$0";
 		}
-		return "\$".pretty($n, 2);
+		return "\$".REDCapManagement::pretty($n, 2);
 	}
 
 	public function pretty($n, $numDecimalPlaces = 3) {
@@ -1624,6 +1624,9 @@ class Grant {
             } else if ($specs['start'] && $specs['end']) {
                 $projStart = strtotime($specs['start']);
                 $projEnd = strtotime($specs['end']);
+            } else {
+			    $projStart = FALSE;
+			    $projEnd = FALSE;
             }
             if ($projStart && $projEnd) {
                 # 3 years

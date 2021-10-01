@@ -15,23 +15,23 @@ require_once dirname(__FILE__)."/../CareerDev.php";
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 if ($_GET['uid']) {
-    $username = $_GET['uid'];
+    $username = REDCapManagement::sanitize($_GET['uid']);
     $uidString = "&uid=$username";
 } else {
-    $username = $userid;
+    $username = Application::getUsername();
     $uidString = "";
 }
 
 require_once dirname(__FILE__).'/_header.php';
 
 if ($_REQUEST['menteeRecord']) {
-    $menteeRecordId = $_REQUEST['menteeRecord'];
+    $menteeRecordId = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
     list($myMentees, $myMentors) = getMenteesAndMentors($menteeRecordId, $username, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");
 }
 if ($_REQUEST['instance']) {
-    $instance = $_REQUEST['instance'];
+    $instance = REDCapManagement::sanitize($_REQUEST['instance']);
 } else {
     throw new \Exception("You must specify an instance");
 }
@@ -45,8 +45,16 @@ $notesFields = getNotesFields($metadataFields);
 $choices = REDCapManagement::getChoices($metadata);
 $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
 $row = pullInstanceFromREDCap($redcapData, $instance);
-$menteeInstance = getMaxInstanceForUserid($redcapData, $menteeRecordId, $userids[$menteeRecordId]);
-$menteeRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance);
+$menteeUsernames = preg_split("/\s*[,;]\s*/", strtolower($userids[$menteeRecordId]));
+$date = "";
+$menteeInstance = FALSE;
+foreach ($menteeUsernames as $menteeUsername) {
+    $menteeInstance = getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);
+    if ($menteeInstance) {
+        break;
+    }
+}
+$menteeRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance) : [];
 $listOfMentors = REDCapManagement::makeConjunction(array_values($myMentors["name"]));
 $listOfMentees = isMentee($menteeRecordId, $username) ? $firstName." ".$lastName : $myMentees["name"][$menteeRecordId];
 $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);

@@ -63,24 +63,26 @@ foreach ($redcapData as $row) {
 
 		echo "<td style='text-align: left;'>".Links::makeRecordHomeLink($pid, $recordId, "$firstName $lastName")."</td>\n";
 
-		if ($surveyCompletes[$recordId] && $surveyCompletes[$recordId]["initial_survey"]) {
+		if (isset($surveyCompletes[$recordId]) && isset($surveyCompletes[$recordId]["initial_survey"])) {
 			echo "<td class='centered'>".$surveyCompletes[$recordId]["initial_survey"]."</td>\n";
 		} else {
 			echo "<td class='red centered'>Missing</td>\n";
 		}
 
-		if ($surveyCompletes[$recordId] && $surveyCompletes[$recordId]["followup"]) {
+		if (isset($surveyCompletes[$recordId]) && isset($surveyCompletes[$recordId]["followup"])) {
 			echo "<td class='centered'>".$surveyCompletes[$recordId]["followup"]."</td>\n";
 		} else {
 			echo "<td class='centered'></td>\n";
 		}
 
-		if ($surveyCompletes[$recordId]) {
-			if ($surveyCompletes[$recordId]["followup"]) {
+		if (isset($surveyCompletes[$recordId])) {
+			if (isset($surveyCompletes[$recordId]["followup"])) {
 				echo "<td class='centered'>".$surveyCompletes[$recordId]["followup"]."</td>\n";
-			} else {
+			} else if (isset($surveyCompletes[$recordId]['initial_survey'])) {
 				echo "<td class='centered'>".$surveyCompletes[$recordId]["initial_survey"]."</td>\n";
-			}
+			} else {
+			    echo "<td class='red centered'>Missing</td>";
+            }
 		} else {
 			echo "<td class='red centered'>Missing</td>\n";
 		}

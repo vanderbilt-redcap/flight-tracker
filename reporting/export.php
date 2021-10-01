@@ -11,9 +11,11 @@ if (!$_GET['table']) {
     exit;
 }
 
-$table = $_GET['table'];
-$metadata = Download::metadata($token, $server);
-$nihTables = new NIHTables($token, $server, $pid, $metadata);
-$html = $nihTables->getHTML($table);
+$table = htmlentities($_GET['table'], ENT_QUOTES);
+if (NIHTables::getTableHeader($table)) {
+    $metadata = Download::metadata($token, $server);
+    $nihTables = new NIHTables($token, $server, $pid, $metadata);
+    $html = $nihTables->getHTML($table);
 
-Application::writeHTMLToDoc($html, "Table $table.docx");
+    Application::writeHTMLToDoc($html, "Table.docx");
+}

@@ -1,12 +1,16 @@
 <?php
 
-$offset = \db_real_escape_string($_GET['start']);
-$limit = \db_real_escape_string($_GET['length']);
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+
+$offset = REDCapManagement::sanitize($_GET['start']);
+$limit = REDCapManagement::sanitize($_GET['length']);
 $limitClause = "limit $limit offset $offset";
 
 $whereClause = "";
 if ($_REQUEST['search']['value']) {
-    $value = $_REQUEST['search']['value'];
+    $value = REDCapManagement::sanitize($_REQUEST['search']['value']);
     $whereClause = "WHERE message LIKE '%$value%'";
 }
 
@@ -30,7 +34,7 @@ while($row = $results->fetch_assoc()){
 ?>
 
 {
-	"draw": <?=$_GET['draw']?>,
+	"draw": <?= REDCapManagement::sanitize($_GET['draw'])?>,
 	"recordsTotal": <?=$totalRowCount?>,
 	"recordsFiltered": <?=$totalRowCount?>,
 	"data": <?=json_encode($rows)?>

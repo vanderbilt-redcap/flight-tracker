@@ -30,10 +30,10 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
         if (!empty($newUids)) {
             echo makeAdjudicationTable($lines, $newUids, $matchedMentorUids, $originalMentorNames);
         } else {
-            commitChanges($token, $server, $lines, $matchedMentorUids);
+            commitChanges($token, $server, $lines, $matchedMentorUids, $pid);
         }
     } else if ($lines) {
-        commitChanges($token, $server, $lines, $matchedMentorUids);
+        commitChanges($token, $server, $lines, $matchedMentorUids, $pid);
     } else {
         echo "<p class='centered'>No data to upload.</p>";
     }
@@ -59,15 +59,16 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 			fclose($fp);
 		}
 	} else {
-		$rows = explode("\n", $_POST['newnames']);
+	    $list = htmlentities($_POST['newnames'], ENT_QUOTES);
+		$rows = explode("\n", $list);
 		foreach ($rows as $row) {
 			if ($row) {
+			    $row = htmlentities($row);
 				$nodes = preg_split("/\s*[,\t]\s*/", $row);
 				if (count($nodes) == 6) {
 					$lines[] = $nodes;
 				} else {
-					$mssg = "The line [$row] does not contain the necessary 6 columns. No data has been added. Please try again.";
-					header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
+					header("Location: ".CareerDev::link("add.php")."&mssg=improper_line");
 				}
 			}
 		}
@@ -76,11 +77,12 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 	if (!empty($mentorUids)) {
         echo makeAdjudicationTable($lines, $mentorUids, [], []);
     } else {
-	    commitChanges($token, $server, $lines, $mentorUids);
+	    commitChanges($token, $server, $lines, $mentorUids, $pid);
     }
 } else {                //////////////////// default setup
     if (isset($_GET['mssg'])) {
-		echo "<p class='red centered'><b>{$_GET['mssg']}</b></p>";
+        $mssg = htmlentities($_GET['mssg'], ENT_QUOTES);
+		echo "<p class='red centered'><b>$mssg</b></p>";
 	}
 	echo "<p class='centered'>".CareerDev::makeLogo()."</p>\n";
 ?>
@@ -139,7 +141,6 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
 				$firstName .= " (".$preferred.")";
 			}
 			$email = trim($nodes[4]);
-			$names[$recordId] = $preferred." ".$lastName;
 			$institution = trim($nodes[5]);
 			$uploadRow = [
 			    "record_id" => $recordId,
@@ -257,6 +258,7 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
 				$uploadRow["imported_disabled"] = $disabled;
 				$uploadRow["imported_citizenship"] = $citizenship;
                 $uploadRow["imported_mentor"] = $mentor;
+                $uploadRow["imported_mentor_userid"] = $mentorUid;
                 if (in_array("identifier_start_of_training", $metadataFields)) {
                     $uploadRow["identifier_start_of_training"] = $trainingStart;
                 }
@@ -275,7 +277,7 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
 function importMDY2YMD($mdyDate, $col) {
     $nodes = preg_split("/[\-\/]/", $mdyDate);
     # assume MDY
-    if (count($nodes) == 3) {
+    if ((count($nodes) == 3) && is_numeric($nodes[0]) && is_numeric($nodes[1]) && is_numeric($nodes[2])) {
         if ($nodes[2] < 100) {
             if ($nodes[2] > 20) {
                 $nodes[2] += 1900;
@@ -336,6 +338,11 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
         if (isset($currLine[13])) {
             $currMentorName = $currLine[13];
         }
+        $customId = "mentorcustom___$i" . "___custom";
+        $mentorCustomCode = "mentor___custom";
+        $customRadio = "<input type='radio' name='mentor___$i' id='$customId' value='$mentorCustomCode'>";
+        $customHidden = "<input type='hidden' name='mentor___$i' value='$mentorCustomCode'>";
+        $customLine = "<label for='$customId'>Custom:</label> <input type='text' name='mentorcustom___$i' value=''>";
         if (isset($originalMentorNames[$i]) && REDCapManagement::hasValue($originalMentorNames[$i])) {
             $html .= "<input type='hidden' name='mentorname___$i' value='".preg_replace("/'/", "\\'", $originalMentorNames[$i])."'>";
         }
@@ -349,13 +356,17 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
             if (count($currMentorUids) == 0) {
                 $escapedMentorName = preg_replace("/'/", "\\'", $currMentorName);
                 $hiddenField = "<input type='hidden' name='originalmentorname___$i' value='$escapedMentorName'>";
-                $html .= "<td class='red'><strong>No mentors matched with $currMentorName.</strong><br>Will not upload this mentor.<br>Perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'></td>";
+                $html .= "<td class='red'>";
+                $html .= "<strong>No mentors matched with $currMentorName.</strong><br>Will not upload this mentor.<br>Perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
+                $html .= "<br>Or try a custom id?<br>".$customLine.$customHidden;
+                $html .= "</td>";
             } else if (count($currMentorUids) == 1) {
                 $uid = array_keys($currMentorUids)[0];
                 $yesId = "mentor___$i" . "___yes";
                 $noId = "mentor___$i" . "___no";
                 $yesno = "<input type='radio' name='mentor___$i' id='$yesId' value='$uid' checked> <label for='$yesId'>Yes</label><br>";
-                $yesno .= "<input type='radio' name='mentor___$i' id='$noId' value=''> <label for='$noId'>No</label>";
+                $yesno .= "<input type='radio' name='mentor___$i' id='$noId' value=''> <label for='$noId'>No</label><br>";
+                $yesno .= $customRadio." ".$customLine;
                 $html .= "<td class='green'>Matched: $uid<br>$yesno</td>";
             } else {
                 $radios = [];
@@ -365,6 +376,7 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
                     $radios[] = "<input type='radio' name='mentor___$i' id='$id' value='$uid'$selected> <label for='$id'>$mentorName ($uid)</label>";
                     $selected = "";
                 }
+                $radios[] = $customRadio." ".$customLine;
                 $html .= "<td class='yellow'>" . implode("<br>", $radios) . "</td>";
             }
             $html .= "</tr>";
@@ -390,14 +402,17 @@ function parsePostForLines($post) {
     $mentorUids = [];
     $newMentorNames = [];
     $mentorCol = 13;
+    $mentorCustomCode = "mentor___custom";
     foreach ($post as $key => $value) {
+        $key = REDCapManagement::sanitize($key);
+        $value = REDCapManagement::sanitize($value);
         if (preg_match("/^line___\d+$/", $key)) {
             $i = preg_replace("/^line___/", "", $key);
             $lines[$i] = json_decode($value, TRUE);
             if ($post["mentorname___".$i]) {
                 $lines[$i][$mentorCol] = $post["mentorname___".$i];
             }
-        } else if (preg_match("/^mentor___\d+$/", $key)) {
+        } else if (preg_match("/^mentor___\d+$/", $key) && ($value != $mentorCustomCode)) {
             $i = preg_replace("/^mentor___/", "", $key);
             $mentorUids[$i] = $value;
         } else if (preg_match("/^newmentorname___\d+$/", $key)) {
@@ -405,6 +420,11 @@ function parsePostForLines($post) {
             $origMentorName = $post['originalmentorname___'.$i];
             if ($origMentorName != $value) {
                 $newMentorNames[$i] = $value;
+            }
+        } else if (preg_match("/^mentorcustom___\d+$/", $key) && $value) {
+            $i = preg_replace("/^mentorcustom___/", "", $key);
+            if ($post['mentor___'.$i] == $mentorCustomCode) {
+                $mentorUids[$i] = $value;
             }
         }
     }
@@ -414,7 +434,7 @@ function parsePostForLines($post) {
     return [$lines, $mentorUids, $newMentorNames];
 }
 
-function commitChanges($token, $server, $lines, $mentorUids) {
+function commitChanges($token, $server, $lines, $mentorUids, $pid) {
     $maxRecordId = 0;
     $recordIds = Download::recordIds($token, $server);
     foreach ($recordIds as $recordId) {
@@ -424,23 +444,30 @@ function commitChanges($token, $server, $lines, $mentorUids) {
     }
     $recordId = $maxRecordId + 1;
 
-    list($upload, $newRecordIds) = processLines($lines, $recordId, $token, $server, $mentorUids);
-    $feedback = [];
-    if (!empty($upload)) {
-        $feedback = Upload::rows($upload, $token, $server);
-        foreach ($newRecordIds as $recordId) {
-            Application::refreshRecordSummary($token, $server, $pid, $recordId);
+    try {
+        list($upload, $newRecordIds) = processLines($lines, $recordId, $token, $server, $mentorUids);
+        $feedback = [];
+        if (!empty($upload)) {
+            $feedback = Upload::rows($upload, $token, $server);
+            foreach ($newRecordIds as $recordId) {
+                Application::refreshRecordSummary($token, $server, $pid, $recordId);
+            }
+        } else {
+            $mssg = "No data specified.";
+            header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
         }
-    } else {
-        $mssg = "No data specified.";
+        if (isset($feedback['error'])) {
+            $mssg = "People not added ". $feedback['error'];
+            header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
+        }
+        if (isset($_GET['mssg']) && ($_GET['mssg'] == "improper_line")) {
+            $mssg = "A line does not contain the necessary 6 columns. No data have been added. Please try again.";
+            echo "<p class='red centered'>$mssg</p>";
+            return;
+        }
+    } catch (\Exception $e) {
+        $mssg = $e->getMessage();
         header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
-    }
-    if (isset($feedback['error'])) {
-        $mssg = "People <b>not added</b>". $feedback['error'];
-        header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
-    }
-    if (isset($_GET['mssg'])) {
-        echo "<p class='red centered'>{$_GET['mssg']}</p>";
     }
 
     $timespan = 3;
