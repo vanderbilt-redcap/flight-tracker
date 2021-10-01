@@ -152,10 +152,9 @@ class CareerDev {
 	    if (!$mssg) {
 	        return;
         }
-        $mssg = htmlentities($mssg);
-	    $mssg = htmlentities($mssg, ENT_QUOTES);
-	    $pid = htmlentities($pid, ENT_QUOTES);
+	    $pid = REDCapManagement::sanitize($pid);
 	    if (self::isLocalhost()) {
+	        $mssg = REDCapManagement::sanitize($mssg);
 	        if ($pid) {
                 error_log("$pid: $mssg");
                 echo "$pid: $mssg\n";
@@ -166,6 +165,7 @@ class CareerDev {
 	        return;
         }
         if (isset($_GET['test'])) {
+            $mssg = REDCapManagement::sanitize($mssg);
             echo $mssg . "<br>\n";
         } else {
             if (!is_array($pid)) {

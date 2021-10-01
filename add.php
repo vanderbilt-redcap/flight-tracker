@@ -131,6 +131,9 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
 			$middle = $nodes[2];
 			$lastName = $nodes[3];
 			$preferred = $nodes[1];
+			if (!$firstName || !$lastName) {
+			    throw new \Exception("A first name and a last name are required! Error on line $lineNum");
+            }
 			$recordId = NameMatcher::matchName($firstName, $lastName, $token, $server); 
 			if (!$recordId) {
 				#new
