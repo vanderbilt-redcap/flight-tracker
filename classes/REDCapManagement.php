@@ -891,11 +891,19 @@ class REDCapManagement {
         return $params;
     }
 
-    public static function sanitize($str) {
+    public static function sanitize($str, $changeQuotes = TRUE) {
 	    if (!isset($str)) {
 	        return "";
         }
-	    return htmlentities((string) $str, ENT_QUOTES);
+	    if (self::isJSON($str)) {
+	        # JSONs contain quotes, so do not sanitize
+	        return $str;
+        }
+	    if ($changeQuotes) {
+            return htmlentities((string) $str, ENT_QUOTES);
+        } else {
+            return htmlentities((string) $str);
+        }
     }
 
     # requestedRecord is from GET/POST
@@ -913,10 +921,12 @@ class REDCapManagement {
 	    return $nodes[0];
     }
 
-    public static function json_encode_with_spaces($data) {
+    public static function json_encode_with_spaces($data, $runSanitizer = TRUE) {
         $str = json_encode($data);
         $str = preg_replace("/,/", ", ", $str);
-        $str = self::sanitize($str);
+        if ($runSanitizer) {
+            $str = self::sanitize($str);
+        }
         return $str;
     }
 

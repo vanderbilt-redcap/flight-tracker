@@ -166,6 +166,7 @@ class EmailManager {
 		if (!is_array($names)) {
 			$names = array($names);
 		}
+        $logHeader = "Flight Tracker Email Manager";
 		$results = [];
 		if ($currTime) {
 		    $currTimes = [$currTime];
@@ -206,6 +207,7 @@ class EmailManager {
                 Application::saveSetting("emails_last_run", $currTime, $this->pid);
             }
 		}
+		$sentEmails = [];
 		foreach ($this->data as $name => $emailSetting) {
 			if (in_array($name, $names) || empty($names)) {
                 // Application::log("Checking if $name is enabled");
@@ -216,7 +218,7 @@ class EmailManager {
                         if (!empty($whenKeys)) {
                             $firstKey = array_shift($whenKeys);
                             foreach ($currTimes as $currTime) {
-                                Application::log("$name is enabled for send at ".$when[$firstKey].". Current time is ".date("Y-m-d H:i", (int) $currTime)."; process spawned at ".date("Y-m-d H:i", $_SERVER['REQUEST_TIME']), $this->pid);
+                                // Application::log("$name is enabled for send at ".$when[$firstKey].". Current time is ".date("Y-m-d H:i", (int) $currTime)."; process spawned at ".date("Y-m-d H:i", $_SERVER['REQUEST_TIME']), $this->pid);
                             }
                         }
                     }
@@ -227,6 +229,7 @@ class EmailManager {
 							# This is a test email because a $to is specified
 							if ($type == "initial_time") {
 								$result = $this->$func($emailSetting, $name, $type, $to);
+                                $sentEmails[$name] = time();
 							}
 						} else {
 							if ($this->isReadyToSend($ts, $currTimes)) {
@@ -234,6 +237,7 @@ class EmailManager {
                                     Application::log("Sending $name scheduled at ".date("Y-m-d H:i", $ts), $this->pid);
                                 }
                                 $result = $this->$func($emailSetting, $name, $type);
+							    $sentEmails[$name] = time();
 							}
 						}
 						if ($result && !empty($result)) {
@@ -248,7 +252,18 @@ class EmailManager {
 				}
 			}
 		}
-		return $results;
+        if (Application::isVanderbilt()) {
+            $format = "Y-m-d H:i";
+            foreach ($sentEmails as $sendName => $ts) {
+                Application::log("$logHeader: $sendName sent at ".date($format, $ts).".", $this->pid);
+            }
+            if (!empty($sentEmails)) {
+                foreach ($currTimes as $currTime) {
+                    Application::log("$logHeader: Sending emails for " . date($format, (int)$currTime) . "; process spawned at " . date($format, $_SERVER['REQUEST_TIME']), $this->pid);
+                }
+            }
+        }
+        return $results;
 	}
 
 	public function isReadyToSend($ts1, $arrayOfTs) {

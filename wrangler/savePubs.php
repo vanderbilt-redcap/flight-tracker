@@ -15,9 +15,10 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 $metadata = Download::metadata($token, $server);
 $pmids = [];
 if (isset($_POST['finalized'])) {
-    $newFinalized = json_decode(REDCapManagement::sanitize($_POST['finalized']));
-    $newOmissions = json_decode(REDCapManagement::sanitize($_POST['omissions']));
-    $newResets = json_decode(REDCapManagement::sanitize($_POST['resets']));
+    # Do not sanitize jsons because they contain quotes
+    $newFinalized = json_decode($_POST['finalized']);
+    $newOmissions = json_decode($_POST['omissions']);
+    $newResets = json_decode($_POST['resets']);
     $recordId = REDCapManagement::sanitize($_POST['record_id']);
 
     $citationFields = Application::getCitationFields($metadata);
