@@ -14,7 +14,7 @@ if (isset($_POST['title'])) {
 	# no CSS or JS
 
 	$name = REDCapManagement::sanitize($_POST['title']);
-	$config = REDCapManagement::sanitize($_POST['config']);
+	$config = $_POST['config'];
 
 	if (preg_match("/['\"#&]/", $name)) {
 		echo "Invalid name. Title cannot contain single-quotes, hashtags, ampersands, or double-quotes.";
@@ -38,7 +38,7 @@ if (isset($_POST['title'])) {
     $link = Application::link("this");
     foreach ($cohortTitles as $cohortName) {
         $cohortConfig = $cohorts->getCohort($cohortName);
-        if (count($cohortConfig->getManualRecords()) === 0) {
+        if ($cohortConfig && count($cohortConfig->getManualRecords()) === 0) {
             $url = $link."&edit=".urlencode($cohortName);
             $cohortTitlesWithEditLinks[] = "<a href='$url'>$cohortName</a>";
         } else {

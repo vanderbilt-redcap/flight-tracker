@@ -142,7 +142,7 @@ class Cohorts {
 				$configFields = $config->getFields($this->metadata);
 				$allFields = array_unique(array_merge($allFields, $configFields));
 			} else {
-				throw new \Exception("Could not find config $title");
+				return [];
 			}
 		}
 		return $allFields;

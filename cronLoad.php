@@ -61,8 +61,12 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $manager->addCron("publications/getAllPubs_func.php", "cleanEmptySources", "2021-09-16", $records, 1000);
         $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday", $records, 10);
         if (!Application::getSetting("fixedPMCs", $pid)) {
-            $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"), $records, 10);
+            $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"), $records, 1000);
             Application::saveSetting("fixedPMCs", TRUE, $pid);
+        }
+        if (!Application::getSetting("fixedPMCsBlank", $pid)) {
+            $manager->addCron("clean/updatePMCs.php", "cleanUpBlankInstances", date("Y-m-d"), $records, 1000);
+            Application::saveSetting("fixedPMCsBlank", TRUE, $pid);
         }
         if (Application::isVanderbilt() && !Application::getSetting("initializedLexTranslator", $pid)) {
             $manager->addCron("drivers/initializeLexicalTranslator.php", "initialize", date("Y-m-d"), $records, 10);

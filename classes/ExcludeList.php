@@ -53,7 +53,7 @@ class ExcludeList {
         $html .= "<p class='centered'>";
         $html .= "Comma-Separated Exclude List: ";
         $html .= "<input type='text' style='width: 300px;' name='excludeList' id='excludeList' field='{$this->field}' value='$recordExcludeList'>";
-        $html .= " <button onclick='updateExcludeList(\"$recordId\", $(\"#excludeList\").val();); return false;'>Update</button>";
+        $html .= " <button onclick='updateExcludeList(\"$recordId\", $(\"#excludeList\").val()); return false;'>Update</button>";
         $html .= "</p>";
         return $html;
     }
