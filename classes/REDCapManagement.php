@@ -1630,6 +1630,26 @@ class REDCapManagement {
         return "";
     }
 
+    public static function addMonths($date, $months) {
+        $ts = strtotime($date);
+        if ($ts) {
+            $year = date("Y", $ts);
+            $month = date("m", $ts);
+            $month += $months;
+            while ($month <= 0) {
+                $month += 12;
+                $year--;
+            }
+            while ($month > 12) {
+                $month -= 12;
+                $year++;
+            }
+            $day = date("d", $ts);
+            return $year."-".$month."-".$day;
+        }
+        return "";
+    }
+
     public static function addYears($date, $years) {
 	    $ts = strtotime($date);
 	    $year = date("Y", $ts);

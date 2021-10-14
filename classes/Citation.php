@@ -215,6 +215,38 @@ class Citation {
 	public static function getImageSize() {
 		return Wrangler::getImageSize();
 	}
+	
+	public function getGrantBaseAwardNumbers() {
+        $grantStr = $this->getVariable("grants");
+        $initialGrants = $grantStr ? preg_split("/\s*[\n\r;,]\s*/", $grantStr) : [];
+        $grants = [];
+        $seen = [];
+        for ($i = 0; $i < count($initialGrants); $i++) {
+            if ($initialGrants[$i]) {
+                if (preg_match("/[a-z]/", $initialGrants[$i])) {
+                    continue;
+                }
+                if (preg_match("/^\d[A-Z][A-Z\d]\d[A-Z][A-Z]/", $initialGrants[$i])) {
+                    $initialGrants[$i] = preg_replace("/^\d/", "", $initialGrants[$i]);
+                }
+                $initialGrants[$i] = preg_replace("/-\d\d$/", "", $initialGrants[$i]);
+                $initialGrants[$i] = preg_replace("/-\d\d[A-Z\d]\d$/", "", $initialGrants[$i]);
+                $initialGrants[$i] = preg_replace("/[\s\-_]+/", "", $initialGrants[$i]);
+                if (
+                    !preg_match("/[A-Z][A-Z]\d{6}/", $initialGrants[$i])
+                    && preg_match("/[A-Z][A-Z]\d{5}/", $initialGrants[$i])
+                ) {
+                    $insert = "0";
+                    $initialGrants[$i] = preg_replace("/([A-Z][A-Z])(\d{5})/", "\${1}$insert\${2}", $initialGrants[$i]);
+                }
+                if (!in_array($initialGrants[$i], $seen)) {
+                    $grants[] = $initialGrants[$i];
+                    $seen[] = $initialGrants[$i];
+                }
+            }
+        }
+        return $grants;
+    }
 
 	# citationClass is notDone, included, or omitted
 	public function toHTML($citationClass) {
@@ -650,11 +682,38 @@ class Citation {
         return $date;
     }
 
-	private function getDate() {
+	public function getDate($dateAsNumber = FALSE) {
 		$year = $this->getYear();
-		$month = self::getFullMonth($this->getVariable("month"));
+		if ($dateAsNumber) {
+		    $month = self::getNumericMonth($this->getVariable("month"));
+        } else {
+            $month = self::getFullMonth($this->getVariable("month"));
+        }
 		$day = $this->getVariable("day");
-		return self::transformIntoDate($year, $month, $day);
+		if ($dateAsNumber) {
+		    $sep = "-";
+		    if ($month && $day && $year) {
+                return $month.$sep.$day.$sep.$year;
+            } else if ($month && $day) {
+		        return self::getFullMonth($this->getVariable("month"))." ".$day;
+            } else if ($day && $year) {
+		        return $year;   // deliberate
+            } else if ($month && $year) {
+		        return $month.$sep.$year;
+            } else {
+		        if ($year) {
+		            return $year;
+                } else if ($month) {
+		            return self::getFullMonth($this->getVariable("month"));
+                } else if ($day) {
+		            return "Day ".$day;
+                } else {
+		            return "";
+                }
+            }
+        } else {
+            return self::transformIntoDate($year, $month, $day);
+        }
 	}
 
 	private function getIssueAndPages() {
@@ -1009,7 +1068,31 @@ class Citation {
         if ($date) {
             $dateNodes = preg_split("/\s+/", $date);
             $year = $dateNodes[0];
-            $months = array("Jan" => "01", "Feb" => "02", "Mar" => "03", "Apr" => "04", "May" => "05", "Jun" => "06", "Jul" => "07", "Aug" => "08", "Sep" => "09", "Oct" => "10", "Nov" => "11", "Dec" => "12");
+            $months = [
+                "Jan" => "01",
+                "Feb" => "02",
+                "Mar" => "03",
+                "Apr" => "04",
+                "May" => "05",
+                "Jun" => "06",
+                "Jul" => "07",
+                "Aug" => "08",
+                "Sep" => "09",
+                "Oct" => "10",
+                "Nov" => "11",
+                "Dec" => "12",
+                "January" => "01",
+                "February" => "02",
+                "March" => "03",
+                "April" => "04",
+                "June" => "06",
+                "July" => "07",
+                "August" => "08",
+                "September" => "09",
+                "October" => "10",
+                "November" => "11",
+                "December" => "12",
+            ];
 
             if (count($dateNodes) == 1) {
                 $month = "01";

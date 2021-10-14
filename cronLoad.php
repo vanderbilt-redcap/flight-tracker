@@ -46,19 +46,15 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         }
         if (!Application::isLocalhost()) {
             if ($has['coeus']) {
-                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", "Wednesday", $records, 100);
-                if (time() < strtotime("2021-10-15")) {
-                    $manager->addCron("drivers/deleteScripts.php", "deleteCoeus2Notice", "Wednesday", $records, 10000);
-                }
+                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", "Wednesday", $records, 200);
             } else if ($has['coeus2']) {
                 $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
             }
             if ($has['coeus_submissions']) {
-                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $records, 100);
+                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $records, 200);
             }
         }
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday", $records, 40);
-        $manager->addCron("publications/getAllPubs_func.php", "cleanEmptySources", "2021-09-16", $records, 1000);
         $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday", $records, 10);
         if (!Application::getSetting("fixedPMCs", $pid)) {
             $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"), $records, 1000);
@@ -81,10 +77,9 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $manager->addCron("drivers/12_reportStats.php", "reportStats", "Saturday");
         if (Application::isVanderbilt() && !Application::isLocalhost()) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Wednesday", $records, 500);
-            $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "2021-08-31", $records, 500);
         }
 		if ($has['vfrs']) {
-			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $records, 40);
+			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $records, 80);
 		}
         if ($has['patent']) {
             $manager->addCron("drivers/18_getPatents.php", "getPatents", "Tuesday", $records, 100);
@@ -92,12 +87,12 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 
         $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Saturday", $records, 100000);
 
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday", $records, 20);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $records, 20);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday", $records, 20);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday", $records, 20);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $records, 20);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday", $records, 20);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday", $records, 30);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $records, 30);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday", $records, 30);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday", $records, 30);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $records, 30);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday", $records, 30);
 	}
 }
 

@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.10.2";
+		return "3.11.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -854,6 +854,7 @@ class CareerDev {
                 "Word Clouds of Publications" => self::link("/publications/wordCloud.php"),
                 "Search Publications" => self::link("/search/publications.php"),
                 "Publication Impact Measures" => self::link("/publications/scoreDistribution.php"),
+                "Public Access Compliance" => self::link("/publications/complianceReport.php"),
             ];
             return $ary;
         }

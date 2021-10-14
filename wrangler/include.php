@@ -15,22 +15,26 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
-$url = Application::link("wrangler/include.php");
-$wranglerType = "";
-$wranglerTypeParam = "";
-$validWranglerTypes = ["Publications", "Patents", "Grants"];
-foreach ($validWranglerTypes as $wt) {
-    if ($wt == REDCapManagement::sanitize($_GET['wranglerType'])) {
-        $wranglerType = $wt;
-        $wranglerTypeParam = "&wranglerType=".urlencode($wranglerType);
-        break;
+try {
+    $url = Application::link("wrangler/include.php");
+    $wranglerType = "";
+    $wranglerTypeParam = "";
+    $validWranglerTypes = ["Publications", "Patents", "Grants"];
+    foreach ($validWranglerTypes as $wt) {
+        if ($wt == REDCapManagement::sanitize($_GET['wranglerType'])) {
+            $wranglerType = $wt;
+            $wranglerTypeParam = "&wranglerType=".urlencode($wranglerType);
+            break;
+        }
     }
+    if (!in_array($wranglerType, $validWranglerTypes)) {
+        throw new \Exception("Invalid wrangler type!");
+    }
+    $html = "";
+    $records = Download::recordIds($token, $server);
+} catch(\Exception $e) {
+    Application::reportException($e);
 }
-if (!in_array($wranglerType, $validWranglerTypes)) {
-    throw new \Exception("Invalid wrangler type!");
-}
-$html = "";
-$records = Download::recordIds($token, $server);
 if (isset($_POST['request'])) {
     if ($_POST['request'] == "check") {
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);
@@ -82,106 +86,114 @@ if (isset($_POST['request'])) {
     exit();
 }
 
-if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
-    $url .= "&headers=false";
-}
+try {
+    if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
+        $url .= "&headers=false";
+    }
 
-if ($_GET['record']) {
-    $record = REDCapManagement::getSanitizedRecord($_GET['record'], $records);
-	$autoApproveHTML = "";
-} else {
-    $record = FALSE;
-	$nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);
-    $autoApproveHTML = getAutoApproveHTML($nextRecord, $url.$wranglerTypeParam);
+    if ($_GET['record']) {
+        $record = REDCapManagement::getSanitizedRecord($_GET['record'], $records);
+        $autoApproveHTML = "";
+    } else {
+        $record = FALSE;
+        $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);
+        $autoApproveHTML = getAutoApproveHTML($nextRecord, $url.$wranglerTypeParam);
+    }
+} catch(\Exception $e) {
+    Application::reportException($e);
 }
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/baseSelect.php");
 
-if (!$record) {
-    if ($autoApproveHTML) {
-        echo "<h1>".ucfirst($wranglerType)." Wrangler</h1>";
-        echo $autoApproveHTML;
-    } else {
-        echo "<h1>No Data Available</h1>\n";
-    }
-	exit();
-}
-
-$metadata = Download::metadata($token, $server);
-$institutions = Download::institutionsAsArray($token, $server);
-if ($wranglerType == "Publications") {
-    $fields = Application::getCitationFields($metadata);
-} else if ($wranglerType == "Patents") {
-    $fields = Application::getPatentFields($metadata);
-} else {
-    throw new \Exception("Invalid wrangler type $wranglerType");
-}
-
-$redcapData = Download::fieldsForRecords($token, $server, $fields, [$record]);
-$nextRecord = getNextRecordWithData($token, $server, $record, $wranglerType, $records);
-
-if ($wranglerType == "Publications") {
-    $excludeList = new ExcludeList("Publications", $pid, [], $metadata);
-    $pubs = new Publications($token, $server);
-    $pubs->setRows($redcapData);
-    $html = $excludeList->makeEditForm($record).$pubs->getEditText();
-} else if ($wranglerType == "Patents") {
-    # no exclude list (yet)
-    $lastNames = Download::lastnames($token, $server);
-    $firstNames = Download::firstnames($token, $server);
-    $patents = new Patents($record, $pid, $firstNames[$record], $lastNames[$record], $institutions[$record]);
-    $patents->setRows($redcapData);
-    $html = $patents->getEditText();
-}
-
-if (count($_POST) >= 1) {
-    if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
-        header("Location: $url$wranglerTypeParam&record=".$record);
-    } else {
-        header("Location: $url$wranglerTypeParam&record=".$nextRecord);
-    }
-} else if ($record != 0) {
-	echo "<input type='hidden' id='nextRecord' value='".$nextRecord."'>\n";
-
-	if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
-		echo "<div class='subnav'>\n";
-        echo Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green")."\n";
-        echo Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green")."\n";
-        echo Links::makePatentWranglingLink($pid, "Patent Wrangler", $record, FALSE, "green")."\n";
-		echo Links::makeProfileLink($pid, "Scholar Profile", $record, FALSE, "green")."\n";
-		echo "<a class='yellow'>".Publications::getSelectRecord()."</a>\n";
-		echo "<a class='yellow'>".Publications::getSearch()."</a>\n";
-
-		$nextPageLink = "$url$wranglerTypeParam&record=".$nextRecord;
-		# next record is in the same window => don't use Links class
-		echo "<a class='blue' href='$nextPageLink'>View Next Record With New Data</a>\n";
-		echo Links::makeLink("https://www.ncbi.nlm.nih.gov/pubmed/advanced", "Access PubMed", TRUE, "purple")."\n";
-
-		echo "</div>\n";   // .subnav
-        echo "<div id='content'>\n";
-        if (function_exists("makeHelpLink")) {
-            echo makeHelpLink();
+try {
+    if (!$record) {
+        if ($autoApproveHTML) {
+            echo "<h1>".ucfirst($wranglerType)." Wrangler</h1>";
+            echo $autoApproveHTML;
         } else {
-            echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
+            echo "<h1>No Data Available</h1>\n";
         }
-	}
+        exit();
+    }
 
-	if (isset($_GET['mssg'])) {
-	    $mssg = REDCapManagement::sanitize($_GET['mssg']);
-        echo "<div class='green shadow centered note'>$mssg</div>";
-	}
-	echo "<p class='green shadow' id='note' style='width: 600px; margin-left: auto; margin-right: auto; text-align: center; padding: 10px; border-radius: 10px; display: none; font-size: 16px;'></p>\n";
-	echo "<p class='centered'>To undo any actions made here, open the Citation form in the given REDCap record and change the answer for the <b>Include?</b> question. Yes means accepted; no means omitted; blank means yet-to-be wrangled.</p>";
+    $metadata = Download::metadata($token, $server);
+    $institutions = Download::institutionsAsArray($token, $server);
+    if ($wranglerType == "Publications") {
+        $fields = Application::getCitationFields($metadata);
+    } else if ($wranglerType == "Patents") {
+        $fields = Application::getPatentFields($metadata);
+    } else {
+        throw new \Exception("Invalid wrangler type $wranglerType");
+    }
 
-	$html .= autoResetTimeHTML($pid);
-	echo $html;
-	if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
-		echo "</div>\n";      // #content
-	}
-} else {
-	# record == 0
-	echo "<h1>Nothing more to wrangle!</h1>\n";
+    $redcapData = Download::fieldsForRecords($token, $server, $fields, [$record]);
+    $nextRecord = getNextRecordWithData($token, $server, $record, $wranglerType, $records);
+
+    if ($wranglerType == "Publications") {
+        $excludeList = new ExcludeList("Publications", $pid, [], $metadata);
+        $pubs = new Publications($token, $server);
+        $pubs->setRows($redcapData);
+        $html = $excludeList->makeEditForm($record).$pubs->getEditText();
+    } else if ($wranglerType == "Patents") {
+        # no exclude list (yet)
+        $lastNames = Download::lastnames($token, $server);
+        $firstNames = Download::firstnames($token, $server);
+        $patents = new Patents($record, $pid, $firstNames[$record], $lastNames[$record], $institutions[$record]);
+        $patents->setRows($redcapData);
+        $html = $patents->getEditText();
+    }
+
+    if (count($_POST) >= 1) {
+        if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
+            header("Location: $url$wranglerTypeParam&record=".$record);
+        } else {
+            header("Location: $url$wranglerTypeParam&record=".$nextRecord);
+        }
+    } else if ($record != 0) {
+        echo "<input type='hidden' id='nextRecord' value='".$nextRecord."'>\n";
+
+        if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
+            echo "<div class='subnav'>\n";
+            echo Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green")."\n";
+            echo Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green")."\n";
+            echo Links::makePatentWranglingLink($pid, "Patent Wrangler", $record, FALSE, "green")."\n";
+            echo Links::makeProfileLink($pid, "Scholar Profile", $record, FALSE, "green")."\n";
+            echo "<a class='yellow'>".Publications::getSelectRecord()."</a>\n";
+            echo "<a class='yellow'>".Publications::getSearch()."</a>\n";
+
+            $nextPageLink = "$url$wranglerTypeParam&record=".$nextRecord;
+            # next record is in the same window => don't use Links class
+            echo "<a class='blue' href='$nextPageLink'>View Next Record With New Data</a>\n";
+            echo Links::makeLink("https://www.ncbi.nlm.nih.gov/pubmed/advanced", "Access PubMed", TRUE, "purple")."\n";
+
+            echo "</div>\n";   // .subnav
+            echo "<div id='content'>\n";
+            if (function_exists("makeHelpLink")) {
+                echo makeHelpLink();
+            } else {
+                echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
+            }
+        }
+
+        if (isset($_GET['mssg'])) {
+            $mssg = REDCapManagement::sanitize($_GET['mssg']);
+            echo "<div class='green shadow centered note'>$mssg</div>";
+        }
+        echo "<p class='green shadow' id='note' style='width: 600px; margin-left: auto; margin-right: auto; text-align: center; padding: 10px; border-radius: 10px; display: none; font-size: 16px;'></p>\n";
+        echo "<p class='centered'>To undo any actions made here, open the Citation form in the given REDCap record and change the answer for the <b>Include?</b> question. Yes means accepted; no means omitted; blank means yet-to-be wrangled.</p>";
+
+        $html .= autoResetTimeHTML($pid);
+        echo $html;
+        if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
+            echo "</div>\n";      // #content
+        }
+    } else {
+        # record == 0
+        echo "<h1>Nothing more to wrangle!</h1>\n";
+    }
+} catch(\Exception $e) {
+    Application::reportException($e);
 }
 
 function autoResetTimeHTML($pid) {

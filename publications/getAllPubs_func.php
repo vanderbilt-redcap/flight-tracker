@@ -126,6 +126,7 @@ function getPubs($token, $server, $pid, $records) {
             }
             Publications::deleteEmptySources($token, $server, $pid, $recordId);
             Publications::deleteMismatchedRows($token, $server, $pid, $recordId, $firstNames, $lastNames);
+            Publications::updateNewPMCs($token, $server, $pid, $recordId, $redcapData);
         }
 		binREDCapRows($redcapData, $citationIds);
 	}

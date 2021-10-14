@@ -50,6 +50,11 @@ class Application {
 	    return CareerDev::getGrantClasses();
     }
 
+    public static function reportException(\Exception $e) {
+	    $html = "<div class='red'>Exception: ".$e->getMessage()."</div>";
+	    return $html;
+    }
+
     # TRUE iff &record= appended to end of page
     public static function isRecordPage($link) {
         $regexes = [

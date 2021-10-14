@@ -11,8 +11,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\ExcludeList;
 use \Vanderbilt\CareerDevLibrary\Grant;
 
-require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-require_once(dirname(__FILE__)."/baseSelect.php");
+require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $daysForNew = 60;
@@ -52,18 +51,16 @@ if (isset($_POST['toImport']) && isset($_POST['record'])) {
 
 	$outputData = Upload::oneRow($data, $token, $server);
 	if (!$outputData['error'] && !$outputData['errors']) {
-		echo "<p class='green centered shadow note'>";
 		if (isset($outputData['count']) || isset($outputData['item_count'])) {
-			echo "Upload Success!";
             Application::refreshRecordSummary($token, $server, $pid, $requestedRecord);
         }
-		echo "</p>\n";
-	} else {
-		echo "<p class='red centered'>Error! ".json_encode($outputData)."</p>";
 	}
+    echo json_encode($outputData);
 }
+require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+require_once(dirname(__FILE__)."/baseSelect.php");
 
-$record = 1;
+$record = $records[0];
 $requestedRecord = FALSE;
 if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 	$requestedRecord = REDCapManagement::sanitize($_GET['record']);
@@ -72,7 +69,7 @@ if (isset($_POST['refresh'])) {
 	# override GET parameter
     $requestedRecord = REDCapManagement::sanitize($_POST['record']);
 } else if (isset($_POST['empty']) && $_POST['empty_record'] && is_numeric($_POST['empty_record'])) {
-    $requestedRecord = (int) REDCapManagement::sanitize($_POST['empty_record']);
+    $requestedRecord = REDCapManagement::sanitize($_POST['empty_record']);
 }
 if ($requestedRecord) {
     foreach ($records as $r) {
@@ -80,6 +77,9 @@ if ($requestedRecord) {
             $record = $r;
         }
     }
+}
+if (!in_array($record, $records)) {
+    die("Invalid record");
 }
 
 $myFields = array(
@@ -426,6 +426,26 @@ if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
 }
 ?>
 <script>
+    function sendPost(nextRecord) {
+        let url = '<?= $nextPageLink ?>';
+        let postData = {};
+        postData['toImport'] = $('#toImport').val();
+        postData['record'] = $('#record').val();
+        postData['empty_record'] = $('#empty_record').val();
+        presentScreen("Saving...");
+        $.post(url, postData, function(json) {
+            console.log(json);
+            clearScreen();
+            let data = JSON.parse(json);
+            if (data.count || data.item_count) {
+                if (nextRecord) {
+                    url = url.replace(/record=\d+/, 'record='+nextRecord);
+                }
+                window.location.href = url;
+            }
+        });
+    }
+
 function refreshToDays() {
 	var days = $("#newDaysForNew").val();
 	if (isNaN(days) || (days === "")) {
@@ -634,12 +654,12 @@ function toggleButtons() {
 		$('#enactRefresh').hide();
 		$('#enact').hide();
 		$('#enactEmpty').hide();
-		$('#enactMDOnly').hide();
+		$('#enactNew').hide();
 	} else {
 		$('#enactRefresh').show();
 		$('#enact').show();
 		$('#enactEmpty').show();
-		$('#enactMDOnly').show();
+		$('#enactNew').show();
 	}
 }
 
@@ -859,17 +879,17 @@ foreach ($redcapData as $row) {
 		echo "<input type='hidden' name='toImport' id='toImport' value=''>";
 		echo "<input type='hidden' id='origToImport' value=''>";
 		echo "<input type='hidden' name='record' id='record' value='$record'>";
-		echo "<input type='hidden' name='empty_record' id='record' value='$emptyRecord'>";
+        echo "<input type='hidden' name='empty_record' id='empty_record' value='$emptyRecord'>";
 		if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 			echo "<p style='text-align: center;'><input type='submit' class='yellow' style='display: none; font-size: 20px;' name='refresh' id='enactRefresh' value='Commit Change & Refresh'></p>";
 		} else {
-			echo "<p style='text-align: center;'><input type='submit' class='yellow' style='display: none; font-size: 20px;' name='next' id='enact' value='Change & Go To Next Record'></p>";
-			if (isset($_GET['new'])) {
-				echo "<p style='text-align: center;'><input class='purple' type='submit' style='display: none; font-size: 20px;' name='mdonly' id='enactMDOnly' value='Change & Go To Next Record with New Data'></p>";
-			}
-			if ($emptyRecord) {
-				echo "<p style='text-align: center;'><input class='blue' type='submit' style='display: none; font-size: 20px;' name='empty' id='enactEmpty' value='Change & Go To Next EMPTY Record'></p>";
-			}
+            echo "<p style='text-align: center;'><button class='yellow' style='display: none; font-size: 20px;' name='next' id='enact' onclick='sendPost(\"$record\"); return false;'>Change &amp; Go To Next Record</button></p>";
+            if (isset($_GET['new'])) {
+                echo "<p style='text-align: center;'><button class='purple' style='display: none; font-size: 20px;' name='new' id='enactNew' onclick='sendPost(\"$nextNewRecord\"); return false;'>Change &amp; Go To Next Record with New Data</button></p>";
+            }
+            if ($emptyRecord) {
+                echo "<p style='text-align: center;'><button class='blue' style='display: none; font-size: 20px;' name='empty' id='enactEmpty' onclick='sendPost(\"$emptyRecord\"); return false;'>Change &amp; Go To Next EMPTY Record</button></p>";
+            }
 		}
 		echo "</form>";
 		echo "</div>";

@@ -249,10 +249,32 @@ class Grant {
     }
 
 	public function isNIH() {
-	    # from https://era.nih.gov/files/Deciphering_NIH_Application.pdf
-        $nihInstituteCodes = ["TW", "TR", "AT", "CA", "EY", "HG", "HL", "AG", "AA", "AI", "AR", "EB", "HD", "DA", "DC", "DE", "DK", "ES", "GM", "MH", "MD", "NS", "NR", "LM"];
 	    $ary = self::parseNumber($this->getNumber());
-        return isset($ary['institute_code']) && in_array($ary['institute_code'], $nihInstituteCodes);
+        return isset($ary['institute_code']) && self::isMember($ary['institute_code'], "NIH");
+    }
+
+    public function isHHS() {
+	    return self::isHHSGrant($this->getNumber());
+	}
+
+    public static function isHHSGrant($awardNo) {
+	    return preg_match("/^HHS/", $awardNo);
+    }
+
+    public static function isMember($instituteCode, $group) {
+	    if (!$instituteCode) {
+	        return FALSE;
+        }
+	    $codes = [
+            # from https://era.nih.gov/files/Deciphering_NIH_Application.pdf
+            "NIH" => ["TW", "TR", "AT", "CA", "EY", "HG", "HL", "AG", "AA", "AI", "AR", "EB", "HD", "DA", "DC", "DE", "DK", "ES", "GM", "MH", "MD", "NS", "NR", "LM", "RR", "OD", "HC"],
+            "PCORI" => [],
+            "AHRQ" => ["HS"],
+            "VA" => ["BX", "CX", "HX"],
+            "DOD" => ["XW"],
+        ];
+	    $groupCodes = $codes[$group] ?? [];
+        return in_array($instituteCode, $groupCodes);
     }
 
 	public function getVariable($type) {
@@ -486,22 +508,27 @@ class Grant {
 
 	public static function parseNumber($awardNo) {
 		$awardNo = preg_replace("/[\s\-]+/", "", $awardNo);
-		$ary = array();
-		if (preg_match("/[A-Z][A-Z\d]\d[A-Z][A-Z]\d\d\d\d\d\d/", $awardNo)) {
-			if (preg_match("/^\d[A-Z][A-Z\d]\d[A-Z][A-Z]\d\d\d\d\d\d/", $awardNo)) {
-				$ary["application_type"] = self::getApplicationType($awardNo);
-			} else {
-				$awardNo = "0".$awardNo;
-			}
-			$ary["activity_code"] = self::getActivityCode($awardNo);
-			$ary["activity_type"] = self::getActivityType($ary["activity_code"]);
-			$ary["funding_institute"] = self::getFundingInstitute($awardNo);
-			$ary["institute_code"] = self::getInstituteCode($awardNo);
-			$ary["serial_number"] = self::getSerialNumber($awardNo);
-			$ary["support_year"] = self::getSupportYear($awardNo);
-			$ary["other_suffixes"] = self::getOtherSuffixes($awardNo);
-		}
-
+		$ary = [];
+        if (preg_match("/[A-Z][A-Z\d]\d[A-Z][A-Z]\d{6}/", $awardNo)) {
+            if (preg_match("/^\d[A-Z][A-Z\d]\d[A-Z][A-Z]\d{6}/", $awardNo)) {
+                $ary["application_type"] = self::getApplicationType($awardNo);
+            } else {
+                $awardNo = "0" . $awardNo;
+            }
+            $ary["activity_code"] = self::getActivityCode($awardNo);
+            $ary["activity_type"] = self::getActivityType($ary["activity_code"]);
+            $ary["funding_institute"] = self::getFundingInstitute($awardNo);
+            $ary["institute_code"] = self::getInstituteCode($awardNo);
+            $ary["serial_number"] = self::getSerialNumber($awardNo);
+            $ary["support_year"] = self::getSupportYear($awardNo);
+            $ary["other_suffixes"] = self::getOtherSuffixes($awardNo);
+        } else if (preg_match("/^[A-Z][A-Z]\d{6}$/", $awardNo)) {
+		    $ary['institute_code'] = substr($awardNo, 0, 2);
+		    $ary['serial_number'] = substr($awardNo, 2, 6);
+        } else if (preg_match("/^[A-Z][A-Z]\d{5}$/", $awardNo)) {
+            $ary['institute_code'] = substr($awardNo, 0, 2);
+            $ary['serial_number'] = "0".substr($awardNo, 2, 5);
+        }
 		foreach ($ary as $type => $value) {
 			if ($value === "") {
 				unset($ary[$type]);

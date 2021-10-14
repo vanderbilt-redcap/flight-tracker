@@ -10,11 +10,13 @@ require_once(dirname(__FILE__)."/preliminary.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once dirname(__FILE__)."/../CareerDev.php";
+require_once(APP_PATH_DOCROOT."/Classes/UserRights.php");
 
+$validREDCapUsers = getREDCapUsers($pid);
 if (Application::isExternalModule()) {
-    if (($pid == 101785) && Application::isVanderbilt()) {
+    if (($pid == 127616) && Application::isVanderbilt()) {
         $thisUrl = Application::link("this");
-        $thisUrl = str_replace("project_id=101785", "project_id=117692", $thisUrl);
+        $thisUrl = str_replace("project_id=127616", "project_id=117692", $thisUrl);
         header("Location: $thisUrl");
     }
     $module = Application::getModule();
@@ -28,7 +30,12 @@ if (Application::isExternalModule()) {
     if (!$module) {
         die("No module.");
     }
-    if (!$module->hasMentorAgreementRights($pid, $username) && !$isSuperuser) {
+
+    if (
+        !$module->hasMentorAgreementRights($pid, $username)
+        && !$isSuperuser
+        && !in_array($username, $validREDCapUsers)
+    ) {
         die("Access Denied.");
     }
 } else {
@@ -40,7 +47,11 @@ if (Application::isExternalModule()) {
         $isSuperuser = defined('SUPER_USER') && (SUPER_USER == '1');
     }
 
-    if (!hasMentorAgreementRightsForPlugin($pid, $username) && !$isSuperuser) {
+    if (
+        !hasMentorAgreementRightsForPlugin($pid, $username)
+        && !$isSuperuser
+        && !in_array($username, $validREDCapUsers)
+    ) {
         die("Access Denied.");
     }
 }
@@ -1247,4 +1258,9 @@ function getEvalInstance($type) {
     } else {
         return "";
     }
+}
+
+function getREDCapUsers($pid) {
+    $rights = \UserRights::getPrivileges($pid)[$pid];
+    return array_keys($rights);
 }

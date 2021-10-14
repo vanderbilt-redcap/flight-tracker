@@ -1085,7 +1085,7 @@ class Publications {
         $html .= "<p class='list' style='display: none;'><textarea id='pmcList'></textarea> <button onclick='submitPMCs($(\"#pmcList\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show(); checkSubmitButton(\"#manualCitation\", \".oneAtATime\");'>Switch to Single</a></p>\n";
 		$html .= "</td><td style='width: 500px;'>\n";
 		$html .= "<div id='lookupResult'>\n";
-		$html .= "<p><textarea style='width: 100%; height: 150px; font-size: 16px;' id='manualCitation'></textarea></p>\n";
+		$html .= "<p><textarea style='width: 100%; height: 150px; font-size: 16px;' id='manualCitation' readonly></textarea></p>\n";
         $html .= "<p class='oneAtATime'><button class='biggerButton green includeButton' style='display: none;' onclick='includeCitation($(\"#manualCitation\").val()); return false;'>Include This Citation</button></p>\n";
         $html .= "<p class='list' style='display: none;'><button class='biggerButton green includeButton' style='display: none;' onclick='includeCitations($(\"#manualCitation\").val()); return false;'>Include These Citations</button></p>\n";
 		$html .= "</div>\n";
@@ -1141,16 +1141,45 @@ class Publications {
 
     public static function PMIDsToPMCs($pmids, $pid) {
         if (is_array($pmids) && !empty($pmids)) {
-            return self::runIDConverter($pmids, $pid);
+            $translator = self::runIDConverter($pmids, $pid);
+            $pmcTranslator = [];
+            foreach ($translator as $pmid => $ary) {
+                if (in_array($pmid, $pmids)) {
+                    $pmcTranslator[$pmid] = $ary['pmcid'];
+                }
+            }
+            return $pmcTranslator;
         }
         return [];
+    }
+
+    public static function PMIDsToNIHMS($pmids, $pid) {
+        if (!empty($pmids)) {
+            $translator = self::runIDConverter($pmids, $pid);
+            $nihmsTranslator = [];
+            foreach ($translator as $pmid => $ary) {
+                if (in_array($pmid, $pmids) && isset($ary['nihms'])) {
+                    $nihmsTranslator[$pmid] = $ary['nihms'];
+                }
+            }
+            return $nihmsTranslator;
+        }
+        return [];
+    }
+
+    public static function PMIDToNIHMS($pmid, $pid) {
+        $translator = self::PMIDsToPMCs([$pmid], $pid);
+        if (isset($translator[$pmid])) {
+            return $translator[$pmid];
+        }
+        return "";
     }
 
 	public static function PMIDToPMC($pmid, $pid) {
 	    if ($pmid) {
             $pmcs = self::PMIDsToPMCs([$pmid], $pid);
             if (count($pmcs) > 0) {
-                return $pmcs[0];
+                return $pmcs[$pmid];
             }
         }
 		return "";
@@ -1164,7 +1193,14 @@ class Publications {
                 }
             }
             if (!empty($pmcids)) {
-                return self::runIDConverter($pmcids, $pid);
+                $translator = self::runIDConverter($pmcids, $pid);
+                $pmidTranslator = [];
+                foreach ($translator as $transPmcid => $ary) {
+                    if (in_array($transPmcid, $pmcids)) {
+                        $pmidTranslator[$transPmcid] = $ary['pmid'];
+                    }
+                }
+                return $pmidTranslator;
             }
         }
 	    return [];
@@ -1214,9 +1250,17 @@ class Publications {
 			$results = json_decode($output, true);
 			if ($results) {
 			    foreach ($results['records'] as $record) {
-			        if ($record['pmcid'] && $record['pmid']) {
-                        $translator[$record['pmcid']] = $record['pmid'];
-                        $translator[$record['pmid']] = $record['pmcid'];
+			        if (isset($record['pmcid']) && isset($record['pmid'])) {
+                        $translator[$record['pmcid']] = ["pmid" => $record['pmid']];
+                        $translator[$record['pmid']] = ["pmcid" => $record['pmcid']];
+                        if (isset($record['versions'])) {
+                            foreach ($record['versions'] as $version) {
+                                if (isset($version['mid'])) {
+                                    $translator[$record['pmcid']]['nihms'] = $version['mid'];
+                                    $translator[$record['pmid']]['nihms'] = $version['mid'];
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1321,6 +1365,41 @@ class Publications {
 	        krsort($keyedByTimestamp);
         }
 	    return array_values($keyedByTimestamp);
+    }
+
+    public static function updateNewPMCs($token, $server, $pid, $recordId, $redcapData) {
+	    $pmidsWithoutPMC = [];
+	    foreach ($redcapData as $row) {
+	        if (
+	            ($row['record_id'] == $recordId)
+                && ($row['redcap_repeat_instrument'] == "citation")
+                && $row['citation_pmid']
+                && ($row['citation_pmcid'] === "")
+            ) {
+	            $pmidsWithoutPMC[$row['redcap_repeat_instance']] = $row['citation_pmid'];
+            }
+        }
+	    if (!empty($pmidsWithoutPMC)) {
+	        $pmcids = self::PMIDsToPMCs(array_values($pmidsWithoutPMC), $pid);
+	        $i = 0;
+	        $upload = [];
+	        foreach ($pmidsWithoutPMC as $instance => $pmid) {
+	            $pmcid = $pmcids[$i] ?? "";
+	            if ($pmcid) {
+                    $upload[] = [
+                        "record_id" => $recordId,
+                        "redcap_repeat_instrument" => "citation",
+                        "redcap_repeat_instance" => $instance,
+                        "citation_pmcid" => $pmcid,
+                    ];
+                }
+	            $i++;
+            }
+	        if (!empty($upload)) {
+	            Application::log("Uploading ".count($upload)." rows of new PMCIDs", $pid);
+	            Upload::rows($upload, $token, $server);
+            }
+        }
     }
 
 	# returns array of class Citation
