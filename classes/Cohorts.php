@@ -64,7 +64,7 @@ class Cohorts {
     }
 
 	public function makeCohortSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
-	    $defaultCohort = htmlentities($defaultCohort);
+	    $defaultCohort = REDCapManagement::sanitizeWithoutChangingQuotes($defaultCohort);
         $html = "<label for='cohort'>Cohort:</label> <select id='cohort' name='cohort'";
         if ($onchangeJS) {
 	        $html .= " onchange='".$onchangeJS."'";
@@ -169,7 +169,7 @@ class Cohorts {
 	}
 
 	public function getCohort($name) {
-	    $name = htmlentities($name);
+	    $name = REDCapManagement::sanitizeWithoutChangingQuotes($name);
 		if (isset($this->configs[$name])) {
 			return new CohortConfig($name, $this->configs[$name]);
 		}

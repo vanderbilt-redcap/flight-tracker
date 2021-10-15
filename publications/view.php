@@ -153,8 +153,9 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
         $notDone = $pubs->getCitationCollection("Not Done");
 
         if ($_GET['grant'] && ($_GET['grant'] != 'all')) {
+            $awardNo = REDCapManagement::sanitize($_GET['grant']);
             $included = new CitationCollection($record, $token, $server, "Filtered", [], $metadata, $lastNames, $firstNames);
-            $recordCitations = $pubs->getCitationsForGrants($_GET['grant'], "Included");
+            $recordCitations = $pubs->getCitationsForGrants($awardNo, "Included");
             foreach ($recordCitations as $citation) {
                 $included->addCitation($citation);
             }

@@ -31,7 +31,7 @@ if (count($_POST) > 0) {
     $upload = [];
 
     foreach ($engagedValues as $val => $field) {
-        $records = $_POST[$field];
+        $records = REDCapManagement::sanitize($_POST[$field]);
         foreach ($records as $recordId) {
             $upload[] = [
                 "record_id" => $recordId,
@@ -45,7 +45,7 @@ if (count($_POST) > 0) {
     $fields = ["record_id", "custom_role"];
     foreach ($toDelete as $field => $idx) {
         $instancesDeleted = 0;
-        $records = $_POST[$field];
+        $records = REDCapManagement::sanitize($_POST[$field]);
         if (!empty($records)) {
             $instancesToDelete = [];
             $redcapData = Download::fieldsForRecords($token, $server, $field, $records);
@@ -70,7 +70,7 @@ if (count($_POST) > 0) {
     }
 
     foreach ($toChange as $field => $idx) {
-        $recordsAndDates = $_POST[$field];
+        $recordsAndDates = REDCapManagement::sanitize($_POST[$field]);
         if (!empty($recordsAndDates)) {
             $records = array_keys($recordsAndDates);
             $fields = ["record_id", "custom_role"];

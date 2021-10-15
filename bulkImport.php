@@ -49,7 +49,7 @@ if ($_FILES['bulk']) {
 		$upload = [];
         foreach ($lines as $line) {
             if (isset($_GET['test'])) {
-                echo "<p>".htmlentities(REDCapManagement::json_encode_with_spaces($line))."</p>";
+                echo "<p>".REDCapManagement::json_encode_with_spaces($line)."</p>";
             }
             if ($startIdx == 2) {
                 $firstName = $line[0];
@@ -159,7 +159,7 @@ if ($_FILES['bulk']) {
             } catch (\Exception $e) {
                 if (isset($_GET['test'])) {
                     foreach ($upload as $row) {
-                        echo "<p>".htmlentities(REDCapManagement::json_encode_with_spaces($row))."</p>";
+                        echo "<p>".REDCapManagement::json_encode_with_spaces($row)."</p>";
                     }
                 }
                 echo "<p class='red padded centered max-width'>ERROR! ".$e->getMessage()."</p>\n";

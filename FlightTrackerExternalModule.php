@@ -661,8 +661,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             }
 		}
 		if (!empty($activePids)) {
+            $pid = $activePids[0];
 		    try {
-                $pid = $activePids[0];
                 $token = $this->getProjectSetting("token", $pid);
                 $server = $this->getProjectSetting("server", $pid);
                 $mgr = new CronManager($token, $server, $pid, $this);
@@ -812,10 +812,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     {
         $token = $this->getProjectSetting("token", $project_id);
         $server = $this->getProjectSetting("server", $project_id);
+        $menteeRecord = FALSE;
         if (isset($_REQUEST['menteeRecord'])) {
-            $menteeRecord = $_REQUEST['menteeRecord'];
+            $menteeRecord = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
         } else if (isset($_REQUEST['record'])) {
-            $menteeRecord = $_REQUEST['record'];
+            $menteeRecord = REDCapManagement::sanitize($_REQUEST['record']);
         } else if (function_exists("getRecordsAssociatedWithUserid")) {
             $records = getRecordsAssociatedWithUserid($userid, $token, $server);
             if (isset($_GET['test'])) {

@@ -7,12 +7,12 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$recordId = $_POST['record'];
-$newPMID = $_POST['pmid'];
-$state = $_POST['state'];
-$hash = $_POST['hash'];
-
 $records = Download::recordIds($token, $server);
+$recordId = REDCapManagement::getSanitizedRecord($_POST['record'], $records);
+$newPMID = REDCapManagement::sanitize($_POST['pmid']);
+$state = REDCapManagement::sanitize($_POST['state']);
+$hash = REDCapManagement::sanitize($_POST['hash']);
+
 if (!$recordId || !in_array($recordId, $records)) {
     throw new \Exception("Invalid Record");
 }

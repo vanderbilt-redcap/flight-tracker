@@ -1195,10 +1195,6 @@ function beautifyHeader($str) {
     return $str;
 }
 
-function isTestServer() {
-    return (SERVER_NAME == "redcaptest.vanderbilt.edu");
-}
-
 function makeReminderJS($from) {
     $html = "";
     $html .= "<script>

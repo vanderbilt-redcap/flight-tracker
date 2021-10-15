@@ -45,7 +45,7 @@ if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
             echo "Error: " . $e->getMessage();
         }
     } else {
-        echo "Error: Invalid token. ".REDCapManagement::json_encode_with_spaces($_POST);
+        echo "Error: Invalid token.";
     }
 } else if ($otherServer && $otherToken && REDCapManagement::isValidToken($otherToken)) {
     require_once(dirname(__FILE__)."/small_base.php");

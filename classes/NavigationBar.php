@@ -34,7 +34,7 @@ class NavigationBar {
 	private function formatLink($link) {
 		global $pid;
 		if (!$pid) {
-			$pid = $_GET['pid'];
+			$pid = REDCapManagement::sanitize($_GET['pid']);
 		}
 		if (preg_match("/^http/", $link)) {
 			return $link;
@@ -49,9 +49,9 @@ class NavigationBar {
 		}
 		if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isRecordPage") && Application::isRecordPage($link) && (isset($_GET['id']) || isset($_GET['record']))) {
 		    if (isset($_GET['record'])) {
-		        $record = htmlentities($_GET['record']);
+		        $record = REDCapManagement::sanitize($_GET['record']);
             } else {
-		        $record = htmlentities($_GET['id']);
+		        $record = REDCapManagement::sanitize($_GET['id']);
             }
 		    $link .= "&record=$record";
         }

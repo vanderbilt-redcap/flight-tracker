@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.11.0";
+		return "3.11.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -218,7 +218,7 @@ class CareerDev {
 
 	public static function getCurrPage() {
 	    if (isset($_GET['page'])) {
-            return htmlentities($_GET['page'], ENT_QUOTES).".php";
+            return REDCapManagement::sanitize($_GET['page']).".php";
         }
 	    return "";
 	}
@@ -371,7 +371,7 @@ class CareerDev {
             $initialSeparator = "?";
             foreach ($paramKeys as $key) {
                 if (isset($_GET[$key])) {
-                    $url .= "$initialSeparator$key=".urlencode(urldecode(htmlentities($_GET[$key], ENT_QUOTES)));
+                    $url .= "$initialSeparator$key=".urlencode(urldecode(REDCapManagement::sanitize($_GET[$key])));
                     $initialSeparator = "&";
                 }
             }
@@ -401,9 +401,13 @@ class CareerDev {
 		        if (preg_match("/pid=/", $url)) {
                     $url = preg_replace("/pid=/", "project_id=", $url);
                 } else if (is_numeric($_GET['project_id'])) {
-		            $projectId = (int) $_GET['project_id'];
-		            $projectId = htmlentities((string) $projectId, ENT_QUOTES);
-		            $url .= "&project_id=".$projectId;
+		            $projectId = (int) REDCapManagement::sanitize($_GET['project_id']);
+		            $validPids = $module->getPids();
+		            foreach ($validPids as $possiblePid) {
+		                if ($possiblePid == $projectId) {
+                            $url .= "&project_id=".$possiblePid;
+                        }
+                    }
                 }
             }
 		    if ($pid && is_numeric($pid)) {
@@ -654,7 +658,7 @@ class CareerDev {
 	}
 
 	public static function getBackgroundCSS() {
-		$currPage = urlencode(htmlentities($_GET['page']));
+		$currPage = urlencode(REDCapManagement::sanitize($_GET['page']));
 		$bgs = self::getMenuBackgrounds();
 		$r = self::getREDCapDir();
 

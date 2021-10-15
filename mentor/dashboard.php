@@ -16,28 +16,33 @@ $numWeeks = 3;
 
 if ($_POST['newUids']) {
     require_once(dirname(__FILE__)."/../small_base.php");
+    $records = Download::recordIds($token, $server);
+    $newUids = REDCapManagement::sanitizeArray($_POST['newUids']);
     $upload = [];
     $mentorUserids = Download::primaryMentorUserids($token, $server);
-    foreach ($_POST['newUids'] as $recordId => $uids) {
-        $addedNew = FALSE;
-        $newUidList = [];
-        foreach ($uids as $uid) {
-            if (!$mentorUserids[$recordId]) {
-                $newUidList = [];
-            } else {
-                $newUidList = $mentorUserids[$recordId];
+    foreach ($newUids as $recordId => $uids) {
+        $recordId = REDCapManagement::getSanitizedRecord($recordId, $records);
+        if ($recordId) {
+            $addedNew = FALSE;
+            $newUidList = [];
+            foreach ($uids as $uid) {
+                if (!$mentorUserids[$recordId]) {
+                    $newUidList = [];
+                } else {
+                    $newUidList = $mentorUserids[$recordId];
+                }
+                if (!in_array($uid, $mentorUserids[$recordId])) {
+                    $newUidList[] = $uid;
+                    $addedNew = TRUE;
+                }
             }
-            if (!in_array($uid, $mentorUserids[$recordId])) {
-                $newUidList[] = $uid;
-                $addedNew = TRUE;
+            if ($addedNew) {
+                $uploadRow = [
+                    "record_id" => $recordId,
+                    "summary_mentor_userid" => implode(", ", $newUidList),
+                ];
+                $upload[] = $uploadRow;
             }
-        }
-        if ($addedNew) {
-            $uploadRow = [
-                "record_id" => $recordId,
-                "summary_mentor_userid" => implode(", ", $newUidList),
-            ];
-            $upload[] = $uploadRow;
         }
     }
     if (!empty($upload)) {

@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
@@ -27,7 +28,7 @@ if ($_GET['download'] && ($_GET['download'] == "csv")) {
     echo $html;
 } else if ($_POST['mentorName']) {
     require_once(dirname(__FILE__) . "/small_base.php");
-    $mentorName = htmlentities($_POST['mentorName'], ENT_QUOTES);
+    $mentorName = REDCapManagement::sanitize($_POST['mentorName']);
     list($mentorFirst, $mentorLast) = NameMatcher::splitName($mentorName);
     $lookup = new REDCapLookup($mentorFirst, $mentorLast);
     $uids = $lookup->getUidsAndNames();
@@ -38,11 +39,11 @@ if ($_GET['download'] && ($_GET['download'] == "csv")) {
     echo json_encode($uids);
 } else if ($_POST['newMentorName']) {
     require_once(dirname(__FILE__) . "/small_base.php");
-    $newMentorName = $_POST['newMentorName'];
-    $newMentorUid = $_POST['newMentorUid'];
-    $recordId = $_POST['recordId'];
+    $newMentorName = REDCapManagement::sanitize($_POST['newMentorName']);
+    $newMentorUid = REDCapManagement::sanitize($_POST['newMentorUid']);
     $records = Download::recordIds($token, $server);
-    if (in_array($recordId, $records) && $newMentorName && $newMentorUid) {
+    $recordId = REDCapManagement::getSanitizedRecord($_POST['recordId'], $records);
+    if ($recordId && $newMentorName && $newMentorUid) {
         $uploadRow = [
             "record_id" => $recordId,
             "imported_mentor" => $newMentorName,
@@ -57,7 +58,7 @@ if ($_GET['download'] && ($_GET['download'] == "csv")) {
     echo json_encode($feedback);
 } else if ($_POST['scholarName']) {
     require_once(dirname(__FILE__) . "/small_base.php");
-    $name = htmlentities($_POST['scholarName'], ENT_QUOTES);
+    $name = REDCapManagement::sanitize($_POST['scholarName']);
     $nodes = preg_split("/\s+/", $name);
     if (!isset($_POST['scholarName']) || ($name === "")) {
         echo "[]";

@@ -1,13 +1,14 @@
 <?php
 
 use \Vanderbilt\CareerDevLibrary\ConnectionStatus;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/small_base.php");
 
-$name = htmlentities($_POST['name'], ENT_QUOTES);
-$server = htmlentities($_POST['server'], ENT_QUOTES);
+$name = REDCapManagement::sanitize($_POST['name']);
+$server = REDCapManagement::sanitize($_POST['server']);
 
 if ($name && $server) {
     $connStatus = new ConnectionStatus($name, $server, $pid);

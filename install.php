@@ -111,7 +111,7 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
 	}
 } else {
 	displayInstallHeaders();
-	echo makeIntroPage(htmlentities($_GET['pid']));
+	echo makeIntroPage(REDCapManagement::sanitize($_GET['pid']));
 	echo makeInstallFooter();
 }
 
@@ -190,7 +190,8 @@ function makeIntroPage($projectId) {
 	}
 
 	if (isset($_GET['mssg'])) {
-		$html .= "<p class='centered red'>{$_GET['mssg']}</p>";
+	    $mssg = REDCapManagement::sanitize($_GET['mssg']);
+		$html .= "<p class='centered red'>{$mssg}</p>";
 	}
 	$html .= "<form method='POST' action='".CareerDev::link("install.php")."'>\n";
 	$html .= "<table style='margin-left: auto; margin-right: auto; max-width: 800px;'>\n";

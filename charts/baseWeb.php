@@ -4,7 +4,9 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
 
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
 $pid = $_GET['pid'];
@@ -83,19 +85,19 @@ function refreshForRecord(page) {
 <?php
 	if (isset($_GET['new'])) {
 		if (is_numeric($_GET['new'])) {
-			echo "  newStr = '&new=".htmlentities((string) $_GET['new'], ENT_QUOTES)."';";
+			echo "  newStr = '&new=".REDCapManagement::sanitize($_GET['new'])."';";
 		} else {
 			echo "  newStr = '&new';";
 		}
 	}
 	if (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) {
-        echo "let wranglerType = '&wranglerType=".htmlentities($_GET['wranglerType'], ENT_QUOTES)."';\n";
+        echo "let wranglerType = '&wranglerType=".REDCapManagement::sanitize($_GET['wranglerType'])."';\n";
 	} else {
         echo "let wranglerType = '';\n";
     }
 ?>
 	if (rec != '') {
-		window.location.href = page + '?pid=<?= urlencode(htmlentities($_GET['pid'])) ?>&page=<?= urlencode(htmlentities($_GET['page'])) ?>&prefix=<?= urlencode(htmlentities($_GET['prefix'])) ?>&record='+rec+newStr+wranglerType;
+		window.location.href = page + '?pid=<?= urlencode(REDCapManagement::sanitize($_GET['pid'])) ?>&page=<?= urlencode(REDCapManagement::sanitize($_GET['page'])) ?>&prefix=<?= urlencode(REDCapManagement::sanitize($_GET['prefix'])) ?>&record='+rec+newStr+wranglerType;
 	}
 }
 
@@ -132,9 +134,9 @@ function search(page, div, name) {
 		}
 		if (numFoundRecs == 1) {
 			$('#searchDiv').html("Name found.");
-			let wranglerType = '<?= (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) ? htmlentities($_GET['wranglerType'], ENT_QUOTES) : "" ?>';
+			let wranglerType = '<?= (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) ? REDCapManagement::sanitize($_GET['wranglerType']) : "" ?>';
 			for (rec in foundRecs) {
-				window.location.href = '?pid=<?= urlencode(htmlentities($_GET['pid'])) ?>&prefix=<?= urlencode(htmlentities($_GET['prefix'])) ?>&page='+encodeURIComponent(page)+'&record='+rec+wranglerType;
+				window.location.href = '?pid=<?= urlencode(REDCapManagement::sanitize($_GET['pid'])) ?>&prefix=<?= urlencode(REDCapManagement::sanitize($_GET['prefix'])) ?>&page='+encodeURIComponent(page)+'&record='+rec+wranglerType;
 			}
 		} else  if (numFoundRecs > 1) {
 			var list = "";

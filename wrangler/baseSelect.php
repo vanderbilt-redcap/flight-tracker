@@ -15,7 +15,7 @@ require_once(dirname(__FILE__)."/css.php");
 
 $downloadedRecords = Download::records($token, $server);
 $sanitizedPage = isset($_GET['page']) ? REDCapManagement::sanitize($_GET['page']) : "";
-$sanitizedRecord = REDCapManagement::getSanitizedRecord($_GET['record'], $downloadedRecords);
+$sanitizedRecord = REDCapManagement::getSanitizedRecord($_GET['record'] ?? "", $downloadedRecords);
 if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
     $sanitizedRecord = $downloadedRecords[0];
 }

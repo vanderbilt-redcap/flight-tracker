@@ -15,10 +15,12 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
+$wranglerType = "";
+$wranglerTypeParam = "";
+$records = Download::recordIds($token, $server);
+$url = Application::link("wrangler/include.php");
+$html = "";
 try {
-    $url = Application::link("wrangler/include.php");
-    $wranglerType = "";
-    $wranglerTypeParam = "";
     $validWranglerTypes = ["Publications", "Patents", "Grants"];
     foreach ($validWranglerTypes as $wt) {
         if ($wt == REDCapManagement::sanitize($_GET['wranglerType'])) {
@@ -30,8 +32,6 @@ try {
     if (!in_array($wranglerType, $validWranglerTypes)) {
         throw new \Exception("Invalid wrangler type!");
     }
-    $html = "";
-    $records = Download::recordIds($token, $server);
 } catch(\Exception $e) {
     Application::reportException($e);
 }
@@ -42,38 +42,32 @@ if (isset($_POST['request'])) {
         echo $html;
     } else if ($_POST['request'] == "approve") {
         $upload = [];
-        if ($wranglerType == "Publications") {
-            foreach ($_POST as $key => $value) {
-                if ($value && preg_match("/^record_\d+:\d+$/", $key)) {
-                    $pair = preg_replace("/^record_/", "", $key);
-                    list($recordId, $instance) = preg_split("/:/", $pair);
-                    if (in_array($recordId, $records)) {
+        foreach ($_POST as $key => $value) {
+            $key = REDCapManagement::sanitize($key);
+            $value = REDCapManagement::sanitize($value);
+            if ($value && preg_match("/^record_\d+:\d+$/", $key)) {
+                $pair = preg_replace("/^record_/", "", $key);
+                list($recordId, $instance) = preg_split("/:/", $pair);
+                if (in_array($recordId, $records)) {
+                    if ($wranglerType == "Publications") {
                         $upload[] = [
                             'record_id' => $recordId,
                             'redcap_repeat_instrument' => 'citation',
                             'redcap_repeat_instance' => $instance,
                             'citation_include' => '1',
                         ];
-                    }
-                }
-            }
-        } else if ($wranglerType == "Patents") {
-            foreach ($_POST as $key => $value) {
-                if ($value && preg_match("/^record_\d+:\d+$/", $key)) {
-                    $pair = preg_replace("/^record_/", "", $key);
-                    list($recordId, $instance) = preg_split("/:/", $pair);
-                    if (in_array($recordId, $records)) {
+                    } else if ($wranglerType == "Patents") {
                         $upload[] = [
                             'record_id' => $recordId,
                             'redcap_repeat_instrument' => 'citation',
                             'redcap_repeat_instance' => $instance,
                             'patent_include' => '1',
                         ];
+                    } else {
+                        throw new \Exception("Invalid wrangler type $wranglerType");
                     }
                 }
             }
-        } else {
-            throw new \Exception("Invalid wrangler type $wranglerType");
         }
         if (!empty($upload)) {
             Upload::rows($upload, $token, $server);
@@ -81,11 +75,14 @@ if (isset($_POST['request'])) {
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);   // after upload
         header("Location: $url$wranglerTypeParam&record=".$nextRecord);
     } else {
-        throw new \Exception("Improper request: ".$_POST['request']);
+        $request = REDCapManagement::sanitize($_POST['request']);
+        throw new \Exception("Improper request: ".$request);
     }
     exit();
 }
 
+$autoApproveHTML = "";
+$record = FALSE;
 try {
     if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
         $url .= "&headers=false";
@@ -93,9 +90,7 @@ try {
 
     if ($_GET['record']) {
         $record = REDCapManagement::getSanitizedRecord($_GET['record'], $records);
-        $autoApproveHTML = "";
     } else {
-        $record = FALSE;
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);
         $autoApproveHTML = getAutoApproveHTML($nextRecord, $url.$wranglerTypeParam);
     }

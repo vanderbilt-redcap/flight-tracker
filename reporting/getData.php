@@ -68,7 +68,7 @@ function translateModal($modalId, $record, $metadata, $tableData = NULL) {
         $tableData = accessDegrees($record, $tables);
     }
     if (isset($_GET['test'])) {
-        echo "TableData: " . htmlentities(REDCapManagement::json_encode_with_spaces($tableData)) . "<br>";
+        echo "TableData: " . REDCapManagement::json_encode_with_spaces($tableData) . "<br>";
     }
 
     if ($modalId == "confirmFinalizeRtd") {
@@ -397,7 +397,7 @@ function accessTableData($tables, $recordId, $overallTableNum) {
             throw new \Exception("Invalid table! $table");
         }
         if (isset($_GET['test'])) {
-            echo "data for $table: " . htmlentities(json_encode($data)) . "<br>";
+            echo "data for $table: " . REDCapManagement::json_encode_with_spaces($data) . "<br>";
         }
         foreach ($data as $row) {
             $key = implode("|", array_values($row));

@@ -32,8 +32,9 @@ if (isset($_GET['page'])) {
 if ($cohort) {
     $records = Download::cohortRecordIds($token, $server, $module, $cohort);
 } else if ($_GET['record']) {
-    $recordId = htmlentities($_GET['record'], ENT_QUOTES);
-    $records = [$recordId];
+    $allRecords = Download::records($token, $server);
+    $recordId = REDCapManagement::getSanitizedRecord($_GET['record'], $allRecords);
+    $records = $recordId ? [$recordId] : [];
 } else {
     $records = Download::recordIds($token, $server);
 }

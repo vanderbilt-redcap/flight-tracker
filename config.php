@@ -9,6 +9,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
+require_once(dirname(__FILE__)."/FlightTrackerExternalModule.php");
 
 define('MAX_DEGREE_SOURCES', 5);
 
@@ -64,10 +65,10 @@ if (count($_POST) > 0) {
 					$feedback = Upload::metadata($metadata, $token, $server);
 					echo "<p class='green centered'>$rowsAffected fields affected.</p>\n";
 				} else {
-					echo "<p class='red centered'>Could not add ".htmlentities($code, ENT_QUOTES)." to data sources!</p>\n";
+					echo "<p class='red centered'>Could not add ".REDCapManagement::sanitize($code)." to data sources!</p>\n";
 				}
 			} else {
-				echo "<p class='red centered'>Could not add because code ('".htmlentities($code, ENT_QUOTES)."') already exists.</p>\n";
+				echo "<p class='red centered'>Could not add because code ('".REDCapManagement::sanitize($code)."') already exists.</p>\n";
 			}
 		} else {
 			echo "<p class='red centered'>You must specify the text, a value for its code, and a type.</p>\n";

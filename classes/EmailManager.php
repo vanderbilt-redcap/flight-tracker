@@ -1179,7 +1179,7 @@ class EmailManager {
 			foreach ($recordIds as $recordId) {
 				if ((Application::getEmailName($recordId) == $key)
 					&& self::afterAllTimestamps($currTime, $sent)
-					&& self::afterAllTimestamps($currTime, $when)
+					&& self::afterAllTimestamps($currTime, [$when])
 					&& self::areAllSent($when, $sent)) {
 
 					$include = FALSE;

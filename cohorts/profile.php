@@ -4,6 +4,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\CohortConfig;
 use \Vanderbilt\CareerDevLibrary\Filter;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -32,7 +33,7 @@ td.profileHeader div a:hover { color: #0000FF; }
 <?php
 
 if (isset($_POST['title'])) {
-	$title = htmlentities($_POST['title'], ENT_QUOTES);
+	$title = REDCapManagement::sanitize($_POST['title']);
 	$metadata = Download::metadata($token, $server);
 	$config = $cohorts->getCohort($title); 
 

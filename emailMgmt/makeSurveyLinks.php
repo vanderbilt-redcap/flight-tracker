@@ -1,5 +1,7 @@
 <?php
 
+require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+
 $records = $_POST['records'];
 $pid = $_GET['pid'];
 $instrument = $_POST['instrument'];

@@ -8,7 +8,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$tableNum = isset($_GET['table']) ? htmlentities($_GET['table'], ENT_QUOTES) : "";
+$tableNum = isset($_GET['table']) ? REDCapManagement::sanitize($_GET['table']) : "";
 if (!$tableNum || !NIHTables::getTableHeader($tableNum)) {
 	die("Could not find $tableNum!");
 }

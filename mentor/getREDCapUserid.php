@@ -8,10 +8,10 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/base.php");
 
-$recordId = htmlentities($_GET['menteeRecord'], ENT_QUOTES);
+$recordId = REDCapManagement::sanitize($_GET['menteeRecord']);
 
 if ($_POST['name']) {
-    $name = htmlentities($_POST['name'], ENT_QUOTES);
+    $name = REDCapManagement::sanitize($_POST['name']);
     list($firstName, $lastName) = NameMatcher::splitName($name);
     $userids = REDCapManagement::getUseridsFromREDCap($firstName, $lastName);
     echo json_encode($userids);

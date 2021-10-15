@@ -16,7 +16,7 @@ if (isset($_POST['finalized'])) {
 	$newFinalized = json_decode($_POST['finalized']);
     $newOmissions = json_decode($_POST['omissions']);
     $newResets = json_decode($_POST['resets']);
-	$recordId = $_POST['record_id'];
+	$recordId = REDCapManagement::sanitize($_POST['record_id']);
 
     $patentFields = Application::getPatentFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $patentFields, [$recordId]);

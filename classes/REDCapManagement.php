@@ -4,12 +4,6 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-# for datediff
-$redcapFile = APP_PATH_DOCROOT.'/ProjectGeneral/math_functions.php';
-if (file_exists($redcapFile)) {
-    require_once($redcapFile);
-}
-
 class REDCapManagement {
 	public static function getChoices($metadata) {
 		$choicesStrs = array();
@@ -891,19 +885,47 @@ class REDCapManagement {
         return $params;
     }
 
-    public static function sanitize($str, $changeQuotes = TRUE) {
-	    if (!isset($str)) {
+    public static function sanitizeWithoutChangingQuotes($str) {
+        if (!isset($str)) {
+            return "";
+        }
+        /**
+         * @psalm-taint-escape html
+         */
+        $str = str_replace(['<', '>'], '', $str);
+        return htmlentities($str);
+    }
+
+    public static function sanitizeArray($ary) {
+	    if (is_array($ary)) {
+	        foreach ($ary as $key => $value) {
+	            $key = self::sanitize($key);
+	            if (is_array($value)) {
+	                $value = self::sanitizeArray($value);
+                } else {
+	                $value = self::sanitize($value);
+                }
+	            $ary[$key] = $value;
+            }
+        } else {
+	        return self::sanitize($ary);
+        }
+	    return $ary;
+    }
+
+    public static function sanitize($origStr) {
+	    if (!isset($origStr)) {
 	        return "";
         }
-	    if (self::isJSON($str)) {
-	        # JSONs contain quotes, so do not sanitize
-	        return $str;
-        }
-	    if ($changeQuotes) {
-            return htmlentities((string) $str, ENT_QUOTES);
-        } else {
-            return htmlentities((string) $str);
-        }
+        /**
+         * @psalm-taint-escape html
+         */
+        $str = str_replace(['<', '>'], '', $origStr);
+        /**
+         * @psalm-taint-escape has_quotes
+         */
+        $str = htmlentities($str, ENT_QUOTES);
+        return $str;
     }
 
     # requestedRecord is from GET/POST
@@ -921,12 +943,14 @@ class REDCapManagement {
 	    return $nodes[0];
     }
 
-    public static function json_encode_with_spaces($data, $runSanitizer = TRUE) {
+    public static function json_encode_with_spaces($data) {
         $str = json_encode($data);
         $str = preg_replace("/,/", ", ", $str);
-        if ($runSanitizer) {
-            $str = self::sanitize($str);
-        }
+        /**
+         * @psalm-taint-escape html
+         */
+        $str = str_replace(['<', '>'], '', $str);
+        $str = htmlentities($str);
         return $str;
     }
 
@@ -1349,8 +1373,7 @@ class REDCapManagement {
 	}
 
 	public static function isJSON($str) {
-	    json_decode($str);
-	    return (json_last_error() == JSON_ERROR_NONE);
+	    return preg_match("/\\[\\[{(?:(?!\\]\\])[\\s\\S])*\"fid\":\"\\K\\d+/mi", $str);
     }
 
     public static function copyMetadataSettingsForField($row, $metadata, &$upload, $token, $server) {

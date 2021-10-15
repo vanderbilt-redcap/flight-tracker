@@ -59,11 +59,10 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 			fclose($fp);
 		}
 	} else {
-	    $list = htmlentities($_POST['newnames'], ENT_QUOTES);
+	    $list = REDCapManagement::sanitize($_POST['newnames']);
 		$rows = explode("\n", $list);
 		foreach ($rows as $row) {
 			if ($row) {
-			    $row = htmlentities($row);
 				$nodes = preg_split("/\s*[,\t]\s*/", $row);
 				if (count($nodes) == 6) {
 					$lines[] = $nodes;
@@ -81,7 +80,7 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
     }
 } else {                //////////////////// default setup
     if (isset($_GET['mssg'])) {
-        $mssg = htmlentities($_GET['mssg'], ENT_QUOTES);
+        $mssg = REDCapManagement::sanitize($_GET['mssg']);
 		echo "<p class='red centered'><b>$mssg</b></p>";
 	}
 	echo "<p class='centered'>".CareerDev::makeLogo()."</p>\n";
@@ -447,6 +446,7 @@ function commitChanges($token, $server, $lines, $mentorUids, $pid) {
     }
     $recordId = $maxRecordId + 1;
 
+    $upload = [];
     try {
         list($upload, $newRecordIds) = processLines($lines, $recordId, $token, $server, $mentorUids);
         $feedback = [];

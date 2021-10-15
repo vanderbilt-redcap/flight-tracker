@@ -8,13 +8,13 @@ use \Vanderbilt\CareerDevLibrary\Application;
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$recordId = $_REQUEST['record'];
-$role = $_REQUEST['role'];
-$name = $_REQUEST['name'];
-$start = $_REQUEST['start'];
-$end = $_REQUEST['end'];
-
 $records = Download::records($token, $server);
+$recordId = REDCapManagement::getSanitizedRecord($_REQUEST['record'], $records);
+$role = REDCapManagement::sanitize($_REQUEST['role']);
+$name = REDCapManagement::sanitize($_REQUEST['name']);
+$start = REDCapManagement::sanitize($_REQUEST['start']);
+$end = REDCapManagement::sanitize($_REQUEST['end']);
+
 if (!in_array($recordId, $records)) {
     die("Invalid record");
 }

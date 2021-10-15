@@ -486,7 +486,7 @@ public static function metadata($metadata, $token, $server) {
 
     private static function checkRows($rows) {
         if (!is_array($rows)) {
-            $rows = htmlentities($rows, ENT_QUOTES);
+            $rows = REDCapManagement::sanitize($rows);
             Application::log("Upload::rows: first parameter should be array (= '$rows')");
             echo "Upload::rows: first parameter should be array (= '$rows')!\n";
             die();
@@ -609,7 +609,7 @@ public static function metadata($metadata, $token, $server) {
                 $allFeedback = self::combineFeedback($allFeedback, $feedback);
             }
 		}
-		Application::log($method.": ".REDCapManagement::json_encode_with_spaces($allFeedback, FALSE), $pid);
+		Application::log($method.": ".REDCapManagement::json_encode_with_spaces($allFeedback), $pid);
 		return $allFeedback;
 	}
 

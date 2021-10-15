@@ -11,9 +11,9 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $messages = array();
 if ($_POST['cohort']) {
-    $cohort = htmlentities($_POST['cohort'], ENT_QUOTES);
+    $cohort = REDCapManagement::sanitize($_POST['cohort']);
 } else {
-    $cohort = htmlentities($_GET['cohort'], ENT_QUOTES);
+    $cohort = REDCapManagement::sanitize($_GET['cohort']);
 }
 
 $metadata = Download::metadata($token, $server);
@@ -21,7 +21,7 @@ $cohorts = new Cohorts($token, $server, $metadata);
 $cohortNames = $cohorts->getCohortNames();
 
 if ($_POST['supertoken']) {
-    $supertoken = htmlentities($_POST['supertoken']);
+    $supertoken = REDCapManagement::sanitize($_POST['supertoken']);
     if (REDCapManagement::isValidSupertoken($supertoken)) {
         CareerDev::saveSetting("supertoken", $supertoken);
     } else {

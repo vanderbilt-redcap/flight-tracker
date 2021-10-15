@@ -39,7 +39,7 @@ if (!Application::isWebBrowser() && CareerDev::getPid()) {
     date_default_timezone_set(CareerDev::getTimezone());
 }
 
-$pid = htmlentities($_GET['pid']);
+$pid = REDCapManagement::sanitize($_GET['pid']);
 if (!$pid) {
     $pid = CareerDev::getSetting("pid");
 }
@@ -783,7 +783,7 @@ function makeHTMLId($id) {
 
 function makeSafe($htmlStr) {
     $htmlStr = REDCapManagement::stripHTML($htmlStr);
-    $htmlStr = htmlentities($htmlStr);
+    $htmlStr = REDCapManagement::sanitize($htmlStr);
 	return $htmlStr;
 }
 

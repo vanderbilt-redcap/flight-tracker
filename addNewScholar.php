@@ -3,6 +3,7 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use \Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Application;
 
@@ -28,7 +29,7 @@ if (checkPOSTKeys(array_values($fields))) {
 				"record_id" => $recordId,
 				);
 	foreach (array_values($fields) as $field) {
-		$uploadRow[$field] = $_POST[$field];
+		$uploadRow[$field] = REDCapManagement::sanitize($_POST[$field]);
 	}
 	$feedback = Upload::oneRow($uploadRow, $token, $server);
 	\Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($recordId);

@@ -40,7 +40,7 @@ function getTarget() {
 		return "display";
 	}
 	$possibleLayouts = getPossibleLayouts();
-	$layout = htmlentities($_GET['layout'], ENT_QUOTES);
+	$layout = REDCapManagement::sanitize($_GET['layout']);
 	if (in_array($layout, $possibleLayouts)) {
 	    foreach ($possibleLayouts as $possibleLayout) {
 	        if ($possibleLayout == $layout) {

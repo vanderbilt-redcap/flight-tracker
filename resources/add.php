@@ -26,12 +26,13 @@ if ($_POST['date']) {
 echo "<h1>Resource Participation Roster</h1>";
 
 if (isset($_POST['resource']) && $_POST['resource'] && isset($_POST['matched']) && $_POST['matched']) {
-    $matched = REDCapManagement::sanitize($_POST['matched']);
+    $resource = REDCapManagement::sanitize($_POST['resource']);
+    $matched = REDCapManagement::sanitizeWithoutChangingQuotes($_POST['matched']);
 	$records = \Vanderbilt\FlightTrackerExternalModule\getUploadAryFromRoster($matched);
 
 	$numUploaded = 0;
 	foreach ($records as $recordId) {
-		$feedback = Upload::resource($recordId, $_POST['resource'], $token, $server, $requestedDate);
+		$feedback = Upload::resource($recordId, $resource, $token, $server, $requestedDate);
 		if ($feedback['count']) {
 			$numUploaded += $feedback['count'];
 		} else if ($feedback['item_count']) {

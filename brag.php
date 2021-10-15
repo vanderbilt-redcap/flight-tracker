@@ -17,7 +17,7 @@ require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 if ($_GET['cohort']) {
-    $cohort = htmlentities($_GET['cohort'], ENT_QUOTES);
+    $cohort = REDCapManagement::sanitize($_GET['cohort']);
 } else {
     $cohort = "";
 }
@@ -28,7 +28,7 @@ if ($cohort && ($cohort != 'all')) {
 }
 
 if (isset($_GET['daysPrior']) && is_numeric($_GET['daysPrior']) && ($_GET['daysPrior'] >= 0)) {
-    $daysPrior = (int) htmlentities((string) $_GET['daysPrior']);
+    $daysPrior = (int) REDCapManagement::sanitize($_GET['daysPrior']);
 } else {
     $daysPrior = 180;
 }

@@ -1,6 +1,7 @@
 <?php
 
 use \Vanderbilt\CareerDevLibrary\EmailManager;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
@@ -42,16 +43,16 @@ if (count($_POST) > 0) {
 
 $mgr = new EmailManager($token, $server, $pid, CareerDev::getModule(), $metadata);
 
-$selectName = \Vanderbilt\FlightTrackerExternalModule\getFieldForCurrentEmailSetting();
+$selectName = EmailManager::getFieldForCurrentEmailSetting();
 $messageSelectName = "message_select";
 $spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 $messages = $mgr->getMessageHash();
 
 $currSettingName = "";
 if (isset($_POST['name'])) {
-	$currSettingName = htmlentities($_POST['name'], ENT_QUOTES);
+	$currSettingName = REDCapManagement::sanitize($_POST['name']);
 } else if (isset($_GET[$selectName])) {
-	$currSettingName = htmlentities($_GET[$selectName], ENT_QUOTES);
+	$currSettingName = REDCapManagement::sanitize($_GET[$selectName]);
 }
 $currSetting = $mgr->getItem($currSettingName);
 
@@ -82,7 +83,7 @@ if (isset($_POST['recipient'])) {
             if ($_POST['survey_complete'] == "yes") {
                 $surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "checked"; $surveyCompleteNoMatter = "$isDisabled";
                 if ($_POST['last_complete_months']) {
-                    $lastCompleteMonths = htmlentities($_POST['last_complete_months'], ENT_QUOTES);
+                    $lastCompleteMonths = REDCapManagement::sanitize($_POST['last_complete_months']);
                 }
             } else if ($_POST['survey_complete'] == "no") {
                 $surveyCompleteNo = "checked"; $surveyCompleteYes = "$isDisabled"; $surveyCompleteNoMatter = "$isDisabled";
@@ -100,11 +101,11 @@ if (isset($_POST['recipient'])) {
                 $traineeClassAlumni = "$isDisabled"; $traineeClassCurrent = "$isDisabled"; $traineeClassAll = "current";
             }
             if ($_POST['max_emails']) {
-                $maxEmails = htmlentities($_POST['max_emails'], ENT_QUOTES);
+                $maxEmails = REDCapManagement::sanitize($_POST['max_emails']);
                 $maxSpecified = "checked";
             }
             if (($_POST['newRecords'] == "new") && $_POST['new_records_since']) {
-                $newRecordsSince = htmlentities($_POST['new_records_since'], ENT_QUOTES);
+                $newRecordsSince = REDCapManagement::sanitize($_POST['new_records_since']);
                 $newRecordsSinceSpecified = "checked";
             }
         }
@@ -225,7 +226,7 @@ $(document).ready(function() {
 	<tr><td class='oneThird'>
 		<h2 class='green'>Who?</h2>
 			<h3 class='green'>From Email Address</h3>
-			<p class='centered'><input <?= $isReadonly ?> type='text' id='from' name='from' class='long' value='<?= isset($_POST['from']) ? htmlentities($_POST['from'], ENT_QUOTES) : (isset($currSetting['who']['from']) ? $currSetting['who']['from'] : "") ?>'></p>
+			<p class='centered'><input <?= $isReadonly ?> type='text' id='from' name='from' class='long' value='<?= isset($_POST['from']) ? REDCapManagement::sanitize($_POST['from']) : (isset($currSetting['who']['from']) ? $currSetting['who']['from'] : "") ?>'></p>
 
 			<h3 class='green'>To (Recipients)</h3>
 			<p class='centered'>Who Do You Want to Receive Your Email?<br>
@@ -281,7 +282,7 @@ $(document).ready(function() {
 <?php
 		$surveySelectId = "survey";
 		echo "<h3 class='yellow'>Format Message</h3>\n";
-		echo "<p class='centered'>Subject: <input $isReadonly type='text' id='subject' class='long' name='subject' value='".(isset($_POST['subject']) ? htmlentities($_POST['subject'], ENT_QUOTES) : (isset($currSetting['what']['subject']) ? $currSetting['what']['subject'] : ""))."'></p>\n";
+		echo "<p class='centered'>Subject: <input $isReadonly type='text' id='subject' class='long' name='subject' value='".(isset($_POST['subject']) ? REDCapManagement::sanitize($_POST['subject']) : (isset($currSetting['what']['subject']) ? $currSetting['what']['subject'] : ""))."'></p>\n";
 		echo "<div style='text-align: center; margin: 16px 0px;'>\n";
 		echo "<div style='display: inline-block;'>".$mgr->getSurveySelect($surveySelectId)."<br>\n";
 		echo "<button $isDisabled onclick='insertSurveyLink(\"$surveySelectId\"); return false;'>Insert Survey Link</button></div>\n";
@@ -295,7 +296,7 @@ $(document).ready(function() {
 			echo "<div style='text-align: center; margin: 16px 0px;'>Load Prior Message:<br>".$mgr->getSelectForExistingNames($messageSelectName)."</div>\n";
 		}
 		if (isset($_POST['message'])) {
-			$mssg = htmlentities($_POST['message'], ENT_QUOTES);
+			$mssg = REDCapManagement::sanitize($_POST['message']);
 		} else if (isset($currSetting['what']['message'])) {
 			$mssg = $currSetting['what']['message'];
 		} else {
@@ -470,7 +471,7 @@ function translatePostToEmailSetting($post) {
 function makeDateTime($field, $when, $isReadonly = "") {
 	$value = "";
 	if (isset($_POST[$field])) {
-		$value = htmlentities($_POST[$field], ENT_QUOTES);
+		$value = REDCapManagement::sanitize($_POST[$field]);
 	} else if (isset($when[$field])) {
 		$value = $when[$field];
 	}

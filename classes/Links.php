@@ -38,7 +38,7 @@ class Links {
 				$url = $server."/".$url;
 			}
 		}
-		$url = htmlentities($url, ENT_QUOTES);
+		$url = REDCapManagement::sanitize($url);
 
 		$html = "";
 		$html .= "<a href='$url'";

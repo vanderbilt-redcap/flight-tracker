@@ -2,11 +2,13 @@
 
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDevHelp;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 define("NOAUTH", TRUE);
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../CareerDevHelp.php");
 
 session_start();
@@ -54,7 +56,7 @@ if (isset($_POST['fullPage'])) {
 		echo "<link rel='stylesheet' href='".CareerDev::link("/css/jquery-ui.css")."'>\n";
 		echo "<link rel='stylesheet' href='".CareerDev::link("/css/career_dev.css")."&".CareerDev::getVersion()."'>\n";
 
-		$htmlPage = htmlentities($_GET['htmlPage'], ENT_QUOTES);
+		$htmlPage = REDCapManagement::sanitize($_GET['htmlPage']);
 		$possiblePages = getPossibleHelpPages();
 		foreach ($possiblePages as $possiblePage) {
 		    if ($htmlPage == $possiblePage) {

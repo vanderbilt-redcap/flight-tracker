@@ -4,6 +4,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NIHTables;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -11,8 +12,8 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 $settingName = NIHTables::getSubsequentGrantsSettingName();
 
 $records = Download::recordIds($token, $server);
-if ($_GET['record'] && in_array($_GET['record'], $records)) {
-    $recordId = $_GET['record'];
+$recordId = REDCapManagement::getSanitizedRecord($_GET['record'], $records);
+if ($recordId) {
     $settings = Application::getSetting($settingName, $pid);
     if (!$settings) {
         $settings = [];
@@ -21,8 +22,8 @@ if ($_GET['record'] && in_array($_GET['record'], $records)) {
         $settings[$recordId] = [];
     }
 
-    if ($_GET['name']) {
-        $settings[$recordId][] = $_GET['name'];
+    if (isset($_GET['name'])) {
+        $settings[$recordId][] = REDCapManagement::sanitize($_GET['name']);
     } else if (isset($_GET['reset'])) {
         $settings[$recordId] = [];
     } else {

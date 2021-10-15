@@ -399,6 +399,7 @@ foreach ($redcapData as $row) {
 		$emptyRecord = $row['record_id'];
 	}
 }
+$nextNewRecord = "";
 if (isset($_GET['new'])) {
 	$nextNewRecord = getNextRecordWithNewData(FALSE);
 	if ($nextNewRecord && ($nextNewRecord > $record)) {

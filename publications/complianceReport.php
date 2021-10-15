@@ -60,6 +60,23 @@ for ($i = ($page - 1) * $itemsPerPage; ($i < $page * $itemsPerPage) && ($i < cou
     $recordsForPage[] = $records[$i];
 }
 
+$numMonths = 3;
+$startDate = "2008-04-01";
+$startTs = strtotime($startDate);
+$legend = [
+    "green" => [
+        "PMCIDs" => "Not in compliance and out of the $numMonths-month window.",
+        "Grants" => "Grants are cited by this publication with associated funding sources.",
+    ],
+    "yellow" => [
+        "PMCIDs" => "Not in compliance but within the $numMonths-month window.",
+        "Grants" => "No grants are cited by this publication -or- the grant has an unknown funding source. Therefore, compliance may not be an issue with this publication.",
+    ],
+    "red" => [
+        "PMCIDs" => "Not in compliance and out of the $numMonths-month window.",
+        "Grants" => "",
+    ],
+];
 $agencies = [
     "NIH" => "green",
     "AHRQ" => "green",
@@ -100,10 +117,11 @@ if (isset($_GET['record'])) {
 
 echo "<h1>Public Access Compliance Update</h1>";
 $pubWranglerLink = Application::link("/wrangler/include.php")."&wranglerType=Publications";
-$threeMonthsPriorDate = REDCapManagement::addMonths(date("Y-m-d"), -3);
+$threeMonthsPriorDate = REDCapManagement::addMonths(date("Y-m-d"), (0 - $numMonths));
 echo "<h2>Compliance Threshold: ".REDCapManagement::YMD2MDY($threeMonthsPriorDate)."</h2>";
 echo "<p class='centered'>This only affects citations already included in the <a href='$pubWranglerLink'>Publication Wrangler</a>.</p>";
 echo $cohortSelect;
+echo makeLegendForCompliance($legend);
 echo $togglePage;
 echo "<table class='centered max-width bordered'>";
 echo "<thead>";
@@ -130,74 +148,75 @@ foreach ($recordsForPage as $recordId) {
     $translator = !empty($pmids) ? Publications::PMIDsToNIHMS($pmids, $pid) : [];
     $numCitationsAllGo = 0;
     foreach ($pubs->getCitations() as $citation) {
-        $isAllGoForCitation = TRUE;
-        $pmidUrl = $citation->getURL();
-        $pmcidUrl = $citation->getPMCURL();
-        $instance = $citation->getInstance();
-        $title = $citation->getVariable("title");
-        $pmid = $citation->getPMID();
         $pubTs = $citation->getTimestamp();
-        $pubDate = $citation->getDate(TRUE)." (".date("Y-m-d", $pubTs).")";
+        if ($pubTs >= $startTs) {
+            $isAllGoForCitation = TRUE;
+            $pmidUrl = $citation->getURL();
+            $pmcidUrl = $citation->getPMCURL();
+            $instance = $citation->getInstance();
+            $title = $citation->getVariable("title");
+            $pmid = $citation->getPMID();
+            $pubDate = $citation->getDate(TRUE);
 
-        $pmcid = $citation->getPMCWithPrefix();
-        $isAllGo = $isAllGo && ($pmcid != "");
-        $pmcidWithLink = $pmcid ? Links::makeLink($pmcidUrl, $pmcid, TRUE) : "No PMCID";
-        $pmidWithLink = Links::makeLink($pmidUrl, "PMID ".$pmid, TRUE);
-        $titleWithLink = Links::makePublicationsLink($pid, $recordId, $event_id, $title, $instance, TRUE);
-        $nihms = $translator[$pmid] ?? "";
-        if ($pmcid) {
-            $pubClass = "green";
-        } else {
-            $pubClass = ($pubTs < $threeMonthsPrior) ? "red" : "yellow";
-        }
-        $pmcidClass = $pubClass;
+            $pmcid = $citation->getPMCWithPrefix();
+            $isAllGoForCitation = $isAllGoForCitation && ($pmcid != "");
+            $pmcidWithLink = $pmcid ? Links::makeLink($pmcidUrl, $pmcid, TRUE) : "No PMCID";
+            $pmidWithLink = Links::makeLink($pmidUrl, "PMID ".$pmid, TRUE);
+            $titleWithLink = Links::makePublicationsLink($pid, $recordId, $event_id, $title, $instance, TRUE);
+            $nihms = $translator[$pmid] ?? "";
+            if ($pmcid) {
+                $pubClass = "green";
+            } else {
+                $pubClass = ($pubTs < $threeMonthsPrior) ? "red" : "yellow";
+            }
+            $pmcidClass = $pubClass;
 
-        $grants = $citation->getGrantBaseAwardNumbers();
-        $grantHTML = [];
-        foreach ($grants as $baseAwardNo) {
-            $parseAry = Grant::parseNumber($baseAwardNo);
-            $membership = "Other";
-            $grantShading = "yellow";
-            foreach ($agencies as $agency => $shading) {
-                if ($agency == "HHS") {
-                    if (Grant::isHHSGrant($baseAwardNo)) {
+            $grants = $citation->getGrantBaseAwardNumbers();
+            $grantHTML = [];
+            foreach ($grants as $baseAwardNo) {
+                $parseAry = Grant::parseNumber($baseAwardNo);
+                $membership = "Other";
+                $grantShading = "yellow";
+                foreach ($agencies as $agency => $shading) {
+                    if ($agency == "HHS") {
+                        if (Grant::isHHSGrant($baseAwardNo)) {
+                            $membership = $agency;
+                            $grantShading = $shading;
+                            break;
+                        }
+                    } else if (Grant::isMember($parseAry['institute_code'], $agency)) {
                         $membership = $agency;
                         $grantShading = $shading;
                         break;
                     }
-                } else if (Grant::isMember($parseAry['institute_code'], $agency)) {
-                    $membership = $agency;
-                    $grantShading = $shading;
-                    break;
                 }
+                $grantHTML[] = "<span class='$grantShading nobreak'>$baseAwardNo ($membership)</span>";
+                // $isAllGoForCitation = $isAllGoForCitation && ($grantShading != "red");
             }
-            $seen[] = $baseAwardNo;
-            $grantHTML[] = "<span class='$grantShading nobreak'>$baseAwardNo ($membership)</span>";
-            // $isAllGoForCitation = $isAllGoForCitation && ($grantShading != "red");
-        }
-        // $isAllGoForCitation = $isAllGoForCitation && !empty($grantHTML);
-        $isAllGoForCitation = $isAllGoForCitation && in_array($pubClass, ["green"]);
+            // $isAllGoForCitation = $isAllGoForCitation && !empty($grantHTML);
+            $isAllGoForCitation = $isAllGoForCitation && in_array($pubClass, ["green"]);
 
-        if (!$isAllGoForCitation || isset($_GET['record'])) {
-            echo "<tr>";
-            echo "<th>$nameWithLink</th>";
-            echo "<td>";
-            echo "<span class='nobreak'>$pmidWithLink</span><br>";
-            echo "<span class='nobreak $pmcidClass'>$pmcidWithLink</span><br>";
-            echo $nihms ? $nihms : "<span class='nobreak'>No NIHMS</span>";
-            echo "</td>";
-            echo "<td><span class='nobreak $pubClass'>$pubDate</span><br>$titleWithLink</td>";
-            if (empty($grantHTML)) {
-                echo "<td><span class='yellow'>None Cited.</span></td>";
+            if (!$isAllGoForCitation || isset($_GET['record'])) {
+                echo "<tr>";
+                echo "<th>$nameWithLink</th>";
+                echo "<td>";
+                echo "<span class='nobreak'>$pmidWithLink</span><br>";
+                echo "<span class='nobreak $pmcidClass'>$pmcidWithLink</span><br>";
+                echo $nihms ? $nihms : "<span class='nobreak'>No NIHMS</span>";
+                echo "</td>";
+                echo "<td><span class='nobreak $pubClass'>$pubDate</span><br>$titleWithLink</td>";
+                if (empty($grantHTML)) {
+                    echo "<td><span class='yellow'>None Cited.</span></td>";
+                } else {
+                    echo "<td>".implode("<br>", $grantHTML)."</td>";
+                }
+                if (count($headers) >= 5) {
+                    echo "<td></td>";
+                }
+                echo "</tr>";
             } else {
-                echo "<td>".implode("<br>", $grantHTML)."</td>";
+                $numCitationsAllGo++;
             }
-            if (count($headers) >= 5) {
-                echo "<td></td>";
-            }
-            echo "</tr>";
-        } else {
-            $numCitationsAllGo++;
         }
         $i++;
     }
@@ -210,3 +229,25 @@ foreach ($recordsForPage as $recordId) {
 }
 echo "</tbody></table>";
 echo $togglePage;
+
+
+function makeLegendForCompliance($legend) {
+    $html = "<table class='centered max-width'><tbody>";
+    foreach ($legend as $color => $descriptors) {
+        $descriptionTexts = [];
+        foreach ($descriptors as $type => $description) {
+            if ($description) {
+                $descriptionTexts[] = "<strong>$type</strong> - $description";
+            }
+        }
+
+        if (!empty($descriptionTexts)) {
+            $html .= "<tr>";
+            $html .= "<td class='$color'>&nbsp;&nbsp;&nbsp;&nbsp;</td>";
+            $html .= "<td>".implode("<br>", $descriptionTexts)."</td>";
+            $html .= "</tr>";
+        }
+    }
+    $html .= "</tbody></table>";
+    return $html;
+}
