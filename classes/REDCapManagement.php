@@ -425,8 +425,10 @@ class REDCapManagement {
         return $max;
     }
 
+    # Coordinated with React's MainGroup.js makeHTMLId
     public static function makeHTMLId($id) {
         $htmlFriendly = preg_replace("/[\s\-]+/", "_", $id);
+        $htmlFriendly = preg_replace("/<[^>]+>/", "", $htmlFriendly);
         $htmlFriendly = preg_replace("/[\:\+\"\/\[\]'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;\?]/", "", $htmlFriendly);
         return $htmlFriendly;
     }
@@ -892,7 +894,7 @@ class REDCapManagement {
         /**
          * @psalm-taint-escape html
          */
-        $str = str_replace(['<', '>'], '', $str);
+        $str = preg_replace("/<[^>]+>/", '', $str);
         return htmlentities($str);
     }
 
@@ -913,6 +915,19 @@ class REDCapManagement {
 	    return $ary;
     }
 
+    public static function sanitizeWithoutStrippingHTML($str) {
+        /**
+         * @psalm-taint-escape html
+         */
+        $str = preg_replace("/<script[^>]*>/i", '', $str);
+        $str = preg_replace("/<\/script[^>]*>/i", '', $str);
+        /**
+         * @psalm-taint-escape has_quotes
+         */
+        $str = htmlentities($str, ENT_QUOTES);
+        return $str;
+    }
+
     public static function sanitize($origStr) {
 	    if (!isset($origStr)) {
 	        return "";
@@ -920,12 +935,16 @@ class REDCapManagement {
         /**
          * @psalm-taint-escape html
          */
-        $str = str_replace(['<', '>'], '', $origStr);
+        $str = preg_replace("/<[^>]+>/", '', $origStr);
         /**
          * @psalm-taint-escape has_quotes
          */
         $str = htmlentities($str, ENT_QUOTES);
         return $str;
+    }
+
+    public static function isEmail($str) {
+	    return filter_var($str, FILTER_VALIDATE_EMAIL);
     }
 
     # requestedRecord is from GET/POST
@@ -949,7 +968,7 @@ class REDCapManagement {
         /**
          * @psalm-taint-escape html
          */
-        $str = str_replace(['<', '>'], '', $str);
+        $str = preg_replace("/<[^>]+>/", '', $str);
         $str = htmlentities($str);
         return $str;
     }

@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.11.1";
+		return "3.12.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -837,6 +837,7 @@ class CareerDev {
             $ary = [
                 "Stylized CDA Table" => self::link("/charts/makeGrantTable.php")."&CDA",
                 "Stylized Table of Grants" => self::link("/charts/makeGrantTable.php"),
+                "List of All Grants" => self::link("/charts/makeGrantTable.php")."&plain",
                 "Social Network of Grant Collaboration" => self::link("/socialNetwork/collaboration.php")."&grants",
                 "Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
                 "Search Grants" => self::link("/search/index.php"),

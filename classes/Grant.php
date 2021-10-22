@@ -1514,7 +1514,46 @@ class Grant {
         return $awardno . $sep . $sponsor . $sep . $startDate;
     }
 
+    // NIH, AHRQ, NSF, Other Federal (Other Fed), University (Univ), Foundation (Fdn), None, or Other
+    public function getTable4AbbreviatedFundingSource() {
+	    if ($this->isNIH()) {
+	        return "NIH";
+        }
+
+	    $acceptedFederalCategories = ["NIH", "AHRQ", "NSF"];
+	    $fundingSource = $this->getFundingSource();
+	    if ($fundingSource) {
+	        foreach (self::getFundingSourceAbbreviations() as $abbreviation => $name) {
+	            if (($fundingSource == $name) || ($fundingSource == $abbreviation)) {
+	                if (in_array($abbreviation, $acceptedFederalCategories)) {
+	                    return $abbreviation;
+                    }
+                }
+            }
+            if (in_array($fundingSource, ["NIH", "National Institutes of Health", "National Institute of Health"])) {
+                return "NIH";
+            } else if (in_array($fundingSource, ["NSF", "National Science Foundation"])) {
+                return "NSF";
+            } else if (in_array($fundingSource, ["AHRQ", "Agency for Healthcare Research and Quality", "Agency for Healthcare Research & Quality"])) {
+                return "AHRQ";
+            } else if ($this->isFederal()) {
+                return "Other Fed";
+            } else if ($this->getCurrentType() == "Internal K") {
+                return "Univ";
+            } else {
+                $type = self::$fdnOrOther;    // Cannot tell difference
+                if (isset($this->specs['sponsor'])) {
+                    return $type."<br>".$this->specs['sponsor'];
+                } else {
+                    return $type;
+                }
+            }
+        }
+	    return NULL;
+    }
+
     # uses private variable specs
+    # for COEUS only
 	public function getFundingSource() {
 		$specs = $this->specs;
 
@@ -1875,6 +1914,7 @@ class Grant {
 	private $specs = array();
 	private $translator;
 	private static $showDebug = FALSE;
+	public static $fdnOrOther = "Fdn-or-Other";
 	public static $noNameAssigned = "No Title Assigned";
 }
 

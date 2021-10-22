@@ -565,6 +565,7 @@ class CoeusGrantFactory extends GrantFactory {
 		$grant->setVariable('start', $row['coeus_budget_start_date']);
 		$grant->setVariable('end', $row['coeus_budget_end_date']);
 		$grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
+        $grant->setVariable('subproject', $isSubproject);
 		if (preg_match("/[Kk]12/", $awardNo) && ($row['coeus_pi_flag'] == "N")) {
 			$grant->setVariable('budget', '0');
 			$grant->setVariable('direct_budget', '0');
@@ -720,8 +721,9 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $url = APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=nih_reporter&instance={$row['redcap_repeat_instance']}";
         $awardNo = self::cleanAwardNo($row['nih_project_num']);
+        $isSubproject = ($row['nih_subproject_id'] !== "");
         $grant = new Grant($this->lexicalTranslator);
-        $grant->setVariable('person_name', $row['nih_principal_investigators']);
+        $grant->setVariable('person_name', $row['nih_principal_investigators'] ?? $row['nih_contact_pi_name']);
         $grant->setVariable('project_start', $row['nih_project_start_date']);
         $grant->setVariable('project_end', $row['nih_project_end_date']);
         // $grant->setVariable('start', $row['nih_project_start_date']);
@@ -733,6 +735,7 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         $grant->setVariable('sponsor_type', $row['nih_agency_ic_admin']);
         $grant->setVariable('original_award_number', $row['nih_project_num']);
         $grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
+        $grant->setVariable('subproject', $isSubproject);
         $grant->setNumber($awardNo);
         $grant->setVariable('source', "nih_reporter");
         $grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
@@ -762,6 +765,7 @@ class ExPORTERGrantFactory extends GrantFactory {
         if (!$totalCosts) {
             $totalCosts = $row['exporter_total_cost_sub_project'];
         }
+        $isSubproject = ($row['exporter_subproject_id'] != "");
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $url = APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=exporter&instance={$row['redcap_repeat_instance']}";
         $awardNo = self::cleanAwardNo($row['exporter_full_project_num']);
@@ -784,6 +788,7 @@ class ExPORTERGrantFactory extends GrantFactory {
         $grant->setVariable('url', $url);
         $grant->setVariable('link', Links::makeLink($url, "See Grant"));
         $grant->setVariable('pi_flag', "Y");
+        $grant->setVariable('subproject', $isSubproject);
         $grant->setVariable('last_update', $row['exporter_last_update']);
 
         $numNodes = self::numNodes("/\s*;\s*/", $row['exporter_pi_names']);

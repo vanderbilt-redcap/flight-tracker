@@ -232,7 +232,7 @@ echo $togglePage;
 
 
 function makeLegendForCompliance($legend) {
-    $html = "<table class='centered max-width'><tbody>";
+    $html = "<table class='bordered centered max-width'><tbody>";
     foreach ($legend as $color => $descriptors) {
         $descriptionTexts = [];
         foreach ($descriptors as $type => $description) {
@@ -244,7 +244,7 @@ function makeLegendForCompliance($legend) {
         if (!empty($descriptionTexts)) {
             $html .= "<tr>";
             $html .= "<td class='$color'>&nbsp;&nbsp;&nbsp;&nbsp;</td>";
-            $html .= "<td>".implode("<br>", $descriptionTexts)."</td>";
+            $html .= "<td class='left-align padded'>".implode("<br>", $descriptionTexts)."</td>";
             $html .= "</tr>";
         }
     }

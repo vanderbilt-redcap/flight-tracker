@@ -12,6 +12,12 @@ use \Vanderbilt\CareerDevLibrary\ExcludeList;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
+if (isset($_GET['test'])) {
+    ini_set('display_startup_errors',1);
+    ini_set('display_errors',1);
+    error_reporting(-1);
+}
+
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 

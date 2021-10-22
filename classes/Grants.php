@@ -111,6 +111,26 @@ class Grants {
 	    return $this->sourcesToExclude;
     }
 
+    public function getCurrentGrants($grantType, $date) {
+        if (!REDCapManagement::isDate($date)) {
+            return [];
+        }
+        $grants = [];
+        $ts = strtotime($date);
+        foreach ($this->getGrants($grantType) as $grant) {
+            $startDate = $grant->getVariable("start");
+            $endDate = $grant->getVariable("end");
+            if ($startDate && $endDate) {
+                $startTs = strtotime($startDate);
+                $endTs = strtotime($endDate);
+                if (($startTs <= $ts) && ($endTs >= $ts)) {
+                    $grants[] = $grant;
+                }
+            }
+        }
+        return $grants;
+    }
+
 	public function getGrants($type = "compiled") {
 		if ($type == "precompiled") {
 			return $this->priorGrants;
@@ -126,6 +146,9 @@ class Grants {
 		}
         if ($type == "all") {
             return $this->dedupedGrants;
+        }
+        if ($type == "current") {
+            return $this->getCurrentGrants(date("Y-m-d"));
         }
         if ($type == "all_pis") {
             $grants = $this->dedupedGrants;

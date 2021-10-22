@@ -36,7 +36,13 @@ if (Application::isExternalModule()) {
         && !$isSuperuser
         && !in_array($username, $validREDCapUsers)
     ) {
-        die("Access Denied.");
+        if ($pid == 101785) {
+            $thisUrl = Application::link("this");
+            $thisUrl = preg_replace("/pid=101785/", "pid=117692", $thisUrl);
+            header("Location: $thisUrl");
+        } else {
+            die("Access Denied.");
+        }
     }
 } else {
     $username = Application::getUsername();
