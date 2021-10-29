@@ -57,8 +57,20 @@ class EmailManager {
 		return self::getBlankSetting();
 	}
 
+	public static function makeEmailSetting($datetimeToSend, $to, $from, $subject, $message, $isEnabled = FALSE) {
+	    $setting = self::getBlankSetting();
+        $setting["who"]["individuals"] = $to;
+        $setting["who"]["from"] = $from;
+        $setting["what"]["message"] = $message;
+        $setting["what"]["subject"] = $subject;
+        $setting["when"]["initial_time"] = $datetimeToSend;
+        $setting['enabled'] = $isEnabled;
+
+	    return $setting;
+    }
+
 	public static function getBlankSetting() {
-		return array("who" => array(), "what" => array(), "when" => array(), "enabled" => FALSE);
+		return ["who" => [], "what" => [], "when" => [], "enabled" => FALSE];
 	}
 
 	# default is all names and to the actual 'to' emails

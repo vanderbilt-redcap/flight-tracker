@@ -915,16 +915,20 @@ class REDCapManagement {
 	    return $ary;
     }
 
-    public static function sanitizeWithoutStrippingHTML($str) {
+    public static function sanitizeWithoutStrippingHTML($str, $encodeQuotes = TRUE) {
         /**
          * @psalm-taint-escape html
          */
         $str = preg_replace("/<script[^>]*>/i", '', $str);
         $str = preg_replace("/<\/script[^>]*>/i", '', $str);
-        /**
-         * @psalm-taint-escape has_quotes
-         */
-        $str = htmlentities($str, ENT_QUOTES);
+        if ($encodeQuotes) {
+            /**
+             * @psalm-taint-escape has_quotes
+             */
+            $str = htmlentities($str, ENT_QUOTES);
+        } else {
+            $str = htmlentities($str);
+        }
         return $str;
     }
 

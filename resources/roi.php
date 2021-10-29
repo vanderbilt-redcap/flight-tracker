@@ -51,7 +51,7 @@ foreach ($records as $recordId) {
             } else {
                 $stillOnK = TRUE;
             }
-            $leftAndDidntConvert = (($row['summary_ever_last_any_k_to_r01_equiv'] == 0) && $row['identifier_left_date']);
+            $leftAndDidntConvert = (in_array($row['summary_ever_last_any_k_to_r01_equiv'], [4, 6]) && $row['identifier_left_date']);
         } else if (($row['redcap_repeat_instrument'] == "resources") && $row['resources_resource']) {
             $resource = $choices['resources_resource'][$row['resources_resource']];
             if (!in_array($resource, $resourcesUsed)) {
@@ -95,7 +95,7 @@ foreach ($allResources as $resourceIdx => $resource) {
 
 $measuresInOrder = ["Conversion Ratio", "Years to Convert", "Number of Publications", "Average Relative Citation Ratio"];
 echo "<h1>Return on Investment for Resources</h1>";
-$cohorts = new Cohorts($token, $server, $metadata);
+$cohorts = new Cohorts($token, $server, Application::getModule());
 echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'], "if ($(this).val()) { window.location.href = \"?pid=$pid&cohort=\"+$(this).val(); } else { window.location.href = \"?pid=$pid\"; }")."</p>";    // TODO revise for ExtMod
 $groupsInOrder = ["Control" => "Did <u>Not</u> Use Resource", "Treatment" => "Used Resource", ];
 foreach ($dataByResource as $resource => $groups) {
@@ -130,12 +130,6 @@ foreach ($dataByResource as $resource => $groups) {
                 $mu = REDCapManagement::pretty($results[$group][$measure]['mu'], 1);
                 echo "<td class='centered bolded'>&mu; = $mu</td>";
             }
-            echo "</tr><tr>";
-            echo "<th>Cases (n) for $measure</th>";
-            foreach (array_keys($groupsInOrder) as $group) {
-                $n = REDCapManagement::pretty($results[$group][$measure]['n']);
-                echo "<td class='centered'>n = $n</td>";
-            }
             echo "</tr>";
             if (($results["Control"][$measure]['n'] > 0) && ($results["Treatment"][$measure]['n'] > 0)) {
                 if ($isDiscrete) {
@@ -149,6 +143,15 @@ foreach ($dataByResource as $resource => $groups) {
                         // echo "<td class='centered bolded'>$n</td>";
                     // }
                     // echo "</tr>";
+
+                    echo "<tr>";
+                    echo "<th>Cases (n) for $measure</th>";
+                    foreach (array_keys($groupsInOrder) as $group) {
+                        $n = REDCapManagement::pretty($study->getN($group));
+                        echo "<td class='centered'>n = $n</td>";
+                    }
+                    echo "</tr>";
+
                     echo "<tr>";
                     echo "<th>Number Successful</th>";
                     foreach (array_keys($groupsInOrder) as $group) {
@@ -204,6 +207,14 @@ foreach ($dataByResource as $resource => $groups) {
                     // echo "<th>Alternative Hypothesis (H<sub>A</sub>)</th>";
                     // echo "<td class='centered' colspan='2'>Using $resource has an effect on the Scholars' $measure</td>";
                     // echo "</tr>";
+                    echo "<tr>";
+                    echo "<th>Size (n) for $measure</th>";
+                    foreach (array_keys($groupsInOrder) as $group) {
+                        $n = REDCapManagement::pretty($study->getN($group));
+                        echo "<td class='centered'>n = $n</td>";
+                    }
+                    echo "</tr>";
+
                     echo "<tr>";
                     echo "<th>Standard Deviation (&sigma;) for $measure</th>";
                     foreach (array_keys($groupsInOrder) as $group) {

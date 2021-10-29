@@ -21,6 +21,21 @@ class CohortStudy extends Study {
         }
     }
 
+    public function getN($type = "unpaired") {
+        if (strtolower($type) == "control") {
+            return $this->control->getN();
+        } else if (strtolower($type) == "treatment") {
+            return $this->treatment->getN();
+        } else if (strtolower($type) == "unpaired") {
+            return $this->control->getN() + $this->treatment->getN();
+        } else {
+            if ($this->control->getN() != $this->treatment->getN()) {
+                throw new \Exception("Control and treatment cohorts have different sizes!");
+            }
+            return $this->control->getN();
+        }
+    }
+
     public static function getTTable() {
         return [
             1 => [0.000, 1.000, 1.376, 1.963, 3.078, 6.314, 12.71, 31.82, 63.66, 318.31, 636.62],

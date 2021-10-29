@@ -24,6 +24,16 @@ class ComparisonStudy extends Study {
         return $num;
     }
 
+    public function getN($type) {
+        $ary = [];
+        if ($type == "Treatment") {
+            $ary = $this->getTreatment()->getValues();
+        } else if ($type == "Control") {
+            $ary = $this->getControl()->getValues();
+        }
+        return count($ary);
+    }
+
     public function getNumberDiseased($type) {
         $ary = [];
         if ($type == "Treatment") {

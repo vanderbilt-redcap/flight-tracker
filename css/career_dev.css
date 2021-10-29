@@ -105,6 +105,7 @@ li.nobullets { list-style: none; }
 table.bordered tr td,table.bordered tr th { border: 1px solid #888; }
 table.bordered { border-collapse: collapse; }
 .action_required { color: red; font-weight: bold; }
+input[type=text].action_required { color: black; font-weight: normal; font-size: 24px; background-color: rgba(255, 0, 0, 0.5); }
 p.bordered,div.bordered { border: 1px solid #888; }
 .finger { cursor: pointer; }
 .red { background-color: #f0565d; }

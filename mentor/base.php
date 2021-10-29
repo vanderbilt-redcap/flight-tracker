@@ -3,6 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\EmailManager;
 use \ExternalModules\ExternalModules;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
@@ -259,13 +260,19 @@ function fieldValuesAgree($set1, $set2) {
     return TRUE;
 }
 
-function scheduleEmail($to, $from, $subject, $message, $datetime) {
+function scheduleEmail($to, $from, $subject, $message, $datetime, $pid, $token, $server) {
     $ts = strtotime($datetime);
+    $datetime = date("Y-m-d H:i", $ts);
+
+    $metadata = Download::metadata($token, $server);
+    $mgr = new EmailManager($token, $server, $pid, Application::getModule(), $metadata);
+    $emailSetting = EmailManager::makeEmailSetting($datetime, $to, $from, $subject, $message, TRUE);
+    $settingName = "MMA $subject $datetime TO:$to FROM:$from";
+    $mgr->saveSetting($settingName, $emailSetting);
     if (DEBUG) {
-        $subject = $to.": ".$subject." on ".$datetime;
+        $subject = "DUPLICATE: ".$to.": ".$subject." on ".$datetime;
         \REDCap::email("scott.j.pearson@vumc.org", $from, $subject, $message);
     }
-    // TODO
 }
 
 function parseSectionHeader($sectionHeader) {

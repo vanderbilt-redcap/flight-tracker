@@ -24,15 +24,15 @@ if ($emails) {
     $to = implode(",", $emails);
 }
 $from = Application::getSetting("default_from", $pid);
-$subject = REDCapManagement::sanitize($_POST['subject']);
-$message = REDCapManagement::sanitize($_POST['message']);
+$subject = REDCapManagement::sanitizeWithoutStrippingHTML($_POST['subject'], FALSE);
+$message = REDCapManagement::sanitizeWithoutStrippingHTML($_POST['message'], FALSE);
 $datetimeToSend = REDCapManagement::sanitize($_POST['datetime']);
 if ($to && $from && $subject && $message && $datetimeToSend) {
     if ($datetimeToSend == "now") {
         $ts = time() + 60;
-        $datetimeToSend = date("Y-m-d h:I");
+        $datetimeToSend = date("Y-m-d H:i", $ts);
     }
-    scheduleEmail($to, $from, $subject, $message, $datetimeToSend);
+    scheduleEmail($to, $from, $subject, $message, $datetimeToSend, $pid, $token, $server);
     echo "Message enqueued for $datetimeToSend.";
 } else {
     echo "Improper fields.";
