@@ -273,6 +273,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $rec
 function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $records) {
 	$allLastNames = Download::lastnames($token, $server);
 	$allFirstNames = Download::firstnames($token, $server);
+	$allMiddleNames = Download::middlenames($token, $server);
     $allInstitutions = Download::institutions($token, $server);
     $metadata = Download::metadata($token, $server);
     $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
@@ -288,8 +289,9 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
 	foreach ($records as $recordId) {
         $recLastName = $allLastNames[$recordId];
 		$firstName = $allFirstNames[$recordId];
+		$middleName = $allMiddleNames[$recordId];
         $lastNames = NameMatcher::explodeLastName(strtolower($recLastName));
-        $firstNames = NameMatcher::explodeFirstName(strtolower($firstName));
+        $firstNames = NameMatcher::explodeFirstName(strtolower($firstName), strtolower($middleName));
 
         if (isset($allInstitutions[$recordId])) {
             $institutions = Scholar::explodeInstitutions($allInstitutions[$recordId]);

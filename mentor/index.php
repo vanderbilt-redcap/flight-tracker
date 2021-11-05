@@ -135,7 +135,7 @@ line-height: 20px; font-family: proxima-nova}
               $i = 1;
               foreach ($menteeRecordIds as $menteeRecordId) {
                   $menteeName = $names[$menteeRecordId];
-                  $menteeUserids = preg_split("/\s*[,;]\s*/", strtolower($userids[$menteeRecordId]));
+                  $menteeUserids = getMenteeUserids($userids[$menteeRecordId]);
                   $namesOfMentors = $allMentors[$menteeRecordId];
                   $useridsOfMentors = $allMentorUids[$menteeRecordId];
                   $myRow = getLatestRow($menteeRecordId, [$username], $redcapData);

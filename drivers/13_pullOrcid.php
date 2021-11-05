@@ -19,6 +19,7 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
     $orcids = Download::ORCIDs($token, $server);
     $firstnames = Download::firstnames($token, $server);
     $lastnames = Download::lastnames($token, $server);
+    $middlenames = Download::middlenames($token, $server);
     $institutions = Download::institutions($token, $server);
     $metadata = Download::metadata($token, $server);
     $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
@@ -31,7 +32,7 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
         if ((!$orcids[$recordId]
             || !preg_match("/^\d\d\d\d-\d\d\d\d-\d\d\d\d-\d\d\d.$/", $orcids[$recordId])
         ) && ($firstnames[$recordId] && $lastnames[$recordId])) {
-            list($orcid, $mssg) = downloadORCID($recordId, $firstnames[$recordId], $lastnames[$recordId], $institutions[$recordId]);
+            list($orcid, $mssg) = downloadORCID($recordId, $firstnames[$recordId], $middlenames[$recordId], $lastnames[$recordId], $institutions[$recordId]);
             if ($ary = isCodedMessage($mssg)) {
                 foreach ($ary as $recordId => $value) {
                     if ($value == $recordId) {
@@ -149,7 +150,7 @@ function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {
 }
 
 # returns list($orcid, $message)
-function downloadORCID($recordId, $first, $last, $institutionList) {
+function downloadORCID($recordId, $first, $middle, $last, $institutionList) {
     $delim = ORCID_DELIM;
     $identifier = "$recordId: $first $last $institutionList";
     if (!$last) {
@@ -158,7 +159,7 @@ function downloadORCID($recordId, $first, $last, $institutionList) {
     $params = array();
     $params["family-name"] = NameMatcher::explodeLastName($last);
     if ($first) {
-        $params["given-names"] = NameMatcher::explodeFirstName($first);
+        $params["given-names"] = NameMatcher::explodeFirstName($first, $middle);
     }
     $params["affiliation-org-name"] = getInstitutionArray(preg_split("/\s*[,\/]\s*/", $institutionList));
     // Test server $baseUrl = "https://pub.sandbox.orcid.org/v3.0/search/";

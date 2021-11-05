@@ -258,6 +258,11 @@ class Application {
 		return CareerDev::getSetting($field, $pid);
 	}
 
+	public static function isTestServer() {
+	    # TODO May want to add a configuration setting for this???
+	    return TRUE;
+    }
+
 	public static function saveSetting($field, $value, $pid = "") {
 	    CareerDev::saveSetting($field, $value, $pid);
     }

@@ -106,7 +106,7 @@ class StarBRITE {
             $url .= '/' . implode('/', array_map('urlencode', $getParams));
             $opts = [
                 CURLOPT_RETURNTRANSFER => 1,
-                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_SSL_VERIFYPEER => Upload::isProductionServer(),
                 CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
                 CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
                 CURLOPT_USERPWD => $ldapuser . ':' . $ldappass,

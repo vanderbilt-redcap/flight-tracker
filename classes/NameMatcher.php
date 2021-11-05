@@ -282,9 +282,16 @@ class NameMatcher {
         return $name;
     }
 
-	public static function explodeFirstName($first) {
+	public static function explodeFirstName($first, $middle = "") {
         $first = self::removeParentheses($first);
-	    $nodes = preg_split("/[\s\-]+/", $first);
+        $splitRegex = "/[\s\-]+/";
+	    $firstNodes = preg_split($splitRegex, $first);
+	    $middleNodes = [];
+	    if ($middle) {
+	        $middleNodes = preg_split($splitRegex, $middle);
+        }
+	    $nodes = array_unique(array_merge($firstNodes, $middleNodes));
+
 	    $newNodes = [$first];
 	    foreach ($nodes as $node) {
 	        if ($node && !in_array($node, $newNodes)) {

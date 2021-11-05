@@ -89,8 +89,9 @@ function updateReporterOld($token, $server, $pid, $recordIds) {
         $recordId = $row['record_id'];
 		$firstName = $row['identifier_first_name'];
 		$lastName = $row['identifier_last_name'];
-        $firstNames = NameMatcher::explodeFirstName($row['identifier_first_name']);
-        $lastNames = NameMatcher::explodeLastName($row['identifier_last_name']);
+		$middleName = $row['identifier_middle'];
+        $firstNames = NameMatcher::explodeFirstName($firstName, $middleName);
+        $lastNames = NameMatcher::explodeLastName($lastName);
 		$listOfNames = array();
 		foreach ($lastNames as $ln) {
 			foreach ($firstNames as $fn) {

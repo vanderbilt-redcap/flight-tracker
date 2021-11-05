@@ -164,7 +164,7 @@ class PatentsView {
                 }
                 usleep(500);
             } else {
-                Application::log("Could not decode JSON for Record {$this->recordId} ".$json, $this->pid);
+                Application::log("Could not decode JSON for Record {$this->recordId} from URL ".$url, $this->pid);
             }
         } while ($hasMore);
         Application::log("Returning ".count($returnQueue)." rows from $page steps", $this->pid);

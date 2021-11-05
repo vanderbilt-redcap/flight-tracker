@@ -45,7 +45,7 @@ $notesFields = getNotesFields($metadataFields);
 $choices = REDCapManagement::getChoices($metadata);
 $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
 $row = pullInstanceFromREDCap($redcapData, $instance);
-$menteeUsernames = preg_split("/\s*[,;]\s*/", strtolower($userids[$menteeRecordId]));
+$menteeUsernames = getMenteeUserids($userids[$menteeRecordId]);
 $date = "";
 $menteeInstance = FALSE;
 foreach ($menteeUsernames as $menteeUsername) {

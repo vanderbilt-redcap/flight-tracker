@@ -49,7 +49,7 @@ class Upload
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         $output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
@@ -68,7 +68,7 @@ class Upload
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $server);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_AUTOREFERER, true);
@@ -240,7 +240,7 @@ class Upload
                 curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
                 $output = (string) curl_exec($ch);
                 $feedback = json_decode($output, TRUE);
                 self::testFeedback($feedback, $output, $ch);
@@ -279,7 +279,7 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
@@ -388,7 +388,7 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
         $output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch, $settings);
@@ -589,7 +589,7 @@ public static function metadata($metadata, $token, $server) {
 				curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 				curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
                 $time2 = microtime(TRUE);
 				$output = (string) curl_exec($ch);
                 $feedback = json_decode($output, true);
@@ -612,6 +612,13 @@ public static function metadata($metadata, $token, $server) {
 		Application::log($method.": ".REDCapManagement::json_encode_with_spaces($allFeedback), $pid);
 		return $allFeedback;
 	}
+
+	public static function isProductionServer() {
+        if (method_exists("Application", "isTestServer")) {
+            return !Application::isTestServer();
+        }
+        return FALSE;
+    }
 
 	# returns array($upload, $errors, $newCounts)
 	public static function prepareFromCSV($headers, $lines, $token, $server, $pid, $metadata = array()) {

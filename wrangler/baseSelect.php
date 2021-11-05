@@ -34,7 +34,7 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
 
         function resetCitation(id) {
             $('#'+id).val("reset");
-            let resetButton = "<?= Application::link("wrangler/reset.php") ?>"
+            let resetButton = "<?= Application::link("wrangler/reset.png") ?>"
             $('#image_'+id).attr("src", resetButton);
         }
 

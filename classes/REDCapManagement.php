@@ -690,7 +690,7 @@ class REDCapManagement {
             CURLOPT_FRESH_CONNECT => 1,
             CURLOPT_TIMEOUT => 120,
             CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_SSL_VERIFYPEER => 0,
+            CURLOPT_SSL_VERIFYPEER => Upload::isProductionServer(),
         ];
     }
 

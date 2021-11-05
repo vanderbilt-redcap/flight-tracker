@@ -65,15 +65,15 @@ $startDate = "2008-04-01";
 $startTs = strtotime($startDate);
 $legend = [
     "green" => [
-        "PMCIDs" => "Not in compliance and out of the $numMonths-month window.",
+        "PMCIDs &amp; Dates" => "",
         "Grants" => "Grants are cited by this publication with associated funding sources.",
     ],
     "yellow" => [
-        "PMCIDs" => "Not in compliance but within the $numMonths-month window.",
-        "Grants" => "No grants are cited by this publication -or- the grant has an unknown funding source. Therefore, compliance may not be an issue with this publication.",
+        "PMCIDs &amp; Dates" => "Not in compliance but within the $numMonths-month window.",
+        "Grants" => "No grants are cited by this publication -or- the grant has an unknown funding source. Therefore, compliance may or may not be an issue with this publication.",
     ],
     "red" => [
-        "PMCIDs" => "Not in compliance and out of the $numMonths-month window.",
+        "PMCIDs &amp; Dates" => "Not in compliance and out of the $numMonths-month window.",
         "Grants" => "",
     ],
 ];
@@ -232,19 +232,38 @@ echo $togglePage;
 
 
 function makeLegendForCompliance($legend) {
-    $html = "<table class='bordered centered max-width'><tbody>";
-    foreach ($legend as $color => $descriptors) {
-        $descriptionTexts = [];
-        foreach ($descriptors as $type => $description) {
-            if ($description) {
-                $descriptionTexts[] = "<strong>$type</strong> - $description";
+    $types = [];
+    foreach (array_values($legend) as $descriptors) {
+        foreach (array_keys($descriptors) as $type) {
+            if (!in_array($type, $types)) {
+                $types[] = $type;
             }
         }
-
+    }
+    $html = "<table class='bordered centered max-width'>";
+    $html .= "<thead><tr>";
+    $html .= "<th>Color</th>";
+    foreach ($types as $type) {
+        $html .= "<th>For $type</th>";
+    }
+    $html .= "</tr></thead>";
+    $html .= "<tbody>";
+    foreach ($legend as $color => $descriptors) {
+        $descriptionTexts = [];
+        foreach ($types as $type) {
+            $description = $descriptors[$type];
+            if ($description) {
+                $descriptionTexts[$type] = "<td class='padded'>$description</td>";
+            } else {
+                $descriptionTexts[$type] = "<td>(Not used.)</td>";
+            }
+        }
         if (!empty($descriptionTexts)) {
             $html .= "<tr>";
             $html .= "<td class='$color'>&nbsp;&nbsp;&nbsp;&nbsp;</td>";
-            $html .= "<td class='left-align padded'>".implode("<br>", $descriptionTexts)."</td>";
+            foreach ($types as $type) {
+                $html .= $descriptionTexts[$type];
+            }
             $html .= "</tr>";
         }
     }

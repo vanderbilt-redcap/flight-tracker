@@ -37,9 +37,9 @@ if (Application::isExternalModule()) {
         && !$isSuperuser
         && !in_array($username, $validREDCapUsers)
     ) {
-        if ($pid == 101785) {
+        if (($pid == 101785) && !isset($_GET['test'])) {
             $thisUrl = Application::link("this");
-            $thisUrl = preg_replace("/pid=101785/", "pid=117692", $thisUrl);
+            $thisUrl = preg_replace("/project_id=101785/", "project_id=117692", $thisUrl);
             header("Location: $thisUrl");
         } else {
             die("Access Denied.");
@@ -133,21 +133,24 @@ function getRecordsAssociatedWithUserid($username, $pidOrToken, $server = FALSE)
     
     if (isset($menteeUserids) && isset($allMentorUserids)) {
         $menteeRecordIds = [];
+        $username = strtolower(trim($username));
         foreach ($menteeUserids as $recordId => $menteeUserid) {
-            $useridList = preg_split("/\s*[,;]\s*/", strtolower($menteeUserid));
+            $useridList = getUserids($menteeUserid);
             if (isset($_GET['test'])) {
                 echo "Record $recordId: Checking mentee ".json_encode($useridList)." vs. $username<br>";
             }
             foreach ($useridList as $userid) {
-                if ($username == $userid) {
+                if ($username == trim($userid)) {
                     $menteeRecordIds[] = $recordId;
                     break;
                 }
             }
         }
         foreach ($allMentorUserids as $recordId => $mentorUserids) {
-            if (in_array($username, $mentorUserids)) {
-                $menteeRecordIds[] = $recordId;
+            foreach ($mentorUserids as $mentorUserid) {
+                if ($username == strtolower(trim($mentorUserid))) {
+                    $menteeRecordIds[] = $recordId;
+                }
             }
         }
         if (isset($_GET['test'])) {
@@ -159,6 +162,18 @@ function getRecordsAssociatedWithUserid($username, $pidOrToken, $server = FALSE)
     }
 }
 
+function getUserids($useridList) {
+    $userids = preg_split("/\s*[,;]\s*/", strtolower($useridList));
+    for ($i = 0; $i < count($userids); $i++) {
+        $userids[$i] = trim($userids[$i]);
+    }
+    return $userids;
+}
+
+function getMenteeUserids($useridList) {
+    return getUserids($useridList);
+}
+
 function getMenteeMentorUserids($redcapData, $useridField) {
     $menteeUserids = [];
     $mentorUserids = [];
@@ -168,7 +183,7 @@ function getMenteeMentorUserids($redcapData, $useridField) {
             $menteeUserids[$recordId] = $row[$useridField];
         }
         if ($row['summary_mentor_userid']) {
-            $mentorUserids[$recordId] = preg_split("/\s*,\s*/", $row['summary_mentor_userid']);
+            $mentorUserids[$recordId] = getUserids($row['summary_mentor_userid']);
         }
     }
     return [$menteeUserids, $mentorUserids];
@@ -296,7 +311,7 @@ function parseSectionHeader($sectionHeader) {
 function isMentee($recordId, $username) {
     global $token, $server;
     $userids = Download::userids($token, $server);
-    $recordUserids = preg_split("/\s*[,;]\s*/", strtolower($userids[$recordId]));
+    $recordUserids = getUserids($userids[$recordId]);
     if (in_array(strtolower($username), $recordUserids)) {
         return TRUE;
     } else {
@@ -338,7 +353,7 @@ function getMenteesAndMentors($menteeRecordId, $userid, $token, $server) {
     $allMentors = Download::primaryMentors($token, $server);
     $allMentorUserids = Download::primaryMentorUserids($token, $server);
 
-    $menteeUids = preg_split("/\s*[,;]\s*/", strtolower($menteeUserids[$menteeRecordId]));
+    $menteeUids = getUserids($menteeUserids[$menteeRecordId]);
     $mentorUids = $allMentorUserids[$menteeRecordId];
     $myMentees = [];
     $myMentors = [];
@@ -419,7 +434,7 @@ function getNameFromREDCap($username, $token = "", $server = "") {
         $lastNames = Download::lastnames($token, $server);
         $userids = Download::userids($token, $server);
         foreach ($userids as $recordId => $userid) {
-            $recordUserids = preg_split("/\s*[,;]\s*/", strtolower($userid));
+            $recordUserids = getUserids($userid);
             if (in_array(strtolower($username), $recordUserids)) {
                 return [$firstNames[$recordId], $lastNames[$recordId]];
             }
@@ -717,7 +732,7 @@ function getMySurveys($username, $token, $server, $currentRecordId, $currentInst
     $surveyLocations = [];
     foreach ($redcapData as $row) {
         if(($row['mentoring_userid'] == $username) && (($row['record_id'] != $currentRecordId) || ($row['redcap_repeat_instance'] != $currentInstance))) {
-            $recordUserids = preg_split("/\s*[,;]\s*/", strtolower($userids[$row['record_id']]));
+            $recordUserids = getUserids($userids[$row['record_id']]);
             if (in_array(strtolower($username), $recordUserids)) {
                 $menteeName = "yourself";
             } else {
@@ -767,7 +782,7 @@ function getUseridsForRecord($token, $server, $recordId, $recipientType) {
     if (in_array($recipientType, ["mentee", "all"])) {
         $menteeUserids = Download::userids($token, $server);
         if ($menteeUserids[$recordId]) {
-            $userids = array_unique(array_merge($userids, preg_split("/\s*[,;]\s*/", strtolower($menteeUserids[$recordId]))));
+            $userids = array_unique(array_merge($userids, getUserids($menteeUserids[$recordId])));
         }
     }
     if (in_array($recipientType, ["mentor", "mentors", "all"])) {

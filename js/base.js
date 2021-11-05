@@ -580,87 +580,79 @@ function getRecord() {
 }
 
 function submitChanges(nextRecord) {
-	var recordId = getRecord();
-	var newFinalized = [];
-	var newOmits = [];
-	var resets = [];
+	const recordId = getRecord();
+	const newFinalized = [];
+	const newOmits = [];
+	const resets = [];
 	$('#finalize').hide();
 	$('#uploading').show();
-	var type = "";
+	let type = "";
 	$('[type=hidden]').each(function(idx, elem) {
-		var id = $(elem).attr("id");
+		const id = $(elem).attr("id");
 		if ((typeof id != "undefined") && id.match(/^PMID/)) {
 			type = "Publications";
-			var value = $(elem).val();
-			var pmid = id.replace(/^PMID/, "");
+			const value = $(elem).val();
+			const pmid = id.replace(/^PMID/, "");
 			if (!isNaN(pmid)) {
-				if (value == "include") {
+				if (value === "include") {
 					// checked => put in finalized
 					newFinalized.push(pmid);
-				} else if (value == "exclude") {
+				} else if (value === "exclude") {
 					// unchecked => put in omits
 					newOmits.push(pmid);
-				} else if (value == "reset") {
+				} else if (value === "reset") {
 					resets.push(pmid);
 				}
 			}
 		} else 	if ((typeof id != "undefined") && id.match(/^USPO/)) {
 			type = "Patents";
-			var value = $(elem).val();
-			var patentNumber = id.replace(/^USPO/, "");
+			const value = $(elem).val();
+			const patentNumber = id.replace(/^USPO/, "");
 			if (!isNaN(patentNumber)) {
-				if (value == "include") {
+				if (value === "include") {
 					// checked => put in finalized
 					newFinalized.push(patentNumber);
-				} else if (value == "exclude") {
+				} else if (value === "exclude") {
 					// unchecked => put in omits
 					newOmits.push(patentNumber);
-				} else if (value == "reset") {
+				} else if (value === "reset") {
 					resets.push(patentNumber);
 				}
 			}
 		}
 	});
 
-	var url = "";
-	if (type == "Patents") {
+	let url = "";
+	if (type === "Patents") {
 		url = getPageUrl("wrangler/savePatents.php");
-	} else if (type == "Publications") {
+	} else if (type === "Publications") {
 		url = getPageUrl("wrangler/savePubs.php");
 	}
 	if (url) {
-		let postdata = {
+		const postdata = {
 			record_id: recordId,
 			omissions: JSON.stringify(newOmits),
 			resets: JSON.stringify(resets),
 			finalized: JSON.stringify(newFinalized)
 		};
 		console.log('Posting '+JSON.stringify(postdata));
+		const params = getUrlVars();
+		let wranglerType = "";
+		if (params['wranglerType']) {
+			wranglerType = '&wranglerType='+params['wranglerType'];
+		}
 		$.ajax({
 			url: url,
 			method: 'POST',
 			data: postdata,
 			dataType: 'json',
 			success: function(data) {
-				var params = getUrlVars();
-				var wranglerType = "";
-				if (params['wranglerType']) {
-					wranglerType = '&wranglerType='+params['wranglerType'];
-				}
 				if (data['count'] && (data['count'] > 0)) {
-					var str = "items";
-					if (data['item_count'] == 1) {
-						str = "item";
-					}
-					var mssg = data['count']+" "+str+" uploaded";
-					window.location.href = getPageUrl("wrangler/include.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord+wranglerType;
+					const mssg = makeWranglingMessage(data['count']);
+					window.location.href = getNextWranglingUrl(mssg, nextRecord, wranglerType);
 				} else if (data['item_count'] && (data['item_count'] > 0)) {
-					var str = "items";
-					if (data['item_count'] == 1) {
-						str = "item";
-					}
-					var mssg = data['item_count']+" "+str+" uploaded";
-					window.location.href = getPageUrl("wrangler/include.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord+wranglerType;
+					const mssg = makeWranglingMessage(data['item_count']);
+					window.location.href = getNextWranglingUrl(mssg, nextRecord, wranglerType);
 				} else if (data['error']) {
 					$('#uploading').hide();
 					$('#finalize').show();
@@ -672,17 +664,33 @@ function submitChanges(nextRecord) {
 				}
 			},
 			error: function(e) {
-				if (!e.status || (e.status != 200)) {
+				if (!e.status || (e.status !== 200)) {
 					$('#uploading').hide();
 					$('#finalize').show();
 					alert("ERROR: "+JSON.stringify(e));
 				} else {
 					console.log(JSON.stringify(e));
+					if (e.status === 200) {
+						const mssg = "Upload successful.";
+						window.location.href = getNextWranglingUrl(mssg, nextRecord, wranglerType);
+					}
 				}
 			}
 		});
 	}
 	console.log("Done");
+}
+
+function makeWranglingMessage(cnt) {
+	let str = "items";
+	if (cnt === 1) {
+		str = "item";
+	}
+	return cnt+" "+str+" uploaded";
+}
+
+function getNextWranglingUrl(mssg, nextRecord, wranglerTypeSpecs) {
+	return getPageUrl("wrangler/include.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord+wranglerTypeSpecs;
 }
 
 function checkSticky() {

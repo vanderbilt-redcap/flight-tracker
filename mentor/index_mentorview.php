@@ -61,7 +61,7 @@ if ($_REQUEST['instance']) {
     $currInstance = $maxInstance + 1;
 }
 $dateToRemind = getDateToRemind($redcapData, $menteeRecordId, $currInstance);
-$menteeUsernames = preg_split("/\s*[,;]\s*/", strtolower($userids[$menteeRecordId]));
+$menteeUsernames = getMenteeUserids($userids[$menteeRecordId]);
 $menteeInstance = FALSE;
 foreach ($menteeUsernames as $menteeUsername) {
     $menteeInstance = getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);

@@ -197,7 +197,7 @@ foreach ($records as $recordId) {
     foreach ($redcapData as $row) {
         if ($row['redcap_repeat_instrument'] == "mentoring_agreement") {
             $useridOfRespondant = $row['mentoring_userid'];
-            $menteeUserids = preg_split("/\s*[,;]\s*/", $userids[$recordId]);
+            $menteeUserids = getMenteeUserids($userids[$recordId]);
             if (in_array($useridOfRespondant, $menteeUserids)) {
                 $respondantClass = "mentees";
             } else if (in_array($useridOfRespondant, $mentorUserids[$recordId])) {

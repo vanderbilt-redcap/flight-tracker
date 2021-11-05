@@ -26,6 +26,7 @@ function updateRePORTER($cat, $token, $server, $pid, $records) {
 	$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	$allFirstNames = Download::firstnames($token, $server);
 	$allLastNames = Download::lastnames($token, $server);
+	$allMiddleNames = Download::middlenames($token, $server);
 
     if ($cat == "NIH") {
         $reporterFields = CareerDev::$nihreporterFields;
@@ -58,7 +59,7 @@ function updateRePORTER($cat, $token, $server, $pid, $records) {
         }
 
 	    $lastNames = NameMatcher::explodeLastName($allLastNames[$recordId]);
-	    $firstNames = NameMatcher::explodeFirstName($allFirstNames[$recordId]);
+	    $firstNames = NameMatcher::explodeFirstName($allFirstNames[$recordId], $allMiddleNames[$recordId]);
 	    $myInstitutions = Scholar::explodeInstitutions(REDCapManagement::findField($redcapData, $recordId, "identifier_institution"));
 	    $institutions = array_unique(array_merge($universalInstitutions, $myInstitutions));
 	    $reporter = new RePORTER($pid, $recordId, $cat, $excludeList[$recordId]);
