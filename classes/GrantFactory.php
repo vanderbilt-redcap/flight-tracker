@@ -553,6 +553,8 @@ class CoeusGrantFactory extends GrantFactory {
 		$grant = new Grant($this->lexicalTranslator);
 		$awardNo = self::cleanAwardNo($row['coeus_sponsor_award_number']);
 		$grant->setVariable('original_award_number', $row['coeus_sponsor_award_number']);
+
+		$isSubproject = preg_match("/VUMC\d/", $awardNo) ? TRUE : FALSE;
 		if (isset($row['coeus_person_name'])) {
 			$grant->setVariable('person_name', $row['coeus_person_name']);
 		} else if (isset($row['coeus_principal_investigator'])) {

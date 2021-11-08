@@ -29,8 +29,9 @@ if ($_REQUEST['uid'] && DEBUG) {
 $userids = Download::userids($token, $server);
 
 $menteeRecordId = FALSE;
-if ($_REQUEST['menteeRecord']) {
-    $menteeRecordId = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
+if (isset($_GET['menteeRecord'])) {
+    $records = Download::recordIds($token, $server);
+    $menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
     list($myMentees, $myMentors) = getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");

@@ -125,15 +125,18 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
 	$recordIds = [];
 	foreach ($lines as $nodes) {
 	    $mentorUid = $mentorUids[$lineNum - 1];
+        if (
+            ($nodes[0] || $nodes[3])
+            && (!$nodes[0] || !$nodes[3])
+        ) {
+            throw new \Exception("Both a first name and a last name are required! Error on line $lineNum");
+        }
 		if ((count($nodes) >= 6) && $nodes[0] && $nodes[3]) {
 			$firstName = $nodes[0];
 			$middle = $nodes[2];
 			$lastName = $nodes[3];
 			$preferred = $nodes[1];
-			if (!$firstName || !$lastName) {
-			    throw new \Exception("A first name and a last name are required! Error on line $lineNum");
-            }
-			$recordId = NameMatcher::matchName($firstName, $lastName, $token, $server); 
+			$recordId = NameMatcher::matchName($firstName, $lastName, $token, $server);
 			if (!$recordId) {
 				#new
 				$recordId = $nextRecordId;

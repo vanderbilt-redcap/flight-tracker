@@ -148,7 +148,7 @@ class Grants {
             return $this->dedupedGrants;
         }
         if ($type == "current") {
-            return $this->getCurrentGrants(date("Y-m-d"));
+            return $this->getCurrentGrants("all", date("Y-m-d"));
         }
         if ($type == "all_pis") {
             $grants = $this->dedupedGrants;

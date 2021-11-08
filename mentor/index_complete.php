@@ -24,14 +24,15 @@ if ($_GET['uid']) {
 
 require_once dirname(__FILE__).'/_header.php';
 
-if ($_REQUEST['menteeRecord']) {
-    $menteeRecordId = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
+if (isset($_GET['menteeRecord'])) {
+    $records = Download::recordIds($token, $server);
+    $menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
     list($myMentees, $myMentors) = getMenteesAndMentors($menteeRecordId, $username, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");
 }
-if ($_REQUEST['instance']) {
-    $instance = REDCapManagement::sanitize($_REQUEST['instance']);
+if (isset($_GET['instance'])) {
+    $instance = REDCapManagement::sanitize($_GET['instance']);
 } else {
     throw new \Exception("You must specify an instance");
 }

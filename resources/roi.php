@@ -96,7 +96,8 @@ foreach ($allResources as $resourceIdx => $resource) {
 $measuresInOrder = ["Conversion Ratio", "Years to Convert", "Number of Publications", "Average Relative Citation Ratio"];
 echo "<h1>Return on Investment for Resources</h1>";
 $cohorts = new Cohorts($token, $server, Application::getModule());
-echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'], "if ($(this).val()) { window.location.href = \"?pid=$pid&cohort=\"+$(this).val(); } else { window.location.href = \"?pid=$pid\"; }")."</p>";    // TODO revise for ExtMod
+$link = Application::link("this");
+echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'], "if ($(this).val()) { window.location.href = \"$link&cohort=\"+$(this).val(); } else { window.location.href = \"?pid=$pid\"; }")."</p>";    // TODO revise for ExtMod
 $groupsInOrder = ["Control" => "Did <u>Not</u> Use Resource", "Treatment" => "Used Resource", ];
 foreach ($dataByResource as $resource => $groups) {
     $results = [];
