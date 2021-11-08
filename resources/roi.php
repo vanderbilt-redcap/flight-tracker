@@ -97,7 +97,7 @@ $measuresInOrder = ["Conversion Ratio", "Years to Convert", "Number of Publicati
 echo "<h1>Return on Investment for Resources</h1>";
 $cohorts = new Cohorts($token, $server, Application::getModule());
 $link = Application::link("this");
-echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'], "if ($(this).val()) { window.location.href = \"$link&cohort=\"+$(this).val(); } else { window.location.href = \"?pid=$pid\"; }")."</p>";    // TODO revise for ExtMod
+echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'], "if ($(this).val()) { window.location.href = \"$link&cohort=\"+$(this).val(); } else { window.location.href = \"$link\"; }")."</p>";
 $groupsInOrder = ["Control" => "Did <u>Not</u> Use Resource", "Treatment" => "Used Resource", ];
 foreach ($dataByResource as $resource => $groups) {
     $results = [];
