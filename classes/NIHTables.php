@@ -8,7 +8,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class NIHTables {
 	public function __construct($token, $server, $pid, $metadata = array()) {
-		$this->token = $token;
+		$this->findDepartmenttoken = $token;
 		$this->server = $server;
 		$this->pid = $pid;
 		if (empty($metadata)) {
@@ -353,7 +353,7 @@ class NIHTables {
             $recordId,
             $ldapRows,
             "ldap_vanderbiltpersonhrdeptname",
-            "summary_primary_dept",
+            "summary_primary_dept"
         );
     }
 
