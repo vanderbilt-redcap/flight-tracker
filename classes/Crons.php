@@ -266,6 +266,7 @@ class CronManager {
             if (time() > $startTs + $timespan) {
                 // failed batch - probably due to syntax error to avoid shutdown function
                 $batchQueue[0]['status'] = "ERROR";
+                $batchQueue[0]['cause'] = "Long-running";
             } else {
                 # let run
                 return;
@@ -460,6 +461,7 @@ class CronManager {
 	    Application::log($mssg." ".$trace);
 
         $batchQueue[0]['status'] = "ERROR";
+        $batchQueue[0]['cause'] = "Exception";
         $batchQueue[0]['endTs'] = time();
         $batchQueue[0]['error'] = $mssg;
         $batchQueue[0]['error_location'] = $trace;

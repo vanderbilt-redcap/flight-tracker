@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.12.4";
+		return "3.12.5";
 	}
 
 	public static function getLockFile($pid) {
@@ -617,7 +617,12 @@ class CareerDev {
 		    if (!$pid) {
                 $pid = self::getPid();
             }
-			return $module->getProjectSetting($field, $pid);
+			$value = $module->getProjectSetting($field, $pid);
+		    if ($value) {
+		        return $value;
+            } else if ($field == "default_from") {
+		        return "noreply.flighttracker@vumc.org";
+            }
 		}
 		return "";
 	}

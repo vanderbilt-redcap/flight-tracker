@@ -4,6 +4,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\MMAHelper;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -20,7 +21,7 @@ if(isset($_REQUEST['uid']) && DEBUG){
 }
 $error = "";
 $message = "";
-if (!isMentee($recordId, $username)) {
+if (!MMAHelper::isMentee($recordId, $username)) {
     $error = "Invalid username";
 }
 
@@ -29,8 +30,8 @@ $names = Download::names($token, $server);
 $myName = $names[$recordId];
 $allPrimaryMentors = Download::primaryMentors($token, $server);
 $allPrimaryMentorUserids = Download::primaryMentorUserids($token, $server);
-$myPrimaryMentors = $allPrimaryMentors[$recordId];
-$myPrimaryMentorUserids = $allPrimaryMentorUserids[$recordId];
+$myPrimaryMentors = $allPrimaryMentors[$recordId] ?? [];
+$myPrimaryMentorUserids = $allPrimaryMentorUserids[$recordId] ?? [];
 
 if ($_POST['newMentorName'] && $_POST['newMentorUserid']) {
     $newName = REDCapManagement::sanitize($_POST['newMentorName']);

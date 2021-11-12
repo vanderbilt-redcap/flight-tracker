@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 use \Vanderbilt\CareerDevLibrary\LDAP;
 use \Vanderbilt\CareerDevLibrary\LdapLookup;
+use \Vanderbilt\CareerDevLibrary\MMAHelper;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/../small_base.php";
@@ -27,7 +28,7 @@ require_once dirname(__FILE__).'/_header.php';
 if (isset($_GET['menteeRecord'])) {
     $records = Download::recordIds($token, $server);
     $menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
-    list($myMentees, $myMentors) = getMenteesAndMentors($menteeRecordId, $username, $token, $server);
+    list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $username, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");
 }
@@ -36,29 +37,29 @@ if (isset($_GET['instance'])) {
 } else {
     throw new \Exception("You must specify an instance");
 }
-list($firstName, $lastName) = getNameFromREDCap($username, $token, $server);
+list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
 $userids = Download::userids($token, $server);
 $metadata = Download::metadata($token, $server);
 $allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
-$metadata = filterMetadata($metadata);
+$metadata = MMAHelper::filterMetadata($metadata);
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-$notesFields = getNotesFields($metadataFields);
+$notesFields = MMAHelper::getNotesFields($metadataFields);
 $choices = REDCapManagement::getChoices($metadata);
 $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
-$row = pullInstanceFromREDCap($redcapData, $instance);
-$menteeUsernames = getMenteeUserids($userids[$menteeRecordId]);
+$row = MMAHelper::pullInstanceFromREDCap($redcapData, $instance);
+$menteeUsernames = MMAHelper::getMenteeUserids($userids[$menteeRecordId]);
 $date = "";
 $menteeInstance = FALSE;
 foreach ($menteeUsernames as $menteeUsername) {
-    $menteeInstance = getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);
+    $menteeInstance = MMAHelper::getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);
     if ($menteeInstance) {
         break;
     }
 }
 $menteeRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance) : [];
 $listOfMentors = REDCapManagement::makeConjunction(array_values($myMentors["name"]));
-$listOfMentees = isMentee($menteeRecordId, $username) ? $firstName." ".$lastName : $myMentees["name"][$menteeRecordId];
-$dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
+$listOfMentees = MMAHelper::isMentee($menteeRecordId, $username) ? $firstName." ".$lastName : $myMentees["name"][$menteeRecordId];
+$dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $instance);
 
 ?>
 <section class="bg-light">
@@ -86,7 +87,7 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
           $skipFieldTypes = ["file", "text"];
           foreach ($metadata as $metadataRow) {
               if ($metadataRow['section_header']) {
-                  list($sec_header, $sec_descript) = parseSectionHeader($metadataRow['section_header']);
+                  list($sec_header, $sec_descript) = MMAHelper::parseSectionHeader($metadataRow['section_header']);
                   if (!empty($htmlRows)) {
                       if (!$hasRows) {
                           $htmlRows[] = "<div>$noInfo</div>";
@@ -122,7 +123,7 @@ $dateToRevisit = getDateToRevisit($redcapData, $menteeRecordId, $instance);
               } else if (($metadataRow['field_type'] == "file") && ($metadataRow['text_validation_type_or_show_slider_number'] == "signature")) {
                   $dateField = $field."_date";
                   if ($row[$field]) {
-                      $base64 = getBase64OfFile($row[$field], $_GET['pid']);
+                      $base64 = MMAHelper::getBase64OfFile($row[$field], $_GET['pid']);
                       if ($row[$dateField]) {
                           $date = "<br>".REDCapManagement::YMD2MDY($row[$dateField]);
                       } else {
@@ -248,9 +249,9 @@ body {
 }
 .tcontainer{
   display: table;
-  wkidth:90vw;
+  width:90vw;
   height: 323px;
-  bgorder: 3px solid steelblue;
+  border: 3px solid steelblue;
   margin: auto;
 }
 
@@ -269,9 +270,10 @@ body {
   text-align: center;
   vertical-align: middle;
   margin: auto;
-  bgackground: tomato;
+  background: tomato;
   width: 50vw; height: 323px;
-  background-color: #056c7d; text-align: center;
+  background-color: #056c7d;
+  text-align: center;
 }
 
   .timestamp {

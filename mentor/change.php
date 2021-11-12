@@ -3,6 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\MMAHelper;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -15,6 +16,8 @@ $fieldName = REDCapManagement::sanitize($_REQUEST['field_name']);
 $instance = REDCapManagement::sanitize($_REQUEST['instance']);
 $type = REDCapManagement::sanitize($_REQUEST['type']);
 $userid = REDCapManagement::sanitize($_REQUEST['userid']);
+$start = REDCapManagement::sanitize($_REQUEST['start']);
+$end = date("Y-m-d H:i:s");
 $instrument = "mentoring_agreement";
 
 $recordIds = Download::recordIds($token, $server);
@@ -57,6 +60,8 @@ if ($type == "radio") {
                 $fieldName => $value,
                 "mentoring_last_update" => date("Y-m-d"),
                 "mentoring_userid" => $userid,
+                "mentoring_start" => $start,
+                "mentoring_end" => $end,
                 "mentoring_agreement_complete" => "2",
             ];
         }
@@ -76,6 +81,8 @@ if ($type == "radio") {
             $fieldName => $value,
             "mentoring_last_update" => date("Y-m-d"),
             "mentoring_userid" => $userid,
+            "mentoring_start" => $start,
+            "mentoring_end" => $end,
             "mentoring_agreement_complete" => "2",
         ];
     }
@@ -101,6 +108,8 @@ if ($type == "radio") {
             "redcap_repeat_instrument" => $instrument,
             "redcap_repeat_instance" => $instance,
             $fieldName => $newNote,
+            "mentoring_start" => $start,
+            "mentoring_end" => $end,
             "mentoring_last_update" => date("Y-m-d"),
             "mentoring_agreement_complete" => "2",
         ];

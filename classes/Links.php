@@ -66,6 +66,15 @@ class Links {
 		$tester->assertEqual($url, $linkUrl);
 	}
 
+	public static function makeMenteeAgreementLink($pid, $recordId, $event_id, $text, $instance = 1, $linkClass = "", $newTarget = FALSE) {
+        $url = self::makeMenteeAgreementUrl($pid, $recordId, $event_id, $instance);
+        return self::makeLink($url, $text, $newTarget, $linkClass);
+    }
+
+	public static function makeMenteeAgreementUrl($pid, $recordId, $event_id, $instance = 1) {
+        return self::makeFormUrl($pid, $recordId, $event_id, "mentoring_agreement", $instance);
+    }
+
 	private static function link($relativeUrl) {
 	    return Application::link($relativeUrl);
 	}

@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 
 use \Vanderbilt\CareerDevLibrary\LDAP;
+use \Vanderbilt\CareerDevLibrary\MMAHelper;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/base.php";
@@ -24,7 +25,7 @@ if (isset($_GET['test'])) {
     echo "GET: ".REDCapManagement::sanitize($_GET['uid'])."<br>";
 }
 
-$menteeRecordIds = getRecordsAssociatedWithUserid($username, $token, $server);
+$menteeRecordIds = MMAHelper::getRecordsAssociatedWithUserid($username, $token, $server);
 
 if(isset($_REQUEST['uid']) && DEBUG){
     $username = REDCapManagement::sanitize($_REQUEST['uid']);
@@ -34,7 +35,7 @@ if(isset($_REQUEST['uid']) && DEBUG){
     $uidString = "";
 }
 
-list($firstName, $lastName) = getNameFromREDCap($username, $token, $server);
+list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
 
 $resourcesLinkIfExtant = "";
 if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
@@ -104,7 +105,7 @@ if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
                     </div>
                 </div>
 
-                <?= makePopupJS() ?>
+                <?= MMAHelper::makePopupJS() ?>
 
                 <?= $resourcesLinkIfExtant ?>
                 <p>Welcome to a new way to think about the agreement of collaboration between a Mentee (also referred to here as ‘Scholar’) and Mentor. Mentee-Mentor Scholar Agreements (‘Mentoring Agreement’) function to define a mutually agreed upon set of goals and parameters which provide a foundation for the mentoring relationship.  Ideally, a formal agreement will address a broad range of domains, including the Scholar’s research and education, professional development and career advancement and interactions between the scholar and mentor with respect to support, communication, personal conduct and interpersonal interactions.</p>

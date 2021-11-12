@@ -3,6 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\MMAHelper;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once(dirname(__FILE__)."/../small_base.php");

@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 
 use \Vanderbilt\CareerDevLibrary\LDAP;
+use \Vanderbilt\CareerDevLibrary\MMAHelper;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/base.php";
@@ -18,7 +19,7 @@ if (!$username || !DEBUG) {
     $username = Application::getUsername();
 }
 
-$menteeRecordIds = getRecordsAssociatedWithUserid($username, $token, $server);
+$menteeRecordIds = MMAHelper::getRecordsAssociatedWithUserid($username, $token, $server);
 
 if(isset($_REQUEST['uid']) && DEBUG){
     $username = REDCapManagement::sanitize($_REQUEST['uid']);
@@ -30,10 +31,10 @@ if(isset($_REQUEST['uid']) && DEBUG){
 
 $metadata = Download::metadata($token, $server);
 $allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
-$metadata = filterMetadata($metadata, FALSE);
+$metadata = MMAHelper::filterMetadata($metadata, FALSE);
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 
-list($firstName, $lastName) = getNameFromREDCap($username, $token, $server);
+list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
 $names = Download::names($token, $server);
 $userids = Download::userids($token, $server);
 $allMentorUids = Download::primaryMentorUserids($token, $server);
@@ -135,11 +136,11 @@ line-height: 20px; font-family: proxima-nova}
               $i = 1;
               foreach ($menteeRecordIds as $menteeRecordId) {
                   $menteeName = $names[$menteeRecordId];
-                  $menteeUserids = getMenteeUserids($userids[$menteeRecordId]);
+                  $menteeUserids = MMAHelper::getMenteeUserids($userids[$menteeRecordId]);
                   $namesOfMentors = $allMentors[$menteeRecordId];
                   $useridsOfMentors = $allMentorUids[$menteeRecordId];
-                  $myRow = getLatestRow($menteeRecordId, [$username], $redcapData);
-                  $mentorRow = getLatestRow($menteeRecordId, $allMentorUids[$menteeRecordId], $redcapData);
+                  $myRow = MMAHelper::getLatestRow($menteeRecordId, [$username], $redcapData);
+                  $mentorRow = MMAHelper::getLatestRow($menteeRecordId, $allMentorUids[$menteeRecordId], $redcapData);
                   if (empty($myRow)) {
                       $instance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId) + 1;
                       $percentComplete = 0;
@@ -147,7 +148,7 @@ line-height: 20px; font-family: proxima-nova}
                       $lastMentorInstance = FALSE;
                       $surveyText = "start";
                   } else {
-                      $percentComplete = getPercentComplete($myRow, $metadata);
+                      $percentComplete = MMAHelper::getPercentComplete($myRow, $metadata);
                       $mdy = REDCapManagement::YMD2MDY($myRow['mentoring_last_update']);
                       $instance = $myRow['redcap_repeat_instance'];
                       $lastMentorInstance = $mentorRow['redcap_repeat_instance'];
@@ -186,7 +187,7 @@ line-height: 20px; font-family: proxima-nova}
                       $mentorNameText = "None listed";
                   }
                   $changeMentorLink = "";
-                  if (isMentee($menteeRecordId, $username)) {
+                  if (MMAHelper::isMentee($menteeRecordId, $username)) {
                       $changeMentorLink = "<br><a href='".Application::link("mentor/addMentor.php")."&menteeRecord=$menteeRecordId$uidString'>Add a Mentor</a>";
                   }
                   echo "<td>$mentorNameText$changeMentorLink</td>\n";
@@ -295,7 +296,7 @@ $('.viewagreement').hover(
 
 </script>
 
-    <?= makeReminderJS($firstName." ".$lastName) ?>
+    <?= MMAHelper::makeReminderJS($firstName." ".$lastName) ?>
 
       <style type="text/css">
   body {
@@ -348,9 +349,9 @@ a.surveylink {
 }
 .tcontainer{
   display: table;
-  wkidth:90vw;
+  width:90vw;
   height: 323px;
-  bgorder: 3px solid steelblue;
+  border: 3px solid steelblue;
   margin: auto;
 }
 
@@ -359,7 +360,7 @@ a.surveylink {
   text-align: center;
   vertical-align: middle;
   margin: auto;
-  bgackground: tomato;
+  background: tomato;
   width: 50vw; height: 323px;
   background-color: #056c7d; text-align: center;
 }
@@ -570,7 +571,7 @@ $('.viewagreementstatus').hover(
     .listmentors input:placeholder-shown {border:0px; background: none;}
     .listmentors tbody tr th:nth-of-type(1), .listmentors tbody tr td:nth-of-type(1){vertical-align: middle; padding-left: 0px !important; padding-right: 0px !important; text-align: center;}
     .listmentors tbody tr th:nth-of-type(1), .listmentors tbody tr td:nth-of-type(3), .listmentors tbody tr td:nth-of-type(4), .listmentors tbody tr td:nth-of-type(5), .listmentors tbody tr td:nth-of-type(6){padding-top: 1.4em !important;}
-    .listmentors tjbody tr td:nth-of-type(4){text-align: center;}
+    .listmentors tbody tr td:nth-of-type(4){text-align: center;}
     .listmentors tbody tr td:nth-of-type(3):hover{cursor:hand;}
     .listmentors tbody tr td:nth-of-type(4){       padding-top: 1em;padding-bottom: 1em;}
     .listmentors tbody tr th:nth-of-type(2),  .listmentors tbody tr td:nth-of-type(2) {
@@ -595,11 +596,6 @@ $('.viewagreementstatus').hover(
         margin-left: 10px;
         margin-right: 10px;
     }
-    .listmentors tkhead th:nth-of-type(1)::before{content: "Discussed";
-        position: absolute;
-        top: 128px;
-        left: 77px;
-    }
     .listmentors tbody tr td a{color: #17a2b8; text-decoration: underline;}
 
     .listmentors   .red{color: #af3017}
@@ -610,3 +606,5 @@ $('.viewagreementstatus').hover(
     .listmentors     .incomplete{padding-top: 21px !important;}
 
 </style>
+
+<?= MMAHelper::makeEmailJS($username, $menteeRecordId) ?>

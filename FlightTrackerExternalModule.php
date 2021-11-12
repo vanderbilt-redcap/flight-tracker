@@ -12,6 +12,7 @@ use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\CareerDevLibrary\NameMatcher;
 use Vanderbilt\CareerDevLibrary\Upload;
+use Vanderbilt\CareerDevLibrary\MMAHelper;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
@@ -817,8 +818,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $menteeRecord = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
         } else if (isset($_REQUEST['record'])) {
             $menteeRecord = REDCapManagement::sanitize($_REQUEST['record']);
-        } else if (function_exists("getRecordsAssociatedWithUserid")) {
-            $records = getRecordsAssociatedWithUserid($userid, $token, $server);
+        } else if (method_exists("\Vanderbilt\CareerDevLibrary\MMAHelper", "getRecordsAssociatedWithUserid")) {
+            $records = MMAHelper::getRecordsAssociatedWithUserid($userid, $token, $server);
             if (isset($_GET['test'])) {
                 Application::log("Got records ".json_encode($records));
             }

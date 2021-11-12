@@ -444,16 +444,17 @@ return $result;
         ];
 
 		foreach ($this->metadata as $row) {
-			if (preg_match("/mentor/", $row['field_name'])) {
+		    $fieldName = $row['field_name'];
+			if (preg_match("/mentor/", $fieldName) && !preg_match("/^mentoring/", $fieldName)) {
 				$skip = FALSE;
 				foreach ($skipRegex as $regex) {
-					if (preg_match($regex, $row['field_name'])) {
+					if (preg_match($regex, $fieldName)) {
 						$skip = TRUE;
 						break;
 					}
 				}
 				if (!$skip) {
-					array_push($fields, $row['field_name']);
+					array_push($fields, $fieldName);
 				}
 			}
 		}

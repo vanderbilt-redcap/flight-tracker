@@ -926,8 +926,6 @@ class REDCapManagement {
              * @psalm-taint-escape has_quotes
              */
             $str = htmlentities($str, ENT_QUOTES);
-        } else {
-            $str = htmlentities($str);
         }
         return $str;
     }

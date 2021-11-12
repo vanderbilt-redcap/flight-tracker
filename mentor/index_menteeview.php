@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 use \Vanderbilt\CareerDevLibrary\LDAP;
 use \Vanderbilt\CareerDevLibrary\LdapLookup;
+use \Vanderbilt\CareerDevLibrary\MMAHelper;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/../small_base.php";
@@ -35,7 +36,7 @@ $names = Download::names($token, $server);
 $menteeRecordId = FALSE;
 if ($_REQUEST['menteeRecord']) {
     $menteeRecordId = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
-    list($myMentees, $myMentors) = getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
+    list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");
 }
@@ -45,10 +46,10 @@ $allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
 $metadata = REDCapManagement::filterMetadataForForm($metadata, "mentoring_agreement");
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 $choices = REDCapManagement::getChoices($metadata);
-$notesFields = getNotesFields($metadataFields);
+$notesFields = MMAHelper::getNotesFields($metadataFields);
 
-list($firstName, $lastName) = getNameFromREDCap($userid2, $token, $server);
-$otherMentors = REDCapManagement::makeConjunction($myMentors["name"]);
+list($firstName, $lastName) = MMAHelper::getNameFromREDCap($userid2, $token, $server);
+$otherMentors = REDCapManagement::makeConjunction($myMentors["name"] ?? []);
 
 $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id"], $metadataFields), [$menteeRecordId]);
 if ($_REQUEST['instance']) {
@@ -57,7 +58,7 @@ if ($_REQUEST['instance']) {
     $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId);
     $currInstance = $maxInstance + 1;
 }
-$surveysAvailableToPrefill = getMySurveys($userid2, $token, $server, $menteeRecordId, $currInstance);
+$surveysAvailableToPrefill = MMAHelper::getMySurveys($userid2, $token, $server, $menteeRecordId, $currInstance);
 $instanceRow = [];
 foreach ($redcapData as $row) {
     if (($row['record_id'] == $menteeRecordId)
@@ -67,11 +68,11 @@ foreach ($redcapData as $row) {
     }
 }
 
-list($priorNotes, $instances) = makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $currInstance);
+list($priorNotes, $instances) = MMAHelper::makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $currInstance);
 
 $welcomeText = "<p>Below is the Mentee-Mentor Agreement with <strong>$otherMentors</strong>. Once completed, $otherMentors will be notified to complete the agreement on their end.</p>";
-$secHeaders = getSectionHeadersWithMenteeQuestions($metadata);
-$sectionsToShow = getSectionsToShow($userid2, $secHeaders, $redcapData, $menteeRecordId, $currInstance);
+$secHeaders = MMAHelper::getSectionHeadersWithMenteeQuestions($metadata);
+$sectionsToShow = MMAHelper::getSectionsToShow($userid2, $secHeaders, $redcapData, $menteeRecordId, $currInstance);
 
 ?>
 
@@ -83,7 +84,7 @@ $sectionsToShow = getSectionsToShow($userid2, $secHeaders, $redcapData, $menteeR
 
             <h2 style="color: #727272;">Hi, <?= $firstName ?>!</h2>
 
-            <?= makeSurveyHTML($otherMentors, "mentor(s)", $instanceRow, $metadata) ?>
+            <?= MMAHelper::makeSurveyHTML($otherMentors, "mentor(s)", $instanceRow, $metadata) ?>
 
         </div>
     </div>
@@ -186,8 +187,8 @@ $('.viewagreement').hover(
 </script>
 
 <div class="row col-lg-12 tdata" style="text-align: center;">
-    <?= (!empty($surveysAvailableToPrefill)) ? makePrefillHTML($surveysAvailableToPrefill, $uidString) : "" ?>
-    <?= (!empty($instances)) ? makePriorInstancesDropdown($instances, $currInstance) : "" ?>
+    <?= (!empty($surveysAvailableToPrefill)) ? MMAHelper::makePrefillHTML($surveysAvailableToPrefill, $uidString) : "" ?>
+    <?= (!empty($instances)) ? MMAHelper::makePriorInstancesDropdown($instances, $currInstance) : "" ?>
     <h4 style="margin: 0 auto; width: 100%; max-width: 800px;">Please independently fill out the checklist below. Suggested tables are open. Click on a header to expand the table. When complete, click on the button to alert your mentor.</h4>
 </div>
 <form id="tsurvey" name="tsurvey">
@@ -201,7 +202,7 @@ $('.viewagreement').hover(
 <?php
 $skipFieldTypes = ["file", "text"];
 foreach ($metadata as $row) {
-  list($sec_header, $sectionDescription) = parseSectionHeader($row['section_header']);
+  list($sec_header, $sectionDescription) = MMAHelper::parseSectionHeader($row['section_header']);
 
   $fieldName = $row['field_name'];
   $rowName = $fieldName."-tr";
@@ -220,7 +221,7 @@ foreach ($metadata as $row) {
                     echo "<div class='subHeader'>".strip_tags($sectionDescription)."</div>";
                 }
                 ?>
-                <div class="smallHeader"><?= getSectionExpandMessage() ?></div>
+                <div class="smallHeader"><?= MMAHelper::getSectionExpandMessage() ?></div>
             </div>
           <table id="quest1" class="table <?= $encodedSection ?>" style="margin-left: 0px;<?= $displayCSS ?>">
               <thead>
@@ -254,7 +255,7 @@ foreach ($metadata as $row) {
               }
             ?>
         </td>
-          <?= makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields) ?>
+          <?= MMAHelper::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields) ?>
       </tr>
     <?php } else if ($row['field_type'] == "checkbox" ) { ?>
       <tr id="<?= $rowName ?>"><th scope="row"><?= trim($row['field_label']) ?></th>
@@ -276,7 +277,7 @@ foreach ($metadata as $row) {
               }
               ?>
           </td>
-          <?= makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields) ?>
+          <?= MMAHelper::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields) ?>
       </tr>
   <?php
   } else if (($row['field_type'] == "notes") && (!in_array($fieldName, $notesFields))) {
@@ -337,7 +338,7 @@ foreach ($metadata as $row) {
               width: 31%;
             }
 
-            tlhead th:nth-of-type(1),
+            thead th:nth-of-type(1),
             tbody tr td,
             thead th:nth-of-type(2),
             thead th:nth-of-type(3) {
@@ -446,13 +447,6 @@ foreach ($metadata as $row) {
             tbody tr th:nth-of-type(1) img {
               margin-left: 10px;
               margin-right: 10px;
-            }
-
-            tkhead th:nth-of-type(1)::before {
-              content: "Discussed";
-              position: absolute;
-              top: 128px;
-              left: 77px;
             }
 
             tbody tr td a, tbody tr th a {
@@ -756,9 +750,9 @@ foreach ($metadata as $row) {
 }
 .tcontainer{
   display: table;
-  wkidth:90vw;
+  width:90vw;
   height: 323px;
-  bgorder: 3px solid steelblue;
+  border: 3px solid steelblue;
   margin: auto;
 }
 
@@ -767,7 +761,7 @@ foreach ($metadata as $row) {
   text-align: center;
   vertical-align: middle;
   margin: auto;
-  bgackground: tomato;
+  background: tomato;
   width: 50vw; height: 323px;
   background-color: #056c7d; text-align: center;
 }
@@ -791,11 +785,9 @@ foreach ($metadata as $row) {
 }
 </style>
 
-</body>
-
-</html><link rel="stylesheet" href="<?= Application::link("mentor/jquery.sweet-modal.min.css") ?>" />
+<link rel="stylesheet" href="<?= Application::link("mentor/jquery.sweet-modal.min.css") ?>" />
 <script src="<?= Application::link("mentor/jquery.sweet-modal.min.js") ?>"></script>
-<?= makePercentCompleteJS() ?>
+<?= MMAHelper::makePercentCompleteJS() ?>
 <script type="text/javascript">
     dfn=function(obj){
         objta = "#"+obj+" td:nth-of-type(4) .tnote";
@@ -891,6 +883,7 @@ foreach ($metadata as $row) {
     });
 
     function updateData(ob) {
+        const mentoringStart = $('#mentoring_start').val();
         if ($(ob).attr("id").match(/^exampleChecksh/)) {
             let fullFieldName = $(ob).attr("id").replace(/^exampleChecksh/, "")
 
@@ -910,7 +903,8 @@ foreach ($metadata as $row) {
                 instance: '<?= $currInstance ?>',
                 field_name: fullFieldName,
                 value: checkValue,
-                userid: '<?= $userid2 ?>'
+                userid: '<?= $userid2 ?>',
+                start: mentoringStart
             }, function (html) {
                 console.log(html);
                 $(thisbox).delay(300).removeClass("simptip-position-left").removeAttr("data-tooltip");
@@ -928,7 +922,8 @@ foreach ($metadata as $row) {
                 instance: '<?= $currInstance ?>',
                 field_name: fieldName,
                 value: value,
-                userid: '<?= $userid2 ?>'
+                userid: '<?= $userid2 ?>',
+                start: mentoringStart
             }, function(html) {
                 console.log(html);
                 $(thisbox).delay(300).removeClass("simptip-position-left").removeAttr("data-tooltip");
@@ -944,7 +939,8 @@ foreach ($metadata as $row) {
                 instance: '<?= $currInstance ?>',
                 field_name: fieldName,
                 value: value,
-                userid: '<?= $userid2 ?>'
+                userid: '<?= $userid2 ?>',
+                start: mentoringStart
             }, function(html) {
                 console.log(html);
                 $(thisbox).attr("disabled", false);
@@ -962,7 +958,7 @@ foreach ($metadata as $row) {
 
 </script>
 
-<?= makeCommentJS($userid2, $menteeRecordId, $currInstance, $currInstance, $priorNotes, $names[$menteeRecordId], $dateToRemind, TRUE, in_array("mentoring_agreement_evaluations", $allMetadataForms), $pid) ?>
+<?= MMAHelper::makeCommentJS($userid2, $menteeRecordId, $currInstance, $currInstance, $priorNotes, $names[$menteeRecordId], $dateToRemind, TRUE, in_array("mentoring_agreement_evaluations", $allMetadataForms), $pid) ?>
 
 
 <style type="text/css">

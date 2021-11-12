@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\REDCapLookup;
 use \Vanderbilt\CareerDevLibrary\REDCapLookupByUserid;
+use \Vanderbilt\CareerDevLibrary\MMAHelper;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -146,14 +147,15 @@ if ($_POST['newUids']) {
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
 $records = Download::recordIds($token, $server);
+$names = Download::names($token, $server);
 $userids = Download::userids($token, $server);
 $mentorNames = Download::primaryMentors($token, $server);
 $mentorUserids = Download::primaryMentorUserids($token, $server);
-$numInvited = ["mentees" => getElementCount($userids), "mentors" => getElementCount($mentorUserids)];
+$numInvited = ["mentees" => MMAHelper::getElementCount($userids), "mentors" => MMAHelper::getElementCount($mentorUserids)];
 $numCompletedInitial = ["mentees" => 0, "mentors" => 0];
 $numCompletedFollowup = ["mentees" => 0, "mentors" => 0];
 $timesToComplete = ["mentees" => [], "mentors" => []];
-$numMentors = getElementCount($mentorNames);
+$numMentors = MMAHelper::getElementCount($mentorNames);
 
 $selectFieldTypes = ["dropdown", "radio", "checkbox", ];
 $metadata = Download::metadata($token, $server);
@@ -171,6 +173,7 @@ foreach ($metadata as $row) {
     }
 }
 
+$recordsWithMenteeResponse = [];
 $values = [];
 foreach ($records as $recordId) {
     $redcapData = Download::fieldsForRecords($token, $server, $agreementFields, [$recordId]);
@@ -197,7 +200,7 @@ foreach ($records as $recordId) {
     foreach ($redcapData as $row) {
         if ($row['redcap_repeat_instrument'] == "mentoring_agreement") {
             $useridOfRespondant = $row['mentoring_userid'];
-            $menteeUserids = getMenteeUserids($userids[$recordId]);
+            $menteeUserids = MMAHelper::getMenteeUserids($userids[$recordId]);
             if (in_array($useridOfRespondant, $menteeUserids)) {
                 $respondantClass = "mentees";
             } else if (in_array($useridOfRespondant, $mentorUserids[$recordId])) {
@@ -211,6 +214,9 @@ foreach ($records as $recordId) {
 
             if ($isFirstMentee && ($respondantClass == "mentees")) {
                 $numCompletedInitial[$respondantClass]++;
+                if (!isset($recordsWithMenteeResponse[$recordId])) {
+                    $recordsWithMenteeResponse[$recordId] = $names[$recordId];
+                }
                 $isFirstMentee = FALSE;
             } else if ($isFirstMentor && ($respondantClass == "mentors")) {
                 $numCompletedInitial[$respondantClass]++;
@@ -251,11 +257,12 @@ echo "<th>For Mentees</th>";
 echo "<th>For Mentors</th>";
 echo "</tr></thead>";
 echo "<tbody>";
-echo makeGeneralTableRow("Number of Mentors Filled In", $numMentors, "Mentors");
-echo makeGeneralTableRow("People with Unique User-ids Involved", $numInvited, "Individuals");
-echo makeGeneralTableRow("Number Completed Initial<br>Mentee-Mentor Agreement Survey", $numCompletedInitial, "");
-echo makeGeneralTableRow("Number Completed Follow-up<br>Mentee-Mentor Agreement Survey", $numCompletedFollowup, "");
-echo makeGeneralTableRow("Average Time to Complete", $averageTimesToComplete, "Minutes");
+echo MMAHelper::makeGeneralTableRow("Number of Mentors Filled In", $numMentors, "Mentors");
+echo MMAHelper::makeGeneralTableRow("People with Unique User-ids Involved", $numInvited, "Individuals");
+echo MMAHelper::makeGeneralTableRow("Number Completed Initial<br>Mentee-Mentor Agreement Survey", $numCompletedInitial, "");
+echo MMAHelper::makeGeneralTableRow("Number Completed Follow-up<br>Mentee-Mentor Agreement Survey", $numCompletedFollowup, "");
+echo MMAHelper::makeGeneralTableRow("Average Time to Complete", $averageTimesToComplete, "Minutes");
+echo MMAHelper::makeDropdownTableRow($pid, $event_id, "View Responses", $recordsWithMenteeResponse);
 echo "</tbody>";
 echo "</table>";
 
@@ -309,7 +316,7 @@ echo "<tbody>";
 foreach ($sourceData as $fieldName => $cols) {
     $fieldLabel = $selectFieldsAndLabels[$fieldName];
     foreach ($cols as $colLabel => $numberWithAnswer) {
-        echo makeAnswerTableRow($fieldLabel, $colLabel, $numberWithAnswer, getTotalCount($values[$fieldName]));
+        echo MMAHelper::makeAnswerTableRow($fieldLabel, $colLabel, $numberWithAnswer, MMAHelper::getTotalCount($values[$fieldName]));
         $fieldLabel = "";
     }
 }
@@ -329,7 +336,7 @@ if ($hasEvaluationsEnabled) {
             if ($row['redcap_repeat_instrument'] == "mentoring_agreement_evaluations") {
                 $instance = $row['redcap_repeat_instance'];
                 foreach (array_keys($recordsWithoutEvals) as $type) {
-                    if ($instance == getEvalInstance($type)) {
+                    if ($instance == MMAHelper::getEvalInstance($type)) {
                         $hasEval[$type] = TRUE;
                     }
                 }
@@ -485,67 +492,3 @@ function submitAdjudications(link) {
 }
 </script>";
 
-function getTotalCount($ary) {
-    $n = 0;
-    foreach (array_values($ary) as $valueAry) {
-        $n += count($valueAry);
-    }
-    return $n;
-}
-
-function makeAnswerTableRow($fieldLabel, $answerLabel, $positives, $n) {
-    $html = "";
-    $html .= "<tr>";
-    $html .= "<th>$fieldLabel</th>";
-    $html .= "<td>$answerLabel</td>";
-    $html .= "<td>$positives</td>";
-    $html .= "<td>$n</td>";
-    if ($n > 0) {
-        $frac = $positives / $n;
-        $percentage = REDCapManagement::pretty($frac * 100, 1)."%";
-        $html .= "<td>$percentage</td>";
-    } else {
-        $html .= "<td></td>";
-    }
-    $html .= "</tr>";
-    return $html;
-}
-
-function makeGeneralTableRow($title, $values, $units) {
-    if ($units && !preg_match("/^\s/", $units)) {
-        $unitsWithSpace = " ".$units;
-    } else {
-        $unitsWithSpace = $units;
-    }
-    $html = "";
-    $html .= "<tr>";
-    $html .= "<th>$title</th>";
-    if (is_numeric($values)) {
-        $html .= "<td colspan='2' class='centered'>".REDCapManagement::pretty($values, 0).$unitsWithSpace."</td>";
-    } else if (is_array($values)) {
-        $html .= "<td>".REDCapManagement::pretty($values["mentees"], 0).$unitsWithSpace."</td>";
-        $html .= "<td>".REDCapManagement::pretty($values["mentors"], 0).$unitsWithSpace."</td>";
-    } else {
-        $html .= "<td colspan='2' class='centered'>".$values.$unitsWithSpace."</td>";
-    }
-    $html .= "</tr>";
-    return $html;
-}
-
-function getElementCount($elements) {
-    $useridList = [];
-    foreach (array_values($elements) as $relatedUserids) {
-        if ($relatedUserids === "") {
-            $relatedUserids = [];
-        }
-        if (is_string($relatedUserids)) {
-            $relatedUserids = [$relatedUserids];
-        }
-        foreach ($relatedUserids as $relatedUserid) {
-            if (($relatedUserid !== "") && !in_array($relatedUserid, $useridList)) {
-                $useridList[] = $relatedUserid;
-            }
-        }
-    }
-    return count($useridList);
-}
