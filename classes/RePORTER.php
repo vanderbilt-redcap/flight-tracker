@@ -170,6 +170,9 @@ class RePORTER {
                         if (in_array($key, $dateFields) && $value) {
                             $value = REDCapManagement::getReporterDateInYMD($value);
                         }
+                        if (is_array($value)) {
+                            $value = json_encode($value);
+                        }
                         $value = preg_replace("/\s+/", " ", $value);
                         if (!$value) {
                             $value = "";
@@ -254,6 +257,61 @@ class RePORTER {
         return REDCapManagement::downloadURLWithPOST($url, $postdata, $this->pid);
     }
 
+    public static function getTypes() {
+        return ["NIH", "Federal"];
+    }
+
+    public function searchInstitutionsAndGrantTypes($institutions, $grantTypes) {
+        $searchStrings = [];
+        foreach ($grantTypes as $grantType) {
+            $searchStrings[] = "*$grantType*";
+        }
+        if ($this->isFederal()) {
+            $this->currData = [];
+            foreach ($institutions as $institution) {
+                foreach ($searchStrings as $searchString) {
+                    $query = $this->server . "/v1/projects/search?query=orgName:" . urlencode($institution)."\$projectNumber:".urlencode($searchString);
+                    $queryData = $this->runGETQuery($query);
+                    $this->currData = array_merge($this->currData, $queryData);
+                }
+            }
+            $this->deduplicateData();
+            $this->currData = $this->filterForExcludeList();
+            $this->currData = $this->filterForGrantTypes($grantTypes);
+        } else if ($this->isNIH()) {
+            $payload = [
+                "criteria" => [
+                    "org_names" => $institutions,
+                    "project_nums" => $searchStrings,
+                ],
+            ];
+            $location = $this->server."/v1/projects/search";
+            $this->currData = $this->runPOSTQuery($location, $payload);
+            $this->currData = $this->filterForExcludeList();
+            $this->currData = $this->filterForGrantTypes($grantTypes);
+        }
+        return $this->getData();
+    }
+
+    public function filterForGrantTypes($grantTypes) {
+        $filteredData = [];
+        foreach ($this->currData as $line) {
+            if ($this->isNIH()) {
+                $awardNo = $line['project_num'];
+            } else if ($this->isFederal()) {
+                $awardNo = $line['projectNumber'];
+            } else {
+                throw new \Exception("Invalid category " . $this->category);
+            }
+            $activityType = Grant::getActivityCode($awardNo);
+            if (in_array($activityType, $grantTypes) && !isset($filteredData[$awardNo])) {
+                $filteredData[$awardNo] = $line;
+            }
+        }
+        $this->currData = array_values($filteredData);
+        return $this->currData;
+    }
+
     public function searchPI($piName, $institutions) {
         $piName = trim($piName);
         if (!$piName || empty($institutions)) {
@@ -263,7 +321,7 @@ class RePORTER {
             $query = $this->server."/v1/projects/search?query=PiName:".urlencode($piName);
             $this->currData = $this->runGETQuery($query);
             $this->currData = $this->filterForExcludeList();
-            return $this->filterForInstitutionsAndName($piName, $institutions);
+            $this->currData = $this->filterForInstitutionsAndName($piName, $institutions);
         } else if ($this->isNIH()) {
             list($firstName, $lastName) = NameMatcher::splitName($piName, 2);
             $payload = [
@@ -420,7 +478,6 @@ class RePORTER {
         }
         // Application::log($this->recordId.": $firstName $lastName included ".count($included), $this->pid);
         // echo "itemNames: ".json_encode($pis)."\n";
-        $this->currData = $included;
         return $included;
     }
 

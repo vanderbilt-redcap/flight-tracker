@@ -51,8 +51,8 @@ $choices = REDCapManagement::getChoices($metadata);
 $notesFields = MMAHelper::getNotesFields($metadataFields);
 
 list($firstName, $lastName) = MMAHelper::getNameFromREDCap($userid2, $token, $server);
-$otherMentors = REDCapManagement::makeConjunction($myMentors["name"]);
-$otherMentees = REDCapManagement::makeConjunction($myMentees["name"]);
+$otherMentors = REDCapManagement::makeConjunction($myMentors["name"] ?? []);
+$otherMentees = REDCapManagement::makeConjunction($myMentees["name"] ?? []);
 
 $fields = array_merge(["record_id", "mentoring_userid", "mentoring_last_update", "mentoring_panel_names", "mentoring_userid"], $metadataFields);
 $redcapData = Download::fieldsForRecords($token, $server, $fields, [$menteeRecordId]);
@@ -499,7 +499,10 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                         background-color: #f6dd6645 !important;
                     }
 
-                    .form-check-input { margin-right: 6px !important; }
+                    .form-check-input {
+                        margin-right: 6px !important;
+                        position: absolute !important;
+                    }
 
                 </style>
 
@@ -641,7 +644,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
         foreach ($sections as $tableNum => $header) {
             $encodedSection = REDCapManagement::makeHTMLId($header);
             $header = strtolower($header);
-            $header = addslashes(beautifyHeader($header));
+            $header = addslashes(MMAHelper::beautifyHeader($header));
             echo "var header$tableNum = '$encodedSection';\n";
             echo "\$('#quest".$tableNum."').before('<div class=\"verticalheader\" id=\"vh$tableNum\">$header</div>');\n";
         }
@@ -982,4 +985,5 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
     .opacity100{
         opacity: 1 !important;
     }
+
 </style>

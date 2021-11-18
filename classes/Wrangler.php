@@ -31,7 +31,7 @@ class Wrangler {
             $html .= "<p class='centered bolded'>";
             $html .= $lastName." is an ".self::makeUncommonDefinition()." last name in the United States.<br>";
             $html .= "You likely can approve these patents without close review.<br>";
-            $html .= "<a href='javascript:;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'><span class='green bolded'>Click here to approve all the patents for this record automatically.</span></a>";
+            $html .= "<a href='javascript:;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'><span class='green bolded'>Click here to approve all the $lcWranglerType for this record automatically.</span></a>";
             $html .= "</p>";
         }
 

@@ -18,20 +18,8 @@ function addHTMLForParens($header) {
 
 function getPossibleLayouts() {
     return [
-        "dates",
-        "demographics",
-        "emails",
-        "grantBudgets",
-        "grantBudgetsByYear",
-        "grants",
-        "overall",
-        "publicationsByCategory",
-        "publicationsByJournal",
-        "publicationsByMESHTerms",
-        "publicationsByMetrics",
-        "publicationsByPublicationType",
-        "publicationsByYear",
-        "resources",
+        "table",
+        "display",
     ];
 }
 

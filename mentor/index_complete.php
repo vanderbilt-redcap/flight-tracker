@@ -57,8 +57,8 @@ foreach ($menteeUsernames as $menteeUsername) {
     }
 }
 $menteeRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance) : [];
-$listOfMentors = REDCapManagement::makeConjunction(array_values($myMentors["name"]));
-$listOfMentees = MMAHelper::isMentee($menteeRecordId, $username) ? $firstName." ".$lastName : $myMentees["name"][$menteeRecordId];
+$listOfMentors = REDCapManagement::makeConjunction(array_values($myMentors["name"] ?? []));
+$listOfMentees = MMAHelper::isMentee($menteeRecordId, $username) ? $firstName." ".$lastName : ($myMentees["name"][$menteeRecordId] ?? []);
 $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $instance);
 
 ?>
@@ -123,7 +123,7 @@ $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $inst
               } else if (($metadataRow['field_type'] == "file") && ($metadataRow['text_validation_type_or_show_slider_number'] == "signature")) {
                   $dateField = $field."_date";
                   if ($row[$field]) {
-                      $base64 = MMAHelper::getBase64OfFile($row[$field], $_GET['pid']);
+                      $base64 = MMAHelper::getBase64OfFile($menteeRecordId, $instance, $field, $pid);
                       if ($row[$dateField]) {
                           $date = "<br>".REDCapManagement::YMD2MDY($row[$dateField]);
                       } else {
@@ -131,10 +131,13 @@ $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $inst
                       }
                       if ($base64) {
                           $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><img src='$base64' class='signature' alt='signature'><div class='signatureDate'>$date</div></li>";
+                      } else {
+                          $htmlRows[] = "<li>".$metadataRow['field_label'].": ".$row[$field]."</li>";
                       }
                   } else {
                       $date = date("m-d-Y");
-                      $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><div class='signature' id='$field'></div><div class='signatureDate'>$date</div><button onclick='saveSignature(\"$field\");'>Save</button> <button onclick='resetSignature(\"#$field\");'>Reset</button></li>";
+                      $ymdDate = date("Y-m-d");
+                      $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><div class='signature' id='$field'></div><div class='signatureDate'>$date</div><button onclick='saveSignature(\"$field\", \"$ymdDate\");'>Save</button> <button onclick='resetSignature(\"#$field\");'>Reset</button></li>";
                       $htmlRows[] = "<script>
                             $(document).ready(function() {
                                 $('#$field').jSignature();
@@ -184,7 +187,7 @@ $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $inst
         }
     }
 
-    function saveSignature(field) {
+    function saveSignature(field, ymdDate) {
         let ob = '#'+field;
         let datapair = $(ob).jSignature('getData', 'svgbase64');
         $.post('<?= Application::link("mentor/uploadSignature.php").$uidString ?>',
@@ -193,7 +196,7 @@ $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $inst
                 b64image: datapair[1],
                 mime_type: datapair[0],
                 instance: '<?= $instance ?>',
-                date: '<?= REDCapManagement::MDY2YMD($date) ?>' },
+                date: ymdDate },
             function(html) {
             console.log(html);
             window.location.reload();

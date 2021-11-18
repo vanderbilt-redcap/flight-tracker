@@ -41,7 +41,8 @@ class REDCapManagement {
 
     public static function makeSafeFilename($filename) {
 	    $filename = str_replace("..", "", $filename);
-	    $filename = preg_replace("/[\\\/]/", "", $filename);
+        $filename = str_replace("/", "", $filename);
+        $filename = str_replace("\\", "", $filename);
 	    return $filename;
     }
 
@@ -888,7 +889,10 @@ class REDCapManagement {
     }
 
     public static function sanitizeWithoutChangingQuotes($str) {
-        if (!isset($str)) {
+        if (is_numeric($str)) {
+            $str = (string) $str;
+        }
+        if (!is_string($str)) {
             return "";
         }
         /**
@@ -931,7 +935,10 @@ class REDCapManagement {
     }
 
     public static function sanitize($origStr) {
-	    if (!isset($origStr)) {
+	    if (is_numeric($origStr)) {
+	        $origStr = (string) $origStr;
+        }
+	    if (!is_string($origStr)) {
 	        return "";
         }
         /**

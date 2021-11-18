@@ -147,7 +147,7 @@ function sendTestEmails(pid, selectName, selectValue) {
 		post[selectName] = selectValue;
 		presentScreen("Preparing Messages...");
 		$.post(getPageUrl("/emailMgmt/makeMessages.php"), post, function(json) {
-			console.log("makeMessages: "+JSON.stringify(json));
+			console.log("makeMessages: "+json);
 			presentScreen("Sending Messages...");
 			$.post(getPageUrl("/emailMgmt/sendTest.php"), { messages: json }, function(str) {
 				console.log(str);

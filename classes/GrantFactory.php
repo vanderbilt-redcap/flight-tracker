@@ -11,11 +11,13 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 abstract class GrantFactory {
-	public function __construct($name, $lexicalTranslator, $metadata) {
+	public function __construct($name, $lexicalTranslator, $metadata, $token = "", $server = "") {
 		$this->name = $name;
 		$this->lexicalTranslator = $lexicalTranslator;
 		$this->metadata = $metadata;
 		$this->choices = REDCapManagement::getChoices($this->metadata);
+		$this->token = $token;
+		$this->server = $server;
 	}
 
 	public function getGrants() {
@@ -50,13 +52,46 @@ abstract class GrantFactory {
         return [$pid, $event_id];
     }
 
-	abstract public function processRow($row, $token = "");
+	abstract public function processRow($row, $otherRows, $token = "");
+
+	protected function extractFromOtherSources($rows, $excludeSources, $variable, $awardNo) {
+	    $filteredRows = [];
+	    foreach ($rows as $row) {
+	        if (!in_array($row['redcap_repeat_instrument'], $excludeSources)) {
+	            $filteredRows[] = $row;
+            }
+        }
+	    $grants = new Grants($this->token, $this->server, $this->metadata);
+	    $grants->setRows($filteredRows);
+        $grantAry = $grants->getGrants("native");
+        $sourceOrder = Grants::getSourceOrder();
+        $lowerAwardNo = strtolower($awardNo);
+        foreach ($sourceOrder as $source) {
+            if (!in_array($source, $excludeSources)) {
+                foreach ($grantAry as $grant) {
+                    if (($source == $grant->getVariable("source")) && (strtolower($grant->getNumber()) == $lowerAwardNo)) {
+                        $value = $grant->getVariable($variable);
+                        if ($variable == "role") {
+                            if ($value != self::$defaultRole) {
+                                return $value;
+                            }
+                        } else if ($value !== "") {
+                            return $value;
+                        }
+                    }
+                }
+            }
+        }
+        return "";
+    }
 
 	protected $name = "";
 	protected $grants = array();
 	protected $lexicalTranslator;
 	protected $metadata;
 	protected $choices;
+	protected $token;
+	protected $server;
 	protected static $defaultRole = "PI/Co-PI";
 }
 
@@ -67,7 +102,7 @@ class InitialGrantFactory extends GrantFactory {
     }
 
 	# get the Scholars' Survey (always nicknamed check) default spec array
-	public function processRow($row, $token = "") {
+	public function processRow($row, $otherRows, $token = "") {
         $prefix = $this->prefix;
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= Grants::$MAX_GRANTS; $i++) {
@@ -119,7 +154,7 @@ class InitialGrantFactory extends GrantFactory {
 }
 
 class FollowupGrantFactory extends GrantFactory {
-	public function processRow($row, $token = "") {
+	public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= Grants::$MAX_GRANTS; $i++) {
 			if (($row["followup_grant$i"."_start"] != "")
@@ -165,7 +200,7 @@ class FollowupGrantFactory extends GrantFactory {
 }
 
 class NewmanGrantFactory extends GrantFactory {
-	public function processRow($row, $token = "") {
+	public function processRow($row, $otherRows, $token = "") {
 		$this->processNewmanData($row);
 		$this->processSheet2($row);
 		$this->processNew2017($row);
@@ -547,11 +582,12 @@ class CoeusGrantFactory extends GrantFactory {
 		return parent::cleanAwardNo($awardNo);
 	}
 
-	public function processRow($row, $token = "") {
+	public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus&instance={$row['redcap_repeat_instance']}";
 		$grant = new Grant($this->lexicalTranslator);
 		$awardNo = self::cleanAwardNo($row['coeus_sponsor_award_number']);
+        $isSubproject = preg_match("/VUMC\d/", $awardNo);
 		$grant->setVariable('original_award_number', $row['coeus_sponsor_award_number']);
 
 		$isSubproject = preg_match("/VUMC\d/", $awardNo) ? TRUE : FALSE;
@@ -568,12 +604,16 @@ class CoeusGrantFactory extends GrantFactory {
 		$grant->setVariable('end', $row['coeus_budget_end_date']);
 		$grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
         $grant->setVariable('subproject', $isSubproject);
-		if (preg_match("/[Kk]12/", $awardNo) && ($row['coeus_pi_flag'] == "N")) {
+		if (preg_match("/[Kk]12/", $awardNo) && !in_array($row['coeus_pi_flag'], ["N", "0"])) {
 			$grant->setVariable('budget', '0');
 			$grant->setVariable('direct_budget', '0');
             $grant->setVariable("role", "");
 		} else {
-            $grant->setVariable("role", self::$defaultRole);
+		    if ($role = $this->extractFromOtherSources($otherRows, ["coeus"], "role", $awardNo)) {
+                $grant->setVariable("role", $role);
+            } else {
+                $grant->setVariable("role", self::$defaultRole);
+            }
 			$grant->setVariable('budget', $row['coeus_total_cost_budget_period']);
 			$grant->setVariable('direct_budget', $row['coeus_direct_cost_budget_period']);
 		}
@@ -607,12 +647,12 @@ class CoeusGrantFactory extends GrantFactory {
 }
 
 class Coeus2GrantFactory extends CoeusGrantFactory {
-    public function __construct($name, $lexicalTranslator, $metadata, $type = "Grant") {
-        parent::__construct($name, $lexicalTranslator, $metadata);
+    public function __construct($name, $lexicalTranslator, $metadata, $type = "Grant", $token, $server) {
+        parent::__construct($name, $lexicalTranslator, $metadata, $token, $server);
         $this->type = $type;
     }
 
-    public function processRow($row, $token = "") {
+    public function processRow($row, $otherRows, $token = "") {
         $addGrant = FALSE;
         if (in_array($this->type, ["Grant", "Grants"])) {
             $addGrant = ($row['coeus2_award_status'] == "Awarded");
@@ -666,7 +706,7 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
 }
 
 class RePORTERGrantFactory extends GrantFactory {
-	public function processRow($row, $token = "") {
+	public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=reporter&instance={$row['redcap_repeat_instance']}";
 		$awardNo = self::cleanAwardNo($row['reporter_projectnumber']);
@@ -718,7 +758,7 @@ class RePORTERGrantFactory extends GrantFactory {
 }
 
 class NIHRePORTERGrantFactory extends  GrantFactory {
-    public function processRow($row, $token = "")
+    public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $url = APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=nih_reporter&instance={$row['redcap_repeat_instance']}";
@@ -761,7 +801,7 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
 }
 
 class ExPORTERGrantFactory extends GrantFactory {
-	public function processRow($row, $token = "")
+	public function processRow($row, $otherRows, $token = "")
     {
         $totalCosts = $row['exporter_total_cost'];
         if (!$totalCosts) {
@@ -808,7 +848,7 @@ class ExPORTERGrantFactory extends GrantFactory {
 }
 
 class CustomGrantFactory extends GrantFactory {
-	public function processRow($row, $token = "") {
+	public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=custom_grant&instance={$row['redcap_repeat_instance']}";
 		$awardNo = self::cleanAwardNo($row['custom_number']);
@@ -862,7 +902,7 @@ class CustomGrantFactory extends GrantFactory {
 }
 
 class PriorGrantFactory extends GrantFactory {
-	public function processRow($row, $token = "") {
+	public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 			if ($row['summary_award_date_'.$i]) {

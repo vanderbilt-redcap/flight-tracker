@@ -344,25 +344,26 @@ class Grants {
 
 					if ($hasCoeus) {
 						# for non-infinitely-repeating COEUS forms
-						array_push($gfs, new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+						array_push($gfs, new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server));
 					} else {
 						foreach ($row as $field => $value) {
 							if (preg_match("/^newman_/", $field)) {
-								array_push($gfs, new NewmanGrantFactory($this->name, $this->lexicalTranslator, $this->metadata));
+								array_push($gfs, new NewmanGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server));
 								break;
 							}
 						}
+						$hasInstruments = [];
 						foreach ($row as $field => $value) {
-                            if (preg_match("/^check_/", $field)) {
-                                $gf = new InitialGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
+                            if (preg_match("/^check_/", $field) && !in_array("check", $hasInstruments)) {
+                                $gf = new InitialGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
                                 $gf->setPrefix("check");
+                                $hasInstruments[] = "check";
                                 array_push($gfs, $gf);
-                                break;
-                            } else if (preg_match("/^init_import_/", $field)) {
-                                $gf = new InitialGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
+                            } else if (preg_match("/^init_import_/", $field) && !in_array("init_import", $hasInstruments)) {
+                                $gf = new InitialGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
                                 $gf->setPrefix("init_import");
+                                $hasInstruments[] = "init_import";
                                 array_push($gfs, $gf);
-                                break;
                             }
 						}
 
@@ -376,36 +377,34 @@ class Grants {
 							}
 						}
 
-						$priorGF = new PriorGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
-						$priorGF->processRow($row);
+						$priorGF = new PriorGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
+						$priorGF->processRow($row, $rows);
 						$priorGFGrants = $priorGF->getGrants();
 						foreach ($priorGFGrants as $grant) {
 							$this->priorGrants[] = $grant;
 						}
 					}
-                } else if ($row['redcap_repeat_instrument'] == "coeus") {
-                    $gfs[] = new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
-                } else if ($row['redcap_repeat_instrument'] == "coeus2") {
-                    $gfs[] = new Coeus2GrantFactory($this->name, $this->lexicalTranslator, $this->metadata, "Grants");
-                    $submissionGfs[] = new Coeus2GrantFactory($this->name, $this->lexicalTranslator, $this->metadata, "Submissions");
-				} else if ($row['redcap_repeat_instrument'] == "reporter") {
-					$gfs[] = new RePORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
-                } else if ($row['redcap_repeat_instrument'] == "exporter") {
-                    $gfs[] = new ExPORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
-                } else if ($row['redcap_repeat_instrument'] == "nih_reporter") {
-                    $gfs[] = new NIHRePORTERGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
-				} else if ($row['redcap_repeat_instrument'] == "custom_grant") {
-					$gfs[] = new CustomGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
-				} else if ($row['redcap_repeat_instrument'] == "followup") {
-					$gfs[] = new FollowupGrantFactory($this->name, $this->lexicalTranslator, $this->metadata);
-				}
+                } else {
+				    $gf = self::getGrantFactoryForRow($row, $this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
+				    if (is_array($gf)) {
+				        $currentGfs = $gf;
+				        foreach ($currentGfs as $gf) {
+				            $gfs[] = $gf;
+                        }
+                    } else if ($gf) {
+				        $gfs[] = $gf;
+                    }   // else NULL
+                }
+                if ($row['redcap_repeat_instrument'] == "coeus2") {
+                    $submissionGfs[] = new Coeus2GrantFactory($this->name, $this->lexicalTranslator, $this->metadata, "Submissions", $this->token, $this->server);
+                }
 				$grantFactories = [
 				    "nativeGrants" => $gfs,
                     "grantSubmissions" => $submissionGfs,
                     ];
 				foreach ($grantFactories as $variable => $gfList) {
                     foreach ($gfList as $gf) {
-                        $gf->processRow($row);
+                        $gf->processRow($row, $rows);
                         $gs = $gf->getGrants();
                         foreach ($gs as $g) {
                             # combine all grants into one unordered list
@@ -424,6 +423,32 @@ class Grants {
 			}
 		}
 	}
+
+	public static function getGrantFactoryForRow($row, $name, $lexicalTranslator, $metadata, $token, $server) {
+        if ($row['redcap_repeat_instrument'] == "coeus") {
+            return new CoeusGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "coeus2") {
+            return new Coeus2GrantFactory($name, $lexicalTranslator, $metadata, "Grants", $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "reporter") {
+            return new RePORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "exporter") {
+            return new ExPORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "nih_reporter") {
+            return new NIHRePORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "custom_grant") {
+            return new CustomGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "followup") {
+            return new FollowupGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] === "") {
+            $checkGf = new InitialGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+            $checkGf->setPrefix("check");
+            $initImportGf = new InitialGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+            $initImportGf->setPrefix("init_import");
+            return [$checkGf, $initImportGf];
+        } else {
+            return NULL;
+        }
+    }
 
 	public function getRecordID() {
 		return $this->recordId;
@@ -776,7 +801,8 @@ class Grants {
 
         # 3. import modified lists first from the wrangler/index.php interface (Grant Wrangler)
 		# these trump everything
-		foreach ($this->calculate['to_import'] as $index => $ary) {
+        $toImport = $this->calculate['to_import'] ?? [];
+		foreach ($toImport as $index => $ary) {
 			$action = $ary[0];
 			$grant = $this->dataWranglerToGrant($ary[1]);
 			$awardno = $grant->getNumber();

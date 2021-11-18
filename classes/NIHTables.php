@@ -272,9 +272,47 @@ class NIHTables {
         return $degreeTexts;
     }
 
+    public function getFacultyMatches() {
+        list($firstNamesByPid, $lastNamesByPid) = $this->getNamesByPid();
+        $projectTitles = [];
+        $data = [];
+        foreach ($this->facultyMembers as $facultyName) {
+            $matches = $this->findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
+            if (empty($matches)) {
+                $data[] = [
+                    "<strong>".$facultyName."</strong>",
+                    self::makeComment("Could not match"),
+                ];
+            }
+            foreach ($matches as $match) {
+                list($pid, $recordId) = preg_split("/:/", $match);
+                $token = Application::getSetting("token", $pid);
+                $server = Application::getSetting("server", $pid);
+                if ($token && $server && REDCapManagement::isActiveProject($pid)) {
+                    $adminEmail = Application::getSetting("admin_email", $pid);
+                    $projectTitle = isset($projectTitles[$pid]) ? $projectTitles[$pid] : Download::projectTitle($token, $server);
+                    $projectTitles[$pid] = $projectTitle;
+                    $header = "PID $pid<br>$projectTitle";
+                    if ($adminEmail) {
+                        $header = "<a href='mailto:$adminEmail'>$header</a>";
+                    }
+                    $firstName = $firstNamesByPid[$pid][$recordId] ?? "";
+                    $lastName = $lastNamesByPid[$pid][$recordId] ?? "";
+                    $nameInformation = "<strong>$facultyName</strong> matches<br>Record $recordId $firstName $lastName";
+                    $data[] = [
+                        $nameInformation,
+                        $header,
+                    ];
+                }
+            }
+        }
+        return $data;
+    }
+
     public function get2Data($table) {
         list($firstNamesByPid, $lastNamesByPid) = $this->getNamesByPid();
-        $data = ["Headers" => $this->getHeaders($table)];
+        $headers = $this->getHeaders($table);
+        $data = ["Headers" => $headers];
 	    foreach ($this->facultyMembers as $facultyName) {
             list($first, $last) = NameMatcher::splitName($facultyName, 2);
 	        $matches = $this->findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
@@ -291,7 +329,7 @@ class NIHTables {
 	            list($pid, $recordId) = preg_split("/:/", $match);
                 $token = Application::getSetting("token", $pid);
                 $server = Application::getSetting("server", $pid);
-                if ($token && $server) {
+                if ($token && $server && REDCapManagement::isActiveProject($pid)) {
                     $fields = ["record_id", "summary_primary_dept", "summary_current_rank", "summary_all_degrees"];
                     $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
                     $matchResults = [];
@@ -329,32 +367,101 @@ class NIHTables {
                     }
                 }
             }
+
+	        $otherProjectsValues = [];
+	        foreach ($matches as $match) {
+                list($pid, $recordId) = preg_split("/:/", $match);
+                $countKey = self::makeCountKey($table, $recordId);
+                $settingsByDate = Application::getSetting($countKey, $pid);
+                foreach ($settingsByDate as $ymdDate => $settings) {
+                    foreach ($headers as $header) {
+                        if (isset($settings[$header]) && ($settings[$header] !== "")) {
+                            $value = $settings[$header];
+                            if (!isset($otherProjectsValues[$header])) {
+                                $otherProjectsValues[$header] = [];
+                            }
+                            if (!isset($otherProjectsValues[$header][$pid])) {
+                                $otherProjectsValues[$header][$pid] = [];
+                            }
+                            $otherProjectsValues[$header][$pid][$ymdDate] = $value;
+                        }
+                    }
+                }
+            }
+
             $row = [
                 $facultyName,
                 implode(", ", $combinedResults["Degrees"]),
                 implode(", ", $combinedResults["Ranks"]),
                 implode(", ", $combinedResults["Departments"]),
                 self::$NA,
-                self::$NA,
-                self::$NA,
-                self::$NA,
-                self::$NA,
-                self::$NA,
-                self::$NA,
+                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[5]]),
+                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[6]]),
+                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[7]]),
+                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[8]]),
+                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[9]]),
+                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[10]]),
             ];
 	        $data[implode(",", $matchedMatches)] = [$row];
         }
         return $data;
     }
 
+    private static function displayOtherProjectsValues($valuesByPid) {
+	    if (empty($valuesByPid)) {
+	        return "";
+        }
+	    $html = "<br>";
+	    foreach ($valuesByPid as $pid => $values) {
+            $adminEmail = Application::getSetting("adminEmail", $pid);
+            $adminEmailSpaced = preg_replace("/[,;]/", ", ", $adminEmail);
+            $token = Application::getSetting("token", $pid);
+            $server = Application::getSetting("server", $pid);
+            $projectInfo = "pid: $pid<br><a href='mailto:$adminEmail'>$adminEmailSpaced</a>";
+            if ($token && $server) {
+                $projectTitle = Download::projectTitle($token, $server);
+                $projectInfo .= "<br>$projectTitle";
+            }
+            if (!empty($values)) {
+                $valuesByTs = [];
+                foreach ($values as $ymdDate => $value) {
+                    $ts = strtotime($ymdDate);
+                    $valuesByTs[$ts] = $value;
+                }
+                krsort($valuesByTs);
+                $valuesStr = "";
+                foreach ($valuesByTs as $ts => $value) {
+                    if ($value !== "") {
+                        if ($valuesStr) {
+                            $valuesStr .= "<br>";
+                        }
+                        if ($ts) {
+                            $mdyDate = date("m-d-Y", $ts);
+                            $valuesStr .= "$value ($mdyDate)";
+                        } else {
+                            $valuesStr .= $value;
+                        }
+                    }
+                }
+	            $html .= "<span class='tooltip'><span class='widetooltiptext'>$projectInfo</span>$valuesStr</span>";
+            }
+        }
+	    return $html;
+    }
+
     private function findDepartment($redcapData, $recordId, $ldapRows) {
-	    return $this->findFields(
+	    $value = $this->findFields(
 	        $redcapData,
             $recordId,
             $ldapRows,
             "ldap_vanderbiltpersonhrdeptname",
             "summary_primary_dept"
         );
+	    if (preg_match("/Other/", $value)) {
+	        return "<span class='action_required'>$value</span>";
+        } else {
+	        return $value;
+        }
     }
 
     private function findAcademicRank($redcapData, $recordId, $ldapRows) {
@@ -365,6 +472,10 @@ class NIHTables {
             "ldap_vanderbiltpersonjobname",
             "summary_current_rank"
         );
+    }
+
+    public static function makeCountKey($tableNum, $recordId) {
+        return "table_".$tableNum."_record_".$recordId;
     }
 
     private function findFields($redcapData, $recordId, $ldapRows, $ldapField, $redcapField) {
@@ -670,8 +781,49 @@ class NIHTables {
         return ["title" => $title, "data" => $newData, "headerList" => $headers];
     }
 
-    public function getHTML($table) {
-		if (self::beginsWith($table, array("5A", "5B"))) {
+    private static function makeTable1_4DataIntoHTML($tableNum, $allData, $includeNumericalInputs = FALSE) {
+	    $headers = $allData['headerList'];
+	    // $title = $allData['title'];
+	    $data = $allData['data'];
+
+	    $numericalFields = [
+	        "Pre-doctorates In Training",
+            "Pre-doctorates Graduated",
+            "Predoctorates Continued in Research or Related Careers",
+            "Post-doctorates In Training",
+            "Post-doctorates Completed Training",
+            "Postdoctorates Continued in Research or Related Careers",
+        ];
+
+	    $html = "";
+	    if (!empty($data)) {
+	        $html .= "<table class='centered bordered'><thead>";
+	        $html .= "<tr>";
+	        foreach ($headers as $header) {
+	            $html .= "<th>$header</th>";
+            }
+	        $html .= "</tr>";
+	        $html .= "</thead><tbody>";
+	        foreach ($data as $row) {
+	            $html .= "<tr>";
+	            foreach ($headers as $header) {
+	                $headerWithoutHTML = preg_replace("/<[^>]+>/", " ", $header);
+	                $id = "table_".$tableNum."___".REDCapManagement::makeHTMLId($header);
+	                $inputHTML = in_array($headerWithoutHTML, $numericalFields) ? "<br><input class='action_required' type='text' name='$id' style='width: 50px;' />" : "";
+	                $html .= "<td>".$row[$header].$inputHTML."</td>";
+                }
+	            $html .= "</tr>";
+            }
+	        $html .= "</tbody></table>";
+        }
+	    return $html;
+    }
+
+    public function getHTML($table, $includeInputsForNumbers = FALSE) {
+	    if (self::beginsWith($table, ["1", "2", "3", "4"])) {
+	        $data = $this->getData($table);
+            return self::makeTable1_4DataIntoHTML($table, $data, $includeInputsForNumbers);
+       } else if (self::beginsWith($table, ["5A", "5B"])) {
 			$data = $this->get5Data($table);
             $namesPre = $this->downloadPredocNames();
             $namesPost = $this->downloadPostdocNames($table);
@@ -682,7 +834,7 @@ class NIHTables {
             }
             $html .= self::getHTMLPrefix($table).self::makeDataIntoHTML($data, $namesPre, $namesPost);
             return $html;
-		} else if (self::beginsWith($table, array("6A", "6B"))) {
+		} else if (self::beginsWith($table, ["6A", "6B"])) {
 			$html = "";
 			$html .= self::getHTMLPrefix($table);
 			foreach (self::get6Years() as $year) {
@@ -690,7 +842,7 @@ class NIHTables {
 				$html .= self::makeDataIntoHTML($data)."<br><br>";
 			}
 			return $html;
-		} else if (self::beginsWith($table, array("8A", "8C"))) {
+		} else if (self::beginsWith($table, ["8A", "8C"])) {
 			$data = $this->get8Data($table);
 			return $this->makeJS().self::getHTMLPrefix($table).self::makeDataIntoHTML($data);
 		} else if ($table == "Common Metrics") {

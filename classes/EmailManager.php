@@ -265,13 +265,18 @@ class EmailManager {
 			}
 		}
         if (Application::isVanderbilt()) {
+            # log notes will break on localhost because $_GET['test'] is enabled for verbose output
             $format = "Y-m-d H:i";
             foreach ($sentEmails as $sendName => $ts) {
-                Application::log("$logHeader: $sendName sent at ".date($format, $ts).".", $this->pid);
+                if (!Application::isLocalhost()) {
+                    Application::log("$logHeader: $sendName sent at ".date($format, $ts).".", $this->pid);
+                }
             }
             if (!empty($sentEmails)) {
                 foreach ($currTimes as $currTime) {
-                    Application::log("$logHeader: Sending emails for " . date($format, (int)$currTime) . "; process spawned at " . date($format, $_SERVER['REQUEST_TIME']), $this->pid);
+                    if (!Application::isLocalhost()) {
+                        Application::log("$logHeader: Sending emails for " . date($format, (int)$currTime) . "; process spawned at " . date($format, $_SERVER['REQUEST_TIME']), $this->pid);
+                    }
                 }
             }
         }
@@ -312,8 +317,19 @@ class EmailManager {
 		return $messages;
 	}
 
+	private static function filterOutSettingsWithPrefix($names, $prefix) {
+	    $newNames = [];
+	    foreach ($names as $name) {
+            if (strpos($name, $prefix) === FALSE) {
+                $newNames[] = $name;
+            }
+        }
+	    return $newNames;
+    }
+
 	public function getSelectForExistingNames($elemName, $settingName = "") {
 		$names = $this->getSettingsNames();
+		$names = self::filterOutSettingsWithPrefix($names, "MMA");
 
 		$html = "";
 		if (!empty($names)) {

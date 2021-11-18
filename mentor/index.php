@@ -557,11 +557,11 @@ $('.viewagreementstatus').hover(
 <style type="text/css">
 
 .listmentors .table{width: 96%; margin-left: 4%;}
-    thead th {border-top: 0px solid #dee2e6 !important;font-size: 11px; text-transform: uppercase;font-family: proxima-soft, sans-serif; border-bottom: unset !important;    letter-spacing: 1px;}
+    thead th {border-top: 0px solid #dee2e6 !important;font-size: 11px; text-transform: uppercase;font-family: proxima-soft, sans-serif; border-bottom: unset !important; letter-spacing: 1px; text-align: center;}
     .listmentors     thead th:nth-of-type(1),thead th:nth-of-type(2){width: 90px; padding-left: 0px !important; padding-right: 0px !important;}
-    .listmentors     thead th:nth-of-type(3){width: 11%; text-align: center;}
-    .listmentors     thead th:nth-of-type(3){width: 78px; text-align: center;}
-    .listmentors     thead th:nth-of-type(6){    width: 19%;text-align: left;}
+    .listmentors     thead th:nth-of-type(3){width: 11%; }
+    .listmentors     thead th:nth-of-type(3){width: 78px; }
+    .listmentors     thead th:nth-of-type(6){    width: 19%; }
     .listmentors tr td img, tr th img{width: 30px; padding-left: 0px !important; padding-right: 0px !important;}
     .listmentors tbody tr td,tbody tr th{font-family: proxima-soft, sans-serif; font-size:15px;line-height: 20px; font-weight: 200}
     .listmentors tbody tr:nth-child(odd) {background-color: #f2f2f2;}

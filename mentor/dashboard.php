@@ -152,10 +152,11 @@ $userids = Download::userids($token, $server);
 $mentorNames = Download::primaryMentors($token, $server);
 $mentorUserids = Download::primaryMentorUserids($token, $server);
 $numInvited = ["mentees" => MMAHelper::getElementCount($userids), "mentors" => MMAHelper::getElementCount($mentorUserids)];
-$numCompletedInitial = ["mentees" => 0, "mentors" => 0];
-$numCompletedFollowup = ["mentees" => 0, "mentors" => 0];
+$completedInitial = ["mentees" => [], "mentors" => []];
+$completedFollowup = ["mentees" => [], "mentors" => []];
 $timesToComplete = ["mentees" => [], "mentors" => []];
 $numMentors = MMAHelper::getElementCount($mentorNames);
+$names = Download::names($token, $server);
 
 $selectFieldTypes = ["dropdown", "radio", "checkbox", ];
 $metadata = Download::metadata($token, $server);
@@ -213,16 +214,16 @@ foreach ($records as $recordId) {
             }
 
             if ($isFirstMentee && ($respondantClass == "mentees")) {
-                $numCompletedInitial[$respondantClass]++;
+                $completedInitial[$respondantClass][] = $recordId;
                 if (!isset($recordsWithMenteeResponse[$recordId])) {
                     $recordsWithMenteeResponse[$recordId] = $names[$recordId];
                 }
                 $isFirstMentee = FALSE;
             } else if ($isFirstMentor && ($respondantClass == "mentors")) {
-                $numCompletedInitial[$respondantClass]++;
+                $completedInitial[$respondantClass][] = $recordId;
                 $isFirstMentor = FALSE;
-            } else if (isset($numCompletedFollowup[$respondantClass])) {
-                $numCompletedFollowup[$respondantClass]++;
+            } else if (isset($completedFollowup[$respondantClass])) {
+                $completedFollowup[$respondantClass][] = $recordId;
             }
             if (isset($timesToComplete[$respondantClass]) && $row['mentoring_start'] && $row['mentoring_end']) {
                 $timesToComplete[$respondantClass][] = strtotime($row['mentoring_start']) - strtotime($row['mentoring_end']);
@@ -230,6 +231,18 @@ foreach ($records as $recordId) {
         }
     }
 }
+$missingMentors = ["initial" => [], "followup" => []];
+foreach ($completedInitial["mentees"] as $recordId) {
+    if (!in_array($recordId, $completedInitial["mentors"])) {
+        $missingMentors["initial"][] = $recordId;
+    }
+}
+foreach ($completedFollowup["mentees"] as $recordId) {
+    if (!in_array($recordId, $completedFollowup["mentors"])) {
+        $missingMentors["followup"][] = $recordId;
+    }
+}
+
 $averageTimesToComplete = [];
 foreach ($timesToComplete as $respondantClass => $times) {
     $averageTimesToComplete[$respondantClass] = 0;
@@ -259,8 +272,10 @@ echo "</tr></thead>";
 echo "<tbody>";
 echo MMAHelper::makeGeneralTableRow("Number of Mentors Filled In", $numMentors, "Mentors");
 echo MMAHelper::makeGeneralTableRow("People with Unique User-ids Involved", $numInvited, "Individuals");
-echo MMAHelper::makeGeneralTableRow("Number Completed Initial<br>Mentee-Mentor Agreement Survey", $numCompletedInitial, "");
-echo MMAHelper::makeGeneralTableRow("Number Completed Follow-up<br>Mentee-Mentor Agreement Survey", $numCompletedFollowup, "");
+echo MMAHelper::makeGeneralTableRow("Number Completed Initial<br>Mentee-Mentor Agreement Survey", $completedInitial, "", $names, $mentorNames);
+echo MMAHelper::makeGeneralTableRow("Number of Mentors Who Haven't<br>Filled Out Initial<br>Mentee-Mentor Agreement Survey", ["mentees" => [], "mentors" => $missingMentors['initial']], "", $names, $mentorNames);
+echo MMAHelper::makeGeneralTableRow("Number Completed Follow-up<br>Mentee-Mentor Agreement Survey", $completedFollowup, "", $names, $mentorNames);
+echo MMAHelper::makeGeneralTableRow("Number of Mentors Who Haven't<br>Filled Out Follow-up<br>Mentee-Mentor Agreement Survey", ["mentees" => [], "mentors" => $missingMentors['followup']], "", $names, $mentorNames);
 echo MMAHelper::makeGeneralTableRow("Average Time to Complete", $averageTimesToComplete, "Minutes");
 echo MMAHelper::makeDropdownTableRow($pid, $event_id, "View Responses", $recordsWithMenteeResponse);
 echo "</tbody>";
@@ -369,7 +384,6 @@ if ($hasEvaluationsEnabled) {
         }
     }
     if (!empty(array_merge($recordsWithoutEvals['mentor'], $recordsWithoutEvals['mentee']))) {
-        $names = Download::names($token, $server);
         $emails = Download::emails($token, $server);
         echo "<table class='centered bordered'><tbody><tr>";
         foreach ($recordsWithoutEvals as $type => $recordsWithoutEval) {
@@ -384,7 +398,7 @@ if ($hasEvaluationsEnabled) {
                 $countStr = "No Scholars Without an Eval from a $typeLabel";
             }
             echo "<td>";
-            echo "<p class='centered skinnymargins'><span class='bolded'>$countStr</span><br><span class='smaller'>(no response in over $numWeeks weeks)</span></p>";
+            echo "<p class='centered skinnymargins'><span class='bolded'>$countStr</span><br><span class='smaller'>(no response in over $numWeeks weeks)<br>".implode("<br>", $namesWithoutEval)."</span></p>";
             if ($count > 0) {
                 $mailtos = [];
                 foreach ($recordsWithoutEval as $recordId) {

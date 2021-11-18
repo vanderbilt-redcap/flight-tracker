@@ -151,7 +151,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 	$cohorts = new Cohorts($token, $server, Application::getModule());
 ?>
 
-<form action='?pid=<?= Application::link("this").$cohortParams ?>' method='POST'>
+<form action='<?= Application::link("this").$cohortParams ?>' method='POST'>
 <h2>Conversion Ratio</h2>
 <p class='centered'>Select Cohort (optional):<br><?= $cohorts->makeCohortSelect($cohort ? $cohort : "all") ?></p>
 <p class='centered'>Exclude those within <input type='text' name='k' value='5'> years of receipt of most recent K who have not converted<br>

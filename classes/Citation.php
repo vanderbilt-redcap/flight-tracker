@@ -476,7 +476,7 @@ class Citation {
 			}
 		}
 		if (!$month) {
-			throw new \Exception("Could not convert $mon into month!");
+			return $mon;
 		}
 		return $month;
 	}

@@ -735,15 +735,35 @@ function characteristicsPopup(entity) {
         return [$priorNotes, $instances];
     }
 
-    public static function getBase64OfFile($fileId, $pid) {
-        $sql = "SELECT stored_name, mime_type from redcap_edocs_metadata WHERE doc_id = '".db_real_escape_string($fileId)."' LIMIT 1";
+    public static function getBase64OfFile($recordId, $instance, $field, $pid) {
+        if ($instance == 1) {
+            $instanceClause = "instance IS NULL";
+        } else {
+            $instanceClause = "instance = '".db_real_escape_string($instance)."'";
+        }
+        $sql = "SELECT value FROM redcap_data
+            WHERE project_id = '".db_real_escape_string($pid)."'
+            AND record='".db_real_escape_string($recordId)."'
+            AND field_name='".db_real_escape_string($field)."'
+            AND $instanceClause";
         $q = db_query($sql);
+        if ($error = db_error()) {
+            return "";
+        }
         if ($row = db_fetch_assoc($q)) {
-            $filename = EDOC_PATH.$row['stored_name'];
-            $mimeType = $row['mime_type'];
-            if (file_exists($filename)) {
-                $header = "data:$mimeType;base64,";
-                return $header.base64_encode(file_get_contents($filename));
+            $fileId = $row['value'];
+            $sql = "SELECT stored_name, mime_type from redcap_edocs_metadata WHERE doc_id = '" . db_real_escape_string($fileId) . "' LIMIT 1";
+            $q = db_query($sql);
+            if ($error = db_error()) {
+                return "";
+            }
+            if ($row = db_fetch_assoc($q)) {
+                $filename = EDOC_PATH . $row['stored_name'];
+                $mimeType = $row['mime_type'];
+                if (file_exists($filename)) {
+                    $header = "data:$mimeType;base64,";
+                    return $header . base64_encode(file_get_contents($filename));
+                }
             }
         }
         return "";
@@ -1365,8 +1385,8 @@ function characteristicsPopup(entity) {
             $html .= "Select Mentees' Agreements<br>";
 
             $link = Links::makeMenteeAgreementUrl($pid, 1, $event_id);
-            $link = preg_replace("/&record=\d+/", "", $link);
-            $html .= "<select onchange='if ($(this).val() !== \"\") { location.href = \"$link&record=\"+$(this).val(); }'>";
+            $link = preg_replace("/&id=\d+/", "", $link);
+            $html .= "<select onchange='if ($(this).val() !== \"\") { location.href = \"$link&id=\"+$(this).val(); }'>";
             $html .= "<option value='' selected>---SELECT---</option>";
             foreach ($menteeOptions as $recordId => $name) {
                 $html .= "<option value='$recordId'>$name</option>";
@@ -1380,7 +1400,7 @@ function characteristicsPopup(entity) {
         }
     }
 
-    public static function makeGeneralTableRow($title, $values, $units) {
+    public static function makeGeneralTableRow($title, $values, $units = "", $names = [], $mentors = []) {
         if ($units && !preg_match("/^\s/", $units)) {
             $unitsWithSpace = " ".$units;
         } else {
@@ -1392,8 +1412,39 @@ function characteristicsPopup(entity) {
         if (is_numeric($values)) {
             $html .= "<td colspan='2' class='centered'>".REDCapManagement::pretty($values, 0).$unitsWithSpace."</td>";
         } else if (is_array($values)) {
-            $html .= "<td>".REDCapManagement::pretty($values["mentees"], 0).$unitsWithSpace."</td>";
-            $html .= "<td>".REDCapManagement::pretty($values["mentors"], 0).$unitsWithSpace."</td>";
+            if (is_array($values["mentees"]) && is_array($values["mentors"])) {
+                $valueNames = [];
+                foreach ($values as $type => $records) {
+                    $valueNames[$type] = [];
+                    foreach ($records as $recordId) {
+                        if ($type == "mentees") {
+                            $valueNames[$type][] = $names[$recordId] ?? "";
+                        } else if ($type == "mentors") {
+                            $mentorNamesAry = $mentors[$recordId] ?? [];
+                            $valueNames[$type][] = implode(", ", $mentorNamesAry);
+                        } else {
+                            throw new \Exception("Invalid type $type");
+                        }
+                    }
+                }
+                if (!empty($values['mentees'])) {
+                    $menteeNameId = "mentees_".REDCapManagement::makeHTMLId($title);
+                    $menteeNameStr = "<br><a href='javascript:;' onclick='$(\"#$menteeNameId\").show(); $(this).hide();'>Show Names</a><span class='smaller' id='$menteeNameId' style='display: none;'>".implode("<br>", $valueNames["mentees"])."</span>";
+                } else {
+                    $menteeNameStr = "";
+                }
+                if (!empty($values['mentors'])) {
+                    $mentorNameId = "mentors_".REDCapManagement::makeHTMLId($title);
+                    $mentorNameStr = "<br><a href='javascript:;' onclick='$(\"#$mentorNameId\").show(); $(this).hide();'>Show Names</a><span class='smaller' id='$mentorNameId' style='display: none;'>".implode("<br>", $valueNames["mentors"])."</span>";
+                } else {
+                    $mentorNameStr = "";
+                }
+                $html .= "<td>".REDCapManagement::pretty(count($values["mentees"]), 0).$unitsWithSpace.$menteeNameStr."</td>";
+                $html .= "<td>".REDCapManagement::pretty(count($values["mentors"]), 0).$unitsWithSpace.$mentorNameStr."</td>";
+            } else {
+                $html .= "<td>".REDCapManagement::pretty($values["mentees"], 0).$unitsWithSpace."</td>";
+                $html .= "<td>".REDCapManagement::pretty($values["mentors"], 0).$unitsWithSpace."</td>";
+            }
         } else {
             $html .= "<td colspan='2' class='centered'>".$values.$unitsWithSpace."</td>";
         }

@@ -992,7 +992,7 @@ function excludeWholeRecord(record) {
 
 function removePMIDFromAutoApprove(record, instance, pmid) {
 	$('#record_'+record+':'+instance).val(0);
-	$('#record_'+record+'_pmid_'+pmid).hide();
+	$('#record_'+record+'_idx_'+pmid).hide();
 }
 
 function downloadUrlIntoPage(url, selector) {

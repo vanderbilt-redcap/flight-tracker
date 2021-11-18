@@ -296,7 +296,8 @@ $(document).ready(function() {
 			echo "<div style='text-align: center; margin: 16px 0px;'>Load Prior Message:<br>".$mgr->getSelectForExistingNames($messageSelectName)."</div>\n";
 		}
 		if (isset($_POST['message'])) {
-			$mssg = REDCapManagement::sanitize($_POST['message']);
+			// does not work $mssg = REDCapManagement::sanitizeWithoutStrippingHTML($_POST['message']);
+            $mssg = $_POST['message'];
 		} else if (isset($currSetting['what']['message'])) {
 			$mssg = $currSetting['what']['message'];
 		} else {

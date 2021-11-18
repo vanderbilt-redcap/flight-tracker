@@ -31,17 +31,50 @@ $choices = REDCapManagement::getChoices($metadata);
 $recordsByDept = [];
 $records = Download::recordIds($token, $server);
 $departments = Download::oneField($token, $server, "summary_primary_dept");
+$hasDepartmentInfo = FALSE;
 foreach ($records as $recordId) {
-    $deptIdx = $departments[$recordId];
-    if (isset($choices["summary_primary_dept"][$deptIdx])) {
-        $dept = $choices["summary_primary_dept"][$deptIdx];
-    } else {
-        $dept = "Unspecified";
+    if ($departments[$recordId]) {
+        if (isset($_GET['test'])) {
+            echo "Record $recordId has ".$departments[$recordId]."<br>";
+        }
+        $hasDepartmentInfo = TRUE;
+        break;
     }
-    if (!isset($recordsByDept[$dept])) {
-        $recordsByDept[$dept] = [];
+}
+$metadataForms = REDCapManagement::getFormsFromMetadata($metadata);
+if (Application::isVanderbilt() && in_array("ldap", $metadataForms) && !$hasDepartmentInfo) {
+    if (isset($_GET['test'])) {
+        echo "Downloading LDAP info<br>";
     }
-    $recordsByDept[$dept][] = $recordId;
+    $ldapData = Download::fields($token, $server, ["record_id", "ldap_departmentnumber"]);
+    foreach ($ldapData as $row) {
+        if ($row['redcap_repeat_instrument'] == "ldap") {
+            $recordId = $row['record_id'];
+            $dept = $row['ldap_departmentnumber'];
+            if ($dept) {
+                if (!isset($recordsByDept[$dept])) {
+                    $recordsByDept[$dept] = [];
+                }
+                $recordsByDept[$dept][] = $recordId;
+            }
+        }
+    }
+} else {
+    foreach ($records as $recordId) {
+        $deptIdx = $departments[$recordId];
+        if (isset($choices["summary_primary_dept"][$deptIdx])) {
+            $dept = $choices["summary_primary_dept"][$deptIdx];
+        } else {
+            $dept = "Unspecified";
+        }
+        if (!isset($recordsByDept[$dept])) {
+            $recordsByDept[$dept] = [];
+        }
+        $recordsByDept[$dept][] = $recordId;
+    }
+}
+if (isset($_GET['test'])) {
+    echo "recordsByDept: ".REDCapManagement::json_encode_with_spaces($recordsByDept)."<br>";
 }
 
 $headers = [
