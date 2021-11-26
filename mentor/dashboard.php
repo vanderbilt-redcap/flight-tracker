@@ -226,7 +226,7 @@ foreach ($records as $recordId) {
                 $completedFollowup[$respondantClass][] = $recordId;
             }
             if (isset($timesToComplete[$respondantClass]) && $row['mentoring_start'] && $row['mentoring_end']) {
-                $timesToComplete[$respondantClass][] = strtotime($row['mentoring_start']) - strtotime($row['mentoring_end']);
+                $timesToComplete[$respondantClass][] = (strtotime($row['mentoring_end']) - strtotime($row['mentoring_start'])) / 60;
             }
         }
     }
@@ -240,14 +240,6 @@ foreach ($completedInitial["mentees"] as $recordId) {
 foreach ($completedFollowup["mentees"] as $recordId) {
     if (!in_array($recordId, $completedFollowup["mentors"])) {
         $missingMentors["followup"][] = $recordId;
-    }
-}
-
-$averageTimesToComplete = [];
-foreach ($timesToComplete as $respondantClass => $times) {
-    $averageTimesToComplete[$respondantClass] = 0;
-    if (count($times) > 0) {
-        $averageTimesToComplete[$respondantClass] = REDCapManagement::pretty(array_sum($times) / (count($times) * 60), 1);
     }
 }
 
@@ -272,11 +264,11 @@ echo "</tr></thead>";
 echo "<tbody>";
 echo MMAHelper::makeGeneralTableRow("Number of Mentors Filled In", $numMentors, "Mentors");
 echo MMAHelper::makeGeneralTableRow("People with Unique User-ids Involved", $numInvited, "Individuals");
-echo MMAHelper::makeGeneralTableRow("Number Completed Initial<br>Mentee-Mentor Agreement Survey", $completedInitial, "", $names, $mentorNames);
-echo MMAHelper::makeGeneralTableRow("Number of Mentors Who Haven't<br>Filled Out Initial<br>Mentee-Mentor Agreement Survey", ["mentees" => [], "mentors" => $missingMentors['initial']], "", $names, $mentorNames);
-echo MMAHelper::makeGeneralTableRow("Number Completed Follow-up<br>Mentee-Mentor Agreement Survey", $completedFollowup, "", $names, $mentorNames);
-echo MMAHelper::makeGeneralTableRow("Number of Mentors Who Haven't<br>Filled Out Follow-up<br>Mentee-Mentor Agreement Survey", ["mentees" => [], "mentors" => $missingMentors['followup']], "", $names, $mentorNames);
-echo MMAHelper::makeGeneralTableRow("Average Time to Complete", $averageTimesToComplete, "Minutes");
+echo MMAHelper::makeGeneralTableRow("Number Completed Initial<br>Mentee-Mentor Agreement Survey", $completedInitial, "", FALSE, $names, $mentorNames);
+echo MMAHelper::makeGeneralTableRow("Number of Mentors Who Haven't<br>Filled Out Initial<br>Mentee-Mentor Agreement Survey", ["mentees" => [], "mentors" => $missingMentors['initial']], "", FALSE, $names, $mentorNames);
+echo MMAHelper::makeGeneralTableRow("Number Completed Follow-up<br>Mentee-Mentor Agreement Survey", $completedFollowup, "", FALSE, $names, $mentorNames);
+echo MMAHelper::makeGeneralTableRow("Number of Mentors Who Haven't<br>Filled Out Follow-up<br>Mentee-Mentor Agreement Survey", ["mentees" => [], "mentors" => $missingMentors['followup']], "", FALSE, $names, $mentorNames);
+echo MMAHelper::makeGeneralTableRow("Average Time to Complete", $timesToComplete, "Minutes", TRUE);
 echo MMAHelper::makeDropdownTableRow($pid, $event_id, "View Responses", $recordsWithMenteeResponse);
 echo "</tbody>";
 echo "</table>";
@@ -397,6 +389,11 @@ if ($hasEvaluationsEnabled) {
             } else {
                 $countStr = "No Scholars Without an Eval from a $typeLabel";
             }
+            $namesWithoutEval = [];
+            foreach ($recordsWithoutEval as $record) {
+                $namesWithoutEval[] = $names[$record];
+            }
+
             echo "<td>";
             echo "<p class='centered skinnymargins'><span class='bolded'>$countStr</span><br><span class='smaller'>(no response in over $numWeeks weeks)<br>".implode("<br>", $namesWithoutEval)."</span></p>";
             if ($count > 0) {

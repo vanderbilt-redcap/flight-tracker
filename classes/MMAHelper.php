@@ -336,6 +336,7 @@ class MMAHelper {
     public static function filterMetadata($metadata, $skipFields = TRUE) {
         $fieldsToSkip = ["mentoring_userid", "mentoring_last_update"];
         $metadata = REDCapManagement::filterMetadataForForm($metadata, "mentoring_agreement");
+        $newMetadata = [];
         foreach ($metadata as $row) {
             if (!in_array($row['field_name'], $fieldsToSkip) || !$skipFields) {
                 $newMetadata[] = $row;
@@ -1063,16 +1064,16 @@ function characteristicsPopup(entity) {
     }
     
 </script>";
-        $html .= self::makeEmailJS($username, $menteeRecordId);
+        $html .= self::makeEmailJS($username);
         return $html;
     }
 
-    public static function makeEmailJS($username, $menteeRecordId) {
+    public static function makeEmailJS($username) {
         $uidString = "";
         if (isset($_GET['uid'])) {
             $uidString = "&uid=$username";
         }
-        $recordString = "&record=".$menteeRecordId;
+        $recordString = "&record=";
         $emailSendURL = Application::link("mentor/schedule_email.php").$uidString.$recordString;
         $html = "<script>
     function scheduleEmail(recipientType, menteeRecord, subject, message, dateToSend, cb) {
@@ -1080,7 +1081,7 @@ function characteristicsPopup(entity) {
         if (dateToSend == 'now') {
             datetimeToSend = 'now';
         }
-        $.post('$emailSendURL',
+        $.post('$emailSendURL'+menteeRecord,
             { menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend },
             function(html) {
             console.log(html);
@@ -1101,6 +1102,10 @@ function characteristicsPopup(entity) {
     public static function getSectionHeadersWithMenteeQuestions($metadata) {
         $sectionHeaderCounts = [];
         $skipFieldTypes = ["notes", "file", "text"];
+        if (!$metadata[0]['section_header']) {
+            throw new \Exception("The first item of metadata should have a section header");
+        }
+        $lastSectionHeader = "";
         foreach ($metadata as $row) {
             if ($row['section_header']) {
                 $sectionHeaderCounts[$row['section_header']] = 0;
@@ -1400,7 +1405,7 @@ function characteristicsPopup(entity) {
         }
     }
 
-    public static function makeGeneralTableRow($title, $values, $units = "", $names = [], $mentors = []) {
+    public static function makeGeneralTableRow($title, $values, $units = "", $makeAverage = FALSE, $names = [], $mentors = []) {
         if ($units && !preg_match("/^\s/", $units)) {
             $unitsWithSpace = " ".$units;
         } else {
@@ -1429,18 +1434,49 @@ function characteristicsPopup(entity) {
                 }
                 if (!empty($values['mentees'])) {
                     $menteeNameId = "mentees_".REDCapManagement::makeHTMLId($title);
-                    $menteeNameStr = "<br><a href='javascript:;' onclick='$(\"#$menteeNameId\").show(); $(this).hide();'>Show Names</a><span class='smaller' id='$menteeNameId' style='display: none;'>".implode("<br>", $valueNames["mentees"])."</span>";
+                    if (!empty($names)) {
+                        $menteeExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$menteeNameId\").show(); $(this).hide();'>Show Names</a><span class='smaller' id='$menteeNameId' style='display: none;'>".implode("<br>", $valueNames["mentees"])."</span>";
+                    } else {
+                        $valuesWithUnits = [];
+                        foreach ($values["mentees"] as $val) {
+                            $valuesWithUnits[] = REDCapManagement::pretty($val, 1)." ".$units;
+                        }
+                        $menteeExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$menteeNameId\").show(); $(this).hide();'>Show $units</a><span class='smaller' id='$menteeNameId' style='display: none;'>".implode("<br>", $valuesWithUnits)."</span>";
+                    }
                 } else {
-                    $menteeNameStr = "";
+                    $menteeExplodeStr = "";
                 }
                 if (!empty($values['mentors'])) {
                     $mentorNameId = "mentors_".REDCapManagement::makeHTMLId($title);
-                    $mentorNameStr = "<br><a href='javascript:;' onclick='$(\"#$mentorNameId\").show(); $(this).hide();'>Show Names</a><span class='smaller' id='$mentorNameId' style='display: none;'>".implode("<br>", $valueNames["mentors"])."</span>";
+                    if (!empty($mentors)) {
+                        $mentorExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$mentorNameId\").show(); $(this).hide();'>Show Names</a><span class='smaller' id='$mentorNameId' style='display: none;'>".implode("<br>", $valueNames["mentors"])."</span>";
+                    } else {
+                        $valuesWithUnits = [];
+                        foreach ($values["mentors"] as $val) {
+                            $valuesWithUnits[] = REDCapManagement::pretty($val, 1)." ".$units;
+                        }
+                        $mentorExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$mentorNameId\").show(); $(this).hide();'>Show $units</a><span class='smaller' id='$mentorNameId' style='display: none;'>".implode("<br>", $valuesWithUnits)."</span>";
+                    }
                 } else {
-                    $mentorNameStr = "";
+                    $mentorExplodeStr = "";
                 }
-                $html .= "<td>".REDCapManagement::pretty(count($values["mentees"]), 0).$unitsWithSpace.$menteeNameStr."</td>";
-                $html .= "<td>".REDCapManagement::pretty(count($values["mentors"]), 0).$unitsWithSpace.$mentorNameStr."</td>";
+                if ($makeAverage) {
+                    if (count($values["mentees"]) > 0) {
+                        $menteeVal = REDCapManagement::pretty(array_sum($values["mentees"]) / count($values["mentees"]), 1);
+                    } else {
+                        $menteeVal = "NA";
+                    }
+                    if (count($values["mentors"]) > 0) {
+                        $mentorVal = REDCapManagement::pretty(array_sum($values["mentors"]) / count($values["mentors"]), 1);
+                    } else {
+                        $mentorVal = "NA";
+                    }
+                } else {
+                    $menteeVal = REDCapManagement::pretty(count($values["mentees"]), 0);
+                    $mentorVal = REDCapManagement::pretty(count($values["mentors"]), 0);
+                }
+                $html .= "<td>".$menteeVal.$unitsWithSpace.$menteeExplodeStr."</td>";
+                $html .= "<td>".$mentorVal.$unitsWithSpace.$mentorExplodeStr."</td>";
             } else {
                 $html .= "<td>".REDCapManagement::pretty($values["mentees"], 0).$unitsWithSpace."</td>";
                 $html .= "<td>".REDCapManagement::pretty($values["mentors"], 0).$unitsWithSpace."</td>";

@@ -159,11 +159,11 @@ table { border-collapse: collapse; }
                         if (!isset($settingsByDate[$dateOfReport])) {
                             $settingsByDate[$dateOfReport] = [];
                         }
-                        if (!isset($settingAry[$dateOfReport][$recordInstance])) {
-                            $settingAry[$dateOfReport][$recordInstance] = [];
+                        if (!isset($settingsByDate[$dateOfReport][$recordInstance])) {
+                            $settingsByDate[$dateOfReport][$recordInstance] = [];
                         }
-                        $settingAry[$dateOfReport][$recordInstance][$col] = $value;
-                        Application::saveSetting($field, $settingAry, $savePid);
+                        $settingsByDate[$dateOfReport][$recordInstance][$col] = $value;
+                        Application::saveSetting($field, $settingsByDate, $savePid);
                         $data["Result"] = "Saved.";
                     } else {
                         $data["error"] = "Could not locate column.";
@@ -263,7 +263,7 @@ table { border-collapse: collapse; }
 
     public function lookupValues($post) {
         $tableNum = REDCapManagement::sanitize($post['tableNum']);
-        $json = $post['queryItems'] ? REDCapManagement::sanitize($post['queryItems'], FALSE) : "[]";
+        $json = $post['queryItems'] ? REDCapManagement::sanitizeWithoutChangingQuotes($post['queryItems']) : "[]";
         $queryItems = json_decode($json, TRUE);
         $data = [];
         $today = date("Y-m-d");
@@ -669,4 +669,5 @@ table { border-collapse: collapse; }
     protected $token = "";
     protected $server = "";
     protected $pid = "";
+    protected $module = NULL;
 }

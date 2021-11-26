@@ -21,6 +21,7 @@ if ($_REQUEST['uid'] && DEBUG) {
 }
 
 $emails = [];
+$userids = [];
 if ($_POST['menteeRecord'] && $_POST['recipients']) {
     $menteeRecord = REDCapManagement::sanitize($_POST['menteeRecord']);
     $recipients = REDCapManagement::sanitize($_POST['recipients']);
@@ -43,9 +44,10 @@ if ($to && $from && $subject && $message && $datetimeToSend) {
     echo "Message enqueued for $datetimeToSend.";
 } else {
     echo "Improper fields.";
+    $post = REDCapManagement::sanitizeArray($_POST);
     if (DEBUG) {
         echo "\n";
-        echo "POST: ".json_encode($_POST)."\n";
+        echo "POST: ".json_encode($post)."\n";
         echo "userids: ".json_encode($userids)."\n";
         echo "userid2: $userid2\n";
         echo "to: $to\n";

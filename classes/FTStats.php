@@ -45,7 +45,7 @@ class FTStats {
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         $output = curl_exec($ch);
         curl_close($ch);
-        $results = json_decode($output, TRUE);
+        $results = (is_string($output) && ($output !== "")) ? json_decode($output, TRUE) : [];
         if (isset($results['error'])) {
             throw new \Exception($results['error']);
         }

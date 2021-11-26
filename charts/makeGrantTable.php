@@ -37,7 +37,7 @@ if (isset($_GET['CDA'])) {
             $smallIdentifierFields,
             $smallSummaryFields,
             $minimalDownloadedGrantFields,
-            Application::$customFields,
+            Application::getCustomFields($metadata),
     ));
     $showTimeline = FALSE;
     $showTimeBetweenGrants = FALSE;

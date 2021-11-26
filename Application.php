@@ -188,8 +188,8 @@ class Application {
         ];
     }
 
-    public static function getInstitution() {
-		$insts = self::getInstitutions();
+    public static function getInstitution($pid = NULL) {
+		$insts = self::getInstitutions($pid);
 		if (count($insts) > 0) {
 			return $insts[0];
 		}
@@ -569,7 +569,7 @@ class Application {
         "citation_altmetric_last_update",
     );
 
-    public static $customFields = array(
+    public static $customFields = [
         "record_id",
         "custom_title",
         "custom_number",
@@ -582,7 +582,9 @@ class Application {
         "custom_end",
         "custom_costs",
         "custom_last_update",
-    );
+        "custom_submission_status",
+        "custom_submission_date",
+    ];
 
     public static $positionFields = array(
         "record_id",

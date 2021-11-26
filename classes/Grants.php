@@ -1233,6 +1233,8 @@ class Grants {
 				"link",
                 "abstract",
                 "abstracts",
+                "subproject",
+                "sponsor_type",
 				];
 		$transformed = [];
 		foreach ($specs as $var => $value) {

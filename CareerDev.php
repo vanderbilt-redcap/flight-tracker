@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.12.6";
+		return "3.13.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -564,6 +564,9 @@ class CareerDev {
 
 	public static function saveCurrentDate($setting, $pid) {
 		$ary = self::getSetting(self::getGeneralSettingName(), $pid);
+		if (!is_array($ary)) {
+		    $ary = [];
+        }
 		$ary[$setting] = date("Y-m-d");
 		self::setSetting(self::getGeneralSettingName(), $ary, $pid);
 	}
@@ -1092,20 +1095,23 @@ class CareerDev {
 						"reporter_cfdacode",
 						);
 		
-	public static $customFields = array(
-						"record_id",
-						"custom_title",
-						"custom_number",
-						"custom_type",
-						"custom_org",
-						"custom_recipient_org",
-						"custom_role",
-						"custom_role_other",
-						"custom_start",
-						"custom_end",
-						"custom_costs",
-						"custom_last_update",
-						);
+	public static $customFields = [
+        "record_id",
+        "custom_title",
+        "custom_number",
+        "custom_type",
+        "custom_org",
+        "custom_recipient_org",
+        "custom_role",
+        "custom_role_other",
+        "custom_start",
+        "custom_end",
+        "custom_costs",
+        "custom_last_update",
+        "custom_submission_status",
+        "custom_submission_date",
+
+    ];
 
 	public static $exporterFields = array(
 						"exporter_application_id",

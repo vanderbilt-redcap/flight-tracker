@@ -121,6 +121,8 @@ if ($showRealGraph) {
         $maxLife = max(array_values($serialTimes));
     }
     if (isset($_GET['test'])) {
+        echo "startDates: ".REDCapManagement::json_encode_with_spaces($startDates)."<br>";
+        echo "endDates: ".REDCapManagement::json_encode_with_spaces($endDates)."<br>";
         echo "maxLife: $maxLife<br>";
     }
     $curveData = [];

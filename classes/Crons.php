@@ -261,7 +261,7 @@ class CronManager {
         Application::log("Currently running ".$batchQueue[0]['method']." for pid ".$batchQueue[0]['pid']." with status ".$batchQueue[0]['status']);
         if ($batchQueue[0]['status'] == "RUN") {
             $startTs = isset($batchQueue[0]['startTs']) && is_numeric($batchQueue[0]['startTs']) ? $batchQueue[0]['startTs'] : 0;
-            $timespan = 60 * 60;   // max of 60 minutes per segment
+            $timespan = 90 * 60;   // max of 90 minutes per segment
             Application::log("Running until ".date("Y-m-d H:i:s", $startTs + $timespan));
             if (time() > $startTs + $timespan) {
                 // failed batch - probably due to syntax error to avoid shutdown function

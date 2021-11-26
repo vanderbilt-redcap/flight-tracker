@@ -8,7 +8,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class NIHTables {
 	public function __construct($token, $server, $pid, $metadata = array()) {
-		$this->findDepartmenttoken = $token;
+		$this->token = $token;
 		$this->server = $server;
 		$this->pid = $pid;
 		if (empty($metadata)) {

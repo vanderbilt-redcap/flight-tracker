@@ -24,7 +24,8 @@ require_once(dirname(__FILE__)."/../small_base.php");
 body { font-size: 12px; }
 #visualization { background-color: white; }
 .Unfunded { border-color: #888888; }
-.Awarded { border-color: red; }
+.Pending { border-color: #f69ca0; }
+.Awarded { border-color: #f0565d; }
 </style>
 
 <?php
@@ -50,9 +51,9 @@ body { font-size: 12px; }
 	$maxTs = 0;
 	$minTs = time();
 
+    $submissionTimestamps = [];
 	if (CareerDev::isVanderbilt()) {
 	    $fieldsWithData = REDCapManagement::getFieldsWithData($rows, $recordId);
-	    $submissionTimestamps = [];
 	    if (in_array("coeussubmission_ip_number", $fieldsWithData)) {
 	        # first priority
             list($coeusSubmissions, $coeusSubmissionTimestamps) = makeCoeusSubmissions($rows, $recordId, $pid, $event_id, $id);
@@ -64,14 +65,17 @@ body { font-size: 12px; }
 	        list($coeus2Submissions, $submissionTimestamps) = makeCoeus2Submissions($rows, $recordId, $pid, $event_id, $id);
             $grantsAndPubs = array_merge($grantsAndPubs, $coeus2Submissions);
         }
-        foreach ($submissionTimestamps as $submissionTs) {
-            if ($submissionTs) {
-                if ($maxTs < $submissionTs) {
-                    $maxTs = $submissionTs;
-                }
-                if ($minTs > $submissionTs) {
-                    $minTs = $submissionTs;
-                }
+    }
+	list($customSubmissions, $customSubmissionTimestamps) = makeCustomSubmissions($rows, $recordId, $pid, $event_id, $id);
+    $grantsAndPubs = array_merge($grantsAndPubs, $customSubmissions);
+    $submissionTimestamps = array_merge($submissionTimestamps, $customSubmissionTimestamps);
+    foreach ($submissionTimestamps as $submissionTs) {
+        if ($submissionTs) {
+            if ($maxTs < $submissionTs) {
+                $maxTs = $submissionTs;
+            }
+            if ($minTs > $submissionTs) {
+                $minTs = $submissionTs;
             }
         }
     }
@@ -149,6 +153,33 @@ function makeCoeusAwards($rows, $recordId, $pid, $event_id, &$id) {
     return [$grantsAndPubs, $submissionTimestamps];
 }
 
+function makeCustomSubmissions($rows, $recordId, $pid, $event_id, &$id) {
+    $grantsAndPubs = [];
+    $submissionTimestamps = [];
+    foreach ($rows as $row) {
+        $awardType = $row['custom_type'];
+        if ($awardType == 98) {   // Submission
+            $awardStatusIdx = $row['custom_submission_status'] ?? "";
+            if ($awardStatusIdx == 1) {
+                $awardStatus = "Awarded";
+            } else if ($awardStatusIdx == 2) {
+                $awardStatus = "Pending";
+            } else if ($awardStatusIdx == 3) {
+                $awardStatus = "Unfunded";
+            } else {
+                $awardStatus = "";
+            }
+            $awardNo = $row['custom_number'];
+            $title = $row['custom_title'];
+            $instrument = "custom_grant";
+            $instance = $row['redcap_repeat_instance'];
+            $submissionDate = $row['custom_submission_date'] ?? "";
+            checkRowForValidity($row, $pid, $recordId, $event_id, $grantsAndPubs, $submissionTimestamps, $id, $instrument, $instance, $submissionDate, $awardNo, $awardStatus, $title);
+        }
+    }
+    return [$grantsAndPubs, $submissionTimestamps];
+}
+
 function makeCoeusSubmissions($rows, $recordId, $pid, $event_id, &$id) {
     $grantsAndPubs = [];
     $submissionTimestamps = [];
@@ -181,7 +212,7 @@ function makeCoeus2Submissions($rows, $recordId, $pid, $event_id, &$id) {
 
 function checkRowForValidity($row, $pid, $recordId, $event_id, &$grantsAndPubs, &$submissionTimestamps, &$id, $instrument, $instance, $submissionDate, $awardNo, $awardStatus, $title) {
     $skipNumbers = [];
-    $validStatuses = ["Awarded", "Unfunded"];
+    $validStatuses = ["Awarded", "Pending", "Unfunded"];
     if (($row['redcap_repeat_instrument'] == $instrument)
         && !in_array($awardNo, $skipNumbers)
         && in_array($awardStatus, $validStatuses)) {

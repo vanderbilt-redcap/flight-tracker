@@ -297,6 +297,10 @@ $(document).ready(function() {
 		}
 		if (isset($_POST['message'])) {
 			// does not work $mssg = REDCapManagement::sanitizeWithoutStrippingHTML($_POST['message']);
+            /**
+             * @psalm-taint-escape html
+             * @psalm-taint-escape has_quotes
+             */
             $mssg = $_POST['message'];
 		} else if (isset($currSetting['what']['message'])) {
 			$mssg = $currSetting['what']['message'];

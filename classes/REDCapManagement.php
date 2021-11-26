@@ -897,6 +897,7 @@ class REDCapManagement {
         }
         /**
          * @psalm-taint-escape html
+         * @psalm-taint-escape has_quotes
          */
         $str = preg_replace("/<[^>]+>/", '', $str);
         return htmlentities($str);
@@ -904,7 +905,11 @@ class REDCapManagement {
 
     public static function sanitizeArray($ary) {
 	    if (is_array($ary)) {
-	        foreach ($ary as $key => $value) {
+            /**
+             * @psalm-taint-escape html
+             * @psalm-taint-escape has_quotes
+             */
+            foreach ($ary as $key => $value) {
 	            $key = self::sanitize($key);
 	            if (is_array($value)) {
 	                $value = self::sanitizeArray($value);
@@ -916,19 +921,16 @@ class REDCapManagement {
         } else {
 	        return self::sanitize($ary);
         }
-	    return $ary;
     }
 
     public static function sanitizeWithoutStrippingHTML($str, $encodeQuotes = TRUE) {
         /**
          * @psalm-taint-escape html
+         * @psalm-taint-escape has_quotes
          */
         $str = preg_replace("/<script[^>]*>/i", '', $str);
         $str = preg_replace("/<\/script[^>]*>/i", '', $str);
         if ($encodeQuotes) {
-            /**
-             * @psalm-taint-escape has_quotes
-             */
             $str = htmlentities($str, ENT_QUOTES);
         }
         return $str;

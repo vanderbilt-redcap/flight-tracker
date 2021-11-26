@@ -31,7 +31,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 
         $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
         if ($has['nih_reporter']) {
-            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 40);
+            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 20);
             if (time() < strtotime("2021-10-15")) {
                 $manager->addCron("drivers/deleteScripts.php", "deleteExPORTERNotice", "Monday", $records, 10000);
             }

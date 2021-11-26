@@ -607,4 +607,4 @@ $('.viewagreementstatus').hover(
 
 </style>
 
-<?= MMAHelper::makeEmailJS($username, $menteeRecordId) ?>
+<?= MMAHelper::makeEmailJS($username) ?>
