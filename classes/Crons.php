@@ -244,6 +244,32 @@ class CronManager {
         }
     }
 
+    public static function getChangedRecords($records, $hours, $pid) {
+        if (empty($records)) {
+            return $records;
+        }
+        $threshold = date("YmdHis", time() - $hours * 3600);
+        $recordStr = "('".implode("','", $records)."')";
+        $log_event_table = method_exists('\REDCap', 'getLogEventTable') ? \REDCap::getLogEventTable($pid) : "redcap_log_event";
+        $sql = "SELECT DISTINCT pk FROM $log_event_table WHERE project_id = '".db_real_escape_string($pid)."' AND pk IN $recordStr AND ts >= ".db_real_escape_string($threshold)." AND data_values NOT LIKE 'summary_last_calculated = \'____-__-__ __:__\''";
+        $changedRecords = [];
+        $startTime = time();
+        $q = db_query($sql);
+        if ($error = db_error()) {
+            throw new \Exception("Database error $error");
+        }
+        while ($row = db_fetch_assoc($q)) {
+            if (!in_array($row['pk'], $changedRecords)) {
+                $changedRecords[] = $row['pk'];
+            }
+        }
+        $endTime = time();
+        $elapsedTime = $endTime - $startTime;
+        Application::log("Changed record count from ".count($records)." to ".count($changedRecords)." records in $elapsedTime seconds.", $pid);
+        return $changedRecords;
+    }
+
+
     public function runBatchJobs() {
 	    $module = $this->module;
 	    $validBatchStatuses = ["DONE", "ERROR", "RUN", "WAIT"];

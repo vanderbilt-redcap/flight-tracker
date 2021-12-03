@@ -616,17 +616,17 @@ class Publications {
                 foreach ($authors as $author) {
                     if (NameMatcher::matchByInitials($currLastName, $currFirstName, $author['last'], $author['first'])) {
                         $foundCurrInAuthorList = TRUE;
-                        Application::log("Found current $currFirstName $currLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance", $pid);
+                        // Application::log("Found current $currFirstName $currLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance", $pid);
                         break;
                     }
                 }
                 if (!$foundCurrInAuthorList) {
-                    Application::log("Did not find current $currFirstName $currLastName in author list in $recordId:$instance", $pid);
+                    // Application::log("Did not find current $currFirstName $currLastName in author list in $recordId:$instance", $pid);
                     foreach ($authors as $author) {
                         foreach ($allLastNames as $recordId2 => $otherLastName) {
                             $otherFirstName = $allFirstNames[$recordId2];
                             if (NameMatcher::matchByInitials($author['last'], $author['first'], $otherLastName, $otherFirstName)) {
-                                Application::log("Found other $otherFirstName $otherLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance", $pid);
+                                // Application::log("Found other $otherFirstName $otherLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance", $pid);
                                 $foundAnotherInAuthorList = TRUE;
                                 break;
                             }
@@ -636,7 +636,7 @@ class Publications {
                 if ($foundAnotherInAuthorList) {
                     $instances[] = $instance;
                 } else {
-                    Application::log("Did not find other in author list in $recordId:$instance", $pid);
+                    // Application::log("Did not find other in author list in $recordId:$instance", $pid);
                 }
             }
         }

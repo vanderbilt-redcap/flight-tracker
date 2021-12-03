@@ -294,7 +294,11 @@ class NameMatcher {
 
 	    $newNodes = [$first];
 	    foreach ($nodes as $node) {
-	        if ($node && !in_array($node, $newNodes)) {
+	        $isMiddleInitial = FALSE;
+	        if (self::isInitial($node) && ($middle == $node)) {
+	            $isMiddleInitial = TRUE;
+            }
+	        if ($node && !in_array($node, $newNodes) && !$isMiddleInitial) {
                 $newNodes[] = $node;
             }
         }

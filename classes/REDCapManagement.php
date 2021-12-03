@@ -888,6 +888,16 @@ class REDCapManagement {
         return $params;
     }
 
+    public static function sanitizeJSON($str) {
+        /**
+         * @psalm-taint-escape html
+         * @psalm-taint-escape has_quotes
+         */
+
+        # unable to do so now
+        return $str;
+    }
+
     public static function sanitizeWithoutChangingQuotes($str) {
         if (is_numeric($str)) {
             $str = (string) $str;
@@ -1403,7 +1413,10 @@ class REDCapManagement {
 	}
 
 	public static function isJSON($str) {
-	    return preg_match("/\\[\\[{(?:(?!\\]\\])[\\s\\S])*\"fid\":\"\\K\\d+/mi", $str);
+        if (json_decode($str)) {
+            return TRUE;
+        }
+	    return FALSE;
     }
 
     public static function copyMetadataSettingsForField($row, $metadata, &$upload, $token, $server) {

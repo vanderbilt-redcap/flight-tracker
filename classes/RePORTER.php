@@ -232,7 +232,7 @@ class RePORTER {
         return $this->getData();
     }
 
-    public function runPOSTQuery($url, $postdata, $limit = 100, $offset = 0) {
+    public function runPOSTQuery($url, $postdata, $limit = 500, $offset = 0) {
         $postdata['limit'] = $limit;
         $postdata['offset'] = $offset;
         $data = [];

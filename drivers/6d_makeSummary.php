@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\CronManager;
 
 # used every time that the summaries are recalculated 
 # 30 minute runtimes
@@ -43,26 +44,31 @@ function unlock($pid) {
 
 # $allRecordRows is for testing purposes only
 function makeSummary($token, $server, $pid, $records, $allRecordRows = array()) {
-	lock($pid);
+    if (!is_array($records)) {
+        $records = [$records];
+    }
+    $changedRecords = (count($records) == 1) ? $records : CronManager::getChangedRecords($records, 96, $pid);
+    if (!empty($changedRecords)) {
+        lock($pid);
 
-	if (!$token || !$server) {
-		throw new \Exception("6d makeSummary could not find token '$token' or server '$server'");
-	}
+        if (!$token || !$server) {
+            throw new \Exception("6d makeSummary could not find token '$token' or server '$server'");
+        }
 
-	$GLOBALS['selectRecord'] = "";
+        $GLOBALS['selectRecord'] = "";
 
-	$metadata = Download::metadata($token, $server);
-	CareerDev::log("6d CareerDev downloaded metadata: ".count($metadata));
+        $metadata = Download::metadata($token, $server);
 
-	# done in batches of 1 records
-	$returnREDCapData = array();
-	foreach ($records as $recordId) {
-        $newData = summarizeRecord($token, $server, $pid, $recordId, $metadata, $allRecordRows);
-	    $returnREDCapData = array_merge($returnREDCapData, $newData);
-        gc_collect_cycles();
-	}
+        # done in batches of 1 records
+        $returnREDCapData = array();
+        foreach ($changedRecords as $recordId) {
+            $newData = summarizeRecord($token, $server, $pid, $recordId, $metadata, $allRecordRows);
+            $returnREDCapData = array_merge($returnREDCapData, $newData);
+            gc_collect_cycles();
+        }
 
-	unlock($pid);
+        unlock($pid);
+    }
 
 	CareerDev::saveCurrentDate("Last Summary of Data", $pid);
 	if (!empty($allRecordRows)) {

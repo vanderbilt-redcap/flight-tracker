@@ -161,9 +161,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	    return FALSE;
     }
 
-	public function cleanupLogs($pid)
-    {
-        CareerDev::log("Cleaning up logs for $pid");
+	public function cleanupLogs($pid) {
         $daysPrior = 28;
         $this->cleanupExtModLogs($pid, $daysPrior);
     }
@@ -171,7 +169,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     public function cleanupExtModLogs($pid, $daysPrior) {
         $ts = time() - $daysPrior * 24 * 3600;
         $thresholdTs = date("Y-m-d", $ts);
+        Application::log("Removing logs prior to $thresholdTs", $pid);
         $this->removeLogs("timestamp <= '$thresholdTs' AND project_id = '$pid'");
+        Application::log("Done removing logs", $pid);
     }
 
     private static function isValidToCopy($fields, $sourceRow, $destRow, $sourceChoices, $destChoices) {
@@ -651,7 +651,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     } else {
                         loadCrons($mgr, FALSE, $token, $server);
                     }
-                    // CareerDev::log($this->getName().": Running ".$mgr->getNumberOfCrons()." crons for pid $pid", $pid);
+                    Application::log($this->getName().": $tokenName enqueued ".$mgr->getNumberOfCrons()." crons", $pid);
                     $addlEmailText = in_array($pid, $pidsUpdated) ? "Surveys shared from other Flight Tracker projects" : "";
 //                     $mgr->run($adminEmail, $tokenName, $addlEmailText);
                     // CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
@@ -661,18 +661,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 }
             }
 		}
-		if (!empty($activePids)) {
-            $pid = $activePids[0];
-		    try {
-                $token = $this->getProjectSetting("token", $pid);
-                $server = $this->getProjectSetting("server", $pid);
-                $mgr = new CronManager($token, $server, $pid, $this);
-                $mgr->runBatchJobs();
-            } catch (\Exception $e) {
-                $adminEmail = $this->getProjectSetting("admin_email", $pid);
-                \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Error in Cron", $e->getMessage()."<br>".$e->getTraceAsString());
-            }
-        }
 	}
 
 	function hasProjectToRunTonight($pids) {

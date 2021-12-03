@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.13.0";
+		return "3.13.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -979,7 +979,7 @@ class CareerDev {
 					"Participation Roster" => self::link("/resources/add.php"),
 					"Manage" => self::link("/resources/manage.php"),
 					"Dashboard Metrics" => self::link("/dashboard/resources.php"),
-                    "Measure ROI" => self::link("/resources/roi.php"),
+                    "Measure Resource ROI" => self::link("/resources/roi.php"),
             ];
 		}
 		if ($menuName == "Help") {

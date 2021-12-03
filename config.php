@@ -437,7 +437,7 @@ function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $re
 			}
 		}
 		$html .= "</td><td style='text-align: left;'>";
-		$html .= "<input type='$type' name='$var' value='$value'";
+		$html .= "<input type='$type' name='$var' value=\"$value\"";
 		if ($readonly) {
 		    $html .= " readonly";
         }

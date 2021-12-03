@@ -46,21 +46,14 @@ if ((isset($_GET['showAllResources']) && ($_GET['showAllResources'] == "on")) ||
     $showAllResourcesText = "";
 }
 
-$cohort = isset($_GET['cohort']) ? REDCapManagement::sanitize($_GET['cohort']) : "";
-
-$maxLife = 0;
-$n = [];
-$names = [];
-$serialTimes = [];
-$statusAtSerialTime = [];    // event or censored
-$resourcesUsedIdx = [];
-$groups = ["all" => ALL_SCHOLARS_LABEL];
-$cohortTitle = "";
+$cohort = "";
 if ($showRealGraph) {
-    if ($cohort) {
+    if ($_GET['cohort']) {
+        $cohort = REDCapManagement::sanitize($_GET['cohort']);
         $cohortTitle = " (Cohort $cohort)";
         $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
     } else {
+        $cohortTitle = "";
         $records = Download::recordIds($token, $server);
     }
     $names = Download::names($token, $server);
@@ -83,6 +76,9 @@ if ($showRealGraph) {
     }
     $startDates = [];
     $endDates = [];
+    $serialTimes = [];
+    $statusAtSerialTime = [];    // event or censored
+    $resourcesUsedIdx = [];
     $indexedREDCapData = Download::indexREDCapData(Download::fields($token, $server, $fields));
     foreach ($records as $record) {
         $redcapData = $indexedREDCapData[$record];
@@ -117,16 +113,13 @@ if ($showRealGraph) {
     }
 
     $curveData = [];
-    if (!empty($serialTimes)) {
-        $maxLife = max(array_values($serialTimes));
-    }
+    $maxLife = !empty($serialTimes) ? max(array_values($serialTimes)) : 0;
     if (isset($_GET['test'])) {
-        echo "startDates: ".REDCapManagement::json_encode_with_spaces($startDates)."<br>";
-        echo "endDates: ".REDCapManagement::json_encode_with_spaces($endDates)."<br>";
         echo "maxLife: $maxLife<br>";
     }
     $curveData = [];
     if ($maxLife > 0) {
+        $groups = ["all" => ALL_SCHOLARS_LABEL];
         if ($showAllResources) {
             foreach ($choices['resources_resource'] as $idx => $label) {
                 $groups[$idx] = $label;
@@ -135,6 +128,7 @@ if ($showRealGraph) {
         if (isset($_GET['test'])) {
             echo "groups: ".json_encode($groups)."<br>";
         }
+        $n = [];
         foreach ($groups as $idx => $label) {
             $curveData[$label] = [];
             if (isset($_GET['test'])) {
@@ -142,7 +136,7 @@ if ($showRealGraph) {
             }
             $groupRecords = getResourceRecords($idx, $resourcesUsedIdx);
             if (isset($_GET['test'])) {
-                echo "$idx $label has groupRecords (".count($groupRecords)."): ".REDCapManagement::json_encode_with_spaces($groupRecords)."<br>";
+                echo "$idx $label has groupRecords (".count($groupRecords)."): ".json_encode_with_spaces($groupRecords)."<br>";
             }
             $n[$label] = count($groupRecords);
             $curveData[$label][0] = [
@@ -244,7 +238,6 @@ $fullURL = Application::link("charts/kaplanMeierCurve.php");
 list($url, $params) = REDCapManagement::splitURL($fullURL);
 
 $cohorts = new Cohorts($token, $server, Application::getModule());
-$cohort = REDCapManagement::sanitize($_GET['cohort']);
 
 echo "<h1>Kaplan-Meier Conversion Success Curve</h1>";
 echo "<p class='centered max-width'>A <a href='https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3932959/'>Kaplan-Meier survival plot</a> is used in epidemiology to track deaths over time due to a disease. It's a good way to track the effectiveness of a treatment. In Career Development, deaths are not tracked, but rather whether someone converts from K to R (event), is lost to follow-up (censored), or is still active (censored). This curve will hopefully allow you to gauge the effectiveness of scholarship-promoting efforts.</p>";
@@ -297,7 +290,7 @@ echo "</form>";
 
 $plots = [
     "survival" => ["title" => "Kaplan-Meier Success Curve", "yAxisTitle" => "Percent Converting from K to R"],
-    "hazard" => ["title" => "Rate of Conversion Success", "yAxisTitle" => "Rate of Change in Conversion Percent Per Unit Time (dS/dT)"],
+    "hazard" => ["title" => "Rate of Conversion Success (Equivalent of Hazard Plot)", "yAxisTitle" => "Rate of Change in Conversion Percent Per Unit Time (dS/dT)"],
     ];
 $labelsJSON = [];
 $datasetsJSON = [];

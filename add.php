@@ -338,7 +338,7 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
         $currLine = $lines[$i];
         $json = json_encode($currLine);
         $hiddenHTML = "<input type='hidden' name='line___$i' value='$json'>";
-        $currMentorUids = $mentorUids[$i];
+        $currMentorUids = $mentorUids[$i] ?? [];
         $currMentorName = "";
         if (isset($currLine[13])) {
             $currMentorName = $currLine[13];
@@ -361,8 +361,9 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
             if (count($currMentorUids) == 0) {
                 $escapedMentorName = preg_replace("/'/", "\\'", $currMentorName);
                 $hiddenField = "<input type='hidden' name='originalmentorname___$i' value='$escapedMentorName'>";
+                $mentorKeep = "mentorkeep___$i";
                 $html .= "<td class='red'>";
-                $html .= "<strong>No mentors matched with $currMentorName.</strong><br>Will not upload this mentor.<br>Perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
+                $html .= "<strong>No mentors matched with $currMentorName.</strong><br>Keep mentor? <input type='radio' name='$mentorKeep' id='$mentorKeep' value='1'> <label for='$mentorKeep'> Yes, upload anyways</label><br>Or perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
                 $html .= "<br>Or try a custom id?<br>".$customLine.$customHidden;
                 $html .= "</td>";
             } else if (count($currMentorUids) == 1) {
@@ -410,21 +411,31 @@ function parsePostForLines($post) {
     $mentorCustomCode = "mentor___custom";
     foreach ($post as $key => $value) {
         $key = REDCapManagement::sanitize($key);
-        $value = REDCapManagement::sanitize($value);
         if (preg_match("/^line___\d+$/", $key)) {
+            $value = REDCapManagement::sanitizeJSON($value);
             $i = preg_replace("/^line___/", "", $key);
-            $lines[$i] = json_decode($value, TRUE);
-            if ($post["mentorname___".$i]) {
-                $lines[$i][$mentorCol] = $post["mentorname___".$i];
+            $values = json_decode($value);
+            $lines[$i] = $values;
+            if ($post["mentorname___" . $i]) {
+                $lines[$i][$mentorCol] = $post["mentorname___" . $i];
             }
-        } else if (preg_match("/^mentor___\d+$/", $key) && ($value != $mentorCustomCode)) {
+        }
+    }
+    foreach ($post as $key => $value) {
+        $key = REDCapManagement::sanitize($key);
+        $value = REDCapManagement::sanitize($value);
+        if (preg_match("/^mentor___\d+$/", $key) && ($value != $mentorCustomCode)) {
             $i = preg_replace("/^mentor___/", "", $key);
             $mentorUids[$i] = $value;
         } else if (preg_match("/^newmentorname___\d+$/", $key)) {
             $i = preg_replace("/^newmentorname___/", "", $key);
             $origMentorName = $post['originalmentorname___'.$i];
-            if ($origMentorName != $value) {
-                $newMentorNames[$i] = $value;
+            if ($post['mentorkeep___'.$i]) {
+                $lines[$i][$mentorCol] = $origMentorName;
+            } else {
+                if ($origMentorName != $value) {
+                    $newMentorNames[$i] = $value;
+                }
             }
         } else if (preg_match("/^mentorcustom___\d+$/", $key) && $value) {
             $i = preg_replace("/^mentorcustom___/", "", $key);
