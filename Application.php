@@ -259,8 +259,10 @@ class Application {
 	}
 
 	public static function isTestServer() {
-	    # TODO May want to add a configuration setting for this???
-	    return TRUE;
+	    $value = self::getSetting("server_class");
+        # TODO may want to consider removing ""; also consider "dev" as an option if specified
+	    $testServerClasses = ["test", ""];
+	    return in_array($value, $testServerClasses);
     }
 
 	public static function saveSetting($field, $value, $pid = "") {

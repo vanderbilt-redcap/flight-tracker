@@ -101,6 +101,17 @@ class REDCapLookupByUserid {
         return "";
     }
 
+    public function getLastName() {
+        if ($this->userid) {
+            $sql = "SELECT user_lastname FROM redcap_user_information WHERE lower(username) = '".db_real_escape_string(strtolower($this->userid))."'";
+            $q = db_query($sql);
+            if ($row = db_fetch_assoc($q)) {
+                return $row['user_lastname'];
+            }
+        }
+        return "";
+    }
+
     private $userid = "";
 }
 

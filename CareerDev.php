@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.13.1";
+		return "3.14.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -35,6 +35,7 @@ class CareerDev {
     public static function getUnknown() {
 		return "Unknown";
 	}
+
 	public static function isWrangler() {
 		return preg_match("/wrangler/", $_GET['page']);
 	}
@@ -139,16 +140,22 @@ class CareerDev {
 		return "initial_survey_$record";
 	}
 
-	public static function getGrantClasses() {
-		return array(
-				"T" => "Training Grant (T)",
-				"K" => "Career Development Grant (K)",
-				"Other" => "Other (e.g., not related to a grant)",
-				);
-	}
+    public static function getGrantClasses() {
+        return [
+            "T" => "Training Grant (T)",
+            "K" => "Career Development Grant (K)",
+            "Other" => "Other (e.g., not related to a grant)",
+        ];
+    }
 
+    public static function getServerClasses() {
+        return [
+            "test" => "Test/Development",
+            "prod" => "Production Server",
+        ];
+    }
 
-	public static function log($mssg, $pid = FALSE) {
+    public static function log($mssg, $pid = FALSE) {
 	    if (!$mssg) {
 	        return;
         }
@@ -850,6 +857,7 @@ class CareerDev {
                 "Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
                 "Search Grants" => self::link("/search/index.php"),
                 "Search Within a Timespan" => self::link("/search/inTimespan.php"),
+                "Financial ROI for Grants" => self::link("/financial/roi.php"),
                 "Grant Budgets, Active at a Time" => self::link("/financial/budget.php")."&timespan=active",
                 "All-Time Grant Budgets" => self::link("/financial/budget.php")."&timespan=all",
             ];

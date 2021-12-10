@@ -1100,15 +1100,15 @@ function downloadOnePatent(i, patents, textId, prefixHTML, doneCb) {
 		let q = {"patent_number": patentNumber };
 		let f = ["patent_number", "patent_date", "patent_title"];
 
-		var url = "https://api.patentsview.org/patents/query?q="+JSON.stringify(q)+"&f="+JSON.strigify(f)+"&o=".JSON.stringify(o);
+		var url = "https://api.patentsview.org/patents/query?q="+JSON.stringify(q)+"&f="+JSON.stringify(f)+"&o="+JSON.stringify(o);
 		// AJAX call will return in uncertain order => append, not overwrite, results
 		$.ajax({
 			url: url,
-			success: function(json) {
-				let data = JSON.parse(json);
+			success: function(data) {
+				console.log(JSON.stringify(data));
 				var listings = [];
-				for (let i=0; i < data.length; i++) {
-					let entry = data[i];
+				for (let i=0; i < data.patents.length; i++) {
+					let entry = data.patents[i];
 					if (entry['patent_number']) {
 						var listing = "Patent "+entry['patent_number']+' '+entry['patent_title']+' ('+entry['patent_date']+')';
 						listings.push(listing);

@@ -1139,6 +1139,55 @@ class Publications {
         return $upload;
     }
 
+    public static function deleteMiddleNameOnlyMatches($token, $server, $pid, $recordId, $redcapData, $firstName, $lastName, $middleName, $institutions) {
+	    if (NameMatcher::isInitial($middleName)) {
+            $firstNames = NameMatcher::explodeFirstName($firstName);
+            $lastNames = NameMatcher::explodeLastName($lastName);
+            $pmidsMatchedByFirst = [];
+            foreach ($lastNames as $lastName) {
+                foreach ($firstNames as $firstName) {
+                    foreach ($institutions as $institution) {
+                        if ($institution) {
+                            if (isset($middleName) && $middleName) {
+                                $firstName .= " ".$middleName;
+                            }
+                            $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institution);
+                            $pmidsMatchedByFirst = array_unique(array_merge($pmidsMatchedByFirst, $currPMIDs));
+                        }
+                    }
+                }
+            }
+
+            $candidateNames = [$middleName, $middleName." ".$middleName];
+            $pmidsMatchedByMiddle = [];
+            foreach ($lastNames as $lastName) {
+                foreach ($candidateNames as $candidateName) {
+                    foreach ($institutions as $institution) {
+                        if ($institution) {
+                            $currPMIDs = Publications::searchPubMedForName($candidateName, $lastName, $pid, $institution);
+                            $pmidsMatchedByMiddle = array_unique(array_merge($pmidsMatchedByMiddle, $currPMIDs));
+                        }
+                    }
+                }
+            }
+
+            $instancesToDelete = [];
+            foreach ($redcapData as $row) {
+                if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
+                    $pmid = $row['citation_pmid'];
+                    if (in_array($pmid, $pmidsMatchedByMiddle) && !in_array($pmid, $pmidsMatchedByFirst)) {
+                        $instancesToDelete[] = $row['redcap_repeat_instance'];
+                    }
+                }
+            }
+
+            if (!empty($instancesToDelete)) {
+                Application::log("Deleting publication instances for record $recordId: ".implode(", ", $instancesToDelete), $pid);
+                Upload::deleteFormInstances($token, $server, $pid, "citation_", $recordId, $instancesToDelete);
+            }
+        }
+    }
+
     public static function PMIDsToPMCs($pmids, $pid) {
         if (is_array($pmids) && !empty($pmids)) {
             $translator = self::runIDConverter($pmids, $pid);

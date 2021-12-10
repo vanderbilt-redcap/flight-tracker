@@ -169,6 +169,11 @@ function insertLastName() {
 	appendToMessage(name);
 }
 
+function insertFirstName() {
+	var name = "[first_name]";
+	appendToMessage(name);
+}
+
 function insertName() {
 	var name = "[name]";
 	appendToMessage(name);

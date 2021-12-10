@@ -30,7 +30,7 @@ function lock($pid) {
 		throw new \Exception("Script is locked ".$lockFile);
 	}
 	$fp = fopen($lockFile, "w");
-	fwrite($fp, date("Y-m-d h:m:s"));
+	fwrite($fp, date("Y-m-d h:m:s", $lockStart));
 	fclose($fp);
 }
 

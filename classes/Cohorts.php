@@ -25,6 +25,10 @@ class Cohorts {
 		$this->readonlySettings = $this->getReadonlyConfiguration();
 	}
 
+	public function hasReadonlyProjects() {
+	    return !empty($this->readonlySettings);
+    }
+
 	public function addReadonlyPid($cohort, $readonlyPid, $readonlyToken) {
 	    $this->readonlySettings[$cohort] = [ "pid" => $readonlyPid, "token" => $readonlyToken, ];
 	    $this->save();

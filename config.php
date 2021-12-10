@@ -343,8 +343,9 @@ function makeSettings($module) {
 	array_push($ary["Installation Variables"], makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated"));
 	array_push($ary["Installation Variables"], makeSetting("tokenName", "text", "Project Name"));
 	array_push($ary["Installation Variables"], makeSetting("timezone", "text", "Timezone"));
-	array_push($ary["Installation Variables"], makeSetting("grant_class", "radio", "Grant Class", "", CareerDev::getGrantClasses()));
+    array_push($ary["Installation Variables"], makeSetting("grant_class", "radio", "Grant Class", "", CareerDev::getGrantClasses()));
 	array_push($ary["Installation Variables"], makeSetting("grant_number", "text", "Grant Number"));
+    array_push($ary["Installation Variables"], makeSetting("server_class", "radio", "Server Class", "prod", CareerDev::getServerClasses()));
 	array_push($ary["Installation Variables"], makeSetting("departments", "textarea", "Department Names"));
 	array_push($ary["Installation Variables"], makeSetting("resources", "textarea", "Resources"));
     array_push($ary["Installation Variables"], makeSetting("send_error_logs", "yesno", "Report Fatal Errors to Development Team?"));

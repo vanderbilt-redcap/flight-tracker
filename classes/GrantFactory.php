@@ -647,7 +647,7 @@ class CoeusGrantFactory extends GrantFactory {
 }
 
 class Coeus2GrantFactory extends CoeusGrantFactory {
-    public function __construct($name, $lexicalTranslator, $metadata, $type = "Grant", $token, $server) {
+    public function __construct($name, $lexicalTranslator, $metadata, $type = "Grant", $token = "", $server = "") {
         parent::__construct($name, $lexicalTranslator, $metadata, $token, $server);
         $this->type = $type;
     }
@@ -768,8 +768,11 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         $grant->setVariable('person_name', $row['nih_principal_investigators'] ?? $row['nih_contact_pi_name']);
         $grant->setVariable('project_start', $row['nih_project_start_date']);
         $grant->setVariable('project_end', $row['nih_project_end_date']);
-        // $grant->setVariable('start', $row['nih_project_start_date']);
-        // $grant->setVariable('end', $row['nih_project_end_date']);
+        list ($budgetStartDate, $budgetEndDate) = self::calculateBudgetDates($row['nih_project_start_date'], $row['nih_project_end_date'], $row['nih_award_notice_date']);
+        if ($budgetStartDate && $budgetEndDate) {
+            $grant->setVariable('start', $budgetStartDate);
+            $grant->setVariable('end', $budgetEndDate);
+        }
         $grant->setVariable('title', $row['nih_project_title']);
         $grant->setVariable('budget', $row['nih_award_amount']);
         $grant->setVariable('total_budget', $row['nih_award_amount']);
@@ -797,6 +800,41 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
 
         $grant->putInBins();
         array_push($this->grants, $grant);
+    }
+
+    private static function calculateBudgetDates($projectStartDate, $projectEndDate, $awardNoticeDate) {
+        $budgetStartTs = FALSE;
+        $budgetEndTs = FALSE;
+        if ($projectStartDate && $projectEndDate && $awardNoticeDate) {
+            $projectStartTs = strtotime($projectStartDate);
+            $projectEndTs = strtotime($projectEndDate);
+            $awardNoticeTs = strtotime($awardNoticeDate);
+
+            $startBudgetYear = date("Y", $awardNoticeTs);
+            $isStartLeapYear = ($startBudgetYear % 4 === 0);
+            $startBudgetRemainingDate = date("-m-d", $projectStartTs);
+            if ($startBudgetRemainingDate == "-02-29" && !$isStartLeapYear) {
+                $startBudgetRemainingDate = "-02-28";
+            }
+            $budgetStartTs = strtotime($startBudgetYear.$startBudgetRemainingDate);
+
+            $endBudgetYear = date("Y", $awardNoticeTs) + 1;
+            $isEndLeapYear = ($endBudgetYear % 4 === 0);
+            $endBudgetRemainingDate = date("-m-d", $projectStartTs);
+            if ($endBudgetRemainingDate == "-02-29" && !$isEndLeapYear) {
+                $endBudgetRemainingDate = "-02-28";
+            }
+            $oneDay = 24 * 3600;
+            $budgetEndTs = strtotime($endBudgetYear.$endBudgetRemainingDate) - $oneDay;
+            if ($budgetEndTs > $projectEndTs) {
+                $budgetEndTs = $projectEndTs;
+            }
+        }
+
+        $format = "Y-m-d";
+        $budgetStartDate = $budgetStartTs ? date($format, $budgetStartTs) : "";
+        $budgetEndDate = $budgetEndTs ? date($format, $budgetEndTs) : "";
+        return [$budgetStartDate, $budgetEndDate];
     }
 }
 

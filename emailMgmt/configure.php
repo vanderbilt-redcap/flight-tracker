@@ -287,7 +287,8 @@ $(document).ready(function() {
 		echo "<div style='display: inline-block;'>".$mgr->getSurveySelect($surveySelectId)."<br>\n";
 		echo "<button $isDisabled onclick='insertSurveyLink(\"$surveySelectId\"); return false;'>Insert Survey Link</button></div>\n";
 		echo "<div style='display: inline-block;'><button $isDisabled onclick='insertName(); return false;'>Insert Name</button></div>\n";
-		echo "<div style='display: inline-block;'><button $isDisabled onclick='insertLastName(); return false;'>Insert Last Name</button></div>\n";
+        echo "<div style='display: inline-block;'><button $isDisabled onclick='insertLastName(); return false;'>Insert Last Name</button></div>\n";
+        echo "<div style='display: inline-block;'><button $isDisabled onclick='insertFirstName(); return false;'>Insert First Name</button></div>\n";
 		if (CareerDev::has("mentoring_agreement")) {
             echo "<div style='display: inline-block;'><button $isDisabled onclick='insertMentoringLink(); return false;'>Insert Mentoring Agreement Link</button></div>\n";
         }

@@ -88,6 +88,7 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
                 'auto_recalculate' => '1',
                 'shared_forms' => [],
                 'mentee_agreement_link' => $menteeAgreementLink,
+                'server_class' => REDCapManagement::sanitize($_POST['server_class']),
 				];
         \Vanderbilt\FlightTrackerExternalModule\setupModuleSettings($projectId, $settingFields);
 
@@ -167,16 +168,17 @@ function makeIntroPage($projectId) {
 	}
 
 	$html = "";
-	$html .= "<script>\n";
-	$html .= "function changeGrantClass(name) {\n";
-	$html .= "\tvar val = $('[name='+name+']:checked').val();\n";
-	$html .= "\tif ((val == 'K') || (val == 'T')) {\n";
-	$html .= "\t\t$('grant_number_row').show();\n";
-	$html .= "\t} else {\n";
-	$html .= "\t\t$('grant_number_row').hide();\n";
-	$html .= "\t}\n";
-	$html .= "}\n";
-	$html .= "</script>\n";
+	$html .= "<script>
+function changeGrantClass(name) {
+	const val = $('[name='+name+']:checked').val();
+	console.log('changeGrantClass '+name+' checked: '+val);
+	if ((val === 'K') || (val === 'T')) {
+	    $('#grant_number_row').show();
+	} else {
+	    $('#grant_number_row').hide();
+	}
+}
+</script>\n";
 	$html .= "<p class='small centered recessed'>(Not expecting this page? <a class='recessed' href='".ExternalModules::$BASE_URL."manager/project.php?pid=$projectId'>Click Here</a> to Disable Flight Tracker)</p>\n";
 	$html .= "<style>\n";
 	$html .= getCSS();
@@ -273,7 +275,25 @@ function makeIntroPage($projectId) {
 	$html .= "<td><input type='text' name='grant_number'></td>\n";
 	$html .= "</tr>\n";
 
-	$zones = timezone_identifiers_list();
+    $html .= "<tr>\n";
+    $html .= "<td style='text-align: right;'>Class of Server:</td>\n";
+    $html .= "<td>";
+    $serverClasses = CareerDev::getServerClasses();
+    $serverClassRadios = [];
+    $serverClassName = "server_class";
+    foreach ($serverClasses as $value => $label) {
+        $id = $serverClassName."_".$value;
+        $checked = "";
+        if ($value == "prod") {
+            $checked = " checked";
+        }
+        $serverClassRadios[] = "<input type='radio' id='$id' name='$serverClassName' value='$value'$checked><label for='$id'> $label</label>";
+    }
+    $html .= implode("<br>", $serverClassRadios);
+    $html .= "</td>\n";
+    $html .= "</tr>\n";
+
+    $zones = timezone_identifiers_list();
 	$currZone = date_default_timezone_get();
 	$html .= "<tr>\n";
 	$html .= "<td style='text-align: right;'>Timezone:</td>\n";

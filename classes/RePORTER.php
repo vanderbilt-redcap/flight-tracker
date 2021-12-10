@@ -59,6 +59,24 @@ class RePORTER {
         return ["", ""];
     }
 
+    public function getInstrument() {
+        if ($this->isNIH()) {
+            return "nih_reporter";
+        } else if ($this->isFederal()) {
+            return "reporter";
+        }
+        throw new \Exception("No instrument specified!");
+    }
+
+    public function getPrefix() {
+        if ($this->isNIH()) {
+            return "nih_";
+        } else if ($this->isFederal()) {
+            return "reporter_";
+        }
+        throw new \Exception("No instrument specified!");
+    }
+
     public function getRoleForCurrentAward($baseNumber) {
         $currTs = time();
         $role = "";
@@ -99,6 +117,77 @@ class RePORTER {
             }
         }
         return "";
+    }
+
+    public function deleteMiddleNameOnlyMatches($redcapData, $firstName, $lastName, $middleName, $institutions) {
+        $token = Application::getSetting("token", $this->pid);
+        $redcapServer = Application::getSetting("server", $this->pid);
+        if (NameMatcher::isInitial($middleName)) {
+            $firstNames = NameMatcher::explodeFirstName($firstName);
+            $lastNames = NameMatcher::explodeLastName($lastName);
+            foreach ($lastNames as $lastName) {
+                foreach ($firstNames as $firstName) {
+                    $name = "$firstName $lastName";
+                    $this->searchPIAndAddToList($name, $institutions);
+                }
+            }
+            $awardNumbersMatchedByFirst = $this->getAwardNumbers();
+            $this->clearData();
+
+            $candidateNames = [$middleName];
+            foreach ($lastNames as $lastName) {
+                foreach ($candidateNames as $candidateName) {
+                    $name = "$candidateName $lastName";
+                    $this->searchPIAndAddToList($name, $institutions);
+                }
+            }
+            $awardNumbersMatchedByMiddle = $this->getAwardNumbers();
+
+            $instrument = $this->getInstrument();
+            $awardField = $this->getAwardField();
+            $instancesToDelete = [];
+            foreach ($redcapData as $row) {
+                if (($row['record_id'] == $this->recordId) && ($row['redcap_repeat_instrument'] == $instrument)) {
+                    $awardNo = $row[$awardField];
+                    if ($awardNo && in_array($awardNo, $awardNumbersMatchedByMiddle) && !in_array($awardNo, $awardNumbersMatchedByFirst)) {
+                        $instancesToDelete[] = $row['redcap_repeat_instance'];
+                    }
+                }
+            }
+
+            if (!empty($instancesToDelete)) {
+                $prefix = $this->getPrefix();
+                Application::log("Deleting reporter instances for prefix $prefix on record {$this->recordId}: ".implode(", ", $instancesToDelete), $pid);
+                Upload::deleteFormInstances($token, $redcapServer, $pid, $prefix, $this->recordId, $instancesToDelete);
+            }
+        }
+    }
+
+    public function clearData() {
+        $this->currData = [];
+    }
+
+    private function getAwardField() {
+        if ($this->isNIH()) {
+            return "nih_project_num";
+        } else if ($this->isFederal()) {
+            return "reporter_projectnumber";
+        }
+        throw new \Exception("No award field!");
+    }
+
+    public function getAwardNumbers() {
+        $maxInstance = 0;
+        $grantsToFilterOut = [];
+        $rows = $this->getUploadRows($maxInstance, $grantsToFilterOut);
+        $field = $this->getAwardField();
+        $values = [];
+        foreach ($rows as $row) {
+            if (isset($row[$field]) && $row[$field]) {
+                $values[] = $row[$field];
+            }
+        }
+        return $values;
     }
 
     public function getUploadRows(&$maxInstance, &$grantsToFilterOut) {

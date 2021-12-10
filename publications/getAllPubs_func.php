@@ -142,6 +142,7 @@ function getPubs($token, $server, $pid, $records) {
 	}
 	processPubMed($citationIds, $maxInstances, $token, $server, $pid, $records);
 	postprocess($token, $server, $records);
+    cleanUpMiddleNamesSeepage($token, $server, $pid, $records);
 	CareerDev::saveCurrentDate("Last PubMed Download", $pid);
 }
 
@@ -482,3 +483,42 @@ function fetchPMIDs($pubMedData) {
     }
     return $pmids;
 }
+
+function cleanUpMiddleNamesSeepage($token, $server, $pid, $records) {
+    if (empty($records)) {
+        $records = Download::recordIds($token, $server);
+    }
+
+    $cleaningField = "cleaned_by_middle_name";
+    $recordsCleanedByMiddleName = Application::getSetting($cleaningField, $pid);
+    if (!is_array($recordsCleanedByMiddleName)) {
+        $recordsCleanedByMiddleName = [];
+    }
+    if (count(array_unique(array_merge($records, $recordsCleanedByMiddleName))) == count($recordsCleanedByMiddleName)) {
+        # nothing new
+        return;
+    }
+
+    $firstNames = Download::firstnames($token, $server);
+    $lastNames = Download::lastnames($token, $server);
+    $middleNames = Download::middlenames($token, $server);
+    $allInstitutions = Download::institutions($token, $server);
+    $defaultInstitutions = array_unique(array_merge(Application::getInstitutions(), Application::getHelperInstitutions()));
+    $metadata = Download::metadata($token, $server);
+
+    foreach ($records as $recordId) {
+        if (
+            $middleNames[$recordId]
+            && NameMatcher::isInitial($middleNames[$recordId])
+            && !in_array($recordId, $recordsCleanedByMiddleName)
+        ) {
+            $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), [$recordId]);
+            $institutions = isset($allInstitutions[$recordId]) ? Scholar::explodeInstitutions($allInstitutions[$recordId]) : [];
+            $institutions = array_unique(array_merge($institutions, $defaultInstitutions));
+            Publications::deleteMiddleNameOnlyMatches($token, $server, $pid, $recordId, $redcapData, $firstNames[$recordId], $lastNames[$recordId], $middleNames[$recordId], $institutions);
+        }
+    }
+    $recordsCleanedByMiddleName = array_unique(array_merge($recordsCleanedByMiddleName, $records));
+    Application::saveSetting($cleaningField, $recordsCleanedByMiddleName, $pid);
+}
+

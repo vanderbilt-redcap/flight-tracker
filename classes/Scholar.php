@@ -461,27 +461,85 @@ return $result;
 		return $fields;
 	}
 
-	public function getEmploymentStatus() {
-		$left = $this->getWhenLeftInstitution($this->rows);
-		if ($left->getValue()) {
-			return $left->getValue();
-		}
-		$row = self::getNormativeRow($this->rows);
-		if ($row['identifier_institution']) {
-			if ($row['identifier_institution'] && in_array($row['identifier_institution'], Application::getInstitutions())) {
-				return "Employed at ".$row['identifier_institution'];
-			} else if ($row['identifier_institution'] && ($row['identifier_institution'] != Application::getUnknown())) {
-				$institution = " for ".$row['identifier_institution'];
-				$date = "";
-				if ($row['identifier_left_date']) {
-					$date = " on ".$row['identifier_left_date'];
-				}
-				return "Left ".Application::getInstitution().$institution.$date;
-			}
-		} else if ($row['identifier_left_date']) {
-			$date = " on ".$row['identifier_left_date'];
+	public function getDegreeInstitutions($rows) {
+        $institutions = [];
+        foreach ($rows as $row) {
+            if (
+                ($row['redcap_repeat_instrument'] == "manual_degree")
+                && $row['imported_degree_institution']
+                && !in_array($row['imported_degree_institution'], $institutions)
+                && ($row['imported_degree_institution'] != Application::getUnknown())
+            ) {
+                $institutions[] = $row['imported_degree_institution'];
+            }
+        }
+        return $institutions;
+    }
+
+	public function getPriorInstitutions($rows) {
+	    $institutions = [];
+	    $normativeRow = REDCapManagement::getNormativeRow($rows);
+	    $startDate = $normativeRow['identifier_start_of_training'] ?? $normativeRow['identifier_left_date'] ?? "";
+	    if ($startDate) {
+            foreach ($rows as $row) {
+                if (
+                    ($row['redcap_repeat_instrument'] == "manual_degree")
+                    && $row['imported_degree_start']
+                    && $row['imported_degree_institution']
+                    && REDCapManagement::dateCompare($row['imported_degree_start'], "<=", $startDate)
+                    && !in_array($row['imported_degree_institution'], $institutions)
+                    && ($row['imported_degree_institution'] != Application::getUnknown())
+                ) {
+                    $institutions[] = $row['imported_degree_institution'];
+                } else if (
+                    ($row['redcap_repeat_instrument'] == "position_change")
+                    && $row['promotion_in_effect']
+                    && $row['promotion_institution']
+                    && REDCapManagement::dateCompare($row['promotion_in_effect'], "<=", $startDate)
+                    && !in_array($row['promotion_institution'], $institutions)
+                    && ($row['promotion_institution'] != Application::getUnknown())
+                ) {
+                    $institutions[] = $row['promotion_institution'];
+                }
+            }
+        }
+	    return $institutions;
+    }
+
+	public function getEmploymentStatus($returnBooleanForLeaving = FALSE) {
+        $date = "";
+        $left = $this->getWhenLeftInstitution($this->rows);
+        if ($left->getValue()) {
+            $date = " on ".$left->getValue();
+        }
+
+        $priorInstitutions = $this->getPriorInstitutions($this->rows);
+        $allReportedInstitutions = $this->getAllOtherInstitutions($this->rows);
+        $allOutsideInstitutions = [];
+        foreach ($allReportedInstitutions as $institution) {
+            if (
+                !in_array($institution, $priorInstitutions)
+                && !in_array($institution, Application::getInstitutions($this->pid))
+                && ($institution != Application::getUnknown())
+            ) {
+                $allOutsideInstitutions[] = $institution;
+            }
+        }
+        if (!empty($allOutsideInstitutions)) {
+            if ($returnBooleanForLeaving) {
+                return TRUE;
+            }
+            return "Left ".Application::getInstitution()." for ".REDCapManagement::makeConjunction($allOutsideInstitutions).$date;
+        }
+		if ($date) {
+            if ($returnBooleanForLeaving) {
+                return TRUE;
+            }
 			return "Left ".Application::getInstitution().$date;
 		}
+        if ($returnBooleanForLeaving) {
+            return FALSE;
+        }
 		return "Employed at ".Application::getInstitution();
 	}
 
@@ -875,13 +933,7 @@ return $result;
 
 	# requires that identifier_institution and identifier_left_date be downloaded into rows
 	public function hasLeftInstitution() {
-        foreach ($this->rows as $row) {
-            $atOtherInstitution = $row['identifier_institution'] && !in_array($row['identifier_institution'], Application::getInstitutions());
-            if ($atOtherInstitution || $row['identifier_left_date']) {
-                return TRUE;
-            }
-        }
-        return FALSE;
+	    return $this->getEmploymentStatus(TRUE);
     }
 
 	public function onK($r01Only = FALSE, $makeKLengthLongest = FALSE) {
@@ -1156,17 +1208,14 @@ return $result;
         $splitterRegex = "/\s*[,;\/]\s*/";
         $choices = self::getChoices($this->metadata);
 
-	    $priorInstitutionList = REDCapManagement::findField($rows, $this->recordId,"identifier_institution");
+	    $priorInstitutions = $this->getPriorInstitutions($rows);
         $seenInstitutions = [];
         $seenInstitutionsInLowerCase = [];
-	    if ($priorInstitutionList) {
-            $candidates = preg_split($splitterRegex, $priorInstitutionList);
-            foreach  ($candidates as $institution) {
-                if (!in_array(strtolower($institution), $currentProjectInstitutions)) {
-                    # filter out current institutions as these are searched by default
-                    $seenInstitutions[] = $institution;
-                    $seenInstitutionsInLowerCase[] = strtolower($institution);
-                }
+        foreach  ($priorInstitutions as $institution) {
+            if (!in_array(strtolower($institution), $currentProjectInstitutions)) {
+                # filter out current institutions as these are searched by default
+                $seenInstitutions[] = $institution;
+                $seenInstitutionsInLowerCase[] = strtolower($institution);
             }
         }
 
@@ -1864,6 +1913,15 @@ return $result;
             foreach ($variables as $variable => $source) {
                 if ($variable == "vfrs_please_select_your_degree") {
                     $normativeRow[$variable] = self::transformSelectDegree($normativeRow[$variable], $methodology);
+                } else if ($variable == "imported_degree") {
+                    foreach ($rows as $row) {
+                        if (($row['redcap_repeat_instrument'] == "manual_degree") && $row[$variable] && !in_array($row[$variable], $degrees)) {
+                            $value = self::processDegreeValue($row[$variable], $metadataFields, $choices, $degrees, $variable);
+                            if ($value) {
+                                $degrees[] = $value;
+                            }
+                        }
+                    }
                 }
                 if ($source == "followup") {
                     foreach ($followupRows as $row) {
@@ -1873,32 +1931,40 @@ return $result;
                     }
                 }
                 if (isset($normativeRow[$variable]) && $normativeRow[$variable] && !in_array($normativeRow[$variable], $degrees)) {
-                    if (in_array("summary_all_degrees", $metadataFields) && isset($choices[$variable])) {
-                        $foundIdx = FALSE;
-                        foreach ($choices["summary_all_degrees"] as $idx => $label) {
-                            if ($label == $choices[$variable][$normativeRow[$variable]]) {
-                                $foundIdx = $idx;
-                                break;
-                            }
-                        }
-                        if ($foundIdx === FALSE) {
-                            if (!in_array($normativeRow[$variable], $degrees)) {
-                                $degrees[] = $normativeRow[$variable];
-                            }
-                        } else {
-                            if (!in_array($foundIdx, $degrees)) {
-                                $degrees[] = $foundIdx;
-                            }
-                        }
-                    } else {
-                        if (!in_array($normativeRow[$variable], $degrees)) {
-                            $degrees[] = $normativeRow[$variable];
-                        }
+                    $value = self::processDegreeValue($normativeRow[$variable], $metadataFields, $choices, $degrees, $variable);
+                    if ($value) {
+                        $degrees[] = $value;
                     }
                 }
             }
         }
         return $degrees;
+    }
+
+    private static function processDegreeValue($value, $metadataFields, $choices, $previousDegrees, $variable) {
+        if (in_array("summary_all_degrees", $metadataFields) && isset($variableChoices)) {
+            $foundIdx = FALSE;
+            foreach ($choices["summary_all_degrees"] as $idx => $label) {
+                if ($label == $choices[$variable][$value]) {
+                    $foundIdx = $idx;
+                    break;
+                }
+            }
+            if ($foundIdx === FALSE) {
+                if (!in_array($value, $previousDegrees)) {
+                    return $value;
+                }
+            } else {
+                if (!in_array($foundIdx, $previousDegrees)) {
+                    return $foundIdx;
+                }
+            }
+        } else {
+            if (!in_array($value, $previousDegrees)) {
+                return $value;
+            }
+        }
+        return "";
     }
 
     private static function translateDegreesFromList($degrees) {

@@ -410,16 +410,25 @@ class EmailManager {
 		return array();
 	}
 
-	private function getLastNames($recordIds) {
-		$allLastNames = Download::lastnames($this->token, $this->server);
-		$filteredLastNames = array();
-		foreach ($recordIds as $recordId) {
-			$filteredLastNames[$recordId] = $allLastNames[$recordId];
-		}
-		return $filteredLastNames;
-	}
+    private function getLastNames($recordIds) {
+        $allLastNames = Download::lastnames($this->token, $this->server);
+        $filteredLastNames = array();
+        foreach ($recordIds as $recordId) {
+            $filteredLastNames[$recordId] = $allLastNames[$recordId];
+        }
+        return $filteredLastNames;
+    }
 
-	private function getForms($what) {
+    private function getFirstNames($recordIds) {
+        $allFirstNames = Download::firstnames($this->token, $this->server);
+        $filteredFirstNames = array();
+        foreach ($recordIds as $recordId) {
+            $filteredFirstNames[$recordId] = $allFirstNames[$recordId];
+        }
+        return $filteredFirstNames;
+    }
+
+    private function getForms($what) {
 		$forms = array();
 		if (isset($what["message"])) {
 			$mssg = $what["message"];
@@ -460,10 +469,11 @@ class EmailManager {
 		$data = array();
 		$emails = self::processEmails($rows);
 		$names = self::processNames($rows);
-		$lastNames = $this->getLastNames(array_keys($rows));
+        $lastNames = $this->getLastNames(array_keys($rows));
+        $firstNames = $this->getFirstNames(array_keys($rows));
 		$subject = self::getSubject($emailSetting["what"]);
 		$data['name'] = $settingName;
-		$data['mssgs'] = $this->getMessages($emailSetting["what"], array_keys($rows), $names, $lastNames);
+		$data['mssgs'] = $this->getMessages($emailSetting["what"], array_keys($rows), $names, $lastNames, $firstNames);
 		$data['subjects'] = array();
 		$data['to'] = array();
 		if ($toField == "who") {
@@ -554,7 +564,7 @@ class EmailManager {
 		}
 	}
 
-	private function getMessages($what, $recordIds, $names, $lastNames) {
+	private function getMessages($what, $recordIds, $names, $lastNames, $firstNames) {
 		$token = $this->token;
 		$server = $this->server;
 
@@ -634,11 +644,16 @@ class EmailManager {
             if (preg_match("/\[mentoring_agreement\]/", $mssgs[$recordId])) {
                 $mssgs[$recordId] = str_replace("[mentoring_agreement]", Application::getMenteeAgreementLink(), $mssgs[$recordId]);
             }
-			if (preg_match("/\[last_name\]/", $mssgs[$recordId])) {
-				if ($lastNames[$recordId]) {
-					$mssgs[$recordId] = str_replace("[last_name]", $lastNames[$recordId], $mssgs[$recordId]);
-				}
-			}
+            if (preg_match("/\[last_name\]/", $mssgs[$recordId])) {
+                if ($lastNames[$recordId]) {
+                    $mssgs[$recordId] = str_replace("[last_name]", $lastNames[$recordId], $mssgs[$recordId]);
+                }
+            }
+            if (preg_match("/\[first_name\]/", $mssgs[$recordId])) {
+                if ($lastNames[$recordId]) {
+                    $mssgs[$recordId] = str_replace("[first_name]", $firstNames[$recordId], $mssgs[$recordId]);
+                }
+            }
 			// $mssgs[$recordId] = str_replace("</p><p>", "<br>", $mssgs[$recordId]);
 			// $mssgs[$recordId] = str_replace("<p><br></p>", "<br>", $mssgs[$recordId]);
 			// $mssgs[$recordId] = str_replace("<br><br><br>", "<br><br>", $mssgs[$recordId]);

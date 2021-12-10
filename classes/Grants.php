@@ -1106,7 +1106,9 @@ class Grants {
 		if (count($grants) == 0) {
 			return NULL;
 		} else if (count($grants) == 1) {
-			return $grants[0];
+		    $myGrant = $grants[0];
+		    $myGrant->setVariable("num_grants_combined", 1);
+			return $myGrant;
 		} else {
 			$basisGrant = $grants[0];
 			if (self::getShowDebug()) { Application::log("Using basisGrant: ".$basisGrant->getNumber()." ".$basisGrant->getVariable("type")." from ".$basisGrant->getVariable("source")." with $".$basisGrant->getVariable("budget")." ".$basisGrant->getVariable("start")); }
@@ -1153,6 +1155,7 @@ class Grants {
                 self::copyBudgetsIfBlank($basisGrant, $grants);
                 self::copyTitleIfBlank($basisGrant, $grants);
             }
+            $basisGrant->setVariable("num_grants_combined", count($grants));
 
             if (self::getShowDebug()) { Application::log("Returning basisGrant ".$basisGrant->getNumber()." ".$basisGrant->getVariable("type")); }
 			return $basisGrant;

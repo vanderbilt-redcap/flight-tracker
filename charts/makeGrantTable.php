@@ -26,18 +26,11 @@ if (isset($_GET['CDA'])) {
     $grantReach = "all";
     $smallIdentifierFields = ["record_id", "identifier_first_name", "identifier_last_name"];
     $smallSummaryFields = ["record_id", "summary_dob", "summary_first_r01", "summary_first_external_k"];
-    $minimalDownloadedGrantFields = [
-            "nih_project_num", "nih_project_start_date", "nih_project_end_date", "nih_agency_ic_fundings", "nih_principal_investigators",
-            "reporter_totalcostamount", "reporter_budgetstartdate", "reporter_budgetenddate", "reporter_projectstartdate", "reporter_projectenddate", "reporter_projectnumber", "reporter_otherpis", "reporter_contactpi",
-            "coeus2_role", "coeus2_award_status", "coeus2_agency_grant_number", "coeus2_current_period_start", "coeus2_current_period_end", "coeus2_current_period_total_funding", "coeus2_current_period_direct_funding",
-            "coeus_pi_flag", "coeus_sponsor_award_number", "coeus_total_cost_budget_period", "coeus_direct_cost_budget_period", "coeus_budget_start_date", "coeus_budget_end_date", "coeus_project_start_date", "coeus_project_end_date",
-            "exporter_total_cost", "exporter_total_cost_sub_project", "exporter_pi_names", "exporter_full_project_num", "exporter_budget_start", "exporter_budget_end", "exporter_project_start", "exporter_project_end", "exporter_direct_cost_amt",
-    ];
+    $minimalDownloadedGrantFields = REDCapManagement::getMinimalGrantFields($metadata);
     $allPossibleFields = array_unique(array_merge(
             $smallIdentifierFields,
             $smallSummaryFields,
-            $minimalDownloadedGrantFields,
-            Application::getCustomFields($metadata),
+            $minimalDownloadedGrantFields
     ));
     $showTimeline = FALSE;
     $showTimeBetweenGrants = FALSE;

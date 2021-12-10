@@ -1653,6 +1653,8 @@ class Grant {
 
     public static function calculateAwardType($specs, $awardNo) {
         $coeusSources = self::getCoeusSources();
+        $r01EquivYearlyThreshold = 250000;
+        $r01EquivNumberOfYears = 3;
 
 		if (self::getShowDebug()) { Application::log($awardNo.": Second Pass"); }
 		$trainingGrantSources = ["coeus", "reporter", "exporter", "nih_reporter"];
@@ -1682,7 +1684,7 @@ class Grant {
             return "R01";
 		} else if (preg_match("/^\d?[Tt]\d\d/", $awardNo) || preg_match("/^\d?[Dd]43/", $awardNo)) {
 			return "Training Grant Admin";
-		} else if (isset($specs['direct_budget']) && ($specs['direct_budget'] >= 750000)) {
+		} else if (isset($specs['direct_budget']) && ($specs['direct_budget'] > 0)) {
 			# not R01 or R00
 			if ($specs['project_start'] && $specs['project_end']) {
                 $projStart = strtotime($specs['project_start']);
@@ -1695,9 +1697,15 @@ class Grant {
 			    $projEnd = FALSE;
             }
             if ($projStart && $projEnd) {
-                # 3 years
                 $yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
-                if (($yearspan >= 3) && ($specs['direct_budget'] / $yearspan > 250000)) {
+                $isR01EquivEligible = ($specs['direct_budget'] > $r01EquivYearlyThreshold * $yearspan) && ($specs['direct_budget'] >= $r01EquivYearlyThreshold * $r01EquivNumberOfYears);
+                if (self::getShowDebug()) {
+                    Application::log("$awardNo with direct budget \${$specs['direct_budget']} and {$specs['num_grants_combined']} years");
+                }
+                if (!$isR01EquivEligible && isset($specs['num_grants_combined']) && $specs['num_grants_combined'] > 0) {
+                    $isR01EquivEligible = ($specs['direct_budget'] / $specs['num_grants_combined'] > $r01EquivYearlyThreshold);
+                }
+                if (($yearspan >= $r01EquivNumberOfYears) && $isR01EquivEligible) {
                     if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
                         if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600))); }
                         return "R01 Equivalent";
@@ -1710,7 +1718,9 @@ class Grant {
             } else {
                 if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit B"); }
             }
-		}
+		} else {
+		    if (self::getShowDebug()) { Application::log("$awardNo has no direct budget ".REDCapManagement::json_encode_with_spaces($specs)); }
+        }
 
 		if (self::getShowDebug()) { Application::log($awardNo.": Third Pass"); }
 		if (preg_match("/^[Kk]23 - /", $awardNo)) {

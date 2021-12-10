@@ -26,6 +26,7 @@ if ($_GET['timespan'] == "active") {
 }
 
 $metadata = Download::metadata($token, $server);
+$fields = REDCapManagement::getMinimalGrantFields($metadata);
 $names = Download::names($token, $server);
 $choices = REDCapManagement::getChoices($metadata);
 $recordsByDept = [];
@@ -118,7 +119,7 @@ foreach ($recordsByDept as $dept => $records) {
         $table["Total"]['numFaculty'] += $numRecords;
     }
     foreach ($records as $recordId) {
-        $redcapData = Download::records($token, $server, [$recordId]);
+        $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
         $grants = new Grants($token, $server, $metadata);
         $grants->setRows($redcapData);
         $grants->compileGrants();

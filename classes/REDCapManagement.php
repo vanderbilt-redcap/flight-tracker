@@ -122,6 +122,15 @@ class REDCapManagement {
 	    return $filteredMetadata;
     }
 
+    public static function getAllGrantFields($metadata) {
+	    $fields = ["record_id"];
+	    $forms = ["exporter", "nih_reporter", "reporter", "coeus", "custom_grants", "coeus2"];
+	    foreach ($forms as $form) {
+	        $fields = array_unique(array_merge($fields, REDCapManagement::getFieldsFromMetadata($metadata, $form)));
+        }
+	    return $fields;
+    }
+
 	public static function makeConjunction($list) {
 	    if (count($list) == 1) {
             return $list[0];
@@ -517,6 +526,19 @@ class REDCapManagement {
         }
 	    # no choices
 	    return TRUE;
+    }
+
+    public static function getMinimalGrantFields($metadata) {
+        $allFields = [
+            "record_id",
+            "nih_project_num", "nih_project_start_date", "nih_project_end_date", "nih_award_notice_date", "nih_award_amount", "nih_agency_ic_fundings", "nih_principal_investigators",
+            "reporter_totalcostamount", "reporter_budgetstartdate", "reporter_budgetenddate", "reporter_projectstartdate", "reporter_projectenddate", "reporter_projectnumber", "reporter_otherpis", "reporter_contactpi",
+            "coeus2_role", "coeus2_award_status", "coeus2_agency_grant_number", "coeus2_current_period_start", "coeus2_current_period_end", "coeus2_current_period_total_funding", "coeus2_current_period_direct_funding",
+            "coeus_pi_flag", "coeus_sponsor_award_number", "coeus_total_cost_budget_period", "coeus_direct_cost_budget_period", "coeus_budget_start_date", "coeus_budget_end_date", "coeus_project_start_date", "coeus_project_end_date",
+            "exporter_total_cost", "exporter_total_cost_sub_project", "exporter_pi_names", "exporter_full_project_num", "exporter_budget_start", "exporter_budget_end", "exporter_project_start", "exporter_project_end", "exporter_direct_cost_amt",
+        ];
+        $allFields = array_unique(array_merge($allFields, Application::$customFields));
+        return self::screenForFields($metadata, $allFields);
     }
 
 	public static function getFieldsFromMetadata($metadata, $instrument = FALSE) {
@@ -986,11 +1008,7 @@ class REDCapManagement {
     public static function json_encode_with_spaces($data) {
         $str = json_encode($data);
         $str = preg_replace("/,/", ", ", $str);
-        /**
-         * @psalm-taint-escape html
-         */
-        $str = preg_replace("/<[^>]+>/", '', $str);
-        $str = htmlentities($str);
+        $str = self::sanitizeJSON($str);
         return $str;
     }
 

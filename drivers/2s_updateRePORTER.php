@@ -85,5 +85,52 @@ function updateRePORTER($cat, $token, $server, $pid, $records) {
     }
     REDCapManagement::deduplicateByKey($token, $server, $pid, $records, $applicationField, $prefix, $instrument);
 
+    cleanUpMiddleNamesSeepage($token, $server, $pid, $records);
     CareerDev::saveCurrentDate("Last $cat RePORTER Download", $pid);
 }
+
+function cleanUpMiddleNamesSeepage($token, $server, $pid, $records) {
+    if (empty($records)) {
+        $records = Download::recordIds($token, $server);
+    }
+
+    $cleaningField = "cleaned_by_middle_name_grants";
+    $recordsCleanedByMiddleName = Application::getSetting($cleaningField, $pid);
+    if (!is_array($recordsCleanedByMiddleName)) {
+        $recordsCleanedByMiddleName = [];
+    }
+    if (count(array_unique(array_merge($records, $recordsCleanedByMiddleName))) == count($recordsCleanedByMiddleName)) {
+        # nothing new
+        return;
+    }
+
+    $firstNames = Download::firstnames($token, $server);
+    $lastNames = Download::lastnames($token, $server);
+    $middleNames = Download::middlenames($token, $server);
+    $allInstitutions = Download::institutions($token, $server);
+    $defaultInstitutions = array_unique(array_merge(Application::getInstitutions(), Application::getHelperInstitutions()));
+    $metadata = Download::metadata($token, $server);
+
+    foreach (RePORTER::getTypes() as $type) {
+        foreach ($records as $recordId) {
+            if (
+                $middleNames[$recordId]
+                && NameMatcher::isInitial($middleNames[$recordId])
+                && !in_array($recordId, $recordsCleanedByMiddleName)
+            ) {
+                $reporter = new RePORTER($pid, $recordId, $type);
+                $fields = REDCapManagement::getFieldsFromMetadata($metadata, $reporter->getInstrument());
+                if (!in_array("record_id", $fields)) {
+                    $fields[] = "record_id";
+                }
+                $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+                $institutions = isset($allInstitutions[$recordId]) ? Scholar::explodeInstitutions($allInstitutions[$recordId]) : [];
+                $institutions = array_unique(array_merge($institutions, $defaultInstitutions));
+                $reporter->deleteMiddleNameOnlyMatches($redcapData, $firstNames[$recordId], $lastNames[$recordId], $middleNames[$recordId], $institutions);
+            }
+        }
+    }
+    $recordsCleanedByMiddleName = array_unique(array_merge($recordsCleanedByMiddleName, $records));
+    Application::saveSetting($cleaningField, $recordsCleanedByMiddleName, $pid);
+}
+

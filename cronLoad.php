@@ -3,6 +3,7 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\CronManager;
 
@@ -32,9 +33,6 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
         if ($has['nih_reporter']) {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 30);
-            if (time() < strtotime("2021-10-15")) {
-                $manager->addCron("drivers/deleteScripts.php", "deleteExPORTERNotice", "Monday", $records, 10000);
-            }
         } else {
             $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday", $records, 20);
         }
@@ -74,7 +72,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 		if (!empty($bibliometricRecordsToUpdate)) {
             $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
         }
-        $manager->addCron("drivers/12_reportStats.php", "reportStats", "Saturday");
+        $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $records, 100000);
         if (Application::isVanderbilt() && !Application::isLocalhost()) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Wednesday", $records, 500);
         }
@@ -85,14 +83,16 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
             $manager->addCron("drivers/18_getPatents.php", "getPatents", "Tuesday", $records, 100);
         }
 
-        $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Saturday", $records, 100000);
+        $cohorts = new Cohorts($token, $server, Application::getModule());
+        if ($cohorts->hasReadonlyProjects()) {
+            $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Monday", $records, 100000);
+        }
 
         $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday", $records, 30);
         $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $records, 30);
         $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday", $records, 30);
         $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday", $records, 30);
         $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $records, 30);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday", $records, 30);
 	}
 }
 
