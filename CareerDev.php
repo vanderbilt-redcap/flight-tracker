@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.14.0";
+		return "3.14.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -857,7 +857,7 @@ class CareerDev {
                 "Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
                 "Search Grants" => self::link("/search/index.php"),
                 "Search Within a Timespan" => self::link("/search/inTimespan.php"),
-                "Financial ROI for Grants" => self::link("/financial/roi.php"),
+                // "Financial ROI for Grants" => self::link("/financial/roi.php"),
                 "Grant Budgets, Active at a Time" => self::link("/financial/budget.php")."&timespan=active",
                 "All-Time Grant Budgets" => self::link("/financial/budget.php")."&timespan=all",
             ];
