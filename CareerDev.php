@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "3.14.1";
+		return "3.14.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -161,13 +161,18 @@ class CareerDev {
         }
 	    $pid = REDCapManagement::sanitize($pid);
 	    if (self::isLocalhost()) {
-	        $mssg = REDCapManagement::sanitize($mssg);
-	        if ($pid) {
-                error_log("$pid: $mssg");
-                echo "$pid: $mssg\n";
-            } else {
-	            error_log($mssg);
-                echo "$mssg\n";
+	        if (
+	            isset($_GET['test'])
+                || (isset($_GET['page']) && !preg_match('/reporting/', $_GET['page']))
+            ) {
+                $mssg = REDCapManagement::sanitize($mssg);
+                if ($pid) {
+                    error_log("$pid: $mssg");
+                    echo "$pid: $mssg\n";
+                } else {
+                    error_log($mssg);
+                    echo "$mssg\n";
+                }
             }
 	        return;
         }
@@ -469,13 +474,17 @@ class CareerDev {
 		return in_array(USERID, $userids);
 	}
 
+	private static function getCredentialsFile() {
+	    return "/app001/credentials/career_dev/credentials.php";
+    }
+
 	# gets the pid of a token if a PID context is applicable
 	# returns current PID if no token is specified and if using the current server
 	# otherwise returns empty string
 	public static function getPidFromToken($localToken = "") {
         global $pid, $token, $server, $info;
-	    if (file_exists("/app001/credentials/career_dev/credentials.php")) {
-	        include("/app001/credentials/career_dev/credentials.php");
+	    if (file_exists(self::getCredentialsFile())) {
+	        include(self::getCredentialsFile());
         }
 		if (!$localToken) {
 			if (strpos($server, SERVER_NAME) !== FALSE) {
@@ -618,11 +627,30 @@ class CareerDev {
     }
 
 	public static function getSetting($field, $pid = "") {
-	    if (self::isVanderbilt() && ($pid == 66635)) {
+	    if (
+            self::isVanderbilt()
+            && ((Application::isServer("redcap.vanderbilt.edu") && ($pid == 66635))
+                || ((Application::isLocalhost() && ($pid == 15))))
+        ) {
+	        # TODO add redcaptest.vanderbilt.edu
 	        $module = ExternalModules::getModuleInstance("vanderbilt_plugin-settings");
-	        return $module->getProjectSetting($field, $pid);
+	        $value = $module->getProjectSetting($field, $pid);
+	        if ($value) {
+	            return $value;
+            }
+            if (file_exists(self::getCredentialsFile())) {
+                include_once(self::getCredentialsFile());
+                global $info;
+                if (isset($info['prod'][$field])) {
+                    return $info['prod'][$field];
+                }
+            }
+            if (($field == "admin_email") || ($field == "adminEmail")) {
+                return "scott.j.pearson@vumc.org";
+            }
+            return "";
         }
-		$module = self::getModule();
+		$module = Application::getFlightTrackerModule();
 		if ($module) {
 		    if (!$pid) {
                 $pid = self::getPid();
@@ -953,7 +981,14 @@ class CareerDev {
 					);
 		}
 		if ($menuName == "General") {
-			$ary = [
+		    $ary = [];
+            if (self::isVanderbilt()
+                && (in_array($pid, [101785, 107319, 138365, 138722])
+                    || self::isLocalhost())
+            ) {
+                $ary['NIH Reporting Tables 1-4'] = self::link("reporting/react-2/run/index.php");
+            }
+			$ary = array_merge($ary, [
                 "NIH Reporting" => self::link("reporting/index.php"),
                 "List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
                 "K2R Conversion Calculator" => self::link("/k2r/index.php"),
@@ -964,10 +999,7 @@ class CareerDev {
                 "Custom Programming" => self::link("/changes/README.md"),
                 "Test Connectivity" => self::link("/testConnectivity.php"),
                 "Copy Project to Another Server" => self::link("/copyProject.php"),
-            ];
-			// if (self::isVanderbilt()) {
-                // $ary["Sync VUNet List to COEUS"] = self::link("/syncVUNet.php");
-			// }
+            ]);
 			return $ary;
 		}
 		if ($menuName == "REDCap") {

@@ -248,6 +248,27 @@ class Grant {
         return FALSE;
     }
 
+    public function isState() {
+	    $fundingSource = $this->getFundingSource();
+	    return preg_match("/State/", $fundingSource);
+    }
+
+    public function isIndustry() {
+        $fundingSource = $this->getFundingSource();
+        return preg_match("/Industry/", $fundingSource);
+    }
+
+    public function isFoundation() {
+	    $type = $this->getVariable("type");
+        return (
+            !$this->isFederal()
+            && !$this->isIndustry()
+            && !$this->isState()
+            && !$this->isInternalVanderbiltGrant()
+            && !in_array($type, ["Internal K", "K12/KL2"])
+        );
+    }
+
 	public function isNIH() {
 	    $ary = self::parseNumber($this->getNumber());
         return isset($ary['institute_code']) && self::isMember($ary['institute_code'], "NIH");

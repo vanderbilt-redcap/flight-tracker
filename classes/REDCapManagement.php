@@ -439,7 +439,7 @@ class REDCapManagement {
     public static function makeHTMLId($id) {
         $htmlFriendly = preg_replace("/[\s\-]+/", "_", $id);
         $htmlFriendly = preg_replace("/<[^>]+>/", "", $htmlFriendly);
-        $htmlFriendly = preg_replace("/[\:\+\"\/\[\]'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;\?]/", "", $htmlFriendly);
+        $htmlFriendly = preg_replace("/[\:\+\"\/\[\]'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;\?\.\,]/", "", $htmlFriendly);
         return $htmlFriendly;
     }
 
@@ -941,6 +941,7 @@ class REDCapManagement {
              * @psalm-taint-escape html
              * @psalm-taint-escape has_quotes
              */
+            $newAry = [];
             foreach ($ary as $key => $value) {
 	            $key = self::sanitize($key);
 	            if (is_array($value)) {
@@ -948,8 +949,9 @@ class REDCapManagement {
                 } else {
 	                $value = self::sanitize($value);
                 }
-	            $ary[$key] = $value;
+	            $newAry[$key] = $value;
             }
+            return $newAry;
         } else {
 	        return self::sanitize($ary);
         }

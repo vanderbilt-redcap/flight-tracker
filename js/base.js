@@ -750,7 +750,7 @@ function presentScreen(mssg) {
 	}
 	if ($('#overlay').length > 0) {
 		let imageUrl = getPageUrl('img/loading.gif');
-		$('#overlay').html('<br><br><br><br><h1 class=\"warning\">'+mssg+'</h1><p class=\"centered\"><img src=\"'+imageUrl+'\" alt=\"Wating\"></p>');
+		$('#overlay').html('<br><br><br><br><h1 class=\"warning\">'+mssg+'</h1><p class=\"centered\"><img src=\"'+imageUrl+'\" alt=\"Waiting\"></p>');
 		$('#overlay').show();
 	}
 }

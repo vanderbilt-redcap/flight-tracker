@@ -134,9 +134,27 @@ class Application {
 		return CareerDev::getInstitutions($pid);
 	}
 
-	public static function getPids() {
-	    $module = self::getModule();
-	    return $module->getPids();
+    public static function getPids() {
+        if (Application::isVanderbilt()) {
+            if (Application::isExternalModule()) {
+                $module = self::getModule();
+                $pids = $module->getPids();
+            } else {
+                $ftModule = Application::getFlightTrackerModule();
+                $pids = $ftModule->getPids();
+            }
+            if (Application::isLocalhost()) {
+                $pids[] = 15;
+            } else if (Application::isServer("redcap.vanderbilt.edu")) {
+                $pids[] = 66635;
+            } else if (Application::isServer("redcaptest.vanderbilt.edu")) {
+                # TODO Add test projects with plugin
+            }
+            return $pids;
+        } else {
+            $module = self::getModule();
+            return $module->getPids();
+        }
     }
 
     public static function getMenteeAgreementLink() {
@@ -254,7 +272,46 @@ class Application {
 	    return CareerDev::getAllSettings($pid);
     }
 
-	public static function getSetting($field, $pid = "") {
+    public static function getSettingKeys($pid) {
+        if ($_GET['pid'] == $pid) {
+            if ($module = self::getModule()){
+                $settings = $module->getProjectSettings($pid);
+                return array_keys($settings);
+            }
+        } else {
+            $prefix = CareerDev::getPrefix();
+            $sql = "SELECT DISTINCT(s.key) AS array_key
+                            FROM redcap_external_module_settings AS s
+                                INNER JOIN redcap_external_modules AS m
+                                    ON m.external_module_id = s.external_module_id
+                            WHERE m.directory_prefix = '".db_real_escape_string($prefix)."'
+                                AND s.project_id = '".db_real_escape_string($pid)."'";
+            $q = db_query($sql);
+            if ($error = db_error()) {
+                throw new \Exception("ERROR: $error");
+            }
+            $keys = [];
+            while ($row = db_fetch_assoc($q)) {
+                $keys[] = $row['array_key'];
+            }
+            return $keys;
+        }
+    }
+
+    public static function getFlightTrackerModule() {
+        if (self::isExternalModule()) {
+            return self::getModule();
+        } else {
+            $prefix = CareerDev::getPrefix();
+            return \ExternalModules\ExternalModules::getModuleInstance($prefix);
+        }
+    }
+
+    public static function isServer($server) {
+        return (SERVER_NAME == $server);
+    }
+
+    public static function getSetting($field, $pid = "") {
 		return CareerDev::getSetting($field, $pid);
 	}
 

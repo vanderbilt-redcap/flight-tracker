@@ -263,8 +263,7 @@ table { border-collapse: collapse; }
 
     public function lookupValues($post) {
         $tableNum = REDCapManagement::sanitize($post['tableNum']);
-        $json = $post['queryItems'] ? REDCapManagement::sanitizeWithoutChangingQuotes($post['queryItems']) : "[]";
-        $queryItems = json_decode($json, TRUE);
+        $queryItems = REDCapManagement::sanitizeArray($post['queryItems'] ?? []);
         $data = [];
         $today = date("Y-m-d");
         foreach ($queryItems as $ary) {
@@ -338,6 +337,9 @@ table { border-collapse: collapse; }
     public function saveConfirmationTimestamp($email) {
         if ($key = $this->getConfirmationKey($email)) {
             Application::saveSetting($key, time(), $this->pid);
+            return ["mssg" => "Saved."];
+        } else {
+            return ["error" => "Invalid email."];
         }
     }
 
@@ -349,12 +351,16 @@ table { border-collapse: collapse; }
                 $data['error'] = "No emails specified.";
             }
 
+            $keys = Application::getSettingKeys($this->pid);
             foreach ($emails as $email) {
                 if (REDCapManagement::isEmail($email)) {
-                    if ($ts = Application::getSetting($this->getConfirmationKey($email), $this->pid)) {
-                        $data[$email] = date("m-d-Y H:i", $ts);
-                    } else {
-                        $data[$email] = "";
+                    $key = $this->getConfirmationKey($email);
+                    if (in_array($key, $keys)) {
+                        if ($ts = Application::getSetting($key, $this->pid)) {
+                            $data[$email] = date("m-d-Y H:i", $ts);
+                        } else {
+                            $data[$email] = "";
+                        }
                     }
                 } else {
                     $data["error"] = "Errors in process.";
@@ -373,11 +379,13 @@ table { border-collapse: collapse; }
             if (REDCapManagement::isActiveProject($pid)) {
                 $token = Application::getSetting("token", $pid);
                 $server = Application::getSetting("server", $pid);
-                $emails = Download::emails($token, $server);
-                $names = Download::names($token, $server);
-                foreach ($emails as $recordId => $recordEmail) {
-                    if ($recordEmail && (strtolower($recordEmail) == $email) && ($names[$recordId])) {
-                        return $names[$recordId];
+                if ($token && $server) {
+                    $emails = Download::emails($token, $server);
+                    $names = Download::names($token, $server);
+                    foreach ($emails as $recordId => $recordEmail) {
+                        if ($recordEmail && (strtolower($recordEmail) == $email) && ($names[$recordId])) {
+                            return $names[$recordId];
+                        }
                     }
                 }
             }
@@ -462,31 +470,34 @@ table { border-collapse: collapse; }
         $allNotes = [];
         foreach (Application::getPids() as $pid) {
             if (REDCapManagement::isActiveProject($pid)) {
+                $keys = Application::getSettingKeys($pid);
                 $projectHeader = FALSE;
                 foreach ($emails as $email) {
                     if (REDCapManagement::isEmail($email)) {
                         $key = $this->makeNotesKey($email);
-                        $name = $this->getNameAssociatedWithEmail($email);
-                        $ary = Application::getSetting($key, $pid);   // keyed by date, then by table
-                        $tableAry = $this->filterNotesByTables($ary, $tableNums);
-                        if (is_array($tableAry) && !empty($tableAry)) {
-                            $token = Application::getSetting("token", $pid);
-                            $server = Application::getSetting("server", $pid);
-                            $adminEmail = Application::getSetting("admin_email", $pid);
-                            if ($token && $server) {
-                                if (!$projectHeader) {
-                                    $projectHeader = $pid.": ".Download::projectTitle($token, $server);
-                                    if ($adminEmail) {
-                                        $projectHeader = "<a href='mailto:$adminEmail'>$projectHeader</a>";
+                        if (in_array($key, $keys)) {
+                            $name = $this->getNameAssociatedWithEmail($email);
+                            $ary = Application::getSetting($key, $pid);   // keyed by date, then by table
+                            $tableAry = $this->filterNotesByTables($ary, $tableNums);
+                            if (is_array($tableAry) && !empty($tableAry)) {
+                                $token = Application::getSetting("token", $pid);
+                                $server = Application::getSetting("server", $pid);
+                                $adminEmail = Application::getSetting("admin_email", $pid);
+                                if ($token && $server) {
+                                    if (!$projectHeader) {
+                                        $projectHeader = $pid.": ".Download::projectTitle($token, $server);
+                                        if ($adminEmail) {
+                                            $projectHeader = "<a href='mailto:$adminEmail'>$projectHeader</a>";
+                                        }
                                     }
+                                    if (!isset($allNotes[$name])) {
+                                        $allNotes[$name] = [];
+                                    }
+                                    if (!isset($allNotes[$name][$projectHeader])) {
+                                        $allNotes[$name][$projectHeader] = [];
+                                    }
+                                    $allNotes[$name][$projectHeader] = $tableAry;
                                 }
-                                if (!isset($allNotes[$name])) {
-                                    $allNotes[$name] = [];
-                                }
-                                if (!isset($allNotes[$name][$projectHeader])) {
-                                    $allNotes[$name][$projectHeader] = [];
-                                }
-                                $allNotes[$name][$projectHeader] = $tableAry;
                             }
                         }
                     }
@@ -628,7 +639,7 @@ table { border-collapse: collapse; }
 
     public function lookupOverlappingFaculty($awards) {
         $dataByPid = [];
-        foreach ($this->module->getPids() as $pid) {
+        foreach (Application::getPids() as $pid) {
             if (REDCapManagement::isActiveProject($pid)) {
                 foreach ($awards as $awardNo) {
                     $key = $this->makeOverlappingKey($awardNo);

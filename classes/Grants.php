@@ -111,6 +111,46 @@ class Grants {
 	    return $this->sourcesToExclude;
     }
 
+    public function getGrantsWithinTimespan($grantType, $startTs, $endTs = FALSE) {
+        $grants = [];
+        foreach ($this->getGrants($grantType) as $grant) {
+            $startDate = $grant->getVariable("start");
+            $endDate = $grant->getVariable("end");
+            if ($startDate && $endDate) {
+                $currGrantStartTs = strtotime($startDate);
+                $currGrantEndTs = strtotime($endDate);
+                if (
+                    $currGrantStartTs
+                    && $currGrantEndTs
+                    && ($currGrantEndTs >= $startTs)
+                    && (($currGrantStartTs <= $endTs) || !$endTs)
+                ) {
+                    $grants[] = $grant;
+                }
+            }
+        }
+        return $grants;
+    }
+
+    public function getGrantsAwardedWithinTimespan($grantType, $startTs, $endTs = FALSE) {
+        $grants = [];
+        foreach ($this->getGrants($grantType) as $grant) {
+            $startDate = $grant->getVariable("start");
+            $endDate = $grant->getVariable("end");
+            if ($startDate && $endDate) {
+                $currGrantStartTs = strtotime($startDate);
+                if (
+                    $currGrantStartTs
+                    && ($currGrantStartTs >= $startTs)
+                    && (($currGrantStartTs <= $endTs) || !$endTs)
+                ) {
+                    $grants[] = $grant;
+                }
+            }
+        }
+        return $grants;
+    }
+
     public function getCurrentGrants($grantType, $date) {
         if (!REDCapManagement::isDate($date)) {
             return [];

@@ -40,7 +40,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
             $manager->addCron("news/getNewsItems_func.php", "getNewsItems", "Friday", $records, 100);
         }
         if ($has['ldap']) {
-            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Wednesday", $records, 10000);
+            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Thursday", $records, 10000);
         }
         if (!Application::isLocalhost()) {
             if ($has['coeus']) {
