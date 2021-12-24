@@ -91,7 +91,7 @@ if ($pmids && !empty($pmids)) {
         $upload = Publications::getCitationsFromPubMed($pmids, $metadata, "manual", $recordId, $maxInstance, [], $pid);
         if (!empty($upload)) {
             $feedback = Upload::rows($upload, $token, $server);
-            echo json_encode($feedback)."\n".REDCapManagement::json_encode_with_spaces($upload)."\n".REDCapManagement::json_encode_with_spaces($redcapData)."\n".REDCapManagement::json_encode_with_spaces($citationFields)."\n".count($metadata)." rows";
+            echo json_encode($feedback);
         } else {
             echo json_encode(array("error" => "Upload queue empty!"));
         }

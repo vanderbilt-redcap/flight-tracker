@@ -67,9 +67,6 @@ function translateModal($modalId, $record, $metadata, $tableData = NULL) {
     } else if (!$tableData && ($modalId == "addDegreeModal")) {
         $tableData = accessDegrees($record, $tables);
     }
-    if (isset($_GET['test'])) {
-        echo "TableData: " . REDCapManagement::json_encode_with_spaces($tableData) . "<br>";
-    }
 
     if ($modalId == "confirmFinalizeRtd") {
     } else if ($modalId == "finalizeDialogErrorMessage") {
@@ -250,9 +247,6 @@ function translateModal($modalId, $record, $metadata, $tableData = NULL) {
                 $data['currentInitialEmployment'] = "";    // checkbox for current employment
             }   // no else
             if (!empty($pos)) {
-                if (isset($_GET['test'])) {
-                    echo REDCapManagement::json_encode_with_spaces($pos)."<br>";
-                }
                 $data['primaryActivityCode'] = convertToActivityCode($pos["original_category_num"]);
                 $data['ms-employmentposition'] = $pos['title'];
                 $data['employmentStartDateStr'] = "";  // mm/yyyy
@@ -395,9 +389,6 @@ function accessTableData($tables, $recordId, $overallTableNum) {
             $data = $tables->get8Data($table, $recordId);
         } else {
             throw new \Exception("Invalid table! $table");
-        }
-        if (isset($_GET['test'])) {
-            echo "data for $table: " . REDCapManagement::json_encode_with_spaces($data) . "<br>";
         }
         foreach ($data as $row) {
             $key = implode("|", array_values($row));

@@ -294,17 +294,13 @@ function makeStatsString($stats) {
     foreach ($stats as $stat => $types) {
         $counts = [];
         foreach ($types as $type => $ary) {
-            $helperText = "";
             if (is_array($ary)) {
                 $count = count($ary);
-                if (isset($_GET['test'])) {
-                    $helperText = REDCapManagement::json_encode_with_spaces($ary);
-                }
             } else {
                 $count = $ary;
             }
             $counts[$type] = $count;
-            $lines[] = "$stat $type: " . REDCapManagement::pretty($count) . " " . $helperText;
+            $lines[] = "$stat $type: " . REDCapManagement::pretty($count);
         }
         if ($counts["Attempts"] > 0) {
             $perc = round($counts["Successes"] * 1000 / $counts["Attempts"]) / 10;

@@ -1,31 +1,21 @@
 <?php
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\NameMatcher;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-
-use \Vanderbilt\CareerDevLibrary\LDAP;
-use \Vanderbilt\CareerDevLibrary\LdapLookup;
-use \Vanderbilt\CareerDevLibrary\MMAHelper;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/base.php";
-require_once dirname(__FILE__)."/../CareerDev.php";
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 require_once dirname(__FILE__).'/_header.php';
 
-
-if ($_REQUEST['uid'] && DEBUG) {
+if ($_REQUEST['uid'] && MMA_DEBUG) {
     $userid2 = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$userid2";
 } else {
-    $userid2 = Application::getUsername();
-    $uidString = "";
+    $userid2 = $hash ? $hash : Application::getUsername();
+    $uidString = $hash ? "&hash=".$hash : "";
 }
+$phase = isset($_GET['phase']) ? REDCapManagement::sanitize($_GET['phase']) : "";
 
 $userids = Download::userids($token, $server);
 
@@ -33,7 +23,12 @@ $menteeRecordId = FALSE;
 if (isset($_GET['menteeRecord'])) {
     $records = Download::recordIds($token, $server);
     $menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
-    list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
+    if (!$hash) {
+        list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
+    } else {
+        $myMentors = [];
+        $myMentees = [];
+    }
 } else {
     throw new \Exception("You must specify a mentee record!");
 }
@@ -82,6 +77,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
 ?>
 <form id="tsurvey" name="tsurvey">
 <input type="hidden" class="form-hidden-data" name="mentoring_start" id="mentoring_start" value="<?= date("Y-m-d H:i:s") ?>">
+<input type="hidden" class="form-hidden-data" name="mentoring_phase" id="mentoring_phase" value="<?= $phase ?>">
 <section class="bg-light">
     <div class="container">
         <div class="row">
@@ -99,7 +95,6 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
         <div class="row">
             <div class="col-lg-12 tdata">
                 <h4>Please fill out the checklist below while dialoging with your mentee. The mentee's responses have been pre-filled.</h4>
-                <input type="hidden" class="form-hidden-data" name="mentoring_start" id="mentoring_start" value="<?= date("Y-m-d h:i:s") ?>">
                 <?= (!empty($surveysAvailableToPrefill)) ? MMAHelper::makePrefillHTML($surveysAvailableToPrefill, $uidString) : "" ?>
 
                     <?php
@@ -206,7 +201,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                                         if (in_array($index, $spec['values'])) {
                                             $selected = "checked";
                                         }
-                                        $htmlRows[] = '<div class="form-check"><input class="form-check-input" type="'.$row['field_type'].'" name="'.$name.'" id="'.$id.'" value="'.$index.'" '.$selected.' '.$spec['status'].'><label class="form-check-label" for="'.$id.'">'.$label.'</label></div>';
+                                        $htmlRows[] = '<div class="form-check"><input class="form-check-input" onclick="doMMABranching();" type="'.$row['field_type'].'" name="'.$name.'" id="'.$id.'" value="'.$index.'" '.$selected.' '.$spec['status'].'><label class="form-check-label" for="'.$id.'">'.$label.'</label></div>';
                                     }
                                     $htmlRows[] = '</td>';
                                 } else if (($row['field_type'] == "notes") && ($key == "mentor")) {
@@ -388,24 +383,6 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                         text-decoration: underline;
                     }
 
-                    .red {
-                        color: #af3017
-                    }
-
-                    .orange {
-                        color: #de8a12;
-                    }
-
-                    .notoverdue {
-                        padding-top: 1.4em !important;
-                    }
-
-                    .tnoter {
-                        font-size: 16px;
-                        line-height: 20px;
-                        font-family: proxima-nova
-                    }
-
                     .row_red th,
                     .row_red td {
                         background-color: #ea0e0e30
@@ -534,7 +511,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
 <style type="text/css">
     body {
 
-        font-family: europa, sans-serif;
+        font-family: europa, sans-serif !important;
         letter-spacing: -0.5px;
         font-size: 1.3em;
     }
@@ -610,7 +587,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
     dfn = function(obj) {
         objta = "#" + obj + " td:nth-of-type(4) .tnote";
         obj = "#" + obj + " .dfn";
-        if ($(obj).attr('src') == '<?= Application::link("mentor/img/images/dfb_off_03.png") ?>') {
+        if ($(obj).attr('src') === '<?= Application::link("mentor/img/images/dfb_off_03.png") ?>') {
             $(obj).attr('src', '<?= Application::link("mentor/img/images/dfb_on_03.png") ?>');
             $(objta).removeClass('tnote_d');
             $(objta).addClass('tnote_e');
@@ -640,7 +617,6 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
 
 
     <?php
-        $sectionsToShow = MMAHelper::getSectionsToShow($userid2, array_values($sections), $redcapData, $menteeRecordId, $currInstance);
         foreach ($sections as $tableNum => $header) {
             $encodedSection = REDCapManagement::makeHTMLId($header);
             $header = strtolower($header);
@@ -649,7 +625,10 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
             echo "\$('#quest".$tableNum."').before('<div class=\"verticalheader\" id=\"vh$tableNum\">$header</div>');\n";
         }
         ?>
+        doMMABranching();
     });
+
+    <?= MMAHelper::getBranchingJS() ?>
 
     function valuesAgree(name1, name2) {
         var values1 = [];
@@ -701,6 +680,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
 
     function updateData(ob) {
         const mentoringStart = $('#mentoring_start').val();
+        const phase = $('#mentoring_phase').val();
         console.log("updateData with "+$(ob).attr("id"));
         changeHighlightingFromAgreements(ob);
         var suffix = '';
@@ -728,7 +708,8 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                 field_name: fullFieldName,
                 value: checkValue,
                 userid: '<?= $userid2 ?>',
-                start: mentoringStart
+                start: mentoringStart,
+                phase: phase
             }, function (html) {
                 console.log(html);
                 $(thisbox).delay(300).removeClass("simptip-position-left").removeAttr("data-tooltip");
@@ -749,7 +730,8 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                 field_name: fieldName,
                 value: value,
                 userid: '<?= $userid2 ?>',
-                start: mentoringStart
+                start: mentoringStart,
+                phase: phase
             }, function(html) {
                 console.log(html);
                 $(thisbox).delay(300).removeClass("simptip-position-left").removeAttr("data-tooltip");
@@ -768,7 +750,8 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                 field_name: fieldName,
                 value: value,
                 userid: '<?= $userid2 ?>',
-                start: mentoringStart
+                start: mentoringStart,
+                phase: phase
             }, function(html) {
                 console.log(html);
                 $(thisbox).attr("disabled", false);

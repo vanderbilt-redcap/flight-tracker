@@ -502,7 +502,7 @@ public static function metadata($metadata, $token, $server) {
 	public static function rows($rows, $token, $server) {
         if (!self::checkRows($rows)) {
             if (isset($_GET['test'])) {
-                echo "Failed test: ".REDCapManagement::json_encode_with_spaces($rows)."<br>";
+                echo "Failed test<br>";
             }
             return "";
         }

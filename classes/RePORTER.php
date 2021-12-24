@@ -157,8 +157,8 @@ class RePORTER {
 
             if (!empty($instancesToDelete)) {
                 $prefix = $this->getPrefix();
-                Application::log("Deleting reporter instances for prefix $prefix on record {$this->recordId}: ".implode(", ", $instancesToDelete), $pid);
-                Upload::deleteFormInstances($token, $redcapServer, $pid, $prefix, $this->recordId, $instancesToDelete);
+                Application::log("Deleting reporter instances for prefix $prefix on record {$this->recordId}: ".implode(", ", $instancesToDelete), $this->pid);
+                Upload::deleteFormInstances($token, $redcapServer, $this->pid, $prefix, $this->recordId, $instancesToDelete);
             }
         }
     }

@@ -1,23 +1,16 @@
 <?php
 
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Application;
-
-use \Vanderbilt\CareerDevLibrary\LDAP;
-use \Vanderbilt\CareerDevLibrary\MMAHelper;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/base.php";
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/../classes/Autoload.php";
-require_once dirname(__FILE__)."/../CareerDev.php";
 
 require_once dirname(__FILE__).'/_header.php';
 
 $username = REDCapManagement::sanitize($_GET['uid']);
-if (!$username || !DEBUG) {
+if (!$username || !MMA_DEBUG) {
     $username = Application::getUsername();
 }
 if (isset($_GET['test'])) {
@@ -25,9 +18,9 @@ if (isset($_GET['test'])) {
     echo "GET: ".REDCapManagement::sanitize($_GET['uid'])."<br>";
 }
 
-$menteeRecordIds = MMAHelper::getRecordsAssociatedWithUserid($username, $token, $server);
+$hashParam = (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") ? "&hash=".NEW_HASH_DESIGNATION : "";
 
-if(isset($_REQUEST['uid']) && DEBUG){
+if(isset($_REQUEST['uid']) && MMA_DEBUG){
     $username = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$username";
 } else {
@@ -35,7 +28,14 @@ if(isset($_REQUEST['uid']) && DEBUG){
     $uidString = "";
 }
 
-list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
+if ($username) {
+    list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
+    $welcomeMssg = "Welcome, $firstName!";
+} else {
+    $firstName = "";
+    $lastName = "";
+    $welcomeMssg = "Welcome!";
+}
 
 $resourcesLinkIfExtant = "";
 if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
@@ -55,8 +55,8 @@ if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
     <div class="container">
         <div class="row">
             <div class="col-lg-12">
-                <h2 style="color: #727272;">Welcome, <?= $firstName ?>!</h2>
-                <div class="blue-box" onclick="window.location.href = '<?= Application::link("mentor/index.php").$uidString ?>';"><h1>Start Now</h1></div>
+                <h2 style="color: #727272;"><?= $welcomeMssg ?></h2>
+                <div class="blue-box" onclick="window.location.href = '<?= Application::link("mentor/index.php").$uidString.$hashParam ?>';"><h1>Start Now</h1></div>
                 <div class="col-lg-4" style="float: right;">
                     <div id="boxa" class="box_bg box_white boxa">
                         <div class="row">
@@ -149,7 +149,7 @@ if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
 
     body {
 
-        font-family: europa, sans-serif;
+        font-family: europa, sans-serif !important;
         letter-spacing: -0.5px;
         font-size: 1.3em;
     }

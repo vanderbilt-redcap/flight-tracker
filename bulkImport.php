@@ -48,9 +48,6 @@ if ($_FILES['bulk']) {
 		$customFields = Application::getCustomFields($metadata);
 		$upload = [];
         foreach ($lines as $line) {
-            if (isset($_GET['test'])) {
-                echo "<p>".REDCapManagement::json_encode_with_spaces($line)."</p>";
-            }
             if ($startIdx == 2) {
                 $firstName = $line[0];
                 $lastName = $line[1];
@@ -157,11 +154,6 @@ if ($_FILES['bulk']) {
                     echo "<p class='green padded centered max-width'>Upload successful!</p>\n";
                 }
             } catch (\Exception $e) {
-                if (isset($_GET['test'])) {
-                    foreach ($upload as $row) {
-                        echo "<p>".REDCapManagement::json_encode_with_spaces($row)."</p>";
-                    }
-                }
                 echo "<p class='red padded centered max-width'>ERROR! ".$e->getMessage()."</p>\n";
             }
 		}

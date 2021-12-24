@@ -1,14 +1,6 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Upload;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\BarChart;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\NameMatcher;
-use \Vanderbilt\CareerDevLibrary\REDCapLookup;
-use \Vanderbilt\CareerDevLibrary\REDCapLookupByUserid;
-use \Vanderbilt\CareerDevLibrary\MMAHelper;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -195,9 +187,6 @@ foreach ($records as $recordId) {
 
     $isFirstMentor = TRUE;
     $isFirstMentee = TRUE;
-    if (isset($_GET['test']) && (count($redcapData) > 0)) {
-        echo "Record $recordId: ".REDCapManagement::json_encode_with_spaces($redcapData)."<br>";
-    }
     foreach ($redcapData as $row) {
         if ($row['redcap_repeat_instrument'] == "mentoring_agreement") {
             $useridOfRespondant = $row['mentoring_userid'];

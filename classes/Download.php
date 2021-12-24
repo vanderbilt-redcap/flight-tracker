@@ -736,21 +736,39 @@ class Download {
         return $ary;
     }
 
+    private static function dataForOneField($token, $server, $field) {
+        $data = [
+            'token' => $token,
+            'content' => 'record',
+            'format' => 'json',
+            'type' => 'flat',
+            'rawOrLabel' => 'raw',
+            'fields' => ["record_id", $field],
+            'rawOrLabelHeaders' => 'raw',
+            'exportCheckboxLabel' => 'false',
+            'exportSurveyFields' => 'false',
+            'exportDataAccessGroups' => 'false',
+            'returnFormat' => 'json'
+        ];
+        return self::sendToServer($server, $data);
+    }
+
+    public static function oneFieldWithInstances($token, $server, $field) {
+        $redcapData = self::dataForOneField($token, $server, $field);
+        $ary = [];
+        foreach ($redcapData as $row) {
+            if (isset($row['redcap_repeat_instance']) && $row[$field]) {
+                if (!isset($ary[$row['record_id']])) {
+                    $ary[$row['record_id']] = [];
+                }
+                $ary[$row['record_id']][$row['redcap_repeat_instance']] = $row[$field];
+            }
+        }
+        return $ary;
+    }
+
 	public static function oneField($token, $server, $field) {
-		$data = [
-			'token' => $token,
-			'content' => 'record',
-			'format' => 'json',
-			'type' => 'flat',
-			'rawOrLabel' => 'raw',
-			'fields' => ["record_id", $field],
-			'rawOrLabelHeaders' => 'raw',
-			'exportCheckboxLabel' => 'false',
-			'exportSurveyFields' => 'false',
-			'exportDataAccessGroups' => 'false',
-			'returnFormat' => 'json'
-		];
-		$redcapData = self::sendToServer($server, $data);
+	    $redcapData = self::dataForOneField($token, $server, $field);
 		$ary = [];
 		foreach ($redcapData as $row) {
 			$ary[$row['record_id']] = $row[$field] ?? "";

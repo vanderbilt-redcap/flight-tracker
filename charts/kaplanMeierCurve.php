@@ -47,13 +47,20 @@ if ((isset($_GET['showAllResources']) && ($_GET['showAllResources'] == "on")) ||
 }
 
 $cohort = "";
+$maxLife = 0;
+$n = [];
+$serialTimes = [];
+$names = [];
+$statusAtSerialTime = [];    // event or censored
+$resourcesUsedIdx = [];
+$groups = [];
+$cohortTitle = "";
 if ($showRealGraph) {
     if ($_GET['cohort']) {
         $cohort = REDCapManagement::sanitize($_GET['cohort']);
         $cohortTitle = " (Cohort $cohort)";
         $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
     } else {
-        $cohortTitle = "";
         $records = Download::recordIds($token, $server);
     }
     $names = Download::names($token, $server);
@@ -76,9 +83,6 @@ if ($showRealGraph) {
     }
     $startDates = [];
     $endDates = [];
-    $serialTimes = [];
-    $statusAtSerialTime = [];    // event or censored
-    $resourcesUsedIdx = [];
     $indexedREDCapData = Download::indexREDCapData(Download::fields($token, $server, $fields));
     foreach ($records as $record) {
         $redcapData = $indexedREDCapData[$record];
@@ -128,16 +132,12 @@ if ($showRealGraph) {
         if (isset($_GET['test'])) {
             echo "groups: ".json_encode($groups)."<br>";
         }
-        $n = [];
         foreach ($groups as $idx => $label) {
             $curveData[$label] = [];
             if (isset($_GET['test'])) {
                 echo "Examining $idx $label<br>";
             }
             $groupRecords = getResourceRecords($idx, $resourcesUsedIdx);
-            if (isset($_GET['test'])) {
-                echo "$idx $label has groupRecords (".count($groupRecords)."): ".json_encode_with_spaces($groupRecords)."<br>";
-            }
             $n[$label] = count($groupRecords);
             $curveData[$label][0] = [
                 "numer" => count($groupRecords),
@@ -173,13 +173,6 @@ if ($showRealGraph) {
                 $curveData[$label][$i]["this_fraction"] = ($curveData[$label][$i]["denom"] > 0) ? $curveData[$label][$i]["numer"] / $curveData[$label][$i]["denom"] : 0;
                 $curveData[$label][$i]["percent"] = $startPerc * $curveData[$label][$i]["this_fraction"];
                 $curveData[$label][$i]["pretty_percent"] = REDCapManagement::pretty(100.0 - $curveData[$label][$i]["percent"], 1);
-            }
-        }
-        if (isset($_GET['test'])) {
-            foreach ($curveData as $label => $lines) {
-                foreach ($lines as $i => $line) {
-                    echo "curveData[$label][$i]: ".REDCapManagement::json_encode_with_spaces($line)."<br>";
-                }
             }
         }
     }

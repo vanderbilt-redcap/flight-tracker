@@ -268,14 +268,6 @@ function makeDataTableRows($categories, $blankRow, $records, $token, $server, $p
     $earliestThresholdDate = "2012-07-01";
     $predocNames = $nihTables->downloadPredocNames($earliestThresholdDate);
     $postdocNames = $nihTables->downloadPostdocNames("", $earliestThresholdDate);
-    if (isset($_GET['test'])) {
-        echo "eligible records: ".count($records)."<br>".REDCapManagement::json_encode_with_spaces($records)."<br>";
-        echo "eligible predocs: ".count($predocNames)."<br>".REDCapManagement::json_encode_with_spaces($predocNames)."<br>";
-        echo "eligible postdocs: ".count($postdocNames)."<br>".REDCapManagement::json_encode_with_spaces($postdocNames)."<br>";
-        echo "engaged status: <br>".REDCapManagement::json_encode_with_spaces($engagedStatus)."<br>";
-        echo "gender: <br>".REDCapManagement::json_encode_with_spaces($gender)."<br>";
-        echo "urm status: <br>".REDCapManagement::json_encode_with_spaces($urm)."<br>";
-    }
 
     $totalCompleted = ["TL1" => [], "KL2" => []];
 

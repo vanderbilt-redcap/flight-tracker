@@ -1,25 +1,17 @@
 <?php
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
-use \Vanderbilt\CareerDevLibrary\LDAP;
-use \Vanderbilt\CareerDevLibrary\LdapLookup;
-use \Vanderbilt\CareerDevLibrary\MMAHelper;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/base.php";
-require_once dirname(__FILE__)."/../CareerDev.php";
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 if ($_GET['uid']) {
     $username = REDCapManagement::sanitize($_GET['uid']);
     $uidString = "&uid=$username";
 } else {
-    $username = Application::getUsername();
+    $username = $hash ? $hash : Application::getUsername();
     $uidString = "";
 }
 
@@ -28,7 +20,12 @@ require_once dirname(__FILE__).'/_header.php';
 if (isset($_GET['menteeRecord'])) {
     $records = Download::recordIds($token, $server);
     $menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
-    list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $username, $token, $server);
+    if (!$hash) {
+        list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $username, $token, $server);
+    } else {
+        $myMentees = [];
+        $myMentors = [];
+    }
 } else {
     throw new \Exception("You must specify a mentee record!");
 }
@@ -217,7 +214,7 @@ $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $inst
 
 body {
 
-    font-family: europa, sans-serif;
+    font-family: europa, sans-serif !important;
     letter-spacing: -0.5px;
     font-size: 1.3em;
 }

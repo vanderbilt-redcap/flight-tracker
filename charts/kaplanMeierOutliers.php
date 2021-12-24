@@ -66,9 +66,6 @@ foreach ($jsLocs as $jsLoc) {
 if (empty($possibleRecords)) {
     echo "<p>All grants and publications are dated on-or-after $thresholdYear.</p>";
 } else {
-    if (isset($_GET['test'])) {
-        echo "<p>Possible Records: ".REDCapManagement::json_encode_with_spaces($possibleRecords)."</p>";
-    }
     $grantNumbers = [];
     $pmids = [];
     $module = Application::getModule();

@@ -1,9 +1,6 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Upload;
-use \Vanderbilt\CareerDevLibrary\MMAHelper;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -15,8 +12,9 @@ $value = REDCapManagement::sanitize($_REQUEST['value']);
 $fieldName = REDCapManagement::sanitize($_REQUEST['field_name']);
 $instance = REDCapManagement::sanitize($_REQUEST['instance']);
 $type = REDCapManagement::sanitize($_REQUEST['type']);
-$userid = REDCapManagement::sanitize($_REQUEST['userid']);
+$userid = MMAHelper::isValidHash($_REQUEST['userid']) ? "" : REDCapManagement::sanitize($_REQUEST['userid']);
 $start = REDCapManagement::sanitize($_REQUEST['start']);
+$phase = REDCapManagement::sanitize($_REQUEST['phase']);
 $end = date("Y-m-d H:i:s");
 $instrument = "mentoring_agreement";
 
@@ -38,9 +36,11 @@ if ($type == "radio") {
             "redcap_repeat_instance" => $instance,
             $fieldName => $value,
             "mentoring_last_update" => date("Y-m-d"),
-            "mentoring_userid" => $userid,
             "mentoring_agreement_complete" => "2",
         ];
+        if ($userid) {
+            $uploadRow["mentoring_userid"] = $userid;
+        }
     }
 } else if ($type == "checkbox") {
     if (preg_match("/___/", $fieldName)) {
@@ -59,11 +59,14 @@ if ($type == "radio") {
                 "redcap_repeat_instance" => $instance,
                 $fieldName => $value,
                 "mentoring_last_update" => date("Y-m-d"),
-                "mentoring_userid" => $userid,
                 "mentoring_start" => $start,
+                "mentoring_phase" => $phase,
                 "mentoring_end" => $end,
                 "mentoring_agreement_complete" => "2",
             ];
+            if ($userid) {
+                $uploadRow["mentoring_userid"] = $userid;
+            }
         }
     }
 } else if ($type == "textarea") {
@@ -80,11 +83,14 @@ if ($type == "radio") {
             "redcap_repeat_instance" => $instance,
             $fieldName => $value,
             "mentoring_last_update" => date("Y-m-d"),
-            "mentoring_userid" => $userid,
             "mentoring_start" => $start,
             "mentoring_end" => $end,
+            "mentoring_phase" => $phase,
             "mentoring_agreement_complete" => "2",
         ];
+        if ($userid) {
+            $uploadRow["mentoring_userid"] = $userid;
+        }
     }
 } else if ($type == "notes") {
     if ($recordId
@@ -110,6 +116,7 @@ if ($type == "radio") {
             $fieldName => $newNote,
             "mentoring_start" => $start,
             "mentoring_end" => $end,
+            "mentoring_phase" => $phase,
             "mentoring_last_update" => date("Y-m-d"),
             "mentoring_agreement_complete" => "2",
         ];

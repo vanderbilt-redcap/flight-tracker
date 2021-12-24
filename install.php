@@ -135,12 +135,24 @@ function makeDepartmentPrompt($projectId) {
 	$html .= getCSS();
 	$html .= "</style>\n";
 
+	if (Application::isVanderbilt()) {
+        list($respDepts, $defaultDepartments) = REDCapManagement::downloadURL("https://redcap.vanderbilt.edu/plugins/career_dev/data/departments.txt");
+        list($respResources, $defaultResources) = REDCapManagement::downloadURL("https://redcap.vanderbilt.edu/plugins/career_dev/data/resources.txt");
+        if (($respDepts != 200) || ($respResources != 200)) {
+            $defaultDepartments = "";
+            $defaultResources = "";
+        }
+    } else {
+	    $defaultDepartments = "";
+	    $defaultResources = "";
+    }
+
 	$style = " style='width: 400px; height: 400px;'";
 	$html .= "<form method='POST' action='".preg_replace("/pid=\d+/", "pid=$projectId", CareerDev::getLink("install.php"))."'>\n";
 	$html .= "<p class='centered'>Please enter a list of your academic departments.<br>(One per line.)<br>\n";
-	$html .= "<textarea name='departments' class='config'></textarea></p>\n";
+	$html .= "<textarea name='departments' class='config'>$defaultDepartments</textarea></p>\n";
 	$html .= "<p class='centered'>Please enter a list of resources your scholars may use (e.g., workshops, tools).<br>(One per line.)<br>\n";
-	$html .= "<textarea name='resources' class='config'></textarea></p>\n";
+	$html .= "<textarea name='resources' class='config'>$defaultResources</textarea></p>\n";
 	$html .= "<p class='centered'><button>Configure Fields</button></p>\n";
 	$html .= "</form>\n";
 

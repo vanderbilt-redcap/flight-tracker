@@ -104,12 +104,6 @@ $completionChoices = [
     "2" => "Complete",
 ];
 list($allNames, $allProjectTitles, $allProjectContacts, $allRespondants) = getProjectInfo($projectPids, array_keys($surveys));
-if (isset($_GET['test'])) {
-    echo "allNames: ".REDCapManagement::json_encode_with_spaces($allNames)."<br>";
-    echo "allProjectTitles: ".REDCapManagement::json_encode_with_spaces($allProjectTitles)."<br>";
-    echo "allProjectContacts: ".REDCapManagement::json_encode_with_spaces($allProjectContacts)."<br>";
-    echo "allRespondants: ".REDCapManagement::json_encode_with_spaces($allRespondants)."<br>";
-}
 
 echo "<h1>Survey Responses</h1>";
 echo "<p class='centered max-width'>Scroll over a value to reveal other projects where it is present.</p>";

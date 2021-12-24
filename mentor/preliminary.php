@@ -2,8 +2,8 @@
 
 # for NOAUTH to work, must be listed before any redcap_connect inclusion
 
-use \Vanderbilt\CareerDevLibrary\Application;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-define('DEBUG', Application::isVanderbilt());
+define('MMA_DEBUG', FALSE); // Application::isVanderbilt();

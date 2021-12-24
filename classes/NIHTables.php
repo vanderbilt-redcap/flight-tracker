@@ -828,10 +828,6 @@ class NIHTables {
             $namesPre = $this->downloadPredocNames();
             $namesPost = $this->downloadPostdocNames($table);
             $html = "";
-            if (isset($_GET['test'])) {
-                $html .= "<p class='centered'>Predoc Names: ".REDCapManagement::json_encode_with_spaces($namesPre)."</p>";
-                $html .= "<p class='centered'>Postdoc Names: ".REDCapManagement::json_encode_with_spaces($namesPost)."</p>";
-            }
             $html .= self::getHTMLPrefix($table).self::makeDataIntoHTML($data, $namesPre, $namesPost);
             return $html;
 		} else if (self::beginsWith($table, ["6A", "6B"])) {
@@ -1481,10 +1477,6 @@ class NIHTables {
             return $degreesAndYears;
         }
 
-        if (isset($_GET['test'])) {
-            echo "getDoctoralDegreesAndYears Record $recordId pre-regex: ".REDCapManagement::json_encode_with_spaces($degreesAndYears)."<br>";
-        }
-
         $doctorateRegExes = Scholar::getDoctoralRegexes();
         $doctorateDegreesAndYears = array();
         foreach ($degreesAndYears as $degree => $year) {
@@ -1500,9 +1492,6 @@ class NIHTables {
         }
 
         arsort($doctorateDegreesAndYears);
-        if (isset($_GET['test'])) {
-            echo "getDoctoralDegreesAndYears Record $recordId post-regex: ".REDCapManagement::json_encode_with_spaces($doctorateDegreesAndYears)."<br>";
-        }
 
         if ($asText) {
             return self::formatDegreesAndYears($doctorateDegreesAndYears, FALSE);
@@ -1565,9 +1554,6 @@ class NIHTables {
         if ((count($degreesAndYears) == 1) && ((isset($degreesAndYears["None Received"])) || (isset($degreesAndYears["In Training"])))) {
             return $degreesAndYears;
         }
-        if (isset($_GET['test'])) {
-            echo "getTerminalDegreesAndYears Record $recordId initial: ".REDCapManagement::json_encode_with_spaces($degreesAndYears)."<br>";
-        }
 
         $doctorateDegreesAndYears = $this->getDoctoralDegreesAndYears($recordId, FALSE);
         $predocDegreesAndYears = [];
@@ -1575,9 +1561,6 @@ class NIHTables {
             if (!isset($doctorateDegreesAndYears[$degree])) {
                 $predocDegreesAndYears[$degree] = $year;
             }
-        }
-        if (isset($_GET['test'])) {
-            echo "getTerminalDegreesAndYears Record $recordId predoc: ".REDCapManagement::json_encode_with_spaces($predocDegreesAndYears)."<br>";
         }
         if (empty($doctorateDegreesAndYears) && empty($predocDegreesAndYears)) {
             if (isset($_GET['test'])) {
@@ -1600,18 +1583,12 @@ class NIHTables {
             }
         }
         if (!empty($doctorateDegreesAndYears)) {
-            if (isset($_GET['test'])) {
-                echo "getTerminalDegreesAndYears Record $recordId use doctoral: ".REDCapManagement::json_encode_with_spaces($doctorateDegreesAndYears)."<br>";
-            }
             if ($asText) {
                 return self::formatDegreesAndYears($doctorateDegreesAndYears, FALSE);
             } else {
                 return $doctorateDegreesAndYears;
             }
         } else {
-            if (isset($_GET['test'])) {
-                echo "getTerminalDegreesAndYears Record $recordId use predoc: ".REDCapManagement::json_encode_with_spaces($predocDegreesAndYears)."<br>";
-            }
             if ($asText) {
                 return self::formatDegreesAndYears($predocDegreesAndYears, FALSE);
             } else {
@@ -2723,23 +2700,13 @@ class NIHTables {
                         if ($row['redcap_repeat_instrument'] == "custom_grant") {
                             if ($part == 1) {
                                 if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15) && in_array($row['custom_type'], $thisGrantTypes)) {
-                                    if (isset($_GET['test'])) {
-                                        echo "Record $recordId ($name) is a recent graduate for part $part ".REDCapManagement::json_encode_with_spaces($row)."<br>";
-                                    }
                                     $filteredNames[$recordId] = $name;
-                                } else if (isset($_GET['test'])) {
-                                    echo "Record $recordId ($name) is not a recent graduate for part $part ".REDCapManagement::json_encode_with_spaces($row)."<br>";
                                 }
                             } else if ($part == 3) {
                                 # recent graduates - those whose appointments have ended
                                 # for new applications only (currently)
                                 if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 5) && ($row['custom_type'] == $internalKType)) {
-                                    if (isset($_GET['test'])) {
-                                        echo "Record $recordId ($name) is a recent graduate for part $part ".REDCapManagement::json_encode_with_spaces($row)."<br>";
-                                    }
                                     $filteredNames[$recordId] = $name;
-                                } else if (isset($_GET['test'])) {
-                                    echo "Record $recordId ($name) is not a recent graduate for part $part ".REDCapManagement::json_encode_with_spaces($row)."<br>";
                                 }
                             }
                         }

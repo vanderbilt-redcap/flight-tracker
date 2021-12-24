@@ -1,7 +1,6 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\NameMatcher;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once(dirname(__FILE__)."/../small_base.php");

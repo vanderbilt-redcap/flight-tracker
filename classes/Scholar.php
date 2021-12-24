@@ -1942,7 +1942,7 @@ return $result;
     }
 
     private static function processDegreeValue($value, $metadataFields, $choices, $previousDegrees, $variable) {
-        if (in_array("summary_all_degrees", $metadataFields) && isset($variableChoices)) {
+        if (in_array("summary_all_degrees", $metadataFields) && isset($choices[$variable])) {
             $foundIdx = FALSE;
             foreach ($choices["summary_all_degrees"] as $idx => $label) {
                 if ($label == $choices[$variable][$value]) {

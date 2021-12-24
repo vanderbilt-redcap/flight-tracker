@@ -243,7 +243,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $credentialsFile = "/app001/credentials/career_dev/credentials.php";
         if (preg_match("/redcap.vanderbilt.edu/", SERVER_NAME)  && file_exists($credentialsFile)) {
             include($credentialsFile);
-            if (isset($info)) {
+            if (isset($info["prod"])) {
                 $prodPid = $info["prod"]["pid"];
                 $prodToken = $info["prod"]["token"];
                 $prodServer = $info["prod"]["server"];

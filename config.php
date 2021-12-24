@@ -166,9 +166,6 @@ function makeOrder($token, $server, $pid, $metadata = []) {
 	}
 
 	list($sources, $sourceTypes) = \Vanderbilt\FlightTrackerExternalModule\produceSourcesAndTypes($scholar, $metadata);
-	if (isset($_GET['test'])) {
-	    echo "sources: ".REDCapManagement::json_encode_with_spaces($sources)."<br>";
-    }
 
 	$existingChoicesTexts = getExistingChoicesTexts($choices[$exampleField], $scholar, $allFields);
 

@@ -1,12 +1,9 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/../classes/Autoload.php";
-require_once dirname(__FILE__)."/../CareerDev.php";
 
 $uidString = "";
 if ($_GET['uid']) {
@@ -35,7 +32,7 @@ if ($_GET['uid']) {
   <link href="<?= Application::link("mentor/vendor/simple-line-icons/css/simple-line-icons.css") ?>" rel="stylesheet" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css">
 
-<link rel="stylesheet" href="<?= CareerDev::link("/css/typekit.css").CareerDev::getVersion() ?>">
+<link rel="stylesheet" href="<?= Application::link("/css/typekit.css").Application::getVersion() ?>">
 
   <!-- Custom styles for this template -->
   <link href="<?= Application::link("mentor/css/landing-page.css") ?>" rel="stylesheet">

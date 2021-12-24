@@ -7,6 +7,10 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(dirname(__FILE__)."/CareerDev.php");
 
 class Application {
+    public static function getVersion() {
+        return CareerDev::getVersion();
+    }
+
 	public static function getPID($token) {
 		return CareerDev::getPID($token);
 	}
@@ -88,6 +92,10 @@ class Application {
         global $userid;
         if ($userid) {
             return $userid;
+        }
+        $module = self::getModule();
+        if ($module) {
+            return $module->getUsername();
         }
         return "";
     }

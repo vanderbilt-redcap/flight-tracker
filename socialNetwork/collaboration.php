@@ -175,14 +175,8 @@ if (isset($_GET['cohort']) && !empty($records)) {
             }
         }
     }
-    if (isset($_GET['test'])) {
-        echo"Matches: ".REDCapManagement::json_encode_with_spaces($matches)."<br>";
-    }
 
     list($connections, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index, $pubs);
-    if (isset($_GET['test'])) {
-        echo "Connections: ".REDCapManagement::json_encode_with_spaces($connections)."<br>";
-    }
 
     if ($includeMentors) {
         $mentorConnections = getAvgMentorConnections($matches);
@@ -671,9 +665,6 @@ function makeSummaryStats($connections, $names) {
                     $maxCollaborators[$type] = $numCollaborators;
                 }
             }
-        }
-        if (isset($_GET['test'])) {
-            echo "dataValues for $type: ".REDCapManagement::json_encode_with_spaces($dataValues)."<br>";
         }
         $stats[$type] = new Stats($dataValues);
         $maxConnections[$type] = !empty($dataValues) ? max($dataValues) : 0;

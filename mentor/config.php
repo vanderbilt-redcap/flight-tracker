@@ -1,11 +1,8 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Upload;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\MMAHelper;
+namespace Vanderbilt\CareerDevLibrary;
+
+use Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -32,13 +29,13 @@ if (isset($_POST['resourceList'])) {
                 $defaultLink = "https://".$defaultLink;
             }
             if (REDCapManagement::isGoodURL($defaultLink)) {
-                CareerDev::saveSetting("mentee_agreement_link", $defaultLink, $pid);
+                Application::saveSetting("mentee_agreement_link", $defaultLink, $pid);
             } else {
                 $mssg = "<p class='red centered max-width'>Improper URL</p>";
                 $continue = FALSE;
             }
         } else {
-            CareerDev::saveSetting("mentee_agreement_link", "", $pid);
+            Application::saveSetting("mentee_agreement_link", "", $pid);
         }
     } else {
         $mssg = "<p class='red centered max-width'>Invalid parameters</p>";

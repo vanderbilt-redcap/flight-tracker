@@ -109,9 +109,6 @@ class NameMatcher {
                 preg_replace($compoundRegex, "", $name2),
             ];
         }
-        if (isset($_GET['test'])) {
-            Application::log("doNamesMatch $name1 $name2: ".REDCapManagement::json_encode_with_spaces($pairs));
-        }
         foreach ($pairs as $pair) {
             $n1 = $pair[0];
             $n2 = $pair[1];
@@ -213,9 +210,6 @@ class NameMatcher {
                                     }
                                     $myNodes = preg_split("/\s+/", $myFirst);
                                     $sNodes = preg_split("/\s+/", $sFirst);
-                                    if (isset($_GET['test'])) {
-                                        Application::log("isFirstInitalMiddleName nodes ".REDCapManagement::json_encode_with_spaces($myNodes)." and ".REDCapManagement::json_encode_with_spaces($sNodes));
-                                    }
                                     if ((count($myNodes) > 1) && (count($sNodes) > 1)) {
                                         $matchFound = FALSE;
                                         foreach ($myNodes as $myNode) {
@@ -263,9 +257,6 @@ class NameMatcher {
                 }
             }
 		}
-		if (isset($_GET['test'])) {
-		    echo "Returning ".REDCapManagement::json_encode_with_spaces($recordIds)."<br>";
-        }
 		return $recordIds;
 	}
 
@@ -562,11 +553,11 @@ class NameMatcher {
         }
 
 		$nodes = preg_split("/\s*,\s*/", $name);
-		if ($loggingOn) { echo "Initial split into: ".REDCapManagement::json_encode_with_spaces($nodes); }
+		if ($loggingOn) { echo "Initial split into: ".json_encode($nodes); }
 		if ($clearOfExtraTitles) {
             $nodes = self::clearOfDegrees($nodes);
         }
-        if ($loggingOn) { echo "Cleared into: ".REDCapManagement::json_encode_with_spaces($nodes); }
+        if ($loggingOn) { echo "Cleared into: ".json_encode($nodes); }
 		if (count($nodes) == 1) {
 		    if (preg_match("/\band\b/", $name)) {
                 $nodes = preg_split("/\s*\band\b\s*/", $name);
@@ -660,7 +651,7 @@ class NameMatcher {
                             $nodes = $newNodes;
                         } else if (preg_match("/^\((.+)\)$/", $nodes[$lastNodeIdx], $matches)) {
                             if ($loggingOn) {
-                                echo "Do-while E: ".REDCapManagement::json_encode_with_spaces($nodes)."<br>";
+                                echo "Do-while E: ".json_encode($nodes)."<br>";
                             }
                             $newNodes = [];
                             for ($i = 0; $i < $lastNodeIdx - 1; $i++) {
@@ -671,7 +662,7 @@ class NameMatcher {
                             $nodes = $newNodes;
                         } else {
                             if ($loggingOn) {
-                                echo "Do-while F: ".REDCapManagement::json_encode_with_spaces($nodes)."<br>";
+                                echo "Do-while F: ".json_encode($nodes)."<br>";
                             }
                             return self::collapseNames($nodes, $parts);
                         }
@@ -800,7 +791,7 @@ class NameMatcher {
                     if (count($newNodes) > 0) {
                         $newNodes[count($newNodes) - 1] .=" ".$node;
                     } else {
-                        throw new \Exception("This should never happen, a suffix at the beginning of a name: ".REDCapManagement::json_encode_with_spaces($nodes)." ".REDCapManagement::json_encode_with_spaces($newNodes)." on $node");
+                        throw new \Exception("This should never happen, a suffix at the beginning of a name: ".json_encode($nodes)." ".json_encode($newNodes)." on $node");
                     }
                 } else {
                     $newNodes[] = $node;

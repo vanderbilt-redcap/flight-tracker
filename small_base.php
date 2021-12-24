@@ -1697,7 +1697,6 @@ function produceNewOrderForMetadata($post, $metadata) {
 function produceSourcesAndTypes($scholar, $metadata) {
 	$choices = Scholar::getChoices($metadata);
 	if (isset($_GET['test'])) {
-	    echo "choices: ".REDCapManagement::json_encode_with_spaces($choices)."<br>";
 	    echo "metadata has ".count($metadata)." rows<br>";
     }
 	$exampleField = Scholar::getExampleField();
@@ -1708,9 +1707,6 @@ function produceSourcesAndTypes($scholar, $metadata) {
 	$allFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	foreach ($orders as $fieldForOrder => $order) {
 		$newOrder = $scholar->getOrder($order, $fieldForOrder);
-		if (isset($_GET['test'])) {
-		    echo "newOrder for $fieldForOrder: ".REDCapManagement::json_encode_with_spaces($newOrder)."<br>";
-        }
 		foreach ($newOrder as $field => $source) {
 			if (!isset($sources[$fieldForOrder])) {
 			    if (isset($_GET['test'])) {

@@ -1,10 +1,6 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Upload;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\MMAHelper;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -12,7 +8,7 @@ require_once(dirname(__FILE__)."/base.php");
 
 $recordId = REDCapManagement::sanitize($_GET['menteeRecord']);
 
-if(isset($_REQUEST['uid']) && DEBUG){
+if(isset($_REQUEST['uid']) && MMA_DEBUG){
     $username = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$username";
 } else {

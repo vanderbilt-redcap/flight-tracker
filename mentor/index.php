@@ -1,11 +1,6 @@
 <?php
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Application;
 
-use \Vanderbilt\CareerDevLibrary\LDAP;
-use \Vanderbilt\CareerDevLibrary\MMAHelper;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/base.php";
@@ -14,200 +9,85 @@ require_once dirname(__FILE__)."/../classes/Autoload.php";
 
 require_once dirname(__FILE__).'/_header.php';
 
-$username = REDCapManagement::sanitize($_GET['uid']);
-if (!$username || !DEBUG) {
-    $username = Application::getUsername();
-}
-
-$menteeRecordIds = MMAHelper::getRecordsAssociatedWithUserid($username, $token, $server);
-
-if(isset($_REQUEST['uid']) && DEBUG){
+if(isset($_REQUEST['uid']) && MMA_DEBUG){
     $username = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$username";
 } else {
-    $username = Application::getUsername();
+    $username = (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") ? NEW_HASH_DESIGNATION : Application::getUsername();
     $uidString = "";
 }
 
-$metadata = Download::metadata($token, $server);
-$allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
-$metadata = MMAHelper::filterMetadata($metadata, FALSE);
-$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-
 list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
-$names = Download::names($token, $server);
-$userids = Download::userids($token, $server);
-$allMentorUids = Download::primaryMentorUserids($token, $server);
-$allMentors = Download::primaryMentors($token, $server);
-$redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge($metadataFields, ["record_id"])), $menteeRecordIds);
+$menteeRecordIds = MMAHelper::getRecordsAssociatedWithUserid($username, $token, $server);
 
 ?>
 
-<section class="bg-light">
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-12">
-          <div class="blue-box">
-              <h2 style="color: #222222;">Typical Workflow</h2>
-              <h3><?= implode("<br>&rarr; ", ["Mentee Preferences", "Discussion with Mentor", "Final Agreement", "Revisit Agreement"]) ?></h3>
-          </div>
-          <h2><?= $firstName ?>, here are your mentee-mentor relationships</h2>
-          <p><style type="text/css">
+<style type="text/css">
 
-.table{width: 96%; margin-left: 4%;}
-thead th {border-top: 0px solid #dee2e6 !important;font-size: 11px; text-transform: uppercase;font-family: proxima-soft, sans-serif; border-bottom: unset !important;    letter-spacing: 1px;}
-thead th:nth-of-type(1),thead th:nth-of-type(2){width: 90px; padding-left: 0px !important; padding-right: 0px !important;}
-thkead th:nth-of-type(3){width: 11%; text-align: center;}
-thead th:nth-of-type(3){width: 78px; text-align: center;}
-thead th:nth-of-type(6){    width: 19%;text-align: left;}
-tr td img, tr th img{width: 30px; padding-left: 0px !important; padding-right: 0px !important;}
-tbody tr td,tbody tr th{font-family: proxima-soft, sans-serif; font-size:15px;line-height: 20px; font-weight: 200}
-tbody tr:nth-child(odd) {background-color: #f2f2f2;}
-tbody tr td:nth-of-type(1) img{margin-top: 2px;}
-tbody tr{    line-height: 30px;}
-.form-control{font-size: 14px;}
-input:placeholder-shown {border:0px; background: none;}
-tbody tr th:nth-of-type(1),tbody tr td:nth-of-type(1){padding-left: 0px !important; padding-right: 0px !important; text-align: center;}
-tbody tr th:nth-of-type(1),tbody tr td:nth-of-type(3),tbody tr td:nth-of-type(4),tbody tr td:nth-of-type(5),tbody tr td:nth-of-type(6){padding-top: 1.4em !important;}
-tjbody tr td:nth-of-type(4){text-align: center;}
-tbody tr td:nth-of-type(3):hover{cursor:hand;}
-tbody tr td:nth-of-type(4){       padding-top: 1em;padding-bottom: 1em;}
-tbody tr th:nth-of-type(2), tbody tr td:nth-of-type(2) {
-padding-top: 1.4em !important; text-align: center;
-}
-tbody tr td:nth-of-type(1) small{
-    margin-top: -5px;
-    display: block;
-}
+    .table{width: 96%; margin-left: 4%;}
+    .listmentors thead th {border-top: 0px solid #dee2e6 !important;font-size: 11px; text-transform: uppercase;font-family: proxima-soft, sans-serif; border-bottom: unset !important;    letter-spacing: 1px;}
+    .listmentors thead th:nth-of-type(1),.listmentors thead th:nth-of-type(2){width: 90px; padding-left: 0px !important; padding-right: 0px !important;}
+    .listmentors thead th:nth-of-type(3){width: 78px; text-align: center;}
+    .listmentors thead th:nth-of-type(6){    width: 19%;text-align: left;}
+    .listmentors tr td img,.listmentors tr th img{width: 30px; padding-left: 0px !important; padding-right: 0px !important;}
+    .listmentors tbody tr td,tbody tr th{font-family: proxima-soft, sans-serif; font-size:15px;line-height: 20px; font-weight: 200}
+    .listmentors tbody tr:nth-child(odd) {background-color: #f2f2f2;}
+    table.menu tbody tr td:nth-of-type(1) img{margin-top: 2px;}
+    table.menu tbody tr{    line-height: 30px;}
+    .form-control{font-size: 14px;}
+    input:placeholder-shown {border:0px; background: none;}
+    .listmentors tbody tr th:nth-of-type(1),.listmentors tbody tr td:nth-of-type(1){padding-left: 0px !important; padding-right: 0px !important; text-align: center;}
+    .listmentors tbody tr th:nth-of-type(1),.listmentors tbody tr td:nth-of-type(3),.listmentors tbody tr td:nth-of-type(4),.listmentors tbody tr td:nth-of-type(5),tbody tr td:nth-of-type(6){padding-top: 1.4em !important;}
+    .listmentors tbody tr td:nth-of-type(3):hover{cursor:hand;}
+    .listmentors tbody tr td:nth-of-type(4){       padding-top: 1em;padding-bottom: 1em;}
+    .listmentors tbody tr th:nth-of-type(2),.listmentors tbody tr td:nth-of-type(2) {
+        padding-top: 1.4em !important; text-align: center;
+    }
+    .listmentors tbody tr td:nth-of-type(1) small{
+        margin-top: -5px;
+        display: block;
+    }
 
-.blue-box {
-    padding: 40px;
-    background-image: linear-gradient(to bottom right, #66d1ff, #4f64db);
-    border-radius: 25px;
-    margin: 25px auto;
-    max-width: 500px;
-    text-align: center !important;
-    box-shadow: 6px 6px 4px #444444;
-}
+    .blue-box {
+        padding: 40px;
+        background-image: linear-gradient(to bottom right, #66d1ff, #4f64db);
+        border-radius: 25px;
+        margin: 25px auto;
+        max-width: 500px;
+        text-align: center !important;
+        box-shadow: 6px 6px 4px #444444;
+    }
+    .blue-box a { color: black; }
 
-textarea{  display: block;box-sizing: padding-box;overflow: hidden;}
-.tnote{
-    color: #a0a0a0;    
-    font-size: 15px;
-    line-height: 20px;
-    height: 20px;
-    overflow: hidden;
-}
-.tnote_d{background-color: unset !important;border: 0px solid !important; color: #a0a0a0; height: 20px; overflow: hidden;}
-.tnote_e{background-color: unset !important;border: 0px solid !important; color: #000000; height: auto;overflow: unset}
-tbody tr th:nth-of-type(1) img{
-    mkargin-left: 10px;
-    mkargin-right: 10px;
-}
-tkhead th:nth-of-type(1)::before{content: "Discussed";
-    position: absolute;
-    top: 128px;
-    left: 77px;
-}
-tbody tr td a{color: #17a2b8; text-decoration: underline;}
+    textarea{  display: block;box-sizing: padding-box;overflow: hidden;}
+    .tnote{
+        color: #a0a0a0;
+        font-size: 15px;
+        line-height: 20px;
+        height: 20px;
+        overflow: hidden;
+    }
+    .tnote_d{background-color: unset !important;border: 0px solid !important; color: #a0a0a0; height: 20px; overflow: hidden;}
+    .tnote_e{background-color: unset !important;border: 0px solid !important; color: #000000; height: auto;overflow: unset}
+    .listmentors tbody tr td a{color: #17a2b8; text-decoration: underline;}
 
-.red{color: #af3017}
-.orange{color: #de8a12;}
-.notoverdue{padding-top: 1.4em !important;}
-.tnoter{    font-size: 16px;
-line-height: 20px; font-family: proxima-nova}
-  .incomplete{padding-top: 21px !important;}
+    .red{color: #af3017}
+    .orange{color: #de8a12;}
+    .notoverdue{padding-top: 1.4em !important;}
+    .incomplete{padding-top: 21px !important;}
 
 </style>
 
-          <table id="quest1" class="table listmentors" style="margin-left: 0px;">
-              <thead>
-              <tr>
-                  <th style="text-align: center;" scope="col">latest update</th>
-                  <th style="text-align: center;" scope="col">progress</th>
-                  <th style="text-align: center;" scope="col">status</th>
-                  <th scope="col">mentee</th>
-                  <th scope="col">mentor(s)</th>
-                  <th scope="col">send notification</th>
-              </tr>
-              </thead>
-              <tbody>
-              <?php
-              $i = 1;
-              foreach ($menteeRecordIds as $menteeRecordId) {
-                  $menteeName = $names[$menteeRecordId];
-                  $menteeUserids = MMAHelper::getMenteeUserids($userids[$menteeRecordId]);
-                  $namesOfMentors = $allMentors[$menteeRecordId];
-                  $useridsOfMentors = $allMentorUids[$menteeRecordId];
-                  $myRow = MMAHelper::getLatestRow($menteeRecordId, [$username], $redcapData);
-                  $mentorRow = MMAHelper::getLatestRow($menteeRecordId, $allMentorUids[$menteeRecordId], $redcapData);
-                  if (empty($myRow)) {
-                      $instance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId) + 1;
-                      $percentComplete = 0;
-                      $mdy = date("m-d-Y");
-                      $lastMentorInstance = FALSE;
-                      $surveyText = "start";
-                  } else {
-                      $percentComplete = MMAHelper::getPercentComplete($myRow, $metadata);
-                      $mdy = REDCapManagement::YMD2MDY($myRow['mentoring_last_update']);
-                      $instance = $myRow['redcap_repeat_instance'];
-                      $lastMentorInstance = $mentorRow['redcap_repeat_instance'];
-                      $surveyText = "edit";
-                  }
-                  $newMentorInstance = $instance + 1;
-                  $trailerURL = $uidString."&menteeRecord=$menteeRecordId&instance=$instance";
-                  if (in_array($username, $menteeUserids)) {
-                      $surveyPage = Application::link("mentor/index_menteeview.php").$trailerURL;
-                  } else {
-                      $surveyPage = Application::link("mentor/index_mentorview.php").$trailerURL;
-                  }
-                  if ($lastMentorInstance) {
-                      $completedTrailerURL = $uidString."&menteeRecord=$menteeRecordId&instance=$lastMentorInstance";
-                      $completedPage = Application::link("mentor/index_complete.php").$completedTrailerURL;
-                  } else {
-                      $completedPage = "";
-                  }
-
-                  echo "<tr id='m$i'>\n";
-                  echo "<th scope='row'><a class='surveylink' href='$surveyPage'>$surveyText</a></th>\n";
-                  if ($percentComplete > 0) {
-                      echo "<td class='orange'>$percentComplete%<br><small>$mdy</small></td>\n";
-                  } else {
-                      echo "<td class='red incomplete'>NOT STARTED</td>\n";
-                  }
-                  if ($completedPage) {
-                      echo "<td><a href='$completedPage'>view last agreement</a></td>\n";
-                  } else {
-                      echo "<td>no prior agreements</td>\n";
-                  }
-                  echo "<td>$menteeName</td>\n";
-                  if (!empty($namesOfMentors)) {
-                      $mentorNameText = REDCapManagement::makeConjunction($namesOfMentors);
-                  } else {
-                      $mentorNameText = "None listed";
-                  }
-                  $changeMentorLink = "";
-                  if (MMAHelper::isMentee($menteeRecordId, $username)) {
-                      $changeMentorLink = "<br><a href='".Application::link("mentor/addMentor.php")."&menteeRecord=$menteeRecordId$uidString'>Add a Mentor</a>";
-                  }
-                  echo "<td>$mentorNameText$changeMentorLink</td>\n";
-                  echo "<script>let namesOfMentors_$menteeRecordId = ".json_encode($namesOfMentors)."; let useridsOfMentors_$menteeRecordId = ".json_encode($useridsOfMentors).";</script>\n";
-                  echo "<td><a href='javascript:void(0)' onclick='sendreminder(\"$menteeRecordId\", \"$newMentorInstance\", namesOfMentors_$menteeRecordId, useridsOfMentors_$menteeRecordId, \"$menteeName\");'>send reminder for mentor(s) to complete</a></td>\n";
-                  echo "</tr>\n";
-                  $i++;
-              }
-              ?>
-              </tbody>
-          </table>
-          <?php
-          if (empty($menteeRecordIds)) {
-              echo "<div style='text-align: center;'>No Mentees Active For You</div>";
-          }
-          ?>
-      </div>
-    </div>
-  </div>
-</section>
+<?php
+if ($hash && $hashRecordId || $isNewHash) {
+    $html = MMAHelper::makePublicApplicationForm($token, $server, $isNewHash ? NEW_HASH_DESIGNATION : $hash, $hashRecordId);
+} else {
+    $metadata = Download::metadata($token, $server);
+    $metadata = MMAHelper::filterMetadata($metadata, FALSE);
+    $html = MMAHelper::makeMainTable($token, $server, $username, $metadata, $menteeRecordIds, $uidString);
+}
+echo $html;
+?>
 
 <?php include dirname(__FILE__).'/_footer.php'; ?>
 <script type="text/javascript">
@@ -301,7 +181,7 @@ $('.viewagreement').hover(
       <style type="text/css">
   body {
 
-    font-family: europa, sans-serif;
+    font-family: europa, sans-serif !important;
     letter-spacing: -0.5px;
     font-size: 1.3em;
 }
@@ -393,7 +273,7 @@ a.surveylink {
         obj = "#"+obj+" .dfn";
         let offImgSrc = '<?= Application::link("mentor/img/images/dfb_off_03.png") ?>';
         let onImgSrc = '<?= Application::link("mentor/img/images/dfb_on_03.png") ?>';
-        if($(obj).attr('src') && ($(obj).attr('src') == offImgSrc)) {
+        if($(obj).attr('src') && ($(obj).attr('src') === offImgSrc)) {
             $(obj).attr('src', onImgSrc);
             $(objta).removeClass('tnote_d');
             $(objta).addClass('tnote_e');
@@ -417,7 +297,7 @@ a.surveylink {
             ynother = 1;
             objtaother = "#"+obj+" th:nth-of-type(1) img";
         }
-        if($(objta).attr('src') == '<?= Application::link("mentor/img/images/yn_off_03.jpg") ?>'){
+        if($(objta).attr('src') === '<?= Application::link("mentor/img/images/yn_off_03.jpg") ?>'){
             $(objta).addClass('isactive').attr('src','<?= Application::link("mentor/img/images/yn_on_07.png") ?>');// set 'yes' on
             $(objtaother).removeClass('isactive').attr('src','<?= Application::link("mentor/img/images/yn_off_05.jpg") ?>');// set 'no' off
         } else if($(objta).attr('src') == '<?= Application::link("mentor/img/images/yn_on_07.png") ?>'){
@@ -441,9 +321,7 @@ a.surveylink {
                 timeout: 800
             });
 
-    } 
-
-
+    }
 
     jQuery(document).ready(function(){
         $(".tnote").focusout(function(){
@@ -473,13 +351,13 @@ a.surveylink {
   function minutes_with_leading_zeros(dt) {
     return (dt.getMinutes() < 10 ? '0' : '') + dt.getMinutes();
   }
-  var currcomment = "0";
+  let currcomment = "0";
   showcomment = function(servicerequest_id) {
     $('.fauxcomment').css('display', 'none');
-    var offset = $("#" + servicerequest_id + " .tcomments").offset();
-    var offsetleft = offset.left + 50;
-    var offsettop = offset.top - 16;
-    var commentcontent = '<div style="position: relative;height: 250px;"><div class="closecomments"><span style="float:left;color: #000000;font-weight: 700;font-size: 12px;margin-left: 6px;">Comments for question/option ' + servicerequest_id + '</span><a style="float:right;" href="javascript:$(\'.fauxcomment\').css(\'display\',\'none\');"><img src="/images/x-circle.svg"></a></div><div id="lcomments" class="listofcomments" style="   position: absolute;bottom: 0;height: 220px;display: inline-block;overflow: scroll; ">';
+    const offset = $("#" + servicerequest_id + " .tcomments").offset();
+    const offsetleft = offset.left + 50;
+    const offsettop = offset.top - 16;
+    let commentcontent = '<div style="position: relative;height: 250px;"><div class="closecomments"><span style="float:left;color: #000000;font-weight: 700;font-size: 12px;margin-left: 6px;">Comments for question/option ' + servicerequest_id + '</span><a style="float:right;" href="javascript:$(\'.fauxcomment\').css(\'display\',\'none\');"><img src="/images/x-circle.svg"></a></div><div id="lcomments" class="listofcomments" style="   position: absolute;bottom: 0;height: 220px;display: inline-block;overflow: scroll; ">';
 
     //data here (commentcontent) is only used for demo purpposes. Use actual data either via ajax or add hidden div in data row to read from
     commentcontent += '<div class="acomment">This is a test for the discussion/notes comment section.<span class="timestamp">(Burks, B) 6/22/18 15:30</span></div>';
@@ -487,26 +365,40 @@ a.surveylink {
     commentcontent += '<div class="acomment">Official U.S. edition with full color illustrations throughout. New York Times Bestseller A Summer Reading Pick for President Barack Obama, Bill Gates, and Mark Zuckerberg From<span class="timestamp">(Patton, D) Today 03:17</span></div>';
     commentcontent += '<div class="acomment odd">Nashville pollen level for 3/18/2019: 9.4 (Medium-High)<span class="timestamp">(Moore, R) Today 05:42</span></div>';
     commentcontent += '</div></div><div class="insertcomment"><input id="addcomment" type="text" placeholder="add comment..."><span><a href="javascript:addcomment(\'' + servicerequest_id + '\')"><img src="/images/at-sign.svg" style="height: 18px;margin-left: 8px;"></a></span></div>';
-    $(".fauxcomment").css('top', offsettop + 'px').css('left', offsetleft + 'px').html('<!--img class="thefauxcomment ' + servicerequest_id + '" src="/images/comments.png"-->' + commentcontent);
-    $('.fauxcomment').css('display', 'inline-block');
+    $(".fauxcomment")
+        .css('top', offsettop + 'px')
+        .css('left', offsetleft + 'px')
+        .html('<!--img class="thefauxcomment ' + servicerequest_id + '" src="/images/comments.png"-->' + commentcontent)
+        .css('display', 'inline-block');
 
     currcomment = servicerequest_id;
     $(".acomment:odd").css("background-color", "#eceff5");
-    var element = document.getElementById("lcomments"); //scrolls to bottom
+    let element = document.getElementById("lcomments"); //scrolls to bottom
     element.scrollTop = element.scrollHeight;
   }
 
   addcomment = function(servicerequest_id) {
     $('#' + servicerequest_id + ' .tcomments .timestamp').remove();
-    var d = new Date();
-    var latestcomment = $('#addcomment').val() + '<span class="timestamp">(me) Today ' + d.getHours() + ':' + minutes_with_leading_zeros(d) + '</span>';
+    const d = new Date();
+    const commentText = $('#addcomment').val();
+    const latestcomment = commentText + '<span class="timestamp">(me) Today ' + d.getHours() + ':' + minutes_with_leading_zeros(d) + '</span>';
     $('<div class="acomment">' + latestcomment + '</div>').appendTo(".listofcomments");
-    $('#' + servicerequest_id + ' .tcomments a').html($('#addcomment').val());
-    $('#' + servicerequest_id + ' .tcomments a').after('<span class="timestamp" style="display: inline;margin-left: 6px;">(me) Today ' + d.getHours() + ':' + minutes_with_leading_zeros(d) + '</span>');
+    $('#' + servicerequest_id + ' .tcomments a')
+        .html(commentText)
+        .after('<span class="timestamp" style="display: inline;margin-left: 6px;">(me) Today ' + d.getHours() + ':' + minutes_with_leading_zeros(d) + '</span>');
     $('#addcomment').val('');
     $(".acomment:odd").css("background-color", "#eceff5");
-    var element = document.getElementById("lcomments"); //scrolls to bottom
+    let element = document.getElementById("lcomments"); //scrolls to bottom
     element.scrollTop = element.scrollHeight;
+  }
+
+  changePhase=function(ob) {
+      const phase = $(ob).val();
+      const parentRow = $(ob).parent().parent();
+      const link = parentRow.find('a.surveylink');
+      const origUrl = link.attr('href').replace(/&phase=\d+/, '');
+      const newUrl = origUrl + '&phase='+encodeURI(phase);
+      link.attr('href', newUrl);
   }
 </script>
 
@@ -601,8 +493,6 @@ $('.viewagreementstatus').hover(
     .listmentors   .red{color: #af3017}
     .listmentors   .orange{color: #de8a12;}
     .listmentors   .notoverdue{padding-top: 1.4em !important;}
-    .listmentors   .tnoter{    font-size: 16px;
-    line-height: 20px; font-family: proxima-nova}
     .listmentors     .incomplete{padding-top: 21px !important;}
 
 </style>

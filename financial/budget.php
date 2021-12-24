@@ -74,9 +74,6 @@ if (Application::isVanderbilt() && in_array("ldap", $metadataForms) && !$hasDepa
         $recordsByDept[$dept][] = $recordId;
     }
 }
-if (isset($_GET['test'])) {
-    echo "recordsByDept: ".REDCapManagement::json_encode_with_spaces($recordsByDept)."<br>";
-}
 
 $headers = [
     "numFaculty" => "Number of Faculty",

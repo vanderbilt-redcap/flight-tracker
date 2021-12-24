@@ -1,31 +1,22 @@
 <?php
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\NameMatcher;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
-use \Vanderbilt\CareerDevLibrary\LDAP;
-use \Vanderbilt\CareerDevLibrary\LdapLookup;
-use \Vanderbilt\CareerDevLibrary\MMAHelper;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/base.php";
-require_once dirname(__FILE__)."/../CareerDev.php";
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 require_once dirname(__FILE__).'/_header.php';
 
-
-if ($_REQUEST['uid'] && DEBUG) {
+if ($_REQUEST['uid'] && MMA_DEBUG) {
     $userid2 = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=".$userid2;
 } else {
-    $userid2 = Application::getUsername();
-    $uidString = "";
+    $userid2 = $hash ? $hash : Application::getUsername();
+    $uidString = $hash ? "&hash=".$hash : "";
 }
+$phase = isset($_GET['phase']) ? REDCapManagement::sanitize($_GET['phase']) : "";
 
 $dateToRemind = "now";
 
@@ -36,7 +27,12 @@ $names = Download::names($token, $server);
 $menteeRecordId = FALSE;
 if ($_REQUEST['menteeRecord']) {
     $menteeRecordId = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
-    list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
+    if (!$hash) {
+        list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
+    } else {
+        $myMentees = [];
+        $myMentors = [];
+    }
 } else {
     throw new \Exception("You must specify a mentee record!");
 }
@@ -58,7 +54,11 @@ if ($_REQUEST['instance']) {
     $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId);
     $currInstance = $maxInstance + 1;
 }
-$surveysAvailableToPrefill = MMAHelper::getMySurveys($userid2, $token, $server, $menteeRecordId, $currInstance);
+if (!$hash) {
+    $surveysAvailableToPrefill = MMAHelper::getMySurveys($userid2, $token, $server, $menteeRecordId, $currInstance);
+} else {
+    $surveysAvailableToPrefill = [];
+}
 $instanceRow = [];
 foreach ($redcapData as $row) {
     if (($row['record_id'] == $menteeRecordId)
@@ -192,6 +192,7 @@ $('.viewagreement').hover(
     <h4 style="margin: 0 auto; width: 100%; max-width: 800px;">Please independently fill out the checklist below. Suggested tables are open. Click on a header to expand the table. When complete, click on the button to alert your mentor.</h4>
 </div>
 <form id="tsurvey" name="tsurvey">
+      <input type="hidden" class="form-hidden-data" name="mentoring_phase" id="mentoring_phase" value="<?= $phase ?>">
       <input type="hidden" class="form-hidden-data" name="mentoring_start" id="mentoring_start" value="<?= date("Y-m-d H:i:s") ?>">
       <section class="bg-light">
       <div class="container">
@@ -251,7 +252,7 @@ foreach ($metadata as $row) {
                   $name = $prefix.$fieldName;
                   $id = $name."___".$key;
 
-                  ?><div class="form-check"><input class="form-check-input" type="radio" name="<?= $name ?>" id="<?= $id ?>" value="<?= $key; ?>" <?= ($value == $key) ? "checked" : "" ?>><label class="form-check-label" for="<?= $id ?>"><?php echo $label; ?></label></div><?php
+                  ?><div class="form-check"><input class="form-check-input" type="radio" onclick="doMMABranching();" name="<?= $name ?>" id="<?= $id ?>" value="<?= $key; ?>" <?= ($value == $key) ? "checked" : "" ?>><label class="form-check-label" for="<?= $id ?>"><?php echo $label; ?></label></div><?php
               }
             ?>
         </td>
@@ -272,7 +273,7 @@ foreach ($metadata as $row) {
                   }
 
                   ?>
-                  <div class="form-check"><input class="form-check-input" type="checkbox" name="<?= $name ?>" id="<?= $id ?>" <?= $isChecked ?> ><label class="form-check-label" for="<?= $id ?>"><?= $label; ?></label></div>
+                  <div class="form-check"><input class="form-check-input" onclick="doMMABranching();" type="checkbox" name="<?= $name ?>" id="<?= $id ?>" <?= $isChecked ?> ><label class="form-check-label" for="<?= $id ?>"><?= $label; ?></label></div>
                   <?php
               }
               ?>
@@ -281,12 +282,13 @@ foreach ($metadata as $row) {
       </tr>
   <?php
   } else if (($row['field_type'] == "notes") && (!in_array($fieldName, $notesFields))) {
+      $rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
       $prefix = "exampleTextareash";
       $name = $prefix.$fieldName;
       $id = $name;
       $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, "mentoring_agreement", $currInstance);
       ?>
-      <tr id="<?= $rowName ?>"><th scope="row"><?= trim($row['field_label']) ?></th>
+      <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>><th scope="row"><?= trim($row['field_label']) ?></th>
           <td colspan="2">
               <div class="form-check" style="height: 100px;">
                   <textarea class="form-check-input" name="<?= $name ?>" id="<?= $id ?>"><?= $value ?></textarea>
@@ -454,24 +456,6 @@ foreach ($metadata as $row) {
               text-decoration: underline;
             }
 
-            .red {
-              color: #af3017
-            }
-
-            .orange {
-              color: #de8a12;
-            }
-
-            .notoverdue {
-              padding-top: 1.4em !important;
-            }
-
-            .tnoter {
-              font-size: 16px;
-              line-height: 20px;
-              font-family: proxima-nova
-            }
-
             .row_red th,
             .row_red td {
               background-color: #ea0e0e30
@@ -500,7 +484,6 @@ foreach ($metadata as $row) {
               font-weight: 900;
               letter-spacing: 7px;
               font-size: 24px;
-              font-family: proxima-nova;
                 cursor: pointer;
             }
 
@@ -715,7 +698,7 @@ foreach ($metadata as $row) {
 <style type="text/css">
   body {
 
-    font-family: europa, sans-serif;
+    font-family: europa, sans-serif !important;
     letter-spacing: -0.5px;
     font-size: 1.3em;
 }
@@ -792,7 +775,7 @@ foreach ($metadata as $row) {
     dfn=function(obj){
         objta = "#"+obj+" td:nth-of-type(4) .tnote";
         obj = "#"+obj+" .dfn";
-        if($(obj).attr('src') == '<?= Application::link("mentor/img/images/dfb_off_03.png") ?>'){
+        if($(obj).attr('src') === '<?= Application::link("mentor/img/images/dfb_off_03.png") ?>'){
             $(obj).attr('src','<?= Application::link("mentor/img/images/dfb_on_03.png") ?>');
             $(objta).removeClass('tnote_d');
             $(objta).addClass('tnote_e');
@@ -816,16 +799,16 @@ foreach ($metadata as $row) {
             ynother = 1;
             objtaother = "#"+obj+" th:nth-of-type(1) img";
         }
-        if($(objta).attr('src') == '<?= Application::link("mentor/img/images/yn_off_03.jpg") ?>'){
+        if($(objta).attr('src') === '<?= Application::link("mentor/img/images/yn_off_03.jpg") ?>'){
             $(objta).addClass('isactive').attr('src','<?= Application::link("mentor/img/images/yn_on_07.png") ?>');// set 'yes' on
             $(objtaother).removeClass('isactive').attr('src','<?= Application::link("mentor/img/images/yn_off_05.jpg") ?>');// set 'no' off
-        } else if($(objta).attr('src') == '<?= Application::link("mentor/img/images/yn_on_07.png") ?>'){
+        } else if($(objta).attr('src') === '<?= Application::link("mentor/img/images/yn_on_07.png") ?>'){
             $(objta).removeClass('isactive').attr('src','<?= Application::link("mentor/img/images/yn_off_03.jpg") ?>');// set 'no' on
             $(objtaother).removeClass('isactive').attr('src','<?= Application::link("mentor/img/images/yn_off_05.jpg") ?>');// set 'yes' off
-        } else if($(objta).attr('src') == '<?= Application::link("mentor/img/images/yn_off_05.jpg") ?>'){
+        } else if($(objta).attr('src') === '<?= Application::link("mentor/img/images/yn_off_05.jpg") ?>'){
             $(objta).addClass('isactive').attr('src','<?= Application::link("mentor/img/images/yn_on_03.png") ?>');// set 'yes' on
             $(objtaother).removeClass('isactive').attr('src','<?= Application::link("mentor/img/images/yn_off_03.jpg") ?>');// set 'no' off
-        } else if($(objta).attr('src') == '<?= Application::link("mentor/img/images/yn_on_03.png") ?>'){
+        } else if($(objta).attr('src') === '<?= Application::link("mentor/img/images/yn_on_03.png") ?>'){
             $(objta).attr('src','<?= Application::link("mentor/img/images/yn_off_05.jpg") ?>"').removeClass('isactive');
             $(objtaother).removeClass('isactive');// set 'no' off
         } 
@@ -865,25 +848,28 @@ foreach ($metadata as $row) {
         $("select#instances").change(() => {
             let value = $('select#instances option:selected').val()
             <?php
+                $hashStr = $hash ? "&hash=$hash" : "";
                 if ($_REQUEST['uid']) {
-                    echo "let uidStr = '&uid='+encodeURI('".REDCapManagement::sanitize($_REQUEST['uid'])."')\n";
+                    echo "let uidStr = '&uid='+encodeURI('".REDCapManagement::sanitize($_REQUEST['uid']).$hashStr."')\n";
                 } else {
-                    echo "let uidStr = ''\n";
+                    echo "let uidStr = '".$hashStr."'\n";
                 }
             ?>
+            const baseUrl = '<?= Application::link("mentor/index_menteeview.php")."&menteeRecord=$menteeRecordId" ?>' + uidStr;
             if (value) {
-                let url = '<?= Application::link("mentor/index_view.php") ?>' + uidStr + "&instance=" + encodeURI(value)
-                window.location.href = url
+                window.location.href = baseUrl + "&instance=" + encodeURI(value);
             } else {
-                let url = '<?= Application::link("mentor/index_view.php") ?>' + uidStr
-                window.location.href = url
+                window.location.href = baseUrl;
             }
         });
-
+        doMMABranching();
     });
+
+    <?= MMAHelper::getBranchingJS() ?>
 
     function updateData(ob) {
         const mentoringStart = $('#mentoring_start').val();
+        const phase = $('#mentoring_phase').val();
         if ($(ob).attr("id").match(/^exampleChecksh/)) {
             let fullFieldName = $(ob).attr("id").replace(/^exampleChecksh/, "")
 
@@ -904,7 +890,8 @@ foreach ($metadata as $row) {
                 field_name: fullFieldName,
                 value: checkValue,
                 userid: '<?= $userid2 ?>',
-                start: mentoringStart
+                start: mentoringStart,
+                phase: phase
             }, function (html) {
                 console.log(html);
                 $(thisbox).delay(300).removeClass("simptip-position-left").removeAttr("data-tooltip");
@@ -923,7 +910,8 @@ foreach ($metadata as $row) {
                 field_name: fieldName,
                 value: value,
                 userid: '<?= $userid2 ?>',
-                start: mentoringStart
+                start: mentoringStart,
+                phase: phase
             }, function(html) {
                 console.log(html);
                 $(thisbox).delay(300).removeClass("simptip-position-left").removeAttr("data-tooltip");
@@ -940,7 +928,8 @@ foreach ($metadata as $row) {
                 field_name: fieldName,
                 value: value,
                 userid: '<?= $userid2 ?>',
-                start: mentoringStart
+                start: mentoringStart,
+                phase: phase
             }, function(html) {
                 console.log(html);
                 $(thisbox).attr("disabled", false);

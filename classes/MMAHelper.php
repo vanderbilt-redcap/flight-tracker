@@ -7,7 +7,339 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(__DIR__ . '/ClassLoader.php');
 require_once(APP_PATH_DOCROOT."/Classes/UserRights.php");
 
+define('NEW_HASH_DESIGNATION', 'NEW');
+
 class MMAHelper {
+    public static function createHash($token, $server) {
+        $newHash = bin2hex(random_bytes(self::getHashLength()));
+        $recordIds = Download::recordIds($token, $server);
+        $newRecordId = empty($recordIds) ? 1 : max($recordIds);
+        $uploadRow = [
+            "record_id" => $newRecordId,
+            "identifier_hash" => $newHash,
+            "identifiers_complete" => "2",
+        ];
+        Upload::oneRow($uploadRow, $token, $server);
+        return ["record" => $newRecordId, "hash" => $newHash];
+    }
+
+    public static function validateHash($proposedHash, $token, $server, $proposedRecordId = "") {
+        if (self::isValidHash($proposedHash)) {
+            $savedHashes = Download::oneField($token, $server, "identifier_hash");
+            if ($proposedRecordId) {
+                if (
+                    $proposedHash
+                    && isset($savedHashes[$proposedRecordId])
+                    && ($savedHashes[$proposedRecordId] == $proposedHash)
+                ) {
+                    return ["record" => $proposedRecordId, "hash" => $proposedHash];
+                }
+            } else {
+                foreach ($savedHashes as $recordId => $instanceHash) {
+                    if (
+                        $proposedHash
+                        && $instanceHash
+                        && ($instanceHash == $proposedHash)
+                    ) {
+                        return ["record" => $recordId, "hash" => $instanceHash];
+                    }
+                }
+            }
+        }
+        return ["record" => FALSE, "hash" => FALSE];
+    }
+
+    private static function getHashLength() {
+        return 32;
+    }
+
+    public static function isValidHash($str) {
+        return (strlen($str) == self::getHashLength() * 2);
+    }
+
+    public static function makePublicApplicationForm($token, $server, $hash, $recordId = FALSE) {
+        $html = "";
+
+        $formUrl = Application::link("mentor/createHash.php")."&hash=".NEW_HASH_DESIGNATION;
+        if ($hash == NEW_HASH_DESIGNATION) {
+            $formStyle = "";
+            $startStyle = "style='display: none; cursor: pointer;'";
+            $startLink = "";
+            $mentorLink = "";
+            $menteeLink = "";
+            $mentorName = "";
+            $menteeName = "";
+        } else if ($hash && $recordId) {
+            $recordData = Download::records($token, $server, [$recordId]);
+            $menteeName = REDCapManagement::findField($recordData, $recordId, "identifier_first_name")." ".REDCapManagement::findField($recordData, $recordId, "identifier_last_name");
+            $mentorName = REDCapManagement::findField($recordData, $recordId, "mentor_first_name")." ".REDCapManagement::findField($recordData, $recordId, "mentor_last_name");
+
+            $formStyle = "style='display: none;'";
+            $startStyle = "style='cursor: pointer;'";
+            $indexLink = Application::link("mentor/index.php")."&hash=$hash&menteeRecord=$recordId";
+            $menteeLink = $indexLink."&role=mentee";
+            $mentorLink = $indexLink."&role=mentor";
+            if (self::isMentee($recordId)) {
+                $startLink = Application::link("mentor/index_menteeview.php")."&hash=$hash&menteeRecord=$recordId";
+            } else {
+                $startLink = Application::link("mentor/index_mentorview.php")."&hash=$hash&menteeRecord=$recordId";
+            }
+        } else {
+            die("Improper access!");
+        }
+
+        $blueBoxText = implode("<br>&rarr; ", ["Enter Mentee Preferences", "Discussion with Mentor", "Sign Final Agreement"]);
+
+        $html .= "<section class='bg-light'><div class='container'><div class='row'><div class='col-lg-12'>
+<div class='blue-box'>
+    <h2 style='color: #222222;'>Typical Workflow Starting<br/>Early in Relationship</h2>
+    <h3>$blueBoxText</h3>
+</div>
+
+<style>
+td.nameEntryLeft { text-align: right !important; adding-top: 10px; margin: 0; }
+td.nameEntryLeft label { margin: 0; font-size: 0.9em; }
+td.nameEntryRight { text-align: left; padding-top: 0 !important; padding-left: 10px !important; p}
+</style>
+
+<form id='form' $formStyle>
+    <table style='margin: 0 auto;'>
+        <tr style='background-color: white;'>
+            <td class='nameEntryLeft'><label for='menteeFirstName'>Mentee First Name:</label></td>
+            <td class='nameEntryRight'><input type='text' id='menteeFirstName' /></td>
+        </tr>
+        <tr style='background-color: white;'>
+            <td class='nameEntryLeft'><label for='menteeLastName'>Mentee Last Name:</label></td>
+            <td class='nameEntryRight'><input type='text' id='menteeLastName' /></td>
+        </tr>
+        <tr style='background-color: white;'>
+            <td class='nameEntryLeft'><label for='menteeEmail'>Mentee Email:</label></td>
+            <td class='nameEntryRight'><input type='text' id='menteeEmail' /></td>
+        </tr>
+        <tr style='background-color: white;'><td colspan='2'>&nbsp;</td></tr>
+        <tr style='background-color: white;'>
+            <td class='nameEntryLeft'><label for='mentorFirstName'>Mentor First Name:</label></td>
+            <td class='nameEntryRight'><input type='text' id='mentorFirstName' /></td>
+        </tr>
+        <tr style='background-color: white;'>
+            <td class='nameEntryLeft'><label for='mentorLastName'>Mentor Last Name:</label></td>
+            <td class='nameEntryRight'><input type='text' id='mentorLastName' /></td>
+        </tr>
+        <tr style='background-color: white;'>
+            <td class='nameEntryLeft'><label for='mentorEmail'>Mentor Email:</label></td>
+            <td class='nameEntryRight'><input type='text' id='mentorEmail' /></td>
+        </tr>
+        <tr style='background-color: white;'><td colspan='2' style='text-align: center; padding-top: 10px;'><button onclick='signUpForMMA(); return false;'>Sign Up</button></td></tr>
+    </table>
+    <input type='hidden' id='hash' value='' />
+</form>
+
+<div id='start' class='blue-box' onclick='startNow();' $startStyle>
+    <h2>Start Now</h2>
+    <p class='centered'>Mentee: <span id='menteeName'>$menteeName</span> (<a href='$menteeLink' id='menteeLink'>link</a>)<br/>
+    Mentor: <span id='mentorName'>$mentorName</span> (<a href='$mentorLink' id='mentorLink'>link</a>)</p>
+    <input type='hidden' id='startLink' value='$startLink'/>
+</div>
+
+<script>
+function signUpForMMA() {
+    if ($('#hash').val() && $('#startLink').val()) {
+        $('#start').show();
+        $('#form').hide();
+        $.sweetModal({
+            content: 'You have already signed up!',
+            icon: $.sweetModal.ICON_ERROR
+        });
+    } else {
+        const vars = ['menteeFirstName', 'menteeLastName', 'menteeEmail', 'mentorFirstName', 'mentorLastName', 'mentorEmail'];
+        const emailVars = ['menteeEmail', 'mentorEmail'];
+        const post = { };
+        const url = '$formUrl';
+        const emailRegex =   /^(([^<>()[\]\.,;:\s@\"]+(\.[^<>()[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i;
+        for (let i=0; i < emailVars.length; i++) {
+            const variable = emailVars[i];
+            const email = $('#'+variable).val();
+            if ((email === '') || !email.match(emailRegex)) {
+                $.sweetModal({
+                    content: 'You must provide a valid email address!',
+                    icon: $.sweetModal.ICON_ERROR
+                });
+                return;
+            }
+        }
+        for (let i=0; i < vars.length; i++) {
+            const variable = vars[i];
+            const value = $('#'+variable).val();
+            if (value === '') {
+                $.sweetModal({
+                    content: 'You must provide all variables!',
+                    icon: $.sweetModal.ICON_ERROR
+                });
+                return;
+            }
+            post[variable] = value;
+        }
+        $.post(url, post, function(json) {
+            try {
+                const data = JSON.parse(json);
+                const recordId = data['record'];
+                const hash = data['hash'];
+                if (recordId && hash && !isNaN(recordId)) {
+                    const paramStr = '&hash='+hash+'&menteeRecord='+recordId;
+                    const menteeLink = '".Application::link("mentor/index_menteeview.php")."'+paramStr;
+                    const mentorLink = '".Application::link("mentor/index_mentorview.php")."'+paramStr;
+                    $('#menteeLink').attr('href', menteeLink);
+                    $('#mentorLink').attr('href', mentorLink);
+                    $('#menteeName').val(post['menteeFirstName']+' '+post['menteeLastName']);
+                    $('#mentorName').val(post['mentorFirstName']+' '+post['mentorLastName']);
+                    $('#startLink').val(menteeLink);
+                    $('#hash').val(hash);
+                    $('#start').show();
+                    $('#form').hide();
+                } else {
+                    $.sweetModal({
+                        content: 'Could not create new entry!',
+                        icon: $.sweetModal.ICON_ERROR
+                    });
+                }
+            } catch (e) {
+                $.sweetModal({
+                    content: 'Error: '+json,
+                    icon: $.sweetModal.ICON_ERROR
+                });
+            }
+        });
+    }
+}
+
+function startNow() {
+    const url = $('#startLink').val();
+    if (url) {
+        location.href = url;
+    } else {
+        $.sweetModal({
+            content: 'No link provided! Unsure what to do next.',
+            icon: $.sweetModal.ICON_ERROR
+        });
+    }
+}
+</script>
+";
+        return $html;
+    }
+
+    public static function makeMainTable($token, $server, $username, $metadata, $menteeRecordIds, $uidString = "") {
+        $html = "";
+
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+        list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
+        $names = Download::names($token, $server);
+        $userids = Download::userids($token, $server);
+        $allMentorUids = Download::primaryMentorUserids($token, $server);
+        $allMentors = Download::primaryMentors($token, $server);
+        $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge($metadataFields, ["record_id"])), $menteeRecordIds);
+
+        $blueBoxText = implode("<br>&rarr; ", ["Enter Mentee Preferences", "Discussion with Mentor", "Sign Final Agreement", "Revisit Agreement"]);
+
+        $html .= "<section class='bg-light'><div class='container'><div class='row'><div class='col-lg-12'>
+<div class='blue-box'>
+    <h2 style='color: #222222;'>Typical Workflow Starting<br/>Early in Relationship</h2>
+    <h3>$blueBoxText</h3>
+</div>
+<h2>$firstName, here are your mentee-mentor relationships</h2>
+<table id='quest1' class='table listmentors' style='margin-left: 0px;'>
+    <thead>
+    <tr>
+        <th style='text-align: center;' scope='col'>latest update</th>
+        <th style='text-align: center;' scope='col'>progress</th>
+        <th style=''text-align: center;' scope='col'>status</th>
+        <th scope='col'>mentee</th>
+        <th scope='col'>mentor(s)</th>
+        <th scope='col'>phase</th>
+        <th scope='col'>send notification</th>
+    </tr>
+    </thead>
+    <tbody>";
+
+        $i = 1;
+        foreach ($menteeRecordIds as $menteeRecordId) {
+            $menteeName = $names[$menteeRecordId];
+            $menteeUserids = self::getMenteeUserids($userids[$menteeRecordId]);
+            $namesOfMentors = $allMentors[$menteeRecordId];
+            $useridsOfMentors = $allMentorUids[$menteeRecordId];
+            $myRow = self::getLatestRow($menteeRecordId, [$username], $redcapData);
+            $mentorRow = self::getLatestRow($menteeRecordId, $allMentorUids[$menteeRecordId], $redcapData);
+            if (empty($myRow)) {
+                $instance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId) + 1;
+                $percentComplete = 0;
+                $mdy = date("m-d-Y");
+                $lastMentorInstance = FALSE;
+                $surveyText = "start";
+            } else {
+                $percentComplete = self::getPercentComplete($myRow, $metadata);
+                $mdy = REDCapManagement::YMD2MDY($myRow['mentoring_last_update']);
+                $instance = $myRow['redcap_repeat_instance'];
+                $lastMentorInstance = $mentorRow['redcap_repeat_instance'];
+                $surveyText = "edit";
+            }
+            $newMentorInstance = $instance + 1;
+            $trailerURL = $uidString."&menteeRecord=$menteeRecordId&instance=$instance";
+            if (in_array($username, $menteeUserids)) {
+                $surveyPage = Application::link("mentor/index_menteeview.php").$trailerURL;
+            } else {
+                $surveyPage = Application::link("mentor/index_mentorview.php").$trailerURL;
+            }
+            if ($lastMentorInstance) {
+                $completedTrailerURL = $uidString."&menteeRecord=$menteeRecordId&instance=$lastMentorInstance";
+                $completedPage = Application::link("mentor/index_complete.php").$completedTrailerURL;
+            } else {
+                $completedPage = "";
+            }
+            $phaseHTMLAry = [
+                "<input type='radio' id='phase1_$menteeRecordId' onclick='changePhase(this);' name='phases_$menteeRecordId' value='1'> <label for='phase1_$menteeRecordId'>0 - 6 months</label>",
+                "<input type='radio' id='phase2_$menteeRecordId' onclick='changePhase(this);' name='phases_$menteeRecordId' value='2'> <label for='phase2_$menteeRecordId'>7 - 12 months</label>",
+                "<input type='radio' id='phase3_$menteeRecordId' onclick='changePhase(this);' name='phases_$menteeRecordId' value='3'> <label for='phase3_$menteeRecordId'>12+ months</label>",
+            ];
+            $phaseText = implode("<br/>", $phaseHTMLAry);
+
+            $html .= "<tr id='m$i'>\n";
+            $html .= "<th scope='row'><a class='surveylink' href='$surveyPage'>$surveyText</a></th>\n";
+            if ($percentComplete > 0) {
+                $html .= "<td class='orange'>$percentComplete%<br><small>$mdy</small></td>\n";
+            } else {
+                $html .= "<td class='red incomplete'>NOT STARTED</td>\n";
+            }
+            if ($completedPage) {
+                $html .= "<td><a href='$completedPage'>view last agreement</a></td>\n";
+            } else {
+                $html .= "<td>no prior agreements</td>\n";
+            }
+            echo "<td>$menteeName</td>\n";
+            if (!empty($namesOfMentors)) {
+                $mentorNameText = REDCapManagement::makeConjunction($namesOfMentors);
+            } else {
+                $mentorNameText = "None listed";
+            }
+            $changeMentorLink = "";
+            if (self::isMentee($menteeRecordId, $username)) {
+                $changeMentorLink = "<br><a href='".Application::link("mentor/addMentor.php")."&menteeRecord=$menteeRecordId$uidString'>Add a Mentor</a>";
+            }
+            $html .= "<td>$mentorNameText$changeMentorLink</td>\n";
+            $html .= "<td>$phaseText</td>\n";
+            $html .= "<script>let namesOfMentors_$menteeRecordId = ".json_encode($namesOfMentors)."; let useridsOfMentors_$menteeRecordId = ".json_encode($useridsOfMentors).";</script>\n";
+            $html .= "<td><a href='javascript:void(0)' onclick='sendreminder(\"$menteeRecordId\", \"$newMentorInstance\", namesOfMentors_$menteeRecordId, useridsOfMentors_$menteeRecordId, \"$menteeName\");'>send reminder for mentor(s) to complete</a></td>\n";
+            $html .= "</tr>\n";
+            $i++;
+        }
+        $html .= "</tbody></table>";
+        if (empty($menteeRecordIds)) {
+            $html .= "<div style='text-align: center;'>No Mentees Active For You</div>";
+        }
+        $html .= "</div></div></div></section>";
+
+        return $html;
+    }
+
     public static function hasMentorAgreementRightsForPlugin($pid, $username) {
         $menteeRecord = FALSE;
         if (isset($_REQUEST['menteeRecord'])) {
@@ -40,14 +372,14 @@ class MMAHelper {
         if (in_array($username, $validUserids)) {
             return TRUE;
         }
-        if (DEBUG && isset($_GET['uid']) && in_array($_GET['uid'], $validUserids)) {
+        if (MMA_DEBUG && isset($_GET['uid']) && in_array($_GET['uid'], $validUserids)) {
             return TRUE;
         }
         return FALSE;
     }
 
     public static function getRecordsAssociatedWithUserid($username, $pidOrToken, $server = FALSE) {
-        if (!$username) {
+        if (!$username || self::isValidHash($username) || ($username == NEW_HASH_DESIGNATION)) {
             return [];
         }
 
@@ -98,6 +430,7 @@ class MMAHelper {
                     }
                 }
             }
+            $menteeRecordIds = array_unique($menteeRecordIds);
             if (isset($_GET['test'])) {
                 echo "Looking for $username and found ".json_encode($menteeRecordIds)."<br>";
             }
@@ -229,7 +562,7 @@ class MMAHelper {
         $emailSetting = EmailManager::makeEmailSetting($datetime, $to, $from, $subject, $message, TRUE);
         $settingName = "MMA $subject $datetime TO:$to FROM:$from";
         $mgr->saveSetting($settingName, $emailSetting);
-        if (DEBUG) {
+        if (MMA_DEBUG) {
             $subject = "DUPLICATE: ".$to.": ".$subject." on ".$datetime;
             \REDCap::email("scott.j.pearson@vumc.org", $from, $subject, $message);
         }
@@ -253,14 +586,27 @@ class MMAHelper {
         }
     }
 
-    public static function isMentee($recordId, $username) {
+    public static function isMentee($recordId, $username = "") {
         global $token, $server;
-        $userids = Download::userids($token, $server);
-        $recordUserids = self::getUserids($userids[$recordId]);
-        if (in_array(strtolower($username), $recordUserids)) {
-            return TRUE;
+        if ($username && !self::isValidHash($username)) {
+            $userids = Download::userids($token, $server);
+            $recordUserids = self::getUserids($userids[$recordId]);
+            if (in_array(strtolower($username), $recordUserids)) {
+                return TRUE;
+            } else {
+                return FALSE;
+            }
         } else {
-            return FALSE;
+            $role = REDCapManagement::sanitize($_GET['role']);
+            if (in_array($role, ["mentor", "mentee"])) {
+                return ($role == "mentee");
+            } else {
+                global $token, $server;
+                $fields = ["record_id", "mentoring_userid"];
+                $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+                $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $recordId);
+                return ($maxInstance >= 1);
+            }
         }
     }
 
@@ -334,7 +680,7 @@ class MMAHelper {
     }
 
     public static function filterMetadata($metadata, $skipFields = TRUE) {
-        $fieldsToSkip = ["mentoring_userid", "mentoring_last_update"];
+        $fieldsToSkip = ["mentoring_userid", "mentoring_last_update", "mentoring_phase"];
         $metadata = REDCapManagement::filterMetadataForForm($metadata, "mentoring_agreement");
         $newMetadata = [];
         foreach ($metadata as $row) {
@@ -402,24 +748,41 @@ class MMAHelper {
     }
 
     public static function getNameFromREDCap($username, $token = "", $server = "") {
-        if ($token && $server) {
-            $firstNames = Download::firstnames($token, $server);
-            $lastNames = Download::lastnames($token, $server);
-            $userids = Download::userids($token, $server);
-            foreach ($userids as $recordId => $userid) {
-                $recordUserids = self::getUserids($userid);
-                if (in_array(strtolower($username), $recordUserids)) {
-                    return [$firstNames[$recordId], $lastNames[$recordId]];
+        if (isset($_GET['test'])) {
+            echo "Username $username<br>";
+        }
+        if (self::isValidHash($username)) {
+            $hashToLookFor = $username;
+            if ($token && $server) {
+                $firstNames = Download::firstnames($token, $server);
+                $lastNames = Download::lastnames($token, $server);
+                $hashes = Download::oneField($token, $server, "identifier_hash");
+                foreach ($hashes as $recordId => $recordHash) {
+                    if ($recordHash == $hashToLookFor) {
+                        return [$firstNames[$recordId], $lastNames[$recordId]];
+                    }
                 }
             }
-        }
+        } else {
+            if ($token && $server) {
+                $firstNames = Download::firstnames($token, $server);
+                $lastNames = Download::lastnames($token, $server);
+                $userids = Download::userids($token, $server);
+                foreach ($userids as $recordId => $userid) {
+                    $recordUserids = self::getUserids($userid);
+                    if (in_array(strtolower($username), $recordUserids)) {
+                        return [$firstNames[$recordId], $lastNames[$recordId]];
+                    }
+                }
+            }
 
-        $sql = "select user_firstname, user_lastname from redcap_user_information WHERE username = '".db_real_escape_string($username)."'";
-        $q = db_query($sql);
-        if ($row = db_fetch_assoc($q)) {
-            $firstName = $row['user_firstname'];
-            $lastName = $row['user_lastname'];
-            return [$firstName, $lastName];
+            $sql = "select user_firstname, user_lastname from redcap_user_information WHERE username = '".db_real_escape_string($username)."'";
+            $q = db_query($sql);
+            if ($row = db_fetch_assoc($q)) {
+                $firstName = $row['user_firstname'];
+                $lastName = $row['user_lastname'];
+                return [$firstName, $lastName];
+            }
         }
         return ["", ""];
     }
@@ -641,7 +1004,7 @@ function characteristicsPopup(entity) {
 
         $html .= "
 <p><div>
-    <div style='float: right;margin-left: 39px;width: 147px;font-family: proxima-nova;margin-top: 16px;'>
+    <div style='float: right; margin-left: 39px; width: 147px; margin-top: 16px;'>
         <span class='chart' data-percent='$percComplete'>
             <span class='percent'></span>
         </span>
@@ -799,6 +1162,14 @@ function characteristicsPopup(entity) {
     }
 
     public static function getSectionsToShow($username, $secHeaders, $redcapData, $menteeRecordId, $currInstance) {
+        if (self::isValidHash($username)) {
+            $sectionsToShow = [];
+            foreach ($secHeaders as $secHeader) {
+                $sectionsToShow[] = REDCapManagement::makeHTMLId($secHeader);
+            }
+            return $sectionsToShow;
+        }
+
         $isFirstTime = self::isFirstEntryForUser($redcapData, $username, $menteeRecordId, $currInstance);
         $firstTimeSections = [
             "<h3>Mentee-Mentor 1:1 Meetings</h3>",
@@ -840,6 +1211,16 @@ function characteristicsPopup(entity) {
         }
         $verticalOffset = 50;
         $recordString = "&record=".$menteeRecordId;
+
+        if (self::isValidHash($username)) {
+            if (self::isMentee($menteeRecordId)) {
+                $role = "mentee";
+            } else {
+                $role = "mentor";
+            }
+        } else {
+            $role = $username;
+        }
 
         if ($isMenteePage) {
             $functionToCall = "scheduleMentorEmail";
@@ -887,11 +1268,12 @@ function characteristicsPopup(entity) {
 
     function toggleSectionTable(selector) {
         if ($(selector).is(':visible')) {
-            console.log('Hiding '+selector);
             $(selector).hide();
         } else {
-            console.log('Showing '+selector);
             $(selector).show();
+        }
+        if (($('.chart').length > 0) && (typeof getPercentComplete === 'function')) {
+            $('.chart').data('easyPieChart').update(getPercentComplete());
         }
     }
     
@@ -903,7 +1285,6 @@ function characteristicsPopup(entity) {
         $('tr').each(function() {
             let id = $(this).attr('id')
             if (id && id.match(/-tr$/)) {
-                console.log(id)
                 showcomment(id, false)
             }
         })
@@ -975,15 +1356,13 @@ function characteristicsPopup(entity) {
             //dataType : 'json', // data type
             data :  'record_id=$menteeRecordId&redcap_repeat_instance=$currentInstance&'+serialized,
             success : function(result) {
-                console.log(result);
                 $functionToCall(\"$menteeRecordId\", \"$menteeName\", \"$dateToRemind\", function(html) {
-                    console.log(html);
                     $('.sweet-modal-overlay').remove();
                     if (cb) {
                         cb();
                     } else {
                         $.sweetModal({
-                            content: 'We\'ve saved your agreement. You can update your responses or return to Flight Tracker\'s Mentoring Agreement. Thank you!',
+                            content: 'We\'ve saved your agreement and notified your mentor. You can update your responses or return to Flight Tracker\'s Mentoring Agreement. Thank you!',
                             icon: $.sweetModal.ICON_SUCCESS
                         });
                     }
@@ -1001,10 +1380,9 @@ function characteristicsPopup(entity) {
         if (commentText) {
             let d = new Date();
             let today = (d.getMonth() + 1)+'-'+d.getDate()+'-'+d.getFullYear();
-            let latestcomment = commentText + '<span class=\"timestamp\">($username) '+today+' ' + d.getHours() + ':' + minutes_with_leading_zeros(d) + '</span>';
+            let latestcomment = commentText + '<span class=\"timestamp\">($role) '+today+' ' + d.getHours() + ':' + minutes_with_leading_zeros(d) + '</span>';
             $('<div class=\"acomment\">' + latestcomment + '</div>').appendTo('.listofcomments');
             let priorText = $('#' + servicerequest_id + ' .tcomments a').html();
-            console.log(priorText);
             if (priorText.match(/add note/)) {
                 $('#' + servicerequest_id + ' .tcomments a').html(latestcomment);
             } else {
@@ -1024,7 +1402,6 @@ function characteristicsPopup(entity) {
             } else {
                 priorNotes[notesFieldName] = latestcomment;
             }
-            console.log('Uploading to '+notesFieldName+' in instance $menteeInstance');
             if ($menteeInstance > 0) {
                 $.post('$changeURL', {
                     userid: '$username',
@@ -1084,9 +1461,18 @@ function characteristicsPopup(entity) {
         $.post('$emailSendURL'+menteeRecord,
             { menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend },
             function(html) {
-            console.log(html);
             if (cb) {
                 cb(html);
+            } else if (html.match(/error/i)) {
+                $.sweetModal({
+                    content: html,
+                    icon: $.sweetModal.ICON_ERROR
+                });
+            } else {
+                $.sweetModal({
+                    content: html,
+                    icon: $.sweetModal.ICON_SUCCESS
+                });
             }
         });
     }
@@ -1097,6 +1483,21 @@ function characteristicsPopup(entity) {
     public static function makeEvaluationMessage($evalLink) {
         # REMINDER: No single quotes because of the way the JS is formed
         return "Thank you for filling out a mentee-mentor agreement. Because this is a pilot, we are interested in your feedback. Can you fill out the following six-question survey?<br/><a href=\"$evalLink\">$evalLink</a><br/><br/>Thanks!<br/>The Flight Tracker Team";
+    }
+
+    # handle branching logic manually for now
+    public static function getBranchingJS() {
+        $html = "
+    function doMMABranching() {
+        const checkPrefix = 'exampleChecksh';
+        const evalChecked = $('#'+checkPrefix+'mentoring_evaluation___99').is(':checked');
+        if (evalChecked) {
+            $('#mentoring_other_evaluation-tr').show();
+        } else {
+            $('#mentoring_other_evaluation-tr').hide();
+        }
+    }";
+        return $html;
     }
 
     public static function getSectionHeadersWithMenteeQuestions($metadata) {
@@ -1188,7 +1589,10 @@ function characteristicsPopup(entity) {
                         } else if ((value === 1) || (value === '1')) {
                             $(fieldSel).attr('checked', true);
                         } else {
-                            $.sweetModal('Invalid check value '+value);
+                            $.sweetModal({
+                                content: 'Invalid check value '+value,
+                                icon: $.sweetModal.ICON_ERROR
+                            });
                         }
                         updateData(fieldSel);
                     } else if (value !== '') {
@@ -1271,16 +1675,22 @@ function characteristicsPopup(entity) {
                         action: function() {
                             let note = $('#tnote').html();
                             if (note && mentorUserids) {
-                                scheduleEmail('mentor', recordId, 'Mentee-Mentor Agreement with '+menteeName, note, 'now');
+                                scheduleEmail('all', recordId, 'Mentee-Mentor Agreement with '+menteeName, note, 'now');
                             } else if (!note) {
-                               $.sweetModal('Error! No note specified! No email sent!');
+                                $.sweetModal({
+                                    content: 'Error! No note specified! No email sent!',
+                                    icon: $.sweetModal.ICON_ERROR
+                                });
                             }
                         }
                     }
                 }
             });
         } else {
-            $.sweetModal('No userid available for '+listOfMentorNames+'.');
+            $.sweetModal({
+                content: 'No userid available for '+listOfMentorNames+'.',
+                icon: $.sweetModal.ICON_ERROR
+            });
         }
     }
     </script>";

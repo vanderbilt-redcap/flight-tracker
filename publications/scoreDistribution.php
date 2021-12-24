@@ -102,9 +102,6 @@ foreach ($dist as $field => $values) {
 
     echo "<h2>$label</h2>";
     echo "<h4>Median: $median (n = $n)</h4>";
-    if (isset($_GET['test'])) {
-        echo REDCapManagement::json_encode_with_spaces($dataPoints)."<br><br>";
-    }
     $barChart = new BarChart($cols, $colLabels, $field);
     if ($i == 0) {
         $jsLocs = $barChart->getJSLocations();
