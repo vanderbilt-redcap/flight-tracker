@@ -1515,6 +1515,32 @@ class Grants {
 		return $ary;
 	}
 
+	private static function findLastEndDate($type, $normativeRow) {
+	    $validTypes = [];
+        if (($type == "3") || ($type == "4") || ($type == "Individual K") || ($type == "External K") || ($type == "K Equivalent")) {
+            $validTypes = [3, 4];
+        } else if (($type == "2") || ($type == "K12/KL2") || ($type == "K12KL2")) {
+            $validTypes = [2];
+        } else if (($type == "1") || ($type == "Internal K")) {
+            $validTypes = [1];
+        }
+        $lastEndDate = "";
+        for ($i = 1; $i < self::$MAX_GRANTS; $i++) {
+            if (
+                $normativeRow['summary_award_type_'.$i]
+                && $normativeRow['summary_award_end_date_'.$i]
+                && in_array($normativeRow['summary_award_type_'.$i], $validTypes)
+                && (
+                    !$lastEndDate
+                    || REDCapManagement::dateCompare($lastEndDate, "<", $normativeRow['summary_award_end_date_'.$i])
+                )
+            ) {
+                $lastEndDate = $normativeRow['summary_award_end_date_'.$i];
+            }
+        }
+        return $lastEndDate;
+    }
+
 	private static function findYearSpan($type) {
 		if (($type == "3") || ($type == "4") || ($type == "Individual K") || ($type == "External K") || ($type == "K Equivalent")) {
 			return Application::getIndividualKLength();
@@ -1558,6 +1584,7 @@ class Grants {
 			}
 		}
 
+		$today = date('Y-m-d');
 		$value = "";
 		if (isset($row['summary_'.$typeOfK.'_k']) && $row['summary_'.$typeOfK.'_k'] && isset($row['summary_first_r01_or_equiv']) && $row['summary_first_r01_or_equiv']) {
 			if (preg_match('/last_/', $typeOfK)) {
@@ -1588,12 +1615,13 @@ class Grants {
 			} else {
 				$prefix = "first";
 			}
-			$diffToToday = self::datediff($row['summary_'.$typeOfK.'_k'], date('Y-m-d'), "y");
+			$diffToToday = self::datediff($row['summary_'.$typeOfK.'_k'], $today, "y");
 			if (self::getShowDebug()) { Application::log($typeOfK.": ".$diffToToday); }
 			if (isset($row["summary_".$prefix."_external_k"]) && isset($row["summary_".$prefix."_any_k"])
 			    && ($row["summary_".$prefix."_external_k"] == $row["summary_".$prefix."_any_k"])) {
 				$intendedYearSpan = self::findYearSpan("External K");
-				if ($diffToToday <= $intendedYearSpan) {
+				$endDate = self::findLastEndDate("External K", $row);
+				if (($diffToToday <= $intendedYearSpan) || REDCapManagement::dateCompare($endDate, "<=", $today)) {
 					$value = 3;
 				} else {
 					$value = 4;
@@ -1601,7 +1629,8 @@ class Grants {
 			} else {
 				$kType = self::getLastKType($row);
 				$intendedYearSpan = self::findYearSpan($kType);
-				if ($diffToToday <= $intendedYearSpan) {
+                $endDate = self::findLastEndDate($kType, $row);
+                if (($diffToToday <= $intendedYearSpan) || REDCapManagement::dateCompare($endDate, "<=", $today)) {
 					$value = 3;
 				} else {
 					$value = 4;

@@ -1054,10 +1054,10 @@ return $result;
 		}
 	}
 
-    private function getTimestamps($rows, $func) {
+    private function getTimestamps($rows, $lastOrFirst, $func) {
         $timestamps = [];
 	    if (method_exists($this, $func)) {
-            $dates = $this->$func($rows, FALSE);
+            $dates = $this->$func($rows, $lastOrFirst, FALSE);
             foreach ($dates as $date) {
                 $ts = strtotime($date);
                 if ($ts) {
@@ -1068,7 +1068,7 @@ return $result;
         return $timestamps;
     }
 
-    public function getPubDates($rows, $withLink = FALSE) {
+    public function getPubDates($rows, $lastOrFirst, $withLink = FALSE) {
 	    $pubs = new Publications($this->token, $this->server, $this->metadata);
 	    $pubs->setRows($rows);
 	    $dates = [];
@@ -1087,17 +1087,23 @@ return $result;
 	    return $dates;
     }
 
-    public function getGrantDates($rows, $withLink = FALSE) {
+    public function getGrantDates($rows, $lastOrFirst, $withLink = FALSE) {
         $grants = new Grants($this->token, $this->server, $this->metadata);
         $grants->setRows($rows);
         $grants->compileGrants("Conversion");
         $dates = [];
-        $event_id = Application::getSetting("event_id", $this->pid);
         foreach ([$grants->getGrants("all"), $grants->getGrants("submissions")] as $grantList) {
             foreach ($grantList as $grant) {
                 $startDate = $grant->getVariable("start");
                 $endDate = $grant->getVariable("end");
-                foreach ([$endDate, $startDate] as $date) {
+                if ($lastOrFirst == "last") {
+                    $datesByPriority = [$endDate, $startDate];
+                } else if ($lastOrFirst == "first") {
+                    $datesByPriority = [$startDate, $endDate];
+                } else {
+                    throw new \Exception("Invalid category $lastOrFirst");
+                }
+                foreach ($datesByPriority as $date) {
                     if ($date) {
                         if ($withLink) {
                             $link = $grant->getVariable("link");
@@ -1131,9 +1137,9 @@ return $result;
 
     private function calculateActivity($rows, $lastOrFirst, $entity) {
 	    if ($entity == "Grants") {
-            $timestamps = $this->getTimestamps($rows, "getGrantDates");
+            $timestamps = $this->getTimestamps($rows, $lastOrFirst, "getGrantDates");
         } else if ($entity == "Publications") {
-            $timestamps = $this->getTimestamps($rows, "getPubDates");
+            $timestamps = $this->getTimestamps($rows, $lastOrFirst, "getPubDates");
         } else {
 	        $timestamps = [];
         }
@@ -1365,6 +1371,34 @@ return $result;
             if ($res->getValue()) {
                 return $res;
             }
+        }
+
+        $institutions = Application::getInstitutions($this->pid);
+        $earliestPositionChangeDate = "";
+        $earliestPositionChangeEntryDate = "";
+        foreach ($rows as $row) {
+            if ($row['redcap_repeat_instrument'] == "position_change") {
+                $rowInstitution = trim($row['promotion_location']);
+                if ($rowInstitution && $row['promotion_in_effect']) {
+                    $found = FALSE;
+                    foreach ($institutions as $inst) {
+                        if (strtolower($rowInstitution) == strtolower($inst)) {
+                            $found = TRUE;
+                            break;
+                        }
+                    }
+                    if (!$found) {
+                        if (!$earliestPositionChangeDate || REDCapManagement::dateCompare($row['promotion_in_effect'], "<", $earliestPositionChangeDate)) {
+                            $earliestPositionChangeDate = $row['promotion_in_effect'];
+                            $earliestPositionChangeEntryDate = $row['promotion_date'];
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($earliestPositionChangeDate) {
+            return new Result($earliestPositionChangeDate, "manual", "", $earliestPositionChangeEntryDate, $this->pid);
         }
 
 		return new Result($normativeRow['identifier_left_date'], $normativeRow['identifier_left_date_source'], $normativeRow['identifier_left_date_sourcetype'], "", $this->pid);

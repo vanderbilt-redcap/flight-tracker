@@ -2,11 +2,10 @@
 
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Application;
 
-require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
+require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
 ?>
 <style>
@@ -15,7 +14,7 @@ a.button { color: black; text-decoration: none; padding: 0px 4px 0px 4px; border
 <?php
 
 $metadata = Download::metadata($token, $server);
-$fields = CareerDev::$summaryFields;
+$fields = Application::$summaryFields;
 foreach ($metadata as $row) {
 	if (preg_match("/mentor/", $row['field_name'])) {
 		$fields[] = $row['field_name'];
@@ -34,7 +33,7 @@ tr.even td,th { background-color: #eeeeee; }
 
 <?php
 
-function addToMentors($value, $mentors) {
+function addToMentors($value, $listOfMentors) {
 	# split into individual names
 	$smallValues = preg_split("/\s*[\s;,\.]\s*/", $value);
 	$values = array();
@@ -50,7 +49,7 @@ function addToMentors($value, $mentors) {
 	foreach ($values as $value) {
 		$names = preg_split("/\s*[,\s]\s*/", $value);
 		$cnt = 0;
-		foreach ($mentors as $mentor) {
+		foreach ($listOfMentors as $mentor) {
 			foreach ($names as $name) {
 				if (preg_match("/".$name."/i", $mentor)) {
 					$cnt++;
@@ -60,26 +59,29 @@ function addToMentors($value, $mentors) {
 		if ($cnt < 2) {
 			# no match
 			if ($value == "Ikizler T") {
-				if (!in_array("Ikizler Alp", $mentors)) {
-					$mentors[] = "Ikizler Alp";
+				if (!in_array("Ikizler Alp", $listOfMentors)) {
+                    $listOfMentors[] = "Ikizler Alp";
 				}
 			} else {
-				$mentors[] = $value;
+                $listOfMentors[] = $value;
 			}
 		}
 	}
-	return $mentors;
+	return $listOfMentors;
 }
 
-echo "<h1>Current Scholars and Their Mentors</h1>";
+echo "<h1>Current Newman Society Members and Their Mentors</h1>";
 echo "<table style='display: none; margin-left: auto; margin-right: auto;'><tr class='even'><th>Record</th><th>Scholar</th><th>Mentor(s)</th><th>Qualifying Award</th><th>Converted On</th></tr>";
 $cnt = 1;
 $revAwardTypes = \Vanderbilt\FlightTrackerExternalModule\getReverseAwardTypes();
-$mentors = array();
+$menteesByMentor = array();
 $numMentors = array();
 $mentorRows = array();
 $skip = array("vfrs_mentor2", "vfrs_mentor3", "vfrs_mentor4", "vfrs_mentor5");
 foreach ($redcapData as $row) {
+    if (!$row['identifier_last_name'] || !$row['identifier_first_name']) {
+        continue;
+    }
 	$i = \Vanderbilt\FlightTrackerExternalModule\findEligibleAward($row);
 	if ($cnt % 2 == 1) {
 		$rowClass = "odd";
@@ -87,7 +89,7 @@ foreach ($redcapData as $row) {
 		$rowClass = "even";
 	}
 
-	$myMentors = array();
+	$myMentors = [];
 
 	foreach ($row as $field => $value) {
 		if (preg_match("/mentor/", $field) && !preg_match("/vunet/", $field) && ($value != '') && !in_array($field, $skip)) {
@@ -103,32 +105,32 @@ foreach ($redcapData as $row) {
 		echo "<td class='small'>".$row['summary_first_r01']."</td>";
 		echo "</tr>";
 		$cnt++;
-		foreach ($myMentors as $mentor1) {
-			$names1 = preg_split("/\s+/", $mentor1);
+		foreach ($myMentors as $myMentor) {
+			$myNames = preg_split("/\s+/", $myMentor);
 			$found = false;
-			foreach ($mentors as $key => $values) {
+			foreach ($menteesByMentor as $currMentor => $menteesByRecordId) {
 				$matches = 0;
-				foreach ($names1 as $name1) {
-					if (preg_match("/".$name1."/i", $key)) {
+				foreach ($myNames as $myNamePart) {
+					if (preg_match("/$myNamePart/i", $currMentor)) {
 						$matches++;
 					}
 				}
 				if ($matches >= 2) {
 					$found = true;
-					$name = $row['identifier_first_name']." ".$row['identifier_last_name'];
-					if (!in_array($name, $values)) {
-						$values[$row['record_id']] = $name;
-						$mentorRows[$key][] = $row;
-						$numMentors[$key]++;
-						$mentors[$key] = $values;
-					}
-					break;
+                    $name = $row['identifier_first_name']." ".$row['identifier_last_name'];
+                    if (!in_array($name, array_values($menteesByRecordId))) {
+                        $menteesByRecordId[$row['record_id']] = $name;
+                        $mentorRows[$currMentor][] = $row;
+                        $numMentors[$currMentor]++;
+                        $menteesByMentor[$currMentor] = $menteesByRecordId;
+                    }
+                    break;
 				}
 			}
 			if (!$found) {
-				$mentors[$mentor1] = array($row['record_id'] => $row['identifier_first_name']." ".$row['identifier_last_name']);
-				$numMentors[$mentor1] = 1;
-				$mentorRows[$mentor1] = array($row);
+                $menteesByMentor[$myMentor] = [$row['record_id'] => $row['identifier_first_name']." ".$row['identifier_last_name']];
+				$numMentors[$myMentor] = 1;
+				$mentorRows[$myMentor] = [$row];
 			}
 		}
 	}
@@ -171,10 +173,10 @@ function getConversionRate($rows) {
 			);
 }
 
-function reformatMentees($mentees, $convRateReturned) {
+function reformatMentees($menteesByRecordId, $convRateReturned) {
 	global $pid;
-	$menteesOut = array();
-	foreach ($mentees as $recordId => $mentee) {
+	$menteesOut = [];
+	foreach ($menteesByRecordId as $recordId => $mentee) {
 		$url = Links::makeRecordHomeLink($pid, $recordId, $mentee);
 		if (in_array($mentee, $convRateReturned['converted'])) {
 			$menteesOut[] = $url." (R)";
@@ -206,7 +208,7 @@ foreach ($numMentors as $mentor => $num) {
 	}
 
 	$a = getConversionRate($mentorRows[$mentor]);
-	$mentees = reformatMentees($mentors[$mentor], $a);
+	$mentees = reformatMentees($menteesByMentor[$mentor], $a);
 
 	$conversionRate[$mentor] = $a['rate'];
 	$conversionCalc[$mentor] = $a['calc']; 
@@ -239,7 +241,7 @@ foreach ($conversionRate as $mentor => $convRate) {
 	}
 	$num = $numMentors[$mentor];
 	$a = getConversionRate($mentorRows[$mentor]);
-	$mentees = reformatMentees($mentors[$mentor], $a);
+	$mentees = reformatMentees($menteesByMentor[$mentor], $a);
 
 	echo "<tr class='$rowClass'><td>$mentor</td><td>$num</td><td>".implode("<br>", $mentees)."<td>$convRate<br>$convCalc</td></tr>";
 	$cnt++;

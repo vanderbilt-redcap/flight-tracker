@@ -46,7 +46,7 @@ echo "<h1>Trainees Becoming Mentors</h1>";
 if ($cohortStr) {
     echo "<h3>$cohortStr</h3>";
 }
-echo "<p class='centered'>Names in <span class='green'>Green</span> are primary mentors; other names are secondary mentors.</p>";
+echo "<p class='centered'>Names in <span class='green'>Green</span> have this scholar as their primary mentor; other names have this scholar as a secondary mentor.</p>";
 $cohorts = new Cohorts($token, $server, $module);
 $link = Application::link("this");
 echo "<p class='centered'>Restrict Scholars (but not Mentees) to Cohort:<br>".$cohorts->makeCohortSelect($_GET['cohort'], "location.href = \"$link\"+\"&cohort=\"+encodeURIComponent($(this).val());")."</p>";

@@ -450,85 +450,6 @@ function getAlphabetizedNames($token, $server) {
 	return $orderedNames;
 }
 
-# $data is JSON or array structure from JSON in REDCap format
-# returns a set of REDCap data sorted by last name
-# if a record does not have a name, it is appended at the end
-function alphabetizeREDCapData($data) {
-	if (!is_array($data)) {
-		$data = json_decode($data, true);
-	}
-	if ($data) {
-		$names = array();
-		$excluded = array();
-		if (!isAssoc($data)) {
-			foreach ($data as $row) {
-				if ($row['identifier_last_name'] && $row['identifier_first_name']) {
-					$names[$row['record_id']] = $row['identifier_last_name'].", ".$row['identifier_first_name'];
-				}
-			}
-			foreach ($data as $row) {
-				if (!in_array($row['record_id'], $excluded) && !isset($names[$row['record_id']])) {
-					$excluded[] = $row['record_id'];
-				}
-			}
-		} else {
-			foreach ($data as $recordId => $rows) {
-				foreach ($rows as $row) {
-					if ($row['identifier_last_name'] && $row['identifier_first_name']) {
-						$names[$row['record_id']] = $row['identifier_last_name'].", ".$row['identifier_first_name'];
-					}
-				}
-			}
-			foreach ($data as $recordId => $rows) {
-				foreach ($rows as $row) {
-					if (!in_array($row['record_id'], $excluded) && !isset($names[$row['record_id']])) {
-						$excluded[] = $row['record_id'];
-					}
-				}
-			}
-		}
-		asort($names);
-	
-		$returnData = array();
-		foreach ($names as $recordId => $name) {
-			if (!isAssoc($data)) {
-				foreach ($data as $row) {
-					if ($recordId == $row['record_id']) {
-						$returnData[] = $row;
-					}
-				}
-			} else {
-				foreach ($data as $recordIdData => $rows) {
-					if ($recordId == $recordIdData) {
-						$returnData[$recordId] = $rows;
-					}
-				}
-			}
-		}
-		foreach ($excluded as $recordId) {
-			if (!isAssoc($data)) {
-				foreach ($data as $row) {
-					if ($recordId == $row['record_id']) {
-						$returnData[] = $row;
-					}
-				}
-			} else {
-				foreach ($data as $recordIdData => $rows) {
-					if ($recordId == $recordIdData) {
-						$returnData[$recordId] = $rows;
-					}
-				}
-			}
-		}
-		return $returnData;
-	}
-	return $data;
-}
-
-function getPubTimestamp($citation, $recordId) {
-	Publications::getPubTimestamp($citation, $recordId);
-}
-
 function getNamesForRow($row) {
 	$firstNamesPre = preg_split("/[\s\-]/", $row['identifier_first_name']);
 	$firstNames = array();
@@ -1020,6 +941,81 @@ function findEligibleAward($row) {
         echo $row['record_id']." returning FALSE<br>";
     }
 	return false;
+}
+
+# $data is JSON or array structure from JSON in REDCap format
+# returns a set of REDCap data sorted by last name
+# if a record does not have a name, it is appended at the end
+function alphabetizeREDCapData($data) {
+    if (!is_array($data)) {
+        $data = json_decode($data, true);
+    }
+    if ($data) {
+        $names = array();
+        $excluded = array();
+        if (!isAssoc($data)) {
+            foreach ($data as $row) {
+                if ($row['identifier_last_name'] && $row['identifier_first_name']) {
+                    $names[$row['record_id']] = $row['identifier_last_name'].", ".$row['identifier_first_name'];
+                }
+            }
+            foreach ($data as $row) {
+                if (!in_array($row['record_id'], $excluded) && !isset($names[$row['record_id']])) {
+                    $excluded[] = $row['record_id'];
+                }
+            }
+        } else {
+            foreach ($data as $recordId => $rows) {
+                foreach ($rows as $row) {
+                    if ($row['identifier_last_name'] && $row['identifier_first_name']) {
+                        $names[$row['record_id']] = $row['identifier_last_name'].", ".$row['identifier_first_name'];
+                    }
+                }
+            }
+            foreach ($data as $recordId => $rows) {
+                foreach ($rows as $row) {
+                    if (!in_array($row['record_id'], $excluded) && !isset($names[$row['record_id']])) {
+                        $excluded[] = $row['record_id'];
+                    }
+                }
+            }
+        }
+        asort($names);
+
+        $returnData = array();
+        foreach ($names as $recordId => $name) {
+            if (!isAssoc($data)) {
+                foreach ($data as $row) {
+                    if ($recordId == $row['record_id']) {
+                        $returnData[] = $row;
+                    }
+                }
+            } else {
+                foreach ($data as $recordIdData => $rows) {
+                    if ($recordId == $recordIdData) {
+                        $returnData[$recordId] = $rows;
+                    }
+                }
+            }
+        }
+        foreach ($excluded as $recordId) {
+            if (!isAssoc($data)) {
+                foreach ($data as $row) {
+                    if ($recordId == $row['record_id']) {
+                        $returnData[] = $row;
+                    }
+                }
+            } else {
+                foreach ($data as $recordIdData => $rows) {
+                    if ($recordId == $recordIdData) {
+                        $returnData[$recordId] = $rows;
+                    }
+                }
+            }
+        }
+        return $returnData;
+    }
+    return $data;
 }
 
 function filterForCoeusFields($fields) {
