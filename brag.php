@@ -15,6 +15,11 @@ if (!isset($_GET['showHeaders'])) {
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
+# https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+header('Access-Control-Allow-Origin: *');
+header("Access-Control-Allow-Methods: GET");
+header("Access-Control-Allow-Headers: X-PINGOTHER, Content-Type, Access-Control-Allow-Headers, X-Requested-With");
+
 $metadata = Download::metadata($token, $server);
 if ($_GET['cohort']) {
     $cohort = REDCapManagement::sanitize($_GET['cohort']);

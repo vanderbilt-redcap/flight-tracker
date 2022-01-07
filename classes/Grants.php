@@ -1417,6 +1417,15 @@ class Grants {
 		$ary['summary_last_any_k'] = "";
 		$ary['summary_first_r01'] = "";
 		$ary['summary_first_r01_or_equiv'] = "";
+        $ary['summary_first_any_k_source'] = "";
+        $ary['summary_last_any_k_source'] = "";
+        $ary['summary_first_r01_source'] = "";
+        $ary['summary_first_r01_or_equiv_source'] = "";
+        $ary['summary_first_any_k_sourcetype'] = "";
+        $ary['summary_last_any_k_sourcetype'] = "";
+        $ary['summary_first_r01_sourcetype'] = "";
+        $ary['summary_first_r01_or_equiv_sourcetype'] = "";
+        $ary['summary_first_r01_or_equiv_type'] = "";
 
 		$overrideFirstR01 = "";
 		$overrideFirstR01OrEquiv = "";
@@ -1505,7 +1514,8 @@ class Grants {
 		$i = 1;
 		$awardTypeConversion = Grant::getAwardTypes();
 		foreach ($grants as $grant) {
-			$ary['summary_award_type_'.$i] = $awardTypeConversion[$grant->getVariable("type")];
+            $ary['summary_award_type_'.$i] = $awardTypeConversion[$grant->getVariable("type")];
+            $ary['summary_award_end_date_'.$i] = $grant->getVariable("end");
 			$i++;
 		}
 		$ary['summary_ever_external_k_to_r01_equiv'] = self::converted($ary, "first_external");
@@ -1517,15 +1527,15 @@ class Grants {
 
 	private static function findLastEndDate($type, $normativeRow) {
 	    $validTypes = [];
-        if (($type == "3") || ($type == "4") || ($type == "Individual K") || ($type == "External K") || ($type == "K Equivalent")) {
+        if (in_array($type, ["3", "4", "Individual K", "External K", "K Equivalent"])) {
             $validTypes = [3, 4];
-        } else if (($type == "2") || ($type == "K12/KL2") || ($type == "K12KL2")) {
+        } else if (in_array($type, ["2", "K12/KL2", "K12KL2"])) {
             $validTypes = [2];
-        } else if (($type == "1") || ($type == "Internal K")) {
+        } else if (in_array($type, ["1", "Internal K"])) {
             $validTypes = [1];
         }
         $lastEndDate = "";
-        for ($i = 1; $i < self::$MAX_GRANTS; $i++) {
+        for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
             if (
                 $normativeRow['summary_award_type_'.$i]
                 && $normativeRow['summary_award_end_date_'.$i]
@@ -1621,7 +1631,13 @@ class Grants {
 			    && ($row["summary_".$prefix."_external_k"] == $row["summary_".$prefix."_any_k"])) {
 				$intendedYearSpan = self::findYearSpan("External K");
 				$endDate = self::findLastEndDate("External K", $row);
-				if (($diffToToday <= $intendedYearSpan) || REDCapManagement::dateCompare($endDate, "<=", $today)) {
+				if (
+				    ($diffToToday <= $intendedYearSpan)
+                    || (
+                        $endDate
+                        && REDCapManagement::dateCompare($endDate, ">=", $today)
+                    )
+                ) {
 					$value = 3;
 				} else {
 					$value = 4;
@@ -1630,7 +1646,13 @@ class Grants {
 				$kType = self::getLastKType($row);
 				$intendedYearSpan = self::findYearSpan($kType);
                 $endDate = self::findLastEndDate($kType, $row);
-                if (($diffToToday <= $intendedYearSpan) || REDCapManagement::dateCompare($endDate, "<=", $today)) {
+                if (
+                    ($diffToToday <= $intendedYearSpan)
+                    || (
+                        $endDate
+                        && REDCapManagement::dateCompare($endDate, ">=", $today)
+                    )
+                ) {
 					$value = 3;
 				} else {
 					$value = 4;

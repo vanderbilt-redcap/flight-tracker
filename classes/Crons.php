@@ -28,7 +28,7 @@ class CronManager {
 	# file is relative to career_dev's root
 	# dayOfWeek is in string format - "Monday", "Tuesday", etc. or a date in form Y-M-D
     # records here, if specified, overrides the records specified in function run
-	public function addCron($file, $method, $dayOfWeek, $records = [], $numRecordsAtATime = FALSE) {
+	public function addCron($file, $method, $dayOfWeek, $records = [], $numRecordsAtATime = FALSE, $firstParameter = FALSE) {
 	    if ($this->module) {
             if (is_numeric($records)) {
                 $numRecordsAtATime = $records;
@@ -37,13 +37,13 @@ class CronManager {
             if (!$numRecordsAtATime) {
                 $numRecordsAtATime = self::getNumberOfRecordsForMethod($method);
             }
-            $this->addCronForBatch($file, $method, $dayOfWeek, $records, $numRecordsAtATime);
+            $this->addCronForBatch($file, $method, $dayOfWeek, $records, $numRecordsAtATime, $firstParameter);
         } else {
-            $this->addCronToRunOnce($file, $method, $dayOfWeek, $records);
+	        $this->addCronToRunOnce($file, $method, $dayOfWeek, $records, $firstParameter);
         }
 	}
 
-	private function addCronToRunOnce($file, $method, $dayOfWeek, $records) {
+	private function addCronToRunOnce($file, $method, $dayOfWeek, $records, $firstParameter = FALSE) {
         $possibleDays = self::getDaysOfWeek();
         $dateTs = strtotime($dayOfWeek);
         if (!in_array($dayOfWeek, $possibleDays) && !$dateTs) {
@@ -58,6 +58,9 @@ class CronManager {
         $cronjob = new CronJob($absFile, $method);
         if (!empty($records)) {
             $cronjob->setRecords($records);
+        }
+        if ($firstParameter) {
+            $cronjob->setFirstParameter($firstParameter);
         }
         if ($this->isDebug) {
             Application::log("Has day of week $dayOfWeek and timestamp for ".date("Y-m-d", $dateTs));
@@ -93,7 +96,7 @@ class CronManager {
         }
  	}
 
-	private function addCronForBatch($file, $method, $dayOfWeek, $records, $numRecordsAtATime) {
+	private function addCronForBatch($file, $method, $dayOfWeek, $records, $numRecordsAtATime, $firstParameter = FALSE) {
         if (empty($records)) {
             $records = Download::recordIds($this->token, $this->server);
         }
@@ -115,7 +118,7 @@ class CronManager {
         if (in_array($dayOfWeek, $possibleDays)) {
             # Weekday
             if (date("l") == $dayOfWeek) {
-                $this->enqueueBatch($absFile, $method, $records, $numRecordsAtATime);
+                $this->enqueueBatch($absFile, $method, $records, $numRecordsAtATime, $firstParameter);
                 if ($this->isDebug) {
                     Application::log("Assigned cron for $method on $dayOfWeek");
                 }
@@ -124,7 +127,7 @@ class CronManager {
             # Y-M-D
             $date = date(self::getDateFormat(), $dateTs);
             if ($date == date(self::getDateFormat())) {
-                $this->enqueueBatch($absFile, $method, $records, $numRecordsAtATime);
+                $this->enqueueBatch($absFile, $method, $records, $numRecordsAtATime, $firstParameter);
                 if ($this->isDebug) {
                     Application::log("Assigned cron for $date");
                 }
@@ -154,7 +157,7 @@ class CronManager {
         }
     }
 
-	private function enqueueBatch($file, $method, $records, $numRecordsAtATime) {
+	private function enqueueBatch($file, $method, $records, $numRecordsAtATime, $firstParameter = FALSE) {
         $batchQueue = self::getBatchQueueFromDB($this->module);
         for ($i = 0; $i < count($records); $i += $numRecordsAtATime) {
             $subRecords = [];
@@ -170,6 +173,7 @@ class CronManager {
                 "records" => $subRecords,
                 "status" => "WAIT",
                 "enqueueTs" => time(),
+                "firstParameter" => $firstParameter,
             ];
             $batchQueue[] = $batchRow;
         }
@@ -317,6 +321,9 @@ class CronManager {
             $startTimestamp = self::getTimestamp();
             $cronjob = new CronJob($batchQueue[0]['file'], $batchQueue[0]['method']);
             $cronjob->setRecords($batchQueue[0]['records']);
+            if ($batchQueue[0]['firstParameter']) {
+                $cronjob->setFirstParameter($batchQueue[0]['firstParameter']);
+            }
             $batchQueue[0]['startTs'] = time();
             $batchQueue[0]['status'] = "RUN";
             Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue)." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp());
@@ -692,7 +699,12 @@ class CronJob {
 	public function __construct($file, $method) {
 		$this->file = $file;
 		$this->method = $method;
+		$this->firstParameter = FALSE;
 	}
+
+	public function setFirstParameter($value) {
+	    $this->firstParameter = $value;
+    }
 
 	public function getTitle() {
 		return $this->file.": ".$this->method;
@@ -713,7 +725,11 @@ class CronJob {
 		if ($this->method) {
             $method = $this->method;
 			if ($passedToken && $passedServer && $passedPid) {
-				$method($passedToken, $passedServer, $passedPid, $records);
+			    if ($this->firstParameter) {
+                    $method($passedToken, $passedServer, $passedPid, $records, $this->firstParameter);
+                } else {
+                    $method($passedToken, $passedServer, $passedPid, $records);
+                }
 			} else {
 				throw new \Exception("In cronjob while executing $method, could not find token '$passedToken' and/or server '$passedServer' and/or pid '$passedPid'");
 			}
@@ -734,4 +750,5 @@ class CronJob {
 	private $file = "";
 	private $method = "";
 	private $records = [];
+	private $firstParameter = FALSE;
 }

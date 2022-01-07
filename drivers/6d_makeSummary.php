@@ -42,12 +42,15 @@ function unlock($pid) {
     }
 }
 
-# $allRecordRows is for testing purposes only
-function makeSummary($token, $server, $pid, $records, $allRecordRows = array()) {
+function makeSummary($token, $server, $pid, $records, $runAllRecords = FALSE) {
     if (!is_array($records)) {
         $records = [$records];
     }
-    $changedRecords = (count($records) == 1) ? $records : CronManager::getChangedRecords($records, 96, $pid);
+    if ($runAllRecords) {
+        $changedRecords = $records;
+    } else {
+        $changedRecords = (count($records) == 1) ? $records : CronManager::getChangedRecords($records, 96, $pid);
+    }
     if (!empty($changedRecords)) {
         lock($pid);
 

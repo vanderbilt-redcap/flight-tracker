@@ -761,12 +761,19 @@ class NameMatcher {
             "MBCHB",
         ];
         $newNodes = [];
+        if (count($nodes) >= 1) {
+            $newNodes[] = $nodes[0];
+        }
+        $i = 0;
         foreach ($nodes as $node) {
-            $node = trim($node);
-            $nodeToTest = preg_replace("/[\,\;\.]+$/", "", strtoupper($node));
-            if ($node && !in_array($nodeToTest, $degreesInUpperCase)) {
-                $newNodes[] = $node;
+            if ($i > 0) {
+                $node = trim($node);
+                $nodeToTest = preg_replace("/[\,\;\.]+$/", "", strtoupper($node));
+                if ($node && !in_array($nodeToTest, $degreesInUpperCase)) {
+                    $newNodes[] = $node;
+                }
             }
+            $i++;
         }
         if ($returnString) {
             return preg_replace("/[\,\;\.]+$/", "", implode(" ", $newNodes));

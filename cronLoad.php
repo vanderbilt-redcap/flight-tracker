@@ -93,6 +93,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday", $records, 30);
         $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday", $records, 30);
         $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $records, 30);
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday", $records, 30, TRUE);
 	}
 }
 

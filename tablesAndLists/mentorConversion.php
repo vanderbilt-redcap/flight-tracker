@@ -70,7 +70,7 @@ function addToMentors($value, $listOfMentors) {
 	return $listOfMentors;
 }
 
-echo "<h1>Current Newman Society Members and Their Mentors</h1>";
+echo "<h1>Current Scholars and Their Mentors</h1>";
 echo "<table style='display: none; margin-left: auto; margin-right: auto;'><tr class='even'><th>Record</th><th>Scholar</th><th>Mentor(s)</th><th>Qualifying Award</th><th>Converted On</th></tr>";
 $cnt = 1;
 $revAwardTypes = \Vanderbilt\FlightTrackerExternalModule\getReverseAwardTypes();

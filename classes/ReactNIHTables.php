@@ -180,6 +180,28 @@ table { border-collapse: collapse; }
         return $data;
     }
 
+    public function getSavedTableNames() {
+        $allNames = Application::getSetting($this->allNamesField, $this->pid);
+        if ($allNames) {
+            return $allNames;
+        }
+        return [];
+    }
+
+    public function saveData($tableNum, $tableData, $name) {
+        $allNames = Application::getSetting($this->allNamesField, $this->pid);
+        if (!isset($allNames[$name])) {
+            $allNames[$name] = [];
+            ksort($allNames);
+        }
+        if (!in_array($tableNum, $allNames[$name])) {
+            $allNames[$name][] = $tableNum;
+            Application::saveSetting($this->allNamesField, $allNames, $this->pid);
+        }
+        Application::saveSetting(self::makeSaveTableKey($name, $tableNum), $tableData);
+        return ["Result" => "Saved."];
+    }
+
     public function lookupRePORTER($post, $metadata, $dateOfReport) {
         $awardNo = REDCapManagement::sanitize($post['awardNo']);
         $date = REDCapManagement::sanitize($post['date']);
@@ -310,8 +332,21 @@ table { border-collapse: collapse; }
         return $html;
     }
 
+    private static function makeSaveTableKey($tableName, $tableNum) {
+        return "tablename____".$tableName."____".$tableNum;
+    }
+
     public function getDataForTable($post, &$nihTables) {
         $tableNum = REDCapManagement::sanitize($post['tableNum']);
+        $savedTableName = $post['savedTableName'] ? REDCapManagement::sanitize($post['savedTableName']) : "";
+        $allNames = Application::getSetting($this->allNamesField, $this->pid);
+        if ($savedTableName && isset($allNames[$savedTableName]) && in_array($tableNum, $allNames[$savedTableName])) {
+            $data = Application::getSetting(self::makeSaveTableKey($savedTableName, $tableNum), $this->pid);
+            if ($data) {
+                return $data;
+            }
+        }
+
         $dateOfReport = REDCapManagement::sanitize($post['dateOfReport']);
         if (in_array($tableNum, [1, "1I", "1II", 2, 3, 4])) {
             if (in_array($tableNum, $this->getTablesToEdit())) {
@@ -681,4 +716,5 @@ table { border-collapse: collapse; }
     protected $server = "";
     protected $pid = "";
     protected $module = NULL;
+    protected $allNamesField = "all_names";
 }

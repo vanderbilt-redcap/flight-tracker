@@ -835,7 +835,7 @@ class Publications {
 	                $authors = preg_split("/\s*[,;]\s*/", $row['citation_authors']);
 	                foreach ($authors as $author) {
 	                    if ($author) {
-                            list($authorFirst, $authorLast) = NameMatcher::splitName($author, 2);
+                            list($authorFirst, $authorLast) = NameMatcher::splitName($author, 2, FALSE, FALSE);
                             if (NameMatcher::matchByInitials($lastName, $firstName, $authorLast, $authorFirst)) {
                                 $found = TRUE;
                                 break;
@@ -852,6 +852,8 @@ class Publications {
             }
 	        if ($found) {
 	            $newRows[] = $row;
+            } else {
+	            Application::log("Excluding row ".json_encode($row)." for names ".json_encode($firstNames)." ".json_encode($lastNames));
             }
         }
 

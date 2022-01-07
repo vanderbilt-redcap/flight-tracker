@@ -1094,29 +1094,29 @@ function submitPatents(patents, textId, prefixHTML, cb) {
 }
 
 function downloadOnePatent(i, patents, textId, prefixHTML, doneCb) {
-	var patentNumber = patents[i];
+	const patentNumber = patents[i].replace(/^US/i, '');
 	if (patentNumber) {
-		let o = {"page": 1, "per_page": 50};
-		let q = {"patent_number": patentNumber };
-		let f = ["patent_number", "patent_date", "patent_title"];
+		const o = {"page": 1, "per_page": 50};
+		const q = {"patent_number": patentNumber };
+		const f = ["patent_number", "patent_date", "patent_title"];
 
-		var url = "https://api.patentsview.org/patents/query?q="+JSON.stringify(q)+"&f="+JSON.stringify(f)+"&o="+JSON.stringify(o);
+		const url = "https://api.patentsview.org/patents/query?q="+JSON.stringify(q)+"&f="+JSON.stringify(f)+"&o="+JSON.stringify(o);
 		// AJAX call will return in uncertain order => append, not overwrite, results
 		$.ajax({
 			url: url,
 			success: function(data) {
 				console.log(JSON.stringify(data));
-				var listings = [];
+				const listings = [];
 				for (let i=0; i < data.patents.length; i++) {
-					let entry = data.patents[i];
+					const entry = data.patents[i];
 					if (entry['patent_number']) {
-						var listing = "Patent "+entry['patent_number']+' '+entry['patent_title']+' ('+entry['patent_date']+')';
+						const listing = "Patent "+entry['patent_number']+' '+entry['patent_title']+' ('+entry['patent_date']+')';
 						listings.push(listing);
 					}
 				}
 
 				updatePatentList(textId, prefixHTML, listings.join('\n'));
-				let nextI = i + 1;
+				const nextI = i + 1;
 				if (nextI < patents.length) {
 					setTimeout(function() {
 						downloadOnePatent(nextI, patents, textId, prefixHTML, doneCb);
@@ -1128,7 +1128,7 @@ function downloadOnePatent(i, patents, textId, prefixHTML, doneCb) {
 			},
 			error: function(e) {
 				updatePatentList(textId, prefixHTML, 'ERROR: '+JSON.stringify(e));
-				let nextI = i + 1;
+				const nextI = i + 1;
 				if (nextI < patents.length) {
 					setTimeout(function () {
 						downloadOnePatent(nextI, patents, textId, prefixHTML, doneCb);
@@ -1142,11 +1142,10 @@ function downloadOnePatent(i, patents, textId, prefixHTML, doneCb) {
 }
 
 function getPatentNumber(patent) {
-	var matches = patent.match(/Patent \d+/);
+	const matches = patent.match(/Patent \d+/);
 	if (matches && (matches.length >= 1)) {
-		var str = matches[0];
-		var patentNumber = str.replace(/Patent /, '');
-		return patentNumber;
+		const str = matches[0];
+		return str.replace(/Patent /, '').replace(/^US/i, '');
 	}
 	return '';
 }

@@ -1338,16 +1338,16 @@ return $result;
 						"followup_prev4" => "followup",
 						"followup_prev5" => "followup",
 					);
-			if ($row[$followupInstitutionField] != $institutionCurrent) {
+			if ($row[$followupInstitutionField] && ([$followupInstitutionField] != $institutionCurrent)) {
 				$res = self::getResultForPrefices($prefices, $row, $suffix, $this->pid);
 				if ($res->getValue()) {
-					return $res;
+				    return $res;
 				}
 			}
 		}
 
 		$normativeRow = self::getNormativeRow($rows);
-        if ($normativeRow[$checkInstitutionField] != $institutionCurrent) {
+        if ($normativeRow[$checkInstitutionField] && ($normativeRow[$checkInstitutionField] != $institutionCurrent)) {
             $prefices = array(
                 "check_prev1" => "scholars",
                 "check_prev2" => "scholars",
@@ -1359,7 +1359,7 @@ return $result;
             if ($res->getValue()) {
                 return $res;
             }
-        } else if ($normativeRow[$importInstitutionField] != $institutionCurrent) {
+        } else if ($normativeRow[$importInstitutionField] && ($normativeRow[$importInstitutionField] != $institutionCurrent)) {
             $prefices = array(
                 "init_import_prev1" => "manual",
                 "init_import_prev2" => "manual",
@@ -1378,7 +1378,7 @@ return $result;
         $earliestPositionChangeEntryDate = "";
         foreach ($rows as $row) {
             if ($row['redcap_repeat_instrument'] == "position_change") {
-                $rowInstitution = trim($row['promotion_location']);
+                $rowInstitution = trim($row['promotion_institution']);
                 if ($rowInstitution && $row['promotion_in_effect']) {
                     $found = FALSE;
                     foreach ($institutions as $inst) {
@@ -1401,6 +1401,10 @@ return $result;
             return new Result($earliestPositionChangeDate, "manual", "", $earliestPositionChangeEntryDate, $this->pid);
         }
 
+        $today = date("Y-m-d");
+        if (Application::isPluginProject() && REDCapManagement::dateCompare($today, "<=", "2022-01-15") && Application::isVanderbilt()) {
+            return new Result("", "");
+        }
 		return new Result($normativeRow['identifier_left_date'], $normativeRow['identifier_left_date_source'], $normativeRow['identifier_left_date_sourcetype'], "", $this->pid);
 	}
 
