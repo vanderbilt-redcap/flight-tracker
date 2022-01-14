@@ -3,6 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Citation;
+use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Altmetric;
@@ -38,13 +39,21 @@ if (isset($_GET['daysPrior']) && is_numeric($_GET['daysPrior']) && ($_GET['daysP
     $daysPrior = 180;
 }
 
-$startTs = time() - $daysPrior * 24 * 3600;
+if (isset($_GET['daysAfterTraining']) && is_numeric($_GET['daysAfterTraining']) && ($_GET['daysAfterTraining'] >= 0)) {
+    $daysAfterTraining = (int) REDCapManagement::sanitize($_GET['daysAfterTraining']);
+} else {
+    $daysAfterTraining = "";
+}
+
+$oneDay = 24 * 3600;
+$startTs = time() - $daysPrior * $oneDay;
 $endTs = FALSE;  // use only $startTs
 
 if (isset($_GET['showHeaders'])) {
     require_once(dirname(__FILE__)."/charts/baseWeb.php");
     $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
-    $url = preg_replace("/\&showHeaders=*/", "", $url);
+    $url = preg_replace("/\&showHeaders[^\&]*/", "", $url);
+    $url = preg_replace("/showHeaders[^\&]*\&/", "", $url);
     $url .= "&NOAUTH";
     ?>
     <h3>Brag on Your Scholars' Publications!</h3>
@@ -63,6 +72,7 @@ if (isset($_GET['showHeaders'])) {
             ?>
             <?= isset($_GET['showHeaders']) ? "<input type='hidden' name='showHeaders' value='' />" : "" ?>
             <p class="centered">What Time Period Should Show? Days Prior: <input type="number" name="daysPrior" style="width: 75px;" value="<?= $daysPrior ?>"></p>
+            <p class="centered"><strong>-OR-</strong> Track Only Training And Days After Training: <input type="number" name="daysAfterTraining" style="width: 75px;" value="<?= $daysAfterTraining ?>"></p>
             <p class="centered"><button>Reset</button></p>
         </form>
     </div>
@@ -83,8 +93,49 @@ $allPMIDs = [];
 $multipleScholarPMIDs = [];
 $firstNames = Download::firstnames($token, $server);
 $lastNames = Download::lastnames($token, $server);
+$trainingFields = [
+    "record_id",
+    "identifier_start_of_training",
+    "identifier_left_date",
+];
+for ($i = 1; $i <= 5; $i++) {
+    $trainingFields[] = "summary_award_type_".$i;
+    $trainingFields[] = "summary_award_date_".$i;
+    $trainingFields[] = "summary_award_end_date_".$i;
+}
+$trainingFields = REDCapManagement::filterOutInvalidFields($metadata, $trainingFields);
+$citationFields = Application::getCitationFields($metadata);
+if (isset($_GET['test'])) {
+    echo "Records: ".json_encode($recordIds)."<br>";
+}
 foreach ($recordIds as $recordId) {
-    $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($recordId));
+    if ($daysAfterTraining !== "") {
+        $trainingData = Download::fieldsForRecords($token, $server, $trainingFields, [$recordId]);
+        $trainingStartDate = getTrainingStartDate($trainingData, $recordId);
+        $trainingEndDate = getTrainingEndDate($trainingData, $recordId);
+        if (isset($_GET['test'])) {
+            echo "Record $recordId: start $trainingStartDate and end $trainingEndDate<br>";
+        }
+        if ($trainingStartDate) {
+            $startTs = strtotime($trainingStartDate);
+        } else {
+            continue;
+        }
+        if ($trainingEndDate) {
+            $endTs = strtotime($trainingEndDate) + $daysAfterTraining * $oneDay;
+        } else {
+            $endTs = FALSE;
+        }
+    } else {
+        if (isset($_GET['test'])) {
+            echo "No days after training for Record $recordId<br>";
+        }
+    }
+    if (isset($_GET['test'])) {
+        echo "Downloading for Record $recordId<br>";
+    }
+
+    $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
     $pubs = new Publications($token, $server, $pid);
     $pubs->setRows($redcapData);
     $recordCitations = $pubs->getSortedCitationsInTimespan($startTs, $endTs, "Included", FALSE);
@@ -131,7 +182,11 @@ if (!defined("NOAUTH")) {
     $classInfo = "class='max-width'";
 }
 
-echo "<h4>".getTimespanHeader($daysPrior)."</h4>\n";
+if ($daysAfterTraining !== "") {
+    echo "<h4>All Publications During Training and $daysAfterTraining Days After</h4>\n";
+} else {
+    echo "<h4>".getTimespanHeader($daysPrior)."</h4>\n";
+}
 echo "<div $classInfo style='padding: 8px;'>\n";
 if (empty($citationsWithTs)) {
     echo "<p class='centered'>None</p>";
@@ -142,9 +197,59 @@ if (empty($citationsWithTs)) {
 }
 echo "</div>\n";
 echo "<br><br><br>";
-echo "<p class='smallest centered'>Citations from ".Application::getProgramName()." <img src='".Application::link("img/flight_tracker_icon_cropped.png")."' style='height: 52px; width: 33px;'></p>";
+echo "<p class='smallest centered'>Publications from ".Application::getProgramName()." <img src='".Application::link("img/flight_tracker_icon_cropped.png")."' style='height: 52px; width: 33px;'></p>";
 
 
 function getTimespanHeader($daysPrior) {
-    return "All Citations in Previous $daysPrior Days";
+    return "All Publications in Previous $daysPrior Days";
+}
+
+function getTrainingStartDate($redcapData, $recordId) {
+    $earliestDate = "";
+    $startAtInstitution = REDCapManagement::findField($redcapData, $recordId, "identifier_start_of_training");
+    if ($startAtInstitution) {
+        $earliestDate = $startAtInstitution;
+    }
+    $kTypes = [1, 2, 3, 4, 9];
+    for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
+        $awardType = REDCapManagement::findField($redcapData, $recordId, "summary_award_type_".$i);
+        $awardStartDate = REDCapManagement::findField($redcapData, $recordId, "summary_award_date_".$i);
+        if (
+                $awardType
+                && $awardStartDate
+                && in_array($awardType, $kTypes)
+                && (
+                    !$earliestDate
+                    || REDCapManagement::dateCompare($awardStartDate, "<", $earliestDate)
+                )
+        ) {
+                $earliestDate = $awardStartDate;
+        }
+    }
+    return $earliestDate;
+}
+
+function getTrainingEndDate($redcapData, $recordId) {
+    $latestDate = "";
+    $kTypes = [1, 2, 3, 4, 9];
+    for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
+        $awardType = REDCapManagement::findField($redcapData, $recordId, "summary_award_type_".$i);
+        $awardEndDate = REDCapManagement::findField($redcapData, $recordId, "summary_award_end_date_".$i);
+        if (
+            $awardType
+            && $awardEndDate
+            && in_array($awardType, $kTypes)
+            && (
+                !$latestDate
+                || REDCapManagement::dateCompare($awardEndDate, ">", $latestDate)
+            )
+        ) {
+            $latestDate = $awardEndDate;
+        }
+    }
+    if (!$latestDate) {
+        # only best guess if no other data exist
+        $latestDate = REDCapManagement::findField($redcapData, $recordId, "identifier_left_date");
+    }
+    return $latestDate;
 }

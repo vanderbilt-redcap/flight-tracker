@@ -116,7 +116,7 @@ function checkIfUseridValid() {
 }
 
 function lookupName(name) {
-    $.post('<?= Application::link("mentor/getREDCapUserid.php").$uidString."&menteeRecord=$recordId" ?>', { name: name }, function(json) {
+    $.post('<?= Application::link("mentor/getREDCapUseridFromProject.php").$uidString."&menteeRecord=$recordId" ?>', { name: name }, function(json) {
         let userids = JSON.parse(json);
         console.log(userids.length+" user ids matched");
         $('#newMentorUserid').find('option').remove();

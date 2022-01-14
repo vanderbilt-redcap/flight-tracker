@@ -1320,6 +1320,36 @@ return $result;
         ];
     }
 
+    private function getWhenStartedInstitution($rows) {
+	    $normativeRow = REDCapManagement::getNormativeRow($rows);
+	    if ($normativeRow['identifier_start_of_training']) {
+            return $normativeRow['identifier_start_of_training'];
+        }
+	    $earliestDateAtInstitution = "";
+	    $institutions = Application::getInstitutions($this->pid);
+        foreach ($rows as $row) {
+            if ($row['redcap_repeat_instrument'] == "position_change") {
+                $rowInstitution = trim($row['promotion_institution']);
+                $rowStartDate = $row['promotion_in_effect'];
+                if ($rowInstitution && $rowStartDate) {
+                    foreach ($institutions as $inst) {
+                        if (
+                            (strtolower($rowInstitution) == strtolower($inst))
+                            && (
+                                !$earliestDateAtInstitution
+                                || REDCapManagement::dateCompare($rowStartDate, "<", $earliestDateAtInstitution)
+                            )
+                        ) {
+                            $earliestDateAtInstitution = $rowStartDate;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+	    return $earliestDateAtInstitution;
+    }
+
 	# returns a Result for when they left VUMC
 	# used for the Scholars' survey and Follow-Up surveys
 	private function getWhenLeftInstitution($rows) {
@@ -1328,6 +1358,8 @@ return $result;
         $importInstitutionField = "init_import_institution";
 		$institutionCurrent = '1';
 		$suffix = "_academic_rank_enddt";
+
+		$startAtInstitutionDate = $this->getWhenStartedInstitution($rows);
 	
 		$followupRows = self::selectFollowupRows($rows);
 		foreach ($followupRows as $instance => $row) {
@@ -1340,9 +1372,15 @@ return $result;
 					);
 			if ($row[$followupInstitutionField] && ([$followupInstitutionField] != $institutionCurrent)) {
 				$res = self::getResultForPrefices($prefices, $row, $suffix, $this->pid);
-				if ($res->getValue()) {
-				    return $res;
-				}
+                if (
+                    $res->getValue()
+                    && (
+                        !$startAtInstitutionDate
+                        || REDCapManagement::dateCompare($res->getValue(), ">", $startAtInstitutionDate)
+                    )
+                ) {
+                    return $res;
+                }
 			}
 		}
 
@@ -1356,7 +1394,13 @@ return $result;
                 "check_prev5" => "scholars",
             );
             $res = self::getResultForPrefices($prefices, $normativeRow, $suffix, $this->pid);
-            if ($res->getValue()) {
+            if (
+                $res->getValue()
+                && (
+                    !$startAtInstitutionDate
+                    || REDCapManagement::dateCompare($res->getValue(), ">", $startAtInstitutionDate)
+                )
+            ) {
                 return $res;
             }
         } else if ($normativeRow[$importInstitutionField] && ($normativeRow[$importInstitutionField] != $institutionCurrent)) {
@@ -1368,7 +1412,13 @@ return $result;
                 "init_import_prev5" => "manual",
             );
             $res = self::getResultForPrefices($prefices, $normativeRow, $suffix, $this->pid);
-            if ($res->getValue()) {
+            if (
+                $res->getValue()
+                && (
+                    !$startAtInstitutionDate
+                    || REDCapManagement::dateCompare($res->getValue(), ">", $startAtInstitutionDate)
+                )
+            ) {
                 return $res;
             }
         }
@@ -1388,10 +1438,19 @@ return $result;
                         }
                     }
                     if (!$found) {
-                        if (!$earliestPositionChangeDate || REDCapManagement::dateCompare($row['promotion_in_effect'], "<", $earliestPositionChangeDate)) {
-                            $earliestPositionChangeDate = $row['promotion_in_effect'];
-                            $earliestPositionChangeEntryDate = $row['promotion_date'];
-                        }
+                        if (
+                                (
+                                    !$earliestPositionChangeDate
+                                    || REDCapManagement::dateCompare($row['promotion_in_effect'], "<", $earliestPositionChangeDate)
+                                )
+                                && (
+                                    !$startAtInstitutionDate
+                                    || REDCapManagement::dateCompare($row['promotion_in_effect'], ">", $startAtInstitutionDate)
+                                )
+                        ) {
+                                $earliestPositionChangeDate = $row['promotion_in_effect'];
+                                $earliestPositionChangeEntryDate = $row['promotion_date'];
+                       }
                     }
                 }
             }
@@ -1402,7 +1461,7 @@ return $result;
         }
 
         $today = date("Y-m-d");
-        if (Application::isPluginProject() && REDCapManagement::dateCompare($today, "<=", "2022-01-15") && Application::isVanderbilt()) {
+        if (REDCapManagement::dateCompare($today, "<=", "2022-03-01")) {
             return new Result("", "");
         }
 		return new Result($normativeRow['identifier_left_date'], $normativeRow['identifier_left_date_source'], $normativeRow['identifier_left_date_sourcetype'], "", $this->pid);

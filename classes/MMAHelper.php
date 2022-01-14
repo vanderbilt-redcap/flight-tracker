@@ -314,7 +314,7 @@ function startNow() {
             } else {
                 $html .= "<td>no prior agreements</td>\n";
             }
-            echo "<td>$menteeName</td>\n";
+            $html .= "<td>$menteeName</td>\n";
             if (!empty($namesOfMentors)) {
                 $mentorNameText = REDCapManagement::makeConjunction($namesOfMentors);
             } else {

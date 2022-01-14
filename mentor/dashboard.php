@@ -139,7 +139,6 @@ if ($_POST['newUids']) {
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
 $records = Download::recordIds($token, $server);
-$names = Download::names($token, $server);
 $userids = Download::userids($token, $server);
 $mentorNames = Download::primaryMentors($token, $server);
 $mentorUserids = Download::primaryMentorUserids($token, $server);
@@ -150,10 +149,25 @@ $timesToComplete = ["mentees" => [], "mentors" => []];
 $numMentors = MMAHelper::getElementCount($mentorNames);
 $names = Download::names($token, $server);
 
+$numMenteeUserids = 0;
+$numMentees = 0;
+$numMentorNames = 0;
+$numMentorUserids = 0;
+foreach (array_keys($names) as $recordId) {
+    $numMentees++;
+    if ($userids[$recordId]) {
+        $numMenteeUserids++;
+    }
+    if ($mentorNames[$recordId] && !empty($mentorNames[$recordId])) {
+        $numMentorNames++;
+    }
+    if ($mentorUserids[$recordId] && !empty($mentorUserids[$recordId])) {
+        $numMentorUserids++;
+    }
+}
+
 $selectFieldTypes = ["dropdown", "radio", "checkbox", ];
 $metadata = Download::metadata($token, $server);
-$allForms = REDCapManagement::getFormsFromMetadata($metadata);
-$hasEvaluationsEnabled = in_array("mentoring_agreement_evaluations", $allForms);
 $choices = REDCapManagement::getChoices($metadata);
 $agreementFields = REDCapManagement::getFieldsFromMetadata($metadata, "mentoring_agreement");
 $agreementFields[] = "record_id";
@@ -242,6 +256,19 @@ echo "<h1>Mentoring Agreement Responses</h1>";
 
 $homeLink = Application::getMenteeAgreementLink();
 $addLink = Application::link("addMentor.php");
+echo "<h2>Getting Started</h2>";
+echo "<h3>Step 1: Get User IDs</h3>";
+echo "<p class='centered max-width'>You will need to make sure you have REDCap user-ids for any mentees <strong>and</strong> for their mentors. Currently, you have $numMentees scholars/mentees, $numMenteeUserids user-ids for mentees, $numMentorNames mentor names, and $numMentorUserids user-ids for mentors. Input the mentee userid <strong>on each record's Identifiers form</strong>. Mentor names can be input using <a href='$addLink'>this tool</a> or manually input <strong>on each record's Manual Import form</strong>. Multiple mentor names and user-ids can be separated by commas.</p>";
+echo "<p class='centered max-width'><a href='javascript:;' onclick='$(\"#useridLookup\").show();'>Lookup REDCap User IDs</a></p>";
+echo "<div class='centered max-width' style='display: none; background-color: rgba(191,191,191,0.5);' id='useridLookup'>";
+echo "<h4>Lookup a REDCap User ID</h4>";
+echo "<p class='centered nomargin'>Please remember that some users might employ nicknames or maiden names.</p>";
+echo "<p class='green' id='message'></p>";
+echo "<p><label for='first_name'>First Name</label>: <input type='text' id='first_name' /><br>";
+echo "<label for='last_name'>Last Name</label>: <input type='text' id='last_name' /><br>";
+echo "<button onclick='lookupREDCapUserid(); return false;'>Look up name</button>";
+echo "</div>";
+echo "<h3>Step 2: Pass on the Link</h3>";
 echo "<p class='centered max-width'><strong><a class='smaller' href='$homeLink'>$homeLink</a></strong><br>Pass along this link to any mentee or mentor that (A) has a REDCap userid and (B) is registered in your Flight Tracker as a Scholar/Mentee or a Primary Mentor (with a <a href='$addLink'>registered userid</a>). With this link, they can access their relevant mentoring information anytime.</p>";
 echo "<h2>Submissions</h2>";
 echo "<table class='centered bordered max-width'>";
@@ -253,172 +280,13 @@ echo "</tr></thead>";
 echo "<tbody>";
 echo MMAHelper::makeGeneralTableRow("Number of Mentors Filled In", $numMentors, "Mentors");
 echo MMAHelper::makeGeneralTableRow("People with Unique User-ids Involved", $numInvited, "Individuals");
-echo MMAHelper::makeGeneralTableRow("Number Completed Initial<br>Mentee-Mentor Agreement Survey", $completedInitial, "", FALSE, $names, $mentorNames);
-echo MMAHelper::makeGeneralTableRow("Number of Mentors Who Haven't<br>Filled Out Initial<br>Mentee-Mentor Agreement Survey", ["mentees" => [], "mentors" => $missingMentors['initial']], "", FALSE, $names, $mentorNames);
-echo MMAHelper::makeGeneralTableRow("Number Completed Follow-up<br>Mentee-Mentor Agreement Survey", $completedFollowup, "", FALSE, $names, $mentorNames);
-echo MMAHelper::makeGeneralTableRow("Number of Mentors Who Haven't<br>Filled Out Follow-up<br>Mentee-Mentor Agreement Survey", ["mentees" => [], "mentors" => $missingMentors['followup']], "", FALSE, $names, $mentorNames);
-echo MMAHelper::makeGeneralTableRow("Average Time to Complete", $timesToComplete, "Minutes", TRUE);
+echo MMAHelper::makeGeneralTableRow("Number Completed Initial<br>Mentee-Mentor Agreement", $completedInitial, "", FALSE, $names, $mentorNames);
+echo MMAHelper::makeGeneralTableRow("Number of Mentors Who Haven't<br>Filled Out a Mentee-Mentor Agreement", ["mentees" => [], "mentors" => $missingMentors['initial']], "", FALSE, $names, $mentorNames);
 echo MMAHelper::makeDropdownTableRow($pid, $event_id, "View Responses", $recordsWithMenteeResponse);
 echo "</tbody>";
 echo "</table>";
 
-echo "<h2>Result Charts</h2>";
-$sourceData = [];
-$isFirstChart = TRUE;
-$colors = Application::getApplicationColors();
-$i = 0;
-foreach ($selectFieldsAndLabels as $fieldName => $fieldLabel) {
-    echo "<h3 class='max-width'>$fieldLabel</h3>";
-    $cols = [];
-    foreach (array_values($choices[$fieldName]) as $label) {
-        $cols[$label] = 0;
-    }
-    $total = 0;
-    foreach ($values[$fieldName] as $recordId => $recordData) {
-        foreach ($recordData as $datumIdx) {
-            $datumLabel = $choices[$fieldName][$datumIdx];
-            $cols[$datumLabel]++;
-            $total++;
-        }
-    }
-    $sourceData[$fieldName] = $cols;
-    if ($total > 0) {
-        if ($selectFieldsAndTypes[$fieldName] == "checkbox") {
-            echo "<p class='centered'>Note: More than one option can be selected because this is a checkbox.</p>";
-        }
-        $chart = new BarChart(array_values($cols), array_keys($cols), $fieldName);
-        if ($isFirstChart) {
-            echo $chart->getImportHTML();
-            $isFirstChart = FALSE;
-        }
-        $chart->setColor($colors[$i % count($colors)]);
-        $i++;
-        echo $chart->getHTML(800, 400);
-    } else {
-        echo "<p class='centered'>No data are currently available for this item.</p>";
-    }
-}
-
-echo "<h2>Result Table</h2>";
-echo "<table class='bordered max-width centered'>";
-echo "<thead><tr>";
-echo "<th>Question</th>";
-echo "<th>Answer</th>";
-echo "<th>Number of Responses with Answer</th>";
-echo "<th>Total Responses (n)</th>";
-echo "<th>Response Percentage</th>";
-echo "</tr></thead>";
-echo "<tbody>";
-foreach ($sourceData as $fieldName => $cols) {
-    $fieldLabel = $selectFieldsAndLabels[$fieldName];
-    foreach ($cols as $colLabel => $numberWithAnswer) {
-        echo MMAHelper::makeAnswerTableRow($fieldLabel, $colLabel, $numberWithAnswer, MMAHelper::getTotalCount($values[$fieldName]));
-        $fieldLabel = "";
-    }
-}
-echo "</tbody>";
-echo "</table>";
-if ($hasEvaluationsEnabled) {
-    $evalFields = REDCapManagement::getFieldsFromMetadata($metadata, "mentoring_agreement_evaluations");
-    $evalFields[] = "record_id";
-    $recordsWithoutEvals = ["mentor" => [], "mentee" => []];
-    foreach ($records as $recordId) {
-        $redcapData = Download::fieldsForRecords($token, $server, $evalFields, [$recordId]);
-        $hasEval = [];
-        foreach (array_keys($recordsWithoutEvals) as $type) {
-            $hasEval[$type] = FALSE;
-        }
-        foreach ($redcapData as $row) {
-            if ($row['redcap_repeat_instrument'] == "mentoring_agreement_evaluations") {
-                $instance = $row['redcap_repeat_instance'];
-                foreach (array_keys($recordsWithoutEvals) as $type) {
-                    if ($instance == MMAHelper::getEvalInstance($type)) {
-                        $hasEval[$type] = TRUE;
-                    }
-                }
-            }
-        }
-        if (!$hasEval["mentee"] && !$hasEval["mentor"]) {
-            $redcapData = Download::fieldsForRecords($token, $server, ["record_id", "mentoring_last_update"], [$recordId]);
-            $minTime = time() - $numWeeks * 7 * 24 * 3600;
-            $updatedRecently = FALSE;
-            $updatedAtAll = FALSE;
-            foreach ($redcapData as $row) {
-                if ($row['redcap_repeat_instrument'] == "mentoring_agreement") {
-                    $updatedAtAll = TRUE;
-                    if ($row['mentoring_last_update']) {
-                        if (strtotime($row['mentoring_last_update']) > $minTime) {
-                            $updatedRecently = TRUE;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (!$updatedAtAll && !$updatedRecently) {
-                $recordsWithoutEvals["mentor"][] = $recordId;
-                $recordsWithoutEvals["mentee"][] = $recordId;
-            }
-        } else if (!$hasEval["mentor"]) {
-            $recordsWithoutEvals["mentor"][] = $recordId;
-        } else if (!$hasEval["mentee"]) {
-            $recordsWithoutEvals["mentee"][] = $recordId;
-        }
-    }
-    if (!empty(array_merge($recordsWithoutEvals['mentor'], $recordsWithoutEvals['mentee']))) {
-        $emails = Download::emails($token, $server);
-        echo "<table class='centered bordered'><tbody><tr>";
-        foreach ($recordsWithoutEvals as $type => $recordsWithoutEval) {
-            $typeLabel = ucfirst($type);
-            $recordJSON = json_encode($recordsWithoutEval);
-            $count = count($recordsWithoutEval);
-            if ($count >= 2) {
-                $countStr = "$count Scholars Without an Eval from a $typeLabel";
-            } else if ($count == 1) {
-                $countStr = "$count Scholar Without an Eval from a $typeLabel";
-            } else {
-                $countStr = "No Scholars Without an Eval from a $typeLabel";
-            }
-            $namesWithoutEval = [];
-            foreach ($recordsWithoutEval as $record) {
-                $namesWithoutEval[] = $names[$record];
-            }
-
-            echo "<td>";
-            echo "<p class='centered skinnymargins'><span class='bolded'>$countStr</span><br><span class='smaller'>(no response in over $numWeeks weeks)<br>".implode("<br>", $namesWithoutEval)."</span></p>";
-            if ($count > 0) {
-                $mailtos = [];
-                foreach ($recordsWithoutEval as $recordId) {
-                    $email = "";
-                    if ($type == "mentee") {
-                        $email = $emails[$recordId];
-                        $name = $names[$recordId];
-                    } else if ($type == "mentor") {
-                        $mentorEmails = [];
-                        foreach ($mentorUserids[$recordId] as $mentorUserid) {
-                            $lookup = new REDCapLookupByUserid($mentorUserid);
-                            $mentorEmail = $lookup->getEmail();
-                            if ($mentorEmail) {
-                                $mentorEmails[] = $mentorEmail;
-                            }
-                        }
-                        $name = implode(", ", $mentorNames[$recordId]);
-                        $email = implode(",", $mentorEmails);
-                    } else {
-                        throw new \Exception("Invalid type $type");
-                    }
-                    if ($email) {
-                        $mailtos[] = "<a href='mailto:$email'>$name</a>";
-                    } else {
-                        $mailtos[] = $name;
-                    }
-                }
-                echo "<p class='centered skinnymargins'>".implode("<br>", $mailtos)."</p>";
-            }
-            echo "</td>";
-        }
-        echo "</tr></tbody></table>";
-    }
-}
+$redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
 echo "<script>
 function checkForNewMentorUserids(link) {
     $('#results').html('');
@@ -462,6 +330,29 @@ function checkForNewMentorUserids(link) {
             }
         }
     });
+}
+
+function lookupREDCapUserid() {
+    const firstName = $('#first_name').val();
+    const lastName = $('#last_name').val();
+    if (!lastName && !firstName) {
+        alert('You must supply a name');
+    } else {
+        const postParams = { firstName: firstName, lastName: lastName };
+        $.post('$redcapLookupUrl', postParams, function(json) {
+            const dataHash = JSON.parse(json);
+            if (Object.keys(dataHash).length > 0) {
+                const userids = [];
+                for (const uid in dataHash) {
+                    const name = dataHash[uid];
+                    userids.push(uid+': '+name);
+                }
+                $('#message').html(userids.join('<br/>'));
+            } else {
+                $('#message').html('No names found in REDCap.');
+            }
+        });
+    }
 }
 
 function submitAdjudications(link) {

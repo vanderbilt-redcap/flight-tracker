@@ -901,14 +901,18 @@ class Grants {
 					if ($baseNumber == $awardsBySource[$awardNo]->getBaseNumber()) {
 						$start = strtotime($awardsBySource[$awardNo]->getVariable('start'));
 						if ($start < $takeOverDate) {
+                            if (self::getShowDebug()) { Application::log("Setting takeover to $awardNo"); }
 							$awardsBySource[$awardNo]->setVariable("takeover", "TRUE");
 						}
 					}
 				}
 			} else {
 				if ($changeAwardNo && isset($awardsBySource[$changeAwardNo])) {
+                    if (self::getShowDebug()) { Application::log("Setting ".$change->getChangeType()." to ".$change->getChangeValue()." for $changeAwardNo"); }
 					$awardsBySource[$changeAwardNo]->setVariable($change->getChangeType(), $change->getChangeValue());
-				}
+				} else {
+                    if (self::getShowDebug()) { Application::log("Skipping ".$change->getChangeType()." to ".$change->getChangeValue()." for $changeAwardNo"); }
+                }
 			}
 		}
 		$this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource);
@@ -948,8 +952,12 @@ class Grants {
 					$grants = $sources[$source];
 					$combinedGrant = self::combineGrants($grants);
 					if ($combinedGrant) {
-						$awardsByBaseAwardNumber[$baseNumber] = $combinedGrant;
-						break;	// sourceOrder loop
+						if ($combinedGrant->getVariable("type") != "N/A") {
+                            $awardsByBaseAwardNumber[$baseNumber] = $combinedGrant;
+                            break;	// sourceOrder loop
+                        } else if (!isset($awardsByBaseAwardNumber[$baseNumber])) {
+                            $awardsByBaseAwardNumber[$baseNumber] = $combinedGrant;
+                        }
 					}
 				}
 			}
@@ -1151,8 +1159,14 @@ class Grants {
 			return $myGrant;
 		} else {
 			$basisGrant = $grants[0];
+            for ($i = 0; $i < count($grants); $i++) {
+                if ($grants[$i]->getVariable("type") != "N/A") {
+                    $basisGrant = $grants[$i];
+                    break;
+                }
+            }
 			if (self::getShowDebug()) { Application::log("Using basisGrant: ".$basisGrant->getNumber()." ".$basisGrant->getVariable("type")." from ".$basisGrant->getVariable("source")." with $".$basisGrant->getVariable("budget")." ".$basisGrant->getVariable("start")); }
-			for ($i = 1; $i < count($grants); $i++) {
+			for ($i = 0; $i < count($grants); $i++) {
 				if (self::getShowDebug()) { Application::log("combineGrants $i ".$grants[$i]->getNumber().": ".$grants[$i]->getVariable("type")." from ".$grants[$i]->getVariable("source")." ".$grants[$i]->getVariable("start")); }
 				$currGrant = $grants[$i];
 				if (($currGrant->getVariable("type") != "N/A") && !$currGrant->getVariable("takeover")) {
