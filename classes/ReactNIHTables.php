@@ -188,7 +188,7 @@ table { border-collapse: collapse; }
         return [];
     }
 
-    public function saveData($tableNum, $tableData, $name) {
+    public function saveData($nihTables, $tableNum, $tableData, $name, $dateOfReport, $faculty) {
         $allNames = Application::getSetting($this->allNamesField, $this->pid);
         if (!isset($allNames[$name])) {
             $allNames[$name] = [];
@@ -198,8 +198,22 @@ table { border-collapse: collapse; }
             $allNames[$name][] = $tableNum;
             Application::saveSetting($this->allNamesField, $allNames, $this->pid);
         }
-        Application::saveSetting(self::makeSaveTableKey($name, $tableNum), $tableData);
+        $data = [
+            "data" => $tableData,
+            "headerList" => $nihTables->getHeaders($tableNum),
+            "title" => NIHTables::getTableHeader($tableNum),
+        ];
+        Application::saveSetting(self::makeSaveTableKey($name, $tableNum), $data);
+        Application::saveSetting(self::makeSaveTableKey($name, "date"), $dateOfReport);
+        Application::saveSetting(self::makeSaveTableKey($name, "faculty"), $faculty);
         return ["Result" => "Saved."];
+    }
+
+    public function getProjectInfo($name) {
+        return [
+            "date" => Application::getSetting(self::makeSaveTableKey($name, "date") ?? date("Y-m-d")),
+            "faculty" => Application::getSetting(self::makeSaveTableKey($name, "faculty") ?? []),
+        ];
     }
 
     public function lookupRePORTER($post, $metadata, $dateOfReport) {
@@ -399,7 +413,11 @@ table { border-collapse: collapse; }
                     }
                 } else {
                     $data["error"] = "Errors in process.";
-                    $data[$email] = "Invalid email.";
+                    if ($email) {
+                        $data[$email] = "Invalid email.";
+                    } else {
+                        $data[$email] = "No email provided.";
+                    }
                 }
             }
         } else {

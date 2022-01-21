@@ -11,6 +11,14 @@ class Application {
         return CareerDev::getVersion();
     }
 
+    public static function isSuperUser() {
+        $isSuperUser = FALSE;
+        if (method_exists("\ExternalModules\ExternalModules", "isSuperUser")) {
+            $isSuperUser = \ExternalModules\ExternalModules::isSuperUser();
+        }
+        return (SUPER_USER || $isSuperUser);
+    }
+
 	public static function getPID($token) {
 		return CareerDev::getPID($token);
 	}

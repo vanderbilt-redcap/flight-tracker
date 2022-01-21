@@ -85,7 +85,10 @@ function updateRePORTER($cat, $token, $server, $pid, $records) {
     }
     REDCapManagement::deduplicateByKey($token, $server, $pid, $records, $applicationField, $prefix, $instrument);
 
-    cleanUpMiddleNamesSeepage($token, $server, $pid, $records);
+	$today = date("Y-m-d");
+	if (REDCapManagement::dateCompare($today, "<=", "2022-03-01")) {
+        cleanUpMiddleNamesSeepage($token, $server, $pid, $records);
+    }
     CareerDev::saveCurrentDate("Last $cat RePORTER Download", $pid);
 }
 

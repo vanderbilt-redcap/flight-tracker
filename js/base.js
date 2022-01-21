@@ -811,8 +811,46 @@ function startTonight() {
 	});
 }
 
+// Should only be called by REDCap SuperUser or else will throw errors
+// if a pid does not have FlightTracker enabled, it will also cause an error
+function installMetadataForProjects(pids) {
+	const baseUrl = getPageUrl("metadata.php");
+	const urls = [];
+	let i;
+	for (i=0; i < pids.length; i++) {
+		const pid = pids[i];
+		const newUrl = baseUrl.replace(/pid=\d+/, 'pid='+pid);
+		urls.push(newUrl);
+	}
+	presentScreen("Updating Data Dictionary<span id='currentPid'></span>...<br>(may take some time)")
+	updateMetadataForUrl(urls, 0);
+}
+
+function updateMetadataForUrl(urls, i) {
+	if (i >= urls.length) {
+		clearScreen();
+		$("#metadataWarning").addClass("install-metadata-box-success");
+		$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
+		setTimeout(function() {
+			$("#metadataWarning").fadeOut(500);
+		}, 3000);
+	} else {
+		const url = urls[i];
+		const nextI = i + 1;
+		const matches = url.match(/pid=\d+/);
+		const pid = matches ? matches[0].replace(/pid=/, '') : 'unknown';
+		if (pid !== 'unknown') {
+			$('#currentPid').html(' for pid '+pid+' ('+nextI+' of '+urls.length+')');
+		}
+		$.post(url, { process: "install_all" }, function(data) {
+			console.log(pid+': '+JSON.stringify(data));
+			updateMetadataForUrl(urls, nextI);
+		});
+	}
+}
+
 function installMetadata(fields) {
-	var url = getPageUrl("metadata.php");
+	const url = getPageUrl("metadata.php");
 	$("#metadataWarning").removeClass("install-metadata-box-danger");
 	$("#metadataWarning").addClass("install-metadata-box-warning");
 	$("#metadataWarning").html("<em class='fa fa-spinner fa-spin'></em> Installing...");

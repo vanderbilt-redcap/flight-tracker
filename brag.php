@@ -32,6 +32,10 @@ if ($cohort && ($cohort != 'all')) {
 } else {
     $recordIds = Download::recordIds($token, $server);
 }
+if (isset($_GET['test'])) {
+    echo "cohort: $cohort<br>";
+    echo "records: ".json_encode($recordIds)."<br>";
+}
 
 if (isset($_GET['daysPrior']) && is_numeric($_GET['daysPrior']) && ($_GET['daysPrior'] >= 0)) {
     $daysPrior = (int) REDCapManagement::sanitize($_GET['daysPrior']);
@@ -49,8 +53,18 @@ $oneDay = 24 * 3600;
 $startTs = time() - $daysPrior * $oneDay;
 $endTs = FALSE;  // use only $startTs
 
+$noCitationsMessage = "None.";
 if (isset($_GET['showHeaders'])) {
     require_once(dirname(__FILE__)."/charts/baseWeb.php");
+
+    if (!isset($_GET['daysAfterTraining']) && !isset($_GET['daysPrior'])) {
+        if (isset($_GET['test'])) {
+            echo "Changing recordIds from ".count($recordIds)." to empty.<br>";
+        }
+        $recordIds = [];
+        $noCitationsMessage = "Not yet configured.";
+    }
+
     $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
     $url = preg_replace("/\&showHeaders[^\&]*/", "", $url);
     $url = preg_replace("/showHeaders[^\&]*\&/", "", $url);
@@ -71,8 +85,8 @@ if (isset($_GET['showHeaders'])) {
             echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort)."</p>";
             ?>
             <?= isset($_GET['showHeaders']) ? "<input type='hidden' name='showHeaders' value='' />" : "" ?>
-            <p class="centered">What Time Period Should Show? Days Prior: <input type="number" name="daysPrior" style="width: 75px;" value="<?= $daysPrior ?>"></p>
-            <p class="centered"><strong>-OR-</strong> Track Only Training And Days After Training: <input type="number" name="daysAfterTraining" style="width: 75px;" value="<?= $daysAfterTraining ?>"></p>
+            <p class="centered">Show Time Period a Certain Number of Days Prior to Today: <input type="number" name="daysPrior" style="width: 75px;" value="<?= $daysPrior ?>"></p>
+            <p class="centered"><strong>-OR-</strong> Show Period During Training Period and a Certain Amount of Days After the End of Training Period: <input type="number" name="daysAfterTraining" style="width: 75px;" value="<?= $daysAfterTraining ?>"></p>
             <p class="centered"><button>Reset</button></p>
         </form>
     </div>
@@ -189,7 +203,7 @@ if ($daysAfterTraining !== "") {
 }
 echo "<div $classInfo style='padding: 8px;'>\n";
 if (empty($citationsWithTs)) {
-    echo "<p class='centered'>None</p>";
+    echo "<p class='centered'>$noCitationsMessage</p>";
 } else {
     foreach ($citationsWithTs as $citationStr => $ts) {
         echo "<p class='smaller' style='padding: 2px 0;'>".$citationStr."</p>\n";

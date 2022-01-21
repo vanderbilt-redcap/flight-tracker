@@ -153,8 +153,28 @@ function makeDepartmentPrompt($projectId) {
 	$html .= "<textarea name='departments' class='config'>$defaultDepartments</textarea></p>\n";
 	$html .= "<p class='centered'>Please enter a list of resources your scholars may use (e.g., workshops, tools).<br>(One per line.)<br>\n";
 	$html .= "<textarea name='resources' class='config'>$defaultResources</textarea></p>\n";
-	$html .= "<p class='centered'><button>Configure Fields</button></p>\n";
+	$html .= "<p class='centered'><button onclick='if (!verifyFieldsNotBlank([\"departments\", \"resources\"])) { alert(\"Cannot leave fields blank!\"); return false; } else { return true; }'>Configure Fields</button></p>\n";
 	$html .= "</form>\n";
+
+	$html .= "<script>
+function verifyFieldsNotBlank(fields) {
+    for (let i=0; i < fields.length; i++) {
+        const field = fields[i];
+        if ($('#'+field).length > 0) {
+            if ($('#'+field).val() === '') {
+                return false;
+            }
+        } else if ($('[name='+field+']').length > 0) {
+            if ($('[name='+field+']').val() === '') {
+                return false;
+            }
+        } else {
+            console.log('Could not find field '+field);
+        }
+    }
+    return true;
+}
+</script>";
 
 	return $html;
 }

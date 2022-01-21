@@ -170,6 +170,7 @@ class NIHTables {
                 "Rank",
                 "Primary<br>Department<br>or Program",
                 "Training<br>Role",
+                "Research<br>Interest",
                 "Pre-doctorates<br>In Training",
                 "Pre-doctorates<br>Graduated",
                 "Predoctorates<br>Continued in<br>Research or<br>Related Careers",
@@ -316,93 +317,111 @@ class NIHTables {
 	    foreach ($this->facultyMembers as $facultyName) {
             list($first, $last) = NameMatcher::splitName($facultyName, 2);
 	        $matches = $this->findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
-
-            # Lookup in LDAP (if Vanderbilt)
-	        if (Application::isVanderbilt()) {
-                $ldapREDCapRows = LDAP::getREDCapRowsFromName($first, $last, $this->metadata, 1, ["ldap"]);
+	        if (empty($matches)) {
+                $row = [
+                    $facultyName,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                ];
+                $data[$facultyName] = [$row];
             } else {
-	            $ldapREDCapRows = [];
-            }
+                # Lookup in LDAP (if Vanderbilt)
+                if (Application::isVanderbilt()) {
+                    $ldapREDCapRows = LDAP::getREDCapRowsFromName($first, $last, $this->metadata, 1, ["ldap"]);
+                } else {
+                    $ldapREDCapRows = [];
+                }
 
-	        $allResults = [];
-	        foreach ($matches as $match) {
-	            list($pid, $recordId) = preg_split("/:/", $match);
-                $token = Application::getSetting("token", $pid);
-                $server = Application::getSetting("server", $pid);
-                if ($token && $server && REDCapManagement::isActiveProject($pid)) {
-                    $fields = ["record_id", "summary_primary_dept", "summary_current_rank", "summary_all_degrees"];
-                    $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-                    $matchResults = [];
-                    $matchResults["Degrees"] = $this->findDegrees($redcapData);
-                    $matchResults["Ranks"]  = preg_split("/\s*,\s*/", $this->findAcademicRank($redcapData, $recordId, $ldapREDCapRows));
-                    $matchResults["Departments"]  = preg_split("/\s*,\s*/", $this->findDepartment($redcapData, $recordId, $ldapREDCapRows));
-                    foreach ($matchResults as $resultType => $values) {
-                        if (!isset($allResults[$resultType][$match])) {
-                            $allResults[$resultType][$match] = [];
-                        }
-                        foreach ($values as $v) {
-                            if (!in_array($v, $allResults[$resultType][$match])) {
-                                $allResults[$resultType][$match][] = $v;
+                $allResults = [];
+                foreach ($matches as $match) {
+                    list($pid, $recordId) = preg_split("/:/", $match);
+                    $token = Application::getSetting("token", $pid);
+                    $server = Application::getSetting("server", $pid);
+                    if ($token && $server && REDCapManagement::isActiveProject($pid)) {
+                        $fields = ["record_id", "summary_primary_dept", "summary_current_rank", "summary_all_degrees"];
+                        $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+                        $matchResults = [];
+                        $matchResults["Degrees"] = $this->findDegrees($redcapData);
+                        $matchResults["Ranks"]  = preg_split("/\s*,\s*/", $this->findAcademicRank($redcapData, $recordId, $ldapREDCapRows));
+                        $matchResults["Departments"]  = preg_split("/\s*,\s*/", $this->findDepartment($redcapData, $recordId, $ldapREDCapRows));
+                        foreach ($matchResults as $resultType => $values) {
+                            if (!isset($allResults[$resultType][$match])) {
+                                $allResults[$resultType][$match] = [];
+                            }
+                            foreach ($values as $v) {
+                                if (!in_array($v, $allResults[$resultType][$match])) {
+                                    $allResults[$resultType][$match][] = $v;
+                                }
                             }
                         }
                     }
                 }
-            }
-	        $matchedMatches = [];
-	        $combinedResults = [];
-	        foreach ($matches as $match) {
-                foreach ($allResults as $key => $keyMatches) {
-                    if (!isset($combinedResults[$key])) {
-                        $combinedResults[$key] = [];
-                    }
-                    if (isset($keyMatches[$match])) {
-                        if (!in_array($match, $matchedMatches)) {
-                            $matchedMatches[] = $match;
+                $matchedMatches = [];
+                $combinedResults = [];
+                foreach ($matches as $match) {
+                    foreach ($allResults as $key => $keyMatches) {
+                        if (!isset($combinedResults[$key])) {
+                            $combinedResults[$key] = [];
                         }
-                        foreach ($keyMatches[$match] as $value) {
-                            if (!in_array($value, $combinedResults[$key])) {
-                                $combinedResults[$key][] = $value;
+                        if (isset($keyMatches[$match])) {
+                            if (!in_array($match, $matchedMatches)) {
+                                $matchedMatches[] = $match;
+                            }
+                            foreach ($keyMatches[$match] as $value) {
+                                if (!in_array($value, $combinedResults[$key])) {
+                                    $combinedResults[$key][] = $value;
+                                }
                             }
                         }
                     }
                 }
-            }
 
-	        $otherProjectsValues = [];
-	        foreach ($matches as $match) {
-                list($pid, $recordId) = preg_split("/:/", $match);
-                $countKey = self::makeCountKey($table, $recordId);
-                $settingsByDate = Application::getSetting($countKey, $pid);
-                foreach ($settingsByDate as $ymdDate => $settings) {
-                    foreach ($headers as $header) {
-                        if (isset($settings[$header]) && ($settings[$header] !== "")) {
-                            $value = $settings[$header];
-                            if (!isset($otherProjectsValues[$header])) {
-                                $otherProjectsValues[$header] = [];
+                $otherProjectsValues = [];
+                foreach ($matches as $match) {
+                    list($pid, $recordId) = preg_split("/:/", $match);
+                    $countKey = self::makeCountKey($table, $recordId);
+                    $settingsByDate = Application::getSetting($countKey, $pid);
+                    foreach ($settingsByDate as $ymdDate => $settings) {
+                        foreach ($headers as $header) {
+                            if (isset($settings[$header]) && ($settings[$header] !== "")) {
+                                $value = $settings[$header];
+                                if (!isset($otherProjectsValues[$header])) {
+                                    $otherProjectsValues[$header] = [];
+                                }
+                                if (!isset($otherProjectsValues[$header][$pid])) {
+                                    $otherProjectsValues[$header][$pid] = [];
+                                }
+                                $otherProjectsValues[$header][$pid][$ymdDate] = $value;
                             }
-                            if (!isset($otherProjectsValues[$header][$pid])) {
-                                $otherProjectsValues[$header][$pid] = [];
-                            }
-                            $otherProjectsValues[$header][$pid][$ymdDate] = $value;
                         }
                     }
                 }
-            }
 
-            $row = [
-                $facultyName,
-                implode(", ", $combinedResults["Degrees"]),
-                implode(", ", $combinedResults["Ranks"]),
-                implode(", ", $combinedResults["Departments"]),
-                self::$NA,
-                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[5]]),
-                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[6]]),
-                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[7]]),
-                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[8]]),
-                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[9]]),
-                self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[10]]),
-            ];
-	        $data[implode(",", $matchedMatches)] = [$row];
+                $row = [
+                    $facultyName,
+                    implode(", ", $combinedResults["Degrees"]),
+                    implode(", ", $combinedResults["Ranks"]),
+                    implode(", ", $combinedResults["Departments"]),
+                    self::$NA,
+                    self::$NA,
+                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[6]]),
+                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[7]]),
+                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[8]]),
+                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[9]]),
+                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[10]]),
+                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[11]]),
+                ];
+                $data[implode(",", $matchedMatches)] = [$row];
+            }
         }
         return $data;
     }
@@ -621,7 +640,18 @@ class NIHTables {
         $currentMetadataByPid = [];
         foreach ($this->facultyMembers as $facultyName) {
             $matches = $this->findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
-            if (!empty($matches)) {
+            if (empty($matches)) {
+                $row = [
+                    $facultyName,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                    self::$NA,
+                ];
+                $data[$facultyName] = [$row];
+            } else {
                 $found = FALSE;
                 $i = 0;
                 do {

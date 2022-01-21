@@ -689,11 +689,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	function redcap_module_link_check_display($project_id, $link) {
 	    $url = $link['url'];
         $userid = $this->getUsername();
-        $isSuperUser = FALSE;
-        if (method_exists("\ExternalModules\ExternalModules", "isSuperUser")) {
-            $isSuperUser = ExternalModules::isSuperUser();
-        }
-
         # hide mentor links by returning $emptyLink
         $isMentorPage = preg_match("/mentor/", $url);
         $emptyLink = [
@@ -702,7 +697,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			"url" => "",
         ];
 
-        if ($isSuperUser || SUPER_USER) {
+        if (Application::isSuperUser()) {
             if (!$isMentorPage) {
                 return $link;
             } else {

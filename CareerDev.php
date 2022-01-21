@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.0.0";
+		return "4.0.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -431,7 +431,16 @@ class CareerDev {
 		return "";
 	}
 
-	public static function getREDCapDir() {
+    public static function getVFRSToken() {
+        $file = "/app001/credentials/career_dev/vfrs.php";
+        if (file_exists($file)) {
+            include($file);
+            return $vfrsToken;
+        }
+        return "";
+    }
+
+    public static function getREDCapDir() {
 		if (APP_PATH_WEBROOT) {
 			# get rid of trailing /'s per convention
 			return preg_replace("/\/$/", "", APP_PATH_WEBROOT);

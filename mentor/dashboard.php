@@ -6,8 +6,59 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/base.php");
 
 $numWeeks = 3;
+$resourceField = "mentoring_local_resource";
 
-if ($_POST['newUids']) {
+if ($_POST['resources']) {
+    require_once(dirname(__FILE__)."/../small_base.php");
+    $resourceStr = REDCapManagement::sanitizeWithoutChangingQuotes($_POST['resources']);
+    $resourceAry = preg_split("/[\n\r]+/", $resourceStr);
+    $resources = [];
+    foreach ($resourceAry as $resource) {
+        $r = trim($resource);
+        if ($r !== "") {
+            $resources[] = $r;
+        }
+    }
+    if (empty($resources)) {
+        echo "Error: No resources have been provided!";
+    } else {
+        $metadata = Download::metadata($token, $server);
+        $choices = REDCapManagement::getChoices($metadata);
+        $resourceField = adjustResourceField($resourceField, $choices);
+        $changed = FALSE;
+        for ($i = 0; $i < count($metadata); $i++) {
+            if ($metadata[$i]['field_name'] === $resourceField) {
+                $oldChoices = $choices[$resourceField];
+                $reverseOldChoices = [];
+                $maxIndex = 0;
+                foreach ($oldChoices as $idx => $label) {
+                    $reverseOldChoices[$label] = $idx;
+                    if ($idx > $maxIndex) {
+                        $maxIndex = $idx;
+                    }
+                }
+                $newChoices = [];
+                foreach ($resources as $resource) {
+                    if (isset($reverseOldChoices[$resource])) {
+                        $newChoices[$reverseOldChoices[$resource]] = $resource;
+                    } else {
+                        $maxIndex++;
+                        $newChoices[$maxIndex] = $resource;
+                    }
+                }
+                $metadata[$i]['select_choices_or_calculations'] = REDCapManagement::makeChoiceStr($newChoices);
+                $changed = TRUE;
+            }
+        }
+        if ($changed) {
+            Upload::metadata($metadata, $token, $server);
+            echo "Success.";
+        } else {
+            echo "Error: Nothing changed.";
+        }
+    }
+    exit;
+} else if ($_POST['newUids']) {
     require_once(dirname(__FILE__)."/../small_base.php");
     $records = Download::recordIds($token, $server);
     $newUids = REDCapManagement::sanitizeArray($_POST['newUids']);
@@ -254,10 +305,17 @@ if ($numMentors > $numInvited["mentors"]) {
 
 echo "<h1>Mentoring Agreement Responses</h1>";
 
+$resourceField = adjustResourceField($resourceField, $choices);
+$resourceList = implode("\r\n", array_values($choices[$resourceField]));
+
 $homeLink = Application::getMenteeAgreementLink();
 $addLink = Application::link("addMentor.php");
 echo "<h2>Getting Started</h2>";
-echo "<h3>Step 1: Get User IDs</h3>";
+echo "<h3>Step 1: Add Institutional Resources</h3>";
+echo "<p class='centered max-width'>Each institution offers unique resources to help their scholars succeed. Please fill in the list below with yours. (Note: This list cannot be blank.)</p>";
+echo "<p class='centered max-width'><textarea id='resource_list' style='width: 400px; height: 400px;'>$resourceList</textarea></p>";
+echo "<p class='centered'><button onclick='submitResources($(\"#resource_list\").val()); return false;'>Submit List</button></p>";
+echo "<h3>Step 2: Get User IDs</h3>";
 echo "<p class='centered max-width'>You will need to make sure you have REDCap user-ids for any mentees <strong>and</strong> for their mentors. Currently, you have $numMentees scholars/mentees, $numMenteeUserids user-ids for mentees, $numMentorNames mentor names, and $numMentorUserids user-ids for mentors. Input the mentee userid <strong>on each record's Identifiers form</strong>. Mentor names can be input using <a href='$addLink'>this tool</a> or manually input <strong>on each record's Manual Import form</strong>. Multiple mentor names and user-ids can be separated by commas.</p>";
 echo "<p class='centered max-width'><a href='javascript:;' onclick='$(\"#useridLookup\").show();'>Lookup REDCap User IDs</a></p>";
 echo "<div class='centered max-width' style='display: none; background-color: rgba(191,191,191,0.5);' id='useridLookup'>";
@@ -268,7 +326,7 @@ echo "<p><label for='first_name'>First Name</label>: <input type='text' id='firs
 echo "<label for='last_name'>Last Name</label>: <input type='text' id='last_name' /><br>";
 echo "<button onclick='lookupREDCapUserid(); return false;'>Look up name</button>";
 echo "</div>";
-echo "<h3>Step 2: Pass on the Link</h3>";
+echo "<h3>Step 3: Pass on the Link</h3>";
 echo "<p class='centered max-width'><strong><a class='smaller' href='$homeLink'>$homeLink</a></strong><br>Pass along this link to any mentee or mentor that (A) has a REDCap userid and (B) is registered in your Flight Tracker as a Scholar/Mentee or a Primary Mentor (with a <a href='$addLink'>registered userid</a>). With this link, they can access their relevant mentoring information anytime.</p>";
 echo "<h2>Submissions</h2>";
 echo "<table class='centered bordered max-width'>";
@@ -287,7 +345,26 @@ echo "</tbody>";
 echo "</table>";
 
 $redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
+$thisUrl = Application::link("this");
 echo "<script>
+function submitResources(value) {
+    if (value.match(/^\s*$/)) {
+        alert('You must provide at least one resource!');
+    } else {
+        const url = '$thisUrl';
+        presentScreen('Saving...');
+        $.post(url, {resources: value}, function(html) {
+            clearScreen();
+            console.log(html);
+            if (html.match(/error/i)) {
+                alert('Error: '+html);
+            } else {
+                alert('Resources have been saved successfully.');
+            }
+        });
+    }
+}
+
 function checkForNewMentorUserids(link) {
     $('#results').html('');
     presentScreen('Checking...');
@@ -383,3 +460,11 @@ function submitAdjudications(link) {
 }
 </script>";
 
+function adjustResourceField($resourceField, $choices) {
+    $newFieldName = $resourceField."s";
+    if ($choices[$newFieldName]) {
+        return $newFieldName;
+    } else {
+        return $resourceField;
+    }
+}

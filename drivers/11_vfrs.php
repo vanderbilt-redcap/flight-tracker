@@ -2,141 +2,29 @@
 
 # must be run on server with access to its database
 
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Autoload.php");
+
+define("NOAUTH", "true");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
-define("NOAUTH", true);
-
-function updateVFRS($token, $server, $pid) {
+function updateVFRS($token, $server, $pid, $records) {
 	error_log("updateVFRS with ".$token." ".$server." ".$pid);
 
-	$records = Download::recordIds($token, $server);
-
-	$oneWeekAgoTs = date("Ymd000000", time() - 24 * 3600 * 7);
+	$completes = Download::oneField($token, $server, "pre_screening_survey_complete");
 	foreach ($records as $recordId) {
-		error_log("Query for $recordId");
-		$sql = "SELECT ts FROM redcap_log_event WHERE pk = '".db_real_escape_string($recordId)."' AND project_id = '$pid' AND ts >= $oneWeekAgoTs AND description LIKE 'Create record%' ORDER BY ts DESC LIMIT 1";
-		error_log($sql);
-		$q = db_query($sql); 
-		$error = db_error();
-		if ($error) {
-			throw new \Exception("Bad SQL ".$error." ".$sql);
-		} else if (db_num_rows($q) > 0) {
-			# new record => update VFRS
-			$row = db_fetch_assoc($q);
-			error_log("Updating VFRS: ".db_num_rows($q)." rows");
-			error_log(json_encode($row));
-			updateVFRSForRecord($token, $server, $pid, $recordId);
+	    if ($completes[$recordId] != "2") {
+	        updateVFRSForRecord($token, $server, $pid, $recordId);
 		}
 	}
-	CareerDev::saveCurrentDate("Last VFRS Update", $pid);
+    CareerDev::saveCurrentDate("Last VFRS Update", $pid);
 }
 
-/**
- * Remove any non-ASCII characters and convert known non-ASCII characters
- * to their ASCII equivalents, if possible.
- *
- * @param string $string
- * @return string $string
- * @author Jay Williams <myd3.com>
- * @license MIT License
- * @link http://gist.github.com/119517
- */
-function convert_ascii($string)
-{
-	// Replace Single Curly Quotes
-	$search[]  = chr(226).chr(128).chr(152);
-	$replace[] = "'";
-	$search[]  = chr(226).chr(128).chr(153);
-	$replace[] = "'";
-	// Replace Smart Double Curly Quotes
-	$search[]  = chr(226).chr(128).chr(156);
-	$replace[] = '"';
-	$search[]  = chr(226).chr(128).chr(157);
-	$replace[] = '"';
-	// Replace En Dash
-	$search[]  = chr(226).chr(128).chr(147);
-	$replace[] = '--';
-	// Replace Em Dash
-	$search[]  = chr(226).chr(128).chr(148);
-	$replace[] = '---';
-	// Replace Bullet
-	$search[]  = chr(226).chr(128).chr(162);
-	$replace[] = '*';
-	// Replace Middle Dot
-	$search[]  = chr(194).chr(183);
-	$replace[] = '*';
-	// Replace Ellipsis with three consecutive dots
-	$search[]  = chr(226).chr(128).chr(166);
-	$replace[] = '...';
-	// Apply Replacements
-	$string = str_replace($search, $replace, $string);
-	// Remove any non-ASCII Characters
-	$string = preg_replace("/[^\x01-\x7F]/","", $string);
-	return $string;
-}
-
-# returns string without double quotes at beginning and end of string
-function stripQuotes($v) {
-	$v = preg_replace("/^\"/", "", $v);
-	$v = preg_replace("/\"$/", "", $v);
-	return $v;
-}
-
-# if the string contains special characters, it will fail
-# this function handles how to convert those characters to
-# ASCII and to strip the double-quotes around them
-function handleFailedData($row) {
-	$row2 = array();
-		foreach ($row as $field => $value) {
-		$value2 = json_encode($value);
-		if ($value2 === false) {
-			$value2 = convert_ascii($value);
-		}
-		$row2[$field] = stripQuotes($value2);
-	}
-
-	return json_encode($row2);
-}
-
-# as stated, stips quotes and trims
-function fixToDatabase($n) {
-	$n = stripQuotes($n);
-	$n = trim($n);
-	return $n;
-}
-
-# textual fixes to facilitate matching via regex's
-function fixToCompare($n) {
-	$n = str_replace("/", "\/", $n);
-	$n = str_replace("???", "", $n);
-	$n = stripQuotes($n);
-	$n = strtolower($n);
-	return $n;
-}
-
-# COEUS formats as "lastname, firstname MI"
-# This needs to be broken up to match with Newman
-# returns array of (lastname, firstname)
-function getCoeusName($n) {
-	$nodes = preg_split("/,/", $n);
-	$newNodes = array();
-	$j = 0;
-	foreach ($nodes as $node) {
-		$node = preg_replace("/\s*Jr\.*/", "", $node);
-		if ($j < 2) {
-			$newNodes[] = $node;
-		} else if ($j >= 2) {
-			$newNodes[1] = $newNodes[1].",".$node;
-		}
-		$j++;
-	}
-	while (count($newNodes) < 2) {
-		$newNodes[] = "";
-	}
-	return $newNodes;
-}
 
 # Ho/Holden creates a lot of trouble for this algorithm. They are handled in a special script
 # Everything else is normal. Some regular expressions here. Should be all lower case.
@@ -159,7 +47,7 @@ function nameMatch($n1, $n2) {
 
 # one name has ???; eliminate
 # trims trailing initial.
-function fixForMatch($n) {
+function fixForMatchVFRS($n) {
 	$n = preg_replace("/\s+\w\.$/", "", $n);
 	$n = preg_replace("/\s+\w$/", "", $n);
 	$n = str_replace("???", "", $n);
@@ -170,10 +58,10 @@ function fixForMatch($n) {
 # returns true/false over whether the names "match"
 function match($fn1, $ln1, $fn2, $ln2) {
 	if ($fn1 && $ln1 && $fn2 && $ln2) {
-		$fn1 = fixForMatch($fn1);
-		$fn2 = fixForMatch($fn2);
-		$ln1 = fixForMatch($ln1);
-		$ln2 = fixForMatch($ln2);
+		$fn1 = fixForMatchVFRS($fn1);
+		$fn2 = fixForMatchVFRS($fn2);
+		$ln1 = fixForMatchVFRS($ln1);
+		$ln2 = fixForMatchVFRS($ln2);
 		if (nameMatch($fn1, $fn2) && nameMatch($ln1, $ln2)) {
 			return true;
 		}
@@ -182,7 +70,7 @@ function match($fn1, $ln1, $fn2, $ln2) {
 }
 
 # returns true/false over whether this is a pair to skip
-function notSkip($fn1, $ln1, $fn2, $ln2) {
+function notSkipVFRS($fn1, $ln1, $fn2, $ln2) {
 	if (($ln1 == "ho") && ($fn1 == "richard") && ($ln2 == "holden") && ($fn2 == "richard")) {
 		return false;
 	}
@@ -193,7 +81,7 @@ function notSkip($fn1, $ln1, $fn2, $ln2) {
 }
 
 # returns array with match indices in $rows
-function matchRows($prefix, $rows, $newmanRow) {
+function matchRowsVFRS($prefix, $rows, $newmanRow) {
 	$firstName1 = $newmanRow['first_name'];
 	$lastName1 = $newmanRow['last_name'];
 	$match_is = array();
@@ -210,7 +98,7 @@ function matchRows($prefix, $rows, $newmanRow) {
 				$firstName2 = fixToCompare($row['first_name']);
 				$lastName2 = fixToCompare($row['last_name']);
 			}
-			if (notSkip($firstName1, $lastName1, $firstName2, $lastName2)) {
+			if (notSkipVFRS($firstName1, $lastName1, $firstName2, $lastName2)) {
 				if (match($firstName1, $lastName1, $firstName2, $lastName2)) {
 					error_log("MATCH");
 					$match_is[] = $i;
@@ -224,7 +112,7 @@ function matchRows($prefix, $rows, $newmanRow) {
 
 # combines two rows
 # row overwrites row2 in case of direct conflict
-function combineRows($row, $row2) {
+function combineRowsVFRS($row, $row2) {
 	$combined = array();
 	$rowData = json_decode($row['DATA'], true);
 	$row2Data = json_decode($row2['DATA'], true);
@@ -291,14 +179,6 @@ function combineRows($row, $row2) {
 	return $combined;
 }
 
-# makes the row a coeus row with a repeatable instance
-function formatCoeusRow($row, $instance) {
-	$rowData = json_decode($row['DATA'], true);
-	$rowData['redcap_repeat_instance'] = $instance;
-	$rowData['redcap_repeat_instrument'] = "coeus";
-	return $rowData;
-}
-
 # we adjusted the indices to not be 0-based but 1-based. So we have to add 1 to each value
 function adjustForVFRS($redcapRow) {
 	$fieldsToAdjust = array("vfrs_graduate_degree", "vfrs_degree2", "vfrs_degree3", "vfrs_degree4", "vfrs_degree5");
@@ -308,18 +188,6 @@ function adjustForVFRS($redcapRow) {
 		}
 	}
 	return $redcapRow;
-}
-
-# tells us whether to skip one of these rows
-function skip($fn, $ln) {
-	$fn = strtolower($fn);
-	$ln = strtolower($fn);
-	if (($fn == "hal") && ($ln == "moses")) {
-		return true;
-	} else if (($fn == "alex") && ($ln == "patrick???")) {
-		return true;
-	}
-	return false;
 }
 
 function updateVFRSForRecord($token, $server, $pid, $record) {
@@ -336,7 +204,9 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 	}
 
 	# Token for VFRS
-	$vfrs_token = 'A987974FEEBDA008EB3200B182EAD1EE';
+	$vfrs_token = CareerDev::getVFRSToken();
+	$metadata = Download::metadata($token, $server);
+	$allFields = REDCapManagement::getFieldsFromMetadata($metadata);
 
 	error_log("Downloading VFRS data");
 	# downloads the VFRS data
@@ -371,15 +241,23 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 
 	$prefix = "vfrs";
 	$names[$prefix] = array();
-	$skip = array("ecommons");
+	$skipRegexes = array("/^ecommons$/", "/^c___/", "/^m___/", "/_complete$/");
 	foreach ($vfrsData as $row) {
 		$id = $row['participant_id'];
 		$firstName = $row['name_first'];
 		$lastName = $row['name_last'];
 		$row2 = array();
 		foreach ($row as $field => $value) {
-			if (!preg_match("/_complete$/", $field) && !in_array($field, $skip)) {
-				$row2[strtolower("vfrs_".$field)] = $value;
+			$matched = FALSE;
+			foreach ($skipRegexes as $regex) {
+				if (preg_match($regex, $field)) {
+					$matched = TRUE;
+					break;
+				}
+			}
+			$newField = strtolower("vfrs_".$field);
+			if (!$matched && in_array($newField, $allFields)) {
+				$row2[$newField] = $value;
 			}
 		}
 		if ($id && $firstName && $lastName) {
@@ -419,15 +297,13 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 				}
 				if (!$proceed) {
 					error_log("$prefix DUPLICATE at $firstName1 $firstName2 $lastName1 $lastName2");
-				} else if (skip($firstName1, $lastName1)) {
-					error_log("$prefix SKIP at $firstName1 $lastName1");
 				} else {
 					error_log("$prefix MATCH at $firstName1 $lastName1");
 					foreach ($names as $prefix2 => $rows2) {
 						if ($prefix2 != "coeus") {
-							$match2_is = matchRows($prefix2, $rows2, $newmanRow);
+							$match2_is = matchRowsVFRS($prefix2, $rows2, $newmanRow);
 							foreach ($match2_is as $match2_i) {
-								$row = combineRows($row, $rows2[$match2_i]);
+								$row = combineRowsVFRS($row, $rows2[$match2_i]);
 								foreach ($row['prefix'] as $prefix3) {
 									if (!in_array($prefix3, $uploadTypes)) {
 										$uploadTypes[] = $prefix3;
@@ -441,6 +317,9 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 						$rowData['redcap_repeat_instrument'] = "";
 						$rowData['redcap_repeat_instance'] = "";
 						$rowData = adjustForVFRS($rowData);
+						$rowData = REDCapManagement::filterOutVariable("m", $rowData);
+						$rowData = REDCapManagement::filterOutVariable("c", $rowData);
+						$rowData["pre_screening_survey_complete"] = "2";
 						array_unshift($upload, $rowData);
 						$numRows += count($upload);
 	

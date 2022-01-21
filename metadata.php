@@ -19,98 +19,46 @@ $lastCheckField = "prior_metadata_ts";
 $deletionRegEx = "/___delete$/";
 
 if ($_POST['process'] == "check") {
-	$ts = $_POST['timestamp'];
-	$lastCheckTs = CareerDev::getSetting($lastCheckField);
-	if (!$lastCheckTs) {
-		$lastCheckTs = 0;
-	}
+    $ts = $_POST['timestamp'];
+    $lastCheckTs = CareerDev::getSetting($lastCheckField);
+    if (!$lastCheckTs) {
+        $lastCheckTs = 0;
+    }
 
-	# check a maximum of once every 30 seconds 
-	if ($ts > $lastCheckTs + 30) {
-        $missing = array();
-        $additions = array();
-        $changed = array();
-        $metadata = array();
-        $metadata['REDCap'] = Download::metadata($token, $server);
-        $genderFieldsToHandleForVanderbilt = ["summary_gender", "summary_gender_source", "check_gender"];
-        foreach ($files as $filename) {
-            $fp = fopen($filename, "r");
-            $json = "";
-            while ($line = fgets($fp)) {
-                $json .= $line;
-            }
-            fclose($fp);
-
-            $metadata['file'] = json_decode($json, TRUE);
-
-            $choices = array();
-            foreach ($metadata as $type => $md) {
-                $choices[$type] = REDCapManagement::getChoices($md);
-            }
-
-            if (!CareerDev::isVanderbilt()) {
-                insertDeletesForPrefix($metadata['file'], "/^coeus_/");
-            }
-
-            $fieldList = array();
-            $indexedMetadata = array();
-            foreach ($metadata as $type => $metadataRows) {
-                $fieldList[$type] = array();
-                $indexedMetadata[$type] = array();
-                foreach ($metadataRows as $row) {
-                    $fieldList[$type][$row['field_name']] = $row['select_choices_or_calculations'];
-                    $indexedMetadata[$type][$row['field_name']] = $row;
-                }
-            }
-
-            $metadataFields = REDCapManagement::getMetadataFieldsToScreen();
-            $specialFields = REDCapManagement::getSpecialFields("all");
-            foreach ($fieldList["file"] as $field => $choiceStr) {
-                $isSpecialGenderField = !CareerDev::isVanderbilt() || !in_array($field, $genderFieldsToHandleForVanderbilt);
-                $isFieldOfSources = preg_match("/_source$/", $field) && isset($choices["REDCap"][$field]["scholars"]);
-                if (!in_array($field, $specialFields)) {
-                    if (!isset($fieldList["REDCap"][$field])) {
-                        array_push($missing, $field);
-                        if (!preg_match($deletionRegEx, $field)) {
-                            array_push($additions, $field);
-                        }
-                    } else if ($isFieldOfSources) {
-                        $sourceChoices = CareerDev::getRelevantChoices();
-                        if (!REDCapManagement::arraysEqual($choices["REDCap"][$field], $sourceChoices)) {
-                            array_push($missing, $field);
-                            array_push($changed, $field);
-                        }
-                    } else if (!empty($choices["file"][$field]) && !empty($choices["REDCap"][$field]) && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])) {
-                        if ($isSpecialGenderField) {
-                            array_push($missing, $field);
-                            array_push($changed, $field);
-                        }
-                    } else {
-                        foreach ($metadataFields as $metadataField) {
-                            if (REDCapManagement::hasMetadataChanged($indexedMetadata["REDCap"][$field][$metadataField], $indexedMetadata["file"][$field][$metadataField], $metadataField)) {
-                                if ($isSpecialGenderField) {
-                                    array_push($missing, $field);
-                                    array_push($changed, $field);
-                                }
-                                break; // metadataFields loop
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    # check a maximum of once every 30 seconds
+    if ($ts > $lastCheckTs + 30) {
+        $metadata = Download::metadata($token, $server);
+        list ($missing, $additions, $changed) = findChangedFieldsInMetadata($metadata, $files, $deletionRegEx);
         CareerDev::setSetting($lastCheckField, time(), $pid);
         if (count($additions) + count($changed) > 0) {
-            echo "<script>var missing = ".json_encode($missing).";</script>\n";
+            if (Application::isSuperUser()) {
+                $module = Application::getModule();
+                $pids = $module->getPids();
+                echo "<div id='metadataWarning' class='install-metadata-box install-metadata-box-danger'>
+                <i class='fa fa-exclamation-circle' aria-hidden='true'></i> <a href='javascript:;' onclick='installMetadataForProjects(" . json_encode($pids) . ");'>Click here to install for all " . Application::getProgramName() . " projects (REDCap SuperUsers only).</a>
+                </div>";
+            }
+            echo "<script>var missing = " . json_encode($missing) . ";</script>\n";
             echo "<div id='metadataWarning' class='install-metadata-box install-metadata-box-danger'>
                 <i class='fa fa-exclamation-circle' aria-hidden='true'></i> An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a>
-                <ul><li>The following fields will be added: ".(empty($additions) ? "<i>None</i>" : "<strong>".implode(", ", $additions)."</strong>")."</li>
-                <li>The following fields will be changed: ".(empty($changed) ? "<i>None</i>" : "<strong>".implode(", ", $changed)."</strong>")."</li></ul>
+                <ul><li>The following fields will be added: " . (empty($additions) ? "<i>None</i>" : "<strong>" . implode(", ", $additions) . "</strong>") . "</li>
+                <li>The following fields will be changed: " . (empty($changed) ? "<i>None</i>" : "<strong>" . implode(", ", $changed) . "</strong>") . "</li></ul>
             </div>";
         }
-	}
-} else if ($_POST['process'] == "install") {
-	$postedFields = $_POST['fields'];
+    }
+} else if (in_array($_POST['process'], ["install", "install_all"])) {
+    $metadata = [];
+    $metadata['REDCap'] = Download::metadata($token, $server);
+    if (isset($_POST['fields'])) {
+        $postedFields = $_POST['fields'];
+    } else {
+        list ($missing, $additions, $changed) = findChangedFieldsInMetadata($metadata['REDCap'], $files, $deletionRegEx);
+        $postedFields = $missing;
+    }
+    if (empty($postedFields)) {
+        echo json_encode(["error" => "Nothing to update"]);
+        exit;
+    }
 	foreach ($files as $filename) {
         $fp = fopen($filename, "r");
         $json = "";
@@ -119,9 +67,7 @@ if ($_POST['process'] == "check") {
         }
         fclose($fp);
 
-        $metadata = [];
         $metadata['file'] = json_decode($json, TRUE);
-        $metadata['REDCap'] = Download::metadata($token, $server);
         if ($metadata['file']) {
             if ($grantClass == "K") {
                 $mentorLabel = "Primary mentor during your K/K12 training period";
@@ -265,4 +211,80 @@ function insertDeletesForPrefix(&$metadata, $regExToTurnIntoDeletes) {
             $metadata[$i]['field_name'] .= "___delete";
         }
     }
+}
+
+function findChangedFieldsInMetadata($projectMetadata, $files, $deletionRegEx) {
+    $missing = [];
+    $additions = [];
+    $changed = [];
+    $metadata = [];
+    $metadata['REDCap'] = $projectMetadata;
+    $genderFieldsToHandleForVanderbilt = ["summary_gender", "summary_gender_source", "check_gender"];
+    foreach ($files as $filename) {
+        $fp = fopen($filename, "r");
+        $json = "";
+        while ($line = fgets($fp)) {
+            $json .= $line;
+        }
+        fclose($fp);
+
+        $metadata['file'] = json_decode($json, TRUE);
+
+        $choices = array();
+        foreach ($metadata as $type => $md) {
+            $choices[$type] = REDCapManagement::getChoices($md);
+        }
+
+        if (!CareerDev::isVanderbilt()) {
+            insertDeletesForPrefix($metadata['file'], "/^coeus_/");
+        }
+
+        $fieldList = array();
+        $indexedMetadata = array();
+        foreach ($metadata as $type => $metadataRows) {
+            $fieldList[$type] = array();
+            $indexedMetadata[$type] = array();
+            foreach ($metadataRows as $row) {
+                $fieldList[$type][$row['field_name']] = $row['select_choices_or_calculations'];
+                $indexedMetadata[$type][$row['field_name']] = $row;
+            }
+        }
+
+        $metadataFields = REDCapManagement::getMetadataFieldsToScreen();
+        $specialFields = REDCapManagement::getSpecialFields("all");
+        foreach ($fieldList["file"] as $field => $choiceStr) {
+            $isSpecialGenderField = !CareerDev::isVanderbilt() || !in_array($field, $genderFieldsToHandleForVanderbilt);
+            $isFieldOfSources = preg_match("/_source$/", $field) && isset($choices["REDCap"][$field]["scholars"]);
+            if (!in_array($field, $specialFields)) {
+                if (!isset($fieldList["REDCap"][$field])) {
+                    array_push($missing, $field);
+                    if (!preg_match($deletionRegEx, $field)) {
+                        array_push($additions, $field);
+                    }
+                } else if ($isFieldOfSources) {
+                    $sourceChoices = CareerDev::getRelevantChoices();
+                    if (!REDCapManagement::arraysEqual($choices["REDCap"][$field], $sourceChoices)) {
+                        array_push($missing, $field);
+                        array_push($changed, $field);
+                    }
+                } else if (!empty($choices["file"][$field]) && !empty($choices["REDCap"][$field]) && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])) {
+                    if ($isSpecialGenderField) {
+                        array_push($missing, $field);
+                        array_push($changed, $field);
+                    }
+                } else {
+                    foreach ($metadataFields as $metadataField) {
+                        if (REDCapManagement::hasMetadataChanged($indexedMetadata["REDCap"][$field][$metadataField], $indexedMetadata["file"][$field][$metadataField], $metadataField)) {
+                            if ($isSpecialGenderField) {
+                                array_push($missing, $field);
+                                array_push($changed, $field);
+                            }
+                            break; // metadataFields loop
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return [$missing, $additions, $changed];
 }

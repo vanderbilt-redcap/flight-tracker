@@ -935,7 +935,8 @@ class REDCapManagement {
         return htmlentities($str);
     }
 
-    public static function sanitizeArray($ary) {
+    public static function sanitizeArray($ary, $stripHTML = TRUE) {
+	    $encodeQuotes = FALSE;
 	    if (is_array($ary)) {
             /**
              * @psalm-taint-escape html
@@ -943,17 +944,29 @@ class REDCapManagement {
              */
             $newAry = [];
             foreach ($ary as $key => $value) {
-	            $key = self::sanitize($key);
-	            if (is_array($value)) {
-	                $value = self::sanitizeArray($value);
+                if ($stripHTML) {
+                    $key = self::sanitize($key);
                 } else {
-	                $value = self::sanitize($value);
+                    $key = self::sanitizeWithoutStrippingHTML($key, $encodeQuotes);
+                }
+	            if (is_array($value)) {
+	                $value = self::sanitizeArray($value, $stripHTML);
+                } else {
+                    if ($stripHTML) {
+                        $value = self::sanitize($value);
+                    } else {
+                        $value = self::sanitizeWithoutStrippingHTML($value, $encodeQuotes);
+                    }
                 }
 	            $newAry[$key] = $value;
             }
             return $newAry;
         } else {
-	        return self::sanitize($ary);
+            if ($stripHTML) {
+                return self::sanitize($ary);
+            } else {
+                return self::sanitizeWithoutStrippingHTML($ary, $encodeQuotes);
+            }
         }
     }
 
