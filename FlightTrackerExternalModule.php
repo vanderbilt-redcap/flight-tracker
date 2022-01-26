@@ -751,7 +751,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $tokenName = $this->getProjectSetting("tokenName", $project_id);
             $token = $this->getProjectSetting("token", $project_id);
             $server = $this->getProjectSetting("server", $project_id);
-            if ($tokenName) {
+            if ($tokenName && $token && $server) {
                 # turn off for surveys and login pages
                 $url = $_SERVER['PHP_SELF'];
                 if (!preg_match("/surveys/", $url) && !isset($_GET['s'])) {
