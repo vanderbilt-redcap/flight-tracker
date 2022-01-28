@@ -291,9 +291,8 @@ echo "</tbody>";
 echo "</table>";
 
 $redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
-$thisUrl = Application::link("this");
 echo "<script>
-unction checkForNewMentorUserids(link) {
+function checkForNewMentorUserids(link) {
     $('#results').html('');
     presentScreen('Checking...');
     $.post(link, { 'updateMentors': true }, function(json) {
