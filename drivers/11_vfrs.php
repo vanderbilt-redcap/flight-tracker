@@ -344,3 +344,19 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 	}
 	error_log("$numRows rows uploaded into ".($record_id - 1)." records.");
 }
+
+function fixToCompare($n) {
+    $n = str_replace("/", "\/", $n);
+    $n = str_replace("???", "", $n);
+    $n = stripQuotesVFRS($n);
+    $n = strtolower($n);
+    return $n;
+}
+
+# strip double quotes
+function stripQuotesVFRS($v) {
+    $v = preg_replace("/^\"/", "", $v);
+    $v = preg_replace("/\"$/", "", $v);
+    return $v;
+}
+

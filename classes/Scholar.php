@@ -3029,7 +3029,6 @@ return $result;
             "identifier_ecommons_id" => "getEcommonsId",
         ];
 		if (in_array("summary_all_degrees", $metadataFields)) {
-		    Application::log("Adding summary_all_degrees");
 		    $ary["summary_all_degrees"] = "checkAllDegrees";
         }
         for ($i = 1; $i <= self::getNumStudySections(); $i++) {

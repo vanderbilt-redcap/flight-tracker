@@ -13,7 +13,7 @@ function updateBibliometrics($token, $server, $pid, $records) {
     $metadata = Download::metadata($token, $server);
     foreach ($records as $recordId) {
         $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), [$recordId]);
-        Application::log("$pid: Updating metrics for Record $recordId (".count($redcapData)." rows)");
+        Application::log("Updating metrics for Record $recordId (".count($redcapData)." rows)", $pid);
         $pubs = new Publications($token, $server, $metadata);
         $pubs->setRows($redcapData);
         $pubs->updateMetrics();

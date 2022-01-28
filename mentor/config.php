@@ -2,8 +2,6 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-use Vanderbilt\CareerDevLibrary\Application;
-
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
@@ -14,6 +12,7 @@ if (!Application::has("mentoring_agreement")) {
 $metadata = Download::metadata($token, $server);
 $choices = REDCapManagement::getChoices($metadata);
 $resourceField = "mentoring_local_resources";
+$resourceField = adjustResourceField($resourceField, $choices);
 
 $mssg = "";
 $defaultList = implode("\n", array_values($choices[$resourceField]));
@@ -128,3 +127,14 @@ echo $mssg;
     </table>
     <p class="centered"><button>Change Configuration</button></p>
 </form>
+
+<?php
+
+function adjustResourceField($resourceField, $choices) {
+    $newFieldName = $resourceField."s";
+    if ($choices[$newFieldName]) {
+        return $newFieldName;
+    } else {
+        return $resourceField;
+    }
+}

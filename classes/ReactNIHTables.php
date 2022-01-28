@@ -135,7 +135,7 @@ table { border-collapse: collapse; }
             $saveServer = Application::getSetting("server", $savePid);
             if ($saveToken && $saveServer) {
                 $records = Download::recordIds($saveToken, $saveServer);
-                if (in_array($saveRecord, $records)) {
+                if (in_array($saveRecord, $records) || ($saveRecord === "")) {
                     $recordInstance = REDCapManagement::sanitize($post['recordInstance']);
                     $colWithoutSpacesOrHTML = REDCapManagement::sanitize($post['column']);
                     $value = REDCapManagement::sanitize($post['value']);
@@ -144,7 +144,7 @@ table { border-collapse: collapse; }
                     $col = "";
                     foreach ($headers as $header) {
                         $headerWithoutHTML = preg_replace("/<[^>]+>/", "", $header);
-                        $headerWithoutSpacesAndHTML = preg_replace("/\s+/", "", $headerWithoutHTML);
+                        $headerWithoutSpacesAndHTML = preg_replace("/[\s#,\'\"\.\(\)]+/", "", $headerWithoutHTML);
                         if ($colWithoutSpacesOrHTML == $headerWithoutSpacesAndHTML) {
                             $col = $header;
                             break;

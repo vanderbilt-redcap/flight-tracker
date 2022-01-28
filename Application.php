@@ -217,9 +217,13 @@ class Application {
     }
 
     public static function getHelperInstitutions() {
-        return [
+        $ary = [
             "Veterans Health Administration",
         ];
+        if (self::isVanderbilt()) {
+            $ary[] = "Tennessee Valley Healthcare System";
+        }
+        return $ary;
     }
 
     public static function getInstitution($pid = NULL) {

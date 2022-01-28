@@ -10,11 +10,12 @@ use \Vanderbilt\CareerDevLibrary\Application;
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
-$fields = array(
+$fields = [
 		"First Name" => "identifier_first_name",
 		"Last Name" => "identifier_last_name",
-		"Email" => "identifier_email",
-		);
+        "Email" => "identifier_email",
+        "User-id" => "identifier_userid",
+		];
 if (checkPOSTKeys(array_values($fields))) {
 	$recordIds = Download::recordIds($token, $server);
 	$max = 0;

@@ -21,6 +21,7 @@ if (isset($_GET['csv'])) {
 .green { color: green; font-weight: bold; }
 .yellow { color: #cbb600; font-weight: bold; }
 .purple { color: purple; font-weight: bold; }
+.legend { padding: 16px !important; }
 th { background-color: #f8e7b1; border: 1px solid #444444; }
 td { box-shadow: 0px 0px 6px 1px #444444 inset; padding: 3px 6px; }
 td,th { text-align: center; min-width: 95px; }
@@ -292,6 +293,8 @@ $fields = [
 		"summary_current_rank" => "Rank",
 		"summary_current_start" => "Position Start",
 		"summary_current_tenure" => "Tenure",
+        "summary_disadvantaged" => "Disadvantaged Status",
+        "summary_disability" => "Disability Status",
 		];
 $potentialFields = [
     "Gender Identity" => ["check_gender", "followup_gender", ],
@@ -372,7 +375,7 @@ if (isset($_GET['csv'])) {
 	exit();
 } else {
 	echo "<h1>State of Missing Data</h1>";
-	echo "<table style='margin: 10px auto;'><tr><td class='green'>Green = Self-Reported</td><td class='yellow'>Yellow = Computer-Reported</td><td class='purple'>Purple = Manual Entry</td><td class='red'>Red = Missing</td></tr></table>";
+	echo "<table style='margin: 10px auto;'><tr><td class='green legend'>Green = Self-Reported</td><td class='yellow legend'>Yellow = Computer-Reported</td><td class='purple legend'>Purple = Manual Entry</td><td class='red legend'>Red = Missing</td></tr></table>";
 
 	$cohorts = new Cohorts($token, $server, CareerDev::getPluginModule());
 	$url = CareerDev::link("tablesAndLists/missingness.php");
@@ -428,23 +431,33 @@ if (isset($_GET['csv'])) {
 	# no repeating instruments
 	$missingCells = 0;
 	$missingRecords = 0;
+	$tableHTML = "";
+	$sumFields = [];
 	foreach ($lastNames as $recordId => $lastName) {
 	    foreach ($redcapData[$recordId] as $row) {
             $recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($recordId));
             $ary = generateDataColumns($recordData, array_keys($fields), $potentialFields);
+            foreach ($ary['cols'] as $i => $item) {
+                if (!isset($sumFields[$i])) {
+                    $sumFields[$i] = 0;
+                }
+                if ($item) {
+                    $sumFields[$i]++;
+                }
+            }
             $emailName = EmailManager::makeEmailIntoID($row['identifier_email']);
-            $html .= "<tr>";
-            $html .= "<td onclick='var isChecked = $(this).find(\"input.who_to\").attr(\"checked\"); if (isChecked) { $(this).find(\"input.who_to\").attr(\"checked\", false); } else { $(this).find(\"input.who_to\").attr(\"checked\", true); }'><input class='who_to' name='$emailName' type='checkbox'></td>";
-            $html .= "<th>";
-            $html .= Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['record_id'] . " " . $row['identifier_first_name'] . " " . $row['identifier_last_name']) . "<br>";
+            $tableHTML .= "<tr>";
+            $tableHTML .= "<td onclick='const isChecked = $(this).find(\"input.who_to\").attr(\"checked\"); if (isChecked) { $(this).find(\"input.who_to\").attr(\"checked\", false); } else { $(this).find(\"input.who_to\").attr(\"checked\", true); }'><input class='who_to' name='$emailName' type='checkbox'></td>";
+            $tableHTML .= "<th>";
+            $tableHTML .= Links::makeSummaryLink($pid, $row['record_id'], $event_id, $row['record_id'] . " " . $row['identifier_first_name'] . " " . $row['identifier_last_name']) . "<br>";
             if ($ary['missingCells'] > 0) {
-                $html .= "<span style='font-size: 12px;'>" . Links::makeLink(CareerDev::link("tablesAndLists/missingnessWorksheet.php") . "&record=" . $row['record_id'], "(Missingness Worksheet)") . "</span><br>";
+                $tableHTML .= "<span style='font-size: 12px;'>" . Links::makeLink(CareerDev::link("tablesAndLists/missingnessWorksheet.php") . "&record=" . $row['record_id'], "(Missingness Worksheet)") . "</span><br>";
             }
             if ($row['identifier_left_date']) {
-                $html .= "<div class='red centered'>Left: " . $row['identifier_left_date']."</div>";
+                $tableHTML .= "<div class='red centered'>Left: " . $row['identifier_left_date']."</div>";
             }
-            $html .= "</th>";
-            $html .= $ary['text'];
+            $tableHTML .= "</th>";
+            $tableHTML .= $ary['text'];
 
             $latestAdminDate = findLatestDateForFields($recordData, $recordId, $adminFields, $metadata);
             $latestContactDate = findLatestDateForFields($recordData, $recordId, $contactFields, $metadata);
@@ -455,16 +468,18 @@ if (isset($_GET['csv'])) {
                     if ($class) {
                         $classStr = " class='$class'";
                     }
-                    $html .= "<td$classStr>$latestDate</td>";
+                    $tableHTML .= "<td$classStr>$latestDate</td>";
                 } else {
-                    $html .= "<td class='red'>N/A</td>";
+                    $tableHTML .= "<td class='red'>N/A</td>";
                 }
             }
             $missingCells += $ary['missingCells'];
             $missingRecords += $ary['missingRecords'];
-            $html .= "</tr>";
+            $tableHTML .= "</tr>";
         }
 	}
+	$totalHTML = makeTotalHTML($sumFields, count($lastNames));
+	$html .= $totalHTML.$tableHTML.$totalHTML;
 	$html .= "</tbody></table>";
 	$html .= "</div>";
 
@@ -533,4 +548,28 @@ function findLatestDateForFields($redcapData, $recordId, $fields, $metadata) {
         $latestDate = REDCapManagement::getLatestDate($dates);
         return $latestDate;
     }
+}
+
+function makeTotalHTML($sums, $n) {
+    if ($n == 0) {
+        return "";
+    }
+    $html = "";
+    $html .= "<tr>";
+    $html .= "<td></td>";
+    $html .= "<th>Total Present ($n)</th>";
+    foreach ($sums as $amount) {
+        $rawPercent = $amount * 100 / $n;
+        $perc = REDCapManagement::pretty($rawPercent, 1);
+        if ($rawPercent >= 90) {
+            $percentClass = "green";
+        } else if ($rawPercent >= 70) {
+            $percentClass = "yellow";
+        } else {
+            $percentClass = "red";
+        }
+        $html .= "<td class='$percentClass'>$perc% ($amount)</td>";
+    }
+    $html .= "</tr>";
+    return $html;
 }

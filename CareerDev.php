@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.0.2";
+		return "4.0.3";
 	}
 
 	public static function getLockFile($pid) {
@@ -188,26 +188,29 @@ class CareerDev {
                     $pids = [$pid];
                 } else {
                     $pids = [];
-                    error_log($mssg);
+                    if (self::isVanderbilt()) {
+                        error_log($mssg);
+                    }
                 }
             } else {
+                # $pid is an array
                 $pids = $pid;
             }
             $module = self::getModule();
             if ($module) {
                 foreach ($pids as $pid) {
                     if ($pid) {
-                        $params = array("project_id" => $pid);
+                        $params = ["project_id" => $pid];
                         $module->log($mssg, $params);
                         if (self::isVanderbilt()) {
                             $currTime = date("Y-m-d H:i:s");
                             error_log($pid." ($currTime): ".$mssg);
                         }
-                    } else {
+                    } else if (self::isVanderbilt()) {
                         error_log($mssg);
                     }
                 }
-            } else {
+            } else if (self::isVanderbilt()) {
                 error_log($mssg);
             }
         }
@@ -435,6 +438,7 @@ class CareerDev {
         $file = "/app001/credentials/career_dev/vfrs.php";
         if (file_exists($file)) {
             include($file);
+            global $vfrsToken;
             return $vfrsToken;
         }
         return "";

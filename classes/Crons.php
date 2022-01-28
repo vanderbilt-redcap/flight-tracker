@@ -288,7 +288,7 @@ class CronManager {
             return;
         }
 
-        Application::log("Currently running ".$batchQueue[0]['method']." for pid ".$batchQueue[0]['pid']." with status ".$batchQueue[0]['status']);
+        Application::log("Currently running ".$batchQueue[0]['method']." for pid ".$batchQueue[0]['pid']." with status ".$batchQueue[0]['status'], $batchQueue[0]['pid']);
         if ($batchQueue[0]['status'] == "RUN") {
             $startTs = isset($batchQueue[0]['startTs']) && is_numeric($batchQueue[0]['startTs']) ? $batchQueue[0]['startTs'] : 0;
             $timespan = 90 * 60;   // max of 90 minutes per segment
@@ -326,7 +326,7 @@ class CronManager {
             }
             $batchQueue[0]['startTs'] = time();
             $batchQueue[0]['status'] = "RUN";
-            Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue)." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp());
+            Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue)." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp(), $batchQueue[0]['pid']);
             self::saveBatchQueueToDB($batchQueue, $module);
             $row = $batchQueue[0];
             try {

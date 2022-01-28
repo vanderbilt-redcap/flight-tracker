@@ -89,7 +89,7 @@ if ($_POST['process'] == "check") {
                     $postedFields[] = $field;
                 }
             }
-            $metadata["REDCap"] = reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"]);
+            $metadata["REDCap"] = reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);
             $choices = ["REDCap" => REDCapManagement::getChoices($metadata["REDCap"])];
             $newChoices = CareerDev::getRelevantChoices();
             $newChoiceStr = REDCapManagement::makeChoiceStr($newChoices);

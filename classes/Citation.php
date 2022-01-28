@@ -1103,6 +1103,19 @@ class Citation {
                 }
             } else if (isset($months[$dateNodes[1]])) {
                 $month = $months[$dateNodes[1]];
+            } else if (preg_match("/[\/\-]/", $dateNodes[1])) {
+                $monthNodes = preg_split("/[\/\-]/", $dateNodes[1]);
+                $foundMonth = FALSE;
+                foreach ($monthNodes as $monthNode) {
+                    if (isset($months[$monthNode])) {
+                        $month = $months[$monthNode];
+                        $foundMonth = TRUE;
+                        break;
+                    }
+                }
+                if (!$foundMonth) {
+                    $month = "01";
+                }
             } else {
                 $month = "01";
             }

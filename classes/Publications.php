@@ -776,6 +776,18 @@ class Publications {
             if ($issue->PubDate->Day) {
                 $day = "{$issue->PubDate->Day}";
             }
+            if (!$day && !$month && !$year && $article->ArticleDate) {
+                if ($article->ArticleDate->Year) {
+                    $year = strval($article->ArticleDate->Year);
+                }
+                if ($article->ArticleDate->Month) {
+                    $month = strval($article->ArticleDate->Month);
+                }
+                if ($article->ArticleDate->Day) {
+                    $day = "{$article->ArticleDate->Day}";
+                }
+            }
+
             $vol = "";
             if ($issue->Volume) {
                 $vol = strval($issue->Volume);
