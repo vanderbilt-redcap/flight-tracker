@@ -94,7 +94,7 @@ if ($numbers && !empty($numbers)) {
         $maxInstance++;
         $patents = new PatentsView($recordId, $pid);
         $upload = [];
-        foreach ($numbers as $number) {
+        foreach ($dedupedNumbers as $number) {
             $patentData = $patents->getDetails($number);
             $uploadRows = $patents->patents2REDCap($patentData, $maxInstance);
             $upload = array_merge($upload, $uploadRows);
