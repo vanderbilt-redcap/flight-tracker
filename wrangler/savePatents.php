@@ -75,7 +75,21 @@ if ($numbers && !empty($numbers)) {
     $recordId = $_POST['record_id'];
     $patentFields = Application::getPatentFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $patentFields, [$recordId]);
-    if ($recordId) {
+
+    $existingNumbers = [];
+    foreach ($redcapData as $row) {
+        if (($row['redcap_repeat_instrument'] == "patent") && $row['patent_number']) {
+            $existingNumbers[] = $row['patent_number'];
+        }
+    }
+    $dedupedNumbers = [];
+    foreach ($numbers as $number) {
+        if (!in_array($number, $existingNumbers)) {
+            $dedupedNumbers[] = $number;
+        }
+    }
+
+    if ($recordId && !empty($dedupedNumbers)) {
         $maxInstance = REDCapManagement::getMaxInstance($redcapData, "patent", $recordId);
         $maxInstance++;
         $patents = new PatentsView($recordId, $pid);

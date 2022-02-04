@@ -85,10 +85,24 @@ if ($pmids && !empty($pmids)) {
     $recordId = $_POST['record_id'];
     $citationFields = Application::getCitationFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
-    if ($recordId) {
+
+    $existingPMIDs = [];
+    foreach ($redcapData as $row) {
+        if (($row['redcap_repeat_instrument'] == "citation") && $row['citation_pmid']) {
+            $existingPMIDs[] = $row['citation_pmid'];
+        }
+    }
+    $dedupedPMIDs = [];
+    foreach ($pmids as $pmid) {
+        if (!in_array($pmid, $existingPMIDs)) {
+            $dedupedPMIDs[] = $pmid;
+        }
+    }
+
+    if (!empty($dedupedPMIDs) && $recordId) {
         $maxInstance = REDCapManagement::getMaxInstance($redcapData, "citation", $recordId);
         $maxInstance++;
-        $upload = Publications::getCitationsFromPubMed($pmids, $metadata, "manual", $recordId, $maxInstance, [], $pid);
+        $upload = Publications::getCitationsFromPubMed($dedupedPMIDs, $metadata, "manual", $recordId, $maxInstance, [], $pid);
         for ($i = 0; $i < count($upload); $i++) {
             if ($upload[$i]['redcap_repeat_instrument'] == "citation") {
                 $upload[$i]['citation_include'] = '1';
