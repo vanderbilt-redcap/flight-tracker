@@ -89,6 +89,11 @@ if ($pmids && !empty($pmids)) {
         $maxInstance = REDCapManagement::getMaxInstance($redcapData, "citation", $recordId);
         $maxInstance++;
         $upload = Publications::getCitationsFromPubMed($pmids, $metadata, "manual", $recordId, $maxInstance, [], $pid);
+        for ($i = 0; $i < count($upload); $i++) {
+            if ($upload[$i]['redcap_repeat_instrument'] == "citation") {
+                $upload[$i]['citation_include'] = '1';
+            }
+        }
         if (!empty($upload)) {
             $feedback = Upload::rows($upload, $token, $server);
             echo json_encode($feedback);

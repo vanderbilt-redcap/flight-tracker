@@ -27,14 +27,13 @@ $names = Download::names($token, $server);
 $menteeRecordId = FALSE;
 if ($_REQUEST['menteeRecord']) {
     $menteeRecordId = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
-    if (!$hash) {
-        list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
-    } else {
-        $myMentees = [];
-        $myMentors = [];
-    }
+    list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");
+}
+if (isset($_GET['test'])) {
+    echo "myMentees: ".json_encode($myMentees)."<br>";
+    echo "myMentors: ".json_encode($myMentors)."<br>";
 }
 
 $metadata = Download::metadata($token, $server);
@@ -50,6 +49,8 @@ $otherMentors = REDCapManagement::makeConjunction($myMentors["name"] ?? []);
 $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id"], $metadataFields), [$menteeRecordId]);
 if ($_REQUEST['instance']) {
     $currInstance = REDCapManagement::sanitize($_REQUEST['instance']);
+} else if ($hash) {
+    $currInstance = 1;
 } else {
     $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId);
     $currInstance = $maxInstance + 1;

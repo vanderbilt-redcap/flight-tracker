@@ -23,12 +23,7 @@ $menteeRecordId = FALSE;
 if (isset($_GET['menteeRecord'])) {
     $records = Download::recordIds($token, $server);
     $menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
-    if (!$hash) {
-        list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
-    } else {
-        $myMentors = [];
-        $myMentees = [];
-    }
+    list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");
 }
@@ -53,6 +48,8 @@ $fields = array_merge(["record_id", "mentoring_userid", "mentoring_last_update",
 $redcapData = Download::fieldsForRecords($token, $server, $fields, [$menteeRecordId]);
 if ($_REQUEST['instance']) {
     $currInstance = REDCapManagement::sanitize($_REQUEST['instance']);
+} else if ($hash) {
+    $currInstance = 1;
 } else {
     $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId);
     $currInstance = $maxInstance + 1;
@@ -220,7 +217,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                                     $htmlRows[] = '</td>';
                                 }
                                 if ($key == "mentor") {
-                                    $htmlRows[] = $menteeInstance ? MMAHelper::makeNotesHTML($field, [$menteeInstanceRow], $menteeRecordId, $menteeInstance, $notesFields) : "";
+                                    $htmlRows[] = MMAHelper::makeNotesHTML($field, [$menteeInstanceRow], $menteeRecordId, $menteeInstance, $notesFields);
                                 }
                             }
                         }
@@ -500,8 +497,12 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
 </section>
 </form>
 
+<?php
+if (!$hash) {
+    echo "<p style='text-align: center;'>Saving will enqueue an automated email to follow up, to be sent on ".REDCapManagement::MDY2LongDate($dateToRemind).".</p>";
+}
+?>
 
-<p style="text-align: center;">Saving will enqueue an automated email to follow up, to be sent on <?= REDCapManagement::MDY2LongDate($dateToRemind) ?>.</p>
 <p style="text-align: center;"><button type="button" class="btn btn-info" onclick="saveagreement(function() { window.location='<?= $completeURL ?>'; });">save, view &amp; sign final agreement</button></p
 <p style="height: 200px"></p>
 <div class="fauxcomment" style="display: none;"></div>

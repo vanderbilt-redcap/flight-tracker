@@ -13,7 +13,7 @@ class MMAHelper {
     public static function createHash($token, $server) {
         $newHash = bin2hex(random_bytes(self::getHashLength()));
         $recordIds = Download::recordIds($token, $server);
-        $newRecordId = empty($recordIds) ? 1 : max($recordIds);
+        $newRecordId = empty($recordIds) ? 1 : (max($recordIds) + 1);
         $uploadRow = [
             "record_id" => $newRecordId,
             "identifier_hash" => $newHash,
@@ -71,24 +71,34 @@ class MMAHelper {
             $menteeName = "";
         } else if ($hash && $recordId) {
             $recordData = Download::records($token, $server, [$recordId]);
+            if (isset($_GET['test'])) {
+                echo "Record $recordId data: ".json_encode($recordData)."<br>";
+            }
             $menteeName = REDCapManagement::findField($recordData, $recordId, "identifier_first_name")." ".REDCapManagement::findField($recordData, $recordId, "identifier_last_name");
             $mentorName = REDCapManagement::findField($recordData, $recordId, "mentor_first_name")." ".REDCapManagement::findField($recordData, $recordId, "mentor_last_name");
 
             $formStyle = "style='display: none;'";
             $startStyle = "style='cursor: pointer;'";
             $indexLink = Application::link("mentor/index.php")."&hash=$hash&menteeRecord=$recordId";
-            $menteeLink = $indexLink."&role=mentee";
-            $mentorLink = $indexLink."&role=mentor";
+            $menteeLink = $indexLink."&instance=1";
+            $mentorLink = $indexLink."&instance=2";
             if (self::isMentee($recordId)) {
                 $startLink = Application::link("mentor/index_menteeview.php")."&hash=$hash&menteeRecord=$recordId";
             } else {
-                $startLink = Application::link("mentor/index_mentorview.php")."&hash=$hash&menteeRecord=$recordId";
+                $startLink = Application::link("mentor/index_mentorview.php")."&hash=$hash&menteeRecord=$recordId&index=2";
             }
         } else {
             die("Improper access!");
         }
 
+        $menteeUrl = Application::link("mentor/index_menteeview.php");
+        $mentorUrl = Application::link("mentor/index_mentorview.php");
         $blueBoxText = implode("<br>&rarr; ", ["Enter Mentee Preferences", "Discussion with Mentor", "Sign Final Agreement"]);
+        if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") {
+            $oneMentorOnlyWarning = "<p class='centered'>For this agreement, in the case of multiple mentors, we suggest that one mentor take the ‘lead’ on this agreement process.  Certainly, we encourage the Mentors and Mentee to have open dialogue about the issues contained herein, but respectfully defer this responsibility to the lead Mentor on this Agreement and the Mentee.</p>";
+        } else {
+            $oneMentorOnlyWarning = "";
+        }
 
         $html .= "<section class='bg-light'><div class='container'><div class='row'><div class='col-lg-12'>
 <div class='blue-box'>
@@ -100,9 +110,11 @@ class MMAHelper {
 td.nameEntryLeft { text-align: right !important; adding-top: 10px; margin: 0; }
 td.nameEntryLeft label { margin: 0; font-size: 0.9em; }
 td.nameEntryRight { text-align: left; padding-top: 0 !important; padding-left: 10px !important; p}
+.smaller { font-size: 0.8em; line-height: 1; }
 </style>
 
 <form id='form' $formStyle>
+    $oneMentorOnlyWarning
     <table style='margin: 0 auto;'>
         <tr style='background-color: white;'>
             <td class='nameEntryLeft'><label for='menteeFirstName'>Mentee First Name:</label></td>
@@ -136,8 +148,9 @@ td.nameEntryRight { text-align: left; padding-top: 0 !important; padding-left: 1
 
 <div id='start' class='blue-box' onclick='startNow();' $startStyle>
     <h2>Start Now</h2>
-    <p class='centered'>Mentee: <span id='menteeName'>$menteeName</span> (<a href='$menteeLink' id='menteeLink'>link</a>)<br/>
-    Mentor: <span id='mentorName'>$mentorName</span> (<a href='$mentorLink' id='mentorLink'>link</a>)</p>
+    <p class='centered'>First, <a href='$menteeLink' id='menteeLink'>mentee <span id='menteeName'>$menteeName</span> can start here</a>.<br/>
+    Then, <a href='$mentorLink' id='mentorLink'>mentor <span id='mentorName'>$mentorName</span> can start here</a>.</p>
+    <p class='smaller centered'>The mentor's link will be emailed when the mentee completes the form. If you lose the mentee's link, you will no longer have access to these data for security reasons.</p>
     <input type='hidden' id='startLink' value='$startLink'/>
 </div>
 
@@ -180,18 +193,19 @@ function signUpForMMA() {
             post[variable] = value;
         }
         $.post(url, post, function(json) {
+            console.log(json);
             try {
                 const data = JSON.parse(json);
                 const recordId = data['record'];
                 const hash = data['hash'];
                 if (recordId && hash && !isNaN(recordId)) {
                     const paramStr = '&hash='+hash+'&menteeRecord='+recordId;
-                    const menteeLink = '".Application::link("mentor/index_menteeview.php")."'+paramStr;
-                    const mentorLink = '".Application::link("mentor/index_mentorview.php")."'+paramStr;
+                    const menteeLink = '$menteeUrl&instance=1'+paramStr;
+                    const mentorLink = '$mentorUrl&instance=2'+paramStr;
                     $('#menteeLink').attr('href', menteeLink);
                     $('#mentorLink').attr('href', mentorLink);
-                    $('#menteeName').val(post['menteeFirstName']+' '+post['menteeLastName']);
-                    $('#mentorName').val(post['mentorFirstName']+' '+post['mentorLastName']);
+                    $('#menteeName').html(data['menteeFirstName']+' '+data['menteeLastName']);
+                    $('#mentorName').html(data['mentorFirstName']+' '+data['mentorLastName']);
                     $('#startLink').val(menteeLink);
                     $('#hash').val(hash);
                     $('#start').show();
@@ -554,14 +568,18 @@ function startNow() {
     }
 
     public static function scheduleEmail($to, $from, $subject, $message, $datetime, $pid, $token, $server) {
-        $ts = strtotime($datetime);
-        $datetime = date("Y-m-d H:i", $ts);
+        if ($datetime == "now") {
+            \REDCap::email($to, $from, $subject, $message);
+        } else {
+            $ts = strtotime($datetime);
+            $datetime = date("Y-m-d H:i", $ts);
 
-        $metadata = Download::metadata($token, $server);
-        $mgr = new EmailManager($token, $server, $pid, Application::getModule(), $metadata);
-        $emailSetting = EmailManager::makeEmailSetting($datetime, $to, $from, $subject, $message, TRUE);
-        $settingName = "MMA $subject $datetime TO:$to FROM:$from";
-        $mgr->saveSetting($settingName, $emailSetting);
+            $metadata = Download::metadata($token, $server);
+            $mgr = new EmailManager($token, $server, $pid, Application::getModule(), $metadata);
+            $emailSetting = EmailManager::makeEmailSetting($datetime, $to, $from, $subject, $message, TRUE);
+            $settingName = "MMA $subject $datetime TO:$to FROM:$from";
+            $mgr->saveSetting($settingName, $emailSetting);
+        }
         if (MMA_DEBUG) {
             $subject = "DUPLICATE: ".$to.": ".$subject." on ".$datetime;
             \REDCap::email("scott.j.pearson@vumc.org", $from, $subject, $message);
@@ -586,7 +604,7 @@ function startNow() {
         }
     }
 
-    public static function isMentee($recordId, $username = "") {
+    public static function isMentee($recordId = FALSE, $username = "") {
         global $token, $server;
         if ($username && !self::isValidHash($username)) {
             $userids = Download::userids($token, $server);
@@ -597,15 +615,19 @@ function startNow() {
                 return FALSE;
             }
         } else {
-            $role = REDCapManagement::sanitize($_GET['role']);
-            if (in_array($role, ["mentor", "mentee"])) {
-                return ($role == "mentee");
-            } else {
+            $currPage = REDCapManagement::sanitize($_GET['page']);
+            if ($currPage == "mentor/index_menteeview") {
+                return TRUE;
+            } else if ($currPage == "mentor/index_mentorview") {
+                return FALSE;
+            } else if ($recordId) {
                 global $token, $server;
                 $fields = ["record_id", "mentoring_userid"];
                 $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
                 $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $recordId);
                 return ($maxInstance >= 1);
+            } else {
+                return FALSE;
             }
         }
     }
@@ -640,32 +662,65 @@ function startNow() {
     }
 
     public static function getMenteesAndMentors($menteeRecordId, $userid, $token, $server) {
-        $menteeUserids = Download::userids($token, $server);
-        $allMentors = Download::primaryMentors($token, $server);
-        $allMentorUserids = Download::primaryMentorUserids($token, $server);
-
-        $menteeUids = self::getUserids($menteeUserids[$menteeRecordId]);
-        $mentorUids = $allMentorUserids[$menteeRecordId];
-        $myMentees = [];
-        $myMentors = [];
-        $myMentees["name"] = Download::menteesForMentor($token, $server, $userid);
-        if (in_array(strtolower($userid), $menteeUids)) {
-            # Mentee
-            $myMentors["name"] = $allMentors[$menteeRecordId];
-            $myMentors["uid"] = $allMentorUserids[$menteeRecordId];
-        } else if (in_array(strtolower($userid), $mentorUids)) {
-            # Mentor
-            $myMentors["name"] = $allMentors[$menteeRecordId];
-            $myMentors["uid"] = $allMentorUserids[$menteeRecordId];
-            $myMentees["name"] = Download::menteesForMentor($token, $server, $userid);
-            $myMentees["uid"] = [];
-            foreach ($myMentees["name"] as $recordId => $name) {
-                $myMentees["uid"][$recordId] = $menteeUserids[$recordId];
+        if (self::isValidHash($userid)) {
+            if (isset($_GET['test'])) {
+                echo "Public project<br>";
             }
+            $hashes = Download::oneField($token, $server, "identifier_hash");
+            foreach ($hashes as $recordId => $hash) {
+                if ($userid == $hash) {
+                    if (isset($_GET['test'])) {
+                        echo "Found $hash at $recordId<br>";
+                    }
+                    $fields = [
+                        "record_id",
+                        "identifier_first_name",
+                        "identifier_last_name",
+                        "mentor_first_name",
+                        "mentor_last_name",
+                    ];
+                    $recordData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+                    $normativeRow = REDCapManagement::getNormativeRow($recordData);
+                    $myMentees = [$normativeRow['identifier_first_name'] . " " . $normativeRow['identifier_last_name']];
+                    $myMentors = [$normativeRow['mentor_first_name'] . " " . $normativeRow['mentor_last_name']];
+                    return [["name" => $myMentees], ["name" => $myMentors]];
+                }
+            }
+            if (isset($_GET['test'])) {
+                echo "Hash not found in ".json_encode($hashes)."<br>";
+            }
+            return [[], []];
         } else {
-            throw new \Exception("You do not have access!");
+            if (isset($_GET['test'])) {
+                echo "Userid project<br>";
+            }
+            $menteeUserids = Download::userids($token, $server);
+            $allMentors = Download::primaryMentors($token, $server);
+            $allMentorUserids = Download::primaryMentorUserids($token, $server);
+
+            $menteeUids = self::getUserids($menteeUserids[$menteeRecordId]);
+            $mentorUids = $allMentorUserids[$menteeRecordId];
+            $myMentees = [];
+            $myMentors = [];
+            $myMentees["name"] = Download::menteesForMentor($token, $server, $userid);
+            if (in_array(strtolower($userid), $menteeUids)) {
+                # Mentee
+                $myMentors["name"] = $allMentors[$menteeRecordId];
+                $myMentors["uid"] = $allMentorUserids[$menteeRecordId];
+            } else if (in_array(strtolower($userid), $mentorUids)) {
+                # Mentor
+                $myMentors["name"] = $allMentors[$menteeRecordId];
+                $myMentors["uid"] = $allMentorUserids[$menteeRecordId];
+                $myMentees["name"] = Download::menteesForMentor($token, $server, $userid);
+                $myMentees["uid"] = [];
+                foreach ($myMentees["name"] as $recordId => $name) {
+                    $myMentees["uid"][$recordId] = $menteeUserids[$recordId];
+                }
+            } else {
+                throw new \Exception("You do not have access!");
+            }
+            return [$myMentees, $myMentors];
         }
-        return [$myMentees, $myMentors];
     }
 
     public static function cleanMentorName($mentor) {
@@ -754,8 +809,13 @@ function startNow() {
         if (self::isValidHash($username)) {
             $hashToLookFor = $username;
             if ($token && $server) {
-                $firstNames = Download::firstnames($token, $server);
-                $lastNames = Download::lastnames($token, $server);
+                if (self::isMentee()) {
+                    $firstNames = Download::firstnames($token, $server);
+                    $lastNames = Download::lastnames($token, $server);
+                } else {
+                    $firstNames = Download::oneField($token, $server, "mentor_first_name");
+                    $lastNames = Download::oneField($token, $server, "mentor_last_name");
+                }
                 $hashes = Download::oneField($token, $server, "identifier_hash");
                 foreach ($hashes as $recordId => $recordHash) {
                     if ($recordHash == $hashToLookFor) {
@@ -842,7 +902,7 @@ function startNow() {
 
         $html .= "<div class='characteristics' id='mentor_characteristics' style='display: none;'>$close<h3>Characteristics of Successful Mentor</h3>
 <ul style='list-style-type:disc'>
-<li>Effectively provide intellectual guidance in the scientific topics of her/his strength, to directly broaden the Mentee’s scientific, and overall academic, proficiency</li>
+<li>Effectively provide intellectual guidance in the scientific topics of strength, to directly broaden the Mentee’s scientific, and overall academic, proficiency</li>
 <li>Shares time with Mentee</li>
 <li>Openly communicates with the Mentee how the Mentor can, and cannot, help</li>
 <li>Shares openly but also listens attentively</li>
@@ -1014,7 +1074,9 @@ function characteristicsPopup(entity) {
         $html .= "<p>Welcome to the Mentoring Agreement. The first step to completing the Mentoring Agreement is to reflect on what is important to you in a successful mentee-mentor relationship. Through a series of questions on topics such as meetings, communication, research, and approach to scholarly products, to name a few, this survey will help guide you through that process and provide you with a tool to capture your thoughts. The survey should take about 30 minutes to complete. Your $partnerRelationship ($partners) will also complete a survey.</p>";
         $html .= "<p><img src='$imageLink' style='float: left; margin-right: 39px;width: 296px;'>The mentee should complete the agreement first. An email will alert the mentor(s) whenever the agreement is submitted. The mentor(s) should arrange a time to meet with the mentee to fill out their part of the agreement, which will act as the final authorized/completed agreement. Then the completed agreement can be viewed, signed, and printed. A follow-up email will be scheduled for when the agreement should be revisited.</p>";
         $html .= "<p>Each section below will explore expectations and goals regarding relevant topics for the relationship, such as the approach to direct one-on-one meetings.</p>";
-        $html .= "<p>All sections recommended for you to fill out now are open, and other sections that aren't as timely are collapsed. You may revisit these collapsed sections as you wish by clicking on the header.</p>";
+        if (Application::getProgramName() != "Flight Tracker Mentee-Mentor Agreements") {
+            $html .= "<p>All sections recommended for you to fill out now are open, and other sections that aren't as timely are collapsed. You may revisit these collapsed sections as you wish by clicking on the header.</p>";
+        }
 
         $html .= "<script src='$scriptLink'></script>";
         $html .= "<script>
@@ -1208,6 +1270,8 @@ function characteristicsPopup(entity) {
         $uidString = "";
         if (isset($_GET['uid'])) {
             $uidString = "&uid=$username";
+        } else if (self::isValidHash($username)) {
+            $uidString = "&hash=$username";
         }
         $verticalOffset = 50;
         $recordString = "&record=".$menteeRecordId;
@@ -1259,7 +1323,15 @@ function characteristicsPopup(entity) {
 
         $agreementSaveURL = Application::link("mentor/_agreement_save.php").$uidString.$recordString;
         $priorNotesJSON = json_encode($priorNotes);
-        $entryPageURL = Application::link("mentor/index.php");
+
+        if (self::isValidHash($username)) {
+            $entryPageURL = Application::link("mentor/index_mentorview.php").$uidString."&menteeRecord=".$menteeRecordId;
+            $menteeEntryPageURL = Application::link("mentor/index_menteeview.php").$uidString."&menteeRecord=".$menteeRecordId;
+        } else {
+            $entryPageURL = Application::link("mentor/index.php");
+            $menteeEntryPageURL = $entryPageURL;
+        }
+        $completedPageURL = Application::link("mentor/index_complete.php").$uidString."&menteeRecord=".$menteeRecordId."&instance=2";
         $changeURL = Application::link("mentor/change.php").$uidString.$recordString;
         $html .="
 <script>
@@ -1356,7 +1428,9 @@ function characteristicsPopup(entity) {
             //dataType : 'json', // data type
             data :  'record_id=$menteeRecordId&redcap_repeat_instance=$currentInstance&'+serialized,
             success : function(result) {
+                console.log(result);
                 $functionToCall(\"$menteeRecordId\", \"$menteeName\", \"$dateToRemind\", function(html) {
+                    console.log(html);
                     $('.sweet-modal-overlay').remove();
                     if (cb) {
                         cb();
@@ -1417,25 +1491,56 @@ function characteristicsPopup(entity) {
         }
     }
     
+    function getLinkForCompletedPage() {
+        return '$completedPageURL';
+    }
+    
     function getLinkForEntryPage() {
         return '$entryPageURL';
     }
     
-    function scheduleMentorEmail(menteeRecord, menteeName, dateToRemind, cb) {
-        let link = getLinkForEntryPage();
-        let subject = menteeName+'\'s Mentoring Agreement';
-        let paragraph1 = '<p>Your mentee ('+menteeName+') has completed an entry in her/his mentoring agreement and would like you to review the following Mentee-Mentor Agreement. Please schedule a time with your mentee (included on this email) to follow up and finalize this agreement.</p>';
-        let paragraph2 = '<p><a href=\"'+link+'\">'+link+'</p>';
-        let message = paragraph1 + paragraph2;
-        scheduleEmail('all', menteeRecord, subject, message, dateToRemind, cb);
+    function getLinkForMenteeEntryPage() {
+        return '$menteeEntryPageURL';
     }
-
+    
+    function scheduleMentorEmail(menteeRecord, menteeName, dateToRemind, cb) {
+        const link = getLinkForEntryPage();
+        const completedLink = getLinkForCompletedPage();
+        const linktext = getLinkText(link);
+        const subject = menteeName+'\'s Mentoring Agreement in Flight Tracker';
+        const paragraph2 = '<p><a href=\"'+link+'\">'+linktext+'</a></p>';
+        const completedParagraph = '<p>After the mentor completes the agreement, <a href=\"'+completedLink+'\">click here for the finalized agreement.</a></p>';
+        ";
+        if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") {
+            $html .= "  const paragraph1 = '<p>Your mentee ('+menteeName+') has completed an entry in a mentoring agreement and would like you to review the following Mentee-Mentor Agreement. Please schedule a time with your mentee to follow up and finalize this agreement.</p>';
+                        const menteeEmailCB = function() {
+                            const mentee_link = getLinkForMenteeEntryPage();
+                            const mentee_linktext = 'Click here to revise.';
+                            const menteeParagraph = '<p><a href=\"'+mentee_link+'\">Click here to revise.</a></p>';
+                            const menteeMessage = '<p>You have completed an entry in a Mentee-Mentor Agreement. You can use the following link to revise your preferences.</p>' + menteeParagraph + completedParagraph;
+                            scheduleEmail('mentee', menteeRecord, subject, menteeMessage, dateToRemind, cb);
+                        }
+                        const mentorMessage = paragraph1 + paragraph2 + completedParagraph;
+                        scheduleEmail('mentor', menteeRecord, subject, mentorMessage, dateToRemind, menteeEmailCB);";
+        } else {
+            $html .= "  const paragraph1 = '<p>Your mentee ('+menteeName+') has completed an entry in a mentoring agreement and would like you to review the following Mentee-Mentor Agreement. Please schedule a time with your mentee (included on this email) to follow up and finalize this agreement.</p>';
+                        const message = paragraph1 + paragraph2 + completedParagraph;
+                        scheduleEmail('all', menteeRecord, subject, message, dateToRemind, cb);";
+        }
+        $html .= "
+    }
+    
+    function getLinkText(link) {
+        return (link.length > 40) ? 'Click Here to Begin' : link;
+    }
+    
     function scheduleReminderEmail(menteeRecord, menteeName, dateToSend, cb) {
         const link = getLinkForEntryPage();
+        const linktext = getLinkText(link);
         const subject = 'Reminder: Your Mentoring Agreement';
         const dear = '<p>Dear '+menteeName+',</p>';
         const paragraph1 = '<p>A follow-up meeting with your mentor is requested. Please fill out a survey via the below link and then schedule a meeting to review your mentoring agreement with your mentor.</p>';
-        const paragraph2 = '<p><a href=\"'+link+'\">'+link+'</p>';
+        const paragraph2 = '<p><a href=\"'+link+'\">'+linktext+'</p>';
         const message = dear + paragraph1 + paragraph2;
         $scheduleEmailHTML
     }
@@ -1449,17 +1554,18 @@ function characteristicsPopup(entity) {
         $uidString = "";
         if (isset($_GET['uid'])) {
             $uidString = "&uid=$username";
+        } else if (self::isValidHash($username)) {
+            $uidString = "&hash=$username";
         }
         $recordString = "&record=";
         $emailSendURL = Application::link("mentor/schedule_email.php").$uidString.$recordString;
         $html = "<script>
     function scheduleEmail(recipientType, menteeRecord, subject, message, dateToSend, cb) {
-        var datetimeToSend = dateToSend+' 09:00';
-        if (dateToSend == 'now') {
-            datetimeToSend = 'now';
-        }
+        const datetimeToSend = (dateToSend === 'now') ? 'now' : dateToSend+' 09:00';
+        const postdata = { menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend };
+        console.log(JSON.stringify(postdata));
         $.post('$emailSendURL'+menteeRecord,
-            { menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend },
+            postdata,
             function(html) {
             if (cb) {
                 cb(html);

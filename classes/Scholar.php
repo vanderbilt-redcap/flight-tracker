@@ -517,6 +517,7 @@ return $result;
         $allReportedInstitutions = $this->getAllOtherInstitutions($this->rows);
         $allOutsideInstitutions = [];
         foreach ($allReportedInstitutions as $institution) {
+            $institution = trim($institution);
             if (
                 !in_array($institution, $priorInstitutions)
                 && !in_array($institution, Application::getInstitutions($this->pid))
@@ -690,7 +691,8 @@ return $result;
 		$this->downloadAndSetup($record);
 	}
 
-	private static function isValidValue($metadataFields, $choices, $field, $value) {
+	private static function isValidValue($metadata, $choices, $field, $value) {
+	    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	    if (preg_match("/___/", $field)) {
             if (!in_array($value, [0, 1, ""])) {
                 return FALSE;
@@ -703,7 +705,22 @@ return $result;
             $value = $a[1];
         }
         if (in_array($field, $metadataFields)) {
+            foreach ($metadata as $metadataRow) {
+                if ($metadataRow['field_name'] == $field) {
+                    $validationValue = $metadataRow['text_validation_type_or_show_slider_number'];
+                    if (preg_match("/^date_/", $validationValue) || preg_match("/^datetime_/", $validationValue)) {
+                        if ($value !== "") {
+                            return REDCapManagement::isDate($value);
+                        } else {
+                            return TRUE;    // blank dates allowed
+                        }
+                    }
+                }
+            }
 			if (isset($choices[$field])) {
+			    if ($value === "") {
+			        return TRUE;
+                }
 				if (isset($choices[$field][$value])) {
 					return TRUE;
 				} else {
@@ -718,7 +735,6 @@ return $result;
 	}
 
 	public function makeUploadRow() {
-		$metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
 		$choices = self::getChoices($this->metadata);
 		$uploadRow = array(
 					"record_id" => $this->recordId,
@@ -726,25 +742,27 @@ return $result;
 					"redcap_repeat_instance" => "",
 					"summary_last_calculated" => date("Y-m-d H:i"),
 					);
+
+
 		foreach ($this->name as $var => $value) {
-			if (self::isValidValue($metadataFields, $choices, $var, $value)) {
+			if (self::isValidValue($this->metadata, $choices, $var, $value)) {
 				$uploadRow[$var] = $value;
 			}
 		}
 		foreach ($this->demographics as $var => $value) {
-			if (self::isValidValue($metadataFields, $choices, $var, $value)) {
+			if (self::isValidValue($this->metadata, $choices, $var, $value)) {
 				$uploadRow[$var] = $value;
 			}
 		}
 		foreach ($this->metaVariables as $var => $value) {
-			if (self::isValidValue($metadataFields, $choices, $var, $value)) {
+			if (self::isValidValue($this->metadata, $choices, $var, $value)) {
 				$uploadRow[$var] = $value;
 			}
 		}
 
 		$grantUpload = $this->grants->makeUploadRow();
 		foreach ($grantUpload as $var => $value) {
-			if (!isset($uploadRow[$var]) && self::isValidValue($metadataFields, $choices, $var, $value)) {
+			if (!isset($uploadRow[$var]) && self::isValidValue($this->metadata, $choices, $var, $value)) {
 				$uploadRow[$var] = $value;
 			}
 		}
@@ -1370,7 +1388,7 @@ return $result;
 						"followup_prev4" => "followup",
 						"followup_prev5" => "followup",
 					);
-			if ($row[$followupInstitutionField] && ([$followupInstitutionField] != $institutionCurrent)) {
+			if ($row[$followupInstitutionField] && ($row[$followupInstitutionField] != $institutionCurrent)) {
 				$res = self::getResultForPrefices($prefices, $row, $suffix, $this->pid);
                 if (
                     $res->getValue()

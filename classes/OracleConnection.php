@@ -158,13 +158,14 @@ class COEUSConnection extends OracleConnection {
                 if (is_array($redcapUserids[$recordId])) {
                     $userids = $redcapUserids[$recordId];
                     foreach ($userids as $userid) {
-                        if ($userid && !in_array($userid, $coeusIds)) {
+                        $userid = strtolower($userid);
+                        if ($userid && !in_array($userid, $coeusIds) && !in_array($userid, $idsToAdd)) {
                             $idsToAdd[] = $userid;
                         }
                     }
                 } else if (is_string($redcapUserids[$recordId])) {
-                    $userid = $redcapUserids[$recordId];
-                    if ($userid && !in_array($userid, $coeusIds)) {
+                    $userid = strtolower($redcapUserids[$recordId]);
+                    if ($userid && !in_array($userid, $coeusIds) && !in_array($userid, $idsToAdd)) {
                         $idsToAdd[] = $userid;
                     }
                 } else {

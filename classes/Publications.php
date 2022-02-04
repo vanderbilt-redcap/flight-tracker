@@ -1070,7 +1070,7 @@ class Publications {
     }
 
     # returns HTML to edit the publication; used in data wrangling
-	public function getEditText() {
+	public function getEditText($thisUrl) {
         $notDone = $this->getCitationCollection("Not Done");
         $notDoneCount = $notDone->getCount();
         $included = $this->getCitationCollection("Included");
@@ -1078,7 +1078,7 @@ class Publications {
         $wrangler = new Wrangler("Publications");
 		$html = $wrangler->getEditText($notDoneCount, $includedCount, $this->recordId, $this->name, $this->lastName);
 
-		$html .= self::manualLookup();
+		$html .= self::manualLookup($thisUrl);
 		$html .= "<table style='width: 100%;' id='main'><tr>\n";
 		$html .= "<td class='twoColumn yellow' id='left'>".$this->leftColumnText()."</td>\n";
 		$html .= "<td id='right'>".$wrangler->rightColumnText()."</td>\n";
@@ -1087,7 +1087,7 @@ class Publications {
 		return $html;
 	}
 
-	private function manualLookup() {
+	private function manualLookup($thisUrl) {
 		$html = "";
 		$html .= "<table id='lookupTable' style='margin-left: auto; margin-right: auto; border-radius: 10px;' class='bin'><tr>\n";
 		$html .= "<td style='width: 250px; height: 200px; text-align: left; vertical-align: top;'>\n";
@@ -1100,8 +1100,8 @@ class Publications {
 		$html .= "</td><td style='width: 500px;'>\n";
 		$html .= "<div id='lookupResult'>\n";
 		$html .= "<p><textarea style='width: 100%; height: 150px; font-size: 16px;' id='manualCitation' readonly></textarea></p>\n";
-        $html .= "<p class='oneAtATime'><button class='biggerButton green includeButton' style='display: none;' onclick='includeCitation($(\"#manualCitation\").val()); return false;'>Include This Citation</button></p>\n";
-        $html .= "<p class='list' style='display: none;'><button class='biggerButton green includeButton' style='display: none;' onclick='includeCitations($(\"#manualCitation\").val()); return false;'>Include These Citations</button></p>\n";
+        $html .= "<p class='oneAtATime'><button class='biggerButton green includeButton' style='display: none;' onclick='includeCitation($(\"#manualCitation\").val(), \"$thisUrl\"); return false;'>Include &amp; Accept This Citation</button></p>\n";
+        $html .= "<p class='list' style='display: none;'><button class='biggerButton green includeButton' style='display: none;' onclick='includeCitations($(\"#manualCitation\").val(), \"$thisUrl\"); return false;'>Include &amp; Accept These Citations</button></p>\n";
 		$html .= "</div>\n";
 		$html .= "</td>\n";
 		$html .= "</tr></table>\n";

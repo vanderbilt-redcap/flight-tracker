@@ -131,18 +131,19 @@ try {
     $redcapData = Download::fieldsForRecords($token, $server, $fields, [$record]);
     $nextRecord = getNextRecordWithData($token, $server, $record, $wranglerType, $records);
 
+    $thisUrl = Application::link("this")."&wranglerType=$wranglerType&record=$record";
     if ($wranglerType == "Publications") {
         $excludeList = new ExcludeList("Publications", $pid, [], $metadata);
         $pubs = new Publications($token, $server);
         $pubs->setRows($redcapData);
-        $html = $excludeList->makeEditForm($record).$pubs->getEditText();
+        $html = $excludeList->makeEditForm($record).$pubs->getEditText($thisUrl);
     } else if ($wranglerType == "Patents") {
         # no exclude list (yet)
         $lastNames = Download::lastnames($token, $server);
         $firstNames = Download::firstnames($token, $server);
         $patents = new Patents($record, $pid, $firstNames[$record], $lastNames[$record], $institutions[$record]);
         $patents->setRows($redcapData);
-        $html = $patents->getEditText();
+        $html = $patents->getEditText($thisUrl);
     }
 
     if (count($_POST) >= 1) {

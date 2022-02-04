@@ -7,28 +7,32 @@ require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/base.php";
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
+if (isset($_GET['menteeRecord'])) {
+    $records = Download::recordIds($token, $server);
+    $menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
+} else {
+    throw new \Exception("You must specify a mentee record!");
+}
+
 if ($_GET['uid']) {
     $username = REDCapManagement::sanitize($_GET['uid']);
-    $uidString = "&uid=$username";
+    $trailingUidString = "&uid=$username";
+} else if ($hash) {
+    $username = $hash;
+    $trailingUidString = "&hash=$hash&menteeRecordId=$menteeRecordId";
 } else {
-    $username = $hash ? $hash : Application::getUsername();
-    $uidString = "";
+    $username = Application::getUsername();
+    $trailingUidString = "";
 }
 
 require_once dirname(__FILE__).'/_header.php';
 
-if (isset($_GET['menteeRecord'])) {
-    $records = Download::recordIds($token, $server);
-    $menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
-    if (!$hash) {
-        list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $username, $token, $server);
-    } else {
-        $myMentees = [];
-        $myMentors = [];
-    }
-} else {
-    throw new \Exception("You must specify a mentee record!");
+list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $username, $token, $server);
+if (isset($_GET['test'])) {
+    echo "myMentees: ".json_encode($myMentees)."<br>";
+    echo "myMentors: ".json_encode($myMentors)."<br>";
 }
+
 if (isset($_GET['instance'])) {
     $instance = REDCapManagement::sanitize($_GET['instance']);
 } else {
@@ -55,8 +59,21 @@ foreach ($menteeUsernames as $menteeUsername) {
 }
 $menteeRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance) : [];
 $listOfMentors = REDCapManagement::makeConjunction(array_values($myMentors["name"] ?? []));
-$listOfMentees = MMAHelper::isMentee($menteeRecordId, $username) ? $firstName." ".$lastName : ($myMentees["name"][$menteeRecordId] ?? "[Mentee]");
+if ($hash) {
+    $listOfMentees = REDCapManagement::makeConjunction($myMentees["name"] ?? []);
+} else if (MMAHelper::isMentee($menteeRecordId, $username)) {
+    $listOfMentees =  $firstName." ".$lastName;
+} else {
+    $listOfMentees = "[Mentee]";
+}
 $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $instance);
+if ($hash) {
+    $revisitText = "";
+    $exampleDates = "";
+} else {
+    $revisitText = "<p style='text-align: center;'>We will revisit this agreement on-or-around $dateToRevisit.</p>";
+    $exampleDates = " (e.g., 6, 12, and 18 months from now, as well as on an as needed basis)";
+}
 
 ?>
 <section class="bg-light">
@@ -69,10 +86,10 @@ $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $inst
         <?= REDCapManagement::YMD2MDY(REDCapManagement::findField($redcapData, $menteeRecordId, "mentoring_last_update")) ?></h2>
 
             <p style="text-align: center;width: 80%;margin: auto;margin-top: 2em;">
-            <span style="text-decoration: underline;"><?= $listOfMentees ?> (mentee)</span> and <span style="text-decoration: underline;"><?= $listOfMentors ?> (mentor)</span> do hereby enter into a formal mentoring agreement. The elements of the document below provide evidence that a formal discussion has been conducted by the Mentor and Mentee together, touching on multiple topics that relate to the foundations of a successful training relationship for both parties. Below are key elements which we discussed at the start of our Mentee-Mentor Relationship. These elements, and others, also provide opportunities for further and/or new discussions together at future time points (e.g., 6, 12, and 18 months from now, as well as on an as needed basis).
+            <span style="text-decoration: underline;"><?= $listOfMentees ?> (mentee)</span> and <span style="text-decoration: underline;"><?= $listOfMentors ?> (mentor)</span> do hereby enter into a formal mentoring agreement. The elements of the document below provide evidence that a formal discussion has been conducted by the Mentor and Mentee together, touching on multiple topics that relate to the foundations of a successful training relationship for both parties. Below are key elements which we discussed at the start of our Mentee-Mentor Relationship. These elements, and others, also provide opportunities for further and/or new discussions together at future time points<?= $exampleDates ?>.
             </p>
 
-          <p style="text-align: center;">We will revisit this agreement on-or-around <?= $dateToRevisit ?>.</p>
+          <?= $revisitText ?>
           <p style="text-align: center;" class="smaller"><a href="javascript:;" class="notesShowHide" onclick="toggleAllNotes(this);">hide all chatter</a></p>
 
           <?php
@@ -187,7 +204,7 @@ $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $inst
     function saveSignature(field, ymdDate) {
         let ob = '#'+field;
         let datapair = $(ob).jSignature('getData', 'svgbase64');
-        $.post('<?= Application::link("mentor/uploadSignature.php").$uidString ?>',
+        $.post('<?= Application::link("mentor/uploadSignature.php").$trailingUidString ?>',
             { menteeRecord: '<?= $menteeRecordId ?>',
                 field: field,
                 b64image: datapair[1],

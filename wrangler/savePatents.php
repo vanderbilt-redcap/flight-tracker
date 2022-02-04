@@ -85,6 +85,11 @@ if ($numbers && !empty($numbers)) {
             $uploadRows = $patents->patents2REDCap($patentData, $maxInstance);
             $upload = array_merge($upload, $uploadRows);
         }
+        for ($i = 0; $i < count($upload); $i++) {
+            if ($upload[$i]['redcap_repeat_instrument'] == "patent") {
+                $upload[$i]['patent_include'] = '1';
+            }
+        }
         if (!empty($upload)) {
             $feedback = Upload::rows($upload, $token, $server);
             echo json_encode($feedback);

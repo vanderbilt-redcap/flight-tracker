@@ -24,9 +24,29 @@ $whom = "";
 if ($_POST['menteeRecord'] && $_POST['recipients']) {
     $menteeRecord = REDCapManagement::sanitize($_POST['menteeRecord']);
     $recipients = REDCapManagement::sanitize($_POST['recipients']);
-    $userids = MMAHelper::getUseridsForRecord($token, $server, $menteeRecord, $recipients);
-    if (in_array($userid2, $userids)) {
-        $emails = MMAHelper::getEmailAddressesForRecord($userids);
+    if ($hash) {
+        $fields = [
+            "record_id",
+            "identifier_email",
+            "mentor_email",
+            ];
+        $redcapData = Download::fieldsForRecords($token, $server, $fields, [$menteeRecord]);
+        $normativeRow = REDCapManagement::getNormativeRow($redcapData);
+        if (in_array($recipients, ["mentee", "all"])) {
+            if ($normativeRow['identifier_email']) {
+                $emails[] = $normativeRow['identifier_email'];
+            }
+        }
+        if (in_array($recipients, ["mentor", "all"])) {
+            if ($normativeRow['mentor_email']) {
+                $emails[] = $normativeRow['mentor_email'];
+            }
+        }
+    } else {
+        $userids = MMAHelper::getUseridsForRecord($token, $server, $menteeRecord, $recipients);
+        if (in_array($userid2, $userids)) {
+            $emails = MMAHelper::getEmailAddressesForRecord($userids);
+        }
     }
     $whom = ($recipients === "all") ? "both the mentor and the mentee" : $recipients;
 }
@@ -36,17 +56,11 @@ $subject = REDCapManagement::sanitizeWithoutStrippingHTML($_POST['subject'], FAL
 $message = REDCapManagement::sanitizeWithoutStrippingHTML($_POST['message'], FALSE);
 $datetimeToSend = REDCapManagement::sanitize($_POST['datetime']);
 if ($to && $from && $subject && $message && $datetimeToSend) {
-    if ($datetimeToSend == "now") {
-        $ts = time() + 60;
-        $datetimeToSend = date("Y-m-d H:i", $ts);
+    $ts = strtotime($datetimeToSend);
+    if ($ts) {
         $prettySendTime = date("F j, Y, g:i a", $ts);
     } else {
-        $ts = strtotime($datetimeToSend);
-        if ($ts) {
-            $prettySendTime = date("F j, Y, g:i a", $ts);
-        } else {
-            die("Error: Invalid send time.");
-        }
+        die("Error: Invalid send time.");
     }
     MMAHelper::scheduleEmail($to, $from, $subject, $message, $datetimeToSend, $pid, $token, $server);
     echo "A message for $whom has been enqueued to send at $prettySendTime.";

@@ -17,6 +17,8 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
         $proposedHash = REDCapManagement::sanitize($_GET['hash']);
     } else if (isset($_REQUEST['userid']) && MMAHelper::isValidHash($_REQUEST['userid'])) {
         $proposedHash = $_REQUEST['userid'];
+    } else if ($_GET['hash'] == NEW_HASH_DESIGNATION) {
+        $proposedHash = NEW_HASH_DESIGNATION;
     } else {
         $proposedHash = "";
     }
@@ -25,7 +27,7 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
         !in_array($currPage, ["mentor/intro", "mentor/index", "mentor/createHash"])
         || (
             in_array($currPage, ["mentor/index", "mentor/createHash"])
-            && ($proposedHash != NEW_HASH_DESIGNATION)
+            && !$isNewHash
         )
     ) {
         $records = Download::recordIds($token, $server);
@@ -42,7 +44,7 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
                 && ($proposedRecordId != $hashRecordId)
             )
         ) {
-            die("Access Denied ");
+            die("Access Denied. Are you receiving the message in error? Please contact <a href='mailto:scott.j.pearson@vumc.org'>the Flight Tracker help team</a> and explain your situation.");
         }
     }
 } else {

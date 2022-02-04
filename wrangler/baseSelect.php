@@ -54,7 +54,7 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
             });
         }
 
-        function includeCitations(citations) {
+        function includeCitations(citations, nextUrl) {
             var splitCitations = citations.split(/\n/);
             var pmids = [];
             for (var i = 0; i < splitCitations.length; i++) {
@@ -70,13 +70,17 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
                 presentScreen('Saving...');
                 $.post('<?= Application::link("wrangler/savePubs.php") ?>', { record_id: '<?= $sanitizedRecord ?>', pmids: pmids }, function(data) {
                     console.log("saveComplete "+JSON.stringify(data));
-                    clearScreen();
                     if (data['error']) {
                         makeNote(data['error']);
+                        clearScreen();
                     } else if (data['errors']) {
                         makeNote(data['errors']);
+                        clearScreen();
+                    } else if (nextUrl) {
+                        window.location.href = nextUrl;
                     } else {
                         makeNote();
+                        clearScreen();
                     }
                 });
             } else {
@@ -93,9 +97,9 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
             }
         }
 
-        function includeCitation(citation) {
+        function includeCitation(citation, nextUrl) {
             if (citation) {
-                includeCitations(citation);
+                includeCitations(citation, nextUrl);
             } else {
                 alert("Please specify a citation!");
             }
@@ -113,7 +117,7 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
             unselectAllCitations(divSelector);
         }
 
-        function includePatents(patents) {
+        function includePatents(patents, nextUrl) {
             let splitPatents = patents.split(/\n/);
             let numbers = [];
             for (let i = 0; i < splitPatents.length; i++) {
@@ -129,13 +133,17 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
                 presentScreen("Saving...");
                 $.post('<?= Application::link("wrangler/savePatents.php") ?>', { record_id: '<?= $sanitizedRecord ?>', numbers: numbers }, function(data) {
                     console.log("Save complete "+JSON.stringify(data));
-                    clearScreen();
                     if (data['error']) {
                         makeNote(data['error']);
+                        clearScreen();
                     } else if (data['errors']) {
                         makeNote(data['errors']);
+                        clearScreen();
+                    } else if (nextUrl) {
+                        window.location.href = nextUrl;
                     } else {
                         makeNote();
+                        clearScreen();
                     }
                 });
             } else {
@@ -143,9 +151,9 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
             }
         }
 
-        function includePatent(patent) {
+        function includePatent(patent, nextUrl) {
             if (patent) {
-                includePatents(patent);
+                includePatents(patent, nextUrl);
             } else {
                 alert("Please specify a patent!");
             }

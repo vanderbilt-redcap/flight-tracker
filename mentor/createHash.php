@@ -36,6 +36,11 @@ if ($recordId) {
         "identifiers_complete" => "2",
     ];
     Upload::oneRow($uploadRow, $token, $server);
+
+    foreach ($nameFields as $field) {
+        $data[$field] = REDCapManagement::sanitize($_POST[$field]);
+    }
+
     echo json_encode($data);
 } else {
     die("Record could not be created!");

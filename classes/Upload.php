@@ -288,9 +288,7 @@ public static function metadata($metadata, $token, $server) {
 
 
 		self::$useAPIOnly[$token] = TRUE;
-		if (isset($_GET['test'])) {
-            Application::log("Upload::metadata returning $output");
-        }
+		Application::log("Upload::metadata returning $output");
 		return $feedback;
 	}
 
@@ -478,7 +476,7 @@ public static function metadata($metadata, $token, $server) {
             echo "Non-numeric pid $pid\n";
             die();
         }
-        $feedback = \REDCap::saveData($pid, "json", json_encode($rows), TRUE);
+        $feedback = \REDCap::saveData($pid, "json", json_encode($rows), "overwrite");
         $output = json_encode($feedback);
         self::testFeedback($feedback, $output, FALSE);
         return $feedback;
@@ -569,6 +567,7 @@ public static function metadata($metadata, $token, $server) {
 				$method = "saveData";
 				$time2 = microtime(TRUE);
 				if (method_exists("\\REDCap", "saveData")) {
+				    Application::log("saveData: overwriteBehavior: ".$data['overwriteBehavior'], $pid);
 				    $feedback = \REDCap::saveData($pid, "json", $data['data'], $data['overwriteBehavior']);
                     $time3 = microtime(TRUE);
                     $output = json_encode($feedback);
