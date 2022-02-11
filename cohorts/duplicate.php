@@ -11,9 +11,9 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $messages = array();
 if ($_POST['cohort']) {
-    $cohort = REDCapManagement::sanitize($_POST['cohort']);
+    $cohort = REDCapManagement::sanitizeCohort($_POST['cohort']);
 } else {
-    $cohort = REDCapManagement::sanitize($_GET['cohort']);
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
 }
 
 $metadata = Download::metadata($token, $server);

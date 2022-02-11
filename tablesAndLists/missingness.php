@@ -339,7 +339,7 @@ $redcapData = Download::indexREDCapData(Download::getFilteredRedcapData($token, 
 
 $cohort = "";
 if ($_GET['cohort']) {
-    $cohort = REDCapManagement::sanitize($_GET['cohort']);
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
 }
 if (isset($_GET['csv'])) {
 	$filename = "missingness.csv";

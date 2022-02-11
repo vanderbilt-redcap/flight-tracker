@@ -37,57 +37,77 @@ if (isset($_GET['test'])) {
     echo "records: ".json_encode($recordIds)."<br>";
 }
 
-if (isset($_GET['daysPrior']) && is_numeric($_GET['daysPrior']) && ($_GET['daysPrior'] >= 0)) {
-    $daysPrior = (int) REDCapManagement::sanitize($_GET['daysPrior']);
-} else {
-    $daysPrior = 180;
+$units = ['days', 'months', 'years'];
+$prior = [];
+$afterTraining = [];
+$hasPrior = FALSE;
+$hasAfterTraining = FALSE;
+foreach ($units as $unit) {
+    if (isset($_GET[$unit.'Prior']) && is_numeric($_GET[$unit.'Prior']) && ($_GET[$unit.'Prior'] >= 0)) {
+        $val = (int) REDCapManagement::sanitize($_GET[$unit.'Prior']);
+        $prior[$unit] = $val;
+        $hasPrior = TRUE;
+    } else {
+        $prior[$unit] = "";
+    }
+    if (isset($_GET[$unit.'AfterTraining']) && is_numeric($_GET[$unit.'AfterTraining']) && ($_GET[$unit.'AfterTraining'] >= 0)) {
+        $val = (int) REDCapManagement::sanitize($_GET[$unit.'AfterTraining']);
+        $afterTraining[$unit] = $val;
+        $hasAfterTraining = TRUE;
+    } else {
+        $afterTraining[$unit] = "";
+    }
 }
-
-if (isset($_GET['daysAfterTraining']) && is_numeric($_GET['daysAfterTraining']) && ($_GET['daysAfterTraining'] >= 0)) {
-    $daysAfterTraining = (int) REDCapManagement::sanitize($_GET['daysAfterTraining']);
-} else {
-    $daysAfterTraining = "";
-}
-
-$oneDay = 24 * 3600;
-$startTs = time() - $daysPrior * $oneDay;
-$endTs = FALSE;  // use only $startTs
 
 $noCitationsMessage = "None.";
 if (isset($_GET['showHeaders'])) {
     require_once(dirname(__FILE__)."/charts/baseWeb.php");
 
-    if (!isset($_GET['daysAfterTraining']) && !isset($_GET['daysPrior'])) {
+    if (!$hasPrior && !$hasAfterTraining) {
         if (isset($_GET['test'])) {
             echo "Changing recordIds from ".count($recordIds)." to empty.<br>";
         }
         $recordIds = [];
-        $noCitationsMessage = "Not yet configured.";
+        $noCitationsMessage = "The widget has not yet been configured.";
     }
 
     $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
     $url = preg_replace("/\&showHeaders[^\&]*/", "", $url);
     $url = preg_replace("/showHeaders[^\&]*\&/", "", $url);
     $url .= "&NOAUTH";
+    foreach ($units as $unit) {
+        foreach (['AfterTraining', 'Prior'] as $suffix) {
+            $url = str_replace($unit.$suffix."=&", "", $url);
+        }
+    }
     ?>
     <h3>Brag on Your Scholars' Publications!</h3>
     <?= Altmetric::makeClickText(); ?>
     <h4>Include this Page as a Widget in Another Page</h4>
     <div class="max-width centered">
         <p class="centered">Copy the following HTML and place into another HTML webpage to display your scholars' publications. Your website must likely have cross-origin framing turned on (which is the default).</p>
-        <div class="max-width centered"><code>&lt;iframe src="<?= $url ?>" title="Recent Publications" style="width: 100%; height: 400px;"&gt;&lt;/iframe&gt;</code></div>
+        <div class="max-width centered"><code id="htmlCode">&lt;iframe src="<?= $url ?>" title="Recent Publications" style="width: 100%; height: 400px;"&gt;&lt;/iframe&gt;</code></div>
+        <div class="max-width alignright smaller"><a href="javascript:;" onclick="copyToClipboard($('#htmlCode'));">Copy</a></a></div>
 
         <h4>Further Configurations</h4>
         <form method="GET" action="<?= REDCapManagement::getPage(Application::link("brag.php")) ?>">
             <?= REDCapManagement::getParametersAsHiddenInputs(Application::link("brag.php")) ?>
             <?php
             $cohorts = new Cohorts($token, $server, Application::getModule());
-            echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort)."</p>";
+            echo "<p class='centered max-width padded' style='background-color: white;'>".$cohorts->makeCohortSelect($cohort)."</p>";
             ?>
             <?= isset($_GET['showHeaders']) ? "<input type='hidden' name='showHeaders' value='' />" : "" ?>
-            <p class="centered">Show Time Period a Certain Number of Days Prior to Today: <input type="number" name="daysPrior" style="width: 75px;" value="<?= $daysPrior ?>"></p>
-            <p class="centered"><strong>-OR-</strong> Show Period During Training Period and a Certain Amount of Days After the End of Training Period: <input type="number" name="daysAfterTraining" style="width: 75px;" value="<?= $daysAfterTraining ?>"></p>
-            <p class="centered"><button>Reset</button></p>
+            <p class="centered max-width padded" style="background-color: #eeeeee;">Show Time Period a Certain Time Period Prior to Today:<br/>
+                <?php
+                    echo makeOrList($units, "Prior", $prior);
+                ?>
+            </p>
+            <p class="centered max-width padded" style="background-color: #dddddd;"><strong>-OR-</strong> Show Period During Training Period and a Certain Amount of Time After the End of Training Period:<br/>
+                <?php
+                echo makeOrList($units, "AfterTraining", $afterTraining);
+                ?>
+            </p>
+            <p class="centered max-width padded" style="background-color: white;"><button>Configure</button></p>
         </form>
     </div>
     <hr>
@@ -96,6 +116,51 @@ if (isset($_GET['showHeaders'])) {
     echo "<link rel='stylesheet' href='".Application::link("/css/career_dev.css")."'>\n";
 }
 
+foreach ($units as $unit) {
+    $ucUnit = ucfirst($unit);
+    if ($afterTraining[$unit] !== "") {
+        if ($afterTraining[$unit] == 1) {
+            $ucUnit = preg_replace("/s$/", "", $ucUnit);
+        }
+        echo "<h4>All Publications During Training and {$afterTraining[$unit]} $ucUnit After</h4>";
+    } else if ($prior[$unit] !== "") {
+        if ($prior[$unit] == 1) {
+            $ucUnit = preg_replace("/s$/", "", $ucUnit);
+        }
+        echo "<h4>All Publications in Previous {$prior[$unit]} $ucUnit</h4>";
+    }
+}
+if (!$hasAfterTraining && !$hasPrior) {
+    if (isset($_GET['showHeaders'])) {
+        echo "<h4>Publications Will Be Displayed Here</h4>";
+    } else {
+        # historical legacy
+        $defaultDays = 180;
+        echo "<h4>All Publications in Previous $defaultDays Days</h4>";
+        $prior['days'] = $defaultDays;
+        $hasPrior = TRUE;
+    }
+}
+
+$oneDay = 24 * 3600;
+if ($prior['days'] !== "") {
+    $startTs = time() - $prior['days'] * $oneDay;
+} else if ($prior['months'] !== "") {
+    if ($prior['months'] === 0) {
+        $startTs = time();
+    } else {
+        $startTs = strtotime("first day of -{$prior['months']} months");
+    }
+} else if ($prior['years'] !== '') {
+    if ($prior['years'] === 0) {
+        $startTs = time();
+    } else {
+        $startTs = strtotime("-{$prior['years']} years");
+    }
+} else {
+    $startTs = FALSE;
+}
+$endTs = FALSE;  // use only $startTs
 
 if (isset($_GET['asc'])) {
     $asc = TRUE;
@@ -123,7 +188,7 @@ if (isset($_GET['test'])) {
     echo "Records: ".json_encode($recordIds)."<br>";
 }
 foreach ($recordIds as $recordId) {
-    if ($daysAfterTraining !== "") {
+    if ($hasAfterTraining) {
         $trainingData = Download::fieldsForRecords($token, $server, $trainingFields, [$recordId]);
         $trainingStartDate = getTrainingStartDate($trainingData, $recordId);
         $trainingEndDate = getTrainingEndDate($trainingData, $recordId);
@@ -136,9 +201,26 @@ foreach ($recordIds as $recordId) {
             continue;
         }
         if ($trainingEndDate) {
-            $endTs = strtotime($trainingEndDate) + $daysAfterTraining * $oneDay;
+            if ($afterTraining['days'] !== "") {
+                $endTs = strtotime($trainingEndDate) + $afterTraining['days'] * $oneDay;
+            } else if ($afterTraining['months'] === 0) {
+                $endTs = time();
+            } else if ($afterTraining['months'] !== "") {
+                $endTs = strtotime("first day of +{$afterTraining['months']} months", strtotime($trainingEndDate));
+            } else if ($afterTraining['years'] === 0) {
+                $endTs = time();
+            } else if ($afterTraining['years'] !== "") {
+                $endTs = strtotime("+{$afterTraining['years']} years", strtotime($trainingEndDate));
+            } else {
+                throw new \Exception("You must specify a number of days or months after training!");
+            }
         } else {
             $endTs = FALSE;
+        }
+        if (isset($_GET['test'])) {
+            $startDate = date("Y-m-d", $startTs);
+            $endDate = date("Y-m-d", $endTs);
+            echo "Record $recordId from $startDate to $endDate<br>";
         }
     } else {
         if (isset($_GET['test'])) {
@@ -196,11 +278,6 @@ if (!defined("NOAUTH")) {
     $classInfo = "class='max-width'";
 }
 
-if ($daysAfterTraining !== "") {
-    echo "<h4>All Publications During Training and $daysAfterTraining Days After</h4>\n";
-} else {
-    echo "<h4>".getTimespanHeader($daysPrior)."</h4>\n";
-}
 echo "<div $classInfo style='padding: 8px;'>\n";
 if (empty($citationsWithTs)) {
     echo "<p class='centered'>$noCitationsMessage</p>";
@@ -213,10 +290,6 @@ echo "</div>\n";
 echo "<br><br><br>";
 echo "<p class='smallest centered'>Publications from ".Application::getProgramName()." <img src='".Application::link("img/flight_tracker_icon_cropped.png")."' style='height: 52px; width: 33px;'></p>";
 
-
-function getTimespanHeader($daysPrior) {
-    return "All Publications in Previous $daysPrior Days";
-}
 
 function getTrainingStartDate($redcapData, $recordId) {
     $earliestDate = "";
@@ -266,4 +339,19 @@ function getTrainingEndDate($redcapData, $recordId) {
         $latestDate = REDCapManagement::findField($redcapData, $recordId, "identifier_left_date");
     }
     return $latestDate;
+}
+
+function makeOrList($units, $suffix, $ary) {
+    $html = [];
+    foreach ($units as $unit) {
+        $ucUnit = ucfirst($unit);
+        $priorities = ["this"];
+        foreach ($units as $unit2) {
+            if ($unit2 !== $unit) {
+                $priorities[] = "'#$unit2$suffix'";
+            }
+        }
+        $html[] = "<label for='$unit$suffix'>$ucUnit:</label> <input onchange=\"enforceOneNumber(".implode(", ", $priorities).");\" type=\"number\" min=\"0\" id=\"$unit$suffix\" name=\"$unit$suffix\" style=\"width: 75px;\" value=\"{$ary['days']}\" />";
+    }
+    return implode("&nbsp;<strong>-OR-</strong>&nbsp;", $html);
 }

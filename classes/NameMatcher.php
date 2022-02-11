@@ -286,7 +286,7 @@ class NameMatcher {
 	    $newNodes = [$first];
 	    foreach ($nodes as $node) {
 	        $isMiddleInitial = FALSE;
-	        if (self::isInitial($node) && ($middle == $node)) {
+	        if (self::isInitial($node) && in_array($node, $middleNodes)) {
 	            $isMiddleInitial = TRUE;
             }
 	        if ($node && !in_array($node, $newNodes) && !$isMiddleInitial) {
@@ -370,25 +370,35 @@ class NameMatcher {
     # case insensitive match based on last name and first initial only
 	# returns TRUE/FALSE
 	public static function matchByInitials($lastName1, $firstName1, $lastName2, $firstName2) {
-		$lastName1 = strtolower($lastName1);
-		$firstName1 = strtolower($firstName1);
-		$lastName2 = strtolower($lastName2);
-		$firstName2 = strtolower($firstName2);
+        $firstNames1 = is_array($firstName1) ? $firstName1 : [$firstName1];
+        $firstNames2 = is_array($firstName2) ? $firstName2 : [$firstName2];
 
-        $lastName1 = self::dashes2Spaces($lastName1);
-        $lastName2 = self::dashes2Spaces($lastName2);
-
-		$firstInitial1 = self::turnIntoOneInitial($firstName1);
-		$firstInitial2 = self::turnIntoOneInitial($firstName2);
-
-		$lastNames1 = self::explodeLastName($lastName1);
-		$lastNames2 = self::explodeLastName($lastName2);
-		foreach ($lastNames1 as $ln1) {
-		    foreach ($lastNames2 as $ln2) {
-                if (isset($_GET['test'])) {
-                    Application::log("matchByInitials: Comparing $ln1 vs $ln2 and $firstInitial1 ($firstName1) vs. $firstInitial2 ($firstName2)");
+        $firstInitialMatch = FALSE;
+        foreach ($firstNames1 as $fn1) {
+            $fn1 = strtolower($fn1);
+            foreach ($firstNames2 as $fn2) {
+                $fn2 = strtolower($fn2);
+                $fi1 = self::turnIntoOneInitial($fn1);
+                $fi2 = self::turnIntoOneInitial($fn2);
+                if ($fi1 == $fi2) {
+                    $firstInitialMatch = TRUE;
                 }
-                if (($ln1 == $ln2) && ($firstInitial1 == $firstInitial2)) {
+            }
+        }
+        if (!$firstInitialMatch) {
+            return FALSE;
+        }
+
+		$lastNames1 = is_array($lastName1) ? $lastName1 : self::explodeLastName(self::dashes2Spaces($lastName1));
+		$lastNames2 = is_array($lastName2) ? $lastName2 : self::explodeLastName(self::dashes2Spaces($lastName2));
+		foreach ($lastNames1 as $ln1) {
+		    $ln1 = strtolower($ln1);
+		    foreach ($lastNames2 as $ln2) {
+		        $ln2 = strtolower($ln2);
+                if (isset($_GET['test'])) {
+                    Application::log("matchByInitials: Comparing $ln1 vs $ln2");
+                }
+                if ($ln1 == $ln2) {
                     return TRUE;
                 }
             }

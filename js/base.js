@@ -1226,3 +1226,24 @@ function copyProject(token, server) {
 		alert('Invalid settings');
 	}
 }
+
+function enforceOneNumber(ob1, ob2, ob3) {
+	if ($(ob1).val() !== '') {
+		$(ob2).val('');
+		$(ob3).val('');
+	} else if ($(ob2).val() !== '') {
+		$(ob1).val('');
+		$(ob3).val('');
+	} else if ($(ob3).val() !== '') {
+		$(ob1).val('');
+		$(ob2).val('');
+	}
+}
+
+function copyToClipboard(element) {
+    var $temp = $("<input>");
+    $("body").append($temp);
+    $temp.val($(element).text()).select();
+    document.execCommand("copy");
+    $temp.remove();
+}

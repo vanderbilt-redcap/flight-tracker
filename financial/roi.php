@@ -13,7 +13,7 @@ require_once(APP_PATH_DOCROOT."Classes/System.php");
 \System::increaseMaxExecTime(28800);   // 8 hours
 
 if ($_GET['cohort']) {
-    $cohort = REDCapManagement::sanitize($_GET['cohort']);
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
     $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $cohort = "all";

@@ -149,9 +149,9 @@ function makeDepartmentPrompt($projectId) {
 
 	$style = " style='width: 400px; height: 400px;'";
 	$html .= "<form method='POST' action='".preg_replace("/pid=\d+/", "pid=$projectId", CareerDev::getLink("install.php"))."'>\n";
-	$html .= "<p class='centered'>Please enter a list of your academic departments.<br>(One per line.)<br>\n";
+	$html .= "<p class='centered max-width'>Please enter a list of your academic departments.<br>(One per line.)<br>\n";
 	$html .= "<textarea name='departments' class='config'>$defaultDepartments</textarea></p>\n";
-	$html .= "<p class='centered'>Please enter a list of resources your scholars may use (e.g., workshops, tools).<br>(One per line.)<br>\n";
+	$html .= "<p class='centered max-width'>Please enter a list of resources your scholars may use. These are items that your institution offers to help your scholars achieve career success, like workshops or tools. For example, Vanderbilt offers focused workshops, studios, pilot funding, feedback sessions, and grant writing resources.<br>(One per line.)<br>\n";
 	$html .= "<textarea name='resources' class='config'>$defaultResources</textarea></p>\n";
 	$html .= "<p class='centered'><button onclick='if (!verifyFieldsNotBlank([\"departments\", \"resources\"])) { alert(\"Cannot leave fields blank!\"); return false; } else { return true; }'>Configure Fields</button></p>\n";
 	$html .= "</form>\n";
@@ -274,7 +274,7 @@ function changeGrantClass(name) {
 	$html .= "</tr>\n";
 
 	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'>Full Institution Name:<br><span class='small'>(e.g., Vanderbilt University Medical Center)</span></td>\n";
+	$html .= "<td style='text-align: right;'>Full Institution Name:<br><span class='small'>(e.g., Vanderbilt University Medical Center)<br>This should match what is reported on the <a href='https://reporter.nih.gov/' target='_blank'>NIH/Federal RePORTER systems</a> or in a <a href='https://pubmed.ncbi.nlm.nih.gov/' target='_blank'>PubMed paper</a>.</span></td>\n";
 	$html .= "<td><input type='text' name='institution'></td>\n";
 	$html .= "</tr>\n";
 

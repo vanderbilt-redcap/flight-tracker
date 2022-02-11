@@ -27,7 +27,7 @@ $metadata = Download::metadata($token, $server);
 
 # fields to download: summary, scholars' survey, degree fields
 $fields = array_merge(array("identifier_last_name", "identifier_first_name", "record_id"), CareerDev::$summaryFields, CareerDev::$checkFields, getDegreeFields($metadata));
-$redcapData = Download::getIndexedRedcapData($token, $server, $fields, REDCapManagement::sanitize($_GET['cohort']), $metadata);
+$redcapData = Download::getIndexedRedcapData($token, $server, $fields, REDCapManagement::sanitizeCohort($_GET['cohort']), $metadata);
 
 # get the cohorts
 $cohortData = array();
@@ -519,7 +519,7 @@ function get_r01_or_equiv($data) {
 function get_total_publications($data) {
 	global $token, $server, $metadata;
 	$fields = array("record_id", "citation_include");
-	$redcapData = Download::getIndexedRedcapData($token, $server, $fields, REDCapManagement::sanitize($_GET['cohort']), $metadata);
+	$redcapData = Download::getIndexedRedcapData($token, $server, $fields, REDCapManagement::sanitizeCohort($_GET['cohort']), $metadata);
 	$total = 0;
 	foreach ($redcapData as $recordId => $rows) {
 		foreach ($rows as $row) {
@@ -885,7 +885,7 @@ echo "<h1>Grant Demographics</h1>\n";
 $cohortsObj = new Cohorts($token, $server, Application::getModule());
 $cohort = "";
 if ($_GET['cohort']) {
-    $cohort = REDCapManagement::sanitize($_GET['cohort']);
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
     if (in_array($cohort, $cohortsObj->getCohortNames())) {
         echo "<h2>For Cohort $cohort</h2>\n";
     }

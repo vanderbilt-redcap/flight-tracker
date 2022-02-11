@@ -11,7 +11,7 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 if (isset($_GET['cohort']) && $_GET['cohort']) {
-    $cohort = REDCapManagement::sanitize($_GET['cohort']);
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
     $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $cohort = "";

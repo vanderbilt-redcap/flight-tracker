@@ -284,11 +284,11 @@ echo "<br><br>\n";
 echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>\n";
 echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".Application::link("socialNetwork/collaboration.php")."&record=$record&field=record_id&cohort=all&headers=false&mentors=on'></iframe><br><br>\n";
 
-if (!CareerDev::isCopiedProject()) {
-	echo "<iframe class='centered' style='height: 600px;' id='grant_wrangler' src='".Application::link("wrangler/index.php")."&record=$record&headers=false'></iframe><br><br>\n";
-    echo "<iframe class='centered' style='height: 600px;' id='pub_wrangler' src='".Application::link("wrangler/include.php")."&wranglerType=Publications&record=$record&headers=false'></iframe><br><br>\n";
-}
-echo "<iframe class='centered' style='height: 600px;' id='data_sources' src='".Application::link("tablesAndLists/dataSourceCompare.php")."&record=$record&headers=false'></iframe><br><br>\n";
+// if (!CareerDev::isCopiedProject()) {
+	// echo "<iframe class='centered' style='height: 600px;' id='grant_wrangler' src='".Application::link("wrangler/index.php")."&record=$record&headers=false'></iframe><br><br>\n";
+    // echo "<iframe class='centered' style='height: 600px;' id='pub_wrangler' src='".Application::link("wrangler/include.php")."&wranglerType=Publications&record=$record&headers=false'></iframe><br><br>\n";
+// }
+// echo "<iframe class='centered' style='height: 600px;' id='data_sources' src='".Application::link("tablesAndLists/dataSourceCompare.php")."&record=$record&headers=false'></iframe><br><br>\n";
 
 ?>
 

@@ -57,7 +57,7 @@ $groups = [];
 $cohortTitle = "";
 if ($showRealGraph) {
     if ($_GET['cohort']) {
-        $cohort = REDCapManagement::sanitize($_GET['cohort']);
+        $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
         $cohortTitle = " (Cohort $cohort)";
         $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
     } else {

@@ -14,22 +14,17 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $thisLink = Application::link("this");
 if (isset($_GET['record'])) {
-    $record = REDCapManagement::sanitize($_GET['record']);
     $possibleRecords = Download::recordIds($token, $server);
-    if (in_array($record, $possibleRecords)) {
-        $records = [];
-        foreach ($possibleRecords as $recordId) {
-            if ($recordId == $_GET['record']) {
-                $records[] = $recordId;
-            }
-        }
-    }
-    if (empty($records)) {
+    $recordId = REDCapManagement::getSanitizedRecord($_GET['record'], $possibleRecords);
+    $records = [];
+    if ($recordId) {
+        $records[] = $recordId;
+    } else {
         die("Could not find record.");
     }
     $cohort = "";
 } else if ($_GET['cohort']) {
-    $cohort = REDCapManagement::sanitize($_GET['cohort']);
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
     $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $cohort = "all";

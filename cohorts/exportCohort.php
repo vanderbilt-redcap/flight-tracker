@@ -10,7 +10,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$cohort = REDCapManagement::sanitize($_GET['cohort']);
+$cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
 $cohorts = new Cohorts($token, $server, CareerDev::getModule());
 if ($cohort) {
 	if ($cohorts->isIn($cohort)) {

@@ -25,6 +25,23 @@ class Cohorts {
 		$this->readonlySettings = $this->getReadonlyConfiguration();
 	}
 
+	public static function sanitize($cohort) {
+        if (is_numeric($cohort)) {
+            $cohort = (string) $cohort;
+        }
+        if (!is_string($cohort)) {
+            return "";
+        }
+        /**
+         * @psalm-taint-escape has_quotes
+         * Do nothing because we want to allow quotes
+         *
+         * @psalm-taint-escape html
+         */
+        $cohort = preg_replace("/<[^>]+>/", '', $cohort);
+        return $cohort;
+    }
+
 	public function hasReadonlyProjects() {
 	    return !empty($this->readonlySettings);
     }

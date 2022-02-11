@@ -18,11 +18,14 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 require_once(dirname(__FILE__)."/../small_base.php");
 
+$classes = ["CDAs", "All"];
+$submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CSS below
+
 ?>
 
 <style>
 body { font-size: 12px; }
-#visualization { background-color: white; }
+.visualization { background-color: white; margin-bottom: 32px; margin-top: 32px; }
 .Unfunded { border-color: #888888; }
 .Pending { border-color: #f69ca0; }
 .Awarded { border-color: #f0565d; }
@@ -31,107 +34,160 @@ body { font-size: 12px; }
 <?php
 
 	$records = Download::recordIds($token, $server);
-	$grantsAndPubs = array();
 
-	$recordId = $records[0];
-	$nextRecord = $records[0];
+	$recordId = isset($_GET['record']) ? REDCapManagement::getSanitizedRecord($_GET['record'], $records) : $records[0];
+    $nextRecord = $records[0];
 	for ($i = 0; $i < count($records); $i++) {
-		if (isset($_GET['record']) && ($records[$i] == $_GET['record'])) {
-			$recordId = $records[$i];
-			if ($i + 1 < count($records)) {
-				$nextRecord = $records[$i + 1];
-			} else {
-				$nextRecord = $records[0];
-			}
+		if (($records[$i] == $recordId) && ($i + 1 < count($records))) {
+		    $nextRecord = $records[$i + 1];
+		    break;
 		}
 	}
-	$rows = Download::records($token, $server, array($recordId));
+	$rows = Download::records($token, $server, [$recordId]);
 
-	$id = 1;
-	$maxTs = 0;
-	$minTs = time();
-
-    $submissionTimestamps = [];
-	if (CareerDev::isVanderbilt()) {
-	    $fieldsWithData = REDCapManagement::getFieldsWithData($rows, $recordId);
-	    if (in_array("coeussubmission_ip_number", $fieldsWithData)) {
-	        # first priority
-            list($coeusSubmissions, $coeusSubmissionTimestamps) = makeCoeusSubmissions($rows, $recordId, $pid, $event_id, $id);
-            list($coeusAwards, $coeusAwardTimestamps) = makeCoeusAwards($rows, $recordId, $pid, $event_id, $id);
-            $grantsAndPubs = array_merge($grantsAndPubs, $coeusSubmissions, $coeusAwards);
-            $submissionTimestamps = array_merge($coeusSubmissionTimestamps, $coeusAwardTimestamps);
-        } else if (in_array("coeus2_id", $fieldsWithData)) {
-            # second priority
-	        list($coeus2Submissions, $submissionTimestamps) = makeCoeus2Submissions($rows, $recordId, $pid, $event_id, $id);
-            $grantsAndPubs = array_merge($grantsAndPubs, $coeus2Submissions);
-        }
-    }
-	list($customSubmissions, $customSubmissionTimestamps) = makeCustomSubmissions($rows, $recordId, $pid, $event_id, $id);
-    $grantsAndPubs = array_merge($grantsAndPubs, $customSubmissions);
-    $submissionTimestamps = array_merge($submissionTimestamps, $customSubmissionTimestamps);
-    foreach ($submissionTimestamps as $submissionTs) {
-        if ($submissionTs) {
-            if ($maxTs < $submissionTs) {
-                $maxTs = $submissionTs;
-            }
-            if ($minTs > $submissionTs) {
-                $minTs = $submissionTs;
-            }
+    $name = "";
+    foreach ($rows as $row) {
+        if ($row['redcap_repeat_instrument'] == "") {
+            $name = $row['identifier_first_name']." ".$row['identifier_last_name'];
+            break;
         }
     }
 
-    $grants = new Grants($token, $server);
-    $grants->setRows($rows);
-    $grantClass = CareerDev::getSetting("grant_class", $pid);
-    $grantAry = makeTrainingDatesBar($rows, $id, $minTs, $maxTs, ($grantClass == "T"));
-    if ($grantAry) {
-        $grantsAndPubs[] = $grantAry;
+    $hasSubmissions = FALSE;
+    $grantsAndPubs = [];
+    $maxTs = [];
+	$minTs = [];
+	foreach ($classes as $c) {
+        $id = 1;
+        $maxTs[$c] = 0;
+        $minTs[$c] = time();
+        $grantsAndPubs[$c] = [];
+
+        if ($c == "All") {
+            if (CareerDev::isVanderbilt()) {
+                $fieldsWithData = REDCapManagement::getFieldsWithData($rows, $recordId);
+                $submissionTimestamps = [];
+                if (in_array("coeussubmission_ip_number", $fieldsWithData)) {
+                    # first priority
+                    list($coeusSubmissions, $coeusSubmissionTimestamps) = makeCoeusSubmissions($rows, $recordId, $pid, $event_id, $id);
+                    list($coeusAwards, $coeusAwardTimestamps) = makeCoeusAwards($rows, $recordId, $pid, $event_id, $id);
+                    $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $coeusSubmissions, $coeusAwards);
+                    $submissionTimestamps = array_merge($coeusSubmissionTimestamps, $coeusAwardTimestamps);
+                } else if (in_array("coeus2_id", $fieldsWithData)) {
+                    # second priority
+                    list($coeus2Submissions, $submissionTimestamps) = makeCoeus2Submissions($rows, $recordId, $pid, $event_id, $id);
+                    $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $coeus2Submissions);
+                }
+            }
+            if (!empty($submissionTimestamps)) {
+                $hasSubmissions = TRUE;
+            }
+
+            list($customSubmissions, $customSubmissionTimestamps) = makeCustomSubmissions($rows, $recordId, $pid, $event_id, $id);
+            $grantsAndPubs = array_merge($grantsAndPubs, $customSubmissions);
+            $submissionTimestamps = array_merge($submissionTimestamps, $customSubmissionTimestamps);
+            if (!empty($customSubmissionTimestamps)) {
+                $hasSubmissions = TRUE;
+            }
+
+            foreach ($submissionTimestamps as $submissionTs) {
+                if ($submissionTs) {
+                    if ($maxTs[$c] < $submissionTs) {
+                        $maxTs[$c] = $submissionTs;
+                    }
+                    if ($minTs[$c] > $submissionTs) {
+                        $minTs[$c] = $submissionTs;
+                    }
+                }
+            }
+        }
+
+        $grants = new Grants($token, $server);
+        $grants->setRows($rows);
+        $grants->compileGrants();
+        $grantClass = CareerDev::getSetting("grant_class", $pid);
+        $grantAry = makeTrainingDatesBar($rows, $id, $minTs[$c], $maxTs[$c], ($grantClass == "T"));
+        if ($grantAry) {
+            $grantsAndPubs[$c][] = $grantAry;
+        }
+        if ($c == "All") {
+            $grantType = "all";
+        } else if ($c == "CDAs") {
+            $grantType = "prior";
+        } else {
+            throw new \Exception("Class is not set up $c");
+        }
+        if ($grants->getCount($grantType) > 0) {
+            if (isset($_GET['test'])) {
+                echo "grants->$grantType has ".$grants->getCount($grantType)." items<br>";
+            }
+            $grantBars = makeGrantBars($grants->getGrants($grantType), $id, $minTs[$c], $maxTs[$c]);
+            $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $grantBars);
+        }
+
+        if ($c == "CDAs") {
+            $pubDots = makePubDots($rows, $token, $server, $id);
+            $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $pubDots);
+        }
+
+        $currTs = time();
+        if ($maxTs[$c] < $currTs) {
+            $maxTs[$c] = $currTs;
+        }
+
+        $spacing = ($maxTs[$c] + 90 * 24 * 3600 - $minTs[$c]) / 6;
+        $maxTs[$c] += $spacing;
+        $minTs[$c] -= $spacing;
     }
-    if ($grants->getCount("prior") > 0) {
-        $grantBars = makeGrantBars($grants, $id, $minTs, $maxTs);
-        $grantsAndPubs = array_merge($grantsAndPubs, $grantBars);
-    }
-
-    $pubDots = makePubDots($rows, $token, $server, $id, $minTs, $maxTs);
-    $grantsAndPubs = array_merge($grantsAndPubs, $pubDots);
-
-	$currTs = time();
-	if ($maxTs < $currTs) {
-		$maxTs = $currTs;
-	}
-
-	$spacing = ($maxTs + 90 * 24 * 3600 - $minTs) / 6;
-	$maxTs += $spacing;
-	$minTs -= $spacing;
-
-	$name = "";
-	foreach ($rows as $row) {
-		if ($row['redcap_repeat_instrument'] == "") {
-			$name = $row['identifier_first_name']." ".$row['identifier_last_name'];
-		}
-	}
 
 if (isset($_GET['next'])) {
 	echo "<h1>$recordId: $name</h1>\n";
 	echo "<p style='text-align: center;'><a href='timeline.php?pid=$pid&record=$nextRecord&next'>Next Record</a></p>\n";
 }
-?>
 
-<div id="visualization"></div>
+foreach ($classes as $c) {
+    if ($c == "All") {
+        $vizTitle = "All Grants (Including Submissions)";
+    } else if ($c == "CDAs") {
+        $vizTitle = "Career Defining Awards &amp; Publications";
+    } else {
+        $vizTitle = "This should never happen.";
+    }
+    echo "<h3>$vizTitle</h3>";
+    if ($hasSubmissions && ($c == "All")) {
+        echo "<table class='centered max-width'><tbody><tr>";
+        $cells = [];
+        foreach ($submissionClasses as $submissionClass) {
+            $cells[] = "<td class='$submissionClass' style='border-width: 20px; border-style: solid;'>$submissionClass</td>";
+        }
+        echo implode("<td>&nbsp;</td>", $cells);
+        echo "</tr></tbody></table>";
+    }
+    echo "<div id='visualization$c' class='visualization'></div>";
+}
+
+?>
 
 <script type="text/javascript">
 window.onload = function() {
-	// DOM element where the Timeline will be attached
-	var container = document.getElementById('visualization');
+    const container = [];
+    const items = [];
+    const options = [];
+    const timeline = [];
+    <?php
+    foreach ($classes as $c) {
+        $dataset = json_encode($grantsAndPubs[$c]);
+        $startDate = json_encode(date("Y-m-d", $minTs[$c]));
+        $endDate = json_encode(date("Y-m-d", $maxTs[$c]));
 
-	// Create a DataSet (allows two way data-binding)
-	var items = new vis.DataSet(<?= json_encode($grantsAndPubs) ?>);
-
-	// Configuration for the Timeline
-	var options = { start: <?= json_encode(date("Y-m-d", $minTs)) ?>, end: <?= json_encode(date("Y-m-d", $maxTs)) ?> };
-
-	// Create a Timeline
-	var timeline = new vis.Timeline(container, items, options);
+        echo "
+        container['$c'] = document.getElementById('visualization$c');
+        items['$c'] = new vis.DataSet($dataset);
+        options['$c'] = { start: $startDate, end: $endDate };
+        timeline['$c'] = new vis.Timeline(container['$c'], items['$c'], options['$c']);
+        ";
+    }
+    ?>
 };
 </script>
 
@@ -149,33 +205,6 @@ function makeCoeusAwards($rows, $recordId, $pid, $event_id, &$id) {
         $instance = $row['redcap_repeat_instance'];
         $submissionDate = $row['coeus_award_create_date'];
         checkRowForValidity($row, $pid, $recordId, $event_id, $grantsAndPubs, $submissionTimestamps, $id, $instrument, $instance, $submissionDate, $awardNo, $awardStatus, $title);
-    }
-    return [$grantsAndPubs, $submissionTimestamps];
-}
-
-function makeCustomSubmissions($rows, $recordId, $pid, $event_id, &$id) {
-    $grantsAndPubs = [];
-    $submissionTimestamps = [];
-    foreach ($rows as $row) {
-        $awardType = $row['custom_type'];
-        if ($awardType == 98) {   // Submission
-            $awardStatusIdx = $row['custom_submission_status'] ?? "";
-            if ($awardStatusIdx == 1) {
-                $awardStatus = "Awarded";
-            } else if ($awardStatusIdx == 2) {
-                $awardStatus = "Pending";
-            } else if ($awardStatusIdx == 3) {
-                $awardStatus = "Unfunded";
-            } else {
-                $awardStatus = "";
-            }
-            $awardNo = $row['custom_number'];
-            $title = $row['custom_title'];
-            $instrument = "custom_grant";
-            $instance = $row['redcap_repeat_instance'];
-            $submissionDate = $row['custom_submission_date'] ?? "";
-            checkRowForValidity($row, $pid, $recordId, $event_id, $grantsAndPubs, $submissionTimestamps, $id, $instrument, $instance, $submissionDate, $awardNo, $awardStatus, $title);
-        }
     }
     return [$grantsAndPubs, $submissionTimestamps];
 }
@@ -212,7 +241,7 @@ function makeCoeus2Submissions($rows, $recordId, $pid, $event_id, &$id) {
 
 function checkRowForValidity($row, $pid, $recordId, $event_id, &$grantsAndPubs, &$submissionTimestamps, &$id, $instrument, $instance, $submissionDate, $awardNo, $awardStatus, $title) {
     $skipNumbers = [];
-    $validStatuses = ["Awarded", "Pending", "Unfunded"];
+    $validStatuses = ["Awarded", "Unfunded"];
     if (($row['redcap_repeat_instrument'] == $instrument)
         && !in_array($awardNo, $skipNumbers)
         && in_array($awardStatus, $validStatuses)) {
@@ -287,12 +316,17 @@ function makeTrainingDatesBar($rows, &$id, &$minTs, &$maxTs, $isCurrentTrainee) 
     return [];
 }
 
-function makeGrantBars($grants, &$id, &$minTs, &$maxTs) {
+function makeGrantBars($grantAry, &$id, &$minTs, &$maxTs) {
     $grantsAndPubs = [];
-    foreach ($grants->getGrants("prior") as $grant) {
+    foreach ($grantAry as $grant) {
+        $typeInfo = "";
+        $grantType = $grant->getVariable("type");
+        if ($grantType !== "N/A") {
+            $typeInfo = " ($grantType)";
+        }
         $grantAry = array(
             "id" => $id,
-            "content" => $grant->getBaseNumber() . " (" . $grant->getVariable("type") . ")",
+            "content" => $grant->getBaseNumber().$typeInfo,
             "group" => "Grant",
         );
         $start = $grant->getVariable("start");
@@ -327,7 +361,7 @@ function makeGrantBars($grants, &$id, &$minTs, &$maxTs) {
     return $grantsAndPubs;
 }
 
-function makePubDots($rows, $token, $server, &$id, &$minTs, &$maxTs) {
+function makePubDots($rows, $token, $server, &$id) {
     $pubs = new Publications($token, $server);
     $pubs->setRows($rows);
     $citations = $pubs->getCitations("Included");
@@ -364,3 +398,31 @@ function makePubDots($rows, $token, $server, &$id, &$minTs, &$maxTs) {
     }
     return $grantsAndPubs;
 }
+
+function makeCustomSubmissions($rows, $recordId, $pid, $event_id, &$id) {
+    $grantsAndPubs = [];
+    $submissionTimestamps = [];
+    foreach ($rows as $row) {
+        $awardType = $row['custom_type'];
+        if ($awardType == 98) {   // Submission
+            $awardStatusIdx = $row['custom_submission_status'] ?? "";
+            if ($awardStatusIdx == 1) {
+                $awardStatus = "Awarded";
+            } else if ($awardStatusIdx == 2) {
+                $awardStatus = "Pending";
+            } else if ($awardStatusIdx == 3) {
+                $awardStatus = "Unfunded";
+            } else {
+                $awardStatus = "";
+            }
+            $awardNo = $row['custom_number'];
+            $title = $row['custom_title'];
+            $instrument = "custom_grant";
+            $instance = $row['redcap_repeat_instance'];
+            $submissionDate = $row['custom_submission_date'] ?? "";
+            checkRowForValidity($row, $pid, $recordId, $event_id, $grantsAndPubs, $submissionTimestamps, $id, $instrument, $instance, $submissionDate, $awardNo, $awardStatus, $title);
+        }
+    }
+    return [$grantsAndPubs, $submissionTimestamps];
+}
+

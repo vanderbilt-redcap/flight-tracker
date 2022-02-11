@@ -11,9 +11,9 @@ require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/base.php");
 
 if ($_GET['cohort']) {
-    $cohort = REDCapManagement::sanitize($_GET['cohort']);
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
 } else if ($_POST['cohort']) {
-    $cohort = REDCapManagement::sanitize($_POST['cohort']);
+    $cohort = REDCapManagement::sanitizeCohort($_POST['cohort']);
 } else {
     $cohort = "";
 }

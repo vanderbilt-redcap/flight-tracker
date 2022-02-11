@@ -12,7 +12,7 @@ require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
 $module = Application::getModule();
 if ($_GET['cohort']) {
-    $cohort = REDCapManagement::sanitize($_GET['cohort']);
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
     $records = Download::cohortRecordIds($token, $server, $module, $cohort);
     $cohortStr = " (Cohort ".$cohort.")";
 } else {

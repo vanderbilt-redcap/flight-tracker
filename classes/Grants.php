@@ -664,7 +664,9 @@ class Grants {
 		}
 		if (self::getShowDebug()) { Application::log("combineBySource. ".count($awardsBySource)." awardsBySource"); }
 		foreach ($awardsBySource as $awardNo => $grants) {
-			if (self::getShowDebug()) { Application::log("combineBySource: ".$awardNo." with ".count($grants)); }
+		    if (is_array($grants)) {
+                if (self::getShowDebug()) { Application::log("combineBySource: ".$awardNo." with ".count($grants)); }
+            }
 		}
 		return $awardsBySource;
 	}
@@ -836,7 +838,9 @@ class Grants {
 		# 2. Organize grants
 		$awardsBySource = self::combineBySource($sourceOrder, $filteredGrants);
         foreach ($awardsBySource as $awardNo => $grants) {
-            if (self::getShowDebug()) { Application::log("2. $awardNo with ".count($grants)); }
+            if (is_array($grants)) {
+                if (self::getShowDebug()) { Application::log("2. $awardNo with ".count($grants)); }
+            }
         }
 
         # 3. import modified lists first from the wrangler/index.php interface (Grant Wrangler)
@@ -880,7 +884,9 @@ class Grants {
 		$this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource);
 
 		foreach ($awardsBySource as $awardNo => $grants) {
-            if (self::getShowDebug()) { Application::log("3. $awardNo with ".count($grants)); }
+		    if (is_array($grants)) {
+                if (self::getShowDebug()) { Application::log("3. $awardNo with ".count($grants)); }
+            }
         }
 
 		# 4. make changes
@@ -917,7 +923,9 @@ class Grants {
 		}
 		$this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource);
         foreach ($awardsBySource as $awardNo => $grants) {
-            if (self::getShowDebug()) { Application::log("4. $awardNo with ".count($grants)); }
+            if (is_array($grants)) {
+                if (self::getShowDebug()) { Application::log("4. $awardNo with ".count($grants)); }
+            }
         }
 
         # grants are ordered by source; need to order by start date

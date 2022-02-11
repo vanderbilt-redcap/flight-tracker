@@ -18,7 +18,7 @@ function makeLink($tableNum) {
 	if ($text = NIHTables::getTableHeader($tableNum)) {
 		$baseLink = Application::link("reporting/table.php");
 		if (isset($_GET['cohort']) && $_GET['cohort']) {
-		    $baseLink .= "&cohort=".urlencode($_GET['cohort']);
+		    $baseLink .= "&cohort=".urlencode(REDCapManagement::sanitizeCohort($_GET['cohort']));
         }
 		if (formatTableNum($tableNum) == $text) {
 			$htmlText = $text;
@@ -46,7 +46,7 @@ function makeTableHeader($tableNum) {
 	return "";
 }
 
-$cohort = isset($_GET['cohort']) ? REDCapManagement::sanitize($_GET['cohort']) :  "";
+$cohort = isset($_GET['cohort']) ? REDCapManagement::sanitizeCohort($_GET['cohort']) :  "";
 $metadata = Download::metadata($token, $server);
 $tables = new NIHTables($token, $server, $pid, $metadata);
 $predocs = $tables->downloadPredocNames();

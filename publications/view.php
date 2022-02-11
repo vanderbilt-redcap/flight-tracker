@@ -16,7 +16,7 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 if ($_GET['record']) {
     if ($_GET['record'] == "all") {
         if ($_GET['cohort']) {
-            $cohort = REDCapManagement::sanitize($_GET['cohort']);
+            $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
             $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
         } else {
             $records = Download::recordIds($token, $server);
@@ -276,7 +276,7 @@ function makeExtraURLParams($exclude = []) {
 }
 
 function makeCustomizeTable($token, $server, $metadata) {
-    $cohort = isset($_GET['cohort']) ? REDCapManagement::sanitize($_GET['cohort']) : "";
+    $cohort = isset($_GET['cohort']) ? REDCapManagement::sanitizeCohort($_GET['cohort']) : "";
     $cohorts = new Cohorts($token, $server, Application::getModule());
     $html = "";
     $style = "style='width: 250px; padding: 15px; vertical-align: top;'";

@@ -12,7 +12,7 @@ $tableNum = isset($_GET['table']) ? REDCapManagement::sanitize($_GET['table']) :
 if (!$tableNum || !NIHTables::getTableHeader($tableNum)) {
 	die("Could not find $tableNum!");
 }
-$cohort = isset($_GET['cohort']) ? REDCapManagement::sanitize($_GET['cohort']) : "";
+$cohort = isset($_GET['cohort']) ? REDCapManagement::sanitizeCohort($_GET['cohort']) : "";
 
 $metadata = Download::metadata($token, $server);
 $table = new NIHTables($token, $server, $pid, $metadata);

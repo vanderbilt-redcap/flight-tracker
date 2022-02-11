@@ -640,7 +640,7 @@ class REDCapManagement {
 	    return (isset($value) && ($value !== ""));
     }
 
-    public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
+    public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3, $longRetriesLeft = 2) {
         if (!Application::isLocalhost()) {
             Application::log("Contacting $url", $pid);
         }
@@ -682,7 +682,11 @@ class REDCapManagement {
             if ($autoRetriesLeft > 0) {
                 sleep(30);
                 Application::log("Retrying ($autoRetriesLeft left)...", $pid);
-                list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, $autoRetriesLeft - 1);
+                list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, $autoRetriesLeft - 1, $longRetriesLeft);
+            } else if ($longRetriesLeft > 0) {
+                sleep(300);
+                Application::log("Retrying ($longRetriesLeft long retries left)...", $pid);
+                list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, 0, $longRetriesLeft - 1);
             } else {
                 Application::log("Error: ".curl_error($ch), $pid);
                 throw new \Exception(curl_error($ch));
@@ -983,7 +987,17 @@ class REDCapManagement {
         return $str;
     }
 
+    public static function sanitizeCohort($cohortName) {
+	    return Cohorts::sanitize($cohortName);
+    }
+
     public static function sanitize($origStr) {
+	    if (self::isValidToken($origStr)) {
+	        $module = Application::getModule();
+	        if (method_exists($module, "sanitizeAPIToken")) {
+                return $module->sanitizeAPIToken($origStr);
+            }
+        }
 	    if (is_numeric($origStr)) {
 	        $origStr = (string) $origStr;
         }
@@ -2076,7 +2090,7 @@ class REDCapManagement {
     }
 
 	public static function isValidToken($token) {
-		return (strlen($token) == 32);
+		return (strlen($token) == 32) && preg_match("/^[\dA-F]{32}$/", $token);
 	}
 
 	public static function arraysEqual($ary1, $ary2) {

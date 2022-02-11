@@ -14,8 +14,13 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $fullUrl = REDCapManagement::sanitize($_POST['origin']);
 list($originUrl, $params) = explode("?", $fullUrl);
-$cohort = REDCapManagement::sanitize($_GET['cohort']);
-$record = REDCapManagement::sanitize($_POST['record']);
+$cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+if ($cohort) {
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
+} else {
+    $records = Download::recordIds($token, $server);
+}
+$record = REDCapManagement::getSanitizedRecord($_POST['record'], $records);
 $modalId = REDCapManagement::sanitize($_POST['modalId']);
 $data = [];
 
@@ -24,11 +29,6 @@ if ($token != $_POST['token']) {
 }
 
 $metadata = Download::metadata($token, $server);
-if ($cohort) {
-    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
-} else {
-    $records = Download::recordIds($token, $server);
-}
 
 $provideNameUrls = [
     "https://public.era.nih.gov/xtract/editSuccessfulParticipatingPerson.era",

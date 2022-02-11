@@ -20,6 +20,21 @@ function cleanEmptySources($token, $server, $pid, $records) {
     }
 }
 
+function dedupPubs($token, $server, $pid, $records) {
+    if (empty($records)) {
+        $records = Download::recordIds($token, $server);
+    }
+    $metadata = Download::metadata($token, $server);
+    foreach ($records as $recordId) {
+        $fields = ["record_id", "citation_pmid"];
+        $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+
+        $pubs = new Publications($token, $server, $metadata);
+        $pubs->setRows($redcapData);
+        $pubs->deduplicateCitations($recordId);
+    }
+}
+
 function getPubs($token, $server, $pid, $records) {
 	$cleanOldData = FALSE;
     $metadata = Download::metadata($token, $server);
@@ -143,6 +158,7 @@ function getPubs($token, $server, $pid, $records) {
 	processPubMed($citationIds, $maxInstances, $token, $server, $pid, $records);
 	postprocess($token, $server, $records);
     cleanUpMiddleNamesSeepage($token, $server, $pid, $records);
+    dedupPubs($token, $server, $pid, $records);
 	CareerDev::saveCurrentDate("Last PubMed Download", $pid);
 }
 
@@ -355,7 +371,6 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         $max++;
         if (!empty($nonOrcidPMIDs)) {
             $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDs, $metadata, "pubmed", $recordId, $max, $orcidPMIDs, $pid);
-            $pubmedRows = Publications::filterOutAuthorMismatchesFromNewData($pubmedRows, $firstNames, $lastNames);
         }
         if (!empty($orcidPMIDs)) {
             if (!empty($pubmedRows)) {
