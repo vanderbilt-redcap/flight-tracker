@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\CronManager;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 # used every time that the summaries are recalculated 
 # 30 minute runtimes
@@ -65,10 +66,8 @@ function makeSummary($token, $server, $pid, $records, $runAllRecords = FALSE) {
         $metadata = Download::metadata($token, $server);
 
         # done in batches of 1 records
-        $returnREDCapData = array();
         foreach ($changedRecords as $recordId) {
-            $newData = summarizeRecord($token, $server, $pid, $recordId, $metadata, $allRecordRows);
-            $returnREDCapData = array_merge($returnREDCapData, $newData);
+            summarizeRecord($token, $server, $pid, $recordId, $metadata);
             gc_collect_cycles();
         }
 
@@ -76,27 +75,14 @@ function makeSummary($token, $server, $pid, $records, $runAllRecords = FALSE) {
     }
 
 	CareerDev::saveCurrentDate("Last Summary of Data", $pid);
-	if (!empty($allRecordRows)) {
-		return mergeNormativeRows($returnREDCapData);
-	}
 }
 
-function summarizeRecord($token, $server, $pid, $recordId, $metadata, $allRecordRows) {
+function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $errors = [];
     $returnREDCapData = [];
 
     $time1 = microtime(TRUE);
-    $rows = array();
-    $realRecord = FALSE;
-    foreach ($allRecordRows as $row) {
-        if ($row['record_id'] == $recordId) {
-            array_push($rows, $row);
-        }
-    }
-    if (empty($rows)) {
-        $rows = Download::records($token, $server, array($recordId));
-        $realRecord = TRUE;
-    }
+    $rows = Download::records($token, $server, array($recordId));
     $time2 = microtime(TRUE);
     // CareerDev::log("6d CareerDev downloading $recordId took ".($time2 - $time1));
     // echo "6d CareerDev downloading $recordId took ".($time2 - $time1)."\n";
@@ -105,14 +91,9 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata, $allRecord
     $grants = new Grants($token, $server, $metadata);
     $grants->setRows($rows);
     $grants->compileGrants();
-    if ($realRecord) {
-        $result = $grants->uploadGrants();
-        $myErrors = Upload::isolateErrors($result);
-        $errors = array_merge($errors, $myErrors);
-    } else {
-        $row = $grants->makeUploadRow();
-        array_push($returnREDCapData, $row);
-    }
+    $result = $grants->uploadGrants();
+    $myErrors = Upload::isolateErrors($result);
+    $errors = array_merge($errors, $myErrors);
     $time2 = microtime(TRUE);
     // CareerDev::log("6d CareerDev processing grants $recordId took ".($time2 - $time1));
     // echo "6d CareerDev processing grants $recordId took ".($time2 - $time1)."\n";
@@ -121,18 +102,9 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata, $allRecord
     $time1 = microtime(TRUE);
     $scholar = new Scholar($token, $server, $metadata, $pid);
     $scholar->setGrants($grants);   // save compute time
-    if ($realRecord) {
-        $scholar->downloadAndSetup($recordId);
-    } else {
-        $scholar->setRows($rows);
-    }
+    $scholar->downloadAndSetup($recordId);
     $scholar->process();
-    if ($realRecord) {
-        $result = $scholar->upload();
-    } else {
-        $row = $scholar->makeUploadRow();
-        array_push($returnREDCapData, $row);
-    }
+    $result = $scholar->upload();
     $time2 = microtime(TRUE);
     // CareerDev::log("6d CareerDev processing scholar $recordId took ".($time2 - $time1));
     // echo "6d CareerDev processing scholar $recordId took ".($time2 - $time1)."\n";
@@ -142,9 +114,7 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata, $allRecord
     $time1 = microtime(TRUE);
     $pubs = new Publications($token, $server, $metadata);
     $pubs->setRows($rows);
-    if ($realRecord) {
-        $result = $pubs->uploadSummary();
-    }
+    $result = $pubs->uploadSummary();
     $time2 = microtime(TRUE);
     // CareerDev::log("6d CareerDev processing publications $recordId took ".($time2 - $time1));
     // echo "6d CareerDev processing publications $recordId took ".($time2 - $time1)."\n";

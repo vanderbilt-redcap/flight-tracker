@@ -109,16 +109,29 @@ function getCitizenship($value) {
 ?>
 <script>
 $(document).ready(function() {
- 	presetValue("followup_orcid_id", "<?php echo findInFollowup(array('identifier_orcid', 'followup_orcid_id', 'check_orcid_id')); ?>");
+    presetValue("followup_ecommons_id", "<?php echo findInFollowup(['check_ecommons_id', 'init_import_ecommons_id']); ?>");
+    presetValue("followup_orcid_id", "<?php echo findInFollowup(['identifier_orcid', 'followup_orcid_id', 'check_orcid_id', 'init_import_orcid_id']); ?>");
  	presetValue("followup_disability", "<?php echo findInFollowup(array('summary_disability')); ?>");
  	presetValue("followup_disadvantaged", "<?php echo findInFollowup(array('summary_disadvantaged')); ?>");
- 	presetValue("followup_name_first", "<?php echo findInFollowup(array('identifier_first_name', 'followup_name_first', 'check_name_first')); ?>");
- 	presetValue("followup_name_middle", "<?php echo findInFollowup(array('newman_data_middle_name', 'followup_name_middle', 'check_name_middle')); ?>");
- 	presetValue("followup_name_last", "<?php echo findInFollowup(array('identifier_last_name', 'followup_name_last', 'check_name_last')); ?>");
- 	presetValue("followup_email", "<?php echo findInFollowup(array('identifier_email', 'followup_email', 'check_email')); ?>");
- 	presetValue("followup_primary_mentor", "<?php echo findInFollowup(array('followup_primary_mentor', 'check_primary_mentor')); ?>");
+ 	presetValue("followup_name_first", "<?php echo findInFollowup(array('identifier_first_name', 'followup_name_first', 'check_name_first', 'init_import_name_first')); ?>");
+ 	presetValue("followup_name_middle", "<?php echo findInFollowup(array('newman_data_middle_name', 'followup_name_middle', 'check_name_middle', 'init_import_name_middle')); ?>");
+    presetValue("followup_name_last", "<?php echo findInFollowup(array('identifier_last_name', 'followup_name_last', 'check_name_last', 'init_import_name_last')); ?>");
+    presetValue("followup_name_maiden", "<?php
+        if (findInFollowup(['followup_name_maiden_enter', 'check_name_maiden_enter', 'init_import_name_maiden_enter'])) {
+            echo "1";
+        }
+        ?>")
+    presetValue("followup_name_maiden_enter", "<?php echo findInFollowup(['followup_name_maiden_enter', 'check_name_maiden_enter', 'init_import_name_maiden_enter']); ?>");
+    presetValue("followup_name_preferred", "<?php
+        if (findInFollowup(['followup_name_preferred_enter', 'check_name_preferred_enter', 'init_import_name_preferred_enter'])) {
+            echo "1";
+        }
+        ?>")
+    presetValue("followup_name_preferred_enter", "<?php echo findInFollowup(['followup_name_preferred_enter', 'check_name_preferred_enter', 'init_import_name_preferred_enter']); ?>");
+ 	presetValue("followup_email", "<?php echo findInFollowup(array('identifier_email', 'followup_email', 'check_email', 'init_import_email')); ?>");
+ 	presetValue("followup_primary_mentor", "<?php echo findInFollowup(['followup_primary_mentor', 'check_primary_mentor', 'init_import_primary_mentor', 'summary_mentor']); ?>");
 
-	presetValue('followup_primary_dept', '<?php echo findInFollowup(array('followup_primary_dept', 'summary_primary_dept', 'check_primary_dept')); ?>');
+	presetValue('followup_primary_dept', '<?php echo findInFollowup(array('followup_primary_dept', 'summary_primary_dept', 'check_primary_dept', 'init_import_primary_dept')); ?>');
 	presetValue('followup_academic_rank', '<?php
 	$vfrs = findInFollowup('vfrs_current_appointment');
 	if ($vfrs != '') {
@@ -131,10 +144,10 @@ $(document).ready(function() {
 					);
 		echo $translate[$vfrs];
 	} else {
-		echo findInFollowup(array('followup_academic_rank', 'check_academic_rank'));
+		echo findInFollowup(array('followup_academic_rank', 'check_academic_rank', 'init_import_academic_rank'));
 	}
     ?>');
-	presetValue('followup_division', '<?php echo findInFollowup(array('followup_division', 'check_division', 'identifier_starting_division')); ?>');
+	presetValue('followup_division', '<?php echo findInFollowup(array('followup_division', 'check_division', 'identifier_starting_division', 'init_import_division')); ?>');
 
 <?php
 # Get rid of my extra verbiage
