@@ -30,7 +30,8 @@ if (isset($_GET['CDA'])) {
     $allPossibleFields = array_unique(array_merge(
             $smallIdentifierFields,
             $smallSummaryFields,
-            $minimalDownloadedGrantFields
+            $minimalDownloadedGrantFields,
+            Application::$customFields
     ));
     $showTimeline = FALSE;
     $showTimeBetweenGrants = FALSE;
@@ -230,7 +231,7 @@ if (isset($_GET['plain'])) {
     echo "<td class='legendCell k99r00 type'>K99/R00</td>";
     echo "<td class='legendCell r01 type'>R01</td>";
     echo "<td class='legendCell rEquivalent type'>R01 Equivalent</td>";
-    echo "<td class='legendCell trainingAdmin type'>Training Grant Admin</td>";
+    echo "<td class='legendCell trainingAdmin type'>Mentoring / Training Grant Admin</td>";
     echo "</tr>";
     echo "<tr><td class='spacer'></td></tr>";
     echo "</table>";
@@ -248,6 +249,7 @@ if (isset($_GET['plain'])) {
         "R01 Equivalent" => "rEquivalent",
         "Training Appointment" => "trainingAppt",
         "K99/R00" => "k99r00",
+        "Mentoring/Training Grant Admin" => "trainingAdmin",
         "Training Grant Admin" => "trainingAdmin",
         "Research Fellowship" => "fellowship",
         "N/A" => "genericAward",

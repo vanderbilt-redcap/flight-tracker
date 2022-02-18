@@ -2282,7 +2282,7 @@ class NIHTables {
                 } else {
                     $subsequentGrants = $this->getGrantSummary($recordId, $table);
                 }
-                $supportSummary = $supportSummaries[$recordId] ? $supportSummaries[$recordId] : "";
+                $supportSummary = $supportSummaries[$recordId] ?? "";
 
                 if ($hasSupportSummary) {
                     $supportSummaryHTML = self::makeComment("Please Edit")."<br><textarea class='support_summary' record='$recordId'>$supportSummary</textarea><br><button class='support_summary' record='$recordId' onclick='saveSupportSummary(\"$recordId\"); return false;' style='display: none; font-size: 10px;'>Save Changes</button>";

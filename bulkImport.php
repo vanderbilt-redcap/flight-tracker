@@ -350,6 +350,11 @@ function translateIntoIndex($value, $allChoices, $field) {
 	        return $idx;
         }
     }
+	if ($value == "Training Grant Admin") {
+	    return translateIntoIndex("Mentoring/Training Grant Admin", $allChoices, $field);
+    } else if ($value == "Mentoring/Training Grant Admin") {
+        return translateIntoIndex("Training Grant Admin", $allChoices, $field);
+    }
 	if ($value == "") {
         return "";
     } else {

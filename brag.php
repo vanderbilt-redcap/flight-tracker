@@ -32,6 +32,16 @@ if ($cohort && ($cohort != 'all')) {
 } else {
     $recordIds = Download::recordIds($token, $server);
 }
+$currRecord = FALSE;
+$currName = "";
+$names = Download::names($token, $server);
+if ($_GET['record']) {
+    $currRecord = REDCapManagement::getSanitizedRecord($_GET['record'], $recordIds);
+    if ($currRecord && ($currRecord != 'all')) {
+        $recordIds = [$currRecord];
+        $currName = $names[$currRecord];
+    }
+}
 if (isset($_GET['test'])) {
     echo "cohort: $cohort<br>";
     echo "records: ".json_encode($recordIds)."<br>";
@@ -80,24 +90,34 @@ if (isset($_GET['showHeaders'])) {
             $url = str_replace($unit.$suffix."=&", "", $url);
         }
     }
+    $url = str_replace("record=&", "", $url);
+    $url = str_replace("cohort=&", "", $url);
     ?>
-    <h3>Brag on Your Scholars' Publications!</h3>
+    <h1>Brag on Your Scholars' Publications!</h1>
     <?= Altmetric::makeClickText(); ?>
-    <h4>Include this Page as a Widget in Another Page</h4>
+    <h2>Include this Page as a Widget in Another Page</h2>
     <div class="max-width centered">
         <p class="centered">Copy the following HTML and place into another HTML webpage to display your scholars' publications. Your website must likely have cross-origin framing turned on (which is the default).</p>
         <div class="max-width centered"><code id="htmlCode">&lt;iframe src="<?= $url ?>" title="Recent Publications" style="width: 100%; height: 400px;"&gt;&lt;/iframe&gt;</code></div>
         <div class="max-width alignright smaller"><a href="javascript:;" onclick="copyToClipboard($('#htmlCode'));">Copy</a></a></div>
 
-        <h4>Further Configurations</h4>
+        <h3>Further Configurations</h3>
         <form method="GET" action="<?= REDCapManagement::getPage(Application::link("brag.php")) ?>">
             <?= REDCapManagement::getParametersAsHiddenInputs(Application::link("brag.php")) ?>
             <?php
             $cohorts = new Cohorts($token, $server, Application::getModule());
-            echo "<p class='centered max-width padded' style='background-color: white;'>".$cohorts->makeCohortSelect($cohort)."</p>";
+            echo "<h4>Step 1: Select a Group</h4>";
+            echo "<p class='centered max-width padded' style='background-color: #eeeeee;'>Select a Cohort:<br/>".$cohorts->makeCohortSelect($cohort)."</p>";
+            echo "<p class='centered max-width padded' style='background-color: #dddddd;'><strong>-OR-</strong> Select Which Scholar:<br/><select name='record' id='record'><option value='all'>---ALL---</option>";
+            foreach ($names as $recordId => $name) {
+                $sel = ($currRecord && ($currRecord == $recordId)) ? " selected" : "";
+                echo "<option value='$recordId'$sel>$name</option>";
+            }
+            echo "</select></p>";
+            echo "<h4>Step 2: Select a Time Period</h4>";
             ?>
             <?= isset($_GET['showHeaders']) ? "<input type='hidden' name='showHeaders' value='' />" : "" ?>
-            <p class="centered max-width padded" style="background-color: #eeeeee;">Show Time Period a Certain Time Period Prior to Today:<br/>
+            <p class="centered max-width padded" style="background-color: #eeeeee;">Show a Certain Time Period Prior to Today:<br/>
                 <?php
                     echo makeOrList($units, "Prior", $prior);
                 ?>
@@ -107,7 +127,8 @@ if (isset($_GET['showHeaders'])) {
                 echo makeOrList($units, "AfterTraining", $afterTraining);
                 ?>
             </p>
-            <p class="centered max-width padded" style="background-color: white;"><button>Configure</button></p>
+            <h4>Step 3: Re-Configure</h4>
+            <p class="centered max-width padded" style="background-color: white;"><button>Re-Configure</button></p>
         </form>
     </div>
     <hr>
@@ -116,18 +137,22 @@ if (isset($_GET['showHeaders'])) {
     echo "<link rel='stylesheet' href='".Application::link("/css/career_dev.css")."'>\n";
 }
 
+$forName = "";
+if ($currName) {
+    $forName = " for $currName";
+}
 foreach ($units as $unit) {
     $ucUnit = ucfirst($unit);
     if ($afterTraining[$unit] !== "") {
         if ($afterTraining[$unit] == 1) {
             $ucUnit = preg_replace("/s$/", "", $ucUnit);
         }
-        echo "<h4>All Publications During Training and {$afterTraining[$unit]} $ucUnit After</h4>";
+        echo "<h4>All Publications$forName During Training and {$afterTraining[$unit]} $ucUnit After</h4>";
     } else if ($prior[$unit] !== "") {
         if ($prior[$unit] == 1) {
             $ucUnit = preg_replace("/s$/", "", $ucUnit);
         }
-        echo "<h4>All Publications in Previous {$prior[$unit]} $ucUnit</h4>";
+        echo "<h4>All Publications$forName in Previous {$prior[$unit]} $ucUnit</h4>";
     }
 }
 if (!$hasAfterTraining && !$hasPrior) {
@@ -136,7 +161,7 @@ if (!$hasAfterTraining && !$hasPrior) {
     } else {
         # historical legacy
         $defaultDays = 180;
-        echo "<h4>All Publications in Previous $defaultDays Days</h4>";
+        echo "<h4>All Publications$forName in Previous $defaultDays Days</h4>";
         $prior['days'] = $defaultDays;
         $hasPrior = TRUE;
     }

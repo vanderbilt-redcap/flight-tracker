@@ -395,7 +395,10 @@ class CronManager {
             foreach ($errorQueue as $errorJob) {
                 if ($errorJob['pid'] == $pid) {
                     $text .= "ERROR ".$errorJob['method']."<br>";
-                    $text .= "Records: ".implode(", ", $errorJob['records'])."<br>";
+                    $text .= "Records in batch job: ".implode(", ", $errorJob['records'])."<br>";
+                    if (isset($errorJob['record'])) {
+                        $text .= "Failed in record ".$errorJob['record']."<br>";
+                    }
                     if (isset($errorJob['error'])) {
                         $text .= $errorJob['error']."<br>";
                         if (isset($errorJob['error_location'])) {
@@ -487,7 +490,7 @@ class CronManager {
 	    return self::getBatchQueueFromDB($this->module);
     }
 
-    private static function handleBatchError($batchQueue, $module, $startTimestamp, $exception) {
+    private static function handleBatchError($batchQueue, $module, $startTimestamp, $exception, $record = FALSE) {
 	    $mssg = $exception->getMessage();
 	    $trace = $exception->getTraceAsString();
         Application::log("handleBatchError: ".json_encode($batchQueue[0]));
@@ -498,6 +501,9 @@ class CronManager {
         $batchQueue[0]['endTs'] = time();
         $batchQueue[0]['error'] = $mssg;
         $batchQueue[0]['error_location'] = $trace;
+        if ($record) {
+            $batchQueue[0]['record'] = $record;
+        }
         self::saveBatchQueueToDB($batchQueue, $module);
 
         $runJob = [

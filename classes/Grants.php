@@ -758,7 +758,7 @@ class Grants {
                     [1, 2, 3, 4], // K-class
                     [9],          // K99/R00
                     [5, 6],       // R-class
-                    [8],          // Training Grant Admin.
+                    [8],          // Mentoring/Training Grant Admin.
                 ];
 	            $seenTypes = [];
 	            foreach ($awardTypePriorities as $currAwardTypes) {

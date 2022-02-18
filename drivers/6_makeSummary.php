@@ -1443,7 +1443,7 @@ function calculateAwardType($specs) {
 	} else if (preg_match("/-CDA-/", $awardNo)) {
 		return array("K Equivalent", $specs);
 	} else if (preg_match("/^T\d\d/", $awardNo) || preg_match("/\dT\d\d/", $awardNo)) {
-		return array("Training Grant Admin", $specs);
+		return array("Mentoring/Training Grant Admin", $specs);
 	} else if ($specs['sponsor_type'] == "Non-Profit - Foundations/ Associations") {
 		if ($specs['percent_effort'] >= 50) {
 			return array("K Equivalent", $specs);

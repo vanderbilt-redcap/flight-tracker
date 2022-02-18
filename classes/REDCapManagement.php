@@ -777,7 +777,7 @@ class REDCapManagement {
     }
 
     public static function getMetadataFieldsToScreen() {
-		return array("required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation");
+		return ["required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation", "text_validation_type_or_show_slider_number"];
 	}
 
 	public static function findInData($data, $fields) {

@@ -1688,7 +1688,7 @@ class Grant {
 				if (($specs['pi_flag'] == "N") && (in_array($specs['source'], $coeusSources))) {
 					// return "K12/KL2";
 				} else if (($specs['pi_flag'] == "Y") && (in_array($specs['source'], $trainingGrantSources ))) {
-					return "Training Grant Admin";
+					return "Mentoring/Training Grant Admin";
 				} else {
 					return "K12/KL2";
 				}
@@ -1704,7 +1704,7 @@ class Grant {
         } else if (preg_match("/^\d?[Rr]01/", $awardNo)) {
             return "R01";
 		} else if (preg_match("/^\d?[Tt]\d\d/", $awardNo) || preg_match("/^\d?[Dd]43/", $awardNo)) {
-			return "Training Grant Admin";
+			return "Mentoring/Training Grant Admin";
 		} else if (isset($specs['direct_budget']) && ($specs['direct_budget'] > 0)) {
 			# not R01 or R00
 			if ($specs['project_start'] && $specs['project_end']) {
@@ -1747,7 +1747,7 @@ class Grant {
 		if (preg_match("/^[Kk]23 - /", $awardNo)) {
 			return "Individual K";
 		} else if (preg_match("/^\d?[Kk]24/", $awardNo)) {
-			return "N/A";
+			return "Mentoring/Training Grant Admin";
 		} else if (preg_match("/^\d?[Rr]03/", $awardNo)) {
 			return "N/A";
 		} else if (preg_match("/^\d?I01[BC]X/", $awardNo)) {
@@ -1761,7 +1761,7 @@ class Grant {
         } else if (preg_match("/^\d?[Dd][Pp]1/", $awardNo)) {
             return "R01 Equivalent";
         } else if (preg_match("/^\d?DP7/", $awardNo) || preg_match("/^\d?[Rr]25/", $awardNo) || preg_match("/^\d?[Tt]90/", $awardNo)) {
-		    return "Training Grant Admin";
+		    return "Mentoring/Training Grant Admin";
 		} else if (preg_match("/Internal K/", $awardNo)) {
 			return "Internal K";
 		} else if (preg_match("/K12\/KL2/", $awardNo)) {
@@ -1927,7 +1927,8 @@ class Grant {
 				"R01 Equivalent" => 6,
 				"Training Appointment" => 10,
 				"Research Fellowship" => 7,
-				"Training Grant Admin" => 8,
+                "Mentoring/Training Grant Admin" => 8,
+                "Training Grant Admin" => 8,
 				"K99/R00" => 9,
 				"N/A" => 99,
 		);

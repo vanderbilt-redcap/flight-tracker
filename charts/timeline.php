@@ -27,8 +27,8 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
 body { font-size: 12px; }
 .visualization { background-color: white; margin-bottom: 32px; margin-top: 32px; }
 .Unfunded { border-color: #888888; }
-.Pending { border-color: #f69ca0; }
-.Awarded { border-color: #f0565d; }
+.Pending { border-color: #8dc63f; }
+.Awarded { border-color: #f4c3ff; }
 </style>
 
 <?php
