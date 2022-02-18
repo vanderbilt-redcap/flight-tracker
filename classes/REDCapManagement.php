@@ -609,8 +609,10 @@ class REDCapManagement {
                 CURLOPT_HTTPPROXYTUNNEL => 1,
                 CURLOPT_PROXY => $proxyIP,
                 CURLOPT_PROXYPORT => $proxyPort,
-                CURLOPT_PROXYUSERPWD => "$proxyUsername:$proxyPassword",
             ];
+            if ($proxyUsername && $proxyPassword) {
+                $proxyOpts[CURLOPT_PROXYUSERPWD] = "$proxyUsername:$proxyPassword";
+            }
             foreach ($proxyOpts as $opt => $value) {
                 curl_setopt($ch, $opt, $value);
             }
