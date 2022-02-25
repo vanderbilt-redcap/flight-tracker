@@ -139,7 +139,7 @@ $(document).ready(function() {
 		echo findInFollowup(array('followup_academic_rank', 'check_academic_rank', 'init_import_academic_rank'));
 	}
     ?>');
-	presetValue('followup_division', '<?php echo findInFollowup(array('followup_division', 'check_division', 'identifier_starting_division', 'init_import_division')); ?>');
+	presetValue('followup_division', '<?php echo findInFollowup(['followup_division', 'check_division', 'init_import_division', 'identifier_starting_division']); ?>');
 
 <?php
 # Get rid of my extra verbiage
@@ -191,9 +191,25 @@ function getTenureStatus($value) {
 	# make .*_d-tr td background
 	# also .*_d\d+
 ?>
-	presetValue('followup_institution', '1');
-	presetValue('followup_academic_rank_dt', '<?php echo REDCapManagement::YMD2MDY(findInFollowup('vfrs_current_appointment')); ?>');
-	presetValue('followup_tenure_status', <?php echo getTenureStatus(findInFollowup('vfrs_tenure')); ?>);
+	presetValue('followup_institution', '<?php echo findInFollowup(['check_institution', 'init_import_institution']) ?? '1' ?>');
+	<?php
+    if (findInFollowup(['check_institution', 'init_import_institution']) == '5') {
+        echo "presetValue('followup_institution_oth', '".(findInFollowup(['check_institution_oth', 'init_import_institution_oth']) ?? '1')."');\n";
+    }
+    ?>
+    presetValue('followup_job_title', '<?php echo (findInFollowup(['check_job_title', 'init_import_job_title']) ?? '1'); ?>');
+    presetValue('followup_job_category', '<?php echo findInFollowup(['check_job_category', 'init_import_job_category']) ?? '1' ?>');
+    presetValue('followup_academic_rank', '<?php echo findInFollowup(['check_academic_rank', 'init_import_academic_rank']); ?>');
+    presetValue('followup_academic_rank_dt', '<?php echo REDCapManagement::YMD2MDY(findInFollowup(['vfrs_current_appointment', 'check_academic_rank_dt', 'init_import_academic_rank_dt'])); ?>');
+    presetValue('followup_left_institution', '<?php echo REDCapManagement::YMD2MDY(findInFollowup(['check_left_institution', 'init_import_left_institution'])); ?>');
+	presetValue('followup_tenure_status', '<?php
+        $status = getTenureStatus(findInFollowup('vfrs_tenure'));
+        if ($status) {
+            echo $status;
+        } else {
+            echo findInFollowup(['check_tenure_status', 'init_import_tenure_status']);
+        }
+        ?>');
 
 	doBranching();
 	$('[name="followup_name_first"]').blur();

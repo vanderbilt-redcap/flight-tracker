@@ -1538,18 +1538,6 @@ class Publications {
 		$this->setRows($redcapData);
 	}
 
-	# unit test: getEditText
-	public function getEditText_test($tester) {
-		$html = $this->getEditText();
-		$tester->assertMatch("/<form/", $html);
-	}
-
-	# unit test: get number of citations for a random record
-	public function process_test($tester) {
-		$this->setupTests();
-		$this->process();
-	}
-
 	private $rows;
 	private $input;
 	private $name;

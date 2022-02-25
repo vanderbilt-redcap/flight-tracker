@@ -56,7 +56,7 @@ function findInCheck($fields) {
 			}
 		} else {
 			foreach ($data as $row) {
-				if (($row['redcap_repeat_instrument'] == "") && isset($row[$field]) && ($row[$field] != "")) {
+				if (($row['redcap_repeat_instrument'] == "") && isset($row[$field]) && ($row[$field] !== "")) {
 					return preg_replace("/'/", "\\'", $row[$field]);
 				}
 			}
@@ -147,13 +147,13 @@ function getDisability($value) {
 ?>
 <script>
 $(document).ready(function() {
-	presetValue("<?= $prefix ?>_name_first", "<?php echo findInCheck('identifier_first_name'); ?>");
-	presetValue("<?= $prefix ?>_name_middle", "<?php echo findInCheck('identifier_middle'); ?>");
-	presetValue("<?= $prefix ?>_name_last", "<?php echo findInCheck('identifier_last_name'); ?>");
-	presetValue("<?= $prefix ?>_email", "<?php echo findInCheck('identifier_email'); ?>");
-	presetValue("<?= $prefix ?>_date_of_birth", "<?php echo REDCapManagement::YMD2MDY(findInCheck('summary_dob')); ?>");
+	presetValue("<?= $prefix ?>_name_first", "<?php echo findInCheck(['identifier_first_name', 'check_name_first', 'init_import_name_first']); ?>");
+	presetValue("<?= $prefix ?>_name_middle", "<?php echo findInCheck(['identifier_middle', 'check_name_middle', 'init_import_name_middle']); ?>");
+	presetValue("<?= $prefix ?>_name_last", "<?php echo findInCheck(['identifier_last_name', 'check_name_last', 'init_import_name_last']); ?>");
+	presetValue("<?= $prefix ?>_email", "<?php echo findInCheck(['identifier_email', 'check_email', 'init_import_email']); ?>");
+	presetValue("<?= $prefix ?>_date_of_birth", "<?php echo REDCapManagement::YMD2MDY(findInCheck(['summary_dob', 'check_date_of_birth', 'init_import_date_of_birth'])); ?>");
 	$('#<?= $prefix ?>_date_of_birth-tr td .ui-button').hide();
-	presetValue("<?= $prefix ?>_gender", "<?php echo findInCheck('summary_gender'); ?>");
+	presetValue("<?= $prefix ?>_gender", "<?php echo findInCheck(['summary_gender', 'check_gender', 'init_import_gender']); ?>");
     <?php
 	$re = findInCheck('summary_race_ethnicity');
 	if ($re != '') {
@@ -177,9 +177,9 @@ $(document).ready(function() {
 	    echo "  presetValue('$prefix"."_ethnicity', '{$ethnTranslate[$re]}');\n";
 	}
     ?>
-	presetValue("<?= $prefix ?>_citizenship", "<?php echo findInCheck('summary_citizenship'); ?>");
-	presetValue("<?= $prefix ?>_primary_mentor", "<?php echo findInCheck('summary_mentor'); ?>");
-	presetValue("<?= $prefix ?>_institution", "<?php echo getInstitution(findInCheck(['identifier_institution', $prefix.'_institution'])); ?>");
+	presetValue("<?= $prefix ?>_citizenship", "<?php echo findInCheck(['summary_citizenship', 'check_citizenship','init_import_citizenship']); ?>");
+	presetValue("<?= $prefix ?>_primary_mentor", "<?php echo findInCheck(['summary_mentor', 'check_primary_mentor', 'init_import_primary_mentor']); ?>");
+	presetValue("<?= $prefix ?>_institution", "<?php echo getInstitution(findInCheck(['identifier_institution', $prefix.'_institution', 'check_institution', 'init_import_institution'])); ?>");
 
 <?php
 	if (findInCheck("vfrs_graduate_degree")) {

@@ -1,4 +1,4 @@
-@font-face { font-family: "GeoSans", sans-serif; src: url("../fonts/GeosansLight.ttf"); }
+@font-face { font-family: 'Georgia'; font-style: normal; font-weight: normal; src: url('../fonts/georgia.woff'); }
 @font-face { font-family: 'Museo Sans'; font-style: normal; font-weight: normal; src: url('../fonts/exljbris - MuseoSans-500.otf'); }
 body { font-family: europa, Arial, Helvetica, sans-serif; }
 .filter { background-color: #eeeeee; }
@@ -86,6 +86,7 @@ textarea.full { width: 800px; height: 400px; }
 .warning { color: white; }
 .subnav a select { width: 100%; }
 #help { display: none; padding: 16px; margin: 16px; background-color: rgba(229, 241, 213, 0.8); }   /* light green from logo */
+#help p, #help ul, #help ol, #faq p, #faq ul, #faq ol { font-family: 'Nimbus Roman', 'Georgia', 'Times New Roman'; font-size: 1.1em; }
 p.blockquote { padding-left: 15px; }
 #mainHelp { column-count: 2; }
 #faq { padding: 15px; column-count: 2; }

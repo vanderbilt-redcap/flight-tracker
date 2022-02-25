@@ -43,7 +43,8 @@ class Grant {
     # if $ts === FALSE, then calculate for all time
     public function getActiveBudgetAtTime($rows, $type, $ts, $sourcesToExclude = []) {
 	    # Do not use Federal RePORTER because data are incomplete
-        $orderedSources = ["nih_reporter", "exporter", "coeus2", "reporter",]; // "followup", "custom" have numbers over all time period, not current budget
+        $orderedSources = ["nih_reporter", "exporter", "coeus2", "reporter", "followup", "custom"];
+        $sourcesToSkip = ["followup", "custom"]; // have numbers over all time period, not current budget
         $baseNumber = $this->getBaseNumber();
         if (self::getShowDebug()) {
             echo "Looking for $baseNumber<br>";
@@ -51,7 +52,7 @@ class Grant {
         $runningTotal = 0.0;     // able to count supplements
         $sourceForRunningTotal = "";
         foreach ($orderedSources as $source) {
-            if (!in_array($source, $sourcesToExclude)) {
+            if (!in_array($source, $sourcesToExclude) && !in_array($source, $sourcesToSkip)) {
                 foreach ($rows as $row) {
                     if ($source == "nih_reporter") {
                         if ($type == "Total") {

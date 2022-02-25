@@ -567,7 +567,6 @@ public static function metadata($metadata, $token, $server) {
 				$method = "saveData";
 				$time2 = microtime(TRUE);
 				if (method_exists("\\REDCap", "saveData")) {
-				    Application::log("saveData: overwriteBehavior: ".$data['overwriteBehavior'], $pid);
 				    $feedback = \REDCap::saveData($pid, "json", $data['data'], $data['overwriteBehavior']);
                     $time3 = microtime(TRUE);
                     $output = json_encode($feedback);

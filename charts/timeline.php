@@ -126,7 +126,7 @@ body { font-size: 12px; }
         }
 
         if ($c == "CDAs") {
-            $pubDots = makePubDots($rows, $token, $server, $id);
+            $pubDots = makePubDots($rows, $token, $server, $id, $minTs[$c], $maxTs[$c]);
             $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $pubDots);
         }
 
@@ -361,7 +361,7 @@ function makeGrantBars($grantAry, &$id, &$minTs, &$maxTs) {
     return $grantsAndPubs;
 }
 
-function makePubDots($rows, $token, $server, &$id) {
+function makePubDots($rows, $token, $server, &$id, &$minTs, &$maxTs) {
     $pubs = new Publications($token, $server);
     $pubs->setRows($rows);
     $citations = $pubs->getCitations("Included");

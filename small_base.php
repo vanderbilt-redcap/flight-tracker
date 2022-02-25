@@ -74,7 +74,21 @@ $GLOBALS['module'] = $module;
 $GLOBALS['adminEmail'] = $adminEmail;
 $GLOBALS['grantClass'] = $grantClass;
 
+set_exception_handler('\Vanderbilt\FlightTrackerExternalModule\displayException');
+// set_error_handler('\Vanderbilt\FlightTrackerExternalModule\displayError');
+
 ############# FUNCTIONS ################
+
+function displayException($exception) {
+    global $pid;
+    $header = "Flight Tracker Error!";
+    Application::log("Exception: ".$exception->getMessage(), $pid);
+    echo "<div class='red padded max-width' style='text-align: center;'><strong>".$header."</strong><br/>".$exception->getMessage()."<br/><code class='alignLeft'>".$exception->getTraceAsString()."</code></div>";
+}
+
+function displayError($error) {
+    # unimplemented
+}
 
 function getBaseAwardNumber($num) {
 	return Grant::translateToBaseAwardNumber($num);

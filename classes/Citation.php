@@ -1094,6 +1094,7 @@ class Citation {
                 "December" => "12",
             ];
 
+            $month = "01";
             if (count($dateNodes) == 1) {
                 $month = "01";
             } else if (is_numeric($dateNodes[1])) {
@@ -1105,24 +1106,17 @@ class Citation {
                 $month = $months[$dateNodes[1]];
             } else if (preg_match("/[\/\-]/", $dateNodes[1])) {
                 $monthNodes = preg_split("/[\/\-]/", $dateNodes[1]);
-                $foundMonth = FALSE;
+                $month = "01";
                 foreach ($monthNodes as $monthNode) {
                     if (isset($months[$monthNode])) {
                         $month = $months[$monthNode];
-                        $foundMonth = TRUE;
                         break;
                     }
                 }
-                if (!$foundMonth) {
-                    $month = "01";
-                }
-            } else {
-                $month = "01";
             }
 
-            if (count($dateNodes) <= 2) {
-                $day = "01";
-            } else {
+            $day = "01";
+            if (count($dateNodes) > 2) {
                 $day = $dateNodes[2];
                 if ($day < 10) {
                     $day = "0".intval($day);

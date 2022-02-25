@@ -32,10 +32,9 @@ class Cohorts {
         if (!is_string($cohort)) {
             return "";
         }
+        // we want to allow quotes => do nothing to mitigate
         /**
          * @psalm-taint-escape has_quotes
-         * Do nothing because we want to allow quotes
-         *
          * @psalm-taint-escape html
          */
         $cohort = preg_replace("/<[^>]+>/", '', $cohort);
