@@ -320,7 +320,7 @@ class NameMatcher {
         if (preg_match("/\s/", $last)) {
             $newNodes[] = preg_replace("/\s/", "-", $last);
         }
-        if (preg_match("/\-", $last)) {
+        if (preg_match("/\-/", $last)) {
             $newNodes[] = preg_replace("/\-/", " ", $last);
         }
 	    return $newNodes;

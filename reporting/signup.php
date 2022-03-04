@@ -31,7 +31,7 @@ if (count($_POST) > 0) {
     $upload = [];
 
     foreach ($engagedValues as $val => $field) {
-        $records = REDCapManagement::sanitize($_POST[$field]);
+        $records = REDCapManagement::sanitizeArray($_POST[$field]);
         foreach ($records as $recordId) {
             $upload[] = [
                 "record_id" => $recordId,
@@ -45,7 +45,7 @@ if (count($_POST) > 0) {
     $fields = ["record_id", "custom_role"];
     foreach ($toDelete as $field => $idx) {
         $instancesDeleted = 0;
-        $records = REDCapManagement::sanitize($_POST[$field]);
+        $records = REDCapManagement::sanitizeArray($_POST[$field]);
         if (!empty($records)) {
             $instancesToDelete = [];
             $redcapData = Download::fieldsForRecords($token, $server, $field, $records);
@@ -70,7 +70,7 @@ if (count($_POST) > 0) {
     }
 
     foreach ($toChange as $field => $idx) {
-        $recordsAndDates = REDCapManagement::sanitize($_POST[$field]);
+        $recordsAndDates = REDCapManagement::sanitizeArray($_POST[$field]);
         if (!empty($recordsAndDates)) {
             $records = array_keys($recordsAndDates);
             $fields = ["record_id", "custom_role"];
@@ -259,16 +259,16 @@ function getDateSelector(selOrOb) {
     if (typeof selOrOb == 'string') {
         let sel = selOrOb;
         if (sel.match(/predoc/)) {
-            return 'predocDates';
+            return '.predocDates';
         } else if (sel.match(/postdoc/)) {
-            return 'postdocDates';
+            return '.postdocDates';
         }
     } else {
         let jQueryOb = selOrOb;
         if (jQueryOb.hasClass('postdoc') || jQueryOb.hasClass('postdocDates') || jQueryOb.hasClass('postdocText')) {
-            return 'postdocDates';
+            return '.postdocDates';
         } else if (jQueryOb.hasClass('predoc') || jQueryOb.hasClass('predocDates') || jQueryOb.hasClass('predocText')) {
-            return 'predocDates';
+            return '.predocDates';
         }
     }
     
@@ -301,7 +301,7 @@ function getRecords(sel) {
 
 function saveForm() {
     if ($('.light_red').length + $('.light_green').length > 0) {
-        let post = {};
+        const post = {};
         post.deletedPredocs = getRecords('.predoc.light_red');
         post.changedPredocs = getStartEnd('.predoc.light_green');
         post.deletedPostdocs = getRecords('.postdoc.light_red');
@@ -309,7 +309,7 @@ function saveForm() {
         post.changedYesEngaged = getRecords('.engaged.light_green');
         post.changedNoEngaged = getRecords('.engaged.light_red');
         
-        let url = '$thisLink';
+        const url = '$thisLink';
         $.post(url, post, function(html) {
             console.log('Saved '+html);
             $('.engaged.light_green').each(function() {

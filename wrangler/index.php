@@ -26,17 +26,10 @@ if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 }
 
 $records = Download::recordIds($token, $server);
-# done to support leading 0s, which apparently aren't picked up by the POST
-$requestedRecord = "";
-if ($_POST['record']) {
-    $requestedRecord = REDCapManagement::sanitize($_POST['record']);
-} else if ($_GET['record']) {
-    $requestedRecord = REDCapManagement::sanitize($_GET['record']);
-}
-foreach ($records as $record) {
-    if ($record == $requestedRecord) {
-        $requestedRecord = $record;
-    }
+if (isset($_POST['record'])) {
+    $record = REDCapManagement::getSanitizedRecord($_POST['record'], $records);
+} else if (isset($_GET['record'])) {
+    $record = REDCapManagement::getSanitizedRecord($_GET['record'], $records);
 }
 
 if (isset($_POST['toImport']) && isset($_POST['record'])) {
@@ -186,7 +179,8 @@ function getNextRecordWithNewData($includeCurrentRecord) {
 	$records = Download::recordIds($token, $server);
 	$pullSize = 10;
 
-	$record = $_GET['record'];
+	$requestedRecord = $_POST['record'] ?? $_GET['record'] ?? "";
+	$record = REDCapManagement::getSanitizedRecord($requestedRecord, $records);
 	if (!$record) {
 		$record = 1;
 	}

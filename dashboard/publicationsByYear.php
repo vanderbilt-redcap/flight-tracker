@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\DateMeasurement;
 use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -17,12 +18,15 @@ $measurements = array();
 $lines = array();
 
 array_push($headers, "Publications by Year<br>(Confirmed Original Research Only)");
-if ($_GET['cohort']) {
-	array_push($headers, "For Cohort ".$_GET['cohort']);
-} 
+if (isset($_GET['cohort'])) {
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    array_push($headers, "For Cohort ".$cohort);
+} else {
+    $cohort = "";
+}
 
 $metadata = Download::metadata($token, $server);
-$indexedRedcapData = \Vanderbilt\FlightTrackerExternalModule\getIndexedRedcapData($token, $server, array_merge(CareerDev::$smallCitationFields, array("citation_year")), $_GET['cohort'], $metadata);
+$indexedRedcapData = \Vanderbilt\FlightTrackerExternalModule\getIndexedRedcapData($token, $server, array_merge(CareerDev::$smallCitationFields, array("citation_year")), $cohort, $metadata);
 
 $numForYear = array();
 $numPubs = 0;
@@ -59,4 +63,4 @@ foreach ($numForYear as $year => $count) {
 }
 $lines["Total Publications"] = $line;
 
-echo makeHTML($headers, $measurements, $lines, $_GET['cohort'], $metadata);
+echo makeHTML($headers, $measurements, $lines, $cohort, $metadata);

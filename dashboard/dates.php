@@ -4,6 +4,7 @@ use \Vanderbilt\CareerDevLibrary\Measurement;
 use \Vanderbilt\CareerDevLibrary\DateMeasurement;
 use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -12,8 +13,11 @@ require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTa
 
 $headers = array();
 array_push($headers, "Important Dates");
-if ($_GET['cohort']) {
-	array_push($headers, "For Cohort ".$_GET['cohort']);
+if (isset($_GET['cohort'])) {
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    array_push($headers, "For Cohort ".$cohort);
+} else {
+    $cohort = "";
 }
 
 $settings = \Vanderbilt\FlightTrackerExternalModule\getAllSettings();
@@ -24,4 +28,4 @@ foreach ($settings as $setting => $value) {
 		$measurements[$setting] = new DateMeasurement($value);
 	}
 }
-echo makeHTML($headers, $measurements, array(), $_GET['cohort']);
+echo makeHTML($headers, $measurements, array(), $cohort);

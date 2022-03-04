@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\DateMeasurement;
 use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -16,12 +17,15 @@ $headers = array();
 $measurements = array();
 
 array_push($headers, "Publications by Journal<br>(Confirmed Original Research Only)");
-if ($_GET['cohort']) {
-	array_push($headers, "For Cohort ".$_GET['cohort']);
-} 
+if (isset($_GET['cohort'])) {
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    array_push($headers, "For Cohort ".$cohort);
+} else {
+    $cohort = "";
+}
 
 $metadata = Download::metadata($token, $server);
-$indexedRedcapData = \Vanderbilt\FlightTrackerExternalModule\getIndexedRedcapData($token, $server, array_merge(CareerDev::$smallCitationFields, array('citation_journal')), $_GET['cohort'], $metadata);
+$indexedRedcapData = \Vanderbilt\FlightTrackerExternalModule\getIndexedRedcapData($token, $server, array_merge(CareerDev::$smallCitationFields, array('citation_journal')), $cohort, $metadata);
 
 $numConfirmedPubs = 0;
 $numForJournal = array();
@@ -56,4 +60,4 @@ foreach ($numForJournal as $journal => $val) {
 
 array_push($headers, \Vanderbilt\FlightTrackerExternalModule\pretty(count($numForJournal))." Journals Represented");
 
-echo makeHTML($headers, $measurements, array(), $_GET['cohort'], $metadata);
+echo makeHTML($headers, $measurements, array(), $cohort, $metadata);

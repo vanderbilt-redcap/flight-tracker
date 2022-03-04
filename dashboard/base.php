@@ -24,7 +24,7 @@ function getPossibleLayouts() {
 }
 
 function getTarget() {
-	if (!$_GET['layout']) {
+	if (!isset($_GET['layout'])) {
 		return "display";
 	}
 	$possibleLayouts = getPossibleLayouts();
@@ -130,9 +130,11 @@ function displayDashboardHeader($target, $otherTarget, $pid, $cohort = "", $meta
 
 	$html .= "<a class='orange' href='javascript:;' onclick='return false;'>Publications <select onchange='changePub(this);'>\n";
 	$html .= "<option value=''>---SELECT---</option>\n";
+	$getPage = REDCapManagement::sanitize($_GET['page']);
+	$getPageForRegEx = preg_replace("/\//", "\\/", $getPage);
 	foreach ($pubChoices as $page => $label) {
 		$sel = "";
-		if (preg_match("/".$_GET['page']."/", $page)) {
+		if (preg_match("/".$getPageForRegEx."/", $page)) {
 			$sel = " selected";
 		}
 		$html .= "<option value='$page'$sel>$label</option>\n";

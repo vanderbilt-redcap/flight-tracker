@@ -9,7 +9,7 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 require_once dirname(__FILE__).'/_header.php';
 
-if ($_REQUEST['uid'] && MMA_DEBUG) {
+if (isset($_REQUEST['uid']) && MMA_DEBUG) {
     $userid2 = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=".$userid2;
 } else {
@@ -769,8 +769,8 @@ foreach ($metadata as $row) {
 }
 </style>
 
-<link rel="stylesheet" href="<?= Application::link("mentor/jquery.sweet-modal.min.css") ?>" />
-<script src="<?= Application::link("mentor/jquery.sweet-modal.min.js") ?>"></script>
+<link rel="stylesheet" href="<?= Application::link("css/jquery.sweet-modal.min.css") ?>" />
+<script src="<?= Application::link("js/jquery.sweet-modal.min.js") ?>"></script>
 <?= MMAHelper::makePercentCompleteJS() ?>
 <script type="text/javascript">
     dfn=function(obj){
@@ -850,7 +850,7 @@ foreach ($metadata as $row) {
             let value = $('select#instances option:selected').val()
             <?php
                 $hashStr = $hash ? "&hash=$hash" : "";
-                if ($_REQUEST['uid']) {
+                if (isset($_REQUEST['uid'])) {
                     echo "let uidStr = '&uid='+encodeURI('".REDCapManagement::sanitize($_REQUEST['uid']).$hashStr."')\n";
                 } else {
                     echo "let uidStr = '".$hashStr."'\n";

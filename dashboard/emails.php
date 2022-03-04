@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\DateMeasurement;
 use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -13,13 +14,16 @@ require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTa
 
 $headers = array();
 array_push($headers, "Emails");
-if ($_GET['cohort']) {
-	array_push($headers, "For Cohort ".$_GET['cohort']);
-} 
+if (isset($_GET['cohort'])) {
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    array_push($headers, "For Cohort ".$cohort);
+} else {
+    $cohort = "";
+}
 
-if ($_GET['cohort']) {
+if ($cohort) {
 	$metadata = Download::metadata($token, $server);
-	$records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
+	$records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $records = Download::recordIds($token, $server);
     $metadata = [];
@@ -56,4 +60,4 @@ $measurements["Follow-Up Surveys Filled Out"] = new Measurement($numFollowups, $
 $measurements["Follow-Up Surveys Filled Out In Last Year"] = new Measurement($numFollowupsInLastYear, count($records));
 $measurements["Email Addresses Entered"] = new Measurement($numEmailAddresses, count($records));
 
-echo makeHTML($headers, $measurements, array(), $_GET['cohort'], $metadata);
+echo makeHTML($headers, $measurements, array(), $cohort, $metadata);

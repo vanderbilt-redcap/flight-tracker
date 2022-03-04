@@ -408,9 +408,9 @@ class Grants {
 						}
 
 						$this->calculate = array();
-						$this->calculate['to_import'] = json_decode($row['summary_calculate_to_import'], true);
-						$this->calculate['order'] = json_decode($row['summary_calculate_order'], true);
-						$this->calculate['list_of_awards'] = json_decode($row['summary_calculate_list_of_awards'], true);
+						$this->calculate['to_import'] = json_decode($row['summary_calculate_to_import'] ?? "[]", true);
+						$this->calculate['order'] = json_decode($row['summary_calculate_order'] ?? "[]", true);
+						$this->calculate['list_of_awards'] = json_decode($row['summary_calculate_list_of_awards'] ?? "[]", true);
 						foreach ($this->calculate as $type => $ary) {
 							if (!$ary) {
 								$this->calculate[$type] = array();

@@ -943,7 +943,7 @@ class PriorGrantFactory extends GrantFactory {
 	public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
-			if ($row['summary_award_date_'.$i]) {
+			if (isset($row['summary_award_date_'.$i]) && $row['summary_award_date_'.$i]) {
 				$grant = new Grant($this->lexicalTranslator);
 				$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=summary#summary_award_date_".$i;
 				$grant->setVariable('start', $row['summary_award_date_'.$i]);

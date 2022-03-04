@@ -18,12 +18,15 @@ $headers = array();
 $measurements = array();
 
 array_push($headers, "Miscellaneous Metrics for Publications");
-if ($_GET['cohort']) {
-	array_push($headers, "For Cohort ".$_GET['cohort']);
-} 
+if (isset($_GET['cohort'])) {
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    array_push($headers, "For Cohort ".$cohort);
+} else {
+    $cohort = "";
+}
 
 $metadata = Download::metadata($token, $server);
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_unique(array_merge(CareerDev::$smallCitationFields, ["record_id", "citation_rcr", "citation_authors", "citation_year", "citation_month", "citation_day", "citation_num_citations", "summary_training_start", "summary_training_end"])), $_GET['cohort'], $metadata);
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_unique(array_merge(CareerDev::$smallCitationFields, ["record_id", "citation_rcr", "citation_authors", "citation_year", "citation_month", "citation_day", "citation_num_citations", "summary_training_start", "summary_training_end"])), $cohort, $metadata);
 
 $tooltip = array(
 		"Relative Citation Ratio" => "The article citation rate (ACR) divided by the expected citation rate (ECR), which is normalized by field (the author's co-citation network) and time (years since publication). Cf. ".\Vanderbilt\FlightTrackerExternalModule\changeTextColorOfLink(Links::makeLink('https://www.doi.org/10.1371/journal.pbio.1002541', "doi"), "white").".",
@@ -127,7 +130,7 @@ $measurements["Number of First Authors Total"] = new Measurement(array_sum($auth
 $measurements["Number of Last Authors Total"] = new Measurement(array_sum($authorPos['last']['total']), array_sum($authorPos['papers']['total']));
 
 if (!empty($numForMetric)) {
-	echo makeHTML($headers, $measurements, [], $_GET['cohort'], $metadata);
+	echo makeHTML($headers, $measurements, [], $cohort, $metadata);
 } else {
 	echo "No metrics calculated!";
 }

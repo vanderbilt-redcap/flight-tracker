@@ -17,7 +17,7 @@ textarea { font-size: 16px; }
 <?php
 
 
-if ($_POST['date']) {
+if (isset($_POST['date'])) {
     $requestedDate = REDCapManagement::sanitize($_POST['date']);
 } else {
     $requestedDate = date("Y-m-d");

@@ -31,7 +31,7 @@ if (isset($_GET['test'])) {
     $suffix .= "&test";
 }
 
-if ($_FILES['bulk']) {
+if (isset($_FILES['bulk'])) {
 	$longImportFile = dirname(__FILE__)."/".$importFile;
 	if (verifyFile($_FILES['bulk'], $longImportFile, $expectedItems)) {
 		$errors = [];
@@ -160,7 +160,7 @@ if ($_FILES['bulk']) {
 	} else {
 		echo "<p class='red padded centered max-width'>ERROR! The file is not in the right format. ".detectFirstError($_FILES['bulk'], $longImportFile, $expectedItems)."</p>\n";
 	}
-} else if ($_POST['submit']) {
+} else if (isset($_POST['submit'])) {
 	echo "<p class='red padded centered max-width'>ERROR! The file could not be found!</p>\n";
 }
 

@@ -9,7 +9,7 @@ require_once dirname(__FILE__)."/../classes/Autoload.php";
 
 require_once dirname(__FILE__).'/_header.php';
 
-$username = REDCapManagement::sanitize($_GET['uid']);
+$username = REDCapManagement::sanitize($_GET['uid'] ?? "");
 if (!$username || !MMA_DEBUG) {
     $username = Application::getUsername();
 }

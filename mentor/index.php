@@ -264,8 +264,8 @@ a.surveylink {
 }
 </style>
 
-<link rel="stylesheet" href="<?= Application::link("mentor/jquery.sweet-modal.min.css") ?>" />
-<script src="<?= Application::link("mentor/jquery.sweet-modal.min.js") ?>"></script>
+<link rel="stylesheet" href="<?= Application::link("css/jquery.sweet-modal.min.css") ?>" />
+<script src="<?= Application::link("js/jquery.sweet-modal.min.js") ?>"></script>
 
 <script type="text/javascript">
     dfn=function(obj){

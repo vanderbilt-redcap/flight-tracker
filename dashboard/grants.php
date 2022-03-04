@@ -9,17 +9,24 @@ use \Vanderbilt\CareerDevLibrary\DateMeasurement;
 use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
 require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
+
+if (isset($_GET['cohort'])) {
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+} else {
+    $cohort = "";
+}
 
 $headers = [];
 $measurements = [];
 
 $metadata = Download::metadata($token, $server);
 $fields = array_unique(array_merge(CareerDev::$summaryFields, ["identifier_left_date", "identifier_institution"]));
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $_GET['cohort'], $metadata);
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $cohort, $metadata);
 $names = Download::names($token, $server);
 
 $totals = [];
@@ -82,8 +89,8 @@ foreach ($conversions as $yearspan => $recordQueues) {
 }
 
 array_push($headers, "Grants");
-if ($_GET['cohort']) {
-    array_push($headers, "For Cohort ".$_GET['cohort']);
+if ($cohort) {
+    array_push($headers, "For Cohort ".$cohort);
 }
 
 $measurements["Total Number of Compiled Grants"] = new Measurement($totalGrants);
@@ -91,4 +98,4 @@ foreach ($totals as $type => $total) {
     $measurements["$type Grants"] = new Measurement($total, $totalGrants);
 }
 
-echo makeHTML($headers, $measurements, array(), $_GET['cohort'], $metadata);
+echo makeHTML($headers, $measurements, array(), $cohort, $metadata);

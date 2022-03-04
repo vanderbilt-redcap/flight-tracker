@@ -14,7 +14,7 @@ $metadata = Download::metadata($token, $server);
 $choices = Scholar::getChoices($metadata);
 $options = $choices[$resourceField];
 
-if ($_POST['option']) {
+if (isset($_POST['option'])) {
 	$opt = $_POST['option'];
 	$newOptions = $options;
 	if ($_POST['action'] == "delete") {

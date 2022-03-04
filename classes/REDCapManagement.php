@@ -132,7 +132,9 @@ class REDCapManagement {
     }
 
 	public static function makeConjunction($list) {
-	    if (count($list) == 1) {
+        if (count($list) == 0) {
+            return "";
+        } else if (count($list) == 1) {
             return $list[0];
         } else if (count($list) == 2) {
 	        return $list[0]." and ".$list[1];
@@ -779,7 +781,7 @@ class REDCapManagement {
     }
 
     public static function getMetadataFieldsToScreen() {
-		return ["required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation", "text_validation_type_or_show_slider_number"];
+		return ["required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation", "text_validation_type_or_show_slider_number", "select_choices_or_calculations"];
 	}
 
 	public static function findInData($data, $fields) {
@@ -1468,6 +1470,15 @@ class REDCapManagement {
 	    return FALSE;
     }
 
+    public static function arrayAInB($aryA, $aryB) {
+        foreach ($aryA as $key => $val) {
+            if (!isset($aryB[$key]) || ($aryB[$key] !== $val)) {
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }
+
     public static function copyMetadataSettingsForField($row, $metadata, &$upload, $token, $server) {
         foreach ($metadata as $metadataRow) {
             if ($metadataRow['field_name'] == $row['field_name']) {
@@ -1646,7 +1657,7 @@ class REDCapManagement {
         return "";
     }
 
-    public static function pretty($n, $numDecimalPlaces = 3) {
+    public static function pretty($n, $numDecimalPlaces = 3, $useCommas = TRUE) {
 	    if (!is_numeric($n)) {
 	        return $n;
         }
@@ -1685,6 +1696,9 @@ class REDCapManagement {
         }
         if (!$s) {
             $s = "0";
+        }
+        if (!$useCommas) {
+            $s = str_replace(",", "", $s);
         }
         if ($n < 0) {
             if (!$decimal) {
@@ -2092,6 +2106,9 @@ class REDCapManagement {
     }
 
 	public static function isValidToken($token) {
+        if (!$token) {
+            return FALSE;
+        }
 		return (strlen($token) == 32) && preg_match("/^[\dA-F]{32}$/", $token);
 	}
 

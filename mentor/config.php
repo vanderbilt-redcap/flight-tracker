@@ -15,7 +15,7 @@ $resourceField = "mentoring_local_resources";
 $resourceField = adjustResourceField($resourceField, $choices);
 
 $mssg = "";
-$defaultList = implode("\n", array_values($choices[$resourceField]));
+$defaultList = implode("\n", array_values($choices[$resourceField] ?? []));
 $rightWidth = 500;
 $defaultLink = Application::getSetting("mentee_agreement_link", $pid);
 
@@ -132,7 +132,7 @@ echo $mssg;
 
 function adjustResourceField($resourceField, $choices) {
     $newFieldName = $resourceField."s";
-    if ($choices[$newFieldName]) {
+    if (isset($choices[$newFieldName])) {
         return $newFieldName;
     } else {
         return $resourceField;

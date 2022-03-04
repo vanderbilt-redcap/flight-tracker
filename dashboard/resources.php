@@ -13,13 +13,16 @@ require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTa
 
 $headers = array();
 array_push($headers, "Resources");
-if ($_GET['cohort']) {
-	array_push($headers, "For Cohort ".$_GET['cohort']);
-} 
+if (isset($_GET['cohort'])) {
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    array_push($headers, "For Cohort ".$cohort);
+} else {
+    $cohort = "";
+}
 
 $metadata = Download::metadata($token, $server);
-if ($_GET['cohort']) {
-	$records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
+if ($cohort) {
+	$records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $records = Download::recordIds($token, $server);
 }
@@ -45,4 +48,4 @@ foreach ($choices[$resourceField] as $value => $label) {
 	$measurements["Number Attended (".$label.")"] = new Measurement($counts[$value], count($records));
 }
 
-echo makeHTML($headers, $measurements, array(), $_GET['cohort'], $metadata);
+echo makeHTML($headers, $measurements, array(), $cohort, $metadata);

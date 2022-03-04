@@ -1340,7 +1340,7 @@ return $result;
 
     private function getWhenStartedInstitution($rows) {
 	    $normativeRow = REDCapManagement::getNormativeRow($rows);
-	    if ($normativeRow['identifier_start_of_training']) {
+	    if (isset($normativeRow['identifier_start_of_training']) && $normativeRow['identifier_start_of_training']) {
             return $normativeRow['identifier_start_of_training'];
         }
 	    $earliestDateAtInstitution = "";
@@ -1403,7 +1403,11 @@ return $result;
 		}
 
 		$normativeRow = self::getNormativeRow($rows);
-        if ($normativeRow[$checkInstitutionField] && ($normativeRow[$checkInstitutionField] != $institutionCurrent)) {
+        if (
+            isset($normativeRow[$checkInstitutionField])
+            && $normativeRow[$checkInstitutionField]
+            && ($normativeRow[$checkInstitutionField] != $institutionCurrent)
+        ) {
             $prefices = array(
                 "check_prev1" => "scholars",
                 "check_prev2" => "scholars",
@@ -1421,7 +1425,11 @@ return $result;
             ) {
                 return $res;
             }
-        } else if ($normativeRow[$importInstitutionField] && ($normativeRow[$importInstitutionField] != $institutionCurrent)) {
+        } else if (
+            isset($normativeRow[$importInstitutionField])
+            && $normativeRow[$importInstitutionField]
+            && ($normativeRow[$importInstitutionField] != $institutionCurrent)
+        ) {
             $prefices = array(
                 "init_import_prev1" => "manual",
                 "init_import_prev2" => "manual",

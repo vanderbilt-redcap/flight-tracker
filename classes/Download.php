@@ -20,6 +20,26 @@ class Download {
 		return $indexedRedcapData;
 	}
 
+	public static function getInstanceRow($pid, $prefix, $instrument, $recordId, $instance) {
+	    $instanceClause = ($instance == 1) ? "instance IS NULL" : "instance = '".db_real_escape_string($instance)."'";
+	    $sql = "SELECT field_name, value
+                    FROM redcap_data
+                    WHERE project_id = '".db_real_escape_string($pid)."'
+                        AND field_name LIKE '".db_real_escape_string($prefix)."%'
+                        AND record = '".db_real_escape_string($recordId)."'
+                        AND $instanceClause";
+	    $q = db_query($sql);
+	    if ($error = db_error()) {
+	        throw new \Exception($error);
+        }
+
+        $returnRow = ["record_id" => $recordId, "redcap_repeat_instrument" => $instrument, "redcap_repeat_instance" => $instance];
+	    while ($row = db_fetch_assoc($q)) {
+            $returnRow[$row['field_name']] = $row['value'];
+        }
+        return $returnRow;
+    }
+
 	public static function throttleIfNecessary($pid) {
 	    if (self::$rateLimitPerMinute === NULL) {
 	        $sql = "SELECT * FROM redcap_config WHERE field_name = 'page_hit_threshold_per_minute'";

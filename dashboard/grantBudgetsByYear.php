@@ -7,16 +7,22 @@ use \Vanderbilt\CareerDevLibrary\DateMeasurement;
 use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
 require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
 
+if (isset($_GET['cohort'])) {
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+} else {
+    $cohort = "";
+}
 $headers = array();
 $measurements = array();
 
 $metadata = Download::metadata($token, $server);
-$indexedRedcapData = \Vanderbilt\FlightTrackerExternalModule\getIndexedRedcapData($token, $server, CareerDev::$summaryFields, $_GET['cohort'], $metadata);
+$indexedRedcapData = \Vanderbilt\FlightTrackerExternalModule\getIndexedRedcapData($token, $server, CareerDev::$summaryFields, $cohort, $metadata);
 
 $yearTotals = array();
 for ($year = date("Y"); $year >= 2001; $year--) {
@@ -43,13 +49,13 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 }
 
 array_push($headers, "Grants");
-if ($_GET['cohort']) {
-	array_push($headers, "For Cohort ".$_GET['cohort']);
-} 
+if ($cohort) {
+    array_push($headers, "For Cohort ".$cohort);
+}
 
 $measurements["Total Budget"] = new MoneyMeasurement($totalBudget);
 foreach ($yearTotals as $year => $total) {
 	$measurements["Grant Budgets in $year"] = new MoneyMeasurement($total, $totalBudget);
 }
 
-echo makeHTML($headers, $measurements, array(), $_GET['cohort'], $metadata);
+echo makeHTML($headers, $measurements, array(), $cohort, $metadata);

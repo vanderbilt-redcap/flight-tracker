@@ -819,7 +819,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             } else {
                 $menteeUserids[$menteeRecord] = preg_split("/\s*[,;]\s*/", $menteeUserids[$menteeRecord]);
             }
-            if (!$mentorUserids[$menteeRecord]) {
+            if (!isset($mentorUserids[$menteeRecord])) {
                 $mentorUserids[$menteeRecord] = [];
             }
             $validUserids = array_unique(array_merge($validUserids, $menteeUserids[$menteeRecord], $mentorUserids[$menteeRecord]));

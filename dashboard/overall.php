@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Patents;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Measurement;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\DateMeasurement;
 use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
@@ -17,6 +18,14 @@ require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTa
 
 define("FOLLOWUP_LOST", "Followup Lost to Other Institution");
 define("PATENTS_INCLUDED", "Number of Patents");
+
+if (isset($_GET['cohort'])) {
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+} else {
+    $cohort = "";
+}
+
+
 $headers = [];
 $measurements = [];
 
@@ -25,7 +34,7 @@ $fields = array_unique(array_merge(
     CareerDev::$summaryFields,
     Application::getPatentFields($metadata)
 ));
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $_GET['cohort'], $metadata);
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $cohort, $metadata);
 
 # total number of scholars
 # Overall conversion ratio
@@ -74,14 +83,14 @@ $lexicon = array(
         PATENTS_INCLUDED => "Number of Wrangled Patents",
 		);
 array_push($headers, "Overall Summary");
-if ($_GET['cohort']) {
-	array_push($headers, "For Cohort ".$_GET['cohort']);
-} 
+if ($cohort) {
+	array_push($headers, "For Cohort ".$cohort);
+}
 
 // not accurate: $measurements["Number at ".INSTITUTION] = new Measurement($atInst, count($indexedRedcapData));
-$measurements["Converted (Overall)"] = new Measurement($convertedTotals["Converted while on K"] + $convertedTotals["Converted while not on K"], $eligible);
+$measurements["Converted (Overall)"] = new Measurement(($convertedTotals["Converted while on K"] ?? 0) + ($convertedTotals["Converted while not on K"] ?? 0), $eligible);
 foreach ($lexicon as $conv => $text) {
-	$total = $convertedTotals[$conv];
+	$total = $convertedTotals[$conv] ?? 0;
 	if ($conv == FOLLOWUP_LOST) {
         $measurements[$text] = new Measurement($total, count($indexedRedcapData));
     } else if ($conv == PATENTS_INCLUDED) {
@@ -95,4 +104,4 @@ foreach ($lexicon as $conv => $text) {
 	}
 }
 
-echo makeHTML($headers, $measurements, array(), $_GET['cohort'], $metadata);
+echo makeHTML($headers, $measurements, array(), $cohort, $metadata);

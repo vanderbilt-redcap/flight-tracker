@@ -92,6 +92,7 @@ if ($_POST['process'] == "check") {
             $metadata["REDCap"] = reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);
             $choices = ["REDCap" => REDCapManagement::getChoices($metadata["REDCap"])];
             $newChoices = CareerDev::getRelevantChoices();
+            Application::log("newChoices: ".count($newChoices));
             $newChoiceStr = REDCapManagement::makeChoiceStr($newChoices);
             for ($i = 0; $i < count($metadata['file']); $i++) {
                 $field = $metadata['file'][$i]['field_name'];
@@ -105,6 +106,7 @@ if ($_POST['process'] == "check") {
                 $feedback = REDCapManagement::mergeMetadataAndUpload($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
                 echo json_encode($feedback)."\n";
                 $newMetadata = Download::metadata($token, $server);
+                $metadata['REDCap'] = $newMetadata;
                 $formsAndLabels = CareerDev::getRepeatingFormsAndLabels($newMetadata);
                 REDCapManagement::setupRepeatingForms($event_id, $formsAndLabels);   // runs a REPLACE
 
@@ -254,7 +256,13 @@ function findChangedFieldsInMetadata($projectMetadata, $files, $deletionRegEx) {
         $specialFields = REDCapManagement::getSpecialFields("all");
         foreach ($fieldList["file"] as $field => $choiceStr) {
             $isSpecialGenderField = !CareerDev::isVanderbilt() || !in_array($field, $genderFieldsToHandleForVanderbilt);
-            $isFieldOfSources = preg_match("/_source$/", $field) && isset($choices["REDCap"][$field]["scholars"]);
+            $isFieldOfSources = (
+                (
+                    preg_match("/_source$/", $field)
+                    || preg_match("/_source_\d+$/", $field)
+                )
+                && isset($choices["REDCap"][$field]["scholars"])
+            );
             if (!in_array($field, $specialFields)) {
                 if (!isset($fieldList["REDCap"][$field])) {
                     array_push($missing, $field);
@@ -264,8 +272,10 @@ function findChangedFieldsInMetadata($projectMetadata, $files, $deletionRegEx) {
                 } else if ($isFieldOfSources) {
                     $sourceChoices = CareerDev::getRelevantChoices();
                     if (!REDCapManagement::arraysEqual($choices["REDCap"][$field], $sourceChoices)) {
-                        array_push($missing, $field);
-                        array_push($changed, $field);
+                        if (!REDCapManagement::arrayAInB($sourceChoices, $choices["REDCap"][$field])) {
+                            array_push($missing, $field);
+                            array_push($changed, $field);
+                        }
                     }
                 } else if (!empty($choices["file"][$field]) && !empty($choices["REDCap"][$field]) && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])) {
                     if ($isSpecialGenderField) {

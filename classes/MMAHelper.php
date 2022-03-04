@@ -279,10 +279,10 @@ function startNow() {
         foreach ($menteeRecordIds as $menteeRecordId) {
             $menteeName = $names[$menteeRecordId];
             $menteeUserids = self::getMenteeUserids($userids[$menteeRecordId]);
-            $namesOfMentors = $allMentors[$menteeRecordId];
-            $useridsOfMentors = $allMentorUids[$menteeRecordId];
+            $namesOfMentors = $allMentors[$menteeRecordId] ?? [];
+            $useridsOfMentors = $allMentorUids[$menteeRecordId] ?? [];
             $myRow = self::getLatestRow($menteeRecordId, [$username], $redcapData);
-            $mentorRow = self::getLatestRow($menteeRecordId, $allMentorUids[$menteeRecordId], $redcapData);
+            $mentorRow = self::getLatestRow($menteeRecordId, $useridsOfMentors, $redcapData);
             if (empty($myRow)) {
                 $instance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId) + 1;
                 $percentComplete = 0;
@@ -699,18 +699,18 @@ function startNow() {
             $allMentorUserids = Download::primaryMentorUserids($token, $server);
 
             $menteeUids = self::getUserids($menteeUserids[$menteeRecordId]);
-            $mentorUids = $allMentorUserids[$menteeRecordId];
+            $mentorUids = $allMentorUserids[$menteeRecordId] ?? [];
             $myMentees = [];
             $myMentors = [];
             $myMentees["name"] = Download::menteesForMentor($token, $server, $userid);
             if (in_array(strtolower($userid), $menteeUids)) {
                 # Mentee
-                $myMentors["name"] = $allMentors[$menteeRecordId];
-                $myMentors["uid"] = $allMentorUserids[$menteeRecordId];
+                $myMentors["name"] = $allMentors[$menteeRecordId] ?? [];
+                $myMentors["uid"] = $allMentorUserids[$menteeRecordId] ?? [];
             } else if (in_array(strtolower($userid), $mentorUids)) {
                 # Mentor
-                $myMentors["name"] = $allMentors[$menteeRecordId];
-                $myMentors["uid"] = $allMentorUserids[$menteeRecordId];
+                $myMentors["name"] = $allMentors[$menteeRecordId] ?? [];
+                $myMentors["uid"] = $allMentorUserids[$menteeRecordId] ?? [];
                 $myMentees["name"] = Download::menteesForMentor($token, $server, $userid);
                 $myMentees["uid"] = [];
                 foreach ($myMentees["name"] as $recordId => $name) {
@@ -770,7 +770,7 @@ function startNow() {
                     if ($lastSectionHeader) {
                         $sectionTotals[$lastSectionHeader]++;
                     }
-                    if ($row[$metadataRow['field_name']]) {
+                    if (isset($row[$metadataRow['field_name']]) && $row[$metadataRow['field_name']]) {
                         $numer++;
                         if ($lastSectionHeader) {
                             $sectionWithData[$lastSectionHeader]++;

@@ -8,7 +8,7 @@ require_once(dirname(__FILE__)."/base.php");
 $numWeeks = 3;
 $resourceField = "mentoring_local_resource";
 
-if ($_POST['newUids']) {
+if (isset($_POST['newUids'])) {
     require_once(dirname(__FILE__)."/../small_base.php");
     $records = Download::recordIds($token, $server);
     $newUids = REDCapManagement::sanitizeArray($_POST['newUids']);
@@ -46,7 +46,7 @@ if ($_POST['newUids']) {
     }
     echo json_encode($feedback);
     exit;
-} else if ($_POST['updateMentors']) {
+} else if (isset($_POST['updateMentors'])) {
     require_once(dirname(__FILE__)."/../small_base.php");
     $records = Download::recordIds($token, $server);
     $names = Download::names($token, $server);
@@ -159,10 +159,10 @@ foreach (array_keys($names) as $recordId) {
     if ($userids[$recordId]) {
         $numMenteeUserids++;
     }
-    if ($mentorNames[$recordId] && !empty($mentorNames[$recordId])) {
+    if (isset($mentorNames[$recordId]) && $mentorNames[$recordId] && !empty($mentorNames[$recordId])) {
         $numMentorNames++;
     }
-    if ($mentorUserids[$recordId] && !empty($mentorUserids[$recordId])) {
+    if (isset($mentorUserids[$recordId]) && $mentorUserids[$recordId] && !empty($mentorUserids[$recordId])) {
         $numMentorUserids++;
     }
 }

@@ -248,7 +248,7 @@ class Filter {
 			}
 			foreach ($choicesAry as $currChoice) {
 				if ($currChoice) {
-					if ($choices[$currChoice]) {
+					if (isset($choices[$currChoice])) {
 						$currChoice = $choices[$currChoice];
 					}
 					if (!in_array($currChoice, $allChoices)) {

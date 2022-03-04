@@ -39,7 +39,7 @@ if (!Application::isWebBrowser() && CareerDev::getPid()) {
     date_default_timezone_set(CareerDev::getTimezone());
 }
 
-$pid = REDCapManagement::sanitize($_GET['pid']);
+$pid = REDCapManagement::sanitize($_GET['pid'] ?? "");
 if (!$pid) {
     $pid = CareerDev::getSetting("pid");
 }

@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.2.3";
+		return "4.3.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -814,7 +814,7 @@ class CareerDev {
     public static function getRelevantChoices() {
 	    $itemChoices = [
             "scholars" => "Initial Survey (self-survey)",
-            "followup" => "Follow-Up Survey (self-survey)",
+            "followup" => "Followup Survey (self-survey)",
             "custom" => "New Custom Grants (REDCap)",
             "modify" => "Manual Modification Field (REDCap)",
             "manual" => "Manual Form (REDCap)",

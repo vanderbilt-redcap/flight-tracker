@@ -6,7 +6,7 @@ require_once dirname(__FILE__)."/preliminary.php";
 require_once dirname(__FILE__)."/../classes/Autoload.php";
 
 $uidString = "";
-if ($_GET['uid']) {
+if (isset($_GET['uid'])) {
     $uidString = "&uid=".REDCapManagement::sanitize($_GET['uid']);
 }
 

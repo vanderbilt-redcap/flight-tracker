@@ -76,6 +76,8 @@ if ($hash) {
 }
 
 ?>
+    <link rel="stylesheet" href="<?= Application::link("css/jquery.sweet-modal.min.css") ?>" />
+    <script src="<?= Application::link("js/jquery.sweet-modal.min.js") ?>"></script>
 <section class="bg-light">
     <div style="text-align: center;" class="smaller"><a href="javascript:;" onclick="window.print();">Click here to print or save as PDF</a></div>
   <div class="container">

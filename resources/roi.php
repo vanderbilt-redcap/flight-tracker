@@ -12,10 +12,12 @@ require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
-if ($_GET['cohort']) {
-    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
+if (isset($_GET['cohort'])) {
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $records = Download::records($token, $server);
+    $cohort = "";
 }
 $choices = REDCapManagement::getChoices($metadata);
 $today = date("Y-m-d");
@@ -97,7 +99,7 @@ $measuresInOrder = ["Conversion Ratio", "Years to Convert", "Number of Publicati
 echo "<h1>Return on Investment for Resources</h1>";
 $cohorts = new Cohorts($token, $server, Application::getModule());
 $link = Application::link("this");
-echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'], "if ($(this).val()) { window.location.href = \"$link&cohort=\"+$(this).val(); } else { window.location.href = \"$link\"; }")."</p>";
+echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort, "if ($(this).val()) { window.location.href = \"$link&cohort=\"+$(this).val(); } else { window.location.href = \"$link\"; }")."</p>";
 $groupsInOrder = ["Control" => "Did <u>Not</u> Use Resource", "Treatment" => "Used Resource", ];
 foreach ($dataByResource as $resource => $groups) {
     $results = [];
