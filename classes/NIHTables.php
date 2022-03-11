@@ -2845,8 +2845,8 @@ class NIHTables {
 		    echo "<p class='centered'>".count($names)." being considered</p>";
         }
 		if (!empty($names)) {
-			$lastNames = Download::lastNames($this->token, $this->server);
-			$firstNames = Download::firstNames($this->token, $this->server);
+			$lastNames = Download::lastnames($this->token, $this->server);
+			$firstNames = Download::firstnames($this->token, $this->server);
 			$mentors = Download::primaryMentors($this->token, $this->server); 
 			$trainingData = Download::trainingGrants($this->token, $this->server, [], [5, 6, 7], [], $this->metadata);
             $trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");

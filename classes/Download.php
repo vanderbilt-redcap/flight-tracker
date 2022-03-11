@@ -369,10 +369,28 @@ class Download {
 	}
 
 	public static function metadata($token, $server, $fields = array()) {
+        $pid = Application::getPID($token);
+	    if (
+            $pid
+	        && isset($_SESSION['metadata'.$pid])
+            && is_array($_SESSION['metadata'.$pid])
+            && !empty($_SESSION['metadata'.$pid])
+            && isset($_SESSION['lastMetadata'.$pid])
+            && empty($fields)
+        ) {
+	        $ts = $_SESSION['lastMetadata'.$pid];
+	        $currTs = time();
+	        $fiveMinutes = 5 * 60;
+	        if (
+	            ($currTs - $ts >= $fiveMinutes)
+                && ($currTs > $ts)
+            ) {
+                return $_SESSION['metadata'.$pid];
+            }
+        }
 		if (isset($_GET['test'])) {
             Application::log("Download::metadata");
         }
-		$pid = Application::getPID($token);
 		if (preg_match("/".SERVER_NAME."/", $server) && $pid) {
 		    if (!empty($fields)) {
                 $json = \REDCap::getDataDictionary($pid, "json", TRUE, $fields);
@@ -386,6 +404,8 @@ class Download {
 		            Application::log($json);
                 }
             }
+		    $_SESSION['metadata'.$pid] = $rows;
+		    $_SESSION['lastMetadata'.$pid] = time();
 		    return $rows;
         } else {
             $data = array(
@@ -400,6 +420,10 @@ class Download {
             $rows = self::sendToServer($server, $data);
             if (isset($_GET['test'])) {
                 Application::log("Download::metadata API returning ".count($rows)." rows");
+            }
+            if (empty($fields)) {
+                $_SESSION['metadata'.$pid] = $rows;
+                $_SESSION['lastMetadata'.$pid] = time();
             }
             return $rows;
         }
@@ -495,7 +519,7 @@ class Download {
                 throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
             }
             if (isset($redcapData['error']) && !empty($redcapData['error'])) {
-                throw new \Exception("Download Exception: ".$redcapData['error']);
+                throw new \Exception("Download Exception $pid: ".$redcapData['error']);
             }
             return $redcapData;
         }
@@ -509,7 +533,7 @@ class Download {
             }
         }
         if (isset($redcapData['error']) && !empty($redcapData['error'])) {
-            throw new \Exception("Download Exception: ".$redcapData['error']);
+            throw new \Exception("Download Exception $pid: ".$redcapData['error']);
         }
         return $redcapData;
 	}

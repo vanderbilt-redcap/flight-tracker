@@ -119,6 +119,14 @@ class Links {
         return self::makeLink($url, $text, FALSE, $linkClass);
     }
 
+    public static function makePositionChangeWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
+        $url = self::link("wrangler/positions.php");
+        if ($recordId) {
+            $url = $url."&record=".$recordId;
+        }
+        return self::makeLink($url, $text, FALSE, $linkClass);
+    }
+
     public static function makeOnlineDesignerLink($pid, $text, $markAsNew = FALSE, $linkClass = "") {
         $url = APP_PATH_WEBROOT."Design/online_designer.php?pid=".$pid;
         return self::makeLink($url, $text, $markAsNew, $linkClass);

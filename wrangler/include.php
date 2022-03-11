@@ -157,12 +157,13 @@ try {
 
         if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
             echo "<div class='subnav'>\n";
-            echo Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green")."\n";
-            echo Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green")."\n";
-            echo Links::makePatentWranglingLink($pid, "Patent Wrangler", $record, FALSE, "green")."\n";
-            echo Links::makeProfileLink($pid, "Scholar Profile", $record, FALSE, "green")."\n";
-            echo "<a class='yellow'>".Publications::getSelectRecord()."</a>\n";
-            echo "<a class='yellow'>".Publications::getSearch()."</a>\n";
+            echo Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green");
+            echo Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green");
+            echo Links::makePositionChangeWranglingLink($pid, "Position Wrangler", $record, FALSE, "green");
+            echo Links::makePatentWranglingLink($pid, "Patent Wrangler", $record, FALSE, "green");
+            echo Links::makeProfileLink($pid, "Scholar Profile", $record, FALSE, "green");
+            echo "<a class='yellow'>".Publications::getSelectRecord()."</a>";
+            echo "<a class='yellow'>".Publications::getSearch()."</a>";
 
             $nextPageLink = "$url$wranglerTypeParam&record=".$nextRecord;
             # next record is in the same window => don't use Links class

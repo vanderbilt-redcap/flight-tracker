@@ -375,6 +375,7 @@ $nextPageLink = "";
 $emptyRecord = "";
 $links[] = Links::makeGrantWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green");
 $links[] = Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green");
+$links[] = Links::makePositionChangeWranglingLink($pid, "Position Wrangler", $record, FALSE, "green");
 $links[] = Links::makePatentWranglingLink($pid, "Patent Wrangler", $record, FALSE, "green");
 $links[] = Links::makeProfileLink($pid, "Scholar Profile", $record, FALSE, "green");
 $links[] = "<a class='yellow'>".getSelectRecord()."</a>";

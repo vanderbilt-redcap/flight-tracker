@@ -94,7 +94,7 @@ class REDCapManagement {
         return $choices;
     }
 
-        public static function getRepeatingForms($pid) {
+    public static function getRepeatingForms($pid) {
 		if (!function_exists("db_query")) {
 			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 		}
@@ -417,14 +417,19 @@ class REDCapManagement {
 	    return $nodes[0];
     }
 
-    public static function getMaxInstance($rows, $instrument, $recordId) {
-        $max = 0;
+    public static function getInstances($rows, $instrument, $recordId) {
+        $instances = [];
         foreach ($rows as $row) {
-            if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == $instrument) && ($row['redcap_repeat_instance'] > $max)) {
-                $max = $row['redcap_repeat_instance'];
+            if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == $instrument) && !in_array($row['redcap_repeat_instance'], $instances)) {
+                $instances[] = (int) $row['redcap_repeat_instance'];
             }
         }
-        return $max;
+        return $instances;
+    }
+
+    public static function getMaxInstance($rows, $instrument, $recordId) {
+	    $instances = self::getInstances($rows, $instrument, $recordId);
+        return empty($instances) ? "0" : max($instances);
     }
 
     public static function getMaxInstanceForEvent($rows, $eventName, $recordId) {

@@ -14,6 +14,10 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 	if (!$token) { global $token; }
 	if (!$server) { global $server; }
 
+	if (Application::isVanderbilt() && (date("Y-m-d") == "2022-03-11")) {
+	    return;
+    }
+
 	if ($specialOnly) {
 		// $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", date("Y-m-d"));
 		// $manager->addCron("drivers/2n_updateReporters.php", "updateReporter", date("Y-m-d"));

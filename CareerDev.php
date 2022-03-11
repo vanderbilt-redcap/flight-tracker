@@ -13,7 +13,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.3.0";
+		return "4.4.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -1058,6 +1058,7 @@ class CareerDev {
 					"Grant Wrangler" => self::link("/wrangler/index.php"),
 					"Publication Wrangler" => self::link("/wrangler/include.php")."&wranglerType=Publications",
 					"Lexical Translator" => self::link("/lexicalTranslator.php"),
+                    "Position Change Wrangler" => self::link("/wrangler/positions.php"),
 					];
 			if (self::has("patent")) {
                 $ary["Patent Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Patents";

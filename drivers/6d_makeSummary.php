@@ -15,10 +15,6 @@ use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
-if (!defined("NOAUTH")) {
-    define("NOAUTH", true);
-}
-require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 function getLockFile($pid) {
 	return CareerDev::getLockFile($pid);
@@ -121,8 +117,6 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $myErrors = Upload::isolateErrors($result);
     $errors = array_merge($errors, $myErrors);
 
-    uploadPositionChangesFromSurveys($token, $server, $recordId, $metadata);
-
     if (!empty($errors)) {
         throw new \Exception("Errors in record $recordId!\n".implode("\n", $errors));
     }
@@ -168,136 +162,3 @@ function mergeNormativeRows($unmerged) {
 	$newData = array_merge(array_values($normativeRows), $newData);
 	return $newData;
 }
-
-function uploadPositionChangesFromSurveys($token, $server, $recordId, $metadata) {
-    $choices = REDCapManagement::getChoices($metadata);
-    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-    $positionFields = [];
-    $checkFields = [];
-    $followupFields = [];
-    $initImportFields = [];
-    foreach ($metadataFields as $field) {
-        if (preg_match("/^promotion_/", $field) || ($field == "position_change_complete")) {
-            $positionFields[] = $field;
-        } else if (preg_match("/^check_/", $field) || ($field == "initial_survey_complete")) {
-            $checkFields[] = $field;
-        } else if (preg_match("/^followup_/", $field) || ($field == "followup_complete")) {
-            $followupFields[] = $field;
-        } else if (preg_match("/^init_import_/", $field) || ($field == "initial_import_complete")) {
-            $initImportFields[] = $field;
-        }
-    }
-    if (empty($positionFields) || empty($checkFields) || empty($followupFields)) {
-        return;
-    }
-    $positionFields[] = "record_id";
-    $checkFields[] = "record_id";
-    $followupFields[] = "record_id";
-    $initImportFields[] = "record_id";
-
-    $positionData = Download::fieldsForRecords($token, $server, $positionFields, [$recordId]);
-    $checkData = Download::fieldsForRecords($token, $server, $checkFields, [$recordId]);
-    $followupData = Download::fieldsForRecords($token, $server, $followupFields, [$recordId]);
-    $initImportData = Download::fieldsForRecords($token, $server, $initImportFields, [$recordId]);
-
-    $maxInstance = REDCapManagement::getMaxInstance($positionData, "position_change", $recordId);
-    // Application::log("$recordId has maxInstance $maxInstance");
-
-    $initialSurveyPrefixes = ["check", "check_prev1", "check_prev2", "check_prev3", "check_prev4", "check_prev5"];
-    $initImportPrefixes = $initialSurveyPrefixes;
-    for ($i = 0; $i < count($initImportPrefixes); $i++) {
-        $initImportPrefixes[$i] = preg_replace("/^check/", "init_import", $initImportPrefixes[$i]);
-    }
-    getDataForPrefixAndPossiblyUpload($token, $server, $checkData[0], $choices, $initialSurveyPrefixes, $recordId, $positionData, $maxInstance);
-    getDataForPrefixAndPossiblyUpload($token, $server, $initImportData[0], $choices, $initImportPrefixes, $recordId, $positionData, $maxInstance);
-
-    $followupSurveyPrefixes = ["followup", "followup_prev1", "followup_prev2", "followup_prev3", "followup_prev4", "followup_prev5"];
-    foreach ($followupData as $row) {
-        if ($row['redcap_repeat_instrument'] == "followup") {
-            getDataForPrefixAndPossiblyUpload($token, $server, $row, $choices, $followupSurveyPrefixes, $recordId, $positionData, $maxInstance);
-        }
-    }
-}
-
-function getDataForPrefixAndPossiblyUpload($token, $server, $row, $choices, $prefixes, $recordId, $positionData, &$maxInstance) {
-    foreach ($prefixes as $prefix) {
-        $transferData = getPositionDataFromSurvey($row, $choices, $prefix);
-        if (!empty($transferData) && !isDataAlreadyCopied($positionData, $transferData)) {
-            $maxInstance++;
-            $transferData['record_id'] = $recordId;
-            $transferData['redcap_repeat_instrument'] = "position_change";
-            $transferData['redcap_repeat_instance'] = $maxInstance;
-            Upload::oneRow($transferData, $token, $server);
-        }
-    }
-}
-
-function getPositionDataFromSurvey($row, $choices, $prefix) {
-    if (!preg_match("/_$/", $prefix)) {
-        $prefix .= "_";
-    }
-
-    $fields = ['job_title', 'job_category', 'institution', 'primary_dept', 'academic_rank'];
-    $hasData = FALSE;
-    foreach ($fields as $field) {
-        if (isset($row[$prefix.$field]) && $row[$prefix.$field]) {
-            $hasData = TRUE;
-            break;
-        }
-    }
-
-    if (!$hasData) {
-        return [];
-    }
-    $transferData = [];
-    $transferData['promotion_job_title'] = $row[$prefix.'job_title'] ?? "";
-    $transferData['promotion_job_category'] = $row[$prefix.'job_category'] ?? "";
-    if (isset($choices[$prefix.'institution'])) {
-        $institutionName = $choices[$prefix.'institution'][$row[$prefix.'institution']];
-    } else {
-        $institutionName = $row[$prefix.'institution'] ?? "";
-    }
-    $institutionName = trim($institutionName);
-    if ($institutionName == "Vanderbilt") {
-        $transferData['promotion_institution'] = "Vanderbilt University Medical Center";   // ???
-    } else if ($institutionName == "Other") {
-        $transferData['promotion_institution'] = $row[$prefix.'institution_oth'] ?? "";
-    } else {
-        $transferData['promotion_institution'] = $institutionName;
-    }
-    $department = $row[$prefix.'primary_dept'];
-    if ($choices["promotion_department"][$department]) {
-        $transferData['promotion_department'] = $department;
-    } else if ($department !== "") {
-        $transferData['promotion_department'] = '999999';
-        $transferData['promotion_department_other'] = $choices[$prefix.'primary_dept'][$department];
-    }
-    $transferData['promotion_division'] = $row[$prefix.'division'] ?? "";
-    $transferData['promotion_date'] = date("Y-m-d");
-    $transferData['promotion_in_effect'] = $row[$prefix.'academic_rank_dt'] ?? "";
-    $transferData['promotion_rank'] = $row[$prefix.'academic_rank'] ?? "";
-    $transferData['position_change_complete'] = "2";
-
-    return $transferData;
-}
-
-function isDataAlreadyCopied($positionData, $transferData) {
-    $skip = ["promotion_date", "redcap_repeat_instance", "position_change_complete"];
-    $hasDataAlready = FALSE;
-    foreach ($positionData as $row) {
-        $allFieldsPresent = TRUE;
-        foreach ($transferData as $field => $value) {
-            if (!in_array($field, $skip) && (trim($row[$field]) != trim($value))) {
-                Application::log("For $field, ".$row[$field]." != ".$value);
-                $allFieldsPresent = FALSE;
-                break;
-            }
-        }
-        if ($allFieldsPresent) {
-            $hasDataAlready = TRUE;
-            break;
-        }
-    }
-    return $hasDataAlready;
-}
-

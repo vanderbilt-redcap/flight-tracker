@@ -7,43 +7,20 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\NameMatcher;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 
-define("NOAUTH", "true");
-require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-
 function updateVFRS($token, $server, $pid, $records) {
-	error_log("updateVFRS with ".$token." ".$server." ".$pid);
-
 	$completes = Download::oneField($token, $server, "pre_screening_survey_complete");
 	foreach ($records as $recordId) {
 	    if ($completes[$recordId] != "2") {
 	        updateVFRSForRecord($token, $server, $pid, $recordId);
 		}
 	}
-    CareerDev::saveCurrentDate("Last VFRS Update", $pid);
+	CareerDev::saveCurrentDate("Last VFRS Update", $pid);
 }
 
-
-# Ho/Holden creates a lot of trouble for this algorithm. They are handled in a special script
-# Everything else is normal. Some regular expressions here. Should be all lower case.
-# return boolean
-function nameMatch($n1, $n2) {
-	if (($n1 == "ho") || ($n2 == "ho") && (($n1 == "holden") || ($n2 == "holden"))) {
-		if ($n1 == $n2) {
-			return true;
-		}
-	} else {
-		if (preg_match("/^".$n1."/", $n2) || preg_match("/^".$n2."/", $n1)) {
-			return true;
-		}
-	}
-	if (preg_match("/[\(\-]".$n1."/", $n2) || preg_match("/[\(\-]".$n2."/", $n1)) {
-		return true;
-	}
-	return false;
-}
 
 # one name has ???; eliminate
 # trims trailing initial.
@@ -56,13 +33,13 @@ function fixForMatchVFRS($n) {
 }
 
 # returns true/false over whether the names "match"
-function match($fn1, $ln1, $fn2, $ln2) {
+function matchNamesForVFRS($fn1, $ln1, $fn2, $ln2) {
 	if ($fn1 && $ln1 && $fn2 && $ln2) {
 		$fn1 = fixForMatchVFRS($fn1);
 		$fn2 = fixForMatchVFRS($fn2);
 		$ln1 = fixForMatchVFRS($ln1);
 		$ln2 = fixForMatchVFRS($ln2);
-		if (nameMatch($fn1, $fn2) && nameMatch($ln1, $ln2)) {
+		if (NameMatcher::matchName($fn1, $ln1, $fn2, $ln2)) {
 			return true;
 		}
 	}
@@ -92,15 +69,14 @@ function matchRowsVFRS($prefix, $rows, $newmanRow) {
 			$lastName2 = "";
 			if ($prefix == "coeus") {
 				$coeusName2 = getCoeusName($row['person_name']);
-				$firstName2 = fixToCompare($coeusName2[1]);
-				$lastName2 = fixToCompare($coeusName2[0]);
+				$firstName2 = fixToCompareVFRS($coeusName2[1]);
+				$lastName2 = fixToCompareVFRS($coeusName2[0]);
 			} else {
-				$firstName2 = fixToCompare($row['first_name']);
-				$lastName2 = fixToCompare($row['last_name']);
+				$firstName2 = fixToCompareVFRS($row['first_name']);
+				$lastName2 = fixToCompareVFRS($row['last_name']);
 			}
 			if (notSkipVFRS($firstName1, $lastName1, $firstName2, $lastName2)) {
-				if (match($firstName1, $lastName1, $firstName2, $lastName2)) {
-					error_log("MATCH");
+				if (matchNamesForVFRS($firstName1, $lastName1, $firstName2, $lastName2)) {
 					$match_is[] = $i;
 				}
 			}
@@ -121,13 +97,10 @@ function combineRowsVFRS($row, $row2) {
 	$fields = array("record_id", "redcap_repeat_instrument", "redcap_repeat_instance");
 	foreach ($fields as $field) {
 		if (isset($rowData[$field])) {
-			error_log("Assigning $field to {$rowData[$field]}");
 			$combinedData[$field] = $rowData[$field];
 		} else if (isset($row2Data[$field])) {
-			error_log("Assigning 2 $field to {$row2Data[$field]}");
 			$combinedData[$field] = $row2Data[$field];
 		} else {
-			error_log("Assigning 3 $field to ''");
 			$combinedData[$field] = "";
 		}
 	}
@@ -139,7 +112,7 @@ function combineRowsVFRS($row, $row2) {
 			}
 		}
 	} else {
-		error_log("Error decoding ".json_encode($row2));
+		Application::log("Error decoding row2");
 	}
 	if ($rowData) {
 		foreach ($rowData as $field => $value) {
@@ -148,7 +121,7 @@ function combineRowsVFRS($row, $row2) {
 			}
 		}
 	} else {
-		error_log("Error decoding ".json_encode($row));
+		Application::log("Error decoding row");
 	}
 
 	$combined['prefix'] = array();
@@ -192,14 +165,12 @@ function adjustForVFRS($redcapRow) {
 
 function updateVFRSForRecord($token, $server, $pid, $record) {
 	$redcapData = Download::fieldsForRecords($token, $server, array("record_id", "identifier_first_name", "identifier_last_name"), array($record));
-	error_log("Downloaded ".count($redcapData)." rows");
 
 	# the names list keeps track of the names for each prefix
 	# will eventually be used to combine the data
 	$prefix = "summary";
 	$names[$prefix] = array();
 	foreach ($redcapData as $row) {
-		error_log("Adding ".json_encode($row));
 		$names[$prefix][] = array("prefix" => $prefix, "record_id" => $row['record_id'], "first_name" => $row['identifier_first_name'], "last_name" => $row['identifier_last_name'], "DATA" => json_encode($row));
 	}
 
@@ -208,36 +179,7 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 	$metadata = Download::metadata($token, $server);
 	$allFields = REDCapManagement::getFieldsFromMetadata($metadata);
 
-	error_log("Downloading VFRS data");
-	# downloads the VFRS data
-	#VFRS
-	$data = array(
-		'token' => $vfrs_token,
-		'content' => 'record',
-		'format' => 'json',
-		'type' => 'flat',
-		'rawOrLabel' => 'raw',
-		'rawOrLabelHeaders' => 'raw',
-		'exportCheckboxLabel' => 'false',
-		'exportSurveyFields' => 'false',
-		'exportDataAccessGroups' => 'false',
-		'returnFormat' => 'json'
-	);
-	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL, 'https://redcap.vanderbilt.edu/api/');
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-	curl_setopt($ch, CURLOPT_VERBOSE, 0);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-	$output = curl_exec($ch);
-	curl_close($ch);
-	$vfrsData = json_decode($output, true);
-	error_log("Downloaded ".count($vfrsData)." rows");
+	$vfrsData = Download::records($vfrs_token, 'https://redcap.vanderbilt.edu/api/');
 
 	$prefix = "vfrs";
 	$names[$prefix] = array();
@@ -267,17 +209,15 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 	unset($vfrsData);
 
 	# match on name all of the disparate data sources
-	# match() function is central here
+	# matchNamesForVFRS() function is central here
 	# must be in Newman Data as this serves as the basis
 	$skip = array("vfrs", "coeus");
 	$combined = array();
-	$record_id = 1;
 	$numRows = 0;
 	$sentNames = array();
 	$namesToSort = array();
 	$queue = array();
 	foreach ($names as $prefix => $rows) {
-		error_log("Exploring ".$prefix.": ".count($rows)." rows");
 		if (!in_array($prefix, $skip)) {
 			$i = 0;
 			foreach ($rows as $newmanRow) {
@@ -290,15 +230,17 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 				foreach ($sentNames as $namePair) {
 					$firstName2 = $namePair['first_name'];
 					$lastName2 = $namePair['last_name'];
-					if (match($firstName1, $lastName1, $firstName2, $lastName2)) {
+					if (matchNamesForVFRS($firstName1, $lastName1, $firstName2, $lastName2)) {
 						$proceed = false;
 						break;
 					}
 				}
 				if (!$proceed) {
-					error_log("$prefix DUPLICATE at $firstName1 $firstName2 $lastName1 $lastName2");
+					Application::log("$prefix DUPLICATE at $firstName1 $firstName2 $lastName1 $lastName2", $pid);
+				} else if (skip($firstName1, $lastName1)) {
+					Application::log("$prefix SKIP at $firstName1 $lastName1", $pid);
 				} else {
-					error_log("$prefix MATCH at $firstName1 $lastName1");
+					Application::log("$prefix MATCH at $firstName1 $lastName1", $pid);
 					foreach ($names as $prefix2 => $rows2) {
 						if ($prefix2 != "coeus") {
 							$match2_is = matchRowsVFRS($prefix2, $rows2, $newmanRow);
@@ -328,7 +270,7 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 						}
 					}
 					if (count($upload) > 0) {
-						$uploadNames = array( "first_name" => fixToCompare($upload[0]['identifier_first_name']), "last_name" => fixToCompare($upload[0]['identifier_last_name']) );
+						$uploadNames = array( "first_name" => fixToCompareVFRS($upload[0]['identifier_first_name']), "last_name" => fixToCompareVFRS($upload[0]['identifier_last_name']) );
 						$sentNames[] = $uploadNames;
 					}
 				}
@@ -336,16 +278,57 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 		}
 	}
 	
-	error_log("queue: ".count($queue));
+	Application::log("queue: ".count($queue), $pid);
 	# send any leftover data in one last upload
 	if (count($queue) > 0) {
 		$feedback = Upload::rows($queue, $token, $server);
-		error_log("Upload ".count($queue)." rows ".json_encode($feedback));
+		Application::log("Upload ".count($queue)." rows ".json_encode($feedback), $pid);
+        uploadPositionChangesFromVFRS($token, $server, $record);
 	}
-	error_log("$numRows rows uploaded into ".($record_id - 1)." records.");
+	Application::log("$numRows rows uploaded into Record $record", $pid);
 }
 
-function fixToCompare($n) {
+function uploadPositionChangesFromVFRS($token, $server, $recordId) {
+    $metadata = Download::metadata($token, $server);
+    $choices = REDCapManagement::getChoices($metadata);
+    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+    $positionFields = [];
+    $vfrsFields = [];
+    foreach ($metadataFields as $field) {
+        if (preg_match("/^promotion_/", $field) || ($field == "position_change_complete")) {
+            $positionFields[] = $field;
+        } else if (preg_match("/^vfrs_/", $field) || ($field == "pre_screening_survey_complete")) {
+            $vfrsFields[] = $field;
+        }
+    }
+    if (empty($positionFields) || empty($vfrsData)) {
+        return;
+    }
+    $positionData = Download::fieldsForRecords($token, $server, $positionFields, [$recordId]);
+    $vfrsData = Download::fieldsForRecords($token, $server, $vfrsFields, [$recordId]);
+
+    $transferData = [];
+    $row = $vfrsData[0];
+    $transferData['promotion_job_title'] = $choices['vfrs_current_appointment'][$row['vfrs_current_appointment']];
+    $transferData['promotion_job_category'] = '1';
+    $transferData['promotion_institution'] = "Vanderbilt University Medical Center";
+    $transferData['promotion_division'] = $row['vfrs_division'];
+    $transferData['promotion_date'] = date("Y-m-d");
+    $appointment = $row['vfrs_when_did_this_appointment'];
+    $appointment = preg_replace("/[^\d^\/^\-]/", "", $appointment);   // data clean
+    $transferData['promotion_in_effect'] = REDCapManagement::MY2YMD($appointment);
+    $transferData['position_change_complete'] = "2";
+
+    $maxInstance = REDCapManagement::getMaxInstance($positionData, "position_change", $recordId);
+    if (!isDataAlreadyCopied($positionData, $transferData)) {
+        $transferData['record_id'] = $recordId;
+        $transferData['redcap_repeat_instrument'] = "position_change";
+        $transferData['redcap_repeat_instance'] = $maxInstance + 1;
+        Upload::oneRow($transferData, $token, $server);
+    }
+}
+
+function fixToCompareVFRS($n) {
     $n = str_replace("/", "\/", $n);
     $n = str_replace("???", "", $n);
     $n = stripQuotesVFRS($n);

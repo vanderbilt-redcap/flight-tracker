@@ -286,9 +286,15 @@ public static function metadata($metadata, $token, $server) {
         self::testFeedback($feedback, $output, $ch, $metadata);
 		curl_close($ch);
 
+        $pid = Application::getPID($token);
+
+        if ($pid) {
+            $_SESSION['metadata'.$pid] = [];
+            $_SESSION['lastMetadata'.$pid] = 0;
+        }
 
 		self::$useAPIOnly[$token] = TRUE;
-		Application::log("Upload::metadata returning $output");
+		Application::log("Upload::metadata returning $output", $pid);
 		return $feedback;
 	}
 

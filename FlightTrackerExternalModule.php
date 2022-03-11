@@ -754,8 +754,16 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             if ($tokenName && $token && $server) {
                 # turn off for surveys and login pages
                 $url = $_SERVER['PHP_SELF'];
-                if (!preg_match("/surveys/", $url) && !isset($_GET['s'])) {
+                if (
+                    !preg_match("/surveys/", $url)
+                    && !isset($_GET['s'])
+                    && class_exists('\Vanderbilt\CareerDevLibrary\NavigationBar')
+                ) {
                     echo $this->makeHeaders($token, $server, $project_id, $tokenName);
+                }
+                if (preg_match("/online_designer\.php/", $url)) {
+                    $_SESSION['metadata'.$project_id] = [];
+                    $_SESSION['lastMetadata'.$project_id] = 0;
                 }
             } else {
                 if (self::canRedirectToInstall()) {

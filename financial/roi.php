@@ -158,7 +158,7 @@ function calculateROI(cohortOb, resultsOb, yearsToConvert) {
                 html += '<tr><td><h3>'+className+'</h3></td></tr>';
                 html += '<tr style=\"margin-bottom: 20px;\">';
                 // html += '<td><h4>Direct Dollars (X-Fold Increase)</h4><p class=\"centered smaller nomargin\">(Includes all grants with PI/Co-PI, including K grants.)</p><p class=\"centered\"><span class=\"finalNumber\">'+increaseDirect+'</span></p><p class=\"centered smaller\">'+textDirect+'</p></td>';
-                html += '<td><h4>X-Fold Increase in Dollars</h4><p class=\"centered smaller nomargin\">(Total dollars preferred source; if missing in data, use direct dollars. Includes all grants with PI/Co-PI, including K grants.)</p><p class=\"centered\"><span class=\"finalNumber\">'+increaseTotal+'</span></p><p class=\"centered smaller\">'+textTotal+'</p></td>';
+                html += '<td><h4>X-Fold Increase in Total Dollars</h4><p class=\"centered smaller nomargin\">(Total dollars preferred source; if missing in data, use direct dollars. Includes all grants with PI/Co-PI, including K grants.)</p><p class=\"centered\"><span class=\"finalNumber\">'+increaseTotal+'</span></p><p class=\"centered smaller\">'+textTotal+'</p></td>';
                 html += '</tr>';
             }
         }
