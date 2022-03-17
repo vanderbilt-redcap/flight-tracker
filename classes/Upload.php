@@ -132,8 +132,9 @@ class Upload
                 if (!preg_match("/_$/", $prefix)) {
                     $prefix .= "_";
                 }
-                $completeField = REDCapManagement::prefix2CompleteField($prefix);
+                $completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
                 if (!empty($instances)) {
+                    Application::log("Instances not empty", $pid);
                     for ($i = 0; $i < count($instances); $i += $batchSize) {
                         $batchInstances = [];
                         for ($j = $i; ($j < $i + $batchSize) && ($j < count($instances)); $j++) {

@@ -19,6 +19,20 @@ class Application {
         return (SUPER_USER || $isSuperUser);
     }
 
+    public static function getRelevantChoices() {
+        return CareerDev::getRelevantChoices();
+    }
+
+    public static function getMetadataFiles() {
+        $files = [
+            dirname(__FILE__)."/metadata.json",
+        ];
+        if (CareerDev::isVanderbilt()) {
+            $files[] = dirname(__FILE__)."/metadata.vanderbilt.json";
+        }
+        return $files;
+    }
+
 	public static function getPID($token) {
 		return CareerDev::getPID($token);
 	}

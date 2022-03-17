@@ -154,3 +154,25 @@ canvas.kaplanMeier { width: 800px !important; height: 600px !important; margin: 
 .alignLeft { text-align: left !important; }
 .predoc,.postdoc,.engaged { box-shadow: 0px 0px 6px 1px #444444 inset; padding: 3px 6px; cursor: pointer; font-size: 0.9em; }
 td.white,th.white { background-color: white; }
+
+
+/* adapted from https://www.sliderrevolution.com/resources/styling-radio-buttons/ */
+.switch { position: relative; padding: 0 1rem; }
+.switch.size2 { width: 13rem; }
+.switch.size2.short { position: relative; width: 8rem; }
+.switch.size4 { width: 26rem; }
+.switch:before { content: '  '; position: absolute; left: 0; z-index: -1; width: 100%; height: 1.5rem; background: rgba(229, 241, 213, 0.8); border: 1px solid #888888; border-radius: 20px; }
+.switch label { display: inline-block; width: 5.5rem; padding: 0.125rem 0.5rem; text-align: center; cursor: pointer; transition: color 400ms ease-out; }
+.switch.short label { width: 2.5rem; }
+.switch label:hover { color: #aaaaaa; }
+.switch__indicator { width: 2.25rem; height: 2.25rem; position: absolute; top: -.375rem; left: 0; background: #48489d; border-radius: 50%; transform: translate3d(1rem,0,0);
+	transition: transform 600ms cubic-bezier(.02,.94,.09,.97),
+	background 300ms cubic-bezier(.17,.67,.14,1.03);
+}
+.switch input.switch1[type=radio]:checked ~ .switch__indicator { background: #48489d; transform: translate3d(3.125rem,0,0); }
+.switch input.switch2[type=radio]:checked ~ .switch__indicator { background: #f0565d; transform: translate3d(9rem,0,0); }
+.switch input.switch3[type=radio]:checked ~ .switch__indicator { background: #8dc63f; transform: translate3d(14.75rem,0,0); }
+.switch input.switch4[type=radio]:checked ~ .switch__indicator { background: #f79721; transform: translate3d(20.5rem,0,0); }
+.switch.short input.switch1[type=radio]:checked ~ .switch__indicator { transform: translate3d(1.75rem,0,0); }
+.switch.short input.switch2[type=radio]:checked ~ .switch__indicator { transform: translate3d(4.25rem,0,0); }
+.switch input[type=radio]:not(:checked), .switch input[type=radio]:checked { display: none; }

@@ -179,7 +179,7 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 	$metadata = Download::metadata($token, $server);
 	$allFields = REDCapManagement::getFieldsFromMetadata($metadata);
 
-	$vfrsData = Download::records($vfrs_token, 'https://redcap.vanderbilt.edu/api/');
+	$vfrsData = Download::recordIds($vfrs_token, 'https://redcap.vanderbilt.edu/api/', "participant_id");
 
 	$prefix = "vfrs";
 	$names[$prefix] = array();

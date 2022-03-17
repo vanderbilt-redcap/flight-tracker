@@ -1344,24 +1344,20 @@ return $result;
             return $normativeRow['identifier_start_of_training'];
         }
 	    $earliestDateAtInstitution = "";
-	    $institutions = Application::getInstitutions($this->pid);
         foreach ($rows as $row) {
             if ($row['redcap_repeat_instrument'] == "position_change") {
                 $rowInstitution = trim($row['promotion_institution']);
                 $rowStartDate = $row['promotion_in_effect'];
-                if ($rowInstitution && $rowStartDate) {
-                    foreach ($institutions as $inst) {
-                        if (
-                            (strtolower($rowInstitution) == strtolower($inst))
-                            && (
-                                !$earliestDateAtInstitution
-                                || REDCapManagement::dateCompare($rowStartDate, "<", $earliestDateAtInstitution)
-                            )
-                        ) {
-                            $earliestDateAtInstitution = $rowStartDate;
-                            break;
-                        }
-                    }
+                if (
+                    $rowInstitution
+                    && $rowStartDate
+                    && $this->hasInstitution($rowInstitution)
+                    && (
+                        !$earliestDateAtInstitution
+                        || REDCapManagement::dateCompare($rowStartDate, "<", $earliestDateAtInstitution)
+                    )
+                ) {
+                    $earliestDateAtInstitution = $rowStartDate;
                 }
             }
         }
@@ -1449,35 +1445,25 @@ return $result;
             }
         }
 
-        $institutions = Application::getInstitutions($this->pid);
         $earliestPositionChangeDate = "";
         $earliestPositionChangeEntryDate = "";
         foreach ($rows as $row) {
             if ($row['redcap_repeat_instrument'] == "position_change") {
                 $rowInstitution = trim($row['promotion_institution']);
-                if ($rowInstitution && $row['promotion_in_effect']) {
-                    $found = FALSE;
-                    foreach ($institutions as $inst) {
-                        if (strtolower($rowInstitution) == strtolower($inst)) {
-                            $found = TRUE;
-                            break;
-                        }
-                    }
-                    if (!$found) {
-                        if (
-                                (
-                                    !$earliestPositionChangeDate
-                                    || REDCapManagement::dateCompare($row['promotion_in_effect'], "<", $earliestPositionChangeDate)
-                                )
-                                && (
-                                    !$startAtInstitutionDate
-                                    || REDCapManagement::dateCompare($row['promotion_in_effect'], ">", $startAtInstitutionDate)
-                                )
-                        ) {
-                                $earliestPositionChangeDate = $row['promotion_in_effect'];
-                                $earliestPositionChangeEntryDate = $row['promotion_date'];
-                       }
-                    }
+                if (
+                    $row['promotion_in_effect']
+                    && !$this->hasInstitution($rowInstitution)
+                    && (
+                        !$earliestPositionChangeDate
+                        || REDCapManagement::dateCompare($row['promotion_in_effect'], "<", $earliestPositionChangeDate)
+                    )
+                    && (
+                        !$startAtInstitutionDate
+                        || REDCapManagement::dateCompare($row['promotion_in_effect'], ">", $startAtInstitutionDate)
+                    )
+                ) {
+                    $earliestPositionChangeDate = $row['promotion_in_effect'];
+                    $earliestPositionChangeEntryDate = $row['promotion_date'];
                 }
             }
         }
@@ -1487,11 +1473,22 @@ return $result;
         }
 
         $today = date("Y-m-d");
-        if (REDCapManagement::dateCompare($today, "<=", "2022-03-01")) {
+        if (REDCapManagement::dateCompare($today, "<=", "2022-03-31")) {
             return new Result("", "");
         }
 		return new Result($normativeRow['identifier_left_date'], $normativeRow['identifier_left_date_source'], $normativeRow['identifier_left_date_sourcetype'], "", $this->pid);
 	}
+
+	private function hasInstitution($institutionToCheck) {
+        $institutions = Application::getInstitutions($this->pid);
+        foreach ($institutions as $inst) {
+            if (strtolower($institutionToCheck) == strtolower($inst)) {
+                return TRUE;
+                break;
+            }
+        }
+        return FALSE;
+    }
 
 	# key = instance; value = REDCap data row
 	private static function selectFollowupRows($rows) {

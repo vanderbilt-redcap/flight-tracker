@@ -1,5 +1,7 @@
 <?php
 
+define("NOAUTH", TRUE);      // for plugin
+
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 $records = $_POST['records'];

@@ -8,6 +8,16 @@ use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Consortium;
 use \Vanderbilt\CareerDevLibrary\Grant;
+use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
+
+if (!empty($_POST)) {
+    require_once(dirname(__FILE__)."/small_base.php");
+    require_once(dirname(__FILE__)."/classes/Autoload.php");
+    $switches = new FeatureSwitches($token, $server, $pid);
+    $data = $switches->savePost($_POST);
+    echo json_encode($data);
+    exit;
+}
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -91,7 +101,9 @@ $(document).ready(function() {
 
 <div style='float: left; width: 50%;'>
 <?php
-	echo "<table style='margin: 0px auto 0px auto; border-radius: 10px;' class='blue'>\n";
+    $switches = new FeatureSwitches($token, $server, $pid);
+
+	echo "<table style='margin: 0px auto 0px auto; border-radius: 10px; max-width: 90%;' class='blue'>\n";
 	$settings = \Vanderbilt\FlightTrackerExternalModule\getAllSettings();
 	if (empty($settings)) {
 		echo "<tr>\n";
@@ -151,36 +163,45 @@ $(document).ready(function() {
 		echo "</tr>\n";
 	}
 	echo "</table>\n";
-	echo $bottomPadding;
 
 ?>
+
+    <div style='margin: 25px 10px 0px 0px; padding: 4px 0;' class='blueBorder translucentBG'>
+        <h3><i class='fa fa-door-open'></i> Orientation</h3>
+        <p class='centered'><i class='fa fa-video'></i> <a href='<?= CareerDev::link("help/videos.php") ?>'>Training Videos</a></p>
+        <p class='centered'><a href='<?= CareerDev::link("help/why.php") ?>'>Why Use Flight Tracker?</a></p>
+        <p class='centered'><a href='<?= CareerDev::link("help/how.php") ?>'>How to Use Flight Tracker?</a></p>
+        <p class='centered'><a href='javascript:;' onclick='toggleHelp("<?= CareerDev::getHelpLink() ?>", "<?= CareerDev::getHelpHiderLink() ?>", "index.php");'>Enable Help on All Pages</a></p>
+        <p class='centered'><a href='https://github.com/vanderbilt-redcap/flight-tracker/releases'>Release Log</a> (<a href='https://github.com/scottjpearson/flight-tracker/releases'>Old Releases</a>)</p>
+        <h3><i class='fa fa-globe-americas'></i> Consortium</h3>
+        <p class='centered'><a href='<?= CareerDev::link("community.php") ?>'>About the Consortium</a></p>
+        <h4 class='nomargin'>Monthly Planning Meetings</h4>
+        <p class='centered' style='margin-top: 0px;'>Next meeting is on <?= Consortium::findNextMeeting() ?>, at 1pm CT (2pm ET, 11am PT). Email <a href='mailto:scott.j.pearson@vumc.org'>Scott Pearson</a> for an invitation. (<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'>View agenda</a>.)</p>
+    </div>
+
+    <?= $bottomPadding ?>
 </div>
 
 <div style='float: right;' class='centeredMinus50'>
-	<div class='blueBorder translucentBG'>
-		<h3><i class='fa fa-search'></i> Search</h3>
-		<form action='<?= CareerDev::link("search/index.php") ?>' method='POST'>
-			<p class='centered'><input type='text' name='q' id='q' value=''> <input type='submit' value='Search Grants'></p>
-		</form>
-	
-		<form action='<?= CareerDev::link("search/publications.php") ?>' method='POST'>
-			<p class='centered'><input type='text' name='q' id='q' value=''> <input type='submit' value='Search Publications'></p>
-		</form>
-	</div>
+    <div style='margin: 50px 0px 0px 0px; padding: 4px 0;' class='blueBorder translucentBG'>
+        <h3><i class='fa fa-toggle-on'></i> Features</h3>
+        <?= $switches->makeHTML() ?>
+        <h3><i class='fa fa-cogs'></i> Configurations</h3>
+        <p class="centered"><a href="<?= Application::link("config.php") ?>">Configure Application</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="<?= Application::link("config.php")."&order" ?>">Configure Summaries</a></p>
+    </div>
 
-	<div style='margin: 50px 0px 0px 0px; padding: 4px 0;' class='blueBorder translucentBG'>
-		<h3><i class='fa fa-door-open'></i> Orientation</h3>
-		<p class='centered'><i class='fa fa-video'></i> <a href='<?= CareerDev::link("help/videos.php") ?>'>Training Videos</a></p>
-		<p class='centered'><a href='<?= CareerDev::link("help/why.php") ?>'>Why Use Flight Tracker?</a></p>
-		<p class='centered'><a href='<?= CareerDev::link("help/how.php") ?>'>How to Use Flight Tracker?</a></p>
-		<p class='centered'><a href='javascript:;' onclick='toggleHelp("<?= CareerDev::getHelpLink() ?>", "<?= CareerDev::getHelpHiderLink() ?>", "index.php");'>Enable Help on All Pages</a></p>
-		<p class='centered'><a href='https://github.com/vanderbilt-redcap/flight-tracker/releases'>Release Log</a> (<a href='https://github.com/scottjpearson/flight-tracker/releases'>Old Releases</a>)</p>
-		<h3><i class='fa fa-globe-americas'></i> Consortium</h3>
-		<p class='centered'><a href='<?= CareerDev::link("community.php") ?>'>About the Consortium</a></p>
-		<h4 class='nomargin'>Monthly Planning Meetings</h4>
-		<p class='centered' style='margin-top: 0px;'>Next meeting is on <?= Consortium::findNextMeeting() ?>, at 1pm CT (2pm ET, 11am PT). Email <a href='mailto:scott.j.pearson@vumc.org'>Scott Pearson</a> for an invitation. (<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'>View agenda</a>.)</p>
-	</div>
-	<?= $bottomPadding ?>
+    <div class='blue' style="border-radius: 10px; max-width: 90%; margin: 25px auto 0 auto; padding: 8px;">
+        <h3 style="margin-top: 0;"><i class='fa fa-search'></i> Search</h3>
+        <form action='<?= CareerDev::link("search/index.php") ?>' method='POST'>
+            <p class='centered'><input type='text' name='q' id='q' value=''> <input type='submit' value='Search Grants'></p>
+        </form>
+
+        <form action='<?= CareerDev::link("search/publications.php") ?>' method='POST'>
+            <p class='centered'><input type='text' name='q' id='q' value=''> <input type='submit' value='Search Publications'></p>
+        </form>
+    </div>
+
+    <?= $bottomPadding ?>
 </div>
 
 

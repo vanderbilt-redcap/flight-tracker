@@ -9,6 +9,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\CronManager;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 # used every time that the summaries are recalculated 
 # 30 minute runtimes
@@ -76,9 +77,10 @@ function makeSummary($token, $server, $pid, $records, $runAllRecords = FALSE) {
 function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $errors = [];
     $returnREDCapData = [];
+    $forms = DataDictionaryManagement::getFormsFromMetadata($metadata);
 
     $time1 = microtime(TRUE);
-    $rows = Download::records($token, $server, array($recordId));
+    $rows = Download::records($token, $server, [$recordId]);
     $time2 = microtime(TRUE);
     // CareerDev::log("6d CareerDev downloading $recordId took ".($time2 - $time1));
     // echo "6d CareerDev downloading $recordId took ".($time2 - $time1)."\n";
@@ -107,15 +109,17 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $myErrors = Upload::isolateErrors($result);
     $errors = array_merge($errors, $myErrors);
 
-    $time1 = microtime(TRUE);
-    $pubs = new Publications($token, $server, $metadata);
-    $pubs->setRows($rows);
-    $result = $pubs->uploadSummary();
-    $time2 = microtime(TRUE);
-    // CareerDev::log("6d CareerDev processing publications $recordId took ".($time2 - $time1));
-    // echo "6d CareerDev processing publications $recordId took ".($time2 - $time1)."\n";
-    $myErrors = Upload::isolateErrors($result);
-    $errors = array_merge($errors, $myErrors);
+    if (in_array("citation", $forms)) {
+        $time1 = microtime(TRUE);
+        $pubs = new Publications($token, $server, $metadata);
+        $pubs->setRows($rows);
+        $result = $pubs->uploadSummary();
+        $time2 = microtime(TRUE);
+        // CareerDev::log("6d CareerDev processing publications $recordId took ".($time2 - $time1));
+        // echo "6d CareerDev processing publications $recordId took ".($time2 - $time1)."\n";
+        $myErrors = Upload::isolateErrors($result);
+        $errors = array_merge($errors, $myErrors);
+    }
 
     if (!empty($errors)) {
         throw new \Exception("Errors in record $recordId!\n".implode("\n", $errors));

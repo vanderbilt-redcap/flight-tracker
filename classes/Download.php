@@ -780,14 +780,14 @@ class Download {
         return $ary;
     }
 
-    private static function dataForOneField($token, $server, $field) {
+    private static function dataForOneField($token, $server, $field, $recordIdField = "record_id") {
         $data = [
             'token' => $token,
             'content' => 'record',
             'format' => 'json',
             'type' => 'flat',
             'rawOrLabel' => 'raw',
-            'fields' => ["record_id", $field],
+            'fields' => [$recordIdField, $field],
             'rawOrLabelHeaders' => 'raw',
             'exportCheckboxLabel' => 'false',
             'exportSurveyFields' => 'false',
@@ -811,11 +811,11 @@ class Download {
         return $ary;
     }
 
-	public static function oneField($token, $server, $field) {
-	    $redcapData = self::dataForOneField($token, $server, $field);
+	public static function oneField($token, $server, $field, $recordIdField = "record_id") {
+	    $redcapData = self::dataForOneField($token, $server, $field, $recordIdField);
 		$ary = [];
 		foreach ($redcapData as $row) {
-			$ary[$row['record_id']] = $row[$field] ?? "";
+			$ary[$row[$recordIdField]] = $row[$field] ?? "";
 		}
 		return $ary;
 	}
@@ -848,7 +848,7 @@ class Download {
 		return $names;
 	}
 
-	public static function recordIds($token, $server) {
+	public static function recordIds($token, $server, $recordIdField = "record_id") {
 		if (isset($_GET['test'])) {
             Application::log("Download::recordIds");
         }
@@ -858,7 +858,7 @@ class Download {
 			'format' => 'json',
 			'type' => 'flat',
 			'rawOrLabel' => 'raw',
-			'fields' => array("record_id"),
+			'fields' => [$recordIdField],
 			'rawOrLabelHeaders' => 'raw',
 			'exportCheckboxLabel' => 'false',
 			'exportSurveyFields' => 'false',
@@ -868,8 +868,8 @@ class Download {
 		$redcapData = self::sendToServer($server, $data);
 		$records = array();
 		foreach ($redcapData as $row) {
-		    if (!in_array($row['record_id'], $records)) {
-                $records[] = $row['record_id'];
+		    if (!in_array($row[$recordIdField], $records)) {
+                $records[] = $row[$recordIdField];
             }
 		}
 		return $records;

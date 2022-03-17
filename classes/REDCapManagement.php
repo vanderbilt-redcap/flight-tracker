@@ -6,22 +6,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class REDCapManagement {
 	public static function getChoices($metadata) {
-		$choicesStrs = array();
-		$multis = array("checkbox", "dropdown", "radio");
-		foreach ($metadata as $row) {
-			if (in_array($row['field_type'], $multis) && $row['select_choices_or_calculations']) {
-				$choicesStrs[$row['field_name']] = $row['select_choices_or_calculations'];
-			} else if ($row['field_type'] == "yesno") {
-				$choicesStrs[$row['field_name']] = "0,No|1,Yes";
-			} else if ($row['field_type'] == "truefalse") {
-				$choicesStrs[$row['field_name']] = "0,False|1,True";
-			}
-		}
-		$choices = array();
-		foreach ($choicesStrs as $fieldName => $choicesStr) {
-		    $choices[$fieldName] = self::getRowChoices($choicesStr);
-		}
-		return $choices;
+	    return DataDictionaryManagement::getChoices($metadata);
 	}
 
 	public static function isWebBrowser() {
@@ -29,14 +14,23 @@ class REDCapManagement {
     }
 
     public static function getFormsFromMetadata($metadata) {
-	    $forms = [];
-	    foreach ($metadata as $row) {
-	        $formName = $row['form_name'];
-	        if (!in_array($formName, $forms)) {
-	            $forms[] = $formName;
-            }
+	    return DataDictionaryManagement::getFormsFromMetadata($metadata);
+    }
+
+    public static function getWeekNumInYear($ts = FALSE) {
+	    if (!$ts) {
+	        $ts = time();
         }
-	    return $forms;
+	    $dayOfYear = date("z", $ts);
+        return floor(($dayOfYear - 1) / 7) + 1;
+    }
+
+    public static function getWeekNumInMonth($ts = FALSE) {
+	    if (!$ts) {
+	        $ts = time();
+        }
+	    $dayOfMonth = date("j", $ts);
+	    return floor(($dayOfMonth - 1) / 7) + 1;
     }
 
     public static function makeSafeFilename($filename) {
@@ -76,50 +70,15 @@ class REDCapManagement {
     }
 
 	public static function getRowChoices($choicesStr) {
-        $choicePairs = preg_split("/\s*\|\s*/", $choicesStr);
-        $choices = array();
-        foreach ($choicePairs as $pair) {
-            $a = preg_split("/\s*,\s*/", $pair);
-            if (count($a) == 2) {
-                $choices[$a[0]] = $a[1];
-            } else if (count($a) > 2) {
-                $a = preg_split("/,/", $pair);
-                $b = array();
-                for ($i = 1; $i < count($a); $i++) {
-                    $b[] = $a[$i];
-                }
-                $choices[trim($a[0])] = trim(implode(",", $b));
-            }
-        }
-        return $choices;
+	    return DataDictionaryManagement::getRowChoices($choicesStr);
     }
 
     public static function getRepeatingForms($pid) {
-		if (!function_exists("db_query")) {
-			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-		}
-
-		$sql = "SELECT DISTINCT(r.form_name) AS form_name FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) INNER JOIN redcap_events_repeat AS r ON (m.event_id = r.event_id) WHERE a.project_id = '$pid'";
-		$q = db_query($sql);
-		if ($error = db_error()) {
-			Application::log("ERROR: ".$error);
-			throw new \Exception("ERROR: ".$error);
-		}
-		$repeatingForms = array();
-		while ($row = db_fetch_assoc($q)) {
-			array_push($repeatingForms, $row['form_name']);
-		}
-		return $repeatingForms;
+	    return DataDictionaryManagement::getRepeatingForms($pid);
 	}
 
 	public static function filterMetadataForForm($metadata, $instrument) {
-	    $filteredMetadata = [];
-	    foreach ($metadata as $row) {
-	        if ($row['form_name'] == $instrument) {
-	            $filteredMetadata[] = $row;
-            }
-        }
-	    return $filteredMetadata;
+	    return DataDictionaryManagement::filterMetadataForForm($metadata, $instrument);
     }
 
     public static function getAllGrantFields($metadata) {
@@ -186,36 +145,7 @@ class REDCapManagement {
     }
 
 	public static function getSurveys($pid, $metadata = []) {
-		if (!function_exists("db_query")) {
-			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-		}
-
-		$sql = "SELECT form_name, title FROM redcap_surveys WHERE project_id = '".$pid."'";
-		$q = db_query($sql);
-		if ($error = db_error()) {
-			Application::log("ERROR: ".$error);
-			throw new \Exception("ERROR: ".$error);
-		}
-
-		if (!empty($metadata)) {
-		    $instrumentNames = REDCapManagement::getFormsFromMetadata($metadata);
-		    $currentInstruments = [];
-		    foreach ($instrumentNames as $instrumentName) {
-		        $currentInstruments[$instrumentName] = self::translateFormToName($instrumentName);
-            }
-        } else {
-            $currentInstruments = \REDCap::getInstrumentNames();
-        }
-
-		$forms = array();
-		while ($row = db_fetch_assoc($q)) {
-			# filter out surveys which aren't live
-			if (isset($currentInstruments[$row['form_name']])) {
-				$forms[$row['form_name']] = $row['title'];
-			}
-		}
-
-        return $forms;
+	    return DataDictionaryManagement::getSurveys($pid, $metadata);
 	}
 
 	public static function getReporterDateInYMD($dt) {
@@ -353,20 +283,11 @@ class REDCapManagement {
     }
 
     public static function translateFormToName($instrument) {
-	    $instrument = str_replace("_", " ", $instrument);
-	    $instrument = ucwords($instrument);
-	    return $instrument;
+	    return DataDictionaryManagement::translateFormToName($instrument);
     }
 
     public static function transformFieldsIntoPrefixes($fields) {
-	    $prefixes = [];
-	    foreach ($fields as $field) {
-	        $prefix = self::getPrefix($field);
-	        if (!in_array($prefix, $prefixes)) {
-	            $prefixes[] = $prefix;
-            }
-        }
-	    return $prefixes;
+	    return DataDictionaryManagement::transformFieldsIntoPrefixes($fields);
     }
 
     public static function isMY($str) {
@@ -410,11 +331,7 @@ class REDCapManagement {
     }
 
     public static function getPrefix($field) {
-        $nodes = preg_split("/_/", $field);
-        if ($nodes[0] == "newman") {
-            return $nodes[0]."_".$nodes[1];
-        }
-	    return $nodes[0];
+	    return DataDictionaryManagement::getPrefix($field);
     }
 
     public static function getInstances($rows, $instrument, $recordId) {
@@ -470,12 +387,7 @@ class REDCapManagement {
     }
 
     public static function getRowForFieldFromMetadata($field, $metadata) {
-	    foreach ($metadata as $row) {
-	        if ($row['field_name'] == $field) {
-	            return $row;
-            }
-        }
-	    return array();
+	    return DataDictionaryManagement::getRowForFieldFromMetadata($field, $metadata);
     }
 
     public static function getYear($date) {
@@ -518,13 +430,7 @@ class REDCapManagement {
     }
 
 	public static function getRowsForFieldsFromMetadata($fields, $metadata) {
-		$selectedRows = array();
-		foreach ($metadata as $row) {
-			if (in_array($row['field_name'], $fields)) {
-				array_push($selectedRows, $row);
-			}
-		}
-		return $selectedRows;
+	    return DataDictionaryManagement::getRowsForFieldsFromMetadata($fields, $metadata);
 	}
 
 	public static function isValidChoice($value, $fieldChoices) {
@@ -549,32 +455,11 @@ class REDCapManagement {
     }
 
 	public static function getFieldsFromMetadata($metadata, $instrument = FALSE) {
-		$fields = array();
-		foreach ($metadata as $row) {
-		    if ($instrument) {
-		        if ($instrument == $row['form_name']) {
-                    array_push($fields, $row['field_name']);
-                }
-            } else {
-                array_push($fields, $row['field_name']);
-            }
-		}
-		return $fields;
+	    return DataDictionaryManagement::getFieldsFromMetadata($metadata, $instrument);
 	}
 
 	public static function getFieldsWithRegEx($metadata, $re, $removeRegex = FALSE) {
-		$fields = array();
-		foreach ($metadata as $row) {
-			if (preg_match($re, $row['field_name'])) {
-				if ($removeRegex) {
-					$field = preg_replace($re, "", $row['field_name']);
-				} else {
-					$field = $row['field_name'];
-				}
-				array_push($fields, $field);
-			}
-		}
-		return $fields;
+        return DataDictionaryManagement::getFieldsWithRegEx($metadata, $re, $removeRegex);
 	}
 
 	public static function REDCapTsToPHPTs($redcapTs) {
@@ -766,15 +651,7 @@ class REDCapManagement {
     }
 
     public static function getFieldsOfType($metadata, $fieldType, $validationType = "") {
-        $fields = array();
-        foreach ($metadata as $row) {
-            if ($row['field_type'] == $fieldType) {
-                if (!$validationType || ($validationType == $row['text_validation_type_or_show_slider_number'])) {
-                    array_push($fields, $row['field_name']);
-                }
-            }
-        }
-        return $fields;
+	    return DataDictionaryManagement::getFieldsOfType($metadata, $fieldType, $validationType);
     }
 
 	public static function downloadURL($url, $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
@@ -786,7 +663,7 @@ class REDCapManagement {
     }
 
     public static function getMetadataFieldsToScreen() {
-		return ["required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation", "text_validation_type_or_show_slider_number", "select_choices_or_calculations"];
+	    return DataDictionaryManagement::getMetadataFieldsToScreen();
 	}
 
 	public static function findInData($data, $fields) {
@@ -1347,86 +1224,14 @@ class REDCapManagement {
 
     # returns TRUE if and only if fields in $newMetadata after $priorField are fields in $newRows
     private static function atEndOfMetadata($priorField, $newRows, $newMetadata) {
-	    $newFields = [];
-	    foreach ($newRows as $row) {
-	        $newFields[] = $row['field_name'];
-        }
-
-	    $found = FALSE;
-	    foreach ($newMetadata as $row) {
-            if ($found) {
-                if (!in_array($row['field_name'], $newFields)) {
-                    return FALSE;
-                }
-	        } else if ($priorField == $row['field_name']) {
-	            $found = TRUE;
-            }
-        }
-	    return TRUE;
+	    return DataDictionaryManagement::atEndOfMetadata($priorField, $newRows, $newMetadata);
     }
 
 	# if present, $fields contains the fields to copy over; if left as an empty array, then it attempts to install all fields
 	# $deletionRegEx contains the regular expression that marks fields for deletion
 	# places new metadata rows AFTER last match from $existingMetadata
 	public static function mergeMetadataAndUpload($originalMetadata, $newMetadata, $token, $server, $fields = array(), $deletionRegEx = "/___delete$/") {
-		$fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx, TRUE);
-		$existingMetadata = $originalMetadata;
-
-		# TODO
-		# delete rows/fields
-        # update fields
-        # add in new fields with existing forms
-        # add in new forms
-
-		if (empty($fields)) {
-			$selectedRows = $newMetadata;
-		} else {
-			$selectedRows = self::getRowsForFieldsFromMetadata($fields, $newMetadata);
-		}
-		foreach ($selectedRows as $newRow) {
-			if (!in_array($newRow['field_name'], $fieldsToDelete)) {
-				$priorRowField = end($existingMetadata)['field_name'];
-				foreach ($newMetadata as $row) {
-					if ($row['field_name'] == $newRow['field_name']) {
-						break;
-					} else {
-						$priorRowField = $row['field_name'];
-					}
-				}
-				# no longer needed because now allow to finish current form
-				// if (self::atEndOfMetadata($priorRowField, $selectedRows, $newMetadata)) {
-                    // $priorRowField = end($originalMetadata)['field_name'];
-                // }
-                $tempMetadata = [];
-                $priorNewRowField = "";
-                for ($i = 0; $i < count($existingMetadata); $i++) {
-                    $row = $existingMetadata[$i];
-                    if (!preg_match($deletionRegEx, $row['field_name']) && !in_array($row['field_name'], $fieldsToDelete)) {
-                        if ($priorNewRowField != $row['field_name']) {
-                            $tempMetadata[] = $row;
-                        }
-                    }
-                    if (($priorRowField == $row['field_name']) && !preg_match($deletionRegEx, $newRow['field_name'])) {
-                        $newRow = self::copyMetadataSettingsForField($newRow, $newMetadata, $upload, $token, $server);
-
-                        if ($row['form_name'] != $newRow['form_name']) {
-                            # finish current form
-                            while (($i+1 < count($existingMetadata)) && ($existingMetadata[$i+1]['form_name'] == $existingMetadata[$i]['form_name'])) {
-                                $i++;
-                                $tempMetadata[] = $existingMetadata[$i];
-                            }
-                        }
-                        # delete already existing rows with same field_name
-                        self::deleteRowsWithFieldName($tempMetadata, $newRow['field_name']);
-                        $tempMetadata[] = $newRow;
-                        $priorNewRowField = $newRow['field_name'];
-                    }
-                }
-                $existingMetadata = $tempMetadata;
-			}
-		}
-        $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
-        return $metadataFeedback;
+		return DataDictionaryManagement::mergeMetadataAndUpload($originalMetadata, $newMetadata, $token, $server, $fields, $deletionRegEx);
 	}
 
     /**
@@ -1458,16 +1263,6 @@ class REDCapManagement {
 	    return TRUE;
     }
 
-	private static function deleteRowsWithFieldName(&$metadata, $fieldName) {
-		$newMetadata = array();
-		foreach ($metadata as $row) {
-			if ($row['field_name'] != $fieldName) {
-				array_push($newMetadata, $row);
-			}
-		}
-		$metadata = $newMetadata;
-	}
-
 	public static function isJSON($str) {
         if (json_decode($str)) {
             return TRUE;
@@ -1485,70 +1280,7 @@ class REDCapManagement {
     }
 
     public static function copyMetadataSettingsForField($row, $metadata, &$upload, $token, $server) {
-        foreach ($metadata as $metadataRow) {
-            if ($metadataRow['field_name'] == $row['field_name']) {
-                # do not overwrite any settings in associative arrays
-                foreach (self::getMetadataFieldsToScreen() as $rowSetting) {
-                    if ($rowSetting == "select_choices_or_calculations") {
-                        // merge
-                        $rowChoices = self::getRowChoices($row[$rowSetting]);
-                        $metadataChoices = self::getRowChoices($metadataRow[$rowSetting]);
-                        $mergedChoices = $rowChoices;
-                        foreach ($metadataChoices as $idx => $label) {
-                            if (!isset($mergedChoices[$idx])) {
-                                $mergedChoices[$idx] = $label;
-                            } else if (isset($mergedChoices[$idx]) && ($mergedChoices[$idx] == $label)) {
-                                # both have same idx/label - no big deal
-                            } else {
-                                # merge conflict => reassign all data values
-                                $field = $row['field_name'];
-                                $oldIdx = $idx;
-
-                                $numericMergedChoicesKeys = [];
-                                foreach (array_keys($mergedChoices) as $key) {
-                                    if (is_numeric($key)) {
-                                        $numericMergedChoicesKeys[] = $key;
-                                    }
-                                }
-
-                                if (!empty($numericMergedChoicesKeys)) {
-                                    $newIdx = max($numericMergedChoicesKeys) + 1;
-                                } else {
-                                    $newIdx = 1;
-                                }
-                                Application::log("Merge conflict for field $field: Moving $oldIdx to $newIdx ($label)");
-
-                                $mergedChoices[$newIdx] = $label;
-                                $values = Download::oneField($token, $server, $field);
-                                $newRows = 0;
-                                foreach ($values as $recordId => $value) {
-                                    if ($value == $oldIdx) {
-                                        if (isset($upload[$recordId])) {
-                                            $upload[$recordId][$field] = $newIdx;
-                                        } else {
-                                            $upload[$recordId] = array("record_id" => $recordId, $field => $newIdx);
-                                        }
-                                        $newRows++;
-                                    }
-                                }
-                                Application::log("Uploading data $newRows rows for field $field");
-                            }
-                        }
-                        $pairedChoices = array();
-                        foreach ($mergedChoices as $idx => $label) {
-                            array_push($pairedChoices, "$idx, $label");
-                        }
-                        $row[$rowSetting] = implode(" | ", $pairedChoices);
-                    } else if ($row[$rowSetting] != $metadataRow[$rowSetting]) {
-                        if (!self::isJSON($row[$rowSetting]) || ($rowSetting != "field_annotation")) {
-                            $row[$rowSetting] = $metadataRow[$rowSetting];
-                        }
-                    }
-                }
-                break;
-            }
-        }
-        return $row;
+        return DataDictionaryManagement::copyMetadataSettingsForField($row, $metadata, $upload, $token, $server);
     }
 
     public static function isOracleDate($d) {
@@ -1628,23 +1360,8 @@ class REDCapManagement {
     }
 
     public static function allFieldsValid($row, $metadataFields) {
-        $skip = ["/^redcap_repeat_instrument$/", "/^redcap_repeat_instance$/", "/_complete$/"];
-        foreach ($row as $field => $value) {
-            $found = FALSE;
-            foreach ($skip as $regex) {
-                if (preg_match($regex, $field)) {
-                    $found = TRUE;
-                    break;
-                }
-            }
-            if (!$found && !in_array($field, $metadataFields)) {
-                return FALSE;
-            }
-        }
-        return TRUE;
+        return DataDictionaryManagement::allFieldsValid($row, $metadataFields);
     }
-
-
 
     public static function getNextRecord($record, $token, $server) {
         $records = Download::recordIds($token, $server);
@@ -1793,11 +1510,7 @@ class REDCapManagement {
     }
 
 	public static function getLabels($metadata) {
-		$labels = array();
-		foreach ($metadata as $row) {
-			$labels[$row['field_name']] = $row['field_label'];
-		}
-		return $labels;
+        return DataDictionaryManagement::getLabels($metadata);
 	}
 
 	public static function YMD2MY($ymd) {
@@ -1845,17 +1558,7 @@ class REDCapManagement {
     }
 
     public static function prefix2CompleteField($prefix) {
-	    $prefix = preg_replace("/_$/", "", $prefix);
-        if ($prefix == "promotion") {
-            return "position_change_complete";
-        } else if ($prefix == "check") {
-            return "initial_survey_complete";
-        } else if ($prefix == "custom") {
-            return "custom_grant_complete";
-        } else if ($prefix == "imported_degree") {
-            return "manual_degree_complete";
-        }
-        return "";
+        return DataDictionaryManagement::prefix2CompleteField($prefix);
     }
 
     public static function filterForREDCap($row, $metadataFields) {
@@ -1884,23 +1587,11 @@ class REDCapManagement {
     }
 
 	public static function indexMetadata($metadata) {
-	    $indexed = [];
-	    foreach ($metadata as $row) {
-	        $indexed[$row['field_name']] = $row;
-        }
-	    return $indexed;
+        return DataDictionaryManagement::indexMetadata($metadata);
     }
 
 	public static function hasMetadataChanged($oldValue, $newValue, $metadataField) {
-	    if ($metadataField == "field_annotation" && self::isJSON($oldValue)) {
-	        return FALSE;
-        }
-	    $oldValue = trim($oldValue);
-	    $newValue = trim($newValue);
-	    if (isset($oldValue) && isset($newValue) && ($oldValue != $newValue)) {
-            return TRUE;
-        }
-        return FALSE;
+        return DataDictionaryManagement::hasMetadataChanged($oldValue, $newValue, $metadataField);
     }
 
     public static function makeHiddenInputs($params) {
@@ -1934,14 +1625,7 @@ class REDCapManagement {
     }
 
     public static function screenForFields($metadata, $possibleFields) {
-        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-        $fields = ["record_id"];
-        foreach ($possibleFields as $field) {
-            if (in_array($field, $metadataFields)) {
-                $fields[] = $field;
-            }
-        }
-        return $fields;
+        return DataDictionaryManagement::screenForFields($metadata, $possibleFields);
     }
 
     public static function dedup1DArray($ary) {
@@ -1968,31 +1652,11 @@ class REDCapManagement {
     }
 
     public static function getFieldsUnderSection($metadata, $sectionHeader) {
-        $fields = [];
-        $inHeader = FALSE;
-        foreach ($metadata as $row) {
-            if ($row['section_header'] == $sectionHeader) {
-                $inHeader = TRUE;
-            }
-            if ($inHeader) {
-                $fields[] = $row['field_name'];
-            }
-            if ($inHeader && $row['section_header'] && ($row['section_header'] != $sectionHeader)) {
-                $inHeader = FALSE;
-            }
-        }
-        return $fields;
+        return DataDictionaryManagement::getFieldsUnderSection($metadata, $sectionHeader);
     }
 
     public static function setupRepeatingForms($eventId, $formsAndLabels) {
-		$sqlEntries = array();
-		foreach ($formsAndLabels as $form => $label) {
-			array_push($sqlEntries, "($eventId, '".db_real_escape_string($form)."', '".db_real_escape_string($label)."')");
-		}
-		if (!empty($sqlEntries)) {
-			$sql = "REPLACE INTO redcap_events_repeat (event_id, form_name, custom_repeat_form_label) VALUES".implode(",", $sqlEntries);
-			db_query($sql);
-		}
+        return DataDictionaryManagement::setupRepeatingForms($eventId, $formsAndLabels);
 	}
 
 	public static function getEventIdForClassical($projectId) {
@@ -2097,13 +1761,7 @@ class REDCapManagement {
     }
 
     public static function isMetadataFilled($metadata) {
-        if (count($metadata) < 10) {
-            return FALSE;
-        }
-        if ($metadata[0]['field_name'] != "record_id") {
-            return FALSE;
-        }
-        return TRUE;
+        return DataDictionaryManagement::isMetadataFilled($metadata);
     }
 
     public static function isValidSupertoken($supertoken) {
@@ -2149,7 +1807,7 @@ class REDCapManagement {
     }
 
     public static function isCompletionField($field) {
-        return preg_match("/_complete$/", $field);
+        return DataDictionaryManagement::isCompletionField($field);
     }
 
 	public static function isActiveProject($pid) {

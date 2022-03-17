@@ -4,6 +4,7 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 
 use ExternalModules\ExternalModules;
 use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\WebOfScience;
@@ -13,7 +14,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.4.0";
+		return "4.5.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -777,38 +778,7 @@ class CareerDev {
 	}
 
 	public static function getRepeatingFormsAndLabels($metadata = []) {
-        $formsAndLabels = [
-            "custom_grant" => "[custom_number]",
-            "followup" => "",
-            "position_change" => "",
-            "reporter" => "[reporter_projectnumber]",
-            "exporter" => "[exporter_full_project_num]",
-            "citation" => "[citation_pmid] [citation_title]",
-            "resources" => "[resources_resource]: [resources_date]",
-            "honors_and_awards" => "[honor_name]: [honor_date]",
-            "manual_degree" => "[imported_degree]",
-            "nih_reporter" => "[nih_project_num]",
-            "patent" => "[patent_number] [patent_title]",
-        ];
-
-        if (empty($metadata)) {
-            $pid = self::getPid();
-            $token = self::getSetting("token", $pid);
-            $server = self::getSetting("server", $pid);
-            $metadata = Download::metadata($token, $server);
-        }
-        if (count(Application::getPatentFields($metadata)) > 1) {
-            $formsAndLabels["patent"] = "[patent_number]";
-        }
-
-        if (self::isVanderbilt()) {
-            $formsAndLabels["ldap"] = "[ldap_vanderbiltpersonjobname]";
-            $formsAndLabels["coeus2"] = "[coeus2_award_status]: [coeus2_agency_grant_number]";
-            $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
-            $formsAndLabels["coeus_submission"] = "[coeussubmission_proposal_status]: [coeussubmission_sponsor_proposal_number]";
-        }
-
-        return $formsAndLabels;
+	    return DataDictionaryManagement::getRepeatingFormsAndLabels($metadata);
     }
 
     public static function getRelevantChoices() {
@@ -962,6 +932,9 @@ class CareerDev {
             $ary["Who Has Responded to Surveys?"] = self::link("/emailMgmt/surveySubmissions.php");
             $ary["Import General Data"] = self::link("/import.php");
             $ary["Import Positions"] = self::link("/bulkImport.php") . "&positions";
+            if (self::isVanderbilt() && ($pid == 145767)) {
+                $ary["LDAP Lookup"] = "https://redcap.vanderbilt.edu/plugins/career_dev/LDAP/ldapLookup.php";
+            }
 
             return $ary;
         }
