@@ -760,11 +760,11 @@ function makeLink($row) {
 	return Links::makeSummaryLink($pid, $recordId, $event_id, "Record $recordId: $name")." <span style='font-size: 12px;'>Age at first CDA: $age</span>";
 }
 
-$noDate = array();
-$processed = array();
+$noDate = [];
+$processed = [];
 foreach($redcapData as $recordId => $rows) {
 	foreach ($rows as $row) {
-		$categories = array(0);
+		$categories = [0];
 		if ($row['summary_award_date_1']) {
 			$cohorts = \Vanderbilt\FlightTrackerExternalModule\getCohorts($row);
 			if (in_array("1998-2002", $cohorts)) {
@@ -779,9 +779,9 @@ foreach($redcapData as $recordId => $rows) {
 			if (in_array("2013-2017", $cohorts)) {
 				$categories[] = 4;
 			}
-			if (in_array("KL2s + Int_Ks", $cohorts)) {
-				$categories[] = 5;
-			}
+			// if (in_array("KL2s + Int_Ks", $cohorts)) {
+				// $categories[] = 5;
+			// }
 		}
 		if ($row['redcap_repeat_instrument'] == "") {
 		    $link = makeLink($row);
@@ -832,8 +832,10 @@ foreach($redcapData as $recordId => $rows) {
                                     if (!isset($tableData[$tableRow]["TOTAL"][$cat])) {
                                         $tableData[$tableRow]["TOTAL"][$cat] = 0;
                                     }
-									$tableData[$tableRow][$value][$cat]++;
-									$tableData[$tableRow]["TOTAL"][$cat]++;
+                                    $previousCatAmount = (int) $tableData[$tableRow][$value][$cat];
+                                    $previousTotal = (int) $tableData[$tableRow]["TOTAL"][$cat];
+                                    $tableData[$tableRow][$value][$cat] = $previousCatAmount + 1;
+									$tableData[$tableRow]["TOTAL"][$cat] = $previousTotal + 1;
 								}
 							}
 						}
@@ -851,8 +853,10 @@ foreach($redcapData as $recordId => $rows) {
                             if (!isset($tableData[$tableRow]["TOTAL"][$cat])) {
                                 $tableData[$tableRow]["TOTAL"][$cat] = 0;
                             }
-							$tableData[$tableRow][$row[$tableRow]][$cat]++;
-							$tableData[$tableRow]["TOTAL"][$cat]++;
+                            $previousCatAmount = (int) $tableData[$tableRow][$row[$tableRow]][$cat];
+                            $previousTotal = (int) $tableData[$tableRow]["TOTAL"][$cat];
+                            $tableData[$tableRow][$row[$tableRow]][$cat] = $previousCatAmount + 1;
+                            $tableData[$tableRow]["TOTAL"][$cat] = $previousTotal + 1;
 						}
 					}
 				}
@@ -1020,11 +1024,12 @@ foreach ($tableData as $tableRow => $ary) {
 							$total[$i] = 0;
 							foreach ($headerInfo[$tableRow] as $value2 => $choiceLabel2) {
 								if (preg_match($value, $choiceLabel2)) {
-									$total[$i] += $ary[$value2][$i];
+									$total[$i] += (int) $ary[$value2][$i];
 								}
 							}
 							if ($total[$i] > 0) {
-								$cats[$i] = (floor(1000 * $total[$i] / $ary['TOTAL'][$i]) / 10)."%<br><span class='smallfont'>({$total[$i]})</span>";
+							    $denom = (int) $ary['TOTAL'][$i];
+								$cats[$i] = ($denom > 0) ? (floor(1000 * $total[$i] / $denom) / 10)."%<br><span class='smallfont'>({$total[$i]})</span>" : "NaN";
 							} else {
 								$cats[$i] = "0%<br><span class='smallfont'>({$total[$i]})</span>";
 							}

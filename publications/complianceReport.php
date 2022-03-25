@@ -421,6 +421,11 @@ foreach ($recordsForPage as $recordId) {
                     $pmidWithLink = Links::makeLink($pmidUrl, "PMID " . $pmid, TRUE);
                     $titleWithLink = Links::makePublicationsLink($pid, $recordId, $event_id, $title, $instance, TRUE);
                     $nihms = $translator[$pmid] ?? "";
+                } else {
+                    $pmcidWithLink = "";
+                    $pmidWithLink = "";
+                    $nihms = "";
+                    $titleWithLink = "";
                 }
                 if ($pmcid) {
                     $pubClass = "green";
@@ -475,7 +480,8 @@ foreach ($recordsForPage as $recordId) {
                     echo "<td>";
                     echo "<input type='checkbox' id='check_$id' />";
                     echo "<input type='hidden' id='citation_$id' value='" . addslashes($citation->getCitation()) . "' />";
-                    echo "<input type='hidden' id='date_$id' value='" . date("Y-m-d", $citation->getTimestamp()) . "' />";
+                    $citationDate = $citation->getTimestamp() ? date("Y-m-d", $citation->getTimestamp()) : "";
+                    echo "<input type='hidden' id='date_$id' value='$citationDate' />";
                     echo "</td>";
                     if ($isFirst) {
                         echo "<td rowspan='$numProblemRowsForRecord' style='vertical-align: middle;'><button onclick='composeComplianceEmail(\"$recordId\"); return false;'>Compose Email</button></td>";

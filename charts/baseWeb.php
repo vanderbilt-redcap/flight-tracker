@@ -22,6 +22,7 @@ $server = CareerDev::getSetting("server", $pid);
 $event_id = CareerDev::getSetting("event_id", $pid);
 $tokenName = CareerDev::getSetting("tokenName", $pid);
 $adminEmail = CareerDev::getSetting("admin_email", $pid);
+$eventId = $event_id;
 
 $oneFieldAry = Download::arraysOfFields($token, $server, ["identifier_last_name", "identifier_first_name"]);
 $lastNames = $oneFieldAry["identifier_last_name"];

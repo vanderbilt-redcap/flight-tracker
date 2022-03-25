@@ -634,7 +634,7 @@ class EmailManager {
 					$surveyLink = $surveyLinks[$formName][$recordId];
 				}
 
-				$mssgs[$recordId] = str_replace("[survey_link_".$formName."]", $surveyLink, $mssgs[$recordId]);
+				$mssgs[$recordId] = str_replace("[survey_link_".$formName."]", Links::makeLink($surveyLink, $surveyLink), $mssgs[$recordId]);
 			}
             if (preg_match("/\[name\]/", $mssgs[$recordId])) {
                 if ($names[$recordId]) {
@@ -642,7 +642,8 @@ class EmailManager {
                 }
             }
             if (preg_match("/\[mentoring_agreement\]/", $mssgs[$recordId])) {
-                $mssgs[$recordId] = str_replace("[mentoring_agreement]", Application::getMenteeAgreementLink(), $mssgs[$recordId]);
+                $menteeLink = Application::getMenteeAgreementLink();
+                $mssgs[$recordId] = str_replace("[mentoring_agreement]", Links::makeLink($menteeLink, $menteeLink), $mssgs[$recordId]);
             }
             if (preg_match("/\[last_name\]/", $mssgs[$recordId])) {
                 if ($lastNames[$recordId]) {

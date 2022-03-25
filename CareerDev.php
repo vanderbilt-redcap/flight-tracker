@@ -14,7 +14,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.5.0";
+		return "4.6.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -1002,7 +1002,8 @@ class CareerDev {
 		}
 		if ($menuName == "Resources") {
 			return [
-					"Participation Roster" => self::link("/resources/add.php"),
+                    "Participation Roster" => self::link("/resources/add.php"),
+                    "Participation Roster for All Projects" => self::link("/resources/add.php")."&allPids",
 					"Manage" => self::link("/resources/manage.php"),
 					"Dashboard Metrics" => self::link("/dashboard/resources.php"),
                     "Measure Resource ROI" => self::link("/resources/roi.php"),
@@ -1513,7 +1514,6 @@ class CareerDev {
 						"check_residency5_institution",
 						"check_residency5_country",
 						"check_fellowship",
-						"check_yrs_since_fellow",
 						"check_d11",
 						"check_fellow1_month",
 						"check_fellow1_year",

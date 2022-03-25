@@ -297,28 +297,42 @@ $(document).ready(function() {
 		}
 		echo "\n";
 
-		$residencyYears = array();
-		$fellowYears = array();
-		for ($i = 0; $i < 5; $i++) {
-			$index = $i + 1;
-			$year = findInCheck('vfrs_degree{$index}_residency');
-			if ($year) { $residencyYears[] = $year; }
-			$year = findInCheck('vfrs_degree{$index}_clinfelyear');
-			if ($year) { $fellowYears[] = $year; }
-			$year = findInCheck('vfrs_degree{$index}_postdocyear');
-			if ($year) { $fellowYears[] = $year; }
-		}
+        $residencyYears = [];
+        $residencyInstitutions = [];
+        $fellowYears = [];
+        $fellowInstitutions = [];
+        for ($index = 1; $index <= 5; $index++) {
+            $year = findInCheck('vfrs_degree'.$index.'_residency');
+            $institution = findInCheck('vfrs_degree'.$index.'_institution');
+            if ($year) {
+                $residencyYears[] = $year;
+                $residencyInstitutions[] = $institution;
+            }
+            $year = findInCheck('vfrs_degree'.$index.'_clinfelyear');
+            if ($year) {
+                $fellowYears[] = $year;
+                $fellowInstitutions[] = $institution;
+            }
+            $year = findInCheck('vfrs_degree'.$index.'_postdocyear');
+            if ($year) {
+                $fellowYears[] = $year;
+                $fellowInstitutions[] = $institution;
+            }
+        }
 		while (count($residencyYears) < 5) {
 			$residencyYears[] = "";
+			$residencyInstitutions[] = "";
 		}
 		while (count($fellowYears) < 5) {
 			$fellowYears[] = "";
+			$fellowInstitutions[] = "";
 		}
 		for ($i = 0; $i < 5; $i++) {
 			$index = $i + 1;
 
 			if ($residencyYears[$i] != "") {
 				$rDate = $residencyYears[$i];
+				$rInst = $residencyInstitutions[$i];
 				$rNodes = preg_split("/[\/\-]/", $rDate);
 				if ((count($rNodes) >= 2) && ($rNodes[0])) {
 					echo "	presetValue('$prefix"."_residency{$index}_month', '{$rNodes[0]}');\n";
@@ -326,6 +340,7 @@ $(document).ready(function() {
 				if ((count($rNodes) >= 2) && ($rNodes[1])) {
 					echo "	presetValue('$prefix"."_residency{$index}_year', '{$rNodes[1]}');\n";
 				}
+                echo "	presetValue('".$prefix."_residency{$index}_institution', '$rInst');\n";
 				if (($i < 4) && ($residencyYears[$i + 1] != '')) {
 					echo "	presetValue('$prefix"."_residency{$index}_another', '1');\n";
 				}
@@ -333,6 +348,7 @@ $(document).ready(function() {
 
 			if ($fellowYears[$i] != "") {
 				$fDate = $fellowYears[$i];
+				$fInst = $fellowInstitutions[$i];
 				$fNodes = preg_split("/[\/\-]/", $fDate);
 				if ((count($fNodes) >= 2) && ($fNodes[0])) {
 					echo "	presetValue('$prefix"."_fellow{$index}_month', '{$fNodes[0]}');\n";
@@ -340,6 +356,7 @@ $(document).ready(function() {
 				if ((count($fNodes) >= 2) && ($fNodes[1])) {
 					echo "	presetValue('$prefix"."_fellow{$index}_year', '{$fNodes[1]}');\n";
 				}
+                echo "	presetValue('".$prefix."_fellow{$index}_institution', '$fInst');\n";
 				if (($i < 4) && ($fellowYears[$i + 1] != '')) {
 					echo "	presetValue('$prefix"."_fellow{$index}_another', '1');\n";
 				}

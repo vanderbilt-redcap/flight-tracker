@@ -60,7 +60,7 @@ if (isset($_POST['row'])) {
     if ($recordId && is_numeric($_POST['instanceToDelete'])) {
         $redcapData = Download::fieldsForRecords($token, $server, Application::$positionFields, [$recordId]);
         $instances = REDCapManagement::getInstances($redcapData, "position_change", $recordId);
-        $requestedInstance = $_POST['instanceToDelete'];
+        $requestedInstance = REDCapManagement::sanitize($_POST['instanceToDelete']);
         if (in_array($requestedInstance, $instances)) {
             try {
                 Upload::deleteFormInstances($token, $server, $pid, "promotion", $recordId, [$requestedInstance]);

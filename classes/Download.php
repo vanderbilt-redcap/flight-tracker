@@ -429,6 +429,14 @@ class Download {
         }
 	}
 
+	public static function shortProjectTitle($token, $server) {
+	    $title = self::projectTitle($token, $server);
+        $shortTitle = trim(preg_replace("/Flight Tracker\s?(-\s)?/i", "", $title));
+        $shortTitle = str_replace("(", "[", $shortTitle);
+        $shortTitle = str_replace(")", "]", $shortTitle);
+        return $shortTitle;
+    }
+
 	public static function projectTitle($token, $server) {
 	    $settings = self::getProjectSettings($token, $server);
 	    if ($settings['project_title']) {
@@ -874,6 +882,40 @@ class Download {
 		}
 		return $records;
 	}
+
+	public static function fastField($pid, $field) {
+	    $values = [];
+
+	    $sql = "SELECT record, value, instance
+                    FROM redcap_data
+                    WHERE project_id = '".db_real_escape_string($pid)."'
+                        AND field_name='".db_real_escape_string($field)."'";
+	    $q = db_query($sql);
+
+	    $hasMultipleInstances = FALSE;
+	    while ($row = db_fetch_assoc($q)) {
+	        if ($row['instance']) {
+	            $hasMultipleInstances = TRUE;
+	            $instance = $row['instance'];
+            } else {
+	            $instance = 1;
+            }
+	        $recordId = $row['record'];
+	        $value = $row['value'];
+	        if (!isset($values[$recordId])) {
+	            $values[$recordId] = [];
+            }
+	        $values[$recordId][$instance] = $value;
+        }
+
+        if (!$hasMultipleInstances) {
+            foreach ($values as $recordId => $instanceValues) {
+                $values[$recordId] = $values[$recordId][1];
+            }
+        }
+
+	    return $values;
+    }
 
 	public static function fieldsWithConfig($token, $server, $metadataOrModule, $fields, $cohortConfig) {
 		$filter = new Filter($token, $server, $metadataOrModule);

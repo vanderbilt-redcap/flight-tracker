@@ -23,15 +23,20 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
     $institutions = Download::institutions($token, $server);
     $metadata = Download::metadata($token, $server);
     $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+    $blockOrcids = in_array("identifer_block_orcid", $metadataFields) ? Download::oneField($token, $server, "identifier_block_orcid") : [];
 
-    $newOrcids = array();
-    $messages = array();
-    $noMatches = array();
-    $multiples = array();
+    $newOrcids = [];
+    $messages = [];
+    $noMatches = [];
+    $multiples = [];
     foreach ($recordIds as $recordId) {
-        if ((!$orcids[$recordId]
+        $blockThisOrcid = (isset($blockOrcids[$recordId]) && ($blockOrcids[$recordId] == "1"));
+        if (
+            (!$orcids[$recordId]
             || !preg_match("/^\d\d\d\d-\d\d\d\d-\d\d\d\d-\d\d\d.$/", $orcids[$recordId])
-        ) && ($firstnames[$recordId] && $lastnames[$recordId])) {
+        ) && ($firstnames[$recordId] && $lastnames[$recordId])
+            && (!$blockThisOrcid)
+        ) {
             list($orcid, $mssg) = downloadORCID($recordId, $firstnames[$recordId], $middlenames[$recordId], $lastnames[$recordId], $institutions[$recordId]);
             if ($ary = isCodedMessage($mssg)) {
                 foreach ($ary as $recordId => $value) {

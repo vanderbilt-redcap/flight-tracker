@@ -190,6 +190,15 @@ class DataDictionaryManagement {
         }
     }
 
+    public static function getChoicesForField($pid, $field) {
+        $sql = "SELECT element_enum FROM redcap_metadata WHERE project_id = '".db_real_escape_string($pid)."' AND field_name = '".db_real_escape_string($field)."'";
+        $q = db_query($sql);
+        if ($row = db_fetch_assoc($q)) {
+            return self::getRowChoices($row['element_enum'], TRUE);
+        }
+        return [];
+    }
+
     public static function findChangedFieldsInMetadata($projectMetadata, $files, $deletionRegEx, $sourceChoices, $formsToExclude) {
         $missing = [];
         $additions = [];
@@ -231,7 +240,7 @@ class DataDictionaryManagement {
             $metadataFields = REDCapManagement::getMetadataFieldsToScreen();
             $specialFields = REDCapManagement::getSpecialFields("all");
             foreach ($fieldList["file"] as $field => $choiceStr) {
-                $isSpecialGenderField = !Application::isVanderbilt() || !in_array($field, $genderFieldsToHandleForVanderbilt);
+                $isSpecialGenderField = Application::isVanderbilt() && in_array($field, $genderFieldsToHandleForVanderbilt);
                 $isFieldOfSources = (
                     (
                         preg_match("/_source$/", $field)
@@ -311,6 +320,8 @@ class DataDictionaryManagement {
         if (empty($metadata)) {
             if (!$token) {
                 global $token, $server;
+            } else {
+                $server = FALSE;
             }
             $pid = Application::getPid($token);
             if ($pid) {
@@ -475,11 +486,12 @@ class DataDictionaryManagement {
         $fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx, TRUE);
         $existingMetadata = $originalMetadata;
 
-        # TODO
-        # delete rows/fields
-        # update fields
-        # add in new fields with existing forms
-        # add in new forms
+        # List of what to do
+        # 1. delete rows/fields
+        # 2. update fields
+        # 3. add in new fields with existing forms
+        # 4. add in new forms
+        # 5. exclude requested forms
 
         if (empty($fields)) {
             $selectedRows = $newMetadata;
@@ -542,16 +554,21 @@ class DataDictionaryManagement {
         $metadata = $newMetadata;
     }
 
-    public static function getRowChoices($choicesStr) {
-        $choicePairs = preg_split("/\s*\|\s*/", $choicesStr);
-        $choices = array();
+    public static function getRowChoices($choicesStr, $directFromDB = FALSE) {
+        if ($directFromDB) {
+            $regex = "/\s*\\\\n\s*/";
+        } else {
+            $regex = "/\s*\|\s*/";
+        }
+        $choicePairs = preg_split($regex, $choicesStr);
+        $choices = [];
         foreach ($choicePairs as $pair) {
             $a = preg_split("/\s*,\s*/", $pair);
             if (count($a) == 2) {
                 $choices[$a[0]] = $a[1];
             } else if (count($a) > 2) {
                 $a = preg_split("/,/", $pair);
-                $b = array();
+                $b = [];
                 for ($i = 1; $i < count($a); $i++) {
                     $b[] = $a[$i];
                 }
@@ -565,11 +582,14 @@ class DataDictionaryManagement {
         foreach ($metadata as $metadataRow) {
             if ($metadataRow['field_name'] == $row['field_name']) {
                 # do not overwrite any settings in associative arrays
+                $field = $row['field_name'];
                 foreach (self::getMetadataFieldsToScreen() as $rowSetting) {
                     if ($rowSetting == "select_choices_or_calculations") {
                         // merge
                         $rowChoices = self::getRowChoices($row[$rowSetting]);
+                        $rowKeys = array_keys($rowChoices);
                         $metadataChoices = self::getRowChoices($metadataRow[$rowSetting]);
+                        $metadataKeys = array_keys($metadataChoices);
                         $mergedChoices = $rowChoices;
                         foreach ($metadataChoices as $idx => $label) {
                             if (!isset($mergedChoices[$idx])) {
@@ -578,7 +598,6 @@ class DataDictionaryManagement {
                                 # both have same idx/label - no big deal
                             } else {
                                 # merge conflict => reassign all data values
-                                $field = $row['field_name'];
                                 $oldIdx = $idx;
 
                                 $numericMergedChoicesKeys = [];
@@ -611,11 +630,25 @@ class DataDictionaryManagement {
                                 Application::log("Uploading data $newRows rows for field $field");
                             }
                         }
-                        $pairedChoices = array();
-                        foreach ($mergedChoices as $idx => $label) {
-                            array_push($pairedChoices, "$idx, $label");
+                        if (REDCapManagement::arrayOrdersEqual($rowKeys, $metadataKeys)) {
+                            $row[$rowSetting] = self::makeChoiceStr($mergedChoices);
+                        } else {
+                            $reorderedMergedChoices = [];
+                            foreach ($metadataKeys as $idx) {
+                                if (isset($mergedChoices[$idx])) {
+                                    $label = $mergedChoices[$idx];
+                                    $reorderedMergedChoices[$idx] = $label;
+                                } else {
+                                    throw new \Exception("Error: Cannot find index!");
+                                }
+                            }
+                            foreach ($mergedChoices as $idx => $label) {
+                                if (!isset($reorderedMergedChoices[$idx])) {
+                                    $reorderedMergedChoices[$idx] = $label;
+                                }
+                            }
+                            $row[$rowSetting] = self::makeChoiceStr($reorderedMergedChoices);
                         }
-                        $row[$rowSetting] = implode(" | ", $pairedChoices);
                     } else if ($row[$rowSetting] != $metadataRow[$rowSetting]) {
                         if (!REDCapManagement::isJSON($row[$rowSetting]) || ($rowSetting != "field_annotation")) {
                             $row[$rowSetting] = $metadataRow[$rowSetting];
@@ -626,6 +659,14 @@ class DataDictionaryManagement {
             }
         }
         return $row;
+    }
+
+    public static function makeChoiceStr($fieldChoices) {
+        $pairs = [];
+        foreach ($fieldChoices as $key => $label) {
+            $pairs[] = "$key, $label";
+        }
+        return implode(" | ", $pairs);
     }
 
     public static function getRepeatingForms($pid) {

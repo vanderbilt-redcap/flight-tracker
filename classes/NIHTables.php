@@ -241,12 +241,8 @@ class NIHTables {
 	    $lastNamesByPid = [];
         foreach (Application::getPids() as $pid) {
             if (REDCapManagement::isActiveProject($pid)) {
-                $token = Application::getSetting("token", $pid);
-                $server = Application::getSetting("server", $pid);
-                if ($token && $server) {
-                    $firstNamesByPid[$pid] = Download::firstnames($token, $server);
-                    $lastNamesByPid[$pid] = Download::lastnames($token, $server);
-                }
+                $firstNamesByPid[$pid] = Download::fastField($pid, "identifier_first_name");
+                $lastNamesByPid[$pid] = Download::fastField($pid, "identifier_last_name");
             }
         }
 	    return [$firstNamesByPid, $lastNamesByPid];

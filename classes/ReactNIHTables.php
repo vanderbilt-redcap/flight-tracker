@@ -430,15 +430,12 @@ table { border-collapse: collapse; }
         $email = strtolower($email);
         foreach (Application::getPids() as $pid) {
             if (REDCapManagement::isActiveProject($pid)) {
-                $token = Application::getSetting("token", $pid);
-                $server = Application::getSetting("server", $pid);
-                if ($token && $server) {
-                    $emails = Download::emails($token, $server);
-                    $names = Download::names($token, $server);
-                    foreach ($emails as $recordId => $recordEmail) {
-                        if ($recordEmail && (strtolower($recordEmail) == $email) && ($names[$recordId])) {
-                            return $names[$recordId];
-                        }
+                $emails = Download::fastField($pid, "identifier_email");
+                $firstNames = Download::fastField($pid, "identifier_first_name");
+                $lastNames = Download::fastField($pid, "identifier_last_name");
+                foreach ($emails as $recordId => $recordEmail) {
+                    if ($recordEmail && (strtolower($recordEmail) == $email) && $firstNames[$recordId] && $lastNames[$recordId]) {
+                        return $firstNames[$recordId]." ".$lastNames[$recordId];
                     }
                 }
             }
@@ -452,14 +449,18 @@ table { border-collapse: collapse; }
         $name = "";
         foreach (Application::getPids() as $pid) {
             if (REDCapManagement::isActiveProject($pid)) {
-                $token = Application::getSetting("token", $pid);
-                $server = Application::getSetting("server", $pid);
-                $emails = Download::emails($token, $server);
-                $userids = Download::userids($token, $server);
-                $names = Download::names($token, $server);
+                $emails = Download::fastField($pid, "identifier_email");
+                if (Application::isPluginProject()) {
+                    $useridField = "identifier_vunet";
+                } else {
+                    $useridField = "identifier_userid";
+                }
+                $userids = Download::fastField($pid, $useridField);
+                $firstNames = Download::fastField($pid, "identifier_first_name");
+                $lastNames = Download::fastField($pid, "identifier_last_name");
                 foreach ($emails as $recordId => $recordEmail) {
                     if ($recordEmail && (strtolower($recordEmail) == $email) && ($userids[$recordId])) {
-                        $name = $names[$recordId];
+                        $name = $firstNames[$recordId]." ".$lastNames[$recordId];
                         $aryOfUserids = preg_split("/\s*[,;]\s*/", $userids[$recordId]);
                         foreach ($aryOfUserids as $u) {
                             if (!in_array($u, $allUserids)) {
@@ -477,10 +478,13 @@ table { border-collapse: collapse; }
         $email = strtolower($email);
         foreach (Application::getPids() as $pid) {
             if (REDCapManagement::isActiveProject($pid)) {
-                $token = Application::getSetting("token", $pid);
-                $server = Application::getSetting("server", $pid);
-                $emails = Download::emails($token, $server);
-                $userids = Download::userids($token, $server);
+                $emails = Download::fastField($pid, "identifier_email");
+                if (Application::isPluginProject()) {
+                    $useridField = "identifier_vunet";
+                } else {
+                    $useridField = "identifier_userid";
+                }
+                $userids = Download::fastField($pid, $useridField);
                 foreach ($emails as $recordId => $recordEmail) {
                     if ($recordEmail && (strtolower($recordEmail) == $email) && ($userids[$recordId])) {
                         return TRUE;

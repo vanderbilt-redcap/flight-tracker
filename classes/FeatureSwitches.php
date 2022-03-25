@@ -158,7 +158,7 @@ class FeatureSwitches {
             $titleId = REDCapManagement::makeHTMLId($title);
             $html .= "<div style='float: left; width: $width; padding: 0 20px;'><h4 style='margin-bottom: 0.5rem;'>$title (<span class='valueHolder' data-title='$titleId'></span>)</h4><div class='switch centered $size $short'>".$this->makeSwitchHTML($title, $allSwitches)."<div class='switch__indicator'></div></div></div>";
         }
-        $html .= "<p class='centered' style='padding-top: 25px; clear: left;'><button onclick='presentScreen(\"Saving...\"); const postdata = makeSwitchPostData(); $.post(\"$thisUrl\", postdata, function(html) { console.log(html); clearScreen(); });'>Save Settings</button></p>";
+        $html .= "<p class='centered' style='padding-top: 25px; clear: left;'><button id='switchButton' class='biggerButton' onclick='presentScreen(\"Saving...\"); const postdata = makeSwitchPostData(); $.post(\"$thisUrl\", postdata, function(html) { console.log(html); clearScreen(); });'>Save Settings</button></p>";
         $html .= "<script>
 $(document).ready(function() {
     $('.valueHolder').each(function(idx, ob) {
@@ -179,6 +179,9 @@ function updateValueHolder(titleId, valueId) {
     $('.valueHolder').each(function(idx, ob) {
         if ($(ob).data('title') == titleId) {
             $(ob).html(value);
+            if (!$('#switchButton').hasClass('green')) {
+                $('#switchButton').addClass('green');
+            }
         }
     });
 }
@@ -223,6 +226,7 @@ function makeSwitchPostData() {
         return $html;
     }
 
+    protected $settingName;
     protected $onOff = ["On" => "On", "Off" => "Off",];
     protected $token;
     protected $server;

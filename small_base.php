@@ -733,44 +733,6 @@ function changeTextColorOfLink($str, $color) {
 	return $str;
 }
 
-# returns an ary of record id's that match list
-function getUploadAryFromRoster($matched) {
-	global $token, $server;
-
-	$redcapData = Download::fields($token, $server, array("record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"));
-
-	$names = array();
-	foreach ($redcapData as $row) {
-		# matched with JavaScript
-		if ($row['identifier_middle']) {
-			$name = strtolower($row['identifier_first_name']." ".$row['identifier_middle']." ".$row['identifier_last_name']);
-            $names[$name] = $row['record_id'];
-		}
-        $name = strtolower($row['identifier_first_name']." ".$row['identifier_last_name']);
-        $names[$name] = $row['record_id'];
-	}
-
-	$roster = array();
-	$matched = preg_split("/[\r\n]+/", $matched);
-	foreach ($matched as $name) {
-		if ($name) {
-			$roster[] = strtolower($name);
-		}
-	}
-
-	$records = array();
-	foreach ($roster as $name) {
-		$recordId = $names[$name];
-		if ($recordId) {
-			# for names that appear twice
-			if (!in_array($recordId, $records)) {
-				array_push($records, $recordId);
-			}
-		}
-	}
-	return $records;
-}
-
 function isAssoc($ary) {
 	if (empty($ary)) {
 		return FALSE;
@@ -1753,19 +1715,18 @@ function produceSourcesAndTypes($scholar, $metadata) {
 					# race/ethnicity
 					$type = $field;
 					$sources[$fieldForOrder][$type] = [];
-					foreach ($sourceRow as $field2 => $source2) {
+                    $sourceTypes[$fieldForOrder][$type] = [];
+                    foreach ($sourceRow as $field2 => $source2) {
 						if (in_array($field2, $allFields)) {
 							if ($choices[$exampleField][$source2]) {
 								$sources[$fieldForOrder][$type][$field2] = $choices[$exampleField][$source2];
 							} else {
 								$sources[$fieldForOrder][$type][$field2] = $source2;
 							}
+
 							$sourceType = "custom";
 							if (isset($order[$type]) && isset($order[$type][$field2])) {
 								$sourceType = "original";
-							}
-							if (!isset($sourceTypes[$fieldForOrder][$type])) {
-								$sourceTypes[$fieldForOrder][$type] = [];
 							}
 							$sourceTypes[$fieldForOrder][$type][$field2] = $sourceType;
 						}

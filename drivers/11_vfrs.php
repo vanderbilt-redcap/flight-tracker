@@ -237,7 +237,7 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 				}
 				if (!$proceed) {
 					Application::log("$prefix DUPLICATE at $firstName1 $firstName2 $lastName1 $lastName2", $pid);
-				} else if (skip($firstName1, $lastName1)) {
+				} else if (skipVFRS($firstName1, $lastName1)) {
 					Application::log("$prefix SKIP at $firstName1 $lastName1", $pid);
 				} else {
 					Application::log("$prefix MATCH at $firstName1 $lastName1", $pid);
@@ -341,5 +341,17 @@ function stripQuotesVFRS($v) {
     $v = preg_replace("/^\"/", "", $v);
     $v = preg_replace("/\"$/", "", $v);
     return $v;
+}
+
+# skip two people
+function skipVFRS($fn, $ln) {
+    $fn = strtolower($fn);
+    $ln = strtolower($ln);
+    if (($fn == "hal") && ($ln == "moses")) {
+        return true;
+    } else if (($fn == "alex") && ($ln == "patrick???")) {
+        return true;
+    }
+    return false;
 }
 

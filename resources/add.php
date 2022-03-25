@@ -3,6 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -16,6 +17,13 @@ textarea { font-size: 16px; }
 </style>
 <?php
 
+if (isset($_GET['allPids'])) {
+    $pids = REDCapManagement::getActiveProjects(Application::getPids());
+    $allPidsGet = "&allPids";
+} else {
+    $pids = [$pid];
+    $allPidsGet = "";
+}
 
 if (isset($_POST['date'])) {
     $requestedDate = REDCapManagement::sanitize($_POST['date']);
@@ -26,79 +34,127 @@ if (isset($_POST['date'])) {
 echo "<h1>Resource Participation Roster</h1>";
 
 if (isset($_POST['resource']) && $_POST['resource'] && isset($_POST['matched']) && $_POST['matched']) {
-    $resource = REDCapManagement::sanitize($_POST['resource']);
+    $resourceId = REDCapManagement::sanitize($_POST['resource']);
     $matched = REDCapManagement::sanitizeWithoutChangingQuotes($_POST['matched']);
-	$records = \Vanderbilt\FlightTrackerExternalModule\getUploadAryFromRoster($matched);
+	$records = getUploadAryFromRoster($matched, $pids);
 
 	$numUploaded = 0;
-	foreach ($records as $recordId) {
-		$feedback = Upload::resource($recordId, $resource, $token, $server, $requestedDate);
-		if ($feedback['count']) {
-			$numUploaded += $feedback['count'];
-		} else if ($feedback['item_count']) {
-			$numUploaded += $feedback['item_count'];
-		}
+	foreach ($records as $pidAndRecord) {
+	    if (preg_match("/:/", $pidAndRecord)) {
+            list($currPid, $recordId) = preg_split("/:/", $pidAndRecord);
+            $token = Application::getSetting("token", $currPid);
+            $server = Application::getSetting("server", $currPid);
+            if ($token && $server && in_array($currPid, $pids)) {
+                $resourceChoices = DataDictionaryManagement::getChoicesForField($currPid, "resources_resource");
+                $resource = FALSE;
+                foreach ($resourceChoices as $idx => $label) {
+                    $id = REDCapManagement::makeHTMLId($label);
+                    if ($id == $resourceId) {
+                        $resource = $idx;
+                        break;
+                    }
+                }
+                if ($resource) {
+                    $feedback = Upload::resource($recordId, $resource, $token, $server, $requestedDate);
+                    if ($feedback['count']) {
+                        $numUploaded += $feedback['count'];
+                    } else if ($feedback['item_count']) {
+                        $numUploaded += $feedback['item_count'];
+                    }
+                }
+            }
+        }
 	}
 
     echo "<h3>Names Uploaded in ".count($records)." Records</h3>";
 }
 
-$metadata = Download::metadata($token, $server);
-$choices = REDCapManagement::getChoices($metadata);
-if (isset($choices['resources_resource']['0'])) {
-	unset($choices['resources_resource']['0']);
-}
+$names = [];
+$resources = [];
+$projects = [];
+$allResourcesLabels = [];
+foreach ($pids as $currPid) {
+    $token = Application::getSetting("token", $currPid);
+    $server = Application::getSetting("server", $currPid);
+    if (!$token || !$server) {
+        continue;
+    }
 
-$firstNames = Download::firstnames($token, $server);
-$lastNames = Download::lastnames($token, $server);
-$redcapData = Download::resources($token, $server);
+    $resourceChoices = DataDictionaryManagement::getChoicesForField($currPid, "resources_resource");
+    if (isset($resourceChoices['0'])) {
+        unset($resourceChoices['0']);
+    }
 
-$names = array();
-$resources = array();
-foreach ($choices['resources_resource'] as $value => $choice) {
-	$resources[$value] = array();
-}
-
-foreach ($lastNames as $recordId => $lastName) {
-	$firstName = $firstNames[$recordId];
-
-	$name = array();
-	$name['first'] = $firstName;
-	$name['last'] = $lastName;
-	$names[$recordId] = $name;
-}
-foreach ($redcapData as $row) {
-	if ($row['redcap_repeat_instrument'] == "resources") {
-        $date = $row['resources_date'];
-        $name = $names[$row['record_id']];
-        $value = $row['resources_resource'];
-        $fullName = $name['first']." ".$name['last'];
-        if (!isset($resources[$value][$date])) {
-            $resources[$value][$date] = [];
+    foreach (array_values($resourceChoices) as $label) {
+        if (!in_array($label, $allResourcesLabels)) {
+            $allResourcesLabels[] = $label;
         }
-        array_push($resources[$value][$date], $fullName);
-	}
-}
+    }
 
-foreach ($resources as $value => $dateAry) {
-    foreach ($dateAry as $date => $ary) {
-        if (is_array($ary)) {
-            $resources[$value][$date] = implode("<br>", $ary);
+    $firstNames = Download::fastField($currPid, "identifier_first_name");
+    $lastNames = Download::fastField($currPid, "identifier_last_name");
+    $resourcesDates = Download::fastField($currPid, "resources_date");
+    $resourcesUsed = Download::fastField($currPid, "resources_resource");
+    $projectTitle = Download::shortProjectTitle($token, $server);
+    if (isset($_GET['test'])) {
+        echo "$currPid: $projectTitle<br>";
+    }
+
+    $projects[$currPid] = $projectTitle;
+    $names[$currPid] = [];
+    $resources[$currPid] = [];
+    foreach (array_values($resourceChoices) as $label) {
+        $resourceId = REDCapManagement::makeHTMLId($label);
+        $resources[$currPid][$resourceId] = [];
+    }
+
+    foreach ($lastNames as $recordId => $lastName) {
+        $firstName = $firstNames[$recordId] ?? "";
+
+        $name = [];
+        $name['first'] = $firstName;
+        $name['last'] = $lastName;
+        $names[$currPid][$recordId] = $name;
+    }
+
+    foreach ($resourcesUsed as $recordId => $instanceValues) {
+        $name = $names[$currPid][$recordId] ?? [];
+        $firstName = $name['first'] ?? "";
+        $lastName = $name['last'] ?? "";
+        foreach ($instanceValues as $instance => $value) {
+            $date = $resourcesDates[$recordId][$instance] ?? "";
+            $resource = $resourceChoices[$value];
+            $resourceId = REDCapManagement::makeHTMLId($resource);
+            $fullName = $firstName." ".$lastName;
+            if (!isset($resources[$currPid][$resourceId][$date])) {
+                $resources[$currPid][$resourceId][$date] = [];
+            }
+            $resources[$currPid][$resourceId][$date][] = $fullName;
+        }
+    }
+
+    foreach ($resources[$currPid] as $resourceId => $dateAry) {
+        foreach ($dateAry as $date => $ary) {
+            if (is_array($ary)) {
+                $resources[$currPid][$resourceId][$date] = implode("<br>", $ary);
+            }
         }
     }
 }
 
+$selectHeader = isset($_GET['allPids']) ? "Choose a resource from all potential resources. Only projects with that resource will store participation." : "Choose a resource for this project:";
+
 ?>
-<form method='POST' action='<?= Application::link("resources/add.php") ?>'>
+<form method='POST' action='<?= Application::link("resources/add.php").$allPidsGet ?>'>
     <p class="centered">Date: <input type="date" id="date" name="date" onchange="showSignIn(); showResource();" value="<?= $requestedDate ?>"></p>
-    <p class='centered'>Select a resource:<br>
+    <p class='centered max-width'><?= $selectHeader ?><br>
         <select name='resource' id='resource' onchange='showSignIn(); showResource();'>
             <option value=''>---SELECT---</option>
 <?php
-foreach ($choices['resources_resource'] as $value => $choice) {
-	if ($value != "0") {
-		echo "<option value='$value'>$choice</option>";
-	}
+sort($allResourcesLabels);
+foreach ($allResourcesLabels as $choice) {
+    $resourceId = REDCapManagement::makeHTMLId($choice);
+    echo "<option value='$resourceId'>$choice</option>";
 }
 ?>
         </select>
@@ -133,8 +189,9 @@ foreach ($choices['resources_resource'] as $value => $choice) {
 </div>
 
 <script>
-	var names = <?= json_encode($names) ?>;
-	var resources = <?= json_encode($resources) ?>;
+    const projects = <?= json_encode($projects) ?>;
+    const resources = <?= json_encode($resources) ?>;
+	const names = <?= json_encode($names) ?>;
 </script>
 <script>
 	$(document).ready(function() {
@@ -154,3 +211,73 @@ foreach ($choices['resources_resource'] as $value => $choice) {
 </script>
 
 <script src='<?= Application::link("js/addNamesToResource.js") ?>'></script>
+
+<?php
+
+# returns an ary of record id's that match list
+function getUploadAryFromRoster($matched, $pids) {
+    $records = [];
+
+    # coordinated with JS
+    $prefix = "Multiple Matches:";
+
+    $matchedAry = preg_split("/[\r\n]+/", $matched);
+    $matchedAry = reformatSplitLines($matchedAry);
+    foreach ($pids as $currPid) {
+        $firstNames = Download::fastField($currPid, "identifier_first_name");
+        $middleNames = Download::fastField($currPid, "identifier_middle");
+        $lastNames = Download::fastField($currPid, "identifier_last_name");
+
+        $names = [];
+        foreach ($lastNames as $recordId => $lastName) {
+            $firstName = $firstNames[$recordId] ?? "";
+            $middleName = $middleNames[$recordId] ?? "";
+            if ($middleName) {
+                $name = strtolower($firstName." ".$middleName." ".$lastName);
+                $names[$name] = $recordId;
+            }
+            $name = strtolower($firstName." ".$lastName);
+            $names[$name] = $recordId;
+        }
+
+        $roster = [];
+        foreach ($matchedAry as $matchedName) {
+            if (!preg_match("/$prefix/", $matchedName)) {
+                if ($matchedName) {
+                    $name = preg_replace("/ \([^\)]+\)$/", "", $matchedName);
+                    $name = trim(strtolower($name));
+                    if (!in_array($name, $roster)) {
+                        $roster[] = $name;
+                    }
+                }
+            }
+        }
+
+        foreach ($roster as $name) {
+            $recordId = $names[$name] ?? FALSE;
+            if ($recordId) {
+                $pidAndRecord = "$currPid:$recordId";
+                # for names that appear twice
+                if (!in_array($pidAndRecord, $records)) {
+                    $records[] = $pidAndRecord;
+                }
+            }
+        }
+    }
+    return $records;
+}
+
+function reformatSplitLines($lines) {
+    $newLines = [];
+    for ($i=0; $i < count($lines); $i++) {
+        $line = $lines[$i];
+        if ($line[0] === '\v') {
+            $prevIdx = (count($newLines) > 0) ?count($newLines) - 1 : 0;
+            $newLines[$prevIdx] .= '\n' . $line;
+        } else {
+            $newLines[] = $line;
+        }
+    }
+	return $newLines;
+
+}

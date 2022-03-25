@@ -30,6 +30,10 @@ if (isset($_POST['record'])) {
     $record = REDCapManagement::getSanitizedRecord($_POST['record'], $records);
 } else if (isset($_GET['record'])) {
     $record = REDCapManagement::getSanitizedRecord($_GET['record'], $records);
+} else if (count($records) > 0) {
+    $record = $records[0];
+} else {
+    throw new \Exception("Records are not set up yet on this project!");
 }
 
 if (isset($_POST['toImport']) && isset($_POST['record'])) {
@@ -39,13 +43,13 @@ if (isset($_POST['toImport']) && isset($_POST['record'])) {
 	}
 
 	$data = array();
-	$data['record_id'] = $requestedRecord;
+	$data['record_id'] = $record;
 	$data['summary_calculate_to_import'] = $toImport;
 
 	$outputData = Upload::oneRow($data, $token, $server);
 	if (!$outputData['error'] && !$outputData['errors']) {
 		if (isset($outputData['count']) || isset($outputData['item_count'])) {
-            Application::refreshRecordSummary($token, $server, $pid, $requestedRecord);
+            Application::refreshRecordSummary($token, $server, $pid, $record);
         }
 	}
     echo json_encode($outputData);

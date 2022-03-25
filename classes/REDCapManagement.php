@@ -512,11 +512,7 @@ class REDCapManagement {
     }
 
     public static function makeChoiceStr($fieldChoices) {
-	    $pairs = [];
-	    foreach ($fieldChoices as $key => $label) {
-	        $pairs[] = "$key, $label";
-        }
-	    return implode(" | ", $pairs);
+	    return DataDictionaryManagement::makeChoiceStr($fieldChoices);
     }
 
     public static function getRow($rows, $recordId, $instrument, $instance = 1) {
@@ -1420,7 +1416,7 @@ class REDCapManagement {
             $s = "0";
         }
         if (!$useCommas) {
-            $s = str_replace(",", "", $s);
+            $s = str_replace(",", "", (string) $s);
         }
         if ($n < 0) {
             if (!$decimal) {
@@ -1775,11 +1771,34 @@ class REDCapManagement {
 		return (strlen($token) == 32) && preg_match("/^[\dA-F]{32}$/", $token);
 	}
 
+	# checks order
+    # uses ===
+	public static function arrayOrdersEqual($ary1, $ary2) {
+        if (!self::arraysEqual($ary1, $ary2)) {
+            return FALSE;
+        }
+        $keys1 = array_keys($ary1);
+        $keys2 = array_keys($ary2);
+        for ($i = 0; $i < count($keys1); $i++) {
+            $key1 = $keys1[$i] ?? "";
+            $key2 = $keys2[$i] ?? "";
+            if (($key1 !== $key2) && ($ary1[$key1] !== $ary2[$key2])) {
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }
+
+    # does NOT check order
+    # uses ===
 	public static function arraysEqual($ary1, $ary2) {
 	    if (!isset($ary1) || !isset($ary2)) {
 	        return FALSE;
         }
         if (!is_array($ary1) || !is_array($ary2)) {
+            return FALSE;
+        }
+        if (count($ary1) != count($ary2)) {
             return FALSE;
         }
 	    foreach ([[$ary1, $ary2], [$ary2, $ary1]] as $arys) {

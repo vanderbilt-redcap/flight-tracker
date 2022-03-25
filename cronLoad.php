@@ -41,7 +41,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $records = $switches->downloadRecordIdsToBeProcessed();
 
         if (in_array('reporter', $forms)) {
-            $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
+            // $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
         }
         if (in_array('nih_reporter', $forms)) {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 30);
@@ -157,7 +157,7 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         }
 
         if (in_array("reporter", $forms)) {
-            $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", $date, $records, 100);
+            // $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", $date, $records, 100);
         }
         if (in_array("nih_reporter", $forms)) {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", $date, $records, 100);
