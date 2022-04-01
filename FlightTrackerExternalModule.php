@@ -612,14 +612,24 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         \System::increaseMaxExecTime(28800);   // 8 hours
 
 		$this->setupApplication();
-        $activePids = $this->framework->getProjectsWithModuleEnabled();
+		if (isset($_GET['pid']) && Application::isVanderbilt()) {
+            $activePids = [$_GET['pid']];
+        } else {
+            $activePids = $this->framework->getProjectsWithModuleEnabled();
+        }
 		CareerDev::log($this->getName()." running for pids ".json_encode($activePids));
 		$pidsUpdated = [];
         CareerDev::log("Checking for redcaptest in ".SERVER_NAME);
         if (preg_match("/redcaptest.vanderbilt.edu/", SERVER_NAME)) {
             CareerDev::log("Sharing because redcaptest");
             $pidsUpdated = $this->shareDataInternally($activePids);
-        } else if ((date("N") == "6") || $this->hasProjectToRunTonight($activePids)) {
+        } else if (
+            (count($activePids) > 1)
+            && (
+                (date("N") == "6")
+                || $this->hasProjectToRunTonight($activePids)
+            )
+        ) {
             # only on Saturdays or when data update is requested
             try {
                 $pidsUpdated = $this->shareDataInternally($activePids);
@@ -651,7 +661,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     } else {
                         loadCrons($mgr, FALSE, $token, $server);
                     }
-                    Application::log($this->getName().": $tokenName enqueued ".$mgr->getNumberOfCrons()." crons", $pid);
+                    Application::log($this->getName().": $tokenName enqueued crons", $pid);
                     $addlEmailText = in_array($pid, $pidsUpdated) ? "Surveys shared from other Flight Tracker projects" : "";
 //                     $mgr->run($adminEmail, $tokenName, $addlEmailText);
                     // CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
@@ -846,82 +856,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     }
 
     function makeHeaders($token, $server, $pid, $tokenName) {
-		$str = "";
-		$str .= "<link rel='stylesheet' href='".CareerDev::link("/css/w3.css")."'>\n";
-		$str .= "<style>\n";
-
-		# must add fonts here or they will not show up in REDCap menus
-		$str .= "@font-face { font-family: 'Museo Sans'; font-style: normal; font-weight: normal; src: url('".CareerDev::link("/fonts/exljbris - MuseoSans-500.otf")."'); }\n";
-
-		$str .= ".w3-dropdown-hover { display: inline-block !important; float: none !important; }\n";
-		$str .= ".w3-dropdown-hover button,a.w3-bar-link { font-size: 12px; }\n";
-		$str .= "a.w3-bar-link { display: inline-block !important; float: none !important; }\n";
-		$str .= ".w3-bar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; text-align: center !important; }\n";
-        $str .= "a.w3-button,button.w3-button { padding: 6px 4px !important; }\n";
-        $str .= "a.w3-button,button.w3-button.with-image { padding: 8px 4px 6px 4px !important; }\n";
-		$str .= "a.w3-button { color: black !important; float: none !important; }\n";
-		$str .= ".w3-button a,.w3-dropdown-content a { color: white !important; font-size: 13px !important; }\n";
-		$str .= "p.recessed { font-size: 12px; color: #888888; font-size: 11px; margin: 4px 12px 4px 12px; }\n";
-		$str .= ".topHeaderWrapper { background-color: white; height: 80px; top: 0px; width: 100%; }\n";
-		$str .= ".topHeader { margin: 0 auto; max-width: 1200px; }\n";
-		$str .= ".topBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 0px; }\n";
-		if (!CareerDev::isREDCap()) {
-			$str .= "body { margin-bottom: 60px; }\n";    // for footer
-                $str .= ".bottomFooter { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; background-color: white; }\n";
-			$str .= ".bottomBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 5px; }\n";
-		}
-		$str .= "a.nounderline { text-decoration: none; }\n";
-		$str .= "a.nounderline:hover { text-decoration: dotted; }\n";
-		$str .= "img.brandLogo { height: 40px; margin: 20px; }\n";
-		$str .= ".recessed,.recessed a { color: #888888; font-size: 11px; }\n";
-		$str .= "p.recessed,div.recessed { margin: 2px; }\n";
-		$str .= "</style>\n";
-	
+	    $str = "";
 		if (!CareerDev::isFAQ() && CareerDev::isHelpOn()) {
 			$currPage = CareerDev::getCurrPage();
-			$str .= "<script>$(document).ready(function() { showHelp('".CareerDev::getHelpLink()."', '".$currPage."'); });</script>\n";
+			$str .= "<script>$(document).ready(function() { showHelp('".CareerDev::getHelpLink()."', '".$currPage."'); });</script>";
 		}
-	
-		$str .= "<div class='topHeaderWrapper'>\n";
-		$str .= "<div class='topHeader'>\n";
-		$str .= "<div class='topBar' style='float: left; padding-left: 5px;'><a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'><img alt='Flight Tracker for Scholars' src='".CareerDev::link("/img/flight_tracker_logo_small.png")."'></a></div>\n";
-		if ($base64 = $this->getBrandLogo()) {
-			$str .= "<div class='topBar' style='float:right;'><img src='$base64' class='brandLogo'></div>\n";
-		} else {
-			$str .= "<div class='topBar' style='float:right;'><p class='recessed'>$tokenName</p></div>\n";
-		}
-		$str .= "</div>\n";      // topHeader
-		$str .= "</div>\n";      // topHeaderWrapper
-	
+	    $str .= Application::getHeader($tokenName);
 		if (!CareerDev::isREDCap()) {
-			$px = 300;
-			$str .= "<div class='bottomFooter'>\n";
-			$str .= "<div class='bottomBar' style='float: left;'>\n";
-			$str .= "<div class='recessed' style='width: $px"."px;'>Copyright &#9400 ".date("Y")." <a class='nounderline' href='https://vumc.org/'>Vanderbilt University Medical Center</a></div>\n";
-			$str .= "<div class='recessed' style='width: $px"."px;'>from <a class='nounderline' href='https://edgeforscholars.org/'>Edge for Scholars</a></div>\n";
-			$str .= "<div class='recessed' style='width: $px"."px;'><a class='nounderline' href='https://projectredcap.org/'>Powered by REDCap</a></div>\n";
-			$str .= "</div>\n";    // bottomBar
-			$str .= "<div class='bottomBar' style='float: right;'><span class='recessed'>funded by</span><br>\n";
-			$str .= "<a href='https://ncats.nih.gov/ctsa'><img src='".CareerDev::link("/img/ctsa.png")."' style='height: 22px;'></a></div>\n";
-			$str .= "</div>\n";    // bottomBar
-			$str .= "</div>\n";    // bottomFooter
+		    $str .= Application::getFooter();
 		}
-	
-		$navBar = new \Vanderbilt\CareerDevLibrary\NavigationBar();
-		$navBar->addFALink("home", "Home", CareerDev::getHomeLink());
-		$navBar->addFAMenu("clinic-medical", "General", CareerDev::getMenu("General"));
-        $navBar->addMenu("<img src='".CareerDev::link("/img/grant_small.png")."'>Grants", CareerDev::getMenu("Grants"));
-        $navBar->addFAMenu("sticky-note", "Pubs", CareerDev::getMenu("Pubs"));
-        $navBar->addFAMenu("table", "View", CareerDev::getMenu("View"));
-		$navBar->addFAMenu("calculator", "Wrangle", CareerDev::getMenu("Wrangler"));
-		$navBar->addFAMenu("school", "Scholars", CareerDev::getMenu("Scholars"));
-		$navBar->addMenu("<img src='".CareerDev::link("/img/redcap_translucent_small.png")."'>REDCap", CareerDev::getMenu("REDCap"));
-		$navBar->addFAMenu("tachometer-alt", "Dashboards", CareerDev::getMenu("Dashboards"));
-		$navBar->addFAMenu("filter", "Cohorts / Filters", CareerDev::getMenu("Cohorts"));
-		$navBar->addFAMenu("chalkboard-teacher", "Mentors", CareerDev::getMenu("Mentors"));
-		$navBar->addFAMenu("pen", "Resources", CareerDev::getMenu("Resources"));
-		$navBar->addFAMenu("question-circle", "Help", CareerDev::getMenu("Help"));
-		$str .= $navBar->getHTML();
 	
 		if (!CareerDev::isFAQ()) {
 			$str .= "<div class='shadow' id='help'></div>\n";

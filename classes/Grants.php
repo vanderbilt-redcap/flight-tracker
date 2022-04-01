@@ -9,19 +9,14 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Grants {
-	public function __construct($token, $server, $metadata = []) {
+	public function __construct($token, $server, $metadata = "download") {
 		$this->token = $token;
 		$this->server = $server;
-		if (empty($metadata)) {
-			$myMetadata = self::getMetadata($token, $server);
+		if ($metadata == "download") {
+            $this->metadata = self::getMetadata($token, $server);
 		} else {
-			$myMetadata = $metadata;
+            $this->metadata = $metadata;
 		}
-		$tempHolder = array();
-		foreach ($myMetadata as $row) {
-			$tempHolder[$row['field_name']] = $row;
-		}
-		$this->metadata = $tempHolder;
 		$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule());
 	}
 	
@@ -1930,7 +1925,7 @@ class Grants {
         return self::$showDebug;
     }
 
-    private $metadata;	// keyed by field_name in constructor
+    private $metadata;
 	private $lexicalTranslator;
 	private $rows;
 	private $recordId;

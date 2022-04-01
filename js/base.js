@@ -656,7 +656,10 @@ function submitChanges(nextRecord) {
 				} else if (data['error']) {
 					$('#uploading').hide();
 					$('#finalize').show();
-					alert('ERROR: '+data['error']);
+					$.sweetModal({
+						content: 'ERROR: '+data['error'],
+						icon: $.sweetModal.ICON_ERROR
+					});
 				} else {
 					$('#uploading').hide();
 					$('#finalize').show();
@@ -667,7 +670,10 @@ function submitChanges(nextRecord) {
 				if (!e.status || (e.status !== 200)) {
 					$('#uploading').hide();
 					$('#finalize').show();
-					alert("ERROR: "+JSON.stringify(e));
+					$.sweetModal({
+						content: 'ERROR: '+JSON.stringify(e),
+						icon: $.sweetModal.ICON_ERROR
+					});
 				} else {
 					console.log(JSON.stringify(e));
 					if (e.status === 200) {
@@ -803,7 +809,10 @@ function startTonight() {
 		url:url,
 		success: function(data) {
 			console.log("result: "+data);
-			alert("Downloads will start tonight!");
+			$.sweetModal({
+				content: 'Downloads will start tonight.',
+				icon: $.sweetModal.ICON_SUCCESS
+			});
 		},
 		error: function(e) {
 			console.log("ERROR! "+JSON.stringify(e));
@@ -814,39 +823,32 @@ function startTonight() {
 // Should only be called by REDCap SuperUser or else will throw errors
 // if a pid does not have FlightTracker enabled, it will also cause an error
 function installMetadataForProjects(pids) {
-	const baseUrl = getPageUrl("metadata.php");
-	const urls = [];
-	let i;
-	for (i=0; i < pids.length; i++) {
-		const pid = pids[i];
-		const newUrl = baseUrl.replace(/pid=\d+/, 'pid='+pid);
-		urls.push(newUrl);
-	}
-	presentScreen("Updating Data Dictionary<span id='currentPid'></span>...<br>(may take some time)")
-	updateMetadataForUrl(urls, 0);
-}
+	presentScreen("Updating Data Dictionaries...<br>(may take some time)")
+	const url = getPageUrl("metadata.php");
+	$.post(url, { process: "install_all", pids: pids }, function(json) {
+		console.log(json);
+		if (json.charAt(0) === '<') {
+			$.sweetModal({
+				content: 'The process did not complete because REDCap requested a login.',
+				icon: $.sweetModal.ICON_ERROR
+			});
 
-function updateMetadataForUrl(urls, i) {
-	if (i >= urls.length) {
-		clearScreen();
-		$("#metadataWarning").addClass("install-metadata-box-success");
-		$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
-		setTimeout(function() {
-			$("#metadataWarning").fadeOut(500);
-		}, 3000);
-	} else {
-		const url = urls[i];
-		const nextI = i + 1;
-		const matches = url.match(/pid=\d+/);
-		const pid = matches ? matches[0].replace(/pid=/, '') : 'unknown';
-		if (pid !== 'unknown') {
-			$('#currentPid').html(' for pid '+pid+' ('+nextI+' of '+urls.length+')');
+			clearScreen();
+		} else {
+			const data = JSON.parse(json);
+			const numProjects = Object.keys(data).length;
+			$.sweetModal({
+				content: numProjects+' projects were successfully updated.',
+				icon: $.sweetModal.ICON_SUCCESS
+			});
+			$("#metadataWarning").addClass("install-metadata-box-success");
+			$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
+			setTimeout(function() {
+				$("#metadataWarning").fadeOut(500);
+			}, 3000);
+			clearScreen();
 		}
-		$.post(url, { process: "install_all" }, function(data) {
-			console.log(pid+': '+JSON.stringify(data));
-			updateMetadataForUrl(urls, nextI);
-		});
-	}
+	});
 }
 
 function installMetadata(fields) {
@@ -883,7 +885,11 @@ function checkMetadata(phpTs) {
 function submitLogs(url) {
 	$.post(url, {}, function(data) {
 		console.log(data);
-		alert("Emailed logs to Developers");
+		$.sweetModal({
+			content: 'Logs emailed to developers.',
+			icon: $.sweetModal.ICON_SUCCESS
+		});
+
 	});
 }
 
@@ -922,14 +928,20 @@ function addPMID(pmid) {
 		$('#'+newDiv).append('<div id="'+newId+'" style="margin: 8px 0; min-height: 26px;"></div>');
 		submitPMID(pmid, '#'+newId, getPubImgHTML(newState), function() { if (enqueue()) { $('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1); } });
 	} else if (isNaN(pmid)) {
-		alert('PMID '+pmid+' is not a number!');
+		$.sweetModal({
+			content: 'PMID '+pmid+' is not a number!',
+			icon: $.sweetModal.ICON_ERROR
+		});
 	} else {
 		// not already used
 		var names = {};
 		names['finalized'] = 'Citations Already Accepted and Finalized';
 		names['notDone'] = 'Citations to Review';
 		names['omitted'] = 'Citations to Omit';
-		alert('PMID '+pmid+' has already been entered in '+names[bin]+'!');
+		$.sweetModal({
+			content: 'PMID '+pmid+' has already been entered in '+names[bin]+'!',
+			icon: $.sweetModal.ICON_SUCCESS
+		});
 	}
 }
 
@@ -1074,7 +1086,10 @@ function createCohortProject(cohort, src) {
 	$.post(getPageUrl("cohorts/createCohortProject.php"), { "cohort": cohort }, function(mssg) {
 		clearScreen();
 		console.log(mssg);
-		alert(mssg);
+		$.sweetModal({
+			content: mssg,
+			icon: $.sweetModal.ICON_SUCCESS
+		});
 	});
 }
 
@@ -1197,7 +1212,10 @@ function omitPublication(recordId, instance, pmid) {
 	$.post(getPageUrl('publications/omit.php'), { record: recordId, instance: instance, pmid: pmid }, function(html) {
 		clearScreen();
 		console.log(html);
-		alert('Publication successfully omitted!');
+		$.sweetModal({
+			content: 'Publication successfully omitted!',
+			icon: $.sweetModal.ICON_SUCCESS
+		});
 	});
 }
 
@@ -1206,7 +1224,10 @@ function omitGrant(recordId, grantNumber, source) {
 	$.post(getPageUrl('wrangler/omitGrant.php'), { record: recordId, grantNumber: grantNumber, source: source }, function(html) {
 		clearScreen();
 		console.log(html);
-		alert('Grant successfully omitted!');
+		$.sweetModal({
+			content: 'Grant successfully omitted!',
+			icon: $.sweetModal.ICON_SUCCESS
+		});
 	});
 }
 
@@ -1217,13 +1238,22 @@ function copyProject(token, server) {
 			clearScreen();
 			console.log(html);
 			if (html.match(/error:/i) || html.match(/ERROR/)) {
-				alert('Error: '+html);
+				$.sweetModal({
+					content: 'ERROR: '+html,
+					icon: $.sweetModal.ICON_ERROR
+				});
 			} else {
-				alert('Successfully copied');
+				$.sweetModal({
+					content: 'Successfully copied.',
+					icon: $.sweetModal.ICON_SUCCESS
+				});
 			}
 		});
 	} else {
-		alert('Invalid settings');
+		$.sweetModal({
+			content: 'Invalid Settings.',
+			icon: $.sweetModal.ICON_ERROR
+		});
 	}
 }
 

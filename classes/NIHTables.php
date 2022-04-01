@@ -239,13 +239,15 @@ class NIHTables {
     private function getNamesByPid() {
 	    $firstNamesByPid = [];
 	    $lastNamesByPid = [];
+	    $emailsByPid = [];
         foreach (Application::getPids() as $pid) {
             if (REDCapManagement::isActiveProject($pid)) {
                 $firstNamesByPid[$pid] = Download::fastField($pid, "identifier_first_name");
                 $lastNamesByPid[$pid] = Download::fastField($pid, "identifier_last_name");
+                $emailsByPid[$pid] = Download::fastField($pid, "identifier_email");
             }
         }
-	    return [$firstNamesByPid, $lastNamesByPid];
+	    return [$firstNamesByPid, $lastNamesByPid, $emailsByPid];
     }
 
     private function findDegrees($redcapData) {
@@ -270,7 +272,7 @@ class NIHTables {
     }
 
     public function getFacultyMatches() {
-        list($firstNamesByPid, $lastNamesByPid) = $this->getNamesByPid();
+        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = $this->getNamesByPid();
         $projectTitles = [];
         $data = [];
         foreach ($this->facultyMembers as $facultyName) {
@@ -295,7 +297,8 @@ class NIHTables {
                     }
                     $firstName = $firstNamesByPid[$pid][$recordId] ?? "";
                     $lastName = $lastNamesByPid[$pid][$recordId] ?? "";
-                    $nameInformation = "<strong>$facultyName</strong> matches<br>Record $recordId $firstName $lastName";
+                    $email = Links::makeMailtoLink($emailsByPid[$pid][$recordId] ?? "");
+                    $nameInformation = "<strong>$facultyName</strong> matches<br>Record $recordId $firstName $lastName<br>$email";
                     $data[] = [
                         $nameInformation,
                         $header,
@@ -307,7 +310,7 @@ class NIHTables {
     }
 
     public function get2Data($table) {
-        list($firstNamesByPid, $lastNamesByPid) = $this->getNamesByPid();
+        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = $this->getNamesByPid();
         $headers = $this->getHeaders($table);
         $data = ["Headers" => $headers];
 	    foreach ($this->facultyMembers as $facultyName) {
@@ -382,8 +385,14 @@ class NIHTables {
                 }
 
                 $otherProjectsValues = [];
+                $combinedEmails = [];
                 foreach ($matches as $match) {
                     list($pid, $recordId) = preg_split("/:/", $match);
+                    $email = $emailsByPid[$pid][$recordId] ?? "";
+                    $emailMailto = Links::makeMailtoLink($email);
+                    if ($emailMailto && !in_array($emailMailto, $combinedEmails)) {
+                        $combinedEmails[] = $emailMailto;
+                    }
                     $countKey = self::makeCountKey($table, $recordId);
                     $settingsByDate = Application::getSetting($countKey, $pid);
                     foreach ($settingsByDate as $ymdDate => $settings) {
@@ -402,11 +411,13 @@ class NIHTables {
                     }
                 }
 
+                $emailHTML = empty($combinedEmails) ? "" : "<br/>".implode("<br/>", $combinedEmails);
+
                 $row = [
-                    $facultyName,
-                    implode(", ", $combinedResults["Degrees"]),
-                    implode(", ", $combinedResults["Ranks"]),
-                    implode(", ", $combinedResults["Departments"]),
+                    $facultyName.$emailHTML,
+                    implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Degrees"])),
+                    implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Ranks"])),
+                    implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Departments"])),
                     self::$NA,
                     self::$NA,
                     self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[6]]),
@@ -515,7 +526,7 @@ class NIHTables {
 
     public function findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid = [], $lastNamesByPid = []) {
 	    if (empty($firstNamesByPid) || empty($lastNamesByPid)) {
-	        list($firstNamesByPid, $lastNamesByPid) = $this->getNamesByPid();
+	        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = $this->getNamesByPid();
         }
         list($first, $last) = NameMatcher::splitName($facultyName, 2);
         $matches = [];
@@ -540,7 +551,7 @@ class NIHTables {
             $addedRow = FALSE;
             $allGrants = [];
             $currentGrantAry = [];
-            $orderedReporterCategories = ["Federal", "NIH"];
+            $orderedReporterCategories = ["NIH"];
             foreach ($orderedReporterCategories as $reporterCategory) {
                 $allGrants[$reporterCategory] = [];
                 $currentGrantAry[$reporterCategory] = [];
@@ -632,7 +643,7 @@ class NIHTables {
         // or Other. If none, state “None.” Exclude applications pending review, administrative or competitive supplements,
         // and awards in no-cost extension status. (xTRACT users should note that the system will autopopulate grants that
         // fit these criteria.)
-        list($firstNamesByPid, $lastNamesByPid) = $this->getNamesByPid();
+        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = $this->getNamesByPid();
         $currentMetadataByPid = [];
         foreach ($this->facultyMembers as $facultyName) {
             $matches = $this->findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
@@ -653,13 +664,16 @@ class NIHTables {
                 do {
                     $match = $matches[$i];
                     list($pid, $recordId) = preg_split("/:/", $match);
+                    $email = $emailsByPid[$pid][$recordId] ?? "";
+                    $emailHTML = $email ? "<br/>".Links::makeMailtoLink($email) : "";
                     $token = Application::getSetting("token", $pid);
                     $server = Application::getSetting("server", $pid);
                     if ($token && $server) {
                         if (!isset($currentMetadataByPid[$pid])) {
                             $currentMetadataByPid[$pid] = Download::metadata($token, $server);
                         }
-                        $redcapData = Download::records($token, $server, [$recordId]);
+                        $grantFields = REDCapManagement::getAllGrantFields($currentMetadataByPid[$pid]);
+                        $redcapData = Download::fieldsForRecords($token, $server, $grantFields, [$recordId]);
                         $grants = new Grants($token, $server, $currentMetadataByPid[$pid]);
                         $grants->setRows($redcapData);
                         $grants->compileGrants();
@@ -704,7 +718,7 @@ class NIHTables {
                                     $directBudget = self::$NA;
                                 }
                                 $row = [
-                                    $facultyName,
+                                    $facultyName.$emailHTML,
                                     $fundingSource,
                                     $baseAwardNo,
                                     $role,

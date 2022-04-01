@@ -30,6 +30,10 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\ConnectionStatus;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
+use \Vanderbilt\CareerDevLibrary\DateManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\URLManagement;
+use \Vanderbilt\CareerDevLibrary\FileManagement;
 
 require_once(__DIR__."/autoload.php");
 

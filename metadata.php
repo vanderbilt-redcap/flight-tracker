@@ -7,14 +7,16 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
+use \Vanderbilt\CareerDevLibrary\URLManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
+require_once(APP_PATH_DOCROOT."Classes/System.php");
 
 $files = Application::getMetadataFiles();
 $lastCheckField = "prior_metadata_ts";
 $deletionRegEx = DataDictionaryManagement::getDeletionRegEx();
-$switches = new FeatureSwitches($token, $server, $pid);
 
 if ($_POST['process'] == "check") {
     $ts = $_POST['timestamp'];
@@ -26,12 +28,14 @@ if ($_POST['process'] == "check") {
     # check a maximum of once every 30 seconds
     if ($ts > $lastCheckTs + 30) {
         $metadata = Download::metadata($token, $server);
+        $switches = new FeatureSwitches($token, $server, $pid);
         list ($missing, $additions, $changed) = DataDictionaryManagement::findChangedFieldsInMetadata($metadata, $files, $deletionRegEx, CareerDev::getRelevantChoices(), $switches->getFormsToExclude());
         CareerDev::setSetting($lastCheckField, time(), $pid);
         if (count($additions) + count($changed) > 0) {
             if (Application::isSuperUser()) {
                 $module = Application::getModule();
                 $pids = $module->getPids();
+                $protocol = isset($_SERVER["HTTPS"]) ? 'https' : 'http';
                 echo "<div id='metadataWarning' class='install-metadata-box install-metadata-box-danger'>
                 <i class='fa fa-exclamation-circle' aria-hidden='true'></i> <a href='javascript:;' onclick='installMetadataForProjects(" . json_encode($pids) . ");'>Click here to install for all " . Application::getProgramName() . " projects (REDCap SuperUsers only).</a>
                 </div>";
@@ -45,7 +49,29 @@ if ($_POST['process'] == "check") {
         }
     }
 } else if (in_array($_POST['process'], ["install", "install_all"])) {
-    $returnData = DataDictionaryManagement::installMetadataFromFiles($files, $token, $server, $pid, $eventId, $grantClass, CareerDev::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
+    \System::increaseMaxExecTime(7200);   // 2 hours
+    if (isset($_POST['pids'])) {
+        $pidsToRun = [];
+        $requestedPids = Sanitizer::sanitizeArray($_POST['pids']);
+        $pids = Application::getPids();
+        foreach ($requestedPids as $requestedPid) {
+            if (REDCapManagement::isActiveProject($requestedPid) && in_array($requestedPid, $pids)) {
+                $pidsToRun[] = $requestedPid;
+            }
+        }
+    } else {
+        $pidsToRun = [$pid];
+    }
+    $returnData = [];
+    foreach ($pidsToRun as $currPid) {
+        $token = Application::getSetting("token", $currPid);
+        $server = Application::getSetting("server", $currPid);
+        $switches = new FeatureSwitches($token, $server, $currPid);
+        $grantClass = Application::getSetting("grant_class", $currPid);
+        $eventId = Application::getSetting("event_id", $currPid);
+        if ($token && $server && $eventId) {
+            $returnData[$currPid] = DataDictionaryManagement::installMetadataFromFiles($files, $token, $server, $currPid, $eventId, $grantClass, CareerDev::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
+        }
+    }
     echo json_encode($returnData);
 }
-

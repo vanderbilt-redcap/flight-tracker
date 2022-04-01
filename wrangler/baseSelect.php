@@ -68,13 +68,23 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
             }
             if (pmids.length > 0) {
                 presentScreen('Saving...');
-                $.post('<?= Application::link("wrangler/savePubs.php") ?>', { record_id: '<?= $sanitizedRecord ?>', pmids: pmids }, function(data) {
-                    console.log("saveComplete "+JSON.stringify(data));
+                const postdata = { record_id: '<?= $sanitizedRecord ?>', pmids: pmids };
+                $.post('<?= Application::link("wrangler/savePubs.php") ?>', postdata, function(json) {
+                    const data = JSON.parse(data);
+                    console.log("saveComplete "+json);
                     if (data['error']) {
                         makeNote(data['error']);
+                        $.sweetModal({
+                            content: data['error'],
+                            icon: $.sweetModal.ICON_ERROR
+                        });
                         clearScreen();
                     } else if (data['errors']) {
                         makeNote(data['errors']);
+                        $.sweetModal({
+                            content: data['errors'].join("<br>"),
+                            icon: $.sweetModal.ICON_ERROR
+                        });
                         clearScreen();
                     } else if (nextUrl) {
                         window.location.href = nextUrl;
@@ -131,13 +141,22 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
             }
             if (numbers.length > 0) {
                 presentScreen("Saving...");
-                $.post('<?= Application::link("wrangler/savePatents.php") ?>', { record_id: '<?= $sanitizedRecord ?>', numbers: numbers }, function(data) {
-                    console.log("Save complete "+JSON.stringify(data));
+                $.post('<?= Application::link("wrangler/savePatents.php") ?>', { record_id: '<?= $sanitizedRecord ?>', numbers: numbers }, function(json) {
+                    const data = JSON.parse(json);
+                    console.log("Save complete "+json);
                     if (data['error']) {
                         makeNote(data['error']);
+                        $.sweetModal({
+                            content: data['error'],
+                            icon: $.sweetModal.ICON_ERROR
+                        });
                         clearScreen();
                     } else if (data['errors']) {
                         makeNote(data['errors']);
+                        $.sweetModal({
+                            content: data['errors'].join("<br>"),
+                            icon: $.sweetModal.ICON_ERROR
+                        });
                         clearScreen();
                     } else if (nextUrl) {
                         window.location.href = nextUrl;

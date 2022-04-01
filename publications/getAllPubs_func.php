@@ -190,6 +190,7 @@ function postprocess($token, $server, $records) {
 
 function removeDuplicates($token, $server, $rows, $recordId) {
 	$alreadySeen = array();
+	$pid = Application::getPID($token);
 	foreach ($rows as $row) {
 		if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
 			$pmid = $row['citation_pmid'];
@@ -197,14 +198,8 @@ function removeDuplicates($token, $server, $rows, $recordId) {
 				$instance = $row['redcap_repeat_instance'];
 				CareerDev::log("Duplicate in record $recordId (instance $instance)!");
 				echo "Duplicate in record $recordId (instance $instance)!\n";
-				$uploadRow = array(
-							"record_id" => $row['record_id'],
-							"redcap_repeat_instrument" => $row['redcap_repeat_instrument'],
-							"redcap_repeat_instance" => $row['redcap_repeat_instance'],
-							"citation_include" => "0",
-							);
-				upload([$uploadRow], $token, $server);
-			} else {
+                Upload::deleteFormInstances($token, $server, $pid, "citation", $recordId, [$instance]);
+			} else if (($row['citation_include'] === '1') || ($row['citation_include'] === '')) {
 				array_push($alreadySeen, $pmid);
 			}
 		}
@@ -275,7 +270,11 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $rec
                         }
                         array_push($citationIds['Final'][$recordId], $newCitationId);
                     } else {
-                        Application::log("Skipping because matched: " . $vunet . " PMID: " . $newCitationId);
+                        $citationIdsForRecord = [];
+                        foreach ($citationIds as $type => $recordsWithData) {
+                            $citationIdsForRecord[$type] = $recordsWithData[$recordId] ?? [];
+                        }
+                        Application::log("$recordId: Skipping because matched: " . $vunet . " PMID: " . $newCitationId." citationIds: ".REDCapManagement::json_encode_with_spaces($citationIdsForRecord));
                     }
                 }
             }
@@ -300,7 +299,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         $orcids = [];
     }
     $choices = REDCapManagement::getChoices($metadata);
-    $defaultInstitutions = array_unique(array_merge(Application::getInstitutions(), Application::getHelperInstitutions()));
+    $defaultInstitutions = REDCapManagement::excludeAcronyms(array_unique(array_merge(Application::getInstitutions(), Application::getHelperInstitutions())));
     $excludeList = Download::excludeList($token, $server, "exclude_publications", $metadata);
 
 	foreach ($records as $recordId) {
@@ -419,12 +418,15 @@ function addPMIDsIfNotFound(&$pmids, &$citationIds, $currPMIDs, $recordId) {
 }
 
 function upload($upload, $token, $server) {
+    $pmids = [];
     for ($i = 0; $i < count($upload); $i++) {
         if ($upload[$i]['redcap_repeat_instrument'] == "citation") {
             $upload[$i]['citation_complete'] = '2';
+            $pmids[$upload[$i]['citation_pmid']] = $upload[$i]['redcap_repeat_instance'];
         }
     }
     Upload::rows($upload, $token, $server);
+    Application::log("Uploaded PMIDS ".REDCapManagement::json_encode_with_spaces($pmids));
 }
 
 function binREDCapRows($redcapData, &$citationIds) {

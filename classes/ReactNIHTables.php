@@ -33,7 +33,7 @@ class ReactNIHTables {
     }
     
     public function getTablesPrefix() {
-        return "tables1-4";
+        return "tables2-4";
     }
 
     public function makeScholarList($header, $id) {

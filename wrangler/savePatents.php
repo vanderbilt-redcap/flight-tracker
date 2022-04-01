@@ -110,5 +110,15 @@ if ($numbers && !empty($numbers)) {
         } else {
             echo json_encode(array("error" => "Upload queue empty!"));
         }
+    } else {
+        $feedback = [
+            "error" => "All of the requested patents exist in the database. Perhaps they have been omitted earlier.",
+        ];
+        echo json_encode($feedback);
     }
+} else {
+    $feedback = [
+        "error" => "Empty list of Patents",
+    ];
+    echo json_encode($feedback);
 }

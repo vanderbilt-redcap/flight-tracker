@@ -947,7 +947,12 @@ class Publications {
             Publications::throttleDown();
 		}
 		self::addTimesCited($upload, $pid, $pmids, $metadataFields);
-		Application::log("$recordId: Returning ".count($upload)." lines from getCitationsFromPubMed", $pid);
+
+		$uploadPMIDsAndInstances = [];
+		foreach ($upload as $row) {
+		    $uploadPMIDsAndInstances[$row['redcap_repeat_instance']] = $row['citation_pmid'];
+        }
+		Application::log("$recordId: Returning ".count($upload)." lines from getCitationsFromPubMed: ".REDCapManagement::json_encode_with_spaces($uploadPMIDsAndInstances), $pid);
 		return $upload;
 	}
 

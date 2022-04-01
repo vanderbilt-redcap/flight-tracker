@@ -154,6 +154,10 @@ canvas.kaplanMeier { width: 800px !important; height: 600px !important; margin: 
 .alignLeft { text-align: left !important; }
 .predoc,.postdoc,.engaged { box-shadow: 0px 0px 6px 1px #444444 inset; padding: 3px 6px; cursor: pointer; font-size: 0.9em; }
 td.white,th.white { background-color: white; }
+p.recessed { color: #888888; font-size: 11px; margin: 4px 12px 4px 12px; }
+.recessed,.recessed a { color: #888888; font-size: 11px; }
+p.recessed,div.recessed { margin: 2px; }
+textarea { font-family: Georgia, 'Times New Roman', Times, serif; font-size: 16px; }
 
 
 /* adapted from https://www.sliderrevolution.com/resources/styling-radio-buttons/ */
@@ -176,3 +180,4 @@ td.white,th.white { background-color: white; }
 .switch.short input.switch1[type=radio]:checked ~ .switch__indicator { transform: translate3d(1.75rem,0,0); }
 .switch.short input.switch2[type=radio]:checked ~ .switch__indicator { transform: translate3d(4.25rem,0,0); }
 .switch input[type=radio]:not(:checked), .switch input[type=radio]:checked { display: none; }
+

@@ -7,15 +7,18 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\LDAP;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 function updateCoeusGrants($token, $server, $pid, $records) {
     updateCoeusGeneric($token, $server, $pid, $records, "coeus", "awards");
+    CareerDev::saveCurrentDate("Last COEUS Download", $pid);
 }
 
 function updateCoeusSubmissions($token, $server, $pid, $records) {
     updateCoeusGeneric($token, $server, $pid, $records, "coeus_submission", "proposals");
+    CareerDev::saveCurrentDate("Last COEUS Submission Download", $pid);
 }
 
 function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $awardDataField) {

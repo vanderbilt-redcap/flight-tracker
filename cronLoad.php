@@ -38,6 +38,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         $has = checkMetadataForFields($metadata);
         $pid = CareerDev::getPid($token);
         $switches = new FeatureSwitches($token, $server, $pid);
+        $allRecords = Download::records($token, $server);
         $records = $switches->downloadRecordIdsToBeProcessed();
 
         if (in_array('reporter', $forms)) {
@@ -86,7 +87,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
             }
         }
 
-        $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $records, 100000);
+        $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $allRecords, 100000);
         if (Application::isVanderbilt() && !Application::isLocalhost() && in_array("coeus", $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Wednesday", $records, 500);
         }
@@ -103,12 +104,17 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         }
 
         $numRecordsForSummary = 20;
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday", $records, $numRecordsForSummary);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $records, $numRecordsForSummary);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday", $records, $numRecordsForSummary);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday", $records, $numRecordsForSummary);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $records, $numRecordsForSummary);
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday", $records, $numRecordsForSummary, TRUE);
+        if (Application::isVanderbilt()) {
+            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $allRecords, $numRecordsForSummary, TRUE);
+            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $allRecords, $numRecordsForSummary, TRUE);
+        } else {
+            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday", $records, $numRecordsForSummary);
+            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $records, $numRecordsForSummary);
+            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday", $records, $numRecordsForSummary);
+            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday", $records, $numRecordsForSummary);
+            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $records, $numRecordsForSummary);
+            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday", $records, $numRecordsForSummary, TRUE);
+        }
 	}
 }
 
@@ -126,12 +132,11 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         Application::log("loadInitialCrons");
         $metadata = Download::metadata($token, $server);
         $forms = DataDictionaryManagement::getFormsFromMetadata($metadata);
+        Application::log("Forms: ".json_encode($forms));
 		$has = checkMetadataForFields($metadata);
 		$records = Download::recordIds($token, $server);
 
 		# summarize institutions first
-        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records, 30);
-
 		if ($has['vfrs']) {
 			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
 		}
@@ -169,7 +174,7 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         }
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", $date, $records, 100);
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records, 30);
-        Application::log("loadInitialCrons loaded ".$manager->getNumberOfCrons()." crons");
+        Application::log("loadInitialCrons loaded");
 	} else {
         Application::log("loadInitialCrons without token or server");
     }

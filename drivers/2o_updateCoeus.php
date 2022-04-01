@@ -14,14 +14,9 @@ define("NOAUTH", "true");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 	
 function processCoeus($token, $server, $pid, $records) {
-	CareerDev::log("Step 1");
 	pullCoeus($token, $server, $pid);
-	CareerDev::log("Step 1 done");
-	CareerDev::log("Step 2");
 	processFiles($token, $server, $pid);
-	CareerDev::log("Step 2 done");
 	updateCoeus($token, $server, $pid, $records);
-	CareerDev::log("Step 3 done");
 }
 
 function updateCoeus($token, $server, $pid, $allRecordIds) {
@@ -32,10 +27,6 @@ function updateCoeus($token, $server, $pid, $allRecordIds) {
 	# combines some repeated code from 2a and others. It's not entirely important to centralize one copy of this
 	# code as most of this code is the only reliable copy of it. 2a and others were used only in the past.
 
-	CareerDev::log(date("Y-m-d"));
-	CareerDev::log("SERVER: ".$server);
-	CareerDev::log("TOKEN: ".$token);
-	
 	$refreshHaroldMoses = true;
 	
 	$noChange = false;

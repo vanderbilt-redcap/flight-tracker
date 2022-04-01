@@ -331,6 +331,11 @@ class CronManager {
             $row = $batchQueue[0];
             try {
                 $cronjob->run($row['token'], $row['server'], $row['pid'], $row['records']);
+                $batchQueue = self::getBatchQueueFromDB($module);
+                if (empty($batchQueue)) {
+                    # queue was cleared
+                    return;
+                }
                 Application::log("Done with ".$batchQueue[0]['method']." at ".self::getTimestamp());
                 $batchQueue[0]['status'] = "DONE";
                 $batchQueue[0]['endTs'] = time();

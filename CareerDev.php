@@ -14,7 +14,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.6.0";
+		return "4.6.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -972,10 +972,10 @@ class CareerDev {
                 && (in_array($pid, [101785, 107319, 138365, 138722])
                     || self::isLocalhost())
             ) {
-                $ary['NIH Reporting Tables 1-4'] = self::link("reporting/react-2/run/index.php");
+                $ary['NIH Reporting Tables 2-4'] = self::link("reporting/react-2/run/index.php");
             }
 			$ary = array_merge($ary, [
-                "NIH Reporting" => self::link("reporting/index.php"),
+                "NIH Reporting Tables 5, 6, &amp; 8" => self::link("reporting/index.php"),
                 "List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
                 "K2R Conversion Calculator" => self::link("/k2r/index.php"),
                 "Kaplan-Meier Conversion Success Curve" => self::link("/charts/kaplanMeierCurve.php"),

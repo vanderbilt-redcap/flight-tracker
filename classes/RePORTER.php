@@ -347,13 +347,13 @@ class RePORTER {
     }
 
     public static function getTypes() {
-        return ["NIH", "Federal"];
+        return ["NIH"];
     }
 
     public function searchInstitutionsAndGrantTypes($institutions, $grantTypes) {
         $searchStrings = [];
         foreach ($grantTypes as $grantType) {
-            $searchStrings[] = "*$grantType*";
+            $searchStrings[] = "$grantType";
         }
         if ($this->isFederal()) {
             $this->currData = [];

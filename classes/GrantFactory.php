@@ -137,7 +137,13 @@ class InitialGrantFactory extends GrantFactory {
 				} else {
 					$grant->setVariable('pi_flag', 'N');
 				}
-				$grant->setVariable("role", $this->choices[$prefix."_grant".$i."_role"][$row[$prefix."_grant".$i."_role"]]);
+				if (empty($this->choices)) {
+				    $field = $prefix."_grant".$i."_role";
+				    $fieldChoices = DataDictionaryManagement::getChoicesForField($pid, $field);
+                    $grant->setVariable("role", $fieldChoices[$row[$field]]);
+                } else {
+                    $grant->setVariable("role", $this->choices[$prefix."_grant".$i."_role"][$row[$prefix."_grant".$i."_role"]]);
+                }
 				$grant->setNumber($awardno);
 				$grant->setVariable("original_award_number", $awardno);
 				if (preg_match("/^\d?[A-Z]\d\d/", $awardno, $matches)) {
@@ -185,7 +191,13 @@ class FollowupGrantFactory extends GrantFactory {
 				} else {
 					$grant->setVariable('pi_flag', 'N');
 				}
-				$grant->setVariable("role", $this->choices["followup_grant".$i."_role"][$row["followup_grant".$i."_role"]]);
+				if (empty($this->choices)) {
+                    $field = "followup_grant".$i."_role";
+                    $fieldChoices = DataDictionaryManagement::getChoicesForField($pid, $field);
+                    $grant->setVariable("role", $fieldChoices[$row[$field]]);
+                } else {
+                    $grant->setVariable("role", $this->choices["followup_grant".$i."_role"][$row["followup_grant".$i."_role"]]);
+                }
 				$grant->setNumber($awardno);
 				$grant->setVariable("original_award_number", $awardno);
 				if (preg_match("/^\d?[A-Z]\d\d/", $awardno, $matches)) {
@@ -929,7 +941,13 @@ class CustomGrantFactory extends GrantFactory {
 			$grant->setVariable('pi_flag', 'N');
             $grant->putInBins();
 		}
-		$grant->setVariable("role", $this->choices["custom_role"][$row["custom_role"]]);
+		if (empty($this->choices)) {
+            $field = "custom_role";
+            $fieldChoices = DataDictionaryManagement::getChoicesForField($pid, $field);
+            $grant->setVariable("role", $fieldChoices[$row[$field]]);
+        } else {
+            $grant->setVariable("role", $this->choices["custom_role"][$row["custom_role"]]);
+        }
 		$grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
 		$grant->setVariable('url', $url);
 		$grant->setVariable('link', Links::makeLink($url, "See Grant"));

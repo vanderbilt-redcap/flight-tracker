@@ -164,6 +164,89 @@ class Application {
 		return CareerDev::getInstitutions($pid);
 	}
 
+	public static function getHeader($tokenName = "") {
+        if (!$tokenName) {
+            $tokenName = self::getSetting("tokenName");
+        }
+        $module = self::getModule();
+        $museoSansLink = self::link("/fonts/exljbris - MuseoSans-500.otf");
+        $faLinkHTML = '<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous" />';
+        $w3Link = self::link("/css/w3.css");
+
+        $str = "";
+        $str .= $faLinkHTML;
+        $str .= "<link rel='stylesheet' href='$w3Link' />
+<style>
+/* must add fonts here or they will not show up in REDCap menus */
+@font-face { font-family: 'Museo Sans'; font-style: normal; font-weight: normal; src: url('$museoSansLink'); }
+
+.w3-dropdown-hover { display: inline-block !important; float: none !important; }
+.w3-dropdown-hover button,a.w3-bar-link { font-size: 12px; }
+a.w3-bar-link { display: inline-block !important; float: none !important; }
+.w3-bar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; text-align: center !important; }
+a.w3-button,button.w3-button { padding: 6px 4px !important; }
+a.w3-button,button.w3-button.with-image { padding: 8px 4px 6px 4px !important; }
+a.w3-button { color: black !important; float: none !important; }
+.w3-button a,.w3-dropdown-content a { color: white !important; font-size: 13px !important; }
+.topHeaderWrapper { background-color: white; height: 80px; top: 0px; width: 100%; }
+.topHeader { margin: 0 auto; max-width: 1200px; }
+.topBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 0px; }
+a.nounderline { text-decoration: none; }
+a.nounderline:hover { text-decoration: dotted; }
+img.brandLogo { height: 40px; margin: 20px; }
+</style>";
+
+        $str .= "<header class='topHeaderWrapper'>";
+        $str .= "<div class='topHeader'>";
+        $str .= "<div class='topBar' style='float: left; padding-left: 5px;'><a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'><img alt='Flight Tracker for Scholars' src='".self::link("/img/flight_tracker_logo_small.png")."'></a></div>";
+        if ($base64 = $module->getBrandLogo()) {
+            $str .= "<div class='topBar' style='float:right;'><img src='$base64' class='brandLogo'></div>";
+        } else {
+            $str .= "<div class='topBar' style='float:right;'><p class='recessed'>$tokenName</p></div>";
+        }
+        $str .= "</div>";
+        $str .= "</header>";
+
+        $navBar = new NavigationBar();
+        $navBar->addFALink("home", "Home", CareerDev::getHomeLink());
+        $navBar->addFAMenu("clinic-medical", "General", CareerDev::getMenu("General"));
+        $navBar->addMenu("<img src='".CareerDev::link("/img/grant_small.png")."'>Grants", CareerDev::getMenu("Grants"));
+        $navBar->addFAMenu("sticky-note", "Pubs", CareerDev::getMenu("Pubs"));
+        $navBar->addFAMenu("table", "View", CareerDev::getMenu("View"));
+        $navBar->addFAMenu("calculator", "Wrangle", CareerDev::getMenu("Wrangler"));
+        $navBar->addFAMenu("school", "Scholars", CareerDev::getMenu("Scholars"));
+        $navBar->addMenu("<img src='".CareerDev::link("/img/redcap_translucent_small.png")."'>REDCap", CareerDev::getMenu("REDCap"));
+        $navBar->addFAMenu("tachometer-alt", "Dashboards", CareerDev::getMenu("Dashboards"));
+        $navBar->addFAMenu("filter", "Cohorts / Filters", CareerDev::getMenu("Cohorts"));
+        $navBar->addFAMenu("chalkboard-teacher", "Mentors", CareerDev::getMenu("Mentors"));
+        $navBar->addFAMenu("pen", "Resources", CareerDev::getMenu("Resources"));
+        $navBar->addFAMenu("question-circle", "Help", CareerDev::getMenu("Help"));
+        $str .= $navBar->getHTML();
+
+        return $str;
+    }
+
+    public static function getFooter() {
+        $px = 300;
+        $str = "";
+        $str .= "<style>
+body { margin-bottom: 60px; }
+footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; background-color: white; }
+.bottomBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 5px; }
+</style>";
+        $str .= "<footer class='bottomFooter'>";
+        $str .= "<div class='bottomBar' style='float: left;'>";
+        $str .= "<div class='recessed' style='width: $px"."px;'>Copyright &#9400 ".date("Y")." <a class='nounderline' href='https://vumc.org/'>Vanderbilt University Medical Center</a></div>";
+        $str .= "<div class='recessed' style='width: $px"."px;'>from <a class='nounderline' href='https://edgeforscholars.org/'>Edge for Scholars</a></div>";
+        $str .= "<div class='recessed' style='width: $px"."px;'><a class='nounderline' href='https://projectredcap.org/'>Powered by REDCap</a></div>";
+        $str .= "</div>";    // bottomBar
+        $str .= "<div class='bottomBar' style='float: right;'><span class='recessed'>funded by</span><br>";
+        $str .= "<a href='https://ncats.nih.gov/ctsa'><img src='".self::link("/img/ctsa.png")."' style='height: 22px;'></a></div>";
+        $str .= "</div>";    // bottomBar
+        $str .= "</footer>";    // bottomFooter
+        return $str;
+    }
+
     public static function getPids() {
         if (Application::isVanderbilt()) {
             if (Application::isExternalModule()) {

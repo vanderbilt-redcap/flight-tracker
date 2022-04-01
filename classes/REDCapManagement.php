@@ -18,45 +18,19 @@ class REDCapManagement {
     }
 
     public static function getWeekNumInYear($ts = FALSE) {
-	    if (!$ts) {
-	        $ts = time();
-        }
-	    $dayOfYear = date("z", $ts);
-        return floor(($dayOfYear - 1) / 7) + 1;
+	    return DateManagement::getWeekNumInYear($ts);
     }
 
     public static function getWeekNumInMonth($ts = FALSE) {
-	    if (!$ts) {
-	        $ts = time();
-        }
-	    $dayOfMonth = date("j", $ts);
-	    return floor(($dayOfMonth - 1) / 7) + 1;
+        return DateManagement::getWeekNumInMonth($ts);
     }
 
     public static function makeSafeFilename($filename) {
-	    $filename = str_replace("..", "", $filename);
-        $filename = str_replace("/", "", $filename);
-        $filename = str_replace("\\", "", $filename);
-	    return $filename;
+	    return FileManagement::makeSafeFilename($filename);
     }
 
 	public static function filterOutInvalidFields($metadata, $fields) {
-	    $metadataFields = self::getFieldsFromMetadata($metadata);
-	    $metadataForms = self::getFormsFromMetadata($metadata);
-	    $newFields = array();
-	    foreach ($fields as $field) {
-	        if (in_array($field, $metadataFields)) {
-	            $newFields[] = $field;
-            } else {
-	            foreach ($metadataForms as $form) {
-	                if ($field == $form."_complete") {
-	                    $newFields[] = $field;
-	                    break;
-                    }
-                }
-            }
-        }
-	    return $newFields;
+	    return DataDictionaryManagement::filterOutInvalidFields($metadata, $fields);
     }
 
     public static function hasInstance($token, $server, $recordId, $instrument, $instance) {
@@ -149,14 +123,7 @@ class REDCapManagement {
 	}
 
 	public static function getReporterDateInYMD($dt) {
-        if (!$dt) {
-            return "";
-        }
-        $nodes = preg_split("/T/", $dt);
-        if (count($nodes) != 2) {
-            return $nodes[0];
-        }
-        return $nodes[0];
+        return DateManagement::getReporterDateInYMD($dt);
     }
 
     public static function getCurrentFY($type) {
@@ -250,23 +217,7 @@ class REDCapManagement {
     }
 
 	public static function dateCompare($d1, $op, $d2) {
-	    $ts1 = strtotime($d1);
-	    $ts2 = strtotime($d2);
-	    if ($op == ">") {
-            return ($ts1 > $ts2);
-        } else if ($op == ">=") {
-            return ($ts1 >= $ts2);
-        } else if ($op == "<=") {
-            return ($ts1 <= $ts2);
-        } else if ($op == "<") {
-            return ($ts1 < $ts2);
-        } else if ($op == "==") {
-            return ($ts1 == $ts2);
-        } else if (($op == "!=") || ($op == "<>")) {
-            return ($ts1 != $ts2);
-        } else {
-	        throw new \Exception("Invalid operation ($op)!");
-        }
+        return DateManagement::dateCompare($d1, $op, $d2);
     }
 
     public static function convertInstrumentNameToPrefix($instrument, $metadata) {
@@ -291,43 +242,11 @@ class REDCapManagement {
     }
 
     public static function isMY($str) {
-	    if (!$str) {
-	        return FALSE;
-        }
-        $nodes = preg_split("/[\-\/]/", $str);
-	    if (count($nodes) == 2) {
-	        $month = $nodes[0];
-	        $year = $nodes[1];
-	        if (($month >= 1) && ($month <= 12)) {
-                if (is_numeric($year)) {
-                    return TRUE;
-                }
-            }
-        }
-	    return FALSE;
+        return DateManagement::isMY($str);
     }
 
     public static function MY2YMD($my) {
-	    if (!$my) {
-	        return "";
-        }
-        $sep = "-";
-	    $nodes = preg_split("/[\-\/]/", $my);
-	    if (count($nodes) == 2) {
-            return $nodes[1] . $sep . $nodes[0] . $sep . "01";
-        } else if (count($nodes) == 3) {
-            $mdy = $my;
-            return self::MDY2YMD($mdy);
-        } else if (count($nodes) == 1) {
-	        $year = $nodes[0];
-	        if ($year > 1900) {
-	            return $year."-01-01";
-            } else {
-	            throw new \Exception("Invalid year: $year");
-            }
-        } else {
-	        throw new \Exception("Cannot convert MM/YYYY $my");
-        }
+	    return DateManagement::MY2YMD($my);
     }
 
     public static function getPrefix($field) {
@@ -391,33 +310,19 @@ class REDCapManagement {
     }
 
     public static function getYear($date) {
-        $ts = strtotime($date);
-        if ($ts) {
-            return date("Y", $ts);
-        }
-        return "";
+	    return DateManagement::getYear($date);
     }
 
     public static function getDayDuration($date1, $date2) {
-	    $span = self::getSecondDuration($date1, $date2);
-	    $oneDay = 24 * 3600;
-	    return $span / $oneDay;
+	    return DateManagement::getDayDuration($date1, $date2);
     }
 
     public static function getSecondDuration($date1, $date2) {
-        $ts1 = strtotime($date1);
-        $ts2 = strtotime($date2);
-        if ($ts1 && $ts2) {
-            return abs($ts2 - $ts1);
-        } else {
-            throw new \Exception("Could not get timestamps from $date1 and $date2");
-        }
+	    return DateManagement::getSecondDuration($date1, $date2);
     }
 
     public static function getYearDuration($date1, $date2) {
-        $span = self::getSecondDuration($date1, $date2);
-	    $oneYear = 365 * 24 * 3600;
-	    return $span / $oneYear;
+	    return DateManagement::getYearDuration($date1, $date2);
     }
 
     public static function matchAtLeastOneRegex($regexes, $str) {
@@ -463,10 +368,7 @@ class REDCapManagement {
 	}
 
 	public static function REDCapTsToPHPTs($redcapTs) {
-	    $year = substr($redcapTs, 0, 4);
-	    $month = substr($redcapTs, 4, 2);
-	    $day = substr($redcapTs, 6, 2);
-	    return strtotime("$year-$month-$day");
+	    return DateManagement::REDCapTsToPHPTs($redcapTs);
     }
 
 	public static function getNumberOfRows($rows, $instrument) {
@@ -480,35 +382,11 @@ class REDCapManagement {
     }
 
 	public static function isValidIP($str) {
-	    if (preg_match("/^\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b$/", $str)) {
-	        # numeric
-            return TRUE;
-        }
-	    if (preg_match("/^\b\w\.\w+\b$/", $str)) {
-	        # word
-	        return TRUE;
-        }
-	    return FALSE;
+	    return URLManagement::isValidIP($str);
     }
 
 	public static function applyProxyIfExists(&$ch, $pid) {
-        $proxyIP = Application::getSetting("proxy-ip", $pid);
-        $proxyPort = Application::getSetting("proxy-port", $pid);
-        $proxyUsername = Application::getSetting("proxy-user", $pid);
-        $proxyPassword = Application::getSetting("proxy-pass", $pid);
-        if ($proxyIP && $proxyPort && is_numeric($proxyPort)&& $proxyPassword && $proxyUsername) {
-            $proxyOpts = [
-                CURLOPT_HTTPPROXYTUNNEL => 1,
-                CURLOPT_PROXY => $proxyIP,
-                CURLOPT_PROXYPORT => $proxyPort,
-            ];
-            if ($proxyUsername && $proxyPassword) {
-                $proxyOpts[CURLOPT_PROXYUSERPWD] = "$proxyUsername:$proxyPassword";
-            }
-            foreach ($proxyOpts as $opt => $value) {
-                curl_setopt($ch, $opt, $value);
-            }
-        }
+	    return URLManagement::applyProxyIfExists($ch, $pid);
     }
 
     public static function makeChoiceStr($fieldChoices) {
@@ -531,101 +409,15 @@ class REDCapManagement {
     }
 
     public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3, $longRetriesLeft = 2) {
-        if (!Application::isLocalhost()) {
-            Application::log("Contacting $url", $pid);
-        }
-        if (!empty($postdata)) {
-            Application::log("Posting ".self::json_encode_with_spaces($postdata), $pid);
-        }
-        $defaultOpts = self::getDefaultCURLOpts();
-        $time1 = microtime();
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        foreach ($defaultOpts as $opt => $value) {
-            if (!isset($addlOpts[$opt])) {
-                curl_setopt($ch, $opt, $value);
-            }
-        }
-        foreach ($addlOpts as $opt => $value) {
-            curl_setopt($ch, $opt, $value);
-        }
-        self::applyProxyIfExists($ch, $pid);
-        if (!empty($postdata)) {
-            if (is_string($postdata)) {
-                $json = $postdata;
-            } else {
-                $json = json_encode($postdata);
-            }
-            Application::log("Posting $json", $pid);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-                'Content-Length: ' . strlen($json),
-                ]);
-        }
-
-        $data = (string) curl_exec($ch);
-        $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        if(curl_errno($ch)){
-            Application::log(curl_error($ch), $pid);
-            if ($autoRetriesLeft > 0) {
-                sleep(30);
-                Application::log("Retrying ($autoRetriesLeft left)...", $pid);
-                list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, $autoRetriesLeft - 1, $longRetriesLeft);
-            } else if ($longRetriesLeft > 0) {
-                sleep(300);
-                Application::log("Retrying ($longRetriesLeft long retries left)...", $pid);
-                list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, 0, $longRetriesLeft - 1);
-            } else {
-                Application::log("Error: ".curl_error($ch), $pid);
-                throw new \Exception(curl_error($ch));
-            }
-        }
-        curl_close($ch);
-        $time2 = microtime();
-        $timeStmt = "";
-        if (is_numeric($time1) && is_numeric($time2)) {
-            $timeStmt = " in ".(($time2 - $time1) / 1000)." seconds";
-        }
-        if (!Application::isLocalhost()) {
-            Application::log("Response code $resp; ".strlen($data)." bytes".$timeStmt, $pid);
-            if (strlen($data) < 100) {
-                Application::log("Result: ".$data, $pid);
-            }
-        }
-        return [$resp, $data];
-    }
-
-    private static function getDefaultCURLOpts() {
-        return [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_VERBOSE => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_AUTOREFERER => true,
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_FRESH_CONNECT => 1,
-            CURLOPT_TIMEOUT => 120,
-            CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_SSL_VERIFYPEER => Upload::isProductionServer(),
-        ];
+        return URLManagement::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, $autoRetriesLeft, $longRetriesLeft);
     }
 
     public static function isValidURL($url) {
-	    return self::isGoodURL($url);
+	    return URLManagement::isGoodURL($url);
     }
 
     public static function isGoodURL($url) {
-        $ch = curl_init();
-        $defaultOpts = self::getDefaultCURLOpts();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        foreach ($defaultOpts as $opt => $value) {
-            curl_setopt($ch, $opt, $value);
-        }
-        curl_exec($ch);
-        $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
-        return ($resp == 200);
+        return URLManagement::isGoodURL($url);
     }
 
     public static function versionGreaterThanOrEqualTo($version1, $version2) {
@@ -651,7 +443,7 @@ class REDCapManagement {
     }
 
 	public static function downloadURL($url, $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
-	    return self::downloadURLWithPOST($url, [], $pid, $addlOpts, $autoRetriesLeft);
+	    return URLManagement::downloadURL($url, $pid, $addlOpts, $autoRetriesLeft);
     }
 
     public static function stripNickname($firstName) {
@@ -690,9 +482,8 @@ class REDCapManagement {
         return "";
     }
 
-    public function getFileSuffix($file) {
-        $nodes = preg_split("/\./", $file);
-        return $nodes[count($nodes) - 1];
+    public static function getFileSuffix($file) {
+        return FileManagement::getFileSuffix($file);
     }
 
     public static function removeMoneyFormatting($amount) {
@@ -751,150 +542,39 @@ class REDCapManagement {
     }
 
     public static function getLatestDate($dates) {
-	    $latestTs = 0;
-	    $latestDate = "";
-	    foreach ($dates as $date) {
-	        $ts = strtotime($date);
-	        if ($ts > $latestTs) {
-	            $latestDate = $date;
-	            $latestTs = $ts;
-            }
-        }
-	    if ($latestTs && $latestDate) {
-	        return $latestDate;
-        } else {
-	        return "";
-        }
+        return DateManagement::getLatestDate($dates);
     }
 
     public static function getParametersAsHiddenInputs($url) {
-        $params = self::getParameters($url);
-        $html = [];
-        foreach ($params as $key => $value) {
-            $value = urldecode($value);
-            $html[] = "<input type='hidden' name='$key' value='$value'>";
-        }
-        return implode("\n", $html);
+	    return URLManagement::getParametersAsHiddenInputs($url);
     }
 
     public static function getParameters($url) {
-        $nodes = explode("?", $url);
-        $params = [];
-        if (count($nodes) > 0) {
-            $pairs = explode("&", $nodes[1]);
-            foreach ($pairs as $pair) {
-                if ($pair) {
-                    $pairNodes = explode("=", $pair);
-                    if (count($pairNodes) >= 2) {
-                        $params[$pairNodes[0]] = $pairNodes[1];
-                    } else {
-                        $params[$pairNodes[0]] = "";
-                    }
-                }
-            }
-        }
-        return $params;
+	    return URLManagement::getParameters($url);
     }
 
     public static function sanitizeJSON($str) {
-        /**
-         * @psalm-taint-escape html
-         * @psalm-taint-escape has_quotes
-         */
-
-        # unable to do so now
-        return $str;
+	    return Sanitizer::sanitizeJSON($str);
     }
 
     public static function sanitizeWithoutChangingQuotes($str) {
-        if (is_numeric($str)) {
-            $str = (string) $str;
-        }
-        if (!is_string($str)) {
-            return "";
-        }
-        /**
-         * @psalm-taint-escape html
-         * @psalm-taint-escape has_quotes
-         */
-        $str = preg_replace("/<[^>]+>/", '', $str);
-        return htmlentities($str);
+	    return Sanitizer::sanitizeWithoutChangingQuotes($str);
     }
 
     public static function sanitizeArray($ary, $stripHTML = TRUE) {
-	    $encodeQuotes = FALSE;
-	    if (is_array($ary)) {
-            /**
-             * @psalm-taint-escape html
-             * @psalm-taint-escape has_quotes
-             */
-            $newAry = [];
-            foreach ($ary as $key => $value) {
-                if ($stripHTML) {
-                    $key = self::sanitize($key);
-                } else {
-                    $key = self::sanitizeWithoutStrippingHTML($key, $encodeQuotes);
-                }
-	            if (is_array($value)) {
-	                $value = self::sanitizeArray($value, $stripHTML);
-                } else {
-                    if ($stripHTML) {
-                        $value = self::sanitize($value);
-                    } else {
-                        $value = self::sanitizeWithoutStrippingHTML($value, $encodeQuotes);
-                    }
-                }
-	            $newAry[$key] = $value;
-            }
-            return $newAry;
-        } else {
-            if ($stripHTML) {
-                return self::sanitize($ary);
-            } else {
-                return self::sanitizeWithoutStrippingHTML($ary, $encodeQuotes);
-            }
-        }
+	    return Sanitizer::sanitizeArray($ary, $stripHTML);
     }
 
     public static function sanitizeWithoutStrippingHTML($str, $encodeQuotes = TRUE) {
-        /**
-         * @psalm-taint-escape html
-         * @psalm-taint-escape has_quotes
-         */
-        $str = preg_replace("/<script[^>]*>/i", '', $str);
-        $str = preg_replace("/<\/script[^>]*>/i", '', $str);
-        if ($encodeQuotes) {
-            $str = htmlentities($str, ENT_QUOTES);
-        }
-        return $str;
+	    return Sanitizer::sanitizeWithoutStrippingHTML($str, $encodeQuotes);
     }
 
     public static function sanitizeCohort($cohortName) {
-	    return Cohorts::sanitize($cohortName);
+	    return Sanitizer::sanitizeCohort($cohortName);
     }
 
     public static function sanitize($origStr) {
-	    if (self::isValidToken($origStr)) {
-	        $module = Application::getModule();
-	        if (method_exists($module, "sanitizeAPIToken")) {
-                return $module->sanitizeAPIToken($origStr);
-            }
-        }
-	    if (is_numeric($origStr)) {
-	        $origStr = (string) $origStr;
-        }
-	    if (!is_string($origStr)) {
-	        return "";
-        }
-        /**
-         * @psalm-taint-escape html
-         */
-        $str = preg_replace("/<[^>]+>/", '', $origStr);
-        /**
-         * @psalm-taint-escape has_quotes
-         */
-        $str = htmlentities($str, ENT_QUOTES);
-        return $str;
+	    return Sanitizer::sanitize($origStr);
     }
 
     public static function isEmail($str) {
@@ -903,17 +583,11 @@ class REDCapManagement {
 
     # requestedRecord is from GET/POST
     public static function getSanitizedRecord($requestedRecord, $records) {
-	    foreach ($records as $r) {
-	        if ($r == $requestedRecord) {
-	            return $r;
-            }
-        }
-	    return "";
+	    return Sanitizer::getSanitizedRecord($requestedRecord, $records);
     }
 
     public static function getPage($url) {
-	    $nodes = explode("?", $url);
-	    return $nodes[0];
+        return URLManagement::getPage($url);
     }
 
     public static function json_encode_with_spaces($data) {
@@ -934,49 +608,19 @@ class REDCapManagement {
     }
 
     public static function isDMY($str) {
-        if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
-            $nodes = preg_split("/[\/\-]/", $str);
-            $earliestYear = 1900;
-            if (count($nodes) == 3) {
-                if (($nodes[0] <= 31) && ($nodes[1] <= 12) && (($nodes[2] >= $earliestYear) || ($nodes[2] < 100))) {
-                    # DMY
-                    return TRUE;
-                }
-            }
-        }
-        return FALSE;
+	    return DateManagement::isDMY($str);
     }
 
     public static function isMDY($str) {
-        if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
-            $nodes = preg_split("/[\/\-]/", $str);
-            $earliestYear = 1900;
-            if (count($nodes) == 3) {
-                if (($nodes[0] <= 12) && ($nodes[1] <= 31) && (($nodes[2] >= $earliestYear) || ($nodes[2] < 100))) {
-                    # MDY
-                    return TRUE;
-                }
-            }
-        }
-        return FALSE;
+	    return DateManagement::isMDY($str);
     }
 
     public static function isYMD($str) {
-        if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
-            $nodes = preg_split("/[\/\-]/", $str);
-            $earliestYear = 1900;
-            if (count($nodes) == 3) {
-                if ((($nodes[0] >= $earliestYear) || ($nodes[0] < 100)) && ($nodes[1] <= 12) && ($nodes[2] <= 31)) {
-                    # YMD
-                    return TRUE;
-                }
-            }
-        }
-	    return FALSE;
+        return DateManagement::isYMD($str);
     }
 
     public static function isDate($str) {
-	    return self::isYMD($str) || self::isDMY($str) || self::isMDY($str);
+        return DateManagement::isDate($str);
     }
 
     public static function convertDollarsToNumber($value) {
@@ -992,6 +636,16 @@ class REDCapManagement {
 	    return "$".$value;
     }
 
+    public static function excludeAcronyms($list) {
+	    $newList = [];
+	    foreach ($list as $item) {
+	        if (!preg_match("/^[A-Z\.]+$/", $item) || (strlen($item) > 5)) {
+	            $newList[] = $item;
+            }
+        }
+	    return $newList;
+    }
+
     public static function isValidSurvey($pid, $hash) {
 	    if ($hash) {
             $sql = "select s.project_id AS project_id from redcap_surveys_participants AS p INNER JOIN redcap_surveys AS s ON s.survey_id = p.survey_id WHERE p.hash ='".db_real_escape_string($hash)."' AND s.project_id='".db_real_escape_string($pid)."'";
@@ -1002,29 +656,11 @@ class REDCapManagement {
     }
 
     public static function cleanupDirectory($dir, $regex) {
-	    $files = self::regexInDirectory($regex, $dir);
-	    if (!preg_match("/\/$/", $dir)) {
-	        $dir .= "/";
-        }
-	    if (!empty($files)) {
-            Application::log("Removing files (".implode(", ", $files).") from $dir");
-            foreach ($files as $file) {
-                if (file_exists($dir.$file)) {
-                    unlink($dir.$file);
-                }
-            }
-        }
+	    FileManagement::cleanupDirectory($dir, $regex);
     }
 
     public static function regexInDirectory($regex, $dir) {
-	    $files = scandir($dir);
-	    $foundFiles = [];
-	    foreach ($files as $file) {
-	        if (preg_match($regex, $file)) {
-	            $foundFiles[] = $file;
-            }
-        }
-	    return $foundFiles;
+	    return FileManagement::regexInDirectory($regex, $dir);
     }
 
     public static function deduplicateByKeys($token, $server, $pid, $records, $fields, $prefix, $instrument) {
@@ -1069,39 +705,11 @@ class REDCapManagement {
     }
 
     public static function getTimestampOfFile($file) {
-	    $nodes = preg_split("/\//", $file);
-	    if (count($nodes) > 1) {
-	        $file = $nodes[count($nodes) - 1];
-        }
-	    if (preg_match("/^\d\d\d\d\d\d\d\d\d\d\d\d\d\d_/", $file, $matches)) {
-	        return preg_replace("/_$/", "", $matches[0]);
-        }
-	    return 0;
+	    return FileManagement::getTimestampOfFile($file);
     }
 
     public static function copyTempFileToTimestamp($file, $timespanInSeconds) {
-	    if (strpos($file, APP_PATH_TEMP) === FALSE) {
-	        throw new \Exception("File $file must be in temporary directory");
-        }
-	    if (file_exists($file)) {
-	        $dir = dirname($file);
-	        $basename = preg_replace("/^\d\d\d\d\d\d\d\d\d\d\d\d\d\d_/", "", basename($file));
-	        $filename = self::makeSafeFilename(date("YmdHis", time() + (int) $timespanInSeconds)."_".$basename);
-            $newLocation = $dir."/".$filename;
-            Application::log("Copying $file to $newLocation");
-            flush();
-            $fpIn = fopen($file, "r");
-            $fpOut = fopen($newLocation, "w");
-            while ($line = fgets($fpIn)) {
-                fwrite($fpOut, $line);
-                fflush($fpOut);
-            }
-            fclose($fpOut);
-            fclose($fpIn);
-            return $newLocation;
-        } else {
-	        throw new \Exception("File $file does not exist");
-        }
+	    return FileManagement::copyTempFileToTimestamp($file, $timespanInSeconds);
     }
 
     public static function getDesignUseridsForProject($pid) {
@@ -1129,12 +737,9 @@ class REDCapManagement {
     }
 
     public static function fillInLinks($text) {
-        return preg_replace(
-            '/((https?|ftp):\/\/(\S*?\.\S*?))([\s)\[\]{},;"\':<]|\.\s|$)/i',
-            "<a href=\"$1\" target=\"_blank\">$3</a>$4",
-            $text
-        );
+	    return URLManagement::fillInLinks($text);
     }
+
     public static function getUseridsFromREDCap($firstName, $lastName) {
 	    $lookup = new REDCapLookup($firstName, $lastName);
 	    $uidsAndNames = $lookup->getUidsAndNames();
@@ -1280,7 +885,7 @@ class REDCapManagement {
     }
 
     public static function isOracleDate($d) {
-        return preg_match("/^\d\d-[A-Z]{3}-\d\d$/", $d);
+        return DateManagement::isOracleDate($d);
     }
 
     # includes _complete's
@@ -1298,53 +903,11 @@ class REDCapManagement {
     }
 
     public static function oracleDate2YMD($d) {
-        if ($d === "") {
-            return "";
-        }
-        $nodes = preg_split("/\-/", $d);
-        if (is_numeric($nodes[0]) && is_numeric($nodes[2])) {
-            $day = $nodes[0];
-            $month = $nodes[1];
-            $year = $nodes[2];
-            if ($year < 40) {
-                $year += 2000;
-            } else if ($year < 100) {
-                $year += 1900;
-            }
-            if (($day < 10) && (strlen($day) <= 1)) {
-                $day = "0".$day;
-            }
-            $months = array(
-                "JAN" => "01",
-                "FEB" => "02",
-                "MAR" => "03",
-                "APR" => "04",
-                "MAY" => "05",
-                "JUN" => "06",
-                "JUL" => "07",
-                "AUG" => "08",
-                "SEP" => "09",
-                "OCT" => "10",
-                "NOV" => "11",
-                "DEC" => "12",
-            );
-            if (!isset($months[$month])) {
-                throw new \Exception("Invalid month $month");
-            }
-            $month = $months[$month];
-            return $year."-".$month."-".$day;
-        } else {
-            throw new \Exception("Invalid date $d");
-        }
-        return "";
+        return DateManagement::oracleDate2YMD($d);
     }
 
     public static function YMD2MDY($ymd) {
-        $ts = strtotime($ymd);
-        if ($ts) {
-            return date("m-d-Y", $ts);
-        }
-        echo "";
+        return DateManagement::YMD2MDY($ymd);
     }
 
     public static function prettyMoney($n, $displayCents = TRUE) {
@@ -1442,67 +1005,19 @@ class REDCapManagement {
     }
 
     public static function MDY2YMD($mdy) {
-        $nodes = preg_split("/[\/\-]/", $mdy);
-        if ((count($nodes) == 3) && self::isArrayNumeric($nodes)) {
-            $month = (int) $nodes[0];
-            $day = (int) $nodes[1];
-            $year = (int) $nodes[2];
-            if ($year < 100) {
-                if ($year > 30) {
-                    $year += 1900;
-                } else {
-                    $year += 2000;
-                }
-            }
-            return $year."-".$month."-".$day;
-        }
-        return "";
+        return DateManagement::MDY2YMD($mdy);
     }
 
-    public static function DMY2YMD($mdy) {
-        $nodes = preg_split("/[\/\-]/", $mdy);
-        if ((count($nodes) == 3) && self::isArrayNumeric($nodes)) {
-            $day = (int) $nodes[0];
-            $month = (int) $nodes[1];
-            $year = (int) $nodes[2];
-            if ($year < 100) {
-                if ($year > 30) {
-                    $year += 1900;
-                } else {
-                    $year += 2000;
-                }
-            }
-            return $year."-".$month."-".$day;
-        }
-        return "";
+    public static function DMY2YMD($dmy) {
+        return DateManagement::DMY2YMD($dmy);
     }
 
     public static function addMonths($date, $months) {
-        $ts = strtotime($date);
-        if ($ts) {
-            $year = date("Y", $ts);
-            $month = date("m", $ts);
-            $month += $months;
-            while ($month <= 0) {
-                $month += 12;
-                $year--;
-            }
-            while ($month > 12) {
-                $month -= 12;
-                $year++;
-            }
-            $day = date("d", $ts);
-            return $year."-".$month."-".$day;
-        }
-        return "";
+        return DateManagement::addMonths($date, $months);
     }
 
     public static function addYears($date, $years) {
-	    $ts = strtotime($date);
-	    $year = date("Y", $ts);
-	    $year += $years;
-	    $monthDays = date("-m-d", $ts);
-	    return $year.$monthDays;
+        return DateManagement::addYears($date, $years);
     }
 
 	public static function getLabels($metadata) {
@@ -1510,11 +1025,7 @@ class REDCapManagement {
 	}
 
 	public static function YMD2MY($ymd) {
-	    $ts = strtotime($ymd);
-	    if ($ts) {
-	        return date("m/Y", $ts);
-        }
-	    return $ymd;
+        return DateManagement::YMD2MY($ymd);
     }
 
     public static function stddev($ary) {
@@ -1522,14 +1033,8 @@ class REDCapManagement {
 	    return $stats->stddev();
     }
 
-
     public static function stripMY($str) {
-	    if (preg_match("/\d\d\/\d\d\d\d/", $str, $matches)) {
-	        return $matches[0];
-        } else if (preg_match("/\d\d\d\d/", $str, $matches)) {
-	        return $matches[0];
-        }
-	    return $str;
+        return DateManagement::stripMY($str);
     }
 
 	public static function indexREDCapData($redcapDataFromJSON) {
@@ -1545,12 +1050,7 @@ class REDCapManagement {
 	}
 
 	public static function datetime2Date($datetime) {
-	    if (preg_match("/\s/", $datetime)) {
-	        $nodes = preg_split("/\s+/", $datetime);
-	        return $nodes[0];
-        }
-	    # date, not datetime
-	    return $datetime;
+        return DateManagement::datetime2Date($datetime);
     }
 
     public static function prefix2CompleteField($prefix) {
@@ -1591,33 +1091,11 @@ class REDCapManagement {
     }
 
     public static function makeHiddenInputs($params) {
-        $items = [];
-        foreach ($params as $key => $value) {
-            $html = "<input type='hidden' id='$key' name='$key'";
-            if ($value !== "") {
-                $html .= " value='$value'";
-            }
-            $html .= ">";
-            $items[] = $html;
-        }
-        return implode("", $items);
+        return URLManagement::makeHiddenInputs($params);
     }
 
     public static function splitURL($fullURL) {
-        list($url, $paramList) = explode("?", $fullURL);
-        $pairs = explode("&", $paramList);
-        $params = [];
-        foreach ($pairs as $pair) {
-            $items = explode("=", $pair);
-            if (count($items) == 2) {
-                $params[$items[0]] = urldecode($items[1]);
-            } else if (count($items) == 1) {
-                $params[$items[0]] = "";
-            } else {
-                throw new \Exception("This should never happen. A GET parameter has ".count($items)." items.");
-            }
-        }
-        return [$url, $params];
+        return URLManagement::splitURL($fullURL);
     }
 
     public static function screenForFields($metadata, $possibleFields) {
@@ -1635,16 +1113,11 @@ class REDCapManagement {
     }
 
     public static function MDY2LongDate($mdy) {
-        $ymd = self::MDY2YMD($mdy);
-        return self::YMD2LongDate($ymd);
+        return DateManagement::MDY2LongDate($mdy);
     }
 
     public static function YMD2LongDate($ymd) {
-        $ts = strtotime($ymd);
-        if ($ts) {
-            return date("F j, Y", $ts);
-        }
-        return "";
+        return DateManagement::YMD2LongDate($ymd);
     }
 
     public static function getFieldsUnderSection($metadata, $sectionHeader) {
@@ -1652,7 +1125,7 @@ class REDCapManagement {
     }
 
     public static function setupRepeatingForms($eventId, $formsAndLabels) {
-        return DataDictionaryManagement::setupRepeatingForms($eventId, $formsAndLabels);
+        DataDictionaryManagement::setupRepeatingForms($eventId, $formsAndLabels);
 	}
 
 	public static function getEventIdForClassical($projectId) {
@@ -1734,17 +1207,7 @@ class REDCapManagement {
 	}
 
 	public static function getFileNameForEdoc($edocId) {
-        $sql = "SELECT stored_name FROM redcap_edocs_metadata WHERE doc_id='".db_real_escape_string($edocId)."'";
-        $q = db_query($sql);
-        if ($row = db_fetch_assoc($q)) {
-            $filename = EDOC_PATH.$row['stored_name'];
-            if (file_exists($filename)) {
-                return $filename;
-            } else {
-                throw new \Exception("Could not find edoc file: ".$row['stored_name']);
-            }
-        }
-        return "";
+        return FileManagement::getFileNameForEdoc($edocId);
     }
 
 	public static function exactInArray($item, $ary) {
@@ -1853,153 +1316,12 @@ class REDCapManagement {
 		return $newRow;
 	}
 
-    public static function datediff($d1, $d2, $unit=null, $returnSigned=false, $returnSigned2=false)
-    {
-        $now = date("Y-m-d H:i:s");
-        $today = date("Y-m-d");
-
-        global $missingDataCodes;
-        // Make sure Units are provided and that dates are trimmed
-        if ($unit == null) return NAN;
-        $d1 = trim($d1);
-        $d2 = trim($d2);
-        // Missing data codes
-        if (isset($missingDataCodes) && !empty($missingDataCodes)) {
-            if ($d1 != '' && isset($missingDataCodes[$d1])) $d1 = '';
-            if ($d2 != '' && isset($missingDataCodes[$d2])) $d2 = '';
-        }
-        // If ymd, mdy, or dmy is used as the 4th parameter, then assume user is using Calculated field syntax
-        // and assume that returnSignedValue is the 5th parameter.
-        if (in_array(strtolower(trim($returnSigned)), array('ymd', 'dmy', 'mdy'))) {
-            $returnSigned = $returnSigned2;
-        }
-        // Initialize parameters first
-        if (strtolower($d1) === "today") $d1 = $today; elseif (strtolower($d1) === "now") $d1 = $now;
-        if (strtolower($d2) === "today") $d2 = $today; elseif (strtolower($d2) === "now") $d2 = $now;
-        $d1isToday = ($d1 == $today);
-        $d2isToday = ($d2 == $today);
-        $d1isNow = ($d1 == $now);
-        $d2isNow = ($d2 == $now);
-        $returnSigned = ($returnSigned === true || $returnSigned === 'true');
-        // Determine data type of field ("date", "time", "datetime", or "datetime_seconds")
-        $format_checkfield = ($d1isToday ? $d2 : $d1);
-        $numcolons = substr_count($format_checkfield, ":");
-        if ($numcolons == 1) {
-            if (strpos($format_checkfield, "-") !== false) {
-                $datatype = "datetime";
-            } else {
-                $datatype = "time";
-            }
-        } else if ($numcolons > 1) {
-            $datatype = "datetime_seconds";
-        } else {
-            $datatype = "date";
-        }
-        // TIME only
-        if ($datatype == "time" && !$d1isToday && !$d2isToday) {
-            if ($d1isNow) {
-                $d2 = "$d2:00";
-                $d1 = substr($d1, -8);
-            } elseif ($d2isNow) {
-                $d1 = "$d1:00";
-                $d2 = substr($d2, -8);
-            }
-            // Return in specified units
-            return self::secondDiff(strtotime($d1),strtotime($d2),$unit,$returnSigned);
-        }
-        // DATE, DATETIME, or DATETIME_SECONDS
-        // If using 'today' for either date, then set format accordingly
-        if ($d1isToday) {
-            if ($datatype == "time") {
-                return NAN;
-            } else {
-                $d2 = substr($d2, 0, 10);
-            }
-        } elseif ($d2isToday) {
-            if ($datatype == "time") {
-                return NAN;
-            } else {
-                $d1 = substr($d1, 0, 10);
-            }
-        }
-        // If a date[time][_seconds] field, then ensure it has dashes
-        if (substr($datatype, 0, 4) == "date" && (strpos($d1, "-") === false || strpos($d2, "-") === false)) {
-            return NAN;
-        }
-        // Make sure the date/time values aren't empty
-        if ($d1 == "" || $d2 == "" || $d1 == null || $d2 == null) {
-            return NAN;
-        }
-        // Make sure both values are same length/datatype
-        if (strlen($d1) != strlen($d2)) {
-            if (strlen($d1) > strlen($d2) && $d2 != '') {
-                if (strlen($d1) == 16) {
-                    if (strlen($d2) == 10) $d2 .= " 00:00";
-                    $datatype = "datetime";
-                } else if (strlen($d1) == 19) {
-                    if (strlen($d2) == 10) $d2 .= " 00:00";
-                    else if (strlen($d2) == 16) $d2 .= ":00";
-                    $datatype = "datetime_seconds";
-                }
-            } else if (strlen($d2) > strlen($d1) && $d1 != '') {
-                if (strlen($d2) == 16) {
-                    if (strlen($d1) == 10) $d1 .= " 00:00";
-                    $datatype = "datetime";
-                } else if (strlen($d2) == 19) {
-                    if (strlen($d1) == 10) $d1 .= " 00:00";
-                    else if (strlen($d1) == 16) $d1 .= ":00";
-                    $datatype = "datetime_seconds";
-                }
-            }
-        }
-        // Separate time if datetime or datetime_seconds
-        $d1b = explode(" ", $d1);
-        $d2b = explode(" ", $d2);
-        // Split into date and time (in units of seconds)
-        $d1 = $d1b[0];
-        $d2 = $d2b[0];
-        $d1sec = (!empty($d1b[1])) ? strtotime($d1b[1]) : 0;
-        $d2sec = (!empty($d2b[1])) ? strtotime($d2b[1]) : 0;
-        // Separate pieces of date component
-        $dt1 = explode("-", $d1);
-        $dt2 = explode("-", $d2);
-        // Convert the dates to seconds (conversion varies due to dateformat)
-        $dat1 = mktime(0,0,0,(int)$dt1[1],(int)$dt1[2],(int)$dt1[0]) + $d1sec;
-        $dat2 = mktime(0,0,0,(int)$dt2[1],(int)$dt2[2],(int)$dt2[0]) + $d2sec;
-        // Get the difference in seconds
-        return self::secondDiff($dat1, $dat2, $unit, $returnSigned);
-    }
-
-    // Return the difference of two number values in desired units converted from seconds
-    private static function secondDiff($time1,$time2,$unit,$returnSigned) {
-        $sec = $time2-$time1;
-        if (!$returnSigned) $sec = abs($sec);
-        // Return in specified units
-        if ($unit == "s") {
-            return $sec;
-        } else if ($unit == "m") {
-            return $sec/60;
-        } else if ($unit == "h") {
-            return $sec/3600;
-        } else if ($unit == "d") {
-            return $sec/86400;
-        } else if ($unit == "M") {
-            return $sec/2630016; // Use 1 month = 30.44 days
-        } else if ($unit == "y") {
-            return $sec/31556952; // Use 1 year = 365.2425 days
-        }
-        return NAN;
+    public static function datediff($d1, $d2, $unit=null, $returnSigned=false, $returnSigned2=false) {
+        return DateManagement::datediff($d1, $d2, $unit, $returnSigned, $returnSigned2);
     }
 
     public static function getMedian($ary) {
-        sort($ary);
-        $size = count($ary);
-        if ($size % 2 == 0) {
-            $idx = (int) ($size / 2);
-            return ($ary[$idx - 1] + $ary[$idx]) / 2;
-        } else {
-            $idx = (int) (($size - 1) / 2);
-            return $ary[$idx];
-        }
+        $stats = new Stats($ary);
+        return $stats->median();
     }
 }

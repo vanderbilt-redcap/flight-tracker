@@ -24,6 +24,16 @@ class Links {
 		return self::$server;
 	}
 
+	public static function makeMailtoLink($email) {
+	    if (!$email) {
+	        return "";
+        }
+	    if (REDCapManagement::isEmail($email)) {
+            return "<a href='mailto:$email' class='smallEmail'>$email</a>";
+        }
+	    return $email;
+    }
+
 	public function getServer_test($tester) {
 		$server = self::getServer();
 		$tester->assertEqual($server, substr(APP_PATH_WEBROOT_FULL, 0, strlen($server)));

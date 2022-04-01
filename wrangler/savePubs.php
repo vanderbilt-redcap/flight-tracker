@@ -114,9 +114,18 @@ if ($pmids && !empty($pmids)) {
         } else {
             echo json_encode(array("error" => "Upload queue empty!"));
         }
+    } else {
+        $feedback = [
+            "error" => "All of the requested PMIDs exist in the database. Perhaps they have been omitted earlier.",
+        ];
+        echo json_encode($feedback);
     }
     $pubs = new Publications($token, $server, $metadata);
     $pubs->setRows($redcapData);
     $pubs->deduplicateCitations($recordId);
+} else {
+    $feedback = [
+        "error" => "Empty list of PMIDs",
+    ];
+    echo json_encode($feedback);
 }
-
