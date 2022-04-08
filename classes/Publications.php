@@ -595,7 +595,7 @@ class Publications {
 
 	public static function deleteMismatchedRows($token, $server, $pid, $recordId, $allFirstNames, $allLastNames) {
         # download citation_authors
-	    $redcapData = Download::fieldsForRecords($token, $server, ["record_id", "citation_authors"], [$recordId]);
+	    $redcapData = Download::fieldsForRecords($token, $server, ["record_id", "citation_pmid", "citation_authors"], [$recordId]);
 
 	    # find items that don't match current record AND match some other record
         $currFirstName = $allFirstNames[$recordId];
@@ -605,6 +605,7 @@ class Publications {
             if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
                 $instance = $row['redcap_repeat_instance'];
                 $authorList = preg_split("/\s*[,;]\s*/", $row['citation_authors']);
+                $pmid = $row['citation_pmid'];
                 $authors = [];
                 foreach ($authorList as $authorName) {
                     $authorName = trim($authorName);
@@ -616,12 +617,12 @@ class Publications {
                 foreach ($authors as $author) {
                     if (NameMatcher::matchByInitials($currLastName, $currFirstName, $author['last'], $author['first'])) {
                         $foundCurrInAuthorList = TRUE;
-                        // Application::log("Found current $currFirstName $currLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance", $pid);
+                        // Application::log("Found current $currFirstName $currLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance $pmid", $pid);
                         break;
                     }
                 }
                 if (!$foundCurrInAuthorList) {
-                    // Application::log("Did not find current $currFirstName $currLastName in author list in $recordId:$instance", $pid);
+                    // Application::log("Did not find current $currFirstName $currLastName in author list in $recordId:$instance $pmid ".$row['citation_authors'], $pid);
                     foreach ($authors as $author) {
                         foreach ($allLastNames as $recordId2 => $otherLastName) {
                             $otherFirstName = $allFirstNames[$recordId2];
@@ -698,6 +699,21 @@ class Publications {
             return count($uploadRows);
         }
 	    return 0;
+    }
+
+    public function getIndividualCollaborations($names, $cat = "Included") {
+        $numPubsMatchedHash = [];
+        foreach ($names as $name) {
+            $numPubsMatchedHash[$name] = 0;
+        }
+        foreach ($this->getCitations($cat) as $citation) {
+            foreach ($names as $name) {
+                if ($name && $citation->hasAuthor($name)) {
+                    $numPubsMatchedHash[$name]++;
+                }
+            }
+        }
+        return $numPubsMatchedHash;
     }
 
     public function getNumberWithPeople($names, $cat = "Included") {

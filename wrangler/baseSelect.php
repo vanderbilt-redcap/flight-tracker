@@ -68,7 +68,7 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
             }
             if (pmids.length > 0) {
                 presentScreen('Saving...');
-                const postdata = { record_id: '<?= $sanitizedRecord ?>', pmids: pmids };
+                const postdata = { 'redcap_csrf_token': getCSRFToken(), record_id: '<?= $sanitizedRecord ?>', pmids: pmids };
                 $.post('<?= Application::link("wrangler/savePubs.php") ?>', postdata, function(json) {
                     const data = JSON.parse(data);
                     console.log("saveComplete "+json);
@@ -141,7 +141,7 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
             }
             if (numbers.length > 0) {
                 presentScreen("Saving...");
-                $.post('<?= Application::link("wrangler/savePatents.php") ?>', { record_id: '<?= $sanitizedRecord ?>', numbers: numbers }, function(json) {
+                $.post('<?= Application::link("wrangler/savePatents.php") ?>', { 'redcap_csrf_token': getCSRFToken(), record_id: '<?= $sanitizedRecord ?>', numbers: numbers }, function(json) {
                     const data = JSON.parse(json);
                     console.log("Save complete "+json);
                     if (data['error']) {

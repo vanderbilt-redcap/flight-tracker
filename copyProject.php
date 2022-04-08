@@ -85,6 +85,7 @@ if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
 <h1>Copy <?= Application::getProgramName() ?> Project to Another Project</h1>
 
 <form action="<?= Application::link("this") ?>" method="POST">
+    <?= Application::generateCSRFTokenHTML() ?>
     <p class="centered">API Token for New Project:<br><input type="text" style="width: 500px;" id="token" name="token" value="<?= $otherToken ?>"></p>
     <p class="centered">Base Server URL (e.g., https://redcap.vanderbilt.edu/; note, <b>not</b> API URL):<br><input type="text" id="server" name="server" value="<?= $otherServer ?>" style="width: 500px;"></p>
     <p class="centered"><button onclick="copyProject($('#token').val(), $('#server').val()); return false;">Submit</button></p>

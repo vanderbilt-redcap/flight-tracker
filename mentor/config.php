@@ -115,6 +115,7 @@ echo $mssg;
 <h1>Configure Mentee-Mentor Agreements</h1>
 
 <form action="<?= Application::link("this") ?>" method="POST">
+    <?= Application::generateCSRFTokenHTML() ?>
     <table class="max-width centered padded">
         <tr>
             <td class="alignright bolded"><label for="resourceList">Institutional Resources for Mentoring<br>(One Per Line Please.)<br>These will be offered to the mentee.</label></td>

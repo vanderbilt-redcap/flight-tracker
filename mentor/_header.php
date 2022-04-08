@@ -44,6 +44,12 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
   <!-- Custom styles for this template -->
   <link href="<?= Application::link("mentor/css/landing-page.css") ?>" rel="stylesheet">
 
+    <script>
+        function getCSRFToken() {
+            return "<?= Application::generateCSRFToken() ?>";
+        }
+    </script>
+
 </head>
 
 <body>

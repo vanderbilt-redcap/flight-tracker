@@ -171,6 +171,7 @@ $downloadFile = "downloadCSV.php";
 
 <div style='width: 800px; margin: 14px auto;' class='green centered padded'>Please import a CSV (comma delimited) with one row per grant. Use <a href='<?= Application::link($downloadFile)."&file=".urlencode($importFile)."&match=names"  ?>'>this template (for matching by first and last names)</a> or <a href='<?= Application::link($downloadFile)."&file=".urlencode($importFile)."&match=record" ?>'>this template (for matching by record ids)</a> to start with. Each line must match the first name and last name (exactly) as specified in the database.</div>
 <form method='POST' action='<?= CareerDev::link("bulkImport.php").$suffix ?>' enctype='multipart/form-data'>
+<?= Application::generateCSRFTokenHTML() ?>
 <p class='centered'><input type='file' name='bulk'></p>
 <p class='centered'><input type='submit' name='submit' value='Upload'></p>
 </form>

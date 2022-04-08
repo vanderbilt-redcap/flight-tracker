@@ -9,12 +9,14 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Grants {
-	public function __construct($token, $server, $metadata = "download") {
+	public function __construct($token, $server, $metadata = []) {
 		$this->token = $token;
 		$this->server = $server;
-		if ($metadata == "download") {
+		if (empty($metadata)) {
             $this->metadata = self::getMetadata($token, $server);
-		} else {
+		} else if ($metadata == "empty") {
+            $this->metadata = [];
+        } else {
             $this->metadata = $metadata;
 		}
 		$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule());
@@ -1781,7 +1783,7 @@ class Grants {
                             $value = $value2;
                         }
                         $value = self::translateSourcesIntoSourceOrder($key, $value);
-						if (isset($this->metadata[$key])) {
+						if (in_array($key, $metadataFields)) {
 							$uploadRow[$key] = $value;
 						} else {
 							Application::log($key." not found in metadata, but in compiledGrants");
@@ -1800,14 +1802,14 @@ class Grants {
 				$v = $blankGrant->getREDCapVariables($grant_i);
 				foreach ($v as $key => $value) {
                     $value = self::translateSourcesIntoSourceOrder($key, $value);
-					if (isset($this->metadata[$key])) {
+					if (in_array($key, $metadataFields)) {
 						$uploadRow[$key] = $value;
 					}
 				}
 			}
 			$v = $this->getSummaryVariables($this->rows);
 			foreach ($v as $key => $value) {
-				if (isset($this->metadata[$key])) {
+				if (in_array($key, $metadataFields)) {
                     $value = self::translateSourcesIntoSourceOrder($key, $value);
 					$uploadRow[$key] = $value;
 				} else {

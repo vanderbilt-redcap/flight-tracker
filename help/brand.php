@@ -51,6 +51,7 @@ function makePrompt($mssg = "") {
 	$html .= "<div class='centered' style='max-width: 800px;'>\n";
 	$html .= "<p>You can brand your instance of Flight Tracker for Scholars with your logo. It will be displayed 40-pixels tall. Just upload a file here, and it will appear in the upper-left corner in your project.</p>\n";
 	$html .= "<form action='$thisLink' method='POST' enctype='multipart/form-data'>\n";
+	$html .= Application::generateCSRFTokenHTML();
 	$html .= "<p class='centered'><input type='file' name='logo'></p>\n";
 	$html .= "<p class='centered'><button>Submit Logo</button></p>\n";
 	$html .= "</form>\n";

@@ -2,7 +2,7 @@ function enqueue(ob, record) {
 	var date = $(ob).val();
 	var returnDiv = $(ob).parent().find(".saved");
 	if (date.match(/^\d\d\d\d-\d+-\d+$/)) {
-		$.post("saveSetting.php?pid=<?= $pid ?>", { surveys_next_date: date, records: [record] }, function(str) {
+		$.post("saveSetting.php?pid=<?= $pid ?>", { 'redcap_csrf_token': getCSRFToken(), surveys_next_date: date, records: [record] }, function(str) {
 			setObjectText(returnDiv, str);
 		});
 	} else {
@@ -14,7 +14,7 @@ function enqueue(ob, record) {
 
 function clear(ob, record) {
 	var returnDiv = $(ob).parent().find(".saved");
-	$.post("saveSetting.php?pid=<?= $pid ?>", { surveys_next_date: date, records: [record] }, function(str) {
+	$.post("saveSetting.php?pid=<?= $pid ?>", { 'redcap_csrf_token': getCSRFToken(), surveys_next_date: date, records: [record] }, function(str) {
 		setObjectText(returnDiv, str);
 		$(ob).hide();
 	});

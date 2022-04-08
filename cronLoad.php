@@ -103,17 +103,27 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
             $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Monday", $records, 100000);
         }
 
-        $numRecordsForSummary = 20;
+        $numRecordsForSummary = 15;
         if (Application::isVanderbilt()) {
             $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $allRecords, $numRecordsForSummary, TRUE);
-            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $allRecords, $numRecordsForSummary, TRUE);
         } else {
-            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday", $records, $numRecordsForSummary);
-            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $records, $numRecordsForSummary);
-            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday", $records, $numRecordsForSummary);
-            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday", $records, $numRecordsForSummary);
-            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $records, $numRecordsForSummary);
-            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday", $records, $numRecordsForSummary, TRUE);
+            $numDaysPerWeek = $switches->getValue("Days per Week to Build Summaries");
+            if (!$numDaysPerWeek) {
+                $numDaysPerWeek = 1;
+            }
+            if ($numDaysPerWeek == 1) {
+                $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $records, $numRecordsForSummary);
+            } else if ($numDaysPerWeek == 3) {
+                $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday", $records, $numRecordsForSummary);
+                $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday", $records, $numRecordsForSummary);
+                $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $records, $numRecordsForSummary);
+            } else if ($numDaysPerWeek == 5) {
+                $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Monday", $records, $numRecordsForSummary);
+                $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $records, $numRecordsForSummary);
+                $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Wednesday", $records, $numRecordsForSummary);
+                $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Thursday", $records, $numRecordsForSummary);
+                $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Friday", $records, $numRecordsForSummary);
+            }
         }
 	}
 }

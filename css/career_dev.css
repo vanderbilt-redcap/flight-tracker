@@ -64,7 +64,6 @@ tr.extraPaddedRow td,th { padding: 15px; }
 .tooltip:hover .tooltiptext { visibility: visible; }
 .tooltip .widetooltiptext { visibility: hidden; width: 200px; background-color: #666666; color: white; text-align: center; padding: 5px 0; border-radius: 6px; position: absolute; z-index: 1; }
 .tooltip:hover .widetooltiptext { visibility: visible; }
-#overlay { position: fixed; display: none; width: 100%; height: 100%; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.7); z-index: 2; cursor: pointer; text-align: center; vertical-align: middle; }
 .lookup { clear: both; text-align: right; font-size: 11px; }
 .lookupData { padding: 5px; background-color: #eeeeee; text-align: left; font-size: 14px; column-count: 2; column-gap: 10px; column-rule: 1px solid #888888; -moz-column-count: 2; -moz-column-gap: 10px; -moz-column-rule: 1px solid #888888; -webkit-column-count: 2; -webkit-column-gap: 10px; -webkit-column-rule: 1px solid #888888; display: none; }
 .custom-combobox { position: relative; display: inline-block; }
@@ -90,7 +89,7 @@ textarea.full { width: 800px; height: 400px; }
 p.blockquote { padding-left: 15px; }
 #mainHelp { column-count: 2; }
 #faq { padding: 15px; column-count: 2; }
-.nomargin { margin: 0; }
+.nomargin { margin-top: 0; margin-bottom: 0; }
 ul.centered { text-align: center; list-style-type: none; list-style: inside; }
 .wrapTightly { clear: both; width: min-content; }
 input[type=text].long { width: 300px; }
@@ -157,13 +156,14 @@ td.white,th.white { background-color: white; }
 p.recessed { color: #888888; font-size: 11px; margin: 4px 12px 4px 12px; }
 .recessed,.recessed a { color: #888888; font-size: 11px; }
 p.recessed,div.recessed { margin: 2px; }
-textarea { font-family: Georgia, 'Times New Roman', Times, serif; font-size: 16px; }
+textarea,input[type=date] { font-family: Georgia, 'Times New Roman', Times, serif !important; font-size: 16px; }
 
 
 /* adapted from https://www.sliderrevolution.com/resources/styling-radio-buttons/ */
 .switch { position: relative; padding: 0 1rem; }
 .switch.size2 { width: 13rem; }
 .switch.size2.short { position: relative; width: 8rem; }
+.switch.size3 { width: 19.5rem; }
 .switch.size4 { width: 26rem; }
 .switch:before { content: '  '; position: absolute; left: 0; z-index: -1; width: 100%; height: 1.5rem; background: rgba(229, 241, 213, 0.8); border: 1px solid #888888; border-radius: 20px; }
 .switch label { display: inline-block; width: 5.5rem; padding: 0.125rem 0.5rem; text-align: center; cursor: pointer; transition: color 400ms ease-out; }
@@ -174,8 +174,8 @@ textarea { font-family: Georgia, 'Times New Roman', Times, serif; font-size: 16p
 	background 300ms cubic-bezier(.17,.67,.14,1.03);
 }
 .switch input.switch1[type=radio]:checked ~ .switch__indicator { background: #48489d; transform: translate3d(3.125rem,0,0); }
-.switch input.switch2[type=radio]:checked ~ .switch__indicator { background: #f0565d; transform: translate3d(9rem,0,0); }
-.switch input.switch3[type=radio]:checked ~ .switch__indicator { background: #8dc63f; transform: translate3d(14.75rem,0,0); }
+.switch input.switch2[type=radio]:checked ~ .switch__indicator { background: #f0565d; transform: translate3d(8.75rem,0,0); }
+.switch input.switch3[type=radio]:checked ~ .switch__indicator { background: #8dc63f; transform: translate3d(14.625rem,0,0); }
 .switch input.switch4[type=radio]:checked ~ .switch__indicator { background: #f79721; transform: translate3d(20.5rem,0,0); }
 .switch.short input.switch1[type=radio]:checked ~ .switch__indicator { transform: translate3d(1.75rem,0,0); }
 .switch.short input.switch2[type=radio]:checked ~ .switch__indicator { transform: translate3d(4.25rem,0,0); }

@@ -1,9 +1,10 @@
 <?php
 
 use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -11,8 +12,7 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $resourceField = "resources_resource";
 $metadata = Download::metadata($token, $server);
-$choices = Scholar::getChoices($metadata);
-$options = $choices[$resourceField];
+$options = DataDictionaryManagement::getChoicesForField($pid, $resourceField);
 
 if (isset($_POST['option'])) {
 	$opt = $_POST['option'];
@@ -49,17 +49,17 @@ if (isset($_POST['option'])) {
 	}
 } else {
 
-	$redcapData = Download::fields($token, $server, array("record_id", $resourceField));
+	$redcapData = Download::fields($token, $server, ["record_id", $resourceField]);
 	$names = Download::names($token, $server);
 
-	$resourceInstances = array();
+	$resourceInstances = [];
 	foreach ($redcapData as $row) {
 		if ($row[$resourceField]) {
 			$resourceNum = $row[$resourceField];
 			if (!isset($resourceInstances[$resourceNum])) {
-				$resourceInstances[$resourceNum] = array();
+				$resourceInstances[$resourceNum] = [];
 			}
-			array_push($resourceInstances[$resourceNum], $row['record_id']);
+			$resourceInstances[$resourceNum][$row['redcap_repeat_instance']] = $row['record_id'];
 		}
 	}
 
@@ -77,7 +77,7 @@ if (isset($_POST['option'])) {
 <script>
 function deleteOption(opt) {
 	presentScreen("Deleting...");
-	$.post('<?= CareerDev::link("resources/manage.php") ?>', { action: 'delete', option: opt }, function(str) {
+	$.post('<?= CareerDev::link("resources/manage.php") ?>', { 'redcap_csrf_token': getCSRFToken(), action: 'delete', option: opt }, function(str) {
 		clearScreen();
 		showMssg(str);
 	});
@@ -87,7 +87,7 @@ var newOption = <?= $newOption ?>;
 function addOption(name) {
 	if (name) {
 		presentScreen("Adding...");
-		$.post('<?= CareerDev::link("resources/manage.php") ?>', { action: 'add', option: newOption, title: name }, function(str) {
+		$.post('<?= CareerDev::link("resources/manage.php") ?>', { 'redcap_csrf_token': getCSRFToken(), action: 'add', option: newOption, title: name }, function(str) {
 			clearScreen();
 			showMssg(str);
 			newOption++;
@@ -119,15 +119,23 @@ function showMssg(str) {
 
 </script>
 <?php
+    $notUsedMssg = "No instances used.";
 	echo "<div id='note' class='centered' style='display: none;'></div>\n";
 	echo "<h4>You must remove all instances of the resource in your data before deleting the resource!</h4>\n";
 
-	echo "<table class='centered'>\n";
-	echo "<tr class='extraPaddedRow'><th>Resource</th><th>Number of Participants</th></tr>\n";
+	echo "<table class='centered bordered'>";
+	echo "<thead>";
+	echo "<tr class='extraPaddedRow odd'><th>Resource</th><th>Number of Participants</th></tr>";
+	echo "</thead><tbody>";
+	$i = 0;
 	foreach ($options as $num => $option) {
+	    $buttonHTML = "<button onclick='deleteOption(\"$num\");'>Delete</button>";
+	    $rowClass = ($i % 2 == 0) ? "even" : "odd";
+        echo "<tr class='extraPaddedRow $rowClass'>";
+        echo "<td class='centered'>$option</td>";
 	    if (isset($resourceInstances[$num])) {
             $instances = $resourceInstances[$num];
-            echo "<tr class='extraPaddedRow'><td class='centered'>$option</td><td>";
+            echo "<td>";
             if (count($instances) > 0) {
                 echo "<div class='tooltip centered'>".count($instances)." participants<span class='widetooltiptext smaller'>";
                 $namesForOption = array();
@@ -139,14 +147,21 @@ function showMssg(str) {
                 echo implode("<br>", $namesForOption);
                 echo "</span></div>";
             } else {
-                echo "No instances<br>";
-                echo "<button onclick='deleteOption($num);'>Delete</button>";
+                echo "$notUsedMssg<br/>".$buttonHTML;
             }
-            echo "</td></tr>\n";
+            echo "</td></tr>";
+        } else {
+	        echo "<td>$notUsedMssg<br/>$buttonHTML</td>";
         }
+        echo "</tr>";
+	    $i++;
 	}
-	echo "<tr class='extraPaddedRow'><td class='centered'><input type='text' id='title' value=''></td><td class='centered'><button onclick='addOption($(\"#title\").val());'>Add</button></td></tr>\n";
-	echo "</table>\n";
+    $rowClass = ($i % 2 == 0) ? "even" : "odd";
+	echo "<tr class='extraPaddedRow $rowClass'>";
+	echo "<td class='centered'><input type='text' id='title' value='' /></td>";
+	echo "<td class='centered'><button onclick='addOption($(\"#title\").val());'>Add</button></td>";
+	echo "</tr>";
+	echo "</tbody></table>";
 }
 
 function collapseChoices($choiceHash) {

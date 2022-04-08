@@ -170,6 +170,7 @@ $link = Application::link("financial/activeBudget.php");
 echo "<h1>$timespan Grants in Project at $mdyCurrDate</h1>";
 if ($timespan == "Active") {
     echo "<form action='$link' method='POST'>";
+    echo Application::generateCSRFTokenHTML();
     echo "<p class='centered'>Active on <input type='date' name='date' value='$currChosenDate'></p>";
     echo "</form>";
 }

@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -188,6 +189,7 @@ function makeOrder($token, $server, $pid, $metadata = []) {
 	$html .= implode("<br>\n", $existingChoicesTexts);
 	$html .= "</td>\n";
 	$html .= "<td style='vertical-align: top; width: 50%;'><form method='POST' action='".CareerDev::link("config.php")."&order'>\n";
+	$html .= Application::generateCSRFTokenHTML();
 	$html .= "<h3>Add a Custom Data Source</h3>\n";
 	$html .= "<p class='centered'>Code: <input type='text' name='code' value=''><br>\n";
 	$html .= "Name: <input type='text' name='text' value=''><br>\n";
@@ -370,7 +372,8 @@ function makeSettings($module) {
 
     $html = "";
 	if ($module) {
-		$html .= "<form method='POST' action='".$module->getUrl("config.php")."'>\n";
+		$html .= "<form method='POST' action='".Application::link("config.php")."'>\n";
+		$html .= Application::generateCSRFTokenHTML();
 		foreach ($ary as $header => $htmlAry) {
 			$html .= "<h2>$header</h2>\n";
 			$html .= "<table class='centered'>\n";

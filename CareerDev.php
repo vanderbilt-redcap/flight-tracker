@@ -6,6 +6,7 @@ use ExternalModules\ExternalModules;
 use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\FeatureSwitches;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\WebOfScience;
 use Vanderbilt\CareerDevLibrary\Cohorts;
@@ -14,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.6.1";
+		return "4.7.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -891,12 +892,15 @@ class CareerDev {
             return $ary;
         }
         if ($menuName == "View") {
+            $token = self::getSetting("token", $pid);
+            $server = self::getSetting("server", $pid);
+            $switches = new FeatureSwitches($token, $server, $pid);
             $ary = [
                 "Demographics Table" => self::link("/charts/makeDemographicsTable.php"),
                 "REDCap Reports" => $r."/DataExport/index.php",
                 "Missingness Report<br>(Computationally Expensive)" => self::link("/tablesAndLists/missingness.php"),
             ];
-            if (self::has("patent")) {
+            if (self::has("patent") && $switches->isOn("Patents")) {
                 $ary["Patent Viewer"] = self::link("patents/view.php");
             }
             if (self::isViDERInstalledForProject()) {
@@ -907,8 +911,11 @@ class CareerDev {
             return $ary;
         }
 		if (($menuName == "Mentoring") || ($menuName == "Mentor") || ($menuName == "Mentors")) {
+            $token = self::getSetting("token", $pid);
+            $server = self::getSetting("server", $pid);
+            $switches = new FeatureSwitches($token, $server, $pid);
 		    $ary = [];
-		    if (self::has("mentoring_agreement")) {
+		    if (self::has("mentoring_agreement") && $switches->isOn("Mentee-Mentor")) {
                 $ary["Configure Mentee-Mentor Agreements"] = self::link("/mentor/config.php");
                 $ary["Add Mentors for Existing Scholars"] = self::link("addMentor.php");
                 $ary["Mentee-Mentor Agreements Dashboard"] = self::link("/mentor/dashboard.php");
@@ -1026,15 +1033,23 @@ class CareerDev {
 					];
 		}
 		if (($menuName == "Wrangle Data") || ($menuName == "Wrangle") || ($menuName == "Wrangler")) {
-			$ary = [
-					"Add a Custom Grant" => self::link("/customGrants.php"),
-					"Add Custom Grants by Bulk" => self::link("/bulkImport.php")."&grants",
-					"Grant Wrangler" => self::link("/wrangler/index.php"),
-					"Publication Wrangler" => self::link("/wrangler/include.php")."&wranglerType=Publications",
-					"Lexical Translator" => self::link("/lexicalTranslator.php"),
-                    "Position Change Wrangler" => self::link("/wrangler/positions.php"),
-					];
-			if (self::has("patent")) {
+			$ary = [];
+			$token = self::getSetting("token", $pid);
+			$server = self::getSetting("server", $pid);
+			$switches = new FeatureSwitches($token, $server, $pid);
+            if ($switches->isOn("Grants")) {
+                $ary["Add a Custom Grant"] = self::link("/customGrants.php");
+                $ary["Add Custom Grants by Bulk"] = self::link("/bulkImport.php")."&grants";
+                $ary["Grant Wrangler"] = self::link("/wrangler/index.php");
+            }
+			if ($switches->isOn("Publications")) {
+                $ary["Publication Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Publications";
+            }
+            if ($switches->isOn("Grants")) {
+                $ary["Lexical Translator"] = self::link("/lexicalTranslator.php");
+            }
+            $ary["Position Change Wrangler"] = self::link("/wrangler/positions.php");
+			if (self::has("patent") && $switches->isOn("Patents")) {
                 $ary["Patent Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Patents";
             }
 			return $ary;

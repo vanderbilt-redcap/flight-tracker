@@ -221,6 +221,7 @@ function getTableHeaders() {
 function makeSubmitTable($thisUrl, $headers, $tableRows, $hiddenRows) {
     $html = "";
     $html .= "<form action='$thisUrl&upload=form' method='POST'>";
+    $html .= Application::generateCSRFTokenHTML();
     $html .= "<table class='centered max-width bordered'>";
     $html .= "<thead><tr>".implode("", $headers)."</tr></thead>";
     $html .= "<tbody>".implode("", $tableRows)."</tbody>";
@@ -291,6 +292,7 @@ function makeMainForm($token, $server) {
     $html .= "<div class='max-width centered'>";
     $html .= "<p class='centered'>Please follow <a href='$thisUrl&download=csv'>this template</a> and upload the resulting CSV.</p>";
     $html .= "<form action='$thisUrl&upload=csv' method='POST' enctype='multipart/form-data'>";
+    $html .= Application::generateCSRFTokenHTML();
     $html .= "<p class='centered'><input type='file' name='csv_file'></p>";
     $html .= "<p class='centered'><button>Upload</button></p>";
     $html .= "</form>";
@@ -335,7 +337,7 @@ function makeMentorJS($scholarJSON, $mentorJSON) {
             mentorUid = $('#mentorUid').val();
             mentorName = $('#mentorName').val();
         }
-        $.post('$thisUrl', { 'recordId': recordId, 'newMentorName': mentorName, 'newMentorUid': mentorUid }, function(json) {
+        $.post('$thisUrl', { 'redcap_csrf_token': getCSRFToken(), 'recordId': recordId, 'newMentorName': mentorName, 'newMentorUid': mentorUid }, function(json) {
             console.log(json);
             const data = JSON.parse(json);
             const ob = $('#mssg');
@@ -360,7 +362,7 @@ function makeMentorJS($scholarJSON, $mentorJSON) {
         let searchStr = $(scholarSel).val();
         if (searchStr) {
             $('#primaryMentor').val('');
-            $.post('$thisUrl', { 'scholarName': searchStr }, function(json) {
+            $.post('$thisUrl', { 'redcap_csrf_token': getCSRFToken(), 'scholarName': searchStr }, function(json) {
                 console.log(json);
                 let data = JSON.parse(json);
                 if (data.length === 0) {
@@ -400,7 +402,7 @@ function makeMentorJS($scholarJSON, $mentorJSON) {
     function searchForMentor(mentorSel, resultsSel, existingMentorSel) {
         let searchStr = $(mentorSel).val();
         if (searchStr) {
-            $.post('$thisUrl', { 'mentorName': searchStr }, function(json) {
+            $.post('$thisUrl', { 'redcap_csrf_token': getCSRFToken(), 'mentorName': searchStr }, function(json) {
                 console.log(json);
                 let data = JSON.parse(json);
                 if (data.length === 0) {

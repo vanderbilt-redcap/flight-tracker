@@ -170,7 +170,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $ts = time() - $daysPrior * 24 * 3600;
         $thresholdTs = date("Y-m-d", $ts);
         Application::log("Removing logs prior to $thresholdTs", $pid);
-        $this->removeLogs("timestamp <= '$thresholdTs' AND project_id = '$pid'");
+        $this->removeLogs("timestamp <= '$thresholdTs' AND project_id = '$pid'", []);
         Application::log("Done removing logs", $pid);
     }
 
@@ -189,13 +189,19 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     }
 
     private static function getSharingInformation() {
-        return [
+        $ary = [
             "initial_survey" => ["prefix" => "check", "formType" => "single", "test_fields" => ["check_date"], "always_copy" => TRUE, ],
             "followup" => ["prefix" => "followup", "formType" => "repeating", "test_fields" => ["followup_date"], "always_copy" => TRUE, ],
             "position_change" => [ "prefix" => "promotion", "formType" => "repeating", "test_fields" => ["promotion_job_title", "promotion_date"], "always_copy" => FALSE, ],
             "resources" => [ "prefix" => "resources", "formType" => "repeating", "test_fields" => ["resources_date", "resources_resource"], "always_copy" => FALSE, ],
             "honors_and_awards" => [ "prefix" => "honor", "formType" => "repeating", "test_fields" => ["honor_name", "honor_date"], "always_copy" => FALSE, ],
         ];
+        if (Application::isVanderbilt()) {
+            $ary['resources']['always_copy'] = TRUE;
+            $ary['honors_and_awards']['always_copy'] = TRUE;
+            $ary['position_change']['always_copy'] = TRUE;
+        }
+        return $ary;
     }
 
     public static function getConfigurableForms() {
@@ -227,9 +233,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $choices = [];
         $pidsUpdated = [];
 
-        foreach ($pids as $pid) {
-            // Application::log("Getting project data for pids: ".json_encode($pids), $pid);
-        }
 	    foreach ($pids as $pid) {
 	        Application::log("Getting project data for pid ".$pid, $pid);
             $token = $this->getProjectSetting("token", $pid);

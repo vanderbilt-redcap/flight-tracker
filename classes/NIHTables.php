@@ -21,12 +21,12 @@ class NIHTables {
 
 	private static function makeRemove($recordId, $grantName) {
 	    $url = Application::link("reporting/grants.php")."&record=$recordId&name=".urlencode($grantName);
-	    return "<a onclick='$(this).parent().hide(); $.post(\"$url\", {}, function(html) { console.log(\"Removed \"+html); });' href='javascript:;' class='redtext smallest nounderline'>[x]</a>";
+	    return "<a onclick='$(this).parent().hide(); $.post(\"$url\", {'redcap_csrf_token': getCSRFToken()}, function(html) { console.log(\"Removed \"+html); });' href='javascript:;' class='redtext smallest nounderline'>[x]</a>";
     }
 
     private static function makeReset($recordId) {
 	    $url = Application::link("reporting/grants.php")."&record=$recordId&reset";
-        return "<div class='alignright'><a onclick='$.post(\"$url\", {}, function(html) { console.log(\"Reset \"+html); $(\".subsequentGrants_$recordId\").show(); });' href='javascript:;' class='bluetext smallest nounderline'>[reset]</a></div>";
+        return "<div class='alignright'><a onclick='$.post(\"$url\", {'redcap_csrf_token': getCSRFToken()}, function(html) { console.log(\"Reset \"+html); $(\".subsequentGrants_$recordId\").show(); });' href='javascript:;' class='bluetext smallest nounderline'>[reset]</a></div>";
     }
 
 	public static function formatTableNum($tableNum) {
@@ -905,7 +905,7 @@ class NIHTables {
                     let textareaSelector = 'textarea.support_summary[record='+record+']';
                     let text = $(textareaSelector).val();
                     if (record) {
-                       $.post('$page', { record: record, text: text }, function(data) {
+                       $.post('$page', { 'redcap_csrf_token': getCSRFToken(), record: record, text: text }, function(data) {
                             console.log('Updated record '+record+': '+data);
                             $('button.support_summary[record='+record+']').hide();
                        });

@@ -188,15 +188,16 @@ function focusForTrainingOnly(isTrainingFocused) {
     location.href = thisUrl + cohortParam + getParam;
 }
 
-function getDefaultEmailText(citations, date, recordId) {
+function getDefaultEmailText(citations, recordId) {
     const programName = '$programName';
-    const nihmsUrl = 'https://www.nihms.nih.gov/';    
-    const trailingText = (date === '$pastDue') ? '. Some or all of these publications are past due.' : ' or is linked to the grant(s) by '+getAdjustedDate(date)+'.';
+    const nihmsUrl = 'https://nihms.nih.gov/';
+    const publicAccessUrl = 'https://publicaccess.nih.gov/';
     const salutation = '<p>Dear '+names[recordId]+',</p>';
-    const intro = '<p>To continue receiving funding for the '+programName+', we must report on scholarly productivity to NIH. Publications cannot be counted without a PMCID. It appears that one or more of your publications, listed below, requires you to take steps to generate a PMCID or link the publication to the grant. Please use <a href=\"'+nihmsUrl+'\" target=\"_NEW\">the link to the NIH Manuscript Submission System</a> to ensure your paper receives a PMCID'+trailingText+'</p>';
+    const intro = '<p>As a condition of federal funding for the '+programName+' program, AHRQ requires that all publications supported by the grant must comply with the <a href=\"'+publicAccessUrl+'\">Public Access Policy</a>. We know a publication is compliant when it is associated with a PMCID.</p>';
+    const explanation = '<p>It appears that one or more of your publications, listed below, needs you to take steps to comply with the Public Access Policy. Please use the link to the <a href=\"'+nihmsUrl+'\">NIH Manuscript Submission System</a> to initiate or complete the process for publication compliance.</p>';
     const header = (citations.length > 1) ? 'Publications' : 'Publication';
     const citationText = '<h4>'+header+'</h4><p>'+citations.join('</p><p>')+'</p>';
-    return salutation+intro+citationText;
+    return salutation+intro+explanation+citationText;
 }
 
 function getAdjustedDate(date) {
@@ -209,8 +210,9 @@ function getAdjustedDate(date) {
     return (adjustedDate.getMonth() + 1) + '-' + adjustedDate.getDate() + '-' + adjustedDate.getFullYear();
 }
 
-function getDefaultSubjectText(date) {
-    return 'Action Required by '+getAdjustedDate(date)+': PMCIDs';
+function getDefaultSubjectText() {
+    const programName = '$programName';
+    return 'Non-compliant Publication for '+programName;
 }
 
 function composeComplianceEmail(recordId) {
@@ -229,10 +231,8 @@ function composeComplianceEmail(recordId) {
         }
     });
     if (dates.length > 0) {
-        const date = getEarliestDate(dates);
-        
-        const subject = getDefaultSubjectText(date);
-        const message = getDefaultEmailText(citations, date, recordId);
+        const subject = getDefaultSubjectText();
+        const message = getDefaultEmailText(citations, recordId);
         $('#emailRecord').val(recordId);
         $('#emailSubject').val(subject);
         $('#emailCC').val('');
@@ -287,6 +287,7 @@ function sendComplianceEmail(recordId, message, subject, cc, from) {
             cc: cc ?? '',
             message: message,
             subject: subject,
+            'redcap_csrf_token': getCSRFToken(),
         };
         $.post('$thisLink', postdata, function(json) {
             console.log(json);

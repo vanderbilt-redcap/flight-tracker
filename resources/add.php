@@ -146,6 +146,7 @@ $selectHeader = isset($_GET['allPids']) ? "Choose a resource from all potential 
 
 ?>
 <form method='POST' action='<?= Application::link("resources/add.php").$allPidsGet ?>'>
+    <?= Application::generateCSRFTokenHTML() ?>
     <p class="centered">Date: <input type="date" id="date" name="date" onchange="showSignIn(); showResource();" value="<?= $requestedDate ?>"></p>
     <p class='centered max-width'><?= $selectHeader ?><br>
         <select name='resource' id='resource' onchange='showSignIn(); showResource();'>

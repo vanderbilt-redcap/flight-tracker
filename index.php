@@ -193,10 +193,12 @@ $(document).ready(function() {
     <div class='blue' style="border-radius: 10px; max-width: 90%; margin: 25px auto 0 auto; padding: 8px;">
         <h3 style="margin-top: 0;"><i class='fa fa-search'></i> Search</h3>
         <form action='<?= CareerDev::link("search/index.php") ?>' method='POST'>
+            <?= Application::generateCSRFTokenHTML() ?>
             <p class='centered'><input type='text' name='q' id='q' value=''> <input type='submit' value='Search Grants'></p>
         </form>
 
         <form action='<?= CareerDev::link("search/publications.php") ?>' method='POST'>
+            <?= Application::generateCSRFTokenHTML() ?>
             <p class='centered'><input type='text' name='q' id='q' value=''> <input type='submit' value='Search Publications'></p>
         </form>
     </div>

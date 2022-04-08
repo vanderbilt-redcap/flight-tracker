@@ -33,6 +33,7 @@ $link = Application::link("cohorts/pickCohort.php");
 echo $mssg;
 echo "<h1>Hand-Pick a Cohort</h1>\n";
 echo "<form action='$link' method='POST'>\n";
+echo Application::generateCSRFTokenHTML();
 echo "<p class='centered'>Cohort Name: <input type='text' id='cohort' name='cohort' value='$name'></p>";
 echo "<p class='centered'><button>Add Cohort</button></p>";
 $checkboxes = [];

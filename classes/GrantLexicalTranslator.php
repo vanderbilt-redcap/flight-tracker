@@ -191,6 +191,7 @@ class GrantLexicalTranslator {
 
 		$html .= "<p class='centered'>Each Award Number Parcel must contain a direct (case-insensitive) match to part of the Grant's award number.</p>\n"; 
 		$html .= "<form action='$page' method='POST'>\n";
+		$html .= Application::generateCSRFTokenHTML();
 		$html .= "<table style='margin: 0px auto 0px auto;'>\n";
 		$idx = 1;
 		foreach ($this->data as $key => $value) {

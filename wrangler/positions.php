@@ -217,7 +217,7 @@ echo "<script>
 function savePositionChangeInstance(recordId, instance) {
     presentScreen('Saving...');
     const row = makePositionChangeRow(recordId, instance);
-    $.post('$thisUrl', { record: recordId, instance: instance, row: row }, function(json) {
+    $.post('$thisUrl', { 'redcap_csrf_token': getCSRFToken(), record: recordId, instance: instance, row: row }, function(json) {
         console.log(json);
         clearScreen();
         handleJSONResponse(json);
@@ -256,7 +256,7 @@ function makePositionChangeRow(recordId, instance) {
 }
 
 function deletePositionChangeInstance(recordId, instance) {
-    $.post('$thisUrl', { record: recordId, instanceToDelete: instance }, function(json) {
+    $.post('$thisUrl', { 'redcap_csrf_token': getCSRFToken(), record: recordId, instanceToDelete: instance }, function(json) {
         console.log(json);
         clearScreen();
         if (handleJSONResponse(json)) {

@@ -26,7 +26,7 @@ $(document).ready(function() {
     for (const name in sites) {
         const server = sites[name]
         let encodedName = encodeName(name)
-        $.post('" . Application::link('testConnectionStatus.php') . "', { name: name, server: server }, function(json) {
+        $.post('" . Application::link('testConnectionStatus.php') . "', { 'redcap_csrf_token': getCSRFToken(), name: name, server: server }, function(json) {
             console.log(json);
             let results = JSON.parse(json)
             let html = ''

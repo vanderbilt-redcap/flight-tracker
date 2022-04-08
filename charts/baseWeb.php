@@ -5,23 +5,24 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Links;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
 $pid = $_GET['pid'];
 if (!$pid) {
-    $pid = CareerDev::getSetting("pid");
+    $pid = Application::getSetting("pid");
 }
 if (!$module) {
-        $module = CareerDev::getModule();
+    $module = Application::getModule();
 }
 $validWranglerTypes = ["Patents", "Publications", "Grants"];
-$token = CareerDev::getSetting("token", $pid);
-$server = CareerDev::getSetting("server", $pid);
-$event_id = CareerDev::getSetting("event_id", $pid);
-$tokenName = CareerDev::getSetting("tokenName", $pid);
-$adminEmail = CareerDev::getSetting("admin_email", $pid);
+$token = Application::getSetting("token", $pid);
+$server = Application::getSetting("server", $pid);
+$event_id = Application::getSetting("event_id", $pid);
+$tokenName = Application::getSetting("tokenName", $pid);
+$adminEmail = Application::getSetting("admin_email", $pid);
 $eventId = $event_id;
 
 $oneFieldAry = Download::arraysOfFields($token, $server, ["identifier_last_name", "identifier_first_name"]);
@@ -52,16 +53,14 @@ function makeHeadersOfTables($type) {
 
 ?>
 <title>Flight Tracker for Scholars</title>
-<script src='<?= CareerDev::link("/js/jquery.min.js") ?>'></script>
-<script src='<?= CareerDev::link("/js/jquery-ui.min.js") ?>'></script>
-<script src='<?= CareerDev::link("/js/jquery.sweet-modal.min.js") ?>'></script>
-<script src='<?= CareerDev::link("/js/base.js")."&".CareerDev::getVersion() ?>'></script>
-<script src='<?= CareerDev::link("/js/autocomplete.js")."&".CareerDev::getVersion() ?>'></script>
-<link rel="icon" type="image/png" href="<?= CareerDev::link("/img/flight_tracker_icon.png") ?>">
-<link rel="stylesheet" href="<?= CareerDev::link("/css/jquery-ui.css") ?>">
-<link rel="stylesheet" href="<?= CareerDev::link("/css/jquery.sweet-modal.min.css") ?>">
-<link rel="stylesheet" href="<?= CareerDev::link("/css/career_dev.css")."&".CareerDev::getVersion() ?>">
-<link rel="stylesheet" href="<?= CareerDev::link("/css/typekit.css").CareerDev::getVersion() ?>>">
+<?php
+if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
+    echo makeHeaders(Application::getModule(), $token, $server, $pid, $tokenName);
+} else {
+    echo Application::getImportHTML();
+}
+
+?>
 <?= CareerDev::makeBackgroundCSSLink() ?>
 
 <script>
@@ -156,10 +155,4 @@ function search(page, div, name) {
 }
 
 
-
 </script>
-<?php
-
-if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
-	echo makeHeaders(CareerDev::getModule(), $token, $server, $pid, $tokenName);
-}

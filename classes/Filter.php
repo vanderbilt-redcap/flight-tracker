@@ -492,7 +492,7 @@ class Filter {
 		        if (config['rows'].length > 0) {
 		            console.log('saving rows: '+JSON.stringify(config['rows']));
 		            presentScreen('Saving...');
-		            $.post('$link', { title: title, config: config }, function(data) {
+		            $.post('$link', { 'redcap_csrf_token': getCSRFToken(), title: title, config: config }, function(data) {
 		                clearScreen();
 		                if (data.match(/success/)) {
 		                    let mssg = 'Upload successful!';

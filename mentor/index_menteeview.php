@@ -892,6 +892,7 @@ foreach ($metadata as $row) {
                 value: checkValue,
                 userid: '<?= $userid2 ?>',
                 start: mentoringStart,
+                'redcap_csrf_token': getCSRFToken(),
                 phase: phase
             }, function (html) {
                 console.log(html);
@@ -911,6 +912,7 @@ foreach ($metadata as $row) {
                 field_name: fieldName,
                 value: value,
                 userid: '<?= $userid2 ?>',
+                'redcap_csrf_token': getCSRFToken(),
                 start: mentoringStart,
                 phase: phase
             }, function(html) {
@@ -929,6 +931,7 @@ foreach ($metadata as $row) {
                 field_name: fieldName,
                 value: value,
                 userid: '<?= $userid2 ?>',
+                'redcap_csrf_token': getCSRFToken(),
                 start: mentoringStart,
                 phase: phase
             }, function(html) {

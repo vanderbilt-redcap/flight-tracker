@@ -272,6 +272,7 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCoho
     $html = "";
     $html .= "<h1>Which Field do You Want to Count Frequency with Publications?</h1>\n";
     $html .= "<form action='$link' method='POST'>";
+    $html .= Application::generateCSRFTokenHTML();
     $cohorts = new Cohorts($token, $server, CareerDev::getModule());
     $html .= "<p class='centered'><div class='form-group'>".$cohorts->makeCohortSelectUI($defaultCohort)."</div> <div class='form-group'><label for='field'>Field:</label><select name='field' id='field' class='form-control'><option value=''>---SELECT---</option>";
     foreach ($possibleFields as $field) {

@@ -149,6 +149,7 @@ function makeDepartmentPrompt($projectId) {
 
 	$style = " style='width: 400px; height: 400px;'";
 	$html .= "<form method='POST' action='".preg_replace("/pid=\d+/", "pid=$projectId", CareerDev::getLink("install.php"))."'>\n";
+	$html .= Application::generateCSRFTokenHTML();
 	$html .= "<p class='centered max-width'>Please enter a list of your academic departments.<br>(One per line.)<br>\n";
 	$html .= "<textarea name='departments' class='config'>$defaultDepartments</textarea></p>\n";
 	$html .= "<p class='centered max-width'>Please enter a list of resources your scholars may use. These are items that your institution offers to help your scholars achieve career success, like workshops or tools. For example, Vanderbilt offers focused workshops, studios, pilot funding, feedback sessions, and grant writing resources.<br>(One per line.)<br>\n";
@@ -228,6 +229,7 @@ function changeGrantClass(name) {
 		$html .= "<p class='centered red'>{$mssg}</p>";
 	}
 	$html .= "<form method='POST' action='".CareerDev::link("install.php")."'>\n";
+	$html .= Application::generateCSRFTokenHTML();
 	$html .= "<table style='margin-left: auto; margin-right: auto; max-width: 800px;'>\n";
 	
 	$html .= "<tr>\n";

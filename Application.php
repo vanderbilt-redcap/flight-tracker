@@ -107,6 +107,16 @@ class Application {
 	    return CareerDev::getProgramName();
     }
 
+    public static function generateCSRFToken() {
+        $module = self::getModule();
+        return $module->getCSRFToken();
+    }
+
+    public static function generateCSRFTokenHTML() {
+        $csrfToken = self::generateCSRFToken();
+        return "<input type='hidden' id='redcap_csrf_token' name='redcap_csrf_token' value='$csrfToken' />";
+    }
+
     public static function getUsername() {
         if (defined('USERID')) {
             return USERID;
@@ -164,18 +174,46 @@ class Application {
 		return CareerDev::getInstitutions($pid);
 	}
 
+	public static function getImportHTML() {
+        $version = CareerDev::getVersion();
+        $str = "";
+        $str .= "<link rel='stylesheet' href='https://use.fontawesome.com/releases/v5.8.2/css/all.css' integrity='sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay' crossorigin='anonymous' />";
+        $str .= "<link rel='stylesheet' href='".self::link("/css/w3.css")."' />";
+        $str .= "<script src='".self::link("/js/base.js")."&$version'></script>";
+
+        $url = $_SERVER['PHP_SELF'];
+        if (
+            preg_match("/ExternalModules/", $url)
+            || preg_match("/external_modules/", $url)
+            || preg_match("/\/plugins\//", $url)
+        ) {
+            $str .= "<script src='".self::link("/js/jquery.min.js")."'></script>";
+            $str .= "<script src='".self::link("/js/jquery-ui.min.js")."'></script>";
+            $str .= "<script src='".self::link("/js/autocomplete.js")."&$version'></script>";
+            $str .= "<link rel='icon' type='image/png' href='".self::link("/img/flight_tracker_icon.png")."' />";
+            $str .= "<link rel='stylesheet' href='".self::link("/css/jquery-ui.css")."' />";
+            $str .= "<link rel='stylesheet' href='".self::link("/css/jquery.sweet-modal.min.css")."' />";
+            $str .= "<link rel='stylesheet' href='".self::link("/css/career_dev.css")."&$version' />";
+            $str .= "<link rel='stylesheet' href='".self::link("/css/typekit.css")."&$version' />";
+        }
+        $str .= "<script src='".self::link("/js/jquery.sweet-modal.min.js")."'></script>";
+        $str .= "<script>function getCSRFToken() { return '".self::generateCSRFToken()."'; }</script>";
+        return $str;
+    }
+
 	public static function getHeader($tokenName = "") {
+        $pid = CareerDev::getPID();
+        $token = self::getSetting("token", $pid);
+        $server = self::getSetting("server", $pid);
+
         if (!$tokenName) {
-            $tokenName = self::getSetting("tokenName");
+            $tokenName = self::getSetting("tokenName", $pid);
         }
         $module = self::getModule();
         $museoSansLink = self::link("/fonts/exljbris - MuseoSans-500.otf");
-        $faLinkHTML = '<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous" />';
-        $w3Link = self::link("/css/w3.css");
 
         $str = "";
-        $str .= $faLinkHTML;
-        $str .= "<link rel='stylesheet' href='$w3Link' />
+        $str .= "
 <style>
 /* must add fonts here or they will not show up in REDCap menus */
 @font-face { font-family: 'Museo Sans'; font-style: normal; font-weight: normal; src: url('$museoSansLink'); }
@@ -191,14 +229,34 @@ a.w3-button { color: black !important; float: none !important; }
 .topHeaderWrapper { background-color: white; height: 80px; top: 0px; width: 100%; }
 .topHeader { margin: 0 auto; max-width: 1200px; }
 .topBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 0px; }
+.middleBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 0px; margin-left: auto; margin-right: auto; text-align: center; max-width: 600px; }
 a.nounderline { text-decoration: none; }
 a.nounderline:hover { text-decoration: dotted; }
 img.brandLogo { height: 40px; margin: 20px; }
+#overlayFT { position: fixed; display: none; width: 100%; height: 100%; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.7); z-index: 2; cursor: pointer; text-align: center; vertical-align: middle; }
+.warning { color: white; }
+p.centered { text-align: center; margin-left: auto; margin-right: auto; }
+
+/* Coordinated with career_dev.css */
+p.recessed { color: #888888; font-size: 11px; margin: 4px 12px 4px 12px; }
+.recessed,.recessed a { color: #888888; font-size: 11px; }
+p.recessed,div.recessed { margin: 2px; }
 </style>";
+
+        $str .= self::getImportHTML();
 
         $str .= "<header class='topHeaderWrapper'>";
         $str .= "<div class='topHeader'>";
         $str .= "<div class='topBar' style='float: left; padding-left: 5px;'><a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'><img alt='Flight Tracker for Scholars' src='".self::link("/img/flight_tracker_logo_small.png")."'></a></div>";
+        if (isset($_GET['id']) || isset($_GET['record'])) {
+            $records = Download::records($token, $server);
+            $recordId = Sanitizer::getSanitizedRecord($_GET['id'] ?? $_GET['record'] ?? "", $records);
+            if ($recordId) {
+                $csrfToken = self::generateCSRFToken();
+                $url = self::link("/summarizeRecordNow.php");
+                $str .= "<div class='middleBar'><br/><button onclick='summarizeRecordNow(\"$url\", \"$recordId\", \"$csrfToken\"); return false;'>Regenerate Summary for this Record Now</button></div>";
+            }
+        }
         if ($base64 = $module->getBrandLogo()) {
             $str .= "<div class='topBar' style='float:right;'><img src='$base64' class='brandLogo'></div>";
         } else {
@@ -207,11 +265,18 @@ img.brandLogo { height: 40px; margin: 20px; }
         $str .= "</div>";
         $str .= "</header>";
 
+        $switches = new FeatureSwitches($token, $server, $pid);
+        $switchValues = $switches->getSwitches();
+
         $navBar = new NavigationBar();
         $navBar->addFALink("home", "Home", CareerDev::getHomeLink());
         $navBar->addFAMenu("clinic-medical", "General", CareerDev::getMenu("General"));
-        $navBar->addMenu("<img src='".CareerDev::link("/img/grant_small.png")."'>Grants", CareerDev::getMenu("Grants"));
-        $navBar->addFAMenu("sticky-note", "Pubs", CareerDev::getMenu("Pubs"));
+        if ($switches->isOn("Grants")) {
+            $navBar->addMenu("<img src='".CareerDev::link("/img/grant_small.png")."'>Grants", CareerDev::getMenu("Grants"));
+        }
+        if ($switches->isOn("Publications")) {
+            $navBar->addFAMenu("sticky-note", "Pubs", CareerDev::getMenu("Pubs"));
+        }
         $navBar->addFAMenu("table", "View", CareerDev::getMenu("View"));
         $navBar->addFAMenu("calculator", "Wrangle", CareerDev::getMenu("Wrangler"));
         $navBar->addFAMenu("school", "Scholars", CareerDev::getMenu("Scholars"));

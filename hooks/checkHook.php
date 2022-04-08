@@ -28,7 +28,7 @@ $(document).ready(function() {
 $json = \REDCap::getData($project_id, 'json', array($record));
 $GLOBALS['data'] = json_decode($json, true); 
 
-$grants = new Grants($token, $server);
+$grants = new Grants($token, $server, "empty");
 $grants->setRows($GLOBALS['data']);
 $grants->compileGrants();
 

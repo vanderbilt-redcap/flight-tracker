@@ -295,7 +295,7 @@ echo "<script>
 function checkForNewMentorUserids(link) {
     $('#results').html('');
     presentScreen('Checking...');
-    $.post(link, { 'updateMentors': true }, function(json) {
+    $.post(link, { 'redcap_csrf_token': getCSRFToken(), 'updateMentors': true }, function(json) {
         clearScreen();
         let data = JSON.parse(json);
         if (data['message']) {
@@ -342,7 +342,7 @@ function lookupREDCapUserid() {
     if (!lastName && !firstName) {
         alert('You must supply a name');
     } else {
-        const postParams = { firstName: firstName, lastName: lastName };
+        const postParams = { 'redcap_csrf_token': getCSRFToken(), firstName: firstName, lastName: lastName };
         $.post('$redcapLookupUrl', postParams, function(json) {
             const dataHash = JSON.parse(json);
             if (Object.keys(dataHash).length > 0) {
@@ -375,7 +375,7 @@ function submitAdjudications(link) {
     });
     if (newUids.length > 0) {
         presentScreen('Uploading...');
-        $.post(link, { 'newUids': newUids }, function(json) {
+        $.post(link, { 'redcap_csrf_token': getCSRFToken(), 'newUids': newUids }, function(json) {
             clearScreen();
             let data = JSON.parse(json);
             if (data['message']) {

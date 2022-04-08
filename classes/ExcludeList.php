@@ -64,7 +64,7 @@ class ExcludeList {
         $html = "<script>
         function updateExcludeList(record, value) {
             presentScreen('Saving...');
-            $.post('$link', {type: '$type', record: record, value: value}, function(html) {
+            $.post('$link', {'redcap_csrf_token': getCSRFToken(), type: '$type', record: record, value: value}, function(html) {
                 console.log(html);
                 clearScreen();
             });

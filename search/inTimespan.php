@@ -1,5 +1,6 @@
 <?php
 
+use Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
@@ -124,6 +125,7 @@ if ($hasType && isset($_POST['begin']) && ($_POST['begin'] != "")) {
 } else {
 	echo "<h1>Search Within Timespan</h1>";
 	echo "<form method='POST' action='".CareerDev::link("search/inTimespan.php")."'>";
+	echo Application::generateCSRFTokenHTML();
 	
 	echo "<table class='centered'><tr><td style='vertical-align: top; padding-right: 16px;'>";
 	$choiceHTML = array();

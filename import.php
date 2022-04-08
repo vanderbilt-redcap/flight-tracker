@@ -28,6 +28,7 @@ if (isset($_GET['import']) && isset($_FILES['csv'])) {
 	</ol>
 
 	<form method='POST' action='<?= Application::link("import.php")."&import" ?>' enctype='multipart/form-data'>
+        <?= Application::generateCSRFTokenHTML() ?>
 		<p class='centered'>CSV File: <input type='file' name='csv'></p>
 		<p class='centered'><button>Upload File</button></p>
 	</form>

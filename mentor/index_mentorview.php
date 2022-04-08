@@ -703,6 +703,7 @@ if (!$hash) {
             console.log(thisbox+" "+type);
 
             $.post('<?= Application::link("mentor/change.php").$uidString ?>', {
+                'redcap_csrf_token': getCSRFToken(),
                 type: type,
                 record: '<?= $menteeRecordId ?>',
                 instance: '<?= $currInstance ?>',
@@ -725,6 +726,7 @@ if (!$hash) {
             let type = "radio";
             console.log(thisbox+" "+type);
             $.post('<?= Application::link("mentor/change.php").$uidString ?>', {
+                'redcap_csrf_token': getCSRFToken(),
                 type: type,
                 record: '<?= $menteeRecordId ?>',
                 instance: '<?= $currInstance ?>',
@@ -745,6 +747,7 @@ if (!$hash) {
             let type = "textarea";
             console.log(thisbox+" "+type);
             $.post('<?= Application::link("mentor/change.php").$uidString ?>', {
+                'redcap_csrf_token': getCSRFToken(),
                 type: type,
                 record: '<?= $menteeRecordId ?>',
                 instance: '<?= $currInstance ?>',

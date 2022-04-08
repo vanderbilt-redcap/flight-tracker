@@ -45,6 +45,7 @@ if (checkPOSTKeys(array_values($fields))) {
 
 	$link = CareerDev::link("addNewScholar.php");
 	echo "<form action='$link' method='POST'>\n";
+	echo Application::generateCSRFTokenHTML();
 	echo "<table style='margin:0px auto;'>\n";
 	foreach ($fields as $label => $var) {
 		echo "<tr>\n";
@@ -61,6 +62,7 @@ if (checkPOSTKeys(array_values($fields))) {
 	echo "<p class='centered' style='max-width: 800px; margin: 0 auto;'>Supply a CSV Spreadsheet with the specified fields in <a href='".CareerDev::link("newFaculty.php")."'>this example</a>. Please do not encode the values for the multiple-choice options; just specify the exact name of the option you are choosing. (E.g., do not specify 1 for Female or 2 for Male. Just specify 'Female' or 'Male'.)</p>\n";
 	echo "<p class='centered'>If the same name is used for a scholar, any new values will overwrite what is already in REDCap.</p>\n";
 	echo "<form enctype='multipart/form-data' method='POST' action='$bulkLink'>\n";
+	echo Application::generateCSRFTokenHTML();
 	echo "<p class='centered'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />\n";
 	echo "CSV Upload: <input type='file' name='csv'><br>\n";
 	echo "<button>Process File</button>\n";

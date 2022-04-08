@@ -54,6 +54,7 @@ if ($_POST) {
     echo "<h1>Change Record IDs</h1>";
     echo "<p class='centered'>Please be patient...</p>";
     echo "<form action='$link' method='POST'>";
+    echo Application::generateCSRFTokenHTML();
     echo "<table class='centered'>";
     echo "<tr><th>Existing Record ID</th><th>New Record ID</th></tr>";
     foreach ($recordIds as $recordId) {

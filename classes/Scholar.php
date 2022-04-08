@@ -3376,7 +3376,7 @@ return $result;
 	}
 
 	private function initGrants() {
-		$grants = new Grants($this->token, $this->server);
+		$grants = new Grants($this->token, $this->server, $this->metadata);
 		if (isset($this->rows)) {
 			$grants->setRows($this->rows);
 			$grants->compileGrants();

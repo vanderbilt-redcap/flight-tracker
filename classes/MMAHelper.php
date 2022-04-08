@@ -192,6 +192,7 @@ function signUpForMMA() {
             }
             post[variable] = value;
         }
+        post['redcap_csrf_token'] = getCSRFToken();
         $.post(url, post, function(json) {
             console.log(json);
             try {
@@ -1426,7 +1427,7 @@ function characteristicsPopup(entity) {
             url: '$agreementSaveURL',
             type : 'POST',
             //dataType : 'json', // data type
-            data :  'record_id=$menteeRecordId&redcap_repeat_instance=$currentInstance&'+serialized,
+            data :  'record_id=$menteeRecordId&redcap_repeat_instance=$currentInstance&'+serialized+'&redcap_csrf_token='+getCSRFToken(),
             success : function(result) {
                 console.log(result);
                 $functionToCall(\"$menteeRecordId\", \"$menteeName\", \"$dateToRemind\", function(html) {
@@ -1483,7 +1484,8 @@ function characteristicsPopup(entity) {
                     record: '$menteeRecordId',
                     instance: '$menteeInstance',
                     field_name: notesFieldName,
-                    value: latestcomment
+                    value: latestcomment,
+                    'redcap_csrf_token': getCSRFToken()
                 }, function(html) {
                     console.log(html);
                 });
@@ -1562,7 +1564,7 @@ function characteristicsPopup(entity) {
         $html = "<script>
     function scheduleEmail(recipientType, menteeRecord, subject, message, dateToSend, cb) {
         const datetimeToSend = (dateToSend === 'now') ? 'now' : dateToSend+' 09:00';
-        const postdata = { menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend };
+        const postdata = { 'redcap_csrf_token': getCSRFToken(), menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend };
         console.log(JSON.stringify(postdata));
         $.post('$emailSendURL'+menteeRecord,
             postdata,
@@ -1680,7 +1682,7 @@ function characteristicsPopup(entity) {
             let a = location.split(/:/);
             let recordId = a[0];
             let instance = a[1];
-            $.post('$link', { record: recordId, instance: instance }, function(json) {
+            $.post('$link', { 'redcap_csrf_token': getCSRFToken(), record: recordId, instance: instance }, function(json) {
                 let data = JSON.parse(json);
                 clearAll();
                 for (let field in data) {

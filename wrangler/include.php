@@ -209,7 +209,7 @@ function autoResetTimeHTML($pid) {
         setTimeout(function() {
             $('#lookupTable,#newCitations,#finalCitations').bind('keyup mousemove click', function(){
                 $(this).unbind('keyup mousemove click');
-                $.post('$url', {}, function(data) {
+                $.post('$url', {'redcap_csrf_token': getCSRFToken()}, function(data) {
                 });
             });
         }, $minsToDelay * 60000);
@@ -269,7 +269,8 @@ $(document).ready(function() {
         url: '$url',
         type: 'POST',
         data: {
-            request: 'check'
+            request: 'check',
+            'redcap_csrf_token': getCSRFToken()
         },
         success: function(html) {
             $('#autoApprove').html(html);
@@ -310,6 +311,7 @@ function checkForApprovals($token, $server, $records, $nextRecord, $url, $wrangl
     $html .= "<div class='max-width centered'>";
     $html .= "<p class='centered'>The following records have been automatically categorized as auto-approved (<span class='bolded greentext'>&check;</span>) or manual (&#9997; ) according to whether they have ".Publications::makeUncommonDefinition()." and/or ".Publications::makeLongDefinition()." last names. Please review to check if you concur with the recommendations. After you do so, you will be given the option to handle the remaining issues for each scholar (via the traditional process). To directly handle one scholar, click on their name to take you to their list of ".strtolower($wranglerType)." to wrangle.</p>";
     $html .= "<form action='$url' method='POST'><input type='hidden' name='request' value='approve'>";
+    $html .= Application::generateCSRFTokenHTML();
     foreach ($records as $recordId) {
         $lastName = $lastNames[$recordId];
         if (NameMatcher::isCommonLastName($lastName)) {

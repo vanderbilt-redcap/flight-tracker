@@ -15,7 +15,7 @@ function stripFromHTML(str, html) {
 }
 
 function turnOffStatusCron() {
-	$.post(getPageUrl("testConnectivity.php"), { turn_off: 1 }, function(html) {
+	$.post(getPageUrl("testConnectivity.php"), { 'redcap_csrf_token': getCSRFToken(), turn_off: 1 }, function(html) {
 		console.log("Turned off "+html);
 		$("#status").html("Off");
 		$("#status_link").html("Turn on status cron");
@@ -24,7 +24,7 @@ function turnOffStatusCron() {
 }
 
 function turnOnStatusCron() {
-	$.post(getPageUrl("testConnectivity.php"), { turn_on: 1 }, function(html) {
+	$.post(getPageUrl("testConnectivity.php"), { 'redcap_csrf_token': getCSRFToken(), turn_on: 1 }, function(html) {
 		console.log("Turned on "+html);
 		$("#status").html("On");
 		$("#status_link").html("Turn off status cron");
@@ -633,7 +633,8 @@ function submitChanges(nextRecord) {
 			record_id: recordId,
 			omissions: JSON.stringify(newOmits),
 			resets: JSON.stringify(resets),
-			finalized: JSON.stringify(newFinalized)
+			finalized: JSON.stringify(newFinalized),
+			redcap_csrf_token: getCSRFToken()
 		};
 		console.log('Posting '+JSON.stringify(postdata));
 		const params = getUrlVars();
@@ -643,9 +644,8 @@ function submitChanges(nextRecord) {
 		}
 		$.ajax({
 			url: url,
-			method: 'POST',
+			type: 'POST',
 			data: postdata,
-			dataType: 'json',
 			success: function(data) {
 				if (data['count'] && (data['count'] > 0)) {
 					const mssg = makeWranglingMessage(data['count']);
@@ -731,7 +731,7 @@ function submitOrder(selector, resultsSelector) {
 		keys.push(id);
 	});
 	if (keys.length > 0) {
-		$.post(getPageUrl("lexicallyReorder.php"), { keys: JSON.stringify(keys) }, function(data) {
+		$.post(getPageUrl("lexicallyReorder.php"), { 'redcap_csrf_token': getCSRFToken(), keys: JSON.stringify(keys) }, function(data) {
 			console.log("Done");
 			console.log(data);
 			$(resultsSelector).html(data);
@@ -750,21 +750,23 @@ function submitOrder(selector, resultsSelector) {
 	}
 }
 
-function presentScreen(mssg) {
-	if ($('#overlay').length == 0) {
-		$('body').prepend('<div id="overlay"></div>');
+function presentScreen(mssg, imageUrl) {
+	if ($('#overlayFT').length == 0) {
+		$('body').prepend('<div id="overlayFT"></div>');
 	}
-	if ($('#overlay').length > 0) {
-		let imageUrl = getPageUrl('img/loading.gif');
-		$('#overlay').html('<br><br><br><br><h1 class=\"warning\">'+mssg+'</h1><p class=\"centered\"><img src=\"'+imageUrl+'\" alt=\"Waiting\"></p>');
-		$('#overlay').show();
+	if ($('#overlayFT').length > 0) {
+		if (!imageUrl) {
+			imageUrl = getPageUrl('img/loading.gif');
+		}
+		$('#overlayFT').html('<br><br><br><br><h1 class=\"warning\">'+mssg+'</h1><p class=\"centered\"><img src=\"'+imageUrl+'\" alt=\"Waiting\"></p>');
+		$('#overlayFT').show();
 	}
 }
 
 function clearScreen() {
-	if ($('#overlay').length > 0) {
-		$('#overlay').html('');
-		$('#overlay').hide();
+	if ($('#overlayFT').length > 0) {
+		$('#overlayFT').html('');
+		$('#overlayFT').hide();
 	}
 }
 
@@ -777,7 +779,7 @@ function toggleHelp(helpUrl, helpHiderUrl, currPage) {
 }
 
 function showHelp(helpUrl, currPage) {
-	$.post(helpUrl, { fullPage: currPage }, function(html) {
+	$.post(helpUrl, { 'redcap_csrf_token': getCSRFToken(), fullPage: currPage }, function(html) {
 		if (html) {
 			$('#help').html(html);
 		} else {
@@ -798,7 +800,7 @@ function showHelp(helpUrl, currPage) {
 
 function hideHelp(helpHiderUrl) {
 	$('#help').hide();
-	$.post(helpHiderUrl, { }, function() {
+	$.post(helpHiderUrl, { 'redcap_csrf_token': getCSRFToken() }, function() {
 	});
 }
 
@@ -806,6 +808,8 @@ function startTonight() {
 	var url = getPageUrl("downloadTonight.php");
 	console.log(url);
 	$.ajax({
+		data: { 'redcap_csrf_token': getCSRFToken() },
+		type: 'POST',
 		url:url,
 		success: function(data) {
 			console.log("result: "+data);
@@ -825,7 +829,7 @@ function startTonight() {
 function installMetadataForProjects(pids) {
 	presentScreen("Updating Data Dictionaries...<br>(may take some time)")
 	const url = getPageUrl("metadata.php");
-	$.post(url, { process: "install_all", pids: pids }, function(json) {
+	$.post(url, { 'redcap_csrf_token': getCSRFToken(), process: "install_all", pids: pids }, function(json) {
 		console.log(json);
 		if (json.charAt(0) === '<') {
 			$.sweetModal({
@@ -856,7 +860,7 @@ function installMetadata(fields) {
 	$("#metadataWarning").removeClass("install-metadata-box-danger");
 	$("#metadataWarning").addClass("install-metadata-box-warning");
 	$("#metadataWarning").html("<em class='fa fa-spinner fa-spin'></em> Installing...");
-	$.post(url, { process: "install", fields: fields }, function(data) {
+	$.post(url, { 'redcap_csrf_token': getCSRFToken(), process: "install", fields: fields }, function(data) {
 		console.log(JSON.stringify(data));
 		$("#metadataWarning").removeClass("install-metadata-box-warning");
 		if (!data.match(/Exception/)) {
@@ -874,7 +878,7 @@ function installMetadata(fields) {
 
 function checkMetadata(phpTs) {
 	var url = getPageUrl("metadata.php");
-	$.post(url, { process: "check", timestamp: phpTs }, function(html) {
+	$.post(url, { 'redcap_csrf_token': getCSRFToken(), process: "check", timestamp: phpTs }, function(html) {
 		if (html) {
 			$('#metadataWarning').addClass("red");
 			$('#metadataWarning').html(html);
@@ -883,7 +887,7 @@ function checkMetadata(phpTs) {
 }
 
 function submitLogs(url) {
-	$.post(url, {}, function(data) {
+	$.post(url, { 'redcap_csrf_token': getCSRFToken() }, function(data) {
 		console.log(data);
 		$.sweetModal({
 			content: 'Logs emailed to developers.',
@@ -946,13 +950,13 @@ function addPMID(pmid) {
 }
 
 function changeCheckboxValue(ob) {
-	let divId = $(ob).parent().attr("id")
-	let state = $(ob).attr('alt')
-	let pmid = $(ob).parent().attr('id').replace(/^PMID/, "")
-	let recordId = $("#record_id").val()
+	const divId = $(ob).parent().attr("id")
+	const state = $(ob).attr('alt')
+	const pmid = $(ob).parent().attr('id').replace(/^PMID/, "")
+	const recordId = $("#record_id").val()
 
-	let params = getUrlVars()
-	let hash = params['s']
+	const params = getUrlVars()
+	const hash = params['s']
 
 	let newState = ""
 	let newDiv = ""
@@ -974,23 +978,18 @@ function changeCheckboxValue(ob) {
 		default:
 			break
 	}
-	let newImg = getNewWranglerImg(newState);
+	const newImg = getNewWranglerImg(newState);
 	if (newState) {
 		$(ob).attr('alt', newState)
-		if (extmod_base_url) {
-			// on survey page
-			$.post(extmod_base_url+"?prefix=flightTracker&page="+encodeURI("wrangler/certifyPub")+"&pid="+pid, { hash: hash, record: recordId, pmid: pmid, state: newState }, function(html) {
-				console.log(html);
-			})
-		} else {
-			console.log("No External Module base URL")
-		}
+		$.post(getPageUrl("wrangler/certifyPub"), { 'redcap_csrf_token': getCSRFToken(), hash: hash, record: recordId, pmid: pmid, state: newState }, function(html) {
+			console.log(html);
+		});
 	}
 	if (newImg) {
 		$(ob).attr('src', newImg)
 	}
 	if (newDiv) {
-		let obDiv = $("#"+divId).detach()
+		const obDiv = $("#"+divId).detach()
 		$(obDiv).appendTo("#"+newDiv)
 		$(obDiv).show()
 		$('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1)
@@ -1050,6 +1049,8 @@ function downloadUrlIntoPage(url, selector) {
 	$(selector).html("<p class='centered'><img src='"+spinnerUrl+"' style='width: 25%;'></p>");
 	let startTs = Date.now();
 	$.ajax(url, {
+		data: { 'redcap_csrf_token': getCSRFToken() },
+		type: 'POST',
 		success: function(html) {
 			let endTs = Date.now();
 			console.log("Success: "+((endTs - startTs) / 1000)+" seconds");
@@ -1083,7 +1084,7 @@ function createCohortProject(cohort, src) {
 		$(src).dialog("close");
 	}
 	presentScreen("Creating project...<br>May take some time to set up project");
-	$.post(getPageUrl("cohorts/createCohortProject.php"), { "cohort": cohort }, function(mssg) {
+	$.post(getPageUrl("cohorts/createCohortProject.php"), { 'redcap_csrf_token': getCSRFToken(), "cohort": cohort }, function(mssg) {
 		clearScreen();
 		console.log(mssg);
 		$.sweetModal({
@@ -1209,7 +1210,7 @@ function updatePatentList(textId, prefixHTML, text) {
 
 function omitPublication(recordId, instance, pmid) {
 	presentScreen('Omitting');
-	$.post(getPageUrl('publications/omit.php'), { record: recordId, instance: instance, pmid: pmid }, function(html) {
+	$.post(getPageUrl('publications/omit.php'), { 'redcap_csrf_token': getCSRFToken(), record: recordId, instance: instance, pmid: pmid }, function(html) {
 		clearScreen();
 		console.log(html);
 		$.sweetModal({
@@ -1221,7 +1222,7 @@ function omitPublication(recordId, instance, pmid) {
 
 function omitGrant(recordId, grantNumber, source) {
 	presentScreen('Omitting');
-	$.post(getPageUrl('wrangler/omitGrant.php'), { record: recordId, grantNumber: grantNumber, source: source }, function(html) {
+	$.post(getPageUrl('wrangler/omitGrant.php'), { 'redcap_csrf_token': getCSRFToken(), record: recordId, grantNumber: grantNumber, source: source }, function(html) {
 		clearScreen();
 		console.log(html);
 		$.sweetModal({
@@ -1234,7 +1235,7 @@ function omitGrant(recordId, grantNumber, source) {
 function copyProject(token, server) {
 	if (token && server && (token.length == 32)) {
 		presentScreen('Copying project...<br>May take some time depending on size');
-		$.post(getPageUrl('copyProject.php'), { token: token, server: server }, function(html) {
+		$.post(getPageUrl('copyProject.php'), { 'redcap_csrf_token': getCSRFToken(), token: token, server: server }, function(html) {
 			clearScreen();
 			console.log(html);
 			if (html.match(/error:/i) || html.match(/ERROR/)) {
@@ -1276,4 +1277,35 @@ function copyToClipboard(element) {
     $temp.val($(element).text()).select();
     document.execCommand("copy");
     $temp.remove();
+}
+
+function summarizeRecordNow(url, recordId, csrfToken) {
+	const postdata = {
+		record: recordId,
+		redcap_csrf_token: csrfToken,
+	}
+	if (!url.match(/summarizeRecordNow/)) {
+		$.sweetModal({
+			content: 'Invalid URL.',
+			icon: $.sweetModal.ICON_ERROR
+		});
+		return;
+	}
+	const imageUrl = url.replace(/page=[^&]+/, "page="+encodeURIComponent("img/loading.gif"));
+	presentScreen("Regenerating Summary Form for Record "+recordId, imageUrl);
+	$.post(url, postdata, function(html) {
+		console.log(html);
+		clearScreen();
+		if (html.match(/error/i)) {
+			$.sweetModal({
+				content: 'ERROR: '+html,
+				icon: $.sweetModal.ICON_ERROR
+			});
+		} else {
+			$.sweetModal({
+				content: 'Record summary form has been regenerated.',
+				icon: $.sweetModal.ICON_SUCCESS
+			});
+		}
+	});
 }

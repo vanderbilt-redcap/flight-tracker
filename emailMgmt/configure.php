@@ -1,6 +1,6 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\EmailManager;
+use Vanderbilt\CareerDevLibrary\Application;use \Vanderbilt\CareerDevLibrary\EmailManager;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
@@ -215,6 +215,7 @@ $(document).ready(function() {
 <h1>Send an Email</h1>
 
 <form action='<?= CareerDev::link("/emailMgmt/configure.php") ?>' method='POST'>
+    <?= Application::generateCSRFTokenHTML() ?>
 	<h2 class='orange'>Specify Email Name</h2>
 	<table class='centered' style='margin-bottom: 16px;'><tr>
 		<td class='centered'>Email Name:<br><input type='text' id='name' name='name' class='long' value='<?= $currSettingName ?>'></td>

@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\CohortConfig;
 use \Vanderbilt\CareerDevLibrary\Filter;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../wrangler/css.php");
@@ -114,6 +115,7 @@ function makeCohortSelectionHTML($cohorts) {
 	$str .= "<p class='centered'>Please choose a cohort.</p>\n";
 	$cohortNames = $cohorts->getCohortNames();
 	$str .= "<form method='POST' action='".CareerDev::link("cohorts/profile.php")."'>\n";
+	$str .= Application::generateCSRFTokenHTML();
 	$str .= "<p class='centered'><select name='title'>\n";
 	$str .= "<option value=''>---SELECT---</option>\n";
 	foreach ($cohortNames as $title) {

@@ -121,6 +121,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 	}
 ?>
 <form action='<?= CareerDev::link("search/index.php") ?>' method='POST'>
+<?= Application::generateCSRFTokenHTML() ?>
 <p class='centered'><input type='text' value='<?= preg_replace("/'/", "\'", $postQuery) ?>' name='q' id='q'> <input type='submit' value='Search'</p>
 </form>
 <?php
@@ -160,6 +161,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 } else {
 ?>
 <form action='<?= CareerDev::link("search/index.php") ?>' method='POST'>
+<?= Application::generateCSRFTokenHTML() ?>
 <p class='centered'><input type='text' value='' name='q' id='q'> <input type='submit' value='Search'></p>
 </form>
 <?php

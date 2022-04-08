@@ -373,6 +373,7 @@ class NameMatcher {
         $firstNames1 = is_array($firstName1) ? $firstName1 : [$firstName1];
         $firstNames2 = is_array($firstName2) ? $firstName2 : [$firstName2];
 
+        // Application::log("matchByInitials: Comparing firstNames: ".json_encode($firstNames1)." vs. ".json_encode($firstNames2));
         $firstInitialMatch = FALSE;
         foreach ($firstNames1 as $fn1) {
             $fn1 = strtolower($fn1);
@@ -380,6 +381,7 @@ class NameMatcher {
                 $fn2 = strtolower($fn2);
                 $fi1 = self::turnIntoOneInitial($fn1);
                 $fi2 = self::turnIntoOneInitial($fn2);
+                // Application::log("matchByInitials: Comparing first $fi1 vs $fi2 from $fn1 and $fn2");
                 if ($fi1 == $fi2) {
                     $firstInitialMatch = TRUE;
                 }
@@ -391,12 +393,13 @@ class NameMatcher {
 
 		$lastNames1 = is_array($lastName1) ? $lastName1 : self::explodeLastName(self::dashes2Spaces($lastName1));
 		$lastNames2 = is_array($lastName2) ? $lastName2 : self::explodeLastName(self::dashes2Spaces($lastName2));
+        // Application::log("matchByInitials: Comparing lastNames: ".json_encode($lastNames1)." vs. ".json_encode($lastNames2));
 		foreach ($lastNames1 as $ln1) {
 		    $ln1 = strtolower($ln1);
 		    foreach ($lastNames2 as $ln2) {
 		        $ln2 = strtolower($ln2);
                 if (isset($_GET['test'])) {
-                    Application::log("matchByInitials: Comparing $ln1 vs $ln2");
+                    // Application::log("matchByInitials: Comparing last $ln1 vs $ln2");
                 }
                 if ($ln1 == $ln2) {
                     return TRUE;
@@ -733,7 +736,13 @@ class NameMatcher {
         $i = 0;
         foreach ($nodes as $node) {
             if (($i > 0) || !in_array($node, $honorifics)) {
-                if (!in_array(strtoupper($node), $suffixes)) {
+                if (
+                    !in_array(strtoupper($node), $suffixes)
+                    || (
+                        (count($nodes) <= 2)
+                        && self::isInitialsOnly($node)
+                    )
+                ) {
                     $newNodes[] = $node;
                 }
             }

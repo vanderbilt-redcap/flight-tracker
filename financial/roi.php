@@ -135,7 +135,7 @@ function calculateROI(cohortOb, resultsOb, yearsToConvert) {
     const cohort = $(cohortOb).val();
     const startTime = new Date().getTime();
     presentScreen('Calculating... (May take some time)');
-    $.post('$thisLink', { cohort: cohort, yearsToConvert: yearsToConvert }, function(json) {
+    $.post('$thisLink', { 'redcap_csrf_token': getCSRFToken(), cohort: cohort, yearsToConvert: yearsToConvert }, function(json) {
         clearScreen();
         const endTime = new Date().getTime();
         const elapsedMins = Math.round((endTime - startTime) / (60 * 1000));

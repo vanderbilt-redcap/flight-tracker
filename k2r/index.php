@@ -152,6 +152,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 ?>
 
 <form action='<?= Application::link("this").$cohortParams ?>' method='POST'>
+<?= Application::generateCSRFTokenHTML() ?>
 <h2>Conversion Ratio</h2>
 <p class='centered'>Select Cohort (optional):<br><?= $cohorts->makeCohortSelect($cohort ? $cohort : "all") ?></p>
 <p class='centered'>Exclude those within <input type='text' name='k' value='5'> years of receipt of most recent K who have not converted<br>
@@ -179,6 +180,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 </form>
 <hr>
 <form action='?pid=<?= Application::link("this").$cohortParams ?>' method='POST'>
+<?= Application::generateCSRFTokenHTML() ?>
 <h2>Who is on a K Award?</h2>
 <p class='centered'>Length of Internal-K / K12 / KL2 Award: <input type='text' name='internal_k' value='3'> years</p>
 <p class='centered'>Length of Individual-K / K-Equivalent Award: <input type='text' name='individual_k' value='5'> years</p>

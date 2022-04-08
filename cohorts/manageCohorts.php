@@ -40,7 +40,7 @@ function rename(selector, button = false) {
 				$(showSelector).hide();  // initially, hide
 				$(processingSelector).show();
 				presentScreen('Processing...');
-				$.post("<?= CareerDev::link("cohorts/renameCohort.php") ?>", { oldValue: oldVal, newValue: newVal }, function(data) {
+				$.post("<?= CareerDev::link("cohorts/renameCohort.php") ?>", { 'redcap_csrf_token': getCSRFToken(), oldValue: oldVal, newValue: newVal }, function(data) {
 					clearScreen();
 					if (data.match(/success/)) {
 						$(showSelector).html(newVal);
@@ -69,7 +69,7 @@ function deleteCohort(cohort, selector) {
 	$(titleSelector).hide();
 
 	presentScreen('Deleting...');
-	$.post("<?= CareerDev::link("cohorts/deleteCohort.php") ?>", { cohort: cohort }, function(data) {
+	$.post("<?= CareerDev::link("cohorts/deleteCohort.php") ?>", { 'redcap_csrf_token': getCSRFToken(), cohort: cohort }, function(data) {
 		clearScreen();
 		if (data.match(/success/)) {
 			$(selector).remove();

@@ -77,6 +77,7 @@ function updateNames(pid, existingPost) {
 		selector = '#checklist';
 		post['recipient'] = 'individuals';
 	}
+	post['redcap_csrf_token'] = getCSRFToken();
 
 	if (selector) {
 		$(selector+' .namesCount').html("");
@@ -145,11 +146,12 @@ function sendTestEmails(pid, selectName, selectValue) {
 		var post = {};
 		post['to'] = to;
 		post[selectName] = selectValue;
+		post['redcap_csrf_token'] = getCSRFToken();
 		presentScreen("Preparing Messages...");
 		$.post(getPageUrl("/emailMgmt/makeMessages.php"), post, function(json) {
 			console.log("makeMessages: "+json);
 			presentScreen("Sending Messages...");
-			$.post(getPageUrl("/emailMgmt/sendTest.php"), { messages: json }, function(str) {
+			$.post(getPageUrl("/emailMgmt/sendTest.php"), { 'redcap_csrf_token': getCSRFToken(), messages: json }, function(str) {
 				console.log(str);
 				clearScreen();
 				if (!$('#note').hasClass("green")) {

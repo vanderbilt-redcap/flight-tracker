@@ -332,6 +332,7 @@ table { border-collapse: collapse; }
         $html = "<h1>An Update for Your NIH Tables is Requested</h1>";
         $html .= "<h2>About $name for Submission on ".REDCapManagement::YMD2MDY($dateOfReport)."</h2>";
         $html .= "<form method='POST' action='$thisUrl'>";
+        $html .= Application::generateCSRFTokenHTML();
         $html .= "<input type='hidden' name='dateSubmitted' value='$today' />";
         foreach ($tablesToShow as $tableNum) {
             $html .= "<h3>Table $tableNum: ".NIHTables::getTableHeader($tableNum)."</h3>";
@@ -356,6 +357,7 @@ table { border-collapse: collapse; }
         $allNames = Application::getSetting($this->allNamesField, $this->pid);
         if ($savedTableName && isset($allNames[$savedTableName]) && in_array($tableNum, $allNames[$savedTableName])) {
             $data = Application::getSetting(self::makeSaveTableKey($savedTableName, $tableNum), $this->pid);
+            $data['source'] = "Previously Saved";
             if ($data) {
                 return $data;
             }
@@ -370,7 +372,9 @@ table { border-collapse: collapse; }
                 $trainingGrants = REDCapManagement::sanitize($post['trainingGrants']);
                 $nihTables->addTrainingGrants($trainingGrants, $dateOfReport);
             }
-            return $nihTables->getData($tableNum);
+            $data = $nihTables->getData($tableNum);
+            $data['source'] = "Newly Computed";
+            return $data;
         } else {
             return ["error" => "Invalid tableNum $tableNum"];
         }

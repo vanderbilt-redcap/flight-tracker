@@ -102,6 +102,7 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 			<p><b>--OR--</b> you can supply a Microsoft Excel CSV below.</p>
 		</div>
 		<form method='POST' action='<?= CareerDev::link("add.php") ?>'><p>
+            <?= Application::generateCSRFTokenHTML() ?>
 			<b>Please enter</b>:<br>
 			<i>FirstName, PreferredName, Middle, LastName, Email, Additional Institutions:</i><br>
 			<textarea style='width: 600px; height: 300px;' name='newnames'></textarea><br>
@@ -109,6 +110,7 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 		</p></form>
 		<p><b>--OR--</b> supply a CSV Spreadsheet with the specified fields in <a href='<?= CareerDev::link("newFaculty.php") ?>'>this example</a>.</p>
 		<form enctype='multipart/form-data' method='POST' action='<?= CareerDev::link("add.php") ?>'><p>
+            <?= Application::generateCSRFTokenHTML() ?>
 			<input type="hidden" name="MAX_FILE_SIZE" value="3000000" />
 			CSV Upload: <input type='file' name='csv'><br>
 			<button>Process File</button>
@@ -329,6 +331,7 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
 
     $html = "";
     $html .= "<form action='$url' method='POST'>";
+    $html .= Application::generateCSRFTokenHTML();
     $html .= "<table class='bordered centered max-width'>";
     $html .= "<thead>";
     $html .= "<tr><th>".implode("</th><th>", $headers)."</th></tr>";

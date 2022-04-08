@@ -17,6 +17,11 @@ class FeatureSwitches {
                 "Quarterly" => "quarterly",
                 "Request" => "request",
             ],
+            "Days per Week to Build Summaries" => [
+                "1 Day" => 1,
+                "3 Days" => 3,
+                "5 Days" => 5,
+            ],
             "Mentee-Mentor" => $this->onOff,
             "Patents" => $this->onOff,
             "Publications" => $this->onOff,
@@ -57,10 +62,35 @@ class FeatureSwitches {
         return $recordsToProcess;
     }
 
+    public function getValue($category) {
+        $allSwitches = $this->getSwitches();
+        if (isset($allSwitches[$category])) {
+            return $allSwitches[$category];
+        } else if (isset($this->switches[$category])) {
+            foreach ($this->switches[$category] as $label => $idx) {
+                return $idx;
+            }
+        }
+        return "";
+    }
+
+    public function isOn($category) {
+        $allSwitches = $this->getSwitches();
+        return (isset($allSwitches[$category]) && ($allSwitches[$category] == "On"));
+    }
+
     public function getSwitches() {
         $allSwitches = Application::getSetting($this->settingName, $this->pid);
         if (!$allSwitches) {
             $allSwitches = [];
+
+            // Initialize with first item as default
+            foreach ($this->switches as $item => $values) {
+                foreach ($values as $label => $idx) {
+                    $allSwitches[$item] = $idx;
+                    break;    // inner
+                }
+            }
         }
         return $allSwitches;
     }
@@ -158,7 +188,7 @@ class FeatureSwitches {
             $titleId = REDCapManagement::makeHTMLId($title);
             $html .= "<div style='float: left; width: $width; padding: 0 20px;'><h4 style='margin-bottom: 0.5rem;'>$title (<span class='valueHolder' data-title='$titleId'></span>)</h4><div class='switch centered $size $short'>".$this->makeSwitchHTML($title, $allSwitches)."<div class='switch__indicator'></div></div></div>";
         }
-        $html .= "<p class='centered' style='padding-top: 25px; clear: left;'><button id='switchButton' class='biggerButton' onclick='presentScreen(\"Saving...\"); const postdata = makeSwitchPostData(); $.post(\"$thisUrl\", postdata, function(html) { console.log(html); clearScreen(); });'>Save Settings</button></p>";
+        $html .= "<p class='centered' style='padding-top: 25px; clear: left;'><button id='switchButton' class='biggerButton' onclick='presentScreen(\"Saving...\"); const postdata = makeSwitchPostData(); $.post(\"$thisUrl\", postdata, function(html) { console.log(html); location.href=\"$thisUrl\"; });'>Save Settings</button></p>";
         $html .= "<script>
 $(document).ready(function() {
     $('.valueHolder').each(function(idx, ob) {
@@ -195,6 +225,7 @@ function makeSwitchPostData() {
         }
         $html .= "
     console.log('postData: '+JSON.stringify(hash));
+    hash['redcap_csrf_token'] = getCSRFToken();
     return hash;
 }
 </script>";

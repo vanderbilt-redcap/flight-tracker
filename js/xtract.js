@@ -1,10 +1,12 @@
 class xTRACT {
     baseurl = '';
     basetoken = '';
+    csrfToken = '';
 
-    constructor(url, token) {
+    constructor(url, token, csrfToken) {
         this.basetoken = token;
         this.baseurl = url;
+        this.csrfToken = csrfToken;
     }
 
     getProcessingMessage() {
@@ -30,6 +32,7 @@ class xTRACT {
     getDataFromREDCap(record) {
         let postdata = {
             origin: location.href,
+            'redcap_csrf_token': this.csrfToken,
             token: this.basetoken
         };
         if (typeof record != 'undefined') {
@@ -44,10 +47,11 @@ class xTRACT {
                 $(ob).append('<div id="flightTrackerSelect"><span style="color: '+color+';">'+procMssg+'</span></div>');
             }
         });
-        let url = this.baseurl;
-        let token = this.basetoken;
+        const url = this.baseurl;
+        const token = this.basetoken;
+        const csrfToken = this.csrfToken;
         $.post(this.baseurl, postdata, function(json) {
-            let x = new xTRACT(url, token);
+            let x = new xTRACT(url, token, csrfToken);
             if (x.isOkToProceed(json)) {
                 console.log(json);
                 let data = JSON.parse(json);
@@ -169,14 +173,16 @@ class xTRACT {
             modalId: modalId,
             row: row,
             record: record,
-            token: this.basetoken
+            token: this.basetoken,
+            'redcap_csrf_token': this.csrfToken
         };
-        let token = this.basetoken;
-        let url = this.baseurl;
+        const token = this.basetoken;
+        const url = this.baseurl;
+        const csrfToken = this.csrfToken;
         console.log(this.baseurl+' '+JSON.stringify(postdata));
         $.post(this.baseurl, postdata, function(json) {
             console.log(json);
-            let x = new xTRACT(url, token);
+            let x = new xTRACT(url, token, csrfToken);
             if (x.isOkToProceed(json)) {
                 let data = JSON.parse(json);
                 x.fillModalElements(modalId, data);
@@ -196,7 +202,7 @@ class xTRACT {
 
         var varName = modalId+'_row'+rowNum+this.getSuffix();
         var html = '<script>if (typeof '+varName+' == "undefined") { var '+varName+' = '+JSON.stringify(row)+'; }</script>';
-        html += '<div style="margin: 5px; padding: 8px; border: 1px solid #888;" onclick="let x = new xTRACT(\''+this.baseurl+'\', \''+this.basetoken+'\'); x.selectOption(\''+modalId+'\', '+varName+');">';
+        html += '<div style="margin: 5px; padding: 8px; border: 1px solid #888;" onclick="let x = new xTRACT(\''+this.baseurl+'\', \''+this.basetoken+'\', \''+this.csrfToken+'\'); x.selectOption(\''+modalId+'\', '+varName+');">';
         html += lines.join('<br>');
         html += '</div>';
         return html;
@@ -305,7 +311,8 @@ class xTRACT {
                 origin: location.href,
                 token: this.basetoken,
                 modalId: modalId,
-                record: record
+                record: record,
+                'redcap_csrf_token': this.csrfToken,
             };
             if (modalId == 'addPublicationRecord') {
                 if ($('#firstName').is(':visible') && $('#middleName').is(':visible') && $('#lastName').is(':visible')) {
@@ -316,12 +323,13 @@ class xTRACT {
             }
             let noteClass = 'AutoFill'+this.getSuffix();
             $('.'+noteClass).html(this.getProcessingMessage());
-            let url = this.baseurl;
-            let token = this.basetoken;
+            const url = this.baseurl;
+            const token = this.basetoken;
+            const csrfToken = this.csrfToken;
             console.log(this.baseurl+' '+JSON.stringify(postdata));
             $.post(this.baseurl, postdata, function(json) {
                 console.log(json);
-                let x = new xTRACT(url, token);
+                let x = new xTRACT(url, token, csrfToken);
                 if (x.isOkToProceed(json)) {
                     $('.' + noteClass).html('');
                     let data = JSON.parse(json);
@@ -339,14 +347,14 @@ class xTRACT {
         }
     }
 
-    addAutoFills(token, url) {
+    addAutoFills(token, url, csrfToken) {
         let color = this.getFlightTrackerColor();
         let suffix =  this.getSuffix();
         $.each($('.modal-content'), function(idx, ob) {
             let modalId = $(ob).parent().parent().attr('id');
             let noteDiv = '<div style="color: '+color+';" class="AutoFill'+suffix+'" id="'+modalId+'_AutoFill'+suffix+'"></div>';
-            let x = new xTRACT(url, token);
-            let link = '&nbsp;<a href="javascript:;" onclick="let x = new xTRACT(\''+url+'\', \''+token+'\'); x.fillModal(\''+modalId+'\');">Auto-Fill From '+x.getProgramName()+'</a>'+noteDiv;
+            let x = new xTRACT(url, token, csrfToken);
+            let link = '&nbsp;<a href="javascript:;" onclick="let x = new xTRACT(\''+url+'\', \''+token+'\', \''+csrfToken+'\'); x.fillModal(\''+modalId+'\');">Auto-Fill From '+x.getProgramName()+'</a>'+noteDiv;
             if ($(ob).find('.modal-header h4').length > 0) {
                 $(ob).find('.modal-header h4').append(link);
             } else if ($(ob).find('.modal-header div h4').length > 0) {
@@ -363,7 +371,7 @@ class xTRACT {
         if (data['firstnames'] && data['lastnames'] && this.hasNameOnPage()) {
             let selectHTML = this.makeNamePicker(data['firstnames'], data['lastnames']);
             $('div#flightTrackerSelect').html('Match with '+this.getProgramName()+': '+selectHTML);
-            this.addAutoFills(this.basetoken, this.baseurl);
+            this.addAutoFills(this.basetoken, this.baseurl, this.csrfToken);
         }
     }
 }

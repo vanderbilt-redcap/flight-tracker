@@ -432,6 +432,7 @@ if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
         postData['toImport'] = $('#toImport').val();
         postData['record'] = $('#record').val();
         postData['empty_record'] = $('#empty_record').val();
+        postData['redcap_csrf_token'] = getCSRFToken();
         presentScreen("Saving...");
         $.post(url, postData, function(json) {
             console.log(json);
@@ -876,6 +877,7 @@ foreach ($redcapData as $row) {
 		echo "</div>";
 
 		echo "<form action='$nextPageLink' method='POST'>";
+		echo Application::generateCSRFTokenHTML();
 		echo "<input type='hidden' name='toImport' id='toImport' value=''>";
 		echo "<input type='hidden' id='origToImport' value=''>";
 		echo "<input type='hidden' name='record' id='record' value='$record'>";

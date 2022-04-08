@@ -12,16 +12,18 @@ function expand(address, type) {
 		type = $('#type').val();
 	}
 
-	$.POST("backup.php?type="+type, {}, function(data) {
+	$.POST("backup.php?type="+type, {'redcap_csrf_token': getCSRFToken()}, function(data) {
 		if (data == 'success') {
 			var ts = Date.now();
 			$.ajax("runCommand.php?log="+ts+".log", {
-				data: { 'type': type, 'command': address },
+				data: { 'type': type, 'command': address, 'redcap_csrf_token': getCSRFToken() },
 				type: 'POST',
 				success: function(data) {
 					$('#ta').html(data);
 					function readLog(ts) {
 						$.ajax("readLogs.php?log="+ts+".log", {
+						    data: { 'redcap_csrf_token': getCSRFToken() },
+                            type: 'POST',
 							success: function(data) {
 								$('#ta').html(data);
 								if (!data.match(/Done\./)) {

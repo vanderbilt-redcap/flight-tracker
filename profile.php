@@ -98,6 +98,7 @@ $numPublications = $pubs->getNumber("Original Included");
 $numFirstAuthors = $pubs->getNumberFirstAuthors();
 $numLastAuthors = $pubs->getNumberLastAuthors();
 $numMentorArticles = $pubs->getNumberWithPeople($mentors);
+$mentorArticles = $pubs->getIndividualCollaborations($mentors);
 $numCitations = $pubs->getNumberOfCitationsByOthers("Original Included");
 $dollarsSummaryTotal = $grants->getTotalDollars("prior");
 $dollarsSummaryDirect = $grants->getDirectDollars("prior");
@@ -105,6 +106,15 @@ $grants->compileGrants("Financial");
 $dollarsCompiledTotal = $grants->getTotalDollars("compiled");
 $dollarsCompiledDirect = $grants->getDirectDollars("compiled");
 $numPatents = $patents->getCount();
+
+$mentorsWithArticles = [];
+foreach ($mentors as $mentor) {
+    if ($mentorArticles[$mentor] > 0) {
+        $mentorsWithArticles[] = $mentor." (".$mentorArticles[$mentor]." pubs)";
+    } else {
+        $mentorsWithArticles[] = $mentor;
+    }
+}
 
 ?>
 <style>
@@ -233,7 +243,7 @@ if (!empty($mentors)) {
 	</tr>
     <tr>
         <td class='label profileHeader'>Mentors:</td>
-        <td class='value profileHeader'><?= printList($mentors).$numMentorArticlesHTML ?></td>
+        <td class='value profileHeader'><?= printList($mentorsWithArticles).$numMentorArticlesHTML ?></td>
         <td class='label profileHeader'>Resources Used:</td>
         <td class='value profileHeader'><?= printList($resources) ?></td>
     </tr>

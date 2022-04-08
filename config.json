@@ -66,12 +66,12 @@
    ],
 
 
-	"framework-version": 5,
+	"framework-version": 8,
 
 	"compatibility": {
 		"php-version-min": "7.0.0",
 		"php-version-max": "",
-		"redcap-version-min": "9.10.0",
+		"redcap-version-min": "11.1.5",
 		"redcap-version-max": ""
 	},
 

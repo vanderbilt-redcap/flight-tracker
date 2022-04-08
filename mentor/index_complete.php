@@ -212,6 +212,7 @@ if ($hash) {
                 b64image: datapair[1],
                 mime_type: datapair[0],
                 instance: '<?= $instance ?>',
+                'redcap_csrf_token': getCSRFToken(),
                 date: ymdDate },
             function(html) {
             console.log(html);

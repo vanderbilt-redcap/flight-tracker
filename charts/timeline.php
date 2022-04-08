@@ -102,7 +102,7 @@ body { font-size: 12px; }
             }
         }
 
-        $grants = new Grants($token, $server);
+        $grants = new Grants($token, $server, "empty");
         $grants->setRows($rows);
         $grants->compileGrants();
         $grantClass = CareerDev::getSetting("grant_class", $pid);

@@ -87,6 +87,7 @@ if ($message) {
 $link = Application::link("mentor/addMentor.php")."&menteeRecord=$recordId".$uidString;
 echo "<p>Would you like to add another mentor for $myName? If so, fill out the below form.</p>";
 echo "<form action='$link' method='POST'>";
+echo Application::generateCSRFTokenHTML();
 echo "<p style='text-align: center;'><label for='newMentorName'>New Mentor Name:</label> <input type='text' name='newMentorName' id='newMentorName' onkeyup='nameKeyUp();'></p>";
 echo "<p style='text-align: center; display: none;' id='searchButton'><button onclick='lookupName($(\"#newMentorName\").val()); return false;'>Search REDCap for Name</button></p>";
 echo "<p style='text-align: center; display: none;' class='useridPrompt'><label for='newMentorUserid'>New Mentor User Id:</label> <select name='newMentorUserid' id='newMentorUserid'></select></p>";
@@ -116,7 +117,7 @@ function checkIfUseridValid() {
 }
 
 function lookupName(name) {
-    $.post('<?= Application::link("mentor/getREDCapUseridFromProject.php").$uidString."&menteeRecord=$recordId" ?>', { name: name }, function(json) {
+    $.post('<?= Application::link("mentor/getREDCapUseridFromProject.php").$uidString."&menteeRecord=$recordId" ?>', { 'redcap_csrf_token': getCSRFToken(), name: name }, function(json) {
         let userids = JSON.parse(json);
         console.log(userids.length+" user ids matched");
         $('#newMentorUserid').find('option').remove();

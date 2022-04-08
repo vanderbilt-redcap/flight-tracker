@@ -132,7 +132,7 @@ $module = Application::getModule();
 				})
 
 				var startTime = Date.now()
-				$.post(args.url, null, function (response) {
+				$.post(args.url, { 'redcap_csrf_token': getCSRFToken() }, function (response) {
 					var millisPassed = Date.now() - startTime
 					var delay = 2000 - millisPassed
 					if (delay < 0) {

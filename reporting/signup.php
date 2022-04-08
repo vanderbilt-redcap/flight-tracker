@@ -301,7 +301,7 @@ function getRecords(sel) {
 
 function saveForm() {
     if ($('.light_red').length + $('.light_green').length > 0) {
-        const post = {};
+        const post = {'redcap_csrf_token': getCSRFToken(), };
         post.deletedPredocs = getRecords('.predoc.light_red');
         post.changedPredocs = getStartEnd('.predoc.light_green');
         post.deletedPostdocs = getRecords('.postdoc.light_red');
@@ -334,10 +334,16 @@ function saveForm() {
                 let textSel = getTextSelector($(this));
                 setCellText($(this), $(textSel));
             });
-            alert('Saved');
+            $.sweetModal({
+                content: 'Saved!',
+                icon: $.sweetModal.ICON_SUCCESS
+            });
         });
     } else {
-        alert('No changes to save!');
+        $.sweetModal({
+            content: 'No changes to save!',
+            icon: $.sweetModal.ICON_ERROR
+        });
     }
 }
 
