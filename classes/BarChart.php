@@ -54,12 +54,13 @@ class BarChart extends Chart {
         $this->additionalDatasets[] = ["data" => $colsWithLabels, "color" => $color, "title" => $title];
     }
 
-    public function getHTML($width, $height) {
+    public function getHTML($width, $height, $atBottomOfPage = FALSE) {
         $bars = count($this->cols);
         $displayLegendText = json_encode($this->displayLegend);
         if (empty($this->labels) || empty($this->cols)) {
             return "";
         }
+        $saveDiv = REDCapManagement::makeSaveDiv("canvas", $atBottomOfPage);
         $html = "";
         $html .= "<div style='margin: 0 auto; width: {$width}px; height: {$height}px;' class='chartWrapper'>";
         $html .= "<canvas id='{$this->id}'></canvas>";
@@ -131,6 +132,9 @@ var {$this->id}"."_chart = new Chart({$this->id}"."_ctx, {
         }]
       }
     }
+});
+$(document).ready(function() {
+    $('#{$this->id}').parent().append(\"$saveDiv\");
 });
 </script>";
         $html .= "</div>";

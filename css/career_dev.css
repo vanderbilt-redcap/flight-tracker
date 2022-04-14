@@ -157,6 +157,7 @@ p.recessed { color: #888888; font-size: 11px; margin: 4px 12px 4px 12px; }
 .recessed,.recessed a { color: #888888; font-size: 11px; }
 p.recessed,div.recessed { margin: 2px; }
 textarea,input[type=date] { font-family: Georgia, 'Times New Roman', Times, serif !important; font-size: 16px; }
+.saveDivAtBottom { padding-bottom: 65px; padding-top: 2px; }
 
 
 /* adapted from https://www.sliderrevolution.com/resources/styling-radio-buttons/ */

@@ -1294,7 +1294,10 @@ function characteristicsPopup(entity) {
         }
 
         $mainScheduleEmailCall = "scheduleEmail('mentee', menteeRecord, subject, message, dateToSend, cb);";
-        if ($hasEvaluationComponent && Application::isVanderbilt()) {
+        if (
+            $hasEvaluationComponent
+            && REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "10.4.0")
+        ) {
             # getSurveyLink has the fifth parameter in REDCap versions >= 10.4.0
             $menteeEvalLink = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations", NULL, self::getEvalInstance("mentee"), $pid);
             $mentorEvalLink = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations", NULL, self::getEvalInstance("mentor"), $pid);
@@ -1310,7 +1313,7 @@ function characteristicsPopup(entity) {
                 const evalSubject = '$evalSubject';
                 const evalMessage = '$mentorEvalMessage';
                 const evalSendTime = '$evalSendTime';
-                scheduleEmail('mentor', menteeRecord, evalSubject, evalMessage, evalSendTime, mainCallback);            
+                scheduleEmail('mentor', menteeRecord, evalSubject, evalMessage, evalSendTime, mainCallback);
             }
             
             const evalSubject = '$evalSubject';
@@ -1590,7 +1593,7 @@ function characteristicsPopup(entity) {
 
     public static function makeEvaluationMessage($evalLink) {
         # REMINDER: No single quotes because of the way the JS is formed
-        return "Thank you for filling out a mentee-mentor agreement. Because this is a pilot, we are interested in your feedback. Can you fill out the following six-question survey?<br/><a href=\"$evalLink\">$evalLink</a><br/><br/>Thanks!<br/>The Flight Tracker Team";
+        return "Thank you for filling out a mentee-mentor agreement. We are interested in your feedback. Can you fill out the following short survey?<br/><a href=\"$evalLink\">$evalLink</a><br/><br/>Thanks!<br/>The Flight Tracker Team";
     }
 
     # handle branching logic manually for now

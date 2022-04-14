@@ -117,7 +117,7 @@ foreach ($dist as $field => $values) {
     $barChart->setXAxisLabel($label);
     $barChart->setYAxisLabel("Number of Articles");
     $barChart->showLegend(FALSE);
-    echo "<div class='centered max-width'>".$barChart->getHTML(800, 500)."</div>";
+    echo "<div class='centered max-width'>".$barChart->getHTML(800, 500, FALSE)."</div>";
     $i++;
 }
 

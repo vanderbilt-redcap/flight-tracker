@@ -1713,6 +1713,8 @@ return $result;
             "vfrs_department" => "vfrs",
             "init_import_primary_dept" => "manual",
             "ldap_vanderbiltpersonhrdeptnumber" => "ldap",
+            "ldap_vanderbiltpersonhrdeptname" => "ldap",
+            "ldap_departmentnumber" => "ldap",
             "newman_new_department" => "new2017",
             "newman_demographics_department1" => "demographics",
             "newman_data_department1" => "data",
@@ -2186,13 +2188,31 @@ return $result;
 
             $choices = self::getChoices($this->metadata);
             if (isset($choices[$field]) && !isset($choices[$field][$value])) {
+                $found = FALSE;
                 foreach ($choices[$field] as $idx => $label) {
                     if ($label == $value) {
                         if (isset($_GET['test'])) {
                             echo "Matched label, setting to $idx<br>";
                         }
                         $value = $idx;
+                        $found = TRUE;
                         break;
+                    }
+                }
+                if (!$found && ($result->getSource() == "ldap")) {
+                    # approximate
+                    $score = 0;
+                    $minimumCharacters = 8;
+                    $scoreIdx = FALSE;
+                    foreach ($choices[$field] as $idx => $label) {
+                        $myScore = similar_text($label, $value);
+                        if (($myScore > $minimumCharacters) && ($myScore > $score)) {
+                            $score = $myScore;
+                            $scoreIdx = $idx;
+                        }
+                    }
+                    if (($score > 0) && isset($choices[$field][$scoreIdx])) {
+                        $value = $scoreIdx;
                     }
                 }
             }

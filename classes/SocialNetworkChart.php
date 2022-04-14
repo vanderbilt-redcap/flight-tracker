@@ -50,8 +50,9 @@ class SocialNetworkChart extends Chart {
         return "";
     }
 
-    public function getHTML($width, $height, $showLabels = TRUE, $legendInfo = []) {
+    public function getHTML($width, $height, $showLabels = TRUE, $legendInfo = [], $atBottomOfPage = FALSE) {
         $html = "";
+        $saveDiv = REDCapManagement::makeSaveDiv("svg", $atBottomOfPage);
         $html .= self::makeLegend($legendInfo, $width);
         $html .= "
 <div id='{$this->name}' class='centered' style='width: {$width}px; height: {$height}px; background-color: white;'></div>
@@ -205,7 +206,10 @@ class SocialNetworkChart extends Chart {
         titleImage.y = 30;
         titleImage.width = 200;
         titleImage.height = 200;
-    })
+        
+        $('#{$this->name}').append(\"$saveDiv\");
+
+})
 </script>";
         return $html;
     }

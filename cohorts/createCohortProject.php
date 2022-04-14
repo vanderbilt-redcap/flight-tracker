@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \ExternalModules\ExternalModules;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -53,13 +54,10 @@ if ($pid && $cohort && in_array($cohort, $cohortNames) && $cohorts->hasReadonlyP
                     ];
                 CareerDev::duplicateAllSettings($pid, $newPid, $defaultSettings);
                 Upload::metadata($metadata, $newToken, $newServer);
-                $formsAndLabels = CareerDev::getRepeatingFormsAndLabels($metadata);
-                REDCapManagement::setupRepeatingForms($newEventId, $formsAndLabels);
-                $surveysAndLabels = [
-                    "initial_survey" => "Flight Tracker Initial Survey",
-                    "followup" => "Flight Tracker Followup Survey",
-                ];
-                REDCapManagement::setupSurveys($newPid, $surveysAndLabels);
+                $formsAndLabels = DataDictionaryManagement::getRepeatingFormsAndLabels($metadata);
+                DataDictionaryManagement::setupRepeatingForms($newEventId, $formsAndLabels);
+                $surveysAndLabels = DataDictionaryManagement::getSurveysAndLabels($metadata);
+                DataDictionaryManagement::setupSurveys($newPid, $surveysAndLabels);
 
                 $userRights = Download::userRights($newToken, $newServer);
                 $currentUsers = [];

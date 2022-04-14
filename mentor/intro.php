@@ -47,6 +47,11 @@ if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
         $resourcesLinkIfExtant = "<p>$institution suggests <a href='$link'>viewing this resource</a> for further consultation.</p>";
     }
 }
+if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") {
+    $blogLinkText = "<p>Discover more on <a href='https://edgeforscholars.org/getting-expectations-in-line-with-an-online-mentoring-agreement/'>this blog post entitled \"Getting Expectations in Line with an Online Mentoring Agreement\" on edgeforscholars.org</a>.</p>";
+} else {
+    $blogLinkText = "";
+}
 
 ?>
 
@@ -57,6 +62,33 @@ if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
             <div class="col-lg-12">
                 <h2 style="color: #727272;"><?= $welcomeMssg ?></h2>
                 <div class="blue-box" onclick="window.location.href = '<?= Application::link("mentor/index.php").$uidString.$hashParam ?>';"><h1>Start Now</h1></div>
+
+                <?= MMAHelper::makePopupJS() ?>
+
+                <?= $resourcesLinkIfExtant ?>
+                <p>Welcome to a new way to think about the agreement of collaboration between a Mentee (also referred to here as ‘Scholar’) and Mentor. Mentee-Mentor Scholar Agreements (‘Mentoring Agreement’) function to define a mutually agreed upon set of goals and parameters which provide a foundation for the mentoring relationship.  Ideally, a formal agreement will address a broad range of domains, including the Scholar’s research and education, professional development and career advancement and interactions between the scholar and mentor with respect to support, communication, personal conduct and interpersonal interactions.</p>
+                <p>While seen as a valuable mechanism to align expectations between scholars and mentors, and provide a road map for collaboration, agreements are not uniformly employed.  One possible reason for the lack of universal use is the need for a more user friendly, relevant document which may serve as an active guidepost applicable to all levels of the scholar’s career development.  This program was created to provide an improved foundation for the development of agreement documents, and a site for their ongoing access and update.</p>
+
+                <h3>Background</h3>
+                <p><img src="<?= Application::link("/mentor/img/temp_image.jpg") ?>" style="float: right; margin-right: 39px;width: 296px;">Every mentee-mentor scientific and career development relationship is different, but there are common features that characterize successful relationships.</p>
+                <!-- <p>Traditional Mentoring Agreements provide a static template for each mentee-mentor pairing to address at the start of their formal mentoring relationship.</p> -->
+
+                <p>With this Mentoring Agreement, we seek to:</p>
+                <ol>
+                    <li>Create the foundation for a discussion and documentation of key ‘domains’ crucial to a productive initiation and maintenance of the mentee-mentor relationship. Example ‘domains’ are:</li>
+                    <ol type="a">
+                        <li>Meetings, Communication and Work Expectations</li>
+                        <li>Financial Support</li>
+                        <li>Research</li>
+                        <li>Approach to Scholarly Products</li>
+                        <li>Career and Professional Development</li>
+                    </ol>
+
+                    <li>Create a modifiable Mentoring Agreement which may be created at the start of each relationship and revisited for revision over time as the relationship, scientific efforts, and career development of the mentee mature (e.g., every 12 months).</li>
+                </ol>
+                <p>We hope you find this agreement helpful as you begin or continue your Mentee-Mentor Scholar relationship.</p>
+                <?= $blogLinkText ?>
+
                 <div class="col-lg-4" style="float: right;">
                     <div id="boxa" class="box_bg box_white boxa">
                         <div class="row">
@@ -104,31 +136,6 @@ if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
                         </div>
                     </div>
                 </div>
-
-                <?= MMAHelper::makePopupJS() ?>
-
-                <?= $resourcesLinkIfExtant ?>
-                <p>Welcome to a new way to think about the agreement of collaboration between a Mentee (also referred to here as ‘Scholar’) and Mentor. Mentee-Mentor Scholar Agreements (‘Mentoring Agreement’) function to define a mutually agreed upon set of goals and parameters which provide a foundation for the mentoring relationship.  Ideally, a formal agreement will address a broad range of domains, including the Scholar’s research and education, professional development and career advancement and interactions between the scholar and mentor with respect to support, communication, personal conduct and interpersonal interactions.</p>
-                <p>While seen as a valuable mechanism to align expectations between scholars and mentors, and provide a road map for collaboration, agreements are not uniformly employed.  One possible reason for the lack of universal use is the need for a more user friendly, relevant document which may serve as an active guidepost applicable to all levels of the scholar’s career development.  This program was created to provide an improved foundation for the development of agreement documents, and a site for their ongoing access and update.</p>
-
-                <h3>Background</h3>
-                <p><img src="<?= Application::link("/mentor/img/temp_image.jpg") ?>" style="float: right; margin-right: 39px;width: 296px;">Every mentee-mentor scientific and career development relationship is different, but there are common features that characterize successful relationships.</p>
-                <!-- <p>Traditional Mentoring Agreements provide a static template for each mentee-mentor pairing to address at the start of their formal mentoring relationship.</p> -->
-
-                <p>With this Mentoring Agreement, we seek to:</p>
-                <ol>
-                    <li>Create the foundation for a discussion and documentation of key ‘domains’ crucial to a productive initiation and maintenance of the mentee-mentor relationship. Example ‘domains’ are:</li>
-                    <ol type="a">
-                        <li>Meetings, Communication and Work Expectations</li>
-                        <li>Financial Support</li>
-                        <li>Research</li>
-                        <li>Approach to Scholarly Products</li>
-                        <li>Career and Professional Development</li>
-                    </ol>
-
-                    <li>Create a modifiable Mentoring Agreement which may be created at the start of each relationship and revisited for revision over time as the relationship, scientific efforts, and career development of the mentee mature (e.g., every 12 months).</li>
-                </ol>
-                <p>We hope you find this agreement helpful as you begin or continue your Mentee-Mentor Scholar relationship.</p>
             </div>
         </div>
     </div>

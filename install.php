@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \ExternalModules\ExternalModules;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 ini_set("memory_limit", "4096M");
 ini_set('display_errors', '1');
@@ -93,17 +94,14 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
         \Vanderbilt\FlightTrackerExternalModule\setupModuleSettings($projectId, $settingFields);
 
 		$metadata = Download::metadata($newToken, $newServer);
-        $formsAndLabels = CareerDev::getRepeatingFormsAndLabels($metadata);
+        $formsAndLabels = DataDictionaryManagement::getRepeatingFormsAndLabels($metadata);
         if ($_POST['coeus']) {
             // $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
         }
-        REDCapManagement::setupRepeatingForms($eventId, $formsAndLabels);
+        DataDictionaryManagement::setupRepeatingForms($eventId, $formsAndLabels);
 
-        $surveysAndLabels = array(
-						"initial_survey" => "Flight Tracker Initial Survey",
-						"followup" => "Flight Tracker Followup Survey",
-						);
-		REDCapManagement::setupSurveys($projectId, $surveysAndLabels);
+        $surveysAndLabels = DataDictionaryManagement::getSurveysAndLabels($metadata);
+		DataDictionaryManagement::setupSurveys($projectId, $surveysAndLabels);
 
 		echo makeDepartmentPrompt($projectId);
 		echo makeInstallFooter();

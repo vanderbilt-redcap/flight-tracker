@@ -646,6 +646,26 @@ class REDCapManagement {
 	    return $newList;
     }
 
+    public static function makeSaveDiv($type, $atBottomOfPage = FALSE, $mimeType = "image/png") {
+	    $extraDiv = $atBottomOfPage ? "saveDivAtBottom" : "";
+	    if ($mimeType == "image/png") {
+            $canvasFunc = "canvas2PNG";
+            $suffix = "png";
+        } else if ($mimeType == "image/jpeg") {
+	        $canvasFunc = "canvas2JPEG";
+	        $suffix = "jpg";
+        } else {
+	        throw new \Exception("Mime Type unsupported: $mimeType");
+        }
+	    if ($type == "svg") {
+            return "<div class='alignright $extraDiv'><button class='smallest' onclick='const svg = $(this).parent().parent().find(\\\"svg\\\").prop(\\\"outerHTML\\\"); svg2Image(svg, 0, \\\"#ffffff\\\", $canvasFunc); return false;'>Save</button></div>";
+        } else if ($type == "canvas") {
+            return "<div class='alignright $extraDiv'><button class='smallest' onclick='const c = $(this).parent().parent().find(\\\"canvas\\\").get(0); const dataurl = $canvasFunc(c); forceDownloadUrl(dataurl, \\\"chart.$suffix\\\"); return false;'>Save</button></div>";
+        } else {
+	        throw new \Exception("Invalid type: $type");
+        }
+    }
+
     public static function isValidSurvey($pid, $hash) {
 	    if ($hash) {
             $sql = "select s.project_id AS project_id from redcap_surveys_participants AS p INNER JOIN redcap_surveys AS s ON s.survey_id = p.survey_id WHERE p.hash ='".db_real_escape_string($hash)."' AND s.project_id='".db_real_escape_string($pid)."'";
@@ -1147,10 +1167,7 @@ class REDCapManagement {
 	}
 
 	public static function setupSurveys($projectId, $surveysAndLabels) {
-		foreach ($surveysAndLabels as $form => $label) {
-			$sql = "REPLACE INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES ($projectId, '16', '".db_real_escape_string($form)."', '".db_real_escape_string($label)."', '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', '<p><strong>Thank you for taking the survey.</strong></p>\r\n<p>Have a nice day!</p>', 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
-			db_query($sql);
-		}
+        DataDictionaryManagement::setupSurveys($projectId, $surveysAndLabels);
 	}
 
 	public static function getPIDFromToken($token, $server) {

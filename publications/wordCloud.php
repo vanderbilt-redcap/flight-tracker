@@ -110,6 +110,17 @@ $metadata = Download::metadata($token, $server);
 if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
     $field = REDCapManagement::sanitize($_POST['field']);
     $fields = ["record_id", "citation_include", $field];
+
+    $startDate = $_POST['start'] ?? "";
+    $endDate = $_POST['end'] ?? "";
+    $startTs = $startDate ? strtotime($startDate) : "";
+    $endTs = $endDate ? strtotime($endDate) : "";
+    if ($startTs) {
+        $fields[] = "citation_year";
+        $fields[] = "citation_month";
+        $fields[] = "citation_day";
+    }
+
     if ($_POST['cohort']) {
         $cohort = $_POST['cohort'];
         if ($cohort == "all") {
@@ -123,7 +134,11 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
     $redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
     $wordData = [];
     foreach ($redcapData as $row) {
-        if ($row[$field] && ($row['citation_include'] == '1')) {
+        if (
+            $row[$field]
+            && ($row['citation_include'] == '1')
+            && datesCheckOut($row, $startTs, $endTs)
+        ) {
             $words = preg_split("/\s*;\s*/", $row[$field]);
             if ($field == "citation_grants") {
                 for ($i = 0; $i < count($words); $i++) {
@@ -141,7 +156,7 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
         }
     }
     arsort($wordData);
-    echo makeFieldForm($token, $server, $metadata, $possibleFields, $_POST['cohort'] ? $_POST['cohort'] : "");
+    echo makeFieldForm($token, $server, $metadata, $possibleFields, $_POST['cohort'] ? $_POST['cohort'] : "", $startDate, $endDate);
     //echo REDCapManagement::json_encode_with_spaces($wordData);
     ?>
 
@@ -163,13 +178,14 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
                     $wc .= '{"tag":"'.$key.'","count": '.$value.'},';
                     $tcount++;
                     if ($tcount == 150){
-                        break; 
+                        break;
                     }
                 }
                 echo $wc;
             ?>
          ];
-        $('#chartdiv').css('height','600px');
+        $('#chartdiv').css('height','600px').append("<?= REDCapManagement::makeSaveDiv("svg", TRUE) ?>");
+
         series.dataFields.word = "tag";
         series.dataFields.value = "count";
         series.colors = new am4core.ColorSet();
@@ -257,6 +273,7 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
             ?>
           ]
 
+        $('#chartdivcol').append("<?= REDCapManagement::makeSaveDiv("svg", TRUE) ?>");
 
     </script>
     <?php
@@ -265,7 +282,7 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
     echo makeFieldForm($token, $server, $metadata, $possibleFields);
 }
 
-function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCohort = "") {
+function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCohort = "", $startDate = "", $endDate = "") {
     $link = Application::link("publications/wordCloud.php");
     $metadataLabels = REDCapManagement::getLabels($metadata);
 
@@ -274,16 +291,39 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCoho
     $html .= "<form action='$link' method='POST'>";
     $html .= Application::generateCSRFTokenHTML();
     $cohorts = new Cohorts($token, $server, CareerDev::getModule());
-    $html .= "<p class='centered'><div class='form-group'>".$cohorts->makeCohortSelectUI($defaultCohort)."</div> <div class='form-group'><label for='field'>Field:</label><select name='field' id='field' class='form-control'><option value=''>---SELECT---</option>";
+    $cohortHTML = $cohorts->makeCohortSelectUI($defaultCohort);
+    $selectHTML = "<label for='field'>Field:</label><select name='field' id='field' class='form-control'><option value=''>---SELECT---</option>";
     foreach ($possibleFields as $field) {
         $label = $metadataLabels[$field];
         $selected = "";
         if ($field == $_POST['field']) {
             $selected = " selected";
         }
-        $html .= "<option value='$field'$selected>$label</option>";
+        $selectHTML .= "<option value='$field'$selected>$label</option>";
     }
-    $html .= "</select></div> <div class='form-group' style='width: 200px;'><label for='fields'></label><button class='btn btn-light tsubmit'>Make Word Cloud</button></div></p>";
+    $selectHTML .= "</select>";
+    $datesHTML = "<label for='start'>Start Date (optional): </label><input type='date' style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='start' id='start' value='$startDate' /><br/><label for='end'>End Date (optional): </label><input type='date'  style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='end' id='end' value='$endDate' />";
+    $html .= "<div class='centered max-width'><div class='form-group'>$cohortHTML</div> <div class='form-group'>$selectHTML</div> <div class='form-group'>$datesHTML</div> <div class='form-group' style='width: 200px;'><button class='btn btn-light tsubmit'>Make Word Cloud</button></div></div>";
     $html .= "</form><div class='mtitle'></div><div style='display:inline; width:100%;'><div id='chartdivcol'></div><div id='chartdiv'></div>";
     return $html;
+}
+
+function datesCheckOut($row, $startTs, $endTs) {
+    if (!$startTs) {
+        return TRUE;
+    }
+    if (!$row['citation_year']) {
+        return FALSE;
+    }
+    $year = $row['citation_year'];
+    $month = $row['citation_month'] ? $row['citation_month'] : "01";
+    $day = $row['citation_day'] ? $row['citation_day'] : "01";
+    $rowTs = strtotime($year."-".$month."-".$day);
+    return (
+        ($startTs <= $rowTs)
+        && (
+            !$endTs
+            || ($endTs >= $rowTs)
+        )
+    );
 }

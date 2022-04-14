@@ -41,22 +41,19 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
         $data = $conn->pullAllRecords();
         $conn->close();
 
-        $ldapUIDs = [];
-        for ($i = 0; $i < count($data[$awardDataField]); $i++) {
-            if ($i % 1000 == 0) {
-                Application::log("Pulling LDAP on $i", $pid);
-            }
-            $uid = LDAP::getUIDFromEmployeeID($data[$awardDataField][$i]['PERSON_ID']);
-            usleep(10);
-            $ldapUIDs[] = strtolower($uid);
-        }
-
+        $translate = [];
         foreach ($records as $recordId) {
-            $currUserid = strtolower($userids[$recordId]);
+            $currUserid = strtolower($userids[$recordId] ?? "");
             $matchedData = [];
             $i = 0;
             foreach ($data[$awardDataField] as $row) {
-                $uid = $ldapUIDs[$i];
+                if (isset($translate[$row['PERSON_ID']])) {
+                    $uid = $translate[$row['PERSON_ID']];
+                } else {
+                    $uid = LDAP::getUIDFromEmployeeID($row['PERSON_ID']);
+                    $translate[$row['PERSON_ID']] = $uid;
+                    # TODO could cache somewhere
+                }
                 if ($uid) {
                     if ($uid == $currUserid) {
                         $matchedData[] = $row;

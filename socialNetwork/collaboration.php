@@ -228,20 +228,21 @@ if (isset($_GET['cohort']) && !empty($records)) {
     }
 
     if (!$noCollaborations) {
+        $atBottomOfPage = (!$includeHeaders || isset($_GET['grants']));
         echo makeLegendHTML($indexByField);
         $socialNetwork = new SocialNetworkChart($networkChartName, $chartData);
         $socialNetwork->setNonRibbon(count($uniqueNames) > 100);
         echo $socialNetwork->getImportHTML();
-        echo $socialNetwork->getHTML(900, 700);
+        echo $socialNetwork->getHTML(900, 700, TRUE, [], $atBottomOfPage);
 
-        if ($includeHeaders && !isset($_GET['grants'])) {
+        if (!$atBottomOfPage) {
             echo "<br><br>";
             list($barChartCols, $barChartLabels) = makePublicationColsAndLabels($pubs);
             $chart = new BarChart($barChartCols, $barChartLabels, "barChart");
             $chart->setXAxisLabel("Year");
             $chart->setYAxisLabel("Number of Connections");
             echo $chart->getImportHTML();
-            echo $chart->getHTML(500, 300);
+            echo $chart->getHTML(500, 300, TRUE);
         }
     }
 }

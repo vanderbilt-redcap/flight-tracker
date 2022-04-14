@@ -14,6 +14,16 @@ class LDAP {
 		return self::getLDAPByMultiple(array($type), array($value));
 	}
 
+	public static function translateEmployeeIdsToUids($employeeIds) {
+	    $uids = [];
+        foreach ($employeeIds as $id) {
+            if ($id && !isset($uids[$id])) {
+                $uids[$id] = self::getUIDFromEmployeeID($id);
+            }
+        }
+        return $uids;
+    }
+
     public static function getREDCapRowsFromName($first, $last, $metadata, $recordId, $repeatingForms) {
 	    $firstNames = NameMatcher::explodeFirstName($first);
 	    $lastNames = NameMatcher::explodeLastName($last);

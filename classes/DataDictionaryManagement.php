@@ -71,8 +71,9 @@ class DataDictionaryManagement {
                     $newMetadata = Download::metadata($token, $server);
                     $metadata['REDCap'] = $newMetadata;
                     $formsAndLabels = self::getRepeatingFormsAndLabels($newMetadata, $token);
+                    $surveysAndLabels = self::getSurveysAndLabels($newMetadata);
                     self::setupRepeatingForms($eventId, $formsAndLabels);   // runs a REPLACE
-
+                    self::setupSurveys($pid, $surveysAndLabels);
                     self::convertOldDegreeData($pid);
                 } catch (\Exception $e) {
                     $feedback = ["Exception" => $e->getMessage()];
@@ -81,6 +82,13 @@ class DataDictionaryManagement {
             }
         }
         return $dataToReturn;
+    }
+
+    public static function setupSurveys($projectId, $surveysAndLabels) {
+        foreach ($surveysAndLabels as $form => $label) {
+            $sql = "REPLACE INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES ($projectId, '16', '".db_real_escape_string($form)."', '".db_real_escape_string($label)."', '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', '<p><strong>Thank you for taking the survey.</strong></p>\r\n<p>Have a nice day!</p>', 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
+            db_query($sql);
+        }
     }
 
     public static function filterOutForms($metadata, $formsToExclude) {
@@ -302,6 +310,23 @@ class DataDictionaryManagement {
         }
     }
 
+    public static function getSurveysAndLabels($metadata) {
+        $surveysAndLabelsCandidates = [
+            "initial_survey" => "Flight Tracker Initial Survey",
+            "followup" => "Flight Tracker Followup Survey",
+            "mentoring_agreement_evaluations" => "Mentoring Agreement Evaluations",
+        ];
+        $forms = self::getFormsFromMetadata($metadata);
+
+        $surveysAndLabels = [];
+        foreach ($surveysAndLabelsCandidates as $form => $label) {
+            if (in_array($form, $forms)) {
+                $surveysAndLabels[$form] = $label;
+            }
+        }
+        return $surveysAndLabels;
+    }
+
     public static function getRepeatingFormsAndLabels($metadata = [], $token = "") {
         $formsAndLabels = [
             "custom_grant" => "[custom_number]",
@@ -314,7 +339,6 @@ class DataDictionaryManagement {
             "honors_and_awards" => "[honor_name]: [honor_date]",
             "manual_degree" => "[imported_degree]",
             "nih_reporter" => "[nih_project_num]",
-            "patent" => "[patent_number] [patent_title]",
         ];
 
         if (empty($metadata)) {
@@ -333,7 +357,14 @@ class DataDictionaryManagement {
             }
         }
         if (count(Application::getPatentFields($metadata)) > 1) {
-            $formsAndLabels["patent"] = "[patent_number]";
+            $formsAndLabels["patent"] = "[patent_number]: [patent_title]";
+        }
+        $forms = self::getFormsFromMetadata($metadata);
+        if (in_array("mentoring_agreement", $forms)) {
+            $formsAndLabels["mentoring_agreement"] = "[mentoring_userid]: [mentoring_phase]";
+        }
+        if (in_array("mentoring_agreement_evaluations", $forms)) {
+            $formsAndLabels["mentoring_agreement_evaluations"] = "[mentoringeval_role]";
         }
 
         if (Application::isVanderbilt()) {

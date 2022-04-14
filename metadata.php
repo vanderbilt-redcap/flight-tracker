@@ -70,6 +70,7 @@ if ($_POST['process'] == "check") {
         $grantClass = Application::getSetting("grant_class", $currPid);
         $eventId = Application::getSetting("event_id", $currPid);
         if ($token && $server && $eventId) {
+            Application::log("Installing metadata", $currPid);
             $returnData[$currPid] = DataDictionaryManagement::installMetadataFromFiles($files, $token, $server, $currPid, $eventId, $grantClass, CareerDev::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
         }
     }
