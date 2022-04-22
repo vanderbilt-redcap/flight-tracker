@@ -62,6 +62,7 @@ if (isset($_POST['finalized'])) {
 		$data = array("error" => "You don't have any new patents enqueued to change!");
 		echo json_encode($data);
 	}
+	exit;
 } else if (isset($_POST['number'])) {
     $numbers = [$_POST['number']];
 } else if (isset($_POST['numbers'])) {
@@ -69,6 +70,7 @@ if (isset($_POST['finalized'])) {
 } else {
     $data = array("error" => "You don't have any input! This should never happen.");
     echo json_encode($data);
+    exit;
 }
 
 if ($numbers && !empty($numbers)) {

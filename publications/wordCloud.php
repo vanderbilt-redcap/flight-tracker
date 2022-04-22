@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -108,11 +109,11 @@ form input, form select {
 $possibleFields = ["citation_grants", "citation_mesh_terms", "citation_journal"];
 $metadata = Download::metadata($token, $server);
 if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
-    $field = REDCapManagement::sanitize($_POST['field']);
+    $field = Sanitizer::sanitize($_POST['field']);
     $fields = ["record_id", "citation_include", $field];
 
-    $startDate = $_POST['start'] ?? "";
-    $endDate = $_POST['end'] ?? "";
+    $startDate = Sanitizer::sanitize($_POST['start'] ?? "");
+    $endDate = Sanitizer::sanitize($_POST['end'] ?? "");
     $startTs = $startDate ? strtotime($startDate) : "";
     $endTs = $endDate ? strtotime($endDate) : "";
     if ($startTs) {

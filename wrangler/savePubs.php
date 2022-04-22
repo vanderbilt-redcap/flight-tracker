@@ -68,6 +68,7 @@ if (isset($_POST['finalized'])) {
         $data = array("error" => "You don't have any new citations enqueued to change!");
         echo json_encode($data);
     }
+    exit;
 } else if (isset($_POST['pmid'])) {
     $pmids = [REDCapManagement::sanitize($_POST['pmid'])];
 } else if (isset($_POST['pmids'])) {
@@ -78,6 +79,7 @@ if (isset($_POST['finalized'])) {
 } else {
     $data = array("error" => "You don't have any input! This should never happen.");
     echo json_encode($data);
+    exit;
 }
 
 

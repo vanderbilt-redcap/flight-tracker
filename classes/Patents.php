@@ -198,7 +198,7 @@ class Patents {
     }
 
     public function getEditText($thisUrl) {
-        $wrangler = new Wrangler("Patents");
+        $wrangler = new Wrangler("Patents", $this->pid);
         $html = $wrangler->getEditText($this->getCount("New"), $this->getCount("Included"), $this->recordId, $this->name, $this->lastName);
 
         $html .= self::manualLookup($thisUrl);

@@ -5,8 +5,11 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Wrangler {
-    public function __construct($wranglerType) {
+    public function __construct($wranglerType, $pid) {
         $this->wranglerType = $wranglerType;
+        $this->pid = $pid;
+        $this->token = Application::getSetting("token", $this->pid);
+        $this->server = Application::getSetting("server", $this->pid);
     }
 
     public function getEditText($notDoneCount, $includedCount, $recordId, $name, $lastName) {
@@ -19,12 +22,16 @@ class Wrangler {
         $people = $person."s";
         $singularWranglerType = strtolower(substr($this->wranglerType, 0, strlen($this->wranglerType) - 1));
         $lcWranglerType = strtolower($this->wranglerType);
+        $institutionFieldValues = Download::oneField($this->token, $this->server, "identifier_institution");
+        $myInstitutions = $institutionFieldValues[$recordId] ? preg_split("/\s*[,;]\s*/", $institutionFieldValues[$recordId]) : [];
+        $institutions = array_unique(array_merge($myInstitutions, Application::getInstitutions($this->pid), Application::getHelperInstitutions()));
 
         $html = "";
         $html .= "<h1>".ucfirst($singularWranglerType)." Wrangler</h1>\n";
         $html .= "<p class='centered'>This page is meant to confirm the association of $lcWranglerType with $people.</p>\n";
         if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
-            $html .= "<h2>".$recordId.": ".$name."</h2>\n";
+            $html .= "<h2>".$recordId.": ".$name."</h2>";
+            $html .= "<p class='centered max-width'><strong>Institutions Searched For</strong>: ".REDCapManagement::makeConjunction($institutions)."</p>";
         }
 
         if (!NameMatcher::isCommonLastName($lastName) && ($notDoneCount > 0)) {
@@ -127,5 +134,8 @@ class Wrangler {
         return "";
     }
 
-    private $wranglerType;
+    protected $wranglerType;
+    protected $pid;
+    protected $token;
+    protected $server;
 }

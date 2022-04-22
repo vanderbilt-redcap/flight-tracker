@@ -263,13 +263,25 @@ class DataDictionaryManagement {
                             array_push($additions, $field);
                         }
                     } else if ($isFieldOfSources) {
-                        if (!REDCapManagement::arraysEqual($choices["REDCap"][$field], $sourceChoices)) {
-                            if (!REDCapManagement::arrayAInB($sourceChoices, $choices["REDCap"][$field])) {
-                                array_push($missing, $field);
-                                array_push($changed, $field);
-                            }
+                        $choices["file"][$field] = Application::getRelevantChoices();
+                        if (
+                            !Application::isVanderbilt()
+                            && isset($choices["REDCap"][$field]["coeus"])
+                        ) {
+                            $missing[] = $field;
+                            $changed[] = $field;
+                        } else if (
+                            !REDCapManagement::arraysEqual($choices["REDCap"][$field], $sourceChoices)
+                            && !REDCapManagement::arrayAInB($sourceChoices, $choices["REDCap"][$field])
+                        ) {
+                            $missing[] = $field;
+                            $changed[] = $field;
                         }
-                    } else if (!empty($choices["file"][$field]) && !empty($choices["REDCap"][$field]) && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])) {
+                    } else if (
+                        !empty($choices["file"][$field])
+                        && !empty($choices["REDCap"][$field])
+                        && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])
+                    ) {
                         if ($isSpecialGenderField) {
                             array_push($missing, $field);
                             array_push($changed, $field);

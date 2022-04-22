@@ -1148,6 +1148,16 @@ class REDCapManagement {
         DataDictionaryManagement::setupRepeatingForms($eventId, $formsAndLabels);
 	}
 
+	public static function outputAsCSV($csvData, $filename) {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="'.$filename.'";');
+        $fp = fopen("php://output", "w");
+        foreach ($csvData as $row) {
+            fputcsv($fp, $row);
+        }
+        fclose($fp);
+    }
+
 	public static function getEventIdForClassical($projectId) {
 		$sql = "SELECT DISTINCT(m.event_id) AS event_id FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) WHERE a.project_id = '$projectId'";
 		$q = db_query($sql);

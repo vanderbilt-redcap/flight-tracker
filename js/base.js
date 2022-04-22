@@ -588,85 +588,66 @@ function submitChanges(nextRecord) {
 	$('#uploading').show();
 	let type = "";
 	$('[type=hidden]').each(function(idx, elem) {
-		const id = $(elem).attr("id");
-		if ((typeof id != "undefined") && id.match(/^PMID/)) {
-			type = "Publications";
+		const id = $(elem).attr('id');
+		if ((typeof id != 'undefined') && id.match(/^PMID/)) {
+			type = 'Publications';
 			const value = $(elem).val();
-			const pmid = id.replace(/^PMID/, "");
+			const pmid = id.replace(/^PMID/, '');
 			if (!isNaN(pmid)) {
-				if (value === "include") {
+				if (value === 'include') {
 					// checked => put in finalized
 					newFinalized.push(pmid);
-				} else if (value === "exclude") {
+				} else if (value === 'exclude') {
 					// unchecked => put in omits
 					newOmits.push(pmid);
-				} else if (value === "reset") {
+				} else if (value === 'reset') {
 					resets.push(pmid);
 				}
 			}
-		} else 	if ((typeof id != "undefined") && id.match(/^USPO/)) {
-			type = "Patents";
+		} else 	if ((typeof id != 'undefined') && id.match(/^USPO/)) {
+			type = 'Patents';
 			const value = $(elem).val();
-			const patentNumber = id.replace(/^USPO/, "");
+			const patentNumber = id.replace(/^USPO/, '');
 			if (!isNaN(patentNumber)) {
-				if (value === "include") {
+				if (value === 'include') {
 					// checked => put in finalized
 					newFinalized.push(patentNumber);
-				} else if (value === "exclude") {
+				} else if (value === 'exclude') {
 					// unchecked => put in omits
 					newOmits.push(patentNumber);
-				} else if (value === "reset") {
+				} else if (value === 'reset') {
 					resets.push(patentNumber);
 				}
 			}
 		}
 	});
 
-	let url = "";
-	if (type === "Patents") {
-		url = getPageUrl("wrangler/savePatents.php");
-	} else if (type === "Publications") {
-		url = getPageUrl("wrangler/savePubs.php");
+	let url = '';
+	if (type === 'Patents') {
+		url = getPageUrl('wrangler/savePatents.php');
+	} else if (type === 'Publications') {
+		url = getPageUrl('wrangler/savePubs.php');
 	}
 	if (url) {
 		const postdata = {
 			record_id: recordId,
 			omissions: JSON.stringify(newOmits),
 			resets: JSON.stringify(resets),
-			finalized: JSON.stringify(newFinalized),
-			redcap_csrf_token: getCSRFToken()
+			finalized: JSON.stringify(newFinalized)
 		};
 		console.log('Posting '+JSON.stringify(postdata));
-		const params = getUrlVars();
-		let wranglerType = "";
-		if (params['wranglerType']) {
-			wranglerType = '&wranglerType='+params['wranglerType'];
-		}
+		presentScreen('Saving...');
 		$.ajax({
 			url: url,
-			type: 'POST',
+			method: 'POST',
 			data: postdata,
+			dataType: 'json',
 			success: function(data) {
-				if (data['count'] && (data['count'] > 0)) {
-					const mssg = makeWranglingMessage(data['count']);
-					window.location.href = getNextWranglingUrl(mssg, nextRecord, wranglerType);
-				} else if (data['item_count'] && (data['item_count'] > 0)) {
-					const mssg = makeWranglingMessage(data['item_count']);
-					window.location.href = getNextWranglingUrl(mssg, nextRecord, wranglerType);
-				} else if (data['error']) {
-					$('#uploading').hide();
-					$('#finalize').show();
-					$.sweetModal({
-						content: 'ERROR: '+data['error'],
-						icon: $.sweetModal.ICON_ERROR
-					});
-				} else {
-					$('#uploading').hide();
-					$('#finalize').show();
-					console.log("Unexplained return value. "+JSON.stringify(data));
-				}
+				clearScreen();
+				processWranglingResult(data, nextRecord);
 			},
 			error: function(e) {
+				clearScreen();
 				if (!e.status || (e.status !== 200)) {
 					$('#uploading').hide();
 					$('#finalize').show();
@@ -674,17 +655,49 @@ function submitChanges(nextRecord) {
 						content: 'ERROR: '+JSON.stringify(e),
 						icon: $.sweetModal.ICON_ERROR
 					});
+				} else if (e.responseText && (e.status === 200)) {
+					const json = e.responseText;
+					const data = JSON.parse(json);
+					processWranglingResult(data, nextRecord);
 				} else {
 					console.log(JSON.stringify(e));
-					if (e.status === 200) {
-						const mssg = "Upload successful.";
-						window.location.href = getNextWranglingUrl(mssg, nextRecord, wranglerType);
-					}
 				}
 			}
 		});
 	}
-	console.log("Done");
+	console.log('Done');
+}
+
+function processWranglingResult(data, nextRecord) {
+	const params = getUrlVars();
+	let wranglerType = '';
+	if (params['wranglerType']) {
+		wranglerType = '&wranglerType='+params['wranglerType'];
+	}
+	if (data['count'] && (data['count'] > 0)) {
+		const str = (data['count'] === 1) ? 'item' : 'items';
+		const mssg = data['count']+' '+str+' uploaded';
+		window.location.href = getPageUrl('wrangler/include.php')+getHeaders()+'&mssg='+encodeURI(mssg)+'&record='+nextRecord+wranglerType;
+	} else if (data['item_count'] && (data['item_count'] > 0)) {
+		const str = (data['item_count'] === 1) ? 'item' : 'items';
+		const mssg = data['item_count']+' '+str+' uploaded';
+		window.location.href = getPageUrl('wrangler/include.php')+getHeaders()+'&mssg='+encodeURI(mssg)+'&record='+nextRecord+wranglerType;
+	} else if (data['error']) {
+		$('#uploading').hide();
+		$('#finalize').show();
+		$.sweetModal({
+			content: 'ERROR: '+data['error'],
+			icon: $.sweetModal.ICON_ERROR
+		});
+	} else {
+		$('#uploading').hide();
+		$('#finalize').show();
+		$.sweetModal({
+			content: 'Unexplained return value. '+JSON.stringify(data),
+			icon: $.sweetModal.ICON_ERROR
+		});
+		console.log('Unexplained return value. '+JSON.stringify(data));
+	}
 }
 
 function makeWranglingMessage(cnt) {

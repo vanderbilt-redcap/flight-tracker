@@ -18,21 +18,38 @@ class NameMatcher {
         return FALSE;
     }
 
-    public static function matchLastName($lastName, $token, $server) {
+    public static function matchLastName($lastName, $tokenOrArrayOfFirsts, $serverOrArrayOfLasts) {
         if (!$lastName) {
             return [];
         }
-        self::refreshNamesForMatch($token, $server);
-
         $names = [];
-        $lastName = strtolower($lastName);
-        foreach (self::$namesForMatch as $row) {
-            $sLast = strtolower($row['identifier_last_name']);
-            if (preg_match("/".preg_quote($sLast, "/")."/", $lastName) || preg_match("/".preg_quote($lastName, "/")."/", $sLast)) {
-                $names[$row['record_id']] = $row['identifier_first_name']." ".$row['identifier_last_name'];
+        if (REDCapManagement::isValidToken($tokenOrArrayOfFirsts)) {
+            $token = $tokenOrArrayOfFirsts;
+            $server = $serverOrArrayOfLasts;
+            self::refreshNamesForMatch($token, $server);
+
+            $lastName = strtolower($lastName);
+            foreach (self::$namesForMatch as $row) {
+                $sLast = strtolower($row['identifier_last_name']);
+                if (self::testLastName($lastName, $sLast)) {
+                    $names[$row['record_id']] = $row['identifier_first_name']." ".$row['identifier_last_name'];
+                }
+            }
+        } else if (is_array($tokenOrArrayOfFirsts) && is_array($serverOrArrayOfLasts)) {
+            $firstNames = $tokenOrArrayOfFirsts;
+            $lastNames = $serverOrArrayOfLasts;
+            foreach ($lastNames as $recordId => $lastName2) {
+                if (self::testLastName($lastName, strtolower($lastName2))) {
+                    $firstName2 = $firstNames[$recordId] ?? "";
+                    $names[$recordId] = $firstName2." ".$lastName2;
+                }
             }
         }
         return $names;
+    }
+
+    private static function testLastName($lastName1, $lastName2) {
+        return preg_match("/".preg_quote($lastName2, "/")."/", $lastName1) || preg_match("/".preg_quote($lastName1, "/")."/", $lastName2);
     }
 
     public static function eliminateInitials($name) {

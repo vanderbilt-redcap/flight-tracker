@@ -1096,7 +1096,7 @@ class Publications {
         $notDoneCount = $notDone->getCount();
         $included = $this->getCitationCollection("Included");
         $includedCount = $included->getCount();
-        $wrangler = new Wrangler("Publications");
+        $wrangler = new Wrangler("Publications", $this->pid);
 		$html = $wrangler->getEditText($notDoneCount, $includedCount, $this->recordId, $this->name, $this->lastName);
 
 		$html .= self::manualLookup($thisUrl);

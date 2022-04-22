@@ -859,12 +859,12 @@ class NIHTables {
 	    return $html;
     }
 
-    public function getHTML($table, $includeInputsForNumbers = FALSE) {
+    public function getHTML($table, $includeInputsForNumbers = FALSE, $includeDOI = FALSE) {
 	    if (self::beginsWith($table, ["1", "2", "3", "4"])) {
 	        $data = $this->getData($table);
             return self::makeTable1_4DataIntoHTML($table, $data, $includeInputsForNumbers);
        } else if (self::beginsWith($table, ["5A", "5B"])) {
-			$data = $this->get5Data($table);
+			$data = $this->get5Data($table, [], $includeDOI);
             $namesPre = $this->downloadPredocNames();
             $namesPost = $this->downloadPostdocNames($table);
             $html = "";
@@ -2847,7 +2847,7 @@ class NIHTables {
         return [$startYear, $startTs, $endYear, $endTs];
     }
 
-	public function get5Data($table, $records = []) {
+	public function get5Data($table, $records = [], $includeDOI = FALSE) {
         $eligibleKs = [2];     // K12/KL2 only
         $data = [];
 		$names = $this->downloadRelevantNames($table, $records);
@@ -2972,7 +2972,7 @@ class NIHTables {
 				$nihFormatCits = array();
 				foreach ($citations as $citation) {
                     if ($citation->inTimespan($startTs, $endTs)) {
-                        $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId] ?? "", $firstNames[$recordId] ?? "", Application::isVanderbilt());
+                        $nihFormatCits[] = $citation->getNIHFormat($lastNames[$recordId] ?? "", $firstNames[$recordId] ?? "", Application::isVanderbilt(), $includeDOI);
                     }
 				}
 				if (count($nihFormatCits) == 0) {

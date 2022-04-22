@@ -896,7 +896,7 @@ class Citation {
 		return $newAuthorList;
 	}
 
-	public function getNIHFormat($traineeLastName, $traineeFirstName, $includeIDs = FALSE) {
+	public function getNIHFormat($traineeLastName, $traineeFirstName, $includeIDs = FALSE, $includeDOI = FALSE) {
         $authors = self::addPeriodIfExtant(implode(", ", self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList())));
         $title = self::addPeriodIfExtant($this->getVariable("title"));
         $journal = self::addPeriodIfExtant($this->getVariable("journal"));
@@ -912,9 +912,11 @@ class Citation {
         $dateAndIssue = self::addPeriodIfExtant($dateAndIssue);
 
         $citation = $authors.$title.$journal.$dateAndIssue;
-        $doi = $this->getVariable("doi");
-        if ($doi) {
-            $citation .= self::addPeriodIfExtant("doi:".$doi);
+        if ($includeDOI) {
+            $doi = $this->getVariable("doi");
+            if ($doi) {
+                $citation .= self::addPeriodIfExtant("doi:".$doi);
+            }
         }
 		if ($includeIDs) {
 		    if ($pmid = $this->getPMID()) {

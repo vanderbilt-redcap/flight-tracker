@@ -727,6 +727,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             }
         }
 
+        $this->enqueueInitialCrons($activePids);
+
 		foreach ($activePids as $pid) {
             $this->cleanupLogs($pid);
             $token = $this->getProjectSetting("token", $pid);
@@ -743,7 +745,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     $mgr = new CronManager($token, $server, $pid, $this);
                     if ($this->getProjectSetting("run_tonight", $pid)) {
                         $this->setProjectSetting("run_tonight", FALSE, $pid);
-                        loadInitialCrons($mgr, FALSE, $token, $server);
+                        # already done in enqueueInitialCrons
+                        // loadInitialCrons($mgr, FALSE, $token, $server);
                     } else {
                         loadCrons($mgr, FALSE, $token, $server);
                     }
@@ -757,6 +760,28 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 }
             }
 		}
+	}
+
+	function enqueueInitialCrons($pids) {
+        foreach ($pids as $pid) {
+            $token = $this->getProjectSetting("token", $pid);
+            $server = $this->getProjectSetting("server", $pid);
+            $tokenName = $this->getProjectSetting("tokenName", $pid);
+            $adminEmail = $this->getProjectSetting("admin_email", $pid);
+            $turnOffSet = $this->getProjectSetting("turn_off", $pid);
+            if ($token && $server && !$turnOffSet) {
+                try {
+                    if ($this->getProjectSetting("run_tonight", $pid)) {
+                        $mgr = new CronManager($token, $server, $pid, $this);
+                        loadInitialCrons($mgr, FALSE, $token, $server);
+                        Application::log($this->getName().": $tokenName enqueued initial crons", $pid);
+                    }
+                } catch (\Exception $e) {
+                    Application::log("Error in initial cron logic", $pid);
+                    \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName() . " Error in Initial Cron", $e->getMessage());
+                }
+            }
+        }
 	}
 
 	function getProjectsToRunTonight($pids) {

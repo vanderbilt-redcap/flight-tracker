@@ -15,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.7.1";
+		return "4.7.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -545,10 +545,10 @@ class CareerDev {
 	        return self::$mentorTokenTranslateToPid[$localToken];
         }
         $fieldsToSearch = ["token", "mentor_token"];
-        $moduleId = self::getModuleId();
-        if ($moduleId) {
+	    $prefix = self::getPrefix();
+        if ($prefix) {
             foreach ($fieldsToSearch as $field) {
-                $sql = "SELECT project_id FROM redcap_external_module_settings WHERE `key` = '$field' AND external_module_id = '$moduleId' AND value = '".db_real_escape_string($localToken)."'";
+                $sql = "SELECT s.project_id AS project_id FROM redcap_external_module_settings AS s INNER JOIN redcap_external_modules AS m ON m.external_module_id = s.external_module_id WHERE s.key = '$field' AND m.directory_prefix = '".db_real_escape_string($prefix)."' AND s.value = '".db_real_escape_string($localToken)."'";
                 $q = db_query($sql);
                 $numRows = db_num_rows($q);
                 if ($error = db_error()) {

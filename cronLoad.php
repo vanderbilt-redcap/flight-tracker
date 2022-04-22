@@ -100,7 +100,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 
         $cohorts = new Cohorts($token, $server, Application::getModule());
         if ($cohorts->hasReadonlyProjects()) {
-            $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Monday", $records, 100000);
+            $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Monday", $allRecords, 100000);
         }
 
         $numRecordsForSummary = 15;
