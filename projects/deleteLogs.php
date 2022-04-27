@@ -1,5 +1,9 @@
 <?php
 
+require_once(APP_PATH_DOCROOT."Classes/System.php");
+
+\System::increaseMaxExecTime(28800);   // 8 hours
+
 do {
     $sql = "DELETE FROM redcap_external_modules_log
         WHERE external_module_id = 7
