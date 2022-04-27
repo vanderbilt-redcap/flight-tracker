@@ -19,6 +19,20 @@ class Application {
         return (SUPER_USER || $isSuperUser);
     }
 
+    public static function getCredentialsDir() {
+        $options = [
+            "/app001/credentials",
+            "/Users/pearsosj/credentials",
+            "/Users/scottjpearson/credentials",
+        ];
+        foreach ($options as $dir) {
+            if (file_exists($dir)) {
+                return $dir;
+            }
+        }
+        return "";
+    }
+
     public static function getRelevantChoices() {
         return CareerDev::getRelevantChoices();
     }
