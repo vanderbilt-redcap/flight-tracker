@@ -15,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.7.2";
+		return "4.7.3";
 	}
 
 	public static function getLockFile($pid) {
@@ -437,7 +437,7 @@ class CareerDev {
 	}
 
     public static function getVFRSToken() {
-        $file = "/app001/credentials/career_dev/vfrs.php";
+        $file = Application::getCredentialsDir()."/career_dev/vfrs.php";
         if (file_exists($file)) {
             include($file);
             global $vfrsToken;
@@ -490,7 +490,7 @@ class CareerDev {
 	}
 
 	private static function getCredentialsFile() {
-	    return "/app001/credentials/career_dev/credentials.php";
+	    return Application::getCredentialsDir()."/career_dev/credentials.php";
     }
 
 	# gets the pid of a token if a PID context is applicable
