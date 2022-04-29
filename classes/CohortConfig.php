@@ -330,31 +330,29 @@ class CohortConfig {
 	}
 
 	public static function isValidRow($row) {
-		$allowedVariables = array_unique(array_keys(array_merge(Filter::getDemographicChoices(), Filter::getGrantChoices(), Filter::getPublicationChoices())));
+        // $filter needs metadata!!!
+		// $allowedVariables = array_unique(array_keys(array_merge($filter->getDemographicChoices(), $filter->getGrantChoices(), $filter->getPublicationChoices())));
 		
 		if (gettype($row) != "array") {
 			throw new \Exception("Improper type; should be array! ".gettype($row));
-			return FALSE;
 		}
 		if ($row['type'] == "resources") {
 			return TRUE;
 		} else if (is_array($row['variable'])) {
 			return TRUE;
-		} else if (in_array($row['variable'], $allowedVariables)) {
-			if (isset($row['choice']) || (isset($row['comparison']) && isset($row['value']))) {
-				return TRUE;
-			} else {
-				throw new \Exception("Cannot find choice or comparison or value in ".json_encode($row));
-			}
 		} else {
-			throw new \Exception("Cannot find variable '{$row['variable']}' in ".json_encode($allowedVariables));
-		}
-		return FALSE;
+            // if (in_array($row['variable'], $allowedVariables)) {
+            if (isset($row['choice']) || (isset($row['comparison']) && isset($row['value']))) {
+                return TRUE;
+            } else {
+                throw new \Exception("Cannot find choice or comparison or value in " . json_encode($row));
+            }
+        }
 	}
 
 	public function addRow($row) {
 		if (self::isValidRow($row)) {
-			array_push($this->config['rows'], $row);
+			$this->config['rows'][] = $row;
 		} else {
 			throw new \Exception("Improperly formatted row: ".json_encode($row));
 		}
@@ -406,8 +404,10 @@ class CohortConfig {
         }
 		$html = "<table style='margin-left: auto; margin-right: auto;'>\n";
 
+        $filter = new Filter($this->token, $this->server, $metadata);
+
 		$choices = Scholar::getChoices($metadata);
-		$labels = Filter::getAllChoices();
+		$labels = $filter->getAllChoices();
 		$reverseAwardTypes = Grant::getReverseAwardTypes();
 
 		$fieldsInOrder = array("type", "variable", "choice", "comparison", "value");

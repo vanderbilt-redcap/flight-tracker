@@ -458,7 +458,7 @@ class LdapLookup {
 	public static function initialize($includeVU = FALSE, $force = FALSE) {
 	    $ldappass = "";
 	    $ldapuser = "";
-	    $includeFile = "/app001/credentials/con_redcap_ldap_user.php";
+	    $includeFile = Application::getCredentialsDir()."/con_redcap_ldap_user.php";
         self::$ldapConns = [];
         self::$ldapBinds = [];
 		if((!self::$ldapBinds || $force) && file_exists($includeFile)) {

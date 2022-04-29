@@ -1,5 +1,6 @@
-@font-face { font-family: 'Georgia'; font-style: normal; font-weight: normal; src: url('../fonts/georgia.woff'); }
+@font-face { font-family: 'Museo Slab'; font-style: normal; font-weight: normal; src: url('../fonts/Museo_Slab_500.otf'); }
 @font-face { font-family: 'Museo Sans'; font-style: normal; font-weight: normal; src: url('../fonts/exljbris - MuseoSans-500.otf'); }
+@font-face { font-family: 'Georgia'; font-style: normal; font-weight: normal; src: url('../fonts/georgia.woff'); }
 body { font-family: europa, Arial, Helvetica, sans-serif; }
 .filter { background-color: #eeeeee; }
 tr.filter td { padding-top: 5px; padding-bottom: 5px; }
@@ -9,7 +10,7 @@ select,input[type=date],input[type=text],input[type=number] { font-size: 16px; }
 input[type=date] { width: 150px; }
 td { padding-left: 15px; padding-right: 15px; }
 td.cells,th.cells { text-align: center; padding-left: 5px; padding-right: 5px; }
-h1,h2,h3,h4,h5,.h3 { text-align: center; font-family: "Museo Sans"; }
+h1,h2,h3,h4,h5,.h3 { text-align: center; font-family: "Museo Sans", Arial, Helvetica, sans-serif; }
 h1 { font-size: 36px; }
 h2 { background-color: rgba(34.1,39.2,68.2,0.25); font-size: 28px; }
 h3,.h3 { background-color: rgba(34.1,39.2,68.2,0.35); font-size: 22px; }
@@ -85,7 +86,7 @@ textarea.full { width: 800px; height: 400px; }
 .warning { color: white; }
 .subnav a select { width: 100%; }
 #help { display: none; padding: 16px; margin: 16px; background-color: rgba(229, 241, 213, 0.8); }   /* light green from logo */
-#help p, #help ul, #help ol, #faq p, #faq ul, #faq ol { font-family: 'Nimbus Roman', 'Georgia', 'Times New Roman'; font-size: 1.1em; }
+#help p, #help ul, #help ol, #faq p, #faq ul, #faq ol { font-family: 'Georgia', 'Times New Roman', Times, serif; font-size: 1.1em; }
 p.blockquote { padding-left: 15px; }
 #mainHelp { column-count: 2; }
 #faq { padding: 15px; column-count: 2; }
@@ -156,7 +157,7 @@ td.white,th.white { background-color: white; }
 p.recessed { color: #888888; font-size: 11px; margin: 4px 12px 4px 12px; }
 .recessed,.recessed a { color: #888888; font-size: 11px; }
 p.recessed,div.recessed { margin: 2px; }
-textarea,input[type=date] { font-family: Georgia, 'Times New Roman', Times, serif !important; font-size: 16px; }
+textarea,input[type=date] { font-family: 'Museo Slab', 'Times New Roman', Times, serif !important; font-size: 16px; }
 .saveDivAtBottom { padding-bottom: 65px; padding-top: 2px; }
 
 

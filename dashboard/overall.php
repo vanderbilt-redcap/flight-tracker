@@ -5,22 +5,21 @@ use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Patents;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Measurement;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\DateMeasurement;
-use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
-use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/base.php");
-require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+$dashboard = new Dashboard($pid);
+require_once(dirname(__FILE__)."/".$dashboard->getTarget().".php");
 
 define("FOLLOWUP_LOST", "Followup Lost to Other Institution");
 define("PATENTS_INCLUDED", "Number of Patents");
 
 if (isset($_GET['cohort'])) {
-    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
 } else {
     $cohort = "";
 }
@@ -34,7 +33,7 @@ $fields = array_unique(array_merge(
     CareerDev::$summaryFields,
     Application::getPatentFields($metadata)
 ));
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $cohort, $metadata);
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $cohort, Application::getModule());
 
 # total number of scholars
 # Overall conversion ratio
@@ -74,17 +73,17 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	$convertedTotals[PATENTS_INCLUDED] += $patents->getCount();
 }
 
-$lexicon = array(
+$lexicon = [
 		"Converted while on K" => "Converted<br>while on K",
 		"Converted while not on K" => "Converted<br>while not on K",
 		"Not Converted" => "Not Converted (".Scholar::getKLength("Internal")." years for Internal K;<br>".Scholar::getKLength("External")." years for External K)",
 		"Not Eligible" => "Not Eligible (includes K99/R00s &amp; those on K-Grants)",
 		FOLLOWUP_LOST => "Followup Lost to Other Institution (Not Eligible)",
         PATENTS_INCLUDED => "Number of Wrangled Patents",
-		);
-array_push($headers, "Overall Summary");
+		];
+$headers[] = "Overall Summary";
 if ($cohort) {
-	array_push($headers, "For Cohort ".$cohort);
+	$headers[] = "For Cohort " . $cohort;
 }
 
 // not accurate: $measurements["Number at ".INSTITUTION] = new Measurement($atInst, count($indexedRedcapData));
@@ -104,4 +103,4 @@ foreach ($lexicon as $conv => $text) {
 	}
 }
 
-echo makeHTML($headers, $measurements, array(), $cohort, $metadata);
+echo $dashboard->makeHTML($headers, $measurements, [], $cohort);

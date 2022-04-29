@@ -1,6 +1,7 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Application;use \Vanderbilt\CareerDevLibrary\EmailManager;
+use Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\EmailManager;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;

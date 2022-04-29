@@ -2,26 +2,26 @@
 
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Measurement;
-use \Vanderbilt\CareerDevLibrary\DateMeasurement;
-use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
-use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
-require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+$dashboard = new Dashboard($pid);
+require_once(dirname(__FILE__)."/".$dashboard->getTarget().".php");
 
-$headers = array();
-array_push($headers, "Resources");
+$headers = [];
+$headers[] = "Resources";
 if (isset($_GET['cohort'])) {
-    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
-    array_push($headers, "For Cohort ".$cohort);
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
+    $headers[] = "For Cohort " . $cohort;
 } else {
     $cohort = "";
 }
 
-$metadata = Download::metadata($token, $server);
 if ($cohort) {
 	$records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
@@ -29,11 +29,11 @@ if ($cohort) {
 }
 
 $resourceField = "resources_resource";
-$redcapData = Download::fieldsForRecords($token, $server, array("record_id", $resourceField), $records);
-$choices = \Vanderbilt\FlightTrackerExternalModule\getChoices($metadata);
+$redcapData = Download::fieldsForRecords($token, $server, ["record_id", $resourceField], $records);
+$resourceChoices = DataDictionaryManagement::getChoicesForField($pid, $resourceField);
 
-$counts = array();
-foreach ($choices[$resourceField] as $value => $label) {
+$counts = [];
+foreach ($resourceChoices as $value => $label) {
 	if (!isset($counts[$value])) {
 		$counts[$value] = 0;
 	}
@@ -44,9 +44,9 @@ foreach ($choices[$resourceField] as $value => $label) {
 	}
 }
 
-$measurements = array();
-foreach ($choices[$resourceField] as $value => $label) {
+$measurements = [];
+foreach ($resourceChoices as $value => $label) {
 	$measurements["Number Attended (".$label.")"] = new Measurement($counts[$value], count($records));
 }
 
-echo makeHTML($headers, $measurements, array(), $cohort, $metadata);
+echo $dashboard->makeHTML($headers, $measurements, [], $cohort);

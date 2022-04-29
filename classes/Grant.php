@@ -14,6 +14,16 @@ class Grant {
 		$this->translator = $lexicalTranslator;
 	}
 
+    public static function makeAryOfBaseAwardNumbers($awardNumbers) {
+        $newAry = [];
+        foreach ($awardNumbers as $awardNo) {
+            if ($awardNo) {
+                $newAry[] = strtoupper(self::translateToBaseAwardNumber($awardNo));
+            }
+        }
+        return $newAry;
+    }
+
 	public function isInternalVanderbiltGrant() {
         return preg_match("/VUMC\s*\d+/", $this->getNumber());
     }
@@ -1828,6 +1838,9 @@ class Grant {
 	}
 
 	public static function convertToMoney($float) {
+        if ($float === "") {
+            return "";
+        }
 		$str = (string) round($float, 2);
 		if (preg_match("/^\d+\.\d$/", $str)) {
 			return $str."0";

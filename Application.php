@@ -11,14 +11,6 @@ class Application {
         return CareerDev::getVersion();
     }
 
-    public static function isSuperUser() {
-        $isSuperUser = FALSE;
-        if (method_exists("\ExternalModules\ExternalModules", "isSuperUser")) {
-            $isSuperUser = \ExternalModules\ExternalModules::isSuperUser();
-        }
-        return (SUPER_USER || $isSuperUser);
-    }
-
     public static function getCredentialsDir() {
         $options = [
             "/app001/credentials",
@@ -31,6 +23,14 @@ class Application {
             }
         }
         return "";
+    }
+
+    public static function isSuperUser() {
+        $isSuperUser = FALSE;
+        if (method_exists("\ExternalModules\ExternalModules", "isSuperUser")) {
+            $isSuperUser = \ExternalModules\ExternalModules::isSuperUser();
+        }
+        return (SUPER_USER || $isSuperUser);
     }
 
     public static function getRelevantChoices() {
@@ -466,6 +466,12 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
 
     public static function getAllSettings($pid = "") {
 	    return CareerDev::getAllSettings($pid);
+    }
+
+    public static function increaseProcessingMax($hours) {
+        require_once(APP_PATH_DOCROOT."Classes/System.php");
+
+        \System::increaseMaxExecTime($hours * 3600);
     }
 
     public static function getSettingKeys($pid) {

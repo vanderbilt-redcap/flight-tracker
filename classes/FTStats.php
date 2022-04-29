@@ -74,6 +74,7 @@ class FTStats {
             "Total Number of Reports" => ["record_id"],
             "Total Number of Projects Ever" => ["pid", "server"],
             "Total Number of Servers Ever" => ["server"],
+            "Total Number of Domains Ever" => ["domain"],
             "Total Number of Weeks of Reporting" => ["date"],
         ];
         $mostRecentCounts = [];
@@ -84,15 +85,16 @@ class FTStats {
         $mostRecentCounts["Number of Scholars Currently Tracked (Outside)"] = ["num_scholars"];
         $mostRecentCounts["Number of Projects Currently Active"] = ["pid", "server"];
         $mostRecentCounts["Number of Servers Currently Active"] = ["server"];
+        $mostRecentCounts["Number of Domains Currently Active"] = ["domain"];
 //    $mostRecentCounts["Number of Institutions Currently Active"] = ["institution"];
         $totalLabels = self::getItemsToBeTotaled();
 
         $separator = "|";
-        $lastRunYMD = self::getLastSaturdayDate($ts);
-        $gatherHistoricalData = ($lastRunYMD != self::getLastSaturdayDate(time()));
-        $values = array();
+        $lastWeekDates = self::getLastWeekDates($ts);
+        $gatherHistoricalData = REDCapManagement::arraysEqual($lastWeekDates, self::getLastWeekDates(time()));
+        $values = [];
         foreach ($uniqueCounts as $label => $fields) {
-            $values[$label] = array();
+            $values[$label] = [];
             foreach ($redcapData as $row) {
                 if (in_array($label, $totalLabels)) {
                     $value = self::processValueForFields($fields, $row);
@@ -102,12 +104,17 @@ class FTStats {
                 } else {
                     $entryValues = array();
                     foreach ($fields as $field) {
-                        if ($field)
-                            array_push($entryValues, $row[$field]);
+                        if ($field) {
+                            if ($field == "domain") {
+                                $entryValues[] = self::getDomain($row["server"]);
+                            } else {
+                                $entryValues[] = $row[$field];
+                            }
+                        }
                     }
                     $entryValue = implode($separator, $entryValues);
                     if (!in_array($entryValue, $values[$label])) {
-                        array_push($values[$label], $entryValue);
+                        $values[$label][] = $entryValue;
                     }
                 }
             }
@@ -121,7 +128,7 @@ class FTStats {
             } else {
                 foreach ($redcapData as $row) {
                     $id = self::makeId($row);    // de-duplicate
-                    if (($row['date'] == $lastRunYMD) && !in_array($id, $seen)) {
+                    if (in_array($row['date'], $lastWeekDates) && !in_array($id, $seen)) {
                         $seen[] = $id;
                         if ($gatherHistoricalData || self::isLatestRowForProject($row['record_id'], $row['pid'], $row['server'], $redcapData)) {
                             if (in_array($label, $totalLabels)) {
@@ -132,7 +139,11 @@ class FTStats {
                             } else {
                                 $entryValues = [];
                                 foreach ($fields as $field) {
-                                    $entryValues[] = $row[$field];
+                                    if ($field == "domain") {
+                                        $entryValues[] = self::getDomain($row["server"]);
+                                    } else {
+                                        $entryValues[] = $row[$field];
+                                    }
                                 }
                                 $entryValue = implode($separator, $entryValues);
                                 if (!in_array($entryValue, $values[$label])) {
@@ -152,6 +163,18 @@ class FTStats {
         return $row['pid'].$sep.$row['server'].$sep.$row['date'];
     }
 
+    public static function getLastWeekDates($ts = NULL) {
+        if (!$ts) {
+            $ts = time();
+        }
+        $dates = [];
+        while (count($dates) < 7) {
+            $dates[] = date("Y-m-d", $ts);
+            $ts -= 24 * 3600;
+        }
+        return $dates;
+    }
+
     public static function getLastSaturdayDate($ts = NULL) {
         if (!$ts) {
             $ts = time();
@@ -166,7 +189,7 @@ class FTStats {
         $primaryField = $fields[0];
         $stipulationsValid = TRUE;
         for ($i = 1; $i < count($fields); $i++) {
-            if (preg_match("/=/", $fields[$i])) {
+            if (str_contains($fields[$i], "=")) {
                 list($stipulationField, $stipulationValue) = explode("=", $fields[$i]);
                 if (!preg_match("/$stipulationValue/", $row[$stipulationField]))  {
                     $stipulationsValid = FALSE;
@@ -174,9 +197,26 @@ class FTStats {
             }
         }
         if ($stipulationsValid) {
-            return $row[$primaryField];
+            if ($primaryField == "domain") {
+                $domain = self::getDomain($row["server"]);
+                if (isset($_GET['test'])) {
+                    echo $row['server']." translates to ".$domain."<br/>";
+                }
+            } else {
+                return $row[$primaryField];
+            }
         }
         return FALSE;
+    }
+
+    public static function getDomain($server) {
+        if (preg_match("/\.([A-Za-z]+\.[A-Za-z]+)\//", $server, $matches) && (count($matches) >= 2)) {
+            return $matches[1];
+        } else {
+            $withoutProtocol = preg_replace("/^https?:\/\//i", "", $server);
+            $nodes = preg_split("/\//", $withoutProtocol);
+            return $nodes[0];
+        }
     }
 
     public static function isLatestRowForProject($recordId, $pid, $server, $allREDCapData) {

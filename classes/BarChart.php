@@ -99,37 +99,25 @@ var {$this->id}"."_chart = new Chart({$this->id}"."_ctx, {
         display: $displayLegendText,
       },
       scales: {";
-        if (!$this->isCategoricalData()) {
+        if ($this->xAxisLabel) {
             $html .= "
-                xAxes: [{
-                  display: false,
-                  barPercentage: 1,
-                  ticks: {
-                    max: $bars,
-                  }
-                }, {
-                  display: true,
-                  scaleLabel: {
-                    display: true,
-                    labelString: '{$this->xAxisLabel}',
-                  },
-                  ticks: {
-                    autoSkip: true,
-                    beginAtZero: true,
-                    max: $bars,
-                  }
-                }],";
+            x: {
+              title: {
+                display: true,
+                text: '{$this->xAxisLabel}',
+              }
+            },";
         }
         $html .= "
-        yAxes: [{
-          scaleLabel: {
+        y: {
+          title: {
             display: true,
-            labelString: '{$this->yAxisLabel}',
+            text: '{$this->yAxisLabel}',
           },
           ticks: {
             beginAtZero: true,
           }
-        }]
+        }
       }
     }
 });

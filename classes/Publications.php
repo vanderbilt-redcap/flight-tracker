@@ -9,10 +9,10 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Publications {
-	public function __construct($token, $server, $metadata = array()) {
+	public function __construct($token, $server, $metadata = "download") {
 		$this->token = $token;
 		$this->server = $server;
-		if (empty($metadata)) {
+		if ($metadata == "download") {
 			$metadata = Download::metadata($token, $server);
 		}
 		$this->metadata = $metadata;

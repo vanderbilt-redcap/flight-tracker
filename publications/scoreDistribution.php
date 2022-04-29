@@ -114,7 +114,7 @@ foreach ($dist as $field => $values) {
         }
     }
     $barChart->setColor($color);
-    $barChart->setXAxisLabel($label);
+    $barChart->setXAxisLabel(REDCapManagement::stripHTML($label));
     $barChart->setYAxisLabel("Number of Articles");
     $barChart->showLegend(FALSE);
     echo "<div class='centered max-width'>".$barChart->getHTML(800, 500, FALSE)."</div>";

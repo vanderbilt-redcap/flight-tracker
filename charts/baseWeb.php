@@ -52,6 +52,7 @@ function makeHeadersOfTables($type) {
 }
 
 ?>
+<!DOCTYPE html>
 <title>Flight Tracker for Scholars</title>
 <?php
 if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {

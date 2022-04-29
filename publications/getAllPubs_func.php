@@ -242,7 +242,7 @@ function reverseArray($ary) {
 function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $records) {
     $metadata = Download::metadata($token, $server);
     $vunets = Download::vunets($token, $server);
-    include "/app001/credentials/con_redcap_ldap_user.php";
+    include Application::getCredentialsDir()."/con_redcap_ldap_user.php";
 
     $upload = [];
     foreach ($records as $recordId) {

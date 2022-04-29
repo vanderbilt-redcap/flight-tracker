@@ -102,11 +102,8 @@ class FeatureSwitches {
             $id = REDCapManagement::makeHTMLId($title);
             if (isset($post[$id])) {
                 foreach (array_values($switchOptions) as $value) {
-                    if ($value === $post[$id]) {
+                    if ($value == $post[$id]) {
                         $changed = TRUE;
-                        if (!isset($allSwitches[$title])) {
-                            $allSwitches[$title] = [];
-                        }
                         $allSwitches[$title] = $value;
                     }
                 }

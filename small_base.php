@@ -34,6 +34,7 @@ use \Vanderbilt\CareerDevLibrary\DateManagement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\URLManagement;
 use \Vanderbilt\CareerDevLibrary\FileManagement;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
 
 require_once(__DIR__."/autoload.php");
 
@@ -726,15 +727,7 @@ function makeSafe($htmlStr) {
 }
 
 function changeTextColorOfLink($str, $color) {
-	if (preg_match("/<a /", $str)) {
-		if (preg_match("/style\s*=\s*['\"]/", $str, $matches)) {
-			$match = $matches[0];
-			$str = str_replace($match, $match."color: $color; ", $str);
-		} else {
-			$str = preg_replace("/<a /", "<a style='color: $color;' ", $str);
-		}
-	}
-	return $str;
+    return Links::changeTextColorOfLink($str, $color);
 }
 
 function isAssoc($ary) {

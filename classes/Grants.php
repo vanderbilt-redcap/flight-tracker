@@ -668,51 +668,31 @@ class Grants {
 		return $awardsBySource;
 	}
 
-	private static function isAssoc($ary) {
-		if (empty($ary)) {
-			return FALSE;
-		}
-		return array_keys($ary) !== range(0, count($ary) - 1);
-	}
-
 	private static function orderGrantsByStart($awards) {
-		if (self::isAssoc($awards)) {
-            $startingTimes = array();
-            foreach ($awards as $awardNo => $grant) {
-                $start = $grant->getVariable('start');
-                if (REDCapManagement::isDate($start)) {
-                    $start = strtotime($start);
-                }
-                if (self::getShowDebug()) {
-                    Application::log($awardNo . " has $start; " . date("Y-m-d", $start) . " " . $grant->getVariable("source"));
-                }
-                if ($start) {
-                    $startingTimes[$awardNo] = $start;
-                } else {
-                    Application::log("A: $awardNo lacks a start " . json_encode($grant->toArray()));
-                }
+        $startingTimes = [];
+        $i = 0;
+        foreach ($awards as $awardNo => $grant) {
+            $start = $grant->getVariable('start');
+            if (REDCapManagement::isDate($start)) {
+                $start = strtotime($start);
             }
-        } else {
-            $startingTimes = array();
-            $i = 0;
-            foreach ($awards as $grant) {
-                $start = $grant->getVariable('start');
-                if (REDCapManagement::isDate($start)) {
-                    $start = strtotime($start);
-                }
-                if (self::getShowDebug()) {
-                    Application::log($grant->getNumber()." has $start; ".date("Y-m-d", $start)." ".$grant->getVariable("source"));
-                }
-                if ($start) {
-                    $startingTimes[$i] = $start;
-                } else {
-                    Application::log("B: ".$grant->getBaseAwardNumber()." lacks a start ".json_encode($grant->toArray()));
-                }
-                $i++;
+            if (self::getShowDebug()) {
+                Application::log($awardNo . " has $start; " . date("Y-m-d", $start) . " " . $grant->getVariable("source"));
             }
+            if ($start && REDCapManagement::isAssoc($awards)) {
+                $startingTimes[$awardNo] = $start;
+            } else if ($start) {
+                $startingTimes[$i] = $start;
+            } else if (REDCapManagement::isAssoc($awards)) {
+                Application::log("A: $awardNo lacks a start " . json_encode($grant->toArray()));
+            } else {
+                Application::log("B: ".$grant->getBaseAwardNumber()." lacks a start ".json_encode($grant->toArray()));
+            }
+            $i++;
         }
+
         $startingTimes = self::orderDuplicateTsByTimeAndType($startingTimes, $awards);
-        $awardsByStart = array();	// a list of the awards used, ordered by starting time
+        $awardsByStart = [];	// a list of the awards used, ordered by starting time
         foreach ($startingTimes as $idx => $ts) {
             if (isset($awards[$idx])) {
                 if (is_numeric($idx)) {
@@ -1426,12 +1406,18 @@ class Grants {
 	}
 
 	public function getSummaryVariables($rows) {
-		$ary = array();
+		$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+        $ary = array();
 		$ary['summary_ever_internal_k'] = 0;
 		$ary['summary_ever_individual_k_or_equiv'] = 0;
 		$ary['summary_ever_k12_kl2'] = 0;
 		$ary['summary_ever_r01_or_equiv'] = 0;
-		$ary['summary_first_external_k'] = "";
+
+        if (in_array("summary_t_start", $metadataFields) && in_array("summary_t_end", $metadataFields)) {
+            $ary['summary_t_start'] = "";
+            $ary['summary_t_end'] = "";
+        }
+        $ary['summary_first_external_k'] = "";
 		$ary['summary_first_any_k'] = "";
 		$ary['summary_last_any_k'] = "";
 		$ary['summary_first_r01'] = "";
@@ -1529,6 +1515,32 @@ class Grants {
 				$ary['summary_last_any_k_source'] = $grant->getVariable("source");
 				$ary['summary_last_any_k_sourcetype'] = $grant->getSourceType();
 			}
+            if ($t == "Training Appointment") {
+                if (
+                    $grant->getVariable("start")
+                    && isset($ary['summary_t_start'])
+                    && (
+                        ($ary['summary_t_start'] === "")
+                        || DateManagement::dateCompare($ary['summary_t_start'], ">", $grant->getVariable("start"))
+                    )
+                ) {
+                    $ary['summary_t_start'] = $grant->getVariable("start");
+                    $ary['summary_t_start_source'] = $grant->getVariable("source");
+                    $ary['summary_t_start_sourcetype'] = $grant->getSourceType();
+                }
+                if (
+                    $grant->getVariable("end")
+                    && isset($ary['summary_t_end'])
+                    && (
+                        ($ary['summary_t_end'] === "")
+                        || DateManagement::dateCompare($ary['summary_t_end'], "<", $grant->getVariable("end"))
+                    )
+                ) {
+                    $ary['summary_t_end'] = $grant->getVariable("end");
+                    $ary['summary_t_end_source'] = $grant->getVariable("source");
+                    $ary['summary_t_end_sourcetype'] = $grant->getSourceType();
+                }
+            }
 		}
 		$i = 1;
 		$awardTypeConversion = Grant::getAwardTypes();

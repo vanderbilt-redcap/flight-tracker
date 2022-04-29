@@ -3,41 +3,43 @@
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Measurement;
-use \Vanderbilt\CareerDevLibrary\DateMeasurement;
-use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
-require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+$dashboard = new Dashboard($pid);
+require_once(dirname(__FILE__)."/".$dashboard->getTarget().".php");
 
-$headers = array();
-$measurements = array();
+$headers = [];
+$measurements = [];
 
-array_push($headers, "Miscellaneous Metrics for Publications");
+$headers[] = "Miscellaneous Metrics for Publications";
 if (isset($_GET['cohort'])) {
-    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
-    array_push($headers, "For Cohort ".$cohort);
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
+    $headers[] = "For Cohort " . $cohort;
 } else {
     $cohort = "";
 }
 
-$metadata = Download::metadata($token, $server);
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_unique(array_merge(CareerDev::$smallCitationFields, ["record_id", "citation_rcr", "citation_authors", "citation_year", "citation_month", "citation_day", "citation_num_citations", "summary_training_start", "summary_training_end"])), $cohort, $metadata);
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_unique(array_merge(CareerDev::$smallCitationFields, ["record_id", "citation_rcr", "citation_authors", "citation_year", "citation_month", "citation_day", "citation_num_citations", "summary_training_start", "summary_training_end"])), $cohort, Application::getModule());
 
-$tooltip = array(
-		"Relative Citation Ratio" => "The article citation rate (ACR) divided by the expected citation rate (ECR), which is normalized by field (the author's co-citation network) and time (years since publication). Cf. ".\Vanderbilt\FlightTrackerExternalModule\changeTextColorOfLink(Links::makeLink('https://www.doi.org/10.1371/journal.pbio.1002541', "doi"), "white").".",
-		);
-$metrics = array(
+$tooltip = [
+		"Relative Citation Ratio" => "The article citation rate (ACR) divided by the expected citation rate (ECR), which is normalized by field (the author's co-citation network) and time (years since publication). Cf. ".Links::changeTextColorOfLink(Links::makeLink('https://www.doi.org/10.1371/journal.pbio.1002541', "doi"), "white").".",
+		];
+$metrics = [
 		"Average Relative Citation Ratio (RCR)" => "rcr",
 		"Median Relative Citation Ratio (RCR)" => "rcr",
 		"Total Citations by Others" => "num_citations",
 		"Average Citations by Others" => "num_citations",
 		"Median Citations by Others" => "num_citations",
-		);
+		];
 
 $authorPos = [
     "first" => ["training" => [], "total" => []],
@@ -45,11 +47,11 @@ $authorPos = [
     "papers" => ["training" => [], "total" => []],
 ];
 $type = "Included";
-$numForMetric = array();
+$numForMetric = [];
 $ts = time();
 $numUnconfirmedPubs = 0;
 foreach ($indexedRedcapData as $recordId => $rows) {
-	$pubs = new Publications($token, $server, $metadata);
+	$pubs = new Publications($token, $server, []);
 	$pubs->setRows($rows);
 	$goodCitations = $pubs->getCitationCollection($type);
     $trainingStartDate = REDCapManagement::findField($rows, $recordId, "summary_training_start");
@@ -75,12 +77,12 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 			if ($citation->getCategory() == "Original Research") {
 				foreach ($metrics as $metric => $variable) {
 					if (!isset($numForMetric[$metric])) {
-						$numForMetric[$metric] = array();
+						$numForMetric[$metric] = [];
 					}
 
 					$val = $citation->getVariable($variable);
 					if ($val) {
-						array_push($numForMetric[$metric], $val);
+						$numForMetric[$metric][] = $val;
 					}
 				}
 			}
@@ -130,7 +132,7 @@ $measurements["Number of First Authors Total"] = new Measurement(array_sum($auth
 $measurements["Number of Last Authors Total"] = new Measurement(array_sum($authorPos['last']['total']), array_sum($authorPos['papers']['total']));
 
 if (!empty($numForMetric)) {
-	echo makeHTML($headers, $measurements, [], $cohort, $metadata);
+	echo $dashboard->makeHTML($headers, $measurements, [], $cohort);
 } else {
 	echo "No metrics calculated!";
 }

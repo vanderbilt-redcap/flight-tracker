@@ -24,7 +24,19 @@ class Links {
 		return self::$server;
 	}
 
-	public static function makeMailtoLink($email) {
+    public static function changeTextColorOfLink($str, $color) {
+        if (preg_match("/<a /", $str)) {
+            if (preg_match("/style\s*=\s*['\"]/", $str, $matches)) {
+                $match = $matches[0];
+                $str = str_replace($match, $match."color: $color; ", $str);
+            } else {
+                $str = preg_replace("/<a /", "<a style='color: $color;' ", $str);
+            }
+        }
+        return $str;
+    }
+
+    public static function makeMailtoLink($email) {
 	    if (!$email) {
 	        return "";
         }

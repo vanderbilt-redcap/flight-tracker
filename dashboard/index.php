@@ -13,7 +13,7 @@ function expand(address, type) {
 	}
 
 	$.POST("backup.php?type="+type, {'redcap_csrf_token': getCSRFToken()}, function(data) {
-		if (data == 'success') {
+		if (data === 'success') {
 			var ts = Date.now();
 			$.ajax("runCommand.php?log="+ts+".log", {
 				data: { 'type': type, 'command': address, 'redcap_csrf_token': getCSRFToken() },

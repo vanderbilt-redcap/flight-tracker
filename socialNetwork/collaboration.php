@@ -11,11 +11,14 @@ use \Vanderbilt\CareerDevLibrary\SocialNetworkChart;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\DateManagement;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 if ($_GET['record']) {
-    $highlightedRecord = REDCapManagement::sanitize($_GET['record']);
+    $highlightedRecord = Sanitizer::sanitize($_GET['record']);
 } else {
     $highlightedRecord = FALSE;
 }
@@ -24,13 +27,14 @@ define('PUBYEAR_SELECT', '---pub_year---');
 define('START_YEAR', 2010);
 
 $metadata = Download::metadata($token, $server);
-$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-$choices = REDCapManagement::getChoices($metadata);
-$metadataLabels = REDCapManagement::getLabels($metadata);
+$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+$choices = DataDictionaryManagement::getChoices($metadata);
+$metadataLabels = DataDictionaryManagement::getLabels($metadata);
 $userids = Download::userids($token, $server);
-if ($_GET['cohort'] && ($_GET['cohort'] != "all")) {
-    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
-} else if ($_GET['cohort'] == "all") {
+$cohort = $_GET['cohort'] ? ($_GET['cohort'] == "all") ? "all" : Sanitizer::sanitizeCohort($_GET['cohort']) : "";
+if (($cohort !== "") && ($cohort != "all")) {
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
+} else if ($cohort == "all") {
     $records = Download::recordIds($token, $server);
 } else {
     $records = [];
@@ -48,6 +52,11 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
 } else {
     $indexByField = "record_id";
 }
+$startDate = $_GET['start'] ? Sanitizer::sanitize($_GET['start']) : "";
+$endDate = $_GET['end'] ? Sanitizer::sanitize($_GET['end']) : "";
+$startTs = ($startDate && DateManagement::isDate($startDate)) ? strtotime($startDate) : FALSE;
+$endTs = ($endDate && DateManagement::isDate($endDate)) ? strtotime($endDate) : FALSE;
+
 $includeMentors = isset($_GET['mentors']) && ($_GET['mentors'] == "on") && isForIndividualScholars($indexByField);
 $otherMentorsOnly = isset($_GET['other_mentors']) && ($_GET['other_mentors'] == "on") && isForIndividualScholars($indexByField);
 
@@ -87,7 +96,7 @@ if ($includeHeaders) {
         echo "<input type='hidden' name='grants' value='1'>";
     }
     echo "<p class='centered'><a href='" . Application::link("cohorts/addCohort.php") . "'>Make a Cohort</a> to View a Sub-Group<br>";
-    echo $cohorts->makeCohortSelect($_GET['cohort'], "", TRUE) . "<br>";
+    echo $cohorts->makeCohortSelect($cohort, "", TRUE) . "<br>";
     echo makeFieldSelect($indexByField, $possibleFields, $metadataLabels) . "<br>";
     $style = "";
     if (!isForIndividualScholars($indexByField)) {
@@ -103,10 +112,12 @@ if ($includeHeaders) {
     }
 
     if (!isset($_GET['grants'])) {
-        echo "<span class='mentorCheckbox'$style><input type='checkbox' name='mentors'{$checked['mentors']}> Include Mentors' Collaborations with Scholars<br></span>";
-        echo "<span class='mentorCheckbox'$style><input type='checkbox' name='other_mentors'{$checked['other_mentors']}> Show Only Collaborations with Multiple Mentors<br></span>";
+        echo "<div class='mentorCheckbox centered max-width'$style><input type='checkbox' id='mentors' name='mentors'{$checked['mentors']}> <label for='mentors'>Include Mentors' Collaborations with Scholars</label></div>";
+        echo "<div class='mentorCheckbox centered max-width'$style><input type='checkbox' id='other_mentors' name='other_mentors'{$checked['other_mentors']}> <label for='other_mentors'>Show Only Collaborations with Multiple Mentors</label></div>";
+        echo "<div class='centered max-width'><label for='start'>Start Date (optional; on-or-after ".START_YEAR."): </label><input type='date' id='start' name='start' value='$startDate' />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date (optional): </label><input type='date' id='end' name='end' value='$endDate' /></div>";
     }
-    echo "<button>Go!</button></p></form>";
+    echo "<div class='centered max-width'><button>Go!</button></div>";
+    echo "</p></form>";
 }
 
 if (isset($_GET['cohort']) && !empty($records)) {
@@ -143,17 +154,19 @@ if (isset($_GET['cohort']) && !empty($records)) {
     if (!in_array($indexByField, $grantFields)) {
         $grantFields[] = $indexByField;
     }
+    $grantFields = DataDictionaryManagement::filterOutInvalidFields($metadata, $grantFields);
 
     $matches = [];
     $pubs = [];
     $index = [];
+    $coeusAwardNumbers = [];
     if ($highlightedRecord) {
         foreach ($records as $fromRecordId) {
             if ($fromRecordId == $highlightedRecord) {
                 if (isset($_GET['grants'])) {
-                    $matches[$highlightedRecord] = findGrantMatchesForRecord($index, $token, $server, $grantFields, $highlightedRecord, $indexByField, $records, $userids, $names);
+                    $matches[$highlightedRecord] = findGrantMatchesForRecord($index, $coeusAwardNumbers,  $token, $server, $grantFields, $highlightedRecord, $indexByField, $records, $userids, $names);
                 } else {
-                    $matches[$highlightedRecord] = findMatchesForRecord($index, $pubs, $token, $server, $citationFields, $highlightedRecord, $possibleFirstNames, $possibleLastNames, $indexByField, $records);
+                    $matches[$highlightedRecord] = findMatchesForRecord($index, $pubs, $token, $server, $citationFields, $highlightedRecord, $possibleFirstNames, $possibleLastNames, $indexByField, $records, $startTs, $endTs);
                 }
             } else {
                 $matches[$fromRecordId] = [];
@@ -162,9 +175,9 @@ if (isset($_GET['cohort']) && !empty($records)) {
     } else {
         foreach ($records as $fromRecordId) {
             if (isset($_GET['grants'])) {
-                $fromMatches = findGrantMatchesForRecord($index, $token, $server, $grantFields, $fromRecordId, $indexByField, $records, $userids, $names);
+                $fromMatches = findGrantMatchesForRecord($index, $coeusAwardNumbers, $token, $server, $grantFields, $fromRecordId, $indexByField, $records, $userids, $names);
             } else {
-                $fromMatches = findMatchesForRecord($index, $pubs, $token, $server, $citationFields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records);
+                $fromMatches = findMatchesForRecord($index, $pubs, $token, $server, $citationFields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records, $startTs, $endTs);
             }
             if ($otherMentorsOnly) {
                 if (count($fromMatches) > 1) {
@@ -175,6 +188,26 @@ if (isset($_GET['cohort']) && !empty($records)) {
             }
         }
     }
+    # TODO adds duplicates because there's no way to do an author check, as with the others
+//    foreach ($coeusAwardNumbers as $awardNo => $matchedRecords) {
+//        if (count($matchedRecords) > 1) {
+//            foreach ($matchedRecords as $fromRecord => $fromInstances) {
+//                foreach ($matchedRecords as $toRecord => $toInstances) {
+//                    if ($fromRecord != $toRecord) {
+//                        if (!isset($matches[$fromRecord])) {
+//                            $matches[$fromRecord] = [];
+//                        }
+//                        if (!isset($matches[$fromRecord][$toRecord])) {
+//                            $matches[$fromRecord][$toRecord] = [];
+//                        }
+//                        foreach ($toInstances as $toInstance) {
+//                            $matches[$fromRecord][$toRecord][] = $toInstance;
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
 
     list($connections, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index, $pubs);
 
@@ -506,9 +539,12 @@ $grantFields = [
     "coeus2_collaborators",
     "coeus2_agency_grant_number",
     "coeus2_award_status",
+    "nih_principal_investigators",
+    "nih_project_num",
+    "coeus_award_no",          // COEUS Award Number, not sponsor award number
 ];
 
-function findGrantMatchesForRecord(&$index, $token, $server, $fields, $fromRecordId, $indexByField, $records, $userids, $names) {
+function findGrantMatchesForRecord(&$index, &$coeusAwardNumbers, $token, $server, $fields, $fromRecordId, $indexByField, $records, $userids, $names) {
     $redcapData = Download::fieldsForRecords($token, $server, $fields, [$fromRecordId]);
     $matches = [];
     foreach ($redcapData as $row) {
@@ -528,6 +564,10 @@ function findGrantMatchesForRecord(&$index, $token, $server, $fields, $fromRecor
             $awardNo = $row["reporter_projectnumber"];
         } else if ($instrument == "coeus2") {
             $awardNo = $row["coeus2_agency_grant_number"];
+        } else if ($instrument == "coeus") {
+            $awardNo = $row["coeus_award_no"];
+        } else if ($instrument == "nih_reporter") {
+            $awardNo = $row["nih_project_num"];
         }
         if ($awardNo) {
             $baseAwardNo = Grant::translateToBaseAwardNumber($awardNo);
@@ -537,6 +577,8 @@ function findGrantMatchesForRecord(&$index, $token, $server, $fields, $fromRecor
             $myAuthors = [];
             if ($instrument == "exporter") {
                 $myAuthors = preg_split("/\s*;\s*/", $row['exporter_pi_names']);
+            } else if ($instrument == "nih_reporter") {
+                $myAuthors = preg_split("/\s*;\s*/", $row['nih_principal_investigators']);
             } else if ($instrument == "reporter") {
                 if ($row['reporter_otherpis']) {
                     $myAuthors = preg_split("/\s*;\s*/", $row["reporter_otherpis"]);
@@ -550,6 +592,14 @@ function findGrantMatchesForRecord(&$index, $token, $server, $fields, $fromRecor
                         $myAuthors[] = $names[$recordId];
                     }
                 }
+            } else if (($instrument == "coeus") && ($awardNo !== "000") && ($awardNo !== "")) {
+                if (!isset($coeusAwardNumbers[$awardNo])) {
+                    $coeusAwardNumbers[$awardNo] = [];
+                }
+                if (!isset($coeusAwardNumbers[$awardNo][$row['record_id']])) {
+                    $coeusAwardNumbers[$awardNo][$row['record_id']] = [];
+                }
+                $coeusAwardNumbers[$awardNo][$row['record_id']][] = $row['redcap_repeat_instance'];
             }
             for ($i = 0; $i < count($myAuthors); $i++) {
                 $myAuthors[$i] = trim($myAuthors[$i]);
@@ -579,7 +629,7 @@ function findGrantMatchesForRecord(&$index, $token, $server, $fields, $fromRecor
     return $matches;
 }
 
-function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records) {
+function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records, $startTs, $endTs) {
     $fields[] = "identifier_last_name";
     $fields[] = "identifier_first_name";
     $fields = array_unique($fields);
@@ -605,16 +655,18 @@ function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRe
                             foreach ($possibleLastNames[$toRecordId] as $lastName) {
                                 if (NameMatcher::matchByInitials($authorLast, $authorInitials, $lastName, $firstName) &&
                                     !NameMatcher::matchByInitials($authorLast, $authorInitials, $fromLastName, $fromFirstName)) {
-                                    if (isset($_GET['test'])) {
-                                        echo "Matched $fromRecordId $authorLast, $authorInitials to $toRecordId $lastName, $firstName<br>";
-                                    }
-                                    if (!isset($matches[$toRecordId])) {
-                                        $matches[$toRecordId] = [];
-                                    }
-                                    $matches[$toRecordId][] = $row['redcap_repeat_instrument'];
                                     $ts = getCitationTimestamp($row);
-                                    if ($ts) {
-                                        $pubs["$fromRecordId:$toRecordId:".$row['redcap_repeat_instance']] = $ts;
+                                    if (canApproveTimestamp($ts, $startTs, $endTs)) {
+                                        if (isset($_GET['test'])) {
+                                            echo "Matched $fromRecordId $authorLast, $authorInitials to $toRecordId $lastName, $firstName<br>";
+                                        }
+                                        if (!isset($matches[$toRecordId])) {
+                                            $matches[$toRecordId] = [];
+                                        }
+                                        $matches[$toRecordId][] = $row['redcap_repeat_instrument'];
+                                        if ($ts) {
+                                            $pubs["$fromRecordId:$toRecordId:".$row['redcap_repeat_instance']] = $ts;
+                                        }
                                     }
                                 }
                             }
@@ -625,6 +677,32 @@ function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRe
         }
     }
     return $matches;
+}
+
+function canApproveTimestamp($ts, $startTs, $endTs) {
+    return (
+        (!$startTs && !$endTs)
+        || ($ts
+            && (
+                (
+                    $startTs
+                    && ($startTs <= $ts)
+                    && (
+                        !$endTs
+                        || ($endTs >= $ts)
+                    )
+                )
+                || (
+                    $endTs
+                    && ($endTs >= $ts)
+                    && (
+                        !$startTs
+                        || ($startTs <= $ts)
+                    )
+                )
+            )
+        )
+    );
 }
 
 function getExplodedFirstNames($token, $server) {

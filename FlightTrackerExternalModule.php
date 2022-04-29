@@ -171,8 +171,20 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $ts = time() - $daysPrior * 24 * 3600;
         $thresholdTs = date("Y-m-d", $ts);
         Application::log("Removing logs prior to $thresholdTs", $pid);
-        $this->removeLogs("timestamp <= '$thresholdTs' AND project_id = '$pid'", []);
-        Application::log("Done removing logs", $pid);
+        $where = "timestamp <= ? AND project_id = ?";
+
+        $this->removeLogs($where);
+        $numIterations = 1;
+        /*
+         * This threw an error due to a delete X FROM X... error in ExtMod FW
+        $numIterations = 0;
+        do {
+            $result = $this->removeLogs($where." LIMIT 10000", [$thresholdTs, $pid]);
+            $moreToDelete = ($result->affected_rows() > 0);
+            $numIterations++;
+        } while ($moreToDelete && ($numIterations < 50000));
+        */
+        Application::log("Done removing logs in $numIterations iterations", $pid);
     }
 
     private static function isValidToCopy($fields, $sourceRow, $destRow, $sourceChoices, $destChoices) {
@@ -183,7 +195,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         } else if (self::allFieldsMatch($fields, $sourceRow, $destRow, $sourceChoices, $destChoices)) {
             # already copied => skip
             // Application::log("isValidToCopy Rejecting because all fields match");
-            return FALSE;;
+            return FALSE;
         }
         // Application::log("isValidToCopy returning TRUE");
         return TRUE;
@@ -245,7 +257,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 $servers[$pid] = $server;
             }
         }
-        $credentialsFile = "/app001/credentials/career_dev/credentials.php";
+        $credentialsFile = Application::getCredentialsDir()."/career_dev/credentials.php";
         if (preg_match("/redcap.vanderbilt.edu/", SERVER_NAME)  && file_exists($credentialsFile)) {
             include($credentialsFile);
             if (isset($info["prod"])) {

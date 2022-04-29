@@ -5,18 +5,19 @@ use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Measurement;
-use \Vanderbilt\CareerDevLibrary\DateMeasurement;
-use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
-use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
-require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+$dashboard = new Dashboard($pid);
+require_once(dirname(__FILE__)."/".$dashboard->getTarget().".php");
 
 if (isset($_GET['cohort'])) {
-    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
 } else {
     $cohort = "";
 }
@@ -26,7 +27,7 @@ $measurements = [];
 
 $metadata = Download::metadata($token, $server);
 $fields = array_unique(array_merge(CareerDev::$summaryFields, ["identifier_left_date", "identifier_institution"]));
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $cohort, $metadata);
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $cohort, Application::getModule());
 $names = Download::names($token, $server);
 
 $totals = [];
@@ -36,7 +37,7 @@ $conversions = [];
 $convertedStatuses = ["Converted while not on K", "Converted while on K"];
 foreach ($indexedRedcapData as $recordId => $rows) {
     $name = $names[$recordId];
-    $grants = new Grants($token, $server, $metadata);
+    $grants = new Grants($token, $server, "empty");
     $grants->setRows($rows);
     foreach ($grants->getGrants("prior") as $grant) {
         $type = $grant->getVariable("type");
@@ -88,14 +89,14 @@ foreach ($conversions as $yearspan => $recordQueues) {
     $measurements["K-to-R Conversions over Last $yearspan Years"] = $meas;
 }
 
-array_push($headers, "Grants");
+$headers[] = "Grants";
 if ($cohort) {
-    array_push($headers, "For Cohort ".$cohort);
+    $headers[] = "For Cohort " . $cohort;
 }
 
-$measurements["Total Number of Compiled Grants"] = new Measurement($totalGrants);
+$measurements["Total Number of Career-Defining Grants"] = new Measurement($totalGrants);
 foreach ($totals as $type => $total) {
     $measurements["$type Grants"] = new Measurement($total, $totalGrants);
 }
 
-echo makeHTML($headers, $measurements, array(), $cohort, $metadata);
+echo $dashboard->makeHTML($headers, $measurements, [], $cohort);

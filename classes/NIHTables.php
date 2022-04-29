@@ -2593,18 +2593,11 @@ class NIHTables {
 
     public function downloadPostdocNames($table = "", $earliestDateCompletingTraining = "") {
         Application::log("downloading postdoc names at beginning ".date("Y-m-d H:i:s"), $this->pid);
+        $cohort = (isset($_GET['cohort']) && $_GET['cohort']) ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
         if (preg_match("/-VUMC$/", $table)) {
-            if (isset($_GET['cohort']) && $_GET['cohort']) {
-                $names = Download::postdocAppointmentNames($this->token, $this->server, Application::getModule(), $_GET['cohort']);
-            } else {
-                $names = Download::postdocAppointmentNames($this->token, $this->server);
-            }
+            $names = Download::postdocAppointmentNames($this->token, $this->server, $this->metadata, $cohort);
         } else {
-            if (isset($_GET['cohort']) && $_GET['cohort']) {
-                $names = Download::postdocNames($this->token, $this->server, Application::getModule(), $_GET['cohort']);
-            } else {
-                $names = Download::postdocNames($this->token, $this->server);
-            }
+            $names = Download::postdocNames($this->token, $this->server, $this->metadata, $cohort);
         }
         if ($earliestDateCompletingTraining) {
             Application::log("downloading postdoc names pre-filter ".date("Y-m-d H:i:s"), $this->pid);
@@ -2617,11 +2610,8 @@ class NIHTables {
     }
 
     public function downloadPredocNames($earliestDateCompletingTraining = "") {
-        if (isset($_GET['cohort']) && $_GET['cohort']) {
-            $names = Download::predocNames($this->token, $this->server, Application::getModule(), $_GET['cohort']);
-        } else {
-            $names = Download::predocNames($this->token, $this->server);
-        }
+        $cohort = (isset($_GET['cohort']) && $_GET['cohort']) ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
+        $names = Download::predocNames($this->token, $this->server, $this->metadata, $cohort);
         if ($earliestDateCompletingTraining) {
             return $this->filterForEarliestDateCompletingTraining($names, $earliestDateCompletingTraining);
         } else {

@@ -94,7 +94,7 @@ class StarBRITE {
     }
 
     static function accessSRI($resourcePath, $getParams, $pid) {
-        $filename = "/app001/credentials/con_redcap_ldap_user.php";
+        $filename = Application::getCredentialsDir()."/con_redcap_ldap_user.php";
         $ldapuser = "";
         $ldappass = "";
         if (file_exists($filename)) {

@@ -2,36 +2,36 @@
 
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Grants;
-use \Vanderbilt\CareerDevLibrary\Measurement;
-use \Vanderbilt\CareerDevLibrary\DateMeasurement;
 use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
-use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
-require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+$dashboard = new Dashboard($pid);
+require_once(dirname(__FILE__)."/".$dashboard->getTarget().".php");
 
 if (isset($_GET['cohort'])) {
-    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
 } else {
     $cohort = "";
 }
-$headers = array();
-$measurements = array();
+$headers = [];
+$measurements = [];
 
-$metadata = Download::metadata($token, $server);
-$indexedRedcapData = \Vanderbilt\FlightTrackerExternalModule\getIndexedRedcapData($token, $server, CareerDev::$summaryFields, $cohort, $metadata);
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, CareerDev::$summaryFields, $cohort, Application::getModule());
 
-$yearTotals = array();
+$yearTotals = [];
 for ($year = date("Y"); $year >= 2001; $year--) {
 	$yearTotals[$year] = 0;
 }
 $totalBudget = 0;
 $totals = [];
 foreach ($indexedRedcapData as $recordId => $rows) {
-	$grants = new Grants($token, $server, $metadata);
+	$grants = new Grants($token, $server, "empty");
 	$grants->setRows($rows);
 	foreach ($grants->getGrants("prior") as $grant) {
 		$type = $grant->getVariable("type");
@@ -48,9 +48,9 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	}
 }
 
-array_push($headers, "Grants");
+$headers[] = "Grants";
 if ($cohort) {
-    array_push($headers, "For Cohort ".$cohort);
+    $headers[] = "For Cohort " . $cohort;
 }
 
 $measurements["Total Budget"] = new MoneyMeasurement($totalBudget);
@@ -58,4 +58,4 @@ foreach ($yearTotals as $year => $total) {
 	$measurements["Grant Budgets in $year"] = new MoneyMeasurement($total, $totalBudget);
 }
 
-echo makeHTML($headers, $measurements, array(), $cohort, $metadata);
+echo $dashboard->makeHTML($headers, $measurements, [], $cohort);

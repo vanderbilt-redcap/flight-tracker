@@ -123,6 +123,44 @@ class Stats
         return $this->arr;
     }
 
+    public function getQuartile($quartile) {
+        if (!is_int($quartile)) {
+            return FALSE;
+        }
+        if (($quartile < 0) || ($quartile > 4)) {
+            return FALSE;
+        }
+        if (REDCapManagement::isAssoc($this->arr)) {
+            return FALSE;
+        }
+
+        sort($this->arr);
+        $size = count($this->arr);
+        switch($quartile) {
+            case 0:
+                return $this->arr[0];
+            case 1:
+                $ary2 = [];
+                for ($i = 0; $i < $size / 2; $i++) {
+                    $ary2[] = $this->arr[$i];
+                }
+                $stats2 = new Stats($ary2);
+                return $stats2->median();
+            case 2:
+                return $this->median();
+            case 3:
+                $ary2 = array();
+                for ($i = (int) ceil($size / 2); $i < $size; $i++) {
+                    $ary2[] = $this->arr[$i];
+                }
+                $stats2 = new Stats($ary2);
+                return $stats2->median();
+            case 4:
+                return $this->arr[$size - 1];
+        }
+    }
+
+
     public function unpairedTTest($comparison) {
         if (get_class($comparison) != "Vanderbilt\CareerDevLibrary\Stats") {
             return self::$nan;

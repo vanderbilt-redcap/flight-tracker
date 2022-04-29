@@ -8,30 +8,33 @@ use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
-require_once(dirname(__FILE__)."/".\Vanderbilt\FlightTrackerExternalModule\getTarget().".php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+$dashboard = new Dashboard($pid);
+require_once(dirname(__FILE__)."/".$dashboard->getTarget().".php");
 
-$headers = array();
-$measurements = array();
+$headers = [];
+$measurements = [];
 
-array_push($headers, "Publications by Journal<br>(Confirmed Original Research Only)");
+$headers[] = "Publications by Journal<br>(Confirmed Original Research Only)";
 if (isset($_GET['cohort'])) {
     $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
-    array_push($headers, "For Cohort ".$cohort);
+    $headers[] = "For Cohort " . $cohort;
 } else {
     $cohort = "";
 }
 
-$metadata = Download::metadata($token, $server);
-$indexedRedcapData = \Vanderbilt\FlightTrackerExternalModule\getIndexedRedcapData($token, $server, array_merge(CareerDev::$smallCitationFields, array('citation_journal')), $cohort, $metadata);
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_merge(CareerDev::$smallCitationFields, ['citation_journal']), $cohort, Application::getModule());
 
 $numConfirmedPubs = 0;
-$numForJournal = array();
+$numForJournal = [];
 $ts = time();
 foreach ($indexedRedcapData as $recordId => $rows) {
-	$pubs = new Publications($token, $server, $metadata);
+	$pubs = new Publications($token, $server, []);
 	$pubs->setRows($rows);
 	$goodCitations = $pubs->getCitationCollection("Included");
 	if ($goodCitations) {
@@ -58,6 +61,6 @@ foreach ($numForJournal as $journal => $val) {
 	}
 }
 
-array_push($headers, \Vanderbilt\FlightTrackerExternalModule\pretty(count($numForJournal))." Journals Represented");
+$headers[] = REDCapManagement::pretty(count($numForJournal)) . " Journals Represented";
 
-echo makeHTML($headers, $measurements, array(), $cohort, $metadata);
+echo $dashboard->makeHTML($headers, $measurements, [], $cohort);

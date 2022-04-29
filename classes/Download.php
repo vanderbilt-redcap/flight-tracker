@@ -75,16 +75,16 @@ class Download {
 		return self::indexREDCapData($redcapData);
 	}
 
-	public static function predocNames($token, $server, $metadataOrModule = [], $cohort = "", $names = []) {
+	public static function predocNames($token, $server, $metadata = [], $cohort = "", $names = []) {
 	    if (empty($names)) {
             $names = self::names($token, $server);
         }
 		$predocs = array();
 		$records = self::recordsWithTrainees($token, $server, array(6));
 		if ($cohort) {
-            $cohortConfig = self::getCohortConfig($token, $server, $metadataOrModule, $cohort);
+            $cohortConfig = self::getCohortConfig($token, $server, Application::getModule(), $cohort);
             if ($cohortConfig) {
-                $filter = new Filter($token, $server, $metadataOrModule);
+                $filter = new Filter($token, $server, $metadata);
                 $allPredocs = $records;
                 $cohortRecords = $filter->getRecords($cohortConfig);
                 $records = [];
@@ -95,17 +95,15 @@ class Download {
                 }
             }
         }
-        $records = self::filterByManualInclusion($records, $token, $server, $metadataOrModule);
+        $records = self::filterByManualInclusion($records, $token, $server, $metadata);
         foreach ($records as $recordId) {
 			$predocs[$recordId] = $names[$recordId];
 		}
 		return $predocs;
 	}
 
-	private static function filterByManualInclusion($records, $token, $server, $metadataOrModule) {
-	    if (is_array($metadataOrModule)) {
-            $metadata = $metadataOrModule;
-        } else {
+	private static function filterByManualInclusion($records, $token, $server, $metadata) {
+	    if (!is_array($metadata) || empty($metadata)) {
             $metadata = self::metadata($token, $server);
         }
 	    $field = "identifier_table_include";
@@ -124,13 +122,13 @@ class Download {
 	    return $includedRecords;
     }
 
-    public static function postdocAppointmentNames($token, $server, $metadataOrModule = [], $cohort = "") {
+    public static function postdocAppointmentNames($token, $server, $metadata, $cohort = "") {
         $names = self::names($token, $server);
         $postdocTrainees = self::recordsWithTrainees($token, $server, [7]);
         if ($cohort) {
-            $cohortConfig = self::getCohortConfig($token, $server, $metadataOrModule, $cohort);
+            $cohortConfig = self::getCohortConfig($token, $server, Application::getModule(), $cohort);
             if ($cohortConfig) {
-                $filter = new Filter($token, $server, $metadataOrModule);
+                $filter = new Filter($token, $server, $metadata);
                 $cohortRecords = $filter->getRecords($cohortConfig);
                 $records = [];
                 foreach ($postdocTrainees as $recordId) {
@@ -144,7 +142,7 @@ class Download {
         } else {
             $records = $postdocTrainees;
         }
-        $records = self::filterByManualInclusion($records, $token, $server, $metadataOrModule);
+        $records = self::filterByManualInclusion($records, $token, $server, $metadata);
         $postdocs = [];
         foreach ($records as $recordId) {
             $postdocs[$recordId] = $names[$recordId];
@@ -152,14 +150,14 @@ class Download {
         return $postdocs;
 	}
 
-    public static function postdocNames($token, $server, $metadataOrModule = [], $cohort = "") {
+    public static function postdocNames($token, $server, $metadata = [], $cohort = "") {
 		$names = self::names($token, $server);
-		$predocs = self::predocNames($token, $server, $metadataOrModule, $cohort, $names);
+		$predocs = self::predocNames($token, $server, $metadata, $cohort, $names);
 		$postdocs = array();
         if ($cohort) {
-            $cohortConfig = self::getCohortConfig($token, $server, $metadataOrModule, $cohort);
+            $cohortConfig = self::getCohortConfig($token, $server, Application::getModule(), $cohort);
             if ($cohortConfig) {
-                $filter = new Filter($token, $server, $metadataOrModule);
+                $filter = new Filter($token, $server, $metadata);
                 $everyone = array_keys($names);
                 $cohortRecords = $filter->getRecords($cohortConfig);
                 $records = [];
@@ -917,8 +915,8 @@ class Download {
 	    return $values;
     }
 
-	public static function fieldsWithConfig($token, $server, $metadataOrModule, $fields, $cohortConfig) {
-		$filter = new Filter($token, $server, $metadataOrModule);
+	public static function fieldsWithConfig($token, $server, $metadata, $fields, $cohortConfig) {
+		$filter = new Filter($token, $server, $metadata);
 		$records = $filter->getRecords($cohortConfig);
 		if (isset($_GET['test'])) {
             Application::log("Download::fieldsWithFilter ".count($records)." records; ".count($fields)." fields");

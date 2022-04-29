@@ -123,7 +123,7 @@ class COEUSConnection extends OracleConnection {
 	    $serverAddress = "";
 
 		$usedFile = "None";
-		$file = "/app001/credentials/career_dev/coeusDB.php";
+		$file = Application::getCredentialsDir()."/career_dev/coeusDB.php";
 		if (file_exists($file)) {
 			include($file);
 			$usedFile = $file;

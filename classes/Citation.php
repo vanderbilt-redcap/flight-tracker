@@ -5,23 +5,23 @@ namespace Vanderbilt\CareerDevLibrary;
 # This class handles publication data from PubMed, the VICTR fetch routine, and surveys.
 # It also provides HTML for data-wrangling the publication data
 
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+
 require_once(__DIR__ . '/ClassLoader.php');
 
 class CitationCollection {
 	# type = [ Filtered, Final, New, Omit ]
-	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = array(), $lastNames = [], $firstNames = []) {
+	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = "download", $lastNames = [], $firstNames = []) {
 		$this->token = $token;
 		$this->server = $server;
 		$this->citations = array();
-		if (empty($metadata)) {
+		if ($metadata == "download") {
 		    $this->metadata = Download::metadata($token, $server);
         } else {
             $this->metadata = $metadata;
         }
-		if (empty($redcapData)) {
-		    if ($type != "Filtered") {
-                $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($this->metadata), array($recordId));
-            }
+		if (empty($redcapData) &&  ($type != "Filtered") && !empty($this->metadata)) {
+            $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($this->metadata), [$recordId]);
 		}
 		if (empty($lastNames)) {
 		    $lastNames = Download::lastnames($token, $server);
@@ -1140,10 +1140,17 @@ class Citation {
 			return $this->sourceChoices[$src];
 		} else {
 			if (!$this->sourceChoices && empty($this->sourceChoices)) {
-				$choices = Scholar::getChoices($this->metadata);
-				if (isset($choices["citation_source"])) {
-					$this->sourceChoices = $choices["citation_source"];
-				}
+                $pid = Application::getPID($this->token);
+                if (empty($this->metadata) && $pid) {
+                    $this->sourceChoices = DataDictionaryManagement::getChoicesForField($pid, "citation_source");
+                } else {
+                    $choices = Scholar::getChoices($this->metadata);
+                    if (isset($choices["citation_source"])) {
+                        $this->sourceChoices = $choices["citation_source"];
+                    } else {
+                        $this->sourceChoices = [];
+                    }
+                }
 			}
 			if (isset($this->sourceChoices[$src])) {
 				return $this->sourceChoices[$src];

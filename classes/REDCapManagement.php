@@ -13,6 +13,13 @@ class REDCapManagement {
 	    return isset($_GET['pid']);
     }
 
+    public static function isAssoc($ary) {
+        if (empty($ary)) {
+            return FALSE;
+        }
+        return array_keys($ary) !== range(0, count($ary) - 1);
+    }
+
     public static function getFormsFromMetadata($metadata) {
 	    return DataDictionaryManagement::getFormsFromMetadata($metadata);
     }

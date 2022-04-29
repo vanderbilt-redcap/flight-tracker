@@ -161,7 +161,7 @@ class WebOfScience {
     public static function getCredentials($pid) {
         $userid = "";
         $passwd = "";
-        $file = "/app001/credentials/career_dev/wos.php";
+        $file = Application::getCredentialsDir()."/career_dev/wos.php";
         if (file_exists($file)) {
             require($file);
             return [$userid, $passwd];

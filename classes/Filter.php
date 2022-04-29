@@ -8,11 +8,11 @@ define('GET_CHOICES', 'choices');
 define('GET_VALUE', 'values');
 
 class Filter {
-	public function __construct($token, $server, $metadataOrModule) {
+	public function __construct($token, $server, $metadata) {
 		$this->token = $token;
 		$this->server = $server;
-		if (is_array($metadataOrModule)) {
-            $this->metadata = $metadataOrModule;
+		if (is_array($metadata)) {
+            $this->metadata = $metadata;
         } else {
 		    $this->metadata = Download::metadata($token, $server);
         }
@@ -327,7 +327,7 @@ class Filter {
 	}
 
 	# variable => label
-	public static function getDemographicChoices() {
+	public function getDemographicChoices() {
 		$ary = array(
 				"summary_gender" => "Gender",
 				"summary_race_ethnicity" => "Race/Ethnicity",
@@ -351,7 +351,7 @@ class Filter {
 	}
 
 	# variable => label
-	public static function getGrantChoices() {
+	public function getGrantChoices() {
 		$ary = [
 				"calc_award_type" => "Award Type",
                 "summary_ever_last_any_k_to_r01_equiv" => "Conversion Status",
@@ -359,15 +359,23 @@ class Filter {
 				"summary_award_sponsorno_1" => "First Award Sponsor Number",
 				"calc_sponsorno" => "Any Award Sponsor Number",
 				"calc_activity_code" => "Activity Code",
+                "summary_t_start" => "Start of First Training Grant",
+                "summary_t_end" => "End of Last Training Grant",
 				"summary_first_any_k" => "First Any K",
-				"summary_last_any_k" => "Last Any K",
+                "summary_last_any_k" => "Last Any K",
 				"summary_first_r01_or_equiv" => "First R01 or Equivalent",
 				];
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+        foreach ($ary as $field => $label) {
+            if (preg_match("/^summary_/", $field) && !in_array($field, $metadataFields)) {
+                unset($ary[$field]);
+            }
+        }
 		return $ary;
 	}
 
 	# variable => label
-	public static function getPublicationChoices() {
+	public function getPublicationChoices() {
 		$ary = array(
 				"calc_pub_category" => "Publication Category",
 				"calc_num_pubs" => "Number of Research Articles",
@@ -379,8 +387,8 @@ class Filter {
 		return $ary;
 	}
 
-	public static function getAllChoices() {
-		return array_merge(self::getDemographicChoices(), self::getGrantChoices(), self::getPublicationChoices());
+	public function getAllChoices() {
+		return array_merge($this->getDemographicChoices(), $this->getGrantChoices(), $this->getPublicationChoices());
 	}
 
 	public function getChoices($var) {
@@ -454,9 +462,9 @@ class Filter {
 		$link = Application::link("this");
 		$viewLink = Application::link("cohorts/viewCohort.php");
 		$existingCohortJSON = json_encode($cohorts->getCohortNames());
-        $demographicChoicesJSON = json_encode(array_merge($blankOption, self::getDemographicChoices()));
-        $grantChoicesJSON = json_encode(array_merge($blankOption, self::getGrantChoices()));
-        $publicationChoicesJSON = json_encode(array_merge($blankOption, self::getPublicationChoices()));
+        $demographicChoicesJSON = json_encode(array_merge($blankOption, $this->getDemographicChoices()));
+        $grantChoicesJSON = json_encode(array_merge($blankOption, $this->getGrantChoices()));
+        $publicationChoicesJSON = json_encode(array_merge($blankOption, $this->getPublicationChoices()));
         $workshopChoicesJSON = json_encode(array_merge($blankOption, $workshopChoices));
 		$html .= "<script>
 		function commit() {
@@ -572,7 +580,7 @@ class Filter {
 
 		$textChoices = ["string", "number"];
 		$dateChoices = ["date"];
-		$allChoices = array_merge(self::getAllChoices(), $workshopChoices); 
+		$allChoices = array_merge($this->getAllChoices(), $workshopChoices);
 		foreach ($allChoices as $var => $label) {
 			$html .= "\t\tif (val == '$var') {\n";
 			if (preg_match("/^calc_/", $var)) {
