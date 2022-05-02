@@ -173,7 +173,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         Application::log("Removing logs prior to $thresholdTs", $pid);
         $where = "timestamp <= ? AND project_id = ?";
 
-        $this->removeLogs($where);
+        $this->removeLogs($where, [$thresholdTs, $pid]);
         $numIterations = 1;
         /*
          * This threw an error due to a delete X FROM X... error in ExtMod FW
