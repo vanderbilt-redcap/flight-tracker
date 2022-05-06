@@ -59,7 +59,13 @@ class DataDictionaryManagement {
                 $newChoiceStr = REDCapManagement::makeChoiceStr($newChoices);
                 for ($i = 0; $i < count($metadata['file']); $i++) {
                     $field = $metadata['file'][$i]['field_name'];
-                    $isFieldOfSources = preg_match("/_source$/", $field) && isset($choices["REDCap"][$field]["scholars"]);
+                    $isFieldOfSources = (
+                        (
+                            preg_match("/_source$/", $field)
+                            || preg_match("/_source_\d+$/", $field)
+                        )
+                        && isset($choices["REDCap"][$field]["scholars"])
+                    );
                     if ($isFieldOfSources) {
                         $metadata['file'][$i]['select_choices_or_calculations'] = $newChoiceStr;
                     }
@@ -258,12 +264,12 @@ class DataDictionaryManagement {
                 );
                 if (!in_array($field, $specialFields)) {
                     if (!isset($fieldList["REDCap"][$field])) {
-                        array_push($missing, $field);
+                        $missing[] = $field;
                         if (!preg_match($deletionRegEx, $field)) {
-                            array_push($additions, $field);
+                            $additions[] = $field;
                         }
                     } else if ($isFieldOfSources) {
-                        $choices["file"][$field] = Application::getRelevantChoices();
+                        $choices["file"][$field] = $sourceChoices;
                         if (
                             !Application::isVanderbilt()
                             && isset($choices["REDCap"][$field]["coeus"])
@@ -283,15 +289,15 @@ class DataDictionaryManagement {
                         && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])
                     ) {
                         if ($isSpecialGenderField) {
-                            array_push($missing, $field);
-                            array_push($changed, $field);
+                            $missing[] = $field;
+                            $changed[] = $field;
                         }
                     } else {
                         foreach ($metadataFields as $metadataField) {
                             if (self::hasMetadataChanged($indexedMetadata["REDCap"][$field][$metadataField], $indexedMetadata["file"][$field][$metadataField], $metadataField)) {
                                 if ($isSpecialGenderField) {
-                                    array_push($missing, $field);
-                                    array_push($changed, $field);
+                                    $missing[] = $field;
+                                    $changed[] = $field;
                                 }
                                 break; // metadataFields loop
                             }
@@ -377,6 +383,9 @@ class DataDictionaryManagement {
         }
         if (in_array("mentoring_agreement_evaluations", $forms)) {
             $formsAndLabels["mentoring_agreement_evaluations"] = "[mentoringeval_role]";
+        }
+        if (in_array("nsf", $forms)) {
+            $formsAndLabels["nsf"] = "[nsf_id]";
         }
 
         if (Application::isVanderbilt()) {

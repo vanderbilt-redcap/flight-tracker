@@ -107,7 +107,10 @@ class InitialGrantFactory extends GrantFactory {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= Grants::$MAX_GRANTS; $i++) {
 			if (($row[$prefix."_grant$i"."_start"] != "")
-                && ($row[$prefix."_grant$i"."_notmine"] != '1')
+                && (
+                    !isset($row[$prefix."_grant$i"."_notmine"])
+                    || ($row[$prefix."_grant$i"."_notmine"] != '1')
+                )
                 && in_array($row[$prefix."_grant".$i."_role"], [1, 2])) {
 
 			    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=initial_survey";
@@ -932,7 +935,7 @@ class CustomGrantFactory extends GrantFactory {
 			$grant->setVariable('pi_flag', 'Y');
             $type = $row['custom_type'];
             $reverseAwardTypes = Grant::getReverseAwardTypes();
-            if ($reverseAwardTypes[$type]) {
+            if ($type && isset($reverseAwardTypes[$type]) && $reverseAwardTypes[$type]) {
                 $grant->setVariable("type", $reverseAwardTypes[$type]);
             } else {
                 $grant->putInBins();
@@ -992,4 +995,59 @@ class PriorGrantFactory extends GrantFactory {
 			}
 		}
 	}
+}
+
+class NSFGrantFactory extends GrantFactory {
+    public function processRow($row, $otherRows, $token = "")
+    {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
+        $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=nsf&instance={$row['redcap_repeat_instance']}";
+        $awardNo = $row['nsf_id'];
+        $dollars = $row['nsf_estimatedtotalamt'];
+        $title = $row['nsf_title'];
+
+        $grant = new Grant($this->lexicalTranslator);
+        $grant->setVariable('start', $row['nsf_startdate']);
+        $grant->setVariable('end', $row['nsf_expdate']);
+        $grant->setVariable('title', $title);
+        $grant->setVariable('budget', $dollars);
+        $grant->setVariable('direct_budget', $dollars);
+        $grant->setVariable('sponsor', $row['nsf_agency']);
+        $grant->setVariable('original_award_number', $awardNo);
+        $grant->setNumber($awardNo);
+        $grant->setVariable('source', "nsf");
+        $grant->setVariable('pi_flag', 'Y');
+
+        if (preg_match("/REU Site/", $title)) {
+            $type = "Training Grant Admin";
+        } else if (preg_match("/CAREER/", $title)) {
+            $type = "K Equivalent";
+        } else {
+            $type = "R01 Equivalent";
+        }
+        $grant->setVariable("type", $type);
+
+        list ($firstName, $lastName) = NameMatcher::splitName($this->name, 2);
+        $role = "";
+        if (NameMatcher::matchName($firstName, $lastName, $row['nsf_pifirstname'], $row['nsf_pilastname'])) {
+            $role = "PI";
+        } else {
+            $coPIs = preg_split("/\s*[,;]\s*/", $row['nsf_copdpi']);
+            foreach ($coPIs as $coPI) {
+                $coPI = trim($coPI);
+                list($coPIFirst, $coPILast) = NameMatcher::splitName($coPI, 2);
+                if (NameMatcher::matchName($firstName, $lastName, $coPIFirst, $coPILast)) {
+                    $role = "Co-PI";
+                    break;
+                }
+            }
+        }
+        $grant->setVariable("role", $role);
+        $grant->setVariable('nih_mechanism', $row['nsf_agency']);
+        $grant->setVariable('url', $url);
+        $grant->setVariable('link', Links::makeLink($url, "See Grant"));
+        $grant->setVariable('last_update', $row['nsf_last_update']);
+
+        $this->grants[] = $grant;
+    }
 }

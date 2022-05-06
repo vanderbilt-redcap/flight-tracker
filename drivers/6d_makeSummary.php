@@ -1,15 +1,7 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Scholar;
-use \Vanderbilt\CareerDevLibrary\Grants;
-use \Vanderbilt\CareerDevLibrary\Publications;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Upload;
+namespace Vanderbilt\CareerDevLibrary;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\CronManager;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 # used every time that the summaries are recalculated 
 # 30 minute runtimes

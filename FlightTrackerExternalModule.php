@@ -171,19 +171,16 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $ts = time() - $daysPrior * 24 * 3600;
         $thresholdTs = date("Y-m-d", $ts);
         Application::log("Removing logs prior to $thresholdTs", $pid);
-        $where = "timestamp <= ? AND project_id = ?";
-
-        $this->removeLogs($where, [$thresholdTs, $pid]);
-        $numIterations = 1;
-        /*
-         * This threw an error due to a delete X FROM X... error in ExtMod FW
         $numIterations = 0;
+        $fromAndWhereClause = "FROM redcap_external_modules_log WHERE timestamp <= ? AND project_id = ?";
         do {
-            $result = $this->removeLogs($where." LIMIT 10000", [$thresholdTs, $pid]);
-            $moreToDelete = ($result->affected_rows() > 0);
+            $deleteSql = "DELETE $fromAndWhereClause ORDER BY log_id LIMIT 10000";
+            $selectSql = "SELECT log_id $fromAndWhereClause ORDER BY log_id LIMIT 1";
+            $this->query($deleteSql, [$thresholdTs, $pid]);
+            $result = $this->query($selectSql, [$thresholdTs, $pid]);
+            $moreToDelete = $result && $result->fetch_assoc();
             $numIterations++;
         } while ($moreToDelete && ($numIterations < 50000));
-        */
         Application::log("Done removing logs in $numIterations iterations", $pid);
     }
 
@@ -312,10 +309,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         // Application::log("Communicating between $sourcePid and $destPid", $destPid);
                         $destToken = $tokens[$destPid];
                         $destServer = $servers[$destPid];
-                        foreach (array_keys($firstNames[$destPid]) as $destRecordId) {
+                        foreach (array_keys($firstNames[$destPid] ?? []) as $destRecordId) {
                             $combos = [];
-                            foreach (NameMatcher::explodeFirstName($firstNames[$destPid][$destRecordId]) as $firstName) {
-                                foreach (NameMatcher::explodeLastName($lastNames[$destPid][$destRecordId]) as $lastName) {
+                            foreach (NameMatcher::explodeFirstName($firstNames[$destPid][$destRecordId] ?? "") as $firstName) {
+                                foreach (NameMatcher::explodeLastName($lastNames[$destPid][$destRecordId] ?? "") as $lastName) {
                                     if ($firstName && $lastName) {
                                         $combos[] = ["first" => $firstName, "last" => $lastName];
                                     }

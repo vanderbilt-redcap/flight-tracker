@@ -1,8 +1,6 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\ConnectionStatus;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 

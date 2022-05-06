@@ -2741,13 +2741,11 @@ return $result;
 							# Summary: 1, Research Fellow | 2, Clinical Fellow | 3, Instructor | 4, Research Assistant Professor | 5, Assistant Professor | 6, Associate Professor | 7, Professor | 8, Other
 							switch($row[$field]) {
 								case 1:
-									$val = 3;
+                                case 3:
+                                    $val = 3;
 									break;
 								case 2:
 									$val = 4;
-									break;
-								case 3:
-									$val = 3;
 									break;
 								case 4:
 									$val = 5;

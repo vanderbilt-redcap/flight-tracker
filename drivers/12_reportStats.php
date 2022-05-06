@@ -1,8 +1,7 @@
 <?php
 
+namespace Vanderbilt\CareerDevLibrary;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\Grants;
-use \Vanderbilt\CareerDevLibrary\Download;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 

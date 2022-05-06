@@ -27,7 +27,7 @@ class CareerDev {
         if (self::getSetting("auto_recalculate", $pid)) {
             require_once(dirname(__FILE__) . "/drivers/6d_makeSummary.php");
             try {
-                makeSummary($token, $server, $pid, $recordId);
+                \Vanderbilt\CareerDevLibrary\makeSummary($token, $server, $pid, $recordId);
             } catch (\Exception $e) {
                 echo "<div class='centered padded red'>" . $e->getMessage() . "</div>\n";
             }
@@ -85,9 +85,7 @@ class CareerDev {
 
 	public static function getSites($all = TRUE) {
         $sites = [
-            "NIH ExPORTER" => "exporter.nih.gov",
             "NIH RePORTER" => "api.reporter.nih.gov",
-            "Federal RePORTER" => "api.federalreporter.nih.gov",
             "PubMed" => "eutils.ncbi.nlm.nih.gov",
             "PubMed Central Converter" => "www.ncbi.nlm.nih.gov",
             "iCite" => "icite.od.nih.gov",
@@ -95,6 +93,7 @@ class CareerDev {
             "Statistics Reporting" => "redcap.vanderbilt.edu",
             "Altmetric" => "api.altmetric.com",
             "Patents View (US Patent Office)" => "api.patentsview.org",
+            "NSF Grants" => "api.nsf.gov",
         ];
         if ($all || self::isScopusEnabled()) {
             $sites["Scopus (API)"] = "api.elsevier.com";
@@ -903,11 +902,6 @@ class CareerDev {
             if (self::has("patent") && $switches->isOn("Patents")) {
                 $ary["Patent Viewer"] = self::link("patents/view.php");
             }
-            if (self::isViDERInstalledForProject()) {
-                $ary["ViDER Visualizations"] = ExternalModules::getUrl("vider", "index.php")."&pid=".$pid;
-            } else if (self::isViDERInstalledForSystem()) {
-                $ary["Enable ViDER Visualizations"] = $r."/ExternalModules/manager/project.php?pid=".$pid;
-            }
             return $ary;
         }
 		if (($menuName == "Mentoring") || ($menuName == "Mentor") || ($menuName == "Mentors")) {
@@ -923,7 +917,7 @@ class CareerDev {
 			$ary = array_merge($ary, [
 					"List of Mentors" => self::link("/tablesAndLists/mentorList.php"),
 					"Mentor Performance" => self::link("/tablesAndLists/mentorConversion.php"),
-					"All Mentor Data" => self::link("/tablesAndLists/generateMentoringCSV.php"),
+					"All Mentor Data (CSV)" => self::link("/tablesAndLists/generateMentoringCSV.php"),
                     "Trainees Becoming Mentors" => self::link("/tablesAndLists/trainee2mentor.php"),
 					]);
 		    return $ary;
@@ -967,7 +961,7 @@ class CareerDev {
 					"Add/Modify a Cohort" => self::link("/cohorts/addCohort.php"),
 					"View Existing Cohorts" => self::link("/cohorts/viewCohorts.php"),
 					"Manage Cohorts" => self::link("/cohorts/manageCohorts.php"),
-					"Cohort Profiles" => self::link("/cohorts/profile.php"),
+					"Cohort Outcomes" => self::link("/cohorts/profile.php"),
 					"Export a Cohort" => self::link("/cohorts/exportCohort.php"),
                     "View Cohort Metrics" => self::link("/cohorts/selectCohort.php"),
                     "Hand-Pick a Cohort" => self::link("/cohorts/pickCohort.php"),
@@ -1029,7 +1023,7 @@ class CareerDev {
                     "Codebook" => self::link("/help/Codebook.pdf"),
 					"How to Extend?" => self::link("/help/extend.php"),
 					"Brand Your Project" => self::link("/help/brand.php"),
-					"Feedback" => self::link("/help/feedback.php"),
+					// "Feedback" => self::link("/help/feedback.php"),
 					];
 		}
 		if (($menuName == "Wrangle Data") || ($menuName == "Wrangle") || ($menuName == "Wrangler")) {

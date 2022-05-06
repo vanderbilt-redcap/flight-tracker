@@ -11,11 +11,28 @@ require_once(__DIR__ . '/ClassLoader.php');
 class NameMatcher {
     public static function matchInstitution($institution, $allInstitutions) {
         foreach ($allInstitutions as $inst) {
-            if (self::doNamesMatch($inst, $institution)) {
+            if (self::doInstitutionsMatch($inst, $institution)) {
+                Application::log("$inst and $institution match");
                 return TRUE;
             }
         }
         return FALSE;
+    }
+
+    public static function doInstitutionsMatch($i1, $i2) {
+        if (!$i1 || !$i2) {
+            return FALSE;
+        }
+        $i1 = strtolower($i1);
+        $i2 = strtolower($i2);
+        if ($i1 == $i2) {
+            return TRUE;
+        }
+        $delim = "|";
+        return (
+            preg_match($delim . preg_quote($i1, $delim) . $delim, $i2)
+            || preg_match($delim . preg_quote($i2, $delim) . $delim, $i1)
+        );
     }
 
     public static function matchLastName($lastName, $tokenOrArrayOfFirsts, $serverOrArrayOfLasts) {
@@ -126,16 +143,17 @@ class NameMatcher {
                 preg_replace($compoundRegex, "", $name2),
             ];
         }
+        $delim = "|";
         foreach ($pairs as $pair) {
             $n1 = $pair[0];
             $n2 = $pair[1];
             if (!self::isShortName($n1)) {
-                if (preg_match("/".preg_quote($n1, "/")."/i", $n2)) {
+                if (preg_match($delim.preg_quote($n1, $delim).$delim."i", $n2)) {
                     return TRUE;
                 }
             }
             if (!self::isShortName($n2)) {
-                if (preg_match("/".preg_quote($n2, "/")."/i", $n1)) {
+                if (preg_match($delim.preg_quote($n2, $delim).$delim."i", $n1)) {
                     return TRUE;
                 }
             }
@@ -685,7 +703,7 @@ class NameMatcher {
                             $newNodes[] = $nodes[$lastNodeIdx - 2] . " " . $nodes[$lastNodeIdx - 1] . " " . $nodes[$lastNodeIdx];
                             $changed = TRUE;
                             $nodes = $newNodes;
-                        } else if (preg_match("/^\((.+)\)$/", $nodes[$lastNodeIdx], $matches)) {
+                        } else if (preg_match("/^\((.+)\)$/", $nodes[$lastNodeIdx] ?? "", $matches)) {
                             if ($loggingOn) {
                                 echo "Do-while E: ".json_encode($nodes)."<br>";
                             }

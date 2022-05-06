@@ -2,12 +2,8 @@
 
 # must be run on server with access to its database
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Upload;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+namespace Vanderbilt\CareerDevLibrary;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\NameMatcher;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 

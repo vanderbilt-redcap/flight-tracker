@@ -476,6 +476,8 @@ class Grants {
             return new CustomGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
         } else if ($row['redcap_repeat_instrument'] == "followup") {
             return new FollowupGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "nsf") {
+            return new NSFGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
         } else if ($row['redcap_repeat_instrument'] === "") {
             $checkGf = new InitialGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
             $checkGf->setPrefix("check");
@@ -501,6 +503,7 @@ class Grants {
             "nih_reporter" => "NIH RePORTER",
             "exporter" => "NIH ExPORTER",
             "reporter" => "Federal RePORTER",
+            "nsf" => "NSF Grants",
             "coeus" => "COEUS",
             "coeus2" => "COEUS",
             "custom" => "REDCap Custom Grants",
@@ -521,6 +524,7 @@ class Grants {
 				"custom",
                 "nih_reporter",
                 "reporter",
+                "nsf",
 				"exporter",
 				"followup",
 				"scholars",
@@ -1568,7 +1572,8 @@ class Grants {
         $lastEndDate = "";
         for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
             if (
-                $normativeRow['summary_award_type_'.$i]
+                isset($normativeRow['summary_award_type_'.$i])
+                && $normativeRow['summary_award_type_'.$i]
                 && $normativeRow['summary_award_end_date_'.$i]
                 && in_array($normativeRow['summary_award_type_'.$i], $validTypes)
                 && (

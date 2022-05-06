@@ -64,7 +64,7 @@ class REDCapManagement {
 
     public static function getAllGrantFields($metadata) {
 	    $fields = ["record_id"];
-	    $forms = ["exporter", "nih_reporter", "reporter", "coeus", "custom_grants", "coeus2"];
+	    $forms = ["exporter", "nih_reporter", "reporter", "nsf", "coeus", "custom_grants", "coeus2"];
 	    foreach ($forms as $form) {
 	        $fields = array_unique(array_merge($fields, REDCapManagement::getFieldsFromMetadata($metadata, $form)));
         }
@@ -203,6 +203,8 @@ class REDCapManagement {
             $prefix = "exporter";
         } else if ($instrument == "nih_reporter") {
             $prefix = "nih";
+        } else if ($instrument == "nsf") {
+            $prefix = "nsf";
         } else if ($instrument == "citation") {
             $prefix = "citation";
         } else if ($instrument == "resources") {

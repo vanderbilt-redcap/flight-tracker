@@ -41,6 +41,11 @@ if (checkPOSTKeys(array_values($fields))) {
 		echo "<div class='green padded'>Scholar successfully added to Record $recordId. They will be automatically processed and updated with each overnight run.</div>\n";
 	}
 } else {
+    $incompleteMssg = "";
+    if ((count($_POST) > 0) && (count($_POST) < count($fields) + 1)) {
+        $incompleteMssg = "<div class='red padded'>Not all of the fields were filled out. No new record created.</div>";
+    }
+    echo $incompleteMssg;
 	echo "<h1>Add a New Scholar or Modify an Existing Scholar</h1>\n";
 
 	$link = CareerDev::link("addNewScholar.php");
@@ -48,9 +53,10 @@ if (checkPOSTKeys(array_values($fields))) {
 	echo Application::generateCSRFTokenHTML();
 	echo "<table style='margin:0px auto;'>\n";
 	foreach ($fields as $label => $var) {
+        $defaultValue = $_POST[$var] ?? "";
 		echo "<tr>\n";
 		echo "<td style='text-align: right; padding-right: 5px;'>$label:</td>\n";
-		echo "<td padding-left: 5px;'><input type='text' name='$var' style='width: 250px;'></td>\n";
+		echo "<td padding-left: 5px;'><input type='text' name='$var' style='width: 250px;' value='$defaultValue'></td>\n";
 		echo "</tr>\n";
 	}
 	echo "</table>\n";

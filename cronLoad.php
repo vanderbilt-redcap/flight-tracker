@@ -16,10 +16,6 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 	if (!$token) { global $token; }
 	if (!$server) { global $server; }
 
-	if (Application::isVanderbilt() && (date("Y-m-d") == "2022-03-11")) {
-	    return;
-    }
-
 	if ($specialOnly) {
 		// $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", date("Y-m-d"));
 		// $manager->addCron("drivers/2n_updateReporters.php", "updateReporter", date("Y-m-d"));
@@ -48,9 +44,6 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 30);
         } else if (in_array('exporter', $forms)) {
             $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday", $records, 20);
-        }
-        if ($has['news']) {
-            $manager->addCron("news/getNewsItems_func.php", "getNewsItems", "Friday", $records, 100);
         }
         if (in_array('ldap', $forms)) {
             $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Thursday", $records, 10000);
@@ -150,9 +143,6 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 		if ($has['vfrs']) {
 			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
 		}
-		if ($has['news']) {
-			$manager->addCron("news/getNewsItems_func.php", "getNewsItems", $date, $records);
-		}
         if (in_array("coeus", $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", $date, $records, 500);
         } else if (in_array("coeus2", $forms)) {
@@ -171,9 +161,6 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
             $manager->addCron("drivers/18_getPatents.php", "getPatents", $date, $records, 100);
         }
 
-        if (in_array("reporter", $forms)) {
-            // $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", $date, $records, 100);
-        }
         if (in_array("nih_reporter", $forms)) {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", $date, $records, 100);
         } else if (in_array("exporter", $forms)) {

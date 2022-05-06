@@ -193,7 +193,6 @@ function reformatMentees($menteesByRecordId, $convRateReturned) {
 
 arsort($numMentors);
 $cnt = 1;
-echo "<script src='../js/jquery.min.js'></script>";
 echo "<p class='centered'>(K) denotes on K or equivalent; (R) denotes on R01 or equivalent; (left) denotes left-institution; (off K) denotes a lack of conversion</p>";
 echo "<h2><a class='button' href='javascript:;' onclick='$(\"#table1\").show(); $(\"#table2\").hide();'>Sorted by Number of Mentees</a></h2>";
 echo "<h2><a class='button' href='javascript:;' onclick='$(\"#table1\").hide(); $(\"#table2\").show();'>Sorted by Conversion Rate</a></h2>";

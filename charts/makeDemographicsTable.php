@@ -340,7 +340,11 @@ function get_any_k_to_r_conversion_rate($data) {
 			}
 		}
 	}
-	return count($diffs)." (".(floor(1000 * count($diffs) / count($started)) / 10)."%)";
+    if (count($started) > 0) {
+        return count($diffs)." (".(floor(1000 * count($diffs) / count($started)) / 10)."%)";
+    } else {
+        return count($diffs);
+    }
 }
 
 # get average conversion time for external K's
@@ -377,7 +381,11 @@ function get_external_k_to_r_conversion_average($data) {
 	}
 
 	$sum = array_sum($diffs);
-	return (floor($sum * 10 / count($diffs)) / 10)." years";
+    if (count($diffs) > 0) {
+        return (floor($sum * 10 / count($diffs)) / 10)." years";
+    } else {
+        return $sum;
+    }
 }
 
 # get average conversion rate for external K's
@@ -416,7 +424,11 @@ function get_external_k_to_r_conversion_rate($data) {
 			}
 		}
 	}
-	return count($diffs)." (".(floor(1000 * count($diffs) / count($started)) / 10)."%)";
+    if (count($started) > 0) {
+        return count($diffs)." (".(floor(1000 * count($diffs) / count($started)) / 10)."%)";
+    } else {
+        return count($diffs);
+    }
 }
 
 # get percentage who have an internal K

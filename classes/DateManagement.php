@@ -189,7 +189,10 @@ class DateManagement {
     }
 
     public static function isDate($str) {
-        return self::isYMD($str) || self::isDMY($str) || self::isMDY($str);
+        if (is_string($str)) {
+            return self::isYMD($str) || self::isDMY($str) || self::isMDY($str);
+        }
+        return FALSE;
     }
 
     public static function isOracleDate($d) {

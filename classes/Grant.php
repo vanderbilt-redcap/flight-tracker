@@ -53,7 +53,7 @@ class Grant {
     # if $ts === FALSE, then calculate for all time
     public function getActiveBudgetAtTime($rows, $type, $ts, $sourcesToExclude = []) {
 	    # Do not use Federal RePORTER because data are incomplete
-        $orderedSources = ["nih_reporter", "exporter", "coeus2", "reporter", "followup", "custom"];
+        $orderedSources = ["nih_reporter", "exporter", "coeus", "reporter", "nsf", "followup", "custom"];
         $sourcesToSkip = ["followup", "custom"]; // have numbers over all time period, not current budget
         $baseNumber = $this->getBaseNumber();
         if (self::getShowDebug()) {
@@ -1279,7 +1279,7 @@ class Grant {
 		if ($this->isNIH()) {
 		    return TRUE;
         }
-		if (in_array($src, ["exporter", "reporter", "nih_reporter"])) {
+		if (in_array($src, ["exporter", "reporter", "nih_reporter", "nsf"])) {
 			return TRUE;
 		} else if ($src == "coeus") {
 			$isFederal = array(
@@ -1429,6 +1429,7 @@ class Grant {
             "nih_reporter" => 0,
             "reporter" => 0,
             "ldap" => 0,
+            "nsf" => 0,
             "followup" => 1,
             "scholars" => 1,
             "override" => 2,
@@ -1689,7 +1690,7 @@ class Grant {
         $r01EquivNumberOfYears = 3;
 
 		if (self::getShowDebug()) { Application::log($awardNo.": Second Pass"); }
-		$trainingGrantSources = ["coeus", "reporter", "exporter", "nih_reporter"];
+		$trainingGrantSources = ["coeus", "reporter", "exporter", "nih_reporter", "nsf"];
 		if ($awardNo == "") {
 			return "N/A";
 		} else if (($specs['pi_flag'] == "N") && !(preg_match("/\d[Kk][1L]2/", $awardNo))) {

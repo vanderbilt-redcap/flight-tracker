@@ -666,7 +666,6 @@ class CronManager {
     }
 
 	public function handle($e, $adminEmail, $cronjob) {
-		Application::log("Exception ".json_encode($e));
 		if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
 			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 		}
@@ -684,10 +683,10 @@ class CronManager {
 		$mssg .= "Cron: ".$cronjob->getTitle()."<br>";
 		$mssg .= "PID: ".$this->pid."<br>";
 		$mssg .= "Project: $projectTitle<br><br>";
-		$mssg .= $e->getMessage()."<br>".$e->getTraceAsString();
+		$mssg .= $e->getMessage()."<br/>Line: ".$e->getLine()." in ".$e->getFile()."<br/>".$e->getTraceAsString();
 
 		\REDCap::email($adminEmail, Application::getSetting("default_from", $this->pid), Application::getProgramName()." Cron Error", $mssg);
-		Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\n".$e->getTraceAsString());
+		Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\nLine: ".$e->getLine()." in ".$e->getFile()."\n".$e->getTraceAsString());
 	}
 
 	private $token;
@@ -735,6 +734,14 @@ class CronJob {
 		require_once($this->file);
 		if ($this->method) {
             $method = $this->method;
+            if (!function_exists($method)) {
+                $methodWithNamespace = __NAMESPACE__."\\".$method;
+                if (function_exists($methodWithNamespace)) {
+                    $method = $methodWithNamespace;
+                } else {
+                    throw new \Exception("Invalid method $method");
+                }
+            }
 			if ($passedToken && $passedServer && $passedPid) {
 			    if ($this->firstParameter) {
                     $method($passedToken, $passedServer, $passedPid, $records, $this->firstParameter);

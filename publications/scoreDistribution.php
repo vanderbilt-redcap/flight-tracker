@@ -125,6 +125,9 @@ echo "<h2>High-Performing Citations (Above RCR of $thresholdRCR, Count of ".REDC
 echo "<div class='max-width centered'>".implode("", $sortedCitations)."</div>";
 
 function buildDistribution($values, $field) {
+    if (empty($values)) {
+        return [[], []];
+    }
     $low = floor(min($values));
     $high = ceil(max($values));
 
