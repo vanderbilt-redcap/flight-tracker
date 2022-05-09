@@ -123,11 +123,16 @@ class Application {
 
     public static function generateCSRFToken() {
         $module = self::getModule();
-        return $module->getCSRFToken();
+        if (method_exists($module, "getCSRFToken")) {
+            return $module->getCSRFToken();
+        }
     }
 
     public static function generateCSRFTokenHTML() {
         $csrfToken = self::generateCSRFToken();
+        if (!$csrfToken) {
+            return "";
+        }
         return "<input type='hidden' id='redcap_csrf_token' name='redcap_csrf_token' value='$csrfToken' />";
     }
 
