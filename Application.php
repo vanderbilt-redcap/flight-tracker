@@ -123,8 +123,10 @@ class Application {
 
     public static function generateCSRFToken() {
         $module = self::getModule();
-        if (method_exists($module, "getCSRFToken")) {
+        if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "11.1.1")) {
             return $module->getCSRFToken();
+        } else {
+            return "";
         }
     }
 
