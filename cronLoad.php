@@ -90,6 +90,10 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         if (in_array('patent', $forms)) {
             $manager->addCron("drivers/18_getPatents.php", "getPatents", "Tuesday", $records, 100);
         }
+        if (in_array("nsf", $forms)) {
+            $manager->addCron("drivers/20_nsf.php", "getNSFGrants", "Monday", $records, 100);
+            $manager->addCron("drivers/20_nsf.php", "getNSFGrants", "2022-05-10", $records, 100);
+        }
 
         $cohorts = new Cohorts($token, $server, Application::getModule());
         if ($cohorts->hasReadonlyProjects()) {
@@ -159,6 +163,9 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         }
         if (in_array("patent", $forms)) {
             $manager->addCron("drivers/18_getPatents.php", "getPatents", $date, $records, 100);
+        }
+        if (in_array("nsf", $forms)) {
+            $manager->addCron("drivers/20_nsf.php", "getNSFGrants", $date, $records, 100);
         }
 
         if (in_array("nih_reporter", $forms)) {

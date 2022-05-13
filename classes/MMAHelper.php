@@ -890,6 +890,7 @@ function startNow() {
         $resources[] = "Flores G, Mendoza FS, DeBaun MR, Fuentes-Afflick E, Jones VF, Mendoza JA, Raphael JL, Wang CJ. Keys to academic success for under-represented minority young investigators: recommendations from the Research in Academic Pediatrics Initiative on Diversity (RAPID) National Advisory Committee. <i>Int J Equity Health</i>. 2019 Jun;18;18(1):93. https://doi.org/10.1186/s12939-019-0995-1";
         $resources[] = "Geraci SA, Thigpen SC. A review of mentoring in academic medicine. <i>Am J Med Sci</i>. 2017 Feb;353(2):151-7. https://doi.org/10.1016/j.amjms.2016.12.002";
         $resources[] = "Sambunjak D, Straus SE, Marusic A. A systematic review of qualitative research on the meaning and characteristics of mentoring in academic medicine. <i>J Gen Intern Med</i>. 2010 Jan;25(1):72-8. https://doi.org/10.1007/s11606-009-1165-8";
+        $resources[] = "Philip-Jones, L. 75 Things to Do with Your Mentee: Practical and Effective Development Ideas You Can Try. <i>The New Mentors and Proteges</i>. 2003. https://my.lerner.udel.edu/wp-content/uploads/75-Things-To-Do-With-Your-Mentees.pdf";
 
         foreach ($resources as $i => $resource) {
             $resource = REDCapManagement::fillInLinks($resource);
@@ -1235,6 +1236,7 @@ function characteristicsPopup(entity) {
 
         $isFirstTime = self::isFirstEntryForUser($redcapData, $username, $menteeRecordId, $currInstance);
         $firstTimeSections = [
+            "<h3>Getting Started</h3>",
             "<h3>Mentee-Mentor 1:1 Meetings</h3>",
             "<h3>Lab Meetings</h3>",
             "<h3>Communication</h3>",
@@ -1744,6 +1746,7 @@ function characteristicsPopup(entity) {
         $str = preg_replace("/Scientific Development/i", "Scientific Dev't", $str);
         $str = preg_replace("/Financial Support/i", "Financials", $str);
         $str = preg_replace("/Mentee-Mentor 1:1 Meetings/i", "Meetings", $str);
+        $str = preg_replace("/Getting Started/i", "", $str);
         $str = preg_replace("/Next/i", "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Next", $str);
         return $str;
     }

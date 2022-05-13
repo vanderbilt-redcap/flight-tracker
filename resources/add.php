@@ -41,7 +41,7 @@ if (isset($_POST['resource']) && $_POST['resource'] && isset($_POST['matched']) 
 	$numUploaded = 0;
 	foreach ($records as $pidAndRecord) {
 	    if (preg_match("/:/", $pidAndRecord)) {
-            list($currPid, $recordId) = preg_split("/:/", $pidAndRecord);
+            list($currPid, $recordId, $mechanism) = preg_split("/:/", $pidAndRecord);
             $token = Application::getSetting("token", $currPid);
             $server = Application::getSetting("server", $currPid);
             if ($token && $server && in_array($currPid, $pids)) {
@@ -55,7 +55,7 @@ if (isset($_POST['resource']) && $_POST['resource'] && isset($_POST['matched']) 
                     }
                 }
                 if ($resource) {
-                    $feedback = Upload::resource($recordId, $resource, $token, $server, $requestedDate);
+                    $feedback = Upload::resource($recordId, $resource, $token, $server, $requestedDate, $mechanism);
                     if ($feedback['count']) {
                         $numUploaded += $feedback['count'];
                     } else if ($feedback['item_count']) {
@@ -172,7 +172,7 @@ foreach ($allResourcesLabels as $choice) {
         <p class='centered'>(One per line.)</p>
         <table style='margin-left: auto; margin-right: auto;'><tr>
                 <td style='width: 33%;'>
-                    <h4 class='trim_lower_margin'>Sign in First and Last Names</h4>
+                    <h4 class='trim_lower_margin'>Sign in First and Last Names<br/>(with any associated grants trailing in square-brackets)</h4>
                     <textarea class='sign_in' id='roster' name='roster'></textarea>
                 </td>
                 <td style='width: 33%;'>
@@ -246,18 +246,21 @@ function getUploadAryFromRoster($matched, $pids) {
             if (!preg_match("/$prefix/", $matchedName)) {
                 if ($matchedName) {
                     $name = preg_replace("/ \([^\)]+\)$/", "", $matchedName);
+                    list($name, $mechanism) = parseMechanism($name);
+                    $mechanismSuffix = $mechanism ? " [$mechanism]" : "";
                     $name = trim(strtolower($name));
                     if (!in_array($name, $roster)) {
-                        $roster[] = $name;
+                        $roster[] = $name.$mechanismSuffix;
                     }
                 }
             }
         }
 
         foreach ($roster as $name) {
-            $recordId = $names[$name] ?? FALSE;
+            list($name, $mechanism) = parseMechanism($name);
+            $recordId = $names[$name];
             if ($recordId) {
-                $pidAndRecord = "$currPid:$recordId";
+                $pidAndRecord = "$currPid:$recordId:$mechanism";
                 # for names that appear twice
                 if (!in_array($pidAndRecord, $records)) {
                     $records[] = $pidAndRecord;
@@ -266,6 +269,16 @@ function getUploadAryFromRoster($matched, $pids) {
         }
     }
     return $records;
+}
+
+function parseMechanism($name) {
+    if (preg_match("/ \[(.+?)\]/", $name, $matches)) {
+        if (count($matches) > 1) {
+            $name = preg_replace("/ \[.+?\]/", "", $name);
+            return [$name, strtoupper($matches[1])];
+        }
+    }
+    return [$name, ""];
 }
 
 function reformatSplitLines($lines) {

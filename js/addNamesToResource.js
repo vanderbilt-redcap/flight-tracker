@@ -57,8 +57,12 @@ function recalculateNames(lines) {
 	for (let i = 0; i < reformattedLines.length; i++) {
 		if (reformattedLines[i]) {
 			const line = reformattedLines[i].toLowerCase();
-			let matchedName = '';
+			const bracketMatches = line.match(/\[.+?\]/);
+			const mechanism = (bracketMatches && (bracketMatches.length > 0)) ? bracketMatches[0].replace(/[\[\]]/g, "") : "";
+			const nameInLine = (bracketMatches && (bracketMatches.length > 0)) ? line.replace(" "+bracketMatches[0], "") : line;
+			const mechanismInBrackets = mechanism ? " [" + mechanism.toUpperCase() + "]" : "";
 
+			let matchedName = '';
 			for (const pid in names) {
 				for (const rec in names[pid]) {
 					const name = {};
@@ -80,7 +84,7 @@ function recalculateNames(lines) {
 					for (const place in name) {
 						for (let k = 0; k < name[place].length; k++) {
 							const re = new RegExp(name[place][k].toLowerCase());
-							if (line.match(re)) {
+							if (nameInLine.match(re)) {
 								matches.push(place);
 								break;
 							}
@@ -89,7 +93,7 @@ function recalculateNames(lines) {
 
 					// at least 2 name matches on first or last
 					if (matches.length >= 2) {
-						const name = names[pid][rec]['first'] + ' ' + names[pid][rec]['last'] + ' (' + projects[pid] + ')';
+						const name = names[pid][rec]['first'] + ' ' + names[pid][rec]['last'] + mechanismInBrackets + ' (' + projects[pid] + ')';
 						if (matchedName && matchedName.match(prefixRegEx)) {
 							matchedName += getNameDelimiter()+name;
 						} else if (matchedName) {

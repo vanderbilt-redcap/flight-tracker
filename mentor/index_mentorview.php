@@ -123,20 +123,22 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                                 $displayTable = " display: none;";
                             }
                             $htmlRows[] = "<table id='$tableId' class='table $encodedSection' style='margin-left: 0px;$displayTable'>";
-                            $htmlRows[] = '<thead>';
-                            $htmlRows[] = '<tr>';
-                            $htmlRows[] = '<th style="text-align: left;" scope="col"></th>';
-                            $htmlRows[] = '<th style="text-align: center; border-right: 0px;" scope="col"></th>';
-                            $htmlRows[] = '<th style="text-align: center;" scope="col"></th>';
-                            $htmlRows[] = '<th style="text-align: center;" scope="col"></th>';
-                            $htmlRows[] = '</tr>';
-                            $htmlRows[] = '<tr>';
-                            $htmlRows[] = '<th style="text-align: left;" scope="col">question</th>';
-                            $htmlRows[] = '<th style="text-align: center;" scope="col">mentor responses</th>';
-                            $htmlRows[] = '<th style="text-align: center;" scope="col">latest note<br>(click for full conversation)</th>';
-                            $htmlRows[] = '<th style="text-align: center;" scope="col">mentee responses</th>';
-                            $htmlRows[] = '</tr>';
-                            $htmlRows[] = '</thead>';
+                            if ($row['field_type'] != "descriptive") {
+                                $htmlRows[] = '<thead>';
+                                $htmlRows[] = '<tr>';
+                                $htmlRows[] = '<th style="text-align: left;" scope="col"></th>';
+                                $htmlRows[] = '<th style="text-align: center; border-right: 0px;" scope="col"></th>';
+                                $htmlRows[] = '<th style="text-align: center;" scope="col"></th>';
+                                $htmlRows[] = '<th style="text-align: center;" scope="col"></th>';
+                                $htmlRows[] = '</tr>';
+                                $htmlRows[] = '<tr>';
+                                $htmlRows[] = '<th style="text-align: left;" scope="col">question</th>';
+                                $htmlRows[] = '<th style="text-align: center;" scope="col">mentor responses</th>';
+                                $htmlRows[] = '<th style="text-align: center;" scope="col">latest note<br>(click for full conversation)</th>';
+                                $htmlRows[] = '<th style="text-align: center;" scope="col">mentee responses</th>';
+                                $htmlRows[] = '</tr>';
+                                $htmlRows[] = '</thead>';
+                            }
                             $htmlRows[] = '<tbody>';
                             
                             $tableNum++;
@@ -184,40 +186,46 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                             } else {
                                 $statusClass = " class='$status'";
                             }
-                            $htmlRows[] = "<tr id='$field-tr'$statusClass>";
-                            $htmlRows[] = '<th scope="row">'.$row['field_label'].'</th>';
-                            $prefix = $prefices[$row['field_type']];
-                            foreach ($specs as $key => $spec) {
-                                $suffix = "";
-                                if (in_array($row['field_type'], ["checkbox", "radio"])) {
-                                    $htmlRows[] = "<td class='{$spec['colClass']}'>";
-                                    foreach ($choices[$field] as $index => $label) {
-                                        $name = $prefix.$field.$spec['suffix'];
-                                        $id = $name."___".$index;
-                                        $selected = "";
-                                        if (in_array($index, $spec['values'])) {
-                                            $selected = "checked";
+                            if ($row['field_type'] == "descriptive") {
+                                $htmlRows[] = "<tr id='$field-tr'$statusClass>";
+                                $htmlRows[] = '<td colspan="4">'.$row['field_label'].'</td>';
+                                $htmlRows[] = "</tr>";
+                            } else {
+                                $htmlRows[] = "<tr id='$field-tr'$statusClass>";
+                                $htmlRows[] = '<th scope="row">'.$row['field_label'].'</th>';
+                                $prefix = $prefices[$row['field_type']];
+                                foreach ($specs as $key => $spec) {
+                                    $suffix = "";
+                                    if (in_array($row['field_type'], ["checkbox", "radio"])) {
+                                        $htmlRows[] = "<td class='{$spec['colClass']}'>";
+                                        foreach ($choices[$field] as $index => $label) {
+                                            $name = $prefix.$field.$spec['suffix'];
+                                            $id = $name."___".$index;
+                                            $selected = "";
+                                            if (in_array($index, $spec['values'])) {
+                                                $selected = "checked";
+                                            }
+                                            $htmlRows[] = '<div class="form-check"><input class="form-check-input" onclick="doMMABranching();" type="'.$row['field_type'].'" name="'.$name.'" id="'.$id.'" value="'.$index.'" '.$selected.' '.$spec['status'].'><label class="form-check-label" for="'.$id.'">'.$label.'</label></div>';
                                         }
-                                        $htmlRows[] = '<div class="form-check"><input class="form-check-input" onclick="doMMABranching();" type="'.$row['field_type'].'" name="'.$name.'" id="'.$id.'" value="'.$index.'" '.$selected.' '.$spec['status'].'><label class="form-check-label" for="'.$id.'">'.$label.'</label></div>';
-                                    }
-                                    $htmlRows[] = '</td>';
-                                } else if (($row['field_type'] == "notes") && ($key == "mentor")) {
-                                    $name = $prefix.$field.$spec['suffix'];
-                                    $id = $name;
-                                    $mentorValue = $spec['values'][0];
-                                    $menteeValue = $menteeInstance ? REDCapManagement::findField($redcapData, $menteeRecordId, $field, "mentoring_agreement", $menteeInstance) : "";
-                                    if ($mentorValue) {
-                                        $value = $mentorValue;
-                                    } else {
-                                        $value = $menteeValue;
-                                    }
+                                        $htmlRows[] = '</td>';
+                                    } else if (($row['field_type'] == "notes") && ($key == "mentor")) {
+                                        $name = $prefix.$field.$spec['suffix'];
+                                        $id = $name;
+                                        $mentorValue = $spec['values'][0];
+                                        $menteeValue = $menteeInstance ? REDCapManagement::findField($redcapData, $menteeRecordId, $field, "mentoring_agreement", $menteeInstance) : "";
+                                        if ($mentorValue) {
+                                            $value = $mentorValue;
+                                        } else {
+                                            $value = $menteeValue;
+                                        }
 
-                                    $htmlRows[] = "<td class='{$spec['colClass']}' colspan='3'>";
-                                    $htmlRows[] = '<div class="form-check" style="height: 100px;"><textarea class="form-check-input" name="'.$name.'" id="'.$id.'">'.$value.'</textarea></div>';
-                                    $htmlRows[] = '</td>';
-                                }
-                                if ($key == "mentor") {
-                                    $htmlRows[] = MMAHelper::makeNotesHTML($field, [$menteeInstanceRow], $menteeRecordId, $menteeInstance, $notesFields);
+                                        $htmlRows[] = "<td class='{$spec['colClass']}' colspan='3'>";
+                                        $htmlRows[] = '<div class="form-check" style="height: 100px;"><textarea class="form-check-input" name="'.$name.'" id="'.$id.'">'.$value.'</textarea></div>';
+                                        $htmlRows[] = '</td>';
+                                    }
+                                    if ($key == "mentor") {
+                                        $htmlRows[] = MMAHelper::makeNotesHTML($field, [$menteeInstanceRow], $menteeRecordId, $menteeInstance, $notesFields);
+                                    }
                                 }
                             }
                         }

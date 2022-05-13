@@ -406,9 +406,10 @@ public static function metadata($metadata, $token, $server) {
 		return $feedback;
 	}
 
-	public static function resource($recordId, $value, $token, $server, $date = "AUTOFILL") {
-		$redcapData = Download::resources($token, $server, $recordId); 
-		$maxInstance = 0;
+	public static function resource($recordId, $value, $token, $server, $date = "AUTOFILL", $grant = "") {
+		$redcapData = Download::resources($token, $server, $recordId);
+        $metadataFields = Download::metadataFields($token, $server);
+        $maxInstance = 0;
 		if ($date == "AUTOFILL") {
 			$date = date("Y-m-d");
 		}
@@ -420,14 +421,18 @@ public static function metadata($metadata, $token, $server) {
 		}
 		$maxInstance++;
 
-		$uploadRow = array(
-					"record_id" => $recordId,
-					"redcap_repeat_instrument" => "resources",
-					"redcap_repeat_instance" => $maxInstance,
-					"resources_date" => $date,
-					"resources_resource" => $value,
-					"resources_complete" => "2",
-					);
+		$uploadRow = [
+            "record_id" => $recordId,
+            "redcap_repeat_instrument" => "resources",
+            "redcap_repeat_instance" => $maxInstance,
+            "resources_date" => $date,
+            "resources_resource" => $value,
+            "resources_complete" => "2",
+        ];
+        if ($grant && in_array("resources_grant", $metadataFields)) {
+            $uploadRow["resources_grant"] = $grant;
+        }
+
 		return self::oneRow($uploadRow, $token, $server);
 	}
 

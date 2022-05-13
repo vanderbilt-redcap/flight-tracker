@@ -102,6 +102,9 @@ if ($hash) {
           $hasRows = FALSE;
           $skipFieldTypes = ["file", "text"];
           foreach ($metadata as $metadataRow) {
+              if ($menteeRow['field_type'] == "descriptive") {
+                  continue;
+              }
               if ($metadataRow['section_header']) {
                   list($sec_header, $sec_descript) = MMAHelper::parseSectionHeader($metadataRow['section_header']);
                   if (!empty($htmlRows)) {
@@ -121,7 +124,7 @@ if ($hash) {
                   $value = "";
                   if ($choices[$field] && $choices[$field][$row[$field]]) {
                       $value = $choices[$field][$row[$field]];
-                  } else {
+                  } else if ($row[$field] !== "") {
                       $value = preg_replace("/\n/", "<br>", $row[$field]);
                       $value = preg_replace("/<script>.+<\/script>/", "", $value);   // security
                   }
@@ -130,7 +133,9 @@ if ($hash) {
                   if ($menteeRow[$possibleNotesField]) {
                       $notesText = "<div class='smaller notesText'>".preg_replace("/\n/", "<br>", $menteeRow[$possibleNotesField])."</div><!-- <div class='smaller'><a href='javascript:;' class='notesShowHide' onclick='showHide(this);'>hide chatter</a></div> -->";
                   }
-                  if ($metadataRow['field_type'] == "notes") {
+                  if ($metadataRow['field_type'] == "descriptive") {
+                      $htmlRows[] = $metadataRow['field_label'];
+                  } else if ($metadataRow['field_type'] == "notes") {
                       $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><span>".$value."</span></li>";
                   } else {
                       $htmlRows[] = "<li>".$metadataRow['field_label'].": <span>".$value."</span>$notesText</li>";

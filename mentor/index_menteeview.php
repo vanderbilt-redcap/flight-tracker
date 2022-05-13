@@ -226,6 +226,9 @@ foreach ($metadata as $row) {
                 <div class="smallHeader"><?= MMAHelper::getSectionExpandMessage() ?></div>
             </div>
           <table id="quest1" class="table <?= $encodedSection ?>" style="margin-left: 0px;<?= $displayCSS ?>">
+              <?php
+              if ($row['field_type'] != "descriptive") {
+              ?>
               <thead>
               <tr>
                   <th style="text-align: left;" scope="col"></th>
@@ -239,6 +242,9 @@ foreach ($metadata as $row) {
                   <th style="text-align: center;" scope="col">latest note<br>(click for full conversation)</th>
               </tr>
               </thead>
+              <?php
+              }
+              ?>
               <tbody>
     <?php
   }
@@ -297,6 +303,13 @@ foreach ($metadata as $row) {
           </td>
       </tr>
     <?php
+  } else if ($row['field_type'] == "descriptive") {
+      $rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
+      ?>
+      <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>>
+          <td colspan="3"><?= $row['field_label'] ?></td>
+      </tr>
+      <?php
   }
 
 
