@@ -15,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.9.0";
+		return "4.9.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -792,6 +792,7 @@ class CareerDev {
             "reporter" => "Federal Reporter (online database)",
             "exporter" => "NIH ExPORTER (online database)",
             "nih_reporter" => "NIH RePORTER (online database)",
+            "nsf" => "NSF Grants",
         ];
 	    if (self::isVanderbilt()) {
 	        $itemChoices = array_merge($itemChoices, [
