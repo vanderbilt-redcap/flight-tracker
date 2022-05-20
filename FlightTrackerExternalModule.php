@@ -170,14 +170,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     public function cleanupExtModLogs($pid, $daysPrior) {
         $ts = time() - $daysPrior * 24 * 3600;
         $thresholdTs = date("Y-m-d", $ts);
+        $externalModuleId = CareerDev::getModuleId();
         Application::log("Removing logs prior to $thresholdTs", $pid);
         $numIterations = 0;
-        $fromAndWhereClause = "FROM redcap_external_modules_log WHERE timestamp <= ? AND project_id = ?";
+        $fromAndWhereClause = "FROM redcap_external_modules_log WHERE external_module_id = ? AND timestamp <= ? AND project_id = ?";
         do {
-            $deleteSql = "DELETE $fromAndWhereClause ORDER BY log_id LIMIT 10000";
+            $deleteSql = "DELETE $fromAndWhereClause ORDER BY log_id LIMIT 1000";
             $selectSql = "SELECT log_id $fromAndWhereClause ORDER BY log_id LIMIT 1";
-            $this->query($deleteSql, [$thresholdTs, $pid]);
-            $result = $this->query($selectSql, [$thresholdTs, $pid]);
+            $this->query($deleteSql, [$externalModuleId, $thresholdTs, $pid]);
+            $result = $this->query($selectSql, [$externalModuleId, $thresholdTs, $pid]);
             $moreToDelete = $result && $result->fetch_assoc();
             $numIterations++;
         } while ($moreToDelete && ($numIterations < 50000));

@@ -1292,12 +1292,52 @@ function copyToClipboard(element) {
     $temp.remove();
 }
 
-function summarizeRecordNow(url, recordId, csrfToken) {
+function confirmRestartData(url, recordId, csrfToken, fetchType) {
+	const mssg = "Are you certain that you want to DELETE and refresh all "+fetchType+"?";
+	const buttons = {};
+	if (isREDCapPage()) {
+		buttons["Delete and Refresh "+fetchType] = function() { restartDataNow(url, recordId, csrfToken, fetchType); };
+		buttons["Cancel"] = function() { };
+	} else {
+		buttons["Delete and Refresh "+fetchType] = function() { restartDataNow(url, recordId, csrfToken, fetchType); $(this).dialog("close"); };
+		buttons["Cancel"] = function() { $(this).dialog("close"); };
+	}
+
+	showButtonDialog("Confirm Delete", mssg, buttons, 400);
+}
+
+function isREDCapPage() {
+	const myURL = window.location.href;
+	return myURL.match(/redcap_v\d/) && !myURL.match(/ExternalModules/);
+}
+
+function showButtonDialog(title, mssg, buttonConfigs, width) {
+	if (isREDCapPage()) {
+		// Use REDCap function
+		const buttonLabels = Object.keys(buttonConfigs);
+		simpleDialog(mssg, title, 'dialog-confirm', width, function() { buttonConfigs[buttonLabels[1]](); }, buttonLabels[1], function() { buttonConfigs[buttonLabels[0]](); }, buttonLabels[0], true);
+	} else {
+		// Use jQuery UI if available
+		const mssgHTML = '<p>'+mssg+'</p>';
+		$('body').append('<div id="dialog-confirm" title="'+title+'">'+mssgHTML+'</div>');
+		$( "#dialog-confirm" ).dialog({
+			resizable: false,
+			height: "auto",
+			width: width,
+			modal: true,
+			buttons: buttonConfigs
+		});
+	}
+}
+
+function restartDataNow(url, recordId, csrfToken, fetchType) {
 	const postdata = {
 		record: recordId,
 		redcap_csrf_token: csrfToken,
+		fetchType: fetchType,
+		action: 'delete',
 	}
-	if (!url.match(/summarizeRecordNow/)) {
+	if (!url.match(/fetchDataNow/)) {
 		$.sweetModal({
 			content: 'Invalid URL.',
 			icon: $.sweetModal.ICON_ERROR
@@ -1305,7 +1345,37 @@ function summarizeRecordNow(url, recordId, csrfToken) {
 		return;
 	}
 	const imageUrl = url.replace(/page=[^&]+/, "page="+encodeURIComponent("img/loading.gif"));
-	presentScreen("Regenerating Summary Form for Record "+recordId, imageUrl);
+	presentScreen("Deleting "+fetchType+" for Record "+recordId, imageUrl);
+	$.post(url, postdata, function(html) {
+		console.log(html);
+		clearScreen();
+		if (html.match(/error/i)) {
+			$.sweetModal({
+				content: 'ERROR: ' + html,
+				icon: $.sweetModal.ICON_ERROR
+			});
+		} else {
+			fetchDataNow(url, recordId, csrfToken, fetchType);
+		}
+	});
+}
+
+function fetchDataNow(url, recordId, csrfToken, fetchType) {
+	const postdata = {
+		record: recordId,
+		redcap_csrf_token: csrfToken,
+		fetchType: fetchType,
+		action: 'fetch',
+	}
+	if (!url.match(/fetchDataNow/)) {
+		$.sweetModal({
+			content: 'Invalid URL.',
+			icon: $.sweetModal.ICON_ERROR
+		});
+		return;
+	}
+	const imageUrl = url.replace(/page=[^&]+/, "page="+encodeURIComponent("img/loading.gif"));
+	presentScreen("Refreshing "+fetchType+" for Record "+recordId, imageUrl);
 	$.post(url, postdata, function(html) {
 		console.log(html);
 		clearScreen();
@@ -1316,7 +1386,7 @@ function summarizeRecordNow(url, recordId, csrfToken) {
 			});
 		} else {
 			$.sweetModal({
-				content: 'Record summary form has been regenerated.',
+				content: 'Record '+recordId+' has had its '+fetchType+' refreshed. You may need to refresh your browser to see the latest results.',
 				icon: $.sweetModal.ICON_SUCCESS
 			});
 		}

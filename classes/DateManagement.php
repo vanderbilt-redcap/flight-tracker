@@ -5,6 +5,18 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class DateManagement {
+    public static function getFederalFiscalYear($ts = FALSE) {
+        if (!$ts) {
+            $ts = time();
+        }
+        $month = (int) date("m", $ts);
+        $year = (int) date("Y", $ts);
+        if ($month >= 10) {
+            $year++;
+        }
+        return $year;
+    }
+
     public static function getWeekNumInYear($ts = FALSE) {
         if (!$ts) {
             $ts = time();

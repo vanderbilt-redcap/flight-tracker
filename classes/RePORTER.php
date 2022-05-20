@@ -25,6 +25,33 @@ class RePORTER {
         }
     }
 
+    public function getTotalDollarsForInstitution($institution, $fiscalYear) {
+        if ($this->isFederal()) {
+            # retired
+            return 0;
+        } else if ($this->isNIH()) {
+            $payload = [
+                "criteria" => [
+                    "org_names" => [$institution],
+                ],
+            ];
+            $location = $this->server."/v1/projects/search";
+            $this->currData = $this->runPOSTQuery($location, $payload);
+            foreach ($this->currData as $line) {
+                if ($line['nih_agency_ic_fundings']) {
+                    $fiscalData = json_decode($line['nih_agency_ic_fundings']) ?? [];
+                    foreach ($fiscalData as $fiscalRow) {
+                        $oneYearsData = json_decode($fiscalRow, TRUE);
+                        if ($oneYearsData['fy'] == $fiscalYear) {
+                            $total += $oneYearsData['total_cost'];
+                        }
+                    }
+                }
+            }
+        }
+        return $total;
+    }
+
     public function getProjectDatesForAward($baseNumber) {
         $largestTimespan = 0;
         $largestStartTs = 0;

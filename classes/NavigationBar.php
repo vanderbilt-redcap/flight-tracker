@@ -36,7 +36,7 @@ class NavigationBar {
 		if (!$pid) {
 			$pid = REDCapManagement::sanitize($_GET['pid']);
 		}
-		if (preg_match("/^http/", $link)) {
+		if (str_starts_with($link, "http") && !str_starts_with($link, "https://localhost/")) {
 			return $link;
 		} else if (!preg_match("/pid=\d+/", $link)) {
 			if (!preg_match("/\?/", $link)) {

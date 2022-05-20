@@ -38,11 +38,11 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
   <link href="<?= Application::link("mentor/vendor/fontawesome-free/css/all.min.css") ?>" rel="stylesheet">
   <link href="<?= Application::link("mentor/vendor/simple-line-icons/css/simple-line-icons.css") ?>" rel="stylesheet" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css">
-
 <link rel="stylesheet" href="<?= Application::link("/css/typekit.css").Application::getVersion() ?>">
 
   <!-- Custom styles for this template -->
   <link href="<?= Application::link("mentor/css/landing-page.css") ?>" rel="stylesheet">
+    <link rel='icon' type='image/png' href='<?= Application::link("/img/flight_tracker_icon.png") ?>' />
 
     <script>
         function getCSRFToken() {

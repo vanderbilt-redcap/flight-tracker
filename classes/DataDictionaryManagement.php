@@ -288,17 +288,15 @@ class DataDictionaryManagement {
                         && !empty($choices["REDCap"][$field])
                         && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])
                     ) {
-                        if ($isSpecialGenderField) {
+                        if (!$isSpecialGenderField) {
                             $missing[] = $field;
                             $changed[] = $field;
                         }
                     } else {
                         foreach ($metadataFields as $metadataField) {
                             if (self::hasMetadataChanged($indexedMetadata["REDCap"][$field][$metadataField], $indexedMetadata["file"][$field][$metadataField], $metadataField)) {
-                                if ($isSpecialGenderField) {
-                                    $missing[] = $field;
-                                    $changed[] = $field;
-                                }
+                                $missing[] = $field;
+                                $changed[] = $field;
                                 break; // metadataFields loop
                             }
                         }

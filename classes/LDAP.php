@@ -492,12 +492,37 @@ class LdapLookup {
 			return false;
 		}
 
-		// This DC specific url is required to authenticate users other than the redcap01 user.
-		// This url does not seem to work with ldap_search() though, or I would have used it in the initialize() function as well.
-		$connection = @ldap_connect("ldap://DC-M1.ds.vanderbilt.edu");
-		return @ldap_bind($connection, "$vunetid@vanderbilt.edu", $password);
+        foreach(self::getDSNs() as $dsn){
+            $connection = @ldap_connect($dsn['url']);
+            if(@ldap_bind($connection, "uid=$vunetid,ou=people,dc=vanderbilt,dc=edu", $password)){
+                return true;
+            }
+        }
 	}
 
-	const MAX_RETRIES = 5;
+    # from ori1007lt:/app001/www/redcap/webtools2/ldap/ldap_config.php
+    private static function getDSNs()
+    {
+        return [
+            [
+                'url' => 'ldaps://ldap.vunetid.mc.vanderbilt.edu',
+                'port' => '636',
+                'version' => '3',
+                'binddn' => 'uid=' . $_POST['username'] . ',ou=people,dc=vanderbilt,dc=edu',
+                'basedn' => 'ou=people,dc=vanderbilt,dc=edu',
+                'bindpw' => $_POST['password']
+            ],
+            [
+                'url' => 'ldaps://ldap.vunetid.vanderbilt.edu',
+                'port' => '636',
+                'version' => '3',
+                'binddn' => 'uid=' . $_POST['username'] . ',ou=people,dc=vanderbilt,dc=edu',
+                'basedn' => 'ou=people,dc=vanderbilt,dc=edu',
+                'bindpw' => $_POST['password']
+            ]
+        ];
+    }
+
+    const MAX_RETRIES = 5;
 }
 

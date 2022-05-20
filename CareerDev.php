@@ -15,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.9.1";
+		return "4.10.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -169,10 +169,10 @@ class CareerDev {
                 $mssg = REDCapManagement::sanitize($mssg);
                 if ($pid) {
                     error_log("$pid: $mssg");
-                    echo "$pid: $mssg\n";
+                    // echo "$pid: $mssg\n";
                 } else {
                     error_log($mssg);
-                    echo "$mssg\n";
+                    // echo "$mssg\n";
                 }
             }
 	        return;

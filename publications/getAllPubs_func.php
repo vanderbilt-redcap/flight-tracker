@@ -89,18 +89,24 @@ function getPubs($token, $server, $pid, $records) {
                 $rows = Publications::getCitationsFromPubMed($pmids, $metadata, "pubmed", $recordId, 1, [], $pid);
                 foreach ($pmidsByInstance as $instance => $pmid) {
                     foreach ($rows as $row) {
-                        if ($row['pmid'] == $pmid) {
-                            if ($row['citation_year'] || $row['citation_month'] || $row['citation_day']) {
-                                $uploadRow = [
-                                    "record_id" => $recordId,
-                                    "redcap_repeat_instrument" => "citation",
-                                    "redcap_repeat_instance" => $instance,
-                                    "citation_year" => $row['citation_year'],
-                                    "citation_month" => $row['citation_month'],
-                                    "citation_day" => $row['citation_day'],
-                                ];
-                                Upload::oneRow($uploadRow, $token, $server);
-                            }
+                        if (
+                            isset($row['pmid'])
+                            && ($row['pmid'] == $pmid)
+                            && (
+                                $row['citation_year']
+                                || $row['citation_month']
+                                || $row['citation_day']
+                            )
+                        ) {
+                            $uploadRow = [
+                                "record_id" => $recordId,
+                                "redcap_repeat_instrument" => "citation",
+                                "redcap_repeat_instance" => $instance,
+                                "citation_year" => $row['citation_year'],
+                                "citation_month" => $row['citation_month'],
+                                "citation_day" => $row['citation_day'],
+                            ];
+                            Upload::oneRow($uploadRow, $token, $server);
                         }
                     }
                 }
@@ -396,8 +402,11 @@ function addPMIDsIfNotFound(&$pmids, &$citationIds, $currPMIDs, $recordId) {
         $foundType = inCitationIds($citationIds, $pmid, $recordId);
         $alreadyInPMIDs = in_array($pmid, $pmids);
         if (!$foundType && !$alreadyInPMIDs) {
-            array_push($pmids, $pmid);
-            array_push($citationIds['New'][$recordId], $pmid);
+            $pmids[] = $pmid;
+            if (!isset($citationIds['New'][$recordId])) {
+                $citationIds['New'][$recordId] = [];
+            }
+            $citationIds['New'][$recordId][] = $pmid;
         } else if ($foundType) {
             Application::log("Record $recordId: Skipping $pmid because in citation ids ($pmidNum/$pmidCount)");
         } else if ($alreadyInPMIDs) {
@@ -463,7 +472,7 @@ function binREDCapRows($redcapData, &$citationIds) {
 
 function inCitationIds($citationIds, $pmid, $recordId) {
 	foreach ($citationIds as $type => $typeCitationIds) {
-		if (in_array($pmid, $typeCitationIds[$recordId])) {
+		if (in_array($pmid, $typeCitationIds[$recordId] ?? [])) {
 			return $type;
 		}
 	}
@@ -481,7 +490,7 @@ function clearAllCitations($pid, $records) {
 
 function fetchPMIDs($pubMedData) {
     $pmids = [];
-    if ($pubMedData["data"]) {
+    if (isset($pubMedData["data"])) {
         foreach ($pubMedData["data"] as $sourceData) {
             if ($sourceData["publications"]) {
                 foreach ($sourceData["publications"] as $pub) {

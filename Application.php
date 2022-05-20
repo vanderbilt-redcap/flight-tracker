@@ -202,21 +202,22 @@ class Application {
         $str .= "<link rel='stylesheet' href='".self::link("/css/w3.css")."' />";
         $str .= "<script src='".self::link("/js/base.js")."&$version'></script>";
 
-        $url = $_SERVER['PHP_SELF'];
-        if (
-            preg_match("/ExternalModules/", $url)
-            || preg_match("/external_modules/", $url)
-            || preg_match("/\/plugins\//", $url)
-        ) {
-            $str .= "<script src='".self::link("/js/jquery.min.js")."'></script>";
+        $baseUrl = $_SERVER['PHP_SELF'];
+        $isExtModPage = preg_match("/ExternalModules/", $baseUrl) || preg_match("/external_modules/", $baseUrl);
+        $isPluginPage = preg_match("/\/plugins\//", $baseUrl);
+        $isFTPage = $isPluginPage || $isExtModPage && (preg_match("/odules\/$/", $baseUrl) || preg_match("/odules\/index.php$/", $baseUrl));
+        if ($isExtModPage || $isPluginPage) {
+            if ($isFTPage) {
+                $str .= "<script src='".self::link("/js/jquery.min.js")."'></script>";
+            }
             $str .= "<script src='".self::link("/js/jquery-ui.min.js")."'></script>";
             $str .= "<script src='".self::link("/js/autocomplete.js")."&$version'></script>";
             $str .= "<link rel='icon' type='image/png' href='".self::link("/img/flight_tracker_icon.png")."' />";
             $str .= "<link rel='stylesheet' href='".self::link("/css/jquery-ui.css")."' />";
-            $str .= "<link rel='stylesheet' href='".self::link("/css/jquery.sweet-modal.min.css")."' />";
             $str .= "<link rel='stylesheet' href='".self::link("/css/career_dev.css")."&$version' />";
             $str .= "<link rel='stylesheet' href='".self::link("/css/typekit.css")."&$version' />";
         }
+        $str .= "<link rel='stylesheet' href='".self::link("/css/jquery.sweet-modal.min.css")."' />";
         $str .= "<script src='".self::link("/js/jquery.sweet-modal.min.js")."'></script>";
         $str .= "<script>function getCSRFToken() { return '".self::generateCSRFToken()."'; }</script>";
         return $str;
@@ -250,7 +251,7 @@ a.w3-button { color: black !important; float: none !important; }
 .topHeaderWrapper { background-color: white; height: 80px; top: 0px; width: 100%; }
 .topHeader { margin: 0 auto; max-width: 1200px; }
 .topBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 0px; }
-.middleBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 0px; margin-left: auto; margin-right: auto; text-align: center; max-width: 600px; }
+.middleBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; font-size: 13px; padding: 0px; margin-left: auto; margin-right: auto; text-align: center; max-width: 600px; }
 a.nounderline { text-decoration: none; }
 a.nounderline:hover { text-decoration: dotted; }
 img.brandLogo { height: 40px; margin: 20px; }
@@ -274,8 +275,26 @@ p.recessed,div.recessed { margin: 2px; }
             $recordId = Sanitizer::getSanitizedRecord($_GET['id'] ?? $_GET['record'] ?? "", $records);
             if ($recordId) {
                 $csrfToken = self::generateCSRFToken();
-                $url = self::link("/summarizeRecordNow.php");
-                $str .= "<div class='middleBar'><br/><button onclick='summarizeRecordNow(\"$url\", \"$recordId\", \"$csrfToken\"); return false;'>Regenerate Summary for this Record Now</button></div>";
+                $url = self::link("/fetchDataNow.php");
+                $str .= "<div class='middleBar'><br/>";
+                $str .= "Fetch Data Now for this Scholar:";
+                $fetchConfig = [
+                    "Summary" => "summary",
+                    "Publications" => "publications",
+                    "Grants" => "grants",
+                    "Patents" => "patents",
+                ];
+                foreach ($fetchConfig as $label => $fetchType) {
+                    $str .= "&nbsp;&nbsp;<button onclick='fetchDataNow(\"$url\", \"$recordId\", \"$csrfToken\", \"$fetchType\"); return false;'>$label</button>";
+                }
+                $str .= "<br/>";
+                $str .= "Restart from Scratch for this Scholar:";
+                foreach ($fetchConfig as $label => $fetchType) {
+                    if ($fetchType != "summary") {
+                        $str .= "&nbsp;&nbsp;<button onclick='confirmRestartData(\"$url\", \"$recordId\", \"$csrfToken\", \"$fetchType\"); return false;'>$label</button>";
+                    }
+                }
+                $str .= "</div>";
             }
         }
         if ($base64 = $module->getBrandLogo()) {
