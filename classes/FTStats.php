@@ -189,7 +189,7 @@ class FTStats {
         $primaryField = $fields[0];
         $stipulationsValid = TRUE;
         for ($i = 1; $i < count($fields); $i++) {
-            if (str_contains($fields[$i], "=")) {
+            if (preg_match("/=/", $fields[$i])) {
                 list($stipulationField, $stipulationValue) = explode("=", $fields[$i]);
                 if (!preg_match("/$stipulationValue/", $row[$stipulationField]))  {
                     $stipulationsValid = FALSE;
