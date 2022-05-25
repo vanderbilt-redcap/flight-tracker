@@ -196,7 +196,9 @@ class Dashboard {
 
         $cohorts = new Cohorts($token, $server, Application::getModule());
         $cohortTitles = $cohorts->getCohortTitles();
-        $html .= "<a href='javascript:;' onclick='return false;' class='purple'>Select Cohort: <select onchange='if ($(this).val()) { window.location.href = \"?layout=$target&pid=$pid&page=".$_GET['page']."&prefix=".$_GET['prefix']."&cohort=\" + $(this).val(); } else { window.location.href = \"?layout=$target&pid=$pid&page=".$_GET['page']."&prefix=".$_GET['prefix']."\"; }'>\n";
+        $page = Sanitizer::sanitize($_GET['page']);
+        $prefix = Sanitizer::sanitize($_GET['prefix']);
+        $html .= "<a href='javascript:;' onclick='return false;' class='purple'>Select Cohort: <select onchange='if ($(this).val()) { window.location.href = \"?layout=$target&pid=$pid&page=".$page."&prefix=".$prefix."&cohort=\" + $(this).val(); } else { window.location.href = \"?layout=$target&pid=$pid&page=".$page."&prefix=".$prefix."\"; }'>\n";
         $html .= "<option value=''>---ALL---</option>\n";
         foreach ($cohortTitles as $title) {
             $html .= "<option value='$title'";
@@ -263,7 +265,8 @@ class Dashboard {
         $html .= "<table style='margin-left: auto; margin-right: auto;'><tr>\n";
         foreach ($measurements as $header => $count) {
             $htmlHeader = self::addHTMLForParens($header);
-            if (get_class($count) == "Vanderbilt\\CareerDevLibrary\\ObservedMeasurement") {
+            $countClassName = get_class($count);
+            if ($countClassName == "Vanderbilt\\CareerDevLibrary\\ObservedMeasurement") {
                 $value = $count->getValue();
                 $n = $count->getN();
                 $html .= "<td class='measurement'>\n";
@@ -271,7 +274,7 @@ class Dashboard {
                 $html .= "<div class='measurementNumber'>".REDCapManagement::pretty($value)."</div>\n";
                 $html .= "<div class='measurementDenominator'>(n = <b>".REDCapManagement::pretty($n)."</b>)</div>\n";
                 $html .= "</td>\n";
-            } else if (get_class($count) == "Vanderbilt\\CareerDevLibrary\\DateMeasurement") {
+            } else if ($countClassName == "Vanderbilt\\CareerDevLibrary\\DateMeasurement") {
                 $date = $count->getMDY();
                 $wDay = $count->getWeekDay();
                 $html .= "<td class='dateMeasurement'>\n";
@@ -280,7 +283,7 @@ class Dashboard {
                 $html .= "<div class='measurementDate'>".$date."</div>\n";
                 $html .= "<div class='animationProgress'>&nbsp;</div>\n";
                 $html .= "</td>\n";
-            } else if (get_class($count) == "Vanderbilt\\CareerDevLibrary\\MoneyMeasurement") {
+            } else if ($countClassName == "Vanderbilt\\CareerDevLibrary\\MoneyMeasurement") {
                 $amt = $count->getAmount();
                 $total = $count->getTotal();
                 $html .= "<td class='moneyMeasurement'>\n";
@@ -368,7 +371,8 @@ class Dashboard {
                 $rowClass = "even";
             }
             $htmlHeader = self::addHTMLForParens($header);
-            if (get_class($count) == "Vanderbilt\\CareerDevLibrary\\DateMeasurement") {
+            $countClassName = get_class($count);
+            if ($countClassName == "Vanderbilt\\CareerDevLibrary\\DateMeasurement") {
                 $date = $count->getMDY();
                 $wDay = $count->getWeekDay();
                 $html .= "<tr class='dateMeasurement $rowClass'>\n";
@@ -376,7 +380,7 @@ class Dashboard {
                 $html .= "<td class='measurementDenominator'>$wDay</td>\n";
                 $html .= "<td class='measurementDate'>".$date."</td>\n";
                 $html .= "</tr>\n";
-            } else if (get_class($count) == "Vanderbilt\\CareerDevLibrary\\ObservedMeasurement") {
+            } else if ($countClassName == "Vanderbilt\\CareerDevLibrary\\ObservedMeasurement") {
                 $value = $count->getValue();
                 $n = $count->getN();
                 $html .= "<tr class='dateMeasurement $rowClass'>\n";
@@ -384,7 +388,7 @@ class Dashboard {
                 $html .= "<td class='measurementNumerator'>".REDCapManagement::pretty($value)."</td>\n";
                 $html .= "<td class='measurementDenominator'>(n = ".REDCapManagement::pretty($n).")</td>\n";
                 $html .= "</tr>\n";
-            } else if (get_class($count) == "Vanderbilt\\CareerDevLibrary\\MoneyMeasurement") {
+            } else if ($countClassName == "Vanderbilt\\CareerDevLibrary\\MoneyMeasurement") {
                 $amt = $count->getAmount();
                 $total = $count->getTotal();
                 $html .= "<tr class='measurement $rowClass'>\n";

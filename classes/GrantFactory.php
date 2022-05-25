@@ -826,6 +826,12 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
             $awardNoticeTs = strtotime($awardNoticeDate);
 
             $startBudgetYear = date("Y", $awardNoticeTs);
+            if (
+                in_array(date("m", $awardNoticeTs), ["10", "11", "12"])
+                && in_array(date("m", $projectStartTs), ["01", "02", "03"])
+            ) {
+                $startBudgetYear++;
+            }
             $isStartLeapYear = ($startBudgetYear % 4 === 0);
             $startBudgetRemainingDate = date("-m-d", $projectStartTs);
             if ($startBudgetRemainingDate == "-02-29" && !$isStartLeapYear) {
@@ -833,7 +839,7 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
             }
             $budgetStartTs = strtotime($startBudgetYear.$startBudgetRemainingDate);
 
-            $endBudgetYear = date("Y", $awardNoticeTs) + 1;
+            $endBudgetYear = ((int) $startBudgetYear) + 1;
             $isEndLeapYear = ($endBudgetYear % 4 === 0);
             $endBudgetRemainingDate = date("-m-d", $projectStartTs);
             if ($endBudgetRemainingDate == "-02-29" && !$isEndLeapYear) {

@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -53,7 +54,7 @@ if (checkPOSTKeys(array_values($fields))) {
 	echo Application::generateCSRFTokenHTML();
 	echo "<table style='margin:0px auto;'>\n";
 	foreach ($fields as $label => $var) {
-        $defaultValue = $_POST[$var] ?? "";
+        $defaultValue = Sanitizer::sanitize($_POST[$var]) ?? "";
 		echo "<tr>\n";
 		echo "<td style='text-align: right; padding-right: 5px;'>$label:</td>\n";
 		echo "<td padding-left: 5px;'><input type='text' name='$var' style='width: 250px;' value='$defaultValue'></td>\n";

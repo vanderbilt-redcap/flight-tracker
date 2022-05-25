@@ -26,6 +26,7 @@ class RePORTER {
     }
 
     public function getTotalDollarsForInstitution($institution, $fiscalYear) {
+        $total = 0;
         if ($this->isFederal()) {
             # retired
             return 0;

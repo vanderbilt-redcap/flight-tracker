@@ -7,6 +7,7 @@ use Vanderbilt\CareerDevLibrary\Cohorts;
 use Vanderbilt\CareerDevLibrary\Links;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\RePORTER;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
@@ -22,8 +23,8 @@ if (in_array("coeus_submission", $metadataForms)) {
     $coeusFields = ["record_id", "coeus2_agency_grant_number", "coeus2_award_status", "coeus2_submitted_to_agency", "coeus2_role"];
 }
 
-$cohort = $_GET['cohort'];
-$thresholdTs = $_GET['date'] ? strtotime($_GET['date']) : 0;
+$cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
+$thresholdTs = $_GET['date'] ? strtotime(Sanitizer::sanitize($_GET['date'])) : 0;
 if (isset($_GET['page'])) {
     $module = Application::getModule();
 } else {

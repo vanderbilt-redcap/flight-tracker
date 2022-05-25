@@ -5,7 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class CohortConfig {
-	public function __construct($name, $configAry = []) {
+	public function __construct($name, $configAry = [], $pid = NULL) {
 		$this->name = $name;
 		if (self::isValidConfigArray($configAry)) {
 			$this->config = $configAry;
@@ -14,6 +14,9 @@ class CohortConfig {
 						"rows" => [],
 						];
 		}
+        $this->pid = $pid;
+        $this->token = Application::getSetting("token", $this->pid);
+        $this->server = Application::getSetting("server", $this->pid);
 	}
 
 	public static function getComparisons() {
@@ -478,4 +481,7 @@ class CohortConfig {
 
 	private $config;
 	private $name;
+    private $pid;
+    private $token = "";
+    private $server = "";
 }

@@ -10,6 +10,7 @@ class Cohorts {
 	public function __construct($token, $server, $moduleOrMetadata) {
 		$this->token = $token;
 		$this->server = $server;
+        $this->pid = Application::getPID($token);
 		$this->hijackedField = "identifier_first_name";
 		if (is_array($moduleOrMetadata)) {
 			$this->metadata = $moduleOrMetadata;
@@ -186,13 +187,13 @@ class Cohorts {
 
 	public function getCohort($name) {
 	    if (isset($this->configs[$name])) {
-			return new CohortConfig($name, $this->configs[$name]);
+			return new CohortConfig($name, $this->configs[$name], $this->pid);
 		}
 		return null;
 	}
 
 	public function addCohort($name, $config) {
-		$cohortConfig = new CohortConfig($name);
+		$cohortConfig = new CohortConfig($name, [], $this->pid);
 		if (isset($config['records'])) {
 		    $cohortConfig->addRecords($config['records']);
         } else {
@@ -265,4 +266,5 @@ class Cohorts {
 	private $configs;
 	private $readonlySettings;
 	private $readonlySettingName;
+    private $pid;
 }

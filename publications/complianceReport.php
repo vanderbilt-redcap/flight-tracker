@@ -90,7 +90,7 @@ $numMonths = 3;
 $threeMonthsPriorDate = REDCapManagement::addMonths(date("Y-m-d"), (0 - $numMonths));
 $threeMonthsPrior = strtotime($threeMonthsPriorDate);
 
-$grantsSearchedFor = $_GET['grantList'] ? processGrantList($_GET['grantList']) : [];
+$grantsSearchedFor = isset($_GET['grantList']) ? processGrantList(Sanitizer::sanitize($_GET['grantList'])) : [];
 
 if (isset($_GET['csv'])) {
         Application::increaseProcessingMax(8);
@@ -588,10 +588,10 @@ function processRecord($token, $server, $pid, $event_id, $metadata, $names, $rec
                 $pmcidClass = $pubClass;
 
                 $hasMatchedGrant = empty($grantsSearchedFor);
+                $grantsWithoutHTML = [];
                 if ($printResults) {
                     $grants = $citation->getGrantBaseAwardNumbers();
                     $grantHTML = [];
-                    $grantsWithoutHTML = [];
                     foreach ($grants as $baseAwardNo) {
                         $baseAwardNo = strtoupper($baseAwardNo);
                         if (in_array($baseAwardNo, $grantsSearchedFor)) {
