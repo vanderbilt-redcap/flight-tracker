@@ -5,6 +5,11 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
+function updateAllCoeus($token, $server, $pid, $records) {
+    updateCoeusGrants($token, $server, $pid, $records);
+    updateCoeusSubmissions($token, $server, $pid, $records);
+}
+
 function updateCoeusGrants($token, $server, $pid, $records) {
     updateCoeusGeneric($token, $server, $pid, $records, "coeus", "awards");
     CareerDev::saveCurrentDate("Last COEUS Download", $pid);

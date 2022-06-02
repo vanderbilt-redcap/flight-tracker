@@ -514,6 +514,20 @@ class REDCapManagement {
         return $values;
     }
 
+    public static function trimSpecialChars($strOrAry) {
+        $regex = '/[\x00-\x1F\x80-\xFF]/';
+        if (is_string($strOrAry)) {
+            return preg_replace($regex, "", $strOrAry);
+        } else if (is_array($strOrAry)) {
+            foreach ($strOrAry as $key => $value) {
+                $strOrAry[$key] = preg_replace($regex, "", $strOrAry[$key]);
+            }
+            return $strOrAry;
+        } else {
+            throw new \Exception("Invalid: not string or array!");
+        }
+    }
+
 	public static function findField($redcapData, $recordId, $field, $repeatingInstrument = FALSE, $instance = FALSE) {
         $values = [];
 	    foreach ($redcapData as $row) {

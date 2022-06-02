@@ -15,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.10.2";
+		return "4.11.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -795,11 +795,12 @@ class CareerDev {
             "nsf" => "NSF Grants",
         ];
 	    if (self::isVanderbilt()) {
-	        $itemChoices = array_merge($itemChoices, [
+            $itemChoices = array_merge($itemChoices, [
                 "coeus" => "COEUS (online database)",
                 "vfrs" => "VFRS Survey (self-survey)",
                 "accessvu" => "AccessVU (online database)",
                 "ldap" => "University Directory",
+                "vera" => "VERA (online database)",
             ]);
 	        if (self::getPid() == 66635) {
                 $itemChoices = array_merge($itemChoices, [
@@ -875,7 +876,7 @@ class CareerDev {
             ];
             if (self::isVanderbilt()) {
                 $ary["Grant Success Rates"] = self::link("/successRate.php");
-                $ary['Evaluate Grant Submissions'] = self::link("/submissions.php");
+                // $ary['Evaluate Grant Submissions'] = self::link("/submissions.php");
             }
             return $ary;
         }

@@ -12,7 +12,6 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
-require_once(APP_PATH_DOCROOT."Classes/System.php");
 
 $files = Application::getMetadataFiles();
 $lastCheckField = "prior_metadata_ts";
@@ -49,7 +48,7 @@ if ($_POST['process'] == "check") {
         }
     }
 } else if (in_array($_POST['process'], ["install", "install_all"])) {
-    \System::increaseMaxExecTime(7200);   // 2 hours
+    Application::increaseProcessingMax(2);
     if (isset($_POST['pids'])) {
         $pidsToRun = [];
         $requestedPids = Sanitizer::sanitizeArray($_POST['pids']);

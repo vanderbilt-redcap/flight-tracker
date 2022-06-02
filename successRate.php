@@ -3,11 +3,13 @@
 use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\CareerDevLibrary\Grant;
+use Vanderbilt\CareerDevLibrary\Grants;
 use Vanderbilt\CareerDevLibrary\Cohorts;
 use Vanderbilt\CareerDevLibrary\Links;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\RePORTER;
 use Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
@@ -15,26 +17,30 @@ require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 $metadataForms = REDCapManagement::getFormsFromMetadata($metadata);
-if (in_array("coeus_submission", $metadataForms)) {
-    $attemptInstrument = "coeus_submission";
-    $coeusFields = ["record_id", 'coeus_sponsor_award_number', 'coeus_award_create_date', 'coeus_pi_flag', 'coeussubmission_sponsor_proposal_number', 'coeussubmission_proposal_create_date', 'coeussubmission_proposal_status', 'coeussubmission_pi_flag'];
-} else {
-    $attemptInstrument = "coeus2";
-    $coeusFields = ["record_id", "coeus2_agency_grant_number", "coeus2_award_status", "coeus2_submitted_to_agency", "coeus2_role"];
+$instruments = [
+    "vera",
+    "coeus",
+    "coeus_submission",
+    "vera_submission",
+    "custom_grant",
+];
+$fields = ["record_id"];
+foreach ($instruments as $instrument) {
+    if (in_array($instrument, $metadataForms)) {
+        $instrumentFields = DataDictionaryManagement::getFieldsFromMetadata($metadata, $instrument);
+        $fields = array_unique(array_merge($fields, $instrumentFields));
+    }
 }
 
 $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
 $thresholdTs = $_GET['date'] ? strtotime(Sanitizer::sanitize($_GET['date'])) : 0;
-if (isset($_GET['page'])) {
-    $module = Application::getModule();
-} else {
-    $module = CareerDev::getPluginModule();
-}
+$module = Application::getModule();
+
 if ($cohort) {
     $records = Download::cohortRecordIds($token, $server, $module, $cohort);
 } else if ($_GET['record']) {
-    $allRecords = Download::records($token, $server);
-    $recordId = REDCapManagement::getSanitizedRecord($_GET['record'], $allRecords);
+    $allRecords = Download::recordIds($token, $server);
+    $recordId = Sanitizer::getSanitizedRecord($_GET['record'], $allRecords);
     $records = $recordId ? [$recordId] : [];
 } else {
     $records = Download::recordIds($token, $server);
@@ -59,15 +65,19 @@ for ($i = 0; $i < count($records); $i += $pullSize) {
             $recordStats[$recordId]["Test"] = ["Attempts" => [], "Successes" => []];
         }
     }
-    $redcapData = Download::fieldsForRecords($token, $server, $coeusFields, $pullRecords);
+    $redcapData = Download::fieldsForRecords($token, $server, $fields, $pullRecords);
+    $indexedREDCapData = REDCapManagement::indexREDCapData($redcapData);
     $codedAccepts = ["000", ""];
     $awardedStatuses = ["Awarded", "Supplement Funded"];
     $priorDates = [];
     $awardNumbers = [];
     $seen = [];
     // sortRowsByFields($redcapData, ['record_id', 'coeus2_submitted_to_agency']);
-    foreach ($redcapData as $row) {
-        $recordId = $row['record_id'];
+    foreach ($indexedREDCapData as $recordId => $rows) {
+        $grants = new Grants($token, $server, $metadata);
+        $grants->setRows($rows);
+        $grants->compileGrants("Conversion");
+
         if (!isset($priorDates[$recordId])) {
             $priorDates[$recordId] = [];
         }
@@ -77,82 +87,61 @@ for ($i = 0; $i < count($records); $i += $pullSize) {
         if (!isset($awardNumbers[$recordId])) {
             $awardNumbers[$recordId] = [];
         }
-        if (($attemptInstrument == "coeus2") && ($row['redcap_repeat_instrument'] == "coeus2")) {
-            if (in_array($row['coeus2_award_status'], $awardedStatuses)) {
-                $awardNumbers[$recordId][] = $row['coeus2_agency_grant_number'];
-            }
-        } else if (($attemptInstrument == "coeus_submission") && ($row['redcap_repeat_instrument'] == "coeus")) {
-            $awardNumbers[$recordId][] = $row['coeus_sponsor_award_number'];
+        foreach ($grants->getGrants("all_pis") as $grant) {
+            $awardNumbers[$recordId][] = $grant->getNumber();
         }
     }
 
-    foreach ($redcapData as $row) {
-        $recordId = $row['record_id'];
+    foreach ($indexedREDCapData as $recordId => $rows) {
         $awardNo = FALSE;
         $submissionDate = FALSE;
         $isPI = FALSE;
         $role = "";
         $status = "";
         $source = "";
-        if (($row['redcap_repeat_instrument'] == $attemptInstrument) && ($attemptInstrument == "coeus2")) {
-            $awardNo = $row['coeus2_agency_grant_number'];
-            $submissionDate = $row['coeus2_submitted_to_agency'];
-            $status = $row['coeus2_award_status'];
-            $role = $row['coeus2_role'];
-            $isPI = in_array($role, ['3']);
-        } else if (($attemptInstrument == "coeus_submission") && in_array($row['redcap_repeat_instrument'], ["coeus", "coeus_submission"])) {
-            if ($row['redcap_repeat_instrument'] == "coeus") {
-                $awardNo = $row['coeus_sponsor_award_number'];
-                $submissionDate = $row['coeus_award_create_date'];
-                $status = "Awarded";
-                $isPI = in_array($row['coeus_pi_flag'], ['1', 'Y']);
-                if ($isPI) {
-                    $role = 3;
-                } else {
-                    $role = 2;
-                }
-            } else if ($row['redcap_repeat_instrument'] == "coeus_submission") {
-                $awardNo = $row['coeussubmission_sponsor_proposal_number'];
-                $submissionDate = $row['coeussubmission_proposal_create_date'];
-                $status = $row['coeussubmission_proposal_status'];
-                $isPI = ($row['coeussubmission_pi_flag'] == "1");
-                if ($isPI) {
-                    $role = 3;
-                } else {
-                    $role = 2;
-                }
+        $grants = new Grants($token, $server, $metadata);
+        $grants->setRows($rows);
+        $grants->compileGrants("Submission");
+        foreach ($grants->getGrants("submissions") as $grant) {
+            $awardNo = $grant->getNumber() ?: $grant->getVariable("submission_id");
+            $submissionDate = $grant->getVariable("submission_date");
+            $status = $grant->getVariable("status");
+            $isPI = in_array($grant->getVariable("pi_flag"), ["1", "Y"]);
+            if ($isPI) {
+                $role = 3;
+            } else {
+                $role = 2;
             }
-        }
-        if ($awardNo !== FALSE) {
-            $baseAwardNo = Grant::translateToBaseAwardNumber($awardNo);
-            $isDenomOverall = 0;
-            $isDenomRetries = 0;
-            $isNumer = 0;
-            $submissionTs = $submissionDate ? strtotime($submissionDate) : FALSE;
-            $seenAlready = in_array($baseAwardNo, $seen[$recordId]);
-            if ((!$submissionTs || ($submissionTs > $thresholdTs)) && !isInternalAward($awardNo) && $isPI && !isTrainingGrant($awardNo, $role)) {
-                $applicationType = Grant::getApplicationType($awardNo);
-                $awardYear = Grant::getSupportYear($awardNo);
-                $otherSuffixes = Grant::getOtherSuffixes($awardNo);
-                if (in_array($status, $awardedStatuses)) {
-                    if ($awardYear == "01") {
-                        if (!$seenAlready) {
-                            $seen[$recordId][] = $baseAwardNo;
-                            list($isDenomOverall, $isDenomRetries) = getDenoms($baseAwardNo, $awardYear, $otherSuffixes, $awardNumbers);
-                            if ($isDenomOverall >= 1) {
-                                $isNumer = 1;
+            if ($awardNo !== FALSE) {
+                $baseAwardNo = Grant::translateToBaseAwardNumber($awardNo);
+                $isDenomOverall = 0;
+                $isDenomRetries = 0;
+                $isNumer = 0;
+                $submissionTs = $submissionDate ? strtotime($submissionDate) : FALSE;
+                $seenAlready = in_array($baseAwardNo, $seen[$recordId]);
+                if ((!$submissionTs || ($submissionTs > $thresholdTs)) && !isInternalAward($awardNo) && $isPI && !isTrainingGrant($awardNo, $role)) {
+                    $applicationType = Grant::getApplicationType($awardNo);
+                    $awardYear = Grant::getSupportYear($awardNo);
+                    $otherSuffixes = Grant::getOtherSuffixes($awardNo);
+                    if (in_array($status, $awardedStatuses)) {
+                        if ($awardYear == "01") {
+                            if (!$seenAlready) {
+                                $seen[$recordId][] = $baseAwardNo;
+                                list($isDenomOverall, $isDenomRetries) = getDenoms($baseAwardNo, $awardYear, $otherSuffixes, $awardNumbers[$recordId]);
+                                if ($isDenomOverall >= 1) {
+                                    $isNumer = 1;
+                                }
                             }
-                        }
-                    } else if ($applicationType == 2) {
-                        $isNumer = 1;
-                        list($isDenomOverall, $isDenomRetries) = getDenoms($baseAwardNo, $awardYear, $otherSuffixes, $awardNumbers[$recordId]);
-                    } else if (in_array($awardNo, $codedAccepts)) {
-                        $isDenomRetries = 1;
-                        $isDenomOverall = 1;
-                        $isNumer = 1;
-                    } else if (!hasFirstYearGrant($baseAwardNo, $awardNo, $awardNumbers[$recordId]) && !$seenAlready) {
-                        # check RePORTER
-                        foreach (["NIH", "Federal"] as $reporterHookup) {
+                        } else if ($applicationType == 2) {
+                            $isNumer = 1;
+                            list($isDenomOverall, $isDenomRetries) = getDenoms($baseAwardNo, $awardYear, $otherSuffixes, $awardNumbers[$recordId]);
+                        } else if (in_array($awardNo, $codedAccepts)) {
+                            $isDenomRetries = 1;
+                            $isDenomOverall = 1;
+                            $isNumer = 1;
+                        } else if (!hasFirstYearGrant($baseAwardNo, $awardNo, $awardNumbers[$recordId]) && !$seenAlready) {
+                            # check RePORTER
+                            $reporterHookup = "NIH";
                             $reporter = new RePORTER($pid, $recordId, $reporterHookup);
                             $allFundedAwardNumbers = $reporter->getAssociatedAwardNumbers($baseAwardNo);
                             $has01 = FALSE;
@@ -162,7 +151,7 @@ for ($i = 0; $i < count($records); $i += $pullSize) {
                                 $currAwardSuffix = Grant::getOtherSuffixes($currAwardNo);
                                 if ($currAwardYear == "01") {
                                     if (preg_match("/Amendment Number \d/", $currAwardSuffix)) {
-                                        $numAmendments = (int) str_replace("Amendment Number ", "", $currAwardSuffix);
+                                        $numAmendments = (int)str_replace("Amendment Number ", "", $currAwardSuffix);
                                         $awardNumbers[$recordId][] = $currAwardNo;
                                         $isDenomRetries = 1 + $numAmendments;
                                         $isDenomOverall = 1;
@@ -182,56 +171,57 @@ for ($i = 0; $i < count($records); $i += $pullSize) {
                             if ($isDenomRetries + $isDenomOverall + $isNumer > 0) {
                                 break;
                             }
-                        }
-                        $seen[$recordId][] = $baseAwardNo;
-                        $recordLink = Links::makeRecordHomeLink($pid, $recordId, "Record $recordId ({$names[$recordId]})");
-                        if ($isDenomOverall + $isDenomRetries + $isNumer == 0) {
-                            $note = "";
-                            if (!empty($allFundedAwardNumbers)) {
-                                $note = "<br>Reported grant numbers: ".implode(", ", $allFundedAwardNumbers);
+
+                            $seen[$recordId][] = $baseAwardNo;
+                            $recordLink = Links::makeRecordHomeLink($pid, $recordId, "Record $recordId ({$names[$recordId]})");
+                            if ($isDenomOverall + $isDenomRetries + $isNumer == 0) {
+                                $note = "";
+                                if (!empty($allFundedAwardNumbers)) {
+                                    $note = "<br>Reported grant numbers: " . implode(", ", $allFundedAwardNumbers);
+                                }
+                                echo "<div class='red'>$recordLink may have taken over grant $baseAwardNo without an initial application or this is a non-Federal grant!$note</div>";
+                            } else {
+                                echo "<div class='yellow'>$recordLink required accessing the $source RePORTER for $baseAwardNo!</div>";
                             }
-                            echo "<div class='red'>$recordLink may have taken over grant $baseAwardNo without an initial application or this is a non-Federal grant!$note</div>";
-                        } else {
-                            echo "<div class='yellow'>$recordLink required accessing the $source RePORTER for $baseAwardNo!</div>";
                         }
-                    }
-                } else if (in_array($status, ["Unfunded", "Disapproved"])) {
-                    if (in_array($awardNo, $codedAccepts)) {
-                        $isDenomRetries = 1;
-                        $isDenomOverall = 1;
-                    } else if (($awardYear == "01") || ($applicationType == 2)) {
-                        list($isDenomOverall, $isDenomRetries) = getDenoms($baseAwardNo, $awardYear, $otherSuffixes, $awardNumbers[$recordId]);
-                    }
-                } else if (in_array($status, ["Pending", "Award Pending", "Transfer Pending"])) {
-                    $timespan24Months = 24 * 30 * 24 * 3600;
-                    if ($submissionTs) {
-                        if ($submissionTs < time() - $timespan24Months) {
+                    } else if (in_array($status, ["Unfunded", "Disapproved"])) {
+                        if (in_array($awardNo, $codedAccepts)) {
+                            $isDenomRetries = 1;
+                            $isDenomOverall = 1;
+                        } else if (($awardYear == "01") || ($applicationType == 2)) {
                             list($isDenomOverall, $isDenomRetries) = getDenoms($baseAwardNo, $awardYear, $otherSuffixes, $awardNumbers[$recordId]);
                         }
+                    } else if (in_array($status, ["Pending", "Award Pending", "Transfer Pending"])) {
+                        $timespan24Months = 24 * 30 * 24 * 3600;
+                        if ($submissionTs) {
+                            if ($submissionTs < time() - $timespan24Months) {
+                                list($isDenomOverall, $isDenomRetries) = getDenoms($baseAwardNo, $awardYear, $otherSuffixes, $awardNumbers[$recordId]);
+                            }
+                        }
+                    } else if (in_array($status, ["Withdrawn", "Funded/unfunded status of the proposal", ""])) {
+                    } else {
+                        echo "<div class='red'>Unknown category '$status' in Record $recordId $awardNo!</div>";
                     }
-                } else if (in_array($status, ["Withdrawn", "Funded/unfunded status of the proposal", ""])) {
-                } else {
-                    echo "<div class='red'>Unknown category '$status' in Record $recordId instance ".$row['redcap_repeat_instance']."!</div>";
                 }
-            }
 
-            if (!in_array($submissionDate, $priorDates[$recordId])) {
-                if ($isDenomOverall + $isDenomRetries > 0) {
-                    $recordStats[$recordId]["Overall"]["Attempts"] += $isDenomOverall;
-                    $recordStats[$recordId]["Counting Retries"]["Attempts"] += $isDenomRetries;
-                    if (isset($_GET['test'])) {
-                        $recordStats[$recordId]["Test"]["Attempts"][] = $baseAwardNo;
+                if (!in_array($submissionDate, $priorDates[$recordId])) {
+                    if ($isDenomOverall + $isDenomRetries > 0) {
+                        $recordStats[$recordId]["Overall"]["Attempts"] += $isDenomOverall;
+                        $recordStats[$recordId]["Counting Retries"]["Attempts"] += $isDenomRetries;
+                        if (isset($_GET['test'])) {
+                            $recordStats[$recordId]["Test"]["Attempts"][] = $baseAwardNo;
+                        }
                     }
-                }
-                if ($isNumer > 0) {
-                    $recordStats[$recordId]["Overall"]["Successes"] += $isNumer;
-                    $recordStats[$recordId]["Counting Retries"]["Successes"] += $isNumer;
-                    if (isset($_GET['test'])) {
-                        $recordStats[$recordId]["Test"]["Successes"][] = $baseAwardNo;
+                    if ($isNumer > 0) {
+                        $recordStats[$recordId]["Overall"]["Successes"] += $isNumer;
+                        $recordStats[$recordId]["Counting Retries"]["Successes"] += $isNumer;
+                        if (isset($_GET['test'])) {
+                            $recordStats[$recordId]["Test"]["Successes"][] = $baseAwardNo;
+                        }
                     }
-                }
-                if ($isNumer + $isDenomOverall + $isDenomRetries > 0) {
-                    $priorDates[$recordId][] = $submissionDate;
+                    if ($isNumer + $isDenomOverall + $isDenomRetries > 0) {
+                        $priorDates[$recordId][] = $submissionDate;
+                    }
                 }
             }
         }
@@ -257,9 +247,9 @@ foreach ($recordStats as $recordId => $stats) {
     }
 }
 
-echo "<h1>Grant Success Rates from COEUS</h1>";
+echo "<h1>Grant Success Rates for Vanderbilt</h1>";
 
-$url = Application::link("successRate.php");
+$url = Application::link("this");
 $link = REDCapManagement::splitURL($url)[0];
 $params = REDCapManagement::getParameters($url);
 $defaultDate = isset($_GET['date']) ? REDCapManagement::sanitize($_GET['date']) : "";

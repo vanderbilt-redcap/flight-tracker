@@ -1427,6 +1427,7 @@ class Grant {
             "coeus2" => 0,
             "exporter" => 0,
             "nih_reporter" => 0,
+            "vera" => 0,
             "reporter" => 0,
             "ldap" => 0,
             "nsf" => 0,
@@ -1688,6 +1689,16 @@ class Grant {
         $coeusSources = self::getCoeusSources();
         $r01EquivYearlyThreshold = 250000;
         $r01EquivNumberOfYears = 3;
+
+        if ($specs['source'] == 'nsf') {
+            if (preg_match("/REU Site/", $specs['title'])) {
+                return "Training Grant Admin";
+            } else if (preg_match("/CAREER/", $specs['title'])) {
+                return "K Equivalent";
+            } else {
+                return "R01 Equivalent";
+            }
+        }
 
 		if (self::getShowDebug()) { Application::log($awardNo.": Second Pass"); }
 		$trainingGrantSources = ["coeus", "reporter", "exporter", "nih_reporter", "nsf"];

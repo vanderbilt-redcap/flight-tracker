@@ -31,11 +31,12 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         Application::log("loadCrons");
         $metadata = Download::metadata($token, $server);
         $forms = DataDictionaryManagement::getFormsFromMetadata($metadata);
-        $has = checkMetadataForFields($metadata);
         $pid = CareerDev::getPid($token);
         $switches = new FeatureSwitches($token, $server, $pid);
         $allRecords = Download::records($token, $server);
         $records = $switches->downloadRecordIdsToBeProcessed();
+
+        CareerDev::clearDate("Last Federal RePORTER Download", $pid);
 
         if (in_array('reporter', $forms)) {
             // $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
@@ -46,19 +47,19 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
             $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday", $records, 20);
         }
         if (in_array('ldap', $forms)) {
-            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Thursday", $records, 10000);
+            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $records, 10000);
         }
         if (!Application::isLocalhost()) {
             if (in_array('coeus', $forms)) {
-                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", "Wednesday", $records, 200);
+                $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
             } else if (in_array('coeus2', $forms)) {
                 $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
             }
-            if (in_array('coeus_submission', $forms)) {
-                $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $records, 200);
-            }
+            // if (in_array('coeus_submission', $forms)) {
+                // $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $allRecords, 1000);
+            // }
         }
-        $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday", $records, 40);
+        $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday", $allRecords, 100);
         if (in_array('citation', $forms)) {
             $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday", $records, 10);
             if (!Application::getSetting("fixedPMCs", $pid)) {
@@ -82,9 +83,9 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 
         $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $allRecords, 100000);
         if (Application::isVanderbilt() && !Application::isLocalhost() && in_array("coeus", $forms)) {
-            $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Wednesday", $records, 500);
+            $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
         }
-		if ($has['vfrs']) {
+		if (in_array("pre_screening_survey", $forms)) {
 			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $records, 80);
 		}
         if (in_array('patent', $forms)) {
@@ -92,7 +93,10 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         }
         if (in_array("nsf", $forms)) {
             $manager->addCron("drivers/20_nsf.php", "getNSFGrants", "Monday", $records, 100);
-            $manager->addCron("drivers/20_nsf.php", "getNSFGrants", "2022-05-10", $records, 100);
+        }
+        if (in_array("vera", $forms) && in_array("vera_submission", $forms)) {
+            $manager->addCron("drivers/22_getVERA.php", "getVERA", "2022-06-01", $allRecords, 100000);
+            $manager->addCron("drivers/22_getVERA.php", "getVERA", "Friday", $allRecords, 100000);
         }
 
         $cohorts = new Cohorts($token, $server, Application::getModule());
@@ -140,11 +144,9 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         $metadata = Download::metadata($token, $server);
         $forms = DataDictionaryManagement::getFormsFromMetadata($metadata);
         Application::log("Forms: ".json_encode($forms));
-		$has = checkMetadataForFields($metadata);
 		$records = Download::recordIds($token, $server);
 
-		# summarize institutions first
-		if ($has['vfrs']) {
+		if (in_array("pre_screening_survey", $forms)) {
 			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
 		}
         if (in_array("coeus", $forms)) {
@@ -182,39 +184,6 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 	} else {
         Application::log("loadInitialCrons without token or server");
     }
-}
-
-function checkMetadataForFields($metadata) {
-	$vars = array();
-    $vars['coeus2'] = FALSE;
-    $vars['coeus'] = FALSE;
-	$vars['vfrs'] = FALSE;
-    $vars['news'] = FALSE;
-    $vars['ldap'] = FALSE;
-    $vars['nih_reporter'] = FALSE;
-    $vars['patent'] = FALSE;
-    $vars['coeus_submissions'] = FALSE;
-
-    $regexes = [
-        "/^coeus_/" => "coeus",
-        "/^coeus2_/" => "coeus2",
-        "/^vfrs_/" => "vfrs",
-        "/^ldap_/" => "ldap",
-        "/^summary_news$/" => "news",
-        "/^nih_/" => "nih_reporter",
-        "/^patent_/" => "patent",
-        "/^coeussubmission_/" => "coeus_submissions",
-    ];
-
-	foreach ($metadata as $row) {
-		$field = $row['field_name'];
-		foreach ($regexes as $regex => $setting) {
-            if (!$vars[$setting] && preg_match($regex, $field)) {
-                $vars[$setting] = TRUE;
-            }
-        }
-	}
-	return $vars;
 }
 
 function getRecordsToUpdateBibliometrics($token, $server, $dayOfMonth, $daysInMonth) {

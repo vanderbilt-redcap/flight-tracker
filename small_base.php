@@ -1776,17 +1776,17 @@ function importCustomFields($filename, $token, $server, $pid) {
 	if (is_uploaded_file($filename)) {
 		$fp = fopen($filename, "rb");
 		if (!$fp) {
-			array_push($errors, "Cannot find file.");
+			$errors[] = "Cannot find file.";
 		}
 		$i = 0;
 		while ($line = fgetcsv($fp)) {
 			foreach ($line as $j => $item) {
 				$line[$j] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $item);
-				if (REDCapManagement::isDate($line[$j]) && !REDCapManagement::isYMD($line[$j])) {
-				    if (REDCapManagement::isMDY($line[$j])) {
-                        $line[$j] = REDCapManagement::MDY2YMD($line[$j]);
-                    } else if (REDCapManagement::isDMY($line[$j])) {
-				        $line[$j] = REDCapManagement::DMY2YMD($line[$j]);
+				if (DateManagement::isDate($line[$j]) && !DateManagement::isYMD($line[$j])) {
+				    if (DateManagement::isMDY($line[$j])) {
+                        $line[$j] = DateManagement::MDY2YMD($line[$j]);
+                    } else if (DateManagement::isDMY($line[$j])) {
+				        $line[$j] = DateManagement::DMY2YMD($line[$j]);
                     }
                 }
 			}

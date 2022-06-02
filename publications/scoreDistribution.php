@@ -4,32 +4,47 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\BarChart;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\DateManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Citation;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
-$thresholdRCR = $_GET['thresholdRCR'] ? REDCapManagement::sanitize($_GET['thresholdRCR']) : 2.0;
+$thresholdRCR = $_GET['thresholdRCR'] ? Sanitizer::sanitize($_GET['thresholdRCR']) : 2.0;
+$startDate = Sanitizer::sanitize($_GET['start'] ?? "");
+$endDate = Sanitizer::sanitize($_GET['end'] ?? "");
+$startTs = DateManagement::isDate($startDate) ? strtotime($startDate) : 0;
+$oneYear = 365 * 24 * 3600;
+$endTs = DateManagement::isDate($endDate) ? strtotime($endDate) : time() + $oneYear;
+$cohort = $_GET['cohort'] ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
 
 $fields = [
     "record_id",
     "citation_rcr",
     "citation_altmetric_score",
+    "citation_day",
+    "citation_month",
+    "citation_year",
 ];
 
 $metadata = Download::metadata($token, $server);
 $fieldLabels = REDCapManagement::getLabels($metadata);
-$redcapData = Download::fields($token, $server, $fields);
+if ($cohort) {
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
+} else {
+    $records = Download::recordIds($token, $server);
+}
+$redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
 
 $dist = [];
 $skip = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance"];
-foreach ($fields as $field) {
-    if (!in_array($field, $skip)) {
-        $dist[$field] = [];
-        foreach ($redcapData as $row) {
-            if ($row[$field]) {
-                $dist[$field][$row['record_id'].":".$row['redcap_repeat_instance']] = $row[$field];
-            }
+foreach (["citation_rcr", "citation_altmetric_score"] as $field) {
+    $dist[$field] = [];
+    foreach ($redcapData as $row) {
+        if ($row[$field] && inTimespan($row, $startTs, $endTs)) {
+            $dist[$field][$row['record_id'].":".$row['redcap_repeat_instance']] = $row[$field];
         }
     }
 }
@@ -56,7 +71,12 @@ if (!empty($foundList)) {
         $recordId = $row['record_id'];
         $instance = $row['redcap_repeat_instance'];
         $pmid = $row['citation_pmid'];
-        if ($pmid && !in_array($pmid, $pmidsUsed) && in_array("$recordId:$instance", $foundList)) {
+        if (
+            inTimespan($row, $startTs, $endTs)
+            && $pmid
+            && !in_array($pmid, $pmidsUsed)
+            && in_array("$recordId:$instance", $foundList)
+        ) {
             # do not bold name because multiple names might be used
             $citation = new Citation($token, $server, $recordId, $instance, $row);
             $rcr = $row['citation_rcr'];
@@ -82,10 +102,14 @@ $link = Application::link("this");
 $baseLink = REDCapManagement::splitURL($link)[0];
 echo "<form action='$baseLink' method='GET'>";
 echo REDCapManagement::getParametersAsHiddenInputs($link);
+$cohorts = new Cohorts($token, $server, Application::getModule());
+echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort)."</p>";
 echo "<p class='centered'>";
-echo "<label for='thresholdRCR'>Threshold Relative Citation Ratio (RCR) for List</label>: <input type='number' id='thresholdRCR' name='thresholdRCR' value='$thresholdRCR' style='width: 100px;'><br>";
-echo "<button>Re-Configure</button>";
+echo "<label for='start'>Start Date (optional)</label>: <input type='date' id='start' name='start' value='$startDate' style='width: 150px;'>";
+echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date (optional)</label>: <input type='date' id='end' name='end' value='$endDate' style='width: 150px;'>";
 echo "</p>";
+echo "<p class='centered'><label for='thresholdRCR'>Threshold Relative Citation Ratio (RCR) for List</label>: <input type='number' id='thresholdRCR' name='thresholdRCR' value='$thresholdRCR' style='width: 100px;'></p>";
+echo "<p class='centered'><button>Re-Configure</button></p>";
 echo "</form>";
 
 $colorWheel = Application::getApplicationColors();
@@ -169,4 +193,15 @@ function buildDistribution($values, $field) {
         $i++;
     }
     return [$cols, $colLabels];
+}
+
+function inTimespan($row, $startTs, $endTs) {
+    $year = $row['citation_year'];
+    if (!$year) {
+        return FALSE;
+    }
+    $month = $row['citation_month'] ?: "01";
+    $day = $row['citation_day'] ?: "01";
+    $ts = strtotime("$year-$month-$day");
+    return (($ts >= $startTs) && ($ts <= $endTs));
 }

@@ -199,6 +199,21 @@ class Grants {
             return $filteredGrants;
         }
         if ($type == "submissions") {
+            if (empty($this->dedupedGrantSubmissions) && !empty($this->grantSubmissions)) {
+                $this->compileGrantSubmissions();
+            }
+            return $this->dedupedGrantSubmissions;
+        }
+        if ($type == "submission_dates") {
+            $withSubmissionDates = [];
+            foreach ($this->nativeGrants as $grant) {
+                if ($grant->getVariable("submission_date")) {
+                    $withSubmissionDates[] = $grant;
+                }
+            }
+            return $withSubmissionDates;
+        }
+        if ($type == "all_submissions") {
             return $this->grantSubmissions;
         }
 
@@ -220,6 +235,81 @@ class Grants {
         }
 		return [];
 	}
+
+    public function compileGrantSubmissions() {
+        $prioritizedGrants = $this->prioritizeGrantSubmissions($this->grantSubmissions);
+        $deduplicatedGrants = $this->deduplicateGrantSubmissions($prioritizedGrants);
+        $this->dedupedGrantSubmissions = $this->orderGrantSubmissionsByDate($deduplicatedGrants);
+    }
+
+    private function prioritizeGrantSubmissions($grants) {
+        $order = self::getSourceOrder();
+        $orderedGrants = [];
+        foreach ($order as $source) {
+            foreach ($grants as $grant) {
+                if ($grant->getVariable("source") == $source) {
+                    $orderedGrants[] = $grant;
+                }
+            }
+        }
+        return $orderedGrants;
+    }
+
+    private function orderGrantSubmissionsByDate($grants) {
+        $grantsByTs = [];
+        foreach ($grants as $grant) {
+            $startDate = $grant->getVariable("start");
+            $startTs = strtotime($startDate);
+            if (!isset($grantsByTs[$startTs])) {
+                $grantsByTs[$startTs] = [];
+            }
+            $grantsByTs[$startTs][] = $grant;
+        }
+        ksort($grantsByTs);
+
+        $orderedGrants = [];
+        foreach ($grantsByTs as $startTs => $grantsAtTs) {
+            foreach ($grantsAtTs as $grant) {
+                $orderedGrants[] = $grant;
+            }
+        }
+        return $orderedGrants;
+    }
+
+    private function deduplicateGrantSubmissions($grants) {
+        $deduped = [];
+        foreach ($grants as $idx1 => $grant1) {
+            $foundDup = FALSE;
+            foreach ($grants as $idx2 => $grant2) {
+                if (($idx1 < $idx2) && self::areGrantSubmissionsFunctionallyEqual($grant1, $grant2)) {
+                    $foundDup = TRUE;
+                    break;
+                }
+            }
+            if (!$foundDup) {
+                $deduped[] = $grant1;
+            }
+        }
+        return $deduped;
+    }
+
+    private static function areGrantSubmissionsFunctionallyEqual($grant1, $grant2) {
+        $vars = [
+            "start",
+            "end",
+            "project_start",
+            "project_end",
+            "proposal_type",
+            "status",
+            "title",
+        ];
+        foreach ($vars as $var) {
+            if ($grant1->getVariable($var) != $grant2->getVariable($var)) {
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }
 
 	private static function makeDollarsAndCents($cost) {
 		return round($cost * 100) / 100;
@@ -434,6 +524,12 @@ class Grants {
                 }
                 if ($row['redcap_repeat_instrument'] == "coeus2") {
                     $submissionGfs[] = new Coeus2GrantFactory($this->name, $this->lexicalTranslator, $this->metadata, "Submissions", $this->token, $this->server);
+                } else if ($row['redcap_repeat_instrument'] == "coeus_submission") {
+                    $submissionGfs[] = new CoeusSubmissionGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
+                } else if ($row['redcap_repeat_instrument'] == "vera_submission") {
+                    $submissionGfs[] = new VERASubmissionGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
+                } else if ($row['redcap_repeat_instrument'] == "custom_grant") {
+                    $submissionGfs[] = new CustomGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, "Submissions", $this->token, $this->server);
                 }
 				$grantFactories = [
 				    "nativeGrants" => $gfs,
@@ -472,8 +568,10 @@ class Grants {
             return new ExPORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
         } else if ($row['redcap_repeat_instrument'] == "nih_reporter") {
             return new NIHRePORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "vera") {
+            return new VERAGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
         } else if ($row['redcap_repeat_instrument'] == "custom_grant") {
-            return new CustomGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+            return new CustomGrantFactory($name, $lexicalTranslator, $metadata, "Grants", $token, $server);
         } else if ($row['redcap_repeat_instrument'] == "followup") {
             return new FollowupGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
         } else if ($row['redcap_repeat_instrument'] == "nsf") {
@@ -505,6 +603,7 @@ class Grants {
             "reporter" => "Federal RePORTER",
             "nsf" => "NSF Grants",
             "coeus" => "COEUS",
+            "vera" => "VERA",
             "coeus2" => "COEUS",
             "custom" => "REDCap Custom Grants",
             "followup" => "Follow-Up Survey",
@@ -517,30 +616,33 @@ class Grants {
 	}
 
 	public static function getSourceOrderForOlderData() {
-		return array(
-				"modify",
-				"coeus2",
-				"coeus",
-				"custom",
-                "nih_reporter",
-                "reporter",
-                "nsf",
-				"exporter",
-				"followup",
-				"scholars",
-				"data",
-				"sheet2",
-				"new2017",
-				);
+		return [
+            "modify",
+            "coeus2",
+            "coeus",
+            "custom",
+            "nih_reporter",
+            "reporter",
+            "nsf",
+            "exporter",
+            "followup",
+            "scholars",
+            "data",
+            "sheet2",
+            "new2017",
+        ];
 	}
 
-	# strategy = ["Conversion", "Financial", "All"];
+	# strategy = ["Conversion", "Financial", "Submission", "All"];
 	public function compileGrants($strategy = "Conversion") {
 		if ($strategy == "Conversion") {
 			$this->compileGrantsForConversion();
-		} else if ($strategy == "Financial") {
-			$this->compileGrantsForFinancial(FALSE);
+        } else if ($strategy == "Financial") {
+            $this->compileGrantsForFinancial(FALSE);
+        } else if ($strategy == "Submission") {
+            $this->compileGrantSubmissions();
 		} else {
+            $this->compileGrantSubmissions();
 		    $this->compileAllGrants();
         }
 	}
@@ -927,7 +1029,7 @@ class Grants {
 			if (!isset($awardsByBaseAwardNumberAndSource[$baseNumber][$source])) {
 				$awardsByBaseAwardNumberAndSource[$baseNumber][$source] = array();
 			}
-			array_push($awardsByBaseAwardNumberAndSource[$baseNumber][$source], $grant);
+			$awardsByBaseAwardNumberAndSource[$baseNumber][$source][] = $grant;
 		}
 		$awardsByBaseAwardNumber = array();
 		foreach ($awardsByBaseAwardNumberAndSource as $baseNumber => $sources) {
@@ -1068,7 +1170,7 @@ class Grants {
             $this->$variable = [];
             foreach ($awardsByType[$type] as $baseNumber => $grant) {
                 if (self::getShowDebug()) { Application::log("10. Adding to $type ".$grant->getBaseNumber()); }
-                array_push($this->$variable, $grant);
+                $this->$variable[] = $grant;
             }
         }
 
@@ -1952,7 +2054,8 @@ class Grants {
 	private $nativeGrants = [];
 	private $compiledGrants;
 	private $priorGrants;
-	private $dedupedGrants;
+    private $dedupedGrants;
+    private $dedupedGrantSubmissions = [];
 	private $grantSubmissions = [];
 	private $token;
 	private $server;

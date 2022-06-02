@@ -494,10 +494,18 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
 	    return CareerDev::getAllSettings($pid);
     }
 
+    public static function increaseMemoryLimit($limit) {
+        ini_set("memory_limit", $limit);
+    }
+
     public static function increaseProcessingMax($hours) {
         require_once(APP_PATH_DOCROOT."Classes/System.php");
 
         \System::increaseMaxExecTime($hours * 3600);
+    }
+
+    public static function saveCurrentDate($setting, $pid) {
+        CareerDev::saveCurrentDate($setting, $pid);
     }
 
     public static function getSettingKeys($pid) {

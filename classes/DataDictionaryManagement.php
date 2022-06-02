@@ -275,13 +275,13 @@ class DataDictionaryManagement {
                             && isset($choices["REDCap"][$field]["coeus"])
                         ) {
                             $missing[] = $field;
-                            $changed[] = $field;
+                            $changed[] = $field." [removing Vanderbilt choices]";
                         } else if (
                             !REDCapManagement::arraysEqual($choices["REDCap"][$field], $sourceChoices)
                             && !REDCapManagement::arrayAInB($sourceChoices, $choices["REDCap"][$field])
                         ) {
                             $missing[] = $field;
-                            $changed[] = $field;
+                            $changed[] = $field." [source choices not equal]";
                         }
                     } else if (
                         !empty($choices["file"][$field])
@@ -290,13 +290,13 @@ class DataDictionaryManagement {
                     ) {
                         if (!$isSpecialGenderField) {
                             $missing[] = $field;
-                            $changed[] = $field;
+                            $changed[] = $field." [choices not equal]";
                         }
                     } else {
                         foreach ($metadataFields as $metadataField) {
                             if (self::hasMetadataChanged($indexedMetadata["REDCap"][$field][$metadataField], $indexedMetadata["file"][$field][$metadataField], $metadataField)) {
                                 $missing[] = $field;
-                                $changed[] = $field;
+                                $changed[] = $field." [$metadataField changed]";
                                 break; // metadataFields loop
                             }
                         }
@@ -391,6 +391,8 @@ class DataDictionaryManagement {
             $formsAndLabels["coeus2"] = "[coeus2_award_status]: [coeus2_agency_grant_number]";
             $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
             $formsAndLabels["coeus_submission"] = "[coeussubmission_proposal_status]: [coeussubmission_sponsor_proposal_number]";
+            $formsAndLabels["vera"] = "[vera_award_id]: [vera_direct_sponsor_award_id] ([vera_project_role])";
+            $formsAndLabels["vera_submission"] = "[verasubmission_fp_id]";
         }
 
         return $formsAndLabels;
@@ -848,12 +850,30 @@ class DataDictionaryManagement {
         if ($metadataField == "field_annotation" && REDCapManagement::isJSON($oldValue)) {
             return FALSE;
         }
+        if (!isset($oldValue) || !isset($newValue)) {
+            return FALSE;
+        }
+        if (
+            ($metadataField == "select_choices_or_calculations")
+            && self::isChoiceString($oldValue)
+            && self::isChoiceString($newValue)
+        ) {
+            $oldChoices = self::getRowChoices($oldValue);
+            $newChoices = self::getRowChoices($newValue);
+            return !REDCapManagement::arraysEqual($oldChoices, $newChoices);
+        }
         $oldValue = trim($oldValue);
         $newValue = trim($newValue);
-        if (isset($oldValue) && isset($newValue) && ($oldValue != $newValue)) {
-            return TRUE;
+        return ($oldValue != $newValue);
+    }
+
+    public static function isChoiceString($str, $directFromDatabase = FALSE) {
+        if ($directFromDatabase) {
+            $regex = "/\s*\\\\n\s*/";
+        } else {
+            $regex = "/\s*\|\s*/";
         }
-        return FALSE;
+        return preg_match($regex, $str);
     }
 
     public static function screenForFields($metadata, $possibleFields) {

@@ -154,7 +154,7 @@ class InitialGrantFactory extends GrantFactory {
 					$grant->setVariable('nih_mechanism', $match);
 				}
 				$grant->putInBins();
-				array_push($this->grants, $grant);
+				$this->grants[] = $grant;
 			}
 		}
 	}
@@ -208,7 +208,7 @@ class FollowupGrantFactory extends GrantFactory {
 					$grant->setVariable('nih_mechanism', $match);
 				}
                 $grant->putInBins();
-                array_push($this->grants, $grant);
+                $this->grants[] = $grant;
 			}
 		}
 	}
@@ -276,7 +276,7 @@ class NewmanGrantFactory extends GrantFactory {
 				}
 				if ($include) {
 					$grant->putInBins();
-					array_push($this->grants, $grant);
+					$this->grants[] = $grant;
 				}
 			}
 		}
@@ -306,7 +306,7 @@ class NewmanGrantFactory extends GrantFactory {
 					$grant->setNumber("Individual K - Rec. {$row['record_id']}");
 				}
 				$grant->putInBins();
-				array_push($this->grants, $grant);
+				$this->grants[] = $grant;
 			}
 		}
 	
@@ -329,7 +329,7 @@ class NewmanGrantFactory extends GrantFactory {
 			$grant->setVariable('sponsor_type', "R01");
 			$grant->setNumber("R01");
 			$grant->putInBins();
-			array_push($this->grants, $grant);
+			$this->grants[] = $grant;
 		}
 	}
 
@@ -428,7 +428,7 @@ class NewmanGrantFactory extends GrantFactory {
 					$grant->setVariable('pi_flag', "Y");
                     $grant->setVariable("role", self::$defaultRole);
 					$grant->putInBins();
-					array_push($this->grants, $grant);
+					$this->grants[] = $grant;
 				}
 			}
 		}
@@ -491,7 +491,7 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setNumber("R01");
 			}
 			$grant->putInBins();
-			array_push($this->grants, $grant);
+			$this->grants[] = $grant;
 		}
 	}
 
@@ -573,7 +573,7 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setNumber($awardno);
 			}
 			$grant->putInBins();
-			array_push($this->grants, $grant);
+			$this->grants[] = $grant;
 		}
 	}
 
@@ -587,6 +587,56 @@ class NewmanGrantFactory extends GrantFactory {
 		}
 		return $sn;
 	}
+}
+class CoeusSubmissionGrantFactory extends GrantFactory {
+    public function processRow($row, $otherRows, $token = "") {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
+        $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus_submission&instance={$row['redcap_repeat_instance']}";
+        $grant = new Grant($this->lexicalTranslator);
+        $awardNo = self::cleanAwardNo($row['coeussubmission_sponsor_award_number']);
+        $grant->setVariable('original_award_number', $row['coeussubmission_sponsor_award_number']);
+        $grant->setNumber($awardNo);
+        $grant->setVariable('person_name', $row['coeussubmission_person_name']);
+        $grant->setVariable('project_start', $row['coeussubmission_project_start_date']);
+        $grant->setVariable('project_end', $row['coeussubmission_project_end_date']);
+        $grant->setVariable('start', $row['coeussubmission_budget_start_date']);
+        $grant->setVariable('end', $row['coeussubmission_budget_end_date']);
+
+        $status = $row['coeussubmission_proposal_status'];
+        if (preg_match("/Pending/i", $status)) {
+            $status = "Pending";
+        }
+        $grant->setVariable('status', $status);
+        $proposalType = in_array($row['coeussubmission_proposal_type'], ["Resubmission", "Revision"]) ? "Resubmission" : "New";
+        $grant->setVariable('proposal_type', $proposalType);
+        $grant->setVariable("submission_date", $row['coeussubmission_proposal_create_date']);
+        $grant->setVariable("submission_id", $row['coeussubmission_ip_number']);
+
+        $grant->setVariable('sponsor', $row['coeussubmission_direct_sponsor_name']);
+        $grant->setVariable('sponsor_type', $row['coeussubmission_direct_sponsor_type']);
+        $grant->setVariable('prime_sponsor_type', $row['coeussubmission_prime_sponsor_type']);
+        $grant->setVariable('prime_sponsor_name', $row['coeussubmission_prime_sponsor_name']);
+        $grant->setVariable('direct_sponsor_type', $row['coeussubmission_direct_sponsor_type']);
+        $grant->setVariable('direct_sponsor_name', $row['coeussubmission_direct_sponsor_name']);
+
+        $directBudget = (int) $row['coeussubmission_direct_cost_budget_period'];
+        $indirectBudget = (int) $row['coeussubmission_indirect_cost_budget_period'];
+        $totalBudget = $directBudget + $indirectBudget;
+        $grant->setVariable('title', $row['coeussubmission_title']);
+        $grant->setVariable('budget', $totalBudget);
+        $grant->setVariable('direct_budget', $directBudget);
+
+        $grant->setVariable('source', "coeus");
+        $grant->setVariable('url', $url);
+        $grant->setVariable('link', Links::makeLink($url, "See Grant"));
+        $grant->setVariable('percent_effort', $row['coeussubmission_percent_effort']);
+        $grant->setVariable('last_update', $row['coeussubmission_last_update']);
+        $grant->setVariable('pi_flag', $row['coeussubmission_pi_flag']);
+        $grant->setVariable('last_update', $row['coeussubmission_last_update']);
+
+        $grant->putInBins();
+        $this->grants[] = $grant;
+    }
 }
 
 class CoeusGrantFactory extends GrantFactory {
@@ -602,8 +652,8 @@ class CoeusGrantFactory extends GrantFactory {
         $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus&instance={$row['redcap_repeat_instance']}";
 		$grant = new Grant($this->lexicalTranslator);
 		$awardNo = self::cleanAwardNo($row['coeus_sponsor_award_number']);
-        $isSubproject = preg_match("/VUMC\d/", $awardNo);
 		$grant->setVariable('original_award_number', $row['coeus_sponsor_award_number']);
+        $grant->setVariable("submission_date", $row['coeus_award_create_date']);
 
 		$isSubproject = preg_match("/VUMC\d/", $awardNo) ? TRUE : FALSE;
 		if (isset($row['coeus_person_name'])) {
@@ -634,7 +684,7 @@ class CoeusGrantFactory extends GrantFactory {
 		}
 		$grant->setVariable('title', $row['coeus_title']);
 		$grant->setVariable('sponsor', $row['coeus_direct_sponsor_name']);
-		$grant->setVariable('sponsor_type', $row['coeus_direct_sponsor_name']);
+		$grant->setVariable('sponsor_type', $row['coeus_direct_sponsor_type']);
 
 		# used in budgetary calculations
 		$grant->setVariable('prime_sponsor_type', $row['coeus_prime_sponsor_type']);
@@ -657,8 +707,135 @@ class CoeusGrantFactory extends GrantFactory {
 		$grant->setVariable('pi_flag', $row['coeus_pi_flag']);
 
 		$grant->putInBins();
-		array_push($this->grants, $grant);
+		$this->grants[] = $grant;
 	}
+}
+
+class VERAGrantFactory extends  GrantFactory {
+    public function processRow($row, $otherRows, $token = "")
+    {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
+        $url = APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=vera&instance={$row['redcap_repeat_instance']}";
+        $awardNo = self::cleanAwardNo($row['vera_direct_sponsor_award_id']);
+        if ($awardNo == "") {
+            $awardNo = Grant::$noNameAssigned;
+        }
+
+        $role = "";
+        if ($row['vera_personnel_role'] == "Co-Investigator") {
+            return;
+        } else if ($row['vera_personnel_role'] == "PD/PI") {
+            $role = "PI";
+        } else if ($row['vera_personnel_role'] == "Co-PD/PI") {
+            $role = "Co-PI";
+        }
+
+        $grant = new Grant($this->lexicalTranslator);
+        $grant->setVariable("person_name", $row['vera_pi_full_name']);
+        $grant->setVariable("role", $role);
+        # Their PI-flag field excludes Co-PIs
+        $grant->setVariable('pi_flag', in_array($role, ["PI", "Co-PI"]) ? "Y" : "N");
+
+        $grant->setVariable("project_start", $row['vera_project_start_date']);
+        $grant->setVariable("project_end", $row['vera_project_end_date']);
+        $grant->setVariable("start", $row['vera_budget_allocation_startdate']);
+        $grant->setVariable("end", $row['vera_budget_allocation_enddate']);
+        $grant->setVariable("title", $row['vera_title']);
+        $grant->setVariable("budget", $row['vera_budget_allocation_total']);
+        $grant->setVariable("total_budget", $row['vera_budget_allocation_total']);
+        $grant->setVariable("direct_budget", $row['vera_budget_allocation_direct']);
+
+        $grant->setVariable('sponsor', $row['vera_direct_sponsor_name']);
+        $grant->setVariable('sponsor_type', $row['vera_direct_sponsor_type']);
+
+        # blank if same
+        $primeSponsorType = $row['vera_prime_sponsor_type'] ?: $row['vera_direct_sponsor_type'];
+        $primeSponsorName = $row['vera_prime_sponsor_name'] ?: $row['vera_direct_sponsor_name'];
+        $grant->setVariable('prime_sponsor_type', $primeSponsorType);
+        $grant->setVariable('prime_sponsor_name', $primeSponsorName);
+        $grant->setVariable('direct_sponsor_type', $row['vera_direct_sponsor_type']);
+        $grant->setVariable('direct_sponsor_name', $row['vera_direct_sponsor_name']);
+
+        $grant->setNumber($awardNo);
+        $grant->setVariable("original_award_number", $row['vera_direct_sponsor_award_id']);
+        $grant->setVariable('source', "vera");
+        $grant->setVariable('url', $url);
+        $grant->setVariable('link', Links::makeLink($url, "See Grant"));
+        $grant->setVariable("submission_date", $row['vera_datecreated']);
+
+        if ($row['vera_reporting_award_type_mechanism']) {
+            $grant->setVariable('nih_mechanism', $row['vera_reporting_award_type_mechanism']);
+        } else {
+            $grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
+        }
+        $grant->setVariable('last_update', $row['vera_last_update']);
+
+        $grant->putInBins();
+        $this->grants[] = $grant;
+    }
+}
+
+class VERASubmissionGrantFactory extends  GrantFactory {
+    public function processRow($row, $otherRows, $token = "")
+    {
+        list($pid, $event_id) = self::getProjectIdentifiers($token);
+        $url = APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=vera_submission&instance={$row['redcap_repeat_instance']}";
+        $awardNo = Grant::$noNameAssigned;
+
+        $role = "";
+        if ($row['verasubmission_project_role'] == "Other Professional") {
+            return;
+        } else if ($row['verasubmission_project_role'] == "PD/PI") {
+            $role = "PI";
+        } else if ($row['verasubmission_project_role'] == "Co-PD/PI") {
+            $role = "Co-PI";
+        }
+        $directBudget = (int) $row['verasubmission_budget_period_direct'];
+        $indirectBudget = (int) $row['verasubmission_budget_period_indirect'];
+        $totalBudget = $directBudget + $indirectBudget;
+
+        $grant = new Grant($this->lexicalTranslator);
+        $grant->setVariable("person_name", $row['verasubmission_person_name']);
+        $grant->setVariable("role", $role);
+        # Their PI-flag field excludes Co-PIs
+        $grant->setVariable('pi_flag', in_array($role, ["PI", "Co-PI"]) ? "Y" : "N");
+
+        $grant->setVariable("project_start", $row['verasubmission_project_start_date']);
+        $grant->setVariable("project_end", $row['verasubmission_project_end_date']);
+        $grant->setVariable("start", $row['verasubmission_project_end_date']);
+        $grant->setVariable("end", $row['verasubmission_project_end_date']);
+        $grant->setVariable("title", $row['verasubmission_title']);
+        $grant->setVariable("budget", $totalBudget);
+        $grant->setVariable("total_budget", $totalBudget);
+        $grant->setVariable("direct_budget", $row['verasubmission_budget_period_direct']);
+
+        $grant->setVariable('status', $row['verasubmission_status']);
+        $proposalType = in_array($row['verasubmission_proposal_type'], ["Resubmission", "Revision"]) ? "Resubmission" : "New";
+        $grant->setVariable("proposal_type", $proposalType);
+        $grant->setVariable("submission_date", $row['verasubmission_date_created']);
+        $grant->setVariable("submission_id", $row['verasubmission_fp_id']);
+
+        $grant->setVariable('sponsor', $row['verasubmission_direct_sponsor_name']);
+        $grant->setVariable('sponsor_type', $row['verasubmission_direct_sponsor_type']);
+
+        # blank if same
+        $primeSponsorType = $row['verasubmission_prime_sponsor_type'] ?: $row['verasubmission_direct_sponsor_type'];
+        $primeSponsorName = $row['verasubmission_prime_sponsor_name'] ?: $row['verasubmission_direct_sponsor_name'];
+        $grant->setVariable('prime_sponsor_type', $primeSponsorType);
+        $grant->setVariable('prime_sponsor_name', $primeSponsorName);
+        $grant->setVariable('direct_sponsor_type', $row['verasubmission_direct_sponsor_type']);
+        $grant->setVariable('direct_sponsor_name', $row['verasubmission_direct_sponsor_name']);
+
+        $grant->setNumber($awardNo);
+        $grant->setVariable('source', "vera");
+        $grant->setVariable('url', $url);
+        $grant->setVariable('link', Links::makeLink($url, "See Grant"));
+
+        $grant->setVariable('last_update', $row['verasubmission_last_update']);
+
+        $grant->putInBins();
+        $this->grants[] = $grant;
+    }
 }
 
 class Coeus2GrantFactory extends CoeusGrantFactory {
@@ -701,6 +878,9 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
             $grant->setVariable('pi_flag', ($roleText == "Principal Investigator") ? "Y" : "N");
             $grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
             $grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
+            $grant->setVariable("status", $row['coeus2_award_status']);
+            $grant->setVariable("submission_date", $row['coeus2_in_progress']);
+            $grant->setVariable("submission_id",  $row['coeus2_id']);
             $grant->setVariable('url', $url);
             $grant->setVariable('link', Links::makeLink($url, "See Grant"));
             if ($roleText == "Principal Investigator") {
@@ -713,7 +893,7 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
 
             $grant->putInBins();
             // Application::log("Coeus2GrantFactory adding ".json_encode($grant->toArray()));
-            array_push($this->grants, $grant);
+            $this->grants[] = $grant;
         }
     }
 
@@ -755,7 +935,7 @@ class RePORTERGrantFactory extends GrantFactory {
 
 
 		$grant->putInBins();
-		array_push($this->grants, $grant);
+		$this->grants[] = $grant;
 	}
 
 	# gets the date from a RePORTER formatting (YYYY-MM-DDThh:mm:ss);
@@ -814,7 +994,7 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         }
 
         $grant->putInBins();
-        array_push($this->grants, $grant);
+        $this->grants[] = $grant;
     }
 
     private static function calculateBudgetDates($projectStartDate, $projectEndDate, $awardNoticeDate) {
@@ -902,12 +1082,17 @@ class ExPORTERGrantFactory extends GrantFactory {
         }
 
         $grant->putInBins();
-		array_push($this->grants, $grant);
+		$this->grants[] = $grant;
 	}
 }
 
 class CustomGrantFactory extends GrantFactory {
-	public function processRow($row, $otherRows, $token = "") {
+    public function __construct($name, $lexicalTranslator, $metadata, $type = "Grant", $token = "", $server = "") {
+        parent::__construct($name, $lexicalTranslator, $metadata, $token, $server);
+        $this->type = $type;
+    }
+
+    public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=custom_grant&instance={$row['redcap_repeat_instance']}";
 		$awardNo = self::cleanAwardNo($row['custom_number']);
@@ -934,6 +1119,7 @@ class CustomGrantFactory extends GrantFactory {
 		$grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
 		$grant->setVariable('direct_budget', $directCosts);
 		$grant->setVariable('sponsor', $row['custom_org']);
+        $grant->setVariable("submission_date", $row['custom_submission_date'] ?? "");
 		$grant->setVariable('original_award_number', $row['custom_number']);
 		$grant->setNumber($awardNo);
 		$grant->setVariable('source', "custom");
@@ -962,8 +1148,22 @@ class CustomGrantFactory extends GrantFactory {
 		$grant->setVariable('link', Links::makeLink($url, "See Grant"));
 		$grant->setVariable('last_update', $row['custom_last_update']);
 
-		array_push($this->grants, $grant);
+        if (in_array($this->type, ["Grant", "Grants"]) && ($row['custom_is_submission'] != "1")) {
+            $this->grants[] = $grant;
+        } else if (in_array($this->type, ["Submission", "Submissions"]) && ($row['custom_is_submission'] == "1")) {
+            $statusIdx = $row['custom_submission_status'];
+            $status = $this->choices['custom_submission_status'][$statusIdx] ?? "";
+            $proposalType = $row['custom_resubmission_date'] ? "Resubmission" : "New";
+
+            $grant->setVariable("status", $status);
+            $grant->setVariable("proposal_type", $proposalType);
+            $grant->setVariable("submission_id", $awardNo);
+
+            $this->grants[] = $grant;
+        }
 	}
+
+    protected $type = "";
 }
 
 class PriorGrantFactory extends GrantFactory {
@@ -997,7 +1197,7 @@ class PriorGrantFactory extends GrantFactory {
 				} else {
 					$grant->putInBins();
 				}
-				array_push($this->grants, $grant);
+				$this->grants[] = $grant;
 			}
 		}
 	}
@@ -1024,14 +1224,7 @@ class NSFGrantFactory extends GrantFactory {
         $grant->setVariable('source', "nsf");
         $grant->setVariable('pi_flag', 'Y');
 
-        if (preg_match("/REU Site/", $title)) {
-            $type = "Training Grant Admin";
-        } else if (preg_match("/CAREER/", $title)) {
-            $type = "K Equivalent";
-        } else {
-            $type = "R01 Equivalent";
-        }
-        $grant->setVariable("type", $type);
+        $grant->putInBins();
 
         list ($firstName, $lastName) = NameMatcher::splitName($this->name, 2);
         $role = "";

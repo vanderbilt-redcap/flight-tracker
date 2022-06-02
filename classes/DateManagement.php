@@ -200,6 +200,20 @@ class DateManagement {
         return FALSE;
     }
 
+    public static function isTimestamp($str) {
+        if (is_string($str)) {
+            return preg_match("/^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d/", $str);
+        }
+        return FALSE;
+    }
+
+    public static function getDateFromTimestamp($str) {
+        if (preg_match("/^\d\d\d\d-\d\d-\d\d/", $str, $matches)) {
+            return $matches[0];
+        }
+        return "";
+    }
+
     public static function isDate($str) {
         if (is_string($str)) {
             return self::isYMD($str) || self::isDMY($str) || self::isMDY($str);

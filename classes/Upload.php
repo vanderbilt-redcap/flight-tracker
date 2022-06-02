@@ -643,20 +643,20 @@ public static function metadata($metadata, $token, $server) {
 
 		$headerPrefices = array();
 		if ($headers[0] == "record_id") {
-			array_push($headerPrefices, "record_id");
+			$headerPrefices[] = "record_id";
 		} else if (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {
-			array_push($headerPrefices, "identifier_last_name");
-			array_push($headerPrefices, "identifier_first_name");
+			$headerPrefices[] = "identifier_last_name";
+			$headerPrefices[] = "identifier_first_name";
 		} else if (($headers[0] == "identifier_first_name") && ($headers[1] == "identifier_last_name")) {
-			array_push($headerPrefices, "identifier_first_name");
-			array_push($headerPrefices, "identifier_last_name");
+			$headerPrefices[] = "identifier_first_name";
+			$headerPrefices[] = "identifier_last_name";
 		} else {
-			array_push($errors, "The first column's header must be record_id, identifier_first_name, or identifier_last_name. If the first column is a name field, the second field must be the other name field (identifier_last_name or identifier_first_name). Your first two columns are: {$headers[0]} and {$headers[1]}.");
+			$errors[] = "The first column's header must be record_id, identifier_first_name, or identifier_last_name. If the first column is a name field, the second field must be the other name field (identifier_last_name or identifier_first_name). Your first two columns are: {$headers[0]} and {$headers[1]}.";
 		}
 
 		$invalidHeaders = self::getInvalidHeaders($headers, $metadata);
 		if (!empty($invalidHeaders)) {
-			array_push($errors, "The following fields either are not valid fields or are duplicates: ".implode(", ", $invalidHeaders));
+			$errors[] = "The following fields either are not valid fields or are duplicates: ".implode(", ", $invalidHeaders);
 		} else {
 			$repeatForms = self::getRepeatFormsFromList($headers, $headerPrefices, $metadata, $pid);
 			if (count($repeatForms) == 1) {
@@ -676,10 +676,12 @@ public static function metadata($metadata, $token, $server) {
 						$errors = array_merge($errors, $newErrors);
 						if ($recordId) {
 							$newCounts['existing']++;
+                            $isNewRecord = FALSE;
 						} else {
 							$newCounts['new']++;
 							$recordId = $max + 1;
 							$max++;
+                            $isNewRecord = TRUE;
 						}
 	
 						$uploadRow = array("record_id" => $recordId);
@@ -717,19 +719,21 @@ public static function metadata($metadata, $token, $server) {
                                     } else {
                                         $uploadRow[$header] = $line[$j];
                                     }
-								}
+								} else if (!isset($uploadRow[$header]) && $isNewRecord) {
+                                    $uploadRow[$header] = $line[$j];
+                                }
 								$j++;
 							}
-							array_push($upload, $uploadRow);
+							$upload[] = $uploadRow;
 						} else {
-							array_push($errors, "On data line $i, the number of elements does not equal the number of headers (".count($headers).")");
+							$errors[] = "On data line $i, the number of elements does not equal the number of headers (" . count($headers) . ")";
 						}
 					}    // no else because errors are already supplied
 				}
 			} else if (count($repeatForms) == 0) {
-				array_push($errors, "No data are specified in the table.");
+				$errors[] = "No data are specified in the table.";
 			} else {
-				array_push($errors, "More than one repeating form is specified on the same row: ".implode(", ", $repeatForms));
+				$errors[] = "More than one repeating form is specified on the same row: " . implode(", ", $repeatForms);
 			}
 		}
 		return array($upload, $errors, $newCounts);
@@ -761,21 +765,22 @@ public static function metadata($metadata, $token, $server) {
 	private static function getInvalidHeaders($headers, $metadata) {
 		$invalid = array();
 		$found = array();
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
 		foreach ($headers as $header) {
-			$foundHeader = FALSE;
-			foreach ($metadata as $row) {
-				if ($row['field_name'] == $header) {
-					$foundHeader = TRUE;
-					break;
-				}
-			}
-			if (!$foundHeader) {
-				array_push($invalid, $header);
+            if (preg_match("/___/", $header)) {
+                $nodes = preg_split("/___/", $header);
+                $fieldName = $nodes[0];
+            } else {
+                $fieldName = $header;
+            }
+
+			if (!in_array($fieldName, $metadataFields)) {
+				$invalid[] = $header." (invalid)";
 			} else if (!in_array($header, $found)) {
-				array_push($found, $header);
+				$found[] = $header;
 			} else {
 				# duplicate
-				array_push($invalid, $header);
+				$invalid[] = $header." (Duplicate)";
 			}
 		}
 		return $invalid;
