@@ -15,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.11.2";
+		return "4.11.3";
 	}
 
 	public static function getLockFile($pid) {
@@ -603,7 +603,9 @@ class CareerDev {
 
 	public static function clearDate($setting, $pid) {
         $ary = self::getSetting(self::getGeneralSettingName(), $pid);
-        unset($ary[$setting]);
+	if (isset($ary[$setting])) {
+        	unset($ary[$setting]);
+	}
         self::setSetting(self::getGeneralSettingName(), $ary, $pid);
     }
 
