@@ -603,9 +603,7 @@ class CareerDev {
 
 	public static function clearDate($setting, $pid) {
         $ary = self::getSetting(self::getGeneralSettingName(), $pid);
-	if (isset($ary[$setting])) {
-        	unset($ary[$setting]);
-	}
+        unset($ary[$setting]);
         self::setSetting(self::getGeneralSettingName(), $ary, $pid);
     }
 
@@ -1881,9 +1879,6 @@ class CareerDev {
 						"identifier_email_source",
 						"identifier_email_sourcetype",
 						"identifier_userid",
-						"identifier_coeus",
-						"identifier_reporter",
-						"identifier_pubmed",
 						"identifier_institution",
 						"identifier_institution_source",
 						"identifier_institution_sourcetype",
