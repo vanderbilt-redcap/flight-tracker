@@ -48,8 +48,8 @@ class DataDictionaryManagement {
                 $fieldsForMentorLabel = ["check_primary_mentor", "followup_primary_mentor", ];
                 foreach ($fieldsForMentorLabel as $field) {
                     $metadata['file'] = self::changeFieldLabel($field, $mentorLabel, $metadata['file']);
-                    $fileValue = isset($fieldLabels['file'][$field]) ? $fieldLabels['file'][$field] : "";
-                    $redcapValue = isset($fieldLabels['REDCap'][$field]) ? $fieldLabels['REDCap'][$field] : "";
+                    $fileValue = $fieldLabels['file'][$field]?? "";
+                    $redcapValue = $fieldLabels['REDCap'][$field] ?? "";
                     if ($fileValue != $redcapValue) {
                         $postedFields[] = $field;
                     }
@@ -568,10 +568,12 @@ class DataDictionaryManagement {
                 $priorNewRowField = "";
                 for ($i = 0; $i < count($existingMetadata); $i++) {
                     $row = $existingMetadata[$i];
-                    if (!preg_match($deletionRegEx, $row['field_name']) && !in_array($row['field_name'], $fieldsToDelete)) {
-                        if ($priorNewRowField != $row['field_name']) {
-                            $tempMetadata[] = $row;
-                        }
+                    if (
+                        !preg_match($deletionRegEx, $row['field_name'])
+                        && !in_array($row['field_name'], $fieldsToDelete)
+                        && ($priorNewRowField != $row['field_name'])
+                    ) {
+                        $tempMetadata[] = $row;
                     }
                     if (($priorRowField == $row['field_name']) && !preg_match($deletionRegEx, $newRow['field_name'])) {
                         $newRow = self::copyMetadataSettingsForField($newRow, $newMetadata, $upload, $token, $server);

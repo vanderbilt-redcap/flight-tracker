@@ -40,31 +40,7 @@ $grants->compileGrants();
 # returns "" when data is not there
 function findInFollowup($fields) {
 	global $data;
-	if (!is_array($fields)) {
-		$fields = array($fields);
-	}
-
-	foreach ($fields as $field) {
-		if (preg_match("/^coeus_/", $field)) {
-			$values = array();
-			foreach ($data as $row) {
-				$instance = $row['redcap_repeat_instance'];
-				if (isset($row[$field]) && ($row[$field] != "")) {
-					$values[$instance] = preg_replace("/'/", "\\'", $row[$field]);
-				}
-			}
-			if (!empty($values)) {
-				return $values;
-			}
-		} else {
-			foreach ($data as $row) {
-				if (($row['redcap_repeat_instrument'] == "") && isset($row[$field]) && ($row[$field] !== "")) {
-					return preg_replace("/'/", "\\'", $row[$field]);
-				}
-			}
-		}
-	}
-	return "";
+    return REDCapManagement::findInData($data, $fields);
 }
 
 # returns the value for $coeusField in the first COEUS repeatable instance that matches
@@ -111,19 +87,19 @@ function getCitizenship($value) {
 $(document).ready(function() {
     presetValue("followup_ecommons_id", "<?php echo findInFollowup(['check_ecommons_id', 'init_import_ecommons_id']); ?>");
     presetValue("followup_orcid_id", "<?php echo findInFollowup(['identifier_orcid', 'followup_orcid_id', 'check_orcid_id', 'init_import_orcid_id']); ?>");
- 	presetValue("followup_disability", "<?php echo findInFollowup(array('summary_disability')); ?>");
- 	presetValue("followup_disadvantaged", "<?php echo findInFollowup(array('summary_disadvantaged')); ?>");
- 	presetValue("followup_name_first", "<?php echo findInFollowup(array('identifier_first_name', 'followup_name_first', 'check_name_first', 'init_import_name_first')); ?>");
- 	presetValue("followup_name_middle", "<?php echo findInFollowup(array('newman_data_middle_name', 'followup_name_middle', 'check_name_middle', 'init_import_name_middle')); ?>");
-    presetValue("followup_name_last", "<?php echo findInFollowup(array('identifier_last_name', 'followup_name_last', 'check_name_last', 'init_import_name_last')); ?>");
-    presetValue("followup_name_maiden", "<?php echo findInFollowup(['followup_name_maiden', 'check_name_maiden', 'init_import_name_maiden']);     ?>")
+ 	presetValue("followup_disability", "<?php echo findInFollowup(['summary_disability']); ?>");
+ 	presetValue("followup_disadvantaged", "<?php echo findInFollowup(['summary_disadvantaged']); ?>");
+ 	presetValue("followup_name_first", "<?php echo findInFollowup(['identifier_first_name', 'followup_name_first', 'check_name_first', 'init_import_name_first']); ?>");
+ 	presetValue("followup_name_middle", "<?php echo findInFollowup(['newman_data_middle_name', 'followup_name_middle', 'check_name_middle', 'init_import_name_middle']); ?>");
+    presetValue("followup_name_last", "<?php echo findInFollowup(['identifier_last_name', 'followup_name_last', 'check_name_last', 'init_import_name_last']); ?>");
+    presetValue("followup_name_maiden", "<?php echo findInFollowup(['followup_name_maiden', 'check_name_maiden', 'init_import_name_maiden']); ?>")
     presetValue("followup_name_maiden_enter", "<?php echo findInFollowup(['followup_name_maiden_enter', 'check_name_maiden_enter', 'init_import_name_maiden_enter']); ?>");
     presetValue("followup_name_preferred", "<?php echo findInFollowup(['followup_name_preferred', 'check_name_preferred', 'init_import_name_preferred']); ?>")
     presetValue("followup_name_preferred_enter", "<?php echo findInFollowup(['followup_name_preferred_enter', 'check_name_preferred_enter', 'init_import_name_preferred_enter']); ?>");
- 	presetValue("followup_email", "<?php echo findInFollowup(array('identifier_email', 'followup_email', 'check_email', 'init_import_email')); ?>");
+ 	presetValue("followup_email", "<?php echo findInFollowup(['identifier_email', 'followup_email', 'check_email', 'init_import_email']); ?>");
  	presetValue("followup_primary_mentor", "<?php echo findInFollowup(['followup_primary_mentor', 'check_primary_mentor', 'init_import_primary_mentor', 'summary_mentor']); ?>");
 
-	presetValue('followup_primary_dept', '<?php echo findInFollowup(array('followup_primary_dept', 'summary_primary_dept', 'check_primary_dept', 'init_import_primary_dept')); ?>');
+	presetValue('followup_primary_dept', '<?php echo findInFollowup(['followup_primary_dept', 'summary_primary_dept', 'check_primary_dept', 'init_import_primary_dept', "mstp_current_position_dept_institution"]); ?>');
 	presetValue('followup_academic_rank', '<?php
 	$vfrs = findInFollowup('vfrs_current_appointment');
 	if ($vfrs != '') {
@@ -191,14 +167,24 @@ function getTenureStatus($value) {
 	# make .*_d-tr td background
 	# also .*_d\d+
 ?>
-	presetValue('followup_institution', '<?php echo findInFollowup(['check_institution', 'init_import_institution']) ?? '1' ?>');
+	presetValue('followup_institution', '<?php
+            $value = findInFollowup(['check_institution', 'init_import_institution']);
+            if (($value === "") && ($mstpValue = findInFollowup('mstp_current_position_dept_institution'))) {
+                $value = '5';
+                echo "$value');\npresetValue('followup_institution_oth', '$mstpValue";
+            } else if ($value === "") {
+                $value = '1';
+                echo $value;
+            } else if ($value == 5) {
+                echo "$value')\npresetValue('followup_institution_oth', '".(findInFollowup(['check_institution_oth', 'init_import_institution_oth']) ?: '1');
+            } else {
+                echo $value;
+            }
+        ?>');
 	<?php
-    if (findInFollowup(['check_institution', 'init_import_institution']) == '5') {
-        echo "presetValue('followup_institution_oth', '".(findInFollowup(['check_institution_oth', 'init_import_institution_oth']) ?? '1')."');\n";
-    }
     ?>
-    presetValue('followup_job_title', '<?php echo (findInFollowup(['check_job_title', 'init_import_job_title']) ?? '1'); ?>');
-    presetValue('followup_job_category', '<?php echo findInFollowup(['check_job_category', 'init_import_job_category']) ?? '1' ?>');
+    presetValue('followup_job_title', '<?php echo (findInFollowup(['check_job_title', 'init_import_job_title', 'mstp_career_type_current_position_title']) ?: '1'); ?>');
+    presetValue('followup_job_category', '<?php echo findInFollowup(['check_job_category', 'init_import_job_category']) ?: '1' ?>');
     presetValue('followup_academic_rank', '<?php echo findInFollowup(['check_academic_rank', 'init_import_academic_rank']); ?>');
     presetValue('followup_academic_rank_dt', '<?php echo REDCapManagement::YMD2MDY(findInFollowup(['vfrs_current_appointment', 'check_academic_rank_dt', 'init_import_academic_rank_dt'])); ?>');
     presetValue('followup_left_institution', '<?php echo REDCapManagement::YMD2MDY(findInFollowup(['check_left_institution', 'init_import_left_institution'])); ?>');

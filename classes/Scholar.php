@@ -120,6 +120,14 @@ class Scholar {
 			$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
 		}
 		$value = $result->getValue();
+        if (!$value && $this->isMSTP()) {
+            $mstpValue = REDCapManagement::findField($rows, $this->recordId, "mstp_orcid_link");
+            if ($mstpValue) {
+                $result->setValue($mstpValue);
+                $result->setSource("manual");
+                $result->setField("mstp_orcid_link");
+            }
+        }
 		$searchTerm = "/^https:\/\/orcid.org\//";
 		if (preg_match($searchTerm, $value)) {
 			# they provided URL instead of number
@@ -319,7 +327,71 @@ return $result;
         $vars = self::getDefaultOrder($field);
         $vars = $this->getOrder($vars, $field);
         $result = self::searchRowsForVars($rows, $vars, $byLatest, $this->pid, $showDebug);
+        if ($result->getValue() === "") {
+            $result = $this->searchForAndTranslateSpecialResults($rows, $field);
+        }
         return $result;
+    }
+
+    public function isMSTP() {
+        return Application::isVanderbilt() && ($this->pid == 149668);
+    }
+
+    private function searchForAndTranslateSpecialResults($rows, $field) {
+        if ($this->isMSTP()) {
+            $source = "manual";
+            $sourceType = "Manually Entered";
+
+            if ($field == "summary_gender") {
+                $sourceField = "mstp_gender";
+                $value = REDCapManagement::findField($rows, $this->recordId, $sourceField);
+                if ($value == "2") {
+                    return new Result("1", $source, $sourceType, "", $this->pid);
+                } else if ($value == "1") {
+                    return new Result("2", $source, $sourceType, "", $this->pid);
+                } else if ($value) {
+                    return new Result("99", $source, $sourceType, "", $this->pid);
+                }
+            } else if ($field == "identifier_email") {
+                $order = [
+                    "mstp_email_preferred",
+                    "mstp_email_secondary",
+                    "mstp_email_third",
+                    "mstp_email_fourth",
+                ];
+                foreach ($order as $sourceField) {
+                    $value = REDCapManagement::findField($rows, $this->recordId, $sourceField);
+                    if ($value) {
+                        return new Result($value, $source, $sourceType, "", $this->pid);
+                    }
+                }
+            } else if ($field == "summary_mentor") {
+                $mentorName = REDCapManagement::findField($rows, $this->recordId, "mstp_vu_faculty_mentor");
+                $comentor = REDCapManagement::findField($rows, $this->recordId, "mstp_senior_comentor_if_applicable");
+                if ($mentorName) {
+                    list ($mentorFirst, $mentorLast) = NameMatcher::splitName($mentorName);
+                    if ($comentor) {
+                        list($comentorFirst, $comentorLast) = NameMatcher::splitName($comentor);
+                        $names = "$mentorFirst $mentorLast, $comentorFirst $comentorLast";
+                    } else {
+                        $names = "$mentorFirst $mentorLast";
+                    }
+                    return new Result($names, $source, $sourceType, "", $this->pid);
+                }
+            } else if ($field == "summary_training_start") {
+                $startYear = REDCapManagement::findField($rows, $this->recordId, "mstp_matriculation_date_vu");
+                if ($startYear) {
+                    return new Result($startYear."-07-01", $source, $sourceType, "", $this->pid);
+                }
+            } else if ($field == "summary_training_end") {
+                $didGraduate = REDCapManagement::findField($rows, $this->recordId, "mstp_graduated_from_program");
+                $phdGraduationYear = REDCapManagement::findField($rows, $this->recordId, "mstp_phd_completion_year");
+                if (($didGraduate == "1") && ($phdGraduationYear)) {
+                    return new Result($phdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
+                }
+            }
+        }
+        return new Result("", "");
     }
 
     private function getEcommonsId($rows) {
@@ -3294,6 +3366,14 @@ return $result;
 		if ($disabilityValue == "1") {
 			$value = "1";
 		}
+        if ($this->isMSTP()) {
+            $isURM = REDCapManagement::findField($rows, $this->recordId, "mstrp_status___1");
+            if ($isURM) {
+                $value = "1";
+            } else if (($isURM === "0") && ($value === "")) {
+                $value = "0";
+            }
+        }
 		return new Result($value, "", "", "", $this->pid);
 	}
 
@@ -3310,6 +3390,18 @@ return $result;
 		} else {
 			$value = "";
 		}
+        if ($this->isMSTP()) {
+            $isDisadvantaged = REDCapManagement::findField($rows, $this->recordId, "mstp_status___3");
+            if ($isDisadvantaged && !$value) {
+                $value = "1";
+                $result->setField("mstp_status");
+                $result->setSource("manual");
+            } else if (($value === "") && ($isDisadvantaged === "0")) {
+                $value = "0";
+                $result->setField("mstp_status");
+                $result->setSource("manual");
+            }
+        }
 		$result->setValue($value);
 		return $result;
 	}
@@ -3327,6 +3419,18 @@ return $result;
 		} else {
 			$value = "";
 		}
+        if ($this->isMSTP()) {
+            $isDisability = REDCapManagement::findField($rows, $this->recordId, "mstp_status___2");
+            if ($isDisability && !$value) {
+                $value = "1";
+                $result->setField("mstp_status");
+                $result->setSource("manual");
+            } else if (($value === "") && ($isDisability === "0")) {
+                $value = "0";
+                $result->setField("mstp_status");
+                $result->setSource("manual");
+            }
+        }
 		$result->setValue($value);
 		return $result;
 	}
@@ -3483,6 +3587,11 @@ class Result {
 		return $this->source;
 	}
 
+    public function setSource($src) {
+        $this->source = $src;
+        $this->sourceType = self::calculateSourceType($src, $this->pid);
+    }
+
 	public function getSourceType() {
 		if (!$this->sourceType) {
 			$this->sourceType = self::calculateSourceType($this->source, $this->pid);
@@ -3565,13 +3674,13 @@ class RaceEthnicityResult extends Result {
 
 class Results {
 	public function __construct() {
-		$this->results = array();
-		$this->fields = array();
+		$this->results = [];
+		$this->fields = [];
 	}
 
 	public function addResult($field, $result) {
-		array_push($this->results, $result);
-		array_push($this->fields, $field);
+		$this->results[] = $result;
+		$this->fields[] = $field;
 	}
 
 	# precondition: count($this->results) == count($this->fields)

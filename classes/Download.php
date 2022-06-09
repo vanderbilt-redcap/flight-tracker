@@ -387,6 +387,9 @@ class Download {
 
 	public static function metadata($token, $server, $fields = array()) {
         $pid = Application::getPID($token);
+        if (isset($_GET['test'])) {
+            Application::log("Download::metadata with token ".substr($token, 0, 6), $pid);
+        }
 	    if (
             $pid
 	        && isset($_SESSION['metadata'.$pid])
@@ -402,11 +405,11 @@ class Download {
 	            ($currTs - $ts >= $fiveMinutes)
                 && ($currTs > $ts)
             ) {
+                if (isset($_GET['test'])) {
+                    Application::log("Download::metadata returning _SESSION", $pid);
+                }
                 return $_SESSION['metadata'.$pid];
             }
-        }
-		if (isset($_GET['test'])) {
-            Application::log("Download::metadata");
         }
 		if (preg_match("/".SERVER_NAME."/", $server) && $pid) {
 		    if (!empty($fields)) {
@@ -415,10 +418,10 @@ class Download {
                 $json = \REDCap::getDataDictionary($pid, "json");
             }
             $rows = json_decode($json, TRUE);
-		    if (isset($_GET['test'])) {
-		        Application::log("Download::metadata JSON returning ".count($rows)." rows");
-		        if (count($rows) === 0) {
-		            Application::log($json);
+            if (isset($_GET['test'])) {
+                Application::log("Download::metadata JSON returning " . count($rows) . " rows", $pid);
+                if (count($rows) === 0) {
+                    Application::log($json);
                 }
             }
 		    $_SESSION['metadata'.$pid] = $rows;
@@ -436,7 +439,7 @@ class Download {
             }
             $rows = self::sendToServer($server, $data);
             if (isset($_GET['test'])) {
-                Application::log("Download::metadata API returning ".count($rows)." rows");
+                Application::log("Download::metadata API returning " . count($rows) . " rows", $pid);
             }
             if (empty($fields)) {
                 $_SESSION['metadata'.$pid] = $rows;

@@ -63,14 +63,14 @@ if ($_POST['process'] == "check") {
     }
     $returnData = [];
     foreach ($pidsToRun as $currPid) {
-        $token = Application::getSetting("token", $currPid);
-        $server = Application::getSetting("server", $currPid);
-        $switches = new FeatureSwitches($token, $server, $currPid);
-        $grantClass = Application::getSetting("grant_class", $currPid);
-        $eventId = Application::getSetting("event_id", $currPid);
-        if ($token && $server && $eventId) {
+        $pidToken = Application::getSetting("token", $currPid);
+        $pidServer = Application::getSetting("server", $currPid);
+        $switches = new FeatureSwitches($pidToken, $pidServer, $currPid);
+        $pidGrantClass = Application::getSetting("grant_class", $currPid);
+        $pidEventId = Application::getSetting("event_id", $currPid);
+        if ($pidToken && $pidServer && $pidEventId) {
             Application::log("Installing metadata", $currPid);
-            $returnData[$currPid] = DataDictionaryManagement::installMetadataFromFiles($files, $token, $server, $currPid, $eventId, $grantClass, CareerDev::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
+            $returnData[$currPid] = DataDictionaryManagement::installMetadataFromFiles($files, $pidToken, $pidServer, $currPid, $pidEventId, $pidGrantClass, CareerDev::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
         }
     }
     echo json_encode($returnData);

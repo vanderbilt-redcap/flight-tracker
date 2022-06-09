@@ -463,29 +463,32 @@ class REDCapManagement {
 	    return DataDictionaryManagement::getMetadataFieldsToScreen();
 	}
 
-	public static function findInData($data, $fields) {
+	public static function findInData($data, $fields, $oneValuePreferred = TRUE) {
         if (!is_array($fields)) {
-            $fields = array($fields);
+            $fields = [$fields];
         }
 
         foreach ($fields as $field) {
-            if (preg_match("/^coeus_/", $field) || preg_match("/^coeus2_/", $field)) {
-                $values = array();
-                foreach ($data as $row) {
-                    $instance = $row['redcap_repeat_instance'];
-                    if (isset($row[$field]) && ($row[$field] != "")) {
-                        $values[$instance] = preg_replace("/'/", "\\'", $row[$field]);;
+            foreach ($data as $row) {
+                if (($row['redcap_repeat_instrument'] == "") && isset($row[$field]) && ($row[$field] != "")) {
+                    return preg_replace("/'/", "\\'", $row[$field]);
+                }
+            }
+
+            $values = [];
+            foreach ($data as $row) {
+                $instance = $row['redcap_repeat_instance'];
+                if (isset($row[$field]) && ($row[$field] != "")) {
+                    $value = preg_replace("/'/", "\\'", $row[$field]);
+                    if ($oneValuePreferred) {
+                        return $value;
+                    } else {
+                        $values[$instance] = $value;
                     }
                 }
-                if (!empty($values)) {
-                    return $values;
-                }
-            } else {
-                foreach ($data as $row) {
-                    if (($row['redcap_repeat_instrument'] == "") && isset($row[$field]) && ($row[$field] != "")) {
-                        return preg_replace("/'/", "\\'", $row[$field]);
-                    }
-                }
+            }
+            if (!empty($values)) {
+                return $values;
             }
         }
         return "";

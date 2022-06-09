@@ -15,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.11.6";
+		return "4.11.7";
 	}
 
 	public static function getLockFile($pid) {
@@ -517,7 +517,7 @@ class CareerDev {
             }
 		}
 		if ($relevantPid = self::getPidFromDatabase($localToken)) {
-		    return $relevantPid;
+            return $relevantPid;
         }
 		return "";
 	}
@@ -603,8 +603,10 @@ class CareerDev {
 
 	public static function clearDate($setting, $pid) {
         $ary = self::getSetting(self::getGeneralSettingName(), $pid);
-        unset($ary[$setting]);
-        self::setSetting(self::getGeneralSettingName(), $ary, $pid);
+        if (isset($ary[$setting])) {
+            unset($ary[$setting]);
+            self::setSetting(self::getGeneralSettingName(), $ary, $pid);
+        }
     }
 
 	public static function saveSetting($field, $value, $pid = NULL) {

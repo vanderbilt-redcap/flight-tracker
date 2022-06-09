@@ -281,18 +281,18 @@ class CohortConfig {
 				if (preg_match("/^calc_/", $row['variable'])) {
 					foreach (array_merge(Application::$summaryFields, Application::getCitationFields($metadata)) as $field) {
 						if (!in_array($field, $fields)) {
-							array_push($fields, $field);
+							$fields[] = $field;
 						}
 					}
 				} else {
 					if (!in_array($row['variable'], $fields)) {
-						array_push($fields, $row['variable']);
+						$fields[] = $row['variable'];
 					}
 				}
 			} else {
 				$field = "resources_resource";
 				if (!in_array($field, $fields)) {
-					array_push($fields, $field);
+					$fields[] = $field;
 				}
 			}
 		}
