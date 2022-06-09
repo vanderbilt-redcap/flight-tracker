@@ -74,6 +74,8 @@ if (!empty($rowsOfValues)) {
     }
 }
 
+# redcap_external_modules_log_parameters has a foreign key to log_id
+
 $sql = "SET FOREIGN_KEY_CHECKS = 0";
 db_query($sql);
 if ($error = db_error()) {
@@ -92,9 +94,12 @@ if ($error = db_error()) {
     die("ERROR: $error $sql");
 }
 
+# redcap_external_modules_log_parameters is never used by Flight Tracker
+
 $sql = "RENAME TABLE $newTableName TO redcap_external_modules_log";
 db_query($sql);
 if ($error = db_error()) {
     die("ERROR: $error $sql");
 }
+
 echo "Done.\n";

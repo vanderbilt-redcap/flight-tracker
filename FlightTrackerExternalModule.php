@@ -163,7 +163,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     }
 
 	public function cleanupLogs($pid) {
-        $daysPrior = 28;
+        $daysPrior = 10;
         $this->cleanupExtModLogs($pid, $daysPrior);
     }
 

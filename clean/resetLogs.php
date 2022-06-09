@@ -20,8 +20,8 @@ try {
     $iteration = 0;
     do {
         $iteration++;
-        $deleteSql = "DELETE $fromAndWhereClause ORDER BY log_id LIMIT 10000";
-        $selectSql = "SELECT log_id $fromAndWhereClause ORDER BY log_id LIMIT 1";
+        $deleteSql = "DELETE $fromAndWhereClause LIMIT 10000";
+        $selectSql = "SELECT log_id $fromAndWhereClause LIMIT 1";
         $module->query($deleteSql, [$pid]);
         $result = $module->query($selectSql, [$pid]);
         $moreToDelete = $result && $result->fetch_assoc();
