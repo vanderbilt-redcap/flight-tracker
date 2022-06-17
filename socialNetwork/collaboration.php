@@ -17,7 +17,7 @@ use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-if ($_GET['record']) {
+if (isset($_GET['record'])) {
     $highlightedRecord = Sanitizer::sanitize($_GET['record']);
 } else {
     $highlightedRecord = FALSE;
@@ -52,8 +52,8 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
 } else {
     $indexByField = "record_id";
 }
-$startDate = $_GET['start'] ? Sanitizer::sanitize($_GET['start']) : "";
-$endDate = $_GET['end'] ? Sanitizer::sanitize($_GET['end']) : "";
+$startDate = isset($_GET['start']) ? Sanitizer::sanitize($_GET['start']) : "";
+$endDate = isset($_GET['end']) ? Sanitizer::sanitize($_GET['end']) : "";
 $startTs = ($startDate && DateManagement::isDate($startDate)) ? strtotime($startDate) : FALSE;
 $endTs = ($endDate && DateManagement::isDate($endDate)) ? strtotime($endDate) : FALSE;
 
@@ -104,7 +104,7 @@ if ($includeHeaders) {
     }
     $checked = [];
     foreach (['mentors', 'other_mentors'] as $key) {
-        if ($_GET[$key] == "on") {
+        if (isset($_GET[$key]) && ($_GET[$key] == "on")) {
             $checked[$key] = " checked";
         } else {
             $checked[$key] = "";
@@ -114,7 +114,7 @@ if ($includeHeaders) {
     if (!isset($_GET['grants'])) {
         echo "<div class='mentorCheckbox centered max-width'$style><input type='checkbox' id='mentors' name='mentors'{$checked['mentors']}> <label for='mentors'>Include Mentors' Collaborations with Scholars</label></div>";
         echo "<div class='mentorCheckbox centered max-width'$style><input type='checkbox' id='other_mentors' name='other_mentors'{$checked['other_mentors']}> <label for='other_mentors'>Show Only Collaborations with Multiple Mentors</label></div>";
-        echo "<div class='centered max-width'><label for='start'>Start Date (optional; on-or-after ".START_YEAR."): </label><input type='date' id='start' name='start' value='$startDate' />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date (optional): </label><input type='date' id='end' name='end' value='$endDate' /></div>";
+        echo "<div class='centered max-width'><label for='start'>Start Date (on-or-after ".START_YEAR."): </label><input type='date' id='start' name='start' value='$startDate' />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date: </label><input type='date' id='end' name='end' value='$endDate' /></div>";
     }
     echo "<div class='centered max-width'><button>Go!</button></div>";
     echo "</p></form>";
@@ -134,10 +134,23 @@ if (isset($_GET['cohort']) && !empty($records)) {
         $mentors = Download::primaryMentors($token, $server);
         addMentorNamesForRecords($possibleFirstNames, $possibleLastNames, $records, $mentors, $highlightedRecord);
     }
-    $citationFields = ["record_id", "citation_include", "citation_authors", "citation_year", "citation_month", "citation_day"];
+    $citationFields = [
+        "record_id",
+        "citation_include",
+        "citation_authors",
+        "citation_year",
+        "citation_month",
+        "citation_day",
+        "eric_include",
+        "eric_author",
+        "eric_sourceid",
+        "eric_publicationdateyear",
+    ];
     if (!in_array($indexByField, $citationFields)) {
         $citationFields[] = $indexByField;
     }
+    $citationFields = DataDictionaryManagement::filterOutInvalidFields($metadata, $citationFields);
+
     $grantFields = [
         "record_id",
         "identifier_first_name",
@@ -284,10 +297,20 @@ if (isset($_GET['cohort']) && !empty($records)) {
 
 
 function getCitationTimestamp($row) {
-    $year = Citation::transformYear($row['citation_year']);
-    $month = $row['citation_month'];
-    $day = $row['citation_day'];
-    return Citation::transformDateToTimestamp(Citation::transformIntoDate($year, $month, $day));
+    if ($row['redcap_repeat_instrument'] == "citation") {
+        $year = Citation::transformYear($row['citation_year']);
+        $month = $row['citation_month'];
+        $day = $row['citation_day'];
+        return Citation::transformDateToTimestamp(Citation::transformIntoDate($year, $month, $day));
+    } else if ($row['redcap_repeat_instrument'] == "") {
+        $date = Citation::getDateFromSourceID($row['eric_sourceid'], $row['eric_publicationdateyear']);
+        if ($date && DateManagement::isDate($date)) {
+            return strtotime($date);
+        }
+        return 0;
+    } else {
+        throw new \Exception("Invalid row!");
+    }
 }
 
 function makePublicationColsAndLabels($pubs) {
@@ -455,13 +478,13 @@ function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
         $connections["given"][$fromRecordId] = [];
         foreach ($matches[$fromRecordId] as $toRecordId => $fromInstances) {
             if (isForIndividualScholars($indexByField)) {
-                if ($names[$fromRecordId]) {
+                if (isset($names[$fromRecordId])) {
                     $from = $fromRecordId.": ".$names[$fromRecordId];
                 } else {
                     # mentor
                     $from = $fromRecordId;
                 }
-                if ($names[$toRecordId]) {
+                if (isset($names[$toRecordId])) {
                     $to = $toRecordId . ": " . $names[$toRecordId];
                 } else {
                     # mentor
@@ -645,28 +668,41 @@ function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRe
         }
     }
     foreach ($redcapData as $row) {
-        if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == '1')) {
+        $authors = [];
+        if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == '1') && $row['citation_include']) {
             $authors = preg_split("/,\s*/", $row['citation_authors']);
-            foreach ($authors as $author) {
-                list($authorInitials, $authorLast) = NameMatcher::splitName($author);
-                foreach (array_keys($possibleFirstNames) as $toRecordId) {
-                    if ($toRecordId != $fromRecordId && in_array($toRecordId, $records)) {
-                        foreach ($possibleFirstNames[$toRecordId] as $firstName) {
-                            foreach ($possibleLastNames[$toRecordId] as $lastName) {
-                                if (NameMatcher::matchByInitials($authorLast, $authorInitials, $lastName, $firstName) &&
-                                    !NameMatcher::matchByInitials($authorLast, $authorInitials, $fromLastName, $fromFirstName)) {
-                                    $ts = getCitationTimestamp($row);
-                                    if (canApproveTimestamp($ts, $startTs, $endTs)) {
-                                        if (isset($_GET['test'])) {
-                                            echo "Matched $fromRecordId $authorLast, $authorInitials to $toRecordId $lastName, $firstName<br>";
-                                        }
-                                        if (!isset($matches[$toRecordId])) {
-                                            $matches[$toRecordId] = [];
-                                        }
-                                        $matches[$toRecordId][] = $row['redcap_repeat_instrument'];
-                                        if ($ts) {
-                                            $pubs["$fromRecordId:$toRecordId:".$row['redcap_repeat_instance']] = $ts;
-                                        }
+        } else if (($row['redcap_repeat_instrument'] == "eric") && ($row['eric_include'] == "1") && $row['eric_author']) {
+            $authors = preg_split("/;\s*/", $row['eric_author']);
+        }
+        foreach ($authors as $author) {
+            list($authorFirst, $authorLast) = NameMatcher::splitName($author);
+            foreach (array_keys($possibleFirstNames) as $toRecordId) {
+                if ($toRecordId != $fromRecordId && in_array($toRecordId, $records)) {
+                    foreach ($possibleFirstNames[$toRecordId] as $firstName) {
+                        foreach ($possibleLastNames[$toRecordId] as $lastName) {
+                            if (
+                                (
+                                    ($row['redcap_repeat_instrument'] == "citation")
+                                    && NameMatcher::matchByInitials($authorLast, $authorFirst, $lastName, $firstName)
+                                    && !NameMatcher::matchByInitials($authorLast, $authorFirst, $fromLastName, $fromFirstName)
+                                )
+                                || (
+                                    ($row['redcap_repeat_instrument'] == "eric")
+                                    && NameMatcher::matchName($authorLast, $authorFirst, $lastName, $firstName)
+                                    && !NameMatcher::matchName($authorLast, $authorFirst, $fromLastName, $fromFirstName)
+                                )
+                            ) {
+                                $ts = getCitationTimestamp($row);
+                                if (canApproveTimestamp($ts, $startTs, $endTs)) {
+                                    if (isset($_GET['test'])) {
+                                        echo "Matched $fromRecordId $authorLast, $authorFirst to $toRecordId $lastName, $firstName<br>";
+                                    }
+                                    if (!isset($matches[$toRecordId])) {
+                                        $matches[$toRecordId] = [];
+                                    }
+                                    $matches[$toRecordId][] = $row['redcap_repeat_instrument'];
+                                    if ($ts) {
+                                        $pubs["$fromRecordId:$toRecordId:".$row['redcap_repeat_instance']] = $ts;
                                     }
                                 }
                             }
@@ -680,6 +716,9 @@ function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRe
 }
 
 function canApproveTimestamp($ts, $startTs, $endTs) {
+    if (!$ts) {
+        return FALSE;
+    }
     return (
         (!$startTs && !$endTs)
         || ($ts
@@ -753,7 +792,7 @@ function makeSummaryStats($connections, $names) {
             $numConnections = array_sum(array_values($indivConnections));
             $numCollaborators = count($indivConnections);
             if ($numConnections == $maxConnections[$type]) {
-                if ($names[$recordId]) {
+                if (isset($names[$recordId])) {
                     $maxNames[$type][] = $names[$recordId];
                 } else {
                     # mentor
@@ -761,7 +800,7 @@ function makeSummaryStats($connections, $names) {
                 }
             }
             if ($numCollaborators == $maxCollaborators[$type]) {
-                if ($names[$recordId]) {
+                if (isset($names[$recordId])) {
                     $maxCollabNames[$type][] = $names[$recordId];
                 } else {
                     # mentor

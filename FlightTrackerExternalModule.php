@@ -175,8 +175,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $numIterations = 0;
         $fromAndWhereClause = "FROM redcap_external_modules_log WHERE external_module_id = ? AND timestamp <= ? AND project_id = ?";
         do {
-            $deleteSql = "DELETE $fromAndWhereClause ORDER BY log_id LIMIT 1000";
-            $selectSql = "SELECT log_id $fromAndWhereClause ORDER BY log_id LIMIT 1";
+            $deleteSql = "DELETE $fromAndWhereClause LIMIT 1000";
+            $selectSql = "SELECT log_id $fromAndWhereClause LIMIT 1";
             $this->query($deleteSql, [$externalModuleId, $thresholdTs, $pid]);
             $result = $this->query($selectSql, [$externalModuleId, $thresholdTs, $pid]);
             $moreToDelete = $result && $result->fetch_assoc();

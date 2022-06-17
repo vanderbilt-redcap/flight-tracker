@@ -1,11 +1,10 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -30,7 +29,7 @@ echo "<h1>Search ".CareerDev::getProgramName()." Grants</h1>\n";
 
 $postQuery = "";
 if (isset($_POST['q']) && $_POST['q']) {
-    $postQuery = REDCapManagement::sanitize($_POST['q']);
+    $postQuery = Sanitizer::sanitize($_POST['q']);
 	$recordIds = Download::recordIds($token, $server);
 	$metadata = Download::metadata($token, $server);
 
@@ -40,7 +39,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 		$fieldTypes[$row['field_name']] = $row['field_type'];
 	}
 	
-	$terms = preg_split("/\s+/", $_POST['q']);
+	$terms = preg_split("/\s+/", Sanitizer::sanitizeWithoutChangingQuotes($_POST['q']));
 	$multis = array("checkbox", "dropdown", "radio");
 	$textEntry = array("text", "notes");
 	$matches = array();      // record_id:field_name as key, then equals point value

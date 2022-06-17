@@ -366,6 +366,25 @@ class Download {
 		return $filtered;
 	}
 
+    public static function metadataForms($token, $server) {
+        $pid = Application::getPID($token);
+        if ($pid && self::isCurrentServer($server)) {
+            $sql = "SELECT DISTINCT(form_name) FROM redcap_metadata WHERE project_id = '".db_real_escape_string($pid)."' ORDER BY field_order";
+            $q = db_query($sql);
+            if ($error = db_error()) {
+                throw new \Exception("DB ERROR: $error");
+            }
+            $forms = [];
+            while ($row = db_fetch_assoc($q)) {
+                $forms[] = $row['form_name'];
+            }
+            return $forms;
+        } else {
+            $metadata = self::metadata($token, $server);
+            return DataDictionaryManagement::getFormsFromMetadata($metadata);
+        }
+    }
+
     public static function metadataFields($token, $server) {
         $pid = Application::getPID($token);
         if ($pid && self::isCurrentServer($server)) {

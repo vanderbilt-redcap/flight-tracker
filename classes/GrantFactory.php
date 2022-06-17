@@ -25,6 +25,9 @@ abstract class GrantFactory {
 	}
 
 	public static function cleanAwardNo($awardNo) {
+        if (!$awardNo) {
+            return "";
+        }
 		$awardNo = preg_replace("/-\d\d[A-Za-z]\d$/", "", $awardNo);
 		$awardNo = preg_replace("/-\d[A-Za-z]\d\d$/", "", $awardNo);
 		$awardNo = preg_replace("/-\d\d\d\d$/", "", $awardNo);
@@ -593,8 +596,8 @@ class CoeusSubmissionGrantFactory extends GrantFactory {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus_submission&instance={$row['redcap_repeat_instance']}";
         $grant = new Grant($this->lexicalTranslator);
-        $awardNo = self::cleanAwardNo($row['coeussubmission_sponsor_award_number']);
-        $grant->setVariable('original_award_number', $row['coeussubmission_sponsor_award_number']);
+        $awardNo = self::cleanAwardNo($row['coeussubmission_sponsor_proposal_number']);
+        $grant->setVariable('original_award_number', $row['coeussubmission_sponsor_proposal_number']);
         $grant->setNumber($awardNo);
         $grant->setVariable('person_name', $row['coeussubmission_person_name']);
         $grant->setVariable('project_start', $row['coeussubmission_project_start_date']);
@@ -743,7 +746,7 @@ class VERAGrantFactory extends  GrantFactory {
         $grant->setVariable("title", $row['vera_title']);
         $grant->setVariable("budget", $row['vera_budget_allocation_total']);
         $grant->setVariable("total_budget", $row['vera_budget_allocation_total']);
-        $grant->setVariable("direct_budget", $row['vera_budget_allocation_direct']);
+        $grant->setVariable("direct_budget", $row['vera_budget_allocation_direct_total']);
 
         $grant->setVariable('sponsor', $row['vera_direct_sponsor_name']);
         $grant->setVariable('sponsor_type', $row['vera_direct_sponsor_type']);

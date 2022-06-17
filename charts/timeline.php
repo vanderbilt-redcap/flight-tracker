@@ -43,6 +43,7 @@ body { font-size: 12px; }
         "verasubmission_",
         "summary_",
         "citation_",
+        "eric_",
         "nih_",
         "reporter_",
         "custom_",
@@ -187,8 +188,8 @@ window.onload = function() {
     <?php
     foreach ($classes as $c) {
         $dataset = json_encode($grantsAndPubs[$c]);
-        $startDate = json_encode(date("Y-m-d", $minTs[$c]));
-        $endDate = json_encode(date("Y-m-d", $maxTs[$c]));
+        $startDate = json_encode(date("Y-m-d", (int) $minTs[$c]));
+        $endDate = json_encode(date("Y-m-d", (int) $maxTs[$c]));
 
         echo "
         container['$c'] = document.getElementById('visualization$c');
@@ -378,13 +379,24 @@ function makePubDots($rows, $token, $server, &$id, &$minTs, &$maxTs) {
 
     foreach ($citations as $citation) {
         $ts = $citation->getTimestamp();
-        $pmid = $citation->getPMID();
-        if ($pmid) {
-            $link = Links::makeLink($citation->getURL(), "PMID: ".$pmid);
+        if ($citation->getVariable("data_source") == "citation") {
+            $pmid = $citation->getPMID();
+            if ($pmid) {
+                $link = Links::makeLink($citation->getURL(), "PMID: ".$pmid);
+            } else {
+                $link = "Pub";
+            }
+        } else if ($citation->getVariable("data_source") == "eric") {
+            $ericID = $citation->getERICID();
+            if ($ericID) {
+                $link = Links::makeLink($citation->getURL(), $ericID);
+            } else {
+                $link = "Pub";
+            }
         } else {
-            $link = "Pub";
+            $link = "";
         }
-        if ($ts) {
+        if ($ts && $link) {
             $pubAry = array(
                 "id" => $id,
                 "content" => $link,

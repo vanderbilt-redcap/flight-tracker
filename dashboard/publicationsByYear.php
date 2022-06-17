@@ -7,7 +7,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Dashboard;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
-
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/base.php");
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -27,7 +27,7 @@ if (isset($_GET['cohort'])) {
     $cohort = "";
 }
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_merge(CareerDev::$smallCitationFields, array("citation_year")), $cohort, Application::getModule());
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, array("citation_year")))), $cohort, Application::getModule());
 
 $numForYear = array();
 $numPubs = 0;
@@ -38,7 +38,7 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	$confirmedCount = $goodCitations->getCount();
 	$numPubs += $confirmedCount;
 	foreach ($goodCitations->getCitations() as $citation) {
-		if ($citation->getCategory() == "Original Research") {
+		if ($citation->isResearchArticle()) {
 			$ts = $citation->getTimestamp();
 			$tsYear = "";
 			if ($ts) {

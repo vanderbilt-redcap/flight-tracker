@@ -2956,9 +2956,9 @@ class NIHTables {
                 if (isset($_GET['test'])) {
                     echo "Record $recordId has no confirmed pubs.<br>";
                 }
-				array_push($data, $noPubsRow);
+				$data[] = $noPubsRow;
 			} else {
-				$citations = $pubs->getSortedCitations("Included");
+				$citations = $pubs->getSortedCitations("PubMed");
 				$nihFormatCits = array();
 				foreach ($citations as $citation) {
                     if ($citation->inTimespan($startTs, $endTs)) {

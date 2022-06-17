@@ -7,22 +7,29 @@ use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
-require_once(dirname(__FILE__)."/baseWeb.php");
+require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
+
+Application::increaseProcessingMax(1);
 
 $warningsOn = FALSE;
 
 $metadata = Download::metadata($token, $server);
+$thisUrlWithParams = Application::link("this");
 if (isset($_GET['CDA'])) {
+    $thisUrlWithParams .= "&CDA";
     $title = "Career Development Awards Over Time";
+    $maxCols = 15;
     $grantReach = "prior";
     $allPossibleFields = Application::$summaryFields;
     $showTimeline = TRUE;
     $showTimeBetweenGrants = TRUE;
 } else {
     $title = "Grants Awarded Over Time";
+    $maxCols = 25;
     $grantReach = "all";
     $smallIdentifierFields = ["record_id", "identifier_first_name", "identifier_last_name"];
     $smallSummaryFields = ["record_id", "summary_dob", "summary_first_r01", "summary_first_external_k"];
@@ -45,14 +52,41 @@ if (isset($_GET['CDA'])) {
     ];
 }
 $module = Application::getModule();
-if (!$module) {
-    $module = CareerDev::getPluginModule();
+
+if (isset($_GET['cohort'])) {
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
+    $thisUrlWithParams .= "&cohort=".urlencode($cohort);
+} else {
+    $cohort = "";
 }
-if ($_GET['cohort']) {
-    $records = Download::cohortRecordIds($token, $server, $module, $_GET['cohort']);
+
+if (!empty($_POST['records']) && !empty($_POST['fields'])) {
+    $fields = Sanitizer::sanitizeArray($_POST['fields']);
+    $requestedRecords = $_POST['records'];
+    $allRecords = Download::recordIds($token, $server);
+    $records = [];
+    foreach ($requestedRecords as $recordId) {
+        $sanitizedRecordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
+        if ($sanitizedRecordId) {
+            $records[] = $sanitizedRecordId;
+        }
+    }
+    foreach ($records as $recordId) {
+        printRowsForRecord($recordId, $fields, $token, $server, $pid, $grantReach, $showTimeBetweenGrants, $showTimeline);
+    }
+    exit;
+}
+
+require_once(dirname(__FILE__)."/baseWeb.php");
+
+if ($cohort) {
+    $records = Download::cohortRecordIds($token, $server, $module, $cohort);
 } else {
     $records = Download::recordIds($token, $server);
 }
+
+
+
 $fields = REDCapManagement::filterOutInvalidFields($metadata, $allPossibleFields);
 $titleFields = REDCapManagement::filterOutInvalidFields($metadata, $titleFields ?? []);
 
@@ -240,7 +274,64 @@ if (isset($_GET['plain'])) {
     if (isset($_GET['uncategorized'])) {
         echo json_encode($typeChoices)."<br><br>";
     }
-    $cssClasses = array(
+    $count = 0;
+    echo "<div class='loading'></div>";
+    echo "<div class='top-horizontal-scroll'><div class='inner-top-horizontal-scroll'></div></div>";
+    echo "<div class='horizontal-scroll'>";
+    echo "<table$tableClass><tbody id='mainBody'>";
+    echo "<tr><td class='spacer'></td></tr>";
+    echo "</tbody></table>";
+    echo "</div>";
+    echo "<div class='loading'></div>";
+    $recordsJSON = json_encode($records);
+    $fieldsJSON = json_encode($fields);
+    echo "<script>
+const records = $recordsJSON;
+const fields = $fieldsJSON;
+
+function loadRecords(nextI) {
+    const recordList = [];
+    const numRecords = 5;
+    for (let i = nextI; (i < numRecords + nextI) && (i < records.length); i++) {
+        recordList.push(records[i]);
+    }
+    if (recordList.length > 0) {
+       console.log('loadRecords '+nextI+' with '+recordList.join(', '));
+        const displayRecordList = [...recordList];
+        if (displayRecordList.length > 2) {
+            displayRecordList[displayRecordList.length - 1] = 'and ' + displayRecordList[displayRecordList.length - 1];
+           $('.loading').html(getSmallLoadingMessage('Loading Records '+displayRecordList.join(', ')));
+        } else if (displayRecordList.length == 2) {
+            $('.loading').html(getSmallLoadingMessage('Loading Records '+displayRecordList.join(' and ')));
+        } else {
+            $('.loading').html(getSmallLoadingMessage('Loading Record '+displayRecordList[0]));
+        }
+        const postdata = { records: recordList, fields: fields };
+        $.post('$thisUrlWithParams', postdata, function(html) {
+            if (html) {
+                $('#mainBody').append(html);
+                setupHorizontalScroll($('.horizontal-scroll table').width());
+                loadRecords(nextI + numRecords);
+            } else {
+                console.log('Blank return.');
+                $('.loading').html('');
+            }
+        });
+    } else {
+        console.log('Done.');
+        $('.loading').html('');
+    }
+}
+
+$(document).ready(function() {
+    $('td.timelineCell').attr('colspan', '$maxCols');
+    loadRecords(0);
+});
+</script>";
+}
+
+function printRowsForRecord($recordId, $fields, $token, $server, $pid, $grantReach, $showTimeBetweenGrants, $showTimeline) {
+    $cssClasses = [
         "Internal K" => "internalK",
         "Individual K" => "individualK",
         "K Equivalent" => "kEquivalent",
@@ -253,191 +344,164 @@ if (isset($_GET['plain'])) {
         "Training Grant Admin" => "trainingAdmin",
         "Research Fellowship" => "fellowship",
         "N/A" => "genericAward",
-    );
-    $count = 0;
-    $processingTime = 0.0;
-    $maxCols = 0;
-    echo "<div class='top-horizontal-scroll'><div class='inner-top-horizontal-scroll'></div></div>";
-    echo "<div class='horizontal-scroll'>";
-    echo "<table$tableClass>";
-    foreach ($records as $recordId) {
-        $time_a = microtime(TRUE);
-        $rows = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-        $grants = new Grants($token, $server, $metadata);
-        $grants->setRows($rows);
-        $grants->compileGrants();
-        $time_c = microtime(TRUE);
-        $processingTime += $time_c - $time_a;
+    ];
 
-        $normativeRow = REDCapManagement::getNormativeRow($rows);
+    $rows = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+    $grants = new Grants($token, $server, "empty");
+    $grants->setRows($rows);
+    $grants->compileGrants();
 
-        $record = "<div class='record'>" . Links::makeRecordHomeLink($pid, $recordId, "View Record " . $recordId) . "</div>";
-        $record .= "<div class='record'>" . Links::makeProfileLink($pid, "View Profile", $recordId) . "</div>";
-        $name = "<div class='name'>{$normativeRow['identifier_first_name']} {$normativeRow['identifier_last_name']}</div>";
-        $date_start = "";
-        $date_end = "";
-        $arrayOfGrants = $grants->getGrants($grantReach);
-        if ($maxCols < count($arrayOfGrants) * 2) {
-            $maxCols = count($arrayOfGrants) * 2;
-        }
-        foreach ($arrayOfGrants as $grant) {
-            if ($grant->getVariable("start")) {
-                if (!$date_start) {
-                    $date_start = $grant->getVariable("start");
-                } else {
-                    $date_end = $grant->getVariable("end");
-                }
+    $normativeRow = REDCapManagement::getNormativeRow($rows);
+
+    $record = "<div class='record'>" . Links::makeRecordHomeLink($pid, $recordId, "View Record " . $recordId) . "</div>";
+    $record .= "<div class='record'>" . Links::makeProfileLink($pid, "View Profile", $recordId) . "</div>";
+    $name = "<div class='name'>{$normativeRow['identifier_first_name']} {$normativeRow['identifier_last_name']}</div>";
+    $date_start = "";
+    $date_end = "";
+    $arrayOfGrants = $grants->getGrants($grantReach);
+    foreach ($arrayOfGrants as $grant) {
+        if ($grant->getVariable("start")) {
+            if (!$date_start) {
+                $date_start = $grant->getVariable("start");
+            } else {
+                $date_end = $grant->getVariable("end");
             }
-        }
-        $dateStr = produceDateString($date_start, $date_end);
-        $dates = "";
-        $dates .= "<div class='spacer'>&nbsp;</div>";
-        if ($dateStr) {
-            $dates .= "<div class='dates'>";
-        }
-        if (preg_match("/-/", $dateStr)) {
-            $dates .= "<span class='sideHeader'>Years of Awards:</span> ";
-        } else if ($dateStr) {
-            $dates .= "<span class='sideHeader'>Year of Award:</span> ";
-        }
-        if ($dateStr) {
-            $dates .= $dateStr . "</div>";
-        }
-        if ($normativeRow['summary_dob'] != "") {
-            $dates .= "<div class='dates'><span class='sideHeader'>Birth:</span> " . extractYear($normativeRow['summary_dob']) . "</div>";
-        } else {
-            $dates .= "<div class='dates'><span class='sideHeader'>Birth:</span> N/A</div>";
-        }
-        // if ($normativeRow['summary_left_vanderbilt'] != "") {
-        // $dates .= "<div class='dates red'><span class='sideHeader'>Left ".INSTITUTION.":</span> ".convertToMDY($normativeRow['summary_left_vanderbilt'])."</div>";
-        // }
-        $dates .= "<div class='spacer'>&nbsp;</div>";
-        $noExtK = false;
-        if ($normativeRow['summary_first_external_k'] != "") {
-            $dates .= "<div class='dates'><span class='sideHeader'>First External K:</span> " . convertToMDY($normativeRow['summary_first_external_k']) . "</div>";
-        } else {
-            $noExtK = true;
-            $dates .= "<div class='dates'><span class='sideHeader'>First External K:</span> N/A</div>";
-        }
-        if ($normativeRow['summary_first_r01'] != "") {
-            $dates .= "<div class='dates'><span class='sideHeader'>First R:</span> " . convertToMDY($normativeRow['summary_first_r01']) . "</div>";
-        } else if (!$noExtK) {
-            $dates .= "<div class='dates'><span class='sideHeader'>First R:</span> N/A</div>";
-        }
-        $dates .= "<div class='spacer'>&nbsp;</div>";
-        // $dates .= "<div class='record'>".Links::makePublicationsLink($pid, $recordId, $event_id, "View Publications")."</div>";
-        if ($showTimeline) {
-            $dates .= "<div class='record'><a href='javascript:;' onclick='showTimeline($recordId);'>Show Timeline</a></div>";
-        }
-        echo "<tr><td class='spacer'></td></tr>";
-        echo "<tr>";
-        echo "<td class='spacer'></td>";
-        echo "<td class='cell leftBox'>$record$name$dates<div class='record'>".count($arrayOfGrants)." grants</div></td>";
-        echo "<td class='spacer'></td>";
-
-        $i = 1;
-        foreach ($arrayOfGrants as $grant) {
-            if ($grant->getVariable("start")) {
-                $isPI = in_array($grant->getVariable("role"), ["PI", "Co-PI"]);
-                $date = "<div class='date'>" . convertToMDY($grant->getVariable("start")) . "</div>";
-                $date .= "<div class='source'>" . $grant->getVariable("source") . "</div>";
-                $type = "";
-                $rightBox = "";
-                if ($grant->getVariable("type") != "N/A") {
-                    $type = "<div class='type'>" . $grant->getVariable("type") . "</div>";
-                } else {
-                    $type = "<div class='type'>Generic Award</div>";
-                }
-                $piNote = "";
-                if (!$isPI) {
-                    $piNote = "<div class='role'>Neither PI nor Co-PI</div>";
-                }
-                $rightBox = $cssClasses[$grant->getVariable("type")];
-                $mech = "";
-                if ($grant->getVariable("nih_mechanism")) {
-                    $mech = "<div class='mechanism'>" . $grant->getVariable("nih_mechanism") . "</div>";
-                }
-                $smallLink = "";
-                $link = "";
-                $myAwardNo = $grant->getNumber();
-                $baseAwardNo = $grant->getBaseNumber();
-                if ($baseAwardNo == "000") {
-                    $baseAwardNo = Grant::$noNameAssigned;
-                }
-                if ($baseAwardNo == Grant::$noNameAssigned) {
-                    if ($sponsor = $grant->getVariable("sponsor")) {
-                        $baseAwardNo = "from $sponsor";
-                    }
-                }
-                if ($grant->getVariable("link")) {
-                    $smallLink = $grant->getVariable("link");
-                    $link = "<div class='link'>$smallLink</div>";
-                }
-                $calculatedType = transformSelfRecord($myAwardNo);
-                $details = Grant::parseNumber($myAwardNo);
-                $link .= "<div class='awardno_large";
-                if (!empty($details)) {
-                    $link .= " tooltip";
-                }
-                $link .= "'>";
-                $tooltipText = "<span class='header'>Details</span>";
-                foreach ($details as $key => $value) {
-                    $key = preg_replace("/_/", " ", $key);
-                    $key = ucfirst($key);
-                    $tooltipText .= "<br><br><b>$key</b>:<br>$value";
-                }
-                $tooltipText .= "<span class='smaller'>";
-                $tooltipText .= "<br><br><b>Source</b>:<br>" . Links::makeLink("https://grants.nih.gov/grants/funding/ac_search_results.htm", "NIH Activity Codes Search Results");
-                $tooltipText .= "<br><br><b>Source</b>:<br>" . Links::makeLink("https://era.nih.gov/sites/default/files/Deciphering_NIH_Application.pdf", "Deciphering NIH Application/Grant Numbers");
-                $tooltipText .= "</span>";
-                $link .= $baseAwardNo;
-                if (!empty($details)) {
-                    $link .= "<span class='tooltiptext'>" . $tooltipText . "</span>";
-                }
-                $link .= "</div>";
-
-                $budget = "";
-                if ($grant->getVariable("budget")) {
-                    $budget = "<div class='budget'>(" . REDCapManagement::prettyMoney($grant->getVariable("budget")) . ")</div>";
-                } else if ($grant->getVariable("direct_budget")) {
-                    $budget = "<div class='budget'>(" . REDCapManagement::prettyMoney($grant->getVariable("direct_budget")) . ")</div>";
-                }
-
-                $printCell = TRUE;
-                if (isset($_GET['CDA']) && in_array($grant->getVariable("type"), ["Research Fellowship", "N/A"])) {
-                    $printCell = FALSE;
-                }
-                if ($printCell) {
-                    echo "<td class='cell $rightBox'>$type$date$mech$budget$piNote$link</td>";
-                    if ($showTimeBetweenGrants) {
-                        if ($grantReach == "prior") {
-                            $timespan = getTimeSpan($normativeRow, $i);
-                        } else {
-                            $timespan = getTimeSpanFromGrants($grant, $arrayOfGrants);
-                        }
-                        if ($timespan !== "") {
-                            echo "<td class='spacer'><div class='spacerYears'>$timespan</div><div class='spacerYear'>years<br>b/w<br>starts</div></td>";
-                        } else {
-                            echo "<td class='spacer'></td>";
-                        }
-                    }
-                }
-            }
-            $i++;
-        }
-        echo "</tr>";
-        if ($showTimeline) {
-            echo "<tr><td class='timelineCell'><iframe class='timeline' id='timeline_$recordId' style='display: none;'></iframe></td></tr>";
         }
     }
-    echo "<tr><td class='spacer'></td></tr>";
-    echo "</table>";
-    echo "</div>";
-    echo "<script>
-$(document).ready(function() {
-    $('td.timelineCell').attr('colspan', '$maxCols');
-    setupHorizontalScroll($('.horizontal-scroll table').width());
-});
-</script>";
-}
+    $dateStr = produceDateString($date_start, $date_end);
+    $dates = "";
+    $dates .= "<div class='spacer'>&nbsp;</div>";
+    if ($dateStr) {
+        $dates .= "<div class='dates'>";
+    }
+    if (preg_match("/-/", $dateStr)) {
+        $dates .= "<span class='sideHeader'>Years of Awards:</span> ";
+    } else if ($dateStr) {
+        $dates .= "<span class='sideHeader'>Year of Award:</span> ";
+    }
+    if ($dateStr) {
+        $dates .= $dateStr . "</div>";
+    }
+    if ($normativeRow['summary_dob'] != "") {
+        $dates .= "<div class='dates'><span class='sideHeader'>Birth:</span> " . extractYear($normativeRow['summary_dob']) . "</div>";
+    } else {
+        $dates .= "<div class='dates'><span class='sideHeader'>Birth:</span> N/A</div>";
+    }
+    // if ($normativeRow['summary_left_vanderbilt'] != "") {
+    // $dates .= "<div class='dates red'><span class='sideHeader'>Left ".INSTITUTION.":</span> ".convertToMDY($normativeRow['summary_left_vanderbilt'])."</div>";
+    // }
+    $dates .= "<div class='spacer'>&nbsp;</div>";
+    $noExtK = false;
+    if ($normativeRow['summary_first_external_k'] != "") {
+        $dates .= "<div class='dates'><span class='sideHeader'>First External K:</span> " . convertToMDY($normativeRow['summary_first_external_k']) . "</div>";
+    } else {
+        $noExtK = true;
+        $dates .= "<div class='dates'><span class='sideHeader'>First External K:</span> N/A</div>";
+    }
+    if ($normativeRow['summary_first_r01'] != "") {
+        $dates .= "<div class='dates'><span class='sideHeader'>First R:</span> " . convertToMDY($normativeRow['summary_first_r01']) . "</div>";
+    } else if (!$noExtK) {
+        $dates .= "<div class='dates'><span class='sideHeader'>First R:</span> N/A</div>";
+    }
+    $dates .= "<div class='spacer'>&nbsp;</div>";
+    // $dates .= "<div class='record'>".Links::makePublicationsLink($pid, $recordId, $event_id, "View Publications")."</div>";
+    if ($showTimeline) {
+        $dates .= "<div class='record'><a href='javascript:;' onclick='showTimeline($recordId);'>Show Timeline</a></div>";
+    }
+    echo "<tr>";
+    echo "<td class='spacer'></td>";
+    echo "<td class='cell leftBox'>$record$name$dates<div class='record'>".count($arrayOfGrants)." grants</div></td>";
+    echo "<td class='spacer'></td>";
 
+    $i = 1;
+    foreach ($arrayOfGrants as $grant) {
+        if ($grant->getVariable("start")) {
+            $isPI = in_array($grant->getVariable("role"), ["PI", "Co-PI"]);
+            $date = "<div class='date'>" . convertToMDY($grant->getVariable("start")) . "</div>";
+            $date .= "<div class='source'>" . $grant->getVariable("source") . "</div>";
+            if ($grant->getVariable("type") != "N/A") {
+                $type = "<div class='type'>" . $grant->getVariable("type") . "</div>";
+            } else {
+                $type = "<div class='type'>Generic Award</div>";
+            }
+            $piNote = "";
+            if (!$isPI) {
+                $piNote = "<div class='role'>Neither PI nor Co-PI</div>";
+            }
+            $rightBox = $cssClasses[$grant->getVariable("type")];
+            $mech = "";
+            if ($grant->getVariable("nih_mechanism")) {
+                $mech = "<div class='mechanism'>" . $grant->getVariable("nih_mechanism") . "</div>";
+            }
+            $link = "";
+            $myAwardNo = $grant->getNumber();
+            $baseAwardNo = $grant->getBaseNumber();
+            if ($baseAwardNo == "000") {
+                $baseAwardNo = Grant::$noNameAssigned;
+            }
+            if ($baseAwardNo == Grant::$noNameAssigned) {
+                if ($sponsor = $grant->getVariable("sponsor")) {
+                    $baseAwardNo = "from $sponsor";
+                }
+            }
+            if ($grant->getVariable("link")) {
+                $smallLink = $grant->getVariable("link");
+                $link = "<div class='link'>$smallLink</div>";
+            }
+            $details = Grant::parseNumber($myAwardNo);
+            $link .= "<div class='awardno_large";
+            if (!empty($details)) {
+                $link .= " tooltip";
+            }
+            $link .= "'>";
+            $tooltipText = "<span class='header'>Details</span>";
+            foreach ($details as $key => $value) {
+                $key = preg_replace("/_/", " ", $key);
+                $key = ucfirst($key);
+                $tooltipText .= "<br><br><b>$key</b>:<br>$value";
+            }
+            $tooltipText .= "<span class='smaller'>";
+            $tooltipText .= "<br><br><b>Source</b>:<br>" . Links::makeLink("https://grants.nih.gov/grants/funding/ac_search_results.htm", "NIH Activity Codes Search Results");
+            $tooltipText .= "<br><br><b>Source</b>:<br>" . Links::makeLink("https://era.nih.gov/sites/default/files/Deciphering_NIH_Application.pdf", "Deciphering NIH Application/Grant Numbers");
+            $tooltipText .= "</span>";
+            $link .= $baseAwardNo;
+            if (!empty($details)) {
+                $link .= "<span class='tooltiptext'>" . $tooltipText . "</span>";
+            }
+            $link .= "</div>";
+
+            $budget = "";
+            if ($grant->getVariable("budget")) {
+                $budget = "<div class='budget'>(" . REDCapManagement::prettyMoney($grant->getVariable("budget")) . ")</div>";
+            } else if ($grant->getVariable("direct_budget")) {
+                $budget = "<div class='budget'>(" . REDCapManagement::prettyMoney($grant->getVariable("direct_budget")) . ")</div>";
+            }
+
+            $printCell = TRUE;
+            if (isset($_GET['CDA']) && in_array($grant->getVariable("type"), ["Research Fellowship", "N/A"])) {
+                $printCell = FALSE;
+            }
+            if ($printCell) {
+                echo "<td class='cell $rightBox'>$type$date$mech$budget$piNote$link</td>";
+                if ($showTimeBetweenGrants) {
+                    if ($grantReach == "prior") {
+                        $timespan = getTimeSpan($normativeRow, $i);
+                    } else {
+                        $timespan = getTimeSpanFromGrants($grant, $arrayOfGrants);
+                    }
+                    if ($timespan !== "") {
+                        echo "<td class='spacer'><div class='spacerYears'>$timespan</div><div class='spacerYear'>years<br>b/w<br>starts</div></td>";
+                    } else {
+                        echo "<td class='spacer'></td>";
+                    }
+                }
+            }
+        }
+        $i++;
+    }
+    echo "</tr>";
+    if ($showTimeline) {
+        echo "<tr><td class='timelineCell'><iframe class='timeline' id='timeline_$recordId' style='display: none;'></iframe></td></tr>";
+    }
+    echo "<tr><td class='spacer'></td></tr>";
+}

@@ -18,7 +18,7 @@ function dedupPubs($token, $server, $pid, $records) {
     }
     $metadata = Download::metadata($token, $server);
     foreach ($records as $recordId) {
-        $fields = ["record_id", "citation_pmid"];
+        $fields = ["record_id", "citation_pmid", "eric_id"];
         $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
 
         $pubs = new Publications($token, $server, $metadata);

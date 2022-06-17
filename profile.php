@@ -9,8 +9,16 @@ use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Citation;
-use \Vanderbilt\CareerDevLibrary\CitationCollection;
+use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
+
+if (!empty($_POST)) {
+    require_once(dirname(__FILE__)."/small_base.php");
+    require_once(dirname(__FILE__)."/classes/Autoload.php");
+    $switches = new FeatureSwitches($token, $server, $pid);
+    $data = $switches->savePost($_POST);
+    echo json_encode($data);
+    exit;
+}
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -44,6 +52,8 @@ $pubs = new Publications($token, $server, $metadata);
 $pubs->setRows($redcapData);
 $patents = new Patents($record, $pid, $firstName, $lastName, $institutions[$record]);
 $patents->setRows($redcapData);
+
+$switches = new FeatureSwitches($token, $server, $pid);
 
 $trainingStats = [];
 $trainingStartDate = REDCapManagement::findField($redcapData, $record, "summary_training_start");
@@ -178,7 +188,11 @@ $(document).ready(function() {
             echo "<p class='centered'><img src='$imgBase64' class='thumbnail' alt='Picture for $name'></p>";
         }
     ?>
-<table style='margin-left: auto; margin-right: auto; border-radius: 10px; padding: 8px;' class='blue'>
+    <div style='margin: 0 auto; max-width: 600px; padding: 4px 0;' class='blueBorder translucentBG'>
+        <?= $switches->makeHTML("record", $record) ?>
+    </div>
+
+    <table style='margin-left: auto; margin-right: auto; border-radius: 10px; padding: 8px;' class='blue'>
 	<tr>
 		<td class='label profileHeader'>First Name:</td>
 		<td class='value profileHeader'><?= $firstName ?></td>

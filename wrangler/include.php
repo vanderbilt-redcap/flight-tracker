@@ -9,6 +9,7 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\ExcludeList;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
@@ -29,7 +30,7 @@ $html = "";
 try {
     $validWranglerTypes = ["Publications", "Patents", "Grants"];
     foreach ($validWranglerTypes as $wt) {
-        if ($wt == REDCapManagement::sanitize($_GET['wranglerType'])) {
+        if ($wt == Sanitizer::sanitize($_GET['wranglerType'])) {
             $wranglerType = $wt;
             $wranglerTypeParam = "&wranglerType=".urlencode($wranglerType);
             break;
@@ -43,35 +44,24 @@ try {
 }
 if (isset($_POST['request'])) {
     if ($_POST['request'] == "check") {
+        $records = Download::recordIds($token, $server);
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);
         $html = checkForApprovals($token, $server, $records, $nextRecord, $url.$wranglerTypeParam, $wranglerType);
         echo $html;
     } else if ($_POST['request'] == "approve") {
+        $records = Download::recordIds($token, $server);
         $upload = [];
         foreach ($_POST as $key => $value) {
-            $key = REDCapManagement::sanitize($key);
-            $value = REDCapManagement::sanitize($value);
-            if ($value && preg_match("/^record_\d+:\d+$/", $key)) {
-                $pair = preg_replace("/^record_/", "", $key);
-                list($recordId, $instance) = preg_split("/:/", $pair);
-                if (in_array($recordId, $records)) {
-                    if ($wranglerType == "Publications") {
-                        $upload[] = [
-                            'record_id' => $recordId,
-                            'redcap_repeat_instrument' => 'citation',
-                            'redcap_repeat_instance' => $instance,
-                            'citation_include' => '1',
-                        ];
-                    } else if ($wranglerType == "Patents") {
-                        $upload[] = [
-                            'record_id' => $recordId,
-                            'redcap_repeat_instrument' => 'citation',
-                            'redcap_repeat_instance' => $instance,
-                            'patent_include' => '1',
-                        ];
-                    } else {
-                        throw new \Exception("Invalid wrangler type $wranglerType");
-                    }
+            if ($value && preg_match("/^record_\d+:[^:]+:\d+$/", $key)) {
+                $location = preg_replace("/^record_/", "", $key);
+                list($recordId, $instrument, $instance) = explode(":", $location);
+                if (in_array($recordId, $records) && in_array($instrument, ["citation", "eric", "patent"])) {
+                    $upload[] = [
+                        'record_id' => $recordId,
+                        'redcap_repeat_instrument' => $instrument,
+                        'redcap_repeat_instance' => $instance,
+                        $instrument.'_include' => '1',
+                    ];
                 }
             }
         }
@@ -81,8 +71,7 @@ if (isset($_POST['request'])) {
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);   // after upload
         header("Location: $url$wranglerTypeParam&record=".$nextRecord);
     } else {
-        $request = REDCapManagement::sanitize($_POST['request']);
-        throw new \Exception("Improper request: ".$request);
+        throw new \Exception("Improper request: ".Sanitizer::sanitize($_POST['request']));
     }
     exit();
 }
@@ -95,7 +84,7 @@ try {
     }
 
     if ($_GET['record']) {
-        $record = REDCapManagement::getSanitizedRecord($_GET['record'], $records);
+        $record = Sanitizer::getSanitizedRecord($_GET['record'], $records);
     } else {
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);
         $autoApproveHTML = getAutoApproveHTML($nextRecord, $url.$wranglerTypeParam);
@@ -138,7 +127,6 @@ try {
         $pubs->setRows($redcapData);
         $html = $excludeList->makeEditForm($record).$pubs->getEditText($thisUrl);
     } else if ($wranglerType == "Patents") {
-        # no exclude list (yet)
         $lastNames = Download::lastnames($token, $server);
         $firstNames = Download::firstnames($token, $server);
         $patents = new Patents($record, $pid, $firstNames[$record], $lastNames[$record], $institutions[$record]);
@@ -157,13 +145,13 @@ try {
 
         if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
             echo "<div class='subnav'>\n";
-            echo Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green");
-            echo Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green");
-            echo Links::makePositionChangeWranglingLink($pid, "Position Wrangler", $record, FALSE, "green");
-            echo Links::makePatentWranglingLink($pid, "Patent Wrangler", $record, FALSE, "green");
-            echo Links::makeProfileLink($pid, "Scholar Profile", $record, FALSE, "green");
-            echo "<a class='yellow'>".Publications::getSelectRecord()."</a>";
-            echo "<a class='yellow'>".Publications::getSearch()."</a>";
+            echo Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green")."\n";
+            echo Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green")."\n";
+            echo Links::makePositionChangeWranglingLink($pid, "Position Wrangler", $record, FALSE, "green")."\n";
+            echo Links::makePatentWranglingLink($pid, "Patent Wrangler", $record, FALSE, "green")."\n";
+            echo Links::makeProfileLink($pid, "Scholar Profile", $record, FALSE, "green")."\n";
+            echo "<a class='yellow'>".Publications::getSelectRecord()."</a>\n";
+            echo "<a class='yellow'>".Publications::getSearch()."</a>\n";
 
             $nextPageLink = "$url$wranglerTypeParam&record=".$nextRecord;
             # next record is in the same window => don't use Links class
@@ -180,8 +168,7 @@ try {
         }
 
         if (isset($_GET['mssg'])) {
-            $mssg = REDCapManagement::sanitize($_GET['mssg']);
-            echo "<div class='green shadow centered note'>$mssg</div>";
+            echo "<div class='green shadow centered note'>".Sanitizer::sanitize($_GET['mssg'])."</div>";
         }
         echo "<p class='green shadow' id='note' style='width: 600px; margin-left: auto; margin-right: auto; text-align: center; padding: 10px; border-radius: 10px; display: none; font-size: 16px;'></p>\n";
         echo "<p class='centered'>To undo any actions made here, open the Citation form in the given REDCap record and change the answer for the <b>Include?</b> question. Yes means accepted; no means omitted; blank means yet-to-be wrangled.</p>";
@@ -198,6 +185,7 @@ try {
 } catch(\Exception $e) {
     Application::reportException($e);
 }
+
 
 function autoResetTimeHTML($pid) {
     $url = APP_PATH_WEBROOT."ProjectGeneral/keep_alive.php?pid=".$pid;
@@ -234,21 +222,23 @@ function getNextRecordWithData($token, $server, $currRecord, $wranglerType, $rec
 		return $records[0];
 	}
 
-	list($instrument, $indexField, $includeField) = getFieldsForWrangler($wranglerType);
+	list($instruments, $indexFields, $includeFields) = getFieldsForWrangler($wranglerType);
 	$pullSize = 3;
 	while ($pos < count($records)) {
 		$pullRecords = array();
 		for ($i = $pos; ($i < count($records)) && ($i < $pos + $pullSize); $i++) {
-			array_push($pullRecords, $records[$i]);
+			$pullRecords[] = $records[$i];
 		}
-		$redcapData = Download::fieldsForRecords($token, $server, ["record_id", $indexField, $includeField], $pullRecords);
+		$redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge(["record_id"], $indexFields, $includeFields)), $pullRecords);
 		foreach ($redcapData as $row) {
-			if (($row['redcap_repeat_instrument'] == $instrument)
-                && ($row['record_id'] > $currRecord)
-                && $row[$indexField]
-                && ($row[$includeField] === "")) {
-				return $row['record_id'];
-			}
+			if (in_array($row['redcap_repeat_instrument'], $instruments) && ($row['record_id'] > $currRecord)) {
+                foreach ($indexFields as $i => $indexField) {
+                    $includeField = $includeFields[$i] ?? "";
+                    if ($row[$indexField] && ($row[$includeField] === "")) {
+                        return $row['record_id'];
+                    }
+                }
+            }
 		}
 		$pos += $pullSize;
 	}
@@ -285,14 +275,18 @@ $(document).ready(function() {
 }
 
 function getNewNumbers($token, $server, $recordId, $wranglerType) {
-    list($instrument, $indexField, $includeField) = getFieldsForWrangler($wranglerType);
-    $fields = ["record_id", $indexField, $includeField];
+    list($instruments, $indexFields, $includeFields) = getFieldsForWrangler($wranglerType);
+    $fields = array_unique(array_merge(["record_id"], $indexFields, $includeFields));
     $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
     $numbers = [];
     foreach ($redcapData as $row) {
-        if ($row['redcap_repeat_instrument'] == $instrument) {
-            if ($row[$includeField] === '') {
-                $numbers[$row['redcap_repeat_instance']] = $row[$indexField];
+        if (in_array($row['redcap_repeat_instrument'], $instruments)) {
+            $instrument = $row['redcap_repeat_instrument'];
+            foreach ($indexFields as $i => $indexField) {
+                $includeField = $includeFields[$i] ?? "";
+                if ($row[$indexField] && ($row[$includeField] === '')) {
+                    $numbers[$instrument.":".$row['redcap_repeat_instance']] = $row[$indexField];
+                }
             }
         }
     }
@@ -326,21 +320,25 @@ function checkForApprovals($token, $server, $records, $nextRecord, $url, $wrangl
             $usedRecords[] = $recordId;
             $links = [];
             $i = 0;
-            foreach ($numbers as $instance => $number) {
-                $fieldName = "record_".$recordId.":".$instance;
+            foreach ($numbers as $formAndInstance => $number) {
+                list($instrument, $instance) = explode(":", $formAndInstance);
+                $fieldName = "record_".$recordId.":".$formAndInstance;
                 $html .= "<input type='hidden' id='$fieldName' name='$fieldName' class='record_$recordId' value='$isNotCommon'>";
                 $spanId = "record_$recordId"."_idx_$number";
                 $link = "<span id='$spanId'>";
-                if ($wranglerType == "Publications") {
+                if (($wranglerType == "Publications") && ($instrument == "citation")) {
                     $linkURL = Citation::getURLForPMID($number);
                     $linkTitle = "PMID".$number;
+                } else if (($wranglerType == "Publications") && ($instrument == "eric")) {
+                    $linkURL = Citation::getURLForERIC($number);
+                    $linkTitle = $number;
                 } else if ($wranglerType == "Patents") {
                     $linkURL = Patents::getURLForPatent($number);
                     $linkTitle = $number;
                 } else {
                     throw new \Exception("Invalid wrangler type $wranglerType");
                 }
-                $link .= Links::makeLink($linkURL, $linkTitle, TRUE)."<sup><a href='javascript:;' class='nounderline' onclick='removePMIDFromAutoApprove(\"$recordId\", \"$instance\", \"$number\");'>[X]</a></sup>";
+                $link .= Links::makeLink($linkURL, $linkTitle, TRUE)."<sup><a href='javascript:;' class='nounderline' onclick='removePMIDFromAutoApprove(\"$recordId\", \"$formAndInstance\", \"$number\");'>[X]</a></sup>";
                 if ($i + 1 != count($numbers)) {
                     $link .= ", ";
                 }
@@ -391,15 +389,15 @@ function checkForApprovals($token, $server, $records, $nextRecord, $url, $wrangl
 
 function getFieldsForWrangler($wranglerType) {
     if ($wranglerType == "Publications") {
-        $indexField = "citation_pmid";
-        $includeField = "citation_include";
-        $instrument = "citation";
+        $indexFields = ["citation_pmid", "eric_id"];
+        $includeFields = ["citation_include", "eric_include"];
+        $instruments = ["citation", "eric"];
     } else if ($wranglerType == "Patents") {
-        $indexField = "patent_number";
-        $includeField = "patent_include";
-        $instrument = "patent";
+        $indexFields = ["patent_number"];
+        $includeFields = ["patent_include"];
+        $instruments = ["patent"];
     } else {
         throw new \Exception("Invalid wrangler type $wranglerType");
     }
-    return [$instrument, $indexField, $includeField];
+    return [$instruments, $indexFields, $includeFields];
 }

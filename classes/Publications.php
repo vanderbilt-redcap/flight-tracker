@@ -25,17 +25,29 @@ class Publications {
 
 	public function deduplicateCitations($recordId) {
 	    $pmids = [];
-	    $duplicateInstances = [];
+        $ericIDs = [];
+	    $duplicateInstances = ["citation_" => [], "eric_" => []];
 	    foreach ($this->rows as $row) {
-	        $pmid = $row['citation_pmid'];
-	        if (!in_array($pmid, $pmids)) {
-	            $pmids[] = $pmid;
-            } else {
-	            $duplicateInstances[] = $row['redcap_repeat_instance'];
+            if ($row['redcap_repeat_instrument'] == "citation") {
+                $pmid = $row['citation_pmid'];
+                if (!in_array($pmid, $pmids)) {
+                    $pmids[] = $pmid;
+                } else {
+                    $duplicateInstances["citation_"][] = $row['redcap_repeat_instance'];
+                }
+            } else if ($row['redcap_repeat_instrument'] == "eric") {
+                $id = $row['eric_id'];
+                if (!in_array($id, $ericIDs)) {
+                    $ericIDs[] = $id;
+                } else {
+                    $duplicateInstances["eric_"][] = $row['redcap_repeat_instance'];
+                }
             }
         }
-	    if (!empty($duplicateInstances)) {
-            Upload::deleteFormInstances($this->token, $this->server, $this->pid, "citation_", $recordId, $duplicateInstances);
+        foreach ($duplicateInstances as $prefix => $instances) {
+            if (!empty($instances)) {
+                Upload::deleteFormInstances($this->token, $this->server, $this->pid, $prefix, $recordId, $instances);
+            }
         }
     }
 
@@ -895,7 +907,22 @@ class Publications {
 	    return $newRows;
     }
 
-	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = array(), $pid = NULL) {
+    public static function getCitationsFromERIC($ids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedIDs = [], $pid = NULL) {
+        $upload = [];
+        $instance = $startInstance;
+        foreach ($ids as $id) {
+            $url = ERIC::makeURL($metadata, "id:$id", 2000, 0);
+            list($resp, $json) = URLManagement::downloadURL($url);
+            if (($resp == 200) && $data = json_decode($json, TRUE) && isset($data["response"])) {
+                $docs = $returnData["response"]["docs"] ?? [];
+                $newRows = ERIC::process($docs, $metadata, $recordId, $confirmedIDs, $instance);
+                $upload = array_merge($upload, $newRows);
+            }
+        }
+        return $upload;
+    }
+
+	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = [], $pid = NULL) {
         $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		$upload = [];
 		$instance = $startInstance;
@@ -1489,7 +1516,16 @@ class Publications {
 	# returns array of class Citation
 	public function getCitations($type = "Included") {
 		if ($type == "Included") {
-			return $this->goodCitations->getCitations();
+            return $this->goodCitations->getCitations();
+        } else if (in_array($type, ["PubMed", "pubmed"])) {
+            $allCitations = $this->getCitations("Included");
+            $pubmedCitations = [];
+            foreach ($allCitations as $cit) {
+                if ($cit->getVariable("data_source") == "citation") {
+                    $pubmedCitations[] = $cit;
+                }
+            }
+            return $pubmedCitations;
 		} else if (($type == "Original Included") || ($type == "Included Original")) {
 			$cits = $this->goodCitations->getCitations();
 			$filtered = array();

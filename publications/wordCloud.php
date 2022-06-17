@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Citation;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -51,11 +52,11 @@ form input, form select {
     color: #000000;
 }
 .form-group{width: 33%;display: inline-block;}
-#chartdivcol{width: 28%; padding-right:2%; height:600px; display: inline-block;}
+#chartdivcol{width: 300px; padding-right:30px; height:600px; display: inline-block;}
 #chartdivcol>div{
     
 }
-#chartdiv {width: 70%;display:inline-block;height: 1px; background-color: #FFFFFF; }
+#chartdiv {width: 900px;display:inline-block;height: 1px; background-color: #FFFFFF; }
 #chartdiv>div{
     position: unset !important;
 
@@ -106,20 +107,42 @@ form input, form select {
 </style>
 <?php
 
-$possibleFields = ["citation_grants", "citation_mesh_terms", "citation_journal"];
+$possibleFields = ["citation_grants", "citation_mesh_terms", "citation_journal,eric_source", "eric_subject"];
 $metadata = Download::metadata($token, $server);
 if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
-    $field = Sanitizer::sanitize($_POST['field']);
-    $fields = ["record_id", "citation_include", $field];
-
+    $fieldsToDisplay = explode(",", Sanitizer::sanitize($_POST['field']));
     $startDate = Sanitizer::sanitize($_POST['start'] ?? "");
     $endDate = Sanitizer::sanitize($_POST['end'] ?? "");
     $startTs = $startDate ? strtotime($startDate) : "";
     $endTs = $endDate ? strtotime($endDate) : "";
-    if ($startTs) {
-        $fields[] = "citation_year";
-        $fields[] = "citation_month";
-        $fields[] = "citation_day";
+
+    $fields = array_merge(["record_id"], $fieldsToDisplay);
+    $includeFields = [];
+    foreach ($fieldsToDisplay as $fieldToDisplay) {
+        $includeField = getIncludeField($fieldToDisplay);
+        if (
+            preg_match("/^citation_/", $fieldToDisplay)
+            && !in_array($includeField, $includeFields)
+        ) {
+            $includeFields[] = $includeField;
+            if ($startTs) {
+                $fields[] = "citation_year";
+                $fields[] = "citation_month";
+                $fields[] = "citation_day";
+            }
+        } else if (
+            preg_match("/^eric_/", $fieldToDisplay)
+            && !in_array($includeField, $includeFields)
+        ) {
+            $includeFields[] = $includeField;
+            if ($startTs) {
+                $fields[] = "eric_sourceid";
+                $fields[] = "eric_publicationdateyear";
+            }
+        }
+    }
+    if (!empty($includeFields)) {
+        $fields = array_unique(array_merge($fields, $includeFields));
     }
 
     if ($_POST['cohort']) {
@@ -135,44 +158,48 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
     $redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
     $wordData = [];
     foreach ($redcapData as $row) {
-        if (
-            $row[$field]
-            && ($row['citation_include'] == '1')
-            && datesCheckOut($row, $startTs, $endTs)
-        ) {
-            $words = preg_split("/\s*;\s*/", $row[$field]);
-            if ($field == "citation_grants") {
-                for ($i = 0; $i < count($words); $i++) {
-                    $words[$i] = str_replace(" ", "", $words[$i]);
-                }
-            }
-            foreach($words as $word) {
-                if ($word) {
-                    if (!isset($wordData[$word])) {
-                        $wordData[$word] = 0;
+        foreach ($fieldsToDisplay as $fieldToDisplay) {
+            $includeField = getIncludeField($fieldToDisplay);
+            if (
+                $row[$fieldToDisplay]
+                && ($row[$includeField] == '1')
+                && datesCheckOut($row, $startTs, $endTs)
+            ) {
+                $words = preg_split("/\s*;\s*/", $row[$fieldToDisplay]);
+                if ($fieldToDisplay == "citation_grants") {
+                    for ($i = 0; $i < count($words); $i++) {
+                        $words[$i] = str_replace(" ", "", $words[$i]);
                     }
-                    $wordData[$word]++;
+                }
+                foreach($words as $word) {
+                    if ($word) {
+                        if (!isset($wordData[$word])) {
+                            $wordData[$word] = 0;
+                        }
+                        $wordData[$word]++;
+                    }
                 }
             }
         }
     }
     arsort($wordData);
-    echo makeFieldForm($token, $server, $metadata, $possibleFields, $_POST['cohort'] ? $_POST['cohort'] : "", $startDate, $endDate);
+    echo makeFieldForm($token, $server, $metadata, $possibleFields, $_POST['cohort'] ?: "", $startDate, $endDate);
     //echo REDCapManagement::json_encode_with_spaces($wordData);
     ?>
 
     <script type="text/javascript">
-        am4core.useTheme(am4themes_animated);
-        // Themes end
+        $(document).ready(() => {
+            am4core.useTheme(am4themes_animated);
+            // Themes end
 
-        var chart = am4core.create("chartdiv", am4plugins_wordCloud.WordCloud);
-        chart.fontFamily = "europa";
-        var series = chart.series.push(new am4plugins_wordCloud.WordCloudSeries());
-        series.randomness = 0.1;
-        series.rotationThreshold = 1;
+            const chart = am4core.create("chartdiv", am4plugins_wordCloud.WordCloud);
+            chart.fontFamily = "europa";
+            const series = chart.series.push(new am4plugins_wordCloud.WordCloudSeries());
+            series.randomness = 0.1;
+            series.rotationThreshold = 1;
 
-        series.data = [
-            <?php  
+            series.data = [
+                <?php
                 $wc = "";
                 $tcount = 0;
                 foreach ($wordData as $key => $value) {
@@ -183,99 +210,102 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
                     }
                 }
                 echo $wc;
-            ?>
-         ];
-        $('#chartdiv').css('height','600px').append("<?= REDCapManagement::makeSaveDiv("svg", TRUE) ?>");
+                ?>
+            ];
+            $('#chartdiv').css({height:'600px', width: '900px'}).append("<?= REDCapManagement::makeSaveDiv("svg", TRUE) ?>");
 
-        series.dataFields.word = "tag";
-        series.dataFields.value = "count";
-        series.colors = new am4core.ColorSet();
-        series.colors.step = 1;
-        series.colors.passOptions = {};
+            series.dataFields.word = "tag";
+            series.dataFields.value = "count";
+            series.colors = new am4core.ColorSet();
+            series.colors.step = 1;
+            series.colors.passOptions = {};
 
-        series.labels.template.url = "https://stackoverflow.com/questions/tagged/{word}";
-        series.labels.template.urlTarget = "_blank";
-        series.labels.template.tooltipText = "{word}: {value}";
+            series.labels.template.url = "https://stackoverflow.com/questions/tagged/{word}";
+            series.labels.template.urlTarget = "_blank";
+            series.labels.template.tooltipText = "{word}: {value}";
 
-        var hoverState = series.labels.template.states.create("hover");
-        hoverState.properties.fill = am4core.color("#000000");
+            const hoverState = series.labels.template.states.create("hover");
+            hoverState.properties.fill = am4core.color("#000000");
 
-        var subtitle = chart.titles.create();
-        subtitle.text = "";
+            const subtitle = chart.titles.create();
+            subtitle.text = "";
 
-        var title = chart.titles.create();
-        title.text = "(WordCloud limited to the top 200 terms selected)";
-        title.fontSize = 10;
-        title.fontWeight = "300";
-        title.fontColor = "#eeeeee";
-        title.fontFamily = "europa";
-        title.marginBottom = 20;
-        $('.mtitle').html("<?php echo strtoupper('most popular '.str_replace('_terms','',str_replace('citation_','',$field)).' terms'); ?>");
-//----
+            const title = chart.titles.create();
+            title.text = "(WordCloud limited to the top 200 terms selected)";
+            title.fontSize = 10;
+            title.fontWeight = "300";
+            title.fontColor = "#eeeeee";
+            title.fontFamily = "europa";
+            title.marginBottom = 20;
+            $('.mtitle').html("<?php echo strtoupper('most popular '.getMainChunk($fieldsToDisplay[0]).' terms'); ?>");
+            //----
 
-        var chartc = am4core.create("chartdivcol", am4charts.XYChart);
-        chartc.fontFamily = "europa";
-        chartc.fontSize = '11px';
-        chartc.padding(4, 4, 4, 4);
-        chartc.background.fill = '#f5f5f5';
-        chartc.background.opacity = 1;
+            const chartc = am4core.create("chartdivcol", am4charts.XYChart);
+            chartc.fontFamily = "europa";
+            chartc.fontSize = '11px';
+            chartc.padding(4, 4, 4, 4);
+            chartc.background.fill = '#f5f5f5';
+            chartc.background.opacity = 1;
 
-        var titlec = chartc.titles.create();
-        titlec.text = "(Graph below displays the top 20 terms selected)";
-        titlec.fontSize = 10;
-        titlec.fontWeight = "300";
-        titlec.fontColor = "#eeeeee";
-        titlec.fontFamily = "europa";
-        titlec.marginBottom = 20;
+            const titlec = chartc.titles.create();
+            titlec.text = "(Graph below displays the top 20 terms selected)";
+            titlec.fontSize = 10;
+            titlec.fontWeight = "300";
+            titlec.fontColor = "#eeeeee";
+            titlec.fontFamily = "europa";
+            titlec.marginBottom = 20;
 
-        var categoryAxisc = chartc.yAxes.push(new am4charts.CategoryAxis());
-        categoryAxisc.renderer.grid.template.location = 0;
-        categoryAxisc.dataFields.category = "tag";
-        categoryAxisc.renderer.minGridDistance = 0;
-        categoryAxisc.renderer.inversed = true;
-        categoryAxisc.renderer.grid.template.disabled = true;
+            const categoryAxisc = chartc.yAxes.push(new am4charts.CategoryAxis());
+            categoryAxisc.renderer.grid.template.location = 0;
+            categoryAxisc.dataFields.category = "tag";
+            categoryAxisc.renderer.minGridDistance = 0;
+            categoryAxisc.renderer.inversed = true;
+            categoryAxisc.renderer.grid.template.disabled = true;
 
-        var valueAxisc = chartc.xAxes.push(new am4charts.ValueAxis());
-        valueAxisc.min = 0;
+            const valueAxisc = chartc.xAxes.push(new am4charts.ValueAxis());
+            valueAxisc.min = 0;
 
-        var seriesc = chartc.series.push(new am4charts.ColumnSeries());
-        seriesc.dataFields.categoryY = "tag";
-        seriesc.dataFields.valueX = "count";
-        seriesc.tooltipText = "{valueX.value}"
-        seriesc.columns.template.strokeOpacity = 0;
-        seriesc.columns.template.column.cornerRadiusBottomRight = 1;
-        seriesc.columns.template.column.cornerRadiusTopRight = 1;
+            const seriesc = chartc.series.push(new am4charts.ColumnSeries());
+            seriesc.dataFields.categoryY = "tag";
+            seriesc.dataFields.valueX = "count";
+            seriesc.tooltipText = "{valueX.value}"
+            seriesc.columns.template.strokeOpacity = 0;
+            seriesc.columns.template.column.cornerRadiusBottomRight = 1;
+            seriesc.columns.template.column.cornerRadiusTopRight = 1;
 
-        var labelBulletc = seriesc.bullets.push(new am4charts.LabelBullet());
-        labelBulletc.label.horizontalCenter = "left";
-        labelBulletc.label.dx = 10;
-        labelBulletc.label.truncate = false;
-        labelBulletc.label.text = "{values.valueX.workingValue.formatNumber('#')}";
-        labelBulletc.locationX = 1;
+            const labelBulletc = seriesc.bullets.push(new am4charts.LabelBullet());
+            labelBulletc.label.horizontalCenter = "left";
+            labelBulletc.label.dx = 10;
+            labelBulletc.label.truncate = false;
+            labelBulletc.label.text = "{values.valueX.workingValue.formatNumber('#')}";
+            labelBulletc.locationX = 1;
 
-        seriesc.columns.template.adapter.add("fill", function(fill, target){
-          return chartc.colors.getIndex(target.dataItem.index);
-        });
+            seriesc.columns.template.adapter.add("fill", function(fill, target){
+                return chartc.colors.getIndex(target.dataItem.index);
+            });
 
-        categoryAxisc.sortBySeries = seriesc;
-        chartc.data = [
-            <?php 
-                
+            categoryAxisc.sortBySeries = seriesc;
+            chartc.data = [
+                <?php
+
                 $wcc = "";
                 $tcountc = 0;
                 foreach ($wordData as $key => $value) {
                     $wcc .= '{"tag":"'.$key.'","count": '.$value.'},';
                     $tcountc++;
                     if ($tcountc == 20){
-                        break; 
+                        break;
                     }
                 }
-                echo $wcc; 
-            ?>
-          ]
+                echo $wcc;
+                ?>
+            ]
 
-        $('#chartdivcol').append("<?= REDCapManagement::makeSaveDiv("svg", TRUE) ?>");
+            $('#chartdivcol').append("<?= REDCapManagement::makeSaveDiv("svg", TRUE) ?>");
 
+            $('#chartdiv>div>svg').attr('width', '900').attr('height', '600');
+            $('#chartdivcol>div>svg').attr('width', '300').attr('height', '600');
+        });
     </script>
     <?php
 
@@ -295,7 +325,19 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCoho
     $cohortHTML = $cohorts->makeCohortSelectUI($defaultCohort);
     $selectHTML = "<label for='field'>Field:</label><select name='field' id='field' class='form-control'><option value=''>---SELECT---</option>";
     foreach ($possibleFields as $field) {
-        $label = $metadataLabels[$field];
+        $nodes = explode(",", $field);
+        if (count($nodes) > 1) {
+            $label = $metadataLabels[$nodes[0]]." (PubMed and ERIC)";
+        } else {
+            if (preg_match("/^citation_/", $field)) {
+                $source = " (PubMed)";
+            } else if (preg_match("/^eric_/", $field)) {
+                $source = " (ERIC)";
+            } else {
+                $source = "";
+            }
+            $label = $metadataLabels[$field].$source;
+        }
         $selected = "";
         if ($field == $_POST['field']) {
             $selected = " selected";
@@ -305,7 +347,7 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCoho
     $selectHTML .= "</select>";
     $datesHTML = "<label for='start'>Start Date (optional): </label><input type='date' style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='start' id='start' value='$startDate' /><br/><label for='end'>End Date (optional): </label><input type='date'  style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='end' id='end' value='$endDate' />";
     $html .= "<div class='centered max-width'><div class='form-group'>$cohortHTML</div> <div class='form-group'>$selectHTML</div> <div class='form-group'>$datesHTML</div> <div class='form-group' style='width: 200px;'><button class='btn btn-light tsubmit'>Make Word Cloud</button></div></div>";
-    $html .= "</form><div class='mtitle'></div><div style='display:inline; width:100%;'><div id='chartdivcol'></div><div id='chartdiv'></div>";
+    $html .= "</form><div class='mtitle'></div><div style='width: 1260px; margin: 0 auto;'><div id='chartdivcol'></div><div id='chartdiv'></div>";
     return $html;
 }
 
@@ -316,10 +358,17 @@ function datesCheckOut($row, $startTs, $endTs) {
     if (!$row['citation_year']) {
         return FALSE;
     }
-    $year = $row['citation_year'];
-    $month = $row['citation_month'] ? $row['citation_month'] : "01";
-    $day = $row['citation_day'] ? $row['citation_day'] : "01";
-    $rowTs = strtotime($year."-".$month."-".$day);
+    if ($row['redcap_repeat_instrument'] == "citation") {
+        $year = $row['citation_year'];
+        $month = $row['citation_month'] ? $row['citation_month'] : "01";
+        $day = $row['citation_day'] ? $row['citation_day'] : "01";
+        $date = $year."-".$month."-".$day;
+    } else if ($row['redcap_repeat_instrument'] == "eric") {
+        $date = Citation::getDateFromSourceID($row['eric_sourceid'], $row['eric_publicationdateyear']);
+    } else {
+        return FALSE;
+    }
+    $rowTs = strtotime($date);
     return (
         ($startTs <= $rowTs)
         && (
@@ -327,4 +376,18 @@ function datesCheckOut($row, $startTs, $endTs) {
             || ($endTs >= $rowTs)
         )
     );
+}
+
+function getIncludeField($field) {
+    $nodes = explode("_", $field);
+    return $nodes[0]."_include";
+}
+
+function getMainChunk($field) {
+    $prefixes = ["eric_", "citation_"];
+    $field = str_replace('_terms','', $field);
+    foreach ($prefixes as $prefix) {
+        $field = str_replace($prefix, "", $field);
+    }
+    return $field;
 }

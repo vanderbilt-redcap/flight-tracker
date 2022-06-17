@@ -38,7 +38,18 @@ class URLManagement {
         }
     }
 
+    public static function resetUnsuccessfulCount() {
+        self::$numUnsuccessfulDownloadInARow = 0;
+    }
+
+    public static function isCaughtInBadLoop() {
+        return (self::$numUnsuccessfulDownloadInARow > 100);
+    }
+
     public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3, $longRetriesLeft = 2) {
+        if (self::isCaughtInBadLoop()) {
+            throw new \Exception("In bad loop with $url");
+        }
         if (!Application::isLocalhost()) {
             Application::log("Contacting $url", $pid);
         }
@@ -74,6 +85,11 @@ class URLManagement {
 
         $data = (string) curl_exec($ch);
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        if (self::isGoodResponse($resp)) {
+            self::resetUnsuccessfulCount();
+        } else {
+            self::$numUnsuccessfulDownloadInARow++;
+        }
         if(curl_errno($ch)){
             Application::log(curl_error($ch), $pid);
             if ($autoRetriesLeft > 0) {
@@ -96,7 +112,7 @@ class URLManagement {
             $timeStmt = " in ".(($time2 - $time1) / 1000)." seconds";
         }
         if (Application::isVanderbilt()) {
-            Application::log("Response code $resp; ".strlen($data)." bytes".$timeStmt, $pid);
+            Application::log("$url Response code $resp; ".strlen($data)." bytes".$timeStmt, $pid);
             if (strlen($data) < 500) {
                 Application::log("Result: ".$data, $pid);
             }
@@ -132,7 +148,11 @@ class URLManagement {
         curl_exec($ch);
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         curl_close($ch);
-        return ($resp == 200);
+        return self::isGoodResponse($resp);
+    }
+
+    public static function isGoodResponse($resp) {
+        return (($resp >= 200) && ($resp < 300));
     }
 
     public static function downloadURL($url, $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3) {
@@ -210,5 +230,7 @@ class URLManagement {
         }
         return [$url, $params];
     }
+
+    private static $numUnsuccessfulDownloadInARow = 0;
 
 }

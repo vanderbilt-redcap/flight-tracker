@@ -3,7 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Publications;
-use \Vanderbilt\CareerDevLibrary\Citation;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
@@ -49,27 +49,7 @@ if (isset($_POST['q']) && $_POST['q']) {
     $postQuery = REDCapManagement::sanitize($_POST['q']);
 	$metadata = Download::metadata($token, $server);
 
-	$fields = array("record_id", "identifier_first_name", "identifier_last_name");
-	$citFields = array(
-				"record_id",
-				"citation_pmid",
-				"citation_include",
-				"citation_source",
-				"citation_pmcid",
-				"citation_authors",
-				"citation_title",
-				"citation_pub_types",
-				"citation_mesh_terms",
-				"citation_journal",
-				"citation_volume",
-				"citation_issue",
-				"citation_year",
-				"citation_month",
-				"citation_day",
-				"citation_pages",
-				"citation_is_research",
-				);
-	$terms = splitTerms("/\s+/", $_POST['q']);
+	$terms = splitTerms("/\s+/", Sanitizer::sanitizeWithoutChangingQuotes($_POST['q']));
 	$scores = array();    // record_id:citation_num as key
 	$matchedCitations = array();    // record_idi, citation_num as keys
 	$names = \Vanderbilt\FlightTrackerExternalModule\getAlphabetizedNames($token, $server);

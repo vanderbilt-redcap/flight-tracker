@@ -311,10 +311,10 @@ p.recessed,div.recessed { margin: 2px; }
         $navBar = new NavigationBar();
         $navBar->addFALink("home", "Home", CareerDev::getHomeLink());
         $navBar->addFAMenu("clinic-medical", "General", CareerDev::getMenu("General"));
-        if ($switches->isOn("Grants")) {
+        if ($switches->isOnForProject("Grants")) {
             $navBar->addMenu("<img src='".CareerDev::link("/img/grant_small.png")."'>Grants", CareerDev::getMenu("Grants"));
         }
-        if ($switches->isOn("Publications")) {
+        if ($switches->isOnForProject("Publications")) {
             $navBar->addFAMenu("sticky-note", "Pubs", CareerDev::getMenu("Pubs"));
         }
         $navBar->addFAMenu("table", "View", CareerDev::getMenu("View"));
@@ -821,9 +821,10 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
         "summary_first_any_k_to_first_r01",
     ];
 
-    private static $citationFields = array(
+    private static $citationFields = [
         "record_id",
         "citation_pmid",
+        "citation_doi",
         "citation_include",
         "citation_source",
         "citation_pmcid",
@@ -859,7 +860,31 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
         "citation_altmetric_tweeters_count",
         "citation_altmetric_accounts_count",
         "citation_altmetric_last_update",
-    );
+        "eric_id",
+        "eric_link",
+        "eric_include",
+        "eric_author",
+        "eric_description",
+        "eric_isbn",
+        "eric_issn",
+        "eric_peerreviewed",
+        "eric_publicationdateyear",
+        "eric_publicationtype",
+        "eric_publisher",
+        "eric_subject",
+        "eric_title",
+        "eric_sourceid",
+        "eric_source",
+        "eric_sponsor",
+        "eric_url",
+        "eric_institution",
+        "eric_iesgrantcontractnum",
+        "eric_ieswwcreviewed",
+        "eric_e_datemodified",
+        "eric_e_fulltext",
+        "eric_educationlevel",
+        "eric_last_update",
+    ];
 
     public static $customFields = [
         "record_id",

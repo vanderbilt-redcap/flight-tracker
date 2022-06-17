@@ -4,6 +4,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\ERIC;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -25,6 +26,10 @@ try {
         } else if ($fetchType == "publications") {
             require_once(dirname(__FILE__) . "/publications/getAllPubs_func.php");
             \Vanderbilt\CareerDevLibrary\getPubs($token, $server, $pid, [$recordId]);
+            if (ERIC::isRecordEnabled($recordId, $token, $server, $pid)) {
+                require_once(dirname(__FILE__) . "/drivers/23_getERIC.php");
+                \Vanderbilt\CareerDevLibrary\getERIC($token, $server, $pid, [$recordId]);
+            }
         } else if ($fetchType == "grants") {
             require_once(dirname(__FILE__) . "/drivers/20_nsf.php");
             \Vanderbilt\CareerDevLibrary\getNSFGrants($token, $server, $pid, [$recordId]);
@@ -34,8 +39,10 @@ try {
 
             if (Application::isVanderbilt() && !Application::isLocalhost()) {
                 require_once(dirname(__FILE__)."/drivers/19_updateNewCoeus.php");
+                require_once(dirname(__FILE__)."/drivers/22_getVERA.php");
                 \Vanderbilt\CareerDevLibrary\updateCoeusGrants($token, $server, $pid, [$recordId]);
                 \Vanderbilt\CareerDevLibrary\updateCoeusSubmissions($token, $server, $pid, [$recordId]);
+                \Vanderbilt\CareerDevLibrary\getVERA($token, $server, $pid, [$recordId]);
             }
         } else if ($fetchType == "patents") {
             require_once(dirname(__FILE__) . "/drivers/18_getPatents.php");

@@ -94,8 +94,10 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         if (in_array("nsf", $forms)) {
             $manager->addCron("drivers/20_nsf.php", "getNSFGrants", "Monday", $records, 100);
         }
+        if (in_array("eric", $forms)) {
+            $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
+        }
         if (in_array("vera", $forms) && in_array("vera_submission", $forms)) {
-            $manager->addCron("drivers/22_getVERA.php", "getVERA", "2022-06-01", $allRecords, 100000);
             $manager->addCron("drivers/22_getVERA.php", "getVERA", "Friday", $allRecords, 100000);
         }
 

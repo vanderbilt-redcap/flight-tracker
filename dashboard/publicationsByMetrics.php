@@ -10,6 +10,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Measurement;
 use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -28,7 +29,7 @@ if (isset($_GET['cohort'])) {
     $cohort = "";
 }
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_unique(array_merge(CareerDev::$smallCitationFields, ["record_id", "citation_rcr", "citation_authors", "citation_year", "citation_month", "citation_day", "citation_num_citations", "summary_training_start", "summary_training_end"])), $cohort, Application::getModule());
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, ["record_id", "citation_rcr", "citation_authors", "citation_year", "citation_month", "citation_day", "citation_num_citations", "summary_training_start", "summary_training_end"]))), $cohort, Application::getModule());
 
 $tooltip = [
 		"Relative Citation Ratio" => "The article citation rate (ACR) divided by the expected citation rate (ECR), which is normalized by field (the author's co-citation network) and time (years since publication). Cf. ".Links::changeTextColorOfLink(Links::makeLink('https://www.doi.org/10.1371/journal.pbio.1002541', "doi"), "white").".",
@@ -74,7 +75,7 @@ foreach ($indexedRedcapData as $recordId => $rows) {
     }
 	if ($goodCitations) {
 		foreach ($goodCitations->getCitations() as $citation) {
-			if ($citation->getCategory() == "Original Research") {
+			if ($citation->isResearchArticle()) {
 				foreach ($metrics as $metric => $variable) {
 					if (!isset($numForMetric[$metric])) {
 						$numForMetric[$metric] = [];

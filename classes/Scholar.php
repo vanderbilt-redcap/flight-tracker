@@ -1939,12 +1939,14 @@ return $result;
             "check_disability" => "scholars",
             "vfrs_disability_those_with_phys" => "vfrs",
             "init_import_disability" => "manual",
+            "imported_disabled" => "manual",
         );
         $orders["summary_disadvantaged"] = array(
             "followup_disadvantaged" => "followup",
             "check_disadvantaged" => "scholars",
             "vfrs_disadvantaged_the_criteria" => "vfrs",
             "init_import_disadvantaged" => "manual",
+            "imported_disadvantaged" => "manual",
         );
         $orders["summary_training_start"] = array(
             "identifier_start_of_training" => "manual",

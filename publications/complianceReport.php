@@ -537,7 +537,7 @@ function processRecord($token, $server, $pid, $event_id, $metadata, $names, $rec
     $pubs = new Publications($token, $server, $metadata);
     $pubs->setRows($redcapData);
     $pmids = [];
-    foreach ($pubs->getCitations() as $citation) {
+    foreach ($pubs->getCitations("pubmed") as $citation) {
         if ($pmid = $citation->getPMID()) {
             $pmids[] = $pmid;
         }
@@ -547,7 +547,7 @@ function processRecord($token, $server, $pid, $event_id, $metadata, $names, $rec
     $isFirst = TRUE;
     $numProblemRowsForRecord = 0;
     foreach ([FALSE, TRUE] as $printResults) {
-        foreach ($pubs->getCitations() as $citation) {
+        foreach ($pubs->getCitations("pubmed") as $citation) {
             $pubTs = $citation->getTimestamp();
             if ($isTrainingOnly && $timeframeStartTs) {
                 if ($timeframeEndTs) {
@@ -588,10 +588,10 @@ function processRecord($token, $server, $pid, $event_id, $metadata, $names, $rec
                 $pmcidClass = $pubClass;
 
                 $hasMatchedGrant = empty($grantsSearchedFor);
-                $grantsWithoutHTML = [];
                 if ($printResults) {
                     $grants = $citation->getGrantBaseAwardNumbers();
                     $grantHTML = [];
+                    $grantsWithoutHTML = [];
                     foreach ($grants as $baseAwardNo) {
                         $baseAwardNo = strtoupper($baseAwardNo);
                         if (in_array($baseAwardNo, $grantsSearchedFor)) {

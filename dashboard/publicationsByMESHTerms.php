@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Dashboard;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -25,7 +26,7 @@ if (isset($_GET['cohort'])) {
     $cohort = "";
 }
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_merge(CareerDev::$smallCitationFields, ["citation_mesh_terms"]), $cohort, Application::getModule());
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_merge(CareerDev::$smallCitationFields, ["citation_mesh_terms"])), $cohort, Application::getModule());
 
 $numConfirmedPubs = 0;
 $numForMESHTerms = [];
@@ -38,7 +39,7 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 		$confirmedCount = $goodCitations->getCount();
 		$numConfirmedPubs += $confirmedCount;
 		foreach ($goodCitations->getCitations() as $citation) {
-			if ($citation->getCategory() == "Original Research") {
+			if ($citation->isResearchArticle() && ($citation->getVariable("data_source") == "citation")) {
 				$meshTerms = $citation->getMESHTerms();
 				foreach ($meshTerms as $meshTerm) {
 					if (!isset($numForMESHTerms[$meshTerm])) {

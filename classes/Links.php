@@ -229,10 +229,14 @@ class Links {
     }
 
     public static function makePublicationsLink($pid, $recordId, $event_id, $text, $instance = 1, $newTarget = FALSE) {
-		return self::makeFormLink($pid, $recordId, $event_id, $text, "citation", $instance, "", $newTarget);
-	}
+        return self::makeFormLink($pid, $recordId, $event_id, $text, "citation", $instance, "", $newTarget);
+    }
 
-	public static function makeRepeatingFormLink($pid, $recordId, $event_id, $text, $form, $instance = 1, $linkClass = "") {
+    public static function makeERICLink($pid, $recordId, $event_id, $text, $instance = 1, $newTarget = FALSE) {
+        return self::makeFormLink($pid, $recordId, $event_id, $text, "eric", $instance, "", $newTarget);
+    }
+
+    public static function makeRepeatingFormLink($pid, $recordId, $event_id, $text, $form, $instance = 1, $linkClass = "") {
 		$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=".$pid."&id=".$recordId."&event_id=".$event_id."&page=".$form."&instance=".$instance;
 		return self::makeLink($url, $text, FALSE, $linkClass);
 	}

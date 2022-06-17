@@ -89,6 +89,7 @@ function getNSFGrants($token, $server, $pid, $records) {
     if (!empty($errors)) {
         throw new \Exception(implode("<br/><br/>", $errors));
     }
+    Application::saveCurrentDate("Last NSF Download", $pid);
 }
 
 function ridOfExtraSpaces($aryOfStrings) {

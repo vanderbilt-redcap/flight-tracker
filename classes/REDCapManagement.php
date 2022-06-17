@@ -205,6 +205,8 @@ class REDCapManagement {
             $prefix = "nih";
         } else if ($instrument == "nsf") {
             $prefix = "nsf";
+        } else if ($instrument == "eric") {
+            $prefix = "eric";
         } else if ($instrument == "citation") {
             $prefix = "citation";
         } else if ($instrument == "resources") {
@@ -363,6 +365,47 @@ class REDCapManagement {
             "coeus2_role", "coeus2_award_status", "coeus2_agency_grant_number", "coeus2_current_period_start", "coeus2_current_period_end", "coeus2_current_period_total_funding", "coeus2_current_period_direct_funding",
             "coeus_pi_flag", "coeus_sponsor_award_number", "coeus_total_cost_budget_period", "coeus_direct_cost_budget_period", "coeus_budget_start_date", "coeus_budget_end_date", "coeus_project_start_date", "coeus_project_end_date",
             "exporter_total_cost", "exporter_total_cost_sub_project", "exporter_pi_names", "exporter_full_project_num", "exporter_budget_start", "exporter_budget_end", "exporter_project_start", "exporter_project_end", "exporter_direct_cost_amt",
+            "newman_demographics_first_individual_k_date",
+            "newman_demographics_first_individual_k_date_note",
+            "newman_demographics_first_individual_k_end_date",
+            "newman_demographics_first_individual_k_year",
+            "newman_demographics_degree_to_first_individual_k",
+            "newman_demographics_age_at_first_k",
+            "newman_demographics_first_r_date",
+            "newman_demographics_first_r_date_note",
+            "newman_demographics_first_r_end_date",
+            "newman_data_current_program_funding_newman",
+            "newman_data_previous_program_funding_newman",
+            "newman_data_individual_k_start",
+            "newman_data_individual_k_start_note",
+            "newman_data_previous_nih_grant_funding_newman",
+            "newman_data_nih_current",
+            "newman_data_pending_nih_funding_ecommons",
+            "newman_data_withdrawn_grants",
+            "newman_data_date_first_institutional_k_award_newman",
+            "newman_data_date_first_institutional_k_award_newman_note",
+            "newman_data_individual_k_score",
+            "newman_data_r01_start",
+            "newman_data_r01_start_note",
+            "newman_data_r01_score",
+            "newman_sheet2_current_program_funding_2",
+            "newman_sheet2_previous_program_funding_2",
+            "newman_sheet2_institutional_k_start",
+            "newman_sheet2_institutional_k_start_note",
+            "newman_sheet2_previous_funding",
+            "newman_sheet2_current_funding",
+            "newman_sheet2_pending_grant",
+            "newman_sheet2_withdrawn_grant",
+            "newman_sheet2_noninstitutional_start",
+            "newman_sheet2_noninstitutional_start_note",
+            "newman_sheet2_individual_k_score",
+            "newman_sheet2_first_r01_date",
+            "newman_sheet2_first_r01_date_note",
+            "newman_sheet2_first_r01_score",
+            "newman_new_current_program_funding",
+            "newman_new_first_institutional_k_award",
+            "newman_new_current_nih_funding",
+            "newman_new_first_individual_k_award",
         ];
         $allFields = array_unique(array_merge($allFields, Application::$customFields));
         return self::screenForFields($metadata, $allFields);

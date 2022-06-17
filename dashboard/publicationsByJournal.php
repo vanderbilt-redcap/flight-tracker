@@ -10,6 +10,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -28,7 +29,7 @@ if (isset($_GET['cohort'])) {
     $cohort = "";
 }
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_merge(CareerDev::$smallCitationFields, ['citation_journal']), $cohort, Application::getModule());
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, ['citation_journal', "eric_source"]))), $cohort, Application::getModule());
 
 $numConfirmedPubs = 0;
 $numForJournal = [];
@@ -41,8 +42,9 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 		$confirmedCount = $goodCitations->getCount();
 		$numConfirmedPubs += $confirmedCount;
 		foreach ($goodCitations->getCitations() as $citation) {
-			if ($citation->getCategory() == "Original Research") {
-				$journal = $citation->getVariable("journal");
+			if ($citation->isResearchArticle()) {
+                $field = ($citation->getVariable("data_source") == "citation") ? "journal" : "source";
+				$journal = $citation->getVariable($field);
 
 				if (!isset($numForJournal[$journal])) {
 					$numForJournal[$journal] = 0;

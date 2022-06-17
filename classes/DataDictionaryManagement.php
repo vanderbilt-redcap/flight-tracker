@@ -9,6 +9,28 @@ class DataDictionaryManagement {
         return "/___delete$/";
     }
 
+    public static function removePrefix($fields, $prefix) {
+        if (!preg_match("/_$/", $prefix)) {
+            $prefix .= "_";
+        }
+
+        $suffixesToSkip = ["_complete", "_include"];
+        $newFields = [];
+        foreach ($fields as $field) {
+            $continue = TRUE;
+            foreach ($suffixesToSkip as $suffixToSkip) {
+                if (preg_match("/$suffixToSkip$/", $field)) {
+                    $continue = FALSE;
+                    break;
+                }
+            }
+            if ($continue && preg_match("/^$prefix/", $field)) {
+                $newFields[] = preg_replace("/^$prefix/", "", $field);
+            }
+        }
+        return $newFields;
+    }
+
     public static function installMetadataFromFiles($files, $token, $server, $pid, $eventId, $grantClass, $newChoices, $deletionRegEx, $excludeForms) {
         $dataToReturn = [];
         $metadata = [];
@@ -385,6 +407,9 @@ class DataDictionaryManagement {
         if (in_array("nsf", $forms)) {
             $formsAndLabels["nsf"] = "[nsf_id]";
         }
+        if (in_array("eric", $forms)) {
+            $formsAndLabels["eric"] = "[eric_id]";
+        }
 
         if (Application::isVanderbilt()) {
             $formsAndLabels["ldap"] = "[ldap_vanderbiltpersonjobname]";
@@ -418,9 +443,14 @@ class DataDictionaryManagement {
     }
 
     public static function filterOutInvalidFields($metadata, $fields) {
-        $metadataFields = self::getFieldsFromMetadata($metadata);
-        $metadataForms = self::getFormsFromMetadata($metadata);
-        $newFields = array();
+        if (empty($metadata)) {
+            $metadataFields = Download::metadataFields($token, $server);
+            $metadataForms = Download::metadataForms($token, $server);
+        } else {
+            $metadataFields = self::getFieldsFromMetadata($metadata);
+            $metadataForms = self::getFormsFromMetadata($metadata);
+        }
+        $newFields = [];
         foreach ($fields as $field) {
             if (in_array($field, $metadataFields)) {
                 $newFields[] = $field;

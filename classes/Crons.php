@@ -743,6 +743,7 @@ class CronJob {
                 }
             }
 			if ($passedToken && $passedServer && $passedPid) {
+                URLManagement::resetUnsuccessfulCount();
 			    if ($this->firstParameter) {
                     $method($passedToken, $passedServer, $passedPid, $records, $this->firstParameter);
                 } else {

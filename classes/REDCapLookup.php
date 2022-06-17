@@ -10,6 +10,20 @@ class REDCapLookup {
         $this->lastName = NameMatcher::clearOfHonorifics(NameMatcher::clearOfDegrees($lastName));
     }
 
+    public static function getUserInfo($uid) {
+        if ($uid) {
+            $sql = "SELECT * FROM redcap_user_information WHERE username = '".db_real_escape_string($uid)."'";
+            $results = db_query($sql);
+            if ($error = db_error()) {
+                throw new \Exception($error.": ".$sql);
+            }
+            if ($row = db_fetch_assoc($results)) {
+                return $row;
+            }
+        }
+        return [];
+    }
+
     public function getName() {
         return $this->firstName." ".$this->lastName;
     }

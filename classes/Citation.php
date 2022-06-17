@@ -31,10 +31,10 @@ class CitationCollection {
         }
         if ($type != "Filtered") {
             foreach ($redcapData as $row) {
-                if (($row['redcap_repeat_instrument'] == "citation") && ($row['record_id'] == $recordId)) {
+                if (in_array($row['redcap_repeat_instrument'], ["citation", "eric"]) && ($row['record_id'] == $recordId)) {
                     $c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $lastNames[$recordId], $firstNames[$recordId]);
                     if ($c->getType() == $type) {
-                        array_push($this->citations, $c);
+                        $this->citations[] = $c;
                     }
                 }
             }
@@ -64,7 +64,7 @@ class CitationCollection {
 			$newCitations = array();
 			foreach ($this->getCitations() as $citation) {
 				if ($citation->getPMID() != $pmid) {
-					array_push($newCitations, $citation);
+					$newCitations[] = $citation;
 				}
 			}
 			$this->citations = $newCitations;
@@ -82,7 +82,7 @@ class CitationCollection {
 		foreach ($citations as $citation) {
 			$pmid = $citation->getPMID();
 			if (!in_array($pmid, $ids)) {
-				array_push($ids, $pmid);
+				$ids[] = $pmid;
 			}
 		}
 		return $ids;
@@ -96,7 +96,7 @@ class CitationCollection {
 	private static function sortArrays($unorderedArys, $field) {
 		$keys = array();
 		foreach ($unorderedArys as $ary) {
-			array_push($keys, $ary[$field]);
+			$keys[] = $ary[$field];
 		}
 		rsort($keys);
 
@@ -109,7 +109,7 @@ class CitationCollection {
 			$found = FALSE;
 			foreach ($unorderedArys as $i => $ary) {
 				if ($ary[$field] == $key) {
-					array_push($ordered, $ary);
+					$ordered[] = $ary;
 					unset($unorderedArys[$i]);
 					$found = TRUE;
 					break;
@@ -128,12 +128,12 @@ class CitationCollection {
 	}
 
 	public function sortCitations() {
-		$unsorted = array();
+		$unsorted = [];
 		foreach ($this->citations as $citation) {
-			array_push($unsorted, array(
-							"citation" => $citation,
-							"timestamp" => $citation->getTimestamp(),
-							));
+			$unsorted[] = [
+                "citation" => $citation,
+                "timestamp" => $citation->getTimestamp(),
+            ];
 		}
 		$sorted = self::sortArrays($unsorted, "timestamp");
 		if (count($unsorted) != count($sorted)) {
@@ -142,7 +142,7 @@ class CitationCollection {
 
 		$this->citations = array();
 		foreach ($sorted as $ary) {
-			array_push($this->citations, $ary['citation']);
+			$this->citations[] = $ary['citation'];
 		}
 	}
 
@@ -206,7 +206,7 @@ class Citation {
 		if (isset($choices["citation_source"])) {
 			$this->sourceChoices = $choices["citation_source"];
 		} else {
-			$this->sourceChoices = array();
+			$this->sourceChoices = [];
 		}
 
 		$this->readData();
@@ -344,16 +344,20 @@ class Citation {
 		$meshTerms = $this->getMESHTerms();
 
 		if (count($pubTypes) > 0) {
-			$html .= "<b>".self::changeTextColorOfLink(Links::makeLink("https://www.pubmed.gov", "PubMed"), "white")." Publication Types</b><br>".implode("<br>", $this->getPubTypes())."<br><br>";
+			$html .= "<b>Publication Types (".self::changeTextColorOfLink(Links::makeLink("https://www.pubmed.gov", "PubMed"), "white")." or ".self::changeTextColorOfLink(Links::makeLink("https://eric.ed.gov/", "ERIC"), "white").")</b><br>".implode("<br>", $this->getPubTypes())."<br><br>";
 		}
 		if (count($meshTerms) > 0) {
 			$html .= "<b>".self::changeTextColorOfLink(Links::makeLink("https://www.ncbi.nlm.nih.gov/mesh", "MESH Terms"), "white")."</b><br>".implode("<br>", $this->getMESHTerms())."<br><br>";
 		}
-		$cat = $this->getCategory();
-		if ($cat == "Uncategorized") {
-			$cat = "Currently $cat; may be automatically updated in the future";
-		}
-		$html .= "<b>".self::changeTextColorOfLink(Links::makeLink("https://icite.od.nih.gov", "iCite"), "white")." Category</b><br>$cat<br><br>";
+        $cat = $this->getCategory();
+        if ($this->getVariable("data_source") == "citation") {
+            if ($cat == "Uncategorized") {
+                $cat = "Currently $cat; may be automatically updated in the future";
+            }
+            $html .= "<b>".self::changeTextColorOfLink(Links::makeLink("https://icite.od.nih.gov", "iCite"), "white")." Category</b><br>$cat<br><br>";
+        } else if (($this->getVariable("data_source") == "eric") && ($cat == "Peer Reviewed")) {
+            $html .= "<b>Category</b><br>$cat<br><br>";
+        }
 
 		return $html;
 	}
@@ -383,7 +387,8 @@ class Citation {
 	}
 
 	private static function shortenField($field) {
-		return preg_replace("/^citation_/", "", $field);
+        $field = preg_replace("/^citation_/", "", $field);
+        return preg_replace("/^eric_/", "", $field);
 	}
 
 	public function getGrants() {
@@ -445,6 +450,12 @@ class Citation {
 				$month = "0".intval($month);
 			}
 		} else {
+            if (preg_match("/-/", $mon)) {
+                $nodes = preg_split("/-/", $mon);
+                if ($nodes[0]) {
+                    $mon = $nodes[0];
+                }
+            }
 			$months = [
                 "Jan" => "01",
                 "Feb" => "02",
@@ -459,6 +470,14 @@ class Citation {
                 "Oct" => "10",
                 "Nov" => "11",
                 "Dec" => "12",
+                "Win" => "01",
+                "Winter" => "01",
+                "Spr" => "04",
+                "Spring" => "04",
+                "Sum" => "07",
+                "Summer" => "07",
+                "Fal" => "10",
+                "Fall" => "10",
                 "January" => "01",
                 "February" => "02",
                 "March" => "03",
@@ -529,9 +548,12 @@ class Citation {
 			$this->downloadData();
 		} else {
 			$this->resetData();
+            $this->setVariable("data_source", $this->origRow['redcap_repeat_instrument']);
 			foreach ($this->origRow as $field => $value) {
 				$shortField = self::shortenField($field);
-				$this->setVariable($shortField, $value);
+                if ($value !== "") {
+                    $this->setVariable($shortField, $value);
+                }
 			}
 		}
 	}
@@ -566,12 +588,26 @@ class Citation {
 	}
 
 	public function getID() {
-		return $this->getPMID();
+        if ($this->getVariable("data_source") == "eric") {
+            return $this->getERICID();
+        } else if ($this->getVariable("data_source") == "citation") {
+            return $this->getPMID();
+        }
+        return "";
 	}
 
 	public function getUniqueID() {
-		return "PMID".$this->getPMID();
+        if ($this->getVariable("data_source") == "eric") {
+            return $this->getERICID();
+        } else if ($this->getVariable("data_source") == "citation") {
+            return "PMID".$this->getPMID();
+        }
+        return "";
 	}
+
+    public function getERICID() {
+        return $this->getVariable("id");
+    }
 
 	public function getPMID() {
 		return $this->getVariable("pmid");
@@ -602,19 +638,30 @@ class Citation {
 		if ($str) {
 			return explode("; ", $str);
 		} else {
-			return array();
+			return [];
 		}
 	}
 
 	public function getPubTypes() {
-		$str = $this->getVariable("pub_types");
-		return self::explodeList($str);
+        $possibleVariables = [ "pub_types", "publicationtype"];
+        foreach ($possibleVariables as $var) {
+            $str = $this->getVariable($var);
+            if ($str) {
+                return self::explodeList($str);
+            }
+        }
+        return [];
 	}
 
 	public function getMESHTerms() {
 		$str = $this->getVariable("mesh_terms");
 		return self::explodeList($str);
 	}
+
+    public function getSubjects() {
+        $str = $this->getVariable("subject");
+        return self::explodeList($str);
+    }
 
 	public function getType() {
 		$include = $this->getVariable("include");
@@ -637,8 +684,14 @@ class Citation {
     }
 
 	private function getYear() {
-		$year = $this->getVariable("year");
-		return self::transformYear($year);
+        if ($this->getVariable("data_source") == "citation") {
+            $year = $this->getVariable("year");
+        } else if ($this->getVariable("data_source") == "eric") {
+            $year = $this->getVariable("publicationdateyear");
+        } else {
+            $year = "";
+        }
+        return self::transformYear($year);
 	}
 
 	public static function transformIntoDate($year, $month, $day) {
@@ -683,36 +736,44 @@ class Citation {
     }
 
 	public function getDate($dateAsNumber = FALSE) {
-		$year = $this->getYear();
-		if ($dateAsNumber) {
-		    $month = self::getNumericMonth($this->getVariable("month"));
-        } else {
-            $month = self::getFullMonth($this->getVariable("month"));
-        }
-		$day = $this->getVariable("day");
-		if ($dateAsNumber) {
-		    $sep = "-";
-		    if ($month && $day && $year) {
-                return $month.$sep.$day.$sep.$year;
-            } else if ($month && $day) {
-		        return self::getFullMonth($this->getVariable("month"))." ".$day;
-            } else if ($day && $year) {
-		        return $year;   // deliberate
-            } else if ($month && $year) {
-		        return $month.$sep.$year;
-            } else {
-		        if ($year) {
-		            return $year;
-                } else if ($month) {
-		            return self::getFullMonth($this->getVariable("month"));
-                } else if ($day) {
-		            return "Day ".$day;
-                } else {
-		            return "";
-                }
+        if ($this->getVariable("data_source") == "eric") {
+            $year = $this->getYear();
+            if ($sourceID = $this->getVariable("sourceid")) {
+                return self::getDateFromSourceID($sourceID, $year);
             }
-        } else {
-            return self::transformIntoDate($year, $month, $day);
+            return $year."-01-01";
+        } else if ($this->getVariable("data_source") == "citation") {
+            $year = $this->getYear();
+            $sep = "-";
+            if ($dateAsNumber) {
+                $month = self::getNumericMonth($this->getVariable("month"));
+            } else {
+                $month = self::getFullMonth($this->getVariable("month"));
+            }
+            $day = $this->getVariable("day");
+            if ($dateAsNumber) {
+                if ($month && $day && $year) {
+                    return $month.$sep.$day.$sep.$year;
+                } else if ($month && $day) {
+                    return self::getFullMonth($this->getVariable("month"))." ".$day;
+                } else if ($day && $year) {
+                    return $year;   // deliberate
+                } else if ($month && $year) {
+                    return $month.$sep.$year;
+                } else {
+                    if ($year) {
+                        return $year;
+                    } else if ($month) {
+                        return self::getFullMonth($this->getVariable("month"));
+                    } else if ($day) {
+                        return "Day ".$day;
+                    } else {
+                        return "";
+                    }
+                }
+            } else {
+                return self::transformIntoDate($year, $month, $day);
+            }
         }
 	}
 
@@ -758,19 +819,40 @@ class Citation {
     }
 
 	public function getCitation($multipleNamesToBold = []) {
-	    if (!empty($multipleNamesToBold)) {
-	        // Application::log("Has multiple names to bold: ".REDCapManagement::json_encode_with_spaces($multipleNamesToBold));
-	        $authorList = $this->getAuthorList();
-	        foreach ($multipleNamesToBold as $nameAry) {
-	            $firstName = $nameAry["firstName"];
-	            $lastName = $nameAry["lastName"];
-	            $authorList = self::boldName($lastName, $firstName, $authorList);
-	            // Application::log("Bolding $lastName $firstName: ".REDCapManagement::json_encode_with_spaces($authorList));
+        if (!empty($multipleNamesToBold)) {
+            // Application::log("Has multiple names to bold: ".REDCapManagement::json_encode_with_spaces($multipleNamesToBold));
+            $authorList = $this->getAuthorList();
+            foreach ($multipleNamesToBold as $nameAry) {
+                $firstName = $nameAry["firstName"];
+                $lastName = $nameAry["lastName"];
+                $authorList = self::boldName($lastName, $firstName, $authorList);
+                // Application::log("Bolding $lastName $firstName: ".REDCapManagement::json_encode_with_spaces($authorList));
             }
-	        $authors = self::addPeriodIfExtant(implode(", ", $authorList));
+            $authors = self::addPeriodIfExtant(implode(", ", $authorList));
         } else {
             $authors = self::addPeriodIfExtant(implode(", ", self::boldName($this->lastName, $this->firstName, $this->getAuthorList())));
         }
+        if ($this->getVariable("data_source") == "eric") {
+            return $this->getERICCitation($authors);
+        } else if ($this->getVariable("data_source") == "citation") {
+            return $this->getPubMedCitation($authors);
+        }
+        return "";
+    }
+
+    private function getERICCitation($authorText) {
+        $title = self::addPeriodIfExtant($this->getVariable("title"));
+        $journal = self::addPeriodIfExtant($this->getVariable("source"));
+        $dateAndIssue = self::addPeriodIfExtant($this->getVariable("sourceid"));
+
+        $citation = $authorText.$title.$journal.$dateAndIssue;
+        if ($id = $this->getERICID()) {
+            $citation .= self::addPeriodIfExtant($id);
+        }
+        return $citation;
+    }
+
+    private function getPubMedCitation($authorText, $addDOI = TRUE) {
         $title = self::addPeriodIfExtant($this->getVariable("title"));
         $journal = self::addPeriodIfExtant($this->getVariable("journal"));
 
@@ -784,17 +866,20 @@ class Citation {
         }
         $dateAndIssue = self::addPeriodIfExtant($dateAndIssue);
 
-	    $citation = $authors.$title.$journal.$dateAndIssue;
+	    $citation = $authorText.$title.$journal.$dateAndIssue;
 		$doi = $this->getVariable("doi");
-		if ($doi) {
+		if ($doi && $addDOI) {
 			$citation .= self::addPeriodIfExtant("doi:".$doi);
 		}
 		return $citation;
 	}
 
 	public function getAuthorList() {
-		$authorList = preg_split("/\s*,\s*/", $this->getVariable("authors"));
-		return $authorList;
+        if ($this->getVariable("data_source") == "eric") {
+            return preg_split("/\s*;\s*/", $this->getVariable("author"));
+        } else {
+            return preg_split("/\s*,\s*/", $this->getVariable("authors"));
+        }
 	}
 
 	private static function getNamesFromNodes($nameNodes) {
@@ -897,27 +982,11 @@ class Citation {
 	}
 
 	public function getNIHFormat($traineeLastName, $traineeFirstName, $includeIDs = FALSE, $includeDOI = FALSE) {
+        if ($this->getVariable("data_source") == "eric") {
+            return "";
+        }
         $authors = self::addPeriodIfExtant(implode(", ", self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList())));
-        $title = self::addPeriodIfExtant($this->getVariable("title"));
-        $journal = self::addPeriodIfExtant($this->getVariable("journal"));
-
-        $date = $this->getDate();
-        $issue = $this->getIssueAndPages();
-        $dateAndIssue = $date;
-        if ($dateAndIssue && $issue) {
-            $dateAndIssue .= "; ".$issue;
-        } else if ($this->getIssueAndPages()) {
-            $dateAndIssue = $issue;
-        }
-        $dateAndIssue = self::addPeriodIfExtant($dateAndIssue);
-
-        $citation = $authors.$title.$journal.$dateAndIssue;
-        if ($includeDOI) {
-            $doi = $this->getVariable("doi");
-            if ($doi) {
-                $citation .= self::addPeriodIfExtant("doi:".$doi);
-            }
-        }
+        $citation = $this->getPubMedCitation($authors, $includeDOI);
 		if ($includeIDs) {
 		    if ($pmid = $this->getPMID()) {
                 $citation .= self::addPeriodIfExtant("PMID ".$pmid);
@@ -943,43 +1012,57 @@ class Citation {
 	public function getCitationWithLink($includeREDCapLink = TRUE, $newTarget = FALSE) {
 		global $pid, $event_id;
 
-		$base = $this->getCitation();
+        $base = $this->getCitation();
+        if ($this->getVariable("data_source") == "eric") {
+            $fullTextURL = $this->getVariable("e_fulltext");
+            $locationText = $fullTextURL ? " ".Links::makeLink($fullTextURL, "Full Text", $newTarget) : "";
 
-		$doi = $this->getVariable("doi");
-		if ($doi) {
-			$baseWithDOILink = str_replace("doi:".$doi, Links::makeLink("https://www.doi.org/".$doi, "doi:".$doi, $newTarget), $base);
-		} else {
-			$baseWithDOILink = $base;
-		}
+            if (!$locationText) {
+                $journalURL = $this->getVariable("url");
+                $locationText = $journalURL ? " ".Links::makeLink($journalURL, "Full Text", $newTarget) : "";
+            }
 
-		if ($this->getPMID() && !preg_match("/PMID\s*\d/", $baseWithDOILink)) {
-			$baseWithPMID = $baseWithDOILink." PubMed PMID: ".$this->getPMID();
-		} else {
-			$baseWithPMID = $baseWithDOILink;
-		}
+            $ericURL = $this->getURL();
+            $ericText = $ericURL ? " ".Links::makeLink($ericURL, "ERIC", $newTarget) : "";
 
-		if ($includeREDCapLink && $this->getInstance() && $this->getRecordId()) {
-			$baseWithREDCap = $baseWithPMID." ".Links::makePublicationsLink($pid, $this->getRecordId(), $event_id, "REDCap", $this->getInstance(), TRUE);
-		} else {
-			$baseWithREDCap = $baseWithPMID;
-		}
+            if ($includeREDCapLink && $this->getRecordId() && $this->getInstance()) {
+                $redcap = " ".Links::makeERICLink($pid, $this->getRecordId(), $event_id, "REDCap", $this->getInstance(), TRUE);
+            } else {
+                $redcap = "";
+            }
 
-		$pmcWithPrefix = $this->getPMCWithPrefix();
-		if ($pmcWithPrefix && !preg_match("/PMC\d/", $baseWithREDCap)) {
-			$baseWithPMC = $baseWithREDCap." ".$pmcWithPrefix.".";
-		} else {
-			$baseWithPMC = $baseWithREDCap;
-		}
-
-		if ($pmcWithPrefix) {
-            $baseWithPMCLink = preg_replace("/".$pmcWithPrefix."/", Links::makeLink($this->getPMCURL(), $pmcWithPrefix, $newTarget), $baseWithPMC);
+            return $base.$locationText.$redcap.$ericText;
         } else {
-		    $baseWithPMCLink = $baseWithPMC;
+            $doi = $this->getVariable("doi");
+            $doiLink = $doi ? str_replace("doi:".$doi, Links::makeLink("https://www.doi.org/".$doi, "doi:".$doi, $newTarget), $base) : "";
+
+            if ($this->getPMID() && !preg_match("/PMID\s*\d/", $base)) {
+                $pmidText = " PubMed PMID: ".$this->getPMID();
+            } else {
+                $pmidText = "";
+            }
+
+            if ($includeREDCapLink && $this->getInstance() && $this->getRecordId()) {
+                $redcap = " ".Links::makePublicationsLink($pid, $this->getRecordId(), $event_id, "REDCap", $this->getInstance(), TRUE);
+            } else {
+                $redcap = "";
+            }
+
+            $pmcWithPrefix = $this->getPMCWithPrefix();
+            if ($pmcWithPrefix && !preg_match("/PMC\d/", $base)) {
+                $pmcText = " ".$pmcWithPrefix.".";
+            } else {
+                $pmcText = "";
+            }
+
+            $baseWithPMC = $base.$doiLink.$pmidText.$redcap.$pmcText;
+            if ($pmcWithPrefix) {
+                $baseWithPMCLink = preg_replace("/".$pmcWithPrefix."/", Links::makeLink($this->getPMCURL(), $pmcWithPrefix, $newTarget), $baseWithPMC);
+            } else {
+                $baseWithPMCLink = $baseWithPMC;
+            }
+            return preg_replace("/PubMed PMID:\s*".$this->getPMID()."/", Links::makeLink($this->getURL(), "PubMed PMID: ".$this->getPMID(), $newTarget), $baseWithPMCLink);
         }
-
-		$baseWithLinks = preg_replace("/PubMed PMID:\s*".$this->getPMID()."/", Links::makeLink($this->getURL(), "PubMed PMID: ".$this->getPMID(), $newTarget), $baseWithPMCLink);
-
-		return $baseWithLinks;
 	}
 
 	public function getPMCURL() {
@@ -991,8 +1074,17 @@ class Citation {
 	}
 
 	public function getURL() {
-	    return self::getURLForPMID($this->getPMID());
+        if ($this->getVariable("data_source") == "eric") {
+            return self::getURLForERIC($this->getERICID());
+        } else if ($this->getVariable("data_source") == "citation") {
+            return self::getURLForPMID($this->getPMID());
+        }
+        return "";
 	}
+
+    public static function getURLForERIC($id) {
+        return "https://eric.ed.gov/?id=".$id;
+    }
 
 	public static function getURLForPMID($pmid) {
         return "https://www.ncbi.nlm.nih.gov/pubmed/?term=".$pmid;
@@ -1003,24 +1095,45 @@ class Citation {
 	}
 
 	public function isResearchArticle() {
-		return ($this->getCategory() == "Original Research");
+        if ($this->getVariable("data_source") == "citation") {
+            return ($this->getCategory() == "Original Research");
+        } else if ($this->getVariable("data_source") == "eric") {
+            return ($this->getVariable("peerreviewed") == "1");
+        }
+        return FALSE;
 	}
 
 	public function isIncluded() {
 		return $this->getVariable("include");
 	}
 
+    public static function getInstrumentFromId($id) {
+        if (preg_match("/^E[DJ]/i", $id)) {
+            return "eric";
+        } else {
+            return "citation";
+        }
+    }
+
 	private function writeToDB() {
-		$row = array(
+		$row = [
 				"record_id" => $this->getRecordId(),
-				"redcap_repeat_instrument" => "citation",
 				"redcap_repeat_instance" => $this->getInstance(),
-				);
-		foreach ($this->data as $field => $value) {
-			$row['citation_'.$field] = $value;
-		}
-		$row['citation_complete'] = '2';
-		Upload::oneRow($row, $this->token, $this->server);
+				];
+        if ($this->getVariable("data_source") == "eric") {
+            $row['redcap_repeat_instrument'] = "eric";
+            foreach ($this->data as $field => $value) {
+                $row['eric_'.$field] = $value;
+            }
+            $row['eric_complete'] = '2';
+        } else {
+            $row['redcap_repeat_instrument'] = "citation";
+            foreach ($this->data as $field => $value) {
+                $row['citation_'.$field] = $value;
+            }
+            $row['citation_complete'] = '2';
+        }
+        Upload::oneRow($row, $this->token, $this->server);
 	}
 
 	public function stageForReview() {
@@ -1039,31 +1152,69 @@ class Citation {
 	}
 
 	public function getCategory() {
-		$override = $this->getVariable("is_research_override");
-		if ($override !== "") {
-			if ($override == "1") {
-				return "Original Research";
-			} else if ($override == "2") {
-				return "Not Original Research";
-			}
-		}
-		$val = $this->getVariable("is_research");
-		if ($val == "1") {
-			return "Original Research";
-		} else if ($val === "0") {
-			return "Not Original Research";
-		} else {
-			return "Uncategorized";
-		}
+        if ($this->getVariable("data_source") == "eric") {
+            $isPeerReviewed = $this->getVariable("peerreviewed");
+            if ($isPeerReviewed) {
+                return "Peer Reviewed";
+            } else {
+                return "Not Peer Reviewed";
+            }
+        } else if ($this->getVariable("data_source") == "citation") {
+            $override = $this->getVariable("is_research_override");
+            if ($override !== "") {
+                if ($override == "1") {
+                    return "Original Research";
+                } else if ($override == "2") {
+                    return "Not Original Research";
+                }
+            }
+            $val = $this->getVariable("is_research");
+            if ($val == "1") {
+                return "Original Research";
+            } else if ($val === "0") {
+                return "Not Original Research";
+            } else {
+                return "Uncategorized";
+            }
+        }
 	}
 
 	public static function getCategories() {
-		return array("Original Research", "Not Original Research", "Uncategorized");
+		return ["Original Research", "Not Original Research", "Peer Reviewed", "Not Peer Reviewed", "Uncategorized"];
 	}
 
 	public function inTimespan($startTs, $endTs) {
 	    $ts = $this->getTimestamp();
 	    return (($startTs <= $ts) && ($endTs >= $ts));
+    }
+
+    public static function getDateFromSourceID($sourceID, $pubYear) {
+        $sep = "-";
+        $sourceID = preg_replace("/v\d+-\d+\s+/", "", $sourceID);
+        $sourceID = preg_replace("/v\d+\s+/", "", $sourceID);
+        $sourceID = preg_replace("/n\d+-\d+\s+/", "", $sourceID);
+        $sourceID = preg_replace("/n\d+\s+/", "", $sourceID);
+        $sourceID = preg_replace("/p\d+-\d+\s+/", "", $sourceID);
+        $sourceID = preg_replace("/p\d+\s+/", "", $sourceID);
+        $sourceID = preg_replace("/\d+, \d+, [A-Z]?\d+-[A-Z]?\d+, /", "", $sourceID);
+        $sourceID = preg_replace("/\d+, \d+, [A-Z]?\d+, /", "", $sourceID);
+        $sourceID = preg_replace("/^[A-Z]?\d+-[A-Z]?\d+, /", "", $sourceID);
+        $sourceDate = $sourceID;
+        $dateNodes = preg_split("/\s+/", $sourceDate);
+        # year may be two-digits or four-digits; if one dateNode, then year
+        if (count($dateNodes) == 2) {
+            $month = self::getNumericMonth($dateNodes[0]);
+            return $pubYear.$sep.$month.$sep."01";
+        } else if (count($dateNodes) == 3) {
+            $month = self::getNumericMonth($dateNodes[0]);
+            $day = "01";
+            if (is_numeric($dateNodes[1])) {
+                $day = $dateNodes[1];
+            }
+            return $pubYear.$sep.$month.$sep.$day;
+        } else {
+            return $pubYear.$sep."01".$sep."01";
+        }
     }
 
     public static function transformDateToTimestamp($date) {
@@ -1135,6 +1286,9 @@ class Citation {
 	}
 
 	public function getSource() {
+        if ($this->getVariable("data_source") == "eric") {
+            return "ERIC";
+        }
 		$src = $this->getVariable("source");
 		if (isset($this->sourceChoices[$src])) {
 			return $this->sourceChoices[$src];

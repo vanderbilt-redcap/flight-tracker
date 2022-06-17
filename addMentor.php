@@ -117,10 +117,10 @@ function parsePostForData($post) {
         if (preg_match("/^mentor___\d+$/", $key)) {
             $recordId = preg_replace("/^mentor___/", "", $key);
             $mentorUids[$recordId] = $value;
-        } else if (preg_match("/^mentorname___\d+$/", $key)) {
+        } else if (preg_match("/^mentorname___\d+$/", $key) && ($value !== "")) {
             $recordId = preg_replace("/^mentorname___/", "", $key);
             $mentorNames[$recordId] = $value;
-        } else if (preg_match("/^newmentorname___\d+$/", $key)) {
+        } else if (preg_match("/^newmentorname___\d+$/", $key) && ($value !== "")) {
             $recordId = preg_replace("/^newmentorname___/", "", $key);
             $newMentorNames[$recordId] = $value;
         }
@@ -245,28 +245,47 @@ function lookupScholarAndMentorName($names, $scholarFirst, $scholarLast, $mentor
         $tableRow .= "<td>$recordId {$names[$recordId]}</td>";
         $tableRow .= "<td>$scholarFirst $scholarLast</td>";
         $tableRow .= "<td>$mentorFirst $mentorLast</td>";
+        $hiddenField = "<input type='hidden' name='mentorname___$recordId' value='$escapedMentorName' />";
         if (count($uids) == 0) {
-            $hiddenField = "<input type='hidden' name='originalmentorname___$recordId' value='{$lookup->getName()}'>";
-            $tableRow .= "<td class='red'><strong>No mentors matched with {$lookup->getName()}.</strong><br>Will not upload this mentor.<br>Perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$recordId' value='{$lookup->getName()}'></td>";
-        } else {
-            $hiddenField = "<input type='hidden' name='mentorname___$recordId' value='$escapedMentorName'>";
-            if (count($uids) == 1) {
-                $uid = array_keys($uids)[0];
-                $yesId = "mentor___$recordId" . "___yes";
-                $noId = "mentor___$recordId" . "___no";
-                $yesno = "<input type='radio' name='mentor___$recordId' id='$yesId' value='$uid' checked> <label for='$yesId'>Yes</label><br>";
-                $yesno .= "<input type='radio' name='mentor___$recordId' id='$noId' value=''> <label for='$noId'>No</label>";
-                $tableRow .= "<td class='green'>$hiddenField" . "Matched: $uid<br>$yesno</td>";
-            } else {
-                $radios = [];
-                $selected = " checked";
-                foreach ($uids as $uid => $mentorName) {
-                    $id = "mentor___" . $recordId . "___" . $uid;
-                    $radios[] = "<input type='radio' name='mentor___$recordId' id='$id' value='$uid'$selected> <label for='$id'>$mentorName</label>";
-                    $selected = "";
+            $hiddenField .= "<input type='hidden' name='originalmentorname___$recordId' value='{$lookup->getName()}' />";
+            $noId = "mentor___$recordId" . "___no";
+            $skipInput = "<input type='radio' name='mentor___$recordId' id='$noId' value='' /> <label for='$noId'>Yes, please skip</label>";
+            $tableRow .= "<td class='red'><strong>No mentors matched with {$lookup->getName()}.</strong><br/>Do you want to skip this mentor's user-id?<br/>$skipInput<br/>Is there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$recordId' value=''></td>";
+        } else if (count($uids) == 1) {
+            $uid = array_keys($uids)[0];
+            $userInfo = REDCapLookup::getUserInfo($uid);
+            $email = $userInfo['user_email'] ?? "";
+            $emailLink = $email ? "<a href='mailto:$email'>$email</a>" : "Email Unknown";
+
+            $startTs = $userInfo['user_firstvisit'] ? strtotime($userInfo['user_firstvisit']) : FALSE;
+            $endTs = $userInfo['user_lastactivity'] ? strtotime($userInfo['user_lastactivity']) : FALSE;
+            if ($startTs && $endTs) {
+                $startYear = date("Y", $startTs);
+                $endYear = date("Y", $endTs);
+                if ($startYear == $endYear) {
+                    $yearInfo = $startYear;
+                } else {
+                    $yearInfo = $startYear." - ".$endYear;
                 }
-                $tableRow .= "<td class='yellow'>$hiddenField" . implode("<br>", $radios) . "</td>";
+            } else {
+                $yearInfo = "Unknown";
             }
+
+            $yesId = "mentor___$recordId" . "___yes";
+            $noId = "mentor___$recordId" . "___no";
+            $yesno = "<input type='radio' name='mentor___$recordId' id='$yesId' value='$uid' checked /> <label for='$yesId'>Yes</label><br>";
+            $yesno .= "<input type='radio' name='mentor___$recordId' id='$noId' value='' /> <label for='$noId'>No</label>";
+            $tableRow .= "<td class='green'>$hiddenField" . "Matched: $uid<br/>(last used REDCap: $yearInfo)<br/>$emailLink<br/>$yesno</td>";
+        } else {
+            $radios = [];
+            $noId = "mentor___$recordId" . "___no";
+            $radios[] = "<input type='radio' name='mentor___$recordId' id='$noId' value='' checked /> <label for='$noId'>None of the Above</label>";
+            foreach ($uids as $uid => $mentorName) {
+                $id = "mentor___" . $recordId . "___" . $uid;
+                $radios[] = "<input type='radio' name='mentor___$recordId' id='$id' value='$uid' /> <label for='$id'>$mentorName</label>";
+            }
+
+            $tableRow .= "<td class='yellow'>$hiddenField" . implode("<br>", $radios) . "</td>";
         }
         $tableRow .= "</tr>";
         return $tableRow;

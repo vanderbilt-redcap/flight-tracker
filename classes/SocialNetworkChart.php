@@ -29,7 +29,7 @@ class SocialNetworkChart extends Chart {
 
     private static function hasField($chartData, $field) {
         foreach ($chartData as $row) {
-            if ($row[$field]) {
+            if (isset($row[$field]) && $row[$field]) {
                 return TRUE;
             }
         }
@@ -60,10 +60,10 @@ class SocialNetworkChart extends Chart {
 <script>
     $(document).ready(function() {
         am4core.useTheme(am4themes_animated);
-        var chart = am4core.create('{$this->name}', am4charts.ChordDiagram);
+        const chart = am4core.create('{$this->name}', am4charts.ChordDiagram);
         chart.colors.saturation = 0.45;
         chart.colors.step = 3;
-        var colors = {
+        const colors = {
         };
         chart.data = ".json_encode($this->chartData).";
 
@@ -90,7 +90,7 @@ class SocialNetworkChart extends Chart {
         chart.sortBy = 'value';
         chart.fontSize = 10;
 
-        var nodeTemplate = chart.nodes.template;
+        const nodeTemplate = chart.nodes.template;
         nodeTemplate.readerTitle = 'Click to show/hide or drag to rearrange';
         nodeTemplate.showSystemTooltip = true;
         nodeTemplate.propertyFields.fill = 'color';
@@ -105,7 +105,7 @@ class SocialNetworkChart extends Chart {
 
         // when rolled over the node, make all the links rolled-over
         nodeTemplate.events.on('over', function(event) {
-            var node = event.target;
+            const node = event.target;
             node.outgoingDataItems.each(function(dataItem) {
                 if(dataItem.toNode){
                     dataItem.link.isHover = true;
@@ -124,7 +124,7 @@ class SocialNetworkChart extends Chart {
 
         // when rolled out from the node, make all the links rolled-out
         nodeTemplate.events.on('out', function(event) {
-            var node = event.target;
+            const node = event.target;
             node.outgoingDataItems.each(function(dataItem) {
                 if(dataItem.toNode){
                     dataItem.link.isHover = false;
@@ -141,7 +141,7 @@ class SocialNetworkChart extends Chart {
             node.label.isHover = false;
         })
 
-        var label = nodeTemplate.label;
+        const label = nodeTemplate.label;
         label.relativeRotation = 90;
 
         label.fillOpacity = 0.4;
@@ -191,16 +191,16 @@ class SocialNetworkChart extends Chart {
         })
 
         // link template
-        var linkTemplate = chart.links.template;
+        const linkTemplate = chart.links.template;
         linkTemplate.strokeOpacity = 0;
         linkTemplate.fillOpacity = 0.15;
         linkTemplate.tooltipText = '{fromName} & {toName}:{value.value}';
 
-        var hoverState = linkTemplate.states.create('hover');
+        const hoverState = linkTemplate.states.create('hover');
         hoverState.properties.fillOpacity = 0.7;
         hoverState.properties.strokeOpacity = 0.7;
 
-        var titleImage = chart.chartContainer.createChild(am4core.Image);
+        const titleImage = chart.chartContainer.createChild(am4core.Image);
         titleImage.href = '';
         titleImage.x = 30
         titleImage.y = 30;
@@ -208,7 +208,7 @@ class SocialNetworkChart extends Chart {
         titleImage.height = 200;
         
         $('#{$this->name}').append(\"$saveDiv\");
-
+        $('#{$this->name}>div>svg').attr('width', '$width').attr('height', '$height');
 })
 </script>";
         return $html;

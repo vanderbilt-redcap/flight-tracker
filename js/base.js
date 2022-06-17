@@ -604,7 +604,18 @@ function submitChanges(nextRecord) {
 					resets.push(pmid);
 				}
 			}
-		} else 	if ((typeof id != 'undefined') && id.match(/^USPO/)) {
+		} else if ((typeof id != 'undefined') && id.match(/^E[DJ]/)) {
+			type = 'Publications';
+			const value = $(elem).val();
+			if (value === 'include') {
+				// checked => put in finalized
+				newFinalized.push(id);
+			} else if (value === 'exclude') {
+				newOmits.push(id);
+			} else if (value === 'reset') {
+				resets.push(id);
+			}
+		} else	if ((typeof id != 'undefined') && id.match(/^USPO/)) {
 			type = 'Patents';
 			const value = $(elem).val();
 			const patentNumber = id.replace(/^USPO/, '');
@@ -774,6 +785,14 @@ function presentScreen(mssg, imageUrl) {
 		$('#overlayFT').html('<br><br><br><br><h1 class=\"warning\">'+mssg+'</h1><p class=\"centered\"><img src=\"'+imageUrl+'\" alt=\"Waiting\"></p>');
 		$('#overlayFT').show();
 	}
+}
+
+function getSmallLoadingMessage(mssg) {
+	if (!mssg) {
+		mssg = 'Loading...';
+	}
+	const imageUrl = getPageUrl('img/loading.gif');
+	return '<p class=\"centered\"><strong>'+mssg+'</strong><br/><img src=\"'+imageUrl+'\" alt=\"Loading\" style=\"width: 64px; height: 64px;\" /></p>';
 }
 
 function clearScreen() {

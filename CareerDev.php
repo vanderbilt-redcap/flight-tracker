@@ -15,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.11.8";
+		return "4.12.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -903,7 +903,7 @@ class CareerDev {
                 "REDCap Reports" => $r."/DataExport/index.php",
                 "Missingness Report<br>(Computationally Expensive)" => self::link("/tablesAndLists/missingness.php"),
             ];
-            if (self::has("patent") && $switches->isOn("Patents")) {
+            if (self::has("patent") && $switches->isOnForProject("Patents")) {
                 $ary["Patent Viewer"] = self::link("patents/view.php");
             }
             return $ary;
@@ -913,7 +913,7 @@ class CareerDev {
             $server = self::getSetting("server", $pid);
             $switches = new FeatureSwitches($token, $server, $pid);
 		    $ary = [];
-		    if (self::has("mentoring_agreement") && $switches->isOn("Mentee-Mentor")) {
+		    if (self::has("mentoring_agreement") && $switches->isOnForProject("Mentee-Mentor")) {
                 $ary["Configure Mentee-Mentor Agreements"] = self::link("/mentor/config.php");
                 $ary["Add Mentors for Existing Scholars"] = self::link("addMentor.php");
                 $ary["Mentee-Mentor Agreements Dashboard"] = self::link("/mentor/dashboard.php");
@@ -1035,19 +1035,19 @@ class CareerDev {
 			$token = self::getSetting("token", $pid);
 			$server = self::getSetting("server", $pid);
 			$switches = new FeatureSwitches($token, $server, $pid);
-            if ($switches->isOn("Grants")) {
+            if ($switches->isOnForProject("Grants")) {
                 $ary["Add a Custom Grant"] = self::link("/customGrants.php");
                 $ary["Add Custom Grants by Bulk"] = self::link("/bulkImport.php")."&grants";
                 $ary["Grant Wrangler"] = self::link("/wrangler/index.php");
             }
-			if ($switches->isOn("Publications")) {
+			if ($switches->isOnForProject("Publications")) {
                 $ary["Publication Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Publications";
             }
-            if ($switches->isOn("Grants")) {
+            if ($switches->isOnForProject("Grants")) {
                 $ary["Lexical Translator"] = self::link("/lexicalTranslator.php");
             }
             $ary["Position Change Wrangler"] = self::link("/wrangler/positions.php");
-			if (self::has("patent") && $switches->isOn("Patents")) {
+			if (self::has("patent") && $switches->isOnForProject("Patents")) {
                 $ary["Patent Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Patents";
             }
 			return $ary;
@@ -1055,9 +1055,10 @@ class CareerDev {
 		return [];
 	}
 
-	public static $citationFields = [
+    private static $citationFields = [
         "record_id",
         "citation_pmid",
+        "citation_doi",
         "citation_include",
         "citation_source",
         "citation_pmcid",
@@ -1093,14 +1094,41 @@ class CareerDev {
         "citation_altmetric_tweeters_count",
         "citation_altmetric_accounts_count",
         "citation_altmetric_last_update",
-        ];
+        "eric_id",
+        "eric_link",
+        "eric_include",
+        "eric_author",
+        "eric_description",
+        "eric_isbn",
+        "eric_issn",
+        "eric_peerreviewed",
+        "eric_publicationdateyear",
+        "eric_publicationtype",
+        "eric_publisher",
+        "eric_subject",
+        "eric_title",
+        "eric_sourceid",
+        "eric_source",
+        "eric_sponsor",
+        "eric_url",
+        "eric_institution",
+        "eric_iesgrantcontractnum",
+        "eric_ieswwcreviewed",
+        "eric_e_datemodified",
+        "eric_e_fulltext",
+        "eric_educationlevel",
+        "eric_last_update",
+    ];
 
-	public static $smallCitationFields = array(
-							"record_id",
-							"citation_pmid",
-							"citation_include",
-							"citation_is_research",
-							);
+    public static $smallCitationFields = [
+        "record_id",
+        "citation_pmid",
+        "citation_include",
+        "citation_is_research",
+        "eric_id",
+        "eric_include",
+        "eric_peerreviewed",
+    ];
 
 	public static $resourceFields = array(
 						'record_id',
