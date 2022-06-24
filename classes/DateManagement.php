@@ -177,7 +177,14 @@ class DateManagement {
             $nodes = preg_split("/[\/\-]/", $str);
             $earliestYear = 1900;
             if (count($nodes) == 3) {
-                if (($nodes[0] <= 12) && ($nodes[1] <= 31) && (($nodes[2] >= $earliestYear) || ($nodes[2] < 100))) {
+                if (
+                    ($nodes[0] <= 12)
+                    && ($nodes[1] <= 31)
+                    && (
+                        ($nodes[2] >= $earliestYear)
+                        || ($nodes[2] < 100)
+                    )
+                ) {
                     # MDY
                     return TRUE;
                 }
@@ -191,7 +198,17 @@ class DateManagement {
             $nodes = preg_split("/[\/\-]/", $str);
             $earliestYear = 1900;
             if (count($nodes) == 3) {
-                if ((($nodes[0] >= $earliestYear) || ($nodes[0] < 100)) && ($nodes[1] <= 12) && ($nodes[2] <= 31)) {
+                if (
+                    (
+                        ($nodes[0] >= $earliestYear)
+                        || (
+                            ($nodes[0] < 100)
+                            && ($nodes[0] > 12)    // not MDY-ambiguous
+                        )
+                    )
+                    && ($nodes[1] <= 12)
+                    && ($nodes[2] <= 31)
+                ) {
                     # YMD
                     return TRUE;
                 }
@@ -276,17 +293,38 @@ class DateManagement {
     }
 
     public static function MDY2YMD($mdy) {
-        $nodes = preg_split("/[\/\-]/", $mdy);
+        return self::genericDateToYMD($mdy, "mdy");
+    }
+
+    private static function adjustSmallYear($year) {
+        if ($year > 50) {
+            $year += 1900;
+        } else {
+            $year += 2000;
+        }
+        return $year;
+    }
+
+    public static function genericDateToYMD($date, $format) {
+        $nodes = preg_split("/[\/\-]/", $date);
         if ((count($nodes) == 3) && REDCapManagement::isArrayNumeric($nodes)) {
-            $month = (int) $nodes[0];
-            $day = (int) $nodes[1];
-            $year = (int) $nodes[2];
+            if (in_array($format, ["DMY", "dmy"])) {
+                $day = (int) $nodes[0];
+                $month = (int) $nodes[1];
+                $year = (int) $nodes[2];
+            } else if (in_array($format, ["MDY", "mdy"])) {
+                $month = (int) $nodes[0];
+                $day = (int) $nodes[1];
+                $year = (int) $nodes[2];
+            } else if (in_array($format, ["YMD", "ymd"])) {
+                $year = (int) $nodes[0];
+                $month = (int) $nodes[1];
+                $day = (int) $nodes[2];
+            } else {
+                throw new \Exception("Invalid date format $format");
+            }
             if ($year < 100) {
-                if ($year > 30) {
-                    $year += 1900;
-                } else {
-                    $year += 2000;
-                }
+                $year = self::adjustSmallYear($year);
             }
             return $year."-".$month."-".$day;
         }
@@ -294,21 +332,7 @@ class DateManagement {
     }
 
     public static function DMY2YMD($dmy) {
-        $nodes = preg_split("/[\/\-]/", $dmy);
-        if ((count($nodes) == 3) && REDCapManagement::isArrayNumeric($nodes)) {
-            $day = (int) $nodes[0];
-            $month = (int) $nodes[1];
-            $year = (int) $nodes[2];
-            if ($year < 100) {
-                if ($year > 30) {
-                    $year += 1900;
-                } else {
-                    $year += 2000;
-                }
-            }
-            return $year."-".$month."-".$day;
-        }
-        return "";
+        return self::genericDateToYMD($dmy, "dmy");
     }
 
     public static function addMonths($date, $months) {
@@ -340,7 +364,7 @@ class DateManagement {
     }
 
     public static function stripMY($str) {
-        if (preg_match("/\d\d\/\d\d\d\d/", $str, $matches)) {
+        if (preg_match("/\d\d[\/\-]\d\d\d\d/", $str, $matches)) {
             return $matches[0];
         } else if (preg_match("/\d\d\d\d/", $str, $matches)) {
             return $matches[0];

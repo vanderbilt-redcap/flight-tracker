@@ -1034,7 +1034,14 @@ class Citation {
             return $base.$locationText.$redcap.$ericText;
         } else {
             $doi = $this->getVariable("doi");
-            $doiLink = $doi ? str_replace("doi:".$doi, Links::makeLink("https://www.doi.org/".$doi, "doi:".$doi, $newTarget), $base) : "";
+            if (preg_match("/doi:/", $base)) {
+                $base = str_replace("doi:$doi", Links::makeLink("https://www.doi.org/".$doi, "doi:".$doi, $newTarget), $base);
+                $doiLink = "";
+            } else if ($doi) {
+                $doiLink = Links::makeLink("https://www.doi.org/".$doi, "doi:".$doi, $newTarget);
+            } else {
+                $doiLink = "";
+            }
 
             if ($this->getPMID() && !preg_match("/PMID\s*\d/", $base)) {
                 $pmidText = " PubMed PMID: ".$this->getPMID();

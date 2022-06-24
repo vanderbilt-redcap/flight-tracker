@@ -273,9 +273,6 @@ function addIfValid($grant, &$grantsAndPubs, &$submissionTimestamps, &$id, $awar
         }
         $url = $grant->getVariable("url");
         $grantAry['content'] = Links::makeLink($url, $grantNumber, TRUE);
-        if (isset($_GET['test'])) {
-            echo "Adding ".REDCapManagement::json_encode_with_spaces($grantAry)."<br/>";
-        }
         $grantsAndPubs[] = $grantAry;
         $id++;
     }

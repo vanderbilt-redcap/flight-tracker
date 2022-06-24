@@ -31,10 +31,15 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         Application::log("loadCrons");
         $metadata = Download::metadata($token, $server);
         $forms = DataDictionaryManagement::getFormsFromMetadata($metadata);
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
         $pid = CareerDev::getPid($token);
         $switches = new FeatureSwitches($token, $server, $pid);
-        $allRecords = Download::records($token, $server);
-        $records = $switches->downloadRecordIdsToBeProcessed();
+        if (in_array("identifier_stop_collection", $metadataFields)) {
+            $allRecords = Download::recordsWithDownloadActive($token, $server);
+        } else {
+            $allRecords = Download::recordIds($token, $server);
+        }
+        $records = $switches->downloadRecordIdsToBeProcessed($allRecords);
 
         CareerDev::clearDate("Last Federal RePORTER Download", $pid);
 

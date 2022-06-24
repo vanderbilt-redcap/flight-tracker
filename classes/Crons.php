@@ -98,7 +98,12 @@ class CronManager {
 
 	private function addCronForBatch($file, $method, $dayOfWeek, $records, $numRecordsAtATime, $firstParameter = FALSE) {
         if (empty($records)) {
-            $records = Download::recordIds($this->token, $this->server);
+            $metadataFields = Download::metadataFields($this->token, $this->server);
+            if (in_array("identifier_stop_collection", $metadataFields)) {
+                $records = Download::recordsWithDownloadActive($this->token, $this->server);
+            } else {
+                $records = Download::recordIds($this->token, $this->server);
+            }
         }
 
         $possibleDays = self::getDaysOfWeek();

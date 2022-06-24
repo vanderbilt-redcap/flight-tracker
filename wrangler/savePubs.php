@@ -29,14 +29,14 @@ if (isset($_POST['finalized'])) {
         "eric" => REDCapManagement::getMaxInstance($redcapData, "eric", $recordId),
     ];
 
-    $priorPMIDs = [];
+    $priorIDs = [];
     $upload = [];
     $toProcess = ["1" => $newFinalized, "0" => $newOmissions, "" => $newResets];
     $instruments = [
         "citation" => "citation_pmid",
         "eric" => "eric_id",
     ];
-    foreach ($toProcess as $val => $aryOfPMIDs) {
+    foreach ($toProcess as $val => $aryOfIDs) {
         foreach ($aryOfIDs as $id) {
             $matched = FALSE;
             foreach ($redcapData as $row) {

@@ -300,7 +300,7 @@ $(document).ready(function() {
         if ($institutionIdx = findInCheck("mstp_residency_institution")) {
             $institutionChoices = DataDictionaryManagement::getChoicesForField($pid, "mstp_residency_institution");
             $residencyInstitutions[] = $institutionChoices[$institutionIdx];
-            $residencyYears = "";
+            $residencyYears = [];
         }
 		while (count($residencyYears) < 5) {
 			$residencyYears[] = "";

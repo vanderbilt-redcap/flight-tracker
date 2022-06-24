@@ -7,6 +7,8 @@ require_once(__DIR__ . '/ClassLoader.php');
 class Patents {
     public function __construct($recordId, $pid, $firstName = "", $lastName = "", $institutions = []) {
         $this->pid = $pid;
+        $this->token = Application::getSetting("token", $this->pid);
+        $this->server = Application::getSetting("server", $this->pid);
         $this->rows = [];
         $this->patentNumbers = [];
         $this->excludedNumbers = [];
@@ -199,7 +201,7 @@ class Patents {
 
     public function getEditText($thisUrl) {
         $wrangler = new Wrangler("Patents", $this->pid);
-        $html = $wrangler->getEditText($this->getCount("New"), $this->getCount("Included"), $this->recordId, $this->name, $this->lastName);
+        $html = $wrangler->getEditText($this->getCount("New"), $this->getCount("Included"), $this->recordId, Download::fullName($this->token, $this->server, $this->recordId) ?: $this->name, $this->lastName);
 
         $html .= self::manualLookup($thisUrl);
         $html .= "<table style='width: 100%;' id='main'><tr>\n";
@@ -264,6 +266,8 @@ class Patents {
     }
 
     private $pid;
+    private $token;
+    private $server;
     private $rows;
     private $recordId;
     private $patentNumbers;

@@ -71,8 +71,10 @@ class FeatureSwitches {
         }
     }
 
-    public function downloadRecordIdsToBeProcessed() {
-        $records = Download::recordIds($this->token, $this->server);
+    public function downloadRecordIdsToBeProcessed($records = []) {
+        if (empty($records)) {
+            $records = Download::recordIds($this->token, $this->server);
+        }
         $settings = $this->getSwitches();
         $freq = $settings['Update Frequency'] ?? "weekly";
         if ($freq == "weekly") {
@@ -263,6 +265,8 @@ class FeatureSwitches {
             $settingName = $this->settingName;
         } else if ($switchType == "record") {
             $settingName = $this->recordListName;
+        } else {
+            throw new \Exception("Invalid Feature Switch type $switchType");
         }
         Application::saveSetting($settingName, $allSwitches, $this->pid);
     }

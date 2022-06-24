@@ -263,12 +263,23 @@ class NIHTables {
         $degreeTexts = [];
         foreach ($degrees as $degreeIdx) {
             if (isset($this->choices[$degreeField][$degreeIdx])) {
-                $degreeTexts[] = $this->choices[$degreeField][$degreeIdx];
+                $degree = $this->choices[$degreeField][$degreeIdx];
             } else {
-                $degreeTexts[] = $degreeIdx;
+                $degree = $degreeIdx;
+            }
+            if (!self::isBachelors($degree)) {
+                $degreeTexts[] = $degree;
             }
         }
         return $degreeTexts;
+    }
+
+    private static function isBachelors($degree) {
+        $degreeLower = strtolower($degree);
+        return (
+            preg_match("/^B/i", $degree)
+            || in_array($degreeLower, ["ab", "sb"])
+        );
     }
 
     public function getFacultyMatches() {

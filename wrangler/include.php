@@ -171,7 +171,7 @@ try {
             echo "<div class='green shadow centered note'>".Sanitizer::sanitize($_GET['mssg'])."</div>";
         }
         echo "<p class='green shadow' id='note' style='width: 600px; margin-left: auto; margin-right: auto; text-align: center; padding: 10px; border-radius: 10px; display: none; font-size: 16px;'></p>\n";
-        echo "<p class='centered'>To undo any actions made here, open the Citation form in the given REDCap record and change the answer for the <b>Include?</b> question. Yes means accepted; no means omitted; blank means yet-to-be wrangled.</p>";
+        echo "<p class='centered max-width'>To undo any actions made here, open the Citation form in the given REDCap record and change the answer for the <b>Include?</b> question. Yes means accepted; no means omitted; blank means yet-to-be wrangled.</p>";
 
         $html .= autoResetTimeHTML($pid);
         echo $html;

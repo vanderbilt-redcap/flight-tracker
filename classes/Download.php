@@ -719,6 +719,22 @@ class Download {
         return Download::oneField($token, $server, "identifier_first_name");
     }
 
+    public static function fullName($token, $server, $recordId) {
+        $redcapData = self::fieldsForRecords($token, $server, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"], [$recordId]);
+        if (!$redcapData) {
+            return "";
+        }
+        $row = $redcapData[0];
+        $fn = $row['identifier_first_name'];
+        $middle = $row['identifier_middle'];
+        $ln = $row['identifier_last_name'];
+        if ($middle) {
+            return "$fn $middle $ln";
+        } else {
+            return trim("$fn $ln");
+        }
+    }
+
     public static function ORCIDs($token, $server) {
         return Download::oneField($token, $server, "identifier_orcid");
     }
@@ -894,6 +910,31 @@ class Download {
 		}
 		return $names;
 	}
+
+    public static function recordsWithDownloadActive($token, $server, $recordIdField = "record_id") {
+        $stopField = "identifier_stop_collection";
+        $data = array(
+            'token' => $token,
+            'content' => 'record',
+            'format' => 'json',
+            'type' => 'flat',
+            'rawOrLabel' => 'raw',
+            'fields' => [$recordIdField, $stopField],
+            'rawOrLabelHeaders' => 'raw',
+            'exportCheckboxLabel' => 'false',
+            'exportSurveyFields' => 'false',
+            'exportDataAccessGroups' => 'false',
+            'returnFormat' => 'json'
+        );
+        $redcapData = self::sendToServer($server, $data);
+        $records = array();
+        foreach ($redcapData as $row) {
+            if (!in_array($row[$recordIdField], $records) && ($row[$stopField] != "1")) {
+                $records[] = $row[$recordIdField];
+            }
+        }
+        return $records;
+    }
 
 	public static function recordIds($token, $server, $recordIdField = "record_id") {
 		if (isset($_GET['test'])) {

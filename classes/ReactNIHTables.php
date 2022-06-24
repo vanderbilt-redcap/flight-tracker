@@ -49,12 +49,24 @@ class ReactNIHTables {
     }
 
     public function sendVerificationEmail($post, &$nihTables, $adminEmail) {
-        $email = strtolower(REDCapManagement::sanitize($post['email']));
+        $email = strtolower(Sanitizer::sanitize($post['email']));
         if (!REDCapManagement::isEmail($email)) {
             return ["error" => "Improper email"];
         }
-        $name = REDCapManagement::sanitize($post['name']);
-        $dateOfReport = REDCapManagement::sanitize($post['dateOfReport']);
+        $name = Sanitizer::sanitize($post['name']);
+        $dateOfReport = Sanitizer::sanitize($post['dateOfReport']);
+        $pi = Sanitizer::sanitize($post['pi'] ?? "");
+        $grantTitle = Sanitizer::sanitize($post['grantTitle'] ?? "");
+
+        $grantIdentifyingInfo = "";
+        if ($pi && $grantTitle) {
+            $grantIdentifyingInfo = " ($grantTitle / $pi)";
+        } else if ($pi) {
+            $grantIdentifyingInfo = " ($pi)";
+        } else if ($grantTitle) {
+            $grantIdentifyingInfo = " ($grantTitle)";
+        }
+
         $nihTables->addFaculty([$name], $dateOfReport);
         $tables = $this->getTablesToEdit();
         $dataRows = [];
@@ -70,7 +82,7 @@ td.even { background-color: #eeeeee; }
 table { border-collapse: collapse; }
 </style>";
         $mssg .= "<p>Dear $name,</p>";
-        $mssg .= "<p>A training grant you are affiliated with is preparing its formal review to the NIH. Can you please verify or correct the following information we have for you?</p>";
+        $mssg .= "<p>A training grant you are affiliated with$grantIdentifyingInfo is preparing its formal review to the NIH. Can you please verify or correct the following information we have for you?</p>";
         $mssg .= "<p>This information will be made part of an automated system for better reporting. Be aware that for efficiency's sake, this information will be securely stored in a database and be made accessible to others at ".Application::getInstitution($this->pid).".</p>";
         $mssg .= "<p>Thanks!</p>";
         $numRows = 0;
@@ -188,7 +200,7 @@ table { border-collapse: collapse; }
         return [];
     }
 
-    public function saveData($nihTables, $tableNum, $tableData, $name, $dateOfReport, $faculty) {
+    public function saveData($nihTables, $tableNum, $tableData, $name, $dateOfReport, $faculty, $grantTitle = "", $grantPI = "") {
         $allNames = Application::getSetting($this->allNamesField, $this->pid);
         if (!isset($allNames[$name])) {
             $allNames[$name] = [];
@@ -206,6 +218,8 @@ table { border-collapse: collapse; }
         Application::saveSetting(self::makeSaveTableKey($name, $tableNum), $data);
         Application::saveSetting(self::makeSaveTableKey($name, "date"), $dateOfReport);
         Application::saveSetting(self::makeSaveTableKey($name, "faculty"), $faculty);
+        Application::saveSetting(self::makeSaveTableKey($name, "grantTitle"), $grantTitle);
+        Application::saveSetting(self::makeSaveTableKey($name, "grantPI"), $grantPI);
         return ["Result" => "Saved."];
     }
 
@@ -213,6 +227,8 @@ table { border-collapse: collapse; }
         return [
             "date" => Application::getSetting(self::makeSaveTableKey($name, "date") ?? date("Y-m-d")),
             "faculty" => Application::getSetting(self::makeSaveTableKey($name, "faculty") ?? []),
+            "grantPI" => Application::getSetting(self::makeSaveTableKey($name, "grantPI") ?? ""),
+            "grantTitle" => Application::getSetting(self::makeSaveTableKey($name, "grantTitle") ?? ""),
         ];
     }
 
@@ -249,8 +265,7 @@ table { border-collapse: collapse; }
             $grants = new Grants($this->token, $this->server, $metadata);
             $grants->setRows($rows);
             $grants->compileGrants("All");
-            $grantAry = $grants->getGrants("native");
-            foreach ($grantAry as $grant) {
+            foreach ($grants->getGrants("latest") as $grant) {
                 $startDate = $grant->getVariable("project_start");
                 $endDate = $grant->getVariable("project_end");
 
@@ -264,15 +279,15 @@ table { border-collapse: collapse; }
                     $dataRow = [
                         "Grant Title" => $title,
                         "Award Number" => $grant->getNumber(),
-                        "Project<br>Period" => $projectPeriod,
+                        "Project<br/>Period" => $projectPeriod,
                         "PD/PI" => $pi,
                     ];
                     if (!$shortenedVersion) {
-                        $dataRow["Number of<br>Predoctoral<br>Positions"] = NIHTables::$NA;
-                        $dataRow["Number of<br>Postdoctoral<br>Positions"] = NIHTables::$NA;
-                        $dataRow["Number of<br>Short-Term<br>Positions"] = NIHTables::$NA;
-                        $dataRow["Number of<br>Participating<br>Faculty (Number<br> Overlapping)"] = NIHTables::$NA;
-                        $dataRow["Names of<br>Overlapping<br>Faculty"] = NIHTables::$NA;
+                        $dataRow["Number of<br/>Predoctoral<br/>Positions"] = NIHTables::$NA;
+                        $dataRow["Number of<br/>Postdoctoral<br/>Positions"] = NIHTables::$NA;
+                        $dataRow["Number of<br/>Short-Term<br/>Positions"] = NIHTables::$NA;
+                        $dataRow["Number of<br/>Participating<br/>Faculty (Number<br> Overlapping)"] = NIHTables::$NA;
+                        $dataRow["Names of<br/>Overlapping<br/>Faculty"] = NIHTables::$NA;
                     }
                     $data[] = $dataRow;
                 }

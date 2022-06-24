@@ -913,8 +913,9 @@ class Publications {
         foreach ($ids as $id) {
             $url = ERIC::makeURL($metadata, "id:$id", 2000, 0);
             list($resp, $json) = URLManagement::downloadURL($url);
-            if (($resp == 200) && $data = json_decode($json, TRUE) && isset($data["response"])) {
-                $docs = $returnData["response"]["docs"] ?? [];
+            $data = json_decode($json, TRUE);
+            if (($resp == 200) && $data && isset($data["response"])) {
+                $docs = $data["response"]["docs"] ?? [];
                 $newRows = ERIC::process($docs, $metadata, $recordId, $confirmedIDs, $instance);
                 $upload = array_merge($upload, $newRows);
             }
@@ -1124,7 +1125,7 @@ class Publications {
         $included = $this->getCitationCollection("Included");
         $includedCount = $included->getCount();
         $wrangler = new Wrangler("Publications", $this->pid);
-		$html = $wrangler->getEditText($notDoneCount, $includedCount, $this->recordId, $this->name, $this->lastName);
+		$html = $wrangler->getEditText($notDoneCount, $includedCount, $this->recordId, Download::fullName($this->token, $this->server, $this->recordId) ?: $this->name, $this->lastName);
 
 		$html .= self::manualLookup($thisUrl);
 		$html .= "<table style='width: 100%;' id='main'><tr>\n";

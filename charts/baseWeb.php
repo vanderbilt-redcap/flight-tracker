@@ -136,7 +136,7 @@ function search(page, div, name) {
 		}
 		if (numFoundRecs == 1) {
 			$('#searchDiv').html("Name found.");
-			let wranglerType = '<?= (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) ? REDCapManagement::sanitize($_GET['wranglerType']) : "" ?>';
+			let wranglerType = '<?= (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) ? "&wranglerType=".urlencode(REDCapManagement::sanitize($_GET['wranglerType'])) : "" ?>';
 			for (rec in foundRecs) {
 				window.location.href = '?pid=<?= urlencode(REDCapManagement::sanitize($_GET['pid'])) ?>&prefix=<?= urlencode(REDCapManagement::sanitize($_GET['prefix'])) ?>&page='+encodeURIComponent(page)+'&record='+rec+wranglerType;
 			}

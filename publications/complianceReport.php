@@ -588,10 +588,10 @@ function processRecord($token, $server, $pid, $event_id, $metadata, $names, $rec
                 $pmcidClass = $pubClass;
 
                 $hasMatchedGrant = empty($grantsSearchedFor);
+                $grantsWithoutHTML = [];
                 if ($printResults) {
                     $grants = $citation->getGrantBaseAwardNumbers();
                     $grantHTML = [];
-                    $grantsWithoutHTML = [];
                     foreach ($grants as $baseAwardNo) {
                         $baseAwardNo = strtoupper($baseAwardNo);
                         if (in_array($baseAwardNo, $grantsSearchedFor)) {

@@ -211,7 +211,7 @@ if ($showTimeBetweenGrants) {
 $cohorts = new Cohorts($token, $server, $module);
 
 echo "<h1>$title</h1>";
-echo "<p class='centered'>".$cohorts->makeCohortSelect($_GET['cohort'], "window.location = \"".Application::link("charts/makeGrantTable.php")."&cohort=\"+$(this).val();")."</p>";
+echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort, "window.location = \"".Application::link("charts/makeGrantTable.php")."&cohort=\"+$(this).val();")."</p>";
 if (isset($_GET['plain'])) {
     $entries = [];
     $fields = array_unique(array_merge($fields, $titleFields ?? []));

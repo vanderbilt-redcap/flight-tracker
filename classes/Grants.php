@@ -168,7 +168,32 @@ class Grants {
         return $grants;
     }
 
-	public function getGrants($type = "compiled") {
+    private static function getLatestGrants($grantAry) {
+        $grantsByBaseAward = [];
+        foreach ($grantAry as $grant) {
+            $baseAwardNo = $grant->getBaseAwardNumber();
+            if (!isset($grantsByBaseAward[$baseAwardNo])) {
+                $grantsByBaseAward[$baseAwardNo] = [];
+            }
+            $grantsByBaseAward[$baseAwardNo][] = $grant;
+        }
+
+        $grantsWithHighestYear = [];
+        foreach ($grantsByBaseAward as $baseAwardNo => $grants) {
+            $bySuffix = [];
+            foreach ($grants as $grant) {
+                $awardNo = $grant->getNumber();
+                $year = Grant::getSupportYear($awardNo);
+                $bySuffix[$year] = $grant;
+            }
+            krsort($bySuffix);
+            $grant = reset($bySuffix);
+            $grantsWithHighestYear[] = $grant;
+        }
+        return $grantsWithHighestYear;
+    }
+
+    public function getGrants($type = "compiled") {
 		if ($type == "precompiled") {
 			return $this->priorGrants;
 		}
@@ -181,6 +206,9 @@ class Grants {
 		if ($type == "native") {
 			return $this->nativeGrants;
 		}
+        if ($type == "latest") {
+            return self::getLatestGrants($this->nativeGrants);
+        }
         if ($type == "all") {
             return $this->dedupedGrants;
         }

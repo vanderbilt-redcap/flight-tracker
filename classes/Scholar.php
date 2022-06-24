@@ -353,16 +353,30 @@ return $result;
                     return new Result("99", $source, $sourceType, "", $this->pid);
                 }
             } else if ($field == "identifier_email") {
+                # non-Vanderbilt email preferred
                 $order = [
                     "mstp_email_preferred",
                     "mstp_email_secondary",
                     "mstp_email_third",
                     "mstp_email_fourth",
                 ];
-                foreach ($order as $sourceField) {
-                    $value = REDCapManagement::findField($rows, $this->recordId, $sourceField);
-                    if ($value) {
-                        return new Result($value, $source, $sourceType, "", $this->pid);
+                foreach (["non-Vanderbilt", "Vanderbilt-allowed"] as $iteration) {
+                    foreach ($order as $sourceField) {
+                        $value = REDCapManagement::findField($rows, $this->recordId, $sourceField);
+                        if ($value) {
+                            $skipDomains = ["", "vumc.org", "vanderbilt.edu"];
+                            $parts = explode("@", strtolower($value));
+                            $domain = $parts[1] ?? "";
+                            if (
+                                (
+                                    ($iteration == "non-Vanderbilt")
+                                    && !in_array($domain, $skipDomains)
+                                )
+                                || ($iteration == "Vanderbilt-allowed")
+                            ) {
+                                return new Result($value, $source, $sourceType, "", $this->pid);
+                            }
+                        }
                     }
                 }
             } else if ($field == "summary_mentor") {
@@ -376,7 +390,7 @@ return $result;
                     } else {
                         $names = "$mentorFirst $mentorLast";
                     }
-                    return new Result($names, $source, $sourceType, "", $this->pid);
+                    return new Result(trim($names), $source, $sourceType, "", $this->pid);
                 }
             } else if ($field == "summary_training_start") {
                 $startYear = REDCapManagement::findField($rows, $this->recordId, "mstp_matriculation_date_vu");

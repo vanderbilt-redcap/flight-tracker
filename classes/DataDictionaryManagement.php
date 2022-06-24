@@ -444,6 +444,7 @@ class DataDictionaryManagement {
 
     public static function filterOutInvalidFields($metadata, $fields) {
         if (empty($metadata)) {
+            global $token, $server;
             $metadataFields = Download::metadataFields($token, $server);
             $metadataForms = Download::metadataForms($token, $server);
         } else {

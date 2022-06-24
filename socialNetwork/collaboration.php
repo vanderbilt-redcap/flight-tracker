@@ -46,7 +46,7 @@ if (CareerDev::isVanderbilt() && in_array("identifier_grant_type", $metadataFiel
     $possibleFields[] = "identifier_grant_type";
 }
 if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
-    $indexByField = $_GET['field'];
+    $indexByField = Sanitizer::sanitize($_GET['field']);
 } else if ($_GET['field'] == PUBYEAR_SELECT) {
     $indexByField = PUBYEAR_SELECT;
 } else {
