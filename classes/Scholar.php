@@ -6,8 +6,12 @@ use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-define("SOURCETYPE_FIELD", "additional_source_types");
-define("SHOW_DEBUG_FOR_INSTITUTIONS", FALSE);
+if (!defined("SOURCETYPE_FIELD")) {
+    define("SOURCETYPE_FIELD", "additional_source_types");
+}
+if (!defined("SHOW_DEBUG_FOR_INSTITUTIONS")) {
+    define("SHOW_DEBUG_FOR_INSTITUTIONS", FALSE);
+}
 
 class Scholar {
 	public function __construct($token, $server, $metadata = array(), $pid = "") {

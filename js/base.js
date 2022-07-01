@@ -1040,10 +1040,15 @@ function enqueue() {
 }
 
 function presetValue(name, value) {
-	if (($('[name="'+name+'"]').length > 0) && ($('[name="'+name+'"]').val() == "") && (value != "")) {
+	if (($('[name="'+name+'"]').length > 0) && ($('[name="'+name+'"]').val() === "") && (value !== "")) {
 		$('[name="'+name+'"]').val(value);
 		if ($('[name='+name+'___radio]').length > 0) {
 			$('[name='+name+'___radio][value='+value+']').attr('checked', true);
+		}
+		if ($('#rc-ac-input_'+name).length > 0) {
+			// Combobox
+			const text = $('[name='+name+'] option:selected').text();
+			$('#rc-ac-input_'+name).val(text);
 		}
 	}
 }

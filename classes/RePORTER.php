@@ -290,8 +290,9 @@ class RePORTER {
                         if (is_array($value)) {
                             $value = json_encode($value);
                         }
-                        $value = preg_replace("/\s+/", " ", $value);
-                        if (!$value) {
+                        if ($value) {
+                            $value = preg_replace("/\s+/", " ", $value);
+                        } else {
                             $value = "";
                         }
                         $uploadRow[$newField] = $value;

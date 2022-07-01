@@ -153,52 +153,52 @@ class NIHTables {
 	    if (self::beginsWith($table, ["1"])) {
             $group = self::getGroupForTable($table);
 	        return [
-                "Participating<br>Department or<br>Program",
-                "Total<br>Faculty",
-                "Participating<br>Faculty",
-                "Total<br>$group",
-                "Total<br>$group<br>Supported by<br>any HHS<br>Training<br>Award",
-                "Total<br>$group<br>with<br>Participating<br>Faculty",
-                "Eligible<br>$group<br>with Participating<br>Faculty",
-                "TGE<br>$group<br>Supported by this<br>Training Grant<br>(Renewals/<br>Revisions)",
-                "$group<br>Supported by this<br>Training Grant (R90<br>Only Renewals/<br>Revisions)"
+                "Participating<br/>Department or<br/>Program",
+                "Total<br/>Faculty",
+                "Participating<br/>Faculty",
+                "Total<br/>$group",
+                "Total<br/>$group<br/>Supported by<br/>any HHS<br/>Training<br/>Award",
+                "Total<br/>$group<br/>with<br/>Participating<br/>Faculty",
+                "Eligible<br/>$group<br/>with Participating<br/>Faculty",
+                "TGE<br/>$group<br/>Supported by this<br/>Training Grant<br/>(Renewals/<br/>Revisions)",
+                "$group<br/>Supported by this<br/>Training Grant (R90<br/>Only Renewals/<br/ß>Revisions)"
             ];
         } else if (self::beginsWith($table, ["2"])) {
             return [
                 "Name",
                 "Degree(s)",
                 "Rank",
-                "Primary<br>Department<br>or Program",
-                "Training<br>Role",
-                "Research<br>Interest",
-                "Pre-doctorates<br>In Training",
-                "Pre-doctorates<br>Graduated",
-                "Predoctorates<br>Continued in<br>Research or<br>Related Careers",
-                "Post-doctorates<br>In Training",
-                "Post-doctorates<br>Completed<br>Training",
-                "Postdoctorates<br>Continued in<br>Research or<br>Related Careers",
+                "Primary<br/>Department<br/>or Program",
+                "Training<br/>Role",
+                "Research<br/>Interest",
+                "Pre-doctorates<br/>In Training",
+                "Pre-doctorates<br/>Graduated",
+                "Predoctorates<br/>Continued in<br/>Research or<br/>Related Careers",
+                "Post-doctorates<br/>In Training",
+                "Post-doctorates<br/>Completed<br/>Training",
+                "Postdoctorates<br/>Continued in<br/>Research or<br/>Related Careers",
             ];
         } else if (self::beginsWith($table, ["3"])) {
             return [
                 "Grant Title",
                 "Award Number",
-                "Project<br>Period",
+                "Project<br/>Period",
                 "PD/PI",
-                "Number of<br>Predoctoral<br>Positions",
-                "Number of<br>Postdoctoral<br>Positions",
-                "Number of<br>Short-Term<br>Positions",
-                "Number of<br>Participating<br>Faculty (Number<br>Overlapping)",
-                "Names of<br>Overlapping<br>Faculty",
+                "Number of<br/>Predoctoral<br/>Positions",
+                "Number of<br/>Postdoctoral<br/>Positions",
+                "Number of<br/>Short-Term<br/>Positions",
+                "Number of<br/>Participating<br/>Faculty (Number<br/>Overlapping)",
+                "Names of<br/>Overlapping<br/>Faculty",
             ];
         } else if (self::beginsWith($table, ["4"])) {
             return [
                 "Faculty Member",
-                "Funding<br>Source",
+                "Funding<br/>Source",
                 "Grant Number",
-                "Role on<br>Project",
+                "Role on<br/>Project",
                 "Grant Title",
                 "Project Period",
-                "Current Year Direct<br>Costs",
+                "Current Year Direct<br/>Costs",
             ];
         }
 
@@ -288,33 +288,34 @@ class NIHTables {
         $data = [];
         foreach ($this->facultyMembers as $facultyName) {
             $matches = $this->findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
+            $nameTitle = "<h4 class='nomargin yellow'>Matches to $facultyName in Flight Trackers:</h4>";
             if (empty($matches)) {
-                $data[] = [
-                    "<strong>".$facultyName."</strong>",
-                    self::makeComment("Could not match"),
-                ];
-            }
-            foreach ($matches as $match) {
-                list($pid, $recordId) = preg_split("/:/", $match);
-                $token = Application::getSetting("token", $pid);
-                $server = Application::getSetting("server", $pid);
-                if ($token && $server && REDCapManagement::isActiveProject($pid)) {
-                    $adminEmail = Application::getSetting("admin_email", $pid);
-                    $projectTitle = isset($projectTitles[$pid]) ? $projectTitles[$pid] : Download::projectTitle($token, $server);
-                    $projectTitles[$pid] = $projectTitle;
-                    $header = "PID $pid<br>$projectTitle";
-                    if ($adminEmail) {
-                        $header = "<a href='mailto:$adminEmail'>$header</a>";
+                $data[] = [ $nameTitle."<br/>".self::makeComment("No matches. Perhaps try another name?"), ];
+            } else {
+                $matchHTML = [];
+                foreach ($matches as $match) {
+                    list($pid, $recordId) = preg_split("/:/", $match);
+                    $token = Application::getSetting("token", $pid);
+                    $server = Application::getSetting("server", $pid);
+                    if ($token && $server && REDCapManagement::isActiveProject($pid)) {
+                        $adminEmail = Application::getSetting("admin_email", $pid);
+                        $projectTitle = $projectTitles[$pid] ?? Download::projectTitle($token, $server);
+                        $projectTitles[$pid] = $projectTitle;
+                        $projectInformation = "<div><strong>$projectTitle</strong></div>";
+                        $redcapInformation = "<div class='smaller'>REDCap PID $pid";
+                        if ($adminEmail) {
+                            $redcapInformation = "$redcapInformation; Project Admin Email: <a href='mailto:$adminEmail'>$adminEmail</a>";
+                        }
+                        $redcapInformation .= "</div>";
+                        $firstName = $firstNamesByPid[$pid][$recordId] ?? "";
+                        $lastName = $lastNamesByPid[$pid][$recordId] ?? "";
+                        $email = Links::makeMailtoLink($emailsByPid[$pid][$recordId] ?? "");
+                        $nameInformation = "<div>Record $recordId <strong>$firstName $lastName</strong></div>";
+                        $emailInformation = "<div class='smaller'>Faculty Email in Project: $email</div>";
+                        $matchHTML[] = "<div class='smallmargin'>$nameInformation$projectInformation$redcapInformation$emailInformation</div>";
                     }
-                    $firstName = $firstNamesByPid[$pid][$recordId] ?? "";
-                    $lastName = $lastNamesByPid[$pid][$recordId] ?? "";
-                    $email = Links::makeMailtoLink($emailsByPid[$pid][$recordId] ?? "");
-                    $nameInformation = "<strong>$facultyName</strong> matches<br>Record $recordId $firstName $lastName<br>$email";
-                    $data[] = [
-                        $nameInformation,
-                        $header,
-                    ];
                 }
+                $data[] = [ $nameTitle."<br/>".implode("", $matchHTML) ];
             }
         }
         return $data;
@@ -396,6 +397,9 @@ class NIHTables {
                 }
 
                 $otherProjectsValues = [];
+                foreach ($headers as $header) {
+                    $otherProjectsValues[$header] = [];
+                }
                 $combinedEmails = [];
                 foreach ($matches as $match) {
                     list($pid, $recordId) = preg_split("/:/", $match);
@@ -405,14 +409,11 @@ class NIHTables {
                         $combinedEmails[] = $emailMailto;
                     }
                     $countKey = self::makeCountKey($table, $recordId);
-                    $settingsByDate = Application::getSetting($countKey, $pid);
+                    $settingsByDate = Application::getSetting($countKey, $pid) ?: [];
                     foreach ($settingsByDate as $ymdDate => $settings) {
                         foreach ($headers as $header) {
                             if (isset($settings[$header]) && ($settings[$header] !== "")) {
                                 $value = $settings[$header];
-                                if (!isset($otherProjectsValues[$header])) {
-                                    $otherProjectsValues[$header] = [];
-                                }
                                 if (!isset($otherProjectsValues[$header][$pid])) {
                                     $otherProjectsValues[$header][$pid] = [];
                                 }
@@ -423,6 +424,11 @@ class NIHTables {
                 }
 
                 $emailHTML = empty($combinedEmails) ? "" : "<br/>".implode("<br/>", $combinedEmails);
+
+                if (!isset($otherProjectsValues[$headers[6]])) {
+                    $keys = array_keys($otherProjectsValues);
+                    error_log("otherProjectsValues keys: ".implode(", ", $keys));
+                }
 
                 $row = [
                     $facultyName.$emailHTML,
@@ -715,6 +721,21 @@ class NIHTables {
                                 } else {
                                     $role = $grant->getVariable("role");
                                 }
+                                if ($role == "PI/Co-PI") {
+                                    $reporterLookup = new RePORTER($this->pid, $recordId, "NIH");
+                                    $reporterLookup->searchAward($baseAwardNo);
+                                    $dummyInstance = 0;
+                                    $grantsToFilterOut = [];
+                                    $rows = $reporterLookup->getUploadRows($dummyInstance, $grantsToFilterOut);
+                                    $reporterGrants = new Grants($this->token, $this->server, "empty");
+                                    $reporterGrants->setRows($rows);
+                                    $reporterGrants->compileGrants();
+                                    foreach ($reporterGrants->getGrants() as $reporterGrant) {
+                                        if ($reporterGrant->getNumber() == $awardNo) {
+                                            $role = $reporterGrant->getVariable("role");
+                                        }
+                                    }
+                                }
 
                                 $startMMYYYY = REDCapManagement::YMD2MY($grant->getVariable("project_start"));
                                 $endMMYYYY = REDCapManagement::YMD2MY($grant->getVariable("project_end"));
@@ -832,7 +853,7 @@ class NIHTables {
         return ["title" => $title, "data" => $newData, "headerList" => $headers];
     }
 
-    private static function makeTable1_4DataIntoHTML($tableNum, $allData, $includeNumericalInputs = FALSE) {
+    public static function makeTable1_4DataIntoHTML($tableNum, $allData) {
 	    $headers = $allData['headerList'];
 	    // $title = $allData['title'];
 	    $data = $allData['data'];
@@ -870,10 +891,10 @@ class NIHTables {
 	    return $html;
     }
 
-    public function getHTML($table, $includeInputsForNumbers = FALSE, $includeDOI = FALSE) {
+    public function getHTML($table, $includeDOI = FALSE) {
 	    if (self::beginsWith($table, ["1", "2", "3", "4"])) {
 	        $data = $this->getData($table);
-            return self::makeTable1_4DataIntoHTML($table, $data, $includeInputsForNumbers);
+            return self::makeTable1_4DataIntoHTML($table, $data);
        } else if (self::beginsWith($table, ["5A", "5B"])) {
 			$data = $this->get5Data($table, [], $includeDOI);
             $namesPre = $this->downloadPredocNames();

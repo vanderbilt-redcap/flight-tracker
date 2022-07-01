@@ -501,7 +501,6 @@ class Grant {
 						return FALSE;
 					}
 				}
-			} else {
 			}
 		}
 		return FALSE;
@@ -512,6 +511,10 @@ class Grant {
 			$this->specs[$type] = $value;
 		}
 	}
+
+    public function getSpecs() {
+        return $this->specs;
+    }
 
 	public function getBaseAwardNumber() {
 		return $this->getBaseNumber();

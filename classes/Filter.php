@@ -4,8 +4,12 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-define('GET_CHOICES', 'choices');
-define('GET_VALUE', 'values');
+if (!defined("GET_CHOICES")) {
+    define('GET_CHOICES', 'choices');
+}
+if (!defined("GET_VALUE")) {
+    define('GET_VALUE', 'values');
+}
 
 class Filter {
 	public function __construct($token, $server, $metadata) {
@@ -707,13 +711,13 @@ class Filter {
                             if ($defaultRow[$field]) {
                                 $html .= "\t\t\t\t\t$('#$field$i').val('{$defaultRow[$field]}').trigger('change');\n";
                                 if ($field == "choice") {
-                                    $html .= "\t\t\t\t\tlet text = $('#$field$i option:selected').text();\n";
-                                    $html .= "\t\t\t\t\t$('#$field$i').parent().find('.custom-combobox-input').val(text).trigger('change');\n";
+                                    $html .= "\t\t\t\t\tlet text$i = $('#$field$i option:selected').text();\n";
+                                    $html .= "\t\t\t\t\t$('#$field$i').parent().find('.custom-combobox-input').val(text$i).trigger('change');\n";
                                 }
                             }
                         }
                         $combiner = $defaultRow['combiner'] ?? $editableCohort->getCombiner();
-                        $html .= "\t\t\t\t\t$('#combiner$i').val('$combiner').trigger('change');\n";
+                        $html .= "\t\t\t\t\t$('#combination$i').val('$combiner').trigger('change');\n";
                         $html .= "\t\t\t\t\tshowNextRow('.options$i', '$i');\n";
                     }
                 }
@@ -785,13 +789,13 @@ class Filter {
 		if (!empty($records)) {
             foreach ($redcapData as $recordId => $rows) {
                 if (in_array($recordId, $records)) {
-                    array_push($in, $recordId);
+                    $in[] = $recordId;
                 }
             }
         } else {
             foreach ($redcapData as $recordId => $rows) {
                 if ($config->isIn($rows, $this)) {
-                    array_push($in, $recordId);
+                    $in[] = $recordId;
                 }
             }
         }

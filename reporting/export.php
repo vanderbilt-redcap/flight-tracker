@@ -17,7 +17,7 @@ $includeDOI = Sanitizer::sanitize($_GET['includeDOI'] ?? FALSE);
 if (NIHTables::getTableHeader($table)) {
     $metadata = Download::metadata($token, $server);
     $nihTables = new NIHTables($token, $server, $pid, $metadata);
-    $html = $nihTables->getHTML($table, FALSE, $includeDOI);
+    $html = $nihTables->getHTML($table, $includeDOI);
 
     Application::writeHTMLToDoc($html, "Table.docx");
 }

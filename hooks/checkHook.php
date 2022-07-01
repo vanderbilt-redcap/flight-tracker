@@ -389,7 +389,29 @@ function filterSponsorNumber($name) {
 	}
 	# make .*_d-tr td background
 	# also .*_d\d+
+
+    $metadataFields = Download::metadataFields($token, $server);
+    $prefix = "/^init_import/";
+    $initImportFields = [];
+    foreach ($metadataFields as $field) {
+        if (preg_match($prefix, $field)) {
+            $initImportFields[] = $field;
+        }
+    }
+
+
+    $surveyPrefix = "check";
+    foreach ($initImportFields as $field) {
+        $value = REDCapManagement::findField($GLOBALS['data'], $record, $field);
+        if ($value !== "") {
+            $field = preg_replace($prefix, $surveyPrefix, $field);
+            $value = preg_replace("/'/", "\\'", $value);
+            echo "  presetValue('$field', '$value');\n";
+        }
+    }
 ?>
+
+
 	doBranching();
 	$('[name="<?= $prefix ?>name_first"]').blur();
 });

@@ -481,7 +481,9 @@ class Grants {
 			$this->priorGrants = [];
 			foreach ($rows as $row) {
 				if ($row['redcap_repeat_instrument'] == "") {
-					$this->name = $row['identifier_first_name']." ".$row['identifier_last_name'];
+                    $firstName = $row['identifier_first_name'] ?? "";
+                    $lastName = $row['identifier_last_name'] ?? "";
+					$this->name = trim($firstName." ".$lastName);
 					$this->recordId = $row['record_id'];
 				}
 			}
@@ -499,11 +501,11 @@ class Grants {
 
 					if ($hasCoeus) {
 						# for non-infinitely-repeating COEUS forms
-						array_push($gfs, new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server));
+						$gfs[] = new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
 					} else {
 						foreach ($row as $field => $value) {
 							if (preg_match("/^newman_/", $field)) {
-								array_push($gfs, new NewmanGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server));
+								$gfs[] = new NewmanGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
 								break;
 							}
 						}
@@ -513,12 +515,12 @@ class Grants {
                                 $gf = new InitialGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
                                 $gf->setPrefix("check");
                                 $hasInstruments[] = "check";
-                                array_push($gfs, $gf);
+                                $gfs[] = $gf;
                             } else if (preg_match("/^init_import_/", $field) && !in_array("init_import", $hasInstruments)) {
                                 $gf = new InitialGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
                                 $gf->setPrefix("init_import");
                                 $hasInstruments[] = "init_import";
-                                array_push($gfs, $gf);
+                                $gfs[] = $gf;
                             }
 						}
 
@@ -1311,7 +1313,10 @@ class Grants {
 					}
 
 					# only combine moneys if sources are the same; e.g., cannot combine money from coeus and reporter
-					if ($currGrant->getVariable("source") == $basisGrant->getVariable("source")) {
+					if (
+                        ($currGrant->getVariable("source") == $basisGrant->getVariable("source"))
+                        && ($currGrant->getNumber() != $basisGrant->getNumber())
+                    ) {
 						$currDirectBudget = is_numeric($currGrant->getVariable("direct_budget")) ? $currGrant->getVariable("direct_budget") : 0;
 						$grantDirectBudget = is_numeric($basisGrant->getVariable("direct_budget")) ? $basisGrant->getVariable("direct_budget") : 0;
 						$basisGrant->setVariable("direct_budget", Grant::convertToMoney($grantDirectBudget + $currDirectBudget));

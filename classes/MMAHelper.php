@@ -7,7 +7,9 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(__DIR__ . '/ClassLoader.php');
 require_once(APP_PATH_DOCROOT."/Classes/UserRights.php");
 
-define('NEW_HASH_DESIGNATION', 'NEW');
+if (!defined("NEW_HASH_DESIGNATION")) {
+    define('NEW_HASH_DESIGNATION', 'NEW');
+}
 
 class MMAHelper {
     public static function createHash($token, $server) {

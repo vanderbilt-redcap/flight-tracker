@@ -195,12 +195,12 @@ class CohortConfig {
 						}
 						$previous = $newEvalRow;
 					} else {
-						array_push($postStep2, $previous);
+						$postStep2[] = $previous;
 						$previous = $evalRow;
 					}
 				}
 				if ($previous) {
-					array_push($postStep2, $previous);
+					$postStep2[] = $previous;
 				}
 
 				# 3. evaluate ANDs
@@ -215,12 +215,12 @@ class CohortConfig {
 						$newEvalRow['value'] = ($previous['value'] && $evalRow['value']);
 						$previous = $newEvalRow;
 					} else {
-						array_push($postStep3, $previous);
+						$postStep3[] = $previous;
 						$previous = $evalRow;
 					}
 				}
 				if ($previous) {
-					array_push($postStep3, $previous);
+					$postStep3[] = $previous;
 				}
 
 				# 4. evaluate ORs

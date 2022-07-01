@@ -515,6 +515,9 @@ class Download {
 	        $pid = FALSE;
         }
         $error = "";
+        if (isset($data['token']) && isset($data['fields']) && !empty($data['fields'])) {
+            $data['fields'] = self::replaceUseridField($data['fields'], $data['token'], $server);
+        }
 		if ($pid && isset($_GET['pid']) && ($pid == $_GET['pid']) && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
             $records = $data['records'] ?? NULL;
             $fields = $data['fields'] ?? NULL;
@@ -613,8 +616,42 @@ class Download {
 		return self::vunets($token, $server, $metadata);
 	}
 
+    private static function replaceUseridField($fields, $token, $server) {
+        $possibleFields = self::getUseridFields();
+        $overlap = array_intersect($possibleFields, $fields);
+        if (empty($overlap)) {
+            return $fields;
+        } else {
+            $useridField = self::getUseridField($token, $server);
+            $newFields = [];
+            foreach ($fields as $field) {
+                if (in_array($field, $possibleFields)) {
+                    $newFields[] = $useridField;
+                } else {
+                    $newFields[] = $field;
+                }
+            }
+            return $newFields;
+        }
+    }
+
+    private static function getUseridFields() {
+        return ["identifier_vunet", "identifier_userid"];
+    }
+
+    private static function getUseridField($token, $server) {
+        $possibleFields = self::getUseridFields();
+        $metadataFields = Download::metadataFields($token, $server);
+        foreach ($possibleFields as $possibleField) {
+            if (in_array($possibleField, $metadataFields)) {
+                return $possibleField;
+            }
+        }
+        return "";
+    }
+
 	public static function vunets($token, $server, $metadata = array()) {
-		$possibleFields = array("identifier_vunet", "identifier_userid");
+		$possibleFields = self::getUseridFields();
 		if (empty($metadata)) {
 			$metadata = self::metadata($token, $server);
 		}

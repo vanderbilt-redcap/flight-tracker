@@ -4,12 +4,24 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-define("DATA_DIRECTORY", "filterData/");
-define("INTERMEDIATE_1", "R01AndEquivsList.txt");
-define("INTERMEDIATE_2", "R01AndEquivsList2.txt");
-define("INTERMEDIATE_3", "R01AndEquivsList3.txt");
-define("INTERMEDIATE_4", "R01AndEquivsList4.txt");
-define("PI_LIST", "PIList.txt");
+if (!defined("DATA_DICTIONARY")) {
+    define("DATA_DIRECTORY", "filterData/");
+}
+if (!defined("INTERMEDIATE_1")) {
+    define("INTERMEDIATE_1", "R01AndEquivsList.txt");
+}
+if (!defined("INTERMEDIATE_2")) {
+    define("INTERMEDIATE_2", "R01AndEquivsList2.txt");
+}
+if (!defined("INTERMEDIATE_3")) {
+    define("INTERMEDIATE_3", "R01AndEquivsList3.txt");
+}
+if (!defined("INTERMEDIATE_4")) {
+    define("INTERMEDIATE_4", "R01AndEquivsList4.txt");
+}
+if (!defined("PI_LIAST")) {
+    define("PI_LIST", "PIList.txt");
+}
 
 class NIHExPORTER {
 	public function __construct($pid) {

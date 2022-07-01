@@ -95,6 +95,10 @@ class Application {
 	    return $html;
     }
 
+    public static function makeIcon() {
+        return "<link rel='icon' type='image/png' href='" . self::link("/img/flight_tracker_icon.png") . "' />";
+    }
+
     # TRUE iff &record= appended to end of page
     public static function isRecordPage($link) {
         $regexes = [
@@ -212,7 +216,7 @@ class Application {
             }
             $str .= "<script src='".self::link("/js/jquery-ui.min.js")."'></script>";
             $str .= "<script src='".self::link("/js/autocomplete.js")."&$version'></script>";
-            $str .= "<link rel='icon' type='image/png' href='".self::link("/img/flight_tracker_icon.png")."' />";
+            $str .= self::makeIcon();
             $str .= "<link rel='stylesheet' href='".self::link("/css/jquery-ui.css")."' />";
             $str .= "<link rel='stylesheet' href='".self::link("/css/career_dev.css")."&$version' />";
             $str .= "<link rel='stylesheet' href='".self::link("/css/typekit.css")."&$version' />";
