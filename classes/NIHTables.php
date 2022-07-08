@@ -427,7 +427,6 @@ class NIHTables {
 
                 if (!isset($otherProjectsValues[$headers[6]])) {
                     $keys = array_keys($otherProjectsValues);
-                    error_log("otherProjectsValues keys: ".implode(", ", $keys));
                 }
 
                 $row = [
@@ -1240,18 +1239,18 @@ class NIHTables {
                 foreach ($recordData as $row) {
                     if ($row['redcap_repeat_instrument'] == "") {
                         if ($row['summary_urm'] == "1") {
-                            array_push($resultData["urm"][$currClass], "1");
+                            $resultData["urm"][$currClass][] = "1";
                         } else if (($row['summary_urm'] === "0") || ($row['summary_urm'] === 0)) {
-                            array_push($resultData["urm"][$currClass], "0");
+                            $resultData["urm"][$currClass][] = "0";
                         }
                         if ($row['summary_disability'] == "1") {
-                            array_push($resultData["disability"][$currClass], "1");
+                            $resultData["disability"][$currClass][] = "1";
                         } else if (($row['summary_disability'] === "0") || ($row['summary_disability'] === 0)) {
-                            array_push($resultData["disability"][$currClass], "0");
+                            $resultData["disability"][$currClass][] = "0";
                         }
 
                         if ($row['check_undergrad_gpa']) {
-                            array_push($resultData["gpa"][$currClass], $row['check_undergrad_gpa']);
+                            $resultData["gpa"][$currClass][] = $row['check_undergrad_gpa'];
                         }
 
                         if (self::isPredocTable($table)) {
@@ -1261,17 +1260,17 @@ class NIHTables {
                                 if (is_numeric($institution)) {
                                     $institution = $choices['check_undergrad_institution'][$institution];
                                 }
-                                array_push($resultData["institutions"][$currClass], $institution);
+                                $resultData["institutions"][$currClass][] = $institution;
                             }
                         } else if (self::isPostdocTable($table)) {
                             #  use last doctorate-granting institution
                             if ($doctorateInstitutions[$recordId] && !empty($doctorateInstitutions[$recordId])) {
-                                array_push($resultData["institutions"][$currClass], implode("/", $doctorateInstitutions[$recordId]));
+                                $resultData["institutions"][$currClass][] = implode("/", $doctorateInstitutions[$recordId]);
                             }
                         }
 
                         if (($row['check_degree0_prior_rsch'] !== "") && is_numeric($row['check_degree0_prior_rsch'])) {
-                            array_push($resultData["research_months"][$currClass], $row['check_degree0_prior_rsch']);
+                            $resultData["research_months"][$currClass][] = $row['check_degree0_prior_rsch'];
                         }
                     }
                 }
@@ -1387,7 +1386,7 @@ class NIHTables {
 	        if ($count > 1) {
 	            $item .= " (".$count.")";
             }
-	        array_push($list, $item);
+	        $list[] = $item;
         }
 	    return implode("<br>", $list);
     }
@@ -1396,7 +1395,7 @@ class NIHTables {
 	    $rows = array();
         foreach ($grantData as $row) {
             if ($row['record_id'] == $recordId) {
-                array_push($rows, $row);
+                $rows[] = $row;
             }
         }
         return $rows;
@@ -2264,10 +2263,13 @@ class NIHTables {
 
     # best guess
     private static function transformNamesToLastFirst($aryOfNames) {
+        if (!$aryOfNames) {
+            return [];
+        }
 	    $transformedNames = array();
 	    foreach ($aryOfNames as $name) {
 	        list($first, $last) = NameMatcher::splitName($name);
-            array_push($transformedNames, "$last, $first");
+            $transformedNames[] = "$last, $first";
         }
 	    return $transformedNames;
     }
@@ -2331,7 +2333,7 @@ class NIHTables {
                 } else {
                     $supportSummaryHTML = self::makeComment("Manually Entered");
                 }
-	            $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId]);
+	            $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId] ?? "");
 
                 # if modify column headers, need to modify reporting/getData.php
                 if (self::beginsWith($table, ['8A'])) {
@@ -2584,11 +2586,11 @@ class NIHTables {
 		return FALSE;
 	}
 
-	private static function isPredocTable($table) {
+	public static function isPredocTable($table) {
 	    return self::beginsWith($table, array("5A", "6A", "8A"));
     }
 
-    private static function isPostdocTable($table) {
+    public static function isPostdocTable($table) {
 	    return self::beginsWith($table, array("5B", "6B", "8C"));
     }
 
@@ -2637,6 +2639,7 @@ class NIHTables {
             Application::log("downloading postdoc names post-filter ".date("Y-m-d H:i:s"), $this->pid);
             return $ary;
         } else {
+            Application::log("Returning postdoc names ".REDCapManagement::json_encode_with_spaces($names));
             return $names;
         }
     }
@@ -2690,17 +2693,29 @@ class NIHTables {
 	    return $newNames;
     }
 
-    private static function getTrainingTypesForGrantClass() {
+    public static function getTrainingTypesForGrantClass($requestedGrantClass = FALSE) {
 	    global $grantClass;
-        if (in_array($grantClass, ["T", "Other"])) {
+        if (!$requestedGrantClass && $grantClass) {
+            $requestedGrantClass = $grantClass;
+        }
+        if (in_array($requestedGrantClass, ["T", "Other"])) {
             return [10];   // Other is training grant
-        } else if (in_array($grantClass, ["K"])) {
+        } else if (in_array($requestedGrantClass, ["K"])) {
             return [2, 10];
-        } else if ($grantClass == "") {
+        } else if ($requestedGrantClass == "") {
             return [2];    // K12 by default
         }
         throw new \Exception("Invalid Grant Class: $grantClass");
 	}
+
+    private static function getRoleIndices($table) {
+        if (self::isPredocTable($table)) {
+            return [5, 6];
+        } else if (self::isPostdocTable($table)) {
+            return [5, 7];
+        }
+        return "";
+    }
 
     private function downloadRelevantNames($table, $records) {
 	    if ($records === NULL) {
@@ -2761,13 +2776,19 @@ class NIHTables {
                     foreach ($currentGrants as $row) {
                         if ($row['redcap_repeat_instrument'] == "custom_grant") {
                             if ($part == 1) {
-                                if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15) && in_array($row['custom_type'], $thisGrantTypes)) {
+                                if (
+                                    self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15)
+                                    && in_array($row['custom_type'], $thisGrantTypes)
+                                ) {
                                     $filteredNames[$recordId] = $name;
                                 }
                             } else if ($part == 3) {
                                 # recent graduates - those whose appointments have ended
                                 # for new applications only (currently)
-                                if (self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 5) && ($row['custom_type'] == $internalKType)) {
+                                if (
+                                    self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 5)
+                                    && ($row['custom_type'] == $internalKType)
+                                ) {
                                     $filteredNames[$recordId] = $name;
                                 }
                             }
@@ -2870,9 +2891,10 @@ class NIHTables {
     }
 
 	public function get5Data($table, $records = [], $includeDOI = FALSE) {
-        $eligibleKs = [2];     // K12/KL2 only
+        $eligibleGrantTypes = self::getTrainingTypesForGrantClass();
         $data = [];
 		$names = $this->downloadRelevantNames($table, $records);
+        $roleIndices = self::getRoleIndices($table);
 		if (isset($_GET['test'])) {
 		    echo "<p class='centered'>".count($names)." being considered</p>";
         }
@@ -2881,12 +2903,10 @@ class NIHTables {
 			$firstNames = Download::firstnames($this->token, $this->server);
 			$mentors = Download::primaryMentors($this->token, $this->server); 
 			$trainingData = Download::trainingGrants($this->token, $this->server, [], [5, 6, 7], [], $this->metadata);
-            $trainingStarts = Download::oneField($this->token, $this->server, "summary_training_start");
         } else {
             $mentors = [];
             $lastNames = [];
             $firstNames = [];
-		    $trainingStarts = [];
 		    $trainingData = [];
         }
 		$fields = array_unique(array_merge(Application::getCitationFields($this->metadata), array("record_id")));
@@ -2898,55 +2918,64 @@ class NIHTables {
             $startYear = "";
 			$endYear = "";
 			$startTs = 0;
-			if ($trainingStarts[$recordId]) {
-			    $startTs = strtotime($trainingStarts[$recordId]);
-                $startYear = REDCapManagement::getYear($trainingStarts[$recordId]);
-            }
 			$endTs = time();
 			$currentGrants = self::getTrainingGrantsForRecord($trainingData, $recordId);
 			if (isset($_GET['test'])) {
 			    echo "Record $recordId has ".count($currentGrants)." grants.<br>";
             }
-			if (empty($currentGrants)) {
-			    list($startYear, $startTs, $endYear, $endTs) = $this->getStartAndEndFromSummary($recordId, $eligibleKs);
-            } else {
-                foreach ($currentGrants as $row) {
-                    if ($row['redcap_repeat_instrument'] == "custom_grant") {
-                        $currStartTs = strtotime($row['custom_start']);
-                        if (!$startTs || ($currStartTs < $startTs)) {
-                            $startTs = $currStartTs;
-                            $startYear = REDCapManagement::getYear($row['custom_start']);
-                        } else {
-                            $startYear = self::$NA;
-                        }
-                        if ($row['custom_end'] && in_array($row['custom_type'], $eligibleKs)) {
-                            $endTs = strtotime($row['custom_end']);
-                            if ($endTs > time()) {
-                                # in future
-                                $endYear = self::$presentMarker;
-                                $calculatedEndYear = $this->getEndYearOfInternalKOrK12($recordId);
-                                if ($calculatedEndYear && ($calculatedEndYear < $endYear)) {
-                                    $endYear = $calculatedEndYear;
-                                }
-                            } else {
-                                # in past
-                                $endYear = REDCapManagement::getYear($row['custom_end']);
+
+            # preferentially use grant; if no custom grant exists, use start/end at institution
+            $hasEligibleGrant = FALSE;
+            $definedInFuture = FALSE;
+            foreach ($currentGrants as $row) {
+                if (
+                    ($row['redcap_repeat_instrument'] == "custom_grant")
+                    && in_array($row['custom_role'], $roleIndices)
+                    && in_array($row['custom_type'], $eligibleGrantTypes)
+                ) {
+                    $hasEligibleGrant = TRUE;
+                    $currStartTs = strtotime($row['custom_start']);
+                    if (!$startTs || ($startTs > $currStartTs)) {
+                        $startTs = $currStartTs;
+                        $startYear = REDCapManagement::getYear($row['custom_start']);
+                    }
+                    if (!$startTs) {
+                        $startYear = self::$NA;
+                    }
+                    if ($row['custom_end']) {
+                        $endTs = strtotime($row['custom_end']);
+                        if ($endTs > time()) {
+                            # in future
+                            $definedInFuture = TRUE;
+                            $endYear = self::$presentMarker;
+                            $calculatedEndYear = $this->getEndYearOfInternalKOrK12($recordId);
+                            if ($calculatedEndYear && ($calculatedEndYear < $endYear)) {
+                                $endYear = $calculatedEndYear;
                             }
                         } else {
-                            list($startYearCopy, $startTsCopy, $endYear, $endTs) = $this->getStartAndEndFromSummary($recordId, $eligibleKs);
-                            if (!$startTs) {
-                                $startTs = $startTsCopy;
-                                $startYear = $startYearCopy;
-                            }
+                            # in past
+                            $endYear = REDCapManagement::getYear($row['custom_end']);
                         }
                     }
                 }
             }
+            if (!$hasEligibleGrant || !$startTs) {
+                list($startYear, $startTs, $endYear, $endTs) = $this->getStartAndEndFromSummary($recordId, $eligibleGrantTypes);
+            }
+            if ($endTs > time()) {
+                $endYear = self::$presentMarker;
+            }
 
-			if (!$endYear || ($endYear == self::$presentMarker)) {
+			if (
+                (
+                    !$endYear
+                    || ($endYear == self::$presentMarker)
+                )
+                && !$definedInFuture
+            ) {
 			    list($autocalcEndYear, $autocalcEndTs) = $this->autocalculateKLength($currentGrants, $recordId, [1, 2]);
 			    if ($autocalcEndTs && ($autocalcEndTs < time())) {
-			        $endYear = $autocalcEndYear;
+			        $endYear = self::makeTooltip($autocalcEndYear, "Auto-calculated from the length of a K; previously '$endYear'");
 			        $endTs = $autocalcEndTs;
                 }
                 if (!$endYear) {
@@ -2998,7 +3027,7 @@ class NIHTables {
                     }
 				}
 				if (count($nihFormatCits) == 0) {
-                    array_push($data, $noPubsRow);
+                    $data[] = $noPubsRow;
                 } else {
                     $transformedFacultyNames = self::transformNamesToLastFirst($mentors[$recordId] ?? []);
                     $dataRow = array(
@@ -3008,13 +3037,17 @@ class NIHTables {
                         "Training Period" => $trainingPeriod,
                         "Publication" => "<p class='citation'>".implode("</p><p class='citation'>", $nihFormatCits)."</p>",
                     );
-                    array_push($data, $dataRow);
+                    $data[] = $dataRow;
 
                 }
 			}
 		}
 		return $data;
 	}
+
+    private static function makeTooltip($text, $tooltip) {
+        return "<a class='tooltip'>$text<span class='tooltiptext'>$tooltip</span></a>";
+    }
 
 	private function autocalculateKLength($currentGrants, $recordId, $eligibleKs) {
 	    foreach ($currentGrants as $row) {

@@ -2,6 +2,8 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use \ExternalModules\ExternalModules;
+
 # This class handles commonly occuring downloads from the REDCap API.
 
 // require_once(dirname(__FILE__)."/../../../redcap_connect.php");
@@ -15,7 +17,7 @@ class Download {
 			if (!isset($indexedRedcapData[$recordId])) {
 				$indexedRedcapData[$recordId] = array();
 			}
-			array_push($indexedRedcapData[$recordId], $row);
+			$indexedRedcapData[$recordId][] = $row;
 		}
 		return $indexedRedcapData;
 	}
@@ -122,7 +124,7 @@ class Download {
 	    return $includedRecords;
     }
 
-    public static function postdocAppointmentNames($token, $server, $metadata, $cohort = "") {
+    public static function postdocAppointmentNames($token, $server, $metadata, $cohort = "", $filterByManualInclusion = TRUE) {
         $names = self::names($token, $server);
         $postdocTrainees = self::recordsWithTrainees($token, $server, [7]);
         if ($cohort) {
@@ -142,7 +144,9 @@ class Download {
         } else {
             $records = $postdocTrainees;
         }
-        $records = self::filterByManualInclusion($records, $token, $server, $metadata);
+        if ($filterByManualInclusion) {
+            $records = self::filterByManualInclusion($records, $token, $server, $metadata);
+        }
         $postdocs = [];
         foreach ($records as $recordId) {
             $postdocs[$recordId] = $names[$recordId];
@@ -151,33 +155,7 @@ class Download {
 	}
 
     public static function postdocNames($token, $server, $metadata = [], $cohort = "") {
-		$names = self::names($token, $server);
-		$predocs = self::predocNames($token, $server, $metadata, $cohort, $names);
-		$postdocs = array();
-        if ($cohort) {
-            $cohortConfig = self::getCohortConfig($token, $server, Application::getModule(), $cohort);
-            if ($cohortConfig) {
-                $filter = new Filter($token, $server, $metadata);
-                $everyone = array_keys($names);
-                $cohortRecords = $filter->getRecords($cohortConfig);
-                $records = [];
-                foreach ($everyone as $recordId) {
-                    if (in_array($recordId, $cohortRecords)) {
-                        $records[] = $recordId;
-                    }
-                }
-            } else {
-                $records = array_keys($names);
-            }
-        } else {
-            $records = array_keys($names);
-        }
-		foreach ($records as $recordId) {
-		    if (!isset($predocs[$recordId])) {
-                $postdocs[$recordId] = $names[$recordId];
-            }
-		}
-		return $postdocs;
+        return self::postdocAppointmentNames($token, $server, $metadata, $cohort, FALSE);
 	}
 
 	public static function redcapVersion($token, $server) {
@@ -279,7 +257,7 @@ class Download {
 		$filteredData = array();
 		foreach ($redcapData as $row) {
 			if (in_array($row['custom_role'], $traineeTypes)) {
-				array_push($filteredData, $row);
+				$filteredData[] = $row;
 			}
 		}
 		return $filteredData;
@@ -529,11 +507,22 @@ class Download {
                 }
                 Application::log("sendToServer: ".$pid." REDCap::getData $numFields fields $numRecords records", $pid);
             }
-		    $output = \REDCap::getData($pid, "json", $records, $fields);
+            // $module = Application::getModule();
+            // if (Application::isVanderbilt() && (ExternalModules::getFrameworkVersion($module) >= 7) && !Application::isPluginProject()) {
+                // if (!$fields) {
+                    // $fields = self::metadataFields($token, $server);
+                // }
+                // $output = $module->getData($pid, "json", $records, $fields);
+                // $method = "queryData";
+                // $resp = "queryData";
+            // } else {
+            $output = \REDCap::getData($pid, "json", $records, $fields);
             $resp = "getData";
+            $method = "getData";
+            // }
             $redcapData = json_decode($output, true);
             if (isset($_GET['test'])) {
-                Application::log("sendToServer: ".$pid." REDCap::getData done with ".count($redcapData)." rows", $pid);
+                Application::log("sendToServer: ".$pid." $method done with ".count($redcapData)." rows", $pid);
             }
 		} else {
 		    $time1 = microtime(TRUE);
@@ -641,7 +630,7 @@ class Download {
 
     private static function getUseridField($token, $server) {
         $possibleFields = self::getUseridFields();
-        $metadataFields = Download::metadataFields($token, $server);
+        $metadataFields = self::metadataFields($token, $server);
         foreach ($possibleFields as $possibleField) {
             if (in_array($possibleField, $metadataFields)) {
                 return $possibleField;

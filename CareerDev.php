@@ -15,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.12.2";
+		return "4.12.3";
 	}
 
 	public static function getLockFile($pid) {
@@ -1163,12 +1163,14 @@ class CareerDev {
 						"reporter_projectenddate",
 						"reporter_cfdacode",
 						);
-		
-	public static $customFields = [
+
+    public static $customFields = [
         "record_id",
         "custom_title",
         "custom_number",
         "custom_type",
+        "custom_start",
+        "custom_end",
         "custom_org",
         "custom_recipient_org",
         "custom_role",
@@ -1179,10 +1181,9 @@ class CareerDev {
         "custom_last_update",
         "custom_submission_status",
         "custom_submission_date",
-
     ];
 
-	public static $exporterFields = array(
+    public static $exporterFields = array(
 						"exporter_application_id",
 						"exporter_activity",
 						"exporter_administering_ic",

@@ -31,10 +31,16 @@ $fields = [
 
 $metadata = Download::metadata($token, $server);
 $fieldLabels = REDCapManagement::getLabels($metadata);
+$firstNames = Download::firstnames($token, $server);
+$lastNames = Download::lastnames($token, $server);
 if ($cohort) {
     $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $records = Download::recordIds($token, $server);
+}
+$relevantNames = [];
+foreach ($records as $recordId) {
+    $relevantNames[] = ["firstName" => $firstNames[$recordId], "lastName" => $lastNames[$recordId]];
 }
 $redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
 
@@ -62,8 +68,6 @@ foreach ($dist['citation_rcr'] as $location => $rcr) {
 }
 $pertinentCitations = [];
 if (!empty($foundList)) {
-    $lastNames = Download::lastnames($token, $server);
-    $firstNames = Download::firstnames($token, $server);
     $citationFields = Application::getCitationFields($metadata);
     $pmidsUsed = [];
     $citationData = Download::fieldsForRecords($token, $server, $citationFields, $recordsToDownload);
@@ -78,13 +82,18 @@ if (!empty($foundList)) {
             && in_array("$recordId:$instance", $foundList)
         ) {
             # do not bold name because multiple names might be used
+            # to turn on, use $relevantNames, but my experience is that too many false matches are made
             $citation = new Citation($token, $server, $recordId, $instance, $row);
             $rcr = $row['citation_rcr'];
             $altmetricScore = $row['citation_altmetric_score'] ? "Altmetric Score: ".$row['citation_altmetric_score']."." : "";
             if (!isset($pertinentCitations[$rcr])) {
                 $pertinentCitations[$rcr] = [];
             }
-            $pertinentCitations[$rcr][] = "<p style='text-align: left;'>".$citation->getImage("left").$citation->getCitationWithLink(FALSE, TRUE)." RCR: $rcr. $altmetricScore</p>";
+            if (isset($_GET['bold'])) {
+                $pertinentCitations[$rcr][] = "<p style='text-align: left;'>".$citation->getImage("left").$citation->getCitationWithLink(FALSE, TRUE, $relevantNames)." RCR: $rcr. $altmetricScore</p>";
+            } else {
+                $pertinentCitations[$rcr][] = "<p style='text-align: left;'>".$citation->getImage("left").$citation->getCitationWithLink(FALSE, TRUE)." RCR: $rcr. $altmetricScore</p>";
+            }
             $pmidsUsed[] = $pmid;
         }
     }

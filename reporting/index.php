@@ -97,11 +97,11 @@ if (file_exists(dirname(__FILE__)."/../customGrants.php")) {
     <tr>
         <td style="vertical-align: top;">
             <h3>Predoctoral Scholars (<?= count($predocs) ?>)</h3>
-            <p class='centered max-width'><?= $predocNames ? $predocNames : $emptyNames ?></p>
+            <p class='centered max-width'><?= $predocNames ?: $emptyNames ?></p>
         </td>
         <td style="vertical-align: top;">
             <h3>Postdoctoral Scholars (<?= count($postdocs) ?>)</h3>
-            <p class='centered max-width'><?= $postdocNames ? $postdocNames : $emptyNames ?></p>
+            <p class='centered max-width'><?= $postdocNames ?: $emptyNames ?></p>
         </td>
     </tr>
     </tbody>

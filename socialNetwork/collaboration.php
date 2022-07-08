@@ -23,6 +23,7 @@ if (isset($_GET['record'])) {
     $highlightedRecord = FALSE;
 }
 
+define('NUM_COLLABS_TO_SHOW', 3);
 define('PUBYEAR_SELECT', '---pub_year---');
 define('START_YEAR', 2010);
 
@@ -263,8 +264,8 @@ if (isset($_GET['cohort']) && !empty($records)) {
                 echo "<tr><th>Median of Connections</th><td>".REDCapManagement::pretty($stats[$type]->median(), 1)."</td></tr>\n";
                 echo "<tr><th>Mode of Connections</th><td>".implode(", ", $stats[$type]->mode())."</td></tr>\n";
                 echo "<tr><th>Standard Deviation</th><td>&sigma; = ".REDCapManagement::pretty($stats[$type]->getSigma(), 1)."</td></tr>\n";
-                echo "<tr><th>Maximum Connections</th><td>max = ".REDCapManagement::pretty($maxConnections[$type])." (".REDCapManagement::makeConjunction($maxNames[$type]).")</td></tr>\n";
-                echo "<tr><th>Maximum Number of Collaborators</th><td>max = ".REDCapManagement::pretty($maxCollaborators[$type])." (".REDCapManagement::makeConjunction($maxCollabNames[$type]).")</td></tr>\n";
+                echo "<tr><th>Maximum Connections</th><td>Leading ".NUM_COLLABS_TO_SHOW." Entries<br/>".formatCollaborators($maxConnections[$type], $maxNames[$type])."</td></tr>\n";
+                echo "<tr><th>Maximum Number of Collaborators</th><td>Leading ".NUM_COLLABS_TO_SHOW." Entries<br/>".formatCollaborators($maxCollaborators[$type], $maxCollabNames[$type])."</td></tr>\n";
                 if ($includeMentors && ($type != "received") && $mentorConnections) {
                     echo "<tr><th>Average Connections per Mentor with All Scholars</th><td>".REDCapManagement::pretty($mentorConnections, 1)."</td></tr>\n";
                 }
@@ -295,6 +296,17 @@ if (isset($_GET['cohort']) && !empty($records)) {
 
 
 
+function formatCollaborators($maxCollaboratorsForType, $maxCollabNamesForType) {
+    $previousEntry = -999999;
+    $htmlToReturn = [];
+    for ($i = 0; $i < NUM_COLLABS_TO_SHOW; $i++) {
+        if (isset($maxCollaboratorsForType[$i]) && ($maxCollaboratorsForType[$i] != $previousEntry)) {
+            $htmlToReturn[] = REDCapManagement::pretty($maxCollaboratorsForType[$i])." (".REDCapManagement::makeConjunction($maxCollabNamesForType[$i]).")";
+            $previousEntry = $maxCollaboratorsForType[$i];
+        }
+    }
+    return implode("<br/>", $htmlToReturn);
+}
 
 function getCitationTimestamp($row) {
     if ($row['redcap_repeat_instrument'] == "citation") {
@@ -766,45 +778,70 @@ function makeSummaryStats($connections, $names) {
     $stats = [];
     $maxConnections = [];
     $maxNames = [];
+    $collabsInOrder = [];
     $maxCollaborators = [];
     $maxCollabNames = [];
     $totalCollaborators = [];
     foreach ($connections as $type => $typeConnections) {
         $dataValues = [];
-        $maxCollaborators[$type] = 0;
+        $maxCollaborators[$type] = [];
         $totalCollaborators[$type] = 0;
+        $collabsInOrder[$type] = [];
+        $maxConnections[$type] = [];
         foreach ($typeConnections as $recordId => $indivConnections) {
             $numConnections = array_sum(array_values($indivConnections));
             if ($numConnections > 0) {
                 $dataValues[] = $numConnections;
                 $numCollaborators = count($indivConnections);
                 $totalCollaborators[$type] += $numCollaborators;
-                if ($numCollaborators > $maxCollaborators[$type]) {
-                    $maxCollaborators[$type] = $numCollaborators;
+                if (!isset($collabsInOrder[$type][$numCollaborators])) {
+                    $collabsInOrder[$type][$numCollaborators] = [];
                 }
+                $collabsInOrder[$type][$numCollaborators][] = $recordId;
             }
         }
         $stats[$type] = new Stats($dataValues);
-        $maxConnections[$type] = !empty($dataValues) ? max($dataValues) : 0;
+        rsort($dataValues);
+        for ($i = 0; $i < NUM_COLLABS_TO_SHOW; $i++) {
+            $maxConnections[$type][$i] = $dataValues[$i] ?: 0;
+        }
         $maxNames[$type] = [];
         $maxCollabNames[$type] = [];
-        foreach ($typeConnections as $recordId => $indivConnections) {
-            $numConnections = array_sum(array_values($indivConnections));
-            $numCollaborators = count($indivConnections);
-            if ($numConnections == $maxConnections[$type]) {
-                if (isset($names[$recordId])) {
-                    $maxNames[$type][] = $names[$recordId];
+        krsort($collabsInOrder[$type]);
+        for ($i = 0; $i < NUM_COLLABS_TO_SHOW; $i++) {
+            if (!empty($collabsInOrder[$type])) {
+                $keys = array_keys($collabsInOrder[$type]);
+                if (isset($keys[$i])) {
+                    $maxCollaborators[$type][$i] = $keys[$i];
+                } else if ($i > 0) {
+                    $maxCollaborators[$type][$i] = $maxCollaborators[$type][$i - 1];
                 } else {
-                    # mentor
-                    $maxNames[$type][] = $recordId;
+                    $maxCollaborators[$type][$i] = 0;
                 }
+            } else {
+                $maxCollaborators[$type][$i] = 0;
             }
-            if ($numCollaborators == $maxCollaborators[$type]) {
-                if (isset($names[$recordId])) {
-                    $maxCollabNames[$type][] = $names[$recordId];
-                } else {
-                    # mentor
-                    $maxCollabNames[$type][] = $recordId;
+            $maxNames[$type][$i] = [];
+            $maxCollabNames[$type][$i] = [];
+            foreach ($typeConnections as $recordId => $indivConnections) {
+                $numConnections = array_sum(array_values($indivConnections));
+                $numCollaborators = count($indivConnections);
+
+                if ($numConnections == $maxConnections[$type][$i]) {
+                    if (isset($names[$recordId])) {
+                        $maxNames[$type][$i][] = $names[$recordId];
+                    } else {
+                        # mentor
+                        $maxNames[$type][$i][] = $recordId;
+                    }
+                }
+                if ($numCollaborators == $maxCollaborators[$type][$i]) {
+                    if (isset($names[$recordId])) {
+                        $maxCollabNames[$type][$i][] = $names[$recordId];
+                    } else {
+                        # mentor
+                        $maxCollabNames[$type][$i][] = $recordId;
+                    }
                 }
             }
         }

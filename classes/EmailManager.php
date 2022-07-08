@@ -227,12 +227,12 @@ class EmailManager {
                     $when = $emailSetting["when"];
                     if (!Application::isLocalhost()) {
                         $whenKeys = array_keys($when);
-                        if (!empty($whenKeys)) {
-                            $firstKey = array_shift($whenKeys);
-                            foreach ($currTimes as $currTime) {
+                        // if (!empty($whenKeys)) {
+                            // $firstKey = array_shift($whenKeys);
+                            // foreach ($currTimes as $currTime) {
                                 // Application::log("$name is enabled for send at ".$when[$firstKey].". Current time is ".date("Y-m-d H:i", (int) $currTime)."; process spawned at ".date("Y-m-d H:i", $_SERVER['REQUEST_TIME']), $this->pid);
-                            }
-                        }
+                            // }
+                        // }
                     }
 					foreach ($when as $type => $datetime) {
 						$ts = self::transformToTS($datetime);
@@ -397,17 +397,34 @@ class EmailManager {
 	# if $settingName == "all", returns indexed array of all settings
 	public function getSentEmails($settingName = "all") {
 		if ($settingName = "all") {
-			$sentAry = array();
+			$sentAry = [];
 			foreach ($this->data as $name => $setting) {
 				if ($setting['sent']) {
 					$sentAry[$name] = $setting['sent'];
 				}
 			}
+            if (Application::isPluginProject() && Application::isCopiedProject($this->pid)) {
+                $sourcePid = Application::getSourcePid($this->pid);
+                $sourceData = self::loadData($this->settingName, $this->module, $this->hijackedField, $sourcePid);
+                if (!empty($sourceData)) {
+                    foreach ($sourceData as $name => $setting) {
+                        if ($setting['sent']) {
+                            $sentAry[$name] = $setting['sent'];
+                        }
+                    }
+                }
+            }
 			return $sentAry; 
 		} else if ($this->data[$settingName] && $this->data[$settingName]['sent']) {
 			return $this->data[$settingName]['sent'];
-		}
-		return array();
+		} else if (Application::isPluginProject() && Application::isCopiedProject($this->pid)) {
+                $sourcePid = Application::getSourcePid($this->pid);
+                $sourceData = self::loadData($this->settingName, $this->module, $this->hijackedField, $sourcePid);
+                if (!empty($sourceData) && $sourceData[$settingName] && $sourceData[$settingName]['sent']) {
+                    return $sourceData[$settingName]['sent'];
+                }
+            }
+		return [];
 	}
 
     private function getLastNames($recordIds) {
@@ -506,7 +523,7 @@ class EmailManager {
 					}
 				}
 				if (!$keyFound) {
-					array_push($unmatchedKeys, $key);
+					$unmatchedKeys[] = $key;
 				}
 			}
 			return $unmatchedKeys;
@@ -741,7 +758,7 @@ class EmailManager {
 		if (is_array($who['individuals'])) {
 			$pickedEmails = array();
 			for ($i = 0; $i < count($who['individuals']); $i++) {
-				array_push($pickedEmails, strtolower($who['individuals'][$i]));
+				$pickedEmails[] = strtolower($who['individuals'][$i]);
 			}
 		} else {
 			$pickedEmails = explode(",", strtolower($who['individuals']));
@@ -777,8 +794,8 @@ class EmailManager {
         $steps["surveys"] = $surveys;
         $steps["metadata"] = $this->metadata;
 		foreach ($surveys as $form => $title) {
-			array_push($fields, $form."_complete");
-			array_push($fields, self::getDateField($form));
+			$fields[] = $form . "_complete";
+			$fields[] = self::getDateField($form);
 		}
         $steps["fields 1"] = $fields;
 		$fields = REDCapManagement::filterOutInvalidFields($this->metadata, $fields);
@@ -825,7 +842,7 @@ class EmailManager {
 					if (!isset($complete[$recordId])) {
 						$complete[$recordId] = array($currForm);
 					} else {
-						array_push($complete[$recordId], $currForm);
+						$complete[$recordId][] = $currForm;
 					}
 				}
 			}
@@ -857,12 +874,12 @@ class EmailManager {
 		foreach ($filterFields as $whoFilterField) {
 			if (isset($who[$whoFilterField])) {
                 $redcapField = self::getFieldAssociatedWithFilter($whoFilterField);
-                array_push($fieldsToDownload, $redcapField);
-                array_push($filtersToApply, $whoFilterField);
+                $fieldsToDownload[] = $redcapField;
+                $filtersToApply[] = $whoFilterField;
 			}
 		}
 		if (!empty($fieldsToDownload)) {
-			array_push($fieldsToDownload, "record_id");
+			$fieldsToDownload[] = "record_id";
 			$filterREDCapData = Download::fields($this->token, $this->server, $fieldsToDownload);
 			foreach ($filtersToApply as $filter) {
 				$redcapField = self::getFieldAssociatedWithFilter($filter);
@@ -1188,28 +1205,69 @@ class EmailManager {
 		return TRUE;
 	}
 
+    private function changeWhoScopeForAnotherProject($emailSetting) {
+        if (isset($emailSetting["who"]["individuals"])) {
+            return $emailSetting;
+        }
+
+        $emails = [];
+        $rows = $this->getRows($emailSetting["who"]);
+        foreach ($rows as $recordId => $person) {
+            if (isset($person['email']) && $person['email']) {
+                $emails[] = $person['email'];
+            }
+        }
+
+        $emailSetting["who"]["individuals"] = implode(",", $emails);
+        unset($emailSetting["who"]["filter"]);
+        return $emailSetting;
+    }
+
 	private function saveData() {
-		$settingName = $this->settingName;
-		$data = self::cleanUpEmails($this->data, $this->token, $this->server);
-		if ($this->module) {
-		    Application::log("Saving email data into $settingName");
-			return $this->module->setProjectSetting($settingName, $data, $this->pid);
-		} else if ($this->metadata) {
-			$json = json_encode($data);
-			$newMetadata = array();
-			foreach ($this->metadata as $row) {
-				if ($row['field_name'] == $this->hijackedField) {
-					$row['field_annotation'] = $json;
-				}
-				array_push($newMetadata, $row);
-			}
-			$this->metadata = $newMetadata;
-			$feedback = Upload::metadata($newMetadata, $this->token, $this->server);
-			Application::log("Email Manager save: ".json_encode($feedback));
-			return $feedback;
-		} else {
-			throw new \Exception("Could not save settings to $settingName! No module available!");
-		}
+        $settingName = $this->settingName;
+        $data = self::cleanUpEmails($this->data, $this->token, $this->server);
+        if (Application::isPluginProject() && Application::isCopiedProject($this->pid)) {
+            $savePid = Application::getSourcePid($this->pid);
+            if ($savePid) {
+                $combinedData = [];
+                foreach ($data as $name => $emailSetting) {
+                    $combinedData[$name] = $this->changeWhoScopeForAnotherProject($emailSetting);
+                }
+                $sourceData = self::loadData($settingName, $this->module, $this->hijackedField, $savePid);
+                foreach ($sourceData as $name => $setting) {
+                    if (!isset($combinedData[$name])) {
+                        $combinedData[$name] = $setting;
+                    }
+                    # in case of conflict, prefer newer data ($data)
+                }
+            } else {
+                $savePid = $this->pid;
+                $combinedData = $data;
+            }
+        } else {
+            $savePid = $this->pid;
+            $combinedData = $data;
+        }
+
+        if ($this->module) {
+            Application::log("Saving email data into $settingName");
+            return $this->module->setProjectSetting($settingName, $combinedData, $savePid);
+        } else if ($this->metadata) {
+            $json = json_encode($data);
+            $newMetadata = [];
+            foreach ($this->metadata as $row) {
+                if ($row['field_name'] == $this->hijackedField) {
+                    $row['field_annotation'] = $json;
+                }
+                $newMetadata[] = $row;
+            }
+            $this->metadata = $newMetadata;
+            $feedback = Upload::metadata($newMetadata, $this->token, $this->server);
+            Application::log("Email Manager save: ".json_encode($feedback));
+            return $feedback;
+        } else {
+            throw new \Exception("Could not save settings to $settingName! No module available!");
+        }
 	}
 
 	private static function cleanUpEmails($data, $token, $server) {

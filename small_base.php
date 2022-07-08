@@ -87,7 +87,7 @@ function displayException($exception) {
     global $pid;
     $header = "Flight Tracker Error!";
     Application::log("Exception: ".$exception->getMessage(), $pid);
-    echo "<div class='red padded max-width' style='text-align: center;'><strong>".$header."</strong><br/>".$exception->getMessage()."<br/><code class='alignLeft'>".$exception->getTraceAsString()."</code></div>";
+    echo "<div class='red padded max-width' style='text-align: center;'><strong>".$header."</strong><br/>".$exception->getMessage()."<br/>File: ".$exception->getFile()."; Line: ".$exception->getLine()."<br/><code class='alignLeft'>".$exception->getTraceAsString()."</code></div>";
 }
 
 function displayError($error) {

@@ -44,10 +44,12 @@ class Dashboard {
 
     public function makeLineGraph($lines) {
         $html = "";
+        $saveDiv = REDCapManagement::makeSaveDiv("canvas", TRUE);
 
         $html .= "<script src='".Application::link("js/Chart.min.js")."'></script>\n";
 
-        $html .= "<canvas id='canvas' class='chartjs-render-monitor' style='display: block; width: 700px; height: 350px;'></canvas>\n";
+        $canvasId = "lineCanvas";
+        $html .= "<canvas id='$canvasId' class='chartjs-render-monitor' style='display: block; width: 700px; height: 350px;'></canvas>\n";
 
         $html .= "<script>\n";
         $xs = array();
@@ -123,7 +125,12 @@ class Dashboard {
     }\n";
         $html .= "\t};\n";
 
-        $html .= "window.onload = function() { var ctx = document.getElementById('canvas').getContext('2d'); window.myLine = new Chart(ctx, config); };\n";
+        $html .= "
+        window.onload = function() { const ctx = document.getElementById('$canvasId').getContext('2d'); window.myLine = new Chart(ctx, config); };
+        $(document).ready(function() {
+            $('#$canvasId').parent().append(\"$saveDiv\");
+        });
+";
 
         $html .= "</script>\n";
 

@@ -379,11 +379,11 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
                 $html .= "<td class='green'>Matched: $uid<br>$yesno</td>";
             } else {
                 $radios = [];
-                $selected = " checked";
+                $noId = "mentor___$i" . "___no";
+                $radios[] = "<input type='radio' name='mentor___$i' id='$noId' value='' checked /> <label for='$noId'>None of the Above</label>";
                 foreach ($currMentorUids as $uid => $mentorName) {
                     $id = "mentor___" . $i . "___" . $uid;
-                    $radios[] = "<input type='radio' name='mentor___$i' id='$id' value='$uid'$selected> <label for='$id'>$mentorName ($uid)</label>";
-                    $selected = "";
+                    $radios[] = "<input type='radio' name='mentor___$i' id='$id' value='$uid' /> <label for='$id'>$mentorName ($uid)</label>";
                 }
                 $radios[] = $customRadio." ".$customLine;
                 $html .= "<td class='yellow'>" . implode("<br>", $radios) . "</td>";

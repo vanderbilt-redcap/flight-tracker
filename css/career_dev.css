@@ -102,7 +102,7 @@ canvas { background-color: white; margin-top: 25px; }
 li.nobullets { list-style: none; }
 .nowrap { white-space: nowrap; }
 .centeredMinus50 { text-align: center; width: 50%; }
-.max-width { margin: 0 auto; max-width: 800px; }
+.max-width { margin-left: auto; margin-right: auto; max-width: 800px; }
 table.bordered tr td,table.bordered tr th { border: 1px solid #888; }
 table.bordered { border-collapse: collapse; }
 .action_required { color: red; font-weight: bold; }

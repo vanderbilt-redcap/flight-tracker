@@ -1009,10 +1009,10 @@ class Citation {
 	    return "";
     }
 
-	public function getCitationWithLink($includeREDCapLink = TRUE, $newTarget = FALSE) {
+	public function getCitationWithLink($includeREDCapLink = TRUE, $newTarget = FALSE, $namesToBold = []) {
 		global $pid, $event_id;
 
-        $base = $this->getCitation();
+        $base = $this->getCitation($namesToBold);
         if ($this->getVariable("data_source") == "eric") {
             $fullTextURL = $this->getVariable("e_fulltext");
             $locationText = $fullTextURL ? " ".Links::makeLink($fullTextURL, "Full Text", $newTarget) : "";

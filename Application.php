@@ -402,6 +402,14 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
         return $defaultLink;
     }
 
+    public static function isCopiedProject($tokenOrPid = "") {
+        return CareerDev::isCopiedProject($tokenOrPid);
+    }
+
+    public static function getSourcePid($destPid) {
+        return CareerDev::getSourcePid($destPid);
+    }
+
     public static function getDefaultVanderbiltMenteeAgreementLink() {
 	    return "https://medschool.vanderbilt.edu/msci/current-trainees/resources-for-funding-research-and-grant-assistance/";
     }
@@ -895,6 +903,8 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
         "custom_title",
         "custom_number",
         "custom_type",
+        "custom_start",
+        "custom_end",
         "custom_org",
         "custom_recipient_org",
         "custom_role",

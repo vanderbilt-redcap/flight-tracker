@@ -175,8 +175,6 @@ class Scholar {
             }
         }
         return new Result("", "");
-
-return $result;
     }
 
     public function lookupEmail($rows) {
@@ -2633,9 +2631,9 @@ return $result;
 		foreach ($vars as $var => $source) {
 			$splitVar = explode("/", $var);
 			foreach ($rows as $row) {
-				if ((isset($row[$var]) && $row[$var]) || ((count($splitVar) > 1) && isset($row[$splitVar[0]]) && $row[$splitVar[0]] && isset($row[$splitVar[1]]) && $row[$splitVar[1]])) {
+				if ((isset($row[$var]) && ($row[$var] !== "")) || ((count($splitVar) > 1) && isset($row[$splitVar[0]]) && $row[$splitVar[0]] && isset($row[$splitVar[1]]) && $row[$splitVar[1]])) {
 				    if ($showDebug) {
-				        if ($row[$var]) {
+				        if ($row[$var] !== "") {
 				            Application::log("Found at $var: ".$row[$var]);
                         } else if (count($splitVar) > 1) {
                             Application::log("Found at {$splitVar[0]}: ".$row[$splitVar[0]]." and {$splitVar[1]}: ".$row[$splitVar[1]]);
@@ -3372,6 +3370,19 @@ return $result;
 		$disadvValue = $this->getDisadvantagedStatus($rows)->getValue();
 		$disabilityValue = $this->getDisabilityStatus($rows)->getValue();
 
+        $presetURM = REDCapManagement::findField($rows, $this->recordId, "imported_urm");
+        if ($presetURM !== "") {
+            $value = "";
+            if ($presetURM === "1") {
+                $value = "1";
+            } else if ($presetURM === "0") {
+                $value = "0";
+            }
+            if ($value !== "") {
+                return new Result($value, "manual", "Manually Entered", "", $this->pid);
+            }
+        }
+
 		$minorities = array(2, 3, 4, 6, 8, 9, 10);
 		$value = "0";
 		if (($raceEthnicityValue === "") && ($disadvValue === "") && ($disabilityValue === "")) {
@@ -3387,7 +3398,7 @@ return $result;
 			$value = "1";
 		}
         if ($this->isMSTP()) {
-            $isURM = REDCapManagement::findField($rows, $this->recordId, "mstrp_status___1");
+            $isURM = REDCapManagement::findField($rows, $this->recordId, "mstp_status___1");
             if ($isURM) {
                 $value = "1";
             } else if (($isURM === "0") && ($value === "")) {
@@ -3404,7 +3415,7 @@ return $result;
 		if ($result->getValue() == 1) {
 			# Yes
 			$value = "1";
-		} else if ($result->getValue() == 2) {
+        } else if (in_array($result->getValue(), [0, 2])) {
 			# No
 			$value = "0";
 		} else {
@@ -3433,7 +3444,7 @@ return $result;
 		if ($result->getValue() == 1) {
 			# Yes
 			$value = "1";
-		} else if ($result->getValue() == 2) {
+		} else if (in_array($result->getValue(), [0, 2])) {
 			# No
 			$value = "0";
 		} else {
