@@ -56,7 +56,7 @@ class ReactNIHTables {
         $name = Sanitizer::sanitize($post['name'] ?? "");
         $savedName = Sanitizer::sanitize($post['savedName'] ?? "");
         $dateOfReport = Sanitizer::sanitize($post['dateOfReport']);
-        $customMessage = str_replace('[Relevant Table Rows]', '', Sanitizer::sanitizeWithoutStrippingHTML($post['mssg'], FALSE));
+        $subject = Sanitizer::sanitizeWithoutChangingQuotes($post['subject'] ?? "NIH Training Tables");
         $from = Sanitizer::sanitize($post['from']);
         if (!REDCapManagement::isEmail($from)) {
             return ["error" => "Improper from email"];
@@ -80,10 +80,10 @@ td.odd { background-color: #ffffff; }
 td.even { background-color: #eeeeee; }
 table { border-collapse: collapse; }
 </style>";
-        $mssg .= $customMessage;
         $numRows = 0;
         $numTables = 0;
         # table 3 is made in the React layer
+        $tableHTML = "";
         if ($tableNum != 3) {
             foreach ($dataRows as $tableNum => $tableData) {
                 if (count($tableData['data']) > 0) {
@@ -91,31 +91,32 @@ table { border-collapse: collapse; }
                     $numTables++;
                     $tableHeader = $tableData['title'];
                     $headers = $tableData["headerList"];
-                    $mssg .= "<h2>$tableHeader</h2>";
-                    $mssg .= "<table style='text-align: center;'>";
-                    $mssg .= "<thead><tr>";
+                    $tableHTML .= "<h2>$tableHeader</h2>";
+                    $tableHTML .= "<table style='text-align: center;'>";
+                    $tableHTML .= "<thead><tr>";
                     foreach ($headers as $header) {
-                        $mssg .= "<th>$header</th>";
+                        $tableHTML .= "<th>$header</th>";
                     }
-                    $mssg .= "</tr></thead>";
-                    $mssg .= "<tbody>";
+                    $tableHTML .= "</tr></thead>";
+                    $tableHTML .= "<tbody>";
                     $i = 0;
                     foreach ($tableData['data'] as $row) {
                         $rowClass = ($i % 2 == 1) ? "odd" : "even";
-                        $mssg .= "<tr>";
+                        $tableHTML .= "<tr>";
                         foreach ($headers as $header) {
-                            $mssg .= "<td class='$rowClass'>".$row[$header]."</td>";
+                            $tableHTML .= "<td class='$rowClass'>".$row[$header]."</td>";
                         }
-                        $mssg .= "</tr>";
+                        $tableHTML .= "</tr>";
                         $i++;
                     }
-                    $mssg .= "</tbody>";
-                    $mssg .= "</table><br><br>";
+                    $tableHTML .= "</tbody>";
+                    $tableHTML .= "</table><br/><br/>";
                 }
             }
         } else {
             $numTables = 1;
         }
+        $mssg .= preg_replace('/\[Relevant Table .* Rows\]/', $tableHTML, Sanitizer::sanitizeWithoutStrippingHTML($post['mssg'], FALSE));
         $data = [];
         if (($numRows > 0) || ($tableNum == 3)) {
             $thisLink = Application::link("this", $this->pid);
@@ -130,7 +131,6 @@ table { border-collapse: collapse; }
             $mssg .= "<p style='margin-top: 0;'>(If you answer No, you will be given a chance to correct or add individual entries.)</p>";
             $spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
             $mssg .= "<p><a href='$yesLink'>Yes</a>$spacing<a href='$noLink'>No</a></p>";
-            $subject = "NIH Training Tables";
             // TODO \REDCap::email($email, $from, $subject, $mssg);
             \REDCap::email("scott.j.pearson@vumc.org", $from, "$email: $subject", $mssg);
             $data["mssg"] = "Email with $numTables $tableName sent to $email";

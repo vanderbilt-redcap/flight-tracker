@@ -388,19 +388,17 @@ function decodeEmail($str) {
 function translatePostToEmailSetting($post) {
 	$emailSetting = EmailManager::getBlankSetting();
 
-	$settingName = "";
-	if ($post['name']) {
-		$settingName = $post['name'];
-	} else {
+	$settingName = $post['name'] ?: "";
+    if (!$settingName) {
 		return ["A name for the setting was not specified", "", EmailManager::getBlankSetting()];
 	}
 
-	if ($post['enabled'] == "true") {
+	if (isset($post['enabled']) && ($post['enabled'] == "true")) {
 		$emailSetting["enabled"] = TRUE;
 	}
 
 	# WHO
-	if ($post['recipient']) {
+	if (isset($post['recipient'])) {
 		if ($post['recipient'] == 'individuals') {
 			$checkedEmails = array();
 			foreach ($post as $key => $value) {
@@ -418,14 +416,14 @@ function translatePostToEmailSetting($post) {
 	} else {
 		return ["No recipient is specified", "", EmailManager::getBlankSetting()];
 	}
-	if ($post['recipient'] == "filtered_group") {
+	if (isset($post['recipient']) && ($post['recipient'] == "filtered_group")) {
 		if ($post['filter']) {
 			$emailSetting["who"]["filter"] = $post["filter"];
 		} else {
 			return ["The Filter for Some vs. All was not specified", "", EmailManager::getBlankSetting()];
 		}
-		if ($post["survey_complete"]) {
-			if ($post["last_complete_months"] && ($post["survey_complete"] == "yes")) {
+		if (isset($post["survey_complete"])) {
+			if (isset($post["last_complete_months"]) && ($post["survey_complete"] == "yes")) {
                 $emailSetting["who"]["none_complete"] = "false";
 				$emailSetting["who"]["last_complete"] = $post["last_complete_months"];
             } else if ($post["survey_complete"] == "no") {
@@ -437,26 +435,27 @@ function translatePostToEmailSetting($post) {
 				return ["The Months were not specified", "", EmailManager::getBlankSetting()];
 			}
 		}
-		if ($post["max_emails"]) {
+		if (isset($post["max_emails"])) {
 			$emailSetting["who"]["max_emails"] = $post["max_emails"];
 		}
-        if (($post['newRecords'] == "new") && $post['new_records_since']) {
+        if (isset($post['newRecords']) && ($post['newRecords'] == "new") && isset($post['new_records_since'])) {
             $emailSetting["who"]["new_records_since"] = $post["new_records_since"];
         }
-		if ($post["r01_or_equiv"]) {
+		if (isset($post["r01_or_equiv"])) {
 			$emailSetting["who"]["converted"] = $post["r01_or_equiv"];
-		}if ($post['trainee_class']) {
+		}
+        if (isset($post['trainee_class'])) {
 		    $emailSetting["who"]["trainee_class"] = $post['trainee_class'];
         }
 	}
-	if ($post["from"]) {
+	if (isset($post["from"])) {
 		$emailSetting["who"]["from"] = $post["from"];
 	} else {
 		return ["From address is not specified", "", EmailManager::getBlankSetting()];
 	}
 
 	# WHAT
-	if ($post["message"] && $post["subject"]) {
+	if (isset($post["message"]) && isset($post["subject"])) {
 		$emailSetting["what"]["message"] = $post["message"];
 		$emailSetting["what"]["subject"] = $post["subject"];
 	} else {
@@ -464,12 +463,12 @@ function translatePostToEmailSetting($post) {
 	}
 
 	# WHEN
-	if ($post["initial_time"]) {
+	if (isset($post["initial_time"])) {
 		$emailSetting["when"]["initial_time"] = $post['initial_time'];
 	} else {
 		return ["The time for Initial Survey was not specified", "", EmailManager::getBlankSetting()];
 	}
-	if ($post["followup_time"]) {
+	if (isset($post["followup_time"])) {
 		$emailSetting["when"]["followup_time"] = $post['followup_time'];
 	}
 

@@ -34,6 +34,8 @@ function getERIC($token, $server, $pid, $records) {
     $maxRowCount = 2000;     // limit set by ERIC at 2000
     $maxIterations = 20;
     $priorIds = Download::oneFieldWithInstances($token, $server, "eric_id");
+    $priorERICTitles = Download::oneFieldWithInstances($token, $server, "eric_title");
+    $priorPubMedTitles = Download::oneFieldWithInstances($token, $server, "citation_title");
     foreach ($intersectedRecords as $recordId) {
         $firstName = $firstNames[$recordId] ?: "";
         $lastName = $lastNames[$recordId] ?: "";
@@ -42,6 +44,7 @@ function getERIC($token, $server, $pid, $records) {
         }
         $upload = [];
         $priorIdsForRecord = $priorIds[$recordId] ?? [];
+        $listOfPriorTitles = array_merge(array_values($priorERICTitles[$recordId] ?? []), array_values($priorPubMedTitles[$recordId] ?? []));
         $maxInstance = empty($priorIdsForRecord) ? 0 : max(array_keys($priorIdsForRecord));
         $listOfPriorIds = array_values($priorIdsForRecord);
 
@@ -60,7 +63,7 @@ function getERIC($token, $server, $pid, $records) {
                         $numFound = $returnData["response"]["numFound"] ?? 0;
                         $runAgain = ($numFound == $maxRowCount);
                         $docs = $returnData["response"]["docs"] ?? [];
-                        $newRows = ERIC::process($docs, $metadata, $recordId, $listOfPriorIds, $maxInstance);
+                        $newRows = ERIC::process($docs, $metadata, $recordId, $listOfPriorIds, $listOfPriorTitles, $maxInstance);
                         $upload = array_merge($upload, $newRows);
                     } else {
                         $runAgain = FALSE;

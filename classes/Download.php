@@ -507,20 +507,17 @@ class Download {
                 }
                 Application::log("sendToServer: ".$pid." REDCap::getData $numFields fields $numRecords records", $pid);
             }
-            // $module = Application::getModule();
-            // if (Application::isVanderbilt() && (ExternalModules::getFrameworkVersion($module) >= 7) && !Application::isPluginProject()) {
-                // if (!$fields) {
-                    // $fields = self::metadataFields($token, $server);
-                // }
-                // $output = $module->getData($pid, "json", $records, $fields);
-                // $method = "queryData";
-                // $resp = "queryData";
-            // } else {
-            $output = \REDCap::getData($pid, "json", $records, $fields);
-            $resp = "getData";
-            $method = "getData";
-            // }
-            $redcapData = json_decode($output, true);
+            if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
+                $output = "Done";    // to turn off retry
+                $redcapData = \REDCap::getData($pid, "json-array", $records, $fields);
+                $resp = "getData-array";
+                $method = "getData-array";
+            } else {
+                $output = \REDCap::getData($pid, "json", $records, $fields);
+                $resp = "getData";
+                $method = "getData";
+                $redcapData = json_decode($output, true);
+            }
             if (isset($_GET['test'])) {
                 Application::log("sendToServer: ".$pid." $method done with ".count($redcapData)." rows", $pid);
             }

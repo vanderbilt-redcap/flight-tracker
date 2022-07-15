@@ -488,7 +488,11 @@ public static function metadata($metadata, $token, $server) {
             echo "Non-numeric pid $pid\n";
             die();
         }
-        $feedback = \REDCap::saveData($pid, "json", json_encode($rows), "overwrite");
+        if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
+            $feedback = \REDCap::saveData($pid, "json-array", $rows, "overwrite");
+        } else {
+            $feedback = \REDCap::saveData($pid, "json", json_encode($rows), "overwrite");
+        }
         $output = json_encode($feedback);
         self::testFeedback($feedback, $output, FALSE);
         return $feedback;
@@ -538,11 +542,11 @@ public static function metadata($metadata, $token, $server) {
 				$currRows = array();
 				$j = $i;
 				while (($j < $i + self::getRowLimit()) && ($j < count($rows))) {
-					array_push($currRows, $rows[$j]);
+					$currRows[] = $rows[$j];
 					$j++;
 				}
 				if (!empty($currRows)) {
-					array_push($rowsOfRows, $currRows);
+					$rowsOfRows[] = $currRows;
 				}
 				$i += self::getRowLimit();
 			}
@@ -567,7 +571,6 @@ public static function metadata($metadata, $token, $server) {
 				'format' => 'json',
 				'type' => 'flat',
 				'overwriteBehavior' => 'overwrite',
-				'data' => json_encode($rows),
 				'returnContent' => 'count',
 				'returnFormat' => 'json'
 				);
@@ -579,7 +582,11 @@ public static function metadata($metadata, $token, $server) {
 				$method = "saveData";
 				$time2 = microtime(TRUE);
 				if (method_exists("\\REDCap", "saveData")) {
-				    $feedback = \REDCap::saveData($pid, "json", $data['data'], $data['overwriteBehavior']);
+                    if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
+                        $feedback = \REDCap::saveData($pid, "json-array", $rows, $data['overwriteBehavior']);
+                    } else {
+                        $feedback = \REDCap::saveData($pid, "json", json_encode($rows), $data['overwriteBehavior']);
+                    }
                     $time3 = microtime(TRUE);
                     $output = json_encode($feedback);
                     self::testFeedback($feedback, $output, NULL);
@@ -587,6 +594,7 @@ public static function metadata($metadata, $token, $server) {
                 }
 			}
 			if ($runAPI) {
+                $data['data'] = json_encode($rows);
 				$method = "API";
 				$ch = curl_init();
 				curl_setopt($ch, CURLOPT_URL, $server);

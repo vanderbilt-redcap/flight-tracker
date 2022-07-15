@@ -249,6 +249,9 @@ if (isset($_GET['plain'])) {
     echo implode("", $entries);
     echo "<br><br>";
 } else {
+    echo "<style>";
+    echo ".tooltip .tooltiptext { width: 300px; }\n";
+    echo "</style>";
     echo "<h3>Legend</h3>";
     echo "<table class='noBorderCollapse'>";
     echo "<tr><td class='spacer'></td></tr>";
@@ -420,7 +423,7 @@ function printRowsForRecord($recordId, $fields, $token, $server, $pid, $grantRea
             $date = "<div class='date'>" . convertToMDY($grant->getVariable("start")) . "</div>";
             $date .= "<div class='source'>" . $grant->getVariable("source") . "</div>";
             if ($grant->getVariable("type") != "N/A") {
-                $type = "<div class='type'>" . $grant->getVariable("type") . "</div>";
+                $type = "<div class='type'>" . shortenLongerTypes($grant->getVariable("type")) . "</div>";
             } else {
                 $type = "<div class='type'>Generic Award</div>";
             }
@@ -504,4 +507,11 @@ function printRowsForRecord($recordId, $fields, $token, $server, $pid, $grantRea
         echo "<tr><td class='timelineCell'><iframe class='timeline' id='timeline_$recordId' style='display: none;'></iframe></td></tr>";
     }
     echo "<tr><td class='spacer'></td></tr>";
+}
+
+function shortenLongerTypes($type) {
+    if ($type == "Mentoring/Training Grant Admin") {
+        return "Mentoring Admin";
+    }
+    return $type;
 }

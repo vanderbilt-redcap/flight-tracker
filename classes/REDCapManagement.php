@@ -727,7 +727,8 @@ class REDCapManagement {
 	        throw new \Exception("Mime Type unsupported: $mimeType");
         }
 	    if ($type == "svg") {
-            return "<div class='alignright $extraDiv'><button class='smallest' onclick='const svg = $(this).parent().parent().find(\\\"svg\\\").prop(\\\"outerHTML\\\"); svg2Image(svg, 0, \\\"#ffffff\\\", $canvasFunc); return false;'>Save</button></div>";
+            $europaWOFFLocation = Application::link("fonts/EuropaNuovaRegular.woff");
+            return "<div class='alignright $extraDiv'><button class='smallest' onclick='const svg = $(this).parent().parent().find(\\\"svg\\\").prop(\\\"outerHTML\\\"); svg2Image(svg, 0, \\\"#ffffff\\\", $canvasFunc, \\\"europa\\\", \\\"$europaWOFFLocation\\\"); return false;'>Save</button></div>";
         } else if ($type == "canvas") {
             return "<div class='alignright $extraDiv'><button class='smallest' onclick='const c = $(this).parent().parent().find(\\\"canvas\\\").get(0); const dataurl = $canvasFunc(c); forceDownloadUrl(dataurl, \\\"chart.$suffix\\\"); return false;'>Save</button></div>";
         } else {

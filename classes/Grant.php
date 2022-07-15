@@ -1099,95 +1099,857 @@ class Grant {
 		return "";
 	}
 
+    public static function getFundingInstituteAbbreviation($awardNo) {
+        return self::getFundingInstitute($awardNo, TRUE);
+    }
+
 	# https://www.nlm.nih.gov/bsd/grant_acronym.html
-	private static function getFundingInstitute($awardNo) {
+	public static function getFundingInstitute($awardNo, $abbreviated = FALSE) {
 		$instituteCode = self::getInstituteCode($awardNo);
 		switch ($instituteCode) {
-			case "TW":
-				return "John E. Fogarty International Center";
-				break;
-			case "TR":
-				return "National Center for Advancing Translational Sciences (NCATS)";
-				break;
-			case "AT":
-				return "National Center for Complementary and Integrative Health";
-				break;
-			case "CA":
-				return "National Cancer Institute";
-				break;
-			case "EY":
-				return "National Eye Institute";
-				break;
-			case "HG":
-				return "National Human Genome Research Institute";
-				break;
-			case "HL":
-				return "National Heart, Lung, and Blood Institute";
-				break;
-			case "AG":
-				return "National Institute on Aging";
-				break;
-			case "AA":
-				return "National Institute on Alcohol Abuse and Alcoholism";
-				break;
-			case "AI":
-				return "National Institute of Allergy and Infectious Diseases";
-				break;
-			case "AR":
-				return "National Institute of Arthritis and Musculoskeletal and Skin Diseases"; 
-				break;
-			case "EB":
-				return "National Institute of Biomedical Imaging and Bioengineering";
-				break;
-			case "HD":
-				return "Eunice Kennedy Shriver National Institute of Child Health and Human Development";
-				break;
-			case "DA":
-				return "National Institute on Drug Abuse";
-				break;
-			case "DC":
-				return "National Institute on Deafness and Other Communication Disorders";
-				break;
-			case "DE":
-				return "National Institute of Dental and Craniofacial Research";
-				break;
-			case "DK":
-				return "National Institute of Diabetes and Digestive and Kidney Diseases";
-				break;
-			case "ES":
-				return "National Institute of Environmental Health Sciences";
-				break;
-			case "GM":
-				return "National Institute of General Medical Sciences";
-				break;
-			case "MH":
-				return "National Institute of Mental Health";
-				break;
-			case "MD":
-				return "National Institute on Minority Health and Health Disparities";
-				break;
-			case "NS":
-				return "National Institute of Neurological Disorders and Stroke";
-				break;
-			case "NR":
-				return "National Institute of Nursing Research";
-				break;
-			case "LM":
-				return "National Library of Medicine";
-				break;
-			case "BX":
-				return "Veterans Administration";
-				break;
-			case "CX":
-				return "Veterans Administration";
-				break;
-			case "XW":
-				return "Department of Defense";
-			default:
-				return "";
-				break;
-		}
-	}
+            case "NH":
+                if ($abbreviated) {
+                    return "NIH";
+                } else {
+                    return "National Institutes of Health";
+                }
+            case "AA":
+                if ($abbreviated) {
+                    return "NIAAA";
+                } else {
+                    return "National Institute on Alcohol Abuse and Alcoholism";
+                }
+            case "AG":
+                if ($abbreviated) {
+                    return "NIA";
+                } else {
+                    return "National Institute on Aging";
+                }
+            case "AI":
+                if ($abbreviated) {
+                    return "NIAID";
+                } else {
+                    return "National Institute of Allergy and Infectious Diseases Extramural Activities";
+                }
+            case "AO":
+                if ($abbreviated) {
+                    return "NIAID";
+                } else {
+                    return "National Institute of Allergy and Infectious Diseases Research Support";
+                }
+            case "AM":
+                if ($abbreviated) {
+                    return "NIADDK";
+                } else {
+                    return "National Institute of Arthritis, Diabetes, and Digestive and Kidney Diseases";
+                }
+            case "AR":
+                if ($abbreviated) {
+                    return "NIAMS";
+                } else {
+                    return "National Institute of Arthritis and Musculoskeletal and Skin Diseases";
+                }
+            case "AT":
+                if ($abbreviated) {
+                    return "NCCIH";
+                } else {
+                    return "National Center for Complementary and Integrative Health";
+                }
+            case "CA":
+                if ($abbreviated) {
+                    return "NCI";
+                } else {
+                    return "National Cancer Institute";
+                }
+            case "CO":
+                if ($abbreviated) {
+                    return "NCI";
+                } else {
+                    return "NCI Office of the Director";
+                }
+            case "BC":
+                if ($abbreviated) {
+                    return "NCI";
+                } else {
+                    return "NCI Division of Basic Sciences";
+                }
+            case "CN":
+                if ($abbreviated) {
+                    return "NCI";
+                } else {
+                    return "NCI Division of Cancer Prevention and Control";
+                }
+            case "CB":
+                if ($abbreviated) {
+                    return "NCI";
+                } else {
+                    return "NCI Division of Cancer Biology and Diagnosis";
+                }
+            case "CP":
+                if ($abbreviated) {
+                    return "NCI";
+                } else {
+                    return "NCI Division of Cancer Epidemiology and Genetics";
+                }
+            case "CM":
+                if ($abbreviated) {
+                    return "NCI";
+                } else {
+                    return "NCI Division of Cancer Treatment";
+                }
+            case "PC":
+                if ($abbreviated) {
+                    return "NCI";
+                } else {
+                    return "NCI Division of Cancer Control and Population Science";
+                }
+            case "SC":
+                if ($abbreviated) {
+                    return "NCI";
+                } else {
+                    return "NCI Division of Clinical Sciences";
+                }
+            case "CL":
+                if ($abbreviated) {
+                    return "CLC";
+                } else {
+                    return "Clinical Center";
+                }
+            case "CT":
+                if ($abbreviated) {
+                    return "CIT";
+                } else {
+                    return "Center for Information Technology";
+                }
+            case "DA":
+                if ($abbreviated) {
+                    return "NIDA";
+                } else {
+                    return "National Institute on Drug Abuse";
+                }
+            case "DC":
+                if ($abbreviated) {
+                    return "NIDCD";
+                } else {
+                    return "National Institute on Deafness and other Communication Disorders";
+                }
+            case "DE":
+                if ($abbreviated) {
+                    return "NIDCR";
+                } else {
+                    return "National Institute of Dental and Craniofacial Research";
+                }
+            case "DK":
+                if ($abbreviated) {
+                    return "NIDDK";
+                } else {
+                    return "National Institute of Diabetes and Digestive and Kidney Diseases";
+                }
+            case "DS":
+                if ($abbreviated) {
+                    return "DS";
+                } else {
+                    return "Division of Safety, Office of Research Services";
+                }
+            case "EB":
+                if ($abbreviated) {
+                    return "NIBIB";
+                } else {
+                    return "National Institute of Biomedical Imaging and Bioengineering";
+                }
+            case "ES":
+                if ($abbreviated) {
+                    return "NIEHS";
+                } else {
+                    return "National Institute of Environmental Health Sciences";
+                }
+            case "EY":
+                if ($abbreviated) {
+                    return "NEI";
+                } else {
+                    return "National Eye Institute";
+                }
+            case "GF":
+                if ($abbreviated) {
+                    return "NIH";
+                } else {
+                    return "Gift Fund";
+                }
+            case "GM":
+                if ($abbreviated) {
+                    return "NIGMS";
+                } else {
+                    return "National Institute of General Medical Sciences";
+                }
+            case "GW":
+                if ($abbreviated) {
+                    return "GAS";
+                } else {
+                    return "Genome Association Studies";
+                }
+            case "HD":
+                if ($abbreviated) {
+                    return "NICHD";
+                } else {
+                    return "National Institute of Child Health and Human Development";
+                }
+            case "HG":
+                if ($abbreviated) {
+                    return "NHGRI";
+                } else {
+                    return "National Human Genome Research Institute";
+                }
+            case "HL":
+                if ($abbreviated) {
+                    return "NHLBI";
+                } else {
+                    return "National Heart, Lung, and Blood Institute";
+                }
+            case "HV":
+                if ($abbreviated) {
+                    return "NHLBI";
+                } else {
+                    return "NHLBI Division of Heart and Vascular Diseases";
+                }
+            case "HB":
+                if ($abbreviated) {
+                    return "NHLBI";
+                } else {
+                    return "NHLBI Division of Blood Diseases and Resources";
+                }
+            case "HR":
+                if ($abbreviated) {
+                    return "NHLBI";
+                } else {
+                    return "NHLBI Division of Lung Diseases";
+                }
+            case "HI":
+                if ($abbreviated) {
+                    return "NHLBI";
+                } else {
+                    return "NHLBI Division of Intramural Research";
+                }
+            case "HO":
+                if ($abbreviated) {
+                    return "NHLBI";
+                } else {
+                    return "NHLBI Office of the Director";
+                }
+            case "HC":
+                if ($abbreviated) {
+                    return "NHLBI";
+                } else {
+                    return "NHLBI Division of Epidemiology and Clinical Applications";
+                }
+            case "JT":
+                if ($abbreviated) {
+                    return "NIH";
+                } else {
+                    return "Joint Grant and Contract Sponsorship";
+                }
+            case "LM":
+                if ($abbreviated) {
+                    return "NLM";
+                } else {
+                    return "National Library of Medicine";
+                }
+            case "MD":
+                if ($abbreviated) {
+                    return "NIMHD";
+                } else {
+                    return "National Institute on Minority Health and Health Disparities";
+                }
+            case "MH":
+                if ($abbreviated) {
+                    return "NIMH";
+                } else {
+                    return "National Institute of Mental Health";
+                }
+            case "NB":
+                if ($abbreviated) {
+                    return "NB";
+                } else {
+                    return "Neuroscience Blueprint";
+                }
+            case "NR":
+                if ($abbreviated) {
+                    return "NINR";
+                } else {
+                    return "National Institute of Nursing Research";
+                }
+            case "NS":
+                if ($abbreviated) {
+                    return "NINDS";
+                } else {
+                    return "National Institute of Neurological Disorders and Stroke";
+                }
+            case "OD":
+                if ($abbreviated) {
+                    return "NIH";
+                } else {
+                    return "Office of the Director";
+                }
+            case "OF":
+                if ($abbreviated) {
+                    return "ORFDO";
+                } else {
+                    return "Office of Research Facilities Development and Operations";
+                }
+            case "OL":
+                if ($abbreviated) {
+                    return "OLAO";
+                } else {
+                    return "Office of Logistics and Acquisition Operations";
+                }
+            case "OP":
+                if ($abbreviated) {
+                    return "OppNet";
+                } else {
+                    return "NIH Basic Behavioral and Social Science Opportunity Network";
+                }
+            case "OR":
+                if ($abbreviated) {
+                    return "ORS";
+                } else {
+                    return "Office of Research Services";
+                }
+            case "RA":
+                if ($abbreviated) {
+                    return "ARRA";
+                } else {
+                    return "American Reinvestment and Recovery Act of 2009";
+                }
+            case "RC":
+                if ($abbreviated) {
+                    return "CCR";
+                } else {
+                    return "Center for Cancer Research";
+                }
+            case "RG":
+                if ($abbreviated) {
+                    return "CSR";
+                } else {
+                    return "Center for Scientific Review";
+                }
+            case "RI":
+                if ($abbreviated) {
+                    return "ORIP";
+                } else {
+                    return "Office of Research Infrastructure Programs";
+                }
+            case "RM":
+                if ($abbreviated) {
+                    return "RMOD";
+                } else {
+                    return "NIH Roadmap Initiative, Office of the Director";
+                }
+            case "RR":
+                if ($abbreviated) {
+                    return "NCRR";
+                } else {
+                    return "National Center for Research Resources";
+                }
+            case "RS":
+                if ($abbreviated) {
+                    return "DRS";
+                } else {
+                    return "Division of Research Services";
+                }
+            case "SF":
+                if ($abbreviated) {
+                    return "SBRP";
+                } else {
+                    return "Superfund Basic Research Program";
+                }
+            case "TR":
+                if ($abbreviated) {
+                    return "NCATS";
+                } else {
+                    return "National Center for Advancing Translational Sciences";
+                }
+            case "TW":
+                if ($abbreviated) {
+                    return "FIC";
+                } else {
+                    return "Fogarty International Center";
+                }
+            case "WH":
+                if ($abbreviated) {
+                    return "WHI";
+                } else {
+                    return "Women's Health Initiative";
+                }
+            case "WT":
+                if ($abbreviated) {
+                    return "WETP";
+                } else {
+                    return "Worker Education Training Program";
+                }
+            case "HS":
+                if ($abbreviated) {
+                    return "AHRQ";
+                } else {
+                    return "Agency for Healthcare Research and Quality";
+                }
+            case "AD":
+                if ($abbreviated) {
+                    return "ADAMHA";
+                } else {
+                    return "Alcohol, Drug Abuse, and Mental Health Administration";
+                }
+            case "CC":
+                if ($abbreviated) {
+                    return "CDC";
+                } else {
+                    return "Centers for Disease Control and Prevention";
+                }
+            case "CD":
+                if ($abbreviated) {
+                    return "ODCDC";
+                } else {
+                    return "Office of the Director";
+                }
+            case "CE":
+                if ($abbreviated) {
+                    return "NCIPC";
+                } else {
+                    return "National Center for Injury Prevention and Control";
+                }
+            case "CH":
+                if ($abbreviated) {
+                    return "OID";
+                } else {
+                    return "Office of Infectious Disease";
+                }
+            case "CI":
+                if ($abbreviated) {
+                    return "NCPDCID";
+                } else {
+                    return "National Center for Preparedness, Detection, and Control of Infectious Diseases";
+                }
+            case "CK":
+                if ($abbreviated) {
+                    return "NCEZID";
+                } else {
+                    return "National Center for Emerging and Zoonotic Infectious Diseases";
+                }
+            case "DD":
+                if ($abbreviated) {
+                    return "NCBDD";
+                } else {
+                    return "National Center on Birth Defects and Developmental Disabilities";
+                }
+            case "DP":
+                if ($abbreviated) {
+                    return "NCCDPHP";
+                } else {
+                    return "National Center for Chronic Disease Prevention and Health Promotion";
+                }
+            case "EH":
+                if ($abbreviated) {
+                    return "NCEH";
+                } else {
+                    return "National Center for Environmental Health";
+                }
+            case "EP":
+                if ($abbreviated) {
+                    return "EAPO";
+                } else {
+                    return "Epidemiology and Analytic Methods Program Office";
+                }
+            case "GD":
+                if ($abbreviated) {
+                    return "OGDP";
+                } else {
+                    return "Office of Genomics and Disease Prevention";
+                }
+            case "GH":
+                if ($abbreviated) {
+                    return "CGH";
+                } else {
+                    return "Center for Global Health";
+                }
+            case "HK":
+                if ($abbreviated) {
+                    return "PHITPO";
+                } else {
+                    return "Public Health Informatics and Technology Program Office";
+                }
+            case "HM":
+                if ($abbreviated) {
+                    return "NCHM";
+                } else {
+                    return "National Center for Health Marketing";
+                }
+            case "HY":
+                if ($abbreviated) {
+                    return "OHS";
+                } else {
+                    return "Office of Health and Safety";
+                }
+            case "IP":
+                if ($abbreviated) {
+                    return "NCIRD";
+                } else {
+                    return "National Center for Immunization and Respiratory Diseases";
+                }
+            case "LS":
+                if ($abbreviated) {
+                    return "LSPPPO";
+                } else {
+                    return "Laboratory Science, Policy, and Practice Program Office";
+                }
+            case "MN":
+                if ($abbreviated) {
+                    return "OMHHE";
+                } else {
+                    return "Office of Minority Health and Health Equity";
+                }
+            case "ND":
+                if ($abbreviated) {
+                    return "ONDIEH";
+                } else {
+                    return "Office of Non-communicable Diseases, Injury, and Environmental Health";
+                }
+            case "OE":
+                if ($abbreviated) {
+                    return "OSELS";
+                } else {
+                    return "Office of Surveillance, Epidemiology and Laboratory Services";
+                }
+            case "OH":
+                if ($abbreviated) {
+                    return "NIOSH";
+                } else {
+                    return "National Institute for Occupational Safety and Health";
+                }
+            case "OT":
+                if ($abbreviated) {
+                    return "OSTLTS";
+                } else {
+                    return "Office for State, Tribal, and Local and Territorial Support";
+                }
+            case "OW":
+                if ($abbreviated) {
+                    return "OWH";
+                } else {
+                    return "Office of Women’s Health";
+                }
+            case "PH":
+                if ($abbreviated) {
+                    return "PHPPO";
+                } else {
+                    return "Public Health Practice Program Office";
+                }
+            case "PR":
+                if ($abbreviated) {
+                    return "OCPHP";
+                } else {
+                    return "Office of Chief Public Health Practice";
+                }
+            case "PS":
+                if ($abbreviated) {
+                    return "NCHHSTP";
+                } else {
+                    return "National Center for HIV, Viral Hepatitis, STDs and Tuberculosis Prevention";
+                }
+            case "SE":
+                if ($abbreviated) {
+                    return "SEPDPO";
+                } else {
+                    return "Scientific Education and Professional Development Program Office";
+                }
+            case "SH":
+                if ($abbreviated) {
+                    return "NCHS";
+                } else {
+                    return "National Center for Health Statistics";
+                }
+            case "SO":
+                if ($abbreviated) {
+                    return "PHSPO";
+                } else {
+                    return "Public Health Surveillance Program Office";
+                }
+            case "TP":
+                if ($abbreviated) {
+                    return "OPHPR";
+                } else {
+                    return "Office of Public Health Preparedness and Response";
+                }
+            case "TS":
+                if ($abbreviated) {
+                    return "ATSDR";
+                } else {
+                    return "Agency for Toxic Substances and Disease Registry";
+                }
+            case "WC":
+                if ($abbreviated) {
+                    return "OWCD";
+                } else {
+                    return "Office of Workforce and Career Development";
+                }
+            case "HH":
+                if ($abbreviated) {
+                    return "HHS";
+                } else {
+                    return "Department of Health and Human Services";
+                }
+            case "AE":
+                if ($abbreviated) {
+                    return "ASPE";
+                } else {
+                    return "Assistant Secretary of Planning and Evaluation";
+                }
+            case "OC":
+                if ($abbreviated) {
+                    return "ONCHIT";
+                } else {
+                    return "Office of the National Coordinator for Health Information Technology";
+                }
+            case "FD":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "Food and Drug Administration";
+                }
+            case "BA":
+            case "BJ":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Bacterial Products";
+                }
+            case "BB":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Biochemistry and Biophysics";
+                }
+            case "BD":
+            case "BL":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Cytokine Biology";
+                }
+            case "BE":
+            case "BR":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Product Quality Control";
+                }
+            case "BF":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Virology";
+                }
+            case "BG":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Transfusion";
+                }
+            case "BH":
+            case "BQ":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Hematology";
+                }
+            case "BI":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Allergenic Products and Parasitology";
+                }
+            case "BK":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Viral Products";
+                }
+            case "BM":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Cellular and Gene Therapies";
+                }
+            case "BN":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Hematologic Products";
+                }
+            case "BO":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Monoclonal Antibodies";
+                }
+            case "BP":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center of Biologics Evaluation and Research-Transfusion Transmitted Diseases";
+                }
+            case "BS":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Division of Biologics Standards";
+                }
+            case "BT":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Immunology and Infectious Diseases";
+                }
+            case "BU":
+                if ($abbreviated) {
+                    return "FDA";
+                } else {
+                    return "FDA Center for Biologics Evaluation and Research-Clinical Pharmacology and Toxicology";
+                }
+            case "AH":
+            case "DH":
+                if ($abbreviated) {
+                    return "BHP";
+                } else {
+                    return "HRSA Division of Associated & Dental Health Professions";
+                }
+            case "MB":
+                if ($abbreviated) {
+                    return "BHP";
+                } else {
+                    return "HRSA Division of Disadvantaged Assistance";
+                }
+            case "NU":
+                if ($abbreviated) {
+                    return "BHP";
+                } else {
+                    return "HRSA Division of Nursing";
+                }
+            case "PE":
+                if ($abbreviated) {
+                    return "BHP";
+                } else {
+                    return "HRSA Division of Medicine";
+                }
+            case "SA":
+                if ($abbreviated) {
+                    return "BHP";
+                } else {
+                    return "HRSA Division of Student Assistance";
+                }
+            case "ST":
+                if ($abbreviated) {
+                    return "OHS";
+                } else {
+                    return "Office of Healthy Start";
+                }
+            case "AS":
+                if ($abbreviated) {
+                    return "ASC";
+                } else {
+                    return "Administrative Services Center, OASH";
+                }
+            case "FP":
+                if ($abbreviated) {
+                    return "OFP";
+                } else {
+                    return "Office of Family Planning";
+                }
+            case "MP":
+                if ($abbreviated) {
+                    return "OMH";
+                } else {
+                    return "Office of Minority Health";
+                }
+            case "PG":
+                if ($abbreviated) {
+                    return "OAPP";
+                } else {
+                    return "Office of Adolescent Pregnancy Programs";
+                }
+            case "OA":
+                if ($abbreviated) {
+                    return "SAMHSA";
+                } else {
+                    return "SAMHSA Office of the Administration";
+                }
+            case "SP":
+                if ($abbreviated) {
+                    return "CSAP";
+                } else {
+                    return "Center for Substance Abuse Prevention";
+                }
+            case "SM":
+                if ($abbreviated) {
+                    return "CMHS";
+                } else {
+                    return "Center for Mental Health Services";
+                }
+            case "SU":
+                if ($abbreviated) {
+                    return "SAMHSA";
+                } else {
+                    return "Substance Abuse and Mental Health Services Administration";
+                }
+            case "TI":
+                if ($abbreviated) {
+                    return "CSAT";
+                } else {
+                    return "Center for Substance Abuse Treatment";
+                }
+            case "VA":
+                if ($abbreviated) {
+                    return "VA";
+                } else {
+                    return "Department of Veterans Affairs";
+                }
+            case "BX":
+                if ($abbreviated) {
+                    return "BLRD";
+                } else {
+                    return "VA Biomedical Laboratory Research and Development";
+                }
+            case "CU":
+                if ($abbreviated) {
+                    return "CSP";
+                } else {
+                    return "VA Cooperative Studies Program";
+                }
+            case "CX":
+                if ($abbreviated) {
+                    return "CSRD";
+                } else {
+                    return "VA Clinical Science Research and Development";
+                }
+            case "HX":
+                if ($abbreviated) {
+                    return "HSRD";
+                } else {
+                    return "VA Health Services Research and Development";
+                }
+            case "RD":
+                if ($abbreviated) {
+                    return "ORD";
+                } else {
+                    return "VA Office of Research and Development";
+                }
+            case "RX":
+                if ($abbreviated) {
+                    return "RRD";
+                } else {
+                    return "VA Rehabilitation Research and Development";
+                }
+            default:
+                return "";
+        }
+    }
 
 	private static function getSerialNumber($awardNo) {
 		if (preg_match("/^\d[A-Z][A-Z\d]\d/", $awardNo)) {
@@ -1225,13 +1987,10 @@ class Grant {
 				switch ($letter) {
 					case "A":
 						return "Amendment Number ".$number;
-						break;
 					case "S":
 						return "Revision Record ".$number;
-						break;
 					default:
 						return $suffix;
-						break;
 				}
 			}
 		}
@@ -1241,39 +2000,25 @@ class Grant {
 	public static function getApplicationType($awardNo) {
 		$appType = substr($awardNo, 0, 1);
 		switch ($appType) {
-			case "":
-				return "";
-				break;
 			case 1:
 				return "New";
-				break;
 			case 2:
 				return "Renewal";
-				break;
 			case 3:
 				return "Revision";
-				break;
 			case 4:
 				return "Extension";
-				break;
 			case 5:
 				return "Non-competing Continuation";
-				break;
 			case 6:
 				return "Change of Organization Status (Successor-In-Interest)";
-				break;
 			case 7:
 				return "Change of Grantee or Training Institution";
-				break;
 			case 8:
+            case 9:
 				return "Change of Institute or Center";
-				break;
-			case 9:
-				return "Change of Institute or Center";
-				break;
 			default:
 				return "";
-				break;
 		}
 	}
 

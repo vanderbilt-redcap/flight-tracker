@@ -29,15 +29,17 @@ class ERIC {
         return "https://api.ies.ed.gov/eric?search=$search&format=json&rows=$maxRowCount&fields=".implode(",", $ericFields)."&start=$start";
     }
 
-    public static function process($docs, $metadata, $recordId, $listOfPriorIds, &$startInstance) {
+    public static function process($docs, $metadata, $recordId, $listOfPriorIds, $listOfPriorTitles, &$startInstance) {
         $ericFields = self::getFields($metadata);
         $prefix = "eric_";
         $instrument = "eric";
         $upload = [];
         foreach ($docs as $entry) {
             $id = $entry["id"];
-            if (!in_array($id, $listOfPriorIds)) {
+            $title = $entry["title"];
+            if (!in_array($id, $listOfPriorIds) && !in_array($title, $listOfPriorTitles)) {
                 $listOfPriorIds[] = $id;
+                $listOfPriorTitles[] = $title;
                 $startInstance++;
                 $uploadRow = [
                     "record_id" => $recordId,

@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Citation;
+use \Vanderbilt\CareerDevLibrary\Grant;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -52,7 +53,7 @@ form input, form select {
     color: #000000;
 }
 .form-group{width: 33%;display: inline-block;}
-#chartdivcol{width: 300px; padding-right:30px; height:600px; display: inline-block;}
+#chartdivcol{width: 270px; margin-right:30px; height:600px; display: inline-block;}
 #chartdivcol>div{
     
 }
@@ -183,6 +184,16 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
         }
     }
     arsort($wordData);
+
+    $numTerms = 200;
+    $barChartTerms = 20;
+    $accuracy = 5;
+    $randomness = 0.1;
+    $rotationThreshold = 1;
+    if (in_array("citation_grants", $fieldsToDisplay)) {
+        $wordData = transformToTitles($wordData);
+    }
+
     echo makeFieldForm($token, $server, $metadata, $possibleFields, $_POST['cohort'] ?: "", $startDate, $endDate);
     //echo REDCapManagement::json_encode_with_spaces($wordData);
     ?>
@@ -195,8 +206,9 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
             const chart = am4core.create("chartdiv", am4plugins_wordCloud.WordCloud);
             chart.fontFamily = "europa";
             const series = chart.series.push(new am4plugins_wordCloud.WordCloudSeries());
-            series.randomness = 0.1;
-            series.rotationThreshold = 1;
+            series.randomness = <?= $randomness ?>;
+            series.rotationThreshold = <?= $rotationThreshold ?>;
+            series.accuracy = <?= $accuracy ?>;
 
             series.data = [
                 <?php
@@ -214,11 +226,11 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
             ];
             $('#chartdiv').css({height:'600px', width: '900px'}).append("<?= REDCapManagement::makeSaveDiv("svg", TRUE) ?>");
 
+            const numTerms = <?= $numTerms ?>;
             series.dataFields.word = "tag";
             series.dataFields.value = "count";
-            series.colors = new am4core.ColorSet();
-            series.colors.step = 1;
-            series.colors.passOptions = {};
+
+            series.colors = getFlightTrackerColorSetForAM4(numTerms);
 
             series.labels.template.url = "https://stackoverflow.com/questions/tagged/{word}";
             series.labels.template.urlTarget = "_blank";
@@ -231,7 +243,7 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
             subtitle.text = "";
 
             const title = chart.titles.create();
-            title.text = "(WordCloud limited to the top 200 terms selected)";
+            title.text = "(WordCloud limited to the top "+numTerms+" terms selected)";
             title.fontSize = 10;
             title.fontWeight = "300";
             title.fontColor = "#eeeeee";
@@ -240,15 +252,17 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
             $('.mtitle').html("<?php echo strtoupper('most popular '.getMainChunk($fieldsToDisplay[0]).' terms'); ?>");
             //----
 
+            const numBarTerms = <?= $barChartTerms ?>;
             const chartc = am4core.create("chartdivcol", am4charts.XYChart);
             chartc.fontFamily = "europa";
             chartc.fontSize = '11px';
             chartc.padding(4, 4, 4, 4);
             chartc.background.fill = '#f5f5f5';
             chartc.background.opacity = 1;
+            chartc.colors = getFlightTrackerColorSetForAM4(numBarTerms);
 
             const titlec = chartc.titles.create();
-            titlec.text = "(Graph below displays the top 20 terms selected)";
+            titlec.text = "(Graph below displays the top "+numBarTerms+" terms selected)";
             titlec.fontSize = 10;
             titlec.fontWeight = "300";
             titlec.fontColor = "#eeeeee";
@@ -293,7 +307,7 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
                 foreach ($wordData as $key => $value) {
                     $wcc .= '{"tag":"'.$key.'","count": '.$value.'},';
                     $tcountc++;
-                    if ($tcountc == 20){
+                    if ($tcountc == $barChartTerms){
                         break;
                     }
                 }
@@ -304,7 +318,7 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
             $('#chartdivcol').append("<?= REDCapManagement::makeSaveDiv("svg", TRUE) ?>");
 
             $('#chartdiv>div>svg').attr('width', '900').attr('height', '600');
-            $('#chartdivcol>div>svg').attr('width', '300').attr('height', '600');
+            $('#chartdivcol>div>svg').attr('width', '270').attr('height', '600');
         });
     </script>
     <?php
@@ -318,7 +332,7 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCoho
     $metadataLabels = REDCapManagement::getLabels($metadata);
 
     $html = "";
-    $html .= "<h1>Which Field do You Want to Count Frequency with Publications?</h1>\n";
+    $html .= "<h1>Which Field Do You Want to Count Frequency with Publications?</h1>\n";
     $html .= "<form action='$link' method='POST'>";
     $html .= Application::generateCSRFTokenHTML();
     $cohorts = new Cohorts($token, $server, CareerDev::getModule());
@@ -390,4 +404,67 @@ function getMainChunk($field) {
         $field = str_replace($prefix, "", $field);
     }
     return $field;
+}
+
+function transformToTitles($wordData) {
+    $newWordData = [];
+    foreach ($wordData as $awardNo => $cnt) {
+        $activityCode = Grant::getActivityCode($awardNo);
+        $instituteAbbreviation = Grant::getFundingInstituteAbbreviation($awardNo);
+        if ($activityCode && $instituteAbbreviation) {
+            $title = "$instituteAbbreviation $activityCode";
+            if (isset($newWordData[$title])) {
+                $newWordData[$title] += $cnt;
+            } else {
+                $newWordData[$title] = $cnt;
+            }
+        }
+    }
+    arsort($newWordData);
+    return $newWordData;
+}
+
+function transformToGrantTitles($wordData, $reporter, $numTerms) {
+    $newWordData = [];
+    $i = 0;
+    $firstAwards = [];
+    foreach ($wordData as $awardNo => $cnt) {
+        if ($i < $numTerms * 1.5) {
+            $firstAwards[] = $awardNo;
+        }
+        $i++;
+    }
+    $translate = $reporter->getTitlesOfGrants($firstAwards);
+    foreach ($wordData as $awardNo => $cnt) {
+        if (isset($translate[$awardNo])) {
+            $title = $translate[$awardNo];
+            if (isset($newWordData[$title])) {
+                $newWordData[$title] += $cnt;
+            } else {
+                $newWordData[$title] = $cnt;
+            }
+        }
+    }
+    arsort($newWordData);
+
+    $i = 0;
+    foreach ($newWordData as $title => $cnt) {
+        if ($i >= $numTerms) {
+            unset($newWordData[$title]);
+        }
+        $i++;
+    }
+
+    return breakTitlesIntoLines($newWordData, 50);
+}
+
+function breakTitlesIntoLines($wordData, $maxCharsPerLine) {
+    $newWordData = [];
+    foreach ($wordData as $title => $cnt) {
+        $newTitle = wordwrap($title, $maxCharsPerLine, "\\n");
+        $newTitle = preg_replace("/\"/", "\\\"", $newTitle);
+        $newTitle = preg_replace("/'/", "\\'", $newTitle);
+        $newWordData[$newTitle] = $cnt;
+    }
+    return $newWordData;
 }

@@ -48,7 +48,7 @@ class URLManagement {
 
     public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3, $longRetriesLeft = 2) {
         if (self::isCaughtInBadLoop()) {
-            throw new \Exception("In bad loop with $url");
+            throw new \Exception("In bad loop with $url and POST ".REDCapManagement::json_encode_with_spaces($postdata));
         }
         if (!Application::isLocalhost()) {
             Application::log("Contacting $url", $pid);

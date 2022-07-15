@@ -63,9 +63,15 @@ class SocialNetworkChart extends Chart {
         const chart = am4core.create('{$this->name}', am4charts.ChordDiagram);
         chart.colors.saturation = 0.45;
         chart.colors.step = 3;
-        const colors = {
-        };
+        const colors = {};   // used by chart
         chart.data = ".json_encode($this->chartData).";
+        
+        // to avoid cropping off long names
+        const paddingSize = 75;
+        chart.paddingTop = paddingSize;
+        chart.paddingBottom = paddingSize;
+        chart.paddingLeft = paddingSize;
+        chart.paddingRight = paddingSize;
 
         chart.dataFields.fromName = 'from';
         chart.dataFields.toName = 'to';

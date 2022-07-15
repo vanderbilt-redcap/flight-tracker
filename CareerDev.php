@@ -15,7 +15,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.12.3";
+		return "4.13.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -94,6 +94,7 @@ class CareerDev {
             "Altmetric" => "api.altmetric.com",
             "Patents View (US Patent Office)" => "api.patentsview.org",
             "NSF Grants" => "api.nsf.gov",
+            "ERIC" => "api.ies.ed.gov",
         ];
         if ($all || self::isScopusEnabled()) {
             $sites["Scopus (API)"] = "api.elsevier.com";

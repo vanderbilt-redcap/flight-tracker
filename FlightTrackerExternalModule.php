@@ -562,7 +562,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
         if ($config['formType'] == "repeating") {
             $canGo = FALSE;
-            $dataValues = array_values($completeData[$sourcePid][$sourceRecordId]);
+            $dataValues = array_values($completeData[$sourcePid][$sourceRecordId] ?? []);
             foreach ($markedAsComplete as $completeValue) {
                 if (in_array($completeValue, $dataValues)) {
                     $canGo = TRUE;

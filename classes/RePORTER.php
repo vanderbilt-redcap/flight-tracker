@@ -13,7 +13,7 @@ class RePORTER {
             "ApplId","SubprojectId","FiscalYear","OrgName","OrgCity",
             "OrgState","OrgStateName","DeptType", "ProjectNum","OrgCountry",
             "ProjectNumSplit","ContactPiName","AllText","FullStudySection",
-            "ProjectStartDate","ProjectEndDate",
+            "ProjectStartDate","ProjectEndDate","ProjectTitle",
         ];
         $this->excludeList = $recordExcludeList;
         if ($this->category == "NIH") {
@@ -23,6 +23,33 @@ class RePORTER {
         } else {
             throw new \Exception("Wrong category!");
         }
+    }
+
+    public function getTitleOfGrant($awardNo) {
+        $this->searchAward($awardNo);
+        foreach ($this->getData() as $item) {
+            if (isset($item['project_title'])) {
+                return $item['project_title'];
+            }
+        }
+        return $awardNo;
+    }
+
+    public function getTitlesOfGrants($awardNumbers) {
+        $this->searchAwards($awardNumbers);
+        $translate = [];
+        foreach ($awardNumbers as $awardNo) {
+            $upperAwardNo = strtoupper($awardNo);
+            $translate[$awardNo] = $upperAwardNo;
+            foreach ($this->getData() as $item) {
+                $itemAwardNo = strtoupper($item['project_num']);
+                if (preg_match("/$upperAwardNo/", $itemAwardNo) && isset($item['project_title'])) {
+                    $translate[$awardNo] = $item['project_title'];
+                    break;
+                }
+            }
+        }
+        return $translate;
     }
 
     public function getTotalDollarsForInstitution($institution, $fiscalYear) {
@@ -335,13 +362,28 @@ class RePORTER {
         return $upload;
     }
 
+    public function searchAwards($baseAwardNumbers) {
+        if ($this->isFederal()) {
+            $query = $this->server."/v1/projects/search?query=projectNumber:*".urlencode($baseAwardNo)."*";
+            $this->currData = $this->runGETQuery($query);
+        } else if ($this->isNIH()) {
+            $payload = [
+                "criteria" => ["project_nums" => $baseAwardNumbers],
+                "include_fields" => $this->includeFields,
+            ];
+            $location = $this->server."/v1/projects/search";
+            $this->currData = $this->runPOSTQuery($location, $payload);
+        }
+        return $this->getData();
+    }
+
     public function searchAward($baseAwardNo) {
         if ($this->isFederal()) {
             $query = $this->server."/v1/projects/search?query=projectNumber:*".urlencode($baseAwardNo)."*";
             $this->currData = $this->runGETQuery($query);
         } else if ($this->isNIH()) {
             $payload = [
-                "criteria" => ["project_nums" => "?$baseAwardNo*"],
+                "criteria" => ["project_nums" => ["?$baseAwardNo*"]],
                 "include_fields" => $this->includeFields,
             ];
             $location = $this->server."/v1/projects/search";

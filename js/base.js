@@ -64,19 +64,19 @@ function submitPMCs(pmcs, textId, prefixHTML) {
 }
 
 function downloadOnePMC(i, pmcs, textId, prefixHTML) {
-	var pmc = pmcs[i];
+	let pmc = pmcs[i];
 	if (pmc) {
 		if (!pmc.match(/PMC/)) {
 			pmc = 'PMC' + pmc;
 		}
-		var url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&retmode=xml&id=' + pmc;
+		const url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&retmode=xml&id=' + pmc;
 		$.ajax({
 			url: url,
 			success: function (xml) {
-				var pmid = '';
-				var myPmc = '';
-				var articleLocation = 'pmc-articleset>article>front>';
-				var articleMetaLocation = articleLocation + 'article-meta>';
+				let pmid = '';
+				let myPmc = '';
+				const articleLocation = 'pmc-articleset>article>front>';
+				const articleMetaLocation = articleLocation + 'article-meta>';
 				$(xml).find(articleMetaLocation + 'article-id').each(function () {
 					if ($(this).attr('pub-id-type') === 'pmid') {
 						pmid = 'PubMed PMID: ' + $(this).text() + '. ';
@@ -84,7 +84,7 @@ function downloadOnePMC(i, pmcs, textId, prefixHTML) {
 						myPmc = 'PMC' + $(this).text() + '.';
 					}
 				});
-				var journal = '';
+				let journal = '';
 				$(xml).find(articleLocation + 'journal-meta>journal-id').each(function () {
 					if ($(this).attr('journal-id-type') === 'iso-abbrev') {
 						journal = $(this).text();
@@ -92,11 +92,11 @@ function downloadOnePMC(i, pmcs, textId, prefixHTML) {
 				});
 				journal = journal.replace(/\.$/, '');
 
-				var year = '';
-				var month = '';
-				var day = '';
+				let year = '';
+				let month = '';
+				let day = '';
 				$(xml).find(articleMetaLocation + 'pub-date').each(function () {
-					var pubType = $(this).attr('pub-type');
+					const pubType = $(this).attr('pub-type');
 					if ((pubType === 'collection') || (pubType === 'ppub')) {
 						if ($(this).find('month')) {
 							month = $(this).find('month').text();
@@ -109,33 +109,35 @@ function downloadOnePMC(i, pmcs, textId, prefixHTML) {
 						}
 					}
 				});
-				var volume = $(xml).find(articleMetaLocation + 'volume').text();
-				var issue = $(xml).find(articleMetaLocation + 'issue').text();
+				const volume = $(xml).find(articleMetaLocation + 'volume').text();
+				const issue = $(xml).find(articleMetaLocation + 'issue').text();
 
-				var fpage = $(xml).find(articleMetaLocation + 'fpage').text();
-				var lpage = $(xml).find(articleMetaLocation + 'lpage').text();
-				var pages = '';
+				const fpage = $(xml).find(articleMetaLocation + 'fpage').text();
+				const lpage = $(xml).find(articleMetaLocation + 'lpage').text();
+				let pages = '';
 				if (fpage && lpage) {
 					pages = fpage + '-' + lpage;
 				}
 
-				var title = $(xml).find(articleMetaLocation + 'title-group>article-title').text();
+				let title = $(xml).find(articleMetaLocation + 'title-group>article-title').text();
 				title = title.replace(/\.$/, '');
 
-				var namePrefix = 'name>';
-				var names = [];
+				const namePrefix = 'name>';
+				const names = [];
 				$(xml).find(articleMetaLocation + 'contrib-group>contrib').each(function (index, elem) {
 					if ($(elem).attr('contrib-type') === 'author') {
-						var surname = $(elem).find(namePrefix + 'surname').text();
-						var givenNames = $(elem).find(namePrefix + 'given-names').text();
+						const surname = $(elem).find(namePrefix + 'surname').text();
+						const givenNames = $(elem).find(namePrefix + 'given-names').text();
 						names.push(surname + ' ' + givenNames);
 					}
 				});
 
-				var loc = getLocation(volume, issue, pages);
-				var citation = names.join(',') + '. ' + title + '. ' + journal + '. ' + year + ' ' + month + day + ';' + loc + '. ' + pmid + myPmc;
-				updateCitationList(textId, prefixHTML, citation);
-				let nextI = i + 1;
+				if (title && (names.length > 0)) {
+					const loc = getLocation(volume, issue, pages);
+					const citation = names.join(',') + '. ' + title + '. ' + journal + '. ' + year + ' ' + month + day + ';' + loc + '. ' + pmid + myPmc;
+					updateCitationList(textId, prefixHTML, citation);
+				}
+				const nextI = i + 1;
 				if (nextI < pmcs.length) {
 					setTimeout(function () {
 						downloadOnePMC(nextI, pmcs, textId, prefixHTML);
@@ -146,7 +148,7 @@ function downloadOnePMC(i, pmcs, textId, prefixHTML) {
 			},
 			error: function (e) {
 				updateCitationList(textId, prefixHTML, 'ERROR: ' + JSON.stringify(e));
-				let nextI = i + 1;
+				const nextI = i + 1;
 				if (nextI < pmids.length) {
 					setTimeout(function () {
 						downloadOnePMC(nextI, pmcs, textId, prefixHTML);
@@ -156,6 +158,15 @@ function downloadOnePMC(i, pmcs, textId, prefixHTML) {
 				}
 			}
 		});
+	} else {
+		const nextI = i + 1;
+		if (nextI < pmcs.length) {
+			setTimeout(function () {
+				downloadOnePMC(nextI, pmcs, textId, prefixHTML);
+			}, 1000);    // rate limiter
+		} else {
+			clearScreen();
+		}
 	}
 }
 
@@ -196,9 +207,9 @@ function submitPMID(pmid, textId, prefixHTML, cb) {
 }
 
 function downloadOnePMID(i, pmids, textId, prefixHTML, doneCb) {
-	var pmid = pmids[i];
+	const pmid = pmids[i];
 	if (pmid) {
-		var url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id='+pmid;
+		const url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id='+pmid;
 		// AJAX call will return in uncertain order => append, not overwrite, results
 		$.ajax({
 			url: url,
@@ -206,33 +217,33 @@ function downloadOnePMID(i, pmids, textId, prefixHTML, doneCb) {
 				// similar to publications/getPubMedByName.php
 				// make all changes in two places in two languages!!!
 
-				var citationLocation = 'PubmedArticleSet>PubmedArticle>MedlineCitation>';
-				var articleLocation = citationLocation + 'Article>';
-				var journalLocation = articleLocation + 'Journal>JournalIssue>';
+				const citationLocation = 'PubmedArticleSet>PubmedArticle>MedlineCitation>';
+				const articleLocation = citationLocation + 'Article>';
+				const journalLocation = articleLocation + 'Journal>JournalIssue>';
 
-				var myPmid = $(xml).find(citationLocation+'PMID').text();
-				var year = $(xml).find(journalLocation+'PubDate>Year').text();
-				var month = $(xml).find(journalLocation+'PubDate>Month').text();
-				var volume = $(xml).find(journalLocation+'Volume').text();
-				var issue = $(xml).find(journalLocation+'Issue').text();
-				var pages = $(xml).find(articleLocation+'Pagination>MedlinePgn').text();
-				var title = $(xml).find(articleLocation+'ArticleTitle').text();
+				const myPmid = $(xml).find(citationLocation+'PMID').text();
+				const year = $(xml).find(journalLocation+'PubDate>Year').text();
+				const month = $(xml).find(journalLocation+'PubDate>Month').text();
+				const volume = $(xml).find(journalLocation+'Volume').text();
+				const issue = $(xml).find(journalLocation+'Issue').text();
+				const pages = $(xml).find(articleLocation+'Pagination>MedlinePgn').text();
+				let title = $(xml).find(articleLocation+'ArticleTitle').text();
 				title = title.replace(/\.$/, '');
 
-				var journal = trimPeriods($(xml).find(articleLocation + 'Journal>ISOAbbreviation').text());
+				let journal = trimPeriods($(xml).find(articleLocation + 'Journal>ISOAbbreviation').text());
 				journal = journal.replace(/\.$/, '');
 
-				var dayNode = $(xml).find(journalLocation+'PubDate>Day');
-				var day = '';
+				const dayNode = $(xml).find(journalLocation+'PubDate>Day');
+				let day = '';
 				if (dayNode) {
 					day = ' '+dayNode.text();
 				}
 
-				var names = [];
+				const names = [];
 				$(xml).find(articleLocation+'AuthorList>Author').each(function(index, elem) {
-					var lastName = $(elem).find('LastName');
-					var initials = $(elem).find('Initials');
-					var collective = $(elem).find('CollectiveName');
+					const lastName = $(elem).find('LastName');
+					const initials = $(elem).find('Initials');
+					const collective = $(elem).find('CollectiveName');
 					if (lastName && initials) {
 						names.push(lastName.text()+' '+initials.text());
 					} else if (collective) {
@@ -240,11 +251,13 @@ function downloadOnePMID(i, pmids, textId, prefixHTML, doneCb) {
 					}
 				});
 
-				var loc = getLocation(volume, issue, pages);
-				var citation = names.join(',')+'. '+title+'. '+journal+'. '+year+' '+month+day+';'+loc+'. PubMed PMID: '+myPmid;
-				console.log('citation: '+citation);
+				if ((names.length > 0) && title) {
+					const loc = getLocation(volume, issue, pages);
+					const citation = names.join(',')+'. '+title+'. '+journal+'. '+year+' '+month+day+';'+loc+'. PubMed PMID: '+myPmid;
+					console.log('citation: '+citation);
 
-				updateCitationList(textId, prefixHTML, citation);
+					updateCitationList(textId, prefixHTML, citation);
+				}
 				let nextI = i + 1;
 				if (nextI < pmids.length) {
 					setTimeout(function() {
@@ -257,7 +270,7 @@ function downloadOnePMID(i, pmids, textId, prefixHTML, doneCb) {
 			},
 			error: function(e) {
 				updateCitationList(textId, prefixHTML, 'ERROR: '+JSON.stringify(e));
-				let nextI = i + 1;
+				const nextI = i + 1;
 				if (nextI < pmids.length) {
 					setTimeout(function () {
 						downloadOnePMID(nextI, pmids, textId, prefixHTML, doneCb);
@@ -267,6 +280,15 @@ function downloadOnePMID(i, pmids, textId, prefixHTML, doneCb) {
 				}
 			}
 		});
+	} else {
+		const nextI = i + 1;
+		if (nextI < pmids.length) {
+			setTimeout(function () {
+				downloadOnePMID(nextI, pmids, textId, prefixHTML, doneCb);
+			}, 1000);    // rate limiter
+		} else {
+			clearScreen();
+		}
 	}
 }
 
@@ -1053,6 +1075,39 @@ function presetValue(name, value) {
 	}
 }
 
+function getFlightTrackerColorSetForAM4(numTerms) {
+	const beginColorList = [
+		{r:87, g:100, b:174},
+		{r:240, g:86, b:93},
+		{r:141, g:198, b:63},
+		{r:247, g:151, b:33},
+	];
+	const endColorList = [
+		{r:212, g:212, b:235},
+		{r:252, g:218, b:210},
+		{r:229, g:241, b:213},
+		{r:241, g:246, b:214},
+	];
+	const repeatingColorList = [];
+	const steps = Math.ceil(numTerms / beginColorList.length);
+	for (let i=0; i < steps; i++) {
+		for (let j=0; j < beginColorList.length; j++) {
+			const rgb = {};
+			const beginColor = beginColorList[j];
+			const endColor = endColorList[j];
+			for (let key in beginColor) {
+				rgb[key] = Math.round(beginColor[key] + (endColor[key] - beginColor[key]) * i / (steps - 1));
+			}
+			repeatingColorList.push(new am4core.Color(rgb));
+		}
+	}
+	const colorSet = new am4core.ColorSet();
+	colorSet.list = repeatingColorList;
+	colorSet.step = 1;
+	colorSet.passOptions = {};
+	return colorSet;
+}
+
 function clearValue(name) {
 	$('[name=\''+name+'\']').val('');
 	if ($('[name='+name+'___radio]').length > 0) {
@@ -1425,50 +1480,64 @@ function fetchDataNow(url, recordId, csrfToken, fetchType) {
  * @param {number} [margin=0] the width of the border - the image size will be height+margin by width+margin
  * @param {string} [fill] optionally background canvas fill
  * @param {string} canvasFunction
+ * @param {string} fontName name of font used
+ * @param {string} woffFontBase64 the base-64 for a data url for the font
  * @return {Promise} a promise to the base64 png image
  */
-function svg2Image(svgText, margin,fill, canvasFunction) {
+function downloadSVG(svgText, margin,fill, canvasFunction, fontName, woffFontBase64) {
 	// convert an svg text to png using the browser
-	return new Promise(function(resolve, reject) {
+	return new Promise(function (resolve, reject) {
 		try {
 			// can use the domUrl function from the browser
-			var domUrl = window.URL || window.webkitURL || window;
+			let domUrl = window.URL || window.webkitURL || window;
 			if (!domUrl) {
 				throw new Error("(browser doesnt support this)")
 			}
 
 			// figure out the height and width from svg text
-			var match = svgText.match(/height=\"(\d+)/m);
-			var height = match && match[1] ? parseInt(match[1],10) : 200;
-			var match = svgText.match(/width=\"(\d+)/m);
-			var width = match && match[1] ? parseInt(match[1],10) : 200;
+			let match = svgText.match(/height=\"(\d+)/m);
+			let height = match && match[1] ? parseInt(match[1], 10) : 200;
+			match = svgText.match(/width=\"(\d+)/m);
+			let width = match && match[1] ? parseInt(match[1], 10) : 200;
 			margin = margin || 0;
 
 			// it needs a namespace
-			if (!svgText.match(/xmlns=\"/mi)){
-				svgText = svgText.replace ('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ') ;
+			if (!svgText.match(/xmlns=\"/mi)) {
+				svgText = svgText.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+			}
+
+			// include font if applicable
+			if (fontName && woffFontBase64) {
+				let matches = svgText.match(/<svg [^>]+?>/);
+				if (matches) {
+					const css = '@font-face { font-family: \''+fontName+'\'; src: url(data:font/woff2;base64,'+woffFontBase64+') format(\'woff2\'); }\n';
+					if (svgText.match(/<defs>/i)) {
+						svgText = svgText.replace(/<defs>/i, '<defs><style>\n'+css+'</style>')
+					} else {
+						svgText = svgText.replace(/<svg [^>]+?>/, matches[0]+'<defs><style>\n'+css+'</style></defs>')
+					}
+				}
 			}
 
 			// create a canvas element to pass through
-			var canvas = document.createElement("canvas");
-			canvas.width = width+margin*2;
-			canvas.height = height+margin*2;
-			var ctx = canvas.getContext("2d");
-
+			let canvas = document.createElement("canvas");
+			canvas.width = width + margin * 2;
+			canvas.height = height + margin * 2;
+			let ctx = canvas.getContext("2d");
 
 			// make a blob from the svg
-			var svg = new Blob([svgText], {
+			let svg = new Blob([svgText], {
 				type: "image/svg+xml;charset=utf-8"
 			});
 
 			// create a dom object for that image
-			var url = domUrl.createObjectURL(svg);
+			let url = domUrl.createObjectURL(svg);
 
 			// create a new image to hold it the converted type
-			var img = new Image;
+			let img = new Image;
 
 			// when the image is loaded we can get it as base64 url
-			img.onload = function() {
+			img.onload = function () {
 				// draw it to the canvas
 				ctx.drawImage(this, margin, margin);
 
@@ -1480,10 +1549,10 @@ function svg2Image(svgText, margin,fill, canvasFunction) {
 					var styledCtx = styled.getContext("2d");
 					styledCtx.save();
 					styledCtx.fillStyle = fill;
-					styledCtx.fillRect(0,0,canvas.width,canvas.height);
-					styledCtx.strokeRect(0,0,canvas.width,canvas.height);
+					styledCtx.fillRect(0, 0, canvas.width, canvas.height);
+					styledCtx.strokeRect(0, 0, canvas.width, canvas.height);
 					styledCtx.restore();
-					styledCtx.drawImage (canvas, 0,0);
+					styledCtx.drawImage(canvas, 0, 0);
 					canvas = styled;
 				}
 				// we don't need the original any more
@@ -1502,6 +1571,45 @@ function svg2Image(svgText, margin,fill, canvasFunction) {
 			reject('failed to convert svg to png ' + err);
 		}
 	});
+}
+
+/**
+ * Adapted from https://ramblings.mcpher.com/gassnippets2/converting-svg-to-png-with-javascript/
+ * converts an svg string to base64 png using the domUrl and forces download
+ * @param {string} svgText the svgtext
+ * @param {number} [margin=0] the width of the border - the image size will be height+margin by width+margin
+ * @param {string} [fill] optionally background canvas fill
+ * @param {string} canvasFunction
+ * @param {string} fontName name of font used
+ * @param {string} woffFontLocation location of WOFF2 font file to import
+ * @return {Promise} a promise to the base64 png image
+ */
+function svg2Image(svgText, margin,fill, canvasFunction, fontName, woffFontLocation) {
+	try {
+		if (fontName && woffFontLocation) {
+			return new Promise(function(resolve, reject) {
+				return fetch(woffFontLocation)
+					.then((resp) => {
+						return resp.blob();
+					})
+					.then((blob) => {
+						let f = new FileReader();
+						f.addEventListener('load', () => {
+							const base64 = f.result.replace(/^data:application\/octet-stream;base64,/, '');
+							resolve(downloadSVG(svgText, margin, fill, canvasFunction, fontName, base64));
+						});
+						f.readAsDataURL(blob);
+					})
+					.catch(err => {
+						reject('failed to read font ' + err);
+					});
+			});
+		} else {
+			return downloadSVG(svgText, margin, fill, canvasFunction);
+		}
+	} catch (err) {
+		reject('failed to set up reading a font' + err);
+	}
 }
 
 function canvas2PNG(canvasOb) {

@@ -12,6 +12,18 @@ class EmailManager {
 		$this->metadata = $metadata;
 		$this->hijackedField = "";
 
+        $this->preparingMins = 15;
+        $adminEmail = Application::getSetting("admin_email", $pid);
+        if (!$adminEmail) {
+            global $adminEmail;
+        }
+        $this->adminEmail = $adminEmail;
+        $defaultFrom = Application::getSetting("default_from", $pid);
+        if (!$defaultFrom) {
+            $defaultFrom = "noreply.flighttracker@vumc.org";
+        }
+        $this->defaultFrom = $defaultFrom;
+
 		$possibleFields = array("identifier_vunet", "identifier_userid");
 		foreach ($this->metadata as $row) {
 			if (in_array($row['field_name'], $possibleFields)) {
@@ -219,6 +231,8 @@ class EmailManager {
                 Application::saveSetting("emails_last_run", $currTime, $this->pid);
             }
 		}
+
+        $oneMinute = 60;
 		$sentEmails = [];
 		foreach ($this->data as $name => $emailSetting) {
 			if (in_array($name, $names) || empty($names)) {
@@ -250,7 +264,9 @@ class EmailManager {
                                 }
                                 $result = $this->$func($emailSetting, $name, $type);
 							    $sentEmails[$name] = time();
-							}
+							} else if ($this->isReadyToSend($ts - $this->preparingMins * $oneMinute, $currTimes)) {
+                                $this->sendPreviewEmail($emailSetting, $name);
+                            }
 						}
 						if ($result && !empty($result)) {
                             if (!isset($results[$name])) {
@@ -283,6 +299,46 @@ class EmailManager {
         return $results;
 	}
 
+    public function sendPreviewEmail($emailSetting, $name) {
+        $to = $this->adminEmail;
+        $from = $this->defaultFrom ?: "noreply.flighttracker@vumc.org";
+        $subject = self::getSubject($emailSetting["what"]);
+        $link = Application::link("emailMgmt/cancelEmail.php", $this->pid, TRUE)."&name=".urlencode($name);
+        $oneMinute = 60;
+        $sendDateTime = $emailSetting["when"]["initial_time"] ?: time() + $this->preparingMins * $oneMinute;
+
+        $sendInfo = $this->getRows($emailSetting["who"]);
+        $emailAddresses = [];
+        foreach ($sendInfo as $row) {
+            if ($row['first_name'] && $row['last_name']) {
+                $name = $row['first_name']." ".$row['last_name'];
+                $emailAddresses[] = $name." &lt;".$row['email']."&gt;";
+            } else {
+                $emailAddresses[] = $row['email'];
+            }
+        }
+        $emailFrom = $emailSetting["who"]["from"] ?: "<strong>[BLANK]</strong>";
+
+        $mssg = "<h1>Preparing Email</h1>";
+        $mssg .= "<style>
+a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #ddd); color: black; text-decoration: none; padding: 5px 20px; text-align: center; font-size: 24px; };
+</style>";
+        $mssg .= "<p>A version of the below email will be sent at $sendDateTime (".$this->preparingMins." minutes from the time that this email was sent) <strong>unless you cancel it below.</strong></p>";
+        $mssg .= "<p><a class='button' href='$link'>Cancel Email Now</a> (before $sendDateTime)</p>";
+        $mssg .= "<p>You must be a user on the Flight Tracker/REDCap project to cancel this email.</p>";
+        $mssg .= "<p>Doing nothing will cause the email to send automatically at $sendDateTime.</p>";
+        $mssg .= "<hr/>";
+        $mssg .= "<p><strong>To (".count($emailAddresses)."):</strong><br/>".implode("<br/>", $emailAddresses)."<br/><strong>From:</strong> $emailFrom</p>";
+        $mssg .= $emailSetting["what"]["message"];
+
+        Application::log(date("Y-m-d H:i:s")." EmailManager sending preparation email $name to {$to}; from $from; $subject", $this->pid);
+        if (Application::isLocalhost()) {
+            \REDCap::email("scott.j.pearson@vumc.org", $from, "PREPARING EMAIL: $subject", $mssg);
+        } else {
+            \REDCap::email($to, $from, "PREPARING EMAIL: $subject", $mssg);
+        }
+    }
+
 	public function isReadyToSend($ts1, $arrayOfTs) {
 	    $minutesSinceEpoch1 = floor($ts1 / 60);
 	    foreach ($arrayOfTs as $ts2) {
@@ -292,10 +348,6 @@ class EmailManager {
             }
         }
 	    return FALSE;
-	}
-
-	private static function within15MinutesAfter($proposedTs, $currTs) {
-		return ($currTs <= $proposedTs) && ($currTs + 15 * 60 > $proposedTs);
 	}
 
 	public function saveSetting($name, $emailSetting) {
@@ -358,6 +410,25 @@ class EmailManager {
 		return array();
 	}
 
+    public function disable($name) {
+        $settingNames = $this->getSettingsNames();
+        if (in_array($name, $settingNames)) {
+            $emailSetting = $this->data[$name] ?? [];
+            if (!empty($emailSetting)) {
+                if ($emailSetting["enabled"]) {
+                    $emailSetting["enabled"] = FALSE;
+                    $this->saveSetting($name, $emailSetting);
+                } else {
+                    throw new \Exception("The email setting $name is already not enabled!");
+                }
+            } else {
+                throw new \Exception("The email setting $name is empty!");
+            }
+        } else {
+            throw new \Exception("Invalid email setting name $name!");
+        }
+    }
+
 	# returns records of emails
 	private function sendPreparedEmail($emailData, $isTest = FALSE) {
 		$name = $emailData["name"];
@@ -367,7 +438,7 @@ class EmailManager {
 		$subjects = $emailData["subjects"];
 
 		foreach ($mssgs as $recordId => $mssg) {
-			Application::log(date("Y-m-d H:i:s")." $recordId: EmailManager sending $name to {$to[$recordId]}; from $from; {$subjects[$recordId]}");
+			Application::log(date("Y-m-d H:i:s")." $recordId: EmailManager sending $name to {$to[$recordId]}; from $from; {$subjects[$recordId]}", $this->pid);
 			if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
 				require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 			}
@@ -375,7 +446,11 @@ class EmailManager {
 				throw new \Exception("Could not find REDCap class!");
 			}
 
-			\REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
+            if (Application::isLocalhost()) {
+                \REDCap::email("scott.j.pearson@vumc.org", $from, $to[$recordId].": ".$subjects[$recordId], $mssg);
+            } else {
+                \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
+            }
 			usleep(200000); // wait 0.2 seconds for other items to process
 		}
 		$records = array_keys($mssgs);
@@ -385,7 +460,7 @@ class EmailManager {
 			}
 			if ($records) {
 				$sentAry = array("ts" => time(), "records" => $records);
-				array_push($this->data[$name]['sent'], $sentAry);
+				$this->data[$name]['sent'][] = $sentAry;
 				$this->saveData();
 			}
 		}
@@ -452,7 +527,7 @@ class EmailManager {
 			$surveys = $this->getSurveys();
 			foreach ($surveys as $survey) {
 				if (preg_match("/\[survey_link_$survey\]/", $mssg)) {
-					array_push($forms, $survey);
+					$forms[] = $survey;
 				}
 			}
 		}
@@ -1276,8 +1351,8 @@ class EmailManager {
 		$currTime = time();
 		foreach ($data as $key => $setting) {
 			$include = TRUE;
-			$when = $setting["when"];
-			$sent = $setting["sent"];
+			$when = $setting["when"] ?? [];
+			$sent = $setting["sent"] ?? [];
 			foreach ($recordIds as $recordId) {
 				if ((Application::getEmailName($recordId) == $key)
 					&& self::afterAllTimestamps($currTime, $sent)
@@ -1437,13 +1512,13 @@ class EmailManager {
 				if (is_array($value)) {
 					if (empty($value)) {
 						# select all
-						array_push($newQueue, $recordId);
+						$newQueue[] = $recordId;
 					} else if (($recordId == $row['record_id']) && in_array($row[$field], $value)) {
-						array_push($newQueue, $recordId);
+						$newQueue[] = $recordId;
 					}
 				} else {
 					if (($recordId == $row['record_id']) && ($row[$field] === $value)) {
-						array_push($newQueue, $recordId);
+						$newQueue[] = $recordId;
 					}
 				}
 			}
@@ -1467,4 +1542,7 @@ class EmailManager {
 	private $module;
 	private $settingName;
 	protected $data;
+    private $adminEmail;
+    private $defaultFrom;
+    private $preparingMins;
 }

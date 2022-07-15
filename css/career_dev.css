@@ -1,6 +1,7 @@
 @font-face { font-family: 'Museo Slab'; font-style: normal; font-weight: normal; src: url('../fonts/Museo_Slab_500.otf'); }
 @font-face { font-family: 'Museo Sans'; font-style: normal; font-weight: normal; src: url('../fonts/exljbris - MuseoSans-500.otf'); }
 @font-face { font-family: 'Georgia'; font-style: normal; font-weight: normal; src: url('../fonts/georgia.woff'); }
+@font-face { font-family: 'europa'; font-style: normal; font-weight: normal; src: url('../fonts/EuropaNuovaRegular.woff'); }
 body { font-family: europa, Arial, Helvetica, sans-serif; }
 .filter { background-color: #eeeeee; }
 tr.filter td { padding-top: 5px; padding-bottom: 5px; }
