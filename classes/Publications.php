@@ -907,7 +907,7 @@ class Publications {
 	    return $newRows;
     }
 
-    public static function getCitationsFromERIC($ids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedIDs = [], $pid = NULL) {
+    public static function getCitationsFromERIC($ids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedIDs = [], $confirmedTitles = [], $pid = NULL) {
         $upload = [];
         $instance = $startInstance;
         foreach ($ids as $id) {
@@ -916,7 +916,7 @@ class Publications {
             $data = json_decode($json, TRUE);
             if (($resp == 200) && $data && isset($data["response"])) {
                 $docs = $data["response"]["docs"] ?? [];
-                $newRows = ERIC::process($docs, $metadata, $recordId, $confirmedIDs, $instance);
+                $newRows = ERIC::process($docs, $metadata, $recordId, $confirmedIDs, $confirmedTitles, $instance);
                 $upload = array_merge($upload, $newRows);
             }
         }
@@ -1187,7 +1187,7 @@ class Publications {
         if (!empty($affectedPMIDs)) {
             $translator = self::PMIDsToPMCs(array_values($affectedPMIDs), $this->pid);
             foreach ($affectedPMIDs as $instance => $pmid) {
-                $pmcid = $translator[$pmid];
+                $pmcid = $translator[$pmid] ?? "";
                 if ($pmcid) {
                     $uploadRow = [
                         "record_id" => $recordId,

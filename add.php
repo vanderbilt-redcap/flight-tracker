@@ -11,6 +11,8 @@ use \Vanderbilt\CareerDevLibrary\REDCapLookup;
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
+$allNewRecords = ($_POST['createNewRecords'] || isset($_GET['createNewRecords']));
+$createRecordsURI = $allNewRecords ? "&createNewRecords" : "";
 if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
     list($lines, $matchedMentorUids, $newMentorNames) = parsePostForLines($_POST);
     $newLines = [];
@@ -30,10 +32,10 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
         if (!empty($newUids)) {
             echo makeAdjudicationTable($lines, $newUids, $matchedMentorUids, $originalMentorNames);
         } else {
-            commitChanges($token, $server, $lines, $matchedMentorUids, $pid);
+            commitChanges($token, $server, $lines, $matchedMentorUids, $pid, $createRecordsURI);
         }
     } else if ($lines) {
-        commitChanges($token, $server, $lines, $matchedMentorUids, $pid);
+        commitChanges($token, $server, $lines, $matchedMentorUids, $pid, $createRecordsURI);
     } else {
         echo "<p class='centered'>No data to upload.</p>";
     }
@@ -67,7 +69,7 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 				if (count($nodes) == 6) {
 					$lines[] = $nodes;
 				} else {
-					header("Location: ".CareerDev::link("add.php")."&mssg=improper_line");
+					header("Location: ".CareerDev::link("this")."&mssg=improper_line".$createRecordsURI);
 				}
 			}
 		}
@@ -75,8 +77,25 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 	$mentorUids = getUidsForMentors($lines);
 	if (!empty($mentorUids)) {
         echo makeAdjudicationTable($lines, $mentorUids, [], []);
+        $url = APP_PATH_WEBROOT."ProjectGeneral/keep_alive.php?pid=".$pid;
+        echo "<script>
+function keepAlive() {
+    const resetTime = 3;
+    setTimeout(function(){
+        $.post('$url', {'redcap_csrf_token': getCSRFToken()}, function(data) {
+            if (data === '1') {
+                keepAlive();
+            }
+        });
+    }, (resetTime*60000));
+}
+
+$(document).ready(() => {
+    keepAlive();
+});
+</script>";
     } else {
-	    commitChanges($token, $server, $lines, $mentorUids, $pid);
+	    commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecordsURI);
     }
 } else {                //////////////////// default setup
     if (isset($_GET['mssg'])) {
@@ -101,30 +120,33 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 			<p>The <b>Institution</b> should be a short name, but not initials. For instance, Vanderbilt University Medical Center is Vanderbilt, but not VUMC. This is the institution's name that PubMed and the Federal and NIH RePORTERs will match the name on.</p>
 			<p><b>--OR--</b> you can supply a Microsoft Excel CSV below.</p>
 		</div>
-		<form method='POST' action='<?= CareerDev::link("add.php") ?>'><p>
+		<form method='POST' action='<?= CareerDev::link("this") ?>'><p>
             <?= Application::generateCSRFTokenHTML() ?>
 			<b>Please enter</b>:<br>
 			<i>FirstName, PreferredName, Middle, LastName, Email, Additional Institutions:</i><br>
-			<textarea style='width: 600px; height: 300px;' name='newnames'></textarea><br>
+			<textarea style='width: 600px; height: 300px;' name='newnames'></textarea><br/>
+                <input type="hidden" name="createNewRecords" value="1" />
 			<button>Process Names</button>
 		</p></form>
 		<p><b>--OR--</b> supply a CSV Spreadsheet with the specified fields in <a href='<?= CareerDev::link("newFaculty.php") ?>'>this example</a>.</p>
-		<form enctype='multipart/form-data' method='POST' action='<?= CareerDev::link("add.php") ?>'><p>
+		<form enctype='multipart/form-data' method='POST' action='<?= CareerDev::link("this") ?>'><p>
             <?= Application::generateCSRFTokenHTML() ?>
 			<input type="hidden" name="MAX_FILE_SIZE" value="3000000" />
-			CSV Upload: <input type='file' name='csv'><br>
+			CSV Upload: <input type='file' name='csv'><br/>
+                <input type="hidden" name="createNewRecords" value="1" />
 			<button>Process File</button>
 		</p></form>
 	</div>
 <?php
 }
 
-function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
+function processLines($lines, $nextRecordId, $token, $server, $mentorUids, $allNewRecords) {
 	$upload = [];
 	$lineNum = 1;
-	$metadata = Download::metadata($token, $server);
-	$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+	$metadataFields = Download::metadataFields($token, $server);
 	$recordIds = [];
+    $names = Download::names($token, $server);
+    $messagesSent = FALSE;
 	foreach ($lines as $nodes) {
 	    $mentorUid = $mentorUids[$lineNum - 1];
         if (
@@ -139,11 +161,15 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
 			$lastName = $nodes[3];
 			$preferred = $nodes[1];
 			$recordId = NameMatcher::matchName($firstName, $lastName, $token, $server);
-			if (!$recordId) {
+			if (!$recordId || $allNewRecords) {
 				#new
 				$recordId = $nextRecordId;
 				$nextRecordId++;
-			}
+			} else {
+                $name = $names[$recordId] ?? "";
+                $messagesSent = TRUE;
+                echo "<p class='centered nomargin'>Matched $firstName $lastName with Record $recordId ($name)</p>";
+            }
 			if ($preferred && ($preferred != $firstName)) {
 				$firstName .= " (".$preferred.")";
 			}
@@ -278,7 +304,7 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids) {
 		}
 		$lineNum++;
 	}
-	return [$upload, $recordIds];
+	return [$messagesSent, $upload, $recordIds];
 }
 
 function importMDY2YMD($mdyDate, $col) {
@@ -453,7 +479,7 @@ function parsePostForLines($post) {
     return [$lines, $mentorUids, $newMentorNames];
 }
 
-function commitChanges($token, $server, $lines, $mentorUids, $pid) {
+function commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecordsURI) {
     $maxRecordId = 0;
     $recordIds = Download::recordIds($token, $server);
     foreach ($recordIds as $recordId) {
@@ -464,8 +490,9 @@ function commitChanges($token, $server, $lines, $mentorUids, $pid) {
     $recordId = $maxRecordId + 1;
 
     $upload = [];
+    $messagesSent = FALSE;
     try {
-        list($upload, $newRecordIds) = processLines($lines, $recordId, $token, $server, $mentorUids);
+        list($messagesSent, $upload, $newRecordIds) = processLines($lines, $recordId, $token, $server, $mentorUids, $createRecordsURI);
         $feedback = [];
         if (!empty($upload)) {
             $feedback = Upload::rows($upload, $token, $server);
@@ -474,11 +501,11 @@ function commitChanges($token, $server, $lines, $mentorUids, $pid) {
             }
         } else {
             $mssg = "No data specified.";
-            header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
+            header("Location: ".CareerDev::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
         }
         if (isset($feedback['error'])) {
             $mssg = "People not added ". $feedback['error'];
-            header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
+            header("Location: ".CareerDev::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
         }
         if (isset($_GET['mssg']) && ($_GET['mssg'] == "improper_line")) {
             $mssg = "A line does not contain the necessary 6 columns. No data have been added. Please try again.";
@@ -487,20 +514,25 @@ function commitChanges($token, $server, $lines, $mentorUids, $pid) {
         }
     } catch (\Exception $e) {
         $mssg = $e->getMessage();
-        header("Location: ".CareerDev::link("add.php")."&mssg=".urlencode($mssg));
+        header("Location: ".CareerDev::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
     }
 
     $timespan = 3;
     echo "<h1>Adding New Scholars or Modifying Existing Scholars</h1>";
     echo "<div style='margin: 0 auto; max-width: 800px'>";
     echo "<p class='centered'>".count($upload).(count($upload) == 1 ? " person" : " people")." added/modified.</p>";
-    echo "<p class='centered'>Going to Flight Tracker Central in ".$timespan." seconds...</p>";
-    echo "<script>\n";
-    echo "$(document).ready(function() {\n";
-    echo "\tsetTimeout(function() {\n";
-    echo "\t\twindow.location.href='".Application::link("index.php")."';\n";
-    echo "\t}, ".floor($timespan * 1000).");\n";
-    echo "});\n";
-    echo "</script>\n";
+    $link = Application::link("index.php");
+    if (!$messagesSent) {
+        echo "<p class='centered'>Going to Flight Tracker Central in ".$timespan." seconds...</p>";
+        echo "<script>\n";
+        echo "$(document).ready(function() {\n";
+        echo "\tsetTimeout(function() {\n";
+        echo "\t\twindow.location.href='$link';\n";
+        echo "\t}, ".floor($timespan * 1000).");\n";
+        echo "});\n";
+        echo "</script>\n";
+    } else {
+        echo "<p class='centered'><a href='$link'>Go to Flight Tracker Central</a></p>";
+    }
     echo "</div>";
 }

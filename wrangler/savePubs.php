@@ -66,7 +66,7 @@ if (isset($_POST['finalized'])) {
                 if ($instrument == "citation") {
                     $uploadRows = Publications::getCitationsFromPubMed([$id], $metadata, "manual", $recordId, $maxInstance[$instrument], [], $pid);
                 } else if ($instrument == "eric") {
-                    $uploadRows = Publications::getCitationsFromERIC([$id], $metadata, "manual", $recordId, $maxInstance[$instrument], [], $pid);
+                    $uploadRows = Publications::getCitationsFromERIC([$id], $metadata, "manual", $recordId, $maxInstance[$instrument], [], [], $pid);
                 } else {
                     $uploadRows = [];
                 }

@@ -650,12 +650,12 @@ class Download {
 					break;  // inner
 				}
 			}
-			if ($userIdField) {
+			if ($userIdField != "") {
 				break; // outer
 			}
 		}
 
-		if ($userIdField) {
+		if ($userIdField != "") {
 			$data = array(
 				'token' => $token,
 				'content' => 'record',
@@ -979,7 +979,7 @@ class Download {
 		$redcapData = self::sendToServer($server, $data);
 		$records = array();
 		foreach ($redcapData as $row) {
-		    if (!in_array($row[$recordIdField], $records)) {
+		    if (isset($row[$recordIdField]) && !in_array($row[$recordIdField], $records)) {
                 $records[] = $row[$recordIdField];
             }
 		}

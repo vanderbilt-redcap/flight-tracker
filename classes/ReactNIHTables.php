@@ -48,9 +48,17 @@ class ReactNIHTables {
         return $html;
     }
 
+    public static function isAuthorized($userid, $userids) {
+        return (
+            (!empty($userids) && in_array($userid, $userids))
+            || SUPER_USER
+        );
+    }
+
     public function sendVerificationEmail($post, &$nihTables) {
         $email = strtolower(Sanitizer::sanitize($post['email']));
-        if (!REDCapManagement::isEmail($email)) {
+        $scholarEmail = strtolower(Sanitizer::sanitize($post['scholarEmail']));
+        if (!REDCapManagement::isEmail($email) || !REDCapManagement::isEmail($scholarEmail)) {
             return ["error" => "Improper email"];
         }
         $name = Sanitizer::sanitize($post['name'] ?? "");
@@ -61,20 +69,23 @@ class ReactNIHTables {
         if (!REDCapManagement::isEmail($from)) {
             return ["error" => "Improper from email"];
         }
+        $tableNum = Sanitizer::sanitize($post['tableNum']);
 
         $nihTables->addFaculty([$name], $dateOfReport);
-        if (Sanitizer::sanitize($post['tableNum']) == '3') {
+        if ($tableNum == '3') {
             $tables = [3];
         } else {
             $tables = $this->getTablesToEdit();
         }
         $dataRows = [];
-        foreach ($tables as $tableNum) {
-            $dataRows[$tableNum] = $nihTables->getData($tableNum);
+        foreach ($tables as $tableNumber) {
+            $dataRows[$tableNumber] = $nihTables->getData($tableNumber, $savedName);
         }
+
         $mssg = "<style>
 p,th,td,h1,h2,h3,h4 { font-family: Arial, Helvetica, sans-serif; }
-a { font-weight: bold; background-image: linear-gradient(45deg, #fff, #ddd); color: black; text-decoration: none; padding: 5px 20px; text-align: center; font-size: 24px; };
+a { font-weight: bold; color: black; text-decoration: underline; }
+a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #ddd); color: black; text-decoration: none; padding: 5px 20px; text-align: center; font-size: 24px; };
 td,th { border: 0; padding: 3px; }
 td.odd { background-color: #ffffff; }
 td.even { background-color: #eeeeee; }
@@ -121,21 +132,22 @@ table { border-collapse: collapse; }
         if (($numRows > 0) || ($tableNum == 3)) {
             $thisLink = Application::link("this", $this->pid);
             $tableName = ($numTables == 1) ? "table" : "tables";
-            $hash = $this->makeEmailHash($email, $tables);
-            $yesLink = $thisLink."&confirm=".urlencode($email)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport);
-            $noLink = $thisLink."&revise=".urlencode($email)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport);
-            if ($tableNum == 3) {
-                $noLink .= "&savedName=".urlencode($savedName);
+            $hash = $this->makeEmailHash($scholarEmail, $tables);
+            $yesLink = $thisLink."&confirm=".urlencode($scholarEmail)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport)."&savedName=".urlencode($savedName);
+            $noLink = $thisLink."&revise=".urlencode($scholarEmail)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport)."&savedName=".urlencode($savedName);
+            if ($scholarEmail != $email) {
+                $noLink .= "&delegate";
+                $yesLink .= "&delegate";
             }
             $mssg .= "<h3>Is <u>every entry</u> on the above $tableName correct?</h3>";
             $mssg .= "<p style='margin-top: 0;'>(If you answer No, you will be given a chance to correct or add individual entries.)</p>";
             $spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
-            $mssg .= "<p><a href='$yesLink'>Yes</a>$spacing<a href='$noLink'>No</a></p>";
-            // TODO \REDCap::email($email, $from, $subject, $mssg);
-            \REDCap::email("scott.j.pearson@vumc.org", $from, "$email: $subject", $mssg);
+            $mssg .= "<p><a class='button' href='$yesLink'>Yes</a>$spacing<a class='button' href='$noLink'>No</a></p>";
+            Application::log("Sending email to $email: ".$mssg, $this->pid);
+            \REDCap::email($email, $from, $subject, $mssg);
             $data["mssg"] = "Email with $numTables $tableName sent to $email";
         } else {
-            $data["mssg"] = "No data to send.";
+            $data["mssg"] = "No data to send for table(s) ".implode(", ", $tables);
         }
         return $data;
     }
@@ -381,6 +393,7 @@ table { border-collapse: collapse; }
     }
 
     private static function transformCheckboxes($data) {
+        Application::log(json_encode($data));
         $col = "Names of<br/>Overlapping<br/>Faculty";
         $newData = $data;
         $newData['data'] = [];
@@ -396,7 +409,7 @@ table { border-collapse: collapse; }
     public function makeHTMLForNIHTableEdits($dateOfReport, $name, $email, $hash, $tablesToShow, $savedName) {
         $thisUrl = Application::link("this", $this->pid)."&hash=".urlencode($hash)."&email=".urlencode($email);
         $metadata = Download::metadata($this->token, $this->server);
-        $nihTables = new NIHTables($this->token, $this->server, $metadata);
+        $nihTables = new NIHTables($this->token, $this->server, $this->pid, $metadata);
         $nihTables->addFaculty([$name], $dateOfReport);
         $today = date("Y-m-d");
 
@@ -412,7 +425,7 @@ table { border-collapse: collapse; }
                 $data = self::transformCheckboxes($data);
                 $table = NIHTables::makeTable1_4DataIntoHTML($tableNum, $data);
             } else {
-                $table = $nihTables->getHTML($tableNum);
+                $table = $nihTables->getHTML($tableNum, FALSE, self::makeSaveTableKey($savedName, $tableNum));
             }
             $html .= $table;
             $html .= "<h4>Do you have any requested changes for this table?<br>Please address any <span class='action_required'>red</span> items,<br>and make sure you click the Submit Changes button.</h4>";
@@ -428,19 +441,62 @@ table { border-collapse: collapse; }
         return "tablename____".$tableName."____".$tableNum;
     }
 
+    private static function identifyNewFacultyNotInData($facultyList, $representedFaculty) {
+        $unrepresentedFaculty = [];
+        foreach ($facultyList as $name) {
+            if (!in_array($name, $representedFaculty)) {
+                $unrepresentedFaculty[] = $name;
+            }
+        }
+        return $unrepresentedFaculty;
+    }
+
+    private static function removeOldFaculty($data, $facultyList) {
+        $newData = $data;
+        $newData['data'] = [];
+        foreach ($data['data'] as $row) {
+            $name = self::stripEmailAndHTML($row["Name"] ?? $row["Faculty Member"] ?? "");
+            if (in_array($name, $facultyList)) {
+                $newData['data'][] = $row;
+            }
+        }
+        return $newData;
+    }
+
+    private static function stripEmailAndHTML($cell) {
+        $withoutEmail = preg_replace("/<a [^>]*href\s*=\s*['\"]mailto:[^'^\"]+['\"][^>]*>[^<]+<\/a>/i", "", $cell);
+        $withoutBreaks = preg_replace("/<br[ \/]*>/i", "", $withoutEmail);
+        $withoutSectionTags = preg_replace("/<\/?section>/i", "", $withoutBreaks);
+        return trim($withoutSectionTags);
+    }
+
     public function getDataForTable($post, &$nihTables) {
         $tableNum = Sanitizer::sanitize($post['tableNum']);
+        $dateOfReport = Sanitizer::sanitize($post['dateOfReport']);
         $savedTableName = $post['savedTableName'] ? Sanitizer::sanitize($post['savedTableName']) : "";
         $allNames = Application::getSetting($this->allNamesField, $this->pid);
         if ($savedTableName && isset($allNames[$savedTableName]) && in_array($tableNum, $allNames[$savedTableName])) {
             $data = Application::getSetting(self::makeSaveTableKey($savedTableName, $tableNum), $this->pid);
-            $data['source'] = "Previously Saved";
             if ($data) {
+                $savedFaculty = Application::getSetting(self::makeSaveTableKey($savedTableName, "faculty"), $this->pid);
+                $facultyList = Sanitizer::sanitizeArray($post['faculty']);
+                $newFaculty = self::identifyNewFacultyNotInData($facultyList, $savedFaculty);
+                if (in_array($tableNum, [2, 4]) && !empty($newFaculty)) {
+                    $nihTables->addFaculty($newFaculty, $dateOfReport);
+                    $newFacultyData = $nihTables->getData($tableNum);
+                    $combinedData = self::removeOldFaculty($data, $facultyList);
+                    foreach ($newFacultyData["data"] as $row) {
+                        $combinedData["data"][] = $row;
+                    }
+                    $combinedData['source'] = "Combined with New Data";
+                    return $combinedData;
+                } else {
+                    $data['source'] = "Previously Saved";
+                }
                 return $data;
             }
         }
 
-        $dateOfReport = Sanitizer::sanitize($post['dateOfReport']);
         if (in_array($tableNum, [1, "1I", "1II", 2, 3, 4])) {
             if (in_array($tableNum, $this->getTablesToEdit())) {
                 $facultyList = Sanitizer::sanitizeArray($post['faculty']);
@@ -619,7 +675,7 @@ table { border-collapse: collapse; }
             return $previousValue;
         }
 
-        $hash = substr(md5($this->pid.":".$email), 0, 64);
+        $hash = substr(md5($this->pid.":".$email.":".implode(",", $tableNums)), 0, 64);
         Application::saveSetting($key, $hash, $this->pid);
         return $hash;
     }
@@ -708,7 +764,7 @@ table { border-collapse: collapse; }
         }
         $tableNotes = [];
         $metadata = Download::metadata($this->token, $this->server);
-        $nihTables = new NIHTables($this->token, $this->server, $metadata);
+        $nihTables = new NIHTables($this->token, $this->server, $this->pid, $metadata);
         foreach ($tables as $tableNum) {
             $notes = Sanitizer::sanitizeWithoutChangingQuotes($post['table_'.$tableNum]);
             $notes = preg_replace("/[\n\r]{2}/", "<br>", $notes);
@@ -778,7 +834,7 @@ table { border-collapse: collapse; }
         }
         $reporterTypes = RePORTER::getTypes();
         $data = [];
-        $seenAwards = $this->getSavedTable3Awards($name);
+        $seenAwards = $name ? $this->getSavedTable3Awards($name) : [];
         $trainingGrantAwardTypes = [
             "TL1",
             "R25",
@@ -838,6 +894,9 @@ table { border-collapse: collapse; }
                     $valueAry = Application::getSetting($key, $pid);
                     if (!$valueAry) {
                         $valueAry = [];
+                    }
+                    if (!isset($dataByPid[$pid])) {
+                        $dataByPid[$pid] = [];
                     }
                     $dataByPid[$pid][$awardNo] = $valueAry;
                 }

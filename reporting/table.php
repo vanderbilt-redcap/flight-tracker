@@ -9,6 +9,8 @@ use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
+Application::increaseProcessingMax(1);
+
 $tableNum = isset($_GET['table']) ? Sanitizer::sanitize($_GET['table']) : "";
 if (!$tableNum || !NIHTables::getTableHeader($tableNum)) {
 	die("Could not find $tableNum!");

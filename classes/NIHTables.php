@@ -128,20 +128,20 @@ class NIHTables {
         return FALSE;
     }
 
-	public function getData($table) {
+	public function getData($table, $savedName = "") {
 	    $this->getAlteredChoices();
 	    $tableHeader = self::getTableHeader($table);
         if (self::beginsWith($table, ["1"])) {
             $data = $this->get1Data($table);
             return self::separateHeaders($data, $tableHeader);
         } else if (self::beginsWith($table, ["2"])) {
-            $data = $this->get2Data($table);
+            $data = $this->get2Data($table, $savedName);
             return self::separateRecordAndHeaders($data, $tableHeader);
         } else if (self::beginsWith($table, ["3"])) {
             $data = $this->get3Data($table, $this->dateOfReport);
             return self::separateHeaders($data, $tableHeader);
         } else if (self::beginsWith($table, ["4"])) {
-            $data = $this->get4Data($table, $this->dateOfReport);
+            $data = $this->get4Data($table, $this->dateOfReport, $savedName);
             return self::separateRecordAndHeaders($data, $tableHeader);
         } else {
             Application::log("Warning! Could not get data for table $table", $this->pid);
@@ -304,7 +304,8 @@ class NIHTables {
                         $projectInformation = "<div><strong>$projectTitle</strong></div>";
                         $redcapInformation = "<div class='smaller'>REDCap PID $pid";
                         if ($adminEmail) {
-                            $redcapInformation = "$redcapInformation; Project Admin Email: <a href='mailto:$adminEmail'>$adminEmail</a>";
+                            $displayedEmails = str_replace(",", ", ", $adminEmail);
+                            $redcapInformation = "$redcapInformation; Project Admin Email: <a href='mailto:$adminEmail'>$displayedEmails</a>";
                         }
                         $redcapInformation .= "</div>";
                         $firstName = $firstNamesByPid[$pid][$recordId] ?? "";
@@ -321,7 +322,7 @@ class NIHTables {
         return $data;
     }
 
-    public function get2Data($table) {
+    public function get2Data($table, $savedName) {
         list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = $this->getNamesByPid();
         $headers = $this->getHeaders($table);
         $data = ["Headers" => $headers];
@@ -411,13 +412,15 @@ class NIHTables {
                     $countKey = self::makeCountKey($table, $recordId);
                     $settingsByDate = Application::getSetting($countKey, $pid) ?: [];
                     foreach ($settingsByDate as $ymdDate => $settings) {
-                        foreach ($headers as $header) {
-                            if (isset($settings[$header]) && ($settings[$header] !== "")) {
-                                $value = $settings[$header];
-                                if (!isset($otherProjectsValues[$header][$pid])) {
-                                    $otherProjectsValues[$header][$pid] = [];
+                        foreach ($settings as $recordInstance => $s) {
+                            foreach ($headers as $header) {
+                                if (isset($s[$header]) && ($s[$header] !== "")) {
+                                    $value = $s[$header];
+                                    if (!isset($otherProjectsValues[$header][$pid])) {
+                                        $otherProjectsValues[$header][$pid] = [];
+                                    }
+                                    $otherProjectsValues[$header][$pid][$ymdDate] = $value;
                                 }
-                                $otherProjectsValues[$header][$pid][$ymdDate] = $value;
                             }
                         }
                     }
@@ -425,8 +428,29 @@ class NIHTables {
 
                 $emailHTML = empty($combinedEmails) ? "" : "<br/>".implode("<br/>", $combinedEmails);
 
-                if (!isset($otherProjectsValues[$headers[6]])) {
-                    $keys = array_keys($otherProjectsValues);
+                $savedData = $savedName ? Application::getSetting($savedName, $this->pid) : [];
+
+                $presetValues = [
+                    "Training<br/>Role" => self::$NA,
+                    "Research<br/>Interest" => self::$NA,
+                    "Pre-doctorates<br/>In Training" => self::$NA,
+                    "Pre-doctorates<br/>Graduated" => self::$NA,
+                    "Predoctorates<br/>Continued in<br/>Research or<br/>Related Careers" => self::$NA,
+                    "Post-doctorates<br/>In Training" => self::$NA,
+                    "Post-doctorates<br/>Completed<br/>Training" => self::$NA,
+                    "Postdoctorates<br/>Continued in<br/>Research or<br/>Related Careers" => self::$NA,
+                    ];
+
+                if (isset($savedData['data'])) {
+                    foreach($savedData['data'] as $row) {
+                        if (preg_match("/$facultyName/", $row["Name"])) {
+                            foreach (array_keys($presetValues) as $col) {
+                                if (isset($row[$col]) && $row[$col]) {
+                                    $presetValues[$col] = $row[$col];
+                                }
+                            }
+                        }
+                    }
                 }
 
                 $row = [
@@ -434,14 +458,14 @@ class NIHTables {
                     implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Degrees"])),
                     implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Ranks"])),
                     implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Departments"])),
-                    self::$NA,
-                    self::$NA,
-                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[6]]),
-                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[7]]),
-                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[8]]),
-                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[9]]),
-                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[10]]),
-                    self::$NA.self::displayOtherProjectsValues($otherProjectsValues[$headers[11]]),
+                    $presetValues['Training<br/>Role'],
+                    $presetValues['Research<br/>Interest'],
+                    $presetValues['Pre-doctorates<br/>In Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[6]]),
+                    $presetValues['Pre-doctorates<br/>Graduated'].self::displayOtherProjectsValues($otherProjectsValues[$headers[7]]),
+                    $presetValues['Predoctorates<br/>Continued in<br/>Research or<br/>Related Careers'].self::displayOtherProjectsValues($otherProjectsValues[$headers[8]]),
+                    $presetValues['Post-doctorates<br/>In Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[9]]),
+                    $presetValues['Post-doctorates<br/>Completed<br/>Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[10]]),
+                    $presetValues['Postdoctorates<br/>Continued in<br/>Research or<br/>Related Careers'].self::displayOtherProjectsValues($otherProjectsValues[$headers[11]]),
                 ];
                 $data[implode(",", $matchedMatches)] = [$row];
             }
@@ -652,7 +676,7 @@ class NIHTables {
 	    return $dataRow;
     }
 
-    public function get4Data($table, $dateOfReport) {
+    public function get4Data($table, $dateOfReport, $savedName) {
 	    $headers = $this->getHeaders($table);
 	    $data = ["Headers" => $headers];
 	    // List the funding source as NIH, AHRQ, NSF, Other Federal (Other Fed), University (Univ), Foundation (Fdn), None,
@@ -680,6 +704,7 @@ class NIHTables {
                 do {
                     $match = $matches[$i];
                     list($pid, $recordId) = preg_split("/:/", $match);
+                    $savedData = $savedName ? Application::getSetting($savedName, $pid) : [];
                     $email = $emailsByPid[$pid][$recordId] ?? "";
                     $emailHTML = $email ? "<br/>".Links::makeMailtoLink($email) : "";
                     $token = Application::getSetting("token", $pid);
@@ -742,11 +767,25 @@ class NIHTables {
                                     $startMMYYYY = REDCapManagement::YMD2MY($grant->getVariable("start"));
                                     $endMMYYYY = REDCapManagement::YMD2MY($grant->getVariable("end"));
                                 }
-                                $directBudget = $grant->getVariable("direct_budget");
-                                if ($directBudget) {
-                                    $directBudget = REDCapManagement::prettyMoney($directBudget, FALSE);
-                                } else {
-                                    $directBudget = self::$NA;
+
+                                $directBudget = "";
+                                if (isset($savedData['data'])) {
+                                    foreach ($savedData['data'] as $row) {
+                                        if (preg_match("/$facultyName/", $row['Name'])) {
+                                            $col = 'Current Year Direct<br/>Costs';
+                                            if (isset($row[$col]) && $row[$col]) {
+                                                $directBudget = $row[$col];
+                                            }
+                                        }
+                                    }
+                                }
+                                if (!$directBudget) {
+                                    $directBudget = $grant->getVariable("direct_budget");
+                                    if ($directBudget) {
+                                        $directBudget = REDCapManagement::prettyMoney($directBudget, FALSE);
+                                    } else {
+                                        $directBudget = self::$NA;
+                                    }
                                 }
                                 $row = [
                                     $facultyName.$emailHTML,
@@ -815,22 +854,23 @@ class NIHTables {
                         $usedEmails[] = $email;
                         foreach ($rows as $row) {
                             $newRow = [];
+                            $recordInstance = self::getUniqueIdentifier($row);
                             $newRow['pid'] = $pid;
                             $newRow['record'] = $recordId;
-                            $newRow['recordInstance'] = self::getUniqueIdentifier($row);
+                            $newRow['recordInstance'] = $recordInstance;
                             $newRow['email'] = $email;
                             for ($j = 0; $j < count($row); $j++) {
                                 $newRow[$headers[$j]] = $row[$j];
                             }
                             if (!empty($newRow)) {
-                                $newData[] = $newRow;
+                                $newData[$recordInstance] = $newRow;
                             }
                         }
                     }
                 }
             }
         }
-        return ["title" => $title, "data" => $newData, "headerList" => $headers];
+        return ["title" => $title, "data" => array_values($newData), "headerList" => $headers];
     }
 
     public static function separateHeaders($data, $title) {
@@ -890,9 +930,9 @@ class NIHTables {
 	    return $html;
     }
 
-    public function getHTML($table, $includeDOI = FALSE) {
+    public function getHTML($table, $includeDOI = FALSE, $savedName = "") {
 	    if (self::beginsWith($table, ["1", "2", "3", "4"])) {
-	        $data = $this->getData($table);
+	        $data = $this->getData($table, $savedName);
             return self::makeTable1_4DataIntoHTML($table, $data);
        } else if (self::beginsWith($table, ["5A", "5B"])) {
 			$data = $this->get5Data($table, [], $includeDOI);
@@ -1719,6 +1759,7 @@ class NIHTables {
                     } else {
                         $degree = $row[$field];
                     }
+
                     if (isset($_GET['test'])) {
                         echo "Found Degree for $recordId: $degree; checking for year in ".json_encode($yearMatches[$field])."<br>";
                     }
@@ -1739,6 +1780,7 @@ class NIHTables {
                                 break;
                             }
                         }
+
                         if (isset($_GET['test'])) {
                             echo "Looking for year for $recordId: $degree using $year<br>";
                         }
@@ -1775,14 +1817,14 @@ class NIHTables {
                             }
                         }
                     }
-                    if (self::hasMoreInfoInArray($degreesAndAddOns[$degree] ?? "", !isset($year) || ($year != self::$unknownYearText), ($institution != self::$unknownInstitutionText))) {
+                    if (self::hasMoreInfoInArray($degreesAndAddOns[$recordId][$degree] ?? "", !isset($year) || ($year != self::$unknownYearText), ($institution != self::$unknownInstitutionText))) {
                         if ($numCategories == 1) {
                             if ($getYear) {
-                                $degreesAndAddOns[$degree] = $year;
+                                $degreesAndAddOns[$recordId][$degree] = $year;
                             } else if ($getInstitution) {
-                                $degreesAndAddOns[$degree] = $institution;
+                                $degreesAndAddOns[$recordId][$degree] = $institution;
                             } else if ($getDate) {
-                                $degreesAndAddOns[$degree] = $date;
+                                $degreesAndAddOns[$recordId][$degree] = $date;
                             }
                         } else if ($numCategories == 2) {
                             $results = [];
@@ -1813,7 +1855,7 @@ class NIHTables {
 	}
 
 	private static function hasMoreInfoInArray($previousValue, $hasNewYearInfo, $hasNewInstitutionInfo) {
-	    if (!isset($previousValue)) {
+	    if (!isset($previousValue) || ($previousValue === "")) {
 	        if ($hasNewYearInfo || $hasNewInstitutionInfo) {
                 return TRUE;
             }
@@ -2021,7 +2063,7 @@ class NIHTables {
                         self::fillInBlankValues($descriptions);
                         $descriptionStr = implode("<br>", $descriptions);
                         $numNotAvailablesInDescription = substr_count($descriptionStr, self::$notAvailable);
-                        $numNotAvailablesInExistingItem = substr_count($positions[$ts], self::$notAvailable);
+                        $numNotAvailablesInExistingItem = substr_count($positions[$ts] ?? "", self::$notAvailable);
                         # if new timestamps -OR- if less not available comments, then set
                         if (!isset($positions[$ts])
                             || ($positions[$ts] && ($numNotAvailablesInDescription < $numNotAvailablesInExistingItem))) {
@@ -2112,7 +2154,7 @@ class NIHTables {
             $supportType = "TG";
         } else if ($fundingType == "Scholarship") {
             $supportType = "S";
-        } else if ($ary["activity_code"]) {
+        } else if (isset($ary["activity_code"])) {
             $supportType = $ary["activity_code"];
         } else {
             $supportType = "";
@@ -2129,15 +2171,15 @@ class NIHTables {
         } else if ($fundingSource == "Non-US") {
             $supportSource = "Non-US";
         } else if ($fundingSource == "NIH") {
-            $supportSource = $ary["institute_code"];
-        } else if ($ary["institute_code"]) {
+            $supportSource = $ary["institute_code"] ?? "";
+        } else if (isset($ary["institute_code"])) {
             $supportSource = $ary["institute_code"];
         } else {
             $supportSource = "";
         }
         if (($supportSource == "HX") && ($supportType == "I01")) {
             return "VA Merit";
-        } else if (($supportType == "") && ($supportType == "")) {
+        } else if (($supportSource == "") && ($supportType == "")) {
             return "Other";
         }
 	    return "$supportSource $supportType";
@@ -2339,26 +2381,26 @@ class NIHTables {
                 if (self::beginsWith($table, ['8A'])) {
                     $dataRow = [
                         "Trainee" => "{$lastNames[$recordId]}, {$firstNames[$recordId]}",
-                        "Terminal Degree(s)<br>Received and Year(s)" => $terminalDegree,
+                        "Terminal Degree(s)<br/>Received and Year(s)" => $terminalDegree,
                         "Faculty Member" => "<p>".implode("</p><p>", $transformedFacultyNames)."</p>",
                         "Start Date" => $countingStartDate,
                         "Summary of Support During Training" => $supportSummaryHTML,
-                        "Topic of Research Project<br>(From ".self::getResearchTopicSource().")" => $topic,
-                        "Initial Position<br>Department<br>Institution<br>Activity" => $initialPos,
-                        "Current Position<br>Department<br>Institution<br>Activity" => $currentPos,
+                        "Topic of Research Project<br/>(From ".self::getResearchTopicSource().")" => $topic,
+                        "Initial Position<br/>Department<br/>Institution<br/>Activity" => $initialPos,
+                        "Current Position<br/>Department<br/>Institution<br/>Activity" => $currentPos,
                         "Subsequent Grant(s)/Role/Year Awarded" => $subsequentGrants,
                     ];
                 } else if (self::beginsWith($table, ['8C'])) {
                     $dataRow = [
                         "Trainee" => "{$lastNames[$recordId]}, {$firstNames[$recordId]}",
-                        "Doctoral<br>Degree(s)<br>and Year(s)" => $doctoralDegrees,
+                        "Doctoral<br/>Degree(s)<br/>and Year(s)" => $doctoralDegrees,
                         "Faculty Member" => "<p>".implode("</p><p>", $transformedFacultyNames)."</p>",
                         "Start Date" => $countingStartDate,
                         "Summary of Support During Training" => $supportSummaryHTML,
-                        "Degree(s)<br>Resulting from<br>Postdoctoral<br>Training and<br>Year(s)" => $postdocDegrees,
-                        "Topic of Research Project<br>(From ".self::getResearchTopicSource().")" => $topic,
-                        "Initial Position<br>Department<br>Institution<br>Activity" => $initialPos,
-                        "Current Position<br>Department<br>Institution<br>Activity" => $currentPos,
+                        "Degree(s)<br/>Resulting from<br/>Postdoctoral<br/>Training and<br/>Year(s)" => $postdocDegrees,
+                        "Topic of Research Project<br/>(From ".self::getResearchTopicSource().")" => $topic,
+                        "Initial Position<br/>Department<br/>Institution<br/>Activity" => $initialPos,
+                        "Current Position<br/>Department<br/>Institution<br/>Activity" => $currentPos,
                         "Subsequent Grant(s)/Role/Year Awarded" => $subsequentGrants,
                     ];
                 } else {
@@ -2745,7 +2787,7 @@ class NIHTables {
 
 		$names = [];
 		foreach ($records as $record) {
-		    if ($allNames[$record]) {
+		    if (isset($allNames[$record]) && $allNames[$record]) {
                 $names[$record] = $allNames[$record];
             }
         }

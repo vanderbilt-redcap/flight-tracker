@@ -240,11 +240,15 @@ function reverseArray($ary) {
 function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $records) {
     $metadata = Download::metadata($token, $server);
     $vunets = Download::vunets($token, $server);
-    include Application::getCredentialsDir()."/con_redcap_ldap_user.php";
+    $file = Application::getCredentialsDir()."/con_redcap_ldap_user.php";
+    if (!file_exists($file)) {
+        return;
+    }
+    include $file;
 
     $upload = [];
     foreach ($records as $recordId) {
-        $vunet = $vunets[$recordId];
+        $vunet = $vunets[$recordId] ?? "";
         if ($vunet) {
             $data = StarBRITE::accessSRI("pub-match/vunet/", [$vunet], $pid);
             $pmids = fetchPMIDs($data);

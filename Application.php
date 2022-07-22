@@ -379,10 +379,8 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
         }
     }
 
-    public static function getMenteeAgreementLink() {
-	    $token = self::getSetting("token");
-	    $myPid = self::getPID($token);
-	    $defaultLink = self::link("mentor/intro.php", $myPid, TRUE);
+    public static function getMenteeAgreementLink($pid) {
+	    $defaultLink = self::link("mentor/intro.php", $pid, TRUE);
         if (self::isPluginProject()) {
             if (isset($_GET['test'])) {
                 echo "plugin project<br>";
@@ -393,8 +391,8 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
                 return self::link("mentor/intro.php", $sourcePid, TRUE);
             }
             Application::log("Warning! Could not find prod in info!");
-        } else if (CareerDev::isCopiedProject()) {
-            if ($sourcePid = CareerDev::getSourcePid($myPid)) {
+        } else if (CareerDev::isCopiedProject($pid)) {
+            if ($sourcePid = CareerDev::getSourcePid($pid)) {
                 return self::link("mentor/intro.php", $sourcePid, TRUE);
             }
             Application::log("Warning! Could not find sourcePid in copied project!");

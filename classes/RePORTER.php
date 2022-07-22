@@ -364,8 +364,8 @@ class RePORTER {
 
     public function searchAwards($baseAwardNumbers) {
         if ($this->isFederal()) {
-            $query = $this->server."/v1/projects/search?query=projectNumber:*".urlencode($baseAwardNo)."*";
-            $this->currData = $this->runGETQuery($query);
+            // $query = $this->server."/v1/projects/search?query=projectNumber:*".urlencode($baseAwardNo)."*";
+            // $this->currData = $this->runGETQuery($query);
         } else if ($this->isNIH()) {
             $payload = [
                 "criteria" => ["project_nums" => $baseAwardNumbers],

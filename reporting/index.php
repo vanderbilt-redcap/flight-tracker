@@ -9,6 +9,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
+Application::increaseProcessingMax(1);
 
 function makeLink($tableNum) {
     if ($tableNum == "Common Metrics") {

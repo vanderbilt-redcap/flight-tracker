@@ -102,7 +102,7 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
         if (in_array("eric", $forms)) {
             $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
         }
-        if (in_array("vera", $forms) && in_array("vera_submission", $forms)) {
+        if (in_array("vera", $forms) && in_array("vera_submission", $forms) && !Application::isLocalhost()) {
             $manager->addCron("drivers/22_getVERA.php", "getVERA", "Friday", $allRecords, 100000);
         }
 

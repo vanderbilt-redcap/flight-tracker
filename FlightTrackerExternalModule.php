@@ -111,6 +111,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             foreach ($sourceRow as $sourceField => $sourceValue) {
                 if (preg_match("/^$prefix/", $sourceField)
                     && in_array($sourceField, $metadataFields)
+                    && isset($choices[$sourceField])
                     && REDCapManagement::isValidChoice($sourceValue, $choices[$sourceField])) {
                     $destRow[$sourceField] = $sourceValue;
                     $hasChanged = TRUE;
@@ -596,16 +597,16 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         && ($destRow["redcap_repeat_instrument"] == "")
                         && (!self::isValidToCopy($config["test_fields"], $sourceRow, $destRow, $sourceChoices, $destChoices))
                     ) {
-                        Application::log("Not valid to copy single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
-                        Application::log("Not valid to copy single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
+                        Application::log("Not valid to copy single for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $destPid);
+                        Application::log("Not valid to copy single for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $sourcePid);
                         $continueToCopyFromSource = FALSE;
                     } else if (
                         ($config["formType"] == "repeating")
                         && ($destRow["redcap_repeat_instrument"] == $instrument)
                         && (!self::isValidToCopy($config["test_fields"], $sourceRow, $destRow, $sourceChoices, $destChoices))
                     ) {
-                        Application::log("Not valid to repeating single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
-                        Application::log("Not valid to repeating single for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
+                        Application::log("Not valid to repeating single for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $destPid);
+                        Application::log("Not valid to repeating single for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $sourcePid);
                         $continueToCopyFromSource = FALSE;
                     }
                 }
@@ -622,8 +623,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         ($config["formType"] == "single")
                         && ($sourceRow["redcap_repeat_instrument"] == "")
                     ) {
-                        Application::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
-                        Application::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
+                        Application::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $destPid);
+                        Application::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $sourcePid);
                         $hasChanged = self::copyDataFromRowToNormative($sourceRow,
                             $completeData[$sourcePid][$sourceRecordId],
                             $config["prefix"],
@@ -632,16 +633,16 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                             $normativeRow,
                             $instrument);
                         if ($hasChanged) {
-                            Application::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
-                            Application::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
+                            Application::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $destPid);
+                            Application::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $sourcePid);
                             $uploadNormativeRow = TRUE;
                         }
                     } else if (
                         ($config["formType"] == "repeating")
                         && ($sourceRow["redcap_repeat_instrument"] == $instrument)
                     ) {
-                        Application::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
-                        Application::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
+                        Application::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $destPid);
+                        Application::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $sourcePid);
                         $repeatingRow = self::copyDataFromRowToNewRow($sourceRow,
                             $completeData[$sourcePid][$sourceRecordId],
                             $config["prefix"],
@@ -651,8 +652,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                             $instrument,
                             $newInstance);
                         if ($repeatingRow && is_array($repeatingRow)) {
-                            Application::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
-                            Application::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
+                            Application::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $destPid);
+                            Application::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ?? "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ?? ""), $sourcePid);
                             $repeatingRows[] = $repeatingRow;
                             $newInstance++;
                         }

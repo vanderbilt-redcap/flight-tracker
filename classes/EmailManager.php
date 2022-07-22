@@ -676,8 +676,8 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		$fields = array("record_id", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv");
 		$surveys = $this->getSurveys();
 		foreach ($surveys as $form => $title) {
-			array_push($fields, $form."_complete");
-			array_push($fields, self::getDateField($form));
+			$fields[] = $form . "_complete";
+			$fields[] = self::getDateField($form);
 		}
 		$fields = REDCapManagement::filterOutInvalidFields($this->metadata, $fields);
 
@@ -693,7 +693,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 					$formRecords[$formName] = array();
 				}
 				foreach ($recordIds as $recordId) {
-					array_push($formRecords[$formName], $recordId);
+					$formRecords[$formName][] = $recordId;
 				}
 			}
 		}
@@ -734,7 +734,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
                 }
             }
             if (preg_match("/\[mentoring_agreement\]/", $mssgs[$recordId])) {
-                $menteeLink = Application::getMenteeAgreementLink();
+                $menteeLink = Application::getMenteeAgreementLink($this->pid);
                 $mssgs[$recordId] = str_replace("[mentoring_agreement]", Links::makeLink($menteeLink, $menteeLink), $mssgs[$recordId]);
             }
             if (preg_match("/\[last_name\]/", $mssgs[$recordId])) {

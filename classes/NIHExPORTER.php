@@ -4,7 +4,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-if (!defined("DATA_DICTIONARY")) {
+if (!defined("DATA_DIRECTORY")) {
     define("DATA_DIRECTORY", "filterData/");
 }
 if (!defined("INTERMEDIATE_1")) {
@@ -19,7 +19,7 @@ if (!defined("INTERMEDIATE_3")) {
 if (!defined("INTERMEDIATE_4")) {
     define("INTERMEDIATE_4", "R01AndEquivsList4.txt");
 }
-if (!defined("PI_LIAST")) {
+if (!defined("PI_LIST")) {
     define("PI_LIST", "PIList.txt");
 }
 

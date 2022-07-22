@@ -70,8 +70,9 @@ if (checkPOSTKeys(array_values($fields))) {
 	echo "<p class='centered'>If the same name is used for a scholar, any new values will overwrite what is already in REDCap.</p>\n";
 	echo "<form enctype='multipart/form-data' method='POST' action='$bulkLink'>\n";
 	echo Application::generateCSRFTokenHTML();
-	echo "<p class='centered'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />\n";
-	echo "CSV Upload: <input type='file' name='csv'><br>\n";
+	echo "<p class='centered max-width'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />\n";
+	echo "CSV Upload: <input type='file' name='csv'><br/>\n";
+    echo "<input type='checkbox' name='createNewRecords' id='createNewRecords' checked /> <label for='createNewRecords'>Create a New Record for Each Name.</label> (Otherwise, it will try to match names to prior records.)<br/>";
 	echo "<button>Process File</button>\n";
 	echo "</p></form>\n";
 }

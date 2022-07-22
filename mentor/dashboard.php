@@ -255,7 +255,7 @@ if ($numMentors > $numInvited["mentors"]) {
 
 echo "<h1>Mentoring Agreement Responses</h1>";
 
-$homeLink = Application::getMenteeAgreementLink();
+$homeLink = Application::getMenteeAgreementLink($pid);
 $addLink = Application::link("addMentor.php");
 $configUrl = Application::link("mentor/config.php");
 echo "<h2>Getting Started</h2>";
