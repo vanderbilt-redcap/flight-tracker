@@ -10,12 +10,13 @@ use Vanderbilt\CareerDevLibrary\FeatureSwitches;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\WebOfScience;
 use Vanderbilt\CareerDevLibrary\Cohorts;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
 
 class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.13.1";
+		return "4.13.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -408,9 +409,11 @@ class CareerDev {
 		$relativeUrl = preg_replace("/^\//", "", $relativeUrl);
 		if ($module = self::getModule()) {
 		    $url = $module->getUrl($relativeUrl);
-		    $isMentorAgreementPage = preg_match("/^mentor\//", $relativeUrl)
+		    $isMentorAgreementPage = (
+                preg_match("/^mentor\//", $relativeUrl)
                 && !preg_match("/^mentor\/dashboard/", $relativeUrl)
-                && !preg_match("/^mentor\/config/", $relativeUrl);
+                && !preg_match("/^mentor\/config/", $relativeUrl)
+            );
 		    if (
 		        (isset($_GET['project_id']) && is_numeric($_GET['project_id']))
                 || $isMentorAgreementPage
@@ -418,18 +421,23 @@ class CareerDev {
 		        if (preg_match("/pid=/", $url)) {
                     $url = preg_replace("/pid=/", "project_id=", $url);
                 } else if (is_numeric($_GET['project_id'])) {
-		            $projectId = (int) REDCapManagement::sanitize($_GET['project_id']);
+		            $projectId = (int) Sanitizer::sanitize($_GET['project_id']);
 		            $validPids = $module->getPids();
 		            foreach ($validPids as $possiblePid) {
 		                if ($possiblePid == $projectId) {
                             $url .= "&project_id=".$possiblePid;
                         }
                     }
+                } else if (!preg_match("/project_id=/", $url)) {
+                    $url .= "&project_id=$pid";
                 }
             }
 		    if ($pid && is_numeric($pid)) {
                 $url = preg_replace("/pid=\d+/", "pid=$pid", $url);
                 $url = preg_replace("/project_id=\d+/", "project_id=$pid", $url);
+                if (!preg_match("/pid=/", $url) && !preg_match("/project_id=/", $url)) {
+                    $url .= "&pid=$pid";
+                }
             }
 		    return $url;
 		}

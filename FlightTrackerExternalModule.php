@@ -87,6 +87,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         $mgr->sendRelevantEmails();
                     } catch (\Exception $e) {
                         # should only happen in rarest of circumstances
+                        if (preg_match("/'batchCronJobs' because the value is larger than the \d+ byte limit/", $e->getMessage())) {
+                            Application::saveSetting("batchCronJobs", [], $pid);
+                        }
                         $mssg = $e->getMessage()."<br><br>".$e->getTraceAsString();
                         \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Email Exception", $mssg);
                     }
