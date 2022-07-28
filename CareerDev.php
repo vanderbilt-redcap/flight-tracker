@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.13.3";
+		return "4.14.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -981,14 +981,8 @@ class CareerDev {
 					);
 		}
 		if ($menuName == "General") {
-		    $ary = [];
-            if (self::isVanderbilt()
-                && (in_array($pid, [101785, 107319, 138365, 138722])
-                    || self::isLocalhost())
-            ) {
-                $ary['NIH Reporting Tables 2-4'] = self::link("reporting/react-2/run/index.php");
-            }
-			$ary = array_merge($ary, [
+			return [
+                'NIH Reporting Tables 2-4' => self::link("reporting/react-2/run/index.php"),
                 "NIH Reporting Tables 5, 6, &amp; 8" => self::link("reporting/index.php"),
                 "List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
                 "K2R Conversion Calculator" => self::link("/k2r/index.php"),
@@ -999,8 +993,7 @@ class CareerDev {
                 "Custom Programming" => self::link("/changes/README.md"),
                 "Test Connectivity" => self::link("/testConnectivity.php"),
                 "Copy Project to Another Server" => self::link("/copyProject.php"),
-            ]);
-			return $ary;
+            ];
 		}
 		if ($menuName == "REDCap") {
 			return array(

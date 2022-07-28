@@ -151,7 +151,7 @@ if (isset($currSetting["who"]["individuals"])) {
 		$maxEmails = $currSetting["who"]["max_emails"];
 		$maxSpecified = "checked";
 	}
-	if ($currSetting["who"]["new_records_since"]) {
+	if (isset($currSetting["who"]["new_records_since"]) && $currSetting["who"]["new_records_since"]) {
 		$newRecordsSince = $currSetting["who"]["new_records_since"];
 		$newRecordsSinceSpecified = "checked";
 	}

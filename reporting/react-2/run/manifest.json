@@ -1,0 +1,20 @@
+{
+  "short_name": "Table Tracker",
+  "name": "Flight Tracker Table Tracker (1-4)",
+  "icons": [
+    {
+      "src": "flight_tracker_icon_64.png",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "flight_tracker_icon_192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "index.php",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}

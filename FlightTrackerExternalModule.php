@@ -77,15 +77,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 				$token = $this->getProjectSetting("token", $pid);
 				$server = $this->getProjectSetting("server", $pid);
 				if ($token && $server) {
-                    $tokenName = $this->getProjectSetting("tokenName", $pid);
-                    $adminEmail = $this->getProjectSetting("admin_email", $pid);
-                    $cronStatus = $this->getProjectSetting("send_cron_status", $pid);
-                    if ($cronStatus) {
-                        $mgr = new CronManager($token, $server, $pid, $this);
-                        loadTestingCrons($mgr);
-                        $mgr->run($adminEmail, $tokenName);
-                    }
                     try {
+                        $tokenName = $this->getProjectSetting("tokenName", $pid);
+                        $adminEmail = $this->getProjectSetting("admin_email", $pid);
+                        $cronStatus = $this->getProjectSetting("send_cron_status", $pid);
+                        if ($cronStatus) {
+                            $mgr = new CronManager($token, $server, $pid, $this);
+                            loadTestingCrons($mgr);
+                            $mgr->run($adminEmail, $tokenName);
+                        }
                         $mgr = new EmailManager($token, $server, $pid, $this);
                         $mgr->sendRelevantEmails();
                     } catch (\Exception $e) {
@@ -93,7 +93,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         if (preg_match("/'batchCronJobs' because the value is larger than the \d+ byte limit/", $e->getMessage())) {
                             Application::saveSetting("batchCronJobs", [], $pid);
                         }
-                        $mssg = $e->getMessage()."<br><br>".$e->getTraceAsString();
+                        $mssg = $e->getMessage()."<br/><br/>".$e->getTraceAsString();
                         \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Email Exception", $mssg);
                     }
                 }

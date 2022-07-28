@@ -119,7 +119,7 @@ class Publications {
 
         $pmids = array();
         $pmData = json_decode($output, true);
-        if ($pmData['esearchresult'] && $pmData['esearchresult']['idlist']) {
+        if (isset($pmData['esearchresult']) && isset($pmData['esearchresult']['idlist'])) {
             # if the errorlist is not blank, it might search for simplified
             # it might search for simplified names and produce bad results
             $pmidCount = count($pmData['esearchresult']['idlist']);
@@ -133,7 +133,7 @@ class Publications {
                 )
             ) {
                 foreach ($pmData['esearchresult']['idlist'] as $pmid) {
-                    array_push($pmids, $pmid);
+                    $pmids[] = $pmid;
                 }
             }
         }
@@ -768,21 +768,21 @@ class Publications {
             $pubTypes = array();
             if ($article->PublicationTypeList) {
                 foreach ($article->PublicationTypeList->PublicationType as $pubType) {
-                    array_push($pubTypes, strval($pubType));
+                    $pubTypes[] = strval($pubType);
                 }
             }
 
             $assocGrants = array();
             if ($article->GrantList) {
                 foreach ($article->GrantList->Grant as $grant) {
-                    array_push($assocGrants, strval($grant->GrantID));
+                    $assocGrants[] = strval($grant->GrantID);
                 }
             }
 
             $meshTerms = array();
             if ($medlineCitation->MedlineCitation->MeshHeadingList) {
                 foreach ($medlineCitation->MedlineCitation->MeshHeadingList->MeshHeading as $mesh) {
-                    array_push($meshTerms, strval($mesh->DescriptorName));
+                    $meshTerms[] = strval($mesh->DescriptorName);
                 }
             }
 
@@ -860,7 +860,7 @@ class Publications {
                 $row['citation_include'] = '1';
             }
             $row = REDCapManagement::filterForREDCap($row, $metadataFields);
-            array_push($upload, $row);
+            $upload[] = $row;
             $instance++;
         }
         return [$upload, $pmidsPulled];

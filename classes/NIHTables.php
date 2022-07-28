@@ -16,6 +16,7 @@ class NIHTables {
 		} else {
 			$this->metadata = $metadata;
 		}
+        $this->choices = $this->getAlteredChoices();
 		self::$NA = self::makeComment(self::$notAvailable);
 	}
 
@@ -364,7 +365,7 @@ class NIHTables {
                         $matchResults = [];
                         $matchResults["Degrees"] = $this->findDegrees($redcapData);
                         $matchResults["Ranks"]  = preg_split("/\s*,\s*/", $this->findAcademicRank($redcapData, $recordId, $ldapREDCapRows));
-                        $matchResults["Departments"]  = preg_split("/\s*,\s*/", $this->findDepartment($redcapData, $recordId, $ldapREDCapRows));
+                        $matchResults["Departments"]  = preg_split("/\s*;\s*/", $this->findDepartment($redcapData, $recordId, $ldapREDCapRows, $pid));
                         foreach ($matchResults as $resultType => $values) {
                             if (!isset($allResults[$resultType][$match])) {
                                 $allResults[$resultType][$match] = [];
@@ -457,7 +458,7 @@ class NIHTables {
                     $facultyName.$emailHTML,
                     implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Degrees"])),
                     implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Ranks"])),
-                    implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Departments"])),
+                    implode("; ", REDCapManagement::removeBlanksFromAry($combinedResults["Departments"])),
                     $presetValues['Training<br/>Role'],
                     $presetValues['Research<br/>Interest'],
                     $presetValues['Pre-doctorates<br/>In Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[6]]),
@@ -477,7 +478,7 @@ class NIHTables {
 	    if (empty($valuesByPid)) {
 	        return "";
         }
-	    $html = "<br>";
+        $htmlRows = [];
 	    foreach ($valuesByPid as $pid => $values) {
             $adminEmail = Application::getSetting("adminEmail", $pid);
             $adminEmailSpaced = preg_replace("/[,;]/", ", ", $adminEmail);
@@ -509,24 +510,27 @@ class NIHTables {
                         }
                     }
                 }
-	            $html .= "<span class='tooltip'><span class='widetooltiptext'>$projectInfo</span>$valuesStr</span>";
+	            $htmlRows[] = "<span class='tooltip'><span class='widetooltiptext'>$projectInfo</span>$valuesStr</span>";
             }
         }
-	    return $html;
+	    return empty($htmlRows) ? "" : "<br/><span class='smaller'>Other Projects' Values</span><br/>".implode("<br/>", $htmlRows);
     }
 
-    private function findDepartment($redcapData, $recordId, $ldapRows) {
+    private function findDepartment($redcapData, $recordId, $ldapRows, $pid) {
+        $redcapField = "summary_primary_field";
 	    $value = $this->findFields(
 	        $redcapData,
             $recordId,
             $ldapRows,
             "ldap_vanderbiltpersonhrdeptname",
-            "summary_primary_dept"
+            $redcapField,
+            ";"
         );
+        $fieldChoices = DataDictionaryManagement::getChoicesForField($pid, $redcapField);
 	    if (preg_match("/Other/", $value)) {
-	        return "<span class='action_required'>$value</span>";
+            return "<span class='action_required'>$value</span>";
         } else {
-	        return $value;
+            return $fieldChoices[$value] ?? $value;
         }
     }
 
@@ -544,7 +548,7 @@ class NIHTables {
         return "table_".$tableNum."_record_".$recordId;
     }
 
-    private function findFields($redcapData, $recordId, $ldapRows, $ldapField, $redcapField) {
+    private function findFields($redcapData, $recordId, $ldapRows, $ldapField, $redcapField, $separator = ",") {
 	    if (count($ldapRows) == 1) {
             $row = $ldapRows[0];
             if (isset($row[$ldapField])) {
@@ -557,10 +561,13 @@ class NIHTables {
                     $values[] = $ldapRows[$i][$ldapField];
                 }
             }
-            return implode(", ", $values);
+            return implode($separator." ", $values);
         }
 
 	    $idx = REDCapManagement::findField($redcapData, $recordId, $redcapField);
+        if (isset($this->choices[$redcapField]) && isset($this->choices[$redcapField][$idx])) {
+            return $this->choices[$redcapField][$idx];
+        }
         return isset($this->choices[$redcapField][$idx]) ? $this->choices[$redcapField][$idx] : $idx;
     }
 

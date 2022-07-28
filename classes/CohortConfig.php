@@ -170,7 +170,7 @@ class CohortConfig {
 					if ($row['combiner']) {
 						$evaluatedRow['combiner'] = $row['combiner'];
 					}
-					array_push($postStep1, $evaluatedRow);
+					$postStep1[] = $evaluatedRow;
 				}
 
 				# 2. evaluate XORs
