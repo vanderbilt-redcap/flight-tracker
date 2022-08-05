@@ -33,6 +33,10 @@ class DateManagement {
         return floor(($dayOfMonth - 1) / 7) + 1;
     }
 
+    public static function isYear($d) {
+        return preg_match("/^\d{4}$/", $d) || preg_match("/^\d{2}$/", $d);
+    }
+
     public static function getReporterDateInYMD($dt) {
         if (!$dt) {
             return "";

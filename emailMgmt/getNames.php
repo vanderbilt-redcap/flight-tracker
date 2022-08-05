@@ -26,7 +26,7 @@ if (empty($names)) {
 		$lines = array();
 		foreach ($names as $recordId => $name) {
 			$email = $emails[$recordId];
-			array_push($lines, $name.";".$email);
+			$lines[] = $name . ";" . $email;
 		}
 		echo implode("<br>\n", $lines);
 	} else {

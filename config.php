@@ -102,13 +102,13 @@ if (isset($_GET['order'])) {
     }
 	echo makeOrder($token, $server, $pid, $metadata);
 } else {
-	echo makeSettings(CareerDev::getModule());
+	echo makeSettings(CareerDev::getModule(), $pid);
 }
 
 function getFieldNames($metadata) {
 	$fields = array();
 	foreach ($metadata as $row) {
-		array_push($fields, $row['field_name']);
+		$fields[] = $row['field_name'];
 	}
 	return $fields;
 }
@@ -139,7 +139,7 @@ function getExistingChoicesTexts($existingChoices, $scholar, $allFields) {
 	$choices = getExistingChoices($existingChoices, $scholar, $allFields);
 	$texts = array();
 	foreach ($choices as $key => $value) {
-		array_push($texts, "$key = $value");
+		$texts[] = "$key = $value";
 	}
 	return $texts;
 }
@@ -322,34 +322,34 @@ function findFieldLabel($fieldName, $metadata) {
 	return "";
 }
 
-function makeSettings($module) {
+function makeSettings($module, $pid) {
 	$ary = array();
 	
 	$ary["Length of K Grants"] = array();
-	array_push($ary["Length of K Grants"], makeSetting("internal_k_length", "number", "Internal K Length in Years", "3"));
-	array_push($ary["Length of K Grants"], makeSetting("k12_kl2_length", "number", "K12/KL2 Length in Years", "3"));
-	array_push($ary["Length of K Grants"], makeSetting("individual_k_length", "number", "Length of NIH K Grants in Years", "5"));
+	$ary["Length of K Grants"][] = makeSetting("internal_k_length", "number", "Internal K Length in Years", "3");
+	$ary["Length of K Grants"][] = makeSetting("k12_kl2_length", "number", "K12/KL2 Length in Years", "3");
+	$ary["Length of K Grants"][] = makeSetting("individual_k_length", "number", "Length of NIH K Grants in Years", "5");
 
 	$ary["Installation Variables"] = array();
-	array_push($ary["Installation Variables"], makeSetting("institution", "text", "Full Name of Institution"));
-	array_push($ary["Installation Variables"], makeSetting("short_institution", "text", "Short Name of Institution"));
-	array_push($ary["Installation Variables"], makeSetting("other_institutions", "text", "Other Institutions (if any); comma-separated"));
-    array_push($ary["Installation Variables"], makeSetting("token", "text", "API Token"));
-    array_push($ary["Installation Variables"], makeSetting("supertoken", "text", "REDCap Supertoken (optional, from REDCap Administrator, for turning on Cohort Portals)"));
-	array_push($ary["Installation Variables"], makeSetting("event_id", "text", "Event ID (read-only)", "", [], TRUE));
-	array_push($ary["Installation Variables"], makeSetting("pid", "text", "Project ID (read-only)", "", [], TRUE));
-	array_push($ary["Installation Variables"], makeSetting("server", "text", "Server API Address"));
-	array_push($ary["Installation Variables"], makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated"));
-	array_push($ary["Installation Variables"], makeSetting("tokenName", "text", "Project Name"));
-	array_push($ary["Installation Variables"], makeSetting("timezone", "text", "Timezone"));
-    array_push($ary["Installation Variables"], makeSetting("grant_class", "radio", "Grant Class", "", CareerDev::getGrantClasses()));
-	array_push($ary["Installation Variables"], makeSetting("grant_number", "text", "Grant Number"));
-    array_push($ary["Installation Variables"], makeSetting("server_class", "radio", "Server Class", "prod", CareerDev::getServerClasses()));
-	array_push($ary["Installation Variables"], makeSetting("departments", "textarea", "Department Names"));
-	array_push($ary["Installation Variables"], makeSetting("resources", "textarea", "Resources"));
-    array_push($ary["Installation Variables"], makeSetting("send_error_logs", "yesno", "Report Fatal Errors to Development Team?"));
-    array_push($ary["Installation Variables"], makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "Share Data Among the Following Resources?"));
-    array_push($ary["Installation Variables"], makeSetting("auto_recalculate", "yesno", "Automatically Re-summarize After Data Saves? (No waits until overnight.)", 0));
+	$ary["Installation Variables"][] = makeSetting("institution", "text", "Full Name of Institution");
+	$ary["Installation Variables"][] = makeSetting("short_institution", "text", "Short Name of Institution");
+	$ary["Installation Variables"][] = makeSetting("other_institutions", "text", "Other Institutions (if any); comma-separated");
+    $ary["Installation Variables"][] = makeSetting("token", "text", "API Token");
+    $ary["Installation Variables"][] = makeSetting("supertoken", "text", "REDCap Supertoken (optional, from REDCap Administrator, for turning on Cohort Portals)");
+	$ary["Installation Variables"][] = makeSetting("event_id", "text", "Event ID (read-only)", "", [], TRUE);
+	$ary["Installation Variables"][] = makeSetting("pid", "text", "Project ID (read-only)", "", [], TRUE);
+	$ary["Installation Variables"][] = makeSetting("server", "text", "Server API Address");
+	$ary["Installation Variables"][] = makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated");
+	$ary["Installation Variables"][] = makeSetting("tokenName", "text", "Project Name");
+	$ary["Installation Variables"][] = makeSetting("timezone", "text", "Timezone");
+    $ary["Installation Variables"][] = makeSetting("grant_class", "radio", "Grant Class", "", CareerDev::getGrantClasses());
+	$ary["Installation Variables"][] = makeSetting("grant_number", "text", "Grant Number");
+    $ary["Installation Variables"][] = makeSetting("server_class", "radio", "Server Class", "prod", CareerDev::getServerClasses());
+	$ary["Installation Variables"][] = makeSetting("departments", "textarea", "Department Names");
+	$ary["Installation Variables"][] = makeSetting("resources", "textarea", "Resources");
+    $ary["Installation Variables"][] = makeSetting("send_error_logs", "yesno", "Report Fatal Errors to Development Team?");
+    $ary["Installation Variables"][] = makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "Share Data Among the Following Resources?");
+    $ary["Installation Variables"][] = makeSetting("auto_recalculate", "yesno", "Automatically Re-summarize After Data Saves? (No waits until overnight.)", 0);
 
 	$ary["Emails"] = array();
 //	array_push($ary["Emails"], makeHelperText("An initial email can automatically be sent out during the first month after the new record is added to the database. If you desire to use this feature, please complete the following fields."));
@@ -357,18 +357,19 @@ function makeSettings($module) {
 //	array_push($ary["Emails"], makeSetting("init_subject", "text", "Initial Email Subject"));
 //	array_push($ary["Emails"], makeSetting("init_message", "textarea", "Initial Email Message"));
     $ary["Emails"][] = makeSetting("default_from", "text", "Default From Address");
+    $ary["Emails"][] = makeSetting("warning_minutes", "number", "Number of Minutes Before An Email to Send a Warning Email", Application::getWarningEmailMinutes($pid));
 
     $ary["Bibliometrics"] = array();
-    array_push($ary["Bibliometrics"], makeSetting("wos_userid", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)")." User ID"));
-    array_push($ary["Bibliometrics"], makeSetting("wos_password", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)")." Password"));
-    array_push($ary["Bibliometrics"], makeSetting("scopus_api_key", "text", Links::makeLink("https://www.scopus.com/", "Scopus")." API Key (for H Index)"));
+    $ary["Bibliometrics"][] = makeSetting("wos_userid", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " User ID");
+    $ary["Bibliometrics"][] = makeSetting("wos_password", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " Password");
+    $ary["Bibliometrics"][] = makeSetting("scopus_api_key", "text", Links::makeLink("https://www.scopus.com/", "Scopus") . " API Key (for H Index)");
 
     $ary["Proxy Server (Only if Applicable)"] = array();
-    array_push($ary["Proxy Server (Only if Applicable)"], makeHelperText("If your REDCap server has a proxy server, please fill out the following information. (If you don't know about this, you probably don't have one, so no worries then.)"));
-    array_push($ary["Proxy Server (Only if Applicable)"], makeSetting("proxy-ip", "text", "Proxy IP Address"));
-    array_push($ary["Proxy Server (Only if Applicable)"], makeSetting("proxy-port", "text", "Proxy Port Number"));
-    array_push($ary["Proxy Server (Only if Applicable)"], makeSetting("proxy-user", "text", "Proxy Username"));
-    array_push($ary["Proxy Server (Only if Applicable)"], makeSetting("proxy-pass", "text", "Proxy Password"));
+    $ary["Proxy Server (Only if Applicable)"][] = makeHelperText("If your REDCap server has a proxy server, please fill out the following information. (If you don't know about this, you probably don't have one, so no worries then.)");
+    $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-ip", "text", "Proxy IP Address");
+    $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-port", "text", "Proxy Port Number");
+    $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-user", "text", "Proxy Username");
+    $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-pass", "text", "Proxy Password");
 
     $html = "";
 	if ($module) {

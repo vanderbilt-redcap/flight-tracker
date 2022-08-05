@@ -15,6 +15,15 @@ class Sanitizer {
         return $str;
     }
 
+    public static function sanitizeDate($date) {
+        $date = self::sanitize($date);
+        if (DateManagement::isDate($date)) {
+            return $date;
+        } else {
+            throw new \Exception("Invalid date $date");
+        }
+    }
+
     public static function sanitizeWithoutChangingQuotes($str) {
         if (is_numeric($str)) {
             $str = (string) $str;

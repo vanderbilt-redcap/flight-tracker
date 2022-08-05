@@ -25,6 +25,15 @@ class Application {
         return "";
     }
 
+    public static function getWarningEmailMinutes($pid) {
+        $value = self::getSetting("warning_minutes", $pid);
+        if (!$value) {
+            return 15;
+        } else {
+            return $value;
+        }
+    }
+
     public static function isSuperUser() {
         $isSuperUser = FALSE;
         if (method_exists("\ExternalModules\ExternalModules", "isSuperUser")) {
@@ -55,7 +64,7 @@ class Application {
 	    return CareerDev::has($instrument);
     }
 
-	public static function getApplicationColors($alphas = ["1.0"]) {
+	public static function getApplicationColors($alphas = ["1.0"], $inHex = FALSE) {
         $colors = [];
         foreach ($alphas as $alpha) {
             # Flight Tracker RGBs
@@ -65,7 +74,28 @@ class Application {
             $colors[] = "rgba(247, 151, 33, $alpha)";
             $colors[] = "rgba(145, 148, 201, $alpha)";
         }
-        return $colors;
+        if ($inHex) {
+            $hexColors = [];
+            foreach ($colors as $color) {
+                if (preg_match("/rgba\((\d+), (\d+), (\d+), ([\d\.]+)\)/", $color, $matches)) {
+                    $rr = dechex($matches[1]);
+                    $gg = dechex($matches[2]);
+                    $bb = dechex($matches[3]);
+                    $aa = dechex(round($matches[4] * 255));
+                } else if (preg_match("/rgb\((\d+), (\d+), (\d+)\)/", $color, $matches)) {
+                    $rr = dechex($matches[1]);
+                    $gg = dechex($matches[2]);
+                    $bb = dechex($matches[3]);
+                    $aa = '';
+                } else {
+                    throw new \Exception("Invalid pattern $color");
+                }
+                $hexColors[] = strtoupper("#$aa$rr$gg$bb");
+            }
+            return $hexColors;
+        } else {
+            return $colors;
+        }
     }
 
 	public static function isVanderbilt() {

@@ -460,7 +460,7 @@ class NIHTables {
                     implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Ranks"])),
                     implode("; ", REDCapManagement::removeBlanksFromAry($combinedResults["Departments"])),
                     $presetValues['Training<br/>Role'],
-                    $presetValues['Research<br/>Interest'],
+                    $presetValues['Research<br/>Interest'].self::displayOtherProjectsValues($otherProjectsValues[$headers[5]]),
                     $presetValues['Pre-doctorates<br/>In Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[6]]),
                     $presetValues['Pre-doctorates<br/>Graduated'].self::displayOtherProjectsValues($otherProjectsValues[$headers[7]]),
                     $presetValues['Predoctorates<br/>Continued in<br/>Research or<br/>Related Careers'].self::displayOtherProjectsValues($otherProjectsValues[$headers[8]]),
@@ -500,7 +500,7 @@ class NIHTables {
                 foreach ($valuesByTs as $ts => $value) {
                     if ($value !== "") {
                         if ($valuesStr) {
-                            $valuesStr .= "<br>";
+                            $valuesStr .= "<br/>";
                         }
                         if ($ts) {
                             $mdyDate = date("m-d-Y", $ts);

@@ -500,7 +500,7 @@ class Citation {
 		return $month;
 	}
 
-	public static function createCitationFromText($text, $recordId) {
+	public static function getTimestampFromText($text, $recordId) {
 		if (!$text) {
 			return 0;
 		}
@@ -850,6 +850,13 @@ class Citation {
             $citation .= self::addPeriodIfExtant($id);
         }
         return $citation;
+    }
+
+    public static function getPublicationTitleFromText($citationText) {
+        if (preg_match("/, \d{4}, ([^,]+), [^,]+, [\d\-:]+/", $citationText, $matches)) {
+            return $matches[1];
+        }
+        return "";
     }
 
     private function getPubMedCitation($authorText, $addDOI = TRUE) {

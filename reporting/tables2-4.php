@@ -53,6 +53,10 @@ if (isset($_POST['action']) && $token && $server && $pid) {
             $data = $reactHandler->getProjectInfo($name);
         } else if ($action == "getSavedTableNames") {
             $data = $reactHandler->getSavedTableNames();
+        } else if ($action == "setSavedTableNames") {
+            $newSavedNames = Sanitizer::sanitizeArray($_POST['savedTableNames'] ?? []);
+            $reactHandler->setSavedTableNames($newSavedNames);
+            $data = $reactHandler->getSavedTableNames();
         } else if ($action == "lookup") {
             $data = $reactHandler->lookupValues(Sanitizer::sanitizeArray($_POST));
         } else if ($action == "lookupRePORTER") {

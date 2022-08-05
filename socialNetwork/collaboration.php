@@ -23,7 +23,7 @@ if (isset($_GET['record'])) {
     $highlightedRecord = FALSE;
 }
 
-define('NUM_COLLABS_TO_SHOW', 3);
+$numCollabsToShow = isset($_GET['numCollabs']) ? Sanitizer::sanitize($_GET['numCollabs']) : 3;
 define('PUBYEAR_SELECT', '---pub_year---');
 define('START_YEAR', 2010);
 
@@ -117,6 +117,7 @@ if ($includeHeaders) {
         echo "<div class='mentorCheckbox centered max-width'$style><input type='checkbox' id='other_mentors' name='other_mentors'{$checked['other_mentors']}> <label for='other_mentors'>Show Only Collaborations with Multiple Mentors</label></div>";
         echo "<div class='centered max-width'><label for='start'>Start Date (on-or-after ".START_YEAR."): </label><input type='date' id='start' name='start' value='$startDate' />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date: </label><input type='date' id='end' name='end' value='$endDate' /></div>";
     }
+    echo "<div class='centered max-width'><label for='numCollabs'>Number of Top Collaborators to Highlight</label> <input type='number' id='numCollabs' name='numCollabs' value='$numCollabsToShow' style='width: 50px;' /></div>";
     echo "<div class='centered max-width'><button>Go!</button></div>";
     echo "</p></form>";
 }
@@ -235,7 +236,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
     } else {
         $mentorConnections = 0;
     }
-    list($stats, $maxConnections, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators) = makeSummaryStats($connections, $names);
+    list($stats, $maxConnections, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators) = makeSummaryStats($connections, $names, $numCollabsToShow);
 
     if (isset($_GET['test'])) {
         echo "unique IDs: ".implode(", ", $uniqueIDs)."<br/>";
@@ -275,8 +276,8 @@ if (isset($_GET['cohort']) && !empty($records)) {
                 echo "<tr><th>Median of Connections</th><td>".REDCapManagement::pretty($stats[$type]->median(), 1)."</td></tr>\n";
                 echo "<tr><th>Mode of Connections</th><td>".implode(", ", $stats[$type]->mode())."</td></tr>\n";
                 echo "<tr><th>Standard Deviation</th><td>&sigma; = ".REDCapManagement::pretty($stats[$type]->getSigma(), 1)."</td></tr>\n";
-                echo "<tr><th>Maximum Connections</th><td>Leading ".NUM_COLLABS_TO_SHOW." Entries<br/>".formatCollaborators($maxConnections[$type], $maxNames[$type])."</td></tr>\n";
-                echo "<tr><th>Maximum Number of Collaborators</th><td>Leading ".NUM_COLLABS_TO_SHOW." Entries<br/>".formatCollaborators($maxCollaborators[$type], $maxCollabNames[$type])."</td></tr>\n";
+                echo "<tr><th>Maximum Connections</th><td>Leading $numCollabsToShow Entries<br/>".formatCollaborators($maxConnections[$type], $maxNames[$type], $numCollabsToShow)."</td></tr>\n";
+                echo "<tr><th>Maximum Number of Collaborators</th><td>Leading $numCollabsToShow Entries<br/>".formatCollaborators($maxCollaborators[$type], $maxCollabNames[$type], $numCollabsToShow)."</td></tr>\n";
                 if ($includeMentors && ($type != "received") && $mentorConnections) {
                     echo "<tr><th>Average Connections per Mentor with All Scholars</th><td>".REDCapManagement::pretty($mentorConnections, 1)."</td></tr>\n";
                 }
@@ -307,10 +308,10 @@ if (isset($_GET['cohort']) && !empty($records)) {
 
 
 
-function formatCollaborators($maxCollaboratorsForType, $maxCollabNamesForType) {
+function formatCollaborators($maxCollaboratorsForType, $maxCollabNamesForType, $numCollabsToShow) {
     $previousEntry = -999999;
     $htmlToReturn = [];
-    for ($i = 0; $i < NUM_COLLABS_TO_SHOW; $i++) {
+    for ($i = 0; $i < $numCollabsToShow; $i++) {
         if (isset($maxCollaboratorsForType[$i]) && ($maxCollaboratorsForType[$i] != $previousEntry)) {
             $htmlToReturn[] = REDCapManagement::pretty($maxCollaboratorsForType[$i])." (".REDCapManagement::makeConjunction($maxCollabNamesForType[$i]).")";
             $previousEntry = $maxCollaboratorsForType[$i];
@@ -414,6 +415,21 @@ function getAvgMentorConnections($matches) {
     return 0;
 }
 
+function getPlainColorWheel() {
+    // Flight Tracker colors
+//    return [
+//        "#5764ae",
+//        "#f0565d",
+//        "#8dc63f",
+//        "#f79721",
+//        "#8c91ae",
+//        "#f09599",
+//        "#a4c675",
+//        "#f7b768",
+//   ];
+    return Application::getApplicationColors(["1.0", "0.3"], TRUE);
+}
+
 function generateColorWheel($numColors, $startYear, $endYear) {
     # from https://learnui.design/tools/data-color-picker.html#palette
 //    $colors = [
@@ -428,16 +444,7 @@ function generateColorWheel($numColors, $startYear, $endYear) {
 //    ];
 
     # Flight Tracker colors with a second four that are de-saturated a bit
-    $colors = [
-        "#5764ae",
-        "#f0565d",
-        "#8dc63f",
-        "#f79721",
-        "#8c91ae",
-        "#f09599",
-        "#a4c675",
-        "#f7b768",
-    ];
+    $colors = getPlainColorWheel();
     $unknownColor = '#000000';
 
     if ($numColors > count($colors)) {
@@ -504,7 +511,11 @@ function makeLegendHTML($indexByField) {
 
 function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
     $totalConnections = 0;
-    $colorWheel = generateColorWheel(8, START_YEAR, date("Y"));
+    if ($indexByField == PUBYEAR_SELECT) {
+        $colorWheel = generateColorWheel(8, START_YEAR, date("Y"));
+    } else {
+        $colorWheel = getPlainColorWheel();
+    }
     $combine = ["VCTRS", "VPSD", "VFRS"];
     $connections = ["given" => [], "received" => [], ];
     $chartData = [];
@@ -571,6 +582,7 @@ function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
                }
             } else {
                 $chartRow['value'] = $numItems;
+                $chartRow['nodeColor'] = $colorWheel[count($chartData) % count($colorWheel)];
                 $chartData[] = $chartRow;
             }
             $connections["given"][$fromRecordId][$toRecordId] = $numItems;
@@ -803,7 +815,7 @@ function getExplodedLastNames($token, $server) {
     return $possibilities;
 }
 
-function makeSummaryStats($connections, $names) {
+function makeSummaryStats($connections, $names, $numCollabsToShow) {
     $stats = [];
     $maxConnections = [];
     $maxNames = [];
@@ -831,13 +843,13 @@ function makeSummaryStats($connections, $names) {
         }
         $stats[$type] = new Stats($dataValues);
         rsort($dataValues);
-        for ($i = 0; $i < NUM_COLLABS_TO_SHOW; $i++) {
+        for ($i = 0; $i < $numCollabsToShow; $i++) {
             $maxConnections[$type][$i] = $dataValues[$i] ?: 0;
         }
         $maxNames[$type] = [];
         $maxCollabNames[$type] = [];
         krsort($collabsInOrder[$type]);
-        for ($i = 0; $i < NUM_COLLABS_TO_SHOW; $i++) {
+        for ($i = 0; $i < $numCollabsToShow; $i++) {
             if (!empty($collabsInOrder[$type])) {
                 $keys = array_keys($collabsInOrder[$type]);
                 if (isset($keys[$i])) {

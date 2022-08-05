@@ -111,6 +111,11 @@ class Publications {
         return self::queryPubMed($term, $pid);
     }
 
+    public static function searchPubMedForTitle($title, $pid) {
+        $term = $title."%5Btitle%5D";
+        return self::queryPubMed($term, $pid);
+    }
+
     public static function queryPubMed($term, $pid) {
         $url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=100000&retmode=json&term=".$term;
         Application::log($url);
@@ -1158,15 +1163,15 @@ class Publications {
 	}
 
 	public static function getCurrentPMC($citation) {
-		if (preg_match("/PMC\d+/", $citation, $matches)) {
-			$match = preg_replace("/PMC/", "", $matches[0]);
+		if (preg_match("/PMC:?\s*\d+/", $citation, $matches)) {
+			$match = preg_replace("/PMC:?\s*/", "", $matches[0]);
 			return $match;
 		}
 		return "";
 	}
 
 	public static function getCurrentPMID($citation) {
-		if (preg_match("/PMID:\s*\d+/", $citation, $matches)) {
+		if (preg_match("/PMID:?\s*\d+/", $citation, $matches)) {
 			$match = preg_replace("/PMID:\s*/", "", $matches[0]);
 			return $match;
 		}
@@ -1416,7 +1421,7 @@ class Publications {
 		if (get_class($citation) == "Citation") {
 			$cit = $citation;
 		} else {
-			$cit = Citation::createCitationFromText($citation, $recordId);
+			return Citation::getTimestampFromText($citation, $recordId);
 		}
 		return $cit->getTimestamp();
 	}

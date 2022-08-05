@@ -1,12 +1,12 @@
 <?php
 
 use \Vanderbilt\CareerDevLibrary\Publications;
-use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\CitationCollection;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Altmetric;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
@@ -16,13 +16,13 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 if ($_GET['record']) {
     if ($_GET['record'] == "all") {
         if ($_GET['cohort']) {
-            $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+            $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
             $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
         } else {
             $records = Download::recordIds($token, $server);
         }
     } else {
-        $records = [REDCapManagement::sanitize($_GET['record'])];
+        $records = [Sanitizer::sanitize($_GET['record'])];
     }
 } else {
     $records = [];
@@ -125,7 +125,8 @@ if (Application::hasComposer() && CareerDev::isVanderbilt()) {
 echo makeCustomizeTable($token, $server, $metadata);
 if ($records) {
     list($citations, $dates) = getCitationsForRecords($records, $token, $server, $metadata);
-    echo makePublicationSearch($names);
+    $record = (count($records) == 1) ? $records[0] : NULL;
+    echo makePublicationSearch($names, $record);
     echo makePublicationListHTML($citations, $names, $dates);
 } else {
 	echo makePublicationSearch($names);
@@ -153,7 +154,7 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
         $notDone = $pubs->getCitationCollection("Not Done");
 
         if ($_GET['grant'] && ($_GET['grant'] != 'all')) {
-            $awardNo = REDCapManagement::sanitize($_GET['grant']);
+            $awardNo = Sanitizer::sanitize($_GET['grant']);
             $included = new CitationCollection($record, $token, $server, "Filtered", [], $metadata, $lastNames, $firstNames);
             $recordCitations = $pubs->getCitationsForGrants($awardNo, "Included");
             foreach ($recordCitations as $citation) {
@@ -190,9 +191,9 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
                 $dates[$record] = "Training period not recorded";
             }
         } else if ($_GET['begin']) {
-            $startTs = strtotime(REDCapManagement::sanitize($_GET['begin']));
+            $startTs = strtotime(Sanitizer::sanitize($_GET['begin']));
             if ($_GET['end']) {
-                $endTs = strtotime(REDCapManagement::sanitize($_GET['end']));
+                $endTs = strtotime(Sanitizer::sanitize($_GET['end']));
             } else {
                 $endTs = time();
             }
@@ -264,11 +265,11 @@ function makeExtraURLParams($exclude = []) {
     $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grant", "begin", "end", "cohort"];
     foreach ($_GET as $key => $value) {
         if (isset($_GET[$key]) && in_array($key, $expected) && !in_array($key, $exclude)) {
-            $key = REDCapManagement::sanitize($key);
+            $key = Sanitizer::sanitize($key);
             if ($value === "") {
                 $additionalParams .= "&".$key;
             } else {
-                $additionalParams .= "&$key=".urlencode(REDCapManagement::sanitize($value));
+                $additionalParams .= "&$key=".urlencode(Sanitizer::sanitize($value));
             }
         }
     }
@@ -276,19 +277,19 @@ function makeExtraURLParams($exclude = []) {
 }
 
 function makeCustomizeTable($token, $server, $metadata) {
-    $cohort = isset($_GET['cohort']) ? REDCapManagement::sanitizeCohort($_GET['cohort']) : "";
+    $cohort = isset($_GET['cohort']) ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
     $cohorts = new Cohorts($token, $server, Application::getModule());
     $html = "";
     $style = "style='width: 250px; padding: 15px; vertical-align: top;'";
     $defaultDays = "";
     if (isset($_GET['trainingPeriodPlusDays']) && is_numeric($_GET['trainingPeriodPlusDays'])) {
-        $defaultDays = REDCapManagement::sanitize($_GET['trainingPeriodPlusDays']);
+        $defaultDays = Sanitizer::sanitize($_GET['trainingPeriodPlusDays']);
     }
     $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end"]);
     list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
     $fullURLMinusCohort = preg_replace("/&cohort=[^\&]+/", "", $fullURL);
-    $begin = REDCapManagement::sanitize($_GET['begin']);
-    $end = REDCapManagement::sanitize($_GET['end']);
+    $begin = Sanitizer::sanitize($_GET['begin']);
+    $end = Sanitizer::sanitize($_GET['end']);
 
     $html .= "<table class='centered'>\n";
     $html .= "<tr>\n";
@@ -331,7 +332,7 @@ function makeCustomizeTable($token, $server, $metadata) {
     return $html;
 }
 
-function makePublicationSearch($names) {
+function makePublicationSearch($names, $record = NULL) {
 	$html = "";
 	$html .= "<h2>View a Scholar's Publications</h2>\n";
 	$html .= "<p class='centered'><a href='".Application::link("publications/view.php")."&record=all".makeExtraURLParams(["record"])."'>View All Scholars' Publications</a></p>\n";
@@ -344,5 +345,9 @@ function makePublicationSearch($names) {
 		$html .= ">$name</option>\n";
 	}
 	$html .= "</select></p>\n";
+    if (isset($_GET['record']) && $record) {
+        $link = Application::link("wrangler/include.php")."&wranglerType=Publications&record=".$record;
+        $html .= "<p class='centered'><a href='javascript:;' onclick='window.location.href=\"$link\";'>Wrangle This Scholar's Publications</a></p>";
+    }
 	return $html;
 }

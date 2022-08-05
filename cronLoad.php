@@ -43,6 +43,14 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 
         CareerDev::clearDate("Last Federal RePORTER Download", $pid);
 
+        if (
+            in_array("promotion_workforce_sector", $metadataFields)
+            && in_array("promotion_activity", $metadataFields)
+            && Application::getSetting("updated_job_categories", $pid)
+        ) {
+            $manager->addCron("drivers/updateJobCategories.php", "updateJobCategories", date("Y-m-d"));
+        }
+
         if (in_array('reporter', $forms)) {
             // $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
         }

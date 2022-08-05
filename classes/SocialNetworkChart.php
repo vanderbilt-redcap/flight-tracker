@@ -54,6 +54,12 @@ class SocialNetworkChart extends Chart {
         $html = "";
         $saveDiv = REDCapManagement::makeSaveDiv("svg", $atBottomOfPage);
         $html .= self::makeLegend($legendInfo, $width);
+
+        $disableLabelsJS = (!$showLabels) ? "nodeTemplate.label.disabled = true;" : "";
+        $nodeColorJS = self::hasField($this->chartData, "nodeColor") ? "chart.dataFields.color = 'nodeColor';\n chart.nodes.label = { 'disabled': true };\n" : "";
+        $nonRibbonValue = json_encode($this->isNonRibbon);
+        $chartDataJSON = json_encode($this->chartData);
+
         $html .= "
 <div id='{$this->name}' class='centered' style='width: {$width}px; height: {$height}px; background-color: white;'></div>
 
@@ -63,8 +69,8 @@ class SocialNetworkChart extends Chart {
         const chart = am4core.create('{$this->name}', am4charts.ChordDiagram);
         chart.colors.saturation = 0.45;
         chart.colors.step = 3;
-        const colors = {};   // used by chart
-        chart.data = ".json_encode($this->chartData).";
+        const colors = {};
+        chart.data = $chartDataJSON;
         
         // to avoid cropping off long names
         const paddingSize = 75;
@@ -76,15 +82,9 @@ class SocialNetworkChart extends Chart {
         chart.dataFields.fromName = 'from';
         chart.dataFields.toName = 'to';
         chart.dataFields.value = 'value';
-        ";
-        if (self::hasField($this->chartData, "nodeColor")) {
-            $html .= "
-            chart.dataFields.color = 'nodeColor';
-            chart.nodes.label = { 'disabled': true };
-            ";
-        }
-        $html .= "
-        chart.nonRibbon = ".json_encode($this->isNonRibbon).";
+        $nodeColorJS
+
+        chart.nonRibbon = $nonRibbonValue;
         let link = chart.links.template;
         link.middleLine.strokeWidth = 2;
         link.middleLine.strokeOpacity = 0.4;
@@ -101,13 +101,7 @@ class SocialNetworkChart extends Chart {
         nodeTemplate.showSystemTooltip = true;
         nodeTemplate.propertyFields.fill = 'color';
         nodeTemplate.tooltipText = '{name}\'s connections';  // {total}
-";
-        if (!$showLabels) {
-            $html .= "
-            nodeTemplate.label.disabled = true;
-            ";
-        }
-        $html .= "
+        $disableLabelsJS
 
         // when rolled over the node, make all the links rolled-over
         nodeTemplate.events.on('over', function(event) {
@@ -178,8 +172,6 @@ class SocialNetworkChart extends Chart {
                 return fill;
             }
 
-            let count = 0;
-            let color;
             let biggest = 0;
             let biggestName;
 

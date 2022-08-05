@@ -12,7 +12,7 @@ class EmailManager {
 		$this->metadata = $metadata;
 		$this->hijackedField = "";
 
-        $this->preparingMins = 15;
+        $this->preparingMins = Application::getWarningEmailMinutes($pid);
         $adminEmail = Application::getSetting("admin_email", $pid);
         if (!$adminEmail) {
             global $adminEmail;
@@ -1066,16 +1066,32 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	public function getRows($who, $whenType = "", $when = array(), $what = array()) {
 		if (($who['filter'] == "all") || ($who['recipient'] == "individuals")) {
-			return $this->collectAllEmails();
+			$rows = $this->collectAllEmails();
 		} else if ($who['individuals']) {
-			return $this->getAllCheckedEmails($who);
+			$rows = $this->getAllCheckedEmails($who);
 		} else if ($who['filter'] == "some") {
-			return $this->filterSome($who, $whenType, $when, $what);
+			$rows = $this->filterSome($who, $whenType, $when, $what);
 		} else if (empty($who)) {
 			return array();
 		} else {
 			throw new \Exception("Could not interpret who: ".json_encode($who));
 		}
+        if (!empty($this->metadata)) {
+            $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+        } else {
+            $metadataFields = Download::metadataFields($this->token, $this->server);
+        }
+        if (in_array("identifier_stop_collection", $metadataFields)) {
+            $stops = Download::oneField($this->token, $this->server, "identifier_stop_collection");
+            $newRows = [];
+            foreach ($rows as $recordId => $row) {
+                if (!isset($stops[$recordId]) || ($stops[$recordId] !== "1")) {
+                    $newRows[$recordId] = $row;
+                }
+            }
+            return $newRows;
+        }
+        return $rows;
 	}
 
 	private static function filterOutSurveysCompleted($usedForms, $when, $complete, $lastUpdate, $queue) {

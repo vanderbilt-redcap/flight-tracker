@@ -232,6 +232,10 @@ table { border-collapse: collapse; }
         return [];
     }
 
+    public function setSavedTableNames($newSavedTableNames) {
+        Application::saveSetting($this->allNamesField, $newSavedTableNames, $this->pid);
+    }
+
     public function getSavedTableNames() {
         $allNames = Application::getSetting($this->allNamesField, $this->pid);
         if ($allNames) {

@@ -976,7 +976,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $validUserids = array_unique(array_merge($validUserids, $menteeUserids[$menteeRecord], $mentorUserids[$menteeRecord]));
         }
 
-        if (isset($_GET['test'])) {
+        if (MMA_DEBUG) {
             Application::log("Comparing $userid to " . json_encode($validUserids));
         }
         if (in_array($userid, $validUserids)) {

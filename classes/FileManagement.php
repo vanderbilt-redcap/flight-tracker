@@ -79,6 +79,16 @@ class FileManagement {
         }
     }
 
+    public static function getProjectForEdoc($edoc) {
+        $sql = "SELECT project_id FROM redcap_edocs_metadata WHERE doc_id='".db_real_escape_string($edocId)."'";
+        $q = db_query($sql);
+        if ($row = db_fetch_assoc($q)) {
+            $pid = $row['project_id'];
+            return $pid;
+        }
+        return "";
+    }
+
     public static function getFileNameForEdoc($edocId) {
         $sql = "SELECT stored_name FROM redcap_edocs_metadata WHERE doc_id='".db_real_escape_string($edocId)."'";
         $q = db_query($sql);
