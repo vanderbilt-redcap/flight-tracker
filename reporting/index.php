@@ -84,12 +84,17 @@ $note = "";
 if (file_exists(dirname(__FILE__)."/../customGrants.php")) {
     $note = "(You can <a href='".Application::link("customGrants.php")."'>setup these in bulk</a>, too.)";
 }
+$uploadPriorYearsLink = Application::link("reporting/upload_react/run/index.php", $pid);
 
 ?>
 
 <p class="centered"><?= $cohorts->makeCohortSelect($cohort, "if ($(this).val()) { window.location.href = \"".Application::link("reporting/index.php")."&cohort=\" + $(this).val(); } else { window.location.href = \"".Application::link("reporting/index.php")."\"; }") ?></p>
 
-<h2>Sign Up Scholars</h2>
+<h2>Set Up Flight Tracker</h2>
+
+<h3><a href="<?= $uploadPriorYearsLink ?>">Upload Prior Years' Data for Tables 5 &amp; 8</a></h3>
+
+<h3>Sign Up New Scholars</h3>
 <p class="centered max-width red">To sign up scholars to these lists, fill out a Custom Grant for each scholar. <?= $note ?> Under role, sign them up to your grant as a General Trainee, Pre-Doctoral Trainee, or Post-Doctoral Trainee. Then verify that the scholar is a part of the lists below.</p>
 <h4><a href="<?= Application::link('reporting/signup.php') ?>">Quick Sign Up</a></h4>
 

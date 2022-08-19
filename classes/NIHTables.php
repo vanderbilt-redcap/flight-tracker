@@ -454,11 +454,14 @@ class NIHTables {
                     }
                 }
 
+                $degreeeList = REDCapManagement::removeBlanksFromAry($combinedResults["Degrees"]);
+                $rankList = REDCapManagement::removeBlanksFromAry($combinedResults["Ranks"]);
+                $departmentList = REDCapManagement::removeBlanksFromAry($combinedResults["Departments"]);
                 $row = [
                     $facultyName.$emailHTML,
-                    implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Degrees"])),
-                    implode(", ", REDCapManagement::removeBlanksFromAry($combinedResults["Ranks"])),
-                    implode("; ", REDCapManagement::removeBlanksFromAry($combinedResults["Departments"])),
+                    empty($degreeeList) ? self::$NA : implode(", ", $degreeeList),
+                    empty($rankList) ? self::$NA : implode(", ", $rankList),
+                    implode("; ", $departmentList),
                     $presetValues['Training<br/>Role'],
                     $presetValues['Research<br/>Interest'].self::displayOtherProjectsValues($otherProjectsValues[$headers[5]]),
                     $presetValues['Pre-doctorates<br/>In Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[6]]),

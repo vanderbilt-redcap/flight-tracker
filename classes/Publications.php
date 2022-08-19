@@ -111,8 +111,13 @@ class Publications {
         return self::queryPubMed($term, $pid);
     }
 
-    public static function searchPubMedForTitle($title, $pid) {
-        $term = $title."%5Btitle%5D";
+    public static function searchPubMedForTitleAndJournal($title, $journal, $pid) {
+        $term = "%28".urlencode($title)."%5Btitle%5D%29+AND+%28\"".urlencode($journal)."\"%5Bjournal%5D%29";
+        return self::queryPubMed($term, $pid);
+    }
+
+    public static function searchPubMedForAuthorAndJournal($firstName, $lastName, $journal, $pid) {
+        $term = "%28".urlencode($firstName." ".$lastName)."%5BAuthor%5D%29+AND+%28\"".urlencode($journal)."\"%5Bjournal%5D%29";
         return self::queryPubMed($term, $pid);
     }
 
@@ -928,7 +933,7 @@ class Publications {
         return $upload;
     }
 
-	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = [], $pid = NULL) {
+	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = [], $pid = NULL, $getBibliometricInfo = TRUE) {
         $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		$upload = [];
 		$instance = $startInstance;
@@ -957,33 +962,35 @@ class Publications {
                 list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, $recordId, $instance, $src, $confirmedPMIDs, $metadataFields);
                 $upload = array_merge($upload, $parsedRows);
                 $translateFromPMIDToPMC = self::PMIDsToPMCs($pmidsPulled, $pid);
-                $iCite = new iCite($pmidsPulled, $pid);
-                foreach ($pmidsPulled as $pmid) {
-                    for ($j = 0; $j < count($upload); $j++) {
-                        if ($upload[$j]['citation_pmid'] == $pmid) {
-                            if (isset($translateFromPMIDToPMC[$pmid])) {
-                                $pmcid = $translateFromPMIDToPMC[$pmid];
-                                if ($pmcid) {
-                                    if (!preg_match("/PMC/", $pmcid)) {
-                                        $pmcid = "PMC" . $pmcid;
+                if ($getBibliometricInfo) {
+                    $iCite = new iCite($pmidsPulled, $pid);
+                    foreach ($pmidsPulled as $pmid) {
+                        for ($j = 0; $j < count($upload); $j++) {
+                            if ($upload[$j]['citation_pmid'] == $pmid) {
+                                if (isset($translateFromPMIDToPMC[$pmid])) {
+                                    $pmcid = $translateFromPMIDToPMC[$pmid];
+                                    if ($pmcid) {
+                                        if (!preg_match("/PMC/", $pmcid)) {
+                                            $pmcid = "PMC" . $pmcid;
+                                        }
+                                        $upload[$j]['citation_pmcid'] = $pmcid;
                                     }
-                                    $upload[$j]['citation_pmcid'] = $pmcid;
                                 }
-                            }
-                            $upload[$j]["citation_doi"] = $iCite->getVariable($pmid, "doi");
-                            $upload[$j]["citation_is_research"] = $iCite->getVariable($pmid, "is_research_article");
-                            $upload[$j]["citation_num_citations"] = $iCite->getVariable($pmid, "citation_count");
-                            $upload[$j]["citation_citations_per_year"] = $iCite->getVariable($pmid, "citations_per_year");
-                            $upload[$j]["citation_expected_per_year"] = $iCite->getVariable($pmid, "expected_citations_per_year");
-                            $upload[$j]["citation_field_citation_rate"] = $iCite->getVariable($pmid, "field_citation_rate");
-                            $upload[$j]["citation_nih_percentile"] = $iCite->getVariable($pmid, "nih_percentile");
-                            $upload[$j]["citation_rcr"] = $iCite->getVariable($pmid, "relative_citation_ratio");
-                            if (in_array("citation_icite_last_update", $metadataFields)) {
-                                $upload[$j]["citation_icite_last_update"] = date("Y-m-d");
-                            }
+                                $upload[$j]["citation_doi"] = $iCite->getVariable($pmid, "doi");
+                                $upload[$j]["citation_is_research"] = $iCite->getVariable($pmid, "is_research_article");
+                                $upload[$j]["citation_num_citations"] = $iCite->getVariable($pmid, "citation_count");
+                                $upload[$j]["citation_citations_per_year"] = $iCite->getVariable($pmid, "citations_per_year");
+                                $upload[$j]["citation_expected_per_year"] = $iCite->getVariable($pmid, "expected_citations_per_year");
+                                $upload[$j]["citation_field_citation_rate"] = $iCite->getVariable($pmid, "field_citation_rate");
+                                $upload[$j]["citation_nih_percentile"] = $iCite->getVariable($pmid, "nih_percentile");
+                                $upload[$j]["citation_rcr"] = $iCite->getVariable($pmid, "relative_citation_ratio");
+                                if (in_array("citation_icite_last_update", $metadataFields)) {
+                                    $upload[$j]["citation_icite_last_update"] = date("Y-m-d");
+                                }
 
-                            $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields, $pid);
-                            $upload[$j] = array_merge($upload[$j], $altmetricRow);
+                                $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields, $pid);
+                                $upload[$j] = array_merge($upload[$j], $altmetricRow);
+                            }
                         }
                     }
                 }
@@ -995,7 +1002,9 @@ class Publications {
             }
             Publications::throttleDown();
 		}
-		self::addTimesCited($upload, $pid, $pmids, $metadataFields);
+        if ($getBibliometricInfo) {
+            self::addTimesCited($upload, $pid, $pmids, $metadataFields);
+        }
 
 		$uploadPMIDsAndInstances = [];
 		foreach ($upload as $row) {

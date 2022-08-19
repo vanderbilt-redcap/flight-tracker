@@ -50,6 +50,7 @@ class Upload
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
+        curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         $output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
@@ -75,6 +76,7 @@ class Upload
         curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+        curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         $newProjectToken = curl_exec($ch);
         curl_close($ch);
@@ -240,6 +242,7 @@ class Upload
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
                 curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+                curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
                 $output = (string) curl_exec($ch);
@@ -280,6 +283,7 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = (string) curl_exec($ch);
@@ -391,6 +395,7 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER,array("Expect:"));
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
@@ -605,7 +610,8 @@ public static function metadata($metadata, $token, $server) {
 				curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
 				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 				curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-				curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+                curl_setopt($ch, CURLOPT_HTTPHEADER,array("Expect:"));
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
                 $time2 = microtime(TRUE);

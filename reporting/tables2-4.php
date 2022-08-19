@@ -13,12 +13,15 @@ if (gethostname() == "scottjpearson") {
     header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT");
     header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, X-Requested-With");
+    define("NOAUTH", TRUE);
 }
 
-$entityBody = file_get_contents('php://input');
-$_POST = json_decode($entityBody, TRUE);
 
-define("NOAUTH", TRUE);
+$entityBody = file_get_contents('php://input');
+if ($entityBody) {
+    $_POST = json_decode($entityBody, TRUE) ?? $_POST;
+}
+
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 

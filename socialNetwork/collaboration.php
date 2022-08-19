@@ -144,6 +144,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
         "citation_year",
         "citation_month",
         "citation_day",
+        "citation_num_citations",
         "eric_id",
         "eric_include",
         "eric_author",
@@ -185,7 +186,9 @@ if (isset($_GET['cohort']) && !empty($records)) {
                     $matches[$highlightedRecord] = findGrantMatchesForRecord($index, $coeusAwardNumbers,  $token, $server, $grantFields, $highlightedRecord, $indexByField, $records, $userids, $names);
                 } else {
                     list($matches[$highlightedRecord], $ids) = findMatchesForRecord($index, $pubs, $token, $server, $citationFields, $highlightedRecord, $possibleFirstNames, $possibleLastNames, $indexByField, $records, $startTs, $endTs);
-                    $uniqueIDs = array_unique(array_merge($uniqueIDs, $ids));
+                    foreach ($ids as $id => $numCitations) {
+                        $uniqueIDs[$id] = $numCitations;
+                    }
                 }
             } else {
                 $matches[$fromRecordId] = [];
@@ -197,7 +200,9 @@ if (isset($_GET['cohort']) && !empty($records)) {
                 $fromMatches = findGrantMatchesForRecord($index, $coeusAwardNumbers, $token, $server, $grantFields, $fromRecordId, $indexByField, $records, $userids, $names);
             } else {
                 list($fromMatches, $ids) = findMatchesForRecord($index, $pubs, $token, $server, $citationFields, $fromRecordId, $possibleFirstNames, $possibleLastNames, $indexByField, $records, $startTs, $endTs);
-                $uniqueIDs = array_unique(array_merge($uniqueIDs, $ids));
+                foreach ($ids as $id => $numCitations) {
+                    $uniqueIDs[$id] = $numCitations;
+                }
             }
             if ($otherMentorsOnly) {
                 if (count($fromMatches) > 1) {
@@ -266,7 +271,8 @@ if (isset($_GET['cohort']) && !empty($records)) {
             echo "<tr><td colspan='2' class='centered green'><h4 class='nomargin'>".ucfirst($type)."</h4>$definition</td></tr>";
             if ($stats) {
                 if (($type == "given") && !isset($_GET['grants'])) {
-                    echo "<tr><th>Total Papers</th><td>".REDCapManagement::pretty(count($uniqueIDs))."</td></tr>";
+                    echo "<tr><th>Total Number of Papers</th><td>".REDCapManagement::pretty(count($uniqueIDs))."</td></tr>";
+                    echo "<tr><th>Total Number of Citations by Papers</th><td>".REDCapManagement::pretty(array_sum(array_values($uniqueIDs)))."</td></tr>";
                 }
                 echo "<tr><th>Total Connections</th><td>".REDCapManagement::pretty(array_sum($stats[$type]->getValues()))."</td></tr>\n";
                 echo "<tr><th>Number of Scholars with Connections</th><td>n = ".REDCapManagement::pretty($stats[$type]->getN())."</td></tr>\n";
@@ -743,9 +749,9 @@ function findMatchesForRecord(&$index, &$pubs, $token, $server, $fields, $fromRe
                                 $ts = getCitationTimestamp($row);
                                 if (canApproveTimestamp($ts, $startTs, $endTs)) {
                                     if ($row['redcap_repeat_instrument'] == "citation") {
-                                        $ids[] = $row['citation_pmid'];
+                                        $ids[$row['citation_pmid']] = $row['citation_num_citations'];
                                     } else if ($row['redcap_repeat_instrument'] == "eric") {
-                                        $ids[] = $row['eric_id'];
+                                        $ids[$row['eric_id']] = 1;
                                     }
                                     if (isset($_GET['test'])) {
                                         echo "Matched $fromRecordId $authorLast, $authorFirst to $toRecordId $lastName, $firstName<br>";

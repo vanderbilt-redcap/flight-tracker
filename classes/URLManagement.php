@@ -80,7 +80,10 @@ class URLManagement {
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/json',
                 'Content-Length: ' . strlen($json),
+                "Expect:",
             ]);
+        } else {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ["Expect:"]);
         }
 
         $data = (string) curl_exec($ch);

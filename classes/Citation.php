@@ -852,11 +852,26 @@ class Citation {
         return $citation;
     }
 
-    public static function getPublicationTitleFromText($citationText) {
-        if (preg_match("/, \d{4}, ([^,]+), [^,]+, [\d\-:]+/", $citationText, $matches)) {
-            return $matches[1];
+    public static function getPublicationTitleAndJournalFromText($citationText) {
+        foreach (["\.", ","] as $sep) {
+            if (preg_match("/$sep \d{4}$sep ([^$sep]+)$sep ([^$sep]+)$sep [\d\-:]+/", $citationText, $matches)) {
+                return [$matches[1], $matches[2]];
+            } else if (preg_match("/$sep ([^$sep]+)$sep ([^$sep]+)$sep \d{4}/", $citationText, $matches)) {
+                return [$matches[1], $matches[2]];
+            }
         }
-        return "";
+        return ["", ""];
+    }
+
+    public static function getJournalFromText($citationText) {
+        foreach (["\.", ","] as $sep) {
+            if (preg_match("/$sep \d{4}$sep [^$sep]+$sep ([^$sep]+)$sep [\d\-:]+/", $citationText, $matches)) {
+                return $matches[1];
+            } else if (preg_match("/$sep [^$sep]+$sep ([^$sep]+)$sep \d{4}/", $citationText, $matches)) {
+                return $matches[1];
+            }
+        }
+        return ["", ""];
     }
 
     private function getPubMedCitation($authorText, $addDOI = TRUE) {

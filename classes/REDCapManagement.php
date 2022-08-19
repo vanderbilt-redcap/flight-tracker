@@ -1316,6 +1316,10 @@ class REDCapManagement {
 	    return FALSE;
     }
 
+    public static function clearUnicode($str) {
+        return preg_replace('/[\x00-\x1F\x7F]/u', '', $str);
+    }
+
     public static function isMetadataFilled($metadata) {
         return DataDictionaryManagement::isMetadataFilled($metadata);
     }

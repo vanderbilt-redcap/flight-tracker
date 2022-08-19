@@ -1147,7 +1147,7 @@ class CustomGrantFactory extends GrantFactory {
             $field = "custom_role";
             $fieldChoices = DataDictionaryManagement::getChoicesForField($pid, $field);
             $grant->setVariable("role", $fieldChoices[$row[$field]]);
-        } else {
+        } else if ($row['custom_role'] !== "") {
             $grant->setVariable("role", $this->choices["custom_role"][$row["custom_role"]]);
         }
 		$grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));

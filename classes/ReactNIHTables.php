@@ -257,7 +257,7 @@ table { border-collapse: collapse; }
 
         for ($i = 0; $i < count($tableData); $i++) {
             foreach ($tableData[$i] as $key => $value) {
-                if ($value === "") {
+                if (($value === "") && ($key !== "record")) {
                     $tableData[$i][$key] = "<span class='action_required'>Not Available</span>";
                 }
             }
