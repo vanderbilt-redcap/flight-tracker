@@ -2176,6 +2176,7 @@ class Grant {
             "exporter" => 0,
             "nih_reporter" => 0,
             "vera" => 0,
+            "local_gms" => 0,
             "reporter" => 0,
             "ldap" => 0,
             "nsf" => 0,

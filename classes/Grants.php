@@ -635,6 +635,7 @@ class Grants {
             "coeus" => "COEUS",
             "vera" => "VERA",
             "coeus2" => "COEUS",
+            "local_gms" => "Local Grants Management System",
             "custom" => "REDCap Custom Grants",
             "followup" => "Follow-Up Survey",
             "scholars" => "Initial Scholar's Survey",

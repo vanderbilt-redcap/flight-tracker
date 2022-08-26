@@ -683,24 +683,27 @@ class Download {
 	}
 
 	public static function formForRecords($token, $server, $formName, $records) {
-		$data = array(
-			'token' => $token,
-			'content' => 'record',
-			'format' => 'json',
-			'type' => 'flat',
-			'rawOrLabel' => 'raw',
-			'forms' => array($formName),
-			'fields' => array("record_id"),
-			'records' => $records,
-			'rawOrLabelHeaders' => 'raw',
-			'exportCheckboxLabel' => 'false',
-			'exportSurveyFields' => 'false',
-			'exportDataAccessGroups' => 'false',
-			'returnFormat' => 'json'
-		);
-		return self::sendToServer($server, $data);
-
+        return self::formsForRecords($token, $server, [$formName], $records);
 	}
+
+    public static function formsForRecords($token, $server, $forms, $records) {
+        $data = array(
+            'token' => $token,
+            'content' => 'record',
+            'format' => 'json',
+            'type' => 'flat',
+            'rawOrLabel' => 'raw',
+            'forms' => $forms,
+            'fields' => array("record_id"),
+            'records' => $records,
+            'rawOrLabelHeaders' => 'raw',
+            'exportCheckboxLabel' => 'false',
+            'exportSurveyFields' => 'false',
+            'exportDataAccessGroups' => 'false',
+            'returnFormat' => 'json'
+        );
+        return self::sendToServer($server, $data);
+    }
 
 	public static function hasField($pid, $field, $instrument) {
 	    $json = \REDCap::getDataDictionary($pid, "json", TRUE, NULL, $instrument);

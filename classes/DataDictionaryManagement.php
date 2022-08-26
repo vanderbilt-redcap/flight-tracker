@@ -365,6 +365,39 @@ class DataDictionaryManagement {
         return $surveysAndLabels;
     }
 
+    private static function getMetadata($token = FALSE) {
+        if (!$token) {
+            global $token, $server;
+        } else {
+            $server = FALSE;
+        }
+        $pid = Application::getPid($token);
+        if ($pid) {
+            $token = $token ?: Application::getSetting("token", $pid);
+            $server = $server ?: Application::getSetting("server", $pid);
+            if ($token && $server) {
+                return Download::metadata($token, $server);
+            }
+        }
+        return [];
+    }
+
+    public static function getGrantTitleFields($metadata = []) {
+        $possibleFields = [
+            "coeus_title",
+            "custom_title",
+            "reporter_title",
+            "exporter_project_title",
+            "coeus2_title",
+            "nih_project_title",
+        ];
+
+        if (empty($metadata)) {
+            $metadata = self::getMetadata();
+        }
+        return self::screenForFields($metadata, $possibleFields);
+    }
+
     public static function getRepeatingFormsAndLabels($metadata = [], $token = "") {
         $formsAndLabels = [
             "custom_grant" => "[custom_number]",
@@ -380,19 +413,7 @@ class DataDictionaryManagement {
         ];
 
         if (empty($metadata)) {
-            if (!$token) {
-                global $token, $server;
-            } else {
-                $server = FALSE;
-            }
-            $pid = Application::getPid($token);
-            if ($pid) {
-                $token = $token ? $token : Application::getSetting("token", $pid);
-                $server = $server ? $server : Application::getSetting("server", $pid);
-                if ($token && $server) {
-                    $metadata = Download::metadata($token, $server);
-                }
-            }
+            $metadata = self::getMetadata($token);
         }
         if (count(Application::getPatentFields($metadata)) > 1) {
             $formsAndLabels["patent"] = "[patent_number]: [patent_title]";

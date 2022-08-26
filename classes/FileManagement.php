@@ -79,7 +79,7 @@ class FileManagement {
         }
     }
 
-    public static function getProjectForEdoc($edoc) {
+    public static function getProjectForEdoc($edocId) {
         $sql = "SELECT project_id FROM redcap_edocs_metadata WHERE doc_id='".db_real_escape_string($edocId)."'";
         $q = db_query($sql);
         if ($row = db_fetch_assoc($q)) {

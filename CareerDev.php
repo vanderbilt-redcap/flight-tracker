@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.15.0";
+		return "4.15.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -824,6 +824,10 @@ class CareerDev {
                     "nonrespondents" => "Nonrespondents (spreadsheet)",
                 ]);
             }
+        } else {
+            $itemChoices = array_merge($itemChoices, [
+                "local_gms" => "Institutional Grants Management System",
+            ]);
         }
 	    return $itemChoices;
     }

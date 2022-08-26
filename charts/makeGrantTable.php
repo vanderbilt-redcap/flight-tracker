@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -42,14 +43,7 @@ if (isset($_GET['CDA'])) {
     ));
     $showTimeline = FALSE;
     $showTimeBetweenGrants = FALSE;
-    $titleFields = [
-        "coeus_title",
-        "custom_title",
-        "reporter_title",
-        "exporter_project_title",
-        "coeus2_title",
-        "nih_project_title",
-    ];
+    $titleFields = DataDictionaryManagement::getGrantTitleFields($metadata);
 }
 $module = Application::getModule();
 

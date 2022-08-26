@@ -78,14 +78,15 @@ class Application {
             $hexColors = [];
             foreach ($colors as $color) {
                 if (preg_match("/rgba\((\d+), (\d+), (\d+), ([\d\.]+)\)/", $color, $matches)) {
-                    $rr = dechex($matches[1]);
-                    $gg = dechex($matches[2]);
-                    $bb = dechex($matches[3]);
-                    $aa = dechex(round($matches[4] * 255));
+                    $rr = dechex((int) $matches[1]);
+                    $gg = dechex((int) $matches[2]);
+                    $bb = dechex((int) $matches[3]);
+                    $alphaFrac = (float) $matches[4];
+                    $aa = dechex((int) round($alphaFrac * 255));
                 } else if (preg_match("/rgb\((\d+), (\d+), (\d+)\)/", $color, $matches)) {
-                    $rr = dechex($matches[1]);
-                    $gg = dechex($matches[2]);
-                    $bb = dechex($matches[3]);
+                    $rr = dechex((int) $matches[1]);
+                    $gg = dechex((int) $matches[2]);
+                    $bb = dechex((int) $matches[3]);
                     $aa = '';
                 } else {
                     throw new \Exception("Invalid pattern $color");

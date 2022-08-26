@@ -20,6 +20,22 @@ class REDCapManagement {
         return array_keys($ary) !== range(0, count($ary) - 1);
     }
 
+    public static function makeArrayOneType($oneDimensionalArray, $dataType) {
+        $newArray = [];
+        $dataType = strtolower($dataType);
+        if (!in_array($dataType, ["int", "string"])) {
+            throw new \Exception("Invalid data type $dataType! Please use int or string.");
+        }
+        foreach ($oneDimensionalArray as $item) {
+            if ($dataType == "int") {
+                $newArray[] = (int) $item;
+            } else if ($dataType == "string") {
+                $newArray[] = (string) $item;
+            }
+        }
+        return $newArray;
+    }
+
     public static function getFormsFromMetadata($metadata) {
 	    return DataDictionaryManagement::getFormsFromMetadata($metadata);
     }
@@ -357,6 +373,15 @@ class REDCapManagement {
 	    return TRUE;
     }
 
+    # Fields to add:
+    # - award number
+    # - budget start date
+    # - budget end date
+    # - project start date
+    # - project end date
+    # - direct funding
+    # - total funding
+    # - [fields that are associated with role in GrantFactory.php]
     public static function getMinimalGrantFields($metadata) {
         $allFields = [
             "record_id",
