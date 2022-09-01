@@ -249,8 +249,10 @@ foreach ($metadata as $row) {
     <?php
   }
 
+  $teaser = preg_match("/_idp_/", $row['field_name']) ? "<span class='teaser'>IDP</span> " : "";
+
   if ($row['field_type'] == "radio") { ?>
-      <tr id="<?php echo $rowName; ?>"><th scope="row"><?php echo trim($row['field_label']);?></th>
+      <tr id="<?php echo $rowName; ?>"><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $username) ?></th>
         <td>
             <?php
               $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, "mentoring_agreement", $currInstance);
@@ -266,7 +268,7 @@ foreach ($metadata as $row) {
           <?= MMAHelper::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields) ?>
       </tr>
     <?php } else if ($row['field_type'] == "checkbox" ) { ?>
-      <tr id="<?= $rowName ?>"><th scope="row"><?= trim($row['field_label']) ?></th>
+      <tr id="<?= $rowName ?>"><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $username) ?></th>
           <td>
               <?php
               $prefix = "exampleChecksh";
@@ -295,7 +297,7 @@ foreach ($metadata as $row) {
       $id = $name;
       $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, "mentoring_agreement", $currInstance);
       ?>
-      <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>><th scope="row"><?= trim($row['field_label']) ?></th>
+      <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $username) ?></th>
           <td colspan="2">
               <div class="form-check" style="height: 100px;">
                   <textarea class="form-check-input" name="<?= $name ?>" id="<?= $id ?>"><?= $value ?></textarea>
@@ -307,7 +309,7 @@ foreach ($metadata as $row) {
       $rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
       ?>
       <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>>
-          <td colspan="3"><?= $row['field_label'] ?></td>
+          <td colspan="3"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $username) ?></td>
       </tr>
       <?php
   }
@@ -327,6 +329,11 @@ foreach ($metadata as $row) {
 </form>
 <div class="fauxcomment" style="display: none;"></div>
 <style type="text/css">
+            .teaser {
+                font-size: 1.1em;
+                font-weight: bold;
+            }
+
             .table {
               width: 96%;
               margin-left: 4%;

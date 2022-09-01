@@ -188,11 +188,11 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                             }
                             if ($row['field_type'] == "descriptive") {
                                 $htmlRows[] = "<tr id='$field-tr'$statusClass>";
-                                $htmlRows[] = '<td colspan="4">'.$row['field_label'].'</td>';
+                                $htmlRows[] = '<td colspan="4">'.MMAHelper::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $username).'</td>';
                                 $htmlRows[] = "</tr>";
                             } else {
                                 $htmlRows[] = "<tr id='$field-tr'$statusClass>";
-                                $htmlRows[] = '<th scope="row">'.$row['field_label'].'</th>';
+                                $htmlRows[] = '<th scope="row">'.MMAHelper::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $username).'</th>';
                                 $prefix = $prefices[$row['field_type']];
                                 foreach ($specs as $key => $spec) {
                                     $suffix = "";
@@ -951,6 +951,11 @@ if (!$hash) {
         height: 323px;
         border: 3px solid steelblue;
         margin: auto;
+    }
+
+    .teaser {
+        font-size: 1.1em;
+        font-weight: bold;
     }
 
     .getstarted{

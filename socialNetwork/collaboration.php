@@ -244,7 +244,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
     list($stats, $maxConnections, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators) = makeSummaryStats($connections, $names, $numCollabsToShow);
 
     if (isset($_GET['test'])) {
-        echo "unique IDs: ".implode(", ", $uniqueIDs)."<br/>";
+        echo "unique IDs: ".implode(", ", array_keys($uniqueIDs))."<br/>";
     }
     $noCollaborations = (getCollaborationsRepresented($stats) == 0);
     if ($noCollaborations) {

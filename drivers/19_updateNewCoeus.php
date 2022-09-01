@@ -69,20 +69,24 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
             if (!empty($matchedData)) {
                 Application::log("Record $recordId has ".count($matchedData)." matches for $instrument", $pid);
                 $uniqueFields = [];
+                $timestampField = "";
                 if ($instrument == "coeus") {
                     $uniqueFields[] = "coeus_award_no";
                     $uniqueFields[] = "coeus_award_seq";
+                    $timestampField = "coeus_update_timestamp";
                 } else if ($instrument == "coeus_submission") {
                     $uniqueFields[] = "coeussubmission_ip_number";
                     $uniqueFields[] = "coeussubmission_ip_seq";
+                    $timestampField = "coeussubmission_update_timestamp";
                 } else {
                     Application::log("No unique fields set => automatically including.", $pid);
                 }
-                $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id"], $uniqueFields), [$recordId]);
+                $timestampFields = $timestampField ? [$timestampField] : [];
+                $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id"], $uniqueFields, $timestampFields), [$recordId]);
                 $maxInstance = REDCapManagement::getMaxInstance($redcapData, $instrument, $recordId);
                 $uniqueValues = [];
                 foreach ($uniqueFields as $uniqueField) {
-                    $uniqueValues[$uniqueField] = REDCapManagement::findAllFields($redcapData, $recordId, $uniqueField);
+                    $uniqueValues[$uniqueField] = REDCapManagement::findAllFields($redcapData, $recordId, $uniqueField, TRUE);
                 }
 
                 $foundInstanceList = [];
@@ -122,32 +126,35 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
                     }
                     if (!empty($foundInstances)) {
                         $foundInstanceList = array_unique(array_merge($foundInstanceList, $foundInstances));
-                    } else {
-                        $maxInstance++;
-                        $uploadRow = [
-                            "record_id" => $recordId,
-                            "redcap_repeat_instrument" => $instrument,
-                            "redcap_repeat_instance" => $maxInstance,
-                            $prefix."last_update" => date("Y-m-d"),
-                            $instrument."_complete" => "2",
-                        ];
-                        foreach ($dataRow as $dataField => $value) {
-                            if ($value) {
-                                $field = $prefix.strtolower($dataField);
-                                if (!in_array($field, $metadataFields)) {
-                                    throw new \Exception("Invalid field $field");
+                        Application::log("Existing instances at ".implode(", ", $foundInstanceList), $pid);
+                        if ($timestampField) {
+                            foreach ($foundInstanceList as $instance) {
+                                $lastUpdateInREDCap = REDCapManagement::findField($redcapData, $recordId, $timestampField, $instrument, $instance);
+                                $lastUpdateInCOEUS = "";
+                                foreach ($dataRow as $dataField => $dataValue) {
+                                    if ($prefix.strtolower($dataField) == $timestampField) {
+                                        if (DateManagement::isOracleDate($dataValue)) {
+                                            $lastUpdateInCOEUS = DateManagement::oracleDate2YMD($dataValue);
+                                        } else if (DateManagement::isDate($dataValue)) {
+                                            $lastUpdateInCOEUS = $dataValue;
+                                        }
+                                        break;
+                                    }
                                 }
-                                if (REDCapManagement::isOracleDate($value)) {
-                                    $value = REDCapManagement::oracleDate2YMD($value);
-                                } else if ($value == "Y") {
-                                    $value = "1";
-                                } else if ($value == "N") {
-                                    $value = "0";
+                                if (
+                                    $lastUpdateInCOEUS
+                                    && (
+                                        !$lastUpdateInREDCap
+                                        || DateManagement::dateCompare($lastUpdateInCOEUS, ">", $lastUpdateInREDCap)
+                                    )
+                                ) {
+                                    $upload[] = makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $prefix, $metadataFields);
                                 }
-                                $uploadRow[$field] = utf8_decode($value);
                             }
                         }
-                        $upload[] = $uploadRow;
+                    } else {
+                        $maxInstance++;
+                        $upload[] = makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $maxInstance, $prefix, $metadataFields);
                     }
                 }
                 if (!empty($upload)) {
@@ -163,6 +170,33 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
     } else {
         Application::log("Skipping $instrument fields", $pid);
     }
+}
+
+function makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $prefix, $metadataFields) {
+    $uploadRow = [
+        "record_id" => $recordId,
+        "redcap_repeat_instrument" => $instrument,
+        "redcap_repeat_instance" => $instance,
+        $prefix."last_update" => date("Y-m-d"),
+        $instrument."_complete" => "2",
+    ];
+    foreach ($dataRow as $dataField => $value) {
+        if ($value) {
+            $field = $prefix.strtolower($dataField);
+            if (!in_array($field, $metadataFields)) {
+                throw new \Exception("Invalid field $field");
+            }
+            if (DateManagement::isOracleDate($value)) {
+                $value = DateManagement::oracleDate2YMD($value);
+            } else if ($value == "Y") {
+                $value = "1";
+            } else if ($value == "N") {
+                $value = "0";
+            }
+            $uploadRow[$field] = utf8_decode($value);
+        }
+    }
+    return $uploadRow;
 }
 
 function sendUseridsToCOEUS($token, $server, $pid, $records) {

@@ -575,11 +575,15 @@ class REDCapManagement {
 	    return $amount;
     }
 
-    public static function findAllFields($redcapData, $recordId, $field) {
+    public static function findAllFields($redcapData, $recordId, $field, $withInstances = FALSE) {
 	    $values = [];
         foreach ($redcapData as $row) {
             if (($row['record_id'] == $recordId) && isset($row[$field]) && self::hasValue($row[$field])) {
-                $values[] = $row[$field];
+                if ($withInstances) {
+                    $values[$row['redcap_repeat_instance']] = $row[$field];
+                } else {
+                    $values[] = $row[$field];
+                }
             }
         }
         return $values;

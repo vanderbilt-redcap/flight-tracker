@@ -571,6 +571,9 @@ function startNow() {
     }
 
     public static function scheduleEmail($to, $from, $subject, $message, $datetime, $pid, $token, $server) {
+        if (Application::isLocalhost()) {
+            $to = "scott.j.pearson@vumc.org";
+        }
         if ($datetime == "now") {
             \REDCap::email($to, $from, $subject, $message);
         } else {
@@ -2030,5 +2033,40 @@ function characteristicsPopup(entity) {
             }
         }
         return count($useridList);
+    }
+
+    public static function stripPiping($text) {
+        while (preg_match("/\[\w+\]\[previous-instance\]/", $text, $matches)) {
+            $text = str_replace($matches[0], "", $text);
+        }
+        return $text;
+    }
+
+    public static function pipeIfApplicable($token, $server, $text, $recordId, $thisInstance, $username) {
+        while (preg_match("/\[(\w+)\]\[previous-instance\]/", $text, $matches)) {
+            $matchString = $matches[0];
+            $field = $matches[1];
+            $redcapData = Download::fieldsForRecords($token, $server, ["record_id", $field, "mentoring_userid"], [$recordId]);
+            $instancesForUser = [];
+            foreach ($redcapData as $row) {
+                if (($row['mentoring_userid'] == $username) && ($row['redcap_repeat_instance'] < $thisInstance)) {
+                    $instancesForUser[] = $row['redcap_repeat_instance'];
+                }
+            }
+            if (!empty($instancesForUser)) {
+                rsort($instancesForUser);
+                $previousInstanceForUser = $instancesForUser[0];
+                $priorText = REDCapManagement::findField($redcapData, $recordId, $field, TRUE, $previousInstanceForUser);
+                if ($priorText) {
+                    $replacementValue = "<br/>Prior: $priorText";
+                } else {
+                    $replacementValue = "";
+                }
+            } else {
+                $replacementValue = "";
+            }
+            $text = str_replace($matchString, $replacementValue, $text);
+        }
+        return $text;
     }
 }

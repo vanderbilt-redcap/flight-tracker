@@ -28,8 +28,13 @@ class REDCapLookup {
         return $this->firstName." ".$this->lastName;
     }
 
-    public function getUidsAndNames() {
+    public function getUidsAndNames($showEmails = FALSE) {
         $uids = [];
+        if ($showEmails) {
+            $sqlField = ", user_email";
+        } else {
+            $sqlField = "";
+        }
 
         if (!$this->firstName || !$this->lastName) {
             if (!$this->firstName) {
@@ -37,13 +42,13 @@ class REDCapLookup {
             } else {
                 $name = $this->firstName;
             }
-            $sql = "SELECT username, user_firstname, user_lastname FROM redcap_user_information WHERE lower(user_firstname) = '".db_real_escape_string(strtolower($name))."' OR lower(user_lastname) = '".db_real_escape_string(strtolower($name))."'";
+            $sql = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = '".db_real_escape_string(strtolower($name))."' OR lower(user_lastname) = '".db_real_escape_string(strtolower($name))."'";
         } else {
             $firstNames = NameMatcher::explodeFirstName($this->firstName);
             if (count($firstNames) > 1) {
                 foreach ($firstNames as $firstName) {
                     if ($firstName && !NameMatcher::isInitial($firstName)) {
-                        $sql = "SELECT username, user_firstname, user_lastname FROM redcap_user_information WHERE lower(user_firstname) = '".db_real_escape_string(strtolower($firstName))."' AND lower(user_lastname) = '".db_real_escape_string(strtolower($this->lastName))."'";
+                        $sql = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = '".db_real_escape_string(strtolower($firstName))."' AND lower(user_lastname) = '".db_real_escape_string(strtolower($this->lastName))."'";
                         $results = db_query($sql);
                         if ($error = db_error()) {
                             throw new \Exception($error.": ".$sql);
@@ -51,6 +56,9 @@ class REDCapLookup {
                         while ($row = db_fetch_assoc($results)) {
                             if ($row['username']) {
                                 $uids[$row['username']] = self::formatName($row['user_firstname'], $row['user_lastname']);
+                                if ($showEmails) {
+                                    $uids[$row['username']] .= " ".$row[$sqlField];
+                                }
                             }
                         }
                     }
@@ -58,7 +66,7 @@ class REDCapLookup {
                 ksort($uids);
                 return $uids;
             } else {
-                $sql = "SELECT username, user_firstname, user_lastname FROM redcap_user_information WHERE lower(user_firstname) = '".db_real_escape_string(strtolower($this->firstName))."' AND lower(user_lastname) = '".db_real_escape_string(strtolower($this->lastName))."'";
+                $sql = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = '".db_real_escape_string(strtolower($this->firstName))."' AND lower(user_lastname) = '".db_real_escape_string(strtolower($this->lastName))."'";
             }
         }
         $results = db_query($sql);
@@ -68,6 +76,9 @@ class REDCapLookup {
         while ($row = db_fetch_assoc($results)) {
             if ($row['username']) {
                 $uids[$row['username']] = self::formatName($row['user_firstname'], $row['user_lastname']);
+                if ($showEmails) {
+                    $uids[$row['username']] .= " ".$row[$sqlField];
+                }
             }
         }
         ksort($uids);

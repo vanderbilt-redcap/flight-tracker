@@ -134,11 +134,11 @@ if ($hash) {
                       $notesText = "<div class='smaller notesText'>".preg_replace("/\n/", "<br>", $menteeRow[$possibleNotesField])."</div><!-- <div class='smaller'><a href='javascript:;' class='notesShowHide' onclick='showHide(this);'>hide chatter</a></div> -->";
                   }
                   if ($metadataRow['field_type'] == "descriptive") {
-                      $htmlRows[] = $metadataRow['field_label'];
+                      $htmlRows[] = MMAHelper::stripPiping($metadataRow['field_label']);
                   } else if ($metadataRow['field_type'] == "notes") {
-                      $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><span>".$value."</span></li>";
+                      $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).":<br><span>".$value."</span></li>";
                   } else {
-                      $htmlRows[] = "<li>".$metadataRow['field_label'].": <span>".$value."</span>$notesText</li>";
+                      $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).": <span>".$value."</span>$notesText</li>";
                   }
                   $hasRows = TRUE;
               } else if (($metadataRow['field_type'] == "file") && ($metadataRow['text_validation_type_or_show_slider_number'] == "signature")) {
@@ -151,14 +151,14 @@ if ($hash) {
                           $date = "";
                       }
                       if ($base64) {
-                          $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><img src='$base64' class='signature' alt='signature'><div class='signatureDate'>$date</div></li>";
+                          $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).":<br><img src='$base64' class='signature' alt='signature'><div class='signatureDate'>$date</div></li>";
                       } else {
-                          $htmlRows[] = "<li>".$metadataRow['field_label'].": ".$row[$field]."</li>";
+                          $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).": ".$row[$field]."</li>";
                       }
                   } else {
                       $date = date("m-d-Y");
                       $ymdDate = date("Y-m-d");
-                      $htmlRows[] = "<li>".$metadataRow['field_label'].":<br><div class='signature' id='$field'></div><div class='signatureDate'>$date</div><button onclick='saveSignature(\"$field\", \"$ymdDate\");'>Save</button> <button onclick='resetSignature(\"#$field\");'>Reset</button></li>";
+                      $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).":<br><div class='signature' id='$field'></div><div class='signatureDate'>$date</div><button onclick='saveSignature(\"$field\", \"$ymdDate\");'>Save</button> <button onclick='resetSignature(\"#$field\");'>Reset</button></li>";
                       $htmlRows[] = "<script>
                             $(document).ready(function() {
                                 $('#$field').jSignature();
