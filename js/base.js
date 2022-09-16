@@ -1,17 +1,31 @@
 function stripFromHTML(str, html) {
 	html = stripHTML(html);
-	var lines = html.split(/\n/);
-	var regex = new RegExp(str+":\\s+(.+)$", "i");
-	var matches;
-	for (var i=0; i < lines.length; i++) {
-		var line = lines[i];
-		if (matches = line.match(regex)) {
-			if (matches[1]) {
-				return matches[1];
-			}
+	const lines = html.split(/\n/);
+	const regex = new RegExp(str+':\\s+(.+)$', 'i');
+	for (let i=0; i < lines.length; i++) {
+		const line = lines[i];
+		const matches = line.match(regex);
+		if (matches && matches[1]) {
+			return matches[1];
 		}
 	}
 	return "";
+}
+
+function togglePubMedName(nameSelector, ob, checkedImg, uncheckedImg) {
+	const isOn = $(ob).hasClass('clickableOn');
+	const oldClickableClass = isOn ? 'clickableOn' : 'clickableOff';
+	const newClickableClass = isOn ? 'clickableOff' : 'clickableOn';
+	$(ob).removeClass(oldClickableClass).addClass(newClickableClass);
+	const imgSelector = nameSelector+' img';
+	const hiddenValueSelector = nameSelector+' input[type=hidden]';
+	if ($(imgSelector).attr('src').match(/unchecked/)) {
+		$(hiddenValueSelector).val('include');
+		$(imgSelector).attr('src', checkedImg);
+	} else {
+		$(hiddenValueSelector).val('exclude');
+		$(imgSelector).attr('src', uncheckedImg);
+	}
 }
 
 function turnOffStatusCron() {

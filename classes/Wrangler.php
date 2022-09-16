@@ -108,15 +108,22 @@ class Wrangler {
         return 26;
     }
 
-    # img is unchecked, checked, or readonly
-    public static function makeCheckbox($id, $img) {
+    public static function getImageLocation($img) {
         $validImages = ["unchecked", "checked", "readonly"];
         if (!in_array($img, $validImages)) {
             throw new \Exception("Image ($img) must be in: ".implode(", ", $validImages));
         }
         $imgFile = "wrangler/".$img.".png";
+        return Application::link($imgFile);
+    }
+
+    # img is unchecked, checked, or readonly
+    public static function makeCheckbox($id, $img) {
+        $imgFile = self::getImageLocation($img);
+        $checkedImg = self::getImageLocation("checked");
+        $uncheckedImg = self::getImageLocation("unchecked");
         $size = self::getImageSize()."px";
-        $js = "if ($(this).attr(\"src\").match(/unchecked/)) { $(\"#$id\").val(\"include\"); $(this).attr(\"src\", \"".Application::link("wrangler/checked.png")."\"); } else { $(\"#$id\").val(\"exclude\"); $(this).attr(\"src\", \"".Application::link("wrangler/unchecked.png")."\"); }";
+        $js = "if ($(this).attr(\"src\").match(/unchecked/)) { $(\"#$id\").val(\"include\"); $(this).attr(\"src\", \"$checkedImg\"); } else { $(\"#$id\").val(\"exclude\"); $(this).attr(\"src\", \"$uncheckedImg\"); }";
         if ($img == "unchecked") {
             $value = "exclude";
         } else if ($img == "checked") {
@@ -126,10 +133,10 @@ class Wrangler {
         }
         $input = "<input type='hidden' id='$id' value='$value'>";
         if (($img == "unchecked") || ($img == "checked")) {
-            return "<img src='".Application::link($imgFile)."' id='image_$id' onclick='$js' style='width: $size; height: $size;' align='left'>".$input;
+            return "<img src='$imgFile' id='image_$id' onclick='$js' style='width: $size; height: $size;' align='left'>".$input;
         }
         if ($img == "readonly") {
-            return "<img src='".Application::link($imgFile)."' id='image_$id' style='width: $size; height: $size;' align='left'>".$input;
+            return "<img src='$imgFile' id='image_$id' style='width: $size; height: $size;' align='left'>".$input;
         }
         return "";
     }

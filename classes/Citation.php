@@ -43,6 +43,29 @@ class CitationCollection {
         }
 	}
 
+    public function getBoldedNames($withTotals = FALSE) {
+        $names = [];
+        foreach ($this->getCitations() as $citation) {
+            $boldedNames = $citation->getBoldedNames();
+            foreach ($boldedNames as $name) {
+                if (!isset($names[$name])) {
+                    $names[$name] = 1;
+                } else {
+                    $names[$name]++;
+                }
+            }
+        }
+        if ($withTotals) {
+            $totalNames = [];
+            foreach ($names as $name => $total) {
+                $totalNames[] = "$name ($total)";
+            }
+            return $totalNames;
+        } else {
+            return array_keys($names);
+        }
+    }
+
 	# citationClass is notDone, included, or omitted
 	public function toHTML($citationClass) {
 		$html = "";
@@ -50,15 +73,24 @@ class CitationCollection {
 		if (count($this->getCitations()) == 0) {
 			$html .= "<p class='centered'>None to date.</p>\n";
 		} else {
+            $allBoldedNames = $this->getBoldedNames();
 			foreach ($this->getCitations() as $citation) {
-				$html .= $citation->toHTML($citationClass);
+                $boldedNames = $citation->getBoldedNames();
+                $nameClasses = [];
+                foreach ($allBoldedNames as $i => $name) {
+                    if (in_array($name, $boldedNames)) {
+                        $nameClasses[] = "name$i";
+                    }
+                }
+
+				$html .= $citation->toHTML($citationClass, $nameClasses);
 				$i++;
 			}
 		}
 		return $html;
 	}
 
-	# for book-keeping purposes only; does not write to DB
+	# for bookkeeping purposes only; does not write to DB
 	public function removePMID($pmid) {
 		if ($this->has($pmid)) {
 			$newCitations = array();
@@ -249,7 +281,7 @@ class Citation {
     }
 
 	# citationClass is notDone, included, or omitted
-	public function toHTML($citationClass) {
+	public function toHTML($citationClass, $otherClasses = []) {
 		if ($citationClass == "notDone") {
 			$checkboxClass = "checked";
 		} else if ($citationClass == "included") {
@@ -268,8 +300,8 @@ class Citation {
 			$source = "<span class='sourceInCitation'>" . $source . "</span>: ";
 		}
 		$id = $this->getUniqueID();
-		$pmid = $this->getPMID();
-		$html .= "<div class='citation $citationClass' id='citation_".$citationClass."$id'>";
+        $divClasses = "citation $citationClass ".implode(" ", $otherClasses);
+		$html .= "<div class='$divClasses' id='citation_$citationClass$id'>";
 		$html .= "<div class='citationCategories'><span class='tooltiptext'>".$this->makeTooltip()."</span>".$this->getCategory()."</div>";
 		$html .= Wrangler::makeCheckbox($id, $checkboxClass)." ".$source.$this->getCitationWithLink();
 		if (in_array($citationClass, $ableToReset)) {
@@ -895,6 +927,18 @@ class Citation {
 		}
 		return $citation;
 	}
+
+    public function getBoldedNames() {
+        $authors = $this->getAuthorList();
+        $matchedAuthors = [];
+        foreach ($authors as $author) {
+            list($authorFirstName, $authorLastName) = NameMatcher::splitName($author, 2, FALSE, FALSE);
+            if (NameMatcher::matchByInitials($authorLastName, $authorFirstName, $this->lastName, $this->firstName)) {
+                $matchedAuthors[] = $author;
+            }
+        }
+        return $matchedAuthors;
+    }
 
 	public function getAuthorList() {
         if ($this->getVariable("data_source") == "eric") {

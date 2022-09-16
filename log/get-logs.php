@@ -15,7 +15,7 @@ if ($_REQUEST['search']['value']) {
 }
 
 $columnName = 'count(1)';
-$result = $module->queryLogs("select $columnName $whereClause");
+$result = $module->queryLogs("select $columnName $whereClause", []);
 $row = db_fetch_assoc($result);
 $totalRowCount = $row[$columnName];
 
@@ -24,7 +24,7 @@ $results = $module->queryLogs("
 	order by log_id desc
 	$whereClause
 	$limitClause
-");
+", []);
 
 $rows = [];
 while($row = $results->fetch_assoc()){

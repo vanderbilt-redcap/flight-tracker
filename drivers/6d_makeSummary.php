@@ -74,8 +74,9 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $time1 = microtime(TRUE);
     $rows = Download::records($token, $server, [$recordId]);
     $time2 = microtime(TRUE);
-    // CareerDev::log("6d CareerDev downloading $recordId took ".($time2 - $time1));
-    // echo "6d CareerDev downloading $recordId took ".($time2 - $time1)."\n";
+    if (Application::isVanderbilt()) {
+        Application::log("6d CareerDev downloading $recordId took ".($time2 - $time1), $pid);
+    }
 
     $time1 = microtime(TRUE);
     $grants = new Grants($token, $server, $metadata);
@@ -85,8 +86,9 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $myErrors = Upload::isolateErrors($result);
     $errors = array_merge($errors, $myErrors);
     $time2 = microtime(TRUE);
-    // CareerDev::log("6d CareerDev processing grants $recordId took ".($time2 - $time1));
-    // echo "6d CareerDev processing grants $recordId took ".($time2 - $time1)."\n";
+    if (Application::isVanderbilt()) {
+        Application::log("6d CareerDev processing grants $recordId took ".($time2 - $time1), $pid);
+    }
 
     # update rows with new data
     $time1 = microtime(TRUE);
@@ -96,8 +98,10 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $scholar->process();
     $result = $scholar->upload();
     $time2 = microtime(TRUE);
-    // CareerDev::log("6d CareerDev processing scholar $recordId took ".($time2 - $time1));
-    // echo "6d CareerDev processing scholar $recordId took ".($time2 - $time1)."\n";
+    if (Application::isVanderbilt()) {
+        Application::log("6d CareerDev processing scholar $recordId took ".($time2 - $time1), $pid);
+    }
+
     $myErrors = Upload::isolateErrors($result);
     $errors = array_merge($errors, $myErrors);
 
@@ -107,8 +111,9 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
         $pubs->setRows($rows);
         $result = $pubs->uploadSummary();
         $time2 = microtime(TRUE);
-        // CareerDev::log("6d CareerDev processing publications $recordId took ".($time2 - $time1));
-        // echo "6d CareerDev processing publications $recordId took ".($time2 - $time1)."\n";
+        if (Application::isVanderbilt()) {
+            Application::log("6d CareerDev processing publications $recordId took ".($time2 - $time1), $pid);
+        }
         $myErrors = Upload::isolateErrors($result);
         $errors = array_merge($errors, $myErrors);
     }

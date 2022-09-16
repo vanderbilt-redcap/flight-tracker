@@ -38,7 +38,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	function batch() {
-        \System::increaseMaxExecTime(28800);   // 8 hours
+        Application::increaseProcessingMax(8);
         $this->setupApplication();
         $activePids = $this->getPids();
         foreach ($activePids as $pid) {

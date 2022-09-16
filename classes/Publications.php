@@ -14,6 +14,7 @@ class Publications {
 		$this->server = $server;
 		if ($metadata == "download") {
 			$metadata = Download::metadata($token, $server);
+			$metadata = Download::metadata($token, $server);
 		}
 		$this->metadata = $metadata;
 		$this->choices = Scholar::getChoices($metadata);
@@ -1139,9 +1140,13 @@ class Publications {
         $included = $this->getCitationCollection("Included");
         $includedCount = $included->getCount();
         $wrangler = new Wrangler("Publications", $this->pid);
-		$html = $wrangler->getEditText($notDoneCount, $includedCount, $this->recordId, Download::fullName($this->token, $this->server, $this->recordId) ?: $this->name, $this->lastName);
+        $fullName = Download::fullName($this->token, $this->server, $this->recordId) ?: $this->name;
+		$html = $wrangler->getEditText($notDoneCount, $includedCount, $this->recordId, $fullName, $this->lastName);
 
 		$html .= self::manualLookup($thisUrl);
+        if ($notDoneCount > 0) {
+            $html .= $this->getNameChooser($notDone, $fullName);
+        }
 		$html .= "<table style='width: 100%;' id='main'><tr>\n";
 		$html .= "<td class='twoColumn yellow' id='left'>".$this->leftColumnText()."</td>\n";
 		$html .= "<td id='right'>".$wrangler->rightColumnText()."</td>\n";
@@ -1149,6 +1154,26 @@ class Publications {
 
 		return $html;
 	}
+
+    private function getNameChooser($citationCollection, $name) {
+        $pubmedNames = $citationCollection->getBoldedNames(TRUE);
+        if (count($pubmedNames) <= 1) {
+            return "";
+        }
+
+        $html = "";
+        $html .= "<h4>Matches to $name</h4>";
+        $html .= "<p class='centered'>";
+        $nameSpans = [];
+        $checkedImgLoc = Wrangler::getImageLocation("checked");
+        $uncheckedImgLoc = Wrangler::getImageLocation("unchecked");
+        foreach ($pubmedNames as $i => $pubmedName) {
+            $nameSpans[] .= "<span class='clickableOn' onclick='togglePubMedName(\".name$i\", this, \"$checkedImgLoc\", \"$uncheckedImgLoc\");'>$pubmedName</span>";
+        }
+        $html .= implode("&nbsp;&nbsp;&nbsp;", $nameSpans);
+        $html .= "</p>";
+        return $html;
+    }
 
 	private function manualLookup($thisUrl) {
 		$html = "";
@@ -1443,7 +1468,7 @@ class Publications {
 			$currTs = self::getPubTimestamp($citation, $this->getRecordId());
 			if ($beginTs <= $currTs) {
 				if (($endTs === FALSE) || ($endTs >= $currTs)) {
-					array_push($pubsInRange, $citation->getCitation());
+					$pubsInRange[] = $citation->getCitation();
 				}
 			}
 		}
