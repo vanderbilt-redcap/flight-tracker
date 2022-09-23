@@ -12,7 +12,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\NIHTables;
 
-if (gethostname() == "scottjpearson") {
+if (in_array(gethostname(), ["scottjpearson", "ORIWL-KCXDJK7.local"])) {
     # Testing only - to allow to run with React server using 'npm start'
     header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT");

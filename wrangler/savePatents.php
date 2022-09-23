@@ -46,7 +46,7 @@ if (isset($_POST['finalized'])) {
 			}
 			if (!$matched) {
 				# new patent
-				$patents = new PatentsView($recordId, $pid);
+				$patents = new PatentsView($recordId, $pid, "none", $metadata);
 				$patentData = $patents->getDetails($number);
 				$uploadRows = $patents->patents2REDCap($patentData, $maxInstance);
 				$maxInstance += count($uploadRows);
@@ -94,7 +94,7 @@ if ($numbers && !empty($numbers)) {
     if ($recordId && !empty($dedupedNumbers)) {
         $maxInstance = REDCapManagement::getMaxInstance($redcapData, "patent", $recordId);
         $maxInstance++;
-        $patents = new PatentsView($recordId, $pid);
+        $patents = new PatentsView($recordId, $pid, "none", $metadata);
         $upload = [];
         foreach ($dedupedNumbers as $number) {
             $patentData = $patents->getDetails($number);

@@ -120,7 +120,9 @@ if ($hash) {
               }
               $field = $metadataRow['field_name'];
               $possibleNotesField = $field."_notes";
-              if ($row[$field] && !in_array($field, $notesFields) && !in_array($metadataRow['field_type'], $skipFieldTypes)) {
+              if (preg_match("/@HIDDEN/", $metadataRow['field_annotation'])) {
+                continue;
+              } else if ($row[$field] && !in_array($field, $notesFields) && !in_array($metadataRow['field_type'], $skipFieldTypes)) {
                   $value = "";
                   if ($choices[$field] && $choices[$field][$row[$field]]) {
                       $value = $choices[$field][$row[$field]];

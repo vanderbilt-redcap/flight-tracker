@@ -22,6 +22,7 @@ $cohort = $_GET['cohort'] ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
 
 $fields = [
     "record_id",
+    "citation_include",
     "citation_rcr",
     "citation_altmetric_score",
     "citation_day",
@@ -49,7 +50,11 @@ $skip = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance"];
 foreach (["citation_rcr", "citation_altmetric_score"] as $field) {
     $dist[$field] = [];
     foreach ($redcapData as $row) {
-        if ($row[$field] && inTimespan($row, $startTs, $endTs)) {
+        if (
+            $row[$field]
+            && inTimespan($row, $startTs, $endTs)
+            && ($row['citation_include'] == "1")
+        ) {
             $dist[$field][$row['record_id'].":".$row['redcap_repeat_instance']] = $row[$field];
         }
     }

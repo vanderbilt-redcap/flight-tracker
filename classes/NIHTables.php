@@ -137,13 +137,13 @@ class NIHTables {
             return self::separateHeaders($data, $tableHeader);
         } else if (self::beginsWith($table, ["2"])) {
             $data = $this->get2Data($table, $savedName);
-            return self::separateRecordAndHeaders($data, $tableHeader);
+            return self::separateRecordAndHeaders($data, $tableHeader, $table);
         } else if (self::beginsWith($table, ["3"])) {
             $data = $this->get3Data($table, $this->dateOfReport);
             return self::separateHeaders($data, $tableHeader);
         } else if (self::beginsWith($table, ["4"])) {
             $data = $this->get4Data($table, $this->dateOfReport, $savedName);
-            return self::separateRecordAndHeaders($data, $tableHeader);
+            return self::separateRecordAndHeaders($data, $tableHeader, $table);
         } else {
             Application::log("Warning! Could not get data for table $table", $this->pid);
         }
@@ -237,7 +237,7 @@ class NIHTables {
         }
     }
 
-    private function getNamesByPid() {
+    public static function getNamesByPid() {
 	    $firstNamesByPid = [];
 	    $lastNamesByPid = [];
 	    $emailsByPid = [];
@@ -284,11 +284,11 @@ class NIHTables {
     }
 
     public function getFacultyMatches() {
-        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = $this->getNamesByPid();
+        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = self::getNamesByPid();
         $projectTitles = [];
         $data = [];
         foreach ($this->facultyMembers as $facultyName) {
-            $matches = $this->findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
+            $matches = self::findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
             $nameTitle = "<h4 class='nomargin yellow'>Matches to $facultyName in Flight Trackers:</h4>";
             if (empty($matches)) {
                 $data[] = [ $nameTitle."<br/>".self::makeComment("No matches. Perhaps try another name?"), ];
@@ -324,12 +324,12 @@ class NIHTables {
     }
 
     public function get2Data($table, $savedName) {
-        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = $this->getNamesByPid();
+        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = self::getNamesByPid();
         $headers = $this->getHeaders($table);
         $data = ["Headers" => $headers];
 	    foreach ($this->facultyMembers as $facultyName) {
             list($first, $last) = NameMatcher::splitName($facultyName, 2);
-	        $matches = $this->findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
+	        $matches = self::findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
 	        if (empty($matches)) {
                 $row = [
                     $facultyName,
@@ -356,7 +356,7 @@ class NIHTables {
 
                 $allResults = [];
                 foreach ($matches as $match) {
-                    list($pid, $recordId) = preg_split("/:/", $match);
+                    list($pid, $recordId) = explode(":", $match);
                     $token = Application::getSetting("token", $pid);
                     $server = Application::getSetting("server", $pid);
                     if ($token && $server && REDCapManagement::isActiveProject($pid)) {
@@ -404,7 +404,7 @@ class NIHTables {
                 }
                 $combinedEmails = [];
                 foreach ($matches as $match) {
-                    list($pid, $recordId) = preg_split("/:/", $match);
+                    list($pid, $recordId) = explode(":", $match);
                     $email = $emailsByPid[$pid][$recordId] ?? "";
                     $emailMailto = Links::makeMailtoLink($email);
                     if ($emailMailto && !in_array($emailMailto, $combinedEmails)) {
@@ -574,9 +574,9 @@ class NIHTables {
         return isset($this->choices[$redcapField][$idx]) ? $this->choices[$redcapField][$idx] : $idx;
     }
 
-    public function findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid = [], $lastNamesByPid = []) {
+    public static function findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid = [], $lastNamesByPid = []) {
 	    if (empty($firstNamesByPid) || empty($lastNamesByPid)) {
-	        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = $this->getNamesByPid();
+	        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = self::getNamesByPid();
         }
         list($first, $last) = NameMatcher::splitName($facultyName, 2);
         $matches = [];
@@ -696,7 +696,7 @@ class NIHTables {
         list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = $this->getNamesByPid();
         $currentMetadataByPid = [];
         foreach ($this->facultyMembers as $facultyName) {
-            $matches = $this->findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
+            $matches = self::findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
             if (empty($matches)) {
                 $row = [
                     $facultyName,
@@ -839,8 +839,9 @@ class NIHTables {
 	    return "";
     }
 
-    private static function getUniqueIdentifier($row) {
-	    $numElems = 4;
+    // coordinated with MainGroup.makeRecordInstance
+    private static function getUniqueIdentifier($row, $tableNum) {
+	    $numElems = ($tableNum == 2) ? 1 : 3;
 	    $items = [];
 	    for ($i = 0; ($i < $numElems) && ($i < count($row)); $i++) {
 	        $item = REDCapManagement::makeHTMLId($row[$i]);
@@ -849,7 +850,7 @@ class NIHTables {
 	    return implode("___", $items);
     }
 
-    public static function separateRecordAndHeaders($data, $title) {
+    public static function separateRecordAndHeaders($data, $title, $tableNum) {
 	    $headers = [];
 	    $newData = [];
 	    foreach ($data as $listOfMatches => $rows) {
@@ -864,7 +865,7 @@ class NIHTables {
                         $usedEmails[] = $email;
                         foreach ($rows as $row) {
                             $newRow = [];
-                            $recordInstance = self::getUniqueIdentifier($row);
+                            $recordInstance = self::getUniqueIdentifier($row, $tableNum);
                             $newRow['pid'] = $pid;
                             $newRow['record'] = $recordId;
                             $newRow['recordInstance'] = $recordInstance;

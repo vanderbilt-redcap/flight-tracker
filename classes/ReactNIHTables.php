@@ -179,8 +179,7 @@ table { border-collapse: collapse; }
                     $headers = $nihTables->getHeaders($tableNum);
                     $col = "";
                     foreach ($headers as $header) {
-                        $headerWithoutHTML = preg_replace("/<[^>]+>/", "", $header);
-                        $headerWithoutSpacesAndHTML = preg_replace("/[\s#,\'\"\.\(\)]+/", "", $headerWithoutHTML);
+                        $headerWithoutSpacesAndHTML = REDCapManagement::makeHTMLId($header);
                         if ($colWithoutSpacesOrHTML == $headerWithoutSpacesAndHTML) {
                             $col = $header;
                             break;
@@ -198,11 +197,12 @@ table { border-collapse: collapse; }
                         if (!isset($settingsByDate[$dateOfReport][$recordInstance])) {
                             $settingsByDate[$dateOfReport][$recordInstance] = [];
                         }
+                        $this->migrateOldRecordInstances($settingsByDate, $dateOfReport, $recordInstance);
                         $settingsByDate[$dateOfReport][$recordInstance][$col] = $value;
                         Application::saveSetting($field, $settingsByDate, $savePid);
                         $data["Result"] = "Saved.";
                     } else {
-                        $data["error"] = "Could not locate column.";
+                        $data["error"] = "Could not locate column $colWithoutSpacesOrHTML.";
                     }
                 } else {
                     $data["error"] = "Could not find record";
@@ -214,6 +214,21 @@ table { border-collapse: collapse; }
             $data["error"] = "Could not find project";
         }
         return $data;
+    }
+
+    private function migrateOldRecordInstances(&$settingAry, $dateOfReport, $newRecordInstance) {
+        $migratedRecordInstance = FALSE;
+        foreach (array_keys($settingAry[$dateOfReport]) as $recInst) {
+            if (preg_match("/^$newRecordInstance/", $recInst)) {
+                $migratedRecordInstance = $recInst;
+            }
+        }
+        if ($migratedRecordInstance) {
+            $settingAry[$dateOfReport][$newRecordInstance] = $settingAry[$dateOfReport][$migratedRecordInstance];
+            unset($settingAry[$dateOfReport][$migratedRecordInstance]);
+            return TRUE;
+        }
+        return FALSE;
     }
 
     public function getSavedTable3Awards($name) {
@@ -364,29 +379,69 @@ table { border-collapse: collapse; }
         return FALSE;
     }
 
-    public function lookupValues($post) {
+    public function lookupValuesFor3($post) {
         $tableNum = Sanitizer::sanitize($post['tableNum']);
         $queryItems = Sanitizer::sanitizeArray($post['queryItems'] ?? []);
         $data = [];
-        $today = date("Y-m-d");
+        foreach ($queryItems as $ary) {
+            $awardNo = $ary['awardNo'] ?? "";
+            $recordId = $ary['record'] ?? "";
+            $recordInstance = $ary['recordInstance'];
+            foreach (Application::getPids() as $pid) {
+                if (REDCapManagement::isActiveProject($pid)) {
+                    $this->updateDataForRecordInPid($data, $pid, $tableNum,$recordId ?: $awardNo, $recordId, $recordInstance);
+                }
+            }
+        }
+        return $data;
+    }
+
+    private function updateDataForRecordInPid(&$data, $pid, $tableNum, $key, $recordId, $recordInstance) {
+        $field = NIHTables::makeCountKey($tableNum, $key);
+        $settingAry = Application::getSetting($field, $pid);
+        if (!$settingAry) {
+            return;
+        }
+        $migrationCompleted = FALSE;
+        foreach (array_keys($settingAry) as $date) {
+            if (isset($settingAry[$date][$recordInstance])) {
+                self::initializeRecordInstanceData($data, $recordId, $recordInstance);
+                $data[$recordId][$recordInstance][$date] = $settingAry[$date][$recordInstance];
+            } else {
+                if ($this->migrateOldRecordInstances($settingAry, $date, $recordInstance)) {
+                    self::initializeRecordInstanceData($data, $recordId, $recordInstance);
+                    $data[$recordId][$recordInstance][$date] = $settingAry[$date][$recordInstance];
+                    $migrationCompleted = TRUE;
+                }
+            }
+        }
+        if ($migrationCompleted) {
+            Application::saveSetting($field, $settingAry, $pid);
+        }
+    }
+
+    private static function initializeRecordInstanceData(&$data, $recordId, $recordInstance) {
+        if (!isset($data[$recordId])) {
+            $data[$recordId] = [];
+        }
+        if (!isset($data[$recordId][$recordInstance])) {
+            $data[$recordId][$recordInstance] = [];
+        }
+    }
+
+    public function lookupValuesFor2And4($post) {
+        $tableNum = Sanitizer::sanitize($post['tableNum']);
+        $queryItems = Sanitizer::sanitizeArray($post['queryItems'] ?? []);
+        $data = [];
+        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = NIHTables::getNamesByPid();
         foreach ($queryItems as $ary) {
             $recordId = $ary['record'] ?? "";
-            $awardNo = $ary['awardNo'] ?? "";
-            if ($recordId) {
-                $keyForRow = $recordId;
-            } else if ($awardNo) {
-                $keyForRow = $awardNo;
-            } else {
-                $keyForRow = "";
-            }
+            $facultyName = $ary['name'] ?? "";
             $recordInstance = $ary['recordInstance'];
-            $field = NIHTables::makeCountKey($tableNum, $keyForRow);
-            $settingAry = Application::getSetting($field, $this->pid);
-            if ($settingAry && isset($settingAry[$today][$recordInstance])) {
-                if (!isset($data[$recordId])) {
-                    $data[$recordId] = [];
-                }
-                $data[$recordId][$recordInstance] = $settingAry[$today][$recordInstance];
+            $matches = NIHTables::findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
+            foreach ($matches as $match) {
+                list($pid, $matchRecordId) = explode(":", $match);
+                $this->updateDataForRecordInPid($data, $pid, $tableNum, $matchRecordId, $recordId, $recordInstance);
             }
         }
         return $data;

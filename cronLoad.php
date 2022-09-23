@@ -24,6 +24,7 @@ function runMainCrons(&$manager, $token, $server) {
         $allRecords = Download::recordIds($token, $server);
     }
     $records = $switches->downloadRecordIdsToBeProcessed($allRecords);
+    $securityTestMode = Application::getSetting("security_test_mode", $pid);
 
     CareerDev::clearDate("Last Federal RePORTER Download", $pid);
 
@@ -56,7 +57,9 @@ function runMainCrons(&$manager, $token, $server) {
         // $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $allRecords, 1000);
         // }
     }
-    $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday", $allRecords, 100);
+    if (!$securityTestMode) {
+        $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday", $allRecords, 100);
+    }
     if (in_array('citation', $forms)) {
         $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday", $records, 10);
         if (!Application::getSetting("fixedPMCs", $pid)) {
@@ -85,7 +88,7 @@ function runMainCrons(&$manager, $token, $server) {
     if (in_array("pre_screening_survey", $forms)) {
         $manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $records, 80);
     }
-    if (in_array('patent', $forms)) {
+    if (in_array('patent', $forms) && !$securityTestMode) {
         $manager->addCron("drivers/18_getPatents.php", "getPatents", "Tuesday", $records, 100);
     }
     if (in_array("nsf", $forms)) {
@@ -159,13 +162,15 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 	$date = date("Y-m-d");
 
 	if ($token && $server) {
+        $pid = Application::getPID($token);
         Application::log("loadInitialCrons");
         $metadata = Download::metadata($token, $server);
         $forms = DataDictionaryManagement::getFormsFromMetadata($metadata);
         Application::log("Forms: ".json_encode($forms));
 		$records = Download::recordIds($token, $server);
+        $securityTestMode = Application::getSetting("security_test_mode", $pid);
 
-		if (in_array("pre_screening_survey", $forms)) {
+        if (in_array("pre_screening_survey", $forms)) {
 			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
 		}
         if (in_array("coeus", $forms)) {
@@ -182,7 +187,7 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         if (in_array("ldap", $forms)) {
             $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", $date, $records, 500);
         }
-        if (in_array("patent", $forms)) {
+        if (in_array("patent", $forms) && !$securityTestMode) {
             $manager->addCron("drivers/18_getPatents.php", "getPatents", $date, $records, 100);
         }
         if (in_array("nsf", $forms)) {
@@ -197,7 +202,9 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         if (in_array("citation", $forms)) {
             $manager->addCron("publications/getAllPubs_func.php", "getPubs", $date, $records, 10);
         }
-        $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", $date, $records, 100);
+        if (!$securityTestMode) {
+            $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", $date, $records, 100);
+        }
 		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records, 30);
         Application::log("loadInitialCrons loaded");
 	} else {

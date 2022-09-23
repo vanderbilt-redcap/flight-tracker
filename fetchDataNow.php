@@ -45,8 +45,11 @@ try {
                 \Vanderbilt\CareerDevLibrary\getVERA($token, $server, $pid, [$recordId]);
             }
         } else if ($fetchType == "patents") {
-            require_once(dirname(__FILE__) . "/drivers/18_getPatents.php");
-            \Vanderbilt\CareerDevLibrary\getPatents($token, $server, $pid, [$recordId]);
+            $securityTestMode = Application::getSetting("security_test_mode", $pid);
+            if (!$securityTestMode) {
+                require_once(dirname(__FILE__) . "/drivers/18_getPatents.php");
+                \Vanderbilt\CareerDevLibrary\getPatents($token, $server, $pid, [$recordId]);
+            }
         } else {
             throw new \Exception("Invalid fetchType $fetchType");
         }

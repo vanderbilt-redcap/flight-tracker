@@ -20,6 +20,10 @@ abstract class GrantFactory {
 		$this->server = $server;
 	}
 
+    public function getName() {
+        return $this->name;
+    }
+
 	public function getGrants() {
 		return $this->grants;
 	}
@@ -58,21 +62,24 @@ abstract class GrantFactory {
 	abstract public function processRow($row, $otherRows, $token = "");
 
 	protected function extractFromOtherSources($rows, $excludeSources, $variable, $awardNo) {
-	    $filteredRows = [];
-	    foreach ($rows as $row) {
-	        if (!in_array($row['redcap_repeat_instrument'], $excludeSources)) {
-	            $filteredRows[] = $row;
-            }
-        }
-	    $grants = new Grants($this->token, $this->server, $this->metadata);
-	    $grants->setRows($filteredRows);
-        $grantAry = $grants->getGrants("native");
         $sourceOrder = Grants::getSourceOrder();
         $lowerAwardNo = strtolower($awardNo);
         foreach ($sourceOrder as $source) {
-            if (!in_array($source, $excludeSources)) {
+            if (in_array($source, $excludeSources)) {
+                continue;
+            }
+            $sourceRows = [];
+            foreach ($rows as $row) {
+                if ($row['redcap_repeat_instrument'] == $source) {
+                    $sourceRows[] = $row;
+                }
+            }
+            if (!empty($sourceRows)) {
+                $grants = new Grants($this->token, $this->server, $this->metadata);
+                $grants->setRows($sourceRows);
+                $grantAry = $grants->getGrants("native");
                 foreach ($grantAry as $grant) {
-                    if (($source == $grant->getVariable("source")) && (strtolower($grant->getNumber()) == $lowerAwardNo)) {
+                    if (strtolower($grant->getNumber()) == $lowerAwardNo) {
                         $value = $grant->getVariable($variable);
                         if ($variable == "role") {
                             if ($value != self::$defaultRole) {

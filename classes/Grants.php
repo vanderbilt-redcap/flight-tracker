@@ -480,14 +480,20 @@ class Grants {
 			$this->compiledGrants = [];
 			$this->priorGrants = [];
 			foreach ($rows as $row) {
-				if ($row['redcap_repeat_instrument'] == "") {
+                if (!$this->recordId) {
+                    $this->recordId = $row['record_id'];
+                }
+                if ($row['redcap_repeat_instrument'] == "") {
                     $firstName = $row['identifier_first_name'] ?? "";
                     $lastName = $row['identifier_last_name'] ?? "";
 					$this->name = trim($firstName." ".$lastName);
-					$this->recordId = $row['record_id'];
+                    $this->recordId = $row['record_id'];
+                    break;
 				}
 			}
+            $i = 0;
 			foreach ($rows as $row) {
+                $i++;
 				$gfs = [];
 				$submissionGfs = [];
 				if ($row['redcap_repeat_instrument'] == "") {
@@ -567,8 +573,12 @@ class Grants {
                     ];
 				foreach ($grantFactories as $variable => $gfList) {
                     foreach ($gfList as $gf) {
+                        $time1 = microtime(TRUE);
                         $gf->processRow($row, $rows);
                         $gs = $gf->getGrants();
+                        $gfName = get_class($gf);
+                        $time2 = microtime(TRUE);
+
                         foreach ($gs as $g) {
                             # combine all grants into one unordered list
                             if (self::getShowDebug()) { Application::log("Prospective grant ".json_encode($g->toArray())); }

@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.15.3";
+		return "4.16.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -268,12 +268,16 @@ class CareerDev {
 		if (self::$pid) {
 			return self::$pid;
 		}
+        $thisURL = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
+
+        if (preg_match("/project_id=\d+/", $thisURL) && preg_match("/pid=\d+/", $thisURL)) {
+            throw new \Exception("Invalid URL");
+        }
 		$requestedPid = FALSE;
  		if (isset($_GET['pid'])) {
 			# least reliable because REDCap can sometimes change this value in other crons
             $requestedPid = REDCapManagement::sanitize($_GET['pid']);
-		}
- 		if (isset($_GET['project_id'])) {
+		} else if (isset($_GET['project_id'])) {
             $requestedPid = REDCapManagement::sanitize($_GET['project_id']);
         }
  		if ($requestedPid && is_numeric($requestedPid)) {

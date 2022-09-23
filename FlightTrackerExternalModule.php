@@ -711,7 +711,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     }
 
 	function executeCron() {
-        \System::increaseMaxExecTime(28800);   // 8 hours
+        Application::increaseProcessingMax(8);
 
 		$this->setupApplication();
 		if (isset($_GET['pid']) && Application::isVanderbilt()) {

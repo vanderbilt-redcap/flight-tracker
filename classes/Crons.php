@@ -324,43 +324,59 @@ class CronManager {
         if ($batchQueue[0]['status'] == "WAIT") {
             register_shutdown_function([$this, "reportCronErrors"]);
             $startTimestamp = self::getTimestamp();
-            $cronjob = new CronJob($batchQueue[0]['file'], $batchQueue[0]['method']);
-            $cronjob->setRecords($batchQueue[0]['records']);
-            if ($batchQueue[0]['firstParameter']) {
-                $cronjob->setFirstParameter($batchQueue[0]['firstParameter']);
-            }
-            $batchQueue[0]['startTs'] = time();
-            $batchQueue[0]['status'] = "RUN";
-            Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue)." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp(), $batchQueue[0]['pid']);
-            self::saveBatchQueueToDB($batchQueue, $module);
-            $row = $batchQueue[0];
-            try {
-                $cronjob->run($row['token'], $row['server'], $row['pid'], $row['records']);
-                $batchQueue = self::getBatchQueueFromDB($module);
-                if (empty($batchQueue)) {
-                    # queue was cleared
+            do {
+                $queueHasRun = FALSE;
+                if ((count($batchQueue) > 0) && (REDCapManagement::isActiveProject($batchQueue[0]['pid']))) {
+                    try {
+                        $cronjob = new CronJob($batchQueue[0]['file'], $batchQueue[0]['method']);
+                        $cronjob->setRecords($batchQueue[0]['records']);
+                        if ($batchQueue[0]['firstParameter']) {
+                            $cronjob->setFirstParameter($batchQueue[0]['firstParameter']);
+                        }
+                        $batchQueue[0]['startTs'] = time();
+                        $batchQueue[0]['status'] = "RUN";
+                        Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue)." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp(), $batchQueue[0]['pid']);
+                        self::saveBatchQueueToDB($batchQueue, $module);
+                        $row = $batchQueue[0];
+                        $queueHasRun = TRUE;
+                        $cronjob->run($row['token'], $row['server'], $row['pid'], $row['records']);
+                        $batchQueue = self::getBatchQueueFromDB($module);
+                        if (empty($batchQueue)) {
+                            # queue was cleared
+                            return;
+                        }
+                        Application::log("Done with ".$batchQueue[0]['method']." at ".self::getTimestamp());
+                        $batchQueue[0]['status'] = "DONE";
+                        $batchQueue[0]['endTs'] = time();
+                        self::saveBatchQueueToDB($batchQueue, $module);
+                        $runJob = [
+                            "text" => "Succeeded",
+                            "records" => $row['records'],
+                            "start" => $startTimestamp,
+                            "end" => self::getTimestamp(),
+                            "pid" => $row['pid'],
+                            "method" => $row['method'],
+                        ];
+                        self::addRunJobToDB($runJob, $module);
+                    } catch (\Throwable $e) {
+                        Application::log($e->getMessage()."\n".$e->getTraceAsString());
+                        self::handleBatchError($batchQueue, $module, $startTimestamp, $e);
+                    } catch (\Exception $e) {
+                        Application::log($e->getMessage()."\n".$e->getTraceAsString());
+                        self::handleBatchError($batchQueue, $module, $startTimestamp, $e);
+                    }
+                } else if (count($batchQueue) > 0) {
+                    array_shift($batchQueue);
+                    self::saveBatchQueueToDB($batchQueue, $module);
+                    if (empty($batchQueue)) {
+                        return;
+                    }
+                } else {
+                    # empty batchQueue
+                    self::saveBatchQueueToDB($batchQueue, $module);
                     return;
                 }
-                Application::log("Done with ".$batchQueue[0]['method']." at ".self::getTimestamp());
-                $batchQueue[0]['status'] = "DONE";
-                $batchQueue[0]['endTs'] = time();
-                self::saveBatchQueueToDB($batchQueue, $module);
-                $runJob = [
-                    "text" => "Succeeded",
-                    "records" => $row['records'],
-                    "start" => $startTimestamp,
-                    "end" => self::getTimestamp(),
-                    "pid" => $row['pid'],
-                    "method" => $row['method'],
-                ];
-                self::addRunJobToDB($runJob, $module);
-            } catch (\Throwable $e) {
-                Application::log($e->getMessage()."\n".$e->getTraceAsString());
-                self::handleBatchError($batchQueue, $module, $startTimestamp, $e);
-            } catch (\Exception $e) {
-                Application::log($e->getMessage()."\n".$e->getTraceAsString());
-                self::handleBatchError($batchQueue, $module, $startTimestamp, $e);
-            }
+            } while (!$queueHasRun);
         } else if (!in_array($batchQueue[0]['status'], $validBatchStatuses)) {
             throw new \Exception("Improper batch status ".$batchQueue[0]['status']);
         }

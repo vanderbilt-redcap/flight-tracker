@@ -8,7 +8,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\ReactNIHTables;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
-if (gethostname() == "scottjpearson") {
+if (in_array(gethostname(), ["scottjpearson", "ORIWL-KCXDJK7.local"])) {
     # Testing only - to allow to run with React server using 'npm start'
     header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT");
@@ -61,7 +61,13 @@ if (isset($_POST['action']) && $token && $server && $pid) {
             $reactHandler->setSavedTableNames($newSavedNames);
             $data = $reactHandler->getSavedTableNames();
         } else if ($action == "lookup") {
-            $data = $reactHandler->lookupValues(Sanitizer::sanitizeArray($_POST));
+            $tableNum = Sanitizer::sanitize($_POST['tableNum']);
+            $post = Sanitizer::sanitizeArray($_POST);
+            if (in_array($tableNum, [2, 4])) {
+                $data = $reactHandler->lookupValuesFor2And4($post);
+            } else {
+                $data = $reactHandler->lookupValuesFor3($post);
+            }
         } else if ($action == "lookupRePORTER") {
             $metadata = Download::metadata($token, $server);
             $dateOfReport = Sanitizer::sanitize($_POST['date']);

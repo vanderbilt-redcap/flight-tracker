@@ -350,6 +350,7 @@ function makeSettings($module, $pid) {
     $ary["Installation Variables"][] = makeSetting("send_error_logs", "yesno", "Report Fatal Errors to Development Team?");
     $ary["Installation Variables"][] = makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "Share Data Among the Following Resources?");
     $ary["Installation Variables"][] = makeSetting("auto_recalculate", "yesno", "Automatically Re-summarize After Data Saves? (No waits until overnight.)", 0);
+    $ary["Installation Variables"][] = makeSetting("security_test_mode", "yesno", "Place in Security-Test mode (disabling unauthorized APIs)?", 0);
 
 	$ary["Emails"] = array();
 //	array_push($ary["Emails"], makeHelperText("An initial email can automatically be sent out during the first month after the new record is added to the database. If you desire to use this feature, please complete the following fields."));

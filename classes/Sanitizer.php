@@ -11,8 +11,26 @@ class Sanitizer {
          * @psalm-taint-escape has_quotes
          */
 
+        $data = json_decode($str, TRUE);
+        if ($data) {
+            return self::sanitizeRecursive($data);
+        }
+
         # unable to do so now
         return $str;
+    }
+
+    private static function sanitizeRecursive($datum) {
+        if (is_array($datum)) {
+            $newData = [];
+            foreach ($datum as $key => $value) {
+                $key = self::sanitize($key);
+                $newData[$key] = self::sanitizeRecursive($value);
+            }
+            return $newData;
+        } else {
+            return self::sanitize($datum);
+        }
     }
 
     public static function sanitizeDate($date) {

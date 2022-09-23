@@ -144,7 +144,11 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                             $tableNum++;
                         }
                         $field = $row['field_name'];
-                        if (!in_array($field, $notesFields) && !in_array($row['field_type'], $skipFieldTypes)) {
+                        if (
+                            !in_array($field, $notesFields)
+                            && !in_array($row['field_type'], $skipFieldTypes)
+                            && !preg_match("/@HIDDEN/", $row['field_annotation'])
+                        ) {
                             $i++;
                             $prefices = ["radio" => "exampleRadiosh", "checkbox" => "exampleChecksh", "notes" => "exampleTextareash"];
 
@@ -188,11 +192,11 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                             }
                             if ($row['field_type'] == "descriptive") {
                                 $htmlRows[] = "<tr id='$field-tr'$statusClass>";
-                                $htmlRows[] = '<td colspan="4">'.MMAHelper::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $username).'</td>';
+                                $htmlRows[] = '<td colspan="4">'.MMAHelper::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $userid2).'</td>';
                                 $htmlRows[] = "</tr>";
                             } else {
                                 $htmlRows[] = "<tr id='$field-tr'$statusClass>";
-                                $htmlRows[] = '<th scope="row">'.MMAHelper::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $username).'</th>';
+                                $htmlRows[] = '<th scope="row">'.MMAHelper::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $userid2).'</th>';
                                 $prefix = $prefices[$row['field_type']];
                                 foreach ($specs as $key => $spec) {
                                     $suffix = "";

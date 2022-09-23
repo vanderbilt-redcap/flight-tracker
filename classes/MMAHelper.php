@@ -1160,6 +1160,18 @@ function characteristicsPopup(entity) {
                 if ($row['redcap_repeat_instance'] == $instance) {
                     foreach ($notesFields as $field) {
                         $priorNotes[$field] = $row[$field];
+
+                        # import from old, hidden fields if relevant
+                        if (($field == "mentoring_idp_scientific_skills_short") && ($row[$field] === "")) {
+                            $backupField = "mentoring_short_term_goals";
+                        } else if (($field == "mentoring_idp_scientific_skills_long") && ($row[$field] === "")) {
+                            $backupField = "mentoring_long_term_goals";
+                        } else {
+                            $backupField = "";
+                        }
+                        if ($backupField && $row[$backupField]) {
+                            $priorNotes[$field] = $row[$backupField];
+                        }
                     }
                 }
                 $instances[$row['redcap_repeat_instance']] = $row['mentoring_last_update'];
@@ -2042,29 +2054,34 @@ function characteristicsPopup(entity) {
         return $text;
     }
 
+    public static function getPriorValue($token, $server, $field, $recordId, $thisInstance, $username) {
+        $redcapData = Download::fieldsForRecords($token, $server, ["record_id", $field, "mentoring_userid"], [$recordId]);
+        $instancesForUser = [];
+        foreach ($redcapData as $row) {
+            if (($row['mentoring_userid'] == $username) && ($row['redcap_repeat_instance'] < $thisInstance)) {
+                $instancesForUser[] = $row['redcap_repeat_instance'];
+            }
+        }
+        if (!empty($instancesForUser)) {
+            rsort($instancesForUser);
+            $previousInstanceForUser = $instancesForUser[0];
+            $priorText = REDCapManagement::findField($redcapData, $recordId, $field, TRUE, $previousInstanceForUser);
+            if ($priorText) {
+                $replacementValue = "<br/>Prior: $priorText";
+            } else {
+                $replacementValue = "";
+            }
+        } else {
+            $replacementValue = "";
+        }
+        return $replacementValue;
+    }
+
     public static function pipeIfApplicable($token, $server, $text, $recordId, $thisInstance, $username) {
         while (preg_match("/\[(\w+)\]\[previous-instance\]/", $text, $matches)) {
             $matchString = $matches[0];
             $field = $matches[1];
-            $redcapData = Download::fieldsForRecords($token, $server, ["record_id", $field, "mentoring_userid"], [$recordId]);
-            $instancesForUser = [];
-            foreach ($redcapData as $row) {
-                if (($row['mentoring_userid'] == $username) && ($row['redcap_repeat_instance'] < $thisInstance)) {
-                    $instancesForUser[] = $row['redcap_repeat_instance'];
-                }
-            }
-            if (!empty($instancesForUser)) {
-                rsort($instancesForUser);
-                $previousInstanceForUser = $instancesForUser[0];
-                $priorText = REDCapManagement::findField($redcapData, $recordId, $field, TRUE, $previousInstanceForUser);
-                if ($priorText) {
-                    $replacementValue = "<br/>Prior: $priorText";
-                } else {
-                    $replacementValue = "";
-                }
-            } else {
-                $replacementValue = "";
-            }
+            $replacementValue = self::getPriorValue($token, $server, $field, $recordId, $thisInstance, $username);
             $text = str_replace($matchString, $replacementValue, $text);
         }
         return $text;

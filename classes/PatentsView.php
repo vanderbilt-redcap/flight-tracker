@@ -5,7 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class PatentsView {
-    public function __construct($recordId, $pid, $startDate = "none") {
+    public function __construct($recordId, $pid, $startDate = "none", $metadata = []) {
         if (!$recordId) {
             throw new \Exception("recordId is required to access a patent");
         }
@@ -19,6 +19,7 @@ class PatentsView {
         } else {
             throw new \Exception("Invalid Patents View start date for Record $recordId: $startDate");
         }
+        $this->metadata = $metadata;
     }
 
     public function setName($lastName, $firstName) {
@@ -83,6 +84,7 @@ class PatentsView {
     public function patents2REDCap($patents, $maxInstance) {
         $rows = [];
         $instance = $maxInstance;
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
         foreach ($patents as $patent) {
             $instance++;
             $row = ["record_id" => $this->recordId, "redcap_repeat_instrument" => "patent", "redcap_repeat_instance" => $instance];
@@ -102,6 +104,11 @@ class PatentsView {
             $row['patent_date'] = $patent["patent_date"] ?? "";
             $row['patent_title'] = $patent["patent_title"];
             $row['patent_abstract'] = $patent["patent_abstract"];
+            foreach (self::getGovIntFields() as $pvField) {
+                if (in_array("patent_".$pvField, $metadataFields)) {
+                    $row['patent_'.$pvField] = $patent[$pvField] ?? "";
+                }
+            }
             $row['patent_inventors'] = implode(", ", $inventors["names"]);
             $row['patent_inventor_ids'] = implode(", ", $inventors["ids"]);
             $row['patent_assignees'] = implode(", ", $assignees["names"]);
@@ -111,6 +118,17 @@ class PatentsView {
             $rows[] = $row;
         }
         return $rows;
+    }
+
+    private static function getGovIntFields() {
+        return [
+            "govint_contract_award_number",
+            "govint_org_level_one",
+            "govint_org_level_two",
+            "govint_org_level_three",
+            "govint_org_name",
+            "govint_raw_statement",
+        ];
     }
 
     public static function getPatentNumbers($redcapData) {
@@ -172,7 +190,17 @@ class PatentsView {
     }
 
     private static function getFields() {
-        return ["patent_number", "patent_date", "inventor_first_name", "inventor_last_name", "assignee_organization", "patent_abstract", "patent_title"];
+        $patentFields = [
+            "patent_number",
+            "patent_date",
+            "inventor_first_name",
+            "inventor_last_name",
+            "assignee_organization",
+            "patent_abstract",
+            "patent_title"
+        ];
+        $govIntFields = self::getGovIntFields();
+        return array_merge($patentFields, $govIntFields);
     }
 
     private function getPatents() {
@@ -191,4 +219,5 @@ class PatentsView {
     protected $startDate = "";
     protected $recordId = "";
     protected $pid;
+    protected $metadata = [];
 }

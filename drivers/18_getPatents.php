@@ -22,7 +22,7 @@ function getPatents($token, $server, $pid, $records) {
             $myInstitutions = array_unique(array_merge($institutions[$recordId], Application::getInstitutions($pid), Application::getHelperInstitutions()));
 
             Application::log("Searching for {$firstNames[$recordId]} {$lastNames[$recordId]} at ".json_encode($myInstitutions), $pid);
-            $p = new PatentsView($recordId, $pid);
+            $p = new PatentsView($recordId, $pid, "none", $metadata);
             $p->setName($lastNames[$recordId], $firstNames[$recordId]);
             $uploadRows = $p->getFilteredPatentsAsREDCap($myInstitutions, $maxInstance, $previousNumbers);
             if (count($uploadRows) > 0) {

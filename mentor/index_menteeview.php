@@ -249,10 +249,12 @@ foreach ($metadata as $row) {
     <?php
   }
 
-  $teaser = preg_match("/_idp_/", $row['field_name']) ? "<span class='teaser'>IDP</span> " : "";
+    $teaser = preg_match("/_idp_/", $row['field_name']) ? "<span class='teaser' title='Individual Development Plan'>IDP</span> " : "";
 
-  if ($row['field_type'] == "radio") { ?>
-      <tr id="<?php echo $rowName; ?>"><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $username) ?></th>
+    if (preg_match("/@HIDDEN/", $row['field_annotation'])) {
+        continue;
+    } else if ($row['field_type'] == "radio") { ?>
+      <tr id="<?php echo $rowName; ?>"><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2) ?></th>
         <td>
             <?php
               $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, "mentoring_agreement", $currInstance);
@@ -268,7 +270,7 @@ foreach ($metadata as $row) {
           <?= MMAHelper::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields) ?>
       </tr>
     <?php } else if ($row['field_type'] == "checkbox" ) { ?>
-      <tr id="<?= $rowName ?>"><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $username) ?></th>
+      <tr id="<?= $rowName ?>"><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2) ?></th>
           <td>
               <?php
               $prefix = "exampleChecksh";
@@ -297,21 +299,44 @@ foreach ($metadata as $row) {
       $id = $name;
       $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, "mentoring_agreement", $currInstance);
       ?>
-      <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $username) ?></th>
+      <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2) ?></th>
           <td colspan="2">
+              <?php
+                  $priorInfo = MMAHelper::getPriorValue($token, $server, $fieldName, $menteeRecordId, $currInstance, $userid2);
+                  if ($priorInfo) {
+                      echo "<p><strong>Prior Response</strong>: $priorInfo</p>";
+                  }
+              ?>
               <div class="form-check" style="height: 100px;">
                   <textarea class="form-check-input" name="<?= $name ?>" id="<?= $id ?>"><?= $value ?></textarea>
               </div>
+              <?php
+                if ($row['field_note']) {
+                    echo "<p class='smaller'>".$row['field_note']."</p>";
+                }
+              ?>
           </td>
       </tr>
     <?php
   } else if ($row['field_type'] == "descriptive") {
-      $rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
-      ?>
-      <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>>
-          <td colspan="3"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $username) ?></td>
-      </tr>
-      <?php
+        $rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
+        if ($row['field_name'] == "mentoring_idp_skills_survey") {
+            $surveyLink = Application::getSetting("idp_link", $pid);
+            if ($surveyLink) {
+                $text = str_replace("[this REDCap Survey]", "<a href='$surveyLink'>this REDCap Survey</a>", $row['field_label']);
+                ?>
+                <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>>
+                    <td colspan="3"><?= $teaser.$text ?></td>
+                </tr>
+                <?php
+            }
+        } else {
+            ?>
+            <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>>
+                <td colspan="3"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $userid2) ?></td>
+            </tr>
+            <?php
+        }
   }
 
 
@@ -332,6 +357,10 @@ foreach ($metadata as $row) {
             .teaser {
                 font-size: 1.1em;
                 font-weight: bold;
+            }
+
+            .smaller {
+                font-size: 0.8em;
             }
 
             .table {

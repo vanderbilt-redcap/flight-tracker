@@ -47,11 +47,6 @@ if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
         $resourcesLinkIfExtant = "<p>$institution suggests <a href='$link'>viewing this resource</a> for further consultation.</p>";
     }
 }
-if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") {
-    $blogLinkText = "<p>Discover more on <a href='https://edgeforscholars.org/getting-expectations-in-line-with-an-online-mentoring-agreement/'>this blog post entitled \"Getting Expectations in Line with an Online Mentoring Agreement\" on edgeforscholars.org</a>.</p>";
-} else {
-    $blogLinkText = "";
-}
 
 ?>
 
@@ -131,18 +126,26 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
                         <li>Approach to Scholarly Products</li>
                         <li>Career and Professional Development</li>
                     </ol>
-
                     <li>Create a modifiable Mentoring Agreement which may be created at the start of each relationship and revisited for revision over time as the relationship, scientific efforts, and career development of the mentee mature (e.g., every 12 months).</li>
+                    <li>Integrate an Individual Development Plan (IDP) to maximize mentee-mentor conversations around the Scholar’s goals.</li>
+                </ol>
+                <p>An IDP serves as a “roadmap” to help a Scholar determine, state, and ultimately achieve short- and long-term academic, professional and career goals. Its purpose is to:</p>
+                <ol>
+                    <li>Articulate and map one’s goals to their career timeline. Goals may include any training and career planning related to research, service, teaching, and/or other scholarly goals.</li>
+                    <li>Carefully consider one’s training and professional development at the micro and macro levels.</li>
+                    <li>Increase engagement with one’s Mentor(s) to assure alignment and precisely determine needs and goals.</li>
                 </ol>
                 <p>We hope you find this agreement helpful as you begin or continue your Mentee-Mentor Scholar relationship.</p>
-                <?= $blogLinkText ?>
-
+                <p class="indented">Discover more on the blog post entitled <a href="https://edgeforscholars.org/getting-expectations-in-line-with-an-online-mentoring-agreement/">Getting Expectations in Line with an Online Mentoring Agreement</a> on <a href="https://edgeforscholars.org">edgeforscholars.org</a>. Learn about various IDP programs and a growing list of resources like the <a href="https://myidp.sciencecareers.org/">myIDP</a> from the <a href="https://www.aaas.org/">American Association for the Advancement of Science</a>.</p>
             </div>
         </div>
     </div>
 </section>
 
 <style type="text/css">
+    .indented {
+        padding-left: 50px;
+    }
     .box_body p:first-of-type{color: #828282}
     .blue-box {
         padding: 40px;

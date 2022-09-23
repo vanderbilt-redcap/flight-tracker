@@ -21,20 +21,27 @@ $defaultLink = Application::getSetting("mentee_agreement_link", $pid);
 
 if (isset($_POST['resourceList'])) {
     $continue = TRUE;
-    if (isset($_POST['linkToSave'])) {
-        $defaultLink = REDCapManagement::sanitize($_POST['linkToSave']);
-        if ($defaultLink) {
-            if (!preg_match("/^https?:\/\//i", $defaultLink)) {
-                $defaultLink = "https://".$defaultLink;
-            }
-            if (REDCapManagement::isGoodURL($defaultLink)) {
-                Application::saveSetting("mentee_agreement_link", $defaultLink, $pid);
+    if (isset($_POST['linkToSave']) && isset($_POST['linkForIDP'])) {
+        $defaultLink = Sanitizer::sanitize($_POST['linkToSave']);
+        $idpLink = Sanitizer::sanitize($_POST['linkForIDP']);
+        $linksToSet = [
+            "mentee_agreement_link" => $defaultLink,
+            "idp_link" => $idpLink,
+        ];
+        foreach ($linksToSet as $settingName => $link) {
+            if ($link && $continue) {
+                if (!preg_match("/^https?:\/\//i", $link)) {
+                    $link = "https://".$link;
+                }
+                if (REDCapManagement::isGoodURL($link)) {
+                    Application::saveSetting($settingName, $link, $pid);
+                } else {
+                    $mssg = "<p class='red centered max-width'>Improper URL $link</p>";
+                    $continue = FALSE;
+                }
             } else {
-                $mssg = "<p class='red centered max-width'>Improper URL</p>";
-                $continue = FALSE;
+                Application::saveSetting($settingName, "", $pid);
             }
-        } else {
-            Application::saveSetting("mentee_agreement_link", "", $pid);
         }
     } else {
         $mssg = "<p class='red centered max-width'>Invalid parameters</p>";
@@ -111,19 +118,27 @@ if (Application::isVanderbilt()) {
 
 echo $mssg;
 
+$stepsLink = Application::link("mentor/dashboard.php");
+
 ?>
+
+<p class="centered">Just getting started? <a href="<?= $stepsLink ?>">Follow this checklist</a> to set up.</p>
 <h1>Configure Mentee-Mentor Agreements</h1>
 
 <form action="<?= Application::link("this") ?>" method="POST">
     <?= Application::generateCSRFTokenHTML() ?>
     <table class="max-width centered padded">
         <tr>
-            <td class="alignright bolded"><label for="resourceList">Institutional Resources for Mentoring<br>(One Per Line Please.)<br>These will be offered to the mentee.</label></td>
+            <td class="alignright bolded"><label for="resourceList">Institutional Resources for Mentoring<br/>(One Per Line Please.)<br/>These will be offered to the mentee.</label></td>
             <td><textarea name="resourceList" id="resourceList" style="width: <?= $rightWidth ?>px; height: 300px;"><?= $defaultList ?></textarea></td>
         </tr>
         <tr>
             <td class="alignright bolded"><label for="linkToSave">Link to Further Resources<?= $vanderbiltLinkText ?></label></td>
             <td><input type="text" style="width: <?= $rightWidth ?>px;" name="linkToSave" id="linkToSave" value="<?= $defaultLink ?>"></td>
+        </tr>
+        <tr>
+            <td class="alignright bolded"><label for="linkForIDP">Link for Further Questions for the Individual Development Plan (IDP) - optional<br/>If you have some program-specific questions, you can turn them into a REDCap Survey in a separate project and add the Public Survey Link here.</label></td>
+            <td><input type="text" style="width: <?= $rightWidth ?>px;" name="linkForIDP" id="linkForIDP" value="<?= $defaultLink ?>"></td>
         </tr>
     </table>
     <p class="centered"><button>Change Configuration</button></p>

@@ -9,15 +9,19 @@ use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\REDCapLookup;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
+
+$userInfo = REDCapLookup::getUserInfo(Application::getUsername());
+$userEmail = $userInfo['user_email'];
 
 if (isset($_POST['message']) && isset($_POST['to']) && isset($_POST['subject'])) {
     $mssg = Sanitizer::sanitizeWithoutStrippingHTML($_POST['message'], FALSE);
     $to = Sanitizer::sanitize($_POST['to']);
     $subject = Sanitizer::sanitize($_POST['subject']);
-    $from = Sanitizer::sanitize($_POST['from'] ?? $adminEmail);
+    $from = $userEmail ?: $adminEmail;
     $cc = Sanitizer::sanitize($_POST['cc'] ?? "");
 
     $returnData = ["error" => "No action taken."];
@@ -322,13 +326,12 @@ function getEarliestDate(dates) {
     return pastDue;
 }
 
-function sendComplianceEmail(recordId, message, subject, cc, from) {
+function sendComplianceEmail(recordId, message, subject, cc) {
     const email = emails[recordId];    
 
     if (email && message) {
         const postdata = {
             to: email,
-            from: from,
             cc: cc ?? '',
             message: message,
             subject: subject,
@@ -373,11 +376,11 @@ function sendComplianceEmail(recordId, message, subject, cc, from) {
 echo "<div id='emailDialog' title='Compose Email' style='overflow: scroll; display: none;'>";
 echo "<input type='hidden' id='emailRecord' value='' />";
 echo "<p class='centered'>To: <span id='emailTo'></span></p>";
-echo "<p class='centered'><label for='emailFrom'>From:</label> <input type='email' style='width: 400px;' id='emailFrom' /></p>";
+echo "<p class='centered'>From: $userEmail</p>";
 echo "<p class='centered'><label for='emailSubject'>Subject:</label> <input type='text' style='width: 400px;' id='emailSubject' /></p>";
 echo "<p class='centered'><label for='emailCC'>CC (optional):</label> <input type='email' style='width: 400px;' id='emailCC' /></p>";
 echo "<div id='emailMessage'></div>";
-echo "<p class='centered'><button onclick='sendComplianceEmail($(\"#emailRecord\").val(), $(\"#emailMessage .ql-editor\").html(), $(\"#emailSubject\").val(), $(\"#emailCC\").val(), $(\"emailFrom\").val()); emailDialog.dialog(\"close\"); return false;'>Send Email</button> <button onclick='emailDialog.dialog(\"close\"); return false;'>Cancel</button></p>";
+echo "<p class='centered'><button onclick='sendComplianceEmail($(\"#emailRecord\").val(), $(\"#emailMessage .ql-editor\").html(), $(\"#emailSubject\").val(), $(\"#emailCC\").val()); emailDialog.dialog(\"close\"); return false;'>Send Email</button> <button onclick='emailDialog.dialog(\"close\"); return false;'>Cancel</button></p>";
 echo "</div>";
 
 $pmcStartDate = date("Y-m-d", getPMCStartTs());
