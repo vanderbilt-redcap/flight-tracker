@@ -690,8 +690,8 @@ class REDCapManagement {
 
     public static function json_encode_with_spaces($data) {
         $str = json_encode($data);
-        $str = preg_replace("/,/", ", ", $str);
         $str = self::sanitizeJSON($str);
+        $str = preg_replace("/,/", ", ", $str);
         return $str;
     }
 

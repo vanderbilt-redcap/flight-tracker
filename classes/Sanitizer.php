@@ -13,7 +13,8 @@ class Sanitizer {
 
         $data = json_decode($str, TRUE);
         if ($data) {
-            return self::sanitizeRecursive($data);
+            $data = self::sanitizeRecursive($data);
+            return json_encode($data);
         }
 
         # unable to do so now

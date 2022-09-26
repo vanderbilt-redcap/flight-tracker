@@ -646,7 +646,14 @@ class DataDictionaryManagement {
                 $existingMetadata = $tempMetadata;
             }
         }
-        $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
+        try {
+            $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
+        } catch (\Exception $e) {
+            $mssg = "<h1>Metadata Upload Error in ".Application::getProgramName()."</h1>";
+            $mssg .= "<p>Server: $server</p>";
+            $mssg .= $e->getMessage();
+            \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", "Metadata Upload Error", $mssg);
+        }
         return $metadataFeedback;
     }
 
