@@ -105,6 +105,12 @@ class DataDictionaryManagement {
                     self::convertOldDegreeData($pid);
                 } catch (\Exception $e) {
                     $feedback = ["Exception" => $e->getMessage()];
+                    $mssg = "<h1>Metadata Upload Error in ".Application::getProgramName()."</h1>";
+                    $mssg .= "<p>Server: $server</p>";
+                    $mssg .= "<p>PID: $pid</p>";
+                    $mssg .= $e->getMessage();
+                    \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", Application::getProgramName()." Metadata Upload Error", $mssg);
+
                     $dataToReturn[] = $feedback;
                 }
             }
@@ -646,14 +652,7 @@ class DataDictionaryManagement {
                 $existingMetadata = $tempMetadata;
             }
         }
-        try {
-            $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
-        } catch (\Exception $e) {
-            $mssg = "<h1>Metadata Upload Error in ".Application::getProgramName()."</h1>";
-            $mssg .= "<p>Server: $server</p>";
-            $mssg .= $e->getMessage();
-            \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", "Metadata Upload Error", $mssg);
-        }
+        $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
         return $metadataFeedback;
     }
 
