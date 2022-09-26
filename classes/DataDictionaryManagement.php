@@ -652,8 +652,38 @@ class DataDictionaryManagement {
                 $existingMetadata = $tempMetadata;
             }
         }
+        self::sortByForms($existingMetadata);
         $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
         return $metadataFeedback;
+    }
+
+    private static function sortByforms(&$metadata) {
+        $forms = [];
+        foreach ($metadata as $row) {
+            $form = $row['form_name'];
+            if (!in_array($form, $forms)) {
+                $forms[] = $form;
+            }
+        }
+
+        $newMetadata = [];
+        foreach ($forms as $form) {
+            foreach ($metadata as $row) {
+                if ($row['form_name'] == $form) {
+                    $newMetadata[] = $row;
+                }
+            }
+        }
+
+        if (count($newMetadata) != count($metadata)) {
+            throw new \Exception("Improper sort!");
+        }
+        $firstFieldName = "record_id";
+        if ($newMetadata[0]['field_name'] !== $firstFieldName) {
+            throw new \Exception("First field is ".$newMetadata[0]['field_name'].", not $firstFieldName!");
+        }
+
+        return $newMetadata;
     }
 
     private static function deleteRowsWithFieldName(&$metadata, $fieldName) {
