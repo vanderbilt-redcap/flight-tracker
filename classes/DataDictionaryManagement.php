@@ -657,7 +657,7 @@ class DataDictionaryManagement {
         return $metadataFeedback;
     }
 
-    private static function sortByforms(&$metadata) {
+    private static function sortByForms(&$metadata) {
         $forms = [];
         foreach ($metadata as $row) {
             $form = $row['form_name'];
@@ -682,8 +682,7 @@ class DataDictionaryManagement {
         if ($newMetadata[0]['field_name'] !== $firstFieldName) {
             throw new \Exception("First field is ".$newMetadata[0]['field_name'].", not $firstFieldName!");
         }
-
-        return $newMetadata;
+        $metadata = $newMetadata;
     }
 
     private static function deleteRowsWithFieldName(&$metadata, $fieldName) {
