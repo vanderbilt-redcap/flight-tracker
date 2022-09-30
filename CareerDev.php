@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.16.5";
+		return "4.16.6";
 	}
 
 	public static function getLockFile($pid) {

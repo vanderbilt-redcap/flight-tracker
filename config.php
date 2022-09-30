@@ -450,6 +450,12 @@ function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $re
             if ($realValue === NULL) {
                 $realValue = "";
             }
+            if (!$realValue) {
+                $allTokens = REDCapManagement::getToken($myPid);
+                if (in_array($value, $allTokens)) {
+                    $realValue = $value;
+                }
+            }
         }
         if ($realValue != $value) {
             # recently copied project

@@ -695,14 +695,26 @@ class REDCapManagement {
 	    return Sanitizer::sanitize($origStr);
     }
 
-    public static function getToken($pid, $username) {
-        $sql = "SELECT api_token FROM redcap_user_rights WHERE project_id = ? AND username = ?";
+    public static function getToken($pid, $username = "") {
         $module = Application::getModule();
-        $q = $module->query($sql, [$pid, $username]);
-        if ($row = $q->fetch_assoc()) {
-            return $row['api_token'] ?? "";
+        if ($username) {
+            $sql = "SELECT api_token FROM redcap_user_rights WHERE project_id = ? AND username = ?";
+            $q = $module->query($sql, [$pid, $username]);
+            if ($row = $q->fetch_assoc()) {
+                return $row['api_token'] ?? "";
+            }
+            return "";
+        } else {
+            $sql = "SELECT api_token FROM redcap_user_rights WHERE project_id = ?";
+            $q = $module->query($sql, [$pid]);
+            $tokens = [];
+            if ($row = $q->fetch_assoc()) {
+                if ($row['api_token']) {
+                    $tokens[] = $row['api_token'];
+                }
+            }
+            return $tokens;
         }
-        return "";
     }
 
     public static function isEmail($str) {

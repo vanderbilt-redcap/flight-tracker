@@ -1034,7 +1034,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	public function canRedirectToInstall() {
-		$bool = !self::isAJAXPage() && !self::isAPITokenPage() && !self::isUserRightsPage() && !self::isExternalModulePage() && (!isset($_GET['page']) || ($_GET['page'] != "install"));
+		$bool = (
+            !self::isAJAXPage()
+            && !self::isAPITokenPage()
+            && !self::isUserRightsPage()
+            && !self::isExternalModulePage()
+            && (!isset($_GET['page']) || ($_GET['page'] != "install"))
+            && (!isset($_GET['page']) || (preg_match("/^projects/", $_GET['page'])))
+        );
 		if ($_GET['pid']) {
 			# project context
 			$bool = $bool && $this->hasAppropriateRights(USERID, $_GET['pid']);
