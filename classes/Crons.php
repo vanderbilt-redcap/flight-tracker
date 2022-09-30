@@ -25,6 +25,12 @@ class CronManager {
         self::$lastSendErrorLogs = Application::getSetting("send_error_logs", $pid);
 	}
 
+    public function addMultiCron($file, $method, $dayOfWeek, $pids) {
+        if ($this->module) {
+            $this->addCronForBatchMulti($file, $method, $dayOfWeek, $pids);
+        }
+    }
+
 	# file is relative to career_dev's root
 	# dayOfWeek is in string format - "Monday", "Tuesday", etc. or a date in form Y-M-D
     # records here, if specified, overrides the records specified in function run
@@ -96,6 +102,48 @@ class CronManager {
         }
  	}
 
+    private function addCronForBatchMulti($file, $method, $dayOfWeek, $pids) {
+        if (empty($pids)) {
+            return;
+        }
+
+        $absFile = dirname(__FILE__)."/../".$file;
+        $dateTs = strtotime($dayOfWeek);
+        $this->screenFileAndDate($absFile, $dayOfWeek, $dateTs);
+        if (in_array($dayOfWeek, self::getDaysOfWeek())) {
+            # Weekday
+            if (date("l") == $dayOfWeek) {
+                $this->enqueueBatchMulti($absFile, $method, $pids);
+                if ($this->isDebug) {
+                    Application::log("Assigned cron for $method on $dayOfWeek");
+                }
+            }
+        } else if ($dateTs) {
+            # Y-M-D
+            $date = date(self::getDateFormat(), $dateTs);
+            if ($date == date(self::getDateFormat())) {
+                $this->enqueueBatchMulti($absFile, $method, $pids);
+                if ($this->isDebug) {
+                    Application::log("Assigned cron for $date");
+                }
+            }
+        }
+    }
+
+    private function screenFileAndDate($absFile, $dayOfWeek, $dateTs) {
+        if (!in_array($dayOfWeek, self::getDaysOfWeek()) && !$dateTs) {
+            throw new \Exception("The dayOfWeek ($dayOfWeek) must be a string - 'Monday', 'Tuesday', 'Wednesday', etc. or a date (Y-M-D)");
+        }
+
+        if (!file_exists($absFile)) {
+            throw new \Exception("File $absFile does not exist!");
+        }
+
+        if ($this->isDebug) {
+            Application::log("Has day of week $dayOfWeek and timestamp for ".date("Y-m-d", $dateTs));
+        }
+    }
+
 	private function addCronForBatch($file, $method, $dayOfWeek, $records, $numRecordsAtATime, $firstParameter = FALSE) {
         if (empty($records)) {
             $metadataFields = Download::metadataFields($this->token, $this->server);
@@ -106,21 +154,11 @@ class CronManager {
             }
         }
 
-        $possibleDays = self::getDaysOfWeek();
         $dateTs = strtotime($dayOfWeek);
-        if (!in_array($dayOfWeek, $possibleDays) && !$dateTs) {
-            throw new \Exception("The dayOfWeek ($dayOfWeek) must be a string - 'Monday', 'Tuesday', 'Wednesday', etc. or a date (Y-M-D)");
-        }
-
         $absFile = dirname(__FILE__)."/../".$file;
-        if (!file_exists($absFile)) {
-            throw new \Exception("File $absFile does not exist!");
-        }
+        $this->screenFileAndDate($absFile, $dayOfWeek, $dateTs);
 
-        if ($this->isDebug) {
-            Application::log("Has day of week $dayOfWeek and timestamp for ".date("Y-m-d", $dateTs));
-        }
-        if (in_array($dayOfWeek, $possibleDays)) {
+        if (in_array($dayOfWeek, self::getDaysOfWeek())) {
             # Weekday
             if (date("l") == $dayOfWeek) {
                 $this->enqueueBatch($absFile, $method, $records, $numRecordsAtATime, $firstParameter);
@@ -159,6 +197,21 @@ class CronManager {
             return 10000;     // not used => run once
         } else {
             return 40;
+        }
+    }
+
+    private function enqueueBatchMulti($file, $method, $pids) {
+        if (!empty($pids)) {
+            $batchQueue = self::getBatchQueueFromDB($this->module);
+            $batchRow = [
+                "file" => $file,
+                "method" => $method,
+                "pids" => $pids,
+                "status" => "WAIT",
+                "enqueueTs" => time(),
+            ];
+            $batchQueue[] = $batchRow;
+            self::saveBatchQueueToDB($batchQueue, $this->module);
         }
     }
 
@@ -258,16 +311,18 @@ class CronManager {
             return $records;
         }
         $threshold = date("YmdHis", time() - $hours * 3600);
-        $recordStr = "('".implode("','", $records)."')";
+        $questionMarks = [];
+        while (count($questionMarks) < count($records)) {
+            $questionMarks[] = "?";
+        }
         $log_event_table = method_exists('\REDCap', 'getLogEventTable') ? \REDCap::getLogEventTable($pid) : "redcap_log_event";
-        $sql = "SELECT DISTINCT pk FROM $log_event_table WHERE project_id = '".db_real_escape_string($pid)."' AND pk IN $recordStr AND ts >= ".db_real_escape_string($threshold)." AND data_values NOT LIKE 'summary_last_calculated = \'____-__-__ __:__\''";
+        $module = Application::getModule();
+        $sql = "SELECT DISTINCT pk FROM $log_event_table WHERE project_id = ? AND pk IN (".implode(",", $questionMarks).") AND ts >= ? AND data_values NOT LIKE 'summary_last_calculated = \'____-__-__ __:__\''";
+        $params = array_merge([$pid], $records, [$threshold]);
         $changedRecords = [];
         $startTime = time();
-        $q = db_query($sql);
-        if ($error = db_error()) {
-            throw new \Exception("Database error $error");
-        }
-        while ($row = db_fetch_assoc($q)) {
+        $q = $module->query($sql, $params);
+        while ($row = $q->fetch_assoc()) {
             if (!in_array($row['pk'], $changedRecords)) {
                 $changedRecords[] = $row['pk'];
             }
@@ -329,35 +384,43 @@ class CronManager {
                 if ((count($batchQueue) > 0) && (REDCapManagement::isActiveProject($batchQueue[0]['pid']))) {
                     try {
                         $cronjob = new CronJob($batchQueue[0]['file'], $batchQueue[0]['method']);
-                        $cronjob->setRecords($batchQueue[0]['records']);
-                        if ($batchQueue[0]['firstParameter']) {
-                            $cronjob->setFirstParameter($batchQueue[0]['firstParameter']);
-                        }
                         $batchQueue[0]['startTs'] = time();
                         $batchQueue[0]['status'] = "RUN";
                         Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue)." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp(), $batchQueue[0]['pid']);
                         self::saveBatchQueueToDB($batchQueue, $module);
                         $row = $batchQueue[0];
-                        $queueHasRun = TRUE;
-                        $cronjob->run($row['token'], $row['server'], $row['pid'], $row['records']);
-                        $batchQueue = self::getBatchQueueFromDB($module);
-                        if (empty($batchQueue)) {
-                            # queue was cleared
-                            return;
+                        if (isset($row['pids'])) {
+                            $queueHasRun = TRUE;
+                            $cronjob->runMulti($row['pids']);
+                            self::markAsDone($module);
+                            $runJob = [
+                                "text" => "Succeeded",
+                                "pids" => $row['pids'],
+                                "start" => $startTimestamp,
+                                "end" => self::getTimestamp(),
+                                "method" => $row['method'],
+                            ];
+                            self::addRunJobToDB($runJob, $module);
+                        } else if (isset($batchQueue[0]['records'])) {
+                            $cronjob->setRecords($row['records']);
+                            if ($batchQueue[0]['firstParameter']) {
+                                $cronjob->setFirstParameter($row['firstParameter']);
+                            }
+                            $queueHasRun = TRUE;
+                            $cronjob->run($row['token'], $row['server'], $row['pid'], $row['records']);
+                            self::markAsDone($module);
+                            $runJob = [
+                                "text" => "Succeeded",
+                                "records" => $row['records'],
+                                "start" => $startTimestamp,
+                                "end" => self::getTimestamp(),
+                                "pid" => $row['pid'],
+                                "method" => $row['method'],
+                            ];
+                            self::addRunJobToDB($runJob, $module);
+                        } else {
+                            throw new \Exception("Invalid batch job ".REDCapManagement::json_encode_with_spaces($batchQueue[0]));
                         }
-                        Application::log("Done with ".$batchQueue[0]['method']." at ".self::getTimestamp());
-                        $batchQueue[0]['status'] = "DONE";
-                        $batchQueue[0]['endTs'] = time();
-                        self::saveBatchQueueToDB($batchQueue, $module);
-                        $runJob = [
-                            "text" => "Succeeded",
-                            "records" => $row['records'],
-                            "start" => $startTimestamp,
-                            "end" => self::getTimestamp(),
-                            "pid" => $row['pid'],
-                            "method" => $row['method'],
-                        ];
-                        self::addRunJobToDB($runJob, $module);
                     } catch (\Throwable $e) {
                         Application::log($e->getMessage()."\n".$e->getTraceAsString());
                         self::handleBatchError($batchQueue, $module, $startTimestamp, $e);
@@ -380,6 +443,18 @@ class CronManager {
         } else if (!in_array($batchQueue[0]['status'], $validBatchStatuses)) {
             throw new \Exception("Improper batch status ".$batchQueue[0]['status']);
         }
+    }
+
+    public static function markAsDone($module) {
+        $batchQueue = self::getBatchQueueFromDB($module);
+        if (empty($batchQueue)) {
+            # queue was cleared
+            return;
+        }
+        Application::log("Done with ".$batchQueue[0]['method']." at ".self::getTimestamp());
+        $batchQueue[0]['status'] = "DONE";
+        $batchQueue[0]['endTs'] = time();
+        self::saveBatchQueueToDB($batchQueue, $module);
     }
 
     public static function sendEmails($pids, $module, $additionalEmailText = "") {
@@ -532,16 +607,30 @@ class CronManager {
         }
         self::saveBatchQueueToDB($batchQueue, $module);
 
-        $runJob = [
-            "method" => $batchQueue[0]['method'],
-            "text" => "Attempted",
-            "records" => $batchQueue[0]['records'],
-            "start" => $startTimestamp,
-            "end" => self::getTimestamp(),
-            "pid" => $batchQueue[0]['pid'],
-            "error" => $mssg,
-            "error_location" => $trace,
-        ];
+        if (isset($batchQueue[0]['pids'])) {
+            $runJob = [
+                "method" => $batchQueue[0]['method'],
+                "text" => "Attempted",
+                "start" => $startTimestamp,
+                "end" => self::getTimestamp(),
+                "pids" => $batchQueue[0]['pids'],
+                "error" => $mssg,
+                "error_location" => $trace,
+            ];
+        } else if (isset($batchQueue[0]['records'])) {
+            $runJob = [
+                "method" => $batchQueue[0]['method'],
+                "text" => "Attempted",
+                "records" => $batchQueue[0]['records'],
+                "start" => $startTimestamp,
+                "end" => self::getTimestamp(),
+                "pid" => $batchQueue[0]['pid'],
+                "error" => $mssg,
+                "error_location" => $trace,
+            ];
+        } else {
+            throw new \Exception("Invalid batch queue job: ".REDCapManagement::json_encode_with_spaces($batchQueue[0]));
+        }
         self::addRunJobToDB($runJob, $module);
     }
 
@@ -743,6 +832,28 @@ class CronJob {
 
 	public function getMethod() {
 	    return $this->method;
+    }
+
+    public function runMulti($passedPids) {
+        if (empty($passedPids)) {
+            throw new \Exception("No pids specified");
+        }
+        error_reporting(E_ALL);
+        ini_set('display_errors', '1');
+        require_once($this->file);
+        if ($this->method) {
+            $method = $this->method;
+            if (!function_exists($method)) {
+                $methodWithNamespace = __NAMESPACE__."\\".$method;
+                if (function_exists($methodWithNamespace)) {
+                    $method = $methodWithNamespace;
+                } else {
+                    throw new \Exception("Invalid method $method");
+                }
+            }
+            URLManagement::resetUnsuccessfulCount();
+            $method($passedPids);
+        }
     }
 
 	public function run($passedToken, $passedServer, $passedPid, $records) {

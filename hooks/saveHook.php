@@ -11,10 +11,11 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 global $token, $server;
 
 if ($instrument == "identifiers") {
-	$sql = "SELECT field_name FROM redcap_data WHERE project_id = ".db_real_escape_string($project_id)." AND record = '".db_real_escape_string($record)."' AND field_name LIKE '%_complete'";
-	$q = db_query($sql);
-	if (db_num_rows($q) == 1) {
-		if ($row = db_fetch_assoc($q)) {
+    $module = Application::getModule();
+	$sql = "SELECT field_name FROM redcap_data WHERE project_id = ? AND record = '? AND field_name LIKE '%_complete'";
+	$q = $module->query($sql, [$project_id, $record]);
+	if ($q->num_rows == 1) {
+		if ($row = $q->fetch_assoc($q)) {
 			if ($row['field_name'] == "identifiers_complete") {
 				# new record => only identifiers form filled out
 				\Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($record);

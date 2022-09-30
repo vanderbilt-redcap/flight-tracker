@@ -6,21 +6,52 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 function updateAllCoeus($token, $server, $pid, $records) {
-    updateCoeusGrants($token, $server, $pid, $records);
-    updateCoeusSubmissions($token, $server, $pid, $records);
+    $data = getCOEUSData();
+    updateCoeusGrants($token, $server, $pid, $records, $data);
+    updateCoeusSubmissions($token, $server, $pid, $records, $data);
 }
 
-function updateCoeusGrants($token, $server, $pid, $records) {
-    updateCoeusGeneric($token, $server, $pid, $records, "coeus", "awards");
-    CareerDev::saveCurrentDate("Last COEUS Download", $pid);
+function updateCoeusGrants($token, $server, $pid, $records, $data = []) {
+    if (empty($data)) {
+        $data = getCOEUSData();
+    }
+    updateCoeusGeneric($token, $server, $pid, $records, "coeus", "awards", $data);
+    Application::saveCurrentDate("Last COEUS Download", $pid);
 }
 
-function updateCoeusSubmissions($token, $server, $pid, $records) {
-    updateCoeusGeneric($token, $server, $pid, $records, "coeus_submission", "proposals");
-    CareerDev::saveCurrentDate("Last COEUS Submission Download", $pid);
+function updateCoeusSubmissions($token, $server, $pid, $records, $data = []) {
+    if (empty($data)) {
+        $data = getCOEUSData();
+    }
+    updateCoeusGeneric($token, $server, $pid, $records, "coeus_submission", "proposals", $data);
+    Application::saveCurrentDate("Last COEUS Submission Download", $pid);
 }
 
-function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $awardDataField) {
+function updateAllCOEUSMulti($pids) {
+    $data = getCOEUSData();
+    foreach ($pids as $currPid) {
+        $currToken = Application::getSetting("token", $currPid);
+        $currServer = Application::getSetting("server", $currPid);
+        if (REDCapManagement::isActiveProject($currPid) && $currToken && $currServer) {
+            $forms = Download::metadataForms($currToken, $currServer);
+            if (in_array("coeus", $forms)) {
+                $records = Download::records($currToken, $currServer);
+                updateCoeusGrants($currToken, $currServer, $currPid, $records, $data);
+                updateCoeusSubmissions($currToken, $currServer, $currPid, $records, $data);
+            }
+        }
+    }
+}
+
+function getCOEUSData() {
+    $conn = new COEUSConnection();
+    $conn->connect();
+    $data = $conn->pullAllRecords();
+    $conn->close();
+    return $data;
+}
+
+function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $awardDataField, $coeusData) {
     $metadata = Download::metadata($token, $server);
     $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
     $submissionFields = REDCapManagement::getFieldsFromMetadata($metadata, $instrument);
@@ -35,17 +66,12 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
         $currFirstNames = Download::firstnames($token, $server);
         $currLastNames = Download::lastnames($token, $server);
 
-        $conn = new COEUSConnection();
-        $conn->connect();
-        $data = $conn->pullAllRecords();
-        $conn->close();
-
         $translate = [];
         foreach ($records as $recordId) {
             $currUserid = strtolower($userids[$recordId] ?? "");
             $matchedData = [];
             $i = 0;
-            foreach ($data[$awardDataField] as $row) {
+            foreach ($coeusData[$awardDataField] as $row) {
                 if (isset($translate[$row['PERSON_ID']])) {
                     $uid = $translate[$row['PERSON_ID']];
                 } else {
@@ -120,7 +146,7 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
                                 }
                             }
                             if (empty($foundInstances)) {
-                                break;
+                                    break;
                             }
                         }
                     }
@@ -166,9 +192,59 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
             } else {
                 Application::log("Record $recordId has no matches for $instrument", $pid);
             }
+            dedupCOEUS($token, $server, $pid, $recordId, $instrument, $prefix, $uniqueFields, $timestampField);
         }
     } else {
         Application::log("Skipping $instrument fields", $pid);
+    }
+}
+
+function dedupCOEUS($token, $server, $pid, $recordId, $instrument, $prefix, $uniqueFields, $timestampField) {
+    $fieldsToDownload = $uniqueFields;
+    $fieldsToDownload[] = "record_id";
+    $fieldsToDownload[] = $timestampField;
+    $redcapData = Download::fieldsForRecords($token, $server, $fieldsToDownload, [$recordId]);
+    $latestTimestampForItems = [];
+    $instanceToUseForItems = [];
+    $sep = "____";
+    foreach ($redcapData as $row) {
+        if ($row['redcap_repeat_instrument'] == $instrument) {
+            $uniqueIDValues = [];
+            foreach ($uniqueFields as $field) {
+                $uniqueIDValues[] = $row[$field];
+            }
+            $uniqueID = implode($sep, $uniqueIDValues);
+            if ($uniqueID != $sep) {
+                $date = $row[$timestampField] ?? "";
+                if (isset($latestTimestampForItems[$uniqueID])) {
+                    if (DateManagement::isDate($date)) {
+                        $rowTs = strtotime($date);
+                        if ($rowTs > $latestTimestampForItems[$uniqueID]) {
+                            $instanceToUseForItems[$uniqueID] = $row['redcap_repeat_instance'];
+                            $latestTimestampForItems[$uniqueID] = $rowTs;
+                        }
+                    }
+                } else {
+                    if (DateManagement::isDate($date)) {
+                        $latestTimestampForItems[$uniqueID] = strtotime($date);
+                    } else {
+                        $latestTimestampForItems[$uniqueID] = time();
+                    }
+                    $instanceToUseForItems[$uniqueID] = $row['redcap_repeat_instance'];
+                }
+            }
+        }
+    }
+    $instancesToDelete = [];
+    $instancesToKeep = array_values($instanceToUseForItems);
+    foreach ($redcapData as $row) {
+        if (($row['redcap_repeat_instrument'] == $instrument) && !in_array($row['redcap_repeat_instance'], $instancesToKeep)) {
+            $instancesToDelete[] = $row['redcap_repeat_instance'];
+        }
+    }
+    if (!empty($instancesToDelete)) {
+        Application::log("Deleting instances of $instrument for $recordId: ".implode(", ", $instancesToDelete), $pid);
+        Upload::deleteFormInstances($token, $server, $pid, $prefix, $recordId, $instancesToDelete);
     }
 }
 

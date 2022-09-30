@@ -23,20 +23,22 @@ class Download {
 	}
 
 	public static function getInstanceRow($pid, $prefix, $instrument, $recordId, $instance) {
-	    $instanceClause = ($instance == 1) ? "instance IS NULL" : "instance = '".db_real_escape_string($instance)."'";
+        $module = Application::getModule();
+	    $instanceClause = ($instance == 1) ? "instance IS NULL" : "instance = ?";
 	    $sql = "SELECT field_name, value
                     FROM redcap_data
-                    WHERE project_id = '".db_real_escape_string($pid)."'
-                        AND field_name LIKE '".db_real_escape_string($prefix)."%'
-                        AND record = '".db_real_escape_string($recordId)."'
+                    WHERE project_id = ?
+                        AND field_name LIKE ?
+                        AND record = ?
                         AND $instanceClause";
-	    $q = db_query($sql);
-	    if ($error = db_error()) {
-	        throw new \Exception($error);
+        $params = [$pid, "$prefix%", $recordId];
+        if ($instance > 1) {
+            $params[] = $instance;
         }
+	    $q = $module->query($sql, $params);
 
         $returnRow = ["record_id" => $recordId, "redcap_repeat_instrument" => $instrument, "redcap_repeat_instance" => $instance];
-	    while ($row = db_fetch_assoc($q)) {
+	    while ($row = $q->fetch_assoc()) {
             $returnRow[$row['field_name']] = $row['value'];
         }
         return $returnRow;
@@ -44,12 +46,10 @@ class Download {
 
 	public static function throttleIfNecessary($pid) {
 	    if (self::$rateLimitPerMinute === NULL) {
+            $module = Application::getModule();
 	        $sql = "SELECT * FROM redcap_config WHERE field_name = 'page_hit_threshold_per_minute'";
-            $q = db_query($sql);
-            if ($error = db_error()) {
-                Application::log("ERROR: $error", $pid);
-            }
-            if ($row = db_fetch_assoc($q)) {
+            $q = $module->query($sql, []);
+            if ($row = $q->fetch_assoc()) {
                 self::$rateLimitPerMinute = $row['value'];
             }
         }
@@ -347,13 +347,11 @@ class Download {
     public static function metadataForms($token, $server) {
         $pid = Application::getPID($token);
         if ($pid && self::isCurrentServer($server)) {
-            $sql = "SELECT DISTINCT(form_name) FROM redcap_metadata WHERE project_id = '".db_real_escape_string($pid)."' ORDER BY field_order";
-            $q = db_query($sql);
-            if ($error = db_error()) {
-                throw new \Exception("DB ERROR: $error");
-            }
+            $module = Application::getModule();
+            $sql = "SELECT DISTINCT(form_name) FROM redcap_metadata WHERE project_id = ? ORDER BY field_order";
+            $q = $module->query($sql, [$pid]);
             $forms = [];
-            while ($row = db_fetch_assoc($q)) {
+            while ($row = $q->fetch_assoc()) {
                 $forms[] = $row['form_name'];
             }
             return $forms;
@@ -366,13 +364,11 @@ class Download {
     public static function metadataFields($token, $server) {
         $pid = Application::getPID($token);
         if ($pid && self::isCurrentServer($server)) {
-            $sql = "SELECT field_name FROM redcap_metadata WHERE project_id = '".db_real_escape_string($pid)."' ORDER BY field_order";
-            $q = db_query($sql);
-            if ($error = db_error()) {
-                throw new \Exception("DB ERROR: $error");
-            }
+            $module = Application::getModule();
+            $sql = "SELECT field_name FROM redcap_metadata WHERE project_id = ? ORDER BY field_order";
+            $q = $module->query($sql, [$pid]);
             $fields = [];
-            while ($row = db_fetch_assoc($q)) {
+            while ($row = $q->fetch_assoc()) {
                 $fields[] = $row['field_name'];
             }
             return $fields;
@@ -993,14 +989,15 @@ class Download {
 	public static function fastField($pid, $field) {
 	    $values = [];
 
+        $module = Application::getModule();
 	    $sql = "SELECT record, value, instance
                     FROM redcap_data
-                    WHERE project_id = '".db_real_escape_string($pid)."'
-                        AND field_name='".db_real_escape_string($field)."'";
-	    $q = db_query($sql);
+                    WHERE project_id = ?
+                        AND field_name= ?";
+	    $q = $module->query($sql, [$pid, $field]);
 
 	    $hasMultipleInstances = FALSE;
-	    while ($row = db_fetch_assoc($q)) {
+	    while ($row = $q->fetch_assoc()) {
 	        if ($row['instance']) {
 	            $hasMultipleInstances = TRUE;
 	            $instance = $row['instance'];

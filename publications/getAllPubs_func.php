@@ -484,11 +484,12 @@ function inCitationIds($citationIds, $pmid, $recordId) {
 }
 
 function clearAllCitations($pid, $records) {
+    $module = Application::getModule();
 	foreach ($records as $record) {
 		CareerDev::log("Clearing record $record in $pid");
 		echo "Clearing record $record in $pid\n";
-		$sql = "DELETE FROM redcap_data WHERE field_name LIKE 'citation_%' AND project_id = '".db_real_escape_string($pid)."' AND record = '".db_real_escape_string($record)."'";
-		db_query($sql);
+		$sql = "DELETE FROM redcap_data WHERE field_name LIKE 'citation_%' AND project_id = ? AND record = ?";
+        $module->query($sql, [$pid, $record]);
 	}
 }
 

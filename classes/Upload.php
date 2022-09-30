@@ -91,23 +91,21 @@ class Upload
         $records = Download::recordIds($token, $server);
         if (Download::isCurrentServer($server)) {
             if (in_array($recordId, $records)) {
+                $params = [$pid, $recordId, $field];
                 $instanceClause = "";
                 if ($instance) {
                     if ($instance == 1) {
                         $instanceClause = " AND instance IS NULL";
                     } else {
-                        $instanceClause = " AND instance = '$instance'";
+                        $instanceClause = " AND instance = ?";
+                        $params[] = $instance;
                     }
                 }
-                $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name = '$field'".$instanceClause;
+                $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name = ?".$instanceClause;
                 Application::log("Running SQL $sql");
-                $q = db_query($sql);
-                if ($error = db_error()) {
-                    Application::log("SQL ERROR: " . $error);
-                    throw new \Exception($error);
-                } else {
-                    Application::log("SQL: " . db_affected_rows() . " rows affected");
-                }
+                $module = Application::getModule();
+                $q = $module->query($sql, $params);
+                Application::log("SQL: " . $q->affected_rows . " rows affected");
             } else {
                 throw new \Exception("Could not find record!");
             }
@@ -137,12 +135,14 @@ class Upload
                 $completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
                 if (!empty($instances)) {
                     Application::log("Instances not empty", $pid);
+                    $module = Application::getModule();
                     for ($i = 0; $i < count($instances); $i += $batchSize) {
                         $batchInstances = [];
                         for ($j = $i; ($j < $i + $batchSize) && ($j < count($instances)); $j++) {
                             $batchInstances[] = $instances[$j];
                         }
                         $instanceClause = "";
+                        $params = [$pid, $recordId, "$prefix%"];
                         if (!empty($batchInstances)) {
                             $addOnInstanceClause =  "";
                             if (in_array(1, $batchInstances)) {
@@ -156,28 +156,27 @@ class Upload
                             } else {
                                 $filteredInstances = $batchInstances;
                             }
-                            $instanceClause = " AND (instance IN ('".implode("','", $filteredInstances)."')".$addOnInstanceClause.")";
+                            $questionMarks = [];
+                            while (count($filteredInstances) > count($questionMarks)) {
+                                $questionMarks[] = "?";
+                            }
+                            $instanceClause = " AND (instance IN (".implode(",", $questionMarks).")".$addOnInstanceClause.")";
+                            $params = array_merge($params, $filteredInstances);
                         }
-                        $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name LIKE '$prefix%'".$instanceClause;
+                        $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name LIKE ?".$instanceClause;
                         Application::log("Running SQL $sql");
-                        $q = db_query($sql);
-                        if ($error = db_error()) {
-                            Application::log("SQL ERROR: " . $error);
-                            throw new \Exception($error);
-                        } else {
-                            Application::log("SQL: " . db_affected_rows() . " rows affected");
-                        }
+                        $q = $module->query($sql, $params);
+                        Application::log("SQL: " . $q->affected_rows . " rows affected");
 
                         if ($completeField) {
-                            $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name = '$completeField'".$instanceClause;
-                            Application::log("Running SQL $sql");
-                            $q = db_query($sql);
-                            if ($error = db_error()) {
-                                Application::log("SQL ERROR: " . $error);
-                                throw new \Exception($error);
-                            } else {
-                                Application::log("SQL: " . db_affected_rows() . " rows affected");
+                            $params2 = [$pid, $recordId, $completeField];
+                            if ($instanceClause) {
+                                $params2 = array_merge($params2, $filteredInstances ?? []);
                             }
+                            $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name = ?".$instanceClause;
+                            Application::log("Running SQL $sql");
+                            $q2 = $module->query($sql, $params2);
+                            Application::log("SQL: " . $q2->affected_rows . " rows affected");
                         }
                     }
                 }
@@ -197,15 +196,12 @@ class Upload
                 if ($instance !== NULL) {
                     self::deleteFormInstances($token, $server, $pid, $prefix, $recordId, [$instance]);
                 } else {
-                    $sql = "DELETE FROM redcap_data WHERE project_id = '$pid' AND record = '$recordId' AND field_name LIKE '$prefix%'";
+                    $module = Application::getModule();
+                    $params = [$pid, $recordId, "$prefix%"];
+                    $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name LIKE ?";
                     Application::log("Running SQL $sql");
-                    $q = db_query($sql);
-                    if ($error = db_error()) {
-                        Application::log("SQL ERROR: " . $error);
-                        throw new \Exception($error);
-                    } else {
-                        Application::log("SQL: " . db_affected_rows() . " rows affected");
-                    }
+                    $q = $module->query($sql, $params);
+                    Application::log("SQL: " . $q->affected_rows . " rows affected");
                 }
             } else {
                 throw new \Exception("Could not find record!");
@@ -266,6 +262,12 @@ public static function metadata($metadata, $token, $server) {
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
+
+        $pid = Application::getPID($token);
+        if (REDCapManagement::isInProduction($pid)) {
+            REDCapManagement::setToDevelopment($pid);
+        }
+
 		$data = array(
 			'token' => $token,
 			'content' => 'metadata',
@@ -339,14 +341,12 @@ public static function metadata($metadata, $token, $server) {
             fwrite($fp, $contents);
             fclose($fp);
 
-            $instance = db_real_escape_string($instance);
+            $instance = $instance;
 
-            $sql = "SELECT m.event_id AS event_id FROM redcap_events_arms AS a INNER JOIN redcap_events_metadata AS m ON a.arm_id = m.arm_id WHERE a.project_id = '".db_real_escape_string($pid)."'";
-            $q = db_query($sql);
-            if ($error = db_error()) {
-                return ["error" => $error];
-            }
-            if ($row = db_fetch_assoc($q)) {
+            $module = Application::getModule();
+            $sql = "SELECT m.event_id AS event_id FROM redcap_events_arms AS a INNER JOIN redcap_events_metadata AS m ON a.arm_id = m.arm_id WHERE a.project_id = ?";
+            $q = $module->query($sql, [$pid]);
+            if ($row = $q->fetch_assoc($q)) {
                 $event_id = $row['event_id'];
             } else {
                 return ["error" => "Could not locate event_id!"];
@@ -354,22 +354,20 @@ public static function metadata($metadata, $token, $server) {
 
             require_once(APP_PATH_DOCROOT."Classes/Files.php");
             $docId = \Files::uploadFile($file, $pid);
-            $sql = "REPLACE INTO redcap_data SET project_id = '".db_real_escape_string($pid)."',
-                        event_id = '".db_real_escape_string($event_id)."',
-                        record = '".db_real_escape_string($record)."',
-                        field_name = '".db_real_escape_string($field)."',
-                        value = '".db_real_escape_string($docId)."',";
+            $params = [$pid, $event_id, $record, $field, $docId];
+            $sql = "REPLACE INTO redcap_data SET project_id = ?,
+                        event_id = ?,
+                        record = ?,
+                        field_name = ?,
+                        value = ?,";
             if ($instance == 1) {
                 $sql .= " instance = NULL";
             } else {
-                $sql .= " instance = '$instance'";
+                $sql .= " instance = ?";
+                $params[] = $instance;
             }
-            db_query($sql);
-            if ($error = db_error()) {
-                return ["error" => $error];
-            } else {
-                return ["doc_id" => $docId];
-            }
+           $module->query($sql, $params);
+            return ["doc_id" => $docId];
         } else {
             return ["error" => "Could not decode base64"];
         }

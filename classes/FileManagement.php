@@ -80,9 +80,10 @@ class FileManagement {
     }
 
     public static function getProjectForEdoc($edocId) {
-        $sql = "SELECT project_id FROM redcap_edocs_metadata WHERE doc_id='".db_real_escape_string($edocId)."'";
-        $q = db_query($sql);
-        if ($row = db_fetch_assoc($q)) {
+        $module = Application::getModule();
+        $sql = "SELECT project_id FROM redcap_edocs_metadata WHERE doc_id=?";
+        $q = $module->query($sql, [$edocId]);
+        if ($row = $q->fetch_assoc()) {
             $pid = $row['project_id'];
             return $pid;
         }
@@ -90,9 +91,10 @@ class FileManagement {
     }
 
     public static function getFileNameForEdoc($edocId) {
-        $sql = "SELECT stored_name FROM redcap_edocs_metadata WHERE doc_id='".db_real_escape_string($edocId)."'";
-        $q = db_query($sql);
-        if ($row = db_fetch_assoc($q)) {
+        $module = Application::getModule();
+        $sql = "SELECT stored_name FROM redcap_edocs_metadata WHERE doc_id=?";
+        $q = $module->query($sql, [$edocId]);
+        if ($row = $q->fetch_assoc()) {
             $filename = EDOC_PATH.$row['stored_name'];
             if (file_exists($filename)) {
                 return $filename;
@@ -107,20 +109,17 @@ class FileManagement {
         if (!is_numeric($id)) {
             return ["error" => "Invalid id"];
         }
-        $sql = "SELECT stored_name, mime_type, doc_name FROM redcap_edocs_metadata WHERE doc_id = '".db_real_escape_string($id)."'";
-        $q = db_query($sql);
-        if ($error = db_error()) {
-            return ["error" => $error];
+        $module = Application::getModule();
+        $sql = "SELECT stored_name, mime_type, doc_name FROM redcap_edocs_metadata WHERE doc_id = ?";
+        $q = $module->query($sql, [$id]);
+        if ($row = $q->fetch_assoc()) {
+            $filename = EDOC_PATH.$row['stored_name'];
+            header('Content-Type: '.$row['mime_type']);
+            header('Content-Disposition: attachment; filename="'.$row['doc_name'].'"');
+            readfile($filename);
+            return ["status" => "Success"];
         } else {
-            if ($row = db_fetch_assoc($q)) {
-                $filename = EDOC_PATH.$row['stored_name'];
-                header('Content-Type: '.$row['mime_type']);
-                header('Content-Disposition: attachment; filename="'.$row['doc_name'].'"');
-                readfile($filename);
-                return ["status" => "Success"];
-            } else {
-                return ["error" => "Could not find entry"];
-            }
+            return ["error" => "Could not find entry"];
         }
     }
 }

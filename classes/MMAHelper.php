@@ -842,9 +842,10 @@ function startNow() {
                 }
             }
 
-            $sql = "select user_firstname, user_lastname from redcap_user_information WHERE username = '".db_real_escape_string($username)."'";
-            $q = db_query($sql);
-            if ($row = db_fetch_assoc($q)) {
+            $module = Application::getModule();
+            $sql = "select user_firstname, user_lastname from redcap_user_information WHERE username = ?";
+            $q = $module->query($sql, [$username]);
+            if ($row = $q->fetch_assoc()) {
                 $firstName = $row['user_firstname'];
                 $lastName = $row['user_lastname'];
                 return [$firstName, $lastName];
@@ -1181,30 +1182,27 @@ function characteristicsPopup(entity) {
     }
 
     public static function getBase64OfFile($recordId, $instance, $field, $pid) {
+        $params = [$pid, $recordId, $field];
+        $module = Application::getModule();
         if ($instance == 1) {
             $instanceClause = "instance IS NULL";
         } else {
-            $instanceClause = "instance = '".db_real_escape_string($instance)."'";
+            $instanceClause = "instance = ?";
+            $params[] = $instance;
         }
         $sql = "SELECT value FROM redcap_data
-            WHERE project_id = '".db_real_escape_string($pid)."'
-            AND record='".db_real_escape_string($recordId)."'
-            AND field_name='".db_real_escape_string($field)."'
+            WHERE project_id = ?
+            AND record=?
+            AND field_name=?
             AND $instanceClause";
-        $q = db_query($sql);
-        if ($error = db_error()) {
-            return "";
-        }
-        if ($row = db_fetch_assoc($q)) {
+        $q = $module->query($sql, $params);
+        if ($row = $q->fetch_assoc()) {
             $fileId = $row['value'];
-            $sql = "SELECT stored_name, mime_type from redcap_edocs_metadata WHERE doc_id = '" . db_real_escape_string($fileId) . "' LIMIT 1";
-            $q = db_query($sql);
-            if ($error = db_error()) {
-                return "";
-            }
-            if ($row = db_fetch_assoc($q)) {
-                $filename = EDOC_PATH . $row['stored_name'];
-                $mimeType = $row['mime_type'];
+            $sql = "SELECT stored_name, mime_type from redcap_edocs_metadata WHERE doc_id = ? LIMIT 1";
+            $q2 = $module->query($sql, [$fileId]);
+            if ($row2 = $q2->fetch_assoc()) {
+                $filename = EDOC_PATH . $row2['stored_name'];
+                $mimeType = $row2['mime_type'];
                 if (file_exists($filename)) {
                     $header = "data:$mimeType;base64,";
                     return $header . base64_encode(file_get_contents($filename));
@@ -1743,9 +1741,10 @@ function characteristicsPopup(entity) {
     }
 
     public static function getEmailFromREDCap($userid) {
-        $sql = "select user_email from redcap_user_information WHERE username = '".db_real_escape_string($userid)."'";
-        $q = db_query($sql);
-        while ($row = db_fetch_assoc($q)) {
+        $module = Application::getModule();
+        $sql = "select user_email from redcap_user_information WHERE username = ?";
+        $q = $module->query($sql, [$userid]);
+        while ($row = $q->fetch_assoc()) {
             if ($row['user_email']) {
                 return $row['user_email'];
             }

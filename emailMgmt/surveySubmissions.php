@@ -54,12 +54,10 @@ if (method_exists($module, "getPids")) {
     // Vanderbilt only - plugin project
     $projectPids = [$info['prod']['pid']];   // mother ship
     $prefix = CareerDev::getPrefix();
-    $sql = "SELECT DISTINCT(s.project_id) AS project_id FROM redcap_external_module_settings AS s INNER JOIN redcap_external_modules AS m ON m.external_module_id = s.external_module_id WHERE m.directory_prefix = '$prefix'";
-    $q = db_query($sql);
-    if ($error = db_error()) {
-        throw new \Exception("SQL error: $error $sql");
-    }
-    while ($row = db_fetch_assoc($q)) {
+    $module = Application::getModule();
+    $sql = "SELECT DISTINCT(s.project_id) AS project_id FROM redcap_external_module_settings AS s INNER JOIN redcap_external_modules AS m ON m.external_module_id = s.external_module_id WHERE m.directory_prefix = ?";
+    $q = $module->query($sql, [$prefix]);
+    while ($row = $q->fetch_assoc()) {
         if (REDCapManagement::isActiveProject($row['project_id'])) {
             $projectPids[] = $row['project_id'];
         }
@@ -354,21 +352,21 @@ function getAllRespondants($pids, $instrument) {
     if (empty($pids)) {
         return [];
     }
-    $escapedPids = [];
-    foreach ($pids as $pid) {
-        $escapedPids[] = db_real_escape_string($pid);
+    $questionMarks = [];
+    while (count($pids) > count($questionMarks)) {
+        $questionMarks[] = "?";
     }
-    $pidStr = "'".implode("', '", $escapedPids)."'";
-    $sql = "SELECT r.record AS record, r.instance AS instance, s.project_id AS project_id FROM redcap_surveys AS s INNER JOIN redcap_surveys_participants AS p ON p.survey_id = s.survey_id INNER JOIN redcap_surveys_response AS r ON r.participant_id = p.participant_id WHERE s.project_id IN ($pidStr) AND s.form_name = '".db_real_escape_string($instrument)."'";
+    $pidStr = implode(",", $questionMarks);
+    $sql = "SELECT r.record AS record, r.instance AS instance, s.project_id AS project_id FROM redcap_surveys AS s INNER JOIN redcap_surveys_participants AS p ON p.survey_id = s.survey_id INNER JOIN redcap_surveys_response AS r ON r.participant_id = p.participant_id WHERE s.project_id IN ($pidStr) AND s.form_name = ?";
     if (isset($_GET['test'])) {
         echo $sql."<br>";
     }
-    $q = db_query($sql);
-    if ($error = db_error()) {
-        throw new \Exception("SQL error: $error $sql");
-    }
+    $params = $pids;
+    $params[] = $instrument;
+    $module = Application::getModule();
+    $q = $module->query($sql, $params);
     $allRespondants = [];
-    while ($row = db_fetch_assoc($q)) {
+    while ($row = $q->fetch_assoc($q)) {
         if (!isset($allRespondants[$row['instance']])) {
             $allRespondants[$row['instance']] = [];
         }

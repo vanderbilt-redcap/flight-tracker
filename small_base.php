@@ -43,7 +43,7 @@ if (!Application::isWebBrowser() && CareerDev::getPid()) {
     date_default_timezone_set(CareerDev::getTimezone());
 }
 
-$pid = REDCapManagement::sanitize($_GET['pid'] ?? "");
+$pid = Sanitizer::sanitize($module ? $module->getProjectId($_GET['pid'] ?? "") : Sanitizer::sanitizePid($_GET['pid'] ?? ""));
 if (!$pid) {
     $pid = CareerDev::getSetting("pid");
 }
@@ -1012,10 +1012,6 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
 			"resources" => FALSE,
 			"institutions" => 5,
 			);
-	foreach ($lists as $type => $str) {
-		$other = $others[$type];
-		$lists[$type] = makeREDCapList($str, $other);
-	}
 
 	$files = [dirname(__FILE__)."/metadata.json"];
     if (CareerDev::isVanderbilt()) {
@@ -1023,19 +1019,21 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
     }
 
     if (!$metadata) {
-        $metadata = [];
-        foreach ($files as $file) {
-            $fp = fopen($file, "r");
-            $json = "";
-            while ($line = fgets($fp)) {
-                $json .= $line;
-            }
-            fclose($fp);
-            $newLines = json_decode($json, true);
-            if ($newLines !== NULL) {
-                $metadata = array_merge($metadata, $newLines);
-            } else {
-                throw new \Exception("Could not unpack json: ".json_last_error_msg()." $json");
+        $metadata = Download::metadata($token, $server);
+        if (count($metadata) < 5) {
+            foreach ($files as $file) {
+                $fp = fopen($file, "r");
+                $json = "";
+                while ($line = fgets($fp)) {
+                    $json .= $line;
+                }
+                fclose($fp);
+                $newLines = json_decode($json, true);
+                if ($newLines !== NULL) {
+                    $metadata = array_merge($metadata, $newLines);
+                } else {
+                    throw new \Exception("Could not unpack json: ".json_last_error_msg()." $json");
+                }
             }
         }
 	}
@@ -1045,7 +1043,23 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
 	$fields["resources"] = REDCapManagement::getSpecialFields("resources");
 	$fields["institutions"] = REDCapManagement::getSpecialFields("institutions");
 
-	$newMetadata = array();
+    $choices = DataDictionaryManagement::getChoices($metadata);
+    foreach ($lists as $type => $str) {
+        for ($i = 0; $i < count($fields[$type]); $i++) {
+            $field = $fields[$type][$i];
+            $oldItemChoices = $choices[$field];
+            if (!empty($oldItemChoices)) {
+                break;
+            }
+        }
+        if (count($fields[$type]) === 0) {
+            $oldItemChoices = [];
+        }
+        $other = $others[$type];
+        $lists[$type] = makeREDCapList($str, $other, $oldItemChoices);
+    }
+
+    $newMetadata = array();
 	foreach ($metadata as $row) {
 		$isCoeusRow = preg_match("/^coeus_/", $row['field_name'])
             || preg_match("/^coeus2_/", $row['field_name'])
@@ -1057,25 +1071,35 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
 					break;
 				}
 			}
-			array_push($newMetadata, $row);
+			$newMetadata[] = $row;
 		}
 	}
 
 	return Upload::metadata($newMetadata, $token, $server);
 }
 
-function makeREDCapList($text, $otherItem = FALSE) {
+function makeREDCapList($text, $otherItem = FALSE, $oldItemChoices = []) {
 	$list = explode("\n", $text);
 	$newList = array();
-	$i = 1;
+	$i = 0;
+    $oldChoicesReversed = [];
+    foreach ($oldItemChoices as $index => $label) {
+        $oldChoicesReversed[$label] = $index;
+    }
+    # preserve old indices
 	foreach ($list as $item) {
 		$item = trim($item);
 		if ($item) {
-			if ($i == $otherItem) {
-				$i++;
-			}
-			$newList[] = $i.",".$item;
-			$i++;
+            if (isset($oldChoicesReversed[$item])) {
+                $index = $oldChoicesReversed[$item];
+                $newList[] = $index.",".$item;
+            } else {
+                do {
+                    $i++;
+                } while (isset($oldItemChoices[$i]) || ($i == $otherItem));
+                $newList[] = $i.",".$item;
+                $i++;
+            }
 		}
 	}
 	if ($otherItem) {

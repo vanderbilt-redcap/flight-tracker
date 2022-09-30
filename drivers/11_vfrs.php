@@ -9,14 +9,42 @@ require_once(dirname(__FILE__)."/../small_base.php");
 
 function updateVFRS($token, $server, $pid, $records) {
 	$completes = Download::oneField($token, $server, "pre_screening_survey_complete");
-	foreach ($records as $recordId) {
+
+    # Token for VFRS
+    $vfrs_token = CareerDev::getVFRSToken();
+    $vfrsData = Download::fields($vfrs_token, 'https://redcap.vanderbilt.edu/api/', ["participant_id", "name_first", "name_last"]);
+
+    foreach ($records as $recordId) {
 	    if ($completes[$recordId] != "2") {
-	        updateVFRSForRecord($token, $server, $pid, $recordId);
+	        updateVFRSForRecord($token, $server, $pid, $recordId, $vfrsData);
 		}
 	}
-	CareerDev::saveCurrentDate("Last VFRS Update", $pid);
+	Application::saveCurrentDate("Last VFRS Update", $pid);
 }
 
+function updateVFRSMulti($pids) {
+    # Token for VFRS
+    $vfrs_token = CareerDev::getVFRSToken();
+    $vfrsData = Download::fields($vfrs_token, 'https://redcap.vanderbilt.edu/api/', ["participant_id", "name_first", "name_last"]);
+
+    foreach ($pids as $currPid) {
+        $currToken = Application::getSetting("token", $currPid);
+        $currServer = Application::getSetting("server", $currPid);
+        if (REDCapManagement::isActiveProject($currPid) && $currToken && $currServer) {
+            $forms = Download::metadataForms($currToken, $currServer);
+            if (in_array("pre_screening_survey", $forms)) {
+                $records = Download::records($currToken, $currServer);
+                $completes = Download::oneField($currToken, $currServer, "pre_screening_survey_complete");
+                foreach ($records as $recordId) {
+                    if ($completes[$recordId] != "2") {
+                        updateVFRSForRecord($currToken, $currServer, $currPid, $recordId, $vfrsData);
+                    }
+                }
+                Application::saveCurrentDate("Last VFRS Update", $currPid);
+            }
+        }
+    }
+}
 
 # one name has ???; eliminate
 # trims trailing initial.
@@ -86,8 +114,8 @@ function matchRowsVFRS($prefix, $rows, $newmanRow) {
 # row overwrites row2 in case of direct conflict
 function combineRowsVFRS($row, $row2) {
 	$combined = array();
-	$rowData = json_decode($row['DATA'], true);
-	$row2Data = json_decode($row2['DATA'], true);
+	$rowData = $row['DATA'];
+	$row2Data = $row2['DATA'];
 	$combinedData = array();
 
 	$fields = array("record_id", "redcap_repeat_instrument", "redcap_repeat_instance");
@@ -143,7 +171,7 @@ function combineRowsVFRS($row, $row2) {
 	}
 	$combined['first_name'] = $row['first_name'];
 	$combined['last_name'] = $row['last_name'];
-	$combined['DATA'] = json_encode($combinedData);
+	$combined['DATA'] = $combinedData;
 
 	return $combined;
 }
@@ -159,7 +187,7 @@ function adjustForVFRS($redcapRow) {
 	return $redcapRow;
 }
 
-function updateVFRSForRecord($token, $server, $pid, $record) {
+function updateVFRSForRecord($token, $server, $pid, $record, $vfrsData) {
 	$redcapData = Download::fieldsForRecords($token, $server, array("record_id", "identifier_first_name", "identifier_last_name"), array($record));
 
 	# the names list keeps track of the names for each prefix
@@ -167,15 +195,11 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 	$prefix = "summary";
 	$names[$prefix] = array();
 	foreach ($redcapData as $row) {
-		$names[$prefix][] = array("prefix" => $prefix, "record_id" => $row['record_id'], "first_name" => $row['identifier_first_name'], "last_name" => $row['identifier_last_name'], "DATA" => json_encode($row));
+		$names[$prefix][] = array("prefix" => $prefix, "record_id" => $row['record_id'], "first_name" => $row['identifier_first_name'], "last_name" => $row['identifier_last_name'], "DATA" => $row);
 	}
 
-	# Token for VFRS
-	$vfrs_token = CareerDev::getVFRSToken();
 	$metadata = Download::metadata($token, $server);
 	$allFields = REDCapManagement::getFieldsFromMetadata($metadata);
-
-	$vfrsData = Download::recordIds($vfrs_token, 'https://redcap.vanderbilt.edu/api/', "participant_id");
 
 	$prefix = "vfrs";
 	$names[$prefix] = array();
@@ -199,10 +223,9 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 			}
 		}
 		if ($id && $firstName && $lastName) {
-			$names[$prefix][] = array("prefix" => $prefix, "participant_id" => $id, "first_name" => $firstName, "last_name" => $lastName, "DATA" => json_encode($row2));
+			$names[$prefix][] = array("prefix" => $prefix, "participant_id" => $id, "first_name" => $firstName, "last_name" => $lastName, "DATA" => $row2);
 		}
 	}
-	unset($vfrsData);
 
 	# match on name all of the disparate data sources
 	# matchNamesForVFRS() function is central here
@@ -251,7 +274,7 @@ function updateVFRSForRecord($token, $server, $pid, $record) {
 						}
 					}
 					if (isset($row['DATA'])) {
-						$rowData = json_decode($row['DATA'], true);
+						$rowData = $row['DATA'];
 						$rowData['redcap_repeat_instrument'] = "";
 						$rowData['redcap_repeat_instance'] = "";
 						$rowData = adjustForVFRS($rowData);

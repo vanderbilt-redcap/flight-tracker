@@ -12,12 +12,10 @@ class REDCapLookup {
 
     public static function getUserInfo($uid) {
         if ($uid) {
-            $sql = "SELECT * FROM redcap_user_information WHERE username = '".db_real_escape_string($uid)."'";
-            $results = db_query($sql);
-            if ($error = db_error()) {
-                throw new \Exception($error.": ".$sql);
-            }
-            if ($row = db_fetch_assoc($results)) {
+            $module = Application::getModule();
+            $sql = "SELECT * FROM redcap_user_information WHERE username = ?";
+            $results = $module->query($sql, [$uid]);
+            if ($row = $results->fetch_assoc()) {
                 return $row;
             }
         }
@@ -36,28 +34,29 @@ class REDCapLookup {
             $sqlField = "";
         }
 
+        $module = Application::getModule();
+        $params = [];
         if (!$this->firstName || !$this->lastName) {
             if (!$this->firstName) {
                 $name = $this->lastName;
             } else {
                 $name = $this->firstName;
             }
-            $sql = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = '".db_real_escape_string(strtolower($name))."' OR lower(user_lastname) = '".db_real_escape_string(strtolower($name))."'";
+            $params = [strtolower($name), strtolower($name)];
+            $sql = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = ? OR lower(user_lastname) = ?";
         } else {
             $firstNames = NameMatcher::explodeFirstName($this->firstName);
             if (count($firstNames) > 1) {
                 foreach ($firstNames as $firstName) {
                     if ($firstName && !NameMatcher::isInitial($firstName)) {
-                        $sql = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = '".db_real_escape_string(strtolower($firstName))."' AND lower(user_lastname) = '".db_real_escape_string(strtolower($this->lastName))."'";
-                        $results = db_query($sql);
-                        if ($error = db_error()) {
-                            throw new \Exception($error.": ".$sql);
-                        }
-                        while ($row = db_fetch_assoc($results)) {
-                            if ($row['username']) {
-                                $uids[$row['username']] = self::formatName($row['user_firstname'], $row['user_lastname']);
+                        $params2 = [strtolower($this->firstName), strtolower($this->lastName)];
+                        $sql2 = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = ? AND lower(user_lastname) = ?";
+                        $results2 = $module->query($sql2, $params2);
+                        while ($row2 = $results2->fetch_assoc()) {
+                            if ($row2['username']) {
+                                $uids[$row2['username']] = self::formatName($row2['user_firstname'], $row2['user_lastname']);
                                 if ($showEmails) {
-                                    $uids[$row['username']] .= " ".$row[$sqlField];
+                                    $uids[$row2['username']] .= " ".$row2[$sqlField];
                                 }
                             }
                         }
@@ -66,14 +65,12 @@ class REDCapLookup {
                 ksort($uids);
                 return $uids;
             } else {
-                $sql = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = '".db_real_escape_string(strtolower($this->firstName))."' AND lower(user_lastname) = '".db_real_escape_string(strtolower($this->lastName))."'";
+                $params = [strtolower($this->firstName), strtolower($this->lastName)];
+                $sql = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = ? AND lower(user_lastname) = ?";
             }
         }
-        $results = db_query($sql);
-        if ($error = db_error()) {
-            throw new \Exception($error.": ".$sql);
-        }
-        while ($row = db_fetch_assoc($results)) {
+        $results = $module->query($sql, $params);
+        while ($row = $results->fetch_assoc()) {
             if ($row['username']) {
                 $uids[$row['username']] = self::formatName($row['user_firstname'], $row['user_lastname']);
                 if ($showEmails) {
@@ -106,9 +103,10 @@ class REDCapLookupByUserid {
 
     public function getEmail() {
         if ($this->userid) {
-            $sql = "SELECT user_email FROM redcap_user_information WHERE lower(username) = '".db_real_escape_string(strtolower($this->userid))."'";
-            $q = db_query($sql);
-            if ($row = db_fetch_assoc($q)) {
+            $module = Application::getModule();
+            $sql = "SELECT user_email FROM redcap_user_information WHERE lower(username) = ?";
+            $q = $module->query($sql, [strtolower($this->userid)]);
+            if ($row = $q->fetch_assoc($q)) {
                 return $row['user_email'];
             }
         }
@@ -117,9 +115,10 @@ class REDCapLookupByUserid {
 
     public function getName() {
         if ($this->userid) {
-            $sql = "SELECT user_firstname, user_lastname FROM redcap_user_information WHERE lower(username) = '".db_real_escape_string(strtolower($this->userid))."'";
-            $q = db_query($sql);
-            if ($row = db_fetch_assoc($q)) {
+            $module = Application::getModule();
+            $sql = "SELECT user_firstname, user_lastname FROM redcap_user_information WHERE lower(username) = ?";
+            $q = $module->query($sql, [strtolower($this->userid)]);
+            if ($row = $q->fetch_assoc()) {
                 return $row['user_firstname']." ".$row['user_lastname'];
             }
         }
@@ -128,9 +127,10 @@ class REDCapLookupByUserid {
 
     public function getLastName() {
         if ($this->userid) {
-            $sql = "SELECT user_lastname FROM redcap_user_information WHERE lower(username) = '".db_real_escape_string(strtolower($this->userid))."'";
-            $q = db_query($sql);
-            if ($row = db_fetch_assoc($q)) {
+            $module = Application::getModule();
+            $sql = "SELECT user_lastname FROM redcap_user_information WHERE lower(username) = ?";
+            $q = $module->query($sql, [strtolower($this->userid)]);
+            if ($row = $q->fetch_assoc()) {
                 return $row['user_lastname'];
             }
         }

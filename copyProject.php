@@ -6,15 +6,16 @@
 
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
-$otherToken = REDCapManagement::sanitize($_POST['token']);
-$otherServer = REDCapManagement::sanitize($_POST['server']);
+$otherToken = Sanitizer::sanitize($_POST['token']);
+$otherServer = Sanitizer::sanitize($_POST['server']);
 if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
-    $pid = is_numeric($_GET['project_id']) ? REDCapManagement::sanitize($_GET['project_id']) : FALSE;
+    $pid = is_numeric($_GET['project_id']) ? Sanitizer::sanitize($_GET['project_id']) : FALSE;
     if (empty($_POST)) {
         die("Error: No data are posted.");
     }
@@ -107,7 +108,8 @@ function verifyToken($token, $pid) {
     }
 
     # does NOT have to be present user
-    $sql = "SELECT username FROM redcap_user_rights WHERE project_id = '".db_real_escape_string($pid)."' AND api_token = '".db_real_escape_string($token)."'";
-    $q = db_query($sql);
-    return (db_num_rows($q) > 0);
+    $module = Application::getModule();
+    $sql = "SELECT username FROM redcap_user_rights WHERE project_id = ? AND api_token = ?";
+    $q = $module->query($sql, [$pid, $token]);
+    return ($q->num_rows() > 0);
 }

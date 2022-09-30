@@ -1429,7 +1429,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	    for ($i = 0; $i < count($records); $i += $pullSize) {
 	        $batch = [];
 	        for ($j = $i; $j < $i + $pullSize && $j < count($records); $j++) {
-	            $batch[] = db_real_escape_string($records[$j]);
+	            $batch[] = $records[$j];
             }
 	        if (!empty($batch)) {
                 $batchedRecords[] = $batch;
@@ -1437,19 +1437,22 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
         }
 
 		$logEventTable = method_exists('\REDCap', 'getLogEventTable') ? \REDCap::getLogEventTable(pid) : "redcap_log_event";
-		if (!function_exists("db_query")) {
+        $module = Application::getModule();
+		if (!method_exists($module, "query")) {
 			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 		}
 
         $allTimestamps = [];
 		$createTimestamps = [];
 		foreach ($batchedRecords as $batch) {
-            $sql = "SELECT pk, ts, description FROM $logEventTable WHERE project_id = '".$pid."' AND pk IN ('".implode("','", $batch)."') AND event='INSERT' ORDER BY log_event_id";
-            $q = db_query($sql);
-            if ($error = db_error()) {
-                throw new \Exception("ERROR: ".$error);
+            $params = array_merge([$pid], $batch);
+            $questionMarks = [];
+            while (count($questionMarks) < count($batch)) {
+                $questionMarks[] = "?";
             }
-            while ($row = db_fetch_assoc($q)) {
+            $sql = "SELECT pk, ts, description FROM $logEventTable WHERE project_id = ? AND pk IN (".implode(",", $questionMarks).") AND event='INSERT' ORDER BY log_event_id";
+            $q = $module->query($sql, $params);
+            while ($row = $q->fetch_assoc()) {
                 if (!isset($allTimestamps[$row['pk']])) {
                     $allTimestamps[$row['pk']] = [];
                 }

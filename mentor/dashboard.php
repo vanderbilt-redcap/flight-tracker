@@ -258,6 +258,7 @@ echo "<h1>Mentoring Agreement Responses</h1>";
 $homeLink = Application::getMenteeAgreementLink($pid);
 $addLink = Application::link("addMentor.php");
 $configUrl = Application::link("mentor/config.php");
+$redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
 echo "<h2>Getting Started</h2>";
 echo "<h3>Step 1: Configure</h3>";
 echo "<p class='centered max-width'><a href='$configUrl'>Configure the Agreements for your institution and project</a>.</p>";
@@ -270,7 +271,7 @@ echo "<p class='centered nomargin'>Please remember that some users might employ 
 echo "<p class='green' id='message'></p>";
 echo "<p><label for='first_name'>First Name</label>: <input type='text' id='first_name' /><br>";
 echo "<label for='last_name'>Last Name</label>: <input type='text' id='last_name' /><br>";
-echo "<button onclick='lookupREDCapUserid(); return false;'>Look up name</button>";
+echo "<button onclick='lookupREDCapUserid(\"$redcapLookupUrl\", $(\"#message\")); return false;'>Look up name</button>";
 echo "</div>";
 echo "<h3>Step 3: Pass on the Link</h3>";
 echo "<p class='centered max-width'><strong><a class='smaller' href='$homeLink'>$homeLink</a></strong><br>Pass along this link to any mentee or mentor that (A) has a REDCap userid and (B) is registered in your Flight Tracker as a Scholar/Mentee or a Primary Mentor (with a <a href='$addLink'>registered userid</a>). With this link, they can access their relevant mentoring information anytime.</p>";
@@ -290,7 +291,6 @@ echo MMAHelper::makeDropdownTableRow($pid, $event_id, "View Responses", $records
 echo "</tbody>";
 echo "</table>";
 
-$redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
 echo "<script>
 function checkForNewMentorUserids(link) {
     $('#results').html('');
@@ -334,29 +334,6 @@ function checkForNewMentorUserids(link) {
             }
         }
     });
-}
-
-function lookupREDCapUserid() {
-    const firstName = $('#first_name').val();
-    const lastName = $('#last_name').val();
-    if (!lastName && !firstName) {
-        alert('You must supply a name');
-    } else {
-        const postParams = { 'redcap_csrf_token': getCSRFToken(), firstName: firstName, lastName: lastName };
-        $.post('$redcapLookupUrl', postParams, function(json) {
-            const dataHash = JSON.parse(json);
-            if (Object.keys(dataHash).length > 0) {
-                const userids = [];
-                for (const uid in dataHash) {
-                    const name = dataHash[uid];
-                    userids.push(uid+': '+name);
-                }
-                $('#message').html(userids.join('<br/>'));
-            } else {
-                $('#message').html('No names found in REDCap.');
-            }
-        });
-    }
 }
 
 function submitAdjudications(link) {

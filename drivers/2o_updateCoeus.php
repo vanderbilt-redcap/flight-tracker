@@ -4,6 +4,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -92,8 +93,16 @@ function updateCoeus($token, $server, $pid, $allRecordIds) {
 		unset($redcapData);    // save memory
 
 		# delete old records
-		$sql = "DELETE FROM redcap_data WHERE project_id = $pid AND field_name LIKE 'coeus_%' AND record IN ('".implode("','", $records)."')";
-		db_query($sql);
+        $module = Application::getModule();
+        $params = [];
+        $questionMarks = [];
+        while (count($records) > count($questionMarks)) {
+            $questionMarks[] = "?";
+        }
+        $params[] = $pid;
+        $params = array_merge($params, $records);
+		$sql = "DELETE FROM redcap_data WHERE project_id = ? AND field_name LIKE 'coeus_%' AND record IN (".implode(",", $questionMarks).")";
+		$module->query($sql, $params);
 	
 		# format COEUS - this looks a lot like 2a
 		$files = array(dirname(__FILE__)."/../coeus_award.format.json" => "award", dirname(__FILE__)."/../coeus_investigator.format.json" => "investigator");

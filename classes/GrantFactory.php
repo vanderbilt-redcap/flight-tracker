@@ -684,9 +684,11 @@ class CoeusGrantFactory extends GrantFactory {
 			$grant->setVariable('direct_budget', '0');
             $grant->setVariable("role", "");
 		} else {
-		    if ($role = $this->extractFromOtherSources($otherRows, ["coeus"], "role", $awardNo)) {
-                $grant->setVariable("role", $role);
-            } else if ($row['coeus_multi_pi_flag'] === "0") {
+            # TODO takes about 1 second per record to complete
+		    // if ($role = $this->extractFromOtherSources($otherRows, ["coeus"], "role", $awardNo)) {
+                // $grant->setVariable("role", $role);
+            // }
+            if ($row['coeus_multi_pi_flag'] === "0") {
                 $grant->setVariable("role", "PI");
             } else if ($row['coeus_multi_pi_flag'] === "1") {
                 $grant->setVariable("role", "Co-PI");

@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.16.4";
+		return "4.16.5";
 	}
 
 	public static function getLockFile($pid) {
@@ -252,6 +252,7 @@ class CareerDev {
 
 	public static function setPid($pid) {
 	    // self::log("Setting pid to $pid", $pid);
+        $pid = Sanitizer::sanitizePid($pid);
         $_GET['pid'] = $pid;
         $_GET['project_id'] = $pid;
 		self::$pid = $pid;
@@ -276,9 +277,14 @@ class CareerDev {
 		$requestedPid = FALSE;
  		if (isset($_GET['pid'])) {
 			# least reliable because REDCap can sometimes change this value in other crons
-            $requestedPid = REDCapManagement::sanitize($_GET['pid']);
+            $module = self::getModule();
+            if ($module) {
+                $requestedPid = Sanitizer::sanitize($module->getProjectId($_GET['pid']));
+            } else {
+                $requestedPid = Sanitizer::sanitizePid($_GET['pid']);
+            }
 		} else if (isset($_GET['project_id'])) {
-            $requestedPid = REDCapManagement::sanitize($_GET['project_id']);
+            $requestedPid = Sanitizer::sanitizePid($_GET['project_id']);
         }
  		if ($requestedPid && is_numeric($requestedPid)) {
  		    $module = self::getModule();
@@ -559,15 +565,13 @@ class CareerDev {
         $fieldsToSearch = ["token", "mentor_token"];
 	    $prefix = self::getPrefix();
         if ($prefix) {
+            $module = self::getModule();
             foreach ($fieldsToSearch as $field) {
-                $sql = "SELECT s.project_id AS project_id FROM redcap_external_module_settings AS s INNER JOIN redcap_external_modules AS m ON m.external_module_id = s.external_module_id WHERE s.key = '$field' AND m.directory_prefix = '".db_real_escape_string($prefix)."' AND s.value = '".db_real_escape_string($localToken)."'";
-                $q = db_query($sql);
-                $numRows = db_num_rows($q);
-                if ($error = db_error()) {
-                    self::log("ERROR: $error ".$sql);
-                }
+                $sql = "SELECT s.project_id AS project_id FROM redcap_external_module_settings AS s INNER JOIN redcap_external_modules AS m ON m.external_module_id = s.external_module_id WHERE s.key = ? AND m.directory_prefix = ? AND s.value = ?";
+                $q = $module->query($sql, [$field, $prefix, $localToken]);
+                $numRows = $q->num_rows;
                 $currentPid = FALSE;
-                while ($row = db_fetch_assoc($q)) {
+                while ($row = $q->fetch_assoc()) {
                     $currentPid = $row["project_id"];
                     break;
                 }

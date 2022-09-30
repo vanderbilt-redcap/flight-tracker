@@ -34,6 +34,7 @@ if (!$supertoken) {
 }
 
 # access supertoken
+$module = Application::getModule();
 if ($supertoken && in_array($cohort, $cohortNames)) {
 	# create project
 	$newProjectToken = "";
@@ -90,29 +91,30 @@ if ($supertoken && in_array($cohort, $cohortNames)) {
 		$projectData = json_decode($output, TRUE);
 		$newProjectPid = $projectData['project_id'];
 
-		$sql = "SELECT m.event_id AS event_id FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON a.arm_id = m.arm_id WHERE a.project_id = '".db_real_escape_string($newProjectPid)."'"; 
-		$q = db_query($sql);
-		if ($row = db_fetch_assoc($q)) {
+		$sql = "SELECT m.event_id AS event_id FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON a.arm_id = m.arm_id WHERE a.project_id = ?";
+		$q = $module->query($sql, [$newProjectPid]);
+		if ($row = $q->fetch_assoc()) {
 			$newProjectEventId = $row['event_id'];
 		}
 
-		$sql = "SELECT form_name, custom_repeat_form_label FROM redcap_events_repeat WHERE event_id = '".db_real_escape_string($event_id)."'";
-		$q = db_query($sql);
+		$sql = "SELECT form_name, custom_repeat_form_label FROM redcap_events_repeat WHERE event_id = ?";
+		$q = $module->query($sql, [$event_id]);
 		$formsAndLabels = array();
-		while ($row = db_fetch_assoc($q)) {
+		while ($row = $q->fetch_assoc()) {
 			$formsAndLabels[$row['form_name']] = $row['custom_repeat_form_label'];
 		}
 
-		$sqlEntries = array();
+		$sqlEntries = [];
+        $values = [];
 		foreach ($formsAndLabels as $form => $label) {
-			array_push($sqlEntries, "($newProjectEventId, '".db_real_escape_string($form)."', '".db_real_escape_string($label)."')");
+            $values[] = $newProjectEventId;
+            $values[] = $form;
+            $values[] = $label;
+			$sqlEntries[] = "(?, ?, ?)";
 		}
 		if (!empty($sqlEntries)) {
 			$sql = "INSERT INTO redcap_events_repeat (event_id, form_name, custom_repeat_form_label) VALUES".implode(",", $sqlEntries);
-			db_query($sql);
-			if ($error = db_error()) {
-				throw new \Exception("SQL Error: $error<br>$sql");
-			}
+			$module->query($sql, $values);
 		}
 
 		$projectData['custom_record_label'] = "[identifier_first_name] [identifier_last_name]";
@@ -136,13 +138,13 @@ if ($supertoken && in_array($cohort, $cohortNames)) {
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = curl_exec($ch);
 		curl_close($ch);
-		array_push($messages, "Project Info: $output");
+		$messages[] = "Project Info: $output";
 
-		array_push($messages, "Please enable hooks, individual surveys, and users on the new project!");
-		array_push($messages, "\$info['$cohort'] = array('token' => '$newProjectToken', 'server' => '$server', 'pid' => $newProjectPid, 'event_id' => $newProjectEventId, 'name' => '$cohort', 'env' => '$cohort', 'readonly' => '1');");
+		$messages[] = "Please enable hooks, individual surveys, and users on the new project!";
+		$messages[] = "\$info['$cohort'] = array('token' => '$newProjectToken', 'server' => '$server', 'pid' => $newProjectPid, 'event_id' => $newProjectEventId, 'name' => '$cohort', 'env' => '$cohort', 'readonly' => '1');";
 
 		$feedback = Upload::metadata($metadata, $newProjectToken, $server);
-		array_push($messages, "Metadata: ".json_encode($feedback));
+		$messages[] = "Metadata: " . json_encode($feedback);
 
         CareerDev::duplicateAllSettings($pid, $newProjectPid, ["turn_off" => TRUE, "tokenName" => $cohort]);
 		# one record at a time, download cohort records; upload to new project

@@ -14,7 +14,7 @@ $specialFields = ["Project Name"];
 $headers = $specialFields;
 foreach ($queue as $job) {
     foreach (array_keys($job) as $header) {
-        if (!in_array($header, $headers)) {
+        if (!in_array($header, $headers) && isset($job['records'])) {
             $headers[] = $header;
         }
     }
@@ -55,12 +55,14 @@ foreach ($queue as $i => $row) {
                         echo "<td></td>";
                     }
                 } else if (preg_match("/Ts$/", $header) && $row[$header] && is_numeric($row[$header])) {
-                    echo "<td>".date("Y-m-d H:i:s", $row[$header])."</td>";
+                    echo "<td>" . date("Y-m-d H:i:s", $row[$header]) . "</td>";
                 } else if (is_array($row[$header])) {
-                    echo "<td style='max-width: 300px; overflow: auto;'>".implode(", ", $row[$header])."</td>";
+                    echo "<td style='max-width: 300px; overflow: auto;'>" . implode(", ", $row[$header]) . "</td>";
                 } else {
-                    echo "<td>".$row[$header]."</td>";
+                    echo "<td>" . $row[$header] . "</td>";
                 }
+            } else if (($header == "records") && isset($row['pids'])) {
+                echo "<td>" . $row['pids'] . "</td>";
             } else {
                 echo "<td></td>";
             }

@@ -48,11 +48,11 @@ function runMainCrons(&$manager, $token, $server) {
         $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $records, 10000);
     }
     if (!Application::isLocalhost()) {
-        if (in_array('coeus', $forms)) {
-            $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
-        } else if (in_array('coeus2', $forms)) {
-            $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
-        }
+        // if (in_array('coeus', $forms)) {
+            // $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
+        // } else if (in_array('coeus2', $forms)) {
+            // $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
+        // }
         // if (in_array('coeus_submission', $forms)) {
         // $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $allRecords, 1000);
         // }
@@ -98,7 +98,7 @@ function runMainCrons(&$manager, $token, $server) {
         $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
     }
     if (in_array("vera", $forms) && in_array("vera_submission", $forms) && !Application::isLocalhost()) {
-        $manager->addCron("drivers/22_getVERA.php", "getVERA", "Friday", $allRecords, 100000);
+        // $manager->addCron("drivers/22_getVERA.php", "getVERA", "Monday", $allRecords, 100000);
     }
 
     $cohorts = new Cohorts($token, $server, Application::getModule());
@@ -170,9 +170,9 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 		$records = Download::recordIds($token, $server);
         $securityTestMode = Application::getSetting("security_test_mode", $pid);
 
-        if (in_array("pre_screening_survey", $forms)) {
-			$manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
-		}
+        // if (in_array("pre_screening_survey", $forms)) {
+            // $manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
+		// }
         if (in_array("coeus", $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", $date, $records, 500);
         } else if (in_array("coeus2", $forms)) {
@@ -221,4 +221,12 @@ function getRecordsToUpdateBibliometrics($token, $server, $dayOfMonth, $daysInMo
         }
     }
     return $recordsToRun;
+}
+
+function loadMultiProjectCrons(&$manager, $pids) {
+    if (!Application::isLocalhost()) {
+        $manager->addMultiCron("drivers/11_vfrs.php", "updateVFRSMulti", "Thursday", $pids);
+        $manager->addMultiCron("drivers/19_updateNewCoeus.php", "updateAllCOEUSMulti", "Wednesday", $pids);
+        $manager->addMultiCron("drivers/22_getVERA.php", "getVERAMulti", "Monday", $pids);
+    }
 }

@@ -557,18 +557,16 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
             }
         } else {
             $prefix = CareerDev::getPrefix();
+            $module = self::getModule();
             $sql = "SELECT DISTINCT(s.key) AS array_key
                             FROM redcap_external_module_settings AS s
                                 INNER JOIN redcap_external_modules AS m
                                     ON m.external_module_id = s.external_module_id
-                            WHERE m.directory_prefix = '".db_real_escape_string($prefix)."'
-                                AND s.project_id = '".db_real_escape_string($pid)."'";
-            $q = db_query($sql);
-            if ($error = db_error()) {
-                throw new \Exception("ERROR: $error");
-            }
+                            WHERE m.directory_prefix = ?
+                                AND s.project_id = ?";
+            $q = $module->query($sql, [$prefix, $pid]);
             $keys = [];
-            while ($row = db_fetch_assoc($q)) {
+            while ($row = $q->fetch_assoc($q)) {
                 $keys[] = $row['array_key'];
             }
             return $keys;

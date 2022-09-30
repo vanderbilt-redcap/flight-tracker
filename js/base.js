@@ -1642,3 +1642,30 @@ function forceDownloadUrl(source, fileName){
 	el.click();
 	el.remove();
 }
+
+function lookupREDCapUserid(link, resultsOb) {
+	const firstName = $('#first_name').val();
+	const lastName = $('#last_name').val();
+	if (!lastName && !firstName) {
+		$.sweetModal({icon: $.sweetModal.ICON_ERROR, content: 'You must supply a name'});
+	} else {
+		const postParams = { 'redcap_csrf_token': getCSRFToken(), firstName: firstName, lastName: lastName };
+		$.post(link, postParams, function(json) {
+			const dataHash = JSON.parse(json);
+			if (Object.keys(dataHash).length > 0) {
+				const userids = [];
+				for (const uid in dataHash) {
+					const name = dataHash[uid];
+					userids.push(uid+': '+name);
+				}
+				let header = '';
+				if (userids.length > 1) {
+					header = '<h4>' + userids.length + ' Matches</h4>';
+				}
+				resultsOb.html(header + userids.join('<br/>'));
+			} else {
+				resultsOb.html('No names found in REDCap.');
+			}
+		});
+	}
+}

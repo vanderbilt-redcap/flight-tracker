@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/FlightTrackerExternalModule.php");
@@ -38,9 +39,9 @@ if (count($_POST) > 0) {
 	if (isset($_GET['order'])) {
 		if ($_POST['text'] && $_POST['code'] && ($_POST['type'] != "")) {
 			$exampleField = getExampleField();
-			$text = $_POST['text'];
-			$code = $_POST['code'];
-			$type = $_POST['type'];
+			$text = Sanitizer::sanitizeWithoutChangingQuotes($_POST['text']);
+			$code = Sanitizer::sanitize($_POST['code']);
+			$type = Sanitizer::sanitize(['type']);
 			$metadata = Download::metadata($token, $server);
 			if (isset($_GET['test'])) {
 			    echo "In config 1, metadata has ".count($metadata)." rows<br>";
@@ -66,10 +67,10 @@ if (count($_POST) > 0) {
 					$feedback = Upload::metadata($metadata, $token, $server);
 					echo "<p class='green centered'>$rowsAffected fields affected.</p>\n";
 				} else {
-					echo "<p class='red centered'>Could not add ".REDCapManagement::sanitize($code)." to data sources!</p>\n";
+					echo "<p class='red centered'>Could not add ".Sanitizer::sanitize($code)." to data sources!</p>\n";
 				}
 			} else {
-				echo "<p class='red centered'>Could not add because code ('".REDCapManagement::sanitize($code)."') already exists.</p>\n";
+				echo "<p class='red centered'>Could not add because code ('".Sanitizer::sanitize($code)."') already exists.</p>\n";
 			}
 		} else {
 			echo "<p class='red centered'>You must specify the text, a value for its code, and a type.</p>\n";
@@ -77,8 +78,18 @@ if (count($_POST) > 0) {
 	} else {
 		$lists = array();
 		foreach ($_POST as $key => $value) {
-			if (($key == "departments") || ($key == "resources")) {
-				$lists[$key] = $value;
+            $key = Sanitizer::sanitize($key);
+            $value = Sanitizer::sanitize($value);
+			if (in_array($key, ["departments", "resources"])) {
+                $lists[$key] = $value;
+            } else if (in_array($key, ["pid", "event_id"])) {
+                $module = Application::getModule();
+                if ($key == "pid") {
+                    $value = $module->getProjectId();
+                } else if ($key == "event_id") {
+                    $value = $module->getEventId();
+                }
+                Application::saveSetting($key, $value, $pid);
 			} else {
 				CareerDev::setSetting($key, $value, $pid);
 			}
@@ -424,6 +435,28 @@ function makeCheckboxes($var, $fieldChoices, $label, $defaultChecked = []) {
 
 function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $readonly = FALSE) {
 	$value = CareerDev::getSetting($var);
+    if (in_array($var, ["event_id", "pid", "token"])) {
+        $module = Application::getModule();
+        $realValue = "";
+        if ($var == "event_id") {
+            $realValue = $module->getEventId();
+        } else if ($var == "pid") {
+            $realValue = $module->getProjectId();
+        } else if ($var == "token") {
+            # check for copied project
+            $myPid = $module->getProjectId();
+            $myUsername = Application::getUsername();
+            $realValue = REDCapManagement::getToken($myPid, $myUsername);
+            if ($realValue === NULL) {
+                $realValue = "";
+            }
+        }
+        if ($realValue != $value) {
+            # recently copied project
+            Application::saveSetting($var, $realValue);
+            $value = $realValue;
+        }
+    }
 	$html = "";
 	$spacing = "";
     for ($i = 0 ; $i < 5; $i++) {

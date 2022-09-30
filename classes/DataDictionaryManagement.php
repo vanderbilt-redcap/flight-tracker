@@ -119,9 +119,10 @@ class DataDictionaryManagement {
     }
 
     public static function setupSurveys($projectId, $surveysAndLabels) {
+        $module = Application::getModule();
         foreach ($surveysAndLabels as $form => $label) {
-            $sql = "REPLACE INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES ($projectId, '16', '".db_real_escape_string($form)."', '".db_real_escape_string($label)."', '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', '<p><strong>Thank you for taking the survey.</strong></p>\r\n<p>Have a nice day!</p>', 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
-            db_query($sql);
+            $sql = "REPLACE INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES (?, '16', ?, ?, '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', '<p><strong>Thank you for taking the survey.</strong></p>\r\n<p>Have a nice day!</p>', 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
+            $module->query($sql, [$projectId, $form, $label]);
         }
     }
 
@@ -177,21 +178,16 @@ class DataDictionaryManagement {
             6 => 99,
         ];
 
-        $pid = db_real_escape_string($pid);
-        for ($i = 0; $i < count($fields); $i++) {
-            $fields[$i] = db_real_escape_string($fields[$i]);
+        $module = Application::getModule();
+        $questionMarks = [];
+        while (count($fields) > count($questionMarks)) {
+            $questionMarks[] = "?";
         }
-        $fieldsStr = "('".implode("','", $fields)."')";
         foreach ($convert as $oldValue => $newValue) {
-            $oldValue = db_real_escape_string($oldValue);
-            $newValue = db_real_escape_string($newValue);
-            $sql = "UPDATE redcap_data SET value='$newValue' WHERE project_id='$pid' AND value='$oldValue' AND field_name IN $fieldsStr";
+            $params = array_merge([$newValue, $pid, $oldValue], $fields);
+            $sql = "UPDATE redcap_data SET value=? WHERE project_id=? AND value=? AND field_name IN (".implode(",", $questionMarks).")";
             Application::log("Running SQL $sql");
-            db_query($sql);
-            if ($error = db_error()) {
-                Application::log("ERROR: $error");
-                return;
-            }
+            $module->query($sql, $params);
         }
     }
 
@@ -223,19 +219,25 @@ class DataDictionaryManagement {
 
     public static function setupRepeatingForms($eventId, $formsAndLabels) {
         $sqlEntries = array();
+        $values = [];
         foreach ($formsAndLabels as $form => $label) {
-            array_push($sqlEntries, "($eventId, '".db_real_escape_string($form)."', '".db_real_escape_string($label)."')");
+            $values[] = $eventId;
+            $values[] = $form;
+            $values[] = $label;
+            $sqlEntries[] = "(?, ?, ?)";
         }
         if (!empty($sqlEntries)) {
+            $module = Application::getModule();
             $sql = "REPLACE INTO redcap_events_repeat (event_id, form_name, custom_repeat_form_label) VALUES".implode(",", $sqlEntries);
-            db_query($sql);
+            $module->query($sql, $values);
         }
     }
 
     public static function getChoicesForField($pid, $field) {
-        $sql = "SELECT element_enum FROM redcap_metadata WHERE project_id = '".db_real_escape_string($pid)."' AND field_name = '".db_real_escape_string($field)."'";
-        $q = db_query($sql);
-        if ($row = db_fetch_assoc($q)) {
+        $module = Application::getModule();
+        $sql = "SELECT element_enum FROM redcap_metadata WHERE project_id = ? AND field_name = ?";
+        $q = $module->query($sql, [$pid, $field]);
+        if ($row = $q->fetch_assoc()) {
             return self::getRowChoices($row['element_enum'], TRUE);
         }
         return [];
@@ -811,19 +813,16 @@ class DataDictionaryManagement {
     }
 
     public static function getRepeatingForms($pid) {
-        if (!function_exists("db_query")) {
+        $module = Application::getModule();
+        if (!method_exists($module, "query")) {
             require_once(dirname(__FILE__)."/../../../redcap_connect.php");
         }
 
-        $sql = "SELECT DISTINCT(r.form_name) AS form_name FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) INNER JOIN redcap_events_repeat AS r ON (m.event_id = r.event_id) WHERE a.project_id = '$pid'";
-        $q = db_query($sql);
-        if ($error = db_error()) {
-            Application::log("ERROR: ".$error);
-            throw new \Exception("ERROR: ".$error);
-        }
+        $sql = "SELECT DISTINCT(r.form_name) AS form_name FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) INNER JOIN redcap_events_repeat AS r ON (m.event_id = r.event_id) WHERE a.project_id = ?";
+        $q = $module->query($sql, [$pid]);
         $repeatingForms = array();
-        while ($row = db_fetch_assoc($q)) {
-            array_push($repeatingForms, $row['form_name']);
+        while ($row = $q->fetch_assoc()) {
+            $repeatingForms[] = $row['form_name'];
         }
         return $repeatingForms;
     }
@@ -839,16 +838,13 @@ class DataDictionaryManagement {
     }
 
     public static function getSurveys($pid, $metadata = []) {
-        if (!function_exists("db_query")) {
+        $module = Application::getModule();
+        if (!method_exists($module, "query")) {
             require_once(dirname(__FILE__)."/../../../redcap_connect.php");
         }
 
-        $sql = "SELECT form_name, title FROM redcap_surveys WHERE project_id = '".$pid."'";
-        $q = db_query($sql);
-        if ($error = db_error()) {
-            Application::log("ERROR: ".$error);
-            throw new \Exception("ERROR: ".$error);
-        }
+        $sql = "SELECT form_name, title FROM redcap_surveys WHERE project_id = ?";
+        $q = $module->query($sql, [$pid]);
 
         if (!empty($metadata)) {
             $instrumentNames = REDCapManagement::getFormsFromMetadata($metadata);
@@ -861,7 +857,7 @@ class DataDictionaryManagement {
         }
 
         $forms = array();
-        while ($row = db_fetch_assoc($q)) {
+        while ($row = $q->fetch_assoc()) {
             # filter out surveys which aren't live
             if (isset($currentInstruments[$row['form_name']])) {
                 $forms[$row['form_name']] = $row['title'];

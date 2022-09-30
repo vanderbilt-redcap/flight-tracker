@@ -1,6 +1,9 @@
 <?php
 
+use \Vanderbilt\CareerDevLibrary\Application;
+
 require_once(dirname(__FILE__)."/../small_base.php");
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 # This script copies the master project to a test project
 
@@ -143,17 +146,18 @@ if ((count($testRecords) > 0) && (!$selectRecord)) {
 	echo "Deleted records on test: $output\n";
 }
 
-$sql = "SELECT * FROM redcap_data WHERE project_id = ".$info['prod']['pid'];
-$q = db_query($sql);
-if ($error = db_error()) {
-	echo "SELECT $error $sql\n";
-}
+$module = Application::getModule();
+$sql = "SELECT * FROM redcap_data WHERE project_id = ?";
+$q = $module->query($sql, [$info['prod']['pid']]);
 $insertRows = array();
 $fields = array("project_id", "event_id", "record", "field_name", "value", "instance");
 $cnt = 0;
 $cnt_up = 0;
-while ($row = db_fetch_assoc($q)) {
-	$insertRowFields = array();
+$insertRowValues = [];
+while ($row = $q->fetch_assoc()) {
+	$insertRowFields = [];
+    $questionMarks = [];
+    $insertRowValues = [];
 	foreach ($fields as $field) {
 		$value = $row[$field];
 		if ($field == "project_id") {
@@ -162,28 +166,27 @@ while ($row = db_fetch_assoc($q)) {
 		if ($field == "event_id") {
 			$value = $info['test']['event_id'];
 		}
-		$insertRowFields[] = "'".db_real_escape_string($value)."'";
+		$insertRowFields[] = $value;
+        $questionMarks[] = "?";
 	}
-	$insertRows[] = "(".implode(", ", $insertRowFields).")";
+	$insertRows[] = "(".implode(",", $questionMarks).")";
+    $insertRowValues[] = $insertRowFields;
 	if (count($insertRows) > 50) {
-		$cnt_up += insertRows($fields, $insertRows);
+		$cnt_up += insertRows($fields, $insertRows, $insertRowValues);
 		$insertRows = array();
 	}
 	$cnt++;
 }
 if (count($insertRows) > 0) {
-	$cnt_up += insertRows($fields, $insertRows);
+	$cnt_up += insertRows($fields, $insertRows, $insertRowValues);
 }
 echo "Downloaded $cnt rows\n";
 echo "Uploaded $cnt_up rows\n";
 
-function insertRows($fields, $insertRows) {
+function insertRows($fields, $insertRows, $rowValues) {
+    $module = Application::getModule();
 	$sql = "INSERT INTO redcap_data (".implode(",", $fields).") VALUES ".implode(",", $insertRows);
-	db_query($sql);
-	if ($error = db_error()) {
-		echo "INSERT $error $sql\n";
-	} else {
-		echo "<br><br>$sql";
-	}
+	$module->query($sql, $rowValues);
+    echo "<br><br>$sql";
 	return count($insertRows);
 }

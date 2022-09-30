@@ -21,6 +21,12 @@ class Sanitizer {
         return $str;
     }
 
+    public static function sanitizePid($pid) {
+        $pid = filter_var($pid, FILTER_VALIDATE_INT);
+        $pid = self::sanitize($pid);
+        return $pid;
+    }
+
     private static function sanitizeRecursive($datum) {
         if (is_array($datum)) {
             $newData = [];

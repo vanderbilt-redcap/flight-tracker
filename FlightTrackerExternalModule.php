@@ -745,6 +745,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
 
         $this->enqueueInitialCrons($activePids);
+        if (Application::isVanderbilt()) {
+            $this->enqueueMultiProjectCrons($activePids);
+        }
 
 		foreach ($activePids as $pid) {
             $this->cleanupLogs($pid);
@@ -763,14 +766,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     if ($this->getProjectSetting("run_tonight", $pid)) {
                         $this->setProjectSetting("run_tonight", FALSE, $pid);
                         # already done in enqueueInitialCrons
-                        // loadInitialCrons($mgr, FALSE, $token, $server);
                     } else {
                         loadCrons($mgr, FALSE, $token, $server);
                     }
                     Application::log($this->getName().": $tokenName enqueued crons", $pid);
-                    $addlEmailText = in_array($pid, $pidsUpdated) ? "Surveys shared from other Flight Tracker projects" : "";
-//                     $mgr->run($adminEmail, $tokenName, $addlEmailText);
-                    // CareerDev::log($this->getName().": cron run complete for pid $pid", $pid);
                 } catch(\Exception $e) {
                     Application::log("Error in cron logic", $pid);
                     \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Error in Cron", $e->getMessage());
@@ -778,6 +777,26 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             }
 		}
 	}
+
+    function enqueueMultiProjectCrons($pids) {
+        if (!empty($pids)) {
+            $token = "";
+            $server = "";
+            $pid = "";
+            for ($i = 0; $i < count($pids); $i++) {
+                $pid = $pids[$i];
+                $token = $this->getProjectSetting("token", $pid);
+                $server = $this->getProjectSetting("server", $pid);
+                if ($pid && $token && $server) {
+                    break;
+                }
+            }
+            if ($pid && $token && $server) {
+                $mgr = new CronManager($token, $server, $pid, $this);
+                loadMultiProjectCrons($mgr, $pids);
+            }
+        }
+    }
 
 	function enqueueInitialCrons($pids) {
         foreach ($pids as $pid) {
@@ -852,7 +871,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		    return null;
         }
 
-        if (self::hasAppropriateRights($userid, $project_id)) {
+        if ($this->hasAppropriateRights($userid, $project_id)) {
             if (!$isMentorPage) {
                 return $link;
             } else {
@@ -1018,7 +1037,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$bool = !self::isAJAXPage() && !self::isAPITokenPage() && !self::isUserRightsPage() && !self::isExternalModulePage() && (!isset($_GET['page']) || ($_GET['page'] != "install"));
 		if ($_GET['pid']) {
 			# project context
-			$bool = $bool && self::hasAppropriateRights(USERID, $_GET['pid']);
+			$bool = $bool && $this->hasAppropriateRights(USERID, $_GET['pid']);
 		}
 		return $bool;
 	}
@@ -1083,20 +1102,20 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		return ExternalModules::getProjectSetting($this->getDirectoryPrefix(), $pid, \ExternalModules\ExternalModules::KEY_ENABLED);
 	}
 
-	private static function hasAppropriateRights($userid, $pid) {
-		$sql = "SELECT design, role_id FROM redcap_user_rights WHERE project_id = '".db_real_escape_string($pid)."' AND username = '".db_real_escape_string($userid)."'";
-		$q =  db_query($sql);
+	private function hasAppropriateRights($userid, $pid) {
+		$sql = "SELECT design, role_id FROM redcap_user_rights WHERE project_id = ? AND username = ?";
+		$q =  $this->query($sql, [$pid, $userid]);
 		$roleId = FALSE;
-		if ($row = db_fetch_assoc($q)) {
+		if ($row = $q->fetch_assoc()) {
 			if ($row['design']) {
 			    return TRUE;
             }
 			$roleId = $row['role_id'];
 		}
 		if ($roleId) {
-		    $sql = "SELECT roles.design AS design FROM redcap_user_rights AS rights INNER JOIN redcap_user_roles AS roles ON rights.role_id = roles.role_id WHERE rights.project_id = '".db_real_escape_string($pid)."' AND rights.username = '".db_real_escape_string($userid)."'";
-            $q =  db_query($sql);
-            if ($row = db_fetch_assoc($q)) {
+		    $sql = "SELECT roles.design AS design FROM redcap_user_rights AS rights INNER JOIN redcap_user_roles AS roles ON rights.role_id = roles.role_id WHERE rights.project_id = ? AND rights.username = ?";
+            $q =  $this->query($sql, [$pid, $userid]);
+            if ($row = $q->fetch_assoc()) {
                 if ($row['design']) {
                     return TRUE;
                 }

@@ -11,13 +11,15 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
+$redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
 $fields = [
 		"First Name" => "identifier_first_name",
 		"Last Name" => "identifier_last_name",
         "Email" => "identifier_email",
-        "User-id" => "identifier_userid",
+        "<a href='javascript:;' onclick='lookupREDCapUserid(\"$redcapLookupUrl\", $(\"#results\"));' title='Click to Look Up'>REDCap User-ID</a><br/><span class='smaller'>(optional; click to look up)</span>" => "identifier_userid",
 		];
-if (checkPOSTKeys(array_values($fields))) {
+$requiredFields = ["identifier_first_name", "identifier_last_name", "identifier_email"];
+if (checkPOSTKeys($requiredFields)) {
 	$recordIds = Download::recordIds($token, $server);
 	$max = 0;
 	foreach ($recordIds as $record) {
@@ -49,16 +51,22 @@ if (checkPOSTKeys(array_values($fields))) {
     echo $incompleteMssg;
 	echo "<h1>Add a New Scholar or Modify an Existing Scholar</h1>\n";
 
-	$link = CareerDev::link("addNewScholar.php");
+	$link = Application::link("addNewScholar.php");
 	echo "<form action='$link' method='POST'>\n";
 	echo Application::generateCSRFTokenHTML();
 	echo "<table style='margin:0px auto;'>\n";
 	foreach ($fields as $label => $var) {
         $defaultValue = Sanitizer::sanitize($_POST[$var]) ?? "";
+        $id = preg_replace("/^identifier_/", "", $var);
 		echo "<tr>\n";
 		echo "<td style='text-align: right; padding-right: 5px;'>$label:</td>\n";
-		echo "<td padding-left: 5px;'><input type='text' name='$var' style='width: 250px;' value='$defaultValue'></td>\n";
+		echo "<td padding-left: 5px;'><input type='text' name='$var' id='$id' style='width: 250px;' value='$defaultValue'></td>\n";
 		echo "</tr>\n";
+        if (preg_match("/User-ID/", $label)) {
+            echo "<tr>";
+            echo "<td id='results' class='centered' colspan='2'></td>";
+            echo "</tr>";
+        }
 	}
 	echo "</table>\n";
 	echo "<p class='centered'><input type='submit' value='Add/Modify'></p>\n";

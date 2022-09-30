@@ -13,6 +13,26 @@ class REDCapManagement {
 	    return isset($_GET['pid']);
     }
 
+    public static function isInProduction($pid) {
+        $module = Application::getModule();
+        $sql = "SELECT production_time FROM redcap_projects WHERE project_id = ?";
+        $q = $module->query($sql, [$pid]);
+        if ($row = $q->fetch_assoc()) {
+            if ($row['production_time']) {
+                return TRUE;
+            } else {
+                return FALSE;
+            }
+        }
+        return FALSE;
+    }
+
+    public static function setToDevelopment($pid) {
+        $module = Application::getModule();
+        $sql = "UPDATE redcap_projects SET production_time = NULL WHERE project_id = ?";
+        $module->query($sql, [$pid]);
+    }
+
     public static function isAssoc($ary) {
         if (empty($ary)) {
             return FALSE;
@@ -675,6 +695,16 @@ class REDCapManagement {
 	    return Sanitizer::sanitize($origStr);
     }
 
+    public static function getToken($pid, $username) {
+        $sql = "SELECT api_token FROM redcap_user_rights WHERE project_id = ? AND username = ?";
+        $module = Application::getModule();
+        $q = $module->query($sql, [$pid, $username]);
+        if ($row = $q->fetch_assoc()) {
+            return $row['api_token'] ?? "";
+        }
+        return "";
+    }
+
     public static function isEmail($str) {
 	    return filter_var($str, FILTER_VALIDATE_EMAIL);
     }
@@ -767,9 +797,10 @@ class REDCapManagement {
 
     public static function isValidSurvey($pid, $hash) {
 	    if ($hash) {
-            $sql = "select s.project_id AS project_id from redcap_surveys_participants AS p INNER JOIN redcap_surveys AS s ON s.survey_id = p.survey_id WHERE p.hash ='".db_real_escape_string($hash)."' AND s.project_id='".db_real_escape_string($pid)."'";
-            $q = db_query($sql);
-            return (db_num_rows($q) > 0);
+            $module = Application::getModule();
+            $sql = "select s.project_id AS project_id from redcap_surveys_participants AS p INNER JOIN redcap_surveys AS s ON s.survey_id = p.survey_id WHERE p.hash =? AND s.project_id=?";
+            $q = $module->query($sql, [$hash, $pid]);
+            return ($q->num_rows > 0);
         }
 	    return FALSE;
     }
@@ -832,13 +863,11 @@ class REDCapManagement {
     }
 
     public static function getDesignUseridsForProject($pid) {
-	    $sql = "SELECT username FROM redcap_user_rights WHERE project_id = '".db_real_escape_string($pid)."' AND design = '1'";
-	    $q = db_query($sql);
-	    if ($error = db_error()) {
-	        throw new \Exception("SQL Error: $error $sql");
-        }
+        $module = Application::getModule();
+	    $sql = "SELECT username FROM redcap_user_rights WHERE project_id = ? AND design = '1'";
+	    $q = $module->query($sql, [$pid]);
 	    $userids = [];
-	    while ($row = db_fetch_assoc($q)) {
+	    while ($row = $q->fetch_assoc()) {
 	        if ($row['username']) {
 	            $userids[] = $row['username'];
             }
@@ -847,9 +876,10 @@ class REDCapManagement {
     }
 
     public static function getUserNames($username) {
-        $sql = "select user_firstname, user_lastname from redcap_user_information WHERE username = '".db_real_escape_string($username)."'";
-        $q = db_query($sql);
-        if ($row = db_fetch_assoc($q)) {
+        $module = Application::getModule();
+        $sql = "select user_firstname, user_lastname from redcap_user_information WHERE username = ?";
+        $q = $module->query($sql, [$username]);
+        if ($row = $q->fetch_assoc()) {
             return [$row['user_firstname'], $row['user_lastname']];
         }
         return ["", ""];
@@ -866,9 +896,10 @@ class REDCapManagement {
     }
 
     public static function getEmailFromUseridFromREDCap($userid) {
-        $sql = "select user_email from redcap_user_information WHERE LOWER(username) = '".db_real_escape_string($userid)."'";
-        $q = db_query($sql);
-        if ($row = db_fetch_assoc($q)) {
+        $module = Application::getModule();
+        $sql = "select user_email from redcap_user_information WHERE LOWER(username) = ?";
+        $q = $module->query($sql, [$userid]);
+        if ($row = $q->fetch_assoc()) {
             return $row['user_email'];
         }
         return "";
@@ -1258,18 +1289,20 @@ class REDCapManagement {
     }
 
 	public static function getEventIdForClassical($projectId) {
-		$sql = "SELECT DISTINCT(m.event_id) AS event_id FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) WHERE a.project_id = '$projectId'";
-		$q = db_query($sql);
-		if ($row = db_fetch_assoc($q)) {
+        $module = Application::getModule();
+		$sql = "SELECT DISTINCT(m.event_id) AS event_id FROM redcap_events_metadata AS m INNER JOIN redcap_events_arms AS a ON (a.arm_id = m.arm_id) WHERE a.project_id = ?";
+		$q = $module->query($sql, [$projectId]);
+		if ($row = $q->fetch_assoc()) {
 			return $row['event_id'];
 		}
 		throw new \Exception("The event_id is not defined. (This should never happen.)");
 	}
 
 	public static function getExternalModuleId($prefix) {
-		$sql = "SELECT external_module_id FROM redcap_external_modules WHERE directory_prefix = '".db_real_escape_string($prefix)."'";
-		$q = db_query($sql);
-		if ($row = db_fetch_assoc($q)) {
+        $module = Application::getModule();
+		$sql = "SELECT external_module_id FROM redcap_external_modules WHERE directory_prefix = ?";
+		$q = $module->query($sql, [$prefix]);
+		if ($row = $q->fetch_assoc()) {
 			return $row['external_module_id'];
 		}
 		throw new \Exception("The external_module_id is not defined. (This should never happen.)");
@@ -1426,9 +1459,10 @@ class REDCapManagement {
         if (!$pid) {
             return FALSE;
         }
-		$sql = "SELECT date_deleted, completed_time FROM redcap_projects WHERE project_id = '".db_real_escape_string($pid)."' LIMIT 1";
-		$q = db_query($sql);
-		if ($row = db_fetch_assoc($q)) {
+        $module = Application::getModule();
+		$sql = "SELECT date_deleted, completed_time FROM redcap_projects WHERE project_id = ? LIMIT 1";
+		$q = $module->query($sql, [$pid]);
+		if ($row = $q->fetch_assoc()) {
 			if (!$row['date_deleted'] && !$row['completed_time']) {
 				return TRUE;
 			}
