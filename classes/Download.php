@@ -419,7 +419,6 @@ class Download {
             }
 		    $_SESSION['metadata'.$pid] = $rows;
 		    $_SESSION['lastMetadata'.$pid] = time();
-		    return $rows;
         } else {
             $data = array(
                 'token' => $token,
@@ -438,9 +437,9 @@ class Download {
                 $_SESSION['metadata'.$pid] = $rows;
                 $_SESSION['lastMetadata'.$pid] = time();
             }
-            return $rows;
         }
-	}
+        return Sanitizer::sanitizeArray($rows);
+    }
 
 	public static function shortProjectTitle($token, $server) {
 	    $title = self::projectTitle($token, $server);
@@ -568,7 +567,7 @@ class Download {
         if (isset($redcapData['error']) && !empty($redcapData['error'])) {
             throw new \Exception("Download Exception $pid: ".$redcapData['error']);
         }
-        return $redcapData;
+        return Sanitizer::sanitizeArray($redcapData, FALSE);
 	}
 
 	public static function userid($token, $server) {
