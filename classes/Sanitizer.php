@@ -21,6 +21,14 @@ class Sanitizer {
         return $str;
     }
 
+    public static function sanitizeInteger($int) {
+        if (filter_var($int, FILTER_VALIDATE_INT) !== FALSE) {
+            return self::sanitize($int);
+        } else {
+            return "";
+        }
+    }
+
     public static function sanitizePid($pid) {
         $pid = filter_var($pid, FILTER_VALIDATE_INT);
         $pid = self::sanitize($pid);

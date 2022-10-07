@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -26,8 +27,9 @@ $(document).ready(function() {
 </script>
 
 <?php
-$json = \REDCap::getData($project_id, 'json', array($record));
-$GLOBALS['data'] = json_decode($json, true); 
+$token = Application::getSetting("token", $project_id);
+$server = Application::getSetting("server", $project_id);
+$GLOBALS['data'] = Download::records($token, $server, [$record]);
 
 $grants = new Grants($token, $server, "empty");
 $grants->setRows($GLOBALS['data']);

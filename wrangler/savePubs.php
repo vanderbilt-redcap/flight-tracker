@@ -16,10 +16,9 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 $metadata = Download::metadata($token, $server);
 $pmids = [];
 if (isset($_POST['finalized'])) {
-    # Do not sanitize jsons because they contain quotes
-    $newFinalized = json_decode($_POST['finalized']);
-    $newOmissions = json_decode($_POST['omissions']);
-    $newResets = json_decode($_POST['resets']);
+    $newFinalized = json_decode(Sanitizer::sanitizeJSON($_POST['finalized']));
+    $newOmissions = json_decode(Sanitizer::sanitizeJSON($_POST['omissions']));
+    $newResets = json_decode(Sanitizer::sanitizeJSON($_POST['resets']));
     $recordId = Sanitizer::sanitize($_POST['record_id']);
 
     $citationFields = Application::getCitationFields($metadata);

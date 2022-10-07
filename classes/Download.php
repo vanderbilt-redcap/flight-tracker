@@ -567,6 +567,11 @@ class Download {
         if (isset($redcapData['error']) && !empty($redcapData['error'])) {
             throw new \Exception("Download Exception $pid: ".$redcapData['error']);
         }
+        for ($i = 0; $i < count($redcapData); $i++) {
+            if (isset($redcapData[$i]["record_id"])) {
+                $redcapData[$i]["record_id"] = Sanitizer::sanitize($redcapData[$i]["record_id"]);
+            }
+        }
         return Sanitizer::sanitizeArray($redcapData, FALSE);
 	}
 
