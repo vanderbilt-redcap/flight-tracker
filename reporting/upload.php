@@ -145,7 +145,11 @@ function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $tok
     }
     foreach ($lines as $line) {
         try {
-            if (NIHTables::beginsWith($table, ["5"])) {
+            if (NIHTables::beginsWith($table, ["2"])) {
+                list($unprocessed, $uploadRows, $warnings) = processTable2Line($line, $pid, $firstNames, $lastNames);
+            } else if (NIHTables::beginsWith($table, ["4"])) {
+                list($unprocessed, $uploadRows, $warnings) = processTable4Line($line, $token, $server, $metadata, $firstNames, $lastNames);
+            } else if (NIHTables::beginsWith($table, ["5"])) {
                 if ($table == "5A") {
                     $category = "Predoctoral";
                 } else if ($table = "5B") {
@@ -180,11 +184,11 @@ function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $tok
         }
         $upload = array_merge($upload, $uploadRows);
     }
-    return [$unprocessedLines, $upload, [$warnings]];
+    return [$unprocessedLines, $upload, $warnings];
 }
 
 
-function addCustomGrantToSignUp(&$uploadForRecord, $recordId, $awardNo, $category, $researchTopic, $startOfTraining, $endOfTraining, $token, $server, $metadata) {
+function addCustomGrantToSignUp(&$uploadForRecord, $recordId, $awardNo, $category, $researchTopic, $startOfTraining, $endOfTraining, $token, $server, $metadata, $directCosts = "") {
     $instrument = "custom_grant";
     $fields = Application::getCustomFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
@@ -217,8 +221,16 @@ function addCustomGrantToSignUp(&$uploadForRecord, $recordId, $awardNo, $categor
             $role = 6;
         } else if ($category == "Postdoctoral") {
             $role = 7;
+        } else if (in_array($category, ["PD/PI", "PI", "Project PI"])) {
+            $role = 1;
+        } else if (in_array($category, ["CoPI", "Co-PI", "Project Lead"])) {
+            $role = 2;
+        } else if (in_array($category, ["Co-I", "Co-Investigator"])) {
+            $role = 3;
+        } else if (in_array($category, ["Other"])) {
+            $role = 4;
         } else {
-            $role = 5;
+            $role = "";
         }
         if ($role) {
             $uploadRow["custom_role"] = $role;
@@ -228,6 +240,9 @@ function addCustomGrantToSignUp(&$uploadForRecord, $recordId, $awardNo, $categor
         }
         if ($endOfTraining) {
             $uploadRow['custom_end'] = $endOfTraining;
+        }
+        if ($directCosts) {
+            $uploadRow['custom_costs'] = $directCosts;
         }
     }
     if (count($uploadRow) > 4) {
@@ -330,6 +345,154 @@ function hasFileUpload() {
     return (count($_FILES) > 0);
 }
 
+function cleanLine(&$line) {
+    for ($i = 0; $i < count($line); $i++) {
+        $line[$i] = REDCapManagement::clearUnicode($line[$i]);
+        $line[$i] = trim($line[$i]);
+    }
+}
+
+function processTable2Line($line, $pid, $firstNames, $lastNames) {
+    $tableNum = 2;
+    $comments = [];
+    if ($line[0] && (count($line) >= 12)) {
+        try {
+            cleanLine($line);
+            $facultyName = $line[0];
+            $fieldsToSave = [
+                "Degree(s)" => $line[1],
+                "Rank" => $line[2],
+                "Research<br/>Interest" => $line[4],
+                "Training<br/>Role" => $line[5],
+                "Pre-doctorates<br/>In Training" => $line[6],
+                "Pre-doctorates<br/>Graduated" => $line[7],
+                "Predoctorates<br/>Continued in<br/>Research or<br/>Related Careers" => $line[8],
+                "Post-doctorates<br/>In Training" => $line[9],
+                "Post-doctorates<br/>Completed<br/>Training" => $line[10],
+                "Postdoctorates<br/>Continued in<br/>Research or<br/>Related Careers" => $line[11],
+            ];
+            $uploadNames = FALSE;
+            if (isset($line['record_id']) && ($line['record_id'] == "skip")) {
+                return [[], [], []];
+            } else if (isset($line['record_id']) && ($line['record_id'] == "new")) {
+                $matchedRecords = [NEW_PREFIX.$facultyName];
+                $uploadNames = TRUE;
+            } else if (isset($line['record_id']) && ($line['record_id'])) {
+                $matchedRecords = [$line['record_id']];
+            } else {
+                $matchedRecords = getMatchedRecords($facultyName, $firstNames, $lastNames);
+            }
+            if (count($matchedRecords) == 1) {
+                $recordId = $matchedRecords[0];
+
+                if ($uploadNames) {
+                    addNormativeNameRow($uploadRows, $recordId, $facultyName);
+                }
+
+                $settingKey = NIHTables::makeCountKey($tableNum, $recordId);
+                $setting = Application::getSetting($settingKey, $pid) ?: [];
+                # recordInstance won't have the email in the identifier
+                $recordInstance = NIHTables::getUniqueIdentifier($line, $tableNum);
+                # in case a recordInstance with the email exists -> use the full recordInstance
+                foreach (array_keys($setting) as $recordInstanceKey) {
+                    if (preg_match("/^$recordInstance/", $recordInstanceKey)) {
+                        $recordInstance = $recordInstanceKey;
+                        break;
+                    }
+                }
+                $setting[$recordInstance] = [date("Y-m-d") => $fieldsToSave];
+                Application::saveSetting($settingKey, $setting, $pid);
+            } else if (count($matchedRecords) >= 2) {
+                $comments["Record"] = getMoreThan1RecordText($matchedRecords);
+            } else {
+                $comments["Record"] = getCreateRecordText();
+            }
+        } catch (\Exception $e) {
+            $comments["Exception"] = $e->getMessage();
+        }
+    }
+    if (!empty($comments)) {
+        $line['comments'] = $comments;
+        return [[$line], [], []];
+    } else {
+        return [[], [], []];
+    }
+}
+
+function processTable4Line($line, $token, $server, $metadata, $firstNames, $lastNames) {
+    $uploadRows = [];
+    $comments = [];
+    if ($line[0] && $line[1] && (strtolower($line[1]) != "none") && (count($line) >= 7)) {
+        try {
+            cleanLine($line);
+            $facultyName = $line[0];
+            $fundingSource = $line[1];
+            $grantNumber = $line[2];
+            $role = $line[3];
+            $grantTitle = $line[4];
+            if (preg_match("/-/", $line[5])) {
+                list($startDate, $endDate) = explode("-", $line[5]);
+                $startDate = processDate($startDate, "01-01");
+                $endDate = processDate($endDate, "12-31");
+            } else {
+                $startDate = processDate($line[5], "01-01");
+                $endDate = "";
+                $comments["Project Period"] = "No end date specified.";
+            }
+            $yearlyDirectCosts = preg_replace("/[\$,]/", "", $line[6]);
+
+            $validFundingSources = ["NIH", "AHRQ", "NSF", "Other Fed", "Univ", "Fdn", "Other"];
+            if (!in_array($fundingSource, $validFundingSources)) {
+                $comments["Funding Source"] = "Invalid funding source '$fundingSource'; valid sources: ".implode(", ", $validFundingSources);
+            }
+            $validRoles = ["PI", "PD", "MPI", "PD/PI", "Co-PI", "CoPI", "Project PI", "Project Lead", "Co-I", "Co-Investigator", "Other"];
+            if (!in_array($role, $validRoles)) {
+                $comments["Role"] = "Invalid role '$role'; valid roles: ".implode(", ", $validRoles);
+            }
+            if (!is_numeric($yearlyDirectCosts)) {
+                $comments["Direct Costs"] = "A non-numeric value was specified: '$yearlyDirectCosts'.";
+            }
+
+            if (empty($comments)) {
+                $uploadNames = FALSE;
+                if (isset($line['record_id']) && ($line['record_id'] == "skip")) {
+                    return [[], [], []];
+                } else if (isset($line['record_id']) && ($line['record_id'] == "new")) {
+                    $matchedRecords = [NEW_PREFIX.$facultyName];
+                    $uploadNames = TRUE;
+                } else if (isset($line['record_id']) && ($line['record_id'])) {
+                    $matchedRecords = [$line['record_id']];
+                } else {
+                    $matchedRecords = getMatchedRecords($facultyName, $firstNames, $lastNames);
+                }
+                if (count($matchedRecords) == 1) {
+                    $matchedRecordId = $matchedRecords[0];
+                    if ($uploadNames) {
+                        addNormativeNameRow($uploadRows, $matchedRecordId, $facultyName);
+                    }
+                    addCustomGrantToSignUp($uploadRows, $matchedRecordId, $grantNumber, $role, $grantTitle, $startDate, $endDate, $token, $server, $metadata, $yearlyDirectCosts);
+                } else if (count($matchedRecords) >= 2) {
+                    $comments["Record"] = getMoreThan1RecordText($matchedRecords);
+                } else {
+                    $comments["Record"] = getCreateRecordText();
+                }
+            }
+        } catch (\Exception $e) {
+            $comments["Exception"] = $e->getMessage();
+        }
+        if (!empty($comments)) {
+            $line['comments'] = $comments;
+            return [[$line], [], []];
+        } else {
+            return [[], $uploadRows, []];
+        }
+    } else {
+        # fundamentally invalid line
+        return [[], [], []];
+    }
+
+}
+
 function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $metadata, $firstNames, $lastNames, $trainingStarts, $mentors, $importedMentors, $priorPMIDs) {
     $trainingStartDate = "";
     $trainingEndDate = "";
@@ -338,82 +501,86 @@ function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $m
     $warnings = [];
     $isFirstUpload = hasFileUpload();
     if ($line[0] && $line[1] && (count($line) >= 5)) {
-        removeExtraSpaces($line);
-        $facultyName = trim($line[0]);
-        list ($facultyFirst, $facultyMiddle, $facultyLast) = NameMatcher::splitName($facultyName, 3);
-        $formattedFacultyName = formatName($facultyFirst, $facultyMiddle, $facultyLast);
-        $traineeName = trim($line[1]);
-        list ($traineeFirst, $traineeMiddle, $traineeLast) = NameMatcher::splitName($traineeName, 3);
-        $formattedTraineeName = formatName($traineeFirst, $traineeMiddle, $traineeLast);
-        $uploadNames = FALSE;
-        if (isset($line['record_id']) && ($line['record_id'] == "skip")) {
-            return [[], [], []];
-        } else if (isset($line['record_id']) && ($line['record_id'] == "new")) {
-            $matchedRecords = [NEW_PREFIX.$traineeName];
-            $uploadNames = TRUE;
-        } else if (isset($line['record_id']) && ($line['record_id'])) {
-            $matchedRecords = [$line['record_id']];
-        } else {
-            $matchedRecords = getMatchedRecords($traineeName, $firstNames, $lastNames);
-        }
-
-        $trainingPeriod = trim($line[3]);
-        $publicationText = trim($line[4]);
-        if (preg_match("/\s*-\s*/", $trainingPeriod)) {
-            $trainingAry = preg_split("/\s*-\s*/", $trainingPeriod);
-            $trainingStartYear = trim($trainingAry[0]);
-            $trainingEndYear = trim($trainingAry[1] ?? "");
-            if (DateManagement::isDate($trainingStartYear) || DateManagement::isYear($trainingStartYear)) {
-                $trainingStartDate = processDate($trainingStartYear, "07-01");
+        try {
+            cleanLine($line);
+            removeExtraSpaces($line);
+            $facultyName = trim($line[0]);
+            list ($facultyFirst, $facultyMiddle, $facultyLast) = NameMatcher::splitName($facultyName, 3);
+            $formattedFacultyName = formatName($facultyFirst, $facultyMiddle, $facultyLast);
+            $traineeName = trim($line[1]);
+            list ($traineeFirst, $traineeMiddle, $traineeLast) = NameMatcher::splitName($traineeName, 3);
+            $formattedTraineeName = formatName($traineeFirst, $traineeMiddle, $traineeLast);
+            $uploadNames = FALSE;
+            if (isset($line['record_id']) && ($line['record_id'] == "skip")) {
+                return [[], [], []];
+            } else if (isset($line['record_id']) && ($line['record_id'] == "new")) {
+                $matchedRecords = [NEW_PREFIX.$traineeName];
+                $uploadNames = TRUE;
+            } else if (isset($line['record_id']) && ($line['record_id'])) {
+                $matchedRecords = [$line['record_id']];
             } else {
-                $comments["Training Period"] = "$formattedTraineeName has a start year of training, with '$trainingStartYear.' A year was expected here.";
+                $matchedRecords = getMatchedRecords($traineeName, $firstNames, $lastNames);
             }
-            if ($trainingEndYear == "Present") {
-                if ($isFirstUpload) {
-                    $comments["Training Period"] = "$formattedTraineeName has '$trainingEndYear' as their end year of training. A year was expected here.";
+
+            $trainingPeriod = trim($line[3]);
+            $publicationText = trim($line[4]);
+            if (preg_match("/\s*-\s*/", $trainingPeriod)) {
+                $trainingAry = preg_split("/\s*-\s*/", $trainingPeriod);
+                $trainingStartYear = trim($trainingAry[0]);
+                $trainingEndYear = trim($trainingAry[1] ?? "");
+                if (DateManagement::isDate($trainingStartYear) || DateManagement::isYear($trainingStartYear)) {
+                    $trainingStartDate = processDate($trainingStartYear, "07-01");
                 } else {
-                    $trainingEndDate = "";
+                    $comments["Training Period"] = "$formattedTraineeName has a start year of training, with '$trainingStartYear.' A year was expected here.";
                 }
-            } else if (DateManagement::isDate($trainingEndYear) || DateManagement::isYear($trainingEndYear)) {
-                $trainingEndDate = processDate($trainingEndYear, "06-30");
-            } else if (preg_match("/^Present/", $trainingEndYear)) {
-                $comments["Training Period"] = "$formattedTraineeName has '$trainingEndYear' as their end year of training. It appears that you have hidden or special characters at the end of this field. Please remove them and transform the date into a numerical year.";
-            } else {
-                $comments["Training Period"] = "$formattedTraineeName has an unusual end year of training, with '$trainingEndYear.' This sometimes is due to hidden or special characters in the CSV. A numerical year is expected.";
-            }
-        } else if (DateManagement::isYear($trainingPeriod) || DateManagement::isDate($trainingPeriod)) {
-            $trainingStartDate = processDate($trainingPeriod, "01-01");
-            $trainingEndDate = processDate($trainingPeriod, "12-31");
-        } else {
-            $comments["Training Period"] = "$formattedTraineeName has an unusual Training Period. The format of [StartYear]-[EndYear] is expected; you have '$trainingPeriod.' This is sometimes due to hidden or special characters in the CSV. Please correct this.";
-        }
-        if (!empty($comments)) {
-            $line['comments'] = $comments;
-            return [[$line], [], []];
-        } else {
-            if (count($matchedRecords) == 1) {
-                $matchedRecordId = $matchedRecords[0];
-                addCustomGrantToSignUp($uploadForRecord, $matchedRecordId, $awardNo, $category, "", $trainingStartDate, $trainingEndDate, $token, $server, $metadata);
-                addNormativeRow($uploadForRecord, $matchedRecordId, $facultyName, "", $trainingStartDate, $trainingStarts, $mentors, $importedMentors, $metadata, $uploadNames ? $traineeName : "");
-
-                $pmids = parsePublications($publicationText, $formattedTraineeName, $formattedFacultyName, $warnings, $metadata, $pid);
-                if (!empty($pmids)) {
-                    $myPriorPMIDs = $priorPMIDs[$matchedRecordId] ?? [];
-                    $newPMIDs = array_diff($pmids, $myPriorPMIDs);
-                    $startInstance = empty($priorPMIDs[$matchedRecordId]) ? 1 : max(REDCapManagement::makeArrayOneType(array_keys($priorPMIDs[$matchedRecordId]), "int")) + 1;
-                    $newRows = Publications::getCitationsFromPubMed($newPMIDs, $metadata, "manual", $matchedRecordId, $startInstance, $myPriorPMIDs, $pid);
-                    for ($j = 0; $j < count($newRows); $j++) {
-                        $newRows[$j]['citation_include'] = '1';
+                if ($trainingEndYear == "Present") {
+                    if ($isFirstUpload) {
+                        $comments["Training Period"] = "$formattedTraineeName has '$trainingEndYear' as their end year of training. A year was expected here.";
+                    } else {
+                        $trainingEndDate = "";
                     }
-                    $uploadForRecord = array_merge($uploadForRecord, $newRows);
+                } else if (DateManagement::isDate($trainingEndYear) || DateManagement::isYear($trainingEndYear)) {
+                    $trainingEndDate = processDate($trainingEndYear, "06-30");
+                } else if (preg_match("/^Present/", $trainingEndYear)) {
+                    $comments["Training Period"] = "$formattedTraineeName has '$trainingEndYear' as their end year of training. It appears that you have hidden or special characters at the end of this field. Please remove them and transform the date into a numerical year.";
+                } else {
+                    $comments["Training Period"] = "$formattedTraineeName has an unusual end year of training, with '$trainingEndYear.' This sometimes is due to hidden or special characters in the CSV. A numerical year is expected.";
                 }
-            } else if (count($matchedRecords) >= 2) {
-                $comments["Record"] = getMoreThan1RecordText($matchedRecords);
+            } else if (DateManagement::isYear($trainingPeriod) || DateManagement::isDate($trainingPeriod)) {
+                $trainingStartDate = processDate($trainingPeriod, "01-01");
+                $trainingEndDate = processDate($trainingPeriod, "12-31");
             } else {
-                $comments["Record"] = getCreateRecordText();
+                $comments["Training Period"] = "$formattedTraineeName has an unusual Training Period. The format of [StartYear]-[EndYear] is expected; you have '$trainingPeriod.' This is sometimes due to hidden or special characters in the CSV. Please correct this.";
             }
-        }
+            if (!empty($comments)) {
+                $line['comments'] = $comments;
+                return [[$line], [], []];
+            } else {
+                if (count($matchedRecords) == 1) {
+                    $matchedRecordId = $matchedRecords[0];
+                    addCustomGrantToSignUp($uploadForRecord, $matchedRecordId, $awardNo, $category, "", $trainingStartDate, $trainingEndDate, $token, $server, $metadata);
+                    addNormativeRow($uploadForRecord, $matchedRecordId, $facultyName, "", $trainingStartDate, $trainingStarts, $mentors, $importedMentors, $metadata, $uploadNames ? $traineeName : "");
 
+                    $pmids = parsePublications($publicationText, $formattedTraineeName, $formattedFacultyName, $warnings, $metadata, $pid);
+                    if (!empty($pmids)) {
+                        $myPriorPMIDs = $priorPMIDs[$matchedRecordId] ?? [];
+                        $newPMIDs = array_diff($pmids, $myPriorPMIDs);
+                        $startInstance = empty($priorPMIDs[$matchedRecordId]) ? 1 : max(REDCapManagement::makeArrayOneType(array_keys($priorPMIDs[$matchedRecordId]), "int")) + 1;
+                        $newRows = Publications::getCitationsFromPubMed($newPMIDs, $metadata, "manual", $matchedRecordId, $startInstance, $myPriorPMIDs, $pid);
+                        for ($j = 0; $j < count($newRows); $j++) {
+                            $newRows[$j]['citation_include'] = '1';
+                        }
+                        $uploadForRecord = array_merge($uploadForRecord, $newRows);
+                    }
+                } else if (count($matchedRecords) >= 2) {
+                    $comments["Record"] = getMoreThan1RecordText($matchedRecords);
+                } else {
+                    $comments["Record"] = getCreateRecordText();
+                }
+            }
+        } catch (\Exception $e) {
+            $comments["Exception"] = $e->getMessage();
+        }
     } else {
         # fundamentally invalid line
         return [[], [], []];
@@ -443,6 +610,7 @@ function processTable8Line($line, $awardNo, $category, $token, $server, $metadat
     $startIndex = ($table == "8A") ? 0 : 1;
     if ($line[0] && $line[1] && count($line) >= 9) {
         try {
+            cleanLine($line);
             removeExtraSpaces($line);
             $traineeName = trim($line[0]);
             $facultyName = trim($line[$startIndex + 1]);
@@ -505,6 +673,23 @@ function getCreateRecordText() {
 
 function getMoreThan1RecordText($records) {
     return "More than one record matched: ".implode(", ", $records);
+}
+
+function addNormativeNameRow(&$upload, $recordId, $name) {
+    list($firstName, $middleName, $lastName) = NameMatcher::splitName($name, 3);
+    $row = ["record_id" => $recordId];
+    if ($firstName) {
+        $row['identifier_first_name'] = $firstName;
+    }
+    if ($lastName) {
+        $row['identifier_last_name'] = $lastName;
+    }
+    if ($middleName) {
+        $row['identifier_middle'] = $middleName;
+    }
+    if (count($row) > 1) {
+        $upload[] = $row;
+    }
 }
 
 function addNormativeRow(&$upload, $recordId, $facultyName, $supportDuringTraining, $trainingStartDate, $trainingStarts, $mentors, $importedMentors, $metadata, $traineeName) {

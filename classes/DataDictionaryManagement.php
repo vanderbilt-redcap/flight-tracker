@@ -186,7 +186,7 @@ class DataDictionaryManagement {
         foreach ($convert as $oldValue => $newValue) {
             $params = array_merge([$newValue, $pid, $oldValue], $fields);
             $sql = "UPDATE redcap_data SET value=? WHERE project_id=? AND value=? AND field_name IN (".implode(",", $questionMarks).")";
-            Application::log("Running SQL $sql");
+            Application::log("Running SQL $sql with ".json_encode($params));
             $module->query($sql, $params);
         }
     }
@@ -655,8 +655,52 @@ class DataDictionaryManagement {
             }
         }
         self::sortByForms($existingMetadata);
-        $metadataFeedback = Upload::metadata($existingMetadata, $token, $server);
-        return $metadataFeedback;
+
+        $metadataFields = self::getFieldsFromMetadata($existingMetadata);
+        $resourceField = self::getMentoringResourceField($metadataFields);
+        if (in_array($resourceField, $metadataFields)) {
+            $choices = self::getChoices($existingMetadata);
+            $defaultResourceField = "resources_resource";
+            if (
+                self::isInitialSetupForResources($choices[$resourceField])
+                && in_array($defaultResourceField, $metadataFields)
+            ) {
+                if (Application::isVanderbilt()) {
+                    $resourceStr = self::makeChoiceStr(self::getMenteeAgreementVanderbiltResources());
+                } else {
+                    $resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
+                }
+                for ($i = 0; $i < count($existingMetadata); $i++) {
+                    if ($existingMetadata[$i]['field_name'] == $resourceField) {
+                        $existingMetadata[$i]['select_choices_or_calculations'] = $resourceStr;
+                    }
+                }
+            }
+        }
+
+        return Upload::metadata($existingMetadata, $token, $server);
+    }
+
+    public static function getMenteeAgreementVanderbiltResources() {
+        $resources = [
+            "Career Development Funding Opportunities",
+            "CTSA Studio Program",
+            "Edge Seminars",
+            "Edge for Scholars Grant Repository",
+            "Edge for Scholars Grant Review Program",
+            "Edge for Scholars Grant Writing Workshop",
+            "Edge for Scholars Manuscript Sprint Program",
+            "<a href='https://edgeforscholars.org' target='_NEW'>Edgeforscholars.org</a>",
+            "Elliot Newman Society",
+            "Kaizen Program for Rigor and Reproducibility Training",
+            "Translational Nexus Pathways",
+        ];
+
+        $indexedResources = [];
+        foreach ($resources as $i => $resource) {
+            $indexedResources[$i+1] = $resource;
+        }
+        return $indexedResources;
     }
 
     private static function sortByForms(&$metadata) {
@@ -810,6 +854,32 @@ class DataDictionaryManagement {
             $pairs[] = "$key, $label";
         }
         return implode(" | ", $pairs);
+    }
+
+    public static function getMentoringResourceField($metadataFields) {
+        $resourceField = "mentoring_local_resource";
+        $newFieldName = $resourceField."s";
+        if (in_array($newFieldName, $metadataFields)) {
+            return $newFieldName;
+        } else {
+            return $resourceField;
+        }
+    }
+
+    public static function isInitialSetupForResources($resourceFieldChoices) {
+        if (!$resourceFieldChoices) {
+            return TRUE;
+        }
+        if (is_string($resourceFieldChoices)) {
+            $resourceFieldChoices = DataDictionaryManagement::getRowChoices($resourceFieldChoices);
+        }
+        $keys = array_keys($resourceFieldChoices);
+        $values = array_values($resourceFieldChoices);
+        return (
+            (count($resourceFieldChoices) == 1)
+            && ($keys[0] == "1")
+            && ($values[0] == "Institutional Resources Here")
+        );
     }
 
     public static function getRepeatingForms($pid) {

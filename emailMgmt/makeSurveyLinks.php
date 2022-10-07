@@ -12,12 +12,8 @@ $instances = $_POST['instances'];
 if ($records && $instrument && $instances) {
 	$results = array();
 	foreach ($records as $record) {
-		if ($instances[$record]) {
-			$instance = $instances[$record];
-		} else {
-			$instance = 1;
-		}
-		$link = \REDCap::getSurveyLink($record, $instrument, $instance);
+        $instance = $instances[$record] ?: 1;
+		$link = \REDCap::getSurveyLink($record, $instrument, NULL, $instance, $pid);
 		$results[$record] = $link;
 	}
 	echo json_encode($results);

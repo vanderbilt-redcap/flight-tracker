@@ -840,7 +840,7 @@ class NIHTables {
     }
 
     // coordinated with MainGroup.makeRecordInstance
-    private static function getUniqueIdentifier($row, $tableNum) {
+    public static function getUniqueIdentifier($row, $tableNum) {
 	    $numElems = ($tableNum == 2) ? 1 : 3;
 	    $items = [];
 	    for ($i = 0; ($i < $numElems) && ($i < count($row)); $i++) {
@@ -2830,8 +2830,11 @@ class NIHTables {
                         if ($row['redcap_repeat_instrument'] == "custom_grant") {
                             if ($part == 1) {
                                 if (
-                                    self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15)
-                                    && in_array($row['custom_type'], $thisGrantTypes)
+                                    (
+                                        self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15)
+                                        && in_array($row['custom_type'], $thisGrantTypes)
+                                    )
+                                    || !$row['custom_end']
                                 ) {
                                     $filteredNames[$recordId] = $name;
                                 }
@@ -2839,8 +2842,11 @@ class NIHTables {
                                 # recent graduates - those whose appointments have ended
                                 # for new applications only (currently)
                                 if (
-                                    self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 5)
-                                    && ($row['custom_type'] == $internalKType)
+                                    (
+                                        self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 5)
+                                        && ($row['custom_type'] == $internalKType)
+                                    )
+                                    || !$row['custom_end']
                                 ) {
                                     $filteredNames[$recordId] = $name;
                                 }

@@ -44,18 +44,19 @@ function runMainCrons(&$manager, $token, $server) {
     } else if (in_array('exporter', $forms)) {
         $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday", $records, 20);
     }
-    if (in_array('ldap', $forms)) {
+    if (in_array('ldapds', $forms)) {
         $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $records, 10000);
+        $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "2022-10-06", $records, 10000);
     }
     if (!Application::isLocalhost()) {
-        // if (in_array('coeus', $forms)) {
-            // $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
-        // } else if (in_array('coeus2', $forms)) {
-            // $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
-        // }
-        // if (in_array('coeus_submission', $forms)) {
-        // $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $allRecords, 1000);
-        // }
+        if (in_array('coeus', $forms)) {
+            $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
+        } else if (in_array('coeus2', $forms)) {
+            $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
+        }
+        if (in_array('coeus_submission', $forms)) {
+            $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $allRecords, 1000);
+        }
     }
     if (!$securityTestMode) {
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday", $allRecords, 100);
@@ -184,7 +185,7 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         if (Application::isVanderbilt() && in_array("coeus", $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", $date, $records, 500);
         }
-        if (in_array("ldap", $forms)) {
+        if (in_array("ldapds", $forms)) {
             $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", $date, $records, 500);
         }
         if (in_array("patent", $forms) && !$securityTestMode) {

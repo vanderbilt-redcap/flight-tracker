@@ -12,7 +12,7 @@ global $token, $server;
 
 if ($instrument == "identifiers") {
     $module = Application::getModule();
-	$sql = "SELECT field_name FROM redcap_data WHERE project_id = ? AND record = '? AND field_name LIKE '%_complete'";
+	$sql = "SELECT field_name FROM redcap_data WHERE project_id = ? AND record = ? AND field_name LIKE '%_complete'";
 	$q = $module->query($sql, [$project_id, $record]);
 	if ($q->num_rows == 1) {
 		if ($row = $q->fetch_assoc($q)) {

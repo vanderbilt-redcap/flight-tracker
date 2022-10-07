@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.16.6";
+		return "4.17.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -996,6 +996,7 @@ class CareerDev {
 			return [
                 'NIH Reporting Tables 2-4' => self::link("reporting/tables2-4/run/index.php"),
                 "NIH Reporting Tables 5, 6, &amp; 8" => self::link("reporting/index.php"),
+                "Upload Prior NIH Reporting Tables" => self::link("reporting/upload_react/run/index.php"),
                 "List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
                 "K2R Conversion Calculator" => self::link("/k2r/index.php"),
                 "Kaplan-Meier Conversion Success Curve" => self::link("/charts/kaplanMeierCurve.php"),

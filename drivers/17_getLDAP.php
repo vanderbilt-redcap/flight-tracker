@@ -14,7 +14,7 @@ function getLDAPs($token, $server, $pid, $records) {
     $userids = Download::userids($token, $server);
     foreach ($records as $recordId) {
         $firstName = $firstNames[$recordId];
-        Upload::deleteForm($token, $server, $pid, "ldap_", $recordId);
+        Upload::deleteForm($token, $server, $pid, "ldapds_", $recordId);
         if (isset($userids[$recordId])) {
             $userid = $userids[$recordId];
             $lastName = $lastNames[$recordId];

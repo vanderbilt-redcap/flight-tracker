@@ -10,12 +10,22 @@ if (!Application::has("mentoring_agreement")) {
 }
 
 $metadata = Download::metadata($token, $server);
-$choices = REDCapManagement::getChoices($metadata);
-$resourceField = "mentoring_local_resources";
-$resourceField = adjustResourceField($resourceField, $choices);
+$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+$choices = DataDictionaryManagement::getChoices($metadata);
+$resourceField = DataDictionaryManagement::getMentoringResourceField($metadataFields);
 
 $mssg = "";
-$defaultList = implode("\n", array_values($choices[$resourceField] ?? []));
+if (DataDictionaryManagement::isInitialSetupForResources($choices[$resourceField])) {
+    $defaultResourceField = "resources_resource";
+    if (isset($choices[$defaultResourceField])) {
+        $resourceChoices = $choices[$defaultResourceField];
+    } else {
+        $resourceChoices = [];
+    }
+} else {
+    $resourceChoices = $choices[$resourceField] ?? [];
+}
+$defaultList = implode("\n", array_values($resourceChoices));
 $rightWidth = 500;
 $defaultLink = Application::getSetting("mentee_agreement_link", $pid);
 
@@ -33,11 +43,10 @@ if (isset($_POST['resourceList'])) {
                 if (!preg_match("/^https?:\/\//i", $link)) {
                     $link = "https://".$link;
                 }
-                if (REDCapManagement::isGoodURL($link)) {
+                if (REDCapManagement::isValidURL($link)) {
                     Application::saveSetting($settingName, $link, $pid);
                 } else {
                     $mssg = "<p class='red centered max-width'>Improper URL $link</p>";
-                    $continue = FALSE;
                 }
             } else {
                 Application::saveSetting($settingName, "", $pid);
@@ -50,7 +59,7 @@ if (isset($_POST['resourceList'])) {
     if ($continue) {
         $resources = preg_split("/[\n\r]+/", $_POST['resourceList']);
         $reverseResourceChoices = [];
-        foreach ($choices[$resourceField] as $idx => $label) {
+        foreach ($choices[$resourceField] ?? [] as $idx => $label) {
             $reverseResourceChoices[$label] = $idx;
         }
 
@@ -72,7 +81,7 @@ if (isset($_POST['resourceList'])) {
             }
         }
         if (!empty($newResources) || !empty($deletedResourceIndexes)) {
-            $resourceIndexes = array_keys($choices[$resourceField]);
+            $resourceIndexes = array_keys($choices[$resourceField] ?? []);
             if (REDCapManagement::isArrayNumeric($resourceIndexes)) {
                 $maxIndex = !empty($resourceIndexes) ? max($resourceIndexes) : 0;
             } else {
@@ -93,13 +102,34 @@ if (isset($_POST['resourceList'])) {
                 $resourcesByIndex[$nextIndex] = $resource;
                 $nextIndex++;
             }
+            if (empty($resourcesByIndex) && Application::isVanderbilt()) {
+                $resourcesByIndex = DataDictionaryManagement::getMenteeAgreementVanderbiltResources();
+            }
+            if (empty($resourcesByIndex) && !empty($choices["resources_resource"])) {
+                $resourceStr = REDCapManagement::makeChoiceStr($choices['resources_resource']);
+            } else if (empty($resourcesByIndex) && !isset($choices['resources_resource'])) {
+                $resourceStr = "1, Institutional Resources Here";
+            } else {
+                $resourceStr = REDCapManagement::makeChoiceStr($resourcesByIndex);
+            }
             for ($i = 0; $i < count($metadata); $i++) {
                 if ($metadata[$i]['field_name'] == $resourceField) {
-                    $metadata[$i]['select_choices_or_calculations'] = REDCapManagement::makeChoiceStr($resourcesByIndex);
+                    $metadata[$i]['select_choices_or_calculations'] = $resourceStr;
                 }
             }
-            Upload::metadata($metadata, $token, $server);
-            $mssg = "<p class='max-width centered green'>Changes made.</p>";
+            $feedback = Upload::metadata($metadata, $token, $server);
+            if (!is_array($feedback) || (!$feedback['errors'] && !$feedback['error'])) {
+                $mssg = "<p class='max-width centered green'>Changes made.</p>";
+            } else {
+                if ($feedback['errors']) {
+                    $error = implode("<br/>", $feedback['errors']);
+                } else if ($feedback['error']) {
+                    $error = $feedback['error'];
+                } else {
+                    $error = implode("<br/>", $feedback);
+                }
+                $mssg = "<p class='max-width centered red'>Error $error</p>";
+            }
             $resourceLabels = array_values($resourcesByIndex);
             for ($i = 0; $i < count($resourceLabels); $i++) {
                 $resourceLabels[$i] = (string) $resourceLabels[$i];
@@ -143,14 +173,3 @@ $stepsLink = Application::link("mentor/dashboard.php");
     </table>
     <p class="centered"><button>Change Configuration</button></p>
 </form>
-
-<?php
-
-function adjustResourceField($resourceField, $choices) {
-    $newFieldName = $resourceField."s";
-    if (isset($choices[$newFieldName])) {
-        return $newFieldName;
-    } else {
-        return $resourceField;
-    }
-}

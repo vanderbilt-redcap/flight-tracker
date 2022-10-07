@@ -14,6 +14,12 @@ function getPatents($token, $server, $pid, $records) {
         $lastNames = Download::lastnames($token, $server);
         $firstNames = Download::firstnames($token, $server);
         $institutions = Download::institutionsAsArray($token, $server);
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+        if (in_array("summary_training_start", $metadataFields)) {
+            $startDates = Download::oneField($token, $server, "summary_training_start");
+        } else {
+            $startDates = [];
+        }
         $upload = [];
         foreach ($records as $recordId) {
             $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge(["record_id"], $patentFields)), [$recordId]);
@@ -22,7 +28,7 @@ function getPatents($token, $server, $pid, $records) {
             $myInstitutions = array_unique(array_merge($institutions[$recordId], Application::getInstitutions($pid), Application::getHelperInstitutions()));
 
             Application::log("Searching for {$firstNames[$recordId]} {$lastNames[$recordId]} at ".json_encode($myInstitutions), $pid);
-            $p = new PatentsView($recordId, $pid, "none", $metadata);
+            $p = new PatentsView($recordId, $pid, $startDates[$recordId] ?: "none", $metadata);
             $p->setName($lastNames[$recordId], $firstNames[$recordId]);
             $uploadRows = $p->getFilteredPatentsAsREDCap($myInstitutions, $maxInstance, $previousNumbers);
             if (count($uploadRows) > 0) {

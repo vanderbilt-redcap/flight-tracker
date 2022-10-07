@@ -102,7 +102,7 @@ class Upload
                     }
                 }
                 $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name = ?".$instanceClause;
-                Application::log("Running SQL $sql");
+                Application::log("Running SQL $sql with ".json_encode($params));
                 $module = Application::getModule();
                 $q = $module->query($sql, $params);
                 Application::log("SQL: " . $q->affected_rows . " rows affected");
@@ -160,11 +160,15 @@ class Upload
                             while (count($filteredInstances) > count($questionMarks)) {
                                 $questionMarks[] = "?";
                             }
-                            $instanceClause = " AND (instance IN (".implode(",", $questionMarks).")".$addOnInstanceClause.")";
-                            $params = array_merge($params, $filteredInstances);
+                            if (!empty($filteredInstances)) {
+                                $instanceClause = " AND (instance IN (".implode(",", $questionMarks).")".$addOnInstanceClause.")";
+                                $params = array_merge($params, $filteredInstances);
+                            } else if ($addOnInstanceClause) {
+                                $instanceClause = " AND instance IS NULL";
+                            }
                         }
                         $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name LIKE ?".$instanceClause;
-                        Application::log("Running SQL $sql");
+                        Application::log("Running SQL $sql with ".json_encode($params));
                         $q = $module->query($sql, $params);
                         Application::log("SQL: " . $q->affected_rows . " rows affected");
 
@@ -174,7 +178,7 @@ class Upload
                                 $params2 = array_merge($params2, $filteredInstances ?? []);
                             }
                             $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name = ?".$instanceClause;
-                            Application::log("Running SQL $sql");
+                            Application::log("Running SQL $sql with ".json_encode($params2));
                             $q2 = $module->query($sql, $params2);
                             Application::log("SQL: " . $q2->affected_rows . " rows affected");
                         }
@@ -199,7 +203,7 @@ class Upload
                     $module = Application::getModule();
                     $params = [$pid, $recordId, "$prefix%"];
                     $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name LIKE ?";
-                    Application::log("Running SQL $sql");
+                    Application::log("Running SQL $sql with ".json_encode($params));
                     $q = $module->query($sql, $params);
                     Application::log("SQL: " . $q->affected_rows . " rows affected");
                 }

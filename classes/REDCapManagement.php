@@ -251,6 +251,8 @@ class REDCapManagement {
             $prefix = "honor";
         } else if ($instrument == "ldap") {
             $prefix = "ldap";
+        } else if ($instrument == "ldapds") {
+            $prefix = "ldapds";
         } else if ($instrument == "coeus_submission") {
             $prefix = "coeussubmission";
         } else if ($instrument == "position_change") {
@@ -510,7 +512,7 @@ class REDCapManagement {
     }
 
     public static function isValidURL($url) {
-	    return URLManagement::isGoodURL($url);
+	    return filter_var($url, FILTER_VALIDATE_URL);
     }
 
     public static function isGoodURL($url) {
@@ -1391,7 +1393,7 @@ class REDCapManagement {
     }
 
     public static function clearUnicode($str) {
-        return preg_replace('/[\x00-\x1F\x7F]/u', '', $str);
+        return preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $str);
     }
 
     public static function isMetadataFilled($metadata) {

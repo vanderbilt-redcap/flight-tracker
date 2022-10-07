@@ -72,13 +72,7 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
             $matchedData = [];
             $i = 0;
             foreach ($coeusData[$awardDataField] as $row) {
-                if (isset($translate[$row['PERSON_ID']])) {
-                    $uid = $translate[$row['PERSON_ID']];
-                } else {
-                    $uid = LDAP::getUIDFromEmployeeID($row['PERSON_ID']);
-                    $translate[$row['PERSON_ID']] = $uid;
-                    # TODO could cache somewhere
-                }
+                $uid = $row['VUNETID'] ?? "";
                 if ($uid) {
                     if ($uid == $currUserid) {
                         $matchedData[] = $row;
@@ -259,17 +253,16 @@ function makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $pre
     foreach ($dataRow as $dataField => $value) {
         if ($value) {
             $field = $prefix.strtolower($dataField);
-            if (!in_array($field, $metadataFields)) {
-                throw new \Exception("Invalid field $field");
+            if (in_array($field, $metadataFields)) {
+                if (DateManagement::isOracleDate($value)) {
+                    $value = DateManagement::oracleDate2YMD($value);
+                } else if ($value == "Y") {
+                    $value = "1";
+                } else if ($value == "N") {
+                    $value = "0";
+                }
+                $uploadRow[$field] = utf8_decode($value);
             }
-            if (DateManagement::isOracleDate($value)) {
-                $value = DateManagement::oracleDate2YMD($value);
-            } else if ($value == "Y") {
-                $value = "1";
-            } else if ($value == "N") {
-                $value = "0";
-            }
-            $uploadRow[$field] = utf8_decode($value);
         }
     }
     return $uploadRow;

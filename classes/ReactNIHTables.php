@@ -404,13 +404,23 @@ table { border-collapse: collapse; }
         }
         $migrationCompleted = FALSE;
         foreach (array_keys($settingAry) as $date) {
-            if (isset($settingAry[$date][$recordInstance])) {
-                self::initializeRecordInstanceData($data, $recordId, $recordInstance);
-                $data[$recordId][$recordInstance][$date] = $settingAry[$date][$recordInstance];
+
+            # because of uploading table 2, the email may not be part of the match
+            $recordInstanceToMatch = $recordInstance;
+            foreach (array_keys($settingAry[$date]) as $settingRecordInstance) {
+                if (preg_match("/^$recordInstance/", $settingRecordInstance)) {
+                    $recordInstanceToMatch = $settingRecordInstance;
+                    break;
+                }
+            }
+
+            if (isset($settingAry[$date][$recordInstanceToMatch])) {
+                self::initializeRecordInstanceData($data, $recordId, $recordInstanceToMatch);
+                $data[$recordId][$recordInstanceToMatch][$date] = $settingAry[$date][$recordInstance];
             } else {
-                if ($this->migrateOldRecordInstances($settingAry, $date, $recordInstance)) {
-                    self::initializeRecordInstanceData($data, $recordId, $recordInstance);
-                    $data[$recordId][$recordInstance][$date] = $settingAry[$date][$recordInstance];
+                if ($this->migrateOldRecordInstances($settingAry, $date, $recordInstanceToMatch)) {
+                    self::initializeRecordInstanceData($data, $recordId, $recordInstanceToMatch);
+                    $data[$recordId][$recordInstanceToMatch][$date] = $settingAry[$date][$recordInstanceToMatch];
                     $migrationCompleted = TRUE;
                 }
             }

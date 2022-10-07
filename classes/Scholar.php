@@ -157,7 +157,12 @@ class Scholar {
         $vars = $this->getOrder($vars, $field);
         $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
         if ($result->getSource() == "ldap") {
-            return $this->getLDAPResult($rows, "ldap_uid", $result);
+            $res = $this->getLDAPResult($rows, "ldapds_cn", $result, "ldapds");
+            if ($res->getValue() === "") {
+                return $this->getLDAPResult($rows, "ldap_uid", $result);
+            } else {
+                return $res;
+            }
         }
         $firstName = NameMatcher::eliminateInitials($this->getName("first"));
         $lastName = $this->getName("last");
@@ -185,23 +190,35 @@ class Scholar {
         $vars = $this->getOrder($vars, "identifier_email");
         $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
         if ($result->getSource() == "ldap") {
-            return $this->getLDAPResult($rows, "ldap_mail", $result);
+            $res = $this->getLDAPResult($rows, "ldapds_mail", $result, "ldapds");
+            if ($res->getValue() === "") {
+                return $this->getLDAPResult($rows, "ldap_mail", $result);
+            } else {
+                return $res;
+            }
         }
         return $result;
     }
 
-    private function getLDAPResult($rows, $field, $priorResult) {
-        $numRows = REDCapManagement::getNumberOfRows($rows, "ldap");
+    private function getLDAPResult($rows, $field, $priorResult, $instrument = "ldap") {
+        $numRows = REDCapManagement::getNumberOfRows($rows, $instrument);
         if ($numRows == 1) {
             return $priorResult;
         } else if ($numRows == 2) {
             $validLDAPDomains = ["vumc.org", "vanderbilt.edu"];
             $numExpected = 2;
+            $prefix = REDCapManagement::getPrefixFromInstrument($instrument);
 
             $emails = [];
             foreach ($rows as $row) {
-                if (($row['redcap_repeat_instrument'] == "ldap") && !in_array($row['ldap_vanderbiltpersonjobname'], self::$skipJobs)) {
-                    $emails[$row[$field]] = explode("@", strtolower($row["ldap_mail"]));
+                if (
+                    ($row['redcap_repeat_instrument'] == $instrument)
+                    && (
+                        !in_array($row['ldap_vanderbiltpersonjobname'], self::$skipJobs)
+                        || !in_array($row['ldapds_title'], self::$skipJobs)
+                    )
+                ) {
+                    $emails[$row[$field]] = explode("@", strtolower($row[$prefix."_mail"]));
                 }
             }
             $keys = array_keys($emails);
@@ -449,7 +466,7 @@ class Scholar {
                     $info = LDAP::getLDAPByMultiple(array_keys($key), array_values($key));
                     if ($info) {
                         $allUIDs = LDAP::findField($info, "uid");
-                        $jobs = LDAP::findField($info, "vanderbiltpersonjobname");
+                        $jobs = LDAP::findField($info, "title");
                         if (count($allUIDs) == 1) {
                             $uids = $allUIDs;
                         } else {
@@ -1786,12 +1803,15 @@ class Scholar {
             "check_email" => "scholars",
             "followup_email" => "followup",
             "init_import_email" => "manual",
+            "ldapds_mail" => "ldap",
             "ldap_mail" => "ldap",
         );
         $orders["identifier_userid"] = array(
+            "ldapds_cn" => "ldap",
             "ldap_uid" => "ldap",
         );
         $orders["identifier_vunet"] = array(
+            "ldapds_cn" => "ldap",
             "ldap_uid" => "ldap",
         );
         $orders["summary_primary_dept"] = array(
@@ -1800,6 +1820,8 @@ class Scholar {
             "check_primary_dept" => "scholars",
             "vfrs_department" => "vfrs",
             "init_import_primary_dept" => "manual",
+            "ldapds_departmentnumber" => "ldap",
+            "ldapds_department" => "ldap",
             "ldap_vanderbiltpersonhrdeptnumber" => "ldap",
             "ldap_vanderbiltpersonhrdeptname" => "ldap",
             "ldap_departmentnumber" => "ldap",
@@ -1915,6 +1937,7 @@ class Scholar {
             "followup_academic_rank" => "followup",
             "check_academic_rank" => "scholars",
             "init_import_academic_rank" => "manual",
+            "ldapds_title" => "ldap",
             "ldap_vanderbiltpersonjobname" => "ldap",
             "newman_new_rank" => "new2017",
             "newman_demographics_academic_rank" => "demographics",
@@ -2921,6 +2944,13 @@ class Scholar {
 
         $tenured = ["Professor", "Assoc Professor"];
         foreach ($rows as $row) {
+            if ($row['redcap_repeat_instrument'] == "ldapds") {
+                if (in_array($row['ldapds_title'], $tenured)) {
+                    return new Result(3, "ldap", "Computer-Generated", "", $this->pid);;
+                } else if (preg_match("/Research/", $row['ldapds_title'])) {
+                    return new Result(1, "ldap", "Computer-Generated", "", $this->pid);;
+                }
+            }
             if ($row['redcap_repeat_instrument'] == "ldap") {
                 if (in_array($row['ldap_vanderbiltpersonjobname'], $tenured)) {
                     return new Result(3, "ldap", "Computer-Generated", "", $this->pid);;
