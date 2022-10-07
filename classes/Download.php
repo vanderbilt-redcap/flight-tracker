@@ -572,7 +572,7 @@ class Download {
                 $redcapData[$i]["record_id"] = Sanitizer::sanitize($redcapData[$i]["record_id"]);
             }
         }
-        return Sanitizer::sanitizeArray($redcapData, FALSE);
+        return Sanitizer::sanitizeREDCapData($redcapData);
 	}
 
 	public static function userid($token, $server) {

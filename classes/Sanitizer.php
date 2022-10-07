@@ -21,6 +21,16 @@ class Sanitizer {
         return $str;
     }
 
+    public static function sanitizeREDCapData($data) {
+        $data = self::sanitizeArray($data, FALSE);
+        for ($i = 0; $i < count($data); $i++) {
+            if (isset($data[$i]['record_id'])) {
+                $data[$i]['record_id'] = self::sanitizeInteger($data[$i]['record_id']);
+            }
+        }
+        return $data;
+    }
+
     public static function sanitizeInteger($int) {
         if (filter_var($int, FILTER_VALIDATE_INT) !== FALSE) {
             return self::sanitize($int);

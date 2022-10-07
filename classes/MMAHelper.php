@@ -498,6 +498,7 @@ function startNow() {
 
         $json = \REDCap::getData($pid, "json", NULL, ["record_id", "summary_mentor_userid", $useridField]);
         $redcapData = json_decode($json, TRUE);
+        $redcapData = Sanitizer::sanitizeArray($redcapData);
         return [$redcapData, $useridField];
     }
 
