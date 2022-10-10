@@ -5,6 +5,9 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Sanitizer {
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitizeJSON($str) {
         /**
          * @psalm-taint-escape html
@@ -19,6 +22,9 @@ class Sanitizer {
         return "";
     }
 
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitizeREDCapData($data) {
         $data = self::sanitizeArray($data, FALSE);
         for ($i = 0; $i < count($data); $i++) {
@@ -40,6 +46,9 @@ class Sanitizer {
         }
     }
 
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitizeURL($url) {
         $url = filter_var($url, FILTER_SANITIZE_URL);
         $url = self::sanitize($url);
@@ -54,12 +63,18 @@ class Sanitizer {
         }
     }
 
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitizePid($pid) {
         $pid = filter_var($pid, FILTER_VALIDATE_INT);
         $pid = self::sanitize($pid);
         return $pid;
     }
 
+    /**
+     * @psalm-taint-specialize
+     */
     private static function sanitizeRecursive($datum) {
         if (is_array($datum)) {
             $newData = [];
@@ -73,6 +88,9 @@ class Sanitizer {
         }
     }
 
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitizeDate($date) {
         $date = self::sanitize($date);
         if (DateManagement::isDate($date)) {
@@ -82,6 +100,9 @@ class Sanitizer {
         }
     }
 
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitizeWithoutChangingQuotes($str) {
         if (is_numeric($str)) {
             $str = (string) $str;
@@ -132,6 +153,9 @@ class Sanitizer {
         }
     }
 
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitizeWithoutStrippingHTML($str, $encodeQuotes = TRUE) {
         /**
          * @psalm-taint-escape html
@@ -145,10 +169,16 @@ class Sanitizer {
         return $str;
     }
 
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitizeCohort($cohortName) {
         return Cohorts::sanitize($cohortName);
     }
 
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitize($origStr) {
         if (REDCapManagement::isValidToken($origStr)) {
             $module = Application::getModule();
@@ -174,6 +204,9 @@ class Sanitizer {
     }
 
     # requestedRecord is from GET/POST
+    /**
+     * @psalm-taint-specialize
+     */
     public static function getSanitizedRecord($requestedRecord, $records) {
         foreach ($records as $r) {
             if ($r == $requestedRecord) {
