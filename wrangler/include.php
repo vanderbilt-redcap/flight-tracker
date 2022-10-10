@@ -52,8 +52,8 @@ if (isset($_POST['request'])) {
         $records = Download::recordIds($token, $server);
         $upload = [];
         foreach ($_POST as $key => $value) {
-            if ($value && preg_match("/^record_\d+:[^:]+:\d+$/", $key)) {
-                $location = preg_replace("/^record_/", "", $key);
+            if ($value && preg_match("/^record_\d+:[^:]+:\d+$/", (string) $key)) {
+                $location = preg_replace("/^record_/", "", (string) $key);
                 list($recordId, $instrument, $instance) = explode(":", $location);
                 if (in_array($recordId, $records) && in_array($instrument, ["citation", "eric", "patent"])) {
                     $upload[] = [

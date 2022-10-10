@@ -27,7 +27,8 @@ if (isset($_GET['record'])) {
 }
 $nextRecord = \Vanderbilt\FlightTrackerExternalModule\getNextRecord($record);
 
-if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
+$headerStr = (isset($_GET['headers']) && !is_array($_GET['headers'])) ? $_GET['headers'] : "";
+if ($headerStr && ($headerStr != "false")) {
 	echo "<table style='margin-left: auto; margin-right: auto;'><tr>\n";
 	echo "<td class='yellow' style='text-align: center;'><a href='".Application::link('/tablesAndLists/dataSourceCompare.php')."&record=$nextRecord'>View Next Record</a></td>\n";
 	echo "</tr></table>\n";
@@ -80,7 +81,7 @@ foreach ($grants->getGrants("native") as $grant) {
 $name = $scholar->getNameAry();
 
 # header
-if (isset($_GET['header']) && (strtolower($_GET['header']) != "false")) {
+if ($headerStr && (strtolower($headerStr) != "false")) {
 	echo "<table style='margin-left: auto; margin-right: auto;'><tr>\n";
 	echo "<td>".getCompareSelectRecord()."</td>\n";
 	echo "<td><span style='font-size: 12px;'>Last/Full Name:</span><br><input id='search' type='text' style='width: 100px;'><br><div style='width: 100px; color: red; font-size: 11px;' id='searchDiv'></div></td>\n";

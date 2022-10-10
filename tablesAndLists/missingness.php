@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\EmailManager;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
@@ -36,10 +37,10 @@ th.name { min-width: 300px; }
 $start = 1;
 $pull = 1000;
 if (isset($_POST['start'])) {
-	$start = $_POST['start'];
+	$start = Sanitizer::sanitizeInteger($_POST['start']);
 }
 if (isset($_POST['pull'])) {
-	$pull = $_POST['pull'];
+	$pull = Sanitizer::sanitizeInteger($_POST['pull']);
 }
 $allGreen = array();
 $skip = array("summary_left_vanderbilt", "summary_survey");
@@ -437,12 +438,12 @@ if (isset($_GET['csv'])) {
 	    foreach ($redcapData[$recordId] as $row) {
             $recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($recordId));
             $ary = generateDataColumns($recordData, array_keys($fields), $potentialFields);
-            foreach ($ary['cols'] as $i => $item) {
-                if (!isset($sumFields[$i])) {
-                    $sumFields[$i] = 0;
+            foreach ($ary['cols'] as $key => $item) {
+                if (!isset($sumFields[$key])) {
+                    $sumFields[$key] = 0;
                 }
                 if ($item) {
-                    $sumFields[$i]++;
+                    $sumFields[$key]++;
                 }
             }
             $emailName = EmailManager::makeEmailIntoID($row['identifier_email']);

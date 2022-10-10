@@ -56,7 +56,7 @@ if (isset($_GET['cohort'])) {
 
 if (!empty($_POST['records']) && !empty($_POST['fields'])) {
     $fields = Sanitizer::sanitizeArray($_POST['fields']);
-    $requestedRecords = $_POST['records'];
+    $requestedRecords = is_array($_POST['records']) ? Sanitizer::sanitizeArray($_POST['records']) : [];
     $allRecords = Download::recordIds($token, $server);
     $records = [];
     foreach ($requestedRecords as $recordId) {

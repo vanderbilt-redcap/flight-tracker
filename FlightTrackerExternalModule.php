@@ -915,7 +915,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $server = $this->getProjectSetting("server", $project_id);
             if ($tokenName && $token && $server) {
                 # turn off for surveys and login pages
-                $url = $_SERVER['PHP_SELF'];
+                $url = $_SERVER['PHP_SELF'] ?? "";
                 if (
                     !preg_match("/surveys/", $url)
                     && !isset($_GET['s'])
@@ -1034,13 +1034,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	public function canRedirectToInstall() {
+        $page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
 		$bool = (
             !self::isAJAXPage()
             && !self::isAPITokenPage()
             && !self::isUserRightsPage()
             && !self::isExternalModulePage()
-            && (!isset($_GET['page']) || ($_GET['page'] != "install"))
-            && (!isset($_GET['page']) || (preg_match("/^projects/", $_GET['page'])))
+            && (!$page || ($_GET['page'] != "install"))
+            && (!$page || preg_match("/^projects/", $page))
         );
 		if ($_GET['pid']) {
 			# project context
@@ -1050,7 +1051,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	private static function isAJAXPage() {
-		$page = $_SERVER['PHP_SELF'];
+		$page = $_SERVER['PHP_SELF'] ?? "";
 		if (preg_match("/ajax/", $page)) {
 			return TRUE;
 		}
@@ -1061,7 +1062,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	private static function isAPITokenPage() {
-		$page = $_SERVER['PHP_SELF'];
+		$page = $_SERVER['PHP_SELF'] ?? "";
 		$tokenPages = array("project_api_ajax.php", "project_api.php");
 		if (preg_match("/API/", $page)) {
 			foreach ($tokenPages as $tokenPage) {
@@ -1077,7 +1078,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	private static function isUserRightsPage() {
-		$page = $_SERVER['PHP_SELF'];
+		$page = $_SERVER['PHP_SELF'] ?? "";
 		if (preg_match("/\/UserRights\//", $page)) {
 			return TRUE;
 		}
@@ -1085,7 +1086,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	private static function isExternalModulePage() {
-		$page = $_SERVER['PHP_SELF'];
+		$page = $_SERVER['PHP_SELF'] ?? "";
 		if (preg_match("/ExternalModules\/manager\/project.php/", $page)) {
 			return TRUE;
 		}

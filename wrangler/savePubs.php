@@ -17,9 +17,9 @@ $metadata = Download::metadata($token, $server);
 $pmids = [];
 if (isset($_POST['finalized'])) {
     $records = Download::recordIds($token, $server);
-    $newFinalized = json_decode(Sanitizer::sanitizeJSON($_POST['finalized']));
-    $newOmissions = json_decode(Sanitizer::sanitizeJSON($_POST['omissions']));
-    $newResets = json_decode(Sanitizer::sanitizeJSON($_POST['resets']));
+    $newFinalized = json_decode(Sanitizer::sanitizeJSON($_POST['finalized'] ?? "[]"));
+    $newOmissions = json_decode(Sanitizer::sanitizeJSON($_POST['omissions'] ?? "[]"));
+    $newResets = json_decode(Sanitizer::sanitizeJSON($_POST['resets'] ?? "[]"));
     $recordId = Sanitizer::getSanitizedRecord($_POST['record_id'], $records);
 
     $citationFields = Application::getCitationFields($metadata);
@@ -91,10 +91,7 @@ if (isset($_POST['finalized'])) {
 } else if (isset($_POST['pmid'])) {
     $pmids = [Sanitizer::sanitize($_POST['pmid'])];
 } else if (isset($_POST['pmids'])) {
-    $pmids = [];
-    foreach ($_POST['pmids'] as $pmid) {
-        $pmids[] = Sanitizer::sanitize($pmid);
-    }
+    $pmids = Sanitizer::sanitizeArray($_POST['pmids']);
 } else {
     $data = array("error" => "You don't have any input! This should never happen.");
     echo json_encode($data);
@@ -103,7 +100,8 @@ if (isset($_POST['finalized'])) {
 
 
 if ($pmids && !empty($pmids)) {
-    $recordId = $_POST['record_id'];
+    $records = Download::recordIds($token, $server);
+    $recordId = Sanitizer::getSanitizedRecord($_POST['record_id'], $records);
     $citationFields = Application::getCitationFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
 

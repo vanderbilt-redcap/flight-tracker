@@ -11,7 +11,7 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $hasType = false;
 foreach ($_POST as $variable => $value) {
-	if (preg_match("/^type___/", $variable)) {
+	if (preg_match("/^type___/", (string) $variable)) {
 		$hasType = true;
 		break;
 	}
@@ -58,7 +58,7 @@ if ($hasType && isset($_POST['begin']) && ($_POST['begin'] != "")) {
 
 	$types = array();
 	foreach ($_POST as $variable => $value) {
-		if (preg_match("/^type___/", $variable)) {
+		if (preg_match("/^type___/", (string) $variable)) {
 			$types[] = REDCapManagement::sanitize($value);
 		}
 	}

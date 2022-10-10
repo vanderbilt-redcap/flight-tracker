@@ -531,19 +531,23 @@ class LdapLookup {
     # from ori1007lt:/app001/www/redcap/webtools2/ldap/ldap_config.php
     private static function getDSNs()
     {
-        $ldapuser = $_POST['username'];
-        $ldappass = $_POST['password'];
-        return [
-            [
-                'url'       => 'ldaps://ds.vanderbilt.edu',
-                'port'      => '636',
-                'version'   => '3',
-                'userattr' => 'cn',
-                'binddn'    => 'cn='.$ldapuser.',cn=users,dc=ds,dc=vanderbilt,dc=edu',
-                'basedn'    => 'dc=ds,dc=vanderbilt,dc=edu',
-                'bindpw'    => $ldappass,
-            ],
-        ];
+        $ldapuser = Sanitizer::sanitize($_POST['username'] ?? "");
+        $ldappass = Sanitizer::sanitize($_POST['password'] ?? "");
+        if ($ldappass && $ldapuser) {
+            return [
+                [
+                    'url'       => 'ldaps://ds.vanderbilt.edu',
+                    'port'      => '636',
+                    'version'   => '3',
+                    'userattr' => 'cn',
+                    'binddn'    => 'cn='.$ldapuser.',cn=users,dc=ds,dc=vanderbilt,dc=edu',
+                    'basedn'    => 'dc=ds,dc=vanderbilt,dc=edu',
+                    'bindpw'    => $ldappass,
+                ],
+            ];
+        } else {
+            return [];
+        }
     }
 
     const MAX_RETRIES = 5;

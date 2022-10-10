@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
@@ -22,13 +23,13 @@ if ($_GET['download'] && ($_GET['download'] == "csv")) {
         $html .= makeMainForm($token, $server);
     }
     echo $html;
-} else if ($_GET['upload'] && ($_GET['upload'] == "csv")) {
+} else if ($_GET['upload'] && ($_GET['upload'] == "csv") && isset($_FILES['csv_file'])) {
     require_once(dirname(__FILE__) . "/charts/baseWeb.php");
     $html = makeUploadTable($_FILES['csv_file']['tmp_name'], $token, $server);
     echo $html;
 } else if ($_POST['mentorName']) {
     require_once(dirname(__FILE__) . "/small_base.php");
-    $mentorName = REDCapManagement::sanitize($_POST['mentorName']);
+    $mentorName = Sanitizer::sanitize($_POST['mentorName'] ?? "");
     list($mentorFirst, $mentorLast) = NameMatcher::splitName($mentorName);
     $lookup = new REDCapLookup($mentorFirst, $mentorLast);
     $uids = $lookup->getUidsAndNames();

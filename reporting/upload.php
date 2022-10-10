@@ -35,11 +35,11 @@ if (!empty($_POST)) {
     $awardNo = Sanitizer::sanitize($_POST['awardNo']);
     $dateOfSubmission = Sanitizer::sanitizeDate($_POST['dateOfSubmission']);
     $action = Sanitizer::sanitize($_POST['action']);
-    $scope = Sanitizer::sanitize(isset($_POST['scope']) ? $_POST['scope'] - 1 : "all");
+    $scope = Sanitizer::sanitize((isset($_POST['scope']) && is_numeric($_POST['scope'])) ? $_POST['scope'] - 1 : "all");
 
     $data = [];
     try {
-        if ($action == "uploadFile") {
+        if ($action == "uploadFile" && isset($_FILES['file'])) {
             $filename = $_FILES['file']['tmp_name'];
             if ($table && $filename && file_exists($filename)) {
                 $linesToProcess = [];

@@ -685,8 +685,9 @@ function getIndexedRedcapData($token, $server, $fields, $cohort = "", $metadata 
 }
 
 function getCohortSelect($token, $server, $pid) {
-	$html = "";
-	$html .= "<select onchange='var base = \"?page=".urlencode($_GET['page'])."&prefix=".$_GET['prefix']."&pid=$pid\"; if ($(this).val()) { window.location.href = base+\"&cohort=\" + $(this).val(); } else { window.location.href = base; }'>\n";
+    $page = Sanitizer::sanitize($_GET['page'] ?? "");
+    $prefix = Sanitizer::sanitize($_GET['prefix'] ?? "");
+	$html = "<select onchange='var base = \"?page=".urlencode($page)."&prefix=".urlencode($prefix)."&pid=$pid\"; if ($(this).val()) { window.location.href = base+\"&cohort=\" + $(this).val(); } else { window.location.href = base; }'>\n";
 	$cohorts = new Cohorts($token, $server, CareerDev::getModule());
 	$cohortTitles = $cohorts->getCohortTitles();
 	$html .= "<option value=''>---ALL---</option>\n";
@@ -1046,15 +1047,13 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
 
     $choices = DataDictionaryManagement::getChoices($metadata);
     foreach ($lists as $type => $str) {
+        $oldItemChoices = [];
         for ($i = 0; $i < count($fields[$type]); $i++) {
             $field = $fields[$type][$i];
             $oldItemChoices = $choices[$field];
             if (!empty($oldItemChoices)) {
                 break;
             }
-        }
-        if (count($fields[$type]) === 0) {
-            $oldItemChoices = [];
         }
         $other = $others[$type];
         $lists[$type] = makeREDCapList($str, $other, $oldItemChoices);

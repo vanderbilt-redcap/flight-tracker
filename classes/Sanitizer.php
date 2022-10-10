@@ -93,6 +93,9 @@ class Sanitizer {
      */
     public static function sanitizeDate($date) {
         $date = self::sanitize($date);
+        if (!$date) {
+            return "";
+        }
         if (DateManagement::isDate($date)) {
             return $date;
         } else {

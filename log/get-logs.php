@@ -11,7 +11,7 @@ $limit = Sanitizer::sanitizeInteger($_GET['length']);
 $limitClause = "limit ? offset ?";
 
 $whereClause = "";
-if ($_REQUEST['search']['value']) {
+if (isset($_REQUEST['search']['value'])) {
     $value = Sanitizer::sanitize($_REQUEST['search']['value']);
     $whereClause = "WHERE message LIKE ?";
     $params1[] = "%$value%";

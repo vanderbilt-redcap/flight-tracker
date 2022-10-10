@@ -70,7 +70,7 @@ $cohorts = new Cohorts($token, $server, Application::getModule());
 <?php
 
 if (($pid == 66635) && preg_match("/redcap.vanderbilt.edu/", $server)) {
-    $currentUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+    $currentUrl = Application::link("this");
     if (isset($_GET['appointments'])) {
         $url = preg_replace("/\&appointments/", "", $currentUrl);
         echo "<p class='centered'><a href='$url'>View All Post-Docs</a></p>\n";

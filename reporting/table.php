@@ -20,7 +20,7 @@ $includeDOI = FALSE;
 $htmlForIncludeDOI = "";
 if (NIHTables::beginsWith($tableNum, ["5"])) {
     $includeDOI = isset($_GET['includeDOI']) ? Sanitizer::sanitize($_GET['includeDOI']) : FALSE;
-    $thisUrl = $_SERVER['REQUEST_URI'];
+    $thisUrl = Application::link("this");
     if ($includeDOI) {
         $url = preg_replace("/&includeDOI=?\d*/", "", $thisUrl);
         $htmlForIncludeDOI = "<a href='$url'>Turn Off DOIs in Publications</a>";

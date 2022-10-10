@@ -22,11 +22,12 @@ class Altmetric {
     }
 
     public static function makeClickText() {
+        $thisLink = Application::link("this");
         if (isset($_GET['altmetrics'])) {
-            $url = str_replace("&altmetrics", "", $_SERVER['REQUEST_URI']);
+            $url = str_replace("&altmetrics", "", $thisLink);
             $clickStatus = "off";
         } else {
-            $url = $_SERVER['REQUEST_URI']."&altmetrics";
+            $url = $thisLink."&altmetrics";
             $clickStatus = "on";
         }
         $title = 'Sourced from the Web, altmetrics can tell you a lot about how often journal articles and other scholarly outputs like datasets are discussed and used around the world.';

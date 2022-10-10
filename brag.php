@@ -81,7 +81,7 @@ if (isset($_GET['showHeaders'])) {
         $noCitationsMessage = "The widget has not yet been configured.";
     }
 
-    $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
+    $url = Application::link("this", $pid, TRUE);
     $url = preg_replace("/\&showHeaders[^\&]*/", "", $url);
     $url = preg_replace("/showHeaders[^\&]*\&/", "", $url);
     $url .= "&NOAUTH";

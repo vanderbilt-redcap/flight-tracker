@@ -5,18 +5,13 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/base.php");
 
-if ($_GET['cohort']) {
-    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
-} else if ($_POST['cohort']) {
-    $cohort = REDCapManagement::sanitizeCohort($_POST['cohort']);
-} else {
-    $cohort = "";
-}
+$cohort = Sanitizer::sanitizeCohort($_GET['cohort'] ?? $_POST['cohort'] ?? "");
 
 $options = array(
 		"1234" => "Any &amp; All Ks",
@@ -54,23 +49,25 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
     $myFields = ["record_id", "identifier_last_name", "identifier_first_name", "identifier_email", "identifier_institution", "identifier_left_date"];
 	$redcapData = Download::getFilteredREDCapData($token, $server, array_unique(array_merge(Application::$summaryFields, $myFields)), $cohort, CareerDev::getPluginModule());
 
+    $startDate = Sanitizer::sanitizeDate($_POST['start'] ?? "");
+    $endDate = Sanitizer::sanitizeDate($_POST['end'] ?? "");
+    $unconvertedDate = Sanitizer::sanitizeDate($_POST['excludeUnconvertedKsBefore'] ?? "");
 	if (isset($_POST['average'])) {
+        $kType = Sanitizer::sanitize($_POST['k_type'] ?? "");
         $searchIfLeft = isset($_POST['excludeIfLeft']) && ($_POST['excludeIfLeft'] == "on");
-		$kLength = '';
-		if (isset($_POST['k']) && is_numeric($_POST['k'])) {
-			$kLength = REDCapManagement::sanitize($_POST['k']);
-		}
-		$avgs = getAverages($redcapData, $kLength, $_POST['k_number'], $_POST['k_type'], $_POST['start'], $_POST['end'], $_POST['excludeUnconvertedKsBefore'], $searchIfLeft);
+		$kLength = Sanitizer::sanitizeInteger($_POST['k'] ?? "");
+        $kNumber = Sanitizer::sanitize($_POST['k_number'] ?? "");
+		$avgs = getAverages($redcapData, $kLength, $kNumber, $kType, $startDate, $endDate, $unconvertedDate, $searchIfLeft);
 
 		$dateRange = "";
-		if ($_POST['start']) {
-		    if ($_POST['end']) {
-		        $dateRange = "<br>".REDCapManagement::YMD2MDY($_POST['start'])." - ".REDCapManagement::YMD2MDY($_POST['end']);
+		if ($startDate) {
+		    if ($endDate) {
+		        $dateRange = "<br>".REDCapManagement::YMD2MDY($startDate)." - ".REDCapManagement::YMD2MDY($endDate);
 		    } else {
-                $dateRange = "<br>Starting at ".REDCapManagement::YMD2MDY($_POST['start']);
+                $dateRange = "<br>Starting at ".REDCapManagement::YMD2MDY($startDate);
             }
-        } else if ($_POST['end']) {
-            $dateRange = "<br>Prior to ".REDCapManagement::YMD2MDY($_POST['end']);
+        } else if ($endDate) {
+            $dateRange = "<br>Prior to ".REDCapManagement::YMD2MDY($endDate);
         }
 
 		if ($cohort) {
@@ -80,7 +77,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 		}
 		// echo REDCapManagement::json_encode_with_spaces($avgs)."<br><br>";
 		echo "<table class='centered'>";
-		echo "<tr><th>Average K-To-R Conversion Ratio<br>({$options[$_POST['k_type']]})$dateRange";
+		echo "<tr><th>Average K-To-R Conversion Ratio<br>({$options[$kType]})$dateRange";
 		echo "<ul class='k2r'>";
 		if ($kLength) {
 			echo "<li class='k2r'>Omit anyone with a most-recent CDA less than $kLength years old</li>";
@@ -96,8 +93,8 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 		if ($kLength) {
 			echo "<li class='k2r'>Omit anyone with a CDA of the given type that is less than $kLength years old</li>";
 		}
-		if ($_POST['excludeUnconvertedKsBefore']) {
-            echo "<li class='k2r'>Omit anyone who hasn't converted with a K before ".REDCapManagement::sanitize($_POST['excludeUnconvertedKsBefore'])."</li>";
+		if ($unconvertedDate) {
+            echo "<li class='k2r'>Omit anyone who hasn't converted with a K before $unconvertedDate</li>";
         }
 		echo "</ul>";
 		echo "</th><td>{$avgs['conversion']}</td></tr>";
@@ -117,11 +114,11 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 		echo "</table>";
 	} else if (isset($_POST['list'])) {
 		$showNames = false;
-		if ($_POST['show_names']) {
+		if ($_POST['show_names'] ?? FALSE) {
 			$showNames = true;
 		}
-		$intKLength = $_POST['internal_k'];
-		$indKLength = $_POST['individual_k'];
+		$intKLength = Sanitizer::sanitizeInteger($_POST['internal_k'] ?? CareerDev::getInternalKLength());
+		$indKLength = Sanitizer::sanitizeInteger($_POST['individual_k'] ?? CareerDev::getIndividualKLength());
 		if ($intKLength && $indKLength && is_numeric($intKLength) && is_numeric($indKLength)) {
 			echo "<h2>Number of Scholars on a K Award</h2>";
 			$kAwardees = getKAwardees($redcapData, $intKLength, $indKLength);
@@ -133,10 +130,10 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 				echo "<table class='centered'>\n";
 				$lines = array();
 				foreach ($kAwardees as $recordId => $name) {
-					array_push($lines, "<tr>");
-					array_push($lines, "<td>".Links::makeSummaryLink($pid, $recordId, $event_id, $recordId.": ".$name)."</td>");
-					array_push($lines, "<td>".getTypeOfLastK($redcapData, $recordId)."</td>");
-					array_push($lines, "</tr>");
+					$lines[] = "<tr>";
+					$lines[] = "<td>" . Links::makeSummaryLink($pid, $recordId, $event_id, $recordId . ": " . $name) . "</td>";
+					$lines[] = "<td>" . getTypeOfLastK($redcapData, $recordId) . "</td>";
+					$lines[] = "</tr>";
 				}
 				echo implode("\n", $lines);
 				echo "</table>";

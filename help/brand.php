@@ -5,7 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-if (count($_FILES) > 0) {
+if (count($_FILES) > 0 && isset($_FILES['logo'])) {
 	$filename = $_FILES['logo']['tmp_name'];
 	$check = getimagesize($filename);
 	if ($check !== FALSE) {

@@ -3,14 +3,15 @@
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 # no JS, no CSS
 
-$oldValue = $_POST['oldValue'];
-$newValue = $_POST['newValue'];
+$oldValue = Sanitizer::sanitize($_POST['oldValue'] ?? "");
+$newValue = Sanitizer::sanitize($_POST['newValue'] ?? "");
 
 if ($oldValue && $newValue) {
 	if (!preg_match("/['\"#]/", $newValue)) {

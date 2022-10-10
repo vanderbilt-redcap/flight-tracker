@@ -40,7 +40,8 @@ class CareerDev {
 	}
 
 	public static function isWrangler() {
-		return preg_match("/wrangler/", $_GET['page']);
+        $page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
+		return preg_match("/wrangler/", $page);
 	}
 
 	public static function filterOutCopiedRecords($records) {
@@ -164,9 +165,10 @@ class CareerDev {
         }
 	    $pid = REDCapManagement::sanitize($pid);
 	    if (self::isLocalhost()) {
+            $page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
 	        if (
 	            isset($_GET['test'])
-                || (isset($_GET['page']) && !preg_match('/reporting/', $_GET['page']))
+                || !preg_match('/reporting/', $page)
             ) {
                 $mssg = REDCapManagement::sanitize($mssg);
                 if ($pid) {
@@ -220,7 +222,7 @@ class CareerDev {
 	}
 
 	public static function isREDCap() {
-		$rootPage = $_SERVER['PHP_SELF'];
+		$rootPage = $_SERVER['PHP_SELF'] ?? "";
 		if (strpos($rootPage, "ExternalModules") !== FALSE) {
 			return FALSE;
 		}
@@ -258,6 +260,16 @@ class CareerDev {
 		self::$pid = $pid;
 	}
 
+    private static function constructThisURL() {
+        $isHTTPS = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off'));
+        $serverPort = $_SERVER['SERVER_PORT'] ?? 0;
+        $isSSLPort = $serverPort == 443;
+        $protocol = ($isHTTPS || $isSSLPort) ? "https://" : "http://";
+        $host = $_SERVER['HTTP_HOST'] ?? "";
+        $uri = $_SERVER['REQUEST_URI'] ?? "";
+        return $protocol.$host.$uri;
+    }
+
 	public static function getPid($token = "") {
 		if ($token) {
 			$pid = self::getPidFromToken($token);
@@ -269,11 +281,11 @@ class CareerDev {
 		if (self::$pid) {
 			return self::$pid;
 		}
-        $thisURL = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
-
-        if (preg_match("/project_id=\d+/", $thisURL) && preg_match("/pid=\d+/", $thisURL)) {
+        $thisUrl = self::constructThisURL();
+        if (preg_match("/project_id=\d+/", $thisUrl) && preg_match("/pid=\d+/", $thisUrl)) {
             throw new \Exception("Invalid URL");
         }
+
 		$requestedPid = FALSE;
  		if (isset($_GET['pid'])) {
 			# least reliable because REDCap can sometimes change this value in other crons
@@ -392,14 +404,13 @@ class CareerDev {
 
 	public static function getLink($relativeUrl, $pid = "", $withWebroot = FALSE) {
 	    if ($relativeUrl == "this") {
-            $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-            $fullURL = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+            $fullURL = self::constructThisURL();
             $url = explode("?", $fullURL)[0];
             $paramKeys = ["page", "pid", "prefix", "project_id"];
             $initialSeparator = "?";
             foreach ($paramKeys as $key) {
                 if (isset($_GET[$key])) {
-                    $url .= "$initialSeparator$key=".urlencode(urldecode(REDCapManagement::sanitize($_GET[$key])));
+                    $url .= "$initialSeparator$key=".urlencode(urldecode(Sanitizer::sanitize($_GET[$key])));
                     $initialSeparator = "&";
                 }
             }
@@ -736,20 +747,20 @@ class CareerDev {
 	public static function getBackgroundCSS() {
 		$currPage = urlencode(REDCapManagement::sanitize($_GET['page']));
 		$bgs = self::getMenuBackgrounds();
-		$r = self::getREDCapDir();
 
+        $page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
 		if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 			return self::link("/css/white.css");
 		}
-		if ($_GET['page'] == "index") {
+		if ($page == "index") {
 			return self::link("/css/front.css");
 		}
 
 		$default = "";
-		if (preg_match("/search\//", $_GET['page'])) {
+		if (preg_match("/search\//", $page)) {
 			$default = self::link("/css/env.css");
 		}
-        if (preg_match("/reporting\//", $_GET['page'])) {
+        if (preg_match("/reporting\//", $page)) {
             $default = self::link("/css/general.css");
         }
 

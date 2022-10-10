@@ -4,6 +4,7 @@ use Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\EmailManager;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -51,9 +52,9 @@ $messages = $mgr->getMessageHash();
 
 $currSettingName = "";
 if (isset($_POST['name'])) {
-	$currSettingName = REDCapManagement::sanitize($_POST['name']);
+	$currSettingName = Sanitizer::sanitize($_POST['name']);
 } else if (isset($_GET[$selectName])) {
-	$currSettingName = REDCapManagement::sanitize($_GET[$selectName]);
+	$currSettingName = Sanitizer::sanitize($_GET[$selectName]);
 }
 $currSetting = $mgr->getItem($currSettingName);
 
@@ -299,12 +300,7 @@ $(document).ready(function() {
 			echo "<div style='text-align: center; margin: 16px 0px;'>Load Prior Message:<br>".$mgr->getSelectForExistingNames($messageSelectName)."</div>\n";
 		}
 		if (isset($_POST['message'])) {
-			// does not work $mssg = REDCapManagement::sanitizeWithoutStrippingHTML($_POST['message']);
-            /**
-             * @psalm-taint-escape html
-             * @psalm-taint-escape has_quotes
-             */
-            $mssg = $_POST['message'];
+			$mssg = Sanitizer::sanitizeWithoutStrippingHTML($_POST['message'], FALSE);
 		} else if (isset($currSetting['what']['message'])) {
 			$mssg = $currSetting['what']['message'];
 		} else {
@@ -490,7 +486,7 @@ function makeDateTime($field, $when, $isReadonly = "") {
 }
 
 function getRealInput($source) {
-	$pairs = explode("&", $source == 'POST' ? file_get_contents("php://input") : $_SERVER['QUERY_STRING']);
+	$pairs = explode("&", $source == 'POST' ? file_get_contents("php://input") : $_SERVER['QUERY_STRING'] ?? "");
 	$vars = array();
 	foreach ($pairs as $pair) {
 		$nv = explode("=", $pair);

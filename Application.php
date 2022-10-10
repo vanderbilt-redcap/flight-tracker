@@ -237,7 +237,7 @@ class Application {
         $str .= "<link rel='stylesheet' href='".self::link("/css/w3.css")."' />";
         $str .= "<script src='".self::link("/js/base.js")."&$version'></script>";
 
-        $baseUrl = $_SERVER['PHP_SELF'];
+        $baseUrl = $_SERVER['PHP_SELF'] ?? "";
         $isExtModPage = preg_match("/ExternalModules/", $baseUrl) || preg_match("/external_modules/", $baseUrl);
         $isPluginPage = preg_match("/\/plugins\//", $baseUrl);
         $isFTPage = $isPluginPage || $isExtModPage && (preg_match("/odules\/$/", $baseUrl) || preg_match("/odules\/index.php$/", $baseUrl));
@@ -506,7 +506,7 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
     }
 
     public static function isWebBrowser() {
-        return $_SERVER['REQUEST_URI'];
+        return $_SERVER['REQUEST_URI'] ?? "";
     }
 
     public static function isLocalhost() {

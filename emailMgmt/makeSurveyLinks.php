@@ -4,17 +4,19 @@ define("NOAUTH", TRUE);      // for plugin
 
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
-$records = $_POST['records'];
-$pid = $_GET['pid'];
-$instrument = $_POST['instrument'];
-$instances = $_POST['instances'];
+$records = (isset($_POST['records']) && is_array($_POST['records'])) ? $_POST['records'] : [];
+$pid = (isset($_GET['pid']) && is_numeric($_GET['pid'])) ? $_GET['pid'] : "";
+$instrument = $_POST['instrument'] ?? "";
+$instances = (isset($_POST['instances']) && is_array($_POST['instances'])) ? $_POST['instances'] : [];
 
-if ($records && $instrument && $instances) {
+if ($records && $instrument && $instances && $pid) {
 	$results = array();
 	foreach ($records as $record) {
-        $instance = $instances[$record] ?: 1;
-		$link = \REDCap::getSurveyLink($record, $instrument, NULL, $instance, $pid);
-		$results[$record] = $link;
+        if (is_string($record)) {
+            $instance = $instances[$record] ?? 1;
+            $link = \REDCap::getSurveyLink($record, $instrument, NULL, $instance, $pid);
+            $results[$record] = $link;
+        }
 	}
 	echo json_encode($results);
 } else {

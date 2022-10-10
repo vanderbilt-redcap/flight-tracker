@@ -14,7 +14,7 @@ class PositionChange {
             $records = Application::filterOutCopiedRecords($records);
         }
         $names = Download::names($token, $server);
-        $page = basename($_SERVER['PHP_SELF']);
+        $page = basename($_SERVER['PHP_SELF'] ?? "");
 
         $html = "Record: <select style='width: 100%;' id='refreshRecord' onchange='refreshForRecord(\"$page\");'><option value=''>---SELECT---</option>";
         foreach ($records as $record) {

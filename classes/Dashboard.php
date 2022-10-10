@@ -141,7 +141,7 @@ class Dashboard {
         if (isset($_GET['page'])) {
             return Sanitizer::sanitize($_GET['page']);
         } else {
-            return basename(Sanitizer::sanitize($_SERVER['SCRIPT_NAME']));
+            return basename(Sanitizer::sanitize($_SERVER['SCRIPT_NAME'] ?? ""));
         }
     }
 

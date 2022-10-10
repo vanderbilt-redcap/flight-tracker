@@ -57,7 +57,7 @@ if (isset($_POST['resourceList'])) {
         $continue = FALSE;
     }
     if ($continue) {
-        $resources = preg_split("/[\n\r]+/", $_POST['resourceList']);
+        $resources = preg_split("/[\n\r]+/", Sanitizer::sanitize($_POST['resourceList'] ?? ""));
         $reverseResourceChoices = [];
         foreach ($choices[$resourceField] ?? [] as $idx => $label) {
             $reverseResourceChoices[$label] = $idx;

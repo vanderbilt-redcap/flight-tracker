@@ -196,7 +196,7 @@ class EmailManager {
 		    $currTimes = [$currTime];
         } else {
 		    $currTimes = [];
-		    $currTime = $_SERVER['REQUEST_TIME'];
+		    $currTime = $_SERVER['REQUEST_TIME'] ?? 0;
 		    $lastRunTs = Application::getSetting("emails_last_run", $this->pid);
 		    if ($lastRunTs) {
                 if ($currTime > $lastRunTs) {
@@ -291,7 +291,7 @@ class EmailManager {
             if (!empty($sentEmails)) {
                 foreach ($currTimes as $currTime) {
                     if (!Application::isLocalhost()) {
-                        Application::log("$logHeader: Sending emails for " . date($format, (int)$currTime) . "; process spawned at " . date($format, $_SERVER['REQUEST_TIME']), $this->pid);
+                        Application::log("$logHeader: Sending emails for " . date($format, (int)$currTime) . "; process spawned at " . date($format, $_SERVER['REQUEST_TIME'] ?? 0), $this->pid);
                     }
                 }
             }

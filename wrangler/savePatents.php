@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\PatentsView;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -13,10 +14,11 @@ $metadata = Download::metadata($token, $server);
 $pmids = [];
 $numbers = [];
 if (isset($_POST['finalized'])) {
-	$newFinalized = json_decode($_POST['finalized']);
-    $newOmissions = json_decode($_POST['omissions']);
-    $newResets = json_decode($_POST['resets']);
-	$recordId = REDCapManagement::sanitize($_POST['record_id']);
+    $records = Download::recordIds($token, $server);
+    $newFinalized = json_decode(Sanitizer::sanitizeJSON($_POST['finalized'] ?? "[]"));
+    $newOmissions = json_decode(Sanitizer::sanitizeJSON($_POST['omissions'] ?? "[]"));
+    $newResets = json_decode(Sanitizer::sanitizeJSON($_POST['resets'] ?? "[]"));
+    $recordId = Sanitizer::getSanitizedRecord($_POST['record_id'], $records);
 
     $patentFields = Application::getPatentFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $patentFields, [$recordId]);
@@ -64,9 +66,9 @@ if (isset($_POST['finalized'])) {
 	}
 	exit;
 } else if (isset($_POST['number'])) {
-    $numbers = [$_POST['number']];
+    $numbers = [Sanitizer::sanitize($_POST['number'])];
 } else if (isset($_POST['numbers'])) {
-    $numbers = $_POST['numbers'];
+    $numbers = Sanitizer::sanitizeArray($_POST['numbers']);
 } else {
     $data = array("error" => "You don't have any input! This should never happen.");
     echo json_encode($data);
@@ -74,7 +76,8 @@ if (isset($_POST['finalized'])) {
 }
 
 if ($numbers && !empty($numbers)) {
-    $recordId = $_POST['record_id'];
+    $records = Download::recordIds($token, $server);
+    $recordId = Sanitizer::getSanitizedRecord($_POST['record_id'], $records);
     $patentFields = Application::getPatentFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $patentFields, [$recordId]);
 

@@ -385,23 +385,24 @@ class Download {
         }
 	    if (
             $pid
-	        && isset($_SESSION['metadata'.$pid])
-            && is_array($_SESSION['metadata'.$pid])
-            && !empty($_SESSION['metadata'.$pid])
             && isset($_SESSION['lastMetadata'.$pid])
             && empty($fields)
         ) {
-	        $ts = $_SESSION['lastMetadata'.$pid];
+            $metadataKey = 'metadata'.$pid;
+            $timestampKey = 'lastMetadata'.$pid;
+            $cachedMetadata = $_SESSION[$metadataKey] ?? [];
+	        $ts = $_SESSION[$timestampKey] ?? 0;
 	        $currTs = time();
 	        $fiveMinutes = 5 * 60;
 	        if (
 	            ($currTs - $ts >= $fiveMinutes)
                 && ($currTs > $ts)
+                && !empty($cachedMetadata)
             ) {
                 if (isset($_GET['test'])) {
                     Application::log("Download::metadata returning _SESSION", $pid);
                 }
-                return $_SESSION['metadata'.$pid];
+                return $cachedMetadata;
             }
         }
 		if (preg_match("/".SERVER_NAME."/", $server) && $pid) {
