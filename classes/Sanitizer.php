@@ -42,7 +42,7 @@ class Sanitizer {
 
     public static function sanitizeURL($url) {
         $url = filter_var($url, FILTER_SANITIZE_URL);
-        $url = self::sanitizeWithoutChangingQuotes($url);
+        $url = self::sanitize($url);
         if (!$url) {
             throw new \Exception("Invalid URL!");
         } else {
