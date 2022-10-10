@@ -1068,7 +1068,7 @@ function characteristicsPopup(entity) {
     public static function makeSurveyHTML($partners, $partnerRelationship, $row, $metadata) {
         $html = "";
         $imageLink = Application::link("mentor/img/temp_image.jpg");
-        $scriptLink = Application::link("mentor/vendor/jquery.easy-pie-chart/dist/jquery.easypiechart.min.js");
+        $scriptLink = Application::link("mentor/js/jquery.easypiechart.min.js");
         $percComplete = self::getPercentComplete($row, $metadata);
 
         $html .= "

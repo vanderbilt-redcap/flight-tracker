@@ -29,14 +29,14 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
   <meta name="author" content="">
 
   <title><?= Application::getProgramName()." - Mentee-Mentor Agreement" ?></title>
-    <script src="<?= Application::link("mentor/vendor/jquery/jquery.min.js") ?>"></script>
+    <script src="<?= Application::link("mentor/js/jquery.min.js") ?>"></script>
 
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
 
   <!-- Custom fonts for this template -->
-  <link href="<?= Application::link("mentor/vendor/fontawesome-free/css/all.min.css") ?>" rel="stylesheet">
-  <link href="<?= Application::link("mentor/vendor/simple-line-icons/css/simple-line-icons.css") ?>" rel="stylesheet" type="text/css">
+  <link href="<?= Application::link("mentor/css/all.min.css") ?>" rel="stylesheet">
+  <link href="<?= Application::link("mentor/css/simple-line-icons.css") ?>" rel="stylesheet" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css">
 <link rel="stylesheet" href="<?= Application::link("/css/typekit.css").Application::getVersion() ?>">
 
