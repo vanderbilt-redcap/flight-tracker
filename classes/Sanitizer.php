@@ -41,12 +41,17 @@ class Sanitizer {
     }
 
     public static function sanitizeURL($url) {
-        /**
-         * @psalm-taint-escape ssrf
-         * @psalm-taint-escape header
-         */
         $url = filter_var($url, FILTER_SANITIZE_URL);
-        return self::sanitizeWithoutChangingQuotes($url);
+        $url = self::sanitizeWithoutChangingQuotes($url);
+        if (!$url) {
+            throw new \Exception("Invalid URL!");
+        } else {
+            /**
+             * @psalm-taint-escape ssrf
+             * @psalm-taint-escape header
+             */
+            return $url;
+        }
     }
 
     public static function sanitizePid($pid) {

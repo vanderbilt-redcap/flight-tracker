@@ -46,10 +46,10 @@ echo "<h4>Specify initial(s) <u>after</u> a name</h4>";
 
 $postQuery = "";
 if (isset($_POST['q']) && $_POST['q']) {
-    $postQuery = REDCapManagement::sanitize($_POST['q']);
+    $postQuery = Sanitizer::sanitizeWithoutChangingQuotes($_POST['q']);
 	$metadata = Download::metadata($token, $server);
 
-	$terms = splitTerms("/\s+/", Sanitizer::sanitizeWithoutChangingQuotes($_POST['q']));
+	$terms = splitTerms("/\s+/", $postQuery);
 	$scores = array();    // record_id:citation_num as key
 	$matchedCitations = array();    // record_idi, citation_num as keys
 	$names = \Vanderbilt\FlightTrackerExternalModule\getAlphabetizedNames($token, $server);

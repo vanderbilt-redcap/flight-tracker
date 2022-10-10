@@ -70,11 +70,7 @@ if (isset($_POST['request'])) {
         }
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);   // after upload
         $url2 = Sanitizer::sanitizeURL("$url$wranglerTypeParam&record=".$nextRecord);
-        if ($url2) {
-            header("Location: $url2");
-        } else {
-            throw new \Exception("Invalid URL!");
-        }
+        header("Location: $url2");
     } else {
         throw new \Exception("Improper request: ".Sanitizer::sanitize($_POST['request']));
     }
@@ -145,11 +141,7 @@ try {
         } else {
             $url2 = Sanitizer::sanitizeURL("$url$wranglerTypeParam&record=".$nextRecord);
         }
-        if ($url2) {
-            header("Location: $url2");
-        } else {
-            throw new \Exception("Invalid URL");
-        }
+        header("Location: $url2");
     } else if ($record != 0) {
         echo "<input type='hidden' id='nextRecord' value='".$nextRecord."'>\n";
 
