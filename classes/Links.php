@@ -3,6 +3,7 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use const http\Client\Curl\SSL_VERSION_ANY;
 
 
 # This class handles links within the code. It puts in the appropriate prefix to relative links as well.
@@ -242,6 +243,10 @@ class Links {
 	}
 
 	public static function makeFormUrl($pid, $recordId, $event_id, $form, $instance = 1) {
+        $recordId = Sanitizer::sanitizeInteger($recordId);
+        $event_id = Sanitizer::sanitizeInteger($event_id);
+        $instance = Sanitizer::sanitizeInteger($instance);
+        $pid = Sanitizer::sanitizeInteger($pid);
 		$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=".$pid."&id=".$recordId."&event_id=".$event_id."&page=".$form;
 		if ($instance != 1) {
 			$url .= "&instance=".$instance;

@@ -26,7 +26,8 @@ class ERIC {
 
     public static function makeURL($metadata, $search, $maxRowCount, $start) {
         $ericFields = self::getFields($metadata);
-        return "https://api.ies.ed.gov/eric?search=$search&format=json&rows=$maxRowCount&fields=".implode(",", $ericFields)."&start=$start";
+        $url = "https://api.ies.ed.gov/eric?search=$search&format=json&rows=$maxRowCount&fields=".implode(",", $ericFields)."&start=$start";
+        return Sanitizer::sanitizeURL($url);
     }
 
     public static function process($docs, $metadata, $recordId, $listOfPriorIds, $listOfPriorTitles, &$startInstance) {

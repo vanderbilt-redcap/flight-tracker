@@ -34,9 +34,8 @@ $names = Download::names($token, $server);
 if ((isset($_GET['download'])) && in_array($_GET['download'], ["TL1", "KL2"])) {
     $catClass = REDCapManagement::sanitize($_GET['download']);
     $allData = getFieldDataToDownload($tableRows, $totalCompleted, $catClass);
-    $projectName = Application::getProjectTitle();
     if (!empty($allData)) {
-        outputCSVFromData($allData, $projectName . " Common Metrics -" . date("Y-m-d") . ".csv");
+        outputCSVFromData($allData, "Common Metrics -" . date("Y-m-d") . ".csv");
     } else {
         require_once(dirname(__FILE__)."/../charts/baseWeb.php");
         echo makeTableFromData($tableRows, $totalCompleted, $blankRow, $token, $server, $grantClass, $names);

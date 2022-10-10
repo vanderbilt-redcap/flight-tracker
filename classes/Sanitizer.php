@@ -16,9 +16,7 @@ class Sanitizer {
             $data = self::sanitizeRecursive($data);
             return json_encode($data);
         }
-
-        # unable to do so now
-        return $str;
+        return "";
     }
 
     public static function sanitizeREDCapData($data) {
@@ -32,14 +30,21 @@ class Sanitizer {
     }
 
     public static function sanitizeInteger($int) {
+        /**
+         * @psalm-taint-escape header
+         */
         if (filter_var($int, FILTER_VALIDATE_INT) !== FALSE) {
-            /**
-             * @psalm-taint-escape header
-             */
             return self::sanitize($int);
         } else {
             return "";
         }
+    }
+
+    public static function sanitizeURL($url) {
+        /**
+         * @psalm-taint-escape ssrf
+         */
+        return filter_var($url, FILTER_SANITIZE_URL);
     }
 
     public static function sanitizePid($pid) {
