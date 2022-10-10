@@ -56,6 +56,10 @@ class URLManagement {
         if (!empty($postdata)) {
             Application::log("Posting ".REDCapManagement::json_encode_with_spaces($postdata)." to $url", $pid);
         }
+        $url = Sanitizer::sanitizeURL($url);
+        if (!$url) {
+            throw new \Exception("Invalid URL!");
+        }
         $defaultOpts = self::getDefaultCURLOpts();
         $time1 = microtime();
         $ch = curl_init();
@@ -74,6 +78,10 @@ class URLManagement {
                 $json = $postdata;
             } else {
                 $json = json_encode($postdata);
+            }
+            $json = Sanitizer::sanitizeJSON($json);
+            if (!$json) {
+                throw new \Exception("Invalid POST parameters!");
             }
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
             curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
@@ -142,6 +150,10 @@ class URLManagement {
     }
 
     public static function isGoodURL($url) {
+        $url = Sanitizer::sanitizeURL($url);
+        if (!$url) {
+            throw new \Exception("Invalid URL");
+        }
         $ch = curl_init();
         $defaultOpts = self::getDefaultCURLOpts();
         curl_setopt($ch, CURLOPT_URL, $url);

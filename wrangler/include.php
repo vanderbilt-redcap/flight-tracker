@@ -136,9 +136,14 @@ try {
 
     if (count($_POST) >= 1) {
         if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
-            header("Location: $url$wranglerTypeParam&record=".$record);
+            $url2 = Sanitizer::sanitizeURL("$url$wranglerTypeParam&record=".$record);
         } else {
-            header("Location: $url$wranglerTypeParam&record=".$nextRecord);
+            $url2 = Sanitizer::sanitizeURL("$url$wranglerTypeParam&record=".$nextRecord);
+        }
+        if ($url2) {
+            header("Location: $url2");
+        } else {
+            throw new \Exception("Invalid URL");
         }
     } else if ($record != 0) {
         echo "<input type='hidden' id='nextRecord' value='".$nextRecord."'>\n";

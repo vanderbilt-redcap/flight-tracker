@@ -1225,7 +1225,13 @@ function cleanOutJSONs($metadata) {
 }
 
 function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $metadata) {
-	$data = array(
+    $destServer = Sanitizer::sanitizeURL($destServer);
+    $srcServer = Sanitizer::sanitizeURL($srcServer);
+    if (!$destServer || !$srcServer) {
+        throw new \Exception("Invalid URL");
+    }
+
+    $data = array(
 		'token' => $srcToken,
 		'content' => 'repeatingFormsEvents',
 		'format' => 'json',

@@ -25,8 +25,13 @@ if (isset($_GET['record'])) {
         }
     }
 
-    $event_id = Sanitizer::sanitizeInteger($event_id);
-    header("Location: ".Links::makeFormUrl($pid, $record, $event_id, "custom_grant", $max + 1));
+    $url = Links::makeFormUrl($pid, $record, $event_id, "custom_grant", $max + 1);
+    $url = Sanitizer::sanitizeURL($url);
+    if ($url) {
+        header("Location: ".$url);
+    } else {
+        throw new \Exception("Invalid URL");
+    }
 } else {
 	$names = Download::names($token, $server);
 

@@ -480,6 +480,7 @@ class Download {
 	    if (!$server) {
 	        throw new \Exception("No server specified");
         }
+
 	    if ($data['content'] == "record") {
             $pid = Application::getPID($data['token']);
         } else {
@@ -517,7 +518,11 @@ class Download {
                 Application::log("sendToServer: ".$pid." $method done with ".count($redcapData)." rows", $pid);
             }
 		} else {
-		    $time1 = microtime(TRUE);
+            $server = Sanitizer::sanitizeURL($server);
+            if (!$server) {
+                throw new \Exception("Invalid URL");
+            }
+            $time1 = microtime(TRUE);
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_URL, $server);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

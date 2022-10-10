@@ -77,7 +77,7 @@ if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
     }
     list($resp, $output) = REDCapManagement::downloadURLWithPOST($url, $allSettings, $pid);
     // echo "allSettings: ".REDCapManagement::json_encode_with_spaces($allSettings)."<br>\n";
-    echo $url."<br>\n";
+    // echo $url."<br>\n";
     echo json_encode($output);
 } else {
     require_once(dirname(__FILE__)."/charts/baseWeb.php");

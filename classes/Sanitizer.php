@@ -43,8 +43,10 @@ class Sanitizer {
     public static function sanitizeURL($url) {
         /**
          * @psalm-taint-escape ssrf
+         * @psalm-taint-escape header
          */
-        return filter_var($url, FILTER_SANITIZE_URL);
+        $url = filter_var($url, FILTER_SANITIZE_URL);
+        return self::sanitizeWithoutChangingQuotes($url);
     }
 
     public static function sanitizePid($pid) {

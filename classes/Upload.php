@@ -226,6 +226,10 @@ class Upload
                 }
                 return $feedback;
             } else {
+                $server = Sanitizer::sanitizeURL($server);
+                if (!$server) {
+                    throw new \Exception("Invalid URL");
+                }
                 $data = array(
                     'token' => $token,
                     'action' => 'delete',
@@ -266,6 +270,10 @@ public static function metadata($metadata, $token, $server) {
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
+        $server = Sanitizer::sanitizeURL($server);
+        if (!$server) {
+            throw new \Exception("Invalid URL");
+        }
 
         $pid = Application::getPID($token);
         if (REDCapManagement::isInProduction($pid)) {
@@ -380,6 +388,10 @@ public static function metadata($metadata, $token, $server) {
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
+        $server = Sanitizer::sanitizeURL($server);
+        if (!$server) {
+            throw new \Exception("Invalid URL");
+        }
         self::adaptToUTF8($settings);
         $data = array(
 			'token' => $token,
@@ -601,6 +613,10 @@ public static function metadata($metadata, $token, $server) {
                 }
 			}
 			if ($runAPI) {
+                $server = Sanitizer::sanitizeURL($server);
+                if (!$server) {
+                    throw new \Exception("Invalid URL");
+                }
                 $data['data'] = json_encode($rows);
 				$method = "API";
 				$ch = curl_init();
