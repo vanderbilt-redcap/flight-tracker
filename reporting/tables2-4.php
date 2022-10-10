@@ -138,7 +138,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
             $mssg = $e->getMessage();
         }
         $mssg = Sanitizer::sanitizeWithoutChangingQuotes($mssg);
-        $trace = Sanitizer::sanitizeWithoutChangingQuotes($e->getTraceAsString());
+        $trace = Sanitizer::sanitizeJSON(json_encode($e->getTrace()));
         $data = ["error" => $mssg, "trace" => $trace];
     }
     $str = json_encode($data);

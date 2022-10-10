@@ -69,7 +69,12 @@ if (isset($_POST['request'])) {
             Upload::rows($upload, $token, $server);
         }
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);   // after upload
-        header("Location: $url$wranglerTypeParam&record=".$nextRecord);
+        $url2 = Sanitizer::sanitizeURL("$url$wranglerTypeParam&record=".$nextRecord);
+        if ($url2) {
+            header("Location: $url2");
+        } else {
+            throw new \Exception("Invalid URL!");
+        }
     } else {
         throw new \Exception("Improper request: ".Sanitizer::sanitize($_POST['request']));
     }
