@@ -736,6 +736,7 @@ class REDCapManagement {
         $str = json_encode($data);
         $str = self::sanitizeJSON($str);
         $str = preg_replace("/,/", ", ", $str);
+        $str = Sanitizer::sanitizeJSON($str);
         return $str;
     }
 

@@ -5,13 +5,14 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 if (isset($_GET['record'])) {
     $records = Download::recordIds($token, $server);
-	$record = REDCapManagement::getSanitizedRecord($_GET['record'], $records);
+	$record = Sanitizer::getSanitizedRecord($_GET['record'], $records);
     if (!$record) {
         throw new \Exception("Could not locate record");
     }
@@ -24,6 +25,7 @@ if (isset($_GET['record'])) {
         }
     }
 
+    $event_id = Sanitizer::sanitizeInteger($event_id);
     header("Location: ".Links::makeFormUrl($pid, $record, $event_id, "custom_grant", $max + 1));
 } else {
 	$names = Download::names($token, $server);

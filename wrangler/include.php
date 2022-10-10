@@ -219,7 +219,7 @@ function getNextRecordWithData($token, $server, $currRecord, $wranglerType, $rec
 	}
 
 	if ($pos == count($records)) {
-		return $records[0];
+		return Sanitizer::sanitizeInteger($records[0]);
 	}
 
 	list($instruments, $indexFields, $includeFields) = getFieldsForWrangler($wranglerType);
@@ -235,7 +235,7 @@ function getNextRecordWithData($token, $server, $currRecord, $wranglerType, $rec
                 foreach ($indexFields as $i => $indexField) {
                     $includeField = $includeFields[$i] ?? "";
                     if ($row[$indexField] && ($row[$includeField] === "")) {
-                        return $row['record_id'];
+                        return Sanitizer::getSanitizedRecord($row['record_id'], $records);
                     }
                 }
             }
@@ -243,7 +243,7 @@ function getNextRecordWithData($token, $server, $currRecord, $wranglerType, $rec
 		$pos += $pullSize;
 	}
 	if (count($records) >= 1) {
-		return $records[0];
+        return Sanitizer::sanitizeInteger($records[0]);
 	}
 	return "";
 }

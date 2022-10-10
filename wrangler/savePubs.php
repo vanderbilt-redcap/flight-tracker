@@ -16,10 +16,11 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 $metadata = Download::metadata($token, $server);
 $pmids = [];
 if (isset($_POST['finalized'])) {
+    $records = Download::recordIds($token, $server);
     $newFinalized = json_decode(Sanitizer::sanitizeJSON($_POST['finalized']));
     $newOmissions = json_decode(Sanitizer::sanitizeJSON($_POST['omissions']));
     $newResets = json_decode(Sanitizer::sanitizeJSON($_POST['resets']));
-    $recordId = Sanitizer::sanitize($_POST['record_id']);
+    $recordId = Sanitizer::getSanitizedRecord($_POST['record_id'], $records);
 
     $citationFields = Application::getCitationFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);

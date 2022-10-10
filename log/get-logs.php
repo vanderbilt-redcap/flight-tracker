@@ -36,6 +36,8 @@ $rows = [];
 while($row = $results->fetch_assoc()){
 	$rows[] = $row;
 }
+$json = Sanitizer::sanitizeJSON(json_encode($rows));
+$totalRowCount = Sanitizer::sanitizeInteger($totalRowCount);
 
 ?>
 
@@ -43,5 +45,5 @@ while($row = $results->fetch_assoc()){
 	"draw": <?= Sanitizer::sanitize($_GET['draw']) ?>,
 	"recordsTotal": <?=$totalRowCount?>,
 	"recordsFiltered": <?=$totalRowCount?>,
-	"data": <?=json_encode($rows)?>
+	"data": <?=$json?>
 }

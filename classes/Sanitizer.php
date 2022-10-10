@@ -33,6 +33,9 @@ class Sanitizer {
 
     public static function sanitizeInteger($int) {
         if (filter_var($int, FILTER_VALIDATE_INT) !== FALSE) {
+            /**
+             * @psalm-taint-escape header
+             */
             return self::sanitize($int);
         } else {
             return "";
@@ -162,7 +165,7 @@ class Sanitizer {
     public static function getSanitizedRecord($requestedRecord, $records) {
         foreach ($records as $r) {
             if ($r == $requestedRecord) {
-                return $r;
+                return self::sanitizeInteger($r);
             }
         }
         return "";
