@@ -97,7 +97,7 @@ class CohortConfig {
 						}
 					} else {
 						foreach ($redcapRecordRows as $row) {
-							if ($row[$variable]) {
+							if (isset($row[$variable])) {
 								return self::compare($row[$variable], $comparison, $value);
 							}
 						}

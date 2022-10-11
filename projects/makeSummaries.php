@@ -13,4 +13,5 @@ if ($_GET['record']) {
 } else {
     $records = Download::recordIds($token, $server);
 }
-makeSummary($token, $server, $pid, $records);
+\Vanderbilt\CareerDevLibrary\makeSummary($token, $server, $pid, $records);
+echo "Done.";

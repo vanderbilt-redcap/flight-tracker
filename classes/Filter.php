@@ -492,11 +492,11 @@ class Filter {
 		                    row['choice'] = $('#choice'+i).val();
 		                    row['comparison'] = $('#comparison'+i).val();
 		                    config['rows'].push(row);
-		                } else if ($('#value'+i).val() != '') {
+		                } else if ($('#type'+i).val() == 'resources') {
+		                    config['rows'].push(row);
+		                } else if ($('#type'+i).val() != '') {
 		                    row['value'] = $('#value'+i).val();
 		                    row['comparison'] = $('#comparison'+i).val();
-		                    config['rows'].push(row);
-		                } else if ($('#type'+i).val() == 'resources') {
 		                    config['rows'].push(row);
 		                }
 		            }

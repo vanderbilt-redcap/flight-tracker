@@ -85,7 +85,6 @@ class Cohorts {
     }
 
 	public function makeCohortSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
-	    $defaultCohort = $defaultCohort;
         $html = "<label for='cohort'>Cohort:</label> <select id='cohort' name='cohort'";
         if ($onchangeJS) {
 	        $html .= " onchange='".$onchangeJS."'";

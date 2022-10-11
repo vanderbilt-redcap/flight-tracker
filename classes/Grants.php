@@ -1595,10 +1595,11 @@ class Grants {
 		$grants = $this->getGrants("compiled");
 		$awardTypeConversion = Grant::getAwardTypes();
 		if (count($grants) == 0) {
-			$grants = $this->getGrants("prior");
+			$grants = $this->getGrants("native");
 		}
-		foreach ($grants as $grant) {
+        foreach ($grants as $grant) {
 			$t = $grant->getVariable("type");
+            $role = $grant->getVariable("role");
 			if ($overrideFirstR01 !== "") {
 				$ary['summary_first_r01_or_equiv'] = $overrideFirstR01;
 				$ary['summary_first_r01_or_equiv_source'] = "manual";
@@ -1665,30 +1666,38 @@ class Grants {
 				$ary['summary_last_any_k_source'] = $grant->getVariable("source");
 				$ary['summary_last_any_k_sourcetype'] = $grant->getSourceType();
 			}
-            if ($t == "Training Appointment") {
+            if ($role == "Trainee") {
+                $priorTStart = $ary['summary_t_start'] ?? "";
+                $priorTEnd = $ary['summary_t_end'] ?? "";
                 if (
                     $grant->getVariable("start")
-                    && isset($ary['summary_t_start'])
                     && (
-                        ($ary['summary_t_start'] === "")
-                        || DateManagement::dateCompare($ary['summary_t_start'], ">", $grant->getVariable("start"))
+                        ($priorTStart === "")
+                        || DateManagement::dateCompare($priorTStart, ">", $grant->getVariable("start"))
                     )
                 ) {
                     $ary['summary_t_start'] = $grant->getVariable("start");
                     $ary['summary_t_start_source'] = $grant->getVariable("source");
                     $ary['summary_t_start_sourcetype'] = $grant->getSourceType();
+                } else if ($priorTStart === "") {
+                    $ary['summary_t_start'] = "";
+                    $ary['summary_t_start_source'] = "";
+                    $ary['summary_t_start_sourcetype'] = "";
                 }
                 if (
                     $grant->getVariable("end")
-                    && isset($ary['summary_t_end'])
                     && (
-                        ($ary['summary_t_end'] === "")
-                        || DateManagement::dateCompare($ary['summary_t_end'], "<", $grant->getVariable("end"))
+                        ($priorTEnd === "")
+                        || DateManagement::dateCompare($priorTEnd, "<", $grant->getVariable("end"))
                     )
                 ) {
                     $ary['summary_t_end'] = $grant->getVariable("end");
                     $ary['summary_t_end_source'] = $grant->getVariable("source");
                     $ary['summary_t_end_sourcetype'] = $grant->getSourceType();
+                } else if ($priorTEnd === "") {
+                    $ary['summary_t_end'] = "";
+                    $ary['summary_t_end_source'] = "";
+                    $ary['summary_t_end_sourcetype'] = "";
                 }
             }
 		}
