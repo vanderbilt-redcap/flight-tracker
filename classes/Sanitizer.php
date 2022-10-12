@@ -50,15 +50,16 @@ class Sanitizer {
      * @psalm-taint-specialize
      */
     public static function sanitizeURL($url) {
+        /**
+         * @psalm-taint-escape html
+         * @psalm-taint-escape has_quotes
+         * @psalm-taint-escape ssrf
+         * @psalm-taint-escape header
+         */
         $url = filter_var($url, FILTER_SANITIZE_URL);
-        $url = self::sanitize($url);
         if (!$url) {
             throw new \Exception("Invalid URL!");
         } else {
-            /**
-             * @psalm-taint-escape ssrf
-             * @psalm-taint-escape header
-             */
             return $url;
         }
     }

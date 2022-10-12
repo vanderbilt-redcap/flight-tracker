@@ -204,11 +204,15 @@ function dedupCOEUS($token, $server, $pid, $recordId, $instrument, $prefix, $uni
     foreach ($redcapData as $row) {
         if ($row['redcap_repeat_instrument'] == $instrument) {
             $uniqueIDValues = [];
+            $allBlank = TRUE;
             foreach ($uniqueFields as $field) {
+                if ($row[$field]) {
+                    $allBlank = FALSE;
+                }
                 $uniqueIDValues[] = $row[$field];
             }
             $uniqueID = implode($sep, $uniqueIDValues);
-            if ($uniqueID != $sep) {
+            if (!$allBlank) {
                 $date = $row[$timestampField] ?? "";
                 if (isset($latestTimestampForItems[$uniqueID])) {
                     if (DateManagement::isDate($date)) {

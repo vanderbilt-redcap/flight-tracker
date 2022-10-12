@@ -63,7 +63,7 @@ class RePORTER {
                     "org_names" => [$institution],
                 ],
             ];
-            $location = $this->server."/v2/projects/search";
+            $location = $this->server."/v1/projects/search";
             $this->currData = $this->runPOSTQuery($location, $payload);
             foreach ($this->currData as $line) {
                 if ($line['nih_agency_ic_fundings']) {
@@ -371,7 +371,7 @@ class RePORTER {
                 "criteria" => ["project_nums" => $baseAwardNumbers],
                 "include_fields" => $this->includeFields,
             ];
-            $location = $this->server."/v2/projects/search";
+            $location = $this->server."/v1/projects/search";
             $this->currData = $this->runPOSTQuery($location, $payload);
         }
         return $this->getData();
@@ -386,7 +386,7 @@ class RePORTER {
                 "criteria" => ["project_nums" => ["?$baseAwardNo*"]],
                 "include_fields" => $this->includeFields,
             ];
-            $location = $this->server."/v2/projects/search";
+            $location = $this->server."/v1/projects/search";
             $this->currData = $this->runPOSTQuery($location, $payload);
         }
         return $this->getData();
@@ -445,7 +445,7 @@ class RePORTER {
                     "project_nums" => $searchStrings,
                 ],
             ];
-            $location = $this->server."/v2/projects/search";
+            $location = $this->server."/v1/projects/search";
             $this->currData = $this->runPOSTQuery($location, $payload);
             $this->currData = $this->filterForExcludeList();
             $this->currData = $this->filterForGrantTypes($grantTypes);
@@ -490,7 +490,7 @@ class RePORTER {
                     "org_names" => $institutions,
                 ],
             ];
-            $location = $this->server."/v2/projects/search";
+            $location = $this->server."/v1/projects/search";
             $data = $this->runPOSTQuery($location, $payload);
             $this->currData = self::filterNIHDataForName($data, $firstName, $lastName);
             $this->currData = $this->filterForExcludeList();

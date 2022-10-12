@@ -531,10 +531,16 @@ class DataDictionaryManagement {
         foreach ($metadata as $row) {
             if ($instrument) {
                 if ($instrument == $row['form_name']) {
-                    array_push($fields, $row['field_name']);
+                    $fields[] = $row['field_name'];
                 }
             } else {
-                array_push($fields, $row['field_name']);
+                $fields[] = $row['field_name'];
+            }
+        }
+        if ($instrument) {
+            $completeField = $instrument."_complete";
+            if (!in_array($completeField, $fields)) {
+                $fields[] = $completeField;
             }
         }
         return $fields;
@@ -772,71 +778,77 @@ class DataDictionaryManagement {
                 $field = $row['field_name'];
                 foreach (self::getMetadataFieldsToScreen() as $rowSetting) {
                     if ($rowSetting == "select_choices_or_calculations") {
-                        // merge
                         $rowChoices = self::getRowChoices($row[$rowSetting]);
-                        $rowKeys = array_keys($rowChoices);
-                        $metadataChoices = self::getRowChoices($metadataRow[$rowSetting]);
-                        $metadataKeys = array_keys($metadataChoices);
-                        $mergedChoices = $rowChoices;
-                        foreach ($metadataChoices as $idx => $label) {
-                            if (!isset($mergedChoices[$idx])) {
-                                $mergedChoices[$idx] = $label;
-                            } else if (isset($mergedChoices[$idx]) && ($mergedChoices[$idx] == $label)) {
-                                # both have same idx/label - no big deal
-                            } else {
-                                # merge conflict => reassign all data values
-                                $oldIdx = $idx;
-
-                                $numericMergedChoicesKeys = [];
-                                foreach (array_keys($mergedChoices) as $key) {
-                                    if (is_numeric($key)) {
-                                        $numericMergedChoicesKeys[] = $key;
-                                    }
-                                }
-
-                                if (!empty($numericMergedChoicesKeys)) {
-                                    $newIdx = max($numericMergedChoicesKeys) + 1;
+                        if (!preg_match("/_source$/", $field)) {
+                            // merge
+                            $rowKeys = array_keys($rowChoices);
+                            $metadataChoices = self::getRowChoices($metadataRow[$rowSetting]);
+                            $metadataKeys = array_keys($metadataChoices);
+                            $mergedChoices = $rowChoices;
+                            foreach ($metadataChoices as $idx => $label) {
+                                if (!isset($mergedChoices[$idx])) {
+                                    $mergedChoices[$idx] = $label;
+                                } else if (isset($mergedChoices[$idx]) && ($mergedChoices[$idx] == $label)) {
+                                    # both have same idx/label - no big deal
                                 } else {
-                                    $newIdx = 1;
-                                }
-                                Application::log("Merge conflict for field $field: Moving $oldIdx to $newIdx ($label)");
+                                    # merge conflict => reassign all data values
+                                    $oldIdx = $idx;
 
-                                $mergedChoices[$newIdx] = $label;
-                                $values = Download::oneField($token, $server, $field);
-                                $newRows = 0;
-                                foreach ($values as $recordId => $value) {
-                                    if ($value == $oldIdx) {
-                                        if (isset($upload[$recordId])) {
-                                            $upload[$recordId][$field] = $newIdx;
-                                        } else {
-                                            $upload[$recordId] = array("record_id" => $recordId, $field => $newIdx);
+                                    $numericMergedChoicesKeys = [];
+                                    foreach (array_keys($mergedChoices) as $key) {
+                                        if (is_numeric($key)) {
+                                            $numericMergedChoicesKeys[] = $key;
                                         }
-                                        $newRows++;
+                                    }
+
+                                    if (!empty($numericMergedChoicesKeys)) {
+                                        $newIdx = max($numericMergedChoicesKeys) + 1;
+                                    } else {
+                                        $newIdx = 1;
+                                    }
+                                    Application::log("Merge conflict for field $field: Moving $oldIdx to $newIdx ($label)");
+
+                                    $mergedChoices[$newIdx] = $label;
+                                    $values = Download::oneField($token, $server, $field);
+                                    $newRows = 0;
+                                    foreach ($values as $recordId => $value) {
+                                        if ($value == $oldIdx) {
+                                            if (isset($upload[$recordId])) {
+                                                $upload[$recordId][$field] = $newIdx;
+                                            } else {
+                                                $upload[$recordId] = array("record_id" => $recordId, $field => $newIdx);
+                                            }
+                                            $newRows++;
+                                        }
+                                    }
+                                    Application::log("Uploading data $newRows rows for field $field");
+                                }
+                            }
+                            if (REDCapManagement::arrayOrdersEqual($rowKeys, $metadataKeys)) {
+                                $row[$rowSetting] = self::makeChoiceStr($mergedChoices);
+                            } else {
+                                $reorderedMergedChoices = [];
+                                foreach ($metadataKeys as $idx) {
+                                    if (isset($mergedChoices[$idx])) {
+                                        $label = $mergedChoices[$idx];
+                                        $reorderedMergedChoices[$idx] = $label;
+                                    } else {
+                                        throw new \Exception("Error: Cannot find index!");
                                     }
                                 }
-                                Application::log("Uploading data $newRows rows for field $field");
+                                foreach ($mergedChoices as $idx => $label) {
+                                    if (!isset($reorderedMergedChoices[$idx])) {
+                                        $reorderedMergedChoices[$idx] = $label;
+                                    }
+                                }
+                                $row[$rowSetting] = self::makeChoiceStr($reorderedMergedChoices);
                             }
-                        }
-                        if (REDCapManagement::arrayOrdersEqual($rowKeys, $metadataKeys)) {
-                            $row[$rowSetting] = self::makeChoiceStr($mergedChoices);
                         } else {
-                            $reorderedMergedChoices = [];
-                            foreach ($metadataKeys as $idx) {
-                                if (isset($mergedChoices[$idx])) {
-                                    $label = $mergedChoices[$idx];
-                                    $reorderedMergedChoices[$idx] = $label;
-                                } else {
-                                    throw new \Exception("Error: Cannot find index!");
-                                }
-                            }
-                            foreach ($mergedChoices as $idx => $label) {
-                                if (!isset($reorderedMergedChoices[$idx])) {
-                                    $reorderedMergedChoices[$idx] = $label;
-                                }
-                            }
-                            $row[$rowSetting] = self::makeChoiceStr($reorderedMergedChoices);
+                            // a source field
+                            $row[$rowSetting] = self::makeChoiceStr($rowChoices);
                         }
                     } else if ($row[$rowSetting] != $metadataRow[$rowSetting]) {
+                        // not select_choices_or_calculations
                         if (!REDCapManagement::isJSON($row[$rowSetting]) || ($rowSetting != "field_annotation")) {
                             $row[$rowSetting] = $metadataRow[$rowSetting];
                         }
@@ -989,6 +1001,18 @@ class DataDictionaryManagement {
             return "custom_grant_complete";
         } else if ($prefix == "imported_degree") {
             return "manual_degree_complete";
+        } else if ($prefix == "coeussubmission") {
+            return "coeus_submission_complete";
+        } else if ($prefix == "verasubmission") {
+            return "vera_submission_complete";
+        } else if ($prefix == "mentoring") {
+            return "mentoring_agreement_complete";
+        } else if ($prefix == "mentoringeval") {
+            return "mentoring_agreement_evaluations_complete";
+        } else if ($prefix == "vfrs") {
+            return "pre_screening_survey_complete";
+        } else if ($prefix == "honor") {
+            return "honors_and_awards_complete";
         }
         return "";
     }

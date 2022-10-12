@@ -99,6 +99,7 @@ if (count($_POST) > 0) {
         if (isset($_GET['test'])) {
             echo "In config 2, metadata has ".count($metadata)." rows<br>";
         }
+        $token = Application::getSetting("token", $pid);
         $feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $pid, $lists, CareerDev::getSetting("hasCoeus"), $metadata);
 		if (is_array($feedback)) {
 		    $feedback = json_encode($feedback);
