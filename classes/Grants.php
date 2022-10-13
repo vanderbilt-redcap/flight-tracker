@@ -1666,7 +1666,7 @@ class Grants {
 				$ary['summary_last_any_k_source'] = $grant->getVariable("source");
 				$ary['summary_last_any_k_sourcetype'] = $grant->getSourceType();
 			}
-            if ($role == "Trainee") {
+            if (in_array($role, ["Trainee", "General Trainee", "Pre-doctoral Trainee", "Post-doctoral Trainee"])) {
                 $priorTStart = $ary['summary_t_start'] ?? "";
                 $priorTEnd = $ary['summary_t_end'] ?? "";
                 if (

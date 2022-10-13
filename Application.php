@@ -286,7 +286,7 @@ a.w3-button { color: black !important; float: none !important; }
 .topHeaderWrapper { background-color: white; height: 80px; top: 0px; width: 100%; }
 .topHeader { margin: 0 auto; max-width: 1200px; }
 .topBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; padding: 0px; }
-.middleBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; font-size: 13px; padding: 0px; margin-left: auto; margin-right: auto; text-align: center; max-width: 600px; }
+.middleBar { font-family: 'Museo Sans', Arial, Helvetica, sans-serif; font-size: 13px; padding: 0 0 0 20px; text-align: left; float: left; max-width: 600px; }
 a.nounderline { text-decoration: none; }
 a.nounderline:hover { text-decoration: dotted; }
 img.brandLogo { height: 40px; margin: 20px; }
