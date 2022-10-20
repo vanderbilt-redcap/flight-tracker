@@ -2611,25 +2611,17 @@ class Grant {
 
 	public static function getReverseAwardTypes() {
 		$awardTypes = self::getAwardTypes();
-		return self::reverseArray($awardTypes);
+		return REDCapManagement::reverseArray($awardTypes);
 	}
 
 	public static function getReverseFundingSources() {
 		$sources = self::getFundingSources();
-		return self::reverseArray($sources);
+		return REDCapManagement::reverseArray($sources);
 	}
 
 	public static function getReverseIndustries() {
 		$industries = self::getIndustries();
-		return self::reverseArray($industries);
-	}
-
-	private static function reverseArray($ary) {
-		$reverse = array();
-		foreach ($ary as $type => $val) {
-			$reverse[$val] = $type;
-		}
-		return $reverse;
+		return REDCapManagement::reverseArray($industries);
 	}
 
 	public static function getIndustries() {

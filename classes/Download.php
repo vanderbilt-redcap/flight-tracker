@@ -406,6 +406,7 @@ class Download {
             }
         }
 		if (preg_match("/".SERVER_NAME."/", $server) && $pid) {
+            $method = "REDCap";
 		    if (!empty($fields)) {
                 $json = \REDCap::getDataDictionary($pid, "json", TRUE, $fields);
             } else {
@@ -413,7 +414,7 @@ class Download {
             }
             $rows = json_decode($json, TRUE);
             if (isset($_GET['test'])) {
-                Application::log("Download::metadata JSON returning " . count($rows) . " rows", $pid);
+                Application::log("Download::metadata $method returning " . count($rows) . " rows", $pid);
                 if (count($rows) === 0) {
                     Application::log($json);
                 }
@@ -421,6 +422,7 @@ class Download {
 		    $_SESSION['metadata'.$pid] = $rows;
 		    $_SESSION['lastMetadata'.$pid] = time();
         } else {
+            $method = "API";
             $data = array(
                 'token' => $token,
                 'content' => 'metadata',
@@ -432,14 +434,14 @@ class Download {
             }
             $rows = self::sendToServer($server, $data);
             if (isset($_GET['test'])) {
-                Application::log("Download::metadata API returning " . count($rows) . " rows", $pid);
+                Application::log("Download::metadata $method returning " . count($rows) . " rows", $pid);
             }
             if (empty($fields)) {
                 $_SESSION['metadata'.$pid] = $rows;
                 $_SESSION['lastMetadata'.$pid] = time();
             }
         }
-        return Sanitizer::sanitizeArray($rows);
+        return Sanitizer::sanitizeArray($rows, FALSE, FALSE);
     }
 
 	public static function shortProjectTitle($token, $server) {
@@ -923,7 +925,7 @@ class Download {
 			'format' => 'json',
 			'type' => 'flat',
 			'rawOrLabel' => 'raw',
-			'fields' => array("record_id", "identifier_first_name", "identifier_last_name"),
+			'fields' => array("record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"),
 			'rawOrLabelHeaders' => 'raw',
 			'exportCheckboxLabel' => 'false',
 			'exportSurveyFields' => 'false',
@@ -939,7 +941,7 @@ class Download {
 
 		$names = array();
 		foreach ($ordered as $key => $row) {
-			$names[$row['record_id']] = $row['identifier_first_name']." ".$row['identifier_last_name'];
+			$names[$row['record_id']] = NameMatcher::formatName($row['identifier_first_name'], $row['identifier_middle'], $row['identifier_last_name']);
 		}
 		return $names;
 	}

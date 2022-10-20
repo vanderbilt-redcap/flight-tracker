@@ -48,15 +48,19 @@ function runMainCrons(&$manager, $token, $server) {
         $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $records, 10000);
         $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "2022-10-06", $records, 10000);
     }
-    if (!Application::isLocalhost()) {
+    if (!Application::isLocalhost() && Application::isVanderbilt()) {
+        $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
+        $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Monday", $allRecords, 500);
         if (in_array('coeus', $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
+            $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
         } else if (in_array('coeus2', $forms)) {
             $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
         }
-        if (in_array('coeus_submission', $forms)) {
-            $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $allRecords, 1000);
-        }
+        # Already in updateAllCOEUS
+        // if (in_array('coeus_submission', $forms)) {
+            // $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $allRecords, 1000);
+        // }
     }
     if (!$securityTestMode) {
         $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday", $allRecords, 100);
@@ -83,9 +87,6 @@ function runMainCrons(&$manager, $token, $server) {
     }
 
     $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $allRecords, 100000);
-    if (Application::isVanderbilt() && !Application::isLocalhost() && in_array("coeus", $forms)) {
-        $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
-    }
     if (in_array("pre_screening_survey", $forms)) {
         $manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $records, 80);
     }

@@ -146,7 +146,6 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
                     }
                     if (!empty($foundInstances)) {
                         $foundInstanceList = array_unique(array_merge($foundInstanceList, $foundInstances));
-                        Application::log("Existing instances at ".implode(", ", $foundInstanceList), $pid);
                         if ($timestampField) {
                             foreach ($foundInstanceList as $instance) {
                                 $lastUpdateInREDCap = REDCapManagement::findField($redcapData, $recordId, $timestampField, $instrument, $instance);
@@ -197,6 +196,7 @@ function dedupCOEUS($token, $server, $pid, $recordId, $instrument, $prefix, $uni
     $fieldsToDownload = $uniqueFields;
     $fieldsToDownload[] = "record_id";
     $fieldsToDownload[] = $timestampField;
+    $fieldsToDownload[] = REDCapManagement::prefix2CompleteField($prefix);
     $redcapData = Download::fieldsForRecords($token, $server, $fieldsToDownload, [$recordId]);
     $latestTimestampForItems = [];
     $instanceToUseForItems = [];

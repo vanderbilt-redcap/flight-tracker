@@ -56,6 +56,7 @@ table { border-collapse: collapse; }
 .twoColumn { vertical-align: top; border: 1px dotted #aaaaaa; padding: 5px; }
 .sticky { position: fixed; top: 100px; }
 .shadow { box-shadow: 2px 2px 4px grey; }
+.bigShadow { box-shadow: 6px 6px 6px grey; }
 tr.borderedRow td,tr.borderedRow th { border: 1px solid #bbbbbb; }
 tr.centeredRow td,tr.centeredRow th { text-align: center; }
 tr.paddedRow td,tr.paddedRow th { padding: 5px; }
@@ -110,12 +111,15 @@ table.bordered { border-collapse: collapse; }
 input[type=text].action_required { color: black; font-weight: normal; font-size: 24px; background-color: rgba(255, 0, 0, 0.5); }
 p.bordered,div.bordered { border: 1px solid #888; }
 .finger { cursor: pointer; }
+.blackBorder { border: 1px solid black; }
 .red { background-color: #f0565d; }
 .light_red { background-color: #f69ca0; }
 .redtext { color: #f0565d; }
 .green { background-color: #8dc63f; }
 .light_green { background-color: #b0d87a; }
+.really_light_green { background-color: #e8ffe8; }
 .greentext { color: #8dc63f; }
+.greenTextShadow { text-shadow: 2px 2px 6px #8dc63f; }
 .yellow { background-color: #f1f6d6; }
 .blue { background-color: #d4d4eb; }
 .bluetext { color: #48489d; }
@@ -125,6 +129,7 @@ p.bordered,div.bordered { border: 1px solid #888; }
 .orange { background-color: #f79721; }
 .grey { background-color: #dddddd; }
 .greytext { color: #dddddd; }
+.light_grey { background-color: #EEE; }
 /* Coordinated with .red, .green, and .yellow */
 .install-metadata-box-danger{ color: #a94442; background-color: #f0565d; border-color: #ebccd1; }
 .install-metadata-box-warning{ color: #8a6d3b; background-color: #8dc63f; border-color: #faebcc; }

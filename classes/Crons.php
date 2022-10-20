@@ -399,6 +399,7 @@ class CronManager {
                                 "start" => $startTimestamp,
                                 "end" => self::getTimestamp(),
                                 "method" => $row['method'],
+                                "file" => $row['file'],
                             ];
                             self::addRunJobToDB($runJob, $module);
                         } else if (isset($batchQueue[0]['records'])) {
@@ -416,6 +417,7 @@ class CronManager {
                                 "end" => self::getTimestamp(),
                                 "pid" => $row['pid'],
                                 "method" => $row['method'],
+                                "file" => $row['file'],
                             ];
                             self::addRunJobToDB($runJob, $module);
                         } else {
@@ -486,29 +488,51 @@ class CronManager {
             $adminEmail = $module->getProjectSetting("admin_email", $pid);
 
             $projectTitle = Download::projectTitle($token, $server);
-            $text = "Project: $projectTitle<br>";
-            $text .= "Pid: ".$pid."<br>";
-            $text .= "Server: ".$server."<br><br>";
-
+            $text = "";
             $hasData = FALSE;
+            $hasErrors = FALSE;
             $errorQueue = self::getErrorsFromDB($module);
+            foreach ($errorQueue as $errorJob) {
+                if ($errorJob['pid'] == $pid) {
+                    $hasErrors = TRUE;
+                }
+            }
+
+            if ($hasErrors) {
+                $text .= "<h2>Errors!</h2>";
+            }
+
+
             $remainingErrors = [];
             foreach ($errorQueue as $errorJob) {
                 if ($errorJob['pid'] == $pid) {
-                    $text .= "ERROR ".$errorJob['method']."<br>";
-                    $text .= "Records in batch job: ".implode(", ", $errorJob['records'])."<br>";
+                    $method = $errorJob['method'];
+                    $text .= "<h3>$method</h3>";
+                    $text .= "<p>";
+                    $text .= "Records in batch job: ".implode(", ", $errorJob['records'])."<br/>";
                     if (isset($errorJob['record'])) {
-                        $text .= "Failed in record ".$errorJob['record']."<br>";
+                        $text .= "Failed in record ".$errorJob['record']."<br/>";
                     }
                     if (isset($errorJob['error'])) {
-                        $text .= $errorJob['error']."<br>";
+                        $text .= "Error Message: ".$errorJob['error']."<br/>";
                         if (isset($errorJob['error_location'])) {
-                            $text .= $errorJob['error_location']."<br>";
+                            $text .= "Location:".$errorJob['error_location']."<br/>";
+                        }
+                    } else if (isset($errorJob['cause'])) {
+                        $cause = $errorJob['cause'];
+                        if ($cause == "Long-running") {
+                            $text .= "This cron-job (for $method) was <strong>running longer than expected</strong>. This likely is not a major issue. Sometimes, jobs run longer than expected because one scholar has a lot of data.<br/>";
+                        } else {
+                            $text .= "Cause: $cause<br/>";
                         }
                     } else {
-                        $text .= REDCapManagement::json_encode_with_spaces($errorJob)."<br><br>";
+                        $text .= "<strong>Unknown error</strong><br/>";
+                        foreach ($errorJob as $header => $item) {
+                            $text .= "$header: $item<br/>";
+                        }
                     }
-                    $text .= "<br>";
+                    $text = preg_replace("/<br\/>$/", "", $text);
+                    $text .= "</p>";
                 } else {
                     $remainingErrors[] = $errorJob;
                 }
@@ -518,51 +542,77 @@ class CronManager {
             $runJobs = self::getRunResultsFromDB($module);
             $remainingJobs = [];
             $methods = [];
+            $newMethod = [
+                "succeededRecords" => [],
+                "attemptedRecords" => [],
+                "succeededLastTs" => 0,
+                "attemptedLastTs" => 0,
+                "succeededFirstTs" => time(),
+                "attemptedFirstTs" => time(),
+            ];
+            $allRecords = Download::recordIds($token, $server);
             foreach ($runJobs as $job) {
                 if ($job['pid'] == $pid) {
                     $method = $job['method'];
                     if (!isset($methods[$method])) {
-                        $methods[$method] = [
-                            "succeededRecords" => [],
-                            "attemptedRecords" => [],
-                            "succeededLastTs" => 0,
-                            "attemptedLastTs" => 0,
-                            "succeededFirstTs" => time(),
-                            "attemptedFirstTs" => time(),
-                        ];
+                        $methods[$method] = [];
                     }
+                    $currMethod = $newMethod;
                     $prefix = strtolower($job['text']);
-                    $methods[$method][$prefix."Records"] = array_merge($methods[$method][$prefix."Records"] ?? [], $job['records']);
+                    $currMethod[$prefix."Records"] = array_merge($methods[$method][$prefix."Records"] ?? [], $job['records']);
                     $endTs = strtotime($job['end']);
-                    if ($endTs > $methods[$method][$prefix."LastTs"]) {
-                        $methods[$method][$prefix."LastTs"] = $endTs;
+                    if ($endTs > $currMethod[$prefix."LastTs"]) {
+                        $currMethod[$prefix."LastTs"] = $endTs;
                     }
                     $startTs = strtotime($job['start']);
-                    if ($startTs < $methods[$method][$prefix."FirstTs"]) {
-                        $methods[$method][$prefix."FirstTs"] = $startTs;
+                    if ($startTs < $currMethod[$prefix."FirstTs"]) {
+                        $currMethod[$prefix."FirstTs"] = $startTs;
                     }
+                    $methods[$method][] = $currMethod;
                 } else if (is_array($job)) {
                     $remainingJobs[] = $job;
                 }
             }
 
-            foreach ($methods as $method => $settings) {
-                foreach (["attempted", "succeeded"] as $prefix) {
-                    if (!empty($settings[$prefix.'Records'])) {
-                        $hasData = TRUE;
-                        $text .= "$method<br>";
-                        $text .= ucfirst($prefix)."<br>";
-                        if (is_numeric($settings[$prefix.'FirstTs'])) {
-                            $text .= "Start: ".date("Y-m-d H:i:s", $settings[$prefix.'FirstTs'])."<br>";
+            $starts = [];
+            $ends = [];
+            foreach ($methods as $method => $settingsAry) {
+                if (REDCapManagement::isAssoc($settingsAry)) {
+                    $settingsAry = [$settingsAry];
+                }
+                if (!empty($settingsAry)) {
+                    if (count($settingsAry) > 1) {
+                        $batchesText = " (".count($settingsAry)." Batches)";
+                    } else {
+                        $batchesText = "";
+                    }
+                    $text .= "<h3>$method$batchesText</h3>";
+                }
+                $starts[$method] = time();
+                $ends[$method] = 0;
+                foreach ($settingsAry as $settings) {
+                    foreach (["attempted", "succeeded"] as $prefix) {
+                        if (!empty($settings[$prefix.'Records'])) {
+                            $hasData = TRUE;
+                            $text .= "<p>".ucfirst($prefix)."<br/>";
+                            $text .= self::getRecordsText($settings[$prefix."Records"], $allRecords)."<br/>";
+                            if (is_numeric($settings[$prefix.'FirstTs'])) {
+                                $text .= "Start: ".date("Y-m-d H:i:s", $settings[$prefix.'FirstTs'])."<br/>";
+                            }
+                            if (is_numeric($settings[$prefix.'LastTs'])) {
+                                $text .= "End: ".date("Y-m-d H:i:s", $settings[$prefix.'LastTs'])."<br/>";
+                            }
+                            $text .= "</p>";
+                            if ($settings[$prefix."FirstTs"] < $starts[$method]) {
+                                $starts[$method] = $settings[$prefix."FirstTs"];
+                            }
+                            if ($settings[$prefix."LastTs"] > $ends[$method]) {
+                                $ends[$method] = $settings[$prefix."LastTs"];
+                            }
                         }
-                        if (is_numeric($settings[$prefix.'LastTs'])) {
-                            $text .= "End: ".date("Y-m-d H:i:s", $settings[$prefix.'LastTs'])."<br>";
-                        }
-                        $text .= "<br>";
                     }
                 }
             }
-            $text .= "<br>".$additionalEmailText;
 
             if ($hasData) {
                 if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
@@ -576,7 +626,8 @@ class CronManager {
                     $addlSubject = " from localhost";
                 }
                 Application::log("Sending ".Application::getProgramName()." email for pid ".$pid." to $adminEmail");
-                \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Cron Report".$addlSubject, $text);
+                $emailMssg = self::makeEmailMessage($token, $server, $pid, $text, $additionalEmailText, $starts, $ends);
+                \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Cron Report".$addlSubject, $emailMssg);
             }
 
             if (empty($remainingJobs)) {
@@ -584,6 +635,417 @@ class CronManager {
             }
 
             self::saveRunResultsToDB($remainingJobs, $module);
+        }
+    }
+
+    private static function getRecordsText($records, $allRecords) {
+        $recordsAreSequential = self::areRecordsSequential($records, $allRecords);
+        $numRecords = count($records);
+        if (($numRecords > 1) && $recordsAreSequential) {
+            $firstRecord = $records[0];
+            $lastRecord = $records[$numRecords - 1];
+            return count($records) . " Records ($firstRecord - $lastRecord)";
+        } else if (($numRecords > 1) && !$recordsAreSequential) {
+            return "Records ".REDCapManagement::makeConjunction($records);
+        } else {
+            $singleRecord = $records[0];
+            return "Record $singleRecord";
+        }
+    }
+
+    private static function areRecordsSequential($records, $allRecords) {
+        if (empty($records)) {
+            return TRUE;
+        }
+        $firstRecord = $records[0];
+        $start = 0;
+        foreach ($allRecords as $i => $record) {
+            if ($record == $firstRecord) {
+                $start = $i;
+            }
+        }
+
+        $numRecords = count($records);
+        $numAllRecords = count($allRecords);
+        for ($i = 0; $i < $numRecords; $i++) {
+            if ($start + $i > $numAllRecords) {
+                return FALSE;
+            }
+            if ($records[$i] != $allRecords[$start + $i]) {
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }
+
+    private static function makeEmailMessage($token, $server, $pid, $completedText, $finalMessage, $startsByMethod, $endsByMethod) {
+        $metadata = Download::metadata($token, $server);
+        $firstNames = Download::firstnames($token, $server);
+        $lastNames = Download::lastnames($token, $server);
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+        $validInstruments = [
+            "updateAllCOEUS" => "coeus",
+            "updateCOEUSSubmissions" => "coeus_submission",
+            "updateNIHRePORTER" => "nih_reporter",
+            "getPubs" => "citation",
+            "updateBibliometrics" => "citation",
+            "getPatents" => "patent",
+            "getNSFGrants" => "nsf",
+            "getERIC" => "eric",
+        ];
+        $projectTitle = Download::projectTitle($token, $server);
+
+        $html = "<style>
+p.header { background-color: #d4d4eb; padding: 10px; }
+h2 { background-color: #f4c3ff; padding: 2px; }
+h3,h4 { margin-bottom: 0; }
+h3~p,h4~p { margin-top: 0; }
+h4 { font-size: 1.1em; }
+.light_green { background-color: #b0d87a; }
+body { font-size: 1.2em; }
+</style>";
+        $html .= "<h1>".Application::getProgramName()." Nightly Update</h1>";
+        $html .= "<p class='header'>Project: ".Links::makeProjectHomeLink($pid, $projectTitle)."<br/>";
+        $html .= "PID: $pid<br/>";
+        $html .= "Server: $server</p>";
+        $impact = [];
+        $impactedRecords = [];
+        foreach ($startsByMethod as $method => $startTs) {
+            $newDataRows = [];
+            if (!isset($validInstruments[$method])) {
+                continue;
+            }
+            $instrument = $validInstruments[$method];
+            $endTs = $endsByMethod[$method] ?? 0;
+            $startDate = date("Y-m-d", $startTs);
+            $endDate = date("Y-m-d", $endTs);
+            $dates = self::getDatesInRange($startDate, $endDate);
+            $prefix = REDCapManagement::getPrefixFromInstrument($instrument);
+            if (!preg_match("/_$/", $prefix)) {
+                $prefix .= "_";
+            }
+            $lastUpdateField = $prefix."last_update";
+            if (in_array($lastUpdateField, $metadataFields) && in_array($instrument, $validInstruments)) {
+                $fields = [$lastUpdateField];
+                if ($method == "updateBibliometrics") {
+                    $fields[] = "citation_icite_last_update";
+                    $fields[] = "citation_altmetric_last_update";
+                }
+                $matchedInstances = [];
+                foreach ($fields as $field) {
+                    if (in_array($field, $metadataFields)) {
+                        $values = Download::oneFieldWithInstances($token, $server, $field);
+                        foreach ($dates as $currDate) {
+                            foreach ($values as $recordId => $instances) {
+                                foreach ($instances as $instance => $date) {
+                                    if (($date == $currDate) && !in_array($instance, $matchedInstances[$recordId] ?? [])) {
+                                        if (!isset($matchedInstances[$recordId])) {
+                                            $matchedInstances[$recordId] = [];
+                                        }
+                                        $matchedInstances[$recordId][] = $instance;
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Application::log("Could not find $field in metadata",  $pid);
+                    }
+                }
+
+                if (!empty($matchedInstances)) {
+                    $redcapData = Download::formForRecords($token, $server, $instrument, array_keys($matchedInstances));
+                    foreach ($redcapData as $row) {
+                        $recordId = $row['record_id'];
+                        if (!isset($matchedInstances[$recordId])) {
+                            throw new \Exception("Cannot find Record $recordId for records ".json_encode(array_keys($matchedInstances)));
+                        }
+                        if (($row['redcap_repeat_instrument'] == $instrument) && in_array($row['redcap_repeat_instance'], $matchedInstances[$recordId])) {
+                            if (!isset($newDataRows[$recordId])) {
+                                $newDataRows[$recordId] = [];
+                            }
+                            if (!in_array($recordId, $impactedRecords)) {
+                                $impactedRecords[] = $recordId;
+                            }
+                            $newDataRows[$recordId][] = $row;
+                        }
+                    }
+                    $methodImpact = self::calculateImpact($newDataRows, $firstNames, $lastNames, $dates, $token, $server, $pid, $metadata);
+                    $impact = array_merge($impact, $methodImpact);
+                }
+            }
+            if (!empty($impactedRecords)) {
+                $impact["Total Number of Impacted Records"] = count($impactedRecords);
+            }
+        }
+
+        if (!empty($impact)) {
+            $html .= "<h2>Impact</h2>";
+            $lines = [];
+            foreach ($impact as $header => $description) {
+                $lines[] = "<h3 class='light_green'>$header</h3><p style='margin-top: 0;'>$description</p>";
+            }
+            $html .= implode("<br/>", $lines);
+        }
+
+        $html .= "<h2>Overnight Cron Jobs Run</h2>";
+        $html .= $completedText;
+        if ($finalMessage) {
+            $html .= "<h2>Final Message</h2>".$finalMessage;
+        }
+
+        return $html;
+    }
+
+    public static function getDatesInRange($startDate, $endDate) {
+        if ($startDate == $endDate) {
+            return [$startDate];
+        }
+        $ts = strtotime($startDate);
+        $endTs = strtotime($endDate);
+        $oneDay = 24 * 3600;
+
+        $dates = [];
+        do {
+            $currDate = date("Y-m-d", $ts);
+            $dates[] = $currDate;
+            $ts += $oneDay;
+        } while ($ts <= $endTs);
+        return $dates;
+    }
+
+    public static function calculateImpact($indexedREDCapData, $firstNames, $lastNames, $dates, $token, $server, $pid, $metadata) {
+        if (empty($indexedREDCapData)) {
+            return [];
+        }
+        $maxToDisplay = 20;
+        $rcrThreshold = 8;
+        $altmetricThreshold = 100;
+        $lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule(), $pid);
+
+        $impact = [];
+        $numNewPubMedPubs = 0;
+        $scholarsWithNewPubMedPubs = [];
+        $numNewERICPubs = 0;
+        $scholarsWithNewERICPubs = [];
+        $newGrants = [];
+        $newPubsWithHighRCR = [];
+        $newPubsWithHighAltmetric = [];
+        $updatedPubsWithHighRCR = [];    // not yet used
+        $updatedPubsWithHighAltmetric = [];     // not yet used
+        $newPatents = [];
+
+        foreach ($indexedREDCapData as $recordId => $rows) {
+            $hasPatent = FALSE;
+            $name = NameMatcher::formatName($firstNames[$recordId] ?? "", "", $lastNames[$recordId] ?? "");
+            foreach ($rows as $row) {
+                if ($row['redcap_repeat_instrument'] == "citation") {
+                    $citation = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $metadata, $lastNames[$recordId] ?? "", $firstNames[$recordId] ?? "");
+                    $citationText = $citation->getEtAlCitationWithLink(FALSE);
+                    $scores = " RCR: ".$row['citation_rcr'].". Altmetric Score: ".$row['citation_altmetric_score'].".";
+                    if (in_array($row['citation_last_update'], $dates)) {
+                        $numNewPubMedPubs++;
+                        if (!isset($scholarsWithNewPubMedPubs[$recordId])) {
+                            $scholarsWithNewPubMedPubs[$recordId] = 0;
+                        }
+                        $scholarsWithNewPubMedPubs[$recordId]++;
+                        if ($row['citation_rcr'] >= $rcrThreshold) {
+                            if (!isset($newPubsWithHighRCR[$recordId])) {
+                                $newPubsWithHighRCR[$recordId] = [];
+                            }
+                            $newPubsWithHighRCR[$recordId][] = $citationText.$scores;
+                        }
+                        if ($row['citation_altmetric_score'] >= $altmetricThreshold) {
+                            if (!isset($newPubsWithHighAltmetric[$recordId])) {
+                                $newPubsWithHighAltmetric[$recordId] = [];
+                            }
+                            $newPubsWithHighAltmetric[$recordId][] = $citationText.$scores;
+                        }
+                    } else {
+                        if (
+                            in_array($row['citation_icite_last_update'], $dates)
+                            && ($row['citation_rcr'] >= $rcrThreshold)
+                        ) {
+                            if (!isset($updatedPubsWithHighAltmetric[$recordId])) {
+                                $updatedPubsWithHighRCR[$recordId] = [];
+                            }
+                            $updatedPubsWithHighRCR[$recordId][] = $citationText.$scores;
+                        }
+                        if (
+                            in_array($row['citation_altmetric_last_update'], $dates)
+                            && ($row['citation_altmetric_score'] >= $altmetricThreshold)
+                        ) {
+                            if (!isset($updatedPubsWithHighAltmetric[$recordId])) {
+                                $updatedPubsWithHighAltmetric[$recordId] = [];
+                            }
+                            $updatedPubsWithHighAltmetric[$recordId][] = $citationText.$scores;
+                        }
+                    }
+                } else if ($row['redcap_repeat_instrument'] == "eric") {
+                    if (in_array($row['eric_last_update'], $dates)) {
+                        $numNewERICPubs++;
+                        if (!isset($scholarsWithNewERICPubs[$recordId])) {
+                            $scholarsWithNewERICPubs[$recordId] = 0;
+                        }
+                        $scholarsWithNewERICPubs[$recordId]++;
+                    }
+
+                } else if ($row['redcap_repeat_instrument'] == "patent") {
+                    $hasPatent = TRUE;
+                } else if (in_array($row['redcap_repeat_instrument'], ["nih_reporter", "coeus", "nsf"])) {
+                    if ($row['redcap_repeat_instrument'] == "nih_reporter") {
+                        $gf = new NIHRePORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+                    } else if ($row['redcap_repeat_instrument'] == "coeus") {
+                        $gf = new CoeusGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+                    } else if ($row['redcap_repeat_instrument'] == "nsf") {
+                        $gf = new NSFGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+                    } else {
+                        throw new \Exception("This should not happen!");
+                    }
+                    $gf->processRow($row, $rows, $token);
+                    $grants = $gf->getGrants();
+                    if (!isset($newGrants[$recordId])) {
+                        $newGrants[$recordId] = [];
+                    }
+                    $newGrants[$recordId] = array_merge($newGrants[$recordId], $grants);
+                }
+            }
+            if ($hasPatent) {
+                $patents = new Patents($recordId, $pid, $firstNames[$recordId] ?? "", $lastNames[$recordId] ?? "");
+                $patents->setRows($rows);
+                $html = $patents->getHTML();
+                if ($html) {
+                    $newPatents[$recordId] = $html;
+                }
+            }
+        }
+
+        $numNewGrants = REDCapManagement::totalValuesInArray($newGrants);
+        if ($numNewGrants > 0) {
+            if ($numNewGrants <= $maxToDisplay) {
+                $html = "";
+                foreach ($newGrants as $recordId => $grants) {
+                    $name = NameMatcher::formatName($firstNames[$recordId] ?? "", "", $lastNames[$recordId] ?? "");
+                    $name = Links::makeRecordHomeLink($pid, $recordId, $name);
+                    $html .= "<h4>$name</h4>";
+                    foreach ($grants as $grant) {
+                        $html .= "<p>";
+                        $awardNo = $grant->getNumber();
+                        $awardDescript = Grant::parseNumber($awardNo);
+                        $descriptionNodes = [];
+                        if ($awardNo) {
+                            $descriptionNodes[] = "<strong>$awardNo</strong>";
+                        } else if ($grant->getVariable("original_award_number")) {
+                            $descriptionNodes[] = $grant->getVariable("original_award_number");
+                        }
+                        if (isset($awardDescript["support_year"])) {
+                            if ($grant->getVariable("subproject")) {
+                                $descriptionNodes[] = "Sub-Project";
+                            } else if ($awardDescript['support_year'] == "01") {
+                                $descriptionNodes[] = "New";
+                            } else {
+                                $descriptionNodes[] = "Renewal";
+                            }
+                        }
+                        if ($grant->getVariable("start") && $grant->getVariable("end")) {
+                            $budgetPeriod = DateManagement::YMD2MDY($grant->getVariable("start"))." - ".DateManagement::YMD2MDY($grant->getVariable("end"));
+                            if ($grant->getVariable("project_start") && $grant->getVariable("project_end")) {
+                                $projectPeriod = DateManagement::YMD2MDY($grant->getVariable("project_start"))." - ".DateManagement::YMD2MDY($grant->getVariable("project_end"));
+                                $descriptionNodes[] = "Project ($projectPeriod), Budget ($budgetPeriod)";
+                            } else {
+                                $descriptionNodes[] = "Budget ($budgetPeriod)";
+                            }
+                        }
+                        if ($grant->getVariable("sponsor")) {
+                            $descriptionNodes[] = "from ".$grant->getVariable("sponsor");
+                        } else if ($awardDescript["funding_institute"]) {
+                            $descriptionNodes[] = "from ".$awardDescript['funding_institute'];
+                        }
+                        if ($grant->getVariable("role")) {
+                            $descriptionNodes[] = "Role ".$grant->getVariable("role");
+                        }
+                        if ($grant->getVariable("direct_budget")) {
+                            $descriptionNodes[] = "Direct Budget ".REDCapManagement::prettyMoney($grant->getVariable("direct_budget"));
+                        } else if ($grant->getVariable("budget")) {
+                            $descriptionNodes[] = "Total Budget ".REDCapManagement::prettyMoney($grant->getVariable("budget"));
+                        }
+
+                        $html .= implode("<br/>", $descriptionNodes)."<br/>";
+                        $html .= "</p>";
+                    }
+                }
+            } else {
+                $affectedNames = [];
+                foreach ($newGrants as $recordId => $grants) {
+                    $name = NameMatcher::formatName($firstNames[$recordId] ?? "", "", $lastNames[$recordId] ?? "");
+                    $name = Links::makeRecordHomeLink($pid, $recordId, $name);
+                    if (count($grants) > 1) {
+                        $affectedNames[] = $name." (".count($grants).")";
+                    } else {
+                        $affectedNames[] = $name;
+                    }
+                }
+                $html = "For Scholars: ".REDCapManagement::makeConjunction($affectedNames);
+            }
+            $impact["$numNewGrants New Grants"] = $html;
+        }
+
+        self::addPublications($impact, $numNewERICPubs, $scholarsWithNewERICPubs, "ERIC", $pid, $firstNames, $lastNames);
+        self::addPublications($impact, $numNewPubMedPubs, $scholarsWithNewPubMedPubs, "PubMed", $pid, $firstNames, $lastNames);
+
+        if (!empty($newPubsWithHighRCR) && !empty($newPubsWithHighAltmetric)) {
+            $html = "";
+            $newPubs = [
+                "High Relative Citation Ratio (&gt; $rcrThreshold)" => $newPubsWithHighRCR,
+                "High Altmetric Score (&gt; $altmetricThreshold)" => $newPubsWithHighAltmetric,
+            ];
+            foreach ($newPubs as $title => $pubAry) {
+                $totalPubs = REDCapManagement::totalValuesInArray($pubAry);
+                if (($totalPubs > 0) && ($totalPubs < $maxToDisplay)) {
+                    $html .= "<h4>$title</h4>";
+                    foreach ($pubAry as $recordId => $citationAry) {
+                        $name = NameMatcher::formatName($firstNames[$recordId] ?? "", "", $lastNames[$recordId] ?? "");
+                        $citationCount = count($citationAry);
+                        if ($citationCount == 1) {
+                            $html .= "<p><strong>$name</strong>: ".$citationAry[0]."</p>";
+                        } else if ($citationCount > 1) {
+                            $html .= "<p><strong>$name</strong> (".$citationCount.")<br/>".implode("<br/>", $citationAry)."</p>";
+                        }
+                    }
+                }
+            }
+            $impact["New High-Impact Papers"] = $html;
+        }
+
+        if (!empty($newPatents)) {
+            if (count($newPatents) <= $maxToDisplay) {
+                $html = "";
+                foreach ($newPatents as $recordId => $patentHTML) {
+                    $name = NameMatcher::formatName($firstNames[$recordId] ?? "", "", $lastNames[$recordId] ?? "");
+                    $html .= "<h4>$name</h4>".$patentHTML;
+                }
+            } else {
+                $affectedNames = [];
+                foreach (array_keys($newPatents) as $recordId) {
+                    $name = NameMatcher::formatName($firstNames[$recordId] ?? "", "", $lastNames[$recordId] ?? "");
+                    $affectedNames[] = $name;
+                }
+                $html = count($newPatents)." Downloaded for ".REDCapManagement::makeConjunction($affectedNames);
+            }
+            $impact["New Patents"] = $html;
+        }
+
+        return $impact;
+    }
+
+    private static function addPublications(&$impact, $numNewPubs, $scholarsWithNewPubs, $pubType, $pid, $firstNames, $lastNames) {
+        if ($numNewPubs > 0) {
+            $affectedNames = [];
+            foreach ($scholarsWithNewPubs as $recordId => $numPubs) {
+                $name = NameMatcher::formatName($firstNames[$recordId] ?? "", "", $lastNames[$recordId] ?? "");
+                $suffix = ($numPubs > 1) ? " ($numPubs)" : "";
+                $affectedNames[] = Links::makeRecordHomeLink($pid, $recordId, $name.$suffix);
+            }
+            $impact["$numNewPubs New $pubType Publications"] = "<strong>For Scholars</strong>: ".REDCapManagement::makeConjunction($affectedNames);
         }
     }
 
@@ -715,7 +1177,12 @@ class CronManager {
                 }
             }
 			Application::log("Running ".$cronjob->getTitle()." with ".count($records)." records");
-			$run[$cronjob->getTitle()] = array("text" => "Attempted", "start" => self::getTimestamp());
+			$currMethod = [
+                "text" => "Attempted",
+                "start" => self::getTimestamp(),
+                "file" => $cronjob->getFile(),
+                "records" => $records,
+            ];
 			try {
 				if (!$this->token || !$this->server) {
 					throw new \Exception("Could not pass token '".$this->token."' or server '".$this->server."' to cron job");
@@ -724,35 +1191,66 @@ class CronManager {
                     $cronjob->run($this->token, $this->server, $this->pid, $records);
                     gc_collect_cycles();
                 }
-				$run[$cronjob->getTitle()]["text"] = "Succeeded";
-				$run[$cronjob->getTitle()]["end"] = self::getTimestamp();
+				$currMethod["text"] = "Succeeded";
+				$currMethod["end"] = self::getTimestamp();
 			} catch(\Throwable $e) {
-                $run[$cronjob->getTitle()]["end"] = self::getTimestamp();
+                $currMethod["end"] = self::getTimestamp();
 				$this->handle($e, $adminEmail, $cronjob);
 			} catch(\Exception $e) {
-                $run[$cronjob->getTitle()]["end"] = self::getTimestamp();
+                $currMethod["end"] = self::getTimestamp();
 				$this->handle($e, $adminEmail, $cronjob);
-			}
+			} finally {
+                $method = $cronjob->getMethod();
+                if (!isset($run[$method])) {
+                    $run[$method] = [];
+                }
+                $run[$method][] = $currMethod;
+            }
 		}
 		if (count($toRun) > 0) {
+            $starts = [];
+            $ends = [];
 		    $projectTitle = Download::projectTitle($this->token, $this->server);
-			$text = "Project: $projectTitle<br>";
-			$text .= "Pid: ".$this->pid."<br>";
-			$text .= "Server: ".$this->server."<br><br>";
-			foreach ($run as $title => $mssgAry) {
-				$mssg = $mssgAry['text'];
-                $start = $mssgAry['start'];
-				$text .= $title."<br>";
-				$text .= $mssg."<br>";
-                $text .= "Started: $start<br>";
-                if (isset($mssgAry['end'])) {
-                    $text .= "Ended: {$mssgAry['end']}<br>";
+            $allRecords = Download::recordIds($this->token, $this->server);
+            $text = "";
+			foreach ($run as $method => $aryOfMessages) {
+                if (REDCapManagement::isAssoc($aryOfMessages)) {
+                    $aryOfMessages = [$aryOfMessages];
                 }
-                $text .= "<br>";
+                $starts[$method] = time();
+                $ends[$method] = 0;
+
+                if (count($aryOfMessages) > 1) {
+                    $batchesText = " (".count($aryOfMessages)." Batches)";
+                } else {
+                    $batchesText = "";
+                }
+                $text .= "<h3>$method$batchesText</h3>";
+                foreach ($aryOfMessages as $mssgAry) {
+                    $mssg = $mssgAry['text'];
+                    $start = $mssgAry['start'];
+                    $text .= "<p>";
+                    if (isset($mssgAry["file"])) {
+                        $text .= basename($mssgAry["file"], ".php")."<br/>";
+                    }
+                    $text .= "$mssg<br/>";
+                    if (!empty($mssgAry["records"])) {
+                        $text .= self::getRecordsText($mssgAry["records"], $allRecords)."<br/>";
+                    }
+                    $text .= "Started: $start<br/>";
+                    if (isset($mssgAry['end'])) {
+                        $text .= "Ended: {$mssgAry['end']}<br/>";
+                    }
+                    $text .= "</p>";
+
+                    if ($starts[$method] > $mssgAry['start']) {
+                        $starts[$method] = $mssgAry['start'];
+                    }
+                    if (isset($mssgAry['end']) && ($ends[$method] < $mssgAry['end'])) {
+                        $ends[$method] = $mssgAry['end'];
+                    }
+                }
 			}
-			if ($additionalEmailText) {
-			    $text .= "<br><br>".$additionalEmailText;
-            }
 
 			if (!class_exists("\REDCap") || !method_exists("\REDCap", "email")) {
 				require_once(dirname(__FILE__)."/../../../redcap_connect.php");
@@ -766,7 +1264,8 @@ class CronManager {
 			        $addlSubject = " from localhost";
                 }
                 Application::log("Sending ".Application::getProgramName()." email for pid ".$this->pid." to $adminEmail");
-                \REDCap::email($adminEmail, Application::getSetting("default_from", $this->pid), Application::getProgramName()." Cron Report".$addlSubject, $text);
+                $emailMessage = self::makeEmailMessage($this->token, $this->server, $this->pid, $text, $additionalEmailText, $starts, $ends);
+                \REDCap::email($adminEmail, Application::getSetting("default_from", $this->pid), Application::getProgramName()." Cron Report".$addlSubject, $emailMessage);
             }
 		}
 	}
@@ -829,6 +1328,10 @@ class CronJob {
 	public function getTitle() {
 		return $this->file.": ".$this->method;
 	}
+
+    public function getFile() {
+        return $this->file;
+    }
 
 	public function getMethod() {
 	    return $this->method;

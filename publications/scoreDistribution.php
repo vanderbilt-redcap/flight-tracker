@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\DateManagement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\NameMatcher;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -86,7 +87,7 @@ if (!empty($foundList)) {
             && !in_array($pmid, $pmidsUsed)
             && in_array("$recordId:$instance", $foundList)
         ) {
-            # do not bold name because multiple names might be used
+            # concern: multiple names might be used
             # to turn on, use $relevantNames, but my experience is that too many false matches are made
             $citation = new Citation($token, $server, $recordId, $instance, $row);
             $rcr = $row['citation_rcr'];
@@ -97,7 +98,8 @@ if (!empty($foundList)) {
             if (isset($_GET['bold'])) {
                 $pertinentCitations[$rcr][] = "<p style='text-align: left;'>".$citation->getImage("left").$citation->getCitationWithLink(FALSE, TRUE, $relevantNames)." RCR: $rcr. $altmetricScore</p>";
             } else {
-                $pertinentCitations[$rcr][] = "<p style='text-align: left;'>".$citation->getImage("left").$citation->getCitationWithLink(FALSE, TRUE)." RCR: $rcr. $altmetricScore</p>";
+                $recordName = [NameMatcher::formatName($firstNames[$recordId] ?? "", "", $lastNames[$recordId] ?? "")];
+                $pertinentCitations[$rcr][] = "<p style='text-align: left;'>".$citation->getImage("left").$citation->getCitationWithLink(FALSE, TRUE, $recordName)." RCR: $rcr. $altmetricScore</p>";
             }
             $pmidsUsed[] = $pmid;
         }

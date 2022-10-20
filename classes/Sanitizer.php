@@ -122,8 +122,10 @@ class Sanitizer {
         return htmlentities($str);
     }
 
-    public static function sanitizeArray($ary, $stripHTML = TRUE) {
-        $encodeQuotes = FALSE;
+    /**
+     * @psalm-taint-specialize
+     */
+    public static function sanitizeArray($ary, $stripHTML = TRUE, $encodeQuotes = TRUE) {
         if (is_array($ary)) {
             /**
              * @psalm-taint-escape html
@@ -131,29 +133,31 @@ class Sanitizer {
              */
             $newAry = [];
             foreach ($ary as $key => $value) {
-                if ($stripHTML) {
+                if ($stripHTML && $encodeQuotes) {
                     $key = self::sanitize($key);
+                } else if ($stripHTML && !$encodeQuotes) {
+                    $key = self::sanitizeWithoutChangingQuotes($key);
                 } else {
                     $key = self::sanitizeWithoutStrippingHTML($key, $encodeQuotes);
                 }
                 if (is_array($value)) {
-                    $value = self::sanitizeArray($value, $stripHTML);
+                    $value = self::sanitizeArray($value, $stripHTML, $encodeQuotes);
+                } else if ($stripHTML && $encodeQuotes) {
+                    $value = self::sanitize($value);
+                } else if ($stripHTML && !$encodeQuotes) {
+                    $value = self::sanitizeWithoutChangingQuotes($value);
                 } else {
-                    if ($stripHTML) {
-                        $value = self::sanitize($value);
-                    } else {
-                        $value = self::sanitizeWithoutStrippingHTML($value, $encodeQuotes);
-                    }
+                    $value = self::sanitizeWithoutStrippingHTML($value, $encodeQuotes);
                 }
                 $newAry[$key] = $value;
             }
             return $newAry;
+        } else if ($stripHTML && $encodeQuotes) {
+            return self::sanitize($ary);
+        } else if ($stripHTML && !$encodeQuotes) {
+            return self::sanitizeWithoutChangingQuotes($ary);
         } else {
-            if ($stripHTML) {
-                return self::sanitize($ary);
-            } else {
-                return self::sanitizeWithoutStrippingHTML($ary, $encodeQuotes);
-            }
+            return self::sanitizeWithoutStrippingHTML($ary, $encodeQuotes);
         }
     }
 

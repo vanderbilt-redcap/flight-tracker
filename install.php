@@ -197,8 +197,10 @@ function makeIntroPage($projectId) {
 	if ((!$rights[USERID]['api_import']) || (!$rights[USERID]['api_export'])) {
 		array_push($warnings, "To assign API rights, follow the link; select your username from the list; select 'Edit user priviledges;' and check API Import rights, API Export rights."); 
 	}
+    $baseUrl = ExternalModules::$BASE_URL ?? APP_URL_EXTMOD_RELATIVE;
 
-	$html = "";
+
+    $html = "";
 	$html .= "<script>
 function changeGrantClass(name) {
 	const val = $('[name='+name+']:checked').val();
@@ -210,7 +212,7 @@ function changeGrantClass(name) {
 	}
 }
 </script>\n";
-	$html .= "<p class='small centered recessed'>(Not expecting this page? <a class='recessed' href='".ExternalModules::$BASE_URL."manager/project.php?pid=$projectId'>Click Here</a> to Disable Flight Tracker)</p>\n";
+	$html .= "<p class='small centered recessed'>(Not expecting this page? <a class='recessed' href='$baseUrl"."manager/project.php?pid=$projectId'>Click Here</a> to Disable Flight Tracker)</p>\n";
 	$html .= "<style>\n";
 	$html .= getCSS();
 	$html .= "</style>\n";

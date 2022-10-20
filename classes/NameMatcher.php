@@ -19,6 +19,14 @@ class NameMatcher {
         return FALSE;
     }
 
+    public static function formatName($first, $middle, $last) {
+        if ($middle) {
+            return $first." ".$middle." ".$last;
+        } else {
+            return $first." ".$last;
+        }
+    }
+
     public static function doInstitutionsMatch($i1, $i2) {
         if (!$i1 || !$i2) {
             return FALSE;

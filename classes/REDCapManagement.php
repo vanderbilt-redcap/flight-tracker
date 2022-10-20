@@ -184,6 +184,21 @@ class REDCapManagement {
         return $y;
     }
 
+    public static function totalValuesInArray($ary) {
+        $total = 0;
+        foreach ($ary as $key => $value) {
+            if (!is_array($value)) {
+                $total++;
+            }
+        }
+        foreach ($ary as $key => $value) {
+            if (is_array($value)) {
+                $total += self::totalValuesInArray($value);
+            }
+        }
+        return $total;
+    }
+
     public static function getInstrumentFromPrefix($prefix, $metadata) {
 	    $forms = self::getFormsFromMetadata($metadata);
 	    $prefix = preg_replace("/_$/", "", $prefix);
@@ -259,6 +274,8 @@ class REDCapManagement {
             $prefix = "promotion";
         } else if ($instrument == "exclude_lists") {
             $prefix = "exclude";
+        } else if ($instrument == "patent") {
+            $prefix = "patent";
         } else {
             $prefix = "";
         }
@@ -734,9 +751,8 @@ class REDCapManagement {
 
     public static function json_encode_with_spaces($data) {
         $str = json_encode($data);
-        $str = self::sanitizeJSON($str);
-        $str = preg_replace("/,/", ", ", $str);
         $str = Sanitizer::sanitizeJSON($str);
+        $str = preg_replace("/,/", ", ", $str);
         return $str;
     }
 
@@ -1214,7 +1230,15 @@ class REDCapManagement {
 		return $indexedRedcapData;
 	}
 
-	public static function datetime2Date($datetime) {
+    public static function reverseArray($ary) {
+        $reverse = [];
+        foreach ($ary as $type => $val) {
+            $reverse[$val] = $type;
+        }
+        return $reverse;
+    }
+
+    public static function datetime2Date($datetime) {
         return DateManagement::datetime2Date($datetime);
     }
 

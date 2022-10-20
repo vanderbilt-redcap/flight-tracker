@@ -351,6 +351,7 @@ class Publications {
                     "redcap_repeat_instrument" => "citation",
                     "redcap_repeat_instance" => $row['redcap_repeat_instance'],
                     "citation_pmid" => $pmid,
+                    "citation_altmetric_last_update" => $row['citation_altmetric_last_update'],
                 ];
 	            $upload[] = $setupFields;
             }
@@ -863,6 +864,9 @@ class Publications {
                 "citation_grants" => implode("; ", $assocGrants),
                 "citation_complete" => "2",
             ];
+            if (in_array("citation_last_update", $metadataFields)) {
+                $row["citation_last_update"] = date("Y-m-d");
+            }
             if ($hasAbstract) {
                 $row['citation_abstract'] = $abstract;
             }
@@ -1049,9 +1053,15 @@ class Publications {
 
         $i = 0;
         foreach ($upload as $row) {
-            if ($row['citation_doi']) {
+            if (
+                $row['citation_doi']
+                && ($row['citation_altmetric_last_update'] != date("Y-m-d"))
+            ) {
                 $altmetricRow = self::getAltmetricRow($row['citation_doi'], $metadataFields, $this->pid);
-                $upload[$i] = array_merge($upload[$i], $altmetricRow);
+                foreach ($altmetricRow as $field => $value) {
+                    // overwrite
+                    $upload[$i][$field] = $value;
+                }
             }
             $i++;
         }

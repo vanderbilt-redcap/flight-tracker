@@ -118,6 +118,7 @@ function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {
     $html .= "<h1>Multiple ORCIDs Found</h1>\n";
     $html .= "<h3>".Links::makeProjectHomeLink($pid, "REDCap Project")."</h3>";
     $html .= "<h3>".Links::makeLink($orcidSearchLink, $orcidSearchLink)."</h3>";
+    $html .= "<p>ORCIDs (<a href='https://www.orcid.org'>www.orcid.org</a>) are unique identifiers that can be used to match a scholar with a publication. They avoid the name-matching problem, and they allow Flight Tracker to skip the Publication Wrangling process. Flight Tracker tries to pull an ORCID identifier from the ORCID website, but some scholars match more than one ID. Below is a list of these scholars. When you have time, do you mind seeing if you can identify which, if any, ORCID is for your scholar and fill that in on the Identifiers form on their REDCap record? That should help you avoid the step of Publication Wrangling as often.</p>";
     $html .= "<h4>Please insert the proper ORCID on the identifiers form. Click on the name to take you to the REDCap record. Links are available for all new ORCIDs.</h4>\n";
     foreach ($multiples as $recordId => $recordORCIDs) {
         if (!isset($priorMultiples[$recordId])) {

@@ -33,10 +33,11 @@ $finalized = $pubs->getCitationCollection("Final");
 $notDone = $pubs->getCitationCollection("Not Done");
 $omitted = $pubs->getCitationCollection("Omitted");
 
+$baseURL = ExternalModules::$BASE_URL ?? APP_URL_EXTMOD_RELATIVE;
 $headerStyle = "text-align: center; margin: 16px 0; padding: 4px;";
 $html = "";
 $html .= "<script>
-let extmod_base_url = '".ExternalModules::$BASE_URL."'
+let extmod_base_url = '$baseURL'
 </script>\n";
 $html .= "<h3 class='header toolbar'><font size='+1'>Publications</font></h3>\n";
 

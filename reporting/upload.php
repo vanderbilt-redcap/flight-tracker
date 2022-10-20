@@ -722,11 +722,7 @@ function addNormativeRow(&$upload, $recordId, $facultyName, $supportDuringTraini
 }
 
 function formatName($first, $middle, $last) {
-    if ($middle) {
-        return $first." ".$middle." ".$last;
-    } else {
-        return $first." ".$last;
-    }
+    return NameMatcher::formatName($first, $middle, $last);
 }
 
 function transformDegreesToREDCap($token, $server, &$upload, $recordId, $degreesAndYears, $choices) {

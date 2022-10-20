@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.17.15";
+		return "4.18.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -163,14 +163,14 @@ class CareerDev {
 	    if (!$mssg) {
 	        return;
         }
-	    $pid = REDCapManagement::sanitize($pid);
+	    $pid = Sanitizer::sanitizePid($pid);
 	    if (self::isLocalhost()) {
             $page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
 	        if (
 	            isset($_GET['test'])
                 || !preg_match('/reporting/', $page)
             ) {
-                $mssg = REDCapManagement::sanitize($mssg);
+                $mssg = Sanitizer::sanitizeWithoutStrippingHTML($mssg, FALSE);
                 if ($pid) {
                     error_log("$pid: $mssg");
                     // echo "$pid: $mssg\n";
@@ -182,7 +182,7 @@ class CareerDev {
 	        return;
         }
         if (isset($_GET['test'])) {
-            $mssg = REDCapManagement::sanitize($mssg);
+            $mssg = Sanitizer::sanitizeWithoutStrippingHTML($mssg, FALSE);
             echo $mssg . "<br>\n";
         } else {
             if (!is_array($pid)) {
@@ -1033,11 +1033,12 @@ class CareerDev {
 		}
 		if ($menuName == "Resources") {
 			return [
-                    "Participation Roster" => self::link("/resources/add.php"),
-                    "Participation Roster for All Projects" => self::link("/resources/add.php")."&allPids",
-					"Manage" => self::link("/resources/manage.php"),
-					"Dashboard Metrics" => self::link("/dashboard/resources.php"),
-                    "Measure Resource ROI" => self::link("/resources/roi.php"),
+                "Participation Roster" => self::link("/resources/add.php"),
+                "Participation Roster for All Projects" => self::link("/resources/add.php")."&allPids",
+                "Manage" => self::link("/resources/manage.php"),
+                "Dashboard Metrics" => self::link("/dashboard/resources.php"),
+                "Measure Resource ROI" => self::link("/resources/roi.php"),
+                "Scholar Resource Use" => self::link("/resources/table.php"),
             ];
 		}
 		if ($menuName == "Help") {

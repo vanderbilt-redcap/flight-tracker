@@ -8,7 +8,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 # performs 1:1 case-insensitive comparisons
 
 class GrantLexicalTranslator {
-	public function __construct($token, $server, $moduleOrMetadata) {
+	public function __construct($token, $server, $moduleOrMetadata, $pid = "") {
 		if (is_array($moduleOrMetadata)) {
 			$this->module = NULL;
 			$this->metadata = $moduleOrMetadata;
@@ -25,7 +25,9 @@ class GrantLexicalTranslator {
 		    if ($this->module->PREFIX == "flight_tracker") {
                 $this->data = $this->module->getSystemSetting($this->settingName);
             } else {
-		        $pid = Application::getPID($this->token);
+                if (!$pid) {
+                    $pid = Application::getPID($this->token);
+                }
 		        $this->data = $this->module->getProjectSetting($this->settingName, $pid);
             }
 		    if (!$this->data) {

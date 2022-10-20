@@ -121,7 +121,7 @@ class Scholar {
 		} else {
 			$vars = self::getDefaultOrder("identifier_orcid");
             $vars = $this->getOrder($vars, "identifier_orcid");
-			$result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+			$result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
 		}
 		$value = $result->getValue();
         if (!$value && $this->isMSTP()) {
@@ -155,7 +155,7 @@ class Scholar {
         }
         $vars = self::getDefaultOrder($field);
         $vars = $this->getOrder($vars, $field);
-        $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
         if ($result->getSource() == "ldap") {
             $res = $this->getLDAPResult($rows, "ldapds_cn", $result, "ldapds");
             if ($res->getValue() === "") {
@@ -188,7 +188,7 @@ class Scholar {
         }
         $vars = self::getDefaultOrder("identifier_email");
         $vars = $this->getOrder($vars, "identifier_email");
-        $result = self::searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
         if ($result->getSource() == "ldap") {
             $res = $this->getLDAPResult($rows, "ldapds_mail", $result, "ldapds");
             if ($res->getValue() === "") {
@@ -265,7 +265,7 @@ class Scholar {
 
 	public function getResourcesUsed() {
 		$resources = array();
-		$choices = self::getChoices($this->metadata);
+		$choices = DataDictionaryManagement::getChoices($this->metadata);
 		foreach ($this->rows as $row) {
 			$date = "";
 			$resource = "";
@@ -283,7 +283,7 @@ class Scholar {
 				if ($date) {
 					$title .= " (".$date.")";
 				}
-				array_push($resources, $title);
+				$resources[] = $title;
 			}
 		}
 		return $resources;
@@ -345,7 +345,7 @@ class Scholar {
     private function getGenericValueForField($rows, $field, $byLatest = FALSE, $showDebug = FALSE) {
         $vars = self::getDefaultOrder($field);
         $vars = $this->getOrder($vars, $field);
-        $result = self::searchRowsForVars($rows, $vars, $byLatest, $this->pid, $showDebug);
+        $result = $this->searchRowsForVars($rows, $vars, $byLatest, $this->pid, $showDebug);
         if ($result->getValue() === "") {
             $result = $this->searchForAndTranslateSpecialResults($rows, $field);
         }
@@ -650,7 +650,7 @@ class Scholar {
 	}
 
 	public function getDegreesText() {
-        $choices = self::getChoices($this->metadata);
+        $choices = DataDictionaryManagement::getChoices($this->metadata);
         $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
         $degreeCheckboxField = "summary_all_degrees";
         if (in_array($degreeCheckboxField, $metadataFields)) {
@@ -681,7 +681,7 @@ class Scholar {
     public function getPrimaryDepartmentText() {
         $deptResult = $this->getPrimaryDepartment($this->rows);
         $dept = $deptResult->getValue();
-        $choices = self::getChoices($this->metadata);
+        $choices = DataDictionaryManagement::getChoices($this->metadata);
         if (isset($choices['summary_primary_dept'][$dept])) {
             return $choices["summary_primary_dept"][$dept];
         }
@@ -840,7 +840,7 @@ class Scholar {
 	}
 
 	public function makeUploadRow() {
-		$choices = self::getChoices($this->metadata);
+		$choices = DataDictionaryManagement::getChoices($this->metadata);
 		$uploadRow = array(
 					"record_id" => $this->recordId,
 					"redcap_repeat_instrument" => "",
@@ -851,24 +851,24 @@ class Scholar {
 
 		foreach ($this->name as $var => $value) {
 			if (self::isValidValue($this->metadata, $choices, $var, $value)) {
-				$uploadRow[$var] = $value;
+				$uploadRow[$var] = trim($value);
 			}
 		}
 		foreach ($this->demographics as $var => $value) {
 			if (self::isValidValue($this->metadata, $choices, $var, $value)) {
-				$uploadRow[$var] = $value;
+				$uploadRow[$var] = trim($value);
 			}
 		}
 		foreach ($this->metaVariables as $var => $value) {
 			if (self::isValidValue($this->metadata, $choices, $var, $value)) {
-				$uploadRow[$var] = $value;
+				$uploadRow[$var] = trim($value);
 			}
 		}
 
 		$grantUpload = $this->grants->makeUploadRow();
 		foreach ($grantUpload as $var => $value) {
 			if (!isset($uploadRow[$var]) && self::isValidValue($this->metadata, $choices, $var, $value)) {
-				$uploadRow[$var] = $value;
+				$uploadRow[$var] = trim($value);
 			}
 		}
 
@@ -1335,7 +1335,7 @@ class Scholar {
         }
 
         $splitterRegex = "/\s*[,;\/]\s*/";
-        $choices = self::getChoices($this->metadata);
+        $choices = DataDictionaryManagement::getChoices($this->metadata);
 
 	    $priorInstitutions = $this->getPriorInstitutions($rows);
         $seenInstitutions = [];
@@ -1666,7 +1666,7 @@ class Scholar {
 	}
 
 	public static function getSourceChoices($metadata = array()) {
-		$choices = self::getChoices($metadata);
+		$choices = DataDictionaryManagement::getChoices($metadata);
 		$exampleField = self::getExampleField();
 		if (isset($choices[$exampleField])) {
 			return $choices[$exampleField];
@@ -2136,7 +2136,7 @@ class Scholar {
         $order = self::getDefaultOrder("summary_degrees");
         $order = $this->getOrder($order, "summary_degrees");
 
-        $choices = self::getChoices($this->metadata);
+        $choices = DataDictionaryManagement::getChoices($this->metadata);
         $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
 
         $normativeRow = self::getNormativeRow($rows);
@@ -2287,7 +2287,7 @@ class Scholar {
                 }
             }
 
-            $result = self::searchRowsForVars($rows, $filteredVars, FALSE, $this->pid, isset($_GET['test']));
+            $result = $this->searchRowsForVars($rows, $filteredVars, FALSE, $this->pid, isset($_GET['test']));
             if (isset($_GET['test'])) {
                 echo "A Got ".$result->getValue()." from ".$result->getSource()."<br>";
             }
@@ -2299,7 +2299,7 @@ class Scholar {
                 return new Result("", "", "", "", $this->pid);
             }
 
-            $choices = self::getChoices($this->metadata);
+            $choices = DataDictionaryManagement::getChoices($this->metadata);
             if (isset($choices[$field]) && !isset($choices[$field][$value])) {
                 $found = FALSE;
                 foreach ($choices[$field] as $idx => $label) {
@@ -2408,7 +2408,7 @@ class Scholar {
     public function getGender($rows) {
 	    $summaryField = "summary_gender";
         $result = $this->getGenericValueForField($rows, $summaryField);
-        $choices = REDCapManagement::getChoices($this->metadata);
+        $choices = DataDictionaryManagement::getChoices($this->metadata);
 
 		# must reverse for certain sources
 		$tradOrder = array("manual", "scholars", "followup");
@@ -2448,7 +2448,7 @@ class Scholar {
 		$order = self::getDefaultOrder($field);
 		$order = $this->getOrder($order, $field);
 		$normativeRow = self::getNormativeRow($rows);
-		$choices = self::getChoices($this->metadata);
+		$choices = DataDictionaryManagement::getChoices($this->metadata);
 
 		$race = "";
 		$raceSource = "";
@@ -2647,14 +2647,26 @@ class Scholar {
 	}
 
 	# $vars is listed in order of priority; key = variable, value = data source
-	private static function searchRowsForVars($rows, $vars, $byLatest = FALSE, $pid = "", $showDebug = FALSE) {
+	private function searchRowsForVars($rows, $vars, $byLatest = FALSE, $pid = "", $showDebug = FALSE) {
 		$result = new Result("", "");
         $aryInstance = "";
         $latestTs = 0;
 		foreach ($vars as $var => $source) {
 			$splitVar = explode("/", $var);
 			foreach ($rows as $row) {
-				if ((isset($row[$var]) && ($row[$var] !== "")) || ((count($splitVar) > 1) && isset($row[$splitVar[0]]) && $row[$splitVar[0]] && isset($row[$splitVar[1]]) && $row[$splitVar[1]])) {
+				if (
+                    (
+                        isset($row[$var])
+                        && ($row[$var] !== "")
+                    )
+                    || (
+                        (count($splitVar) > 1)
+                        && isset($row[$splitVar[0]])
+                        && $row[$splitVar[0]]
+                        && isset($row[$splitVar[1]])
+                        && $row[$splitVar[1]]
+                    )
+                ) {
 				    if ($showDebug) {
 				        if ($row[$var] !== "") {
 				            Application::log("Found at $var: ".$row[$var]);
@@ -2670,7 +2682,10 @@ class Scholar {
 						$dateField = self::getDateFieldForSource($source, $var);
 						if ($dateField && $row[$dateField]) {
 							$date = $row[$dateField];
-						} else if ($dateField && !in_array($dateField, ["check_date", "init_import_date"])) {
+						} else if (
+                            $dateField
+                            && !in_array($dateField, ["check_date", "init_import_date"])
+                        ) {
 							$date = $dateField;
 						}
 					}
@@ -2702,19 +2717,39 @@ class Scholar {
 					} else {
 						if ($row['redcap_repeat_instrument'] == $source) {
 							# get earliest instance - i.e., lowest repeat_instance
-							if (!$aryInstance
-								|| ($aryInstance > $row['redcap_repeat_instance'])) {
+							if (
+                                !$aryInstance
+								|| ($aryInstance > $row['redcap_repeat_instance'])
+                            ) {
 								$result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
 								$result->setField($var);
 								$result->setInstance($row['redcap_repeat_instance']);
 								$aryInstance = $row['redcap_repeat_instance'];
 							}
 						} else {
+                            $choices = DataDictionaryManagement::getChoices($this->metadata);
+                            $equivalents = self::getEquivalents();
 						    if (count($splitVar) > 1) {
                                 $date = self::transformSplitDatesToYMD($splitVar, $row);
                                 $result = new Result($date, $source, "", $date, $pid);
                             } else {
-                                $result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
+                                $value = self::transformIfDate($row[$var]);
+                                if (isset($choices[$var])) {
+                                    foreach ($choices[$var] as $idx => $label) {
+                                        if (
+                                            ($label == $value)
+                                            ||
+                                            (
+                                                isset($equivalents[$value])
+                                                && ($equivalents[$value] == $label)
+                                            )
+                                        ) {
+                                            $value = $idx;
+                                            break;
+                                        }
+                                    }
+                                }
+                                $result = new Result($value, $source, "", $date, $pid);
                                 $result->setField($var);
                             }
                             return $result;
@@ -2737,6 +2772,21 @@ class Scholar {
         }
 		return new Result("", "");
 	}
+
+    private static function getEquivalents() {
+        return [
+            "Assoc Professor" => "Associate Professor",
+            "Asst Professor" => "Assistant Professor",
+            "Adjunct Asst Professor" => "Assistant Professor",
+            "Adjunct Assoc Professor" => "Associate Professor",
+            "Research Asst Professor" => "Research Assistant Professor",
+            "Research Assoc Professor" => "Research Associate Professor",
+            "Asst Professor of Clinical" => "Assistant Professor",
+            "Assoc Professor of Clinical" => "Associate Professor",
+            "Research Instructor" => "Instructor",
+            "Adjunct Instructor" => "Instructor",
+        ];
+    }
 
 	private static function transformSplitDatesToYMD($splitVar, $row) {
         $varValues = [];
@@ -2789,9 +2839,12 @@ class Scholar {
         }
 
 		if (is_numeric($value)) {
-			$choices = self::getChoices($this->metadata);
+			$choices = DataDictionaryManagement::getChoices($this->metadata);
 			$fieldName = $result->getField();
-			if (isset($choices[$fieldName]) && isset($choices[$fieldName][$value])) {
+			if (
+                isset($choices[$fieldName])
+                && isset($choices[$fieldName][$value])
+            ) {
 				$newValue = $choices[$fieldName][$value];
 				if ($newValue == "Other") {
 					foreach ($rows as $row) {
@@ -2840,7 +2893,7 @@ class Scholar {
 	private function getCurrentRank($rows) {
 		$vars = self::getDefaultOrder("summary_current_rank");
 		$vars = $this->getOrder($vars, "summary_current_rank");
-		$result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+		$result = $this->searchRowsForVars($rows, $vars, TRUE, $this->pid);
         // Application::log($this->getName()." summary_current_rank: ".$result->displayInText());
 		if (!$result->getValue()) {
 			$otherFields = array(
@@ -2938,7 +2991,7 @@ class Scholar {
 		if (in_array($rankResult->getValue(), [6, 7])) {
 		    return new Result(3, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);;   // Tenured
         }
-        if (in_array($rankResult->getValue(), [4])) {
+        if ($rankResult->getValue() == 4) {
             return new Result(1, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);   // Not Tenure track
         }
 
@@ -3005,7 +3058,7 @@ class Scholar {
 			return $this->matchWithInstitutionResult($institutionResult, $rows, $vars);
 		} else {
 			# no institution information
-            return self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+            return $this->searchRowsForVars($rows, $vars, TRUE, $this->pid);
 		}
 	}
 
@@ -3023,7 +3076,6 @@ class Scholar {
     }
 
 	private function matchWithInstitutionResult($institutionResult, $rows, $vars) {
-		$fieldName = $institutionResult->getField();
 		$instance = $institutionResult->getInstance();
         $source = $institutionResult->getSource();
         $value = $institutionResult->getValue();
@@ -3225,7 +3277,7 @@ class Scholar {
 
 	private function getDoctoralRowsFromDegrees($rows) {
 	    $doctoralRegexes = self::getDoctoralRegexes();
-	    $choices = self::getChoices($this->metadata);
+	    $choices = DataDictionaryManagement::getChoices($this->metadata);
 	    $field = "imported_degree";
 	    $rowsToReturn = [];
 	    foreach ($rows as $row) {
@@ -3441,7 +3493,7 @@ class Scholar {
 	private function getDisadvantagedStatus($rows) {
 		$vars = self::getDefaultOrder("summary_disadvantaged");
         $vars = $this->getOrder($vars, "summary_disadvantaged");
-        $result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+        $result = $this->searchRowsForVars($rows, $vars, TRUE, $this->pid);
 		if ($result->getValue() == 1) {
 			# Yes
 			$value = "1";
@@ -3470,7 +3522,7 @@ class Scholar {
 	private function getDisabilityStatus($rows) {
 		$vars = self::getDefaultOrder("summary_disability");
         $vars = $this->getOrder($vars, "summary_disability");
-        $result = self::searchRowsForVars($rows, $vars, TRUE, $this->pid);
+        $result = $this->searchRowsForVars($rows, $vars, TRUE, $this->pid);
 		if ($result->getValue() == 1) {
 			# Yes
 			$value = "1";
@@ -3547,7 +3599,7 @@ class Scholar {
 		if (!preg_match("/^summary_/", $demo)) {
 			$demo = "summary_".$demo;
 		}
-		$choices = self::getChoices($this->metadata);
+		$choices = DataDictionaryManagement::getChoices($this->metadata);
 		if (isset($this->demographics[$demo])) {
 			if (isset($choices[$demo]) && isset($this->demographics[$demo])) {
 				return $choices[$demo][$this->demographics[$demo]];

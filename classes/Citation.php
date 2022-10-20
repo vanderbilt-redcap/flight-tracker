@@ -850,6 +850,21 @@ class Citation {
 	    return $str;
     }
 
+    public function getEtAlCitation() {
+        $allAuthors = $this->getAuthorList();
+        if (count($allAuthors) > 1) {
+            $authors = [$allAuthors[0], "et al."];
+        } else {
+            $authors = $allAuthors;
+        }
+        if ($this->getVariable("data_source") == "eric") {
+            return $this->getERICCitation($authors);
+        } else if ($this->getVariable("data_source") == "citation") {
+            return $this->getPubMedCitation($authors);
+        }
+        return "";
+    }
+
 	public function getCitation($multipleNamesToBold = []) {
         if (!empty($multipleNamesToBold)) {
             // Application::log("Has multiple names to bold: ".REDCapManagement::json_encode_with_spaces($multipleNamesToBold));
@@ -1075,10 +1090,19 @@ class Citation {
 	    return "";
     }
 
-	public function getCitationWithLink($includeREDCapLink = TRUE, $newTarget = FALSE, $namesToBold = []) {
-		global $pid, $event_id;
+    public function getEtAlCitationWithLink($includeREDCapLink = TRUE, $newTarget = FALSE) {
+        $base = $this->getEtAlCitation();
+        return $this->makeAddOns($base, $includeREDCapLink, $newTarget);
+    }
 
+	public function getCitationWithLink($includeREDCapLink = TRUE, $newTarget = FALSE, $namesToBold = []) {
         $base = $this->getCitation($namesToBold);
+        return $this->makeAddOns($base, $includeREDCapLink, $newTarget);
+    }
+
+    private function makeAddOns($base, $includeREDCapLink, $newTarget) {
+        global $pid, $event_id;
+
         if ($this->getVariable("data_source") == "eric") {
             $fullTextURL = $this->getVariable("e_fulltext");
             $locationText = $fullTextURL ? " ".Links::makeLink($fullTextURL, "Full Text", $newTarget) : "";
