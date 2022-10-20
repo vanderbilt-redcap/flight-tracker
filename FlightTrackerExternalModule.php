@@ -14,6 +14,7 @@ use Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\CareerDevLibrary\NameMatcher;
 use Vanderbilt\CareerDevLibrary\Upload;
 use Vanderbilt\CareerDevLibrary\MMAHelper;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
@@ -715,7 +716,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 		$this->setupApplication();
 		if (isset($_GET['pid']) && Application::isVanderbilt()) {
-            $activePids = [$_GET['pid']];
+            $activePids = [Sanitizer::sanitizePid($_GET['pid'])];
         } else {
             $activePids = $this->framework->getProjectsWithModuleEnabled();
         }

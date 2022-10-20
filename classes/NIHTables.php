@@ -1942,6 +1942,7 @@ class NIHTables {
                 self::explodeWildcardField("summary_award_title_*")
             ));
             $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, array($recordId));
+            # TODO Why not [1, 2]???
             $kTypes = array(1, 2, 3, 4);
             $lastValidKTitle = "";
             foreach ($redcapData as $row) {
