@@ -9,19 +9,20 @@ use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Consortium;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+
+require_once(dirname(__FILE__)."/small_base.php");
+require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 if (!empty($_POST)) {
-    require_once(dirname(__FILE__)."/small_base.php");
-    require_once(dirname(__FILE__)."/classes/Autoload.php");
     $switches = new FeatureSwitches($token, $server, $pid);
     $data = $switches->savePost($_POST);
     echo json_encode($data);
     exit;
 } else {
-    require_once(dirname(__FILE__)."/small_base.php");
     if ($server === NULL) {
-        $prefix = $_GET['prefix'] ?? "flight_tracker";
-        $pid = $_GET['pid'] ?? "";
+        $prefix = Sanitizer::sanitize($_GET['prefix'] ?? "flight_tracker");
+        $pid = Sanitizer::sanitizePid($_GET['pid'] ?? "");
         if (!$pid) {
             die("You must supply a valid project-id!");
         }
@@ -31,7 +32,6 @@ if (!empty($_POST)) {
 }
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
-require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $bottomPadding = "<br><br><br><br><br>\n";
 $grantNumberHeader = "";
