@@ -50,7 +50,7 @@ class CohortConfig {
 				# calculated variable
 				if (isset($configRow['choice'])) {
 					$choice = $configRow['choice'];
-					$funcChoices = $filter->$variable(GET_VALUE, $redcapRecordRows);
+					$funcChoices = $filter->$variable(Filter::GET_VALUE, $redcapRecordRows);
 					if (!is_array($funcChoices)) {
 						$funcChoices = array($funcChoices);
 					}
@@ -58,7 +58,7 @@ class CohortConfig {
 					return self::compare($funcChoices, $comparison, $choice);
 				} else {
 					$value = $configRow['value'];
-					$funcValues = $filter->$variable(GET_VALUE, $redcapRecordRows);
+					$funcValues = $filter->$variable(Filter::GET_VALUE, $redcapRecordRows);
 					if (!is_array($funcValues)) {
 						$funcValues = array($funcValues);
 					}
@@ -276,25 +276,36 @@ class CohortConfig {
 
 	public function getFields($metadata) {
 		$fields = array();
+        $citationCalcFunctions = [
+            "calc_rcr",
+            "calc_pub_type",
+            "calc_mesh_term",
+            "calc_num_pubs",
+            "calc_from_time",
+        ];
 		foreach ($this->getRows() as $row) {
-			if ($row['type'] != "resources") {
-				if (preg_match("/^calc_/", $row['variable'])) {
-					foreach (array_merge(Application::$summaryFields, Application::getCitationFields($metadata)) as $field) {
-						if (!in_array($field, $fields)) {
-							$fields[] = $field;
-						}
-					}
-				} else {
-					if (!in_array($row['variable'], $fields)) {
-						$fields[] = $row['variable'];
-					}
-				}
-			} else {
-				$field = "resources_resource";
-				if (!in_array($field, $fields)) {
-					$fields[] = $field;
-				}
-			}
+            $newFields = [];
+			if ($row['type'] == "resources") {
+                $newFields = ["resources_resource"];
+            } else if ($row['variable'] == "calc_employment") {
+                $newFields = Application::$institutionFields;
+            } else if (in_array($row['variable'], $citationCalcFunctions)) {
+                $newFields = [
+                    "record_id",
+                    "citation_include",
+                    "citation_pmid",
+                    "citation_day",
+                    "citation_month",
+                    "citation_year",
+                    "citation_mesh_terms",
+                    "citation_pub_types",
+                ];
+            } else if (preg_match("/^calc_/", $row['variable'])) {
+                $newFields = Application::$summaryFields;
+            } else {
+                $newFields = [$row['variable']];
+            }
+            $fields = array_unique(array_merge($fields, $newFields));
 		}
 		return $fields;
 	}

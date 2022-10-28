@@ -125,6 +125,22 @@ class Sanitizer {
     /**
      * @psalm-taint-specialize
      */
+    public static function decodeHTML($entity) {
+        if (is_array($entity)) {
+            foreach ($entity as $key => $value) {
+                $key = self::decodeHTML($key);
+                $value = self::decodeHTML($value);
+                $entity[$key] = $value;
+            }
+            return $entity;
+        } else {
+            return html_entity_decode($entity);
+        }
+    }
+
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitizeArray($ary, $stripHTML = TRUE, $encodeQuotes = TRUE) {
         if (is_array($ary)) {
             /**

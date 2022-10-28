@@ -627,6 +627,9 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
         "identifier_left_date_source",
         "identifier_left_date_sourcetype",
         "identifier_left_job_category",
+        "promotion_institution",
+        "promotion_date",
+        "promotion_in_effect",
     );
 
     public static $summaryFields = [

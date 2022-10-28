@@ -3,6 +3,7 @@
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \ExternalModules\ExternalModules;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
@@ -15,19 +16,20 @@ error_reporting(E_ALL);
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/small_base.php");
 
-if (isset($_POST['departments']) && isset($_POST['resources'])) {
+$action = $_GET['action'] ?? "";
+if ($action == "localizeVariables") {
 	$module = CareerDev::getModule();
 	if ($module) {
 		require_once(dirname(__FILE__)."/small_base.php");
-		$token = CareerDev::getSetting("token");
-		$server = CareerDev::getSetting("server");
-		$pid = CareerDev::getSetting("pid");
-		$tokenName = CareerDev::getSetting("tokenName");
-		$installCoeus = CareerDev::getSetting("hasCoeus");
-		$institutions = CareerDev::getInstitutions();
+		$token = Application::getSetting("token");
+		$server = Application::getSetting("server");
+		$pid = Application::getSetting("pid");
+		$tokenName = Application::getSetting("tokenName");
+		$installCoeus = Application::getSetting("hasCoeus");
+		$institutions = Application::getInstitutions();
 		displayInstallHeaders($module, $token, $server, $pid, $tokenName);
-        $departments = trim(REDCapManagement::sanitize($_POST['departments']));
-        $resources = trim(REDCapManagement::sanitize($_POST['resources']));
+        $departments = trim(Sanitizer::sanitize($_POST['departments']));
+        $resources = trim(Sanitizer::sanitize($_POST['resources']));
 		if ($resources && $departments) {
 			$lists = array(
 					"departments" => $departments,
@@ -42,58 +44,57 @@ if (isset($_POST['departments']) && isset($_POST['resources'])) {
 	} else {
 		throw new \Exception("Could not find module!");
 	}
-}
-if (isset($_POST['token']) && isset($_POST['title'])) {
-	$requiredFields = ["title", "token", "institution", "short_institution", "timezone", "email"];
-	foreach ($requiredFields as $field) {
-		if (!$_POST[$field]) {
-			sendErrorMessage("Please provide a value for the field '".$field."'!");
-		}
-	}
+} else if ($action == "configureProject") {
+    $requiredFields = ["title", "token", "institution", "short_institution", "timezone", "email"];
+    foreach ($requiredFields as $field) {
+        if (!$_POST[$field]) {
+            sendErrorMessage("Please provide a value for the field '" . $field . "'!");
+        }
+    }
 
-	$newToken = REDCapManagement::sanitize($_POST['token']);
-	$newServer = APP_PATH_WEBROOT_FULL."api/";
-	if (isValidToken($newToken)) {
-	    $title = REDCapManagement::sanitize($_POST['title']);
-		$feedback = \Vanderbilt\FlightTrackerExternalModule\uploadProjectSettings($newToken, $newServer, $title);
-		$projectId = REDCapManagement::getPIDFromToken($newToken, $newServer);
-		$eventId = REDCapManagement::getEventIdForClassical($projectId);
+    $newToken = Sanitizer::sanitize($_POST['token']);
+    $newServer = APP_PATH_WEBROOT_FULL . "api/";
+    if (isValidToken($newToken)) {
+        $title = Sanitizer::sanitize($_POST['title']);
+        $feedback = \Vanderbilt\FlightTrackerExternalModule\uploadProjectSettings($newToken, $newServer, $title);
+        $projectId = REDCapManagement::getPIDFromToken($newToken, $newServer);
+        $eventId = REDCapManagement::getEventIdForClassical($projectId);
 
-		displayInstallHeaders(CareerDev::getModule(), $newToken, $newServer, $projectId, $title);
-		echo "<h1>Academic Departments</h1>\n";
+        displayInstallHeaders(CareerDev::getModule(), $newToken, $newServer, $projectId, $title);
+        echo "<h1>Academic Departments</h1>\n";
 
-		$menteeAgreementLink = "";
-		if (CareerDev::isVanderbilt()) {
-		    $menteeAgreementLink = Application::getDefaultVanderbiltMenteeAgreementLink();
+        $menteeAgreementLink = "";
+        if (CareerDev::isVanderbilt()) {
+            $menteeAgreementLink = Application::getDefaultVanderbiltMenteeAgreementLink();
         }
 
-		$settingFields = [
-				'institution' => REDCapManagement::sanitize($_POST['institution']),
-				'short_institution' => REDCapManagement::sanitize($_POST['short_institution']),
-				'other_institutions' => REDCapManagement::sanitize($_POST['other_institutions']),
-				'token' => $newToken,
-				'event_id' => $eventId,
-				'pid' => $projectId,
-				'server' => $newServer,
-				'admin_email' => REDCapManagement::sanitize($_POST['email']),
-				'tokenName' => REDCapManagement::sanitize($_POST['title']),
-				'timezone' => REDCapManagement::sanitize($_POST['timezone']),
-				'hasCoeus' => REDCapManagement::sanitize($_POST['coeus']),
-				'internal_k_length' => '3',
-				'k12_kl2_length' => '3',
-				'individual_k_length' => '5',
-				'default_from' => 'noreply.flighttracker@vumc.org',
-				'run_tonight' => FALSE,
-				'grant_class' => REDCapManagement::sanitize($_POST['grant_class']),
-				'grant_number' => REDCapManagement::sanitize($_POST['grant_number']),
-                'auto_recalculate' => '1',
-                'shared_forms' => [],
-                'mentee_agreement_link' => $menteeAgreementLink,
-                'server_class' => REDCapManagement::sanitize($_POST['server_class']),
-				];
+        $settingFields = [
+            'institution' => Sanitizer::sanitize($_POST['institution']),
+            'short_institution' => Sanitizer::sanitize($_POST['short_institution']),
+            'other_institutions' => Sanitizer::sanitize($_POST['other_institutions']),
+            'token' => $newToken,
+            'event_id' => $eventId,
+            'pid' => $projectId,
+            'server' => $newServer,
+            'admin_email' => Sanitizer::sanitize($_POST['email']),
+            'tokenName' => Sanitizer::sanitize($_POST['title']),
+            'timezone' => Sanitizer::sanitize($_POST['timezone']),
+            'hasCoeus' => Sanitizer::sanitize($_POST['coeus']),
+            'internal_k_length' => '3',
+            'k12_kl2_length' => '3',
+            'individual_k_length' => '5',
+            'default_from' => 'noreply.flighttracker@vumc.org',
+            'run_tonight' => FALSE,
+            'grant_class' => Sanitizer::sanitize($_POST['grant_class']),
+            'grant_number' => Sanitizer::sanitize($_POST['grant_number']),
+            'auto_recalculate' => '1',
+            'shared_forms' => [],
+            'mentee_agreement_link' => $menteeAgreementLink,
+            'server_class' => Sanitizer::sanitize($_POST['server_class']),
+        ];
         \Vanderbilt\FlightTrackerExternalModule\setupModuleSettings($projectId, $settingFields);
 
-		$metadata = Download::metadata($newToken, $newServer);
+        $metadata = Download::metadata($newToken, $newServer);
         $formsAndLabels = DataDictionaryManagement::getRepeatingFormsAndLabels($metadata);
         if ($_POST['coeus']) {
             // $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
@@ -101,21 +102,44 @@ if (isset($_POST['token']) && isset($_POST['title'])) {
         DataDictionaryManagement::setupRepeatingForms($eventId, $formsAndLabels);
 
         $surveysAndLabels = DataDictionaryManagement::getSurveysAndLabels($metadata);
-		DataDictionaryManagement::setupSurveys($projectId, $surveysAndLabels);
+        DataDictionaryManagement::setupSurveys($projectId, $surveysAndLabels);
 
-		echo makeDepartmentPrompt($projectId);
-		echo makeInstallFooter();
-	} else {
-		sendErrorMessage("Invalid token: $token");
-	}
+        echo makeDepartmentPrompt($projectId);
+        echo makeInstallFooter();
+    } else {
+        sendErrorMessage("Invalid token: $token");
+    }
+} else if ($action == "restoreMetadata") {
+    $lists = [
+        "departments" => Application::getSetting("departments", $pid),
+        "resources" => Application::getSetting("resources", $pid),
+        "institutions" => implode("\n", Application::getInstitutions($pid)),
+    ];
+    $feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $pid, $lists, Application::isVanderbilt());
+    redirectToHomePage();
+} else if (($action === "") && $token && $server) {
+    $metadataFields = Download::metadataFields($token, $server);
+    if (empty($metadataFields)) {
+        displayInstallHeaders();
+        $thisUrl = Application::link("this");
+        echo "<h1>Empty Data Dictionary!</h1>";
+        echo "<p><a href='$thisUrl&action=restoreMetadata'>Click here to restore your data</a></p>";
+        echo makeInstallFooter();
+    } else {
+        redirectToHomePage();
+    }
 } else {
 	displayInstallHeaders();
-	echo makeIntroPage(REDCapManagement::sanitize($_GET['pid']));
+	echo makeIntroPage(Sanitizer::sanitizePid($_GET['pid']));
 	echo makeInstallFooter();
 }
 
 function redirectToAddScholars() {
-	header("Location: ".CareerDev::link("add.php")."&headers=false");
+    header("Location: ".Application::link("add.php")."&headers=false");
+}
+
+function redirectToHomePage() {
+    header("Location: ".Application::link("index.php"));
 }
 
 function isValidToken($token) {
@@ -123,7 +147,7 @@ function isValidToken($token) {
 }
 
 function sendErrorMessage($mssg) {
-	header("Location: ".CareerDev::link("install.php")."?mssg=".urlencode($mssg));
+	header("Location: ".Application::link("install.php")."?mssg=".urlencode($mssg));
 }
 
 function makeDepartmentPrompt($projectId) {
@@ -145,8 +169,8 @@ function makeDepartmentPrompt($projectId) {
 	    $defaultResources = "";
     }
 
-	$style = " style='width: 400px; height: 400px;'";
-	$html .= "<form method='POST' action='".preg_replace("/pid=\d+/", "pid=$projectId", CareerDev::getLink("install.php"))."'>\n";
+    $thisUrl = preg_replace("/pid=\d+/", "pid=$projectId", CareerDev::getLink("install.php"));
+	$html .= "<form method='POST' action='$thisUrl&action=localizeVariables'>\n";
 	$html .= Application::generateCSRFTokenHTML();
 	$html .= "<p class='centered max-width'>Please enter a list of your academic departments.<br>(One per line.)<br>\n";
 	$html .= "<textarea name='departments' class='config'>$defaultDepartments</textarea></p>\n";
@@ -225,10 +249,11 @@ function changeGrantClass(name) {
 	}
 
 	if (isset($_GET['mssg'])) {
-	    $mssg = REDCapManagement::sanitize($_GET['mssg']);
+	    $mssg = Sanitizer::sanitize($_GET['mssg']);
 		$html .= "<p class='centered red'>{$mssg}</p>";
 	}
-	$html .= "<form method='POST' action='".CareerDev::link("install.php")."'>\n";
+    $thisUrl = Application::link("this");
+	$html .= "<form method='POST' action='$thisUrl&action=configureProject'>\n";
 	$html .= Application::generateCSRFTokenHTML();
 	$html .= "<table style='margin-left: auto; margin-right: auto; max-width: 800px;'>\n";
 	
@@ -236,7 +261,7 @@ function changeGrantClass(name) {
 	$html .= "<td colspan='2'>\n";
 	$html .= "<h2>Software Mission</h2>\n";
 	$html .= "<p class='centered'>Providing a tool for insight that tracks the career development of a population of scholars through following publications, resource use, mentoring, and federal grants.</p>\n";
-	$html .= "<h2><a href='".CareerDev::link("help/install.php")."'>Installation Video</a></h2>\n";
+	$html .= "<h2><a href='".Application::link("help/install.php")."'>Installation Video</a></h2>\n";
 	$html .= "<h2>What You'll Need</h2>\n";
 	$html .= "<ol>\n";
 	$html .= "<li>Ten minutes (or less)</li>\n";
@@ -365,11 +390,16 @@ function changeGrantClass(name) {
 function makeInstallHeaders() {
 	$html = "";
 
+    $iconUrl = Application::link("img/flight_tracker_icon.png");
+    $cssUrl = Application::link("css/career_dev.css");
+    $jqueryUrl = Application::link("js/jquery.min.js");
+    $version = Application::getVersion();
+
 	$html .= "<head>\n";
 	$html .= "<title>Flight Tracker for Scholars</title>\n";
-	$html .= "<link rel='icon' href='".CareerDev::link("img/flight_tracker_icon.png")."'>\n";
-	$html .= "<link rel='stylesheet' type='text/css' href='".CareerDev::link("css/career_dev.css")."&".CareerDev::getVersion()."'>\n";
-	$html .= "<script src='".CareerDev::link("js/jquery.min.js")."'></script>\n";
+	$html .= "<link rel='icon' href='$iconUrl'>\n";
+	$html .= "<link rel='stylesheet' type='text/css' href='$cssUrl&$version'>\n";
+	$html .= "<script src='$jqueryUrl'></script>\n";
 	$html .= "</head>\n";
 	$html .= "<body>\n";
 	$html .= "<p class='centered'>".CareerDev::makeLogo()."</p>\n";

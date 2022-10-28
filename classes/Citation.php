@@ -853,10 +853,11 @@ class Citation {
     public function getEtAlCitation() {
         $allAuthors = $this->getAuthorList();
         if (count($allAuthors) > 1) {
-            $authors = [$allAuthors[0], "et al."];
+            $authorArray = [$allAuthors[0], "et al."];
         } else {
-            $authors = $allAuthors;
+            $authorArray = $allAuthors;
         }
+        $authors = self::addPeriodIfExtant(implode(", ", $authorArray));
         if ($this->getVariable("data_source") == "eric") {
             return $this->getERICCitation($authors);
         } else if ($this->getVariable("data_source") == "citation") {

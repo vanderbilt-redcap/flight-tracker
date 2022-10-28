@@ -17,6 +17,17 @@ if (!empty($_POST)) {
     $data = $switches->savePost($_POST);
     echo json_encode($data);
     exit;
+} else {
+    require_once(dirname(__FILE__)."/small_base.php");
+    if ($server === NULL) {
+        $prefix = $_GET['prefix'] ?? "flight_tracker";
+        $pid = $_GET['pid'] ?? "";
+        if (!$pid) {
+            die("You must supply a valid project-id!");
+        }
+        $url = "?prefix=$prefix&page=install&pid=$pid";
+        header("Location: $url");
+    }
 }
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");

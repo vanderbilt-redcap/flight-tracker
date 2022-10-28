@@ -189,13 +189,14 @@ class Scholar {
         $vars = self::getDefaultOrder("identifier_email");
         $vars = $this->getOrder($vars, "identifier_email");
         $result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result->trimResult();
         if ($result->getSource() == "ldap") {
             $res = $this->getLDAPResult($rows, "ldapds_mail", $result, "ldapds");
             if ($res->getValue() === "") {
-                return $this->getLDAPResult($rows, "ldap_mail", $result);
-            } else {
-                return $res;
+                $res = $this->getLDAPResult($rows, "ldap_mail", $result);
             }
+            $res->trimResult();
+            return $res;
         }
         return $result;
     }
@@ -618,25 +619,6 @@ class Scholar {
             $date = " on ".$left->getValue();
         }
 
-        $priorInstitutions = $this->getPriorInstitutions($this->rows);
-        $allReportedInstitutions = $this->getAllOtherInstitutions($this->rows);
-        $allOutsideInstitutions = [];
-        foreach ($allReportedInstitutions as $institution) {
-            $institution = trim($institution);
-            if (
-                !in_array($institution, $priorInstitutions)
-                && !in_array($institution, Application::getInstitutions($this->pid))
-                && ($institution != Application::getUnknown())
-            ) {
-                $allOutsideInstitutions[] = $institution;
-            }
-        }
-        if (!empty($allOutsideInstitutions)) {
-            if ($returnBooleanForLeaving) {
-                return TRUE;
-            }
-            return "Left ".Application::getInstitution()." for ".REDCapManagement::makeConjunction($allOutsideInstitutions).$date;
-        }
 		if ($date) {
             if ($returnBooleanForLeaving) {
                 return TRUE;
@@ -1577,10 +1559,6 @@ class Scholar {
             return new Result($earliestPositionChangeDate, "manual", "", $earliestPositionChangeEntryDate, $this->pid);
         }
 
-        $today = date("Y-m-d");
-        if (REDCapManagement::dateCompare($today, "<=", "2022-03-31")) {
-            return new Result("", "");
-        }
 		return new Result($normativeRow['identifier_left_date'], $normativeRow['identifier_left_date_source'], $normativeRow['identifier_left_date_sourcetype'], "", $this->pid);
 	}
 
@@ -3582,9 +3560,11 @@ class Scholar {
 					if (is_array($result)) {
 					    $results = $result;
 					    foreach ($results as $resultField => $result) {
+                            $result->trimValue();
                             $this->demographics[$resultField] = $result->getValue();
                         }
                     } else {
+                        $result->trimValue();
                         $this->demographics[$field] = $result->getValue();
                         $this->demographics[$field."_source"] = $result->getSource();
                         $this->demographics[$field."_sourcetype"] = $result->getSourceType();
@@ -3623,6 +3603,278 @@ class Scholar {
 		return "identifier_left_date_source";
 	}
 
+    public function updatePositionChangeForms()
+    {
+        # matches for duplicates based on institution and rank/job-title combined
+        # case-insensitive
+        $positionChangeFieldKeys = [["promotion_institution"], ["promotion_rank", "promotion_job_title"]];
+        $priorPositions = [];
+        $choices = DataDictionaryManagement::getChoices($this->metadata);
+        $sep = "|";
+        foreach ($this->rows as $row) {
+            if ($row['redcap_repeat_instrument'] == "position_change") {
+                $priorPositions[] = $this->makeRowKey($row, $positionChangeFieldKeys, $choices, $sep);
+            }
+        }
+
+        $positions = $this->makePositionsFromSurveys($choices, $sep);
+        $upload = $this->translatePositionsToForms($positions, $priorPositions, $choices);
+        if (!empty($upload)) {
+            Upload::rows($upload, $this->token, $this->server);
+        }
+    }
+
+    private function translatePositionsToForms($positions, $priorPositions, $choices) {
+        $prefix = "promotion_";
+        $instrument = "position_change";
+        $otherSuffix = "_other";
+        $otherLabel = "Other";
+        $map = [
+            "effective_date" => "in_effect",
+            "end_date" => "end",
+            "title" => "job_title",
+            "sector" => "workforce_sector",
+            "activity" => "activity",
+            "rank" => "rank",
+            "institution" => "institution",
+            "department" => "department",
+            "division" => "division",
+            "date_entered" => "date",
+        ];
+        $maxInstance = REDCapManagement::getMaxInstance($this->rows, $instrument, $this->recordId);
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+        $upload = [];
+        foreach ($positions as $key => $position) {
+            if (!in_array($key, $priorPositions)) {
+                $maxInstance++;
+                $newRow = [
+                    "record_id" => $this->recordId,
+                    "redcap_repeat_instrument" => $instrument,
+                    "redcap_repeat_instance" => $maxInstance,
+                    "promotion_date" => date("Y-m-d"),
+                    $instrument."_complete" => "2",
+                ];
+                $basicNewRowCount = count($newRow);
+                foreach ($map as $positionKey => $promotionField) {
+                    $promotionField = $prefix.$promotionField;
+                    if (isset($position[$positionKey]) && in_array($promotionField, $metadataFields)) {
+                        if (isset($choices[$promotionField])) {
+                            $currLabel = "";
+                            $otherIndex = "";
+
+                            foreach ($choices[$promotionField] as $idx => $label) {
+                                if ($position[$positionKey] == $label) {
+                                    $newRow[$promotionField] = $idx;
+                                    $currLabel = $label;
+                                }
+                                if ($label == $otherLabel) {
+                                    $otherIndex = $idx;
+                                }
+                            }
+
+                            $otherField = $promotionField.$otherSuffix;
+                            $hasOtherField = in_array($otherField, $metadataFields);
+                            if (($currLabel === "") && ($otherIndex !== "")) {
+                                $newRow[$promotionField] = $otherIndex;
+                                if ($hasOtherField) {
+                                    $newRow[$otherField] = $position[$positionKey];
+                                }
+                            } else if (
+                                $hasOtherField
+                                && (
+                                    ($newRow[$promotionField] == 999999)
+                                    || (
+                                        ($otherIndex !== "")
+                                        && ($newRow[$promotionField] == $otherIndex)
+                                    )
+                                    || ($currLabel == $otherLabel)
+                                )
+                            ) {
+                                $newRow[$otherField] = html_entity_decode($position[$positionKey], ENT_QUOTES);
+                            }
+                        } else {
+                            # choices not set => normal assignment
+                            $newRow[$promotionField] = html_entity_decode($position[$positionKey], ENT_QUOTES);
+                        }
+                    }
+                }
+                if (count($newRow) > $basicNewRowCount) {
+                    $upload[] = $newRow;
+                }
+            }
+        }
+        return $upload;
+    }
+
+    private function makePositionsFromSurveys($choices, $sep) {
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+        $positions = [];
+        foreach ($this->rows as $row) {
+            if ($row["record_id"] == $this->recordId) {
+                if ($row['redcap_repeat_instrument'] == "followup") {
+                    $this->addPositions($positions, $row, $choices, $metadataFields, "followup_", $sep);
+                } else if ($row['redcap_repeat_instrument'] === "") {
+                    $this->addPositions($positions, $row, $choices, $metadataFields, "check_", $sep);
+                }
+            }
+        }
+        return $positions;
+    }
+
+    private function addPositions(&$positions, $row, $choices, $metadataFields, $prefix, $sep = "|") {
+        if (!preg_match("/_$/", $prefix)) {
+            $prefix .= "_";
+        }
+        if (
+            (
+                (
+                    isset($row[$prefix.'job_title'])
+                    && $row[$prefix.'job_title']
+                )
+                || (
+                    isset($row[$prefix.'academic_rank'])
+                    && $row[$prefix.'academic_rank']
+                )
+            ) && (
+                isset($row[$prefix.'institution'])
+                && $row[$prefix.'institution']
+            )
+        ) {
+            $position = self::makePosition($row, $choices, self::makeJobFields("first", $prefix));
+            self::addJobCategory($position, $row, $prefix);
+            $positions[$this->makePositionKey($position, $sep)] = $position;
+        }
+
+        $i = 1;
+        while (in_array($prefix."prev$i"."_institution", $metadataFields)) {
+            $rankField = $prefix.'prev'.$i.'_academic_rank';
+            $institutionField = $prefix.'prev'.$i.'_institution';
+            if (
+                isset($row[$rankField])
+                && $row[$rankField]
+                && isset($row[$institutionField])
+                && $row[$institutionField]
+            ) {
+                $position = self::makePosition($row, $choices, self::makeJobFields($i, $prefix));
+                $positions[$this->makePositionKey($position, $sep)] = $position;
+            }
+            $i++;
+        }
+    }
+
+    private static function makeJobFields($type, $prefix) {
+        if ($type == "first") {
+            return [
+                "institution" => $prefix."institution",
+                "rank" => $prefix."academic_rank",
+                "title" => $prefix."job_title",
+                "effective_date" => $prefix."academic_rank_dt",
+                "date_entered" => $prefix."last_update",
+                "department" => $prefix."primary_dept",
+                "division" => $prefix."division",
+            ];
+        } else {
+            return [
+                "rank" => $prefix.'prev'.$type.'_academic_rank',
+                "institution" => $prefix.'prev'.$type.'_institution',
+                "effective_date" => $prefix."prev$type"."_academic_rank_stdt",
+                "end_date" => $prefix."prev$type"."_academic_rank_enddt",
+                "date_entered" => $prefix."last_update",
+                "department" => $prefix."prev$type"."_primary_dept",
+                "division" => $prefix."prev$type"."_division",
+            ];
+        }
+    }
+
+    private static function addJobCategory(&$position, $row, $prefix) {
+        if (
+            isset($row[$prefix.'job_category'])
+            && $row[$prefix.'job_category']
+        ) {
+            $value = $row[$prefix.'job_category'];
+            if (in_array($value, [1, 5, 2, 7])) {
+                $position['sector'] = 1;
+            } else {
+                $position['sector'] = 99;
+            }
+            if (in_array($value, [1, 4, 5])) {
+                $position['activity'] = 1;
+            } else if (in_array($value, [2, 6])) {
+                $position['activity'] = 4;
+            } else if ($value == 7) {
+                $position['activity'] = 5;
+            } else if ($value == 3) {
+                $position['activity'] = 6;
+            }
+        }
+    }
+
+    private static function makePosition($row, $choices, $jobFields) {
+        $position = [];
+        foreach ($jobFields as $type => $field) {
+            if (isset($row[$field]) && $row[$field]) {
+                if (isset($choices[$field])) {
+                    $position[$type] = $choices[$field][$row[$field]];
+                    if (
+                        (
+                            ($position[$type] == "Other")
+                            || ($row[$field] == 999999)
+                        )
+                        && isset($row[$field."_oth"])
+                        && $row[$field."_oth"]) {
+                        $position[$type] = $row[$field."_oth"];
+                    }
+                } else {
+                    $position[$type] = $row[$field];
+                }
+            }
+        }
+        return $position;
+    }
+
+    public function makePositionKey($position, $sep = "|") {
+        if (in_array($position['institution'] ?? "", Application::getInstitutions($this->pid))) {
+            $positionKey = "home";
+        } else {
+            $positionKey = strtolower($position['institution'] ?? "");
+        }
+        $positionKey .= $sep;
+        if (isset($position['rank'])) {
+            $positionKey .= strtolower($position['rank']);
+        } else if (isset($position['title'])) {
+            $positionKey .= strtolower($position['title']);
+        }
+        return $positionKey;
+    }
+
+    private function makeRowKey($row, $fields, $choices = [], $sep = "|") {
+        if (empty($choices)) {
+            $choices = DataDictionaryManagement::getChoices($this->metadata);
+        }
+        $homeInstitutions = Application::getInstitutions($this->pid);
+        $values = [];
+        foreach ($fields as $preferredFields) {
+            if (!is_array($preferredFields)) {
+                $preferredFields = [$preferredFields];
+            }
+            $value = "";
+            foreach ($preferredFields as $field) {
+                if (isset($row[$field]) && $row[$field]) {
+                    if (in_array($row[$field], $homeInstitutions)) {
+                        $value = "home";
+                    } else if (isset($choices[$field])) {
+                        $value = $choices[$field][$row[$field]] ?? $row[$field];
+                    } else {
+                        $value = $row[$field];
+                    }
+                    break;
+                }
+            }
+            $values[] = strtolower($value);
+        }
+        return implode($sep, $values);
+    }
+
 	private $pid;
 	private $token;
 	private $server;
@@ -3648,7 +3900,15 @@ class Result {
 		$this->instance = "";
 	}
 
-	public function displayInText() {
+    public function trimResult() {
+        $this->trimValue();
+    }
+
+    public function trimValue() {
+        $this->value = trim($this->value);
+    }
+
+    public function displayInText() {
 	    $properties = [];
 	    $properties[] = "value='".$this->value."'";
 	    if ($this->source) {

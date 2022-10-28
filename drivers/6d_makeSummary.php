@@ -97,6 +97,7 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $scholar->downloadAndSetup($recordId);
     $scholar->process();
     $result = $scholar->upload();
+    $scholar->updatePositionChangeForms();
     $time2 = microtime(TRUE);
     if (Application::isVanderbilt()) {
         Application::log("6d CareerDev processing scholar $recordId took ".($time2 - $time1), $pid);

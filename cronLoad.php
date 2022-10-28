@@ -51,6 +51,8 @@ function runMainCrons(&$manager, $token, $server) {
     if (!Application::isLocalhost() && Application::isVanderbilt()) {
         $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
         $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Monday", $allRecords, 500);
+        $manager->addCron("drivers/2p_updateStudioUse.php", "deleteAllStudios", "2022-11-13");
+        $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "2022-11-13");
         if (in_array('coeus', $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
@@ -195,6 +197,9 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         if (in_array("nsf", $forms)) {
             $manager->addCron("drivers/20_nsf.php", "getNSFGrants", $date, $records, 100);
         }
+        if (in_array("eric", $forms)) {
+            $manager->addCron("drivers/23_getERIC.php", "getERIC", $date, $records, 100);
+        }
 
         if (in_array("nih_reporter", $forms)) {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", $date, $records, 100);
@@ -207,7 +212,11 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         if (!$securityTestMode) {
             $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", $date, $records, 100);
         }
-		$manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records, 30);
+        if (!Application::isLocalhost() && Application::isVanderbilt()) {
+            $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", $date, $records, 500);
+            $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", $date, $records, 500);
+        }
+        $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records, 30);
         Application::log("loadInitialCrons loaded");
 	} else {
         Application::log("loadInitialCrons without token or server");

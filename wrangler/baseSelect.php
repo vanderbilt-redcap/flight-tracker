@@ -70,7 +70,7 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
                 presentScreen('Saving...');
                 const postdata = { 'redcap_csrf_token': getCSRFToken(), record_id: '<?= $sanitizedRecord ?>', pmids: pmids };
                 $.post('<?= Application::link("wrangler/savePubs.php") ?>', postdata, function(json) {
-                    const data = JSON.parse(data);
+                    const data = JSON.parse(json);
                     console.log("saveComplete "+json);
                     if (data['error']) {
                         makeNote(data['error']);
@@ -79,7 +79,7 @@ if (!$sanitizedRecord && (count($downloadedRecords) > 0)) {
                             icon: $.sweetModal.ICON_ERROR
                         });
                         clearScreen();
-                    } else if (data['errors']) {
+                    } else if (data['errors'] && (data['errors'].length > 0)) {
                         makeNote(data['errors']);
                         $.sweetModal({
                             content: data['errors'].join("<br>"),

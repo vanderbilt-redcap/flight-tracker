@@ -336,7 +336,16 @@ class NameMatcher {
                 $newNodes[] = $node;
             }
         }
-	    return $newNodes;
+        $newNodes = Sanitizer::decodeHTML($newNodes);
+	    return self::trimArray($newNodes);
+    }
+
+    private static function trimArray($ary) {
+        $newAry = [];
+        foreach ($ary as $elem) {
+            $newAry[] = trim($elem);
+        }
+        return $newAry;
     }
 
     private static function getSuffixes() {
@@ -366,7 +375,8 @@ class NameMatcher {
         if (preg_match("/\-/", $last)) {
             $newNodes[] = preg_replace("/\-/", " ", $last);
         }
-	    return $newNodes;
+        $newNodes = Sanitizer::decodeHTML($newNodes);
+        return self::trimArray($newNodes);
     }
 
     public static function refreshNamesForMatch($token, $server) {

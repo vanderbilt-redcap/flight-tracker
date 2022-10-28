@@ -69,6 +69,7 @@ $html .= "<div style='text-align: center;'><label for='pmid'>PMID</label>: <inpu
 $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
 
 echo "<script src='".Application::link("js/base.js")."&".CareerDev::getVersion()."'></script>\n";
+echo "<script src='".Application::link("js/jquery.sweet-modal.min.js")."&".CareerDev::getVersion()."'></script>\n";
 ?>
 <script>
 var checkedImg = "<?= Application::link("wrangler/checked.png") ?>";
@@ -77,7 +78,7 @@ var omittedImg = "<?= Application::link("wrangler/omitted.png") ?>";
 var surveyPrefix = "<?= $prefix ?>";
 
 $(document).ready(function() {
-	var html = <?= json_encode($html) ?>;
+	var html = <?= json_encode(utf8_encode($html)) ?>;
 	var finalizedPubs = <?= json_encode($finalized->getIds()) ?>;
 	var omittedPubs = <?= json_encode($omitted->getIds()) ?>;
 	var skippedPubs = <?= json_encode($notDone->getIds()) ?>;

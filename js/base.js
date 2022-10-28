@@ -225,6 +225,7 @@ function downloadOnePMID(i, pmids, textId, prefixHTML, doneCb) {
 	if (pmid) {
 		const url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id='+pmid;
 		// AJAX call will return in uncertain order => append, not overwrite, results
+		console.log('Calling '+url);
 		$.ajax({
 			url: url,
 			success: function(xml) {
@@ -992,11 +993,18 @@ function getPubImgHTML(newState) {
 	return "<img align='left' style='margin: 2px; width: 26px; height: 26px;' src='"+newImg+"' alt='"+newState+"' onclick='changeCheckboxValue(this);'>";
 }
 
+function getBin(pmid) {
+	if (!notAlreadyUsed(pmid)) {
+		return $('#PMID'+pmid).parent().attr('id');
+	}
+	return '';
+}
+
 function addPMID(pmid) {
-	if (!isNaN(pmid) && notAlreadyUsed(pmid)) {
-		var newState = 'checked';
-		var newDiv = 'notDone';
-		var newId = 'PMID'+pmid;
+	if (!isNaN(pmid) && pmid && notAlreadyUsed(pmid)) {
+		const newState = 'checked';
+		const newDiv = 'notDone';
+		const newId = 'PMID'+pmid;
 		$('#'+newDiv).append('<div id="'+newId+'" style="margin: 8px 0; min-height: 26px;"></div>');
 		submitPMID(pmid, '#'+newId, getPubImgHTML(newState), function() { if (enqueue()) { $('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1); } });
 	} else if (isNaN(pmid)) {
@@ -1004,16 +1012,18 @@ function addPMID(pmid) {
 			content: 'PMID '+pmid+' is not a number!',
 			icon: $.sweetModal.ICON_ERROR
 		});
-	} else {
-		// not already used
-		var names = {};
+	} else if (pmid) {
+		// already used
+		const names = {};
 		names['finalized'] = 'Citations Already Accepted and Finalized';
 		names['notDone'] = 'Citations to Review';
 		names['omitted'] = 'Citations to Omit';
-		$.sweetModal({
-			content: 'PMID '+pmid+' has already been entered in '+names[bin]+'!',
-			icon: $.sweetModal.ICON_SUCCESS
-		});
+		const bin = getBin(pmid);
+		alert('PMID '+pmid+' has already been entered in '+names[bin]+'!');
+		// $.sweetModal({
+		// 	content: 'PMID '+pmid+' has already been entered in '+names[bin]+'!',
+		//	icon: $.sweetModal.ICON_SUCCESS
+		// });
 	}
 }
 

@@ -4,15 +4,11 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-if (!defined("GET_CHOICES")) {
-    define('GET_CHOICES', 'choices');
-}
-if (!defined("GET_VALUE")) {
-    define('GET_VALUE', 'values');
-}
-
 class Filter {
-	public function __construct($token, $server, $metadata) {
+    const GET_CHOICES = "choices";
+    const GET_VALUE = "values";
+
+    public function __construct($token, $server, $metadata) {
 		$this->token = $token;
 		$this->server = $server;
 		if (is_array($metadata)) {
@@ -26,20 +22,21 @@ class Filter {
 	# function used in dynamic variable
 	public function calc_employment($type, $rows = array()) {
 		$func = "getEmploymentStatus";
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			$fields = array_unique(array_merge(Application::$institutionFields, array("identifier_last_name", "identifier_first_name")));
 			$bigCalcSettings = $this->getCalcSettingsChoicesFromData($fields, $func);
 
 			$summedChoices = array();
+            $institution = Application::getInstitution();
 			foreach ($bigCalcSettings->getChoices() as $choice) {
-				if (preg_match("/[aA]t Vanderbilt/", $choice)) {
+				if (preg_match("/[aA]t $institution/", $choice)) {
 					if (!in_array($choice, $summedChoices)) {
-						array_push($summedChoices, $choice);
+						$summedChoices[] = $choice;
 					}
 				} else {
-					$choice = "Left Vanderbilt";
+					$choice = "Left ".$institution;
 					if (!in_array($choice, $summedChoices)) {
-						array_push($summedChoices, $choice);
+						$summedChoices[] = $choice;
 					}
 				}
 			}
@@ -47,7 +44,7 @@ class Filter {
 			$smallerCalcSettings = new CalcSettings("choices");
 			$smallerCalcSettings->setChoices($summedChoices);
 			return $smallerCalcSettings;
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			return $this->$func($rows);
 		}
 	}
@@ -64,31 +61,31 @@ class Filter {
     # function used in dynamic variable
 	public function calc_email_domain($type, $rows = array()) {
 		$func = "getEmailDomain";
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			$fields = array("record_id", "identifier_email");
 			return $this->getCalcSettingsChoicesFromData($fields, $func);
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			return $this->$func($rows);
 		}
 	}
 
 	# function used in dynamic variable
 	public function calc_sponsorno($type, $rows = array()) {
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			return new CalcSettings("string");
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			return $this->getSponsorNumbers($rows);
 		}
 	}
 
 	# function used in dynamic variable
 	public function calc_award_type($type, $rows = array()) {
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			$choicesHash = Grant::getReverseAwardTypes();
 			$calcSettings = new CalcSettings("choices");
 			$calcSettings->setChoicesHash($choicesHash);
 			return $calcSettings;
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			return $this->getAwardTypes($rows);
 		}
 	}
@@ -96,20 +93,20 @@ class Filter {
 	# function used in dynamic variable
 	public function calc_activity_code($type, $rows = array()) {
 		$func = "getActivityCodes";
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			$fields = array();
 			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
-				array_push($fields, "summary_award_sponsorno_".$i);
+				$fields[] = "summary_award_sponsorno_" . $i;
 			}
 			return $this->getCalcSettingsChoicesFromData($fields, $func);
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			return $this->$func($rows);
 		}
 	}
 
 	# function used in dynamic variable
 	public function calc_pub_category($type, $rows = array()) {
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			$hashOfChoices = Citation::getCategories();
 			foreach ($hashOfChoices as $value => $label) {
 				if ($label == "") {
@@ -119,7 +116,7 @@ class Filter {
 			$calcSettings = new CalcSettings("choices");
 			$calcSettings->setChoicesHash($hashOfChoices);
 			return $calcSettings;
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			$cats = $this->getPubCategories($rows);
 			if (!empty($cats)) {
 				Application::log("career_dev: calc_pub_category: ".json_encode($cats));
@@ -130,10 +127,10 @@ class Filter {
 
 	# function used in dynamic variable
 	public function calc_rcr($type, $rows = array()) {
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			$calcSettings = new CalcSettings("number");
 			return $calcSettings;
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			$pubs = new Publications($this->token, $this->server, $this->metadata);
 			$pubs->setRows($rows);
 			return $pubs->getAverageRCR("Original Included");
@@ -142,24 +139,24 @@ class Filter {
 
 	# function used in dynamic variable
 	public function calc_pub_type($type, $rows = array()) {
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			$pubTypes = Publications::getAllPublicationTypes($this->token, $this->server);
 			$calcSettings = new CalcSettings("choices");
 			$calcSettings->set1DToHash($pubTypes);
 			return $calcSettings;
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			return $this->runFuncOnCitation("getPubTypes", $rows);
 		}
 	}
 
 	# function used in dynamic variable
 	public function calc_mesh_term($type, $rows = array()) {
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			$meshTerms = Publications::getAllMESHTerms($this->token, $this->server);
 			$calcSettings = new CalcSettings("choices");
 			$calcSettings->set1DToHash($meshTerms);
 			return $calcSettings;
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			return $this->runFuncOnCitation("getMESHTerms", $rows);
 		}
 	}
@@ -180,20 +177,20 @@ class Filter {
 
 	# function used in dynamic variable
 	public function calc_num_pubs($type, $rows = array()) {
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			$calcSettings = new CalcSettings("number");
 			return $calcSettings;
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			return $this->getNumPubs($rows);
 		}
 	}
 
 	# function used in dynamic variable
 	public function calc_from_time($type, $rows = array()) {
-		if ($type == GET_CHOICES) {
+		if ($type == self::GET_CHOICES) {
 			$calcSettings = new CalcSettings("date");
 			return $calcSettings;
-		} else if ($type == GET_VALUE) {
+		} else if ($type == self::GET_VALUE) {
 			return $this->getPubTimestamps($rows);
 		}
 	}
@@ -214,7 +211,7 @@ class Filter {
 
 		$timestamps = array();
 		foreach ($cits as $cit) {
-			array_push($timestamps, $cit->getTimestamp());
+			$timestamps[] = $cit->getTimestamp();
 		}
 		return $timestamps;
 	}
@@ -256,7 +253,7 @@ class Filter {
 						$currChoice = $choices[$currChoice];
 					}
 					if (!in_array($currChoice, $allChoices)) {
-						array_push($allChoices, $currChoice);
+						$allChoices[] = $currChoice;
 					}
 				}
 			}
@@ -270,7 +267,7 @@ class Filter {
 	private function getEmailDomain($rows) {
 		foreach ($rows as $row) {
 			if ($row['identifier_email']) {
-				$parts = preg_split("/@/", $row['identifier_email']);
+				$parts = explode("@", $row['identifier_email']);
 				if (count($parts) == 2) {
 					return strtolower($parts[1]);
 				}
@@ -282,7 +279,13 @@ class Filter {
 	private function getEmploymentStatus($rows) {
 		$scholar = new Scholar($this->token, $this->server, $this->metadata);
 		$scholar->setRows($rows);
-		return $scholar->getEmploymentStatus();
+		$status = $scholar->getEmploymentStatus();
+        $institution = Application::getInstitution();
+        if (preg_match("/Left $institution/", $status)) {
+            return "Left $institution";
+        } else {
+            return $status;
+        }
 	}
 
 	private function getSponsorNumbers($rows) {
@@ -292,7 +295,7 @@ class Filter {
 				$field = "summary_award_sponsorno_".$i;
 				if ($row[$field]) {
 					if (!in_array($row[$field], $numbers)) {
-						array_push($numbers, $row[$field]);
+						$numbers[] = $row[$field];
 					}
 				}	
 			}
@@ -307,7 +310,7 @@ class Filter {
 				$field = "summary_award_type_".$i;
 				if ($row[$field]) {
 					if (!in_array($row[$field], $types)) {
-						array_push($types, $row[$field]);
+						$types[] = $row[$field];
 					}
 				}	
 			}
@@ -322,7 +325,7 @@ class Filter {
 				$field = "summary_award_sponsorno_".$i;
 				if ($row[$field]) {
 					if ($code = Grant::getActivityCode($row[$field])) {
-						array_push($codes, $code);
+						$codes[] = $code;
 					}
 				}
 			}
@@ -588,7 +591,7 @@ class Filter {
 		foreach ($allChoices as $var => $label) {
 			$html .= "\t\tif (val == '$var') {\n";
 			if (preg_match("/^calc_/", $var)) {
-				$calcSettings = $this->$var(GET_CHOICES);
+				$calcSettings = $this->$var(self::GET_CHOICES);
 				$calcSettingsType = $calcSettings->getType();
 				if ($calcSettingsType == "choices") {
 				    $optionsJSON = json_encode($calcSettings->getChoices());
@@ -899,6 +902,6 @@ class CalcSettings {
 		return $this->type;
 	}
 
-	private $type;
+    private $type;
 	private $choices;
 }

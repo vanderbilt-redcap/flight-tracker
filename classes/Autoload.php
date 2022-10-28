@@ -5,7 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 $files = scandir(__DIR__);
 $skip = [".", ".."];
 foreach ($files as $file) {
-    if (!in_array($file, $skip)) {
+    if (!in_array($file, $skip) && preg_match("/\.php$/", $file)) {
         $fullFilename = __DIR__."/".$file;
         if (hasClassAndNamespaceDefined($fullFilename)) {
             require_once($fullFilename);

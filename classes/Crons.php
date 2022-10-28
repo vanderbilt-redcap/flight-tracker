@@ -892,11 +892,20 @@ body { font-size: 1.2em; }
                 } else if ($row['redcap_repeat_instrument'] == "patent") {
                     $hasPatent = TRUE;
                 } else if (in_array($row['redcap_repeat_instrument'], ["nih_reporter", "coeus", "nsf"])) {
-                    if ($row['redcap_repeat_instrument'] == "nih_reporter") {
+                    if (
+                        ($row['redcap_repeat_instrument'] == "nih_reporter")
+                        && in_array($row["nih_last_update"], $dates)
+                    ) {
                         $gf = new NIHRePORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-                    } else if ($row['redcap_repeat_instrument'] == "coeus") {
+                    } else if (
+                        ($row['redcap_repeat_instrument'] == "coeus")
+                        && in_array($row["coeus_last_update"], $dates)
+                    ) {
                         $gf = new CoeusGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-                    } else if ($row['redcap_repeat_instrument'] == "nsf") {
+                    } else if (
+                        ($row['redcap_repeat_instrument'] == "nsf")
+                        && in_array($row["nsf_last_update"], $dates)
+                    ) {
                         $gf = new NSFGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
                     } else {
                         throw new \Exception("This should not happen!");
@@ -950,9 +959,9 @@ body { font-size: 1.2em; }
                             $budgetPeriod = DateManagement::YMD2MDY($grant->getVariable("start"))." - ".DateManagement::YMD2MDY($grant->getVariable("end"));
                             if ($grant->getVariable("project_start") && $grant->getVariable("project_end")) {
                                 $projectPeriod = DateManagement::YMD2MDY($grant->getVariable("project_start"))." - ".DateManagement::YMD2MDY($grant->getVariable("project_end"));
-                                $descriptionNodes[] = "Project ($projectPeriod), Budget ($budgetPeriod)";
+                                $descriptionNodes[] = "Project Period ($projectPeriod), Budget Period ($budgetPeriod)";
                             } else {
-                                $descriptionNodes[] = "Budget ($budgetPeriod)";
+                                $descriptionNodes[] = "Budget Period ($budgetPeriod)";
                             }
                         }
                         if ($grant->getVariable("sponsor")) {
@@ -986,7 +995,11 @@ body { font-size: 1.2em; }
                 }
                 $html = "For Scholars: ".REDCapManagement::makeConjunction($affectedNames);
             }
-            $impact["$numNewGrants New Grants"] = $html;
+            if ($numNewGrants == 1) {
+                $impact["$numNewGrants New Grant"] = $html;
+            } else {
+                $impact["$numNewGrants New Grants"] = $html;
+            }
         }
 
         self::addPublications($impact, $numNewERICPubs, $scholarsWithNewERICPubs, "ERIC", $pid, $firstNames, $lastNames);
@@ -1045,7 +1058,12 @@ body { font-size: 1.2em; }
                 $suffix = ($numPubs > 1) ? " ($numPubs)" : "";
                 $affectedNames[] = Links::makeRecordHomeLink($pid, $recordId, $name.$suffix);
             }
-            $impact["$numNewPubs New $pubType Publications"] = "<strong>For Scholars</strong>: ".REDCapManagement::makeConjunction($affectedNames);
+            $scholarHTML = "<strong>For Scholars</strong>: ".REDCapManagement::makeConjunction($affectedNames);
+            if ($numNewPubs == 1) {
+                $impact["$numNewPubs New $pubType Publication"] = $scholarHTML;
+            } else {
+                $impact["$numNewPubs New $pubType Publications"] = $scholarHTML;
+            }
         }
     }
 

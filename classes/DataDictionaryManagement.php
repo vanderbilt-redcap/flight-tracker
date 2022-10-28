@@ -2,6 +2,8 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+
 require_once(__DIR__ . '/ClassLoader.php');
 
 class DataDictionaryManagement {
@@ -105,9 +107,11 @@ class DataDictionaryManagement {
                     self::convertOldDegreeData($pid);
                 } catch (\Exception $e) {
                     $feedback = ["Exception" => $e->getMessage()];
+                    $version = Application::getVersion();
                     $mssg = "<h1>Metadata Upload Error in ".Application::getProgramName()."</h1>";
                     $mssg .= "<p>Server: $server</p>";
                     $mssg .= "<p>PID: $pid</p>";
+                    $mssg .= "<p>Flight Tracker Version: $version</p>";
                     $mssg .= $e->getMessage();
                     \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", Application::getProgramName()." Metadata Upload Error", $mssg);
 
@@ -604,6 +608,21 @@ class DataDictionaryManagement {
         $fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx, TRUE);
         $existingMetadata = $originalMetadata;
 
+        if (empty($existingMetadata)) {
+            $metadata = [];
+            foreach ($newMetadata as $row) {
+                if (
+                    !preg_match($deletionRegEx, $row['field_name'])
+                    && !in_array($row['field_name'], $fieldsToDelete)
+                ) {
+                    $metadata[] = $row;
+                }
+            }
+            self::sortByForms($metadata);
+            self::alterResourcesField($metadata);
+            return Upload::metadata($metadata, $token, $server);
+        }
+
         # List of what to do
         # 1. delete rows/fields
         # 2. update fields
@@ -661,12 +680,16 @@ class DataDictionaryManagement {
             }
         }
         self::sortByForms($existingMetadata);
+        self::alterResourcesField($existingMetadata);
+        return Upload::metadata($existingMetadata, $token, $server);
+    }
 
-        $metadataFields = self::getFieldsFromMetadata($existingMetadata);
+    private static function alterResourcesField(&$metadata) {
+        $defaultResourceField = "resources_resource";
+        $metadataFields = self::getFieldsFromMetadata($metadata);
         $resourceField = self::getMentoringResourceField($metadataFields);
         if (in_array($resourceField, $metadataFields)) {
-            $choices = self::getChoices($existingMetadata);
-            $defaultResourceField = "resources_resource";
+            $choices = self::getChoices($metadata);
             if (
                 self::isInitialSetupForResources($choices[$resourceField])
                 && in_array($defaultResourceField, $metadataFields)
@@ -676,15 +699,13 @@ class DataDictionaryManagement {
                 } else {
                     $resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
                 }
-                for ($i = 0; $i < count($existingMetadata); $i++) {
-                    if ($existingMetadata[$i]['field_name'] == $resourceField) {
-                        $existingMetadata[$i]['select_choices_or_calculations'] = $resourceStr;
+                for ($i = 0; $i < count($metadata); $i++) {
+                    if ($metadata[$i]['field_name'] == $resourceField) {
+                        $metadata[$i]['select_choices_or_calculations'] = $resourceStr;
                     }
                 }
             }
         }
-
-        return Upload::metadata($existingMetadata, $token, $server);
     }
 
     public static function getMenteeAgreementVanderbiltResources() {

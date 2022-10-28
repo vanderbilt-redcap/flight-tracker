@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\Links;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -91,16 +92,19 @@ echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort, "location.href =
 echo "<table class='centered bigShadow' style='max-width: 1200px;'>";
 echo "<thead>$headers</thead>";
 echo "<tbody>";
+$numChecks = [];
 foreach ($records as $recordId) {
-    $name = $names[$recordId] ?? "";
+    $name = Links::makeRecordHomeLink($pid, $recordId, $names[$recordId]) ?? "";
     echo "<tr>";
     echo "<th class='light_grey blackBorder left-align'>$name</th>";
     $recordResources = $resources[$recordId] ?? [];
+    $numChecks[$recordId] = 0;
     foreach ($resourceChoices as $idx => $label) {
         $checks = [];
         foreach ($recordResources as $instance => $resourceIdx) {
             if ($idx == $resourceIdx) {
                 $checks[] = "<span class='bolded greentext greenTextShadow'>&check;</span>";
+                $numChecks[$recordId]++;
             }
         }
         if (empty($checks)) {
@@ -112,4 +116,27 @@ foreach ($records as $recordId) {
     echo "</tr>";
 }
 echo "</tbody></table>";
+echo "<br/><br/>";
+
+arsort($numChecks);
+
+echo "<h2>Most Active Scholars</h2>";
+echo "<table class='centered bigShadow bordered' style='max-width: 800px;'>";
+echo "<thead><tr>";
+echo "<th>Name</th>";
+echo "<th>Resources Used</th>";
+echo "</tr></thead>";
+echo "<tbody>";
+foreach ($numChecks as $recordId => $cnt) {
+    if ($cnt > 0) {
+        $name = Links::makeRecordHomeLink($pid, $recordId, $names[$recordId]) ?? "";
+        echo "<tr>";
+        echo "<th>$name</th>";
+        echo "<td>$cnt</td>";
+        echo "</tr>";
+    }
+}
+echo "</tbody>";
+echo "</table>";
+
 echo "<br/>";
