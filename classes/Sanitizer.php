@@ -26,13 +26,36 @@ class Sanitizer {
      * @psalm-taint-specialize
      */
     public static function sanitizeREDCapData($data) {
-        $data = self::sanitizeArray($data, FALSE);
+        $data = self::sanitizeArray($data, FALSE, FALSE);
         for ($i = 0; $i < count($data); $i++) {
             if (isset($data[$i]['record_id'])) {
                 $data[$i]['record_id'] = self::sanitizeInteger($data[$i]['record_id']);
             }
         }
         return $data;
+    }
+
+    public static function repetitivelyDecodeHTML($entity, $depth = 1) {
+        if (is_array($entity)) {
+            foreach ($entity as $key => $value) {
+                $entity[$key] = self::repetitivelyDecodeHTML($value);
+            }
+            return $entity;
+        } else {
+            $original = $entity;
+            if (preg_match("/&[A-Za-z\d#]+,/", $entity)) {
+                $semicolonEntity = preg_replace("/(&[A-Za-z\d#]+),/", '$1;', $entity);
+                $decoded = self::decodeHTML($semicolonEntity);
+            } else {
+                $decoded = self::decodeHTML($entity);
+            }
+            $maxDepth = 50;
+            if (($original == $decoded) || ($depth > $maxDepth)) {
+                return $decoded;
+            } else {
+                return self::repetitivelyDecodeHTML($decoded, $depth + 1);
+            }
+        }
     }
 
     public static function sanitizeInteger($int) {

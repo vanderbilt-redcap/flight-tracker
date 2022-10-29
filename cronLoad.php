@@ -28,6 +28,13 @@ function runMainCrons(&$manager, $token, $server) {
 
     CareerDev::clearDate("Last Federal RePORTER Download", $pid);
 
+    $sanitizeQuotesSetting = "sanitizeQuotes";
+    if (!Application::getSetting($sanitizeQuotesSetting, $pid) && (time() < strtotime("2022-12-01"))) {
+        $manager->addCron("clean/sanitizerQuotes.php", "transformBadQuotes", date("Y-m-d"), $allRecords, 10000);
+        Application::saveSetting($sanitizeQuotesSetting, "1", $pid);
+    }
+
+
     if (
         in_array("promotion_workforce_sector", $metadataFields)
         && in_array("promotion_activity", $metadataFields)

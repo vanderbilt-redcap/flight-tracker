@@ -87,7 +87,7 @@ class Publications {
         $institution = preg_replace("/\s+/", "+", $institution);
         $term = $first."+".$last."%5Bau%5D";
         if ($institution) {
-            $term .= "+AND+" . strtolower($institution) . "%5Bad%5D";
+            $term .= "+AND+" . Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "%5Bad%5D";
         }
         $pmids = self::queryPubMed($term, $pid);
 
