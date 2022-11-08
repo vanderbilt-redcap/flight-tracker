@@ -150,6 +150,11 @@ class NIHTables {
         return [];
     }
 
+    public static function parseName($nameAndEmail) {
+        $name = preg_replace("/<[aA][^<]+<\/[aA]>/", "", $nameAndEmail);
+        return REDCapManagement::stripHTML($name);
+    }
+
     public function getHeaders($table) {
 	    if (self::beginsWith($table, ["1"])) {
             $group = self::getGroupForTable($table);
@@ -431,7 +436,7 @@ class NIHTables {
 
                 $savedData = $savedName ? Application::getSetting($savedName, $this->pid) : [];
 
-                $presetValues = [
+                $defaultPresetValues = [
                     "Training<br/>Role" => self::$NA,
                     "Research<br/>Interest" => self::$NA,
                     "Pre-doctorates<br/>In Training" => self::$NA,
@@ -441,35 +446,27 @@ class NIHTables {
                     "Post-doctorates<br/>Completed<br/>Training" => self::$NA,
                     "Postdoctorates<br/>Continued in<br/>Research or<br/>Related Careers" => self::$NA,
                     ];
+                $presetValues = $defaultPresetValues;
 
-                if (isset($savedData['data'])) {
-                    foreach($savedData['data'] as $row) {
-                        if (preg_match("/$facultyName/", $row["Name"])) {
-                            foreach (array_keys($presetValues) as $col) {
-                                if (isset($row[$col]) && $row[$col]) {
-                                    $presetValues[$col] = $row[$col];
-                                }
-                            }
-                        }
-                    }
-                }
+                self::parseSavedData($presetValues, $savedData, $facultyName);
+                $otherProjectsSavedValues = self::getOtherProjectsSavedValues(2, $facultyName, $defaultPresetValues);
 
-                $degreeeList = REDCapManagement::removeBlanksFromAry($combinedResults["Degrees"]);
+                $degreeList = REDCapManagement::removeBlanksFromAry($combinedResults["Degrees"]);
                 $rankList = REDCapManagement::removeBlanksFromAry($combinedResults["Ranks"]);
                 $departmentList = REDCapManagement::removeBlanksFromAry($combinedResults["Departments"]);
                 $row = [
                     $facultyName.$emailHTML,
-                    empty($degreeeList) ? self::$NA : implode(", ", $degreeeList),
+                    empty($degreeList) ? self::$NA : implode(", ", $degreeList),
                     empty($rankList) ? self::$NA : implode(", ", $rankList),
                     implode("; ", $departmentList),
                     $presetValues['Training<br/>Role'],
-                    $presetValues['Research<br/>Interest'].self::displayOtherProjectsValues($otherProjectsValues[$headers[5]]),
-                    $presetValues['Pre-doctorates<br/>In Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[6]]),
-                    $presetValues['Pre-doctorates<br/>Graduated'].self::displayOtherProjectsValues($otherProjectsValues[$headers[7]]),
-                    $presetValues['Predoctorates<br/>Continued in<br/>Research or<br/>Related Careers'].self::displayOtherProjectsValues($otherProjectsValues[$headers[8]]),
-                    $presetValues['Post-doctorates<br/>In Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[9]]),
-                    $presetValues['Post-doctorates<br/>Completed<br/>Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[10]]),
-                    $presetValues['Postdoctorates<br/>Continued in<br/>Research or<br/>Related Careers'].self::displayOtherProjectsValues($otherProjectsValues[$headers[11]]),
+                    $presetValues['Research<br/>Interest'].self::displayOtherProjectsValues($otherProjectsValues[$headers[5]], $otherProjectsSavedValues["Research<br/>Interest"] ?? []),
+                    $presetValues['Pre-doctorates<br/>In Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[6]], $otherProjectsSavedValues["Pre-doctorates<br/>In Training"] ?? []),
+                    $presetValues['Pre-doctorates<br/>Graduated'].self::displayOtherProjectsValues($otherProjectsValues[$headers[7]], $otherProjectsSavedValues["Pre-doctorates<br/>Graduated"] ?? []),
+                    $presetValues['Predoctorates<br/>Continued in<br/>Research or<br/>Related Careers'].self::displayOtherProjectsValues($otherProjectsValues[$headers[8]], $otherProjectsSavedValues["Predoctorates<br/>Continued in<br/>Research or<br/>Related Careers"] ?? []),
+                    $presetValues['Post-doctorates<br/>In Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[9]], $otherProjectsSavedValues["Post-doctorates<br/>In Training"] ?? []),
+                    $presetValues['Post-doctorates<br/>Completed<br/>Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[10]], $otherProjectsSavedValues["Post-doctorates<br/>Completed<br/>Training"] ?? []),
+                    $presetValues['Postdoctorates<br/>Continued in<br/>Research or<br/>Related Careers'].self::displayOtherProjectsValues($otherProjectsValues[$headers[11]], $otherProjectsSavedValues["Postdoctorates<br/>Continued in<br/>Research or<br/>Related Careers"] ?? []),
                 ];
                 $data[implode(",", $matchedMatches)] = [$row];
             }
@@ -477,46 +474,119 @@ class NIHTables {
         return $data;
     }
 
-    private static function displayOtherProjectsValues($valuesByPid) {
-	    if (empty($valuesByPid)) {
-	        return "";
-        }
-        $htmlRows = [];
-	    foreach ($valuesByPid as $pid => $values) {
-            $adminEmail = Application::getSetting("adminEmail", $pid);
-            $adminEmailSpaced = preg_replace("/[,;]/", ", ", $adminEmail);
-            $token = Application::getSetting("token", $pid);
-            $server = Application::getSetting("server", $pid);
-            $projectInfo = "pid: $pid<br><a href='mailto:$adminEmail'>$adminEmailSpaced</a>";
-            if ($token && $server) {
-                $projectTitle = Download::projectTitle($token, $server);
-                $projectInfo .= "<br>$projectTitle";
-            }
-            if (!empty($values)) {
-                $valuesByTs = [];
-                foreach ($values as $ymdDate => $value) {
-                    $ts = strtotime($ymdDate);
-                    $valuesByTs[$ts] = $value;
+    private static function getOtherProjectsSavedValues($tableNum, $defaultValues, $facultyName) {
+        $otherProjectsSavedValues = [];
+        foreach (Application::getPids() as $currPid) {
+            if (REDCapManagement::isActiveProject($currPid)) {
+                $keys = Application::getSettingKeys($currPid);
+                $savedTableKeys = [];
+                foreach ($keys as $key) {
+                    if (preg_match("/^tablename____.+____$tableNum$/", $key)) {
+                        $savedTableKeys[] = $key;
+                    }
                 }
-                krsort($valuesByTs);
-                $valuesStr = "";
-                foreach ($valuesByTs as $ts => $value) {
-                    if ($value !== "") {
-                        if ($valuesStr) {
-                            $valuesStr .= "<br/>";
-                        }
-                        if ($ts) {
-                            $mdyDate = date("m-d-Y", $ts);
-                            $valuesStr .= "$value ($mdyDate)";
-                        } else {
-                            $valuesStr .= $value;
+                foreach ($savedTableKeys as $key) {
+                    $data = Application::getSetting($key, $currPid) ?: [];
+                    if (isset($data['data'])) {
+                        $otherSavedValues = $defaultValues;
+                        self::parseSavedData($otherSavedValues, $data, $facultyName);
+                        foreach ($otherSavedValues as $col => $value) {
+                            if ($value !== self::$NA) {
+                                if (!isset($otherProjectsSavedValues[$col])) {
+                                    $otherProjectsSavedValues[$col] = [];
+                                }
+                                if (!isset($otherProjectsSavedValues[$col][$currPid])) {
+                                    $otherProjectsSavedValues[$col][$currPid] = [];
+                                }
+                                $otherProjectsSavedValues[$col][$currPid][] = $value;
+                            }
                         }
                     }
                 }
-	            $htmlRows[] = "<span class='tooltip'><span class='widetooltiptext'>$projectInfo</span>$valuesStr</span>";
             }
         }
-	    return empty($htmlRows) ? "" : "<br/><span class='smaller'>Other Projects' Values</span><br/>".implode("<br/>", $htmlRows);
+        return $otherProjectsSavedValues;
+    }
+
+    private static function getNameFromDataColumn($name) {
+        $parts = explode("<br/>", $name);
+        if ($parts >= 2) {
+            return $parts[0];
+        }
+        return $name;
+    }
+
+    private static function parseSavedData(&$values, $savedData, $facultyName) {
+        list($facultyFirst, $facultyLast) = NameMatcher::splitName($facultyName, 2);
+        if (isset($savedData['data'])) {
+            foreach($savedData['data'] as $row) {
+                $rowName = self::getNameFromDataColumn($row['Name']);
+                list($rowFirst, $rowLast) = NameMatcher::splitName($rowName, 2);
+                if (NameMatcher::matchName($facultyFirst, $facultyLast, $rowFirst, $rowLast)) {
+                    foreach (array_keys($values) as $col) {
+                        if (isset($row[$col]) && $row[$col]) {
+                            $values[$col] = $row[$col];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static function displayOtherProjectsValues($valuesByPid, $savedValuesByPid = []) {
+	    if (empty($valuesByPid) && empty($savedValuesByPid)) {
+	        return "";
+        }
+
+        $htmlRows = [];
+        $allPidsAffected = array_unique(array_merge(array_keys($valuesByPid), array_keys($savedValuesByPid)));
+        foreach ($allPidsAffected as $pid) {
+            $values = $valuesByPid[$pid] ?? [];
+            $savedValues = $savedValuesByPid[$pid] ?? [];
+            if (!empty($values) || !empty($savedValues)) {
+                $adminEmail = Application::getSetting("admin_email", $pid);
+                $adminEmailSpaced = preg_replace("/[,;]/", ", ", $adminEmail);
+                $token = Application::getSetting("token", $pid);
+                $server = Application::getSetting("server", $pid);
+                $projectInfo = "pid: $pid";
+                $contactInfo = "<div class='smallest left-align'><a href='mailto:$adminEmail'>$adminEmailSpaced</a></div>";
+                if ($token && $server) {
+                    $projectTitle = Download::projectTitle($token, $server);
+                    $projectTitle = str_replace("Flight Tracker - ", "", $projectTitle);
+                    $projectInfo = "<strong>$projectTitle</strong><br/>$projectInfo";
+                }
+                $valuesStrings = [];
+                if (!empty($values)) {
+                    $valuesByTs = [];
+                    foreach ($values as $ymdDate => $value) {
+                        $ts = strtotime($ymdDate);
+                        $valuesByTs[$ts] = $value;
+                    }
+                    krsort($valuesByTs);
+                    $seen = [];
+                    foreach ($valuesByTs as $ts => $value) {
+                        if (($value !== "") && !in_array($value, $seen)) {
+                            $seen[] = $value;
+                            if ($ts) {
+                                $mdyDate = date("m-d-Y", $ts);
+                                $valuesStr = "$value ($mdyDate)";
+                            } else {
+                                $valuesStr = $value;
+                            }
+                            $valuesStrings[] = $valuesStr;
+                        }
+                    }
+                }
+                if (!empty($savedValues)) {
+                    $valuesStrings = array_merge($valuesStrings, $savedValues);
+                }
+                if (!empty($valuesStrings)) {
+                    $str = implode("<br/>", $valuesStrings);
+                    $htmlRows[] = "<div class='tooltip smallest left-align' style='text-decoration-color: #BBB;'><span class='widetooltiptext centered'>$str</span>$projectInfo</div><div>$contactInfo</div>";
+                }
+            }
+        }
+	    return empty($htmlRows) ? "" : "<figure class='left-align'><div class='smaller bolded centered'><i>Other Values</i></div>".implode("<br/>", $htmlRows)."</figure>";
     }
 
     private function findDepartment($redcapData, $recordId, $ldapRows, $pid) {
@@ -689,6 +759,7 @@ class NIHTables {
     public function get4Data($table, $dateOfReport, $savedName) {
 	    $headers = $this->getHeaders($table);
 	    $data = ["Headers" => $headers];
+        $foundData = [];
 	    // List the funding source as NIH, AHRQ, NSF, Other Federal (Other Fed), University (Univ), Foundation (Fdn), None,
         // or Other. If none, state “None.” Exclude applications pending review, administrative or competitive supplements,
         // and awards in no-cost extension status. (xTRACT users should note that the system will autopopulate grants that
@@ -710,6 +781,7 @@ class NIHTables {
                 $data[$facultyName] = [$row];
             } else {
                 $found = FALSE;
+                $matchesStr = implode(",", $matches);
                 $i = 0;
                 do {
                     $match = $matches[$i];
@@ -790,11 +862,27 @@ class NIHTables {
                                     }
                                 }
                                 if (!$directBudget) {
+                                    $budgetSource = $grant->getVariable("source");
                                     $directBudget = $grant->getVariable("direct_budget");
                                     if ($directBudget) {
                                         $directBudget = REDCapManagement::prettyMoney($directBudget, FALSE);
+                                        $budgetSource = $grant->getVariable("source");
                                     } else {
                                         $directBudget = self::$NA;
+                                        if (Application::isVanderbilt()) {
+                                            $localGrantsManagementForms = ["coeus", "vera"];
+                                            foreach ($grantAry as $grant2) {
+                                                if (
+                                                    ($grant2->getNumber() == $awardNo)
+                                                    && ($grant2->getVariable("direct_budget"))
+                                                    && in_array($grant2->getVariable("source"), $localGrantsManagementForms)
+                                                ) {
+                                                    $directBudget = REDCapManagement::prettyMoney($grant2->getVariable("direct_budget"));
+                                                    $budgetSource = $grant2->getVariable("source");
+                                                    break;
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                                 $row = [
@@ -806,18 +894,29 @@ class NIHTables {
                                     "$startMMYYYY - $endMMYYYY",
                                     $directBudget,
                                 ];
-                                if (!isset($data[$match])) {
-                                    $data[$match] = [];
+                                if (!isset($foundData[$matchesStr])) {
+                                    $foundData[$matchesStr] = [];
                                 }
-                                $data[$match][] = $row;
+                                if (!isset($foundData[$matchesStr][$baseAwardNo])) {
+                                    $foundData[$matchesStr][$baseAwardNo] = $row;
+                                } else if (self::getNumberOfNAs($foundData[$matchesStr][$baseAwardNo]) > self::getNumberOfNAs($row)) {
+                                    $foundData[$matchesStr][$baseAwardNo] = $row;
+                                }
                             }
                         }
                     }
                     $i++;
-                } while (($i < count($matches)) && !$found);
-                if (!$found) {
+                } while ($i < count($matches));
+                if ($found) {
+                    foreach ($foundData as $matchesStr => $rowsByBase) {
+                        $data[$matchesStr] = [];
+                        foreach ($rowsByBase as $baseAwardNumber => $row) {
+                            $data[$matchesStr][] = $row;
+                        }
+                    }
+                } else {
                     # TODO (Vanderbilt only) lookup userid and add to COEUS pull???
-                    $data[$match] = [
+                    $data[$matchesStr] = [
                         [
                             $facultyName,
                             "None",
@@ -827,6 +926,16 @@ class NIHTables {
             }
         }
 	    return $data;
+    }
+
+    private static function getNumberOfNAs($row) {
+        $cnt = 0;
+        foreach ($row as $item) {
+            if (strpos($item, self::$NA) !== FALSE) {
+                $cnt++;
+            }
+        }
+        return $cnt;
     }
 
     private static function fetchEmail($pid, $recordId) {
@@ -843,9 +952,13 @@ class NIHTables {
     public static function getUniqueIdentifier($row, $tableNum) {
 	    $numElems = ($tableNum == 2) ? 1 : 3;
 	    $items = [];
-	    for ($i = 0; ($i < $numElems) && ($i < count($row)); $i++) {
-	        $item = REDCapManagement::makeHTMLId($row[$i]);
-	        $items[] = $item;
+        $i = 0;
+        foreach ($row as $idx => $val) {
+            if ($i < $numElems) {
+                $item = REDCapManagement::makeHTMLId($val);
+                $items[] = $item;
+            }
+            $i++;
         }
 	    return implode("___", $items);
     }
@@ -931,7 +1044,7 @@ class NIHTables {
 	            foreach ($headers as $header) {
 	                $headerWithoutHTML = preg_replace("/<[^>]+>/", " ", $header);
 	                $id = "table_".$tableNum."___".REDCapManagement::makeHTMLId($header);
-	                $inputHTML = in_array($headerWithoutHTML, $numericalFields) ? "<br><input class='action_required' type='text' name='$id' style='width: 50px;' />" : "";
+	                $inputHTML = in_array($headerWithoutHTML, $numericalFields) ? "<br><input class='action_required' placeholder='Correct?' type='text' name='$id' style='width: 75px;' />" : "";
 	                $html .= "<td>".$row[$header].$inputHTML."</td>";
                 }
 	            $html .= "</tr>";
@@ -941,20 +1054,22 @@ class NIHTables {
 	    return $html;
     }
 
-    public function getHTML($table, $includeDOI = FALSE, $savedName = "") {
+    public function getHTML($table, $includeDOI = FALSE, $savedName = "", $makeModifications = FALSE) {
 	    if (self::beginsWith($table, ["1", "2", "3", "4"])) {
 	        $data = $this->getData($table, $savedName);
+            if ($makeModifications) {
+                $reactHandler = new ReactNIHTables($this->token, $this->server, $this->pid, Application::getModule());
+                $data = $reactHandler->loadModifications($data, $table, $this);
+            }
             return self::makeTable1_4DataIntoHTML($table, $data);
        } else if (self::beginsWith($table, ["5A", "5B"])) {
 			$data = $this->get5Data($table, [], $includeDOI);
             $namesPre = $this->downloadPredocNames();
             $namesPost = $this->downloadPostdocNames($table);
-            $html = "";
-            $html .= self::getHTMLPrefix($table).self::makeDataIntoHTML($data, $namesPre, $namesPost);
+            $html = self::getHTMLPrefix($table).self::makeDataIntoHTML($data, $namesPre, $namesPost);
             return $html;
 		} else if (self::beginsWith($table, ["6A", "6B"])) {
-			$html = "";
-			$html .= self::getHTMLPrefix($table);
+			$html = self::getHTMLPrefix($table);
 			foreach (self::get6Years() as $year) {
 				$data = $this->get6Data($table, $year);
 				$html .= self::makeDataIntoHTML($data)."<br><br>";
@@ -2417,7 +2532,7 @@ class NIHTables {
                 } else {
                     throw new \Exception("Invalid table number $table!");
                 }
-	            array_push($data, $dataRow);
+	            $data[] = $dataRow;
             }
 	        return $data;
         } else if ($part == 4) {

@@ -23,6 +23,7 @@ if (isset($_GET['cohort'])) {
 $names = Download::names($token, $server);
 $resources = Download::oneFieldWithInstances($token, $server, "resources_resource");
 
+$headers = "";
 if (Application::isVanderbilt()) {
     $resourceAffiliations = [
         "Edge for Scholars" => [
@@ -30,6 +31,7 @@ if (Application::isVanderbilt()) {
             "Shut up and Write",
             "Manuscript Sprint",
             "Science of Writing",
+            "EFS Online Grant-Writing Workshop",
             "Grants Repository - Have Access",
             "Grants Repository - Shared",
             "Grants Repository - Accessed After 1/1/2021",
@@ -37,6 +39,8 @@ if (Application::isVanderbilt()) {
             "Grant Pacing",
             "Grant Pacing Workshop",
             "Edge Reviews",
+            "Edge Seminars (Monthly)",
+            "Monthly Newman Series",
         ],
         "VICTR" => [
             "Studio",
@@ -48,7 +52,7 @@ if (Application::isVanderbilt()) {
 
     $reverseResourceChoices = REDCapManagement::reverseArray($resourceChoices);
     $newResourceChoices = [];
-    $headers = "<tr>";
+    $headers .= "<tr>";
     $headers .= "<td></td>";
     foreach ($resourceAffiliations as $group => $resourceNames) {
         $numInGroup = 0;

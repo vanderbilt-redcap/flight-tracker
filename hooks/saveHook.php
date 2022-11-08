@@ -104,9 +104,9 @@ function getPositionDataFromSurvey($row, $choices, $prefix) {
         $institutionName = $row[$prefix.'institution'] ?? "";
     }
     $institutionName = trim($institutionName);
-    if ($institutionName == "Vanderbilt") {
+    if (strtolower($institutionName) == "vanderbilt") {
         $transferData['promotion_institution'] = "Vanderbilt University Medical Center";   // ???
-    } else if ($institutionName == "Other") {
+    } else if (strtolower($institutionName) == "other") {
         $transferData['promotion_institution'] = $row[$prefix.'institution_oth'] ?? "";
     } else {
         $transferData['promotion_institution'] = $institutionName;

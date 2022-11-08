@@ -6,7 +6,11 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 if (count($_FILES) > 0 && isset($_FILES['logo'])) {
-	$filename = $_FILES['logo']['tmp_name'];
+	$filename = $_FILES['logo']['tmp_name'] ?? "";
+    if (!$filename || !is_string($filename)) {
+        echo "<p>Your file was not properly uploaded.</p>\n";
+        exit;
+    }
 	$check = getimagesize($filename);
 	if ($check !== FALSE) {
 		$img = file_get_contents($filename);

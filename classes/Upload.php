@@ -651,7 +651,7 @@ public static function metadata($metadata, $token, $server) {
                 $allFeedback = self::combineFeedback($allFeedback, $feedback);
             }
 		}
-		Application::log($method.": ".REDCapManagement::json_encode_with_spaces($allFeedback), $pid);
+		Application::log($method." (pid $pid): ".REDCapManagement::json_encode_with_spaces($allFeedback), $pid);
 		return $allFeedback;
 	}
 

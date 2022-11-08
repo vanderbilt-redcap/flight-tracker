@@ -25,28 +25,39 @@ if (DataDictionaryManagement::isInitialSetupForResources($choices[$resourceField
 } else {
     $resourceChoices = $choices[$resourceField] ?? [];
 }
+$savedList = Application::getSetting("mentoring_local_resources", $pid);
 $defaultList = implode("\n", array_values($resourceChoices));
+if (!$defaultList) {
+    $defaultList = $savedList;
+}
 $rightWidth = 500;
 $defaultLink = Application::getSetting("mentee_agreement_link", $pid);
 
-if (isset($_POST['resourceList'])) {
+if (isset($_POST['action']) && ($_POST['action'] == "save")) {
     $continue = TRUE;
-    if (isset($_POST['linkToSave']) && isset($_POST['linkForIDP'])) {
-        $defaultLink = Sanitizer::sanitize($_POST['linkToSave']);
-        $idpLink = Sanitizer::sanitize($_POST['linkForIDP']);
+    if (isset($_POST['linkForResources']) && isset($_POST['linkForIDP'])) {
         $linksToSet = [
-            "mentee_agreement_link" => $defaultLink,
-            "idp_link" => $idpLink,
+            "mentee_agreement_link" => [
+                "link" => $_POST['linkForResources'],
+                "description" => "Link for Further Resources",
+            ],
+            "idp_link" => [
+                "link" => $_POST['linkForIDP'],
+                "description" => "Link for IDP",
+            ],
         ];
-        foreach ($linksToSet as $settingName => $link) {
+        foreach ($linksToSet as $settingName => $ary) {
+            $link = $ary['link'] ?? "";
+            $descript = $ary['description'] ?? "";
             if ($link && $continue) {
                 if (!preg_match("/^https?:\/\//i", $link)) {
                     $link = "https://".$link;
                 }
-                if (REDCapManagement::isValidURL($link)) {
-                    Application::saveSetting($settingName, $link, $pid);
+                $sanitizedLink = Sanitizer::sanitizeURL($link);
+                if (REDCapManagement::isValidURL($sanitizedLink)) {
+                    Application::saveSetting($settingName, $sanitizedLink, $pid);
                 } else {
-                    $mssg = "<p class='red centered max-width'>Improper URL $link</p>";
+                    $mssg = "<p class='red centered max-width'>Improper URL $descript</p>";
                 }
             } else {
                 Application::saveSetting($settingName, "", $pid);
@@ -57,7 +68,11 @@ if (isset($_POST['resourceList'])) {
         $continue = FALSE;
     }
     if ($continue) {
-        $resources = preg_split("/[\n\r]+/", Sanitizer::sanitize($_POST['resourceList'] ?? ""));
+        $sanitizedList = Sanitizer::sanitize($_POST['resourceList'] ?? "");
+        $resources = preg_split("/[\n\r]+/", $sanitizedList);
+        $resourceList = implode("\n", $resources);
+        Application::saveSetting("mentoring_resources", $resourceList);
+
         $reverseResourceChoices = [];
         foreach ($choices[$resourceField] ?? [] as $idx => $label) {
             $reverseResourceChoices[$label] = $idx;
@@ -104,8 +119,14 @@ if (isset($_POST['resourceList'])) {
             }
             if (empty($resourcesByIndex) && Application::isVanderbilt()) {
                 $resourcesByIndex = DataDictionaryManagement::getMenteeAgreementVanderbiltResources();
-            }
-            if (empty($resourcesByIndex) && !empty($choices["resources_resource"])) {
+            } else if (empty($resourcesByIndex) && $savedList) {
+                $savedLabels = preg_split("/[\n\r]+/", $savedList);
+                $pairs = [];
+                foreach ($savedLabels as $i => $label) {
+                    $pairs[] = ($i+1).", $label";
+                }
+                $resourceStr = implode(" | ", $pairs);
+            } else if (empty($resourcesByIndex) && !empty($choices["resources_resource"])) {
                 $resourceStr = REDCapManagement::makeChoiceStr($choices['resources_resource']);
             } else if (empty($resourcesByIndex) && !isset($choices['resources_resource'])) {
                 $resourceStr = "1, Institutional Resources Here";
@@ -157,14 +178,15 @@ $stepsLink = Application::link("mentor/dashboard.php");
 
 <form action="<?= Application::link("this") ?>" method="POST">
     <?= Application::generateCSRFTokenHTML() ?>
+    <input type="hidden" name="action" id="action" value="save" />
     <table class="max-width centered padded">
         <tr>
             <td class="alignright bolded"><label for="resourceList">Institutional Resources for Mentoring<br/>(One Per Line Please.)<br/>These will be offered to the mentee.</label></td>
             <td><textarea name="resourceList" id="resourceList" style="width: <?= $rightWidth ?>px; height: 300px;"><?= $defaultList ?></textarea></td>
         </tr>
         <tr>
-            <td class="alignright bolded"><label for="linkToSave">Link to Further Resources<?= $vanderbiltLinkText ?></label></td>
-            <td><input type="text" style="width: <?= $rightWidth ?>px;" name="linkToSave" id="linkToSave" value="<?= $defaultLink ?>"></td>
+            <td class="alignright bolded"><label for="linkForResources">Link to Further Resources<?= $vanderbiltLinkText ?></label></td>
+            <td><input type="text" style="width: <?= $rightWidth ?>px;" name="linkForResources" id="linkForResources" value="<?= $defaultLink ?>"></td>
         </tr>
         <tr>
             <td class="alignright bolded"><label for="linkForIDP">Link for Further Questions for the Individual Development Plan (IDP) - optional<br/>If you have some program-specific questions, you can turn them into a REDCap Survey in a separate project and add the Public Survey Link here.</label></td>

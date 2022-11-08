@@ -526,6 +526,7 @@ class LdapLookup {
                 return true;
             }
         }
+        return false;
     }
 
     # from ori1007lt:/app001/www/redcap/webtools2/ldap/ldap_config.php

@@ -187,7 +187,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $selectSql = "SELECT log_id $fromAndWhereClause LIMIT 1";
             $this->query($deleteSql, [$externalModuleId, $thresholdTs, $pid]);
             $result = $this->query($selectSql, [$externalModuleId, $thresholdTs, $pid]);
-            $moreToDelete = isset($result) && $result->fetch_assoc();
+            $moreToDelete = $result->fetch_assoc();
             $numIterations++;
         } while ($moreToDelete && ($numIterations < 50000));
         Application::log("Done removing logs in $numIterations iterations", $pid);

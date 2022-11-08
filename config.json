@@ -3,7 +3,7 @@
 
 	"namespace": "Vanderbilt\\FlightTrackerExternalModule",
 
-	"description": "This module tracks a group of faculty's career development by charting publications and grants over time.",
+	"description": "This module tracks a group of faculty's career development by charting publications and grants over time. Only US data supported.",
 
 	"authors": [
 		{

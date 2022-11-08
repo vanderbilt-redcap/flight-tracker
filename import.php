@@ -8,8 +8,13 @@ require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/Application.php");
 
 if (isset($_GET['import']) && isset($_FILES['csv'])) {
-	$html = \Vanderbilt\FlightTrackerExternalModule\importCustomFields($_FILES['csv']['tmp_name'], $token, $server, $pid);
-	echo $html;
+    $tmpFilename = $_FILES['csv']['tmp_name'] ?? "";
+    if ($tmpFilename) {
+        $html = \Vanderbilt\FlightTrackerExternalModule\importCustomFields($tmpFilename, $token, $server, $pid);
+        echo $html;
+    } else {
+        echo "Invalid filename.<br/>";
+    }
 }
 ?>
 

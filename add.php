@@ -42,8 +42,9 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 } else if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
 	$lines = [];
 	if (isset($_FILES['csv'])) {
-		if (is_uploaded_file($_FILES['csv']['tmp_name'])) {
-			$fp = fopen($_FILES['csv']['tmp_name'], "rb");
+        $tmpFilename = $_FILES['csv']['tmp_name'] ?? "";
+		if ($tmpFilename && is_string($tmpFilename) && is_uploaded_file($tmpFilename)) {
+			$fp = fopen($tmpFilename, "rb");
 			if (!$fp) {
 				echo "Cannot find file.";
 			}

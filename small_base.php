@@ -1006,13 +1006,17 @@ function filterForCoeusFields($fields) {
 }
 
 function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadata = FALSE) {
-	CareerDev::setSetting("departments", $lists["departments"], $pid);
-	CareerDev::setSetting("resources", $lists["resources"], $pid);
-	$others = array(
-			"departments" => 999999,
-			"resources" => FALSE,
-			"institutions" => 5,
-			);
+	Application::saveSetting("departments", $lists["departments"], $pid);
+	Application::saveSetting("resources", $lists["resources"], $pid);
+    if (!Application::getSetting("mentoring_resources", $pid)) {
+        Application::saveSetting("mentoring_resources", $lists["resources"], $pid);
+    }
+	$others = [
+        "departments" => 999999,
+        "resources" => FALSE,
+        "mentoring" => FALSE,
+        "institutions" => 5,
+    ];
 
 	$files = [dirname(__FILE__)."/metadata.json"];
     if (CareerDev::isVanderbilt()) {
@@ -1041,9 +1045,10 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
 	}
 
 	$fields = array();
-	$fields["departments"] = REDCapManagement::getSpecialFields("departments");
-	$fields["resources"] = REDCapManagement::getSpecialFields("resources");
-	$fields["institutions"] = REDCapManagement::getSpecialFields("institutions");
+	$fields["departments"] = REDCapManagement::getSpecialFields("departments", $metadata);
+    $fields["resources"] = REDCapManagement::getSpecialFields("resources", $metadata);
+    $fields["mentoring"] = REDCapManagement::getSpecialFields("mentoring", $metadata);
+	$fields["institutions"] = REDCapManagement::getSpecialFields("institutions", $metadata);
 
     $choices = DataDictionaryManagement::getChoices($metadata);
     foreach ($lists as $type => $str) {

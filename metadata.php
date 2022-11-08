@@ -39,7 +39,7 @@ if ($_POST['process'] == "check") {
                 <i class='fa fa-exclamation-circle' aria-hidden='true'></i> <a href='javascript:;' onclick='installMetadataForProjects(" . json_encode($pids) . ");'>Click here to install for all " . Application::getProgramName() . " projects (REDCap SuperUsers only).</a>
                 </div>";
             }
-            echo "<script>var missing = " . json_encode($missing) . ";</script>\n";
+            echo "<script>const missing = " . json_encode($missing) . ";</script>\n";
             echo "<div id='metadataWarning' class='install-metadata-box install-metadata-box-danger'>
                 <i class='fa fa-exclamation-circle' aria-hidden='true'></i> An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a>
                 <p>The following fields will be added: " . (empty($additions) ? "<i>None</i>" : "<strong>" . implode(", ", $additions) . "</strong>") . "</p>

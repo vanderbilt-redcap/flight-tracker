@@ -55,6 +55,91 @@ class ReactNIHTables {
         );
     }
 
+    public function loadModifications($data, $tableNumber, $nihTables) {
+        $post = ["tableNum" => $tableNumber];
+        $headers = $nihTables->getHeaders($tableNumber);
+        if (in_array($tableNumber, [2, 4])) {
+            $queryItems = [];
+            foreach ($data['data'] as $row) {
+                $queryItems[] = [
+                    "record" => $row['record'],
+                    "recordInstance" => $row['recordInstance'],
+                    "name" => NIHTables::parseName($row[$headers[0]]),
+                ];
+            }
+            $post['queryItems'] = $queryItems;
+            $lookupValues = $this->lookupValuesFor2And4($post);
+        } else if ($tableNumber == 3) {
+            $queryItems = [];
+            foreach ($data['data'] as $row) {
+                $queryItems[] = [
+                    "record" => $row['record'],
+                    "recordInstance" => $row['recordInstance'],
+                    "awardNo" => $row[$headers[1]],
+                ];
+            }
+            $post['queryItems'] = $queryItems;
+            $lookupValues = $this->lookupValuesFor3($post);
+        } else {
+            throw new \Exception("Invalid table");
+        }
+
+        $mods = $this->makeModificationsArray($lookupValues, $data['data'], $headers, $tableNumber);
+        $data['data'] = $this->modifyTableData($data['data'], $headers, $mods, $tableNumber);
+        return $data;
+    }
+
+    private function modifyTableData($data, $headers, $mods, $tableNum) {
+        $newTableData = [];
+        foreach ($data as $row) {
+            $modifiedRow = self::transformIntoNonAssociativeArray($row, $headers);
+            $rowTitle = NIHTables::getUniqueIdentifier($modifiedRow, $tableNum);
+            if (isset($mods[$rowTitle])) {
+                foreach ($headers as $header) {
+                    if (isset($mods[$rowTitle][$header]) && $mods[$rowTitle][$header]) {
+                        $row[$header] = $mods[$rowTitle][$header];
+                    }
+                }
+            }
+            $newTableData[] = $row;
+        }
+        return $newTableData;
+    }
+
+    private static function transformIntoNonAssociativeArray($row, $headers) {
+        $modifiedRow = [];
+        for ($i=0; $i < count($headers); $i++) {
+            $modifiedRow[] = $row[$headers[$i]];
+        }
+        return $modifiedRow;
+    }
+
+    # coordinated with NIHTable -> loadModificationsForCSV in React
+    private function makeModificationsArray($lookupValues, $data, $headers, $tableNum) {
+        foreach ($lookupValues as $recordId => $instanceValues) {
+            foreach ($instanceValues as $recordInstance => $dateValues) {
+                for ($i = 0; $i < count($data); $i++) {
+                    $row = $data[$i];
+                    if ($row['recordInstance'] == $recordInstance) {
+                        foreach ($dateValues as $date => $colValues) {
+                            foreach ($colValues as $col => $val) {
+                                if ($val !== $row[$col]) {
+                                    $modifiedRow = self::transformIntoNonAssociativeArray($row, $headers);
+                                    $rowTitle = NIHTables::getUniqueIdentifier($modifiedRow, $tableNum);
+                                    if (!isset($mods[$rowTitle])) {
+                                        $mods[$rowTitle] = [];
+                                    }
+                                    $mods[$rowTitle][$col] = $val;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return $mods;
+    }
+
     public function sendVerificationEmail($post, &$nihTables) {
         $email = strtolower(Sanitizer::sanitize($post['email']));
         $scholarEmail = strtolower(Sanitizer::sanitize($post['scholarEmail']));
@@ -79,9 +164,10 @@ class ReactNIHTables {
         }
         $dataRows = [];
         foreach ($tables as $tableNumber) {
-            $dataRows[$tableNumber] = $nihTables->getData($tableNumber, $savedName);
+            $tableData = $nihTables->getData($tableNumber, $savedName);
+            $tableData = $this->loadModifications($tableData, $tableNumber, $nihTables);
+            $dataRows[$tableNumber] = $tableData;
         }
-
         $mssg = "<style>
 p,th,td,h1,h2,h3,h4 { font-family: Arial, Helvetica, sans-serif; }
 a { font-weight: bold; color: black; text-decoration: underline; }
@@ -115,7 +201,9 @@ table { border-collapse: collapse; }
                         $rowClass = ($i % 2 == 1) ? "odd" : "even";
                         $tableHTML .= "<tr>";
                         foreach ($headers as $header) {
-                            $tableHTML .= "<td class='$rowClass'>".$row[$header]."</td>";
+                            $rowHTML = $row[$header];
+                            $rowHTML = preg_replace("/<figure class=['\"]left-align['\"]>.+<\/figure>/", "", $rowHTML);
+                            $tableHTML .= "<td class='$rowClass'>$rowHTML</td>";
                         }
                         $tableHTML .= "</tr>";
                         $i++;
@@ -127,7 +215,15 @@ table { border-collapse: collapse; }
         } else {
             $numTables = 1;
         }
-        $mssg .= preg_replace('/\[Relevant Table .* Rows\]/', $tableHTML, Sanitizer::sanitizeWithoutStrippingHTML($post['mssg'], FALSE));
+        $stringsToReplace = [
+            "[Relevant Table 2 &amp; 4 Rows]",
+            "[Relevant Table 3 Rows]",
+        ];
+        $replacedTables = Sanitizer::sanitizeWithoutStrippingHTML($post['mssg'], FALSE);
+        foreach ($stringsToReplace as $str) {
+            $replacedTables = str_replace($str, $tableHTML, $replacedTables);
+        }
+        $mssg .= $replacedTables;
         $data = [];
         if (($numRows > 0) || ($tableNum == 3)) {
             $thisLink = Application::link("this", $this->pid);
@@ -494,10 +590,11 @@ table { border-collapse: collapse; }
                 $data = self::transformCheckboxes($data);
                 $table = NIHTables::makeTable1_4DataIntoHTML($tableNum, $data);
             } else {
-                $table = $nihTables->getHTML($tableNum, FALSE, self::makeSaveTableKey($savedName, $tableNum));
+                $savedKey = self::makeSaveTableKey($savedName, $tableNum);
+                $table = $nihTables->getHTML($tableNum, FALSE, $savedKey, TRUE);
             }
             $html .= $table;
-            $html .= "<h4>Do you have any requested changes for this table?<br>Please address any <span class='action_required'>red</span> items,<br>and make sure you click the Submit Changes button.</h4>";
+            $html .= "<h4>Do you have any requested changes for this table?<br>Consider addressing any <span class='action_required'>red</span> items,<br>and make sure you click the Submit Changes button.</h4>";
             $html .= "<p class='centered'><textarea name='table_$tableNum' style='width: 600px; height: 150px;'></textarea></p>";
             $html .= "<br><br>";
         }

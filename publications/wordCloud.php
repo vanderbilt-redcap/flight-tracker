@@ -77,11 +77,6 @@ form input, form select {
     background-color: #f8f9fa;
     border-color: #f8f9fa;
 }
-.mtitle{    font-weight: 700;
-    font-size: 20px;
-    margin: auto;
-    width: 100%;
-    text-align: center; margin-bottom:2em;}
 .btn {
     display: inline-block;
     font-weight: 400;
@@ -249,7 +244,7 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
             title.fontColor = "#eeeeee";
             title.fontFamily = "europa";
             title.marginBottom = 20;
-            $('.mtitle').html("<?php echo strtoupper('most popular '.getMainChunk($fieldsToDisplay[0]).' terms'); ?>");
+            $('.mtitle').html("Most Popular <?= ucfirst(getMainChunk($fieldsToDisplay[0])) ?> Terms");
             //----
 
             const numBarTerms = <?= $barChartTerms ?>;
@@ -361,7 +356,7 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCoho
     $selectHTML .= "</select>";
     $datesHTML = "<label for='start'>Start Date (optional): </label><input type='date' style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='start' id='start' value='$startDate' /><br/><label for='end'>End Date (optional): </label><input type='date'  style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='end' id='end' value='$endDate' />";
     $html .= "<div class='centered max-width'><div class='form-group'>$cohortHTML</div> <div class='form-group'>$selectHTML</div> <div class='form-group'>$datesHTML</div> <div class='form-group' style='width: 200px;'><button class='btn btn-light tsubmit'>Make Word Cloud</button></div></div>";
-    $html .= "</form><div class='mtitle'></div><div style='width: 1260px; margin: 0 auto;'><div id='chartdivcol'></div><div id='chartdiv'></div>";
+    $html .= "</form><h2 class='mtitle'></h2><div style='width: 1260px; margin: 0 auto;'><div id='chartdivcol'></div><div id='chartdiv'></div>";
     return $html;
 }
 

@@ -40,8 +40,8 @@ if (!empty($_POST)) {
     $data = [];
     try {
         if ($action == "uploadFile" && isset($_FILES['file'])) {
-            $filename = $_FILES['file']['tmp_name'];
-            if ($table && $filename && file_exists($filename)) {
+            $filename = $_FILES['file']['tmp_name'] ?? "";
+            if ($table && $filename && is_string($filename) && file_exists($filename)) {
                 $linesToProcess = [];
                 $fp = fopen($filename, "r");
                 $lineNum = 0;

@@ -286,7 +286,7 @@ class DataDictionaryManagement {
             }
 
             $metadataFields = REDCapManagement::getMetadataFieldsToScreen();
-            $specialFields = REDCapManagement::getSpecialFields("all");
+            $specialFields = REDCapManagement::getSpecialFields("all", $projectMetadata);
             foreach ($fieldList["file"] as $field => $choiceStr) {
                 $isSpecialGenderField = Application::isVanderbilt() && in_array($field, $genderFieldsToHandleForVanderbilt);
                 $isFieldOfSources = (

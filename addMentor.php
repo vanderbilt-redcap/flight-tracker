@@ -25,8 +25,13 @@ if ($_GET['download'] && ($_GET['download'] == "csv")) {
     echo $html;
 } else if ($_GET['upload'] && ($_GET['upload'] == "csv") && isset($_FILES['csv_file'])) {
     require_once(dirname(__FILE__) . "/charts/baseWeb.php");
-    $html = makeUploadTable($_FILES['csv_file']['tmp_name'], $token, $server);
-    echo $html;
+    $tmpFilename = $_FILES['csv_file']['tmp_name'] ?? "";
+    if ($tmpFilename) {
+        $html = makeUploadTable($tmpFilename, $token, $server);
+        echo $html;
+    } else {
+        echo "Invalid file.";
+    }
 } else if ($_POST['mentorName']) {
     require_once(dirname(__FILE__) . "/small_base.php");
     $mentorName = Sanitizer::sanitize($_POST['mentorName'] ?? "");

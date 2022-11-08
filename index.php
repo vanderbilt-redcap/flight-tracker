@@ -33,6 +33,10 @@ if (!empty($_POST)) {
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 
+if (!isset($pid)) {
+    die("Invalid project id.");
+}
+
 $bottomPadding = "<br><br><br><br><br>\n";
 $grantNumberHeader = "";
 if ($grantNumber = CareerDev::getSetting("grant_number", $pid)) {

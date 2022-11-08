@@ -100,7 +100,7 @@ class REDCapManagement {
 
     public static function getAllGrantFields($metadata) {
 	    $fields = ["record_id"];
-	    $forms = ["exporter", "nih_reporter", "reporter", "nsf", "coeus", "custom_grants", "coeus2"];
+	    $forms = ["exporter", "nih_reporter", "reporter", "nsf", "vera", "coeus", "custom_grant", "coeus2"];
 	    foreach ($forms as $form) {
 	        $fields = array_unique(array_merge($fields, REDCapManagement::getFieldsFromMetadata($metadata, $form)));
         }
@@ -1359,7 +1359,8 @@ class REDCapManagement {
 		throw new \Exception("Could not get project-id from project settings: ".self::json_encode_with_spaces($projectSettings));
 	}
 
-	public static function getSpecialFields($type) {
+	public static function getSpecialFields($type, $metadata) {
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
 		$fields = array();
 		$fields["departments"] = array(
 						"summary_primary_dept",
@@ -1386,8 +1387,10 @@ class REDCapManagement {
 						);
 		$fields["resources"] = [
 		    "resources_resource",
-            "mentoring_local_resources",
             ];
+        $fields["mentoring"] = [
+            DataDictionaryManagement::getMentoringResourceField($metadataFields),
+        ];
 		$fields["institutions"] = array("check_institution", "followup_institution");
 
 		if (isset($fields[$type])) {
@@ -1399,7 +1402,7 @@ class REDCapManagement {
 				$allFields = array_merge($allFields, $typeFields);
 			}
 			$allFields = array_unique($allFields);
-			return $allFields;
+            return DataDictionaryManagement::filterOutInvalidFields($metadata, $allFields);
 		}
 		return array();
 	}

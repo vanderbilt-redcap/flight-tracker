@@ -499,7 +499,7 @@ class CronManager {
             }
 
             if ($hasErrors) {
-                $text .= "<h2>Errors!</h2>";
+                $text .= "<h2>Errors &amp; Warnings!</h2>";
             }
 
 
@@ -554,12 +554,14 @@ class CronManager {
             foreach ($runJobs as $job) {
                 if ($job['pid'] == $pid) {
                     $method = $job['method'];
+                    $prefix = strtolower($job['text']);
                     if (!isset($methods[$method])) {
                         $methods[$method] = [];
+                        $methods[$method][$prefix."Records"] = [];
                     }
                     $currMethod = $newMethod;
-                    $prefix = strtolower($job['text']);
-                    $currMethod[$prefix."Records"] = array_merge($methods[$method][$prefix."Records"] ?? [], $job['records']);
+                    $methodRecords = $methods[$method][$prefix . "Records"] ?? [];
+                    $currMethod[$prefix."Records"] = array_merge($methodRecords, $job['records']);
                     $endTs = strtotime($job['end']);
                     if ($endTs > $currMethod[$prefix."LastTs"]) {
                         $currMethod[$prefix."LastTs"] = $endTs;
@@ -995,9 +997,9 @@ body { font-size: 1.2em; }
                 }
                 $html = "For Scholars: ".REDCapManagement::makeConjunction($affectedNames);
             }
-            if ($numNewGrants == 1) {
+            if (($numNewGrants == 1) && $html) {
                 $impact["$numNewGrants New Grant"] = $html;
-            } else {
+            } else if ($html) {
                 $impact["$numNewGrants New Grants"] = $html;
             }
         }
@@ -1026,7 +1028,9 @@ body { font-size: 1.2em; }
                     }
                 }
             }
-            $impact["New High-Impact Papers"] = $html;
+            if ($html) {
+                $impact["New High-Impact Papers"] = $html;
+            }
         }
 
         if (!empty($newPatents)) {
@@ -1044,7 +1048,9 @@ body { font-size: 1.2em; }
                 }
                 $html = count($newPatents)." Downloaded for ".REDCapManagement::makeConjunction($affectedNames);
             }
-            $impact["New Patents"] = $html;
+            if ($html) {
+                $impact["New Patents"] = $html;
+            }
         }
 
         return $impact;

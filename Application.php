@@ -393,13 +393,29 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
                 $module = self::getModule();
                 $pids = $module->getPids();
             } else {
-                $ftModule = Application::getFlightTrackerModule();
-                $pids = $ftModule->getPids();
+                $pids = [];
+                $prefix = CareerDev::getPrefix();
+                $module = self::getModule();
+                $sql = "
+SELECT DISTINCT s.project_id AS pid
+    FROM redcap_external_module_settings AS s
+        INNER JOIN redcap_external_modules AS m
+            ON m.external_module_id = s.external_module_id
+    WHERE
+        s.key = 'enabled'
+      AND s.value='true'
+      AND m.directory_prefix = ?";
+                $q = $module->query($sql, [$prefix]);
+                while ($row = $q->fetch_assoc()) {
+                    if ($row['pid']) {
+                        $pids[] = $row['pid'];
+                    }
+                }
             }
-            if (Application::isLocalhost()) {
-                $pids[] = 15;
-            } else if (Application::isServer("redcap.vanderbilt.edu")) {
-                $pids[] = 66635;
+            if (self::isLocalhost()) {
+                array_unshift($pids, "15");
+            } else if (self::isServer("redcap.vanderbilt.edu")) {
+                array_unshift($pids, "66635");
             } else if (Application::isServer("redcaptest.vanderbilt.edu")) {
                 # TODO Add test projects with plugin
             }

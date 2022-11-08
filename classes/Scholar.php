@@ -2397,11 +2397,24 @@ class Scholar {
 			$source = $result->getSource();
 			$value = $result->getValue();
 			$field = $result->getField();
-			if ($value == 1) {  # Male
-				return new Result(2, $source, "", "", $this->pid);
-			} else if ($value == 2) {   # Female
-				return new Result(1, $source, "", "", $this->pid);
-			} else if ($choices[$field] && $choices[$field][$value]) {
+            $reversedFields = [
+                "newman_demographics_gender",
+                "newman_data_gender",
+                "newman_nonrespondents_gender",
+                "newman_new_gender",
+                "vfrs_gender",
+            ];
+            if (in_array($value, [1,2])) {
+                if (in_array($field, $reversedFields) && ($value == 1)) {
+                    # Male
+                    return new Result(2, $source, "", "", $this->pid);
+                } else if (in_array($field, $reversedFields) && ($value == 2)) {
+                    # Female
+                    return new Result(1, $source, "", "", $this->pid);
+                } else {
+                    return new Result($value, $source, "", "", $this->pid);
+                }
+            } else if ($choices[$field] && $choices[$field][$value]) {
 			    $label = $choices[$field][$value];
 			    $newValue = FALSE;
                 if (preg_match("/nonbinary/i", $label) || preg_match("/non-binary/i", $label)) {
@@ -3682,9 +3695,13 @@ class Scholar {
                             } else if (
                                 $hasOtherField
                                 && (
-                                    ($newRow[$promotionField] == 999999)
+                                    (
+                                        isset($newRow[$promotionField])
+                                        && ($newRow[$promotionField] == 999999)
+                                    )
                                     || (
                                         ($otherIndex !== "")
+                                        && isset($newRow[$promotionField])
                                         && ($newRow[$promotionField] == $otherIndex)
                                     )
                                     || ($currLabel == $otherLabel)
