@@ -459,13 +459,57 @@ class CronManager {
         self::saveBatchQueueToDB($batchQueue, $module);
     }
 
+    # likely for non-active projects
+    private static function cleanOldResults($runJobs, $errorQueue, $module) {
+        $oneDay = 24 * 3600;
+        $thresholdTs = time() - 14 * $oneDay;
+
+        $newRunJobs = [];
+        $hasDeletedRunJob = FALSE;
+        foreach ($runJobs as $row) {
+            if ($row['end']) {
+                $ts = strtotime($row['end']);
+                if ($ts > $thresholdTs) {
+                    $newRunJobs[] = $row;
+                } else {
+                    $hasDeletedRunJob = TRUE;
+                }
+            }
+        }
+        if ($hasDeletedRunJob) {
+            self::saveRunResultsToDB($newRunJobs, $module);
+        }
+
+        $newErrorQueue = [];
+        $hasDeletedErrors = FALSE;
+        foreach ($errorQueue as $row) {
+            if ($row['endTs']) {
+                $ts = $row['endTs'];
+                if ($ts > $thresholdTs) {
+                    $newErrorQueue[] = $row;
+                } else {
+                    $hasDeletedErrors = TRUE;
+                }
+            }
+        }
+        if ($hasDeletedErrors) {
+            self::saveErrorsToDB($newErrorQueue, $module);
+        }
+        return [$newRunJobs, $newErrorQueue];
+    }
+
     public static function sendEmails($pids, $module, $additionalEmailText = "") {
         $batchQueue = self::getBatchQueueFromDB($module);
         $runJobs = self::getRunResultsFromDB($module);
         $errorQueue = self::getErrorsFromDB($module);
+        list($runJobs, $errorQueue) = self::cleanOldResults($runJobs, $errorQueue, $module);
         if (empty($batchQueue)) {
+            Application::log("sendEmails Empty batch queue");
+            Application::log("sendEmails runJobs: ".json_encode($runJobs));
+            Application::log("sendEmails errorQueue: ".json_encode($errorQueue));
             foreach ($pids as $pid) {
                 if (self::hasDataForPid($runJobs, $pid) || self::hasDataForPid($errorQueue, $pid)) {
+                    Application::log("sendEmails if possible for $pid");
                     self::sendEmailForProjectIfPossible($pid, $module, $additionalEmailText);
                 }
             }
@@ -482,6 +526,7 @@ class CronManager {
     }
 
     private static function sendEmailForProjectIfPossible($pid, $module, $additionalEmailText) {
+        Application::log("sendEmailForProjectIfPossible", $pid);
         $token = $module->getProjectSetting("token", $pid);
         $server = $module->getProjectSetting("server", $pid);
         if ($token && $server) {
@@ -557,11 +602,13 @@ class CronManager {
                     $prefix = strtolower($job['text']);
                     if (!isset($methods[$method])) {
                         $methods[$method] = [];
-                        $methods[$method][$prefix."Records"] = [];
                     }
                     $currMethod = $newMethod;
-                    $methodRecords = $methods[$method][$prefix . "Records"] ?? [];
-                    $currMethod[$prefix."Records"] = array_merge($methodRecords, $job['records']);
+                    $priorRecords = [];
+                    foreach ($methods[$method] as $settingsAry) {
+                        $priorRecords = array_merge($priorRecords, $settingsAry[$prefix."Records"] ?? []);
+                    }
+                    $currMethod[$prefix."Records"] = array_merge($priorRecords, $job['records']);
                     $endTs = strtotime($job['end']);
                     if ($endTs > $currMethod[$prefix."LastTs"]) {
                         $currMethod[$prefix."LastTs"] = $endTs;
@@ -630,6 +677,8 @@ class CronManager {
                 Application::log("Sending ".Application::getProgramName()." email for pid ".$pid." to $adminEmail");
                 $emailMssg = self::makeEmailMessage($token, $server, $pid, $text, $additionalEmailText, $starts, $ends);
                 \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Cron Report".$addlSubject, $emailMssg);
+            } else {
+                Application::log("Not sending email; runJobs ".json_encode($runJobs)." and methods ".json_encode($methods), $pid);
             }
 
             if (empty($remainingJobs)) {

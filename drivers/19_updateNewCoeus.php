@@ -160,12 +160,14 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
                                         break;
                                     }
                                 }
+                                $uploadInstances = array_column($upload, "redcap_repeat_instance");
                                 if (
                                     $lastUpdateInCOEUS
                                     && (
                                         !$lastUpdateInREDCap
                                         || DateManagement::dateCompare($lastUpdateInCOEUS, ">", $lastUpdateInREDCap)
                                     )
+                                    && !in_array($instance, $uploadInstances)
                                 ) {
                                     $upload[] = makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $prefix, $metadataFields);
                                 }
@@ -177,7 +179,7 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
                     }
                 }
                 if (!empty($upload)) {
-                    Application::log("Uploading ".count($upload)." rows for Record $recordId", $pid);
+                    Application::log("Uploading ".count($upload)." rows (".implode(", ", Upload::makeIds($upload)).")for Record $recordId", $pid);
                     Upload::rows($upload, $token, $server);
                 } else {
                     Application::log("Nothing to upload for Record $recordId! Existing instances at ".implode(", ", $foundInstanceList), $pid);

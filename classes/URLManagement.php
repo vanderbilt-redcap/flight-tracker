@@ -46,7 +46,7 @@ class URLManagement {
         return (self::$numUnsuccessfulDownloadInARow > 100);
     }
 
-    public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3, $longRetriesLeft = 2) {
+    public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3, $longRetriesLeft = 2, $defaultFormat = "json") {
         if (self::isCaughtInBadLoop()) {
             throw new \Exception("In bad loop with $url and POST ".REDCapManagement::json_encode_with_spaces($postdata));
         }
@@ -74,22 +74,43 @@ class URLManagement {
         }
         self::applyProxyIfExists($ch, $pid);
         if (!empty($postdata)) {
-            if (is_string($postdata)) {
-                $json = $postdata;
+            if ($defaultFormat == "json") {
+                if (is_string($postdata)) {
+                    $json = $postdata;
+                } else {
+                    $json = json_encode($postdata);
+                }
+                $json = Sanitizer::sanitizeJSON($json);
+                if (!$json) {
+                    throw new \Exception("Invalid POST parameters!");
+                }
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Content-Type: application/json',
+                    'Content-Length: ' . strlen($json),
+                    "Expect:",
+                ]);
+            } else if ($defaultFormat == "urlencoded") {
+                if (is_string($postdata)) {
+                    $postStr = $postdata;
+                } else {
+                    $postPairs = [];
+                    foreach ($postdata as $key => $val) {
+                        $postPairs[] = urlencode($key)."=".urlencode($val);
+                    }
+                    $postStr = implode("&", $postPairs);
+                }
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $postStr);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Content-Type: application/x-www-form-urlencoded',
+                    'Content-Length: ' . strlen($postStr),
+                    "Expect:",
+                ]);
             } else {
-                $json = json_encode($postdata);
+                throw new \Exception("Unknown format $defaultFormat");
             }
-            $json = Sanitizer::sanitizeJSON($json);
-            if (!$json) {
-                throw new \Exception("Invalid POST parameters!");
-            }
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-                'Content-Length: ' . strlen($json),
-                "Expect:",
-            ]);
         } else {
             curl_setopt($ch, CURLOPT_HTTPHEADER, ["Expect:"]);
         }
@@ -106,11 +127,11 @@ class URLManagement {
             if ($autoRetriesLeft > 0) {
                 sleep(30);
                 Application::log("Retrying ($autoRetriesLeft left)...", $pid);
-                list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, $autoRetriesLeft - 1, $longRetriesLeft);
+                list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, $autoRetriesLeft - 1, $longRetriesLeft, $defaultFormat);
             } else if ($longRetriesLeft > 0) {
                 sleep(300);
                 Application::log("Retrying ($longRetriesLeft long retries left)...", $pid);
-                list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, 0, $longRetriesLeft - 1);
+                list($resp, $data) = self::downloadURLWithPOST($url, $postdata, $pid, $addlOpts, 0, $longRetriesLeft - 1, $defaultFormat);
             } else {
                 Application::log("Error: ".curl_error($ch), $pid);
                 throw new \Exception(curl_error($ch));
@@ -244,6 +265,16 @@ class URLManagement {
             }
         }
         return [$url, $params];
+    }
+
+    public static function emulateBrowser($url, $post = [], $pid = NULL) {
+        # updated in 2020
+        $agent= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36';
+        $options = [
+            CURLOPT_SSL_VERIFYPEER => FALSE,
+            CURLOPT_USERAGENT => $agent,
+        ];
+        return self::downloadURLWithPOST($url, $post, $pid, $options, 3, 2, "urlencoded");
     }
 
     private static $numUnsuccessfulDownloadInARow = 0;

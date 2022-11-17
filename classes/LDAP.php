@@ -542,7 +542,7 @@ class LdapLookup {
                     'version'   => '3',
                     'userattr' => 'cn',
                     'binddn'    => 'cn='.$ldapuser.',cn=users,dc=ds,dc=vanderbilt,dc=edu',
-                    'basedn'    => 'dc=ds,dc=vanderbilt,dc=edu',
+                    'basedn'    => 'dc=ds,dc=vanderbilt,dc=edu',    # if have issues, try 'cn=users,dc=ds,dc=vanderbilt,dc=edu'
                     'bindpw'    => $ldappass,
                 ],
             ];

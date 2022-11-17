@@ -17,6 +17,16 @@ class DateManagement {
         return $year;
     }
 
+    public static function isNumericalMonth($month) {
+        if (is_integer($month)) {
+            $intMonth = (int) $month;
+            if (($intMonth >= 1) && ($intMonth <= 12)) {
+                return TRUE;
+            }
+        }
+        return FALSE;
+    }
+
     public static function getWeekNumInYear($ts = FALSE) {
         if (!$ts) {
             $ts = time();
@@ -263,29 +273,33 @@ class DateManagement {
             if (($day < 10) && (strlen($day) <= 1)) {
                 $day = "0".$day;
             }
-            $months = array(
-                "JAN" => "01",
-                "FEB" => "02",
-                "MAR" => "03",
-                "APR" => "04",
-                "MAY" => "05",
-                "JUN" => "06",
-                "JUL" => "07",
-                "AUG" => "08",
-                "SEP" => "09",
-                "OCT" => "10",
-                "NOV" => "11",
-                "DEC" => "12",
-            );
-            if (!isset($months[$month])) {
-                throw new \Exception("Invalid month $month");
-            }
-            $month = $months[$month];
+            $month = self::getMonthNumber($month);
             return $year."-".$month."-".$day;
         } else {
             throw new \Exception("Invalid date $d");
         }
-        return "";
+    }
+
+    public static function getMonthNumber($monthStr) {
+        $monthStr = strtoupper($monthStr);
+        $months = [
+            "JAN" => "01",
+            "FEB" => "02",
+            "MAR" => "03",
+            "APR" => "04",
+            "MAY" => "05",
+            "JUN" => "06",
+            "JUL" => "07",
+            "AUG" => "08",
+            "SEP" => "09",
+            "OCT" => "10",
+            "NOV" => "11",
+            "DEC" => "12",
+        ];
+        if (!isset($months[$monthStr])) {
+            throw new \Exception("Invalid month $monthStr");
+        }
+        return $months[$monthStr];
     }
 
     public static function YMD2MDY($ymd) {

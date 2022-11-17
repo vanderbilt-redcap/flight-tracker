@@ -11,7 +11,7 @@ require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../CareerDevHelp.php");
 
-session_start();
+\Session::init("flight_tracker");
 
 $html = "";
 $pageTitle = "";

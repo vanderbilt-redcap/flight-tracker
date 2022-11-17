@@ -359,7 +359,8 @@ $(document).ready(function() {
             }
         ?>');
 	presetValue('<?= $prefix ?>_division', '<?php echo findInCheck(array('identifier_starting_division')); ?>');
-	presetValue("<?= $prefix ?>_orcid_id", "<?php echo findInCheck(array('identifier_orcid')); ?>");
+    presetValue("<?= $prefix ?>_orcid_id", "<?php echo findInCheck(array('identifier_orcid')); ?>");
+    presetValue("<?= $prefix ?>_twitter", "<?php echo findInCheck(['identifier_twitter']); ?>");
 	presetValue("<?= $prefix ?>_disadvantaged", "<?php echo findInCheck(array('summary_disadvantaged')); ?>");
 	presetValue("<?= $prefix ?>_disability", "<?php echo findInCheck(array('summary_disability')); ?>");
 

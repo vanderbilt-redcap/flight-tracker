@@ -33,6 +33,16 @@ class DataDictionaryManagement {
         return $newFields;
     }
 
+    public static function getDateFields($metadata) {
+        $fields = [];
+        foreach ($metadata as $row) {
+            if (preg_match("/^(date|time)/", $row['text_validation_type_or_show_slider_number'])) {
+                $fields[] = $row['field_name'];
+            }
+        }
+        return $fields;
+    }
+
     public static function installMetadataFromFiles($files, $token, $server, $pid, $eventId, $grantClass, $newChoices, $deletionRegEx, $excludeForms) {
         $dataToReturn = [];
         $metadata = [];
@@ -473,6 +483,16 @@ class DataDictionaryManagement {
             $choices[$fieldName] = self::getRowChoices($choicesStr);
         }
         return $choices;
+    }
+
+    public static function filterOutInvalidFieldsFromFieldlist($metadataFields, $fields) {
+        $newFields = [];
+        foreach ($fields as $field) {
+            if (in_array($field, $metadataFields)) {
+                $newFields[] = $field;
+            }
+        }
+        return $newFields;
     }
 
     public static function filterOutInvalidFields($metadata, $fields) {

@@ -15,10 +15,11 @@ class REDCapManagement {
 
     public static function isInProduction($pid) {
         $module = Application::getModule();
-        $sql = "SELECT production_time FROM redcap_projects WHERE project_id = ?";
+        $sql = "SELECT status FROM redcap_projects WHERE project_id = ?";
         $q = $module->query($sql, [$pid]);
         if ($row = $q->fetch_assoc()) {
-            if ($row['production_time']) {
+            error_log("inProd? ".json_encode($row));
+            if ($row['status'] === 1) {
                 return TRUE;
             } else {
                 return FALSE;
@@ -29,7 +30,7 @@ class REDCapManagement {
 
     public static function setToDevelopment($pid) {
         $module = Application::getModule();
-        $sql = "UPDATE redcap_projects SET production_time = NULL WHERE project_id = ?";
+        $sql = "UPDATE redcap_projects SET status = 0, production_time = NULL WHERE project_id = ?";
         $module->query($sql, [$pid]);
     }
 

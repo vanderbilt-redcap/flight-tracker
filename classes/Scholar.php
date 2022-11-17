@@ -181,6 +181,32 @@ class Scholar {
         }
         return new Result("", "");
     }
+    public function getTwitterHandle($rows) {
+        $vars = self::getDefaultOrder("identifier_twitter");
+        $vars = $this->getOrder($vars, "identifier_twitter");
+        $handles = [];
+        $handlesLowerCase = [];
+        foreach ($vars as $var => $source) {
+            foreach ($rows as $row) {
+                if (isset($row[$var]) && ($row[$var] !== "")) {
+                    foreach (preg_split("/\s*[,;]\s*/", $row[$var]) as $value) {
+                        if ($value) {
+                            if (!preg_match("/^@/", $value)) {
+                                $value = "@".$value;
+                            }
+                            $valueLowerCase = strtolower($value);
+                            if (!in_array($valueLowerCase, $handlesLowerCase)) {
+                                $handles[] = $value;
+                                $handlesLowerCase[] = $valueLowerCase;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        $finalValue = implode(", ", $handles);
+        return new Result($finalValue, "", "", "", $this->pid);
+    }
 
     public function lookupEmail($rows) {
 	    if ($email = $this->getEmail()) {
@@ -1643,13 +1669,17 @@ class Scholar {
 		return $transform[$num];
 	}
 
-	public static function getSourceChoices($metadata = array()) {
+	public static function getSourceChoices($metadata = array(), $pid = NULL) {
 		$choices = DataDictionaryManagement::getChoices($metadata);
 		$exampleField = self::getExampleField();
 		if (isset($choices[$exampleField])) {
 			return $choices[$exampleField];
 		}
-		return array();
+        $exampleFieldChoices = DataDictionaryManagement::getChoicesForField($pid, $exampleField);
+        if ($exampleFieldChoices) {
+            return $exampleFieldChoices;
+        }
+		return [];
 	}
 
 	public function getOrder($defaultOrder, $fieldForOrder) {
@@ -1784,6 +1814,13 @@ class Scholar {
             "ldapds_mail" => "ldap",
             "ldap_mail" => "ldap",
         );
+        $orders["identifier_twitter"] = [
+            "check_twitter" => "scholars",
+            "followup_twitter" => "followup",
+            "init_import_twitter" => "manual",
+            "override_twitter" => "manual",
+            "manual_twitter" => "manual",
+        ];
         $orders["identifier_userid"] = array(
             "ldapds_cn" => "ldap",
             "ldap_uid" => "ldap",
@@ -3206,6 +3243,7 @@ class Scholar {
             "identifier_left_department" => "getNewDepartment",
             "identifier_orcid" => "getORCIDResult",
             "identifier_email" => "lookupEmail",
+            "identifier_twitter" => "getTwitterHandle",
             "summary_degrees" => "getDegrees",
             "summary_primary_dept" => "getPrimaryDepartment",
             "summary_gender" => "getGender",
@@ -3540,13 +3578,13 @@ class Scholar {
 	}
 
 	private function processDemographics() {
-		$this->demographics = array();
+		$this->demographics = [];
 		$fields = self::getDemographicFields($this->metadata);
 		$rows = $this->rows;
 
 		$metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
 
-		$specialCases = array("summary_degrees", "summary_coeus_name", "summary_survey", "summary_race_ethnicity", "summary_all_degrees");
+		$specialCases = ["summary_degrees", "summary_coeus_name", "summary_survey", "summary_race_ethnicity", "summary_all_degrees"];
 		foreach ($fields as $field => $func) {
 			if (in_array($field, $metadataFields)) {
 				if (in_array($field, $specialCases)) {
@@ -3909,7 +3947,7 @@ class Scholar {
 class Result {
 	public function __construct($value, $source, $sourceType = "", $date = "", $pid = "") {
 		$this->value = $value;
-		$this->source = self::translateSourceIfNeeded($source);
+		$this->source = self::translateSourceIfNeeded($source, $pid);
 		$this->sourceType = $sourceType;
 		$this->date = $date;
 		$this->pid = $pid;
@@ -3994,8 +4032,8 @@ class Result {
 	}
 
 	# returns index from source's choice array
-	protected static function translateSourceIfNeeded($source) {
-		$sourceChoices = Scholar::getSourceChoices();
+	protected static function translateSourceIfNeeded($source, $pid) {
+		$sourceChoices = Scholar::getSourceChoices([], $pid);
 		foreach ($sourceChoices as $index => $label) {
 			if (($label == $source) || ($index == $source)) {
 				return $index;
@@ -4037,8 +4075,8 @@ class Result {
 class RaceEthnicityResult extends Result {
 	public function __construct($value, $raceSource, $ethnicitySource, $pid = "") {
 		$this->value = $value;
-		$this->raceSource = self::translateSourceIfNeeded($raceSource);
-		$this->ethnicitySource = self::translateSourceIfNeeded($ethnicitySource);
+		$this->raceSource = self::translateSourceIfNeeded($raceSource, $pid);
+		$this->ethnicitySource = self::translateSourceIfNeeded($ethnicitySource, $pid);
 		$this->pid = $pid;
 	}
 

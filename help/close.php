@@ -2,5 +2,5 @@
 
 require_once(dirname(__FILE__)."/../small_base.php");
 
-session_start();
+\Session::init("flight_tracker");
 $_SESSION['showHelp'] = FALSE;

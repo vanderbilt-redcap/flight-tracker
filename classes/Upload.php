@@ -331,7 +331,12 @@ public static function metadata($metadata, $token, $server) {
 		if (isset($feedback['errors']) && $feedback['errors']) {
 		    if (is_array($feedback['errors'])) {
                 Application::log("Upload errors: ".implode("; ", $feedback['errors']));
-                throw new \Exception("Errors: ".implode("; ", $feedback['errors'])."\n".json_encode($rows));
+                $errors = $feedback['errors'];
+                foreach ($errors as $i => $error) {
+                    $ary = str_getcsv($error);
+                    $errors[$i] = "<strong>Record {$ary[0]}</strong><br/>Field: {$ary[1]}<br/>Wrong Value: '{$ary[2]}'<br/>Error: {$ary[3]}";
+                }
+                throw new \Exception("<h2>".count($errors)." Errors</h2><p>".implode("</p>", $errors)."\n".json_encode($rows));
             } else {
                 Application::log("Upload errors: ".$feedback['errors']);
                 throw new \Exception("Errors: ".$feedback['errors']."\n".json_encode($rows));
@@ -662,12 +667,29 @@ public static function metadata($metadata, $token, $server) {
         return FALSE;
     }
 
+    public static function makeIds($rows) {
+        $ids = [];
+        $sep = ":";
+        foreach ($rows as $row) {
+            $instrument = $row['redcap_repeat_instrument'] ?? "";
+            $recordId = $row['record_id'];
+            $instance = $row['redcap_repeat_instance'] ?? "";
+            if (!$instance && !$instrument) {
+                $ids[] = $recordId.$sep."NORMATIVE";
+            } else {
+                $ids[] = $recordId.$sep.$instrument.$sep.$instance;
+            }
+        }
+        return $ids;
+    }
+
 	# returns array($upload, $errors, $newCounts)
 	public static function prepareFromCSV($headers, $lines, $token, $server, $pid, $metadata = array()) {
 		if (empty($metadata)) {
 			$metadata = Download::metadata($token, $server);
 		}
-		$choices = REDCapManagement::getChoices($metadata);
+		$choices = DataDictionaryManagement::getChoices($metadata);
+        $dateFields = DataDictionaryManagement::getDateFields($metadata);
 
 		$errors = array();
 		$upload = array();
@@ -734,19 +756,52 @@ public static function metadata($metadata, $token, $server) {
 							foreach ($headers as $header) {
 								if (!in_array($header, $headerPrefices)) {
 								    if (isset($choices[$header])) {
-								        if (isset($metadata[$header][$line[$j]])) {
+                                        if (isset($choices[$header][$line[$j]])) {
                                             $uploadRow[$header] = $line[$j];
+                                        } else if (DateManagement::isNumericalMonth($line[$j])) {
+                                            $intMonth = (int)$line[$j];
+                                            $strMonth = "0$intMonth";
+                                            if ($intMonth && isset($choices[$header][$intMonth])) {
+                                                $uploadRow[$header] = $intMonth;
+                                            } else if ($intMonth && isset($choices[$header][$strMonth])) {
+                                                $uploadRow[$header] = $strMonth;
+                                            }
+                                        } else if (preg_match("/^\d+-\w{3}$/", $line[$j])) {
+                                            # Excel saves this for the current year
+                                            # assume that they did not last save last year
+                                            $year = date("Y");
+                                            list($day, $monthStr) = explode("-", $line[$j]);
+                                            $month = DateManagement::getMonthNumber($monthStr);
+                                            $uploadRow[$header] = "$year-$month-$day";
                                         } else {
-								            foreach ($choices[$header] as $idx => $val) {
-								                if ($val == $line[$j]) {
-								                    $uploadRow[$header] = $idx;
-								                    break;
+                                            foreach ($choices[$header] as $idx => $val) {
+                                                if ($val == $line[$j]) {
+                                                    $uploadRow[$header] = $idx;
+                                                    break;
                                                 }
                                             }
-								            if (!isset($uploadRow[$header])) {
-								                # invalid value
+                                            if (!isset($uploadRow[$header])) {
+                                                $lowerVal = strtolower($val);
+                                                foreach ($choices[$header] as $idx => $val) {
+                                                    if ($lowerVal == strtolower($line[$j])) {
+                                                        $uploadRow[$header] = $idx;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            if (!isset($uploadRow[$header])) {
+                                                # invalid value
                                                 $uploadRow[$header] = $line[$j];
                                             }
+                                        }
+                                    } else if (in_array($header, $dateFields)) {
+                                        if (DateManagement::isYear($line[$j])) {
+                                            $uploadRow[$header] = $line[$j]."-07-01";
+                                        } else if (DateManagement::isDate($line[$j])) {
+                                            $uploadRow[$header] = $line[$j];
+                                        } else {
+                                            # invalid
+                                            $uploadRow[$header] = $line[$j];
                                         }
                                     } else {
                                         $uploadRow[$header] = $line[$j];
