@@ -92,8 +92,8 @@ class URLManagement {
                     "Expect:",
                 ]);
             } else if ($defaultFormat == "urlencoded") {
-                if (is_string($postdata)) {
-                    $postStr = $postdata;
+                if (!is_array($postdata)) {
+                    throw new \Exception("Your POST data must be passed as an array!");
                 } else {
                     $postPairs = [];
                     foreach ($postdata as $key => $val) {
