@@ -929,7 +929,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     $_SESSION['lastMetadata'.$project_id] = 0;
                 }
             } else {
-                if (self::canRedirectToInstall()) {
+                if ($this->canRedirectToInstall()) {
                     header("Location: ".$this->getUrl("install.php"));
                 }
             }

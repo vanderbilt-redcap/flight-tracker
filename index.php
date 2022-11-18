@@ -20,7 +20,7 @@ if (!empty($_POST)) {
     echo json_encode($data);
     exit;
 } else {
-    if ($server === NULL) {
+    if (($server === NULL) || ($server === "")) {
         $prefix = Sanitizer::sanitize($_GET['prefix'] ?? "flight_tracker");
         $pid = Sanitizer::sanitizePid($_GET['pid'] ?? "");
         if (!$pid) {
