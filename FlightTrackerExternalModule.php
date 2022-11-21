@@ -227,11 +227,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	    $forms = self::getSharingInformation();
 	    $formsForCopy = [];
 	    foreach ($forms as $instrument => $config) {
-            if (!$config["always_copy"]) {
+            if (!isset($config["always_copy"]) || !$config["always_copy"]) {
                 $formsForCopy[] = $instrument;
             }
         }
-	    $instrumentsWithLabels = [];
+        $instrumentsWithLabels = [];
 	    foreach ($formsForCopy as $instrument) {
 	        $label = preg_replace("/_/", " ", $instrument);
 	        $label = ucwords($label);

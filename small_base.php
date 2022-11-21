@@ -52,14 +52,15 @@ define('PROGRAM_NAME', CareerDev::getProgramName());
 define("ENVIRONMENT", "prod");      // for Oracle database connectivity
 
 if (!isset($module) || !$module) {
-	$module = CareerDev::getModule();
+	$module = Application::getModule();
 }
-$token = CareerDev::getSetting("token", $pid);
-$server = CareerDev::getSetting("server", $pid);
-$event_id = CareerDev::getSetting("event_id", $pid);
-$tokenName = CareerDev::getSetting("tokenName", $pid);
-$adminEmail = CareerDev::getSetting("admin_email", $pid);
-$grantClass = CareerDev::getSetting("grant_class", $pid);
+$token = Application::getSetting("token", $pid);
+$token = Application::checkOrResetToken($token, $pid);
+$server = Application::getSetting("server", $pid);
+$event_id = Application::getSetting("event_id", $pid);
+$tokenName = Application::getSetting("tokenName", $pid);
+$adminEmail = Application::getSetting("admin_email", $pid);
+$grantClass = Application::getSetting("grant_class", $pid);
 
 if (!$module) {
 	throw new \Exception("The base class has no module!");

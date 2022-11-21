@@ -407,6 +407,9 @@ function makeHelperText($str) {
 }
 
 function makeCheckboxes($var, $fieldChoices, $label, $defaultChecked = []) {
+    if (empty($fieldChoices)) {
+        return "";
+    }
     $sharedForms = CareerDev::getSetting($var);
     if (!$sharedForms) {
         $sharedForms = $defaultChecked;

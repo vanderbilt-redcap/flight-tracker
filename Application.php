@@ -130,6 +130,23 @@ class Application {
         return "<link rel='icon' type='image/png' href='" . self::link("/img/flight_tracker_icon.png") . "' />";
     }
 
+    public static function checkOrResetToken($token, $pid) {
+        $allValidTokens = REDCapManagement::getToken($pid);
+        if (empty($allValidTokens)) {
+            throw new \Exception("No valid tokens for this project!");
+        }
+        if (!in_array($token, $allValidTokens)) {
+            $newToken = REDCapManagement::getToken($pid, self::getUsername());
+            if (!$newToken) {
+                $newToken = $allValidTokens[0];
+            }
+            Application::saveSetting("token", $newToken, $pid);
+            return $newToken;
+        } else {
+            return $token;
+        }
+    }
+
     # TRUE iff &record= appended to end of page
     public static function isRecordPage($link) {
         $regexes = [

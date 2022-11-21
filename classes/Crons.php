@@ -504,12 +504,8 @@ class CronManager {
         $errorQueue = self::getErrorsFromDB($module);
         list($runJobs, $errorQueue) = self::cleanOldResults($runJobs, $errorQueue, $module);
         if (empty($batchQueue)) {
-            Application::log("sendEmails Empty batch queue");
-            Application::log("sendEmails runJobs: ".json_encode($runJobs));
-            Application::log("sendEmails errorQueue: ".json_encode($errorQueue));
             foreach ($pids as $pid) {
                 if (self::hasDataForPid($runJobs, $pid) || self::hasDataForPid($errorQueue, $pid)) {
-                    Application::log("sendEmails if possible for $pid");
                     self::sendEmailForProjectIfPossible($pid, $module, $additionalEmailText);
                 }
             }
@@ -526,7 +522,6 @@ class CronManager {
     }
 
     private static function sendEmailForProjectIfPossible($pid, $module, $additionalEmailText) {
-        Application::log("sendEmailForProjectIfPossible", $pid);
         $token = $module->getProjectSetting("token", $pid);
         $server = $module->getProjectSetting("server", $pid);
         if ($token && $server) {
@@ -677,8 +672,6 @@ class CronManager {
                 Application::log("Sending ".Application::getProgramName()." email for pid ".$pid." to $adminEmail");
                 $emailMssg = self::makeEmailMessage($token, $server, $pid, $text, $additionalEmailText, $starts, $ends);
                 \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Cron Report".$addlSubject, $emailMssg);
-            } else {
-                Application::log("Not sending email; runJobs ".json_encode($runJobs)." and methods ".json_encode($methods), $pid);
             }
 
             if (empty($remainingJobs)) {
