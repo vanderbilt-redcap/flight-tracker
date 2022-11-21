@@ -728,7 +728,7 @@ class REDCapManagement {
             $sql = "SELECT api_token FROM redcap_user_rights WHERE project_id = ?";
             $q = $module->query($sql, [$pid]);
             $tokens = [];
-            if ($row = $q->fetch_assoc()) {
+            while ($row = $q->fetch_assoc()) {
                 if ($row['api_token']) {
                     $tokens[] = $row['api_token'];
                 }
