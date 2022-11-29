@@ -450,6 +450,9 @@ class DataDictionaryManagement {
         if (in_array("nsf", $forms)) {
             $formsAndLabels["nsf"] = "[nsf_id]";
         }
+        if (in_array("ies_grant", $forms)) {
+            $formsAndLabels["ies_grant"] = "[ies_awardnum]";
+        }
         if (in_array("eric", $forms)) {
             $formsAndLabels["eric"] = "[eric_id]";
         }

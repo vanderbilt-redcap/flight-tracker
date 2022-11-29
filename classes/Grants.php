@@ -616,6 +616,8 @@ class Grants {
             return new FollowupGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
         } else if ($row['redcap_repeat_instrument'] == "nsf") {
             return new NSFGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "ies_grant") {
+            return new IESGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
         } else if ($row['redcap_repeat_instrument'] === "") {
             $checkGf = new InitialGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
             $checkGf->setPrefix("check");
@@ -642,6 +644,7 @@ class Grants {
             "exporter" => "NIH ExPORTER",
             "reporter" => "Federal RePORTER",
             "nsf" => "NSF Grants",
+            "ies" => "Dept. of Ed. Grants",
             "coeus" => "COEUS",
             "vera" => "VERA",
             "coeus2" => "COEUS",
@@ -665,6 +668,7 @@ class Grants {
             "nih_reporter",
             "reporter",
             "nsf",
+            "ies_grant",
             "exporter",
             "followup",
             "scholars",

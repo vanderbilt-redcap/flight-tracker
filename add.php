@@ -7,6 +7,8 @@ use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\REDCapLookup;
+use \Vanderbilt\CareerDevLibrary\NIHTables;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -39,9 +41,9 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
     } else {
         echo "<p class='centered'>No data to upload.</p>";
     }
-} else if (isset($_POST['newnames']) || isset($_FILES['csv'])) {
+} else if (in_array($_POST['action'] ?? "", ["importIntakeForm", "importText"])) {
 	$lines = [];
-	if (isset($_FILES['csv'])) {
+	if ($_POST['action'] == "importIntakeForm") {
         $tmpFilename = $_FILES['csv']['tmp_name'] ?? "";
 		if ($tmpFilename && is_string($tmpFilename) && is_uploaded_file($tmpFilename)) {
 			$fp = fopen($tmpFilename, "rb");
@@ -61,7 +63,7 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 			}
 			fclose($fp);
 		}
-	} else {
+	} else if ($_POST['action'] == "importText") {
 	    $list = REDCapManagement::sanitize($_POST['newnames']);
 		$rows = explode("\n", $list);
 		foreach ($rows as $row) {
@@ -70,11 +72,13 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 				if (count($nodes) == 6) {
 					$lines[] = $nodes;
 				} else {
-					header("Location: ".CareerDev::link("this")."&mssg=improper_line".$createRecordsURI);
+					header("Location: ".Application::link("this")."&mssg=improper_line".$createRecordsURI);
 				}
 			}
 		}
-	}
+	} else {
+        throw new \Exception("This should never happen.");
+    }
 	$mentorUids = getUidsForMentors($lines);
 	if (!empty($mentorUids)) {
         echo makeAdjudicationTable($lines, $mentorUids, [], []);
@@ -89,7 +93,6 @@ function keepAlive() {
             }
         });
     }, (resetTime*60000));
-}
 
 $(document).ready(() => {
     keepAlive();
@@ -97,6 +100,19 @@ $(document).ready(() => {
 </script>";
     } else {
 	    commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecordsURI);
+    }
+} else if (in_array($_POST['action'] ?? "", ["importTrainees", "importFaculty", "importBoth"])) {
+    $filename = (string) ($_FILES['tableCSV']['tmp_name'] ?? "");
+    $mssg = \Vanderbilt\FlightTrackerExternalModule\importNIHTable($_POST, $filename, $token, $server);
+    $link = Application::link("index.php");
+    $goodToGo = preg_match("/green/", $mssg);
+    $timespan = 10;
+    if ($goodToGo) {
+        echo "<p class='centered'>Going to Flight Tracker Central in " . $timespan . " seconds...</p>";
+        echo $mssg;
+        echo refreshScript($timespan, $link);
+    } else {
+        echo $mssg;
     }
 } else {                //////////////////// default setup
     if (isset($_GET['mssg'])) {
@@ -121,23 +137,44 @@ $(document).ready(() => {
 			<p>The <b>Institution</b> should be a short name, but not initials. For instance, Vanderbilt University Medical Center is Vanderbilt, but not VUMC. This is the institution's name that PubMed and the Federal and NIH RePORTERs will match the name on.</p>
 			<p><b>--OR--</b> you can supply a Microsoft Excel CSV below.</p>
 		</div>
-		<form method='POST' action='<?= CareerDev::link("this") ?>'><p>
+		<form method='POST' action='<?= Application::link("this") ?>'><p>
             <?= Application::generateCSRFTokenHTML() ?>
 			<b>Please enter</b>:<br>
 			<i>FirstName, PreferredName, Middle, LastName, Email, Additional Institutions:</i><br>
 			<textarea style='width: 600px; height: 300px;' name='newnames'></textarea><br/>
                 <input type="hidden" name="createNewRecords" value="1" />
+                <input type="hidden" name="action" value="importText" />
 			<button>Process Names</button>
 		</p></form>
-		<p><b>--OR--</b> supply a CSV Spreadsheet with the specified fields in <a href='<?= CareerDev::link("newFaculty.php") ?>'>this example</a>.</p>
-		<form enctype='multipart/form-data' method='POST' action='<?= CareerDev::link("this") ?>'><p>
-            <?= Application::generateCSRFTokenHTML() ?>
-			<input type="hidden" name="MAX_FILE_SIZE" value="3000000" />
-			CSV Upload: <input type='file' name='csv'><br/>
+        <h2><b>--OR--</b> supply a CSV Spreadsheet with the specified fields in <a href='<?= Application::link("newFaculty.php") ?>'>this example</a>.</h2>
+        <form enctype='multipart/form-data' method='POST' action='<?= Application::link("this") ?>'><p>
+                <?= Application::generateCSRFTokenHTML() ?>
+                <input type="hidden" name="MAX_FILE_SIZE" value="3000000" />
+                CSV Upload: <input type='file' name='csv'><br/>
                 <input type="hidden" name="createNewRecords" value="1" />
-			<button>Process File</button>
-		</p></form>
-	</div>
+                <input type="hidden" name="action" value="importIntakeForm" />
+                <button>Process File</button>
+            </p></form>
+        <h2><b>--OR--</b> supply a CSV Spreadsheet with for <a href="<?= NIHTables::NIH_LINK ?>">NIH Training Tables</a> 5 or 8.</h2>
+        <form enctype='multipart/form-data' method='POST' action='<?= Application::link("this") ?>'>
+            <?= Application::generateCSRFTokenHTML() ?>
+            <p class='max-width'>
+                <input type='radio' name='action' id='actionTrainees' value='importTrainees' checked /> <label for='actionTrainees'>Import Only Trainees as Scholars to be Tracked</label><br/>
+                <input type='radio' name='action' id='actionFaculty' value='importFaculty' /> <label for='actionFaculty'>Import Only Faculty as Scholars to be Tracked</label><br/>
+                <input type='radio' name='action' id='actionBoth' value='importBoth' /> <label for='actionBoth'>Import Both Trainees and Faculty as Scholars to be Tracked</label>
+            </p>
+            <p class='max-width'>
+                <select name='tableNumber'>
+                    <option value=''>---SELECT TABLE---</option>
+                    <option value='5'>Table 5</option>
+                    <option value='8'>Table 8 (except Part IV)</option>
+                </select>
+            </p>
+            <p class='max-width'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />
+                Upload CSV (with headers in first row): <input type='file' name='tableCSV'><br/>
+                <button>Process File</button>
+            </p></form>
+    </div>
 <?php
 }
 
@@ -502,11 +539,11 @@ function commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecord
             }
         } else {
             $mssg = "No data specified.";
-            header("Location: ".CareerDev::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
+            header("Location: ".Application::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
         }
         if (isset($feedback['error'])) {
             $mssg = "People not added ". $feedback['error'];
-            header("Location: ".CareerDev::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
+            header("Location: ".Application::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
         }
         if (isset($_GET['mssg']) && ($_GET['mssg'] == "improper_line")) {
             $mssg = "A line does not contain the necessary 6 columns. No data have been added. Please try again.";
@@ -515,7 +552,7 @@ function commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecord
         }
     } catch (\Exception $e) {
         $mssg = $e->getMessage();
-        header("Location: ".CareerDev::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
+        header("Location: ".Application::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
     }
 
     $timespan = 3;
@@ -525,15 +562,20 @@ function commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecord
     $link = Application::link("index.php");
     if (!$messagesSent) {
         echo "<p class='centered'>Going to Flight Tracker Central in ".$timespan." seconds...</p>";
-        echo "<script>\n";
-        echo "$(document).ready(function() {\n";
-        echo "\tsetTimeout(function() {\n";
-        echo "\t\twindow.location.href='$link';\n";
-        echo "\t}, ".floor($timespan * 1000).");\n";
-        echo "});\n";
-        echo "</script>\n";
+        echo refreshScript($timespan, $link);
     } else {
         echo "<p class='centered'><a href='$link'>Go to Flight Tracker Central</a></p>";
     }
     echo "</div>";
+}
+
+function refreshScript($timespan, $link) {
+    $html = "<script>\n";
+    $html .= "$(document).ready(function() {\n";
+    $html .= "\tsetTimeout(function() {\n";
+    $html .= "\t\twindow.location.href='$link';\n";
+    $html .= "\t}, ".floor($timespan * 1000).");\n";
+    $html .= "});\n";
+    $html .= "</script>\n";
+    return $html;
 }

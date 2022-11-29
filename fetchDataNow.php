@@ -5,6 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\ERIC;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -31,8 +32,17 @@ try {
                 \Vanderbilt\CareerDevLibrary\getERIC($token, $server, $pid, [$recordId]);
             }
         } else if ($fetchType == "grants") {
-            require_once(dirname(__FILE__) . "/drivers/20_nsf.php");
-            \Vanderbilt\CareerDevLibrary\getNSFGrants($token, $server, $pid, [$recordId]);
+            $forms = Download::metadataForms($token, $server);
+
+            if (in_array("nsf", $forms)) {
+                require_once(dirname(__FILE__) . "/drivers/20_nsf.php");
+                \Vanderbilt\CareerDevLibrary\getNSFGrants($token, $server, $pid, [$recordId]);
+            }
+
+            if (in_array("ies_grant", $forms)) {
+                require_once(dirname(__FILE__) . "/drivers/24_getIES.php");
+                \Vanderbilt\CareerDevLibrary\getIES($token, $server, $pid, [$recordId]);
+            }
 
             require_once(dirname(__FILE__) . "/drivers/2s_updateRePORTER.php");
             \Vanderbilt\CareerDevLibrary\updateNIHRePORTER($token, $server, $pid, [$recordId]);

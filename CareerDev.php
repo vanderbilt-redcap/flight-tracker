@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.19.4";
+		return "4.20.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -97,6 +97,7 @@ class CareerDev {
             "Patents View (US Patent Office)" => "api.patentsview.org",
             "NSF Grants" => "api.nsf.gov",
             "ERIC" => "api.ies.ed.gov",
+            "Dept. of Ed. Grants" => "ies.ed.gov",
         ];
         if ($all || self::isScopusEnabled()) {
             $sites["Scopus (API)"] = "api.elsevier.com";
@@ -823,6 +824,7 @@ class CareerDev {
             "exporter" => "NIH ExPORTER (online database)",
             "nih_reporter" => "NIH RePORTER (online database)",
             "nsf" => "NSF Grants",
+            "ies" => "Dept. of Ed. Grants",
         ];
 	    if (self::isVanderbilt()) {
             $itemChoices = array_merge($itemChoices, [

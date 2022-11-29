@@ -53,7 +53,7 @@ class Grant {
     # if $ts === FALSE, then calculate for all time
     public function getActiveBudgetAtTime($rows, $type, $ts, $sourcesToExclude = []) {
 	    # Do not use Federal RePORTER because data are incomplete
-        $orderedSources = ["nih_reporter", "exporter", "coeus", "reporter", "nsf", "followup", "custom"];
+        $orderedSources = ["nih_reporter", "exporter", "coeus", "reporter", "nsf", "ies_grant", "followup", "custom"];
         $sourcesToSkip = ["followup", "custom"]; // have numbers over all time period, not current budget
         $baseNumber = $this->getBaseNumber();
         if (self::getShowDebug()) {
@@ -2027,7 +2027,7 @@ class Grant {
 		if ($this->isNIH()) {
 		    return TRUE;
         }
-		if (in_array($src, ["exporter", "reporter", "nih_reporter", "nsf"])) {
+		if (in_array($src, ["exporter", "reporter", "nih_reporter", "nsf", "ies_grant"])) {
 			return TRUE;
 		} else if ($src == "coeus") {
 			$isFederal = array(
@@ -2180,6 +2180,7 @@ class Grant {
             "reporter" => 0,
             "ldap" => 0,
             "nsf" => 0,
+            "ies_grant" => 0,
             "followup" => 1,
             "scholars" => 1,
             "override" => 2,

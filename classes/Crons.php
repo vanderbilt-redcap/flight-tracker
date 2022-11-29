@@ -178,6 +178,10 @@ class CronManager {
         }
     }
 
+    public static function clearBatchQueue($module) {
+        self::saveBatchQueueToDB([], $module);
+    }
+
     public static function resetBatchSettings($module) {
 	    self::saveBatchQueueToDB([], $module);
 	    self::saveErrorsToDB([], $module);
@@ -601,7 +605,7 @@ class CronManager {
                     $currMethod = $newMethod;
                     $priorRecords = [];
                     foreach ($methods[$method] as $settingsAry) {
-                        $priorRecords = array_merge($priorRecords, $settingsAry[$prefix."Records"] ?? []);
+                        $priorRecords = array_unique(array_merge($priorRecords, $settingsAry[$prefix."Records"] ?? []));
                     }
                     $currMethod[$prefix."Records"] = array_merge($priorRecords, $job['records']);
                     $endTs = strtotime($job['end']);
@@ -735,6 +739,7 @@ class CronManager {
             "updateBibliometrics" => "citation",
             "getPatents" => "patent",
             "getNSFGrants" => "nsf",
+            "getIES" => "ies_grant",
             "getERIC" => "eric",
         ];
         $projectTitle = Download::projectTitle($token, $server);

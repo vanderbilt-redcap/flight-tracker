@@ -55,6 +55,9 @@ function runMainCrons(&$manager, $token, $server) {
         $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $records, 10000);
         $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "2022-10-06", $records, 10000);
     }
+    if (in_array("ies_grant", $forms)) {
+        $manager->addCron("drivers/24_getIES.php", "getIES", "Friday", $records, 10000);
+    }
     if (!Application::isLocalhost() && Application::isVanderbilt()) {
         $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
         $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Monday", $allRecords, 500);
@@ -206,6 +209,9 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         }
         if (in_array("eric", $forms)) {
             $manager->addCron("drivers/23_getERIC.php", "getERIC", $date, $records, 100);
+        }
+        if (in_array("ies_grant", $forms)) {
+            $manager->addCron("drivers/24_getIES.php", "getIES", $date, $records, 10000);
         }
 
         if (in_array("nih_reporter", $forms)) {

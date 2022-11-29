@@ -57,6 +57,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     if (preg_match("/'batchCronJobs' because the value is larger than the \d+ byte limit/", $e->getMessage())) {
                         Application::saveSetting("batchCronJobs", [], $pid);
                     }
+                    Application::log("batch F $pid: ".memory_get_usage());
                     $mssg = $e->getMessage()."<br><br>".$e->getTraceAsString();
                     \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Batch Job Exception", $mssg);
                 }

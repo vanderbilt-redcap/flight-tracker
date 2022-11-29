@@ -7,6 +7,8 @@ use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class NIHTables {
+    const NIH_LINK = "https://grants.nih.gov/grants/funding/datatables-g/Consolidated_Training_Tables.pdf";
+
 	public function __construct($token, $server, $pid, $metadata = array()) {
 		$this->token = $token;
 		$this->server = $server;
@@ -2445,6 +2447,60 @@ class NIHTables {
     private function hasSupportSummary() {
         $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
         return in_array("identifier_support_summary", $metadataFields);
+    }
+
+    public static function importNamesFromCSV($filePointer, $cols, $token, $server) {
+        $html = "";
+        $records = Download::recordIds($token, $server);
+        $priorFirstNames = Download::firstnames($token, $server);
+        $priorLastNames = Download::lastnames($token, $server);
+        $matches = [];
+        $upload = [];
+        $maxRecordId = empty($records) ? 0 : max($records);
+        while ($line = fgetcsv($filePointer)) {
+            foreach ($cols as $col) {
+                $name = $line[$col];
+                if ($name) {
+                    $found = FALSE;
+                    list($first, $middle, $last) = NameMatcher::splitName($name, 3);
+                    foreach ($records as $recordId) {
+                        $firstName = $priorFirstNames[$recordId] ?? "";
+                        $lastName = $priorLastNames[$recordId] ?? "";
+                        if ($firstName && $lastName && NameMatcher::matchName($firstName, $lastName, $first, $last)) {
+                            $matches[$recordId] = "$firstName $lastName";
+                            $found = TRUE;
+                        }
+                    }
+                    if (!$found) {
+                        $maxRecordId++;
+                        $upload[] = [
+                            "record_id" => $maxRecordId,
+                            "redcap_repeat_instrument" => "",
+                            "redcap_repeat_instance" => "",
+                            "identifier_first_name" => $first,
+                            "identifier_middle" => $middle,
+                            "identifier_last_name" => $last,
+                            "identifiers_complete" => "2",
+                        ];
+                    }
+                }
+            }
+        }
+        if (!empty($upload)) {
+            try {
+                Upload::rows($upload, $token, $server);
+                $html .= "<div class='green padded'>".count($upload)." new scholars added.</div>";
+            } catch (\Exception $e) {
+                $html .= "<div class='red padded'>ERROR! ".$e->getMessage()."</div>\n";
+            }
+        } else {
+            $html .= "<div class='red padded'>Nothing new to upload.</div>\n";
+        }
+        if (!empty($matches)) {
+            $nameList = REDCapManagement::makeConjunction(array_values($matches));
+            $html .= "<div class='yellow padded'>The following scholars were skipped because their names already resided in the project: $nameList</div>";
+        }
+        return $html;
     }
 
     public function get8Data($table, $records = []) {

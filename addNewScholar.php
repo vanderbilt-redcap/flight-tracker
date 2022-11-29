@@ -3,15 +3,19 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use \Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\NameMatcher;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\NIHTables;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
+$nihLink = NIHTables::NIH_LINK;
+
 $fields = [
 		"First Name" => "identifier_first_name",
 		"Last Name" => "identifier_last_name",
@@ -19,30 +23,33 @@ $fields = [
         "<a href='javascript:;' onclick='lookupREDCapUserid(\"$redcapLookupUrl\", $(\"#results\"));' title='Click to Look Up'>REDCap User-ID</a><br/><span class='smaller'>(optional; click to look up)</span>" => "identifier_userid",
 		];
 $requiredFields = ["identifier_first_name", "identifier_last_name", "identifier_email"];
-if (checkPOSTKeys($requiredFields)) {
-	$recordIds = Download::recordIds($token, $server);
-	$max = 0;
-	foreach ($recordIds as $record) {
-		if ($record > $max) {
-			$max = $record;
-		}
-	}
+if (($_POST['action'] == "oneByOne") && checkPOSTKeys($requiredFields)) {
+    $recordIds = Download::recordIds($token, $server);
+    $max = 0;
+    foreach ($recordIds as $record) {
+        if ($record > $max) {
+            $max = $record;
+        }
+    }
 
-	$recordId = $max + 1;
-	$uploadRow = array(
-				"record_id" => $recordId,
-				);
-	foreach (array_values($fields) as $field) {
-		$uploadRow[$field] = REDCapManagement::sanitize($_POST[$field]);
-	}
-	$feedback = Upload::oneRow($uploadRow, $token, $server);
-	\Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($recordId);
+    $recordId = $max + 1;
+    $uploadRow = array(
+        "record_id" => $recordId,
+    );
+    foreach (array_values($fields) as $field) {
+        $uploadRow[$field] = REDCapManagement::sanitize($_POST[$field]);
+    }
+    $feedback = Upload::oneRow($uploadRow, $token, $server);
+    \Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($recordId);
     Application::refreshRecordSummary($token, $server, $pid, $recordId);
     if ($feedback['error']) {
-		echo "<div class='red padded'>ERROR! ".$feedback['error']."</div>\n";
-	} else {
-		echo "<div class='green padded'>Scholar successfully added to Record $recordId. They will be automatically processed and updated with each overnight run.</div>\n";
-	}
+        echo "<div class='red padded'>ERROR! " . $feedback['error'] . "</div>\n";
+    } else {
+        echo "<div class='green padded'>Scholar successfully added to Record $recordId. They will be automatically processed and updated with each overnight run.</div>\n";
+    }
+} else if (in_array($_POST['action'], ["importTrainees", "importFaculty", "importBoth"]) && in_array($_POST['tableNumber'], [5, 8])) {
+    $filename = (string) ($_FILES['tableCSV']['tmp_name'] ?? "");
+    echo \Vanderbilt\FlightTrackerExternalModule\importNIHTable($_POST, $filename, $token, $server);
 } else {
     $incompleteMssg = "";
     if ((count($_POST) > 0) && (count($_POST) < count($fields) + 1)) {
@@ -54,6 +61,7 @@ if (checkPOSTKeys($requiredFields)) {
 	$link = Application::link("addNewScholar.php");
 	echo "<form action='$link' method='POST'>\n";
 	echo Application::generateCSRFTokenHTML();
+    echo "<input type='hidden' id='action' name='action' value='oneByOne' />";
 	echo "<table style='margin:0px auto;'>\n";
 	foreach ($fields as $label => $var) {
         $defaultValue = Sanitizer::sanitize($_POST[$var]) ?? "";
@@ -78,11 +86,31 @@ if (checkPOSTKeys($requiredFields)) {
 	echo "<p class='centered'>If the same name is used for a scholar, any new values will overwrite what is already in REDCap.</p>\n";
 	echo "<form enctype='multipart/form-data' method='POST' action='$bulkLink'>\n";
 	echo Application::generateCSRFTokenHTML();
-	echo "<p class='centered max-width'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />\n";
+    echo "<input type='hidden' id='action' name='action' value='intakeTable' />";
+    echo "<p class='centered max-width'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />\n";
 	echo "CSV Upload: <input type='file' name='csv'><br/>\n";
     echo "<input type='checkbox' name='createNewRecords' id='createNewRecords' checked /> <label for='createNewRecords'>Create a New Record for Each Name.</label> (Otherwise, it will try to match names to prior records.)<br/>";
 	echo "<button>Process File</button>\n";
 	echo "</p></form>\n";
+
+    echo "<h2>Import Trainees from NIH Training Tables</h2>";
+    echo "<p class='centered'>Duplicate names will be skipped.</p>";
+    echo "<form enctype='multipart/form-data' method='POST' action='$link'>\n";
+    echo Application::generateCSRFTokenHTML();
+    echo "<p class='max-width centered'>";
+    echo "<input type='radio' name='action' id='actionTrainees' value='importTrainees' checked /> <label for='actionTrainees'>Import Only Trainees as Scholars to be Tracked</label><br/>";
+    echo "<input type='radio' name='action' id='actionFaculty' value='importFaculty' /> <label for='actionFaculty'>Import Only Faculty as Scholars to be Tracked</label><br/>";
+    echo "<input type='radio' name='action' id='actionBoth' value='importBoth' /> <label for='actionBoth'>Import Both Trainees and Faculty as Scholars to be Tracked</label>";
+    echo "</p>";
+    echo "<p class='centered max-width'><select name='tableNumber'>";
+    echo "<option value=''>---SELECT TABLE---</option>";
+    echo "<option value='5'>Table 5</option>";
+    echo "<option value='8'>Table 8 (except Part IV)</option>";
+    echo "</select></p>";
+    echo "<p class='centered max-width'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />\n";
+    echo "Upload CSV (with headers in first row): <input type='file' name='tableCSV'><br/>\n";
+    echo "<button>Process File</button>\n";
+    echo "</p></form>\n";
 }
 
 function checkPOSTKeys($keys) {

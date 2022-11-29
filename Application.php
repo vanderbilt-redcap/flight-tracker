@@ -47,9 +47,12 @@ class Application {
     }
 
     public static function getMetadataFiles() {
-        $files = [
-            dirname(__FILE__)."/metadata.json",
-        ];
+        $files = [];
+        if (Application::isVanderbilt() && file_exists(dirname(__FILE__)."/metadata.ies.json")) {
+            $files[] = dirname(__FILE__)."/metadata.ies.json";
+        } else {
+            $files[] = dirname(__FILE__)."/metadata.json";
+        }
         if (CareerDev::isVanderbilt()) {
             $files[] = dirname(__FILE__)."/metadata.vanderbilt.json";
         }

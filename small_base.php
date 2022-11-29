@@ -35,6 +35,8 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\URLManagement;
 use \Vanderbilt\CareerDevLibrary\FileManagement;
 use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\ReactNIHTables;
+use \Vanderbilt\CareerDevLibrary\NIHTables;
 
 require_once(__DIR__."/autoload.php");
 
@@ -1878,6 +1880,47 @@ function importCustomFields($filename, $token, $server, $pid) {
 		$html .= "<div class='red centered'>No action taken!</div>\n";
 	}
 	return $html;
+}
+
+function importNIHTable($post, $filename, $token, $server) {
+    $tableNum = Sanitizer::sanitizeInteger($post['tableNumber'] ?? "");
+    $action = Sanitizer::sanitize($post['action'] ?? "");
+    $importTrainees = in_array($action, ["importTrainees", "importBoth"]);
+    $importFaculty = in_array($action, ["importTrainees", "importBoth"]);
+    $html = "";
+    if ($filename && file_exists($filename)) {
+        $fp = fopen($filename, "r");
+        if ($fp) {
+            $headers = fgetcsv($fp);
+            $cols = [];
+            if ($tableNum == 5) {
+                if (preg_match("/Faculty/", $headers[0]) && $importFaculty) {
+                    $cols[] = 0;
+                }
+                if (($headers[1] == "Trainee Name") && $importTrainees) {
+                    $cols[] = 1;
+                }
+            } else if ($tableNum == 8) {
+                if (($headers[0] == "Trainee") && $importTrainees) {
+                    $cols[] = 0;
+                }
+                if (preg_match("/Faculty/", $headers[1]) && $importFaculty) {
+                    $cols[] = 1;
+                }
+            }
+            if (!empty($cols)) {
+                $html .= NIHTables::importNamesFromCSV($fp, $cols, $token, $server);
+            } else {
+                $html .= "<div class='red padded'>ERROR! The header/first row must contain 'Trainee Name', 'Trainee', or 'Faculty Member' according to <a href='$nihLink'>NIH Formatting</a>.</div>\n";
+            }
+            fclose($fp);
+        } else {
+            $html .= "<div class='red padded'>ERROR! Could not read file.</div>\n";
+        }
+    } else {
+        $html .= "<div class='red padded'>ERROR! Could not find file.</div>\n";
+    }
+    return $html;
 }
 
 require_once(dirname(__FILE__)."/cronLoad.php");
