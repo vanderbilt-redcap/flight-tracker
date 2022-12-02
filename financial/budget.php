@@ -5,14 +5,17 @@ use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(APP_PATH_DOCROOT."Classes/System.php");
 
-\System::increaseMaxExecTime(3600);   // 1 hour
+Application::increaseProcessingMax(1);
 if ($_POST['date'] && REDCapManagement::isDate($_POST['date'])) {
-    $ts = strtotime($_POST['date']);
+    $date = Sanitizer::sanitizeDate($_POST['date']);
+    $ts = strtotime($date);
 } else {
     $ts = time();
 }
@@ -25,12 +28,22 @@ if ($_GET['timespan'] == "active") {
     $timespan = "Active";
 }
 
+if (isset($_GET['cohort'])) {
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
+} else {
+    $cohort = "";
+}
+
 $metadata = Download::metadata($token, $server);
 $fields = REDCapManagement::getMinimalGrantFields($metadata);
 $names = Download::names($token, $server);
 $choices = REDCapManagement::getChoices($metadata);
 $recordsByDept = [];
-$records = Download::recordIds($token, $server);
+if ($cohort) {
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
+} else {
+    $records = Download::recordIds($token, $server);
+}
 $departments = Download::oneField($token, $server, "summary_primary_dept");
 $hasDepartmentInfo = FALSE;
 foreach ($records as $recordId) {
@@ -181,6 +194,14 @@ if (!empty($notes)) {
     echo "<p class='centered'>No errors detected.</p>";
 }
 
+$cohorts = new Cohorts($token, $server, Application::getModule());
+$thisUrl = Application::link("this");
+if (isset($_GET['timespan']) && is_string($_GET['timespan'])) {
+    $getTimespan = Sanitizer::sanitize($_GET['timespan']);
+} else {
+    $getTimespan = "active";
+}
+echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort, "location.href = \"$thisUrl&timespan=$getTimespan&cohort=\"+$(this).val();")."</p>";
 echo "<table class='centered max-width bordered'>";
 echo "<thead>";
 echo "<tr>";

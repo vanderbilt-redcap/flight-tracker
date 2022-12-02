@@ -9,13 +9,14 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
+use \Vanderbilt\CareerDevLibrary\Publications;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
 $thresholdRCR = $_GET['thresholdRCR'] ? Sanitizer::sanitize($_GET['thresholdRCR']) : 2.0;
-$startDate = Sanitizer::sanitize($_GET['start'] ?? "");
-$endDate = Sanitizer::sanitize($_GET['end'] ?? "");
+$startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['start'] ?? "");
+$endDate = Sanitizer::sanitizeDate($_GET['end'] ?? "");
 $startTs = DateManagement::isDate($startDate) ? strtotime($startDate) : 0;
 $oneYear = 365 * 24 * 3600;
 $endTs = DateManagement::isDate($endDate) ? strtotime($endDate) : time() + $oneYear;
@@ -118,8 +119,13 @@ $link = Application::link("this");
 $baseLink = REDCapManagement::splitURL($link)[0];
 echo "<form action='$baseLink' method='GET'>";
 echo REDCapManagement::getParametersAsHiddenInputs($link);
+if (isset($_GET['limitPubs'])) {
+    $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+    echo "<input type='hidden' name='limitPubs' value='$limitYear' />";
+}
 $cohorts = new Cohorts($token, $server, Application::getModule());
 echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort)."</p>";
+echo Publications::makeLimitButton();
 echo "<p class='centered'>";
 echo "<label for='start'>Start Date (optional)</label>: <input type='date' id='start' name='start' value='$startDate' style='width: 150px;'>";
 echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date (optional)</label>: <input type='date' id='end' name='end' value='$endDate' style='width: 150px;'>";

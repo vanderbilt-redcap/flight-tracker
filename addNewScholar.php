@@ -48,7 +48,11 @@ if (($_POST['action'] == "oneByOne") && checkPOSTKeys($requiredFields)) {
         echo "<div class='green padded'>Scholar successfully added to Record $recordId. They will be automatically processed and updated with each overnight run.</div>\n";
     }
 } else if (in_array($_POST['action'], ["importTrainees", "importFaculty", "importBoth"]) && in_array($_POST['tableNumber'], [5, 8])) {
-    $filename = (string) ($_FILES['tableCSV']['tmp_name'] ?? "");
+    if (isset($_FILES['tableCSV']['tmp_name']) && is_string($_FILES['tableCSV']['tmp_name'])) {
+        $filename = $_FILES['tableCSV']['tmp_name'];
+    } else {
+        $filename = "";
+    }
     echo \Vanderbilt\FlightTrackerExternalModule\importNIHTable($_POST, $filename, $token, $server);
 } else {
     $incompleteMssg = "";

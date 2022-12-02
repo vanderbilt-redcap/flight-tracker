@@ -14,6 +14,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\DateManagement;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\Publications;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -53,8 +54,8 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
 } else {
     $indexByField = "record_id";
 }
-$startDate = isset($_GET['start']) ? Sanitizer::sanitize($_GET['start']) : "";
-$endDate = isset($_GET['end']) ? Sanitizer::sanitize($_GET['end']) : "";
+$startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['start'] ?? "");
+$endDate = isset($_GET['end']) ? Sanitizer::sanitizeDate($_GET['end']) : "";
 $startTs = ($startDate && DateManagement::isDate($startDate)) ? strtotime($startDate) : FALSE;
 $endTs = ($endDate && DateManagement::isDate($endDate)) ? strtotime($endDate) : FALSE;
 
@@ -90,6 +91,10 @@ if ($includeHeaders) {
     echo "<h1>$title</h1>\n";
     list($url, $params) = REDCapManagement::splitURL(Application::link("socialNetwork/collaboration.php"));
     echo "<form method='GET' action='$url'>\n";
+    if (!isset($params['limitPubs']) && isset($_GET['limitPubs'])) {
+        $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+        $params['limitPubs'] = $limitYear;
+    }
     foreach ($params as $param => $value) {
         echo "<input type='hidden' name='$param' value='$value'>";
     }
@@ -116,6 +121,7 @@ if ($includeHeaders) {
         echo "<div class='mentorCheckbox centered max-width'$style><input type='checkbox' id='mentors' name='mentors'{$checked['mentors']}> <label for='mentors'>Include Mentors' Collaborations with Scholars</label></div>";
         echo "<div class='mentorCheckbox centered max-width'$style><input type='checkbox' id='other_mentors' name='other_mentors'{$checked['other_mentors']}> <label for='other_mentors'>Show Only Collaborations with Multiple Mentors</label></div>";
         echo "<div class='centered max-width'><label for='start'>Start Date (on-or-after ".START_YEAR."): </label><input type='date' id='start' name='start' value='$startDate' />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date: </label><input type='date' id='end' name='end' value='$endDate' /></div>";
+        echo Publications::makeLimitButton("div");
     }
     echo "<div class='centered max-width'><label for='numCollabs'>Number of Top Collaborators to Highlight</label> <input type='number' id='numCollabs' name='numCollabs' value='$numCollabsToShow' style='width: 50px;' /></div>";
     echo "<div class='centered max-width'><button>Go!</button></div>";
@@ -332,7 +338,7 @@ function getCitationTimestamp($row) {
         $month = $row['citation_month'];
         $day = $row['citation_day'];
         return Citation::transformDateToTimestamp(Citation::transformIntoDate($year, $month, $day));
-    } else if ($row['redcap_repeat_instrument'] == "") {
+    } else if ($row['redcap_repeat_instrument'] == "eric") {
         $date = Citation::getDateFromSourceID($row['eric_sourceid'], $row['eric_publicationdateyear']);
         if ($date && DateManagement::isDate($date)) {
             return strtotime($date);

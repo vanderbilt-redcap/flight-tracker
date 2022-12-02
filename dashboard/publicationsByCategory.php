@@ -25,6 +25,7 @@ if (isset($_GET['cohort'])) {
 } else {
     $cohort = "";
 }
+$headers[] = Publications::makeLimitButton();
 
 $indexedRedcapData = Download::getIndexedRedcapData($token, $server, CareerDev::$smallCitationFields, $cohort, Application::getModule());
 

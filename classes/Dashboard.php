@@ -258,11 +258,7 @@ class Dashboard {
         $html .= $this->displayDashboardHeader($target, $otherTarget, $pid, $cohort);
         $html .= "<div id='content'>\n";
 
-        $i = 1;
-        foreach ($headers as $header) {
-            $html .= "<h$i>".$header."</h$i>\n";
-            $i++;
-        }
+        $html .= self::makeHeaders($headers);
 
         if (empty($measurements)) {
             $html .= "<p class='centered'>No measurements have been made!</p>\n";
@@ -336,6 +332,26 @@ class Dashboard {
         return $html;
     }
 
+    private static function makeHeaders($headers) {
+        $html = "";
+        $i = 1;
+        foreach ($headers as $header) {
+            $plainHTML = FALSE;
+            foreach (["p", "div"] as $tag) {
+                if (preg_match("/^<$tag.+<\/$tag>$/i", $header)) {
+                    $plainHTML = TRUE;
+                }
+            }
+            if ($plainHTML) {
+                $html .= $header."\n";
+            } else {
+                $html .= "<h$i>".$header."</h$i>\n";
+                $i++;
+            }
+        }
+        return $html;
+    }
+
     private function makeTableHTML($headers, $measurements, $lines = array(), $cohort = "") {
         if (empty($measurements) && empty($headers)) {
             return "<h1>Under Construction!</h1>\n";
@@ -359,12 +375,7 @@ class Dashboard {
         $html .= $this->displayDashboardHeader($target, $otherTarget, $this->pid, $cohort);
         $html .= "<div id='content'>\n";
 
-        $i = 1;
-        foreach ($headers as $header) {
-            $html .= "<h$i>".$header."</h$i>\n";
-            $i++;
-        }
-
+        $html .= self::makeHeaders($headers);
         if (empty($measurements)) {
             $html .= "<p class='centered'>No measurements have been made!</p>\n";
         }

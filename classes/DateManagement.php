@@ -19,8 +19,7 @@ class DateManagement {
 
     public static function isNumericalMonth($month) {
         if (is_integer($month)) {
-            $intMonth = (int) $month;
-            if (($intMonth >= 1) && ($intMonth <= 12)) {
+            if (($month >= 1) && ($month <= 12)) {
                 return TRUE;
             }
         }

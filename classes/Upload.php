@@ -781,9 +781,9 @@ public static function metadata($metadata, $token, $server) {
                                                 }
                                             }
                                             if (!isset($uploadRow[$header])) {
-                                                $lowerVal = strtolower($val);
+                                                $lowerVal = strtolower($line[$j]);
                                                 foreach ($choices[$header] as $idx => $val) {
-                                                    if ($lowerVal == strtolower($line[$j])) {
+                                                    if ($lowerVal == strtolower($val)) {
                                                         $uploadRow[$header] = $idx;
                                                         break;
                                                     }

@@ -9,6 +9,8 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Publications {
+    const DEFAULT_LIMIT_YEAR = 2014;
+
 	public function __construct($token, $server, $metadata = "download") {
 		$this->token = $token;
 		$this->server = $server;
@@ -23,6 +25,49 @@ class Publications {
         $this->lastNames = Download::lastnames($token, $server);
         $this->firstNames = Download::firstnames($token, $server);
 	}
+
+    public static function adjudicateStartDate($limitYear, $startDate) {
+        if ($limitYear && $startDate) {
+            $limitYear = Sanitizer::sanitizeInteger($limitYear);
+            $startDate = Sanitizer::sanitizeDate($startDate);
+            if ($limitYear) {
+                $limitDate = "$limitYear-01-01";
+                if ($startDate != $limitDate) {
+                    $startDate = $limitDate;
+                }
+            }
+        } else if ($limitYear) {
+            $limitYear = Sanitizer::sanitizeInteger($limitYear);
+            if ($limitYear) {
+                $startDate = "$limitYear-01-01";
+            } else {
+                $startDate = "";
+            }
+        } else {
+            $startDate = Sanitizer::sanitizeDate($startDate);
+        }
+        return $startDate;
+    }
+
+    public static function makeLimitButton($elementTag = "p") {
+        $server = $_SERVER['HTTP_HOST'] ?? "";
+        $uri = $_SERVER['REQUEST_URI'] ?? "";
+        $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://".$server.$uri;
+        if (isset($_GET['limitPubs'])) {
+            $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+            $status = "<span class='smaller bolded'>Currently limiting pubs to after $limitYear</span>";
+            $newUrl = preg_replace("/&limitPubs=\d+/", "", $url);
+            $buttonText = "Show All Pubs";
+            $nextLine = "";
+        } else {
+            $limitYear = self::DEFAULT_LIMIT_YEAR;
+            $status = "<span class='smaller bolded'>Currently showing all pubs</span>";
+            $newUrl = $url."&limitPubs=$limitYear";
+            $buttonText = "Limit Pubs to After $limitYear";
+            $nextLine = "<br/><span class='smallest'>PubMed's match-quality increased after $limitYear</span>";
+        }
+        return "<$elementTag class='centered'>$status<br/><button onclick='location.href=\"$newUrl\"; return false;'>$buttonText</button>$nextLine</$elementTag>";
+    }
 
 	public function deduplicateCitations($recordId) {
 	    $pmids = [];

@@ -116,6 +116,7 @@ class ReactNIHTables {
 
     # coordinated with NIHTable -> loadModificationsForCSV in React
     private function makeModificationsArray($lookupValues, $data, $headers, $tableNum) {
+        $mods = [];
         foreach ($lookupValues as $recordId => $instanceValues) {
             foreach ($instanceValues as $recordInstance => $dateValues) {
                 for ($i = 0; $i < count($data); $i++) {

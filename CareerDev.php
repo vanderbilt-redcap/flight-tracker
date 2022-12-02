@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.20.0";
+		return "4.21.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -407,7 +407,7 @@ class CareerDev {
 	    if ($relativeUrl == "this") {
             $fullURL = self::constructThisURL();
             $url = explode("?", $fullURL)[0];
-            $paramKeys = ["page", "pid", "prefix", "project_id"];
+            $paramKeys = ["page", "pid", "prefix", "project_id", "limitPubs"];
             $initialSeparator = "?";
             foreach ($paramKeys as $key) {
                 if (isset($_GET[$key])) {
@@ -764,6 +764,9 @@ class CareerDev {
         if (preg_match("/reporting\//", $page)) {
             $default = self::link("/css/general.css");
         }
+        if (preg_match("/dashboard\//", $page)) {
+            $default = self::link("/css/dashboards.css");
+        }
 
 		foreach ($bgs as $menu => $css) {
 			if ($css && ($menu != "Environment")) {
@@ -1022,16 +1025,17 @@ class CareerDev {
             ];
 		}
 		if ($menuName == "REDCap") {
-			return array(
-					"REDCap Project" => $r."/index.php",
-					"Add/Edit Records" => $r."/DataEntry/record_home.php",
-					"Export Data or View Reports" => $r."/DataExport/index.php",
-					"Create a New Report" => $r."/DataExport/index.php?create=1&addedit=1",
-					"Data Dictionary" => $r."/Design/data_dictionary_upload.php",
-					"Online Designer" => $r."/Design/online_designer.php",
-					"Logging" => $r."/Logging/index.php",
-					"API Playground" => $r."/API/playground.php",
-					);
+			return [
+                "REDCap Project" => $r."/index.php",
+                "My REDCap Projects" => APP_PATH_WEBROOT_FULL."index.php?action=myprojects",
+                "Add/Edit Records" => $r."/DataEntry/record_home.php",
+                "Export Data or View Reports" => $r."/DataExport/index.php",
+                "Create a New Report" => $r."/DataExport/index.php?create=1&addedit=1",
+                "Data Dictionary" => $r."/Design/data_dictionary_upload.php",
+                "Online Designer" => $r."/Design/online_designer.php",
+                "Logging" => $r."/Logging/index.php",
+                "API Playground" => $r."/API/playground.php",
+            ];
 		}
 		if ($menuName == "Resources") {
 			return [

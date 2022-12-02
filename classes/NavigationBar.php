@@ -37,7 +37,9 @@ class NavigationBar {
 			$pid = REDCapManagement::sanitize($_GET['pid']);
 		}
 		if (preg_match("/^http/", $link) && !preg_match("/^https:\/\/localhost\//", $link)) {
-			return $link;
+            return $link;
+        } else if ($link == APP_PATH_WEBROOT_FULL."index.php?action=myprojects") {
+            return $link;
 		} else if (!preg_match("/pid=\d+/", $link)) {
 			if (!preg_match("/\?/", $link)) {
 				$link .= "?pid=".$pid;

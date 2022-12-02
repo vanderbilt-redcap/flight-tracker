@@ -71,7 +71,7 @@ if (isset($_GET['grantCounts'])) {
         //}
     arsort($grantCounts);
 
-    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end"]);
+    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs"]);
     list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
 
     $html = "";
@@ -190,10 +190,11 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
                 # do not filter
                 $dates[$record] = "Training period not recorded";
             }
-        } else if ($_GET['begin']) {
-            $startTs = strtotime(Sanitizer::sanitize($_GET['begin']));
-            if ($_GET['end']) {
-                $endTs = strtotime(Sanitizer::sanitize($_GET['end']));
+        } else if (isset($_GET['begin']) && $_GET['begin']) {
+            $startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['begin']);
+            $startTs = $startDate ? strtotime($startDate) : 0;
+            if (isset($_GET['end']) && $_GET['end']) {
+                $endTs = strtotime(Sanitizer::sanitizeDate($_GET['end']));
             } else {
                 $endTs = time();
             }
@@ -262,7 +263,7 @@ function makePublicationListHTML($citations, $names, $dates) {
 
 function makeExtraURLParams($exclude = []) {
     $additionalParams = "";
-    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grant", "begin", "end", "cohort"];
+    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grant", "begin", "end", "cohort", "limitPubs"];
     foreach ($_GET as $key => $value) {
         if (isset($_GET[$key]) && in_array($key, $expected) && !in_array($key, $exclude)) {
             $key = Sanitizer::sanitize($key);
@@ -285,11 +286,11 @@ function makeCustomizeTable($token, $server, $metadata) {
     if (isset($_GET['trainingPeriodPlusDays']) && is_numeric($_GET['trainingPeriodPlusDays'])) {
         $defaultDays = Sanitizer::sanitize($_GET['trainingPeriodPlusDays']);
     }
-    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end"]);
+    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs"]);
     list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
     $fullURLMinusCohort = preg_replace("/&cohort=[^\&]+/", "", $fullURL);
-    $begin = Sanitizer::sanitize($_GET['begin']);
-    $end = Sanitizer::sanitize($_GET['end']);
+    $begin = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['begin'] ?? "");
+    $end = Sanitizer::sanitizeDate($_GET['end']);
 
     $html .= "<table class='centered'>\n";
     $html .= "<tr>\n";
@@ -313,12 +314,17 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= "<h4>Show Pubs During Timespan</h4>";
     $html .= "<form action='$url' method='GET'>";
     $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
+    if (isset($_GET['limitPubs'])) {
+        $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+        $html .= "<input type='hidden' name='limitPubs' value='$limitYear' />";
+    }
     $html .= "<p class='centered'>Start Date: <input type='date' name='begin' style='width: 150px;' value='$begin'><br>";
     $html .= "End Date: <input type='date' name='end' value='$end' style='width: 150px;'><br>";
     $html .= "<button>Re-Configure</button></p>";
     $html .= "</form>";
+    $html .= Publications::makeLimitButton();
     $html .= "<div id='grantCounts'>";
-    $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end"])."&grantCounts";
+    $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs"])."&grantCounts";
     if ($_GET['grant'] && ($_GET['grant'] != "all")) {
         $html .= "<script>$(document).ready(function() { downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\"); });</script>";
     } else {

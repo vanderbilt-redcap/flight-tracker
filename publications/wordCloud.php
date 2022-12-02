@@ -8,6 +8,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Grant;
+use \Vanderbilt\CareerDevLibrary\Publications;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -105,10 +106,10 @@ form input, form select {
 
 $possibleFields = ["citation_grants", "citation_mesh_terms", "citation_journal,eric_source", "eric_subject"];
 $metadata = Download::metadata($token, $server);
-if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
-    $fieldsToDisplay = explode(",", Sanitizer::sanitize($_POST['field']));
-    $startDate = Sanitizer::sanitize($_POST['start'] ?? "");
-    $endDate = Sanitizer::sanitize($_POST['end'] ?? "");
+if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
+    $fieldsToDisplay = explode(",", Sanitizer::sanitize($_GET['field']));
+    $startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['start'] ?? "");
+    $endDate = Sanitizer::sanitizeDate($_GET['end'] ?? "");
     $startTs = $startDate ? strtotime($startDate) : "";
     $endTs = $endDate ? strtotime($endDate) : "";
 
@@ -141,8 +142,8 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
         $fields = array_unique(array_merge($fields, $includeFields));
     }
 
-    if ($_POST['cohort']) {
-        $cohort = $_POST['cohort'];
+    if ($_GET['cohort']) {
+        $cohort = $_GET['cohort'];
         if ($cohort == "all") {
             $records = Download::recordIds($token, $server);
         } else {
@@ -189,7 +190,7 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
         $wordData = transformToTitles($wordData);
     }
 
-    echo makeFieldForm($token, $server, $metadata, $possibleFields, $_POST['cohort'] ?: "", $startDate, $endDate);
+    echo makeFieldForm($token, $server, $metadata, $possibleFields, $_GET['cohort'] ?: "", $startDate, $endDate);
     //echo REDCapManagement::json_encode_with_spaces($wordData);
     ?>
 
@@ -324,12 +325,21 @@ if ($_POST['field'] && in_array($_POST['field'], $possibleFields)) {
 
 function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCohort = "", $startDate = "", $endDate = "") {
     $link = Application::link("publications/wordCloud.php");
+    $linkWithoutGET = explode("?", $link)[0];
     $metadataLabels = REDCapManagement::getLabels($metadata);
 
     $html = "";
     $html .= "<h1>Which Field Do You Want to Count Frequency with Publications?</h1>\n";
-    $html .= "<form action='$link' method='POST'>";
-    $html .= Application::generateCSRFTokenHTML();
+    $html .= "<form action='$linkWithoutGET' method='GET'>";
+    if (isset($_GET['limitPubs'])) {
+        $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+        $html .= "<input type='hidden' name='limitPubs' value='$limitYear' />";
+    }
+    $html .= REDCapManagement::getParametersAsHiddenInputs($link);
+    if (isset($_GET['limitPubs'])) {
+        $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+        $html .= "<input type='hidden' name='limitPubs' value='$limitYear' />";
+    }
     $cohorts = new Cohorts($token, $server, CareerDev::getModule());
     $cohortHTML = $cohorts->makeCohortSelectUI($defaultCohort);
     $selectHTML = "<label for='field'>Field:</label><select name='field' id='field' class='form-control'><option value=''>---SELECT---</option>";
@@ -348,7 +358,7 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCoho
             $label = $metadataLabels[$field].$source;
         }
         $selected = "";
-        if ($field == $_POST['field']) {
+        if ($field == $_GET['field']) {
             $selected = " selected";
         }
         $selectHTML .= "<option value='$field'$selected>$label</option>";
@@ -356,7 +366,9 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCoho
     $selectHTML .= "</select>";
     $datesHTML = "<label for='start'>Start Date (optional): </label><input type='date' style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='start' id='start' value='$startDate' /><br/><label for='end'>End Date (optional): </label><input type='date'  style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='end' id='end' value='$endDate' />";
     $html .= "<div class='centered max-width'><div class='form-group'>$cohortHTML</div> <div class='form-group'>$selectHTML</div> <div class='form-group'>$datesHTML</div> <div class='form-group' style='width: 200px;'><button class='btn btn-light tsubmit'>Make Word Cloud</button></div></div>";
-    $html .= "</form><h2 class='mtitle'></h2><div style='width: 1260px; margin: 0 auto;'><div id='chartdivcol'></div><div id='chartdiv'></div>";
+    $html .= "</form>";
+    $html .= Publications::makeLimitButton();
+    $html .= "<h2 class='mtitle'></h2><div style='width: 1260px; margin: 0 auto;'><div id='chartdivcol'></div><div id='chartdiv'></div>";
     return $html;
 }
 

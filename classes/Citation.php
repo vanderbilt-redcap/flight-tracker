@@ -122,7 +122,20 @@ class CitationCollection {
 
 	public function getCitations() {
 		$this->sortCitations();
-		return $this->citations;
+        $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs'] ?? "");
+        if (isset($_GET['limitPubs']) && $limitYear) {
+            $thresholdTs = strtotime($limitYear."-01-01");
+            $filteredCitations = [];
+            foreach ($this->citations as $citation) {
+                $ts = $citation->getTimestamp();
+                if ($ts && $ts >= $thresholdTs) {
+                    $filteredCitations[] = $citation;
+                }
+            }
+            return $filteredCitations;
+        } else {
+            return $this->citations;
+        }
 	}
 
 	private static function sortArrays($unorderedArys, $field) {
@@ -161,7 +174,8 @@ class CitationCollection {
 
 	public function sortCitations() {
 		$unsorted = [];
-		foreach ($this->citations as $citation) {
+        $myCitations = $this->citations;
+		foreach ($myCitations as $citation) {
 			$unsorted[] = [
                 "citation" => $citation,
                 "timestamp" => $citation->getTimestamp(),
@@ -172,7 +186,7 @@ class CitationCollection {
 			throw new \Exception("Unsorted (".count($unsorted).") != sorted (".count($sorted).")");
 		}
 
-		$this->citations = array();
+		$this->citations = [];
 		foreach ($sorted as $ary) {
 			$this->citations[] = $ary['citation'];
 		}
@@ -181,7 +195,7 @@ class CitationCollection {
 	public function addCitation($citation) {
 	    $validClasses = ["Citation", "Vanderbilt\CareerDevLibrary\Citation"];
 		if (in_array(get_class($citation), $validClasses)) {
-			array_push($this->citations, $citation);
+			$this->citations[] = $citation;
 		} else {
 			throw new \Exception("addCitation tries to add a citation of class ".get_class($citation).", instead of valid classes ".implode(", ", $validClasses)."!");
 		}
@@ -214,7 +228,7 @@ class CitationCollection {
     }
 
 	public function getCount() {
-		return count($this->citations);
+		return count($this->getCitations());
 	}
 
 	private $citations = array();
@@ -871,8 +885,15 @@ class Citation {
             // Application::log("Has multiple names to bold: ".REDCapManagement::json_encode_with_spaces($multipleNamesToBold));
             $authorList = $this->getAuthorList();
             foreach ($multipleNamesToBold as $nameAry) {
-                $firstName = $nameAry["firstName"];
-                $lastName = $nameAry["lastName"];
+                if (is_array($nameAry)) {
+                    $firstName = $nameAry["firstName"];
+                    $lastName = $nameAry["lastName"];
+                } else if (is_string($nameAry)) {
+                    list($firstName, $lastName) = NameMatcher::splitName($nameAry);
+                } else {
+                    $firstName = "";
+                    $lastName = "";
+                }
                 $authorList = self::boldName($lastName, $firstName, $authorList);
                 // Application::log("Bolding $lastName $firstName: ".REDCapManagement::json_encode_with_spaces($authorList));
             }

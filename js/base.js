@@ -1560,6 +1560,11 @@ function downloadSVG(svgText, margin,fill, canvasFunction, fontName, woffFontBas
 			// create a new image to hold it the converted type
 			let img = new Image;
 
+			img.onerror = function(ev) {
+				console.error('image load error');
+				console.error(ev);
+			}
+
 			// when the image is loaded we can get it as base64 url
 			img.onload = function () {
 				// draw it to the canvas
@@ -1590,7 +1595,6 @@ function downloadSVG(svgText, margin,fill, canvasFunction, fontName, woffFontBas
 
 			// load the image
 			img.src = url;
-
 		} catch (err) {
 			reject('failed to convert svg to png ' + err);
 		}

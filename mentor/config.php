@@ -47,9 +47,13 @@ if (isset($_POST['action']) && ($_POST['action'] == "save")) {
             ],
         ];
         foreach ($linksToSet as $settingName => $ary) {
-            $link = $ary['link'] ?? "";
+            if (isset($ary['link']) && is_string($ary['link'])) {
+                $link = $ary['link'];
+            } else {
+                $link = "";
+            }
             $descript = $ary['description'] ?? "";
-            if ($link && $continue) {
+            if ($link) {
                 if (!preg_match("/^https?:\/\//i", $link)) {
                     $link = "https://".$link;
                 }
@@ -112,13 +116,14 @@ if (isset($_POST['action']) && ($_POST['action'] == "save")) {
             foreach ($deletedResourceIndexes as $idx) {
                 unset($resourcesByIndex[$idx]);
             }
-            $nextIndex = $maxIndex + 1;
+            $nextIndex = ((int) $maxIndex) + 1;
             foreach ($newResources as $resource) {
                 $resourcesByIndex[$nextIndex] = $resource;
                 $nextIndex++;
             }
             if (empty($resourcesByIndex) && Application::isVanderbilt()) {
                 $resourcesByIndex = DataDictionaryManagement::getMenteeAgreementVanderbiltResources();
+                $resourceStr = DataDictionaryManagement::makeChoiceStr($resourcesByIndex);
             } else if (empty($resourcesByIndex) && $savedList) {
                 $savedLabels = preg_split("/[\n\r]+/", $savedList);
                 $pairs = [];

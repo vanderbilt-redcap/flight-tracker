@@ -102,7 +102,11 @@ $(document).ready(() => {
 	    commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecordsURI);
     }
 } else if (in_array($_POST['action'] ?? "", ["importTrainees", "importFaculty", "importBoth"])) {
-    $filename = (string) ($_FILES['tableCSV']['tmp_name'] ?? "");
+    if (isset($_FILES['tableCSV']['tmp_name']) && is_string($_FILES['tableCSV']['tmp_name'])) {
+        $filename = $_FILES['tableCSV']['tmp_name'];
+    } else {
+        $filename = "";
+    }
     $mssg = \Vanderbilt\FlightTrackerExternalModule\importNIHTable($_POST, $filename, $token, $server);
     $link = Application::link("index.php");
     $goodToGo = preg_match("/green/", $mssg);

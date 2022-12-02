@@ -1911,6 +1911,7 @@ function importNIHTable($post, $filename, $token, $server) {
             if (!empty($cols)) {
                 $html .= NIHTables::importNamesFromCSV($fp, $cols, $token, $server);
             } else {
+                $nihLink = NIHTables::NIH_LINK;
                 $html .= "<div class='red padded'>ERROR! The header/first row must contain 'Trainee Name', 'Trainee', or 'Faculty Member' according to <a href='$nihLink'>NIH Formatting</a>.</div>\n";
             }
             fclose($fp);
