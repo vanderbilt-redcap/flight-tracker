@@ -6,7 +6,9 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
-$date = date("Y-m-d", time() - 24 * 3600);  // two days prior
+$module = Application::getModule();
+$numDays = Sanitizer::sanitizeInteger($_GET['numDays'] ?? 1);
+$date = date("Y-m-d", time() - $numDays * 24 * 3600);  // two days prior
 $pid = Sanitizer::sanitizePid($_GET['pid']);
 
 if (is_numeric($pid)) {

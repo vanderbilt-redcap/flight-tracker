@@ -6,9 +6,9 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $params1 = [];
 $params2 = [];
-$offset = Sanitizer::sanitizeInteger($_GET['start']);
-$limit = Sanitizer::sanitizeInteger($_GET['length']);
-$limitClause = "limit ? offset ?";
+$offset = Sanitizer::sanitizeInteger($_GET['start'] ?? 0);
+$limit = Sanitizer::sanitizeInteger($_GET['length'] ?? 100);
+$limitClause = "limit $limit offset $offset";
 
 $whereClause = "";
 if (isset($_REQUEST['search']['value'])) {
@@ -20,11 +20,9 @@ if (isset($_REQUEST['search']['value'])) {
 
 $columnName = 'count(1)';
 $result = $module->queryLogs("select $columnName $whereClause", $params1);
-$row = db_fetch_assoc($result);
+$row = $result->fetch_assoc();
 $totalRowCount = $row[$columnName];
 
-$params2[] = $limit;
-$params2[] = $offset;
 $results = $module->queryLogs("
 	select log_id, timestamp, message
 	order by log_id desc
@@ -34,15 +32,15 @@ $results = $module->queryLogs("
 
 $rows = [];
 while($row = $results->fetch_assoc()){
-	$rows[] = $row;
+	$rows[] = Sanitizer::sanitizeArray($row);
 }
-$json = Sanitizer::sanitizeJSON(json_encode($rows));
+$json = json_encode($rows);
 $totalRowCount = Sanitizer::sanitizeInteger($totalRowCount);
 
 ?>
 
 {
-	"draw": <?= Sanitizer::sanitize($_GET['draw']) ?>,
+	"draw": <?= Sanitizer::sanitizeInteger($_GET['draw'] ?? 1) ?>,
 	"recordsTotal": <?=$totalRowCount?>,
 	"recordsFiltered": <?=$totalRowCount?>,
 	"data": <?=$json?>

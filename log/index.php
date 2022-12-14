@@ -110,7 +110,7 @@ $module = Application::getModule();
 	<h2><?= $tokenName ?></h2>
 	<p class='centered'>(Refresh the page to see the latest.)</p>
 
-	<p class='centered'><button onclick='submitLogs("<?= Application::link("log/email-logs.php") ?>"); return false;'>Report Today's Logs to Developers</button></p>
+	<p class='centered'><button onclick='submitLogs("<?= Application::link("log/email-logs.php")."&numDays=1" ?>"); return false;'>Report Today's Logs to Developers</button> <button onclick='submitLogs("<?= Application::link("log/email-logs.php")."&numDays=7" ?>"); return false;'>Report Last Week's Logs to Developers</button></p>
 
 	<table id="em-log-module-log-entries" class="table table_search table-striped table-bordered"></table>
 
