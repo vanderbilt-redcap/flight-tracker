@@ -1212,11 +1212,12 @@ class Grants {
             "deduped" => "dedupedGrants",
         ];
         foreach ($typeAssignments as $type => $variable) {
-            $this->$variable = [];
+            $ary = [];
             foreach ($awardsByType[$type] as $baseNumber => $grant) {
                 if (self::getShowDebug()) { Application::log("10. Adding to $type {$grant->getBaseNumber()}"); }
-                $this->$variable[] = $grant;
+                $ary[] = $grant;
             }
+            $this->$variable = $ary;
         }
 
 		$this->calculate['order'] = self::makeOrder($this->compiledGrants);
