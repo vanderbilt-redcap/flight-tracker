@@ -271,7 +271,8 @@ class CareerDev {
         return $protocol.$host.$uri;
     }
 
-	public static function getPid($token = "") {
+	public static function getPid($tokenForPid = "") {
+		$token = $tokenForPid;
 		if ($token) {
 			$pid = self::getPidFromToken($token);
 			if (!$pid) {

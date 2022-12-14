@@ -1214,7 +1214,7 @@ class Grants {
         foreach ($typeAssignments as $type => $variable) {
             $this->$variable = [];
             foreach ($awardsByType[$type] as $baseNumber => $grant) {
-                if (self::getShowDebug()) { Application::log("10. Adding to $type ".$grant->getBaseNumber()); }
+                if (self::getShowDebug()) { Application::log("10. Adding to $type {$grant->getBaseNumber()}"); }
                 $this->$variable[] = $grant;
             }
         }
