@@ -335,25 +335,26 @@ class Filter {
 
 	# variable => label
 	public function getDemographicChoices() {
-		$ary = array(
-				"summary_gender" => "Gender",
-				"summary_race_ethnicity" => "Race/Ethnicity",
-				"summary_primary_dept" => "Primary Department",
-                "summary_current_division" => "Current Academic Division",
-				"summary_dob" => "Date of Birth",
-				"summary_degrees" => "Academic Degrees",
-				"summary_citizenship" => "Citizenship",
-				"summary_urm" => "Under-Represented Minority Status",
-				"summary_disability" => "Disability Status",
-				"summary_disadvantaged" => "Disadvantaged Status",
-				"summary_training_start" => "Start of Training Program",
-				"summary_training_end" => "End of Training Program",
-                "summary_current_tenure" => "Recorded Tenure Status",
-				// "calc_institution" => "Institution",
-				"summary_current_rank" => "Current Academic Rank",
-				"calc_employment" => "Employment Status",
-				"calc_email_domain" => "Email Domain",
-				);
+		$ary = [
+            "summary_gender" => "Gender",
+            "summary_race_ethnicity" => "Race/Ethnicity",
+            "summary_primary_dept" => "Primary Department",
+            "summary_current_division" => "Current Academic Division",
+            "summary_dob" => "Date of Birth",
+            "summary_degrees" => "Academic Degrees",
+            "summary_citizenship" => "Citizenship",
+            "summary_urm" => "Under-Represented Minority Status",
+            "summary_disability" => "Disability Status",
+            "summary_disadvantaged" => "Disadvantaged Status",
+            "summary_training_start" => "Start of Training Program",
+            "summary_training_end" => "End of Training Program",
+            "summary_did_not_complete" => "Did Not Complete Program",
+            "summary_current_tenure" => "Recorded Tenure Status",
+            // "calc_institution" => "Institution",
+            "summary_current_rank" => "Current Academic Rank",
+            "calc_employment" => "Employment Status",
+            "calc_email_domain" => "Email Domain",
+        ];
 		return $ary;
 	}
 

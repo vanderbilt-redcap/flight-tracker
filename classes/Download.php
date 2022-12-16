@@ -400,7 +400,7 @@ class Download {
                 && !empty($cachedMetadata)
             ) {
                 if (isset($_GET['test'])) {
-                    Application::log("Download::metadata returning _SESSION", $pid);
+                    Application::log("Download::metadata returning _SESSION: ".count($cachedMetadata)." rows", $pid);
                 }
                 return $cachedMetadata;
             }
@@ -419,8 +419,10 @@ class Download {
                     Application::log($json);
                 }
             }
-		    $_SESSION['metadata'.$pid] = $rows;
-		    $_SESSION['lastMetadata'.$pid] = time();
+            if (empty($fields)) {
+                $_SESSION['metadata' . $pid] = $rows;
+                $_SESSION['lastMetadata' . $pid] = time();
+            }
         } else {
             $method = "API";
             $data = array(

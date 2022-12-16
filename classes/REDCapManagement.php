@@ -18,7 +18,7 @@ class REDCapManagement {
         $sql = "SELECT status FROM redcap_projects WHERE project_id = ?";
         $q = $module->query($sql, [$pid]);
         if ($row = $q->fetch_assoc()) {
-            error_log("inProd? ".json_encode($row));
+            Application::log("inProd? ".json_encode($row));
             if ($row['status'] === 1) {
                 return TRUE;
             } else {
@@ -1423,8 +1423,100 @@ class REDCapManagement {
 	    return FALSE;
     }
 
+    /**
+     * from https://www.ozzu.com/snippets/608141/convert-curly-quotes-to-regular-quotes-in-php
+     * Convert curly/smart quotes to regular quotes
+     *
+     * This function will convert Windows-1252, CP-1252, and other UTF-8 single and double quotes to regular quotes,
+     * otherwise known as Unicode character U+0022 quotion mark (") and U+0027 apostrophe (') which typically do not have
+     * any sort of encoding issues that the others run into.
+     *
+     * @param string $text The text that contains curly quotes
+     * @return string Normalized text using regular quotes
+     */
+    private static function convertCurlyQuotes($text): string
+    {
+        $quoteMapping = [
+            // U+0082⇒U+201A single low-9 quotation mark
+            "\xC2\x82"     => "'",
+
+            // U+0084⇒U+201E double low-9 quotation mark
+            "\xC2\x84"     => '"',
+
+            // U+008B⇒U+2039 single left-pointing angle quotation mark
+            "\xC2\x8B"     => "'",
+
+            // U+0091⇒U+2018 left single quotation mark
+            "\xC2\x91"     => "'",
+
+            // U+0092⇒U+2019 right single quotation mark
+            "\xC2\x92"     => "'",
+
+            // U+0093⇒U+201C left double quotation mark
+            "\xC2\x93"     => '"',
+
+            // U+0094⇒U+201D right double quotation mark
+            "\xC2\x94"     => '"',
+
+            // U+009B⇒U+203A single right-pointing angle quotation mark
+            "\xC2\x9B"     => "'",
+
+            // U+00AB left-pointing double angle quotation mark
+            "\xC2\xAB"     => '"',
+
+            // U+00BB right-pointing double angle quotation mark
+            "\xC2\xBB"     => '"',
+
+            // U+2018 left single quotation mark
+            "\xE2\x80\x98" => "'",
+
+            // U+2019 right single quotation mark
+            "\xE2\x80\x99" => "'",
+
+            // U+201A single low-9 quotation mark
+            "\xE2\x80\x9A" => "'",
+
+            // U+201B single high-reversed-9 quotation mark
+            "\xE2\x80\x9B" => "'",
+
+            // U+201C left double quotation mark
+            "\xE2\x80\x9C" => '"',
+
+            // U+201D right double quotation mark
+            "\xE2\x80\x9D" => '"',
+
+            // U+201E double low-9 quotation mark
+            "\xE2\x80\x9E" => '"',
+
+            // U+201F double high-reversed-9 quotation mark
+            "\xE2\x80\x9F" => '"',
+
+            // U+2039 single left-pointing angle quotation mark
+            "\xE2\x80\xB9" => "'",
+
+            // U+203A single right-pointing angle quotation mark
+            "\xE2\x80\xBA" => "'",
+
+            // HTML left double quote
+            "&ldquo;"      => '"',
+
+            // HTML right double quote
+            "&rdquo;"      => '"',
+
+            // HTML left sinqle quote
+            "&lsquo;"      => "'",
+
+            // HTML right single quote
+            "&rsquo;"      => "'",
+        ];
+
+        return strtr(html_entity_decode($text, ENT_QUOTES, "UTF-8"), $quoteMapping);
+    }
+
     public static function clearUnicode($str) {
-        return preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $str);
+        $str = self::convertCurlyQuotes($str);
+        # exclude newline \x0A
+        return preg_replace('/[\x00-\x09\x0B-\x1F\x80-\xFF]/', '', $str);
     }
 
     public static function isMetadataFilled($metadata) {

@@ -1218,7 +1218,7 @@ class Publications {
 
         $html = "";
         $html .= "<h4>Matches to $name</h4>";
-        $html .= "<p class='centered'>";
+        $html .= "<p class='centered' style='line-height: 2.2em;'>";
         $nameSpans = [];
         $checkedImgLoc = Wrangler::getImageLocation("checked");
         $uncheckedImgLoc = Wrangler::getImageLocation("unchecked");
@@ -1253,9 +1253,9 @@ class Publications {
 
 	public static function getCurrentPMC($citation) {
 		if (preg_match("/PMC:?\s*\d+/", $citation, $matches)) {
-			$match = preg_replace("/PMC:?\s*/", "", $matches[0]);
-			return $match;
-		}
+            $match = preg_replace("/PMC:?\s*/", "", $matches[0]);
+            return $match;
+        }
 		return "";
 	}
 

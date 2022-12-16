@@ -372,9 +372,9 @@ class Scholar {
     private function getGenericValueForField($rows, $field, $byLatest = FALSE, $showDebug = FALSE) {
         $vars = self::getDefaultOrder($field);
         $vars = $this->getOrder($vars, $field);
-        $result = $this->searchRowsForVars($rows, $vars, $byLatest, $this->pid, $showDebug);
+        $result = $this->searchForAndTranslateSpecialResults($rows, $field);
         if ($result->getValue() === "") {
-            $result = $this->searchForAndTranslateSpecialResults($rows, $field);
+            $result = $this->searchRowsForVars($rows, $vars, $byLatest, $this->pid, $showDebug);
         }
         return $result;
     }
@@ -446,8 +446,23 @@ class Scholar {
             } else if ($field == "summary_training_end") {
                 $didGraduate = REDCapManagement::findField($rows, $this->recordId, "mstp_graduated_from_program");
                 $phdGraduationYear = REDCapManagement::findField($rows, $this->recordId, "mstp_phd_completion_year");
-                if (($didGraduate == "1") && ($phdGraduationYear)) {
+                $mdGraduationYear = REDCapManagement::findField($rows, $this->recordId, "mstp_md_degree_received_date");
+                if (preg_match("/^(\d+) \(.+\)$/", $phdGraduationYear, $matches)) {
+                    $phdGraduationYear = $matches[1];
+                }
+                if (preg_match("/^(\d+) \(.+\)$/", $mdGraduationYear, $matches)) {
+                    $mdGraduationYear = $matches[1];
+                }
+                if (($didGraduate == "1") && $phdGraduationYear && $mdGraduationYear) {
+                    if ($phdGraduationYear > $mdGraduationYear) {
+                        return new Result($phdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
+                    } else {
+                        return new Result($mdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
+                    }
+                } else if (($didGraduate == "1") && $phdGraduationYear) {
                     return new Result($phdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
+                } else if (($didGraduate == "1") && $mdGraduationYear) {
+                    return new Result($mdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
                 }
             }
         }

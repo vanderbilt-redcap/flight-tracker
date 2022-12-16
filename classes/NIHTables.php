@@ -2449,7 +2449,16 @@ class NIHTables {
         return in_array("identifier_support_summary", $metadataFields);
     }
 
-    public static function importNamesFromCSV($filePointer, $cols, $token, $server) {
+    private static function containsSomeData($line, $cols) {
+        foreach ($cols as $col) {
+            if (isset($line[$col]) && ($line[$col] !== "")) {
+                return TRUE;
+            }
+        }
+        return FALSE;
+    }
+
+    public static function importNamesFromCSV($filePointer, $cols, $colsToTestIfRowExists, $token, $server) {
         $html = "";
         $records = Download::recordIds($token, $server);
         $priorFirstNames = Download::firstnames($token, $server);
@@ -2457,12 +2466,42 @@ class NIHTables {
         $matches = [];
         $upload = [];
         $maxRecordId = empty($records) ? 0 : max($records);
+        if (!$filePointer) {
+            $html .= "<div class='red padded'>Could not read file.</div>";
+        }
+
+        $lines = [];
         while ($line = fgetcsv($filePointer)) {
+            $lines[] = $line;
+        }
+        for ($i=0; $i < count($lines); $i++) {
+            $line = $lines[$i];
+            if (isset($lines[$i+1])) {
+                if (self::containsSomeData($lines[$i+1], $cols) && !self::containsSomeData($lines[$i+1], $colsToTestIfRowExists)) {
+                    foreach ($cols as $col) {
+                        if (isset($lines[$i+1][$col]) && ($lines[$i+1][$col] !== "")) {
+                            $line[$col] = trim($line[$col])." ".trim($lines[$i+1][$col]);
+                        }
+                    }
+                    $i++;
+                }
+            }
             foreach ($cols as $col) {
-                $name = $line[$col];
-                if ($name) {
+                $name = $line[$col] ?? "";
+                if (preg_match("/\s*;\s*/", $name)) {
+                    $names = preg_split("/\s*;\s*/", $name);
+                } else if (preg_match("/\s+and\s+/i", $name)) {
+                    $names = preg_split("/\s+and\s+/i", $name);
+                } else {
+                    $names = ($name ? [$name] : []);
+                }
+
+                foreach ($names as $name) {
                     $found = FALSE;
                     list($first, $middle, $last) = NameMatcher::splitName($name, 3);
+                    $first = NameMatcher::prettyOneName($first);
+                    $middle = NameMatcher::prettyOneName($middle);
+                    $last = NameMatcher::prettyOneName($last);
                     foreach ($records as $recordId) {
                         $firstName = $priorFirstNames[$recordId] ?? "";
                         $lastName = $priorLastNames[$recordId] ?? "";

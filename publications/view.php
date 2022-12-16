@@ -149,6 +149,7 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
         $pubs = new Publications($token, $server, $metadata);
         $pubs->setRows($redcapData);
         if (isset($_GET['test'])) {
+            Application::log("Downloaded ".count($redcapData)." rows with metadata ".count($metadata)." rows");
             Application::log($pubs->getCitationCount("Included")." citations included");
         }
         $notDone = $pubs->getCitationCollection("Not Done");

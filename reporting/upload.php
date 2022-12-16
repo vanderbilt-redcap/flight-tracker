@@ -31,27 +31,33 @@ if ($entityBody) {
 
 $errorMssg = "";
 if (!empty($_POST)) {
-    $table = Sanitizer::sanitize($_POST['table']);
-    $awardNo = Sanitizer::sanitize($_POST['awardNo']);
-    $dateOfSubmission = Sanitizer::sanitizeDate($_POST['dateOfSubmission']);
-    $action = Sanitizer::sanitize($_POST['action']);
+    $table = Sanitizer::sanitize($_POST['table'] ?? "");
+    $awardNo = Sanitizer::sanitize($_POST['awardNo'] ?? "");
+    $dateOfSubmission = Sanitizer::sanitizeDate($_POST['dateOfSubmission'] ?? "");
+    $action = Sanitizer::sanitize($_POST['action'] ?? "");
     $scope = Sanitizer::sanitize((isset($_POST['scope']) && is_numeric($_POST['scope'])) ? $_POST['scope'] - 1 : "all");
+    Application::keepAlive($pid);
 
     $data = [];
     try {
-        if ($action == "uploadFile" && isset($_FILES['file'])) {
+        if (($action == "getNumLines") && isset($_FILES['file'])) {
+            $filename = $_FILES['file']['tmp_name'] ?? "";
+            if ($filename && is_string($filename) && file_exists($filename)) {
+                $linesToProcess = readFileAsDataLines($filename);
+                if (NIHTables::beginsWith($table, ["5"])) {
+                    combineTable5Lines($linesToProcess);
+                }
+                $data['numLines'] = count($linesToProcess);
+            } else {
+                $data['error'] = "Could not read file!";
+            }
+        } else if (($action == "uploadFile") && isset($_FILES['file'])) {
             $filename = $_FILES['file']['tmp_name'] ?? "";
             if ($table && $filename && is_string($filename) && file_exists($filename)) {
-                $linesToProcess = [];
-                $fp = fopen($filename, "r");
-                $lineNum = 0;
-                while ($line = fgetcsv($fp)) {
-                    if ($lineNum > 0) {
-                        $linesToProcess[] = $line;
-                    }
-                    $lineNum++;
+                $linesToProcess = readFileAsDataLines($filename);
+                if (NIHTables::beginsWith($table, ["5"])) {
+                    combineTable5Lines($linesToProcess);
                 }
-                fclose($fp);
 
                 if (!empty($linesToProcess)) {
                     list($unprocessedLines, $upload, $warnings) = processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $scope);
@@ -122,6 +128,32 @@ function getImportedMentorField($metadata) {
     throw new \Exception("Could not find mentor field in ".implode(", ", $options));
 }
 
+function combineTable5Lines(&$lines) {
+    $combinedLines = [];
+    $citationCol = 4;
+    $nameCols = [0, 1];
+    foreach ($lines as $line) {
+        $lastLineIndex = count($combinedLines) - 1;
+        if ($line[2] && $line[3]) {
+            $combinedLines[] = $line;
+        } else if ($lastLineIndex >= 0) {
+            # trainee names and mentor names
+            foreach ($nameCols as $col) {
+                if ($line[$col]) {
+                    $combinedLines[$lastLineIndex][$col] = trim($combinedLines[$lastLineIndex][$col]);
+                    $combinedLines[$lastLineIndex][$col] .= " ".trim($line[$col]);
+                }
+            }
+            if ($line[$citationCol] && Citation::isCitation($line[$citationCol])) {
+                $combinedLines[$lastLineIndex][$citationCol] .= "\n".$line[$citationCol];
+            } else if ($line[$citationCol]) {
+                $combinedLines[$lastLineIndex][$citationCol] .= " ".$line[$citationCol];
+            }
+        }
+    }
+    $lines = $combinedLines;
+}
+
 function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $lineScope = "all") {
     $unprocessedLines = [];
     $upload = [];
@@ -143,6 +175,7 @@ function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $tok
     } else {
         $lines = [$linesToProcess[$lineScope]];
     }
+    $seenTraineeNames = [];
     foreach ($lines as $line) {
         try {
             if (NIHTables::beginsWith($table, ["2"])) {
@@ -157,7 +190,7 @@ function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $tok
                 } else {
                     throw new \Exception("Invalid table $table");
                 }
-                list($unprocessed, $uploadRows, $warnings) = processTable5Line($line, $awardNo, $category, $token, $server, $pid, $metadata, $firstNames, $lastNames, $trainingStarts, $mentors, $importedMentors, $priorPMIDs);
+                list($unprocessed, $uploadRows, $warnings) = processTable5Line($line, $awardNo, $category, $token, $server, $pid, $metadata, $firstNames, $lastNames, $trainingStarts, $mentors, $importedMentors, $priorPMIDs, $seenTraineeNames);
             } else if (NIHTables::beginsWith($table, ["8"])) {
                 if ($table == "8A") {
                     $category = "Predoctoral";
@@ -254,23 +287,41 @@ function addCustomGrantToSignUp(&$uploadForRecord, $recordId, $awardNo, $categor
 function parsePublications($publicationText, $traineeName, $facultyName, &$warnings, $metadata, $pid) {
     $pmids = [];
     $pmcs = [];
-    $pubs = preg_split("/[\n\r]+/", $publicationText);
+    $pubs = ($publicationText === "") ? [] : preg_split("/[\n\r]+/", $publicationText);
+    if (empty($pubs)) {
+        return [];
+    }
     list($traineeFirst, $traineeMiddle, $traineeLast) = NameMatcher::splitName($traineeName, 3);
-    $pmidsForAuthor = Publications::searchPubMedForName($traineeFirst, $traineeLast, $pid);
+    $pmidsForFirstName = Publications::searchPubMedForName($traineeFirst, $traineeLast, $pid);
+    if ($traineeMiddle) {
+        $pmidsForFullName = Publications::searchPubMedForName("$traineeFirst $traineeMiddle", $traineeLast, $pid);
+    } else {
+        $pmidsForFullName = [];
+    }
+    $pmidsForAuthor = array_unique(array_merge($pmidsForFirstName, $pmidsForFullName));
     try {
-        $publicationREDCap = Publications::getCitationsFromPubMed($pmidsForAuthor, $metadata, "manual", 1, 1, [], $pid, FALSE);
+        if (!empty($pubs)) {
+            $publicationREDCap = Publications::getCitationsFromPubMed($pmidsForAuthor, $metadata, "manual", 1, 1, [], $pid, FALSE);
+        } else {
+            $publicationREDCap = [];
+        }
     } catch (\Exception $e) {
         $publicationREDCap = [];
     }
     $unmatchedPubs = [];
-    $journalThreshold = 95;
-    $titleThreshold = 95;
-    foreach ($pubs as $pub) {
-        $pub = REDCapManagement::clearUnicode($pub);;
+    # title, journal
+    $thresholdPairs = [
+        [90, 80],
+        [95, 70],
+        [99, 1],
+    ];
+    foreach ($pubs as $i => $pub) {
+        $pub = REDCapManagement::clearUnicode($pub);
         if ($pub) {
             list($title, $journal) = Citation::getPublicationTitleAndJournalFromText($pub);
             if ($title && $journal) {
                 $isPubMatched = FALSE;
+                $errorNotes = [];
                 $titleLower = strtolower($title);
                 $journalLower = strtolower($journal);
                 if (preg_match("/PMID/i", $pub)) {
@@ -281,14 +332,22 @@ function parsePublications($publicationText, $traineeName, $facultyName, &$warni
                     foreach ($publicationREDCap as $row) {
                         similar_text(strtolower($row['citation_title']), $titleLower, $titlePerc);
                         similar_text(strtolower($row['citation_journal']), $journalLower, $journalPerc);
-                        if (
-                            $row['citation_title']
-                            && $row['citation_journal']
-                            && ($titlePerc >= $titleThreshold)
-                            && ($journalPerc >= $journalThreshold)
-                        ) {
-                            $pmids[] = $row['citation_pmid'];
-                            $isPubMatched = TRUE;
+                        foreach ($thresholdPairs as $pair) {
+                            $titleThreshold = $pair[0];
+                            $journalThreshold = $pair[1];
+                            if (
+                                $row['citation_title']
+                                && $row['citation_journal']
+                                && ($titlePerc >= $titleThreshold)
+                                && ($journalPerc >= $journalThreshold)
+                            ) {
+                                $pmids[] = $row['citation_pmid'];
+                                $isPubMatched = TRUE;
+                                break;
+                            }
+                        }
+                        if (($titlePerc > 50) || ($journalPerc > 50)) {
+                            $errorNotes[] = "Comparing $titleLower to {$row['citation_title']} with $titlePerc and $journalLower to {$row['citation_journal']} with $journalPerc";
                         }
                     }
                 }
@@ -300,15 +359,17 @@ function parsePublications($publicationText, $traineeName, $facultyName, &$warni
     }
     if (!empty($unmatchedPubs)) {
         if (count($unmatchedPubs) == 1) {
-            $question = "Is there perhaps a typo?";
+            $question = "Is there perhaps a typo? Or is the full name not available in PubMed?";
         } else {
             $question = "Are there perhaps some typos?";
         }
-        $warnings["Publications"] = [
-            "note" => "Warning! The following publication titles could not be matched on PubMed. $question Please consider entering them manually in the Publication Wrangler.",
-            "titles" => $unmatchedPubs,
-            "trainee" => $traineeName,
-            "faculty" => $facultyName,
+        $warnings[] = [
+            "Publications" => [
+                "note" => "Warning! The following publication titles could not be matched on PubMed. $question Please consider entering them manually in the Publication Wrangler.",
+                "titles" => $unmatchedPubs,
+                "trainee" => $traineeName,
+                "faculty" => $facultyName,
+            ],
         ];
     }
     if (!empty($pmcs)) {
@@ -349,6 +410,11 @@ function cleanLine(&$line) {
     for ($i = 0; $i < count($line); $i++) {
         $line[$i] = REDCapManagement::clearUnicode($line[$i]);
         $line[$i] = trim($line[$i]);
+        if (strtolower($line[$i]) == "none") {
+            $line[$i] = "";
+        } else if (preg_match("/No Publication/i", $line[$i])) {
+            $line[$i] = "";
+        }
     }
 }
 
@@ -493,7 +559,7 @@ function processTable4Line($line, $token, $server, $metadata, $firstNames, $last
 
 }
 
-function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $metadata, $firstNames, $lastNames, $trainingStarts, $mentors, $importedMentors, $priorPMIDs) {
+function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $metadata, $firstNames, $lastNames, $trainingStarts, $mentors, $importedMentors, $priorPMIDs, &$seenTraineeNames) {
     $trainingStartDate = "";
     $trainingEndDate = "";
     $uploadForRecord = [];
@@ -510,6 +576,11 @@ function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $m
             $traineeName = trim($line[1]);
             list ($traineeFirst, $traineeMiddle, $traineeLast) = NameMatcher::splitName($traineeName, 3);
             $formattedTraineeName = formatName($traineeFirst, $traineeMiddle, $traineeLast);
+            if (in_array($formattedTraineeName, $seenTraineeNames)) {
+                # trust only first row for each trainee
+                return [[], [], []];
+            }
+            $seenTraineeNames[] = $formattedTraineeName;
             $uploadNames = FALSE;
             if (isset($line['record_id']) && ($line['record_id'] == "skip")) {
                 return [[], [], []];
@@ -524,8 +595,8 @@ function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $m
 
             $trainingPeriod = trim($line[3]);
             $publicationText = trim($line[4]);
-            if (preg_match("/\s*-\s*/", $trainingPeriod)) {
-                $trainingAry = preg_split("/\s*-\s*/", $trainingPeriod);
+            if ($trainingPeriod && preg_match("/\s*[-–]\s*/", $trainingPeriod)) {
+                $trainingAry = preg_split("/\s*[-–]\s*/", $trainingPeriod);
                 $trainingStartYear = trim($trainingAry[0]);
                 $trainingEndYear = trim($trainingAry[1] ?? "");
                 if (DateManagement::isDate($trainingStartYear) || DateManagement::isYear($trainingStartYear)) {
@@ -617,6 +688,7 @@ function processTable8Line($line, $awardNo, $category, $token, $server, $metadat
             $trainingStartDate = processDate(trim($line[$startIndex + 2]), "07-01");
 
             $supportDuringTraining = trim($line[$startIndex + 3]);
+            $supportDuringTraining = preg_replace("/\s{2,}/", "\n", $supportDuringTraining);
 
             if (!preg_match("/In Training/i", $line[$startIndex + 4])) {
                 $degreesAndYearsLines = preg_split("/[\n\r]+/", trim($line[$startIndex + 4]));
@@ -735,10 +807,12 @@ function transformDegreesToREDCap($token, $server, &$upload, $recordId, $degrees
         $date = $degree['year'];
         $degreeText = $degree['degree'];
         $degreeText = trim(strtolower(str_replace(".", "", $degreeText)));
+        $degreeTextWithoutSpaces = preg_replace("/\s+/", "", $degreeText);
         $matchedIndex = FALSE;
         foreach ($choices['imported_degree'] as $index => $label) {
-            $label = strtolower($label);
-            if ($label == $degreeText) {
+            $label = strtolower(str_replace(".", "", $label));
+            $labelWithoutSpaces = preg_replace("/\s+/", "", $label);
+            if (($label == $degreeText) || ($labelWithoutSpaces == $degreeTextWithoutSpaces)) {
                 $matchedIndex = $index;
                 break;
             }
@@ -890,7 +964,7 @@ function parseGrants($text) {
         $nodes = preg_split($regex, $unfinishedLine);
         list($institute, $activityCode) = processGrantIdentifier($nodes[0]);
         $role = $nodes[1] ?? "";
-        $year = processDate($nodes[2] ?? "", "01-01");
+        $year = processDate(getFirstYear($nodes[2] ?? ""), "01-01");
         $grants[] = [
             "activity_code" => $activityCode,
             "institute" => $institute,
@@ -900,6 +974,18 @@ function parseGrants($text) {
     }
 
     return $grants;
+}
+
+function getFirstYear($year) {
+    if (preg_match("/(\d{4})-\d{4}/", $year, $matches)) {
+        return $matches[1];
+    } else if (DateManagement::isYear($year)) {
+        return $year;
+    } else if (trim($year) === "") {
+        return "";
+    } else {
+        throw new \Exception("Could not interpret '$year' as a year.");
+    }
 }
 
 function processGrantIdentifier($grantText) {
@@ -922,7 +1008,7 @@ function processGrantLine($line, &$grants, $regex) {
             $nodes[$k] = trim($nodes[$k]);
         }
         list($institute, $activityCode) = processGrantIdentifier($nodes[0]);
-        $year = processDate($nodes[2], "01-01");
+        $year = processDate(getFirstYear($nodes[2]), "01-01");
         $grants[] = [
             "activity_code" => $activityCode,
             "institute" => $institute,
@@ -941,7 +1027,7 @@ function parsePositions($text, &$positions) {
         return;
     }
 
-    $lines = preg_split("/[\n\r]+/", $text);
+    $lines = preg_split("/([\n\r]+|[ \t]{2,})/", $text);
     for ($j = 0; $j < count($lines); $j++) {
         $lines[$j] = trim($lines[$j]);
     }
@@ -961,8 +1047,16 @@ function parsePositions($text, &$positions) {
             "sector" => trim($lines[2]),
             "activity" => trim($lines[3]),
         ];
+    } else if (count($lines) == 3) {
+        $positions[] = [
+            "title" => trim($lines[0]),
+            "field" => "",
+            "institution" => trim($lines[1]),
+            "sector" => "",
+            "activity" => trim($lines[2]),
+        ];
     } else {
-        throw new \Exception("Invalid number of lines for position: ".$text);
+        throw new \Exception("Invalid number of lines (".count($lines).") for position: ".$text);
     }
 }
 
@@ -970,7 +1064,11 @@ function processDegreesAndYears($lines) {
     $ary = [];
     foreach ($lines as $line) {
         $line = trim($line);
-        if ($line) {
+        if ($line && preg_match("/^(.+)\((.+)\)$/", $line, $matches)) {
+            $degree = $matches[1];
+            $year = $matches[2];
+            $ary[] = ["degree" => $degree, "year" => $year];
+        } else if ($line) {
             $nodes = preg_split("/\s+/", $line);
             $degree = $nodes[0];
             $year = ((count($nodes) > 1) && $nodes[1]) ? processDate($nodes[1], "-06-01") : "";
@@ -991,9 +1089,35 @@ function processDate($date, $defaultMD) {
         return $date."-".$defaultMD;
     } else if ($date === "") {
         return "";
+    } else if ($fragment = DateManagement::getDateFragment($date)) {
+        if (DateManagement::isDate($fragment) || DateManagement::isMY($fragment) || DateManagement::isYear($fragment)) {
+            return processDate($fragment, $defaultMD);
+        } else {
+            throw new \Exception("Invalid date $date. The fragment ($fragment) is promising but could not be parsed. Try M-D-Y, Y-MD, or M-Y.");
+        }
+    } else if ($convertedDate = DateManagement::convertExcelDate($date)) {
+        if (DateManagement::isDate($convertedDate) || DateManagement::isMY($convertedDate) || DateManagement::isYear($convertedDate)) {
+            return processDate($convertedDate, $defaultMD);
+        } else {
+            throw new \Exception("Cannot convert this date ($date) from Excel. Please try changing the formatting of the column to M-D-Y, Y-M-D, or M-Y.");
+        }
     } else if (!DateManagement::isDate($date)) {
         throw new \Exception("Invalid date $date.");
     } else {
         throw new \Exception("Date format not supported for $date. Please try M-D-Y, Y-M-D, or M-Y.");
     }
+}
+
+function readFileAsDataLines($filename) {
+    $fp = fopen($filename, "r");
+    $lines = [];
+    $lineNum = 0;
+    while ($line = fgetcsv($fp)) {
+        if ($lineNum > 0) {
+            $lines[] = $line;
+        }
+        $lineNum++;
+    }
+    fclose($fp);
+    return $lines;
 }

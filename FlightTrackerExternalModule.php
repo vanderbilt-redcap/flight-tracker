@@ -1043,7 +1043,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             && !self::isUserRightsPage()
             && !self::isExternalModulePage()
             && (!$page || ($_GET['page'] != "install"))
-            && (!$page || preg_match("/^projects/", $page))
+            && (!$page || !preg_match("/^projects/", $page))
         );
 		if ($_GET['pid']) {
 			# project context

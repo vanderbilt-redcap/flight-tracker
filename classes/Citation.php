@@ -921,12 +921,46 @@ class Citation {
         return $citation;
     }
 
+    public static function isCitation($str) {
+        list($title, $journal) = self::getPublicationTitleAndJournalFromText($str);
+        return ($title && $journal);
+    }
+
     public static function getPublicationTitleAndJournalFromText($citationText) {
-        foreach (["\.", ","] as $sep) {
-            if (preg_match("/$sep \d{4}$sep ([^$sep]+)$sep ([^$sep]+)$sep [\d\-:]+/", $citationText, $matches)) {
+        foreach (["\\.", ","] as $sep) {
+            if (preg_match("/$sep \d{4}$sep ([^$sep]+)$sep ([^;$sep]+)[$sep;] [\(\)\d\w\-:]+/", $citationText, $matches)) {
                 return [$matches[1], $matches[2]];
-            } else if (preg_match("/$sep ([^$sep]+)$sep ([^$sep]+)$sep \d{4}/", $citationText, $matches)) {
+            } else if (preg_match("/$sep ([^$sep]+)$sep ([^$sep]+)[$sep] \d{4}/", $citationText, $matches)) {
                 return [$matches[1], $matches[2]];
+            }
+        }
+        $nodes = preg_split("/\s*\.\s+/", $citationText);
+        if ($nodes >= 4) {
+            $authors = $nodes[0];
+            $date = "";
+            $journal = "";
+            $title = "";
+            for ($i = 1; $i < count($nodes); $i++) {
+                if ($nodes[$i] === "") {
+                } else if (DateManagement::isDate($nodes[$i]) || DateManagement::isYear($nodes[$i])) {
+                    $date = $nodes[$i];
+                } else if (preg_match("/^(.+);(\d+\(\d+\)):([\d-]+)$/", $nodes[$i], $matches)) {
+                    $preNode = $matches[1];
+                    if ($title !== "") {
+                        $journal = $preNode;
+                    } else {
+                        $title = $preNode;
+                    }
+                    $volumeAndIssue = $matches[2];
+                    $pages = $matches[3];
+                } else if ($title !== "") {
+                    $journal = $nodes[$i];
+                } else {
+                    $title = $nodes[$i];
+                }
+            }
+            if ($journal && $title) {
+                return [$title, $journal];
             }
         }
         return ["", ""];
@@ -970,7 +1004,7 @@ class Citation {
         $matchedAuthors = [];
         foreach ($authors as $author) {
             list($authorFirstName, $authorLastName) = NameMatcher::splitName($author, 2, FALSE, FALSE);
-            if (NameMatcher::matchByInitials($authorLastName, $authorFirstName, $this->lastName, $this->firstName)) {
+            if (NameMatcher::matchByLastName($authorLastName, $this->lastName)) {
                 $matchedAuthors[] = $author;
             }
         }

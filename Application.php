@@ -48,11 +48,7 @@ class Application {
 
     public static function getMetadataFiles() {
         $files = [];
-        if (Application::isVanderbilt() && file_exists(dirname(__FILE__)."/metadata.ies.json")) {
-            $files[] = dirname(__FILE__)."/metadata.ies.json";
-        } else {
-            $files[] = dirname(__FILE__)."/metadata.json";
-        }
+        $files[] = dirname(__FILE__)."/metadata.json";
         if (CareerDev::isVanderbilt()) {
             $files[] = dirname(__FILE__)."/metadata.vanderbilt.json";
         }
@@ -405,6 +401,13 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
         $str .= "</div>";    // bottomBar
         $str .= "</footer>";    // bottomFooter
         return $str;
+    }
+
+    # call REDCap's AutoLogin
+    public static function keepAlive($pid) {
+        global $redcap_version;
+        $url = APP_PATH_WEBROOT_FULL."redcap_v".$redcap_version."/ProjectGeneral/keep_alive.php?pid=".$pid;
+        URLManagement::downloadURL($url, $pid);
     }
 
     public static function getPids() {

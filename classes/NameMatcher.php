@@ -469,6 +469,14 @@ class NameMatcher {
 		return "";
 	}
 
+    public static function prettyOneName($namePart) {
+        if (($namePart == strtoupper($namePart)) || ($namePart == strtolower($namePart))) {
+            return ucfirst(strtolower($namePart));
+        } else {
+            return $namePart;
+        }
+    }
+
 	public static function pretty($name) {
 		list($first, $last) = self::splitName($name);
 		return "$first $last";
@@ -605,6 +613,10 @@ class NameMatcher {
         return in_array($lastName, $listOfCommonLastNames);
     }
 
+    public static function isLastNameFirst($name) {
+        return preg_match("/^\S+,\s+\S/", $name);
+    }
+
 	# returns list($firstName, $lastName)
 	public static function splitName($name, $parts = 2, $loggingOn = FALSE, $clearOfExtraTitles = TRUE) {
         $simpleLastNamePrefixes = ["von", "van", "de"];
@@ -625,18 +637,18 @@ class NameMatcher {
         }
 
 		$nodes = preg_split("/\s*,\s*/", $name);
-		if ($loggingOn) { echo "Initial split into: ".json_encode($nodes); }
+		if ($loggingOn) { Application::log("Initial split into: ".json_encode($nodes)); }
 		if ($clearOfExtraTitles) {
             $nodes = self::clearOfDegrees($nodes);
         }
-        if ($loggingOn) { echo "Cleared into: ".json_encode($nodes); }
+        if ($loggingOn) { Application::log("Cleared into: ".json_encode($nodes)); }
 		if (count($nodes) == 1) {
 		    if (preg_match("/\band\b/", $name)) {
                 $nodes = preg_split("/\s*\band\b\s*/", $name);
             }
         }
 		if (count($nodes) >= 2) {
-		    if ($loggingOn) { echo "Comma delimited<br>"; }
+		    if ($loggingOn) { Application::log("Comma delimited<br>"); }
 			# last-name, first-name
             if ($parts == 2) {
                 return [$nodes[1], $nodes[0]];
@@ -664,30 +676,30 @@ class NameMatcher {
                 }
                 $lastNodeIdx = count($nodes) - 1;
 
-                if ($loggingOn) { echo "Split ".REDCapManagement::sanitize($prevName)." into ".count($nodes)." nodes<br>"; }
+                if ($loggingOn) { Application::log("Split ".REDCapManagement::sanitize($prevName)." into ".count($nodes)." nodes<br>"); }
                 do {
                     $changed = FALSE;
-                    if ($loggingOn) { echo "In do-while with ".count($nodes)." nodes<br>"; }
+                    if ($loggingOn) { Application::log("In do-while with ".count($nodes)." nodes<br>"); }
                     if (count($nodes) == $parts) {
-                        if (strlen($nodes[1]) <= 2) {
+                        if (($parts == 2) && strlen($nodes[1]) <= 2) {
                             # Initials
-                            if ($loggingOn) { echo "Do-while A Initials<br>"; }
+                            if ($loggingOn) { Application::log("Do-while A Initials<br>"); }
                             return [$nodes[1], $nodes[0]];
                         } else {
-                            if ($loggingOn) { echo "Do-while A<br>"; }
+                            if ($loggingOn) { Application::log("Do-while A<br>"); }
                             return $nodes;
                         }
                     } else if ((count($nodes) == 3) && (self::isInitial($nodes[0]) || self::isInitial($nodes[1]))) {
-                        if ($loggingOn) { echo "Do-while B<br>"; }
+                        if ($loggingOn) { Application::log("Do-while B<br>"); }
                         if ($parts == 2) {
                             if (self::isInitial($nodes[1])) {
                                 if ($loggingOn) {
-                                    echo "Do-while B: Getting rid of initial {$nodes[1]}<br>";
+                                    Application::log("Do-while B: Getting rid of initial {$nodes[1]}<br>");
                                 }
                                 return [$nodes[0], $nodes[2]];
                             } else if (self::isInitial($nodes[0])) {
                                 if ($loggingOn) {
-                                    echo "Do-while B: Getting rid of initial ".REDCapManagement::sanitize($nodes[0])."<br>";
+                                    Application::log("Do-while B: Getting rid of initial ".REDCapManagement::sanitize($nodes[0])."<br>");
                                 }
                                 return [$nodes[1], $nodes[2]];
                             } else {
@@ -701,7 +713,7 @@ class NameMatcher {
                     } else if (count($nodes) > $parts) {
                         if (in_array(strtolower($nodes[$lastNodeIdx - 1]), $simpleLastNamePrefixes)) {
                             if ($loggingOn) {
-                                echo "Do-while C<br>";
+                                Application::log("Do-while C<br>");
                             }
                             $newNodes = [];
                             for ($i = 0; $i < $lastNodeIdx - 1; $i++) {
@@ -712,7 +724,7 @@ class NameMatcher {
                             $nodes = $newNodes;
                         } else if (($lastNodeIdx > 2) && in_array(strtolower($nodes[$lastNodeIdx - 2]), $complexLastNamePrefixes[0]) && in_array(strtolower($nodes[$lastNodeIdx - 1]), $complexLastNamePrefixes[1])) {
                             if ($loggingOn) {
-                                echo "Do-while D<br>";
+                                Application::log("Do-while D<br>");
                             }
                             $newNodes = [];
                             for ($i = 0; $i < $lastNodeIdx - 2; $i++) {
@@ -723,7 +735,7 @@ class NameMatcher {
                             $nodes = $newNodes;
                         } else if (preg_match("/^\((.+)\)$/", $nodes[$lastNodeIdx] ?? "", $matches)) {
                             if ($loggingOn) {
-                                echo "Do-while E: ".json_encode($nodes)."<br>";
+                                Application::log("Do-while E: ".json_encode($nodes)."<br>");
                             }
                             $newNodes = [];
                             for ($i = 0; $i < $lastNodeIdx - 1; $i++) {
@@ -734,13 +746,13 @@ class NameMatcher {
                             $nodes = $newNodes;
                         } else {
                             if ($loggingOn) {
-                                echo "Do-while F: ".json_encode($nodes)."<br>";
+                                Application::log("Do-while F: ".json_encode($nodes)."<br>");
                             }
                             return self::collapseNames($nodes, $parts);
                         }
                     } else if (count($nodes) < $parts) {
                         if ($loggingOn) {
-                            echo "Do-while G<br>";
+                            Application::log("Do-while G<br>");
                         }
                         return self::padWithSpaces($nodes, $parts);
                     } else {

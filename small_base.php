@@ -41,6 +41,7 @@ use \Vanderbilt\CareerDevLibrary\NIHTables;
 require_once(__DIR__."/autoload.php");
 
 ini_set("memory_limit", "4096M");
+ini_set("auto_detect_line_endings", true);
 if (!Application::isWebBrowser() && CareerDev::getPid()) {
     date_default_timezone_set(CareerDev::getTimezone());
 }
@@ -56,21 +57,26 @@ define("ENVIRONMENT", "prod");      // for Oracle database connectivity
 if (!isset($module) || !$module) {
 	$module = Application::getModule();
 }
+if (!$module) {
+    throw new \Exception("The base class has no module!");
+}
+
 $token = Application::getSetting("token", $pid);
-$token = Application::checkOrResetToken($token, $pid);
+try {
+    $token = Application::checkOrResetToken($token, $pid);
+} catch (\Exception $e) {
+    if (!$token && USERID && $module->canRedirectToInstall()) {
+        header("Location: ".CareerDev::link("install.php"));
+    } else if (Sanitizer::sanitize($_GET['page'] ?? "") != "install") {
+        throw $e;
+    }
+}
+
 $server = Application::getSetting("server", $pid);
 $event_id = Application::getSetting("event_id", $pid);
 $tokenName = Application::getSetting("tokenName", $pid);
 $adminEmail = Application::getSetting("admin_email", $pid);
 $grantClass = Application::getSetting("grant_class", $pid);
-
-if (!$module) {
-	throw new \Exception("The base class has no module!");
-}
-
-if (!$token && USERID && $module->canRedirectToInstall()) {
-	header("Location: ".CareerDev::link("install.php"));
-}
 
 $GLOBALS['pid'] = $pid;
 $GLOBALS['server'] = $server;
@@ -1886,13 +1892,14 @@ function importNIHTable($post, $filename, $token, $server) {
     $tableNum = Sanitizer::sanitizeInteger($post['tableNumber'] ?? "");
     $action = Sanitizer::sanitize($post['action'] ?? "");
     $importTrainees = in_array($action, ["importTrainees", "importBoth"]);
-    $importFaculty = in_array($action, ["importTrainees", "importBoth"]);
+    $importFaculty = in_array($action, ["importFaculty", "importBoth"]);
     $html = "";
     if ($filename && file_exists($filename)) {
         $fp = fopen($filename, "r");
         if ($fp) {
             $headers = fgetcsv($fp);
             $cols = [];
+            $colsToTest = [];
             if ($tableNum == 5) {
                 if (preg_match("/Faculty/", $headers[0]) && $importFaculty) {
                     $cols[] = 0;
@@ -1900,6 +1907,7 @@ function importNIHTable($post, $filename, $token, $server) {
                 if (($headers[1] == "Trainee Name") && $importTrainees) {
                     $cols[] = 1;
                 }
+                $colsToTest = [2, 3];
             } else if ($tableNum == 8) {
                 if (($headers[0] == "Trainee") && $importTrainees) {
                     $cols[] = 0;
@@ -1907,9 +1915,10 @@ function importNIHTable($post, $filename, $token, $server) {
                 if (preg_match("/Faculty/", $headers[1]) && $importFaculty) {
                     $cols[] = 1;
                 }
+                $colsToTest = [2];
             }
             if (!empty($cols)) {
-                $html .= NIHTables::importNamesFromCSV($fp, $cols, $token, $server);
+                $html .= NIHTables::importNamesFromCSV($fp, $cols, $colsToTest, $token, $server);
             } else {
                 $nihLink = NIHTables::NIH_LINK;
                 $html .= "<div class='red padded'>ERROR! The header/first row must contain 'Trainee Name', 'Trainee', or 'Faculty Member' according to <a href='$nihLink'>NIH Formatting</a>.</div>\n";

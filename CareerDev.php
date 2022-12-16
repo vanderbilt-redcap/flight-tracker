@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.21.3";
+		return "4.21.4";
 	}
 
 	public static function getLockFile($pid) {
@@ -272,7 +272,7 @@ class CareerDev {
     }
 
 	public static function getPid($tokenForPid = "") {
-		$token = $tokenForPid;
+        $token = $tokenForPid;
 		if ($token) {
 			$pid = self::getPidFromToken($token);
 			if (!$pid) {

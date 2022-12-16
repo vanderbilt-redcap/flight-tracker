@@ -3,13 +3,18 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 class Consortium {
-	public static function findNextMeeting($startTime = NULL) {
-		$ts = self::findNextMeetingTs($startTime);
+	public static function findNextTroubleshootingMeeting($startTime = NULL) {
+		$ts = self::findNextMeetingTs($startTime, 3);
 		return self::formatLongDate($ts);
 	}
 
-	public static function findNextMeetingTs($startTime = NULL) {
-        $meetTwiceAMonth = FALSE;
+	public static function findNextMeeting($startTime = NULL) {
+		$ts = self::findNextMeetingTs($startTime, 1);
+		return self::formatLongDate($ts);
+	}
+
+	public static function findNextMeetingTs($startTime = NULL, $weekNum = 1) {
+        	$meetTwiceAMonth = FALSE;
 		if (!$startTime) {
 			if (date("Y-m") == "2020-02") {
 				# start twice a month in 2020-03
@@ -20,12 +25,12 @@ class Consortium {
 		}
 		$midnightTs = strtotime(date("Y-m-d 23:59:59", $startTime));
 	
-		$firstWedTs = self::findXthWednesdayTs(1, $startTime);
-		if ($firstWedTs > $midnightTs) {
-			return $firstWedTs;
+		$wedTs = self::findXthWednesdayTs($weekNum, $startTime);
+		if ($wedTs > $midnightTs) {
+			return $wedTs;
 		}
-		if (self::formatLongDate($firstWedTs) == self::formatLongDate($startTime)) {
-			return $firstWedTs;
+		if (self::formatLongDate($wedTs) == self::formatLongDate($startTime)) {
+			return $wedTs;
 		}
 
 		$month = date("m");
@@ -36,7 +41,7 @@ class Consortium {
 			$year++;
 		}
 		$startOfNextMonthTs = strtotime($year."-".$month."-01");
-		return self::findXthWednesdayTs(1, $startOfNextMonthTs);
+		return self::findXthWednesdayTs($weekNum, $startOfNextMonthTs);
 	}
 
 	public static function findXthWednesdayTs($numWednesdaySought, $timeInMonth) {
@@ -54,6 +59,10 @@ class Consortium {
 
 	public static function formatLongDate($ts) {
 		return date("l, F j", $ts);
+	}
+
+	public static function troubleshootingMeetingIsToday() {
+		return (self::formatLongDate(time()) == self::findNextTroubleshootingMeeting());
 	}
 
 	public static function meetingIsToday() {

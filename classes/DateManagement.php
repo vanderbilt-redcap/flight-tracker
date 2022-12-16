@@ -17,6 +17,18 @@ class DateManagement {
         return $year;
     }
 
+    public static function getDateFragment($str) {
+        if (preg_match("/\d+[\-\/]\d+[\-\/]\d+/", $str, $matches)) {
+            return $matches[0];
+        } else if (preg_match("/\d+[\-\/]\d+/", $str, $matches)) {
+            # MM/YYYY
+            return $matches[0];
+        } else if (preg_match("/\d{4}/", $str, $matches)) {
+            return $matches[0];
+        }
+        return FALSE;
+    }
+
     public static function isNumericalMonth($month) {
         if (is_integer($month)) {
             if (($month >= 1) && ($month <= 12)) {
@@ -346,6 +358,22 @@ class DateManagement {
             return $year."-".$month."-".$day;
         }
         return "";
+    }
+
+    public static function convertExcelDate($d) {
+        if (preg_match("/^(\w{3})[-\/](\d{2}|\d{4})$/", $d, $matches)) {
+            try {
+                $monthNum = self::getMonthNumber($matches[1]);
+                $year = $matches[2];
+                if ($year < 100) {
+                    $year += 2000;
+                }
+                return "$monthNum-$year";
+            } catch (\Exception $e) {
+                return FALSE;
+            }
+        }
+        return FALSE;
     }
 
     public static function DMY2YMD($dmy) {
