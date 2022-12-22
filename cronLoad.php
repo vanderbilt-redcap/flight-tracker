@@ -100,7 +100,11 @@ function runMainCrons(&$manager, $token, $server) {
 
     $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $allRecords, 100000);
     if (in_array("pre_screening_survey", $forms)) {
-        $manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $records, 80);
+        $manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $records, 100000);
+        if ($pid == 149668) {
+            # MSTP
+            $manager->addCron("drivers/11_vfrs.php", "updateVFRS", "2022-12-17", $records, 100000);
+        }
     }
     if (in_array('patent', $forms) && !$securityTestMode) {
         $manager->addCron("drivers/18_getPatents.php", "getPatents", "Tuesday", $records, 100);

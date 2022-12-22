@@ -668,6 +668,63 @@ function startNow() {
         return $latestRow;
     }
 
+    public static function getMentees($menteeRecordId, $userid, $token, $server) {
+        if (self::isValidHash($userid)) {
+            if (isset($_GET['test'])) {
+                echo "Public project<br>";
+            }
+            $hashes = Download::oneField($token, $server, "identifier_hash");
+            foreach ($hashes as $recordId => $hash) {
+                if ($userid == $hash) {
+                    if (isset($_GET['test'])) {
+                        echo "Found $hash at $recordId<br>";
+                    }
+                    $fields = [
+                        "record_id",
+                        "identifier_first_name",
+                        "identifier_last_name",
+                    ];
+                    $recordData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+                    $normativeRow = REDCapManagement::getNormativeRow($recordData);
+                    $myMentees = [$normativeRow['identifier_first_name'] . " " . $normativeRow['identifier_last_name']];
+                    return ["name" => $myMentees];
+                }
+            }
+            if (isset($_GET['test'])) {
+                echo "Hash not found in ".json_encode($hashes)."<br>";
+            }
+            return [];
+        } else {
+            if (isset($_GET['test'])) {
+                echo "Userid project<br>";
+            }
+            $menteeUserids = NULL;
+            $allMentorUserids = Download::primaryMentorUserids($token, $server);
+            $menteeRecords = (strtolower($menteeRecordId) == "all")  ? array_keys($allMentorUserids) : [$menteeRecordId];
+            $myMentees = [
+                "name" => Download::menteesForMentor($token, $server, $userid),
+                "uid" => [],
+            ];
+            foreach ($menteeRecords as $recordId) {
+                $mentorUids = $allMentorUserids[$recordId] ?? [];
+                $lowerUserid = strtolower($userid);
+                if (in_array($lowerUserid, $mentorUids)) {
+                    # Mentor on Record
+                    foreach ($myMentees["name"] as $recordId2 => $name) {
+                        $recordId2 = (string) $recordId2;
+                        if ($menteeUserids === NULL) {
+                            $menteeUserids = Download::userids($token, $server);
+                        }
+                        if (isset($menteeUserids[$recordId2]) && $menteeUserids[$recordId2]) {
+                            $myMentees["uid"][$recordId2] = $menteeUserids[$recordId2];
+                        }
+                    }
+                }
+            }
+            return $myMentees;
+        }
+    }
+
     public static function getMenteesAndMentors($menteeRecordId, $userid, $token, $server) {
         if (self::isValidHash($userid)) {
             if (isset($_GET['test'])) {
@@ -704,27 +761,34 @@ function startNow() {
             $menteeUserids = Download::userids($token, $server);
             $allMentors = Download::primaryMentors($token, $server);
             $allMentorUserids = Download::primaryMentorUserids($token, $server);
-
-            $menteeUids = self::getUserids($menteeUserids[$menteeRecordId]);
-            $mentorUids = $allMentorUserids[$menteeRecordId] ?? [];
-            $myMentees = [];
-            $myMentors = [];
-            $myMentees["name"] = Download::menteesForMentor($token, $server, $userid);
-            if (in_array(strtolower($userid), $menteeUids)) {
-                # Mentee
-                $myMentors["name"] = $allMentors[$menteeRecordId] ?? [];
-                $myMentors["uid"] = $allMentorUserids[$menteeRecordId] ?? [];
-            } else if (in_array(strtolower($userid), $mentorUids)) {
-                # Mentor
-                $myMentors["name"] = $allMentors[$menteeRecordId] ?? [];
-                $myMentors["uid"] = $allMentorUserids[$menteeRecordId] ?? [];
-                $myMentees["name"] = Download::menteesForMentor($token, $server, $userid);
-                $myMentees["uid"] = [];
-                foreach ($myMentees["name"] as $recordId => $name) {
-                    $myMentees["uid"][$recordId] = $menteeUserids[$recordId];
+            $menteeRecords = (strtolower($menteeRecordId) == "all")  ? Download::recordIds($token, $server) : [$menteeRecordId];
+            $menteeNames = Download::menteesForMentor($token, $server, $userid);
+            $myMentees = [
+                "name" => $menteeNames,
+                "uid" => [],
+            ];
+            $myMentors = ["name" => [], "uid" => []];
+            foreach ($menteeRecords as $recordId) {
+                $menteeUids = self::getUserids($menteeUserids[$recordId]);
+                $mentorUids = $allMentorUserids[$recordId] ?? [];
+                $lowerUserid = strtolower($userid);
+                if (in_array($lowerUserid, $menteeUids) || in_array($lowerUserid, $mentorUids)) {
+                    # On Record (Mentee or Mentor)
+                    if (!empty($allMentors[$recordId] ?? [])) {
+                        $myMentors["name"] = array_unique(array_merge($myMentors['name'], $allMentors[$recordId]));
+                    }
+                    if (!empty($allMentorUserids[$recordId] ?? [])) {
+                        $myMentors["uid"] = array_unique(array_merge($myMentors['uid'], $allMentorUserids[$recordId]));
+                    }
                 }
-            } else {
-                throw new \Exception("You do not have access!");
+                if (in_array($lowerUserid, $mentorUids)) {
+                    # Mentor on Record
+                    foreach ($myMentees["name"] as $recordId2 => $name) {
+                        if (isset($menteeUserids[$recordId2]) && $menteeUserids[$recordId2]) {
+                            $myMentees["uid"][$recordId2] = $menteeUserids[$recordId2];
+                        }
+                    }
+                }
             }
             return [$myMentees, $myMentors];
         }

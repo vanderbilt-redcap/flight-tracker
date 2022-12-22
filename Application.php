@@ -59,8 +59,8 @@ class Application {
 		return CareerDev::getPID($token);
 	}
 
-	public static function has($instrument) {
-	    return CareerDev::has($instrument);
+	public static function has($instrument, $pid = "") {
+	    return CareerDev::has($instrument, $pid);
     }
 
 	public static function getApplicationColors($alphas = ["1.0"], $inHex = FALSE) {
@@ -233,9 +233,15 @@ class Application {
         return REDCapManagement::filterOutInvalidFields($metadata, $possibleFields);
     }
 
-    public static function isPluginProject() {
-        $link = self::link("index.php");
-        return preg_match("/plugins/", $link);
+    public static function isPluginProject($project_id = "") {
+        if (!$project_id) {
+            $project_id = CareerDev::getPID();
+        }
+        return (
+            (self::isVanderbilt() && ($project_id == 66635))
+            || (self::isLocalhost() && ($project_id == 15))
+            || (self::isServer("redcaptest.vanderbilt.edu") && ($project_id == 761))
+        );
     }
 
     public static function log($mssg, $pid = FALSE) {
@@ -447,6 +453,20 @@ SELECT DISTINCT s.project_id AS pid
             $module = self::getModule();
             return $module->getPids();
         }
+    }
+
+    public static function getActiveSourcePids() {
+        $pids = self::getPids();
+        $filteredPids = [];
+        foreach ($pids as $pid) {
+            if (
+                REDCapManagement::isActiveProject($pid)
+                && !CareerDev::isCopiedProject($pid)
+            ) {
+                $filteredPids[] = $pid;
+            }
+        }
+        return $filteredPids;
     }
 
     public static function getMenteeAgreementLink($pid) {

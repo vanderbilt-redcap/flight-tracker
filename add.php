@@ -22,9 +22,13 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
     if (!empty($matchedMentorUids)) {
         $mentorCol = 13;
         for ($i = 0; $i < count($lines); $i++) {
-            if ($newMentorNames[$i]) {
+            if (isset($newMentorNames[$i])) {
                 $originalMentorNames[$i] = $lines[$i][$mentorCol];
-                $lines[$i][$mentorCol] = $newMentorNames[$i];
+                if (is_array($newMentorNames[$i])) {
+                    $lines[$i][$mentorCol] = implode(", ", array_values($newMentorNames[$i]));
+                } else {
+                    $lines[$i][$mentorCol] = $newMentorNames[$i];
+                }
                 $newLines[$i] = $lines[$i];
             } else {
                 $newLines[$i] = [];
@@ -41,9 +45,9 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
     } else {
         echo "<p class='centered'>No data to upload.</p>";
     }
-} else if (in_array($_POST['action'] ?? "", ["importIntakeForm", "importText"])) {
+} else if (in_array($_POST['action'] ?? "", ["intakeTable", "importText"])) {
 	$lines = [];
-	if ($_POST['action'] == "importIntakeForm") {
+	if ($_POST['action'] == "intakeTable") {
         $tmpFilename = $_FILES['csv']['tmp_name'] ?? "";
 		if ($tmpFilename && is_string($tmpFilename) && is_uploaded_file($tmpFilename)) {
 			$fp = fopen($tmpFilename, "rb");
@@ -110,7 +114,7 @@ $(document).ready(() => {
     $mssg = \Vanderbilt\FlightTrackerExternalModule\importNIHTable($_POST, $filename, $token, $server);
     $link = Application::link("index.php");
     $goodToGo = preg_match("/green/", $mssg);
-    $timespan = 10;
+    $timespan = 3;
     if ($goodToGo) {
         echo "<p class='centered'>Going to Flight Tracker Central in " . $timespan . " seconds...</p>";
         echo $mssg;
@@ -128,6 +132,29 @@ $(document).ready(() => {
 	<style>
 	button { font-size: 20px; color: white; background-color: black; }
 	</style>
+
+    <script>
+        function checkSimilarNames(ob) {
+            if (ob.attr('checked')) {
+                const thisID = ob.attr('id');
+                const thisLabel = $('label[for='+thisID+']').html();
+                $('input[type=radio]').each(function(idx, radioInputOb) {
+                    const radioInputID = radioInputOb.attr('id');
+                    const radioInputName = radioInputOb.attr('name');
+                    const radioIsChecked = ($('[name='+radioInputName+']:checked').length > 0);
+                    const radioInputLabel = $('label[for='+radioInputID+']').html();
+                    if ((radioInputLabel === thisLabel) && !radioIsChecked) {
+                        // only check unchecked groups
+                        radioInputOb.attr('checked', true);
+                    }
+                });
+            }
+        }
+
+        $(document).ready(() => {
+            $('input[type=radio]').on('click', function() { checkSimilarNames($(this)); })
+        });
+    </script>
 
 	<h1>Adding New Scholars or Modifying Existing Scholars for <?= PROGRAM_NAME ?></h1>
 	<div style='margin: 0 auto; max-width: 800px;'>
@@ -156,7 +183,7 @@ $(document).ready(() => {
                 <input type="hidden" name="MAX_FILE_SIZE" value="3000000" />
                 CSV Upload: <input type='file' name='csv'><br/>
                 <input type="hidden" name="createNewRecords" value="1" />
-                <input type="hidden" name="action" value="importIntakeForm" />
+                <input type="hidden" name="action" value="intakeTable" />
                 <button>Process File</button>
             </p></form>
         <h2><b>--OR--</b> supply a CSV Spreadsheet with for <a href="<?= NIHTables::NIH_LINK ?>">NIH Training Tables</a> 5 or 8.</h2>
@@ -191,6 +218,9 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids, $allN
     $messagesSent = FALSE;
 	foreach ($lines as $nodes) {
 	    $mentorUid = $mentorUids[$lineNum - 1];
+        if (is_array($mentorUid)) {
+            $mentorUid = implode(", ", $mentorUid);
+        }
         if (
             ($nodes[0] || $nodes[3])
             && (!$nodes[0] || !$nodes[3])
@@ -226,9 +256,9 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids, $allN
                 "identifier_email" => $email,
             ];
 			if (count($nodes) >= 13) {
-				if (preg_match("/female/i", $nodes[6])) {
+				if (preg_match("/female/i", $nodes[6]) || (strtolower($nodes[6]) == "f")) {
 					$gender = 1;
-				} else if (preg_match("/^male/i", $nodes[6])) {
+				} else if (preg_match("/^male/i", $nodes[6]) || (strtolower($nodes[6]) == "m")) {
 					$gender = 2;
 				} else if ($nodes[6] == "") {
 					$gender = "";
@@ -373,12 +403,24 @@ function getUidsForMentors($lines) {
     for ($i = 0; $i < count($lines); $i++) {
         $line = $lines[$i];
         if (isset($line) && isset($line[$mentorCol]) && $line[$mentorCol]) {
-            list($mentorFirst, $mentorLast) = NameMatcher::splitName($line[$mentorCol], 2);
-            $lookup = new REDCapLookup($mentorFirst, $mentorLast);
-            $currentUids = $lookup->getUidsAndNames();
-            if (count($currentUids) == 0) {
-                $lookup = new REDCapLookup("", $mentorLast);
-                $currentUids = $lookup->getUidsAndNames();
+            $currentUids = [];
+            if (preg_match("/[,;]/", $line[$mentorCol])) {
+                if (NameMatcher::isLastNameFirst($line[$mentorCol])) {
+                    list($mentorFirst, $mentorLast) = NameMatcher::splitName($line[$mentorCol], 2);
+                    $currentUids = getUidsForName($mentorFirst, $mentorLast);
+                } else {
+                    # multiple names
+                    $mentorNames = preg_split("/\s*[,;]\s*/", $line[$mentorCol]);
+                    foreach ($mentorNames as $mentorName) {
+                        if ($mentorName) {
+                            list($mentorFirst, $mentorLast) = NameMatcher::splitName($mentorName, 2);
+                            $currentUids[$mentorName] = getUidsForName($mentorFirst, $mentorLast);
+                        }
+                    }
+                }
+            } else {
+                list($mentorFirst, $mentorLast) = NameMatcher::splitName($line[$mentorCol], 2);
+                $currentUids = getUidsForName($mentorFirst, $mentorLast);
             }
             if (!empty($currentUids)) {
                 $mentorUids[$i] = $currentUids;
@@ -386,6 +428,16 @@ function getUidsForMentors($lines) {
         }
     }
     return $mentorUids;
+}
+
+function getUidsForName($first, $last) {
+    $lookup = new REDCapLookup($first, $last);
+    $currentUids = $lookup->getUidsAndNames();
+    if (count($currentUids) == 0) {
+        $lookup = new REDCapLookup("", $last);
+        $currentUids = $lookup->getUidsAndNames();
+    }
+    return $currentUids;
 }
 
 function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMentorNames) {
@@ -423,39 +475,19 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
             $html .= "<input type='hidden' name='mentorname___$i' value='".preg_replace("/'/", "\\'", $originalMentorNames[$i])."'>";
         }
         if (isset($existingUids[$i])) {
-            $html .= "<input type='hidden' name='mentor___$i' value='".preg_replace("/'/", "\\'", $existingUids[$i])."'>";
+            if (is_array($existingUids[$i])) {
+                foreach ($existingUids[$i] as $j => $value) {
+                    $html .= "<input type='hidden' name='mentor___{$i}_$j' value='".preg_replace("/'/", "\\'", $value)."'>";
+                }
+            } else {
+                $html .= "<input type='hidden' name='mentor___$i' value='".preg_replace("/'/", "\\'", $existingUids[$i])."'>";
+            }
         } else if ($currMentorName) {
             $foundMentor = TRUE;
             $html .= "<tr>";
             $html .= "<th>{$currLine[0]} {$currLine[3]}$hiddenHTML</th>";
             $html .= "<td>$currMentorName</td>";
-            if (count($currMentorUids) == 0) {
-                $escapedMentorName = preg_replace("/'/", "\\'", $currMentorName);
-                $hiddenField = "<input type='hidden' name='originalmentorname___$i' value='$escapedMentorName'>";
-                $mentorKeep = "mentorkeep___$i";
-                $html .= "<td class='red'>";
-                $html .= "<strong>No mentors matched with $currMentorName.</strong><br>Keep mentor? <input type='radio' name='$mentorKeep' id='$mentorKeep' value='1'> <label for='$mentorKeep'> Yes, upload anyways</label><br>Or perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
-                $html .= "<br>Or try a custom id?<br>".$customLine.$customHidden;
-                $html .= "</td>";
-            } else if (count($currMentorUids) == 1) {
-                $uid = array_keys($currMentorUids)[0];
-                $yesId = "mentor___$i" . "___yes";
-                $noId = "mentor___$i" . "___no";
-                $yesno = "<input type='radio' name='mentor___$i' id='$yesId' value='$uid' checked> <label for='$yesId'>Yes</label><br>";
-                $yesno .= "<input type='radio' name='mentor___$i' id='$noId' value=''> <label for='$noId'>No</label><br>";
-                $yesno .= $customRadio." ".$customLine;
-                $html .= "<td class='green'>Matched: $uid<br>$yesno</td>";
-            } else {
-                $radios = [];
-                $noId = "mentor___$i" . "___no";
-                $radios[] = "<input type='radio' name='mentor___$i' id='$noId' value='' checked /> <label for='$noId'>None of the Above</label>";
-                foreach ($currMentorUids as $uid => $mentorName) {
-                    $id = "mentor___" . $i . "___" . $uid;
-                    $radios[] = "<input type='radio' name='mentor___$i' id='$id' value='$uid' /> <label for='$id'>$mentorName ($uid)</label>";
-                }
-                $radios[] = $customRadio." ".$customLine;
-                $html .= "<td class='yellow'>" . implode("<br>", $radios) . "</td>";
-            }
+            $html .= processMentorName($currMentorName, $currMentorUids, $i, $customLine, $customHidden, $customRadio);
             $html .= "</tr>";
         } else {
             $html .= $hiddenHTML;
@@ -474,10 +506,64 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
     }
 }
 
+function processMentorName($currMentorName, $currMentorUids, $i, $customLine, $customHidden, $customRadio) {
+    $html = "";
+
+    if (count($currMentorUids) == 0) {
+        $escapedMentorName = preg_replace("/'/", "\\'", $currMentorName);
+        $hiddenField = "<input type='hidden' name='originalmentorname___$i' value='$escapedMentorName'>";
+        $mentorKeep = "mentorkeep___$i";
+        $html .= "<td class='red'>";
+        $html .= "<strong>No mentors matched with $currMentorName.</strong><br>Keep mentor? <input type='radio' name='$mentorKeep' id='$mentorKeep' value='1'> <label for='$mentorKeep'> Yes, upload anyways</label><br>Or perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
+        $html .= "<br>Or try a custom id?<br>".$customLine.$customHidden;
+        $html .= "</td>";
+    } else if (count($currMentorUids) == 1) {
+        $key = array_keys($currMentorUids)[0];
+        if (is_array($currMentorUids[$key])) {
+            $individualMentorName = $key;
+            $html .= processMentorName($individualMentorName, $currMentorUids[$individualMentorName], $i."_1", $customLine, $customHidden, $customRadio);
+        } else {
+            $uid = $key;
+            $yesId = "mentor___$i" . "___yes";
+            $noId = "mentor___$i" . "___no";
+            $yesno = "<input type='radio' name='mentor___$i' id='$yesId' value='$uid' checked> <label for='$yesId'>Yes</label><br>";
+            $yesno .= "<input type='radio' name='mentor___$i' id='$noId' value=''> <label for='$noId'>No</label><br>";
+            $yesno .= $customRadio." ".$customLine;
+            $html .= "<td class='green'>Matched: $uid<br>$yesno</td>";
+        }
+    } else {
+        $firstKey = array_keys($currMentorUids)[0];
+        if (is_array($currMentorUids[$firstKey])) {
+            $j = 1;
+            $html .= "<td class='yellow'>";
+            foreach ($currMentorUids as $individualMentorName => $uidChoices) {
+                if ($j > 1) {
+                    $html .= "<hr>";
+                }
+                $html .= processMentorName($individualMentorName, $uidChoices, $i."_".$j, $customLine, $customHidden, $customRadio);
+                $j++;
+            }
+            $html .= "</td>";
+        } else {
+            $radios = [];
+            $noId = "mentor___$i" . "___no";
+            $radios[] = "<input type='radio' name='mentor___$i' id='$noId' value='' checked /> <label for='$noId'>None of the Above</label>";
+            foreach ($currMentorUids as $uid => $mentorName) {
+                $id = "mentor___" . $i . "___" . $uid;
+                $radios[] = "<input type='radio' name='mentor___$i' id='$id' value='$uid' /> <label for='$id'>$mentorName ($uid)</label>";
+            }
+            $radios[] = $customRadio." ".$customLine;
+            $html .= "<td class='yellow'>" . implode("<br>", $radios) . "</td>";
+        }
+    }
+    return $html;
+}
+
 function parsePostForLines($post) {
     $lines = [];
     $mentorUids = [];
     $newMentorNames = [];
+    $multiMentors = [];
     $mentorCol = 13;
     $mentorCustomCode = "mentor___custom";
     foreach ($post as $key => $value) {
@@ -495,30 +581,97 @@ function parsePostForLines($post) {
     foreach ($post as $key => $value) {
         $key = REDCapManagement::sanitize($key);
         $value = REDCapManagement::sanitize($value);
-        if (preg_match("/^mentor___\d+$/", $key) && ($value != $mentorCustomCode)) {
+        if (preg_match("/^mentor___[\d_]+$/", $key) && ($value != $mentorCustomCode)) {
             $i = preg_replace("/^mentor___/", "", $key);
-            $mentorUids[$i] = $value;
-        } else if (preg_match("/^newmentorname___\d+$/", $key)) {
+            if (preg_match("/_/", $i)) {
+                assignFromParts($mentorUids, $i, $value);
+            } else {
+                $mentorUids[$i] = $value;
+            }
+        } else if (preg_match("/^newmentorname___[\d_]+$/", $key)) {
             $i = preg_replace("/^newmentorname___/", "", $key);
             $origMentorName = $post['originalmentorname___'.$i];
-            if ($post['mentorkeep___'.$i]) {
-                $lines[$i][$mentorCol] = $origMentorName;
-            } else {
-                if ($origMentorName != $value) {
-                    $newMentorNames[$i] = $value;
+            if (preg_match("/_/", $i)) {
+                assignFromParts($multiMentors, $i, $origMentorName);
+                if ($post['mentorkeep___'.$i]) {
+                    $parts = explode("_", $i);
+                    $maxForPart = findMaxForPart($post, $parts);
+                    $keepAll = keepAllMentors($post, $parts[0], $maxForPart);
+                    if (!$keepAll) {
+                        assignFromParts($newMentorNames, $i, $origMentorName);
+                    }
+                } else {
+                    assignFromParts($newMentorNames, $i, $value);
                 }
+            } else if ($post['mentorkeep___'.$i]) {
+                $lines[$i][$mentorCol] = $origMentorName;
+            } else if ($origMentorName != $value) {
+                $newMentorNames[$i] = $value;
             }
-        } else if (preg_match("/^mentorcustom___\d+$/", $key) && $value) {
+        } else if (preg_match("/^mentorcustom___[\d_]+$/", $key) && $value) {
             $i = preg_replace("/^mentorcustom___/", "", $key);
             if ($post['mentor___'.$i] == $mentorCustomCode) {
-                $mentorUids[$i] = $value;
+                if (preg_match("/_/", $i)) {
+                    assignFromParts($mentorUids, $i, $value);
+                } else {
+                    $mentorUids[$i] = $value;
+                }
             }
         }
     }
+    foreach ($lines as $i => $line) {
+        if (isset($multiMentors[$i])) {
+            ksort($multiMentors[$i]);
+            $lines[$i][$mentorCol] = implode(", ", array_values($multiMentors[$i]));
+        }
+    }
+
     ksort($lines);
     ksort($mentorUids);
+    foreach ($mentorUids as $i => $uid) {
+        if (is_array($uid)) {
+            ksort($mentorUids[$i]);
+        }
+    }
     ksort($newMentorNames);
+    foreach ($newMentorNames as $i => $name) {
+        if (is_array($name)) {
+            ksort($newMentorNames[$i]);
+        }
+    }
     return [$lines, $mentorUids, $newMentorNames];
+}
+
+function keepAllMentors($post, $parts0, $maxForPart) {
+    for ($j2 = 1; $j2 <= $maxForPart; $j2++) {
+        if (!$post["mentorkeep___{$parts0}_".$j2]) {
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
+function findMaxForPart($post, $parts1) {
+    $maxForPart = $parts1[1];
+    foreach (array_keys($post) as $key2) {
+        $key2 = REDCapManagement::sanitize($key2);
+        if (preg_match("/^originalmentorname___{$parts1[0]}_/", $key2)) {
+            $i2 = preg_replace("/^originalmentorname___/", "", $key2);
+            $parts2 = explode("_", $i2);
+            if ($parts2[1] > $maxForPart) {
+                $maxForPart = $parts2[1];
+            }
+        }
+    }
+    return $maxForPart;
+}
+
+function assignFromParts(&$ary, $i, $value) {
+    $parts = explode("_", $i);
+    if (!isset($ary[$parts[0]])) {
+        $ary[$parts[0]] = [];
+    }
+    $ary[$parts[0]][$parts[1]] = $value;
 }
 
 function commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecordsURI) {
@@ -545,7 +698,7 @@ function commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecord
             $mssg = "No data specified.";
             header("Location: ".Application::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
         }
-        if (isset($feedback['error'])) {
+        if (isset($feedback["error"])) {
             $mssg = "People not added ". $feedback['error'];
             header("Location: ".Application::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
         }

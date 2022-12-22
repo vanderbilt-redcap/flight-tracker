@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.21.4";
+		return "4.22.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -404,8 +404,36 @@ class CareerDev {
 		return NULL;
 	}
 
-	public static function getLink($relativeUrl, $pid = "", $withWebroot = FALSE) {
-	    if ($relativeUrl == "this") {
+    public static function getRootDir($withWebroot = FALSE) {
+        global $server;
+        $directoryDir = "/plugins/";
+        if ($withWebroot) {
+            $newWebroot = str_replace("/api/", "", $server);
+        } else if (Application::isLocalhost()) {
+            $newWebroot = "https://localhost/redcap";
+        } else {
+            $newWebroot = "";
+        }
+        return $newWebroot.$directoryDir."career_dev";
+    }
+
+    private static function getThisPageURL($project_id) {
+        if (Application::isPluginProject($project_id)) {
+            $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+            $url = $protocol . $_SERVER['HTTP_HOST'] . explode("?", $_SERVER['REQUEST_URI'])[0];
+            if ($project_id) {
+                $url .= "?pid=".urlencode($project_id);
+            } else {
+                $url .= "?pid=".urlencode(Sanitizer::sanitizePid($_GET['pid']));
+            }
+            if (isset($_GET['limitPubs'])) {
+                $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+                if ($limitYear) {
+                    $url .= "&limitPubs=".$limitYear;
+                }
+            }
+            return $url;
+        } else {
             $fullURL = self::constructThisURL();
             $url = explode("?", $fullURL)[0];
             $paramKeys = ["page", "pid", "prefix", "project_id", "limitPubs"];
@@ -417,53 +445,81 @@ class CareerDev {
                 }
             }
             return $url;
-        } else if ($relativeUrl == "signupToREDCap") {
-	        if (self::isVanderbilt()) {
-	            return 'https://redcap.vanderbilt.edu/surveys/?s=L4R3NJ8XME';
-            } else {
-                global $homepage_contact_url, $homepage_contact_email;
-                if ($homepage_contact_url) {
-                    return $homepage_contact_url;
-                } else {
-                    return "mailto:$homepage_contact_email";
+        }
+    }
+
+    private static function getPluginPageURL($http, $project_id, $withWebroot, $isMentorAgreementPage) {
+        if ($isMentorAgreementPage) {
+            $pidParamName = "project_id";
+        } else {
+            $pidParamName = "pid";
+        }
+        $http = $http."?$pidParamName=".$project_id;
+        return self::getRootDir($withWebroot)."/".$http;
+    }
+
+    public static function getModulePageURL($http, $project_id, $isMentorAgreementPage, $module) {
+        $page = preg_replace("/^\//", "", $http);
+        $url = $module->getUrl($page);
+        if (
+            (isset($_GET['project_id']) && is_numeric($_GET['project_id']))
+            || $isMentorAgreementPage
+        ) {
+            if (preg_match("/pid=/", $url)) {
+                $url = preg_replace("/pid=/", "project_id=", $url);
+            } else if (is_numeric($_GET['project_id'])) {
+                $validPids = Application::getPids();
+                foreach ($validPids as $possiblePid) {
+                    if ($possiblePid == $project_id) {
+                        $url .= "&project_id=".$possiblePid;
+                    }
                 }
+            } else if (!preg_match("/project_id=/", $url)) {
+                $url .= "&project_id=$project_id";
             }
         }
-		$relativeUrl = preg_replace("/^\//", "", $relativeUrl);
-		if ($module = self::getModule()) {
-		    $url = $module->getUrl($relativeUrl);
-		    $isMentorAgreementPage = (
-                preg_match("/^mentor\//", $relativeUrl)
-                && !preg_match("/^mentor\/dashboard/", $relativeUrl)
-                && !preg_match("/^mentor\/config/", $relativeUrl)
-            );
-		    if (
-		        (isset($_GET['project_id']) && is_numeric($_GET['project_id']))
-                || $isMentorAgreementPage
-            ) {
-		        if (preg_match("/pid=/", $url)) {
-                    $url = preg_replace("/pid=/", "project_id=", $url);
-                } else if (is_numeric($_GET['project_id'])) {
-		            $projectId = (int) Sanitizer::sanitize($_GET['project_id']);
-		            $validPids = $module->getPids();
-		            foreach ($validPids as $possiblePid) {
-		                if ($possiblePid == $projectId) {
-                            $url .= "&project_id=".$possiblePid;
-                        }
-                    }
-                } else if (!preg_match("/project_id=/", $url)) {
-                    $url .= "&project_id=$pid";
-                }
+        if ($project_id && is_numeric($project_id)) {
+            $url = preg_replace("/pid=\d+/", "pid=$project_id", $url);
+            $url = preg_replace("/project_id=\d+/", "project_id=$project_id", $url);
+            if (!preg_match("/pid=/", $url) && !preg_match("/project_id=/", $url)) {
+                $url .= "&pid=$project_id";
             }
-		    if ($pid && is_numeric($pid)) {
-                $url = preg_replace("/pid=\d+/", "pid=$pid", $url);
-                $url = preg_replace("/project_id=\d+/", "project_id=$pid", $url);
-                if (!preg_match("/pid=/", $url) && !preg_match("/project_id=/", $url)) {
-                    $url .= "&pid=$pid";
-                }
+        }
+        return $url;
+    }
+
+    private static function getREDCapSignupURL() {
+        if (self::isVanderbilt()) {
+            return 'https://redcap.vanderbilt.edu/surveys/?s=L4R3NJ8XME';
+        } else {
+            global $homepage_contact_url, $homepage_contact_email;
+            if ($homepage_contact_url) {
+                return $homepage_contact_url;
+            } else {
+                return "mailto:$homepage_contact_email";
             }
-		    return $url;
-		}
+        }
+    }
+
+    public static function getLink($relativeUrl, $pid = "", $withWebroot = FALSE) {
+        $relativeUrl = preg_replace("/^\//", "", $relativeUrl);
+        $isMentorAgreementPage = (
+            preg_match("/^mentor\//", $relativeUrl)
+            && !preg_match("/^mentor\/dashboard/", $relativeUrl)
+            && !preg_match("/^mentor\/config/", $relativeUrl)
+        );
+        if (!$pid) {
+            $pid = self::getPID();
+        }
+        if ($relativeUrl == "this") {
+            return self::getThisPageURL($pid);
+        } else if ($relativeUrl == "signupToREDCap") {
+            return self::getREDCapSignupURL();
+        } else if (Application::isPluginProject($pid)) {
+            return self::getPluginPageURL($relativeUrl, $pid, $withWebroot, $isMentorAgreementPage);
+        } else if ($module = self::getModule()) {
+            return self::getModulePageURL($relativeUrl, $pid, $isMentorAgreementPage, $module);
+        }
 		return "";
 	}
 
@@ -558,7 +614,7 @@ class CareerDev {
     # flightTracker = Vanderbilt
     # flight_tracker = from REDCap Repo
 	public static function getPrefix() {
-        if (self::isVanderbilt() && !self::isLocalhost()) {
+        if (self::isVanderbilt() || self::isLocalhost()) {
             return "flightTracker";
         } else {
             return "flight_tracker";
@@ -889,13 +945,17 @@ class CareerDev {
         }
     }
 
-    public static function has($instrument) {
-        if ($instrument == "patent") {
-            return Download::hasField(self::getPid(), "patent_number", $instrument);
-        } else if ($instrument == "mentoring_agreement") {
-            return Download::hasField(self::getPid(), "mentoring_frequency", $instrument);
+    public static function has($instrument, $pid = "") {
+        if (!$pid) {
+            $pid = self::getPid();
         }
-	    return FALSE;
+        if ($instrument == "patent") {
+            return Download::hasField($pid, "patent_number", $instrument);
+        }
+        if ($instrument == "mentoring_agreement") {
+            return Download::hasField($pid, "mentoring_frequency", $instrument);
+        }
+        return FALSE;
     }
 
 	public static function getMenu($menuName) {

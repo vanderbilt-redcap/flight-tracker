@@ -186,8 +186,8 @@ class Download {
 		$names = self::names($token, $server);
 
 		$menteeNames = array();
-		foreach ($mentorUserids as $recordId => $mentorUserids) {
-			if (in_array($requestedMentorUserid, $mentorUserids)) {
+		foreach ($mentorUserids as $recordId => $userids) {
+			if (in_array($requestedMentorUserid, $userids)) {
 				$menteeNames[$recordId] = $names[$recordId];
 			}
 		}
@@ -609,8 +609,8 @@ class Download {
 		return $ids;
 	}
 
-	public static function userids($token, $server, $metadata = array()) {
-		return self::vunets($token, $server, $metadata);
+	public static function userids($token, $server) {
+		return self::vunets($token, $server);
 	}
 
     private static function replaceUseridField($fields, $token, $server) {
@@ -647,24 +647,12 @@ class Download {
         return "";
     }
 
-	public static function vunets($token, $server, $metadata = array()) {
-		$possibleFields = self::getUseridFields();
-		if (empty($metadata)) {
-			$metadata = self::metadata($token, $server);
-		}
-
-		$userIdField = "";
-		foreach ($possibleFields as $field) {
-			foreach ($metadata as $row) {
-				if ($row['field_name'] == $field) {
-					$userIdField = $field;
-					break;  // inner
-				}
-			}
-			if ($userIdField != "") {
-				break; // outer
-			}
-		}
+	public static function vunets($token, $server) {
+        if (method_exists("Application", "isPluginProject") && Application::isPluginProject()) {
+            $userIdField = "identifier_vunet";
+        } else {
+            $userIdField = "identifier_userid";
+        }
 
 		if ($userIdField != "") {
 			$data = array(

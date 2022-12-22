@@ -256,6 +256,7 @@ if ($numMentors > $numInvited["mentors"]) {
 echo "<h1>Mentoring Agreement Responses</h1>";
 
 $homeLink = Application::getMenteeAgreementLink($pid);
+$menteeProgressLink = Application::link("mentor/menteeProgress.php");
 $addLink = Application::link("addMentor.php");
 $configUrl = Application::link("mentor/config.php");
 $redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
@@ -273,8 +274,9 @@ echo "<p><label for='first_name'>First Name</label>: <input type='text' id='firs
 echo "<label for='last_name'>Last Name</label>: <input type='text' id='last_name' /><br>";
 echo "<button onclick='lookupREDCapUserid(\"$redcapLookupUrl\", $(\"#message\")); return false;'>Look up name</button>";
 echo "</div>";
-echo "<h3>Step 3: Pass on the Link</h3>";
-echo "<p class='centered max-width'><strong><a class='smaller' href='$homeLink'>$homeLink</a></strong><br>Pass along this link to any mentee or mentor that (A) has a REDCap userid and (B) is registered in your Flight Tracker as a Scholar/Mentee or a Primary Mentor (with a <a href='$addLink'>registered userid</a>). With this link, they can access their relevant mentoring information anytime.</p>";
+echo "<h3>Step 3: Pass on the Links</h3>";
+echo "<p class='centered max-width'><strong><a class='smaller' href='$homeLink'>$homeLink</a></strong><br/>Pass along this link to any mentee or mentor that (A) has a REDCap userid and (B) is registered in your Flight Tracker as a Scholar/Mentee or a Primary Mentor (with a <a href='$addLink'>registered userid</a>). With this link, they can access their relevant mentoring information anytime.</p>";
+echo "<p class='centered max-width'><strong><a class='smaller' href='$menteeProgressLink'>$menteeProgressLink</a></strong><br/>Pass along this link to mentors so that they can check their mentees' progress.</p>";
 echo "<h2>Submissions</h2>";
 echo "<table class='centered bordered max-width'>";
 echo "<thead><tr>";

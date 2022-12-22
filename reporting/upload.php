@@ -365,7 +365,7 @@ function parsePublications($publicationText, $traineeName, $facultyName, &$warni
         }
         $warnings[] = [
             "Publications" => [
-                "note" => "Warning! The following publication titles could not be matched on PubMed. $question Please consider entering them manually in the Publication Wrangler.",
+                "note" => "The following publication titles could not be matched on PubMed. $question Please consider entering them manually in the Publication Wrangler. They will likely be picked up in forthcoming sweeps of PubMed.",
                 "titles" => $unmatchedPubs,
                 "trainee" => $traineeName,
                 "faculty" => $facultyName,

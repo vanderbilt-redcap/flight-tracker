@@ -5,17 +5,20 @@
 namespace Vanderbilt\CareerDevLibrary;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
 function updateVFRS($token, $server, $pid, $records) {
-	$completes = Download::oneField($token, $server, "pre_screening_survey_complete");
+    $completes = Download::oneField($token, $server, "pre_screening_survey_complete");
+    $participantIds = Download::oneField($token, $server, "vfrs_participant_id");
 
     # Token for VFRS
-    $vfrs_token = CareerDev::getVFRSToken();
-    $vfrsData = Download::fields($vfrs_token, 'https://redcap.vanderbilt.edu/api/', ["participant_id", "name_first", "name_last"]);
+    $vfrsToken = CareerDev::getVFRSToken();
+    $vfrsData = Download::fields($vfrsToken, $server, ["participant_id", "name_first", "name_last"]);
 
     foreach ($records as $recordId) {
-	    if ($completes[$recordId] != "2") {
+	    if (($completes[$recordId] != "2") || ($participantIds[$recordId] === "")) {
 	        updateVFRSForRecord($token, $server, $pid, $recordId, $vfrsData);
 		}
 	}
@@ -89,8 +92,6 @@ function matchRowsVFRS($prefix, $rows, $newmanRow) {
 	if ($firstName1 && $lastName1) {
 		$i = 0;
 		foreach ($rows as $row) {
-			$firstName2 = "";
-			$lastName2 = "";
 			if ($prefix == "coeus") {
 				$coeusName2 = getCoeusName($row['person_name']);
 				$firstName2 = fixToCompareVFRS($coeusName2[1]);
@@ -118,11 +119,11 @@ function combineRowsVFRS($row, $row2) {
 	$row2Data = $row2['DATA'];
 	$combinedData = array();
 
-	$fields = array("record_id", "redcap_repeat_instrument", "redcap_repeat_instance");
-	foreach ($fields as $field) {
-		if (isset($rowData[$field])) {
+	$headerFields = array("record_id", "redcap_repeat_instrument", "redcap_repeat_instance");
+	foreach ($headerFields as $field) {
+		if (isset($rowData[$field]) && $rowData[$field]) {
 			$combinedData[$field] = $rowData[$field];
-		} else if (isset($row2Data[$field])) {
+		} else if (isset($row2Data[$field]) && $row2Data[$field]) {
 			$combinedData[$field] = $row2Data[$field];
 		} else {
 			$combinedData[$field] = "";
@@ -131,7 +132,7 @@ function combineRowsVFRS($row, $row2) {
 	# row overwrites row2
 	if ($row2Data) {
 		foreach ($row2Data as $field => $value) {
-			if (!in_array($field, $fields)) {
+			if (!in_array($field, $headerFields) && ($value !== "")) {
 				$combinedData[$field] = $value;
 			}
 		}
@@ -140,7 +141,7 @@ function combineRowsVFRS($row, $row2) {
 	}
 	if ($rowData) {
 		foreach ($rowData as $field => $value) {
-			if (!in_array($field, $fields)) {
+			if (!in_array($field, $headerFields) && ($value !== "")) {
 				$combinedData[$field] = $value;
 			}
 		}
@@ -178,10 +179,17 @@ function combineRowsVFRS($row, $row2) {
 
 # we adjusted the indices to not be 0-based but 1-based. So we have to add 1 to each value
 function adjustForVFRS($redcapRow) {
-	$fieldsToAdjust = array("vfrs_graduate_degree", "vfrs_degree2", "vfrs_degree3", "vfrs_degree4", "vfrs_degree5");
+    $doctoralFields = ["vfrs_graduate_degree", "vfrs_degree2",];
+    $mastersFields = ["vfrs_degree3", "vfrs_degree4", "vfrs_degree5",];
+	$fieldsToAdjust = array_merge($mastersFields, $doctoralFields);
 	foreach ($redcapRow as $field => $value) {
 		if (in_array($field, $fieldsToAdjust) && ($value !== '')) {
-			$redcapRow[$field] = $value + 1;
+            $value = $value + 1;
+            if (in_array($value, [1, 2, 6]) && in_array($field, $doctoralFields)) {
+                $redcapRow[$field] = $value;
+            } else if (in_array($value, [3, 4, 5]) && in_array($field, $mastersFields)) {
+                $redcapRow[$field] = $value;
+            }
 		}
 	}
 	return $redcapRow;
@@ -189,13 +197,15 @@ function adjustForVFRS($redcapRow) {
 
 function updateVFRSForRecord($token, $server, $pid, $record, $vfrsData) {
 	$redcapData = Download::fieldsForRecords($token, $server, array("record_id", "identifier_first_name", "identifier_last_name"), array($record));
+    $vfrsToken = CareerDev::getVFRSToken();
 
 	# the names list keeps track of the names for each prefix
 	# will eventually be used to combine the data
 	$prefix = "summary";
 	$names[$prefix] = array();
 	foreach ($redcapData as $row) {
-		$names[$prefix][] = array("prefix" => $prefix, "record_id" => $row['record_id'], "first_name" => $row['identifier_first_name'], "last_name" => $row['identifier_last_name'], "DATA" => $row);
+        $vfrsRecordData = Download::formForRecords($token, $server, "pre_screening_survey", [$record]);
+        $names[$prefix][] = array("prefix" => $prefix, "record_id" => $row['record_id'], "first_name" => $row['identifier_first_name'], "last_name" => $row['identifier_last_name'], "DATA" => empty($vfrsRecordData) ? [] : $vfrsRecordData[0]);
 	}
 
 	$metadata = Download::metadata($token, $server);
@@ -203,31 +213,16 @@ function updateVFRSForRecord($token, $server, $pid, $record, $vfrsData) {
 
 	$prefix = "vfrs";
 	$names[$prefix] = array();
-	$skipRegexes = array("/^ecommons$/", "/^c___/", "/^m___/", "/_complete$/");
 	foreach ($vfrsData as $row) {
 		$id = $row['participant_id'];
 		$firstName = $row['name_first'];
 		$lastName = $row['name_last'];
-		$row2 = array();
-		foreach ($row as $field => $value) {
-			$matched = FALSE;
-			foreach ($skipRegexes as $regex) {
-				if (preg_match($regex, $field)) {
-					$matched = TRUE;
-					break;
-				}
-			}
-			$newField = strtolower("vfrs_".$field);
-			if (!$matched && in_array($newField, $allFields)) {
-				$row2[$newField] = $value;
-			}
-		}
 		if ($id && $firstName && $lastName) {
-			$names[$prefix][] = array("prefix" => $prefix, "participant_id" => $id, "first_name" => $firstName, "last_name" => $lastName, "DATA" => $row2);
+			$names[$prefix][] = array("prefix" => $prefix, "participant_id" => $id, "first_name" => $firstName, "last_name" => $lastName);
 		}
 	}
 
-	# match on name all of the disparate data sources
+	# match on name all the disparate data sources
 	# matchNamesForVFRS() function is central here
 	# must be in Newman Data as this serves as the basis
 	$skip = array("vfrs", "coeus");
@@ -239,10 +234,9 @@ function updateVFRSForRecord($token, $server, $pid, $record, $vfrsData) {
 	foreach ($names as $prefix => $rows) {
 		if (!in_array($prefix, $skip)) {
 			$i = 0;
-			foreach ($rows as $newmanRow) {
+			foreach ($rows as $row) {
 				$upload = array();
 				$uploadTypes = array();
-				$row = $newmanRow;
 				$proceed = true;
 				$firstName1 = $row['first_name'];
 				$lastName1 = $row['last_name'];
@@ -258,28 +252,33 @@ function updateVFRSForRecord($token, $server, $pid, $record, $vfrsData) {
 					Application::log("$prefix DUPLICATE at $firstName1 $firstName2 $lastName1 $lastName2", $pid);
 				} else if (skipVFRS($firstName1, $lastName1)) {
 					Application::log("$prefix SKIP at $firstName1 $lastName1", $pid);
-				} else {
+				} else if (isset($row['DATA'])) {
 					Application::log("$prefix MATCH at $firstName1 $lastName1", $pid);
 					foreach ($names as $prefix2 => $rows2) {
-						if ($prefix2 != "coeus") {
-							$match2_is = matchRowsVFRS($prefix2, $rows2, $newmanRow);
+						if (!in_array($prefix2, ["coeus", "summary"])) {
+							$match2_is = matchRowsVFRS($prefix2, $rows2, $row);
+                            rsort($match2_is);
+                            Application::log("match2_is for Record $record: ".implode(", ", $match2_is));
 							foreach ($match2_is as $match2_i) {
-								$row = combineRowsVFRS($row, $rows2[$match2_i]);
-								foreach ($row['prefix'] as $prefix3) {
-									if (!in_array($prefix3, $uploadTypes)) {
-										$uploadTypes[] = $prefix3;
-									}
-								}
+                                if (isset($rows2[$match2_i]['participant_id'])) {
+                                    $vfrsRecordData2 = Download::records($vfrsToken, $server, [$rows2[$match2_i]['participant_id']]);
+                                    $rows2[$match2_i]['DATA'] = translateVFRSData(empty($vfrsRecordData2) ? [] : $vfrsRecordData2[0]);
+                                    $row = combineRowsVFRS($row, $rows2[$match2_i]);
+                                    foreach ($row['prefix'] as $prefix3) {
+                                        if (!in_array($prefix3, $uploadTypes)) {
+                                            $uploadTypes[] = $prefix3;
+                                        }
+                                    }
+                                }
 							}
 						}
 					}
 					if (isset($row['DATA'])) {
-						$rowData = $row['DATA'];
-						$rowData['redcap_repeat_instrument'] = "";
-						$rowData['redcap_repeat_instance'] = "";
+                        $rowData = $row['DATA'];
+                        $rowData['record_id'] = $record;
+                        $rowData['redcap_repeat_instrument'] = "";
+                        $rowData['redcap_repeat_instance'] = "";
 						$rowData = adjustForVFRS($rowData);
-						$rowData = REDCapManagement::filterOutVariable("m", $rowData);
-						$rowData = REDCapManagement::filterOutVariable("c", $rowData);
 						$rowData["pre_screening_survey_complete"] = "2";
 						array_unshift($upload, $rowData);
 						$numRows += count($upload);
@@ -305,6 +304,35 @@ function updateVFRSForRecord($token, $server, $pid, $record, $vfrsData) {
         uploadPositionChangesFromVFRS($token, $server, $record);
 	}
 	Application::log("$numRows rows uploaded into Record $record", $pid);
+}
+
+function translateVFRSData($vfrsRow) {
+    $newRow = [];
+    foreach ($vfrsRow as $field => $value) {
+        if (
+            !preg_match("/^m___/", $field)
+            && !preg_match("/^c___/", $field)
+            && ($field != "please_specify7")
+            && !preg_match("/_complete$/", $field)
+        ) {
+            if (preg_match("/^research_type___/", $field)) {
+                $index = str_replace("research_type___", "", $field);
+                if ($index == "basic") {
+                    $newIndex = 1;
+                } else if ($index == "clinical") {
+                    $newIndex = 2;
+                } else if ($index == "translational") {
+                    $newIndex = 3;
+                } else {
+                    throw new \Exception("Invalid research_type index $index");
+                }
+                $newRow["vfrs_research_type___$newIndex"] = $value;
+            } else {
+                $newRow["vfrs_".$field] = $value;
+            }
+        }
+    }
+    return $newRow;
 }
 
 function uploadPositionChangesFromVFRS($token, $server, $recordId) {
