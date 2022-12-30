@@ -141,6 +141,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
         $trace = Sanitizer::sanitizeJSON(json_encode($e->getTrace()));
         $data = ["error" => $mssg, "trace" => $trace];
     }
+    header("Content-type: application/json");
     $str = json_encode($data);
     echo $str;
 } else if (isset($_GET['revise'])) {

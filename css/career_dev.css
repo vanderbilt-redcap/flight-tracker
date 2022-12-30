@@ -18,7 +18,8 @@ h2::before { content: ""; top: 50%; position: absolute; left: 0; right: 0; botto
 h3,.h3 { background-color: rgba(34.1,39.2,68.2,0.35); font-size: 22px; }
 h4 { font-size: 18px; }
 h5 { margin: 0; color: #444444; font-size: 15px; }
-tr.odd td,tr.odd th,td.odd,th.odd { background-color: #eeeeee; border: 0; }
+tr.odd td,tr.odd th,td.odd,th.odd { background-color: #d4d4eb; border: 0; }
+input[readonly] { background-color: #bbbbbb; }
 tr.even td,tr.even th,td.even,th.even { background-color: #fefefe; border: 0; }
 li { padding-top: 12px; }
 div.list { padding-top: 12px; }

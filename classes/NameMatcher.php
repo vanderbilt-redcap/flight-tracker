@@ -19,6 +19,19 @@ class NameMatcher {
         return FALSE;
     }
 
+    private static function getNodes($name, $ridOfSpacesOnly = FALSE) {
+        if ($ridOfSpacesOnly) {
+            return preg_split("/\s+/", $name);
+        } else {
+            return preg_split("/[\s\-]+/", $name);
+        }
+    }
+
+    public static function getNumberOfNodes($name) {
+        $nodes = self::getNodes($name);
+        return count($nodes);
+    }
+
     public static function formatName($first, $middle, $last) {
         if ($middle) {
             return $first." ".$middle." ".$last;
@@ -92,8 +105,8 @@ class NameMatcher {
         if (strtolower($name1WithoutApostrophes) == strtolower($name2WithoutApostrophes)) {
             return TRUE;
         }
-        $nodes1 = preg_split("/[\s\-]+/", $name1);
-        $nodes2 = preg_split("/[\s\-]+/", $name2);
+        $nodes1 = self::getNodes($name1);
+        $nodes2 = self::getNodes($name2);
         if ((count($nodes1) > 1) || (count($nodes2) > 1)) {
             foreach ($nodes1 as $node1) {
                 foreach ($nodes2 as $node2) {
@@ -251,8 +264,8 @@ class NameMatcher {
                                         $found = TRUE;
                                         break;  // inner
                                     }
-                                    $myNodes = preg_split("/\s+/", $myFirst);
-                                    $sNodes = preg_split("/\s+/", $sFirst);
+                                    $myNodes = self::getNodes($myFirst, TRUE);
+                                    $sNodes = self::getNodes($sFirst, TRUE);
                                     if ((count($myNodes) > 1) && (count($sNodes) > 1)) {
                                         $matchFound = FALSE;
                                         foreach ($myNodes as $myNode) {
@@ -318,11 +331,10 @@ class NameMatcher {
 
 	public static function explodeFirstName($first, $middle = "") {
         $first = self::removeParentheses($first);
-        $splitRegex = "/[\s\-]+/";
-	    $firstNodes = preg_split($splitRegex, $first);
+	    $firstNodes = self::getNodes($first);
 	    $middleNodes = [];
 	    if ($middle) {
-	        $middleNodes = preg_split($splitRegex, $middle);
+	        $middleNodes = self::getNodes($middle);
         }
 	    $nodes = array_unique(array_merge($firstNodes, $middleNodes));
 
@@ -354,7 +366,7 @@ class NameMatcher {
 
     public static function explodeLastName($last) {
         $last = self::removeParentheses($last);
-	    $nodes = preg_split("/[\s\-]+/", $last);
+	    $nodes = self::getNodes($last);
 	    $newNodes = [$last];
 	    $i = 0;
 	    $suffixesInUpper = self::getSuffixes();
@@ -669,7 +681,7 @@ class NameMatcher {
 		} else if (count($nodes) == 1) {
             if ($parts >= 2) {
                 $prevName = $nodes[0];
-                $nodes = preg_split("/\s+/", $prevName);
+                $nodes = self::getNodes($prevName, TRUE);
                 if ($clearOfExtraTitles) {
                     $nodes = self::clearOfDegrees($nodes);
                     $nodes = self::clearOfHonorifics($nodes);
@@ -778,7 +790,7 @@ class NameMatcher {
         $returnString = FALSE;
         if (is_string($nodes)) {
             $returnString = TRUE;
-            $nodes = preg_split("/\s+/", $nodes);
+            $nodes = self::getNodes($nodes, TRUE);
         }
         $honorifics = [
             "Mr.",
@@ -824,7 +836,7 @@ class NameMatcher {
         $returnString = FALSE;
         if (is_string($nodes)) {
             $returnString = TRUE;
-            $nodes = preg_split("/\s+/", $nodes);
+            $nodes = self::getNodes($nodes, TRUE);
         }
         $degreesInUpperCase = [
             "MD,",
@@ -937,7 +949,7 @@ class NameMatcher {
         if (preg_match("/^[A-Z]\.?[A-Z]\.?$/", $name)) {
             return TRUE;
         }
-        $nodes = preg_split("/[\s\-]+/", $name);
+        $nodes = self::getNodes($name);
         foreach ($nodes as $node) {
             if (!self::isInitial($node)) {
                 return FALSE;

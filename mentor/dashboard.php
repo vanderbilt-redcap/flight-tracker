@@ -275,8 +275,8 @@ echo "<label for='last_name'>Last Name</label>: <input type='text' id='last_name
 echo "<button onclick='lookupREDCapUserid(\"$redcapLookupUrl\", $(\"#message\")); return false;'>Look up name</button>";
 echo "</div>";
 echo "<h3>Step 3: Pass on the Links</h3>";
-echo "<p class='centered max-width'><strong><a class='smaller' href='$homeLink'>$homeLink</a></strong><br/>Pass along this link to any mentee or mentor that (A) has a REDCap userid and (B) is registered in your Flight Tracker as a Scholar/Mentee or a Primary Mentor (with a <a href='$addLink'>registered userid</a>). With this link, they can access their relevant mentoring information anytime.</p>";
-echo "<p class='centered max-width'><strong><a class='smaller' href='$menteeProgressLink'>$menteeProgressLink</a></strong><br/>Pass along this link to mentors so that they can check their mentees' progress.</p>";
+echo "<p class='centered max-width'>Pass along this link to any mentee or mentor that (A) has a REDCap userid and (B) is registered in your Flight Tracker as a Scholar/Mentee or a Primary Mentor (with a <a href='$addLink'>registered userid</a>). With this link, they can access their relevant mentoring information anytime.<br/><input id='homeurl' value='$homeLink' onclick='this.select();' readonly='readonly' style='width: 90%; margin-right: 5px; margin-left: 5px;' /><div class='max-width alignright smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#homeurl\"));'>Copy</a></div></p>";
+echo "<p class='centered max-width'>Pass along this link to mentors so that they can check their mentees' progress.<br/><input id='progressurl' value='$menteeProgressLink' onclick='this.select();' readonly='readonly' style='width: 90%; margin-right: 5px; margin-left: 5px;' /><div class='max-width alignright smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#progressurl\"));'>Copy</a></div></p>";
 echo "<h2>Submissions</h2>";
 echo "<table class='centered bordered max-width'>";
 echo "<thead><tr>";

@@ -118,18 +118,18 @@ if (isset($_GET['appointments'])) {
 } else {
     echo "<p class='centered'>".makeLink("5B")."</p>\n";
 }
-?>
 
-<h2><?= makeTableHeader("6") ?></h2>
-<p class='centered'><?= makeLink("6AII") ?></p>
-<?php
-if (isset($_GET['appointments'])) {
-    echo "<p class='centered'>".makeLink("6BII-VUMC")."</p>\n";
-} else {
-    echo "<p class='centered'>".makeLink("6BII")."</p>\n";
+if (Application::isVanderbilt() && Application::isPluginProject($pid)) {
+    echo "<h2>".makeTableHeader("6")."</h2>";
+    echo "<p class='centered'>".makeLink("6AII")."</p>";
+    if (isset($_GET['appointments'])) {
+        echo "<p class='centered'>".makeLink("6BII-VUMC")."</p>";
+    } else {
+        echo "<p class='centered'>".makeLink("6BII")."</p>";
+    }
 }
-?>
 
+?>
 <h2><?= makeTableHeader("8") ?></h2>
 <p class='centered'><?= makeLink("8AI") ?></p>
 <p class='centered'><?= makeLink("8AIII") ?></p>

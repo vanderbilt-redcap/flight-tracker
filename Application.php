@@ -237,8 +237,21 @@ class Application {
         if (!$project_id) {
             $project_id = CareerDev::getPID();
         }
+        $isCopiedPluginProject = FALSE;
+        global $info;
+        foreach (array_values($info) as $row) {
+            if ($project_id == $row['pid']) {
+                if (isset($row['copied'])) {
+                    if ($row['copied']) {
+                        $isCopiedPluginProject = TRUE;
+                    }
+                }
+            }
+        }
+
         return (
             (self::isVanderbilt() && ($project_id == 66635))
+            || (self::isVanderbilt() && $isCopiedPluginProject)
             || (self::isLocalhost() && ($project_id == 15))
             || (self::isServer("redcaptest.vanderbilt.edu") && ($project_id == 761))
         );
@@ -411,9 +424,36 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
 
     # call REDCap's AutoLogin
     public static function keepAlive($pid) {
-        global $redcap_version;
-        $url = APP_PATH_WEBROOT_FULL."redcap_v".$redcap_version."/ProjectGeneral/keep_alive.php?pid=".$pid;
-        URLManagement::downloadURL($url, $pid);
+        $oldPid = $_GET['pid'] ?? FALSE;
+        $_GET['pid'] = $pid;
+        require(APP_PATH_DOCROOT . 'Config/init_project.php');
+        if ($oldPid) {
+            $_GET['pid'] = $oldPid;
+        } else {
+            unset($_GET['pid']);
+        }
+    }
+
+    public static function getTable1Title() {
+        return "Flight Tracker - NIH Training Table 1";
+    }
+
+    public static function getTable1PID() {
+        $sql = "SELECT project_id FROM redcap_projects WHERE app_title = ? ORDER BY project_id LIMIT 1";
+        $module = self::getModule();
+        $q = $module->query($sql, [self::getTable1Title()]);
+        if ($row = $q->fetch_assoc()) {
+            return $row['project_id'];
+        }
+        return "";
+    }
+
+    public static function getTable1SurveyLink() {
+        $pid = self::getTable1PID();
+        if ($pid) {
+            return REDCapManagement::getPublicSurveyLink($pid);
+        }
+        return "";
     }
 
     public static function getPids() {

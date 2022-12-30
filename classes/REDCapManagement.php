@@ -1523,6 +1523,17 @@ class REDCapManagement {
         return DataDictionaryManagement::isMetadataFilled($metadata);
     }
 
+    public static function getPublicSurveyLink($pid) {
+        $sql = "SELECT p.hash AS hash FROM redcap_surveys_participants AS p INNER JOIN redcap_surveys AS s ON s.survey_id = p.survey_id WHERE s.project_id = ? AND p.participant_email IS NULL ORDER BY p.participant_id LIMIT 1";
+        $module = Application::getModule();
+        $q = $module->query($sql, [$pid]);
+        if ($row = $q->fetch_assoc()) {
+            $hash = $row['hash'];
+            return APP_PATH_SURVEY_FULL."?s=$hash";
+        }
+        return "";
+    }
+
     public static function isValidSupertoken($supertoken) {
         return (strlen($supertoken) == 64);
     }

@@ -95,6 +95,7 @@ if (!empty($_POST)) {
         $data['error'] = $e->getMessage();
     }
     $json = json_encode($data);
+    header("Content-type: application/json");
     echo $json;
     exit;
 }
@@ -176,7 +177,7 @@ function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $tok
         $lines = [$linesToProcess[$lineScope]];
     }
     $seenTraineeNames = [];
-    foreach ($lines as $line) {
+    foreach ($lines as $i => $line) {
         try {
             if (NIHTables::beginsWith($table, ["2"])) {
                 list($unprocessed, $uploadRows, $warnings) = processTable2Line($line, $pid, $firstNames, $lastNames);
@@ -407,13 +408,15 @@ function hasFileUpload() {
 }
 
 function cleanLine(&$line) {
-    for ($i = 0; $i < count($line); $i++) {
-        $line[$i] = REDCapManagement::clearUnicode($line[$i]);
-        $line[$i] = trim($line[$i]);
-        if (strtolower($line[$i]) == "none") {
-            $line[$i] = "";
-        } else if (preg_match("/No Publication/i", $line[$i])) {
-            $line[$i] = "";
+    foreach ($line as $i => $elem) {
+        if (is_integer($i)) {
+            $line[$i] = REDCapManagement::clearUnicode($line[$i]);
+            $line[$i] = trim($line[$i]);
+            if (strtolower($line[$i]) == "none") {
+                $line[$i] = "";
+            } else if (preg_match("/No Publication/i", $line[$i])) {
+                $line[$i] = "";
+            }
         }
     }
 }
@@ -566,6 +569,7 @@ function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $m
     $comments = [];
     $warnings = [];
     $isFirstUpload = hasFileUpload();
+    $nodeLimit = 5;
     if ($line[0] && $line[1] && (count($line) >= 5)) {
         try {
             cleanLine($line);
@@ -574,6 +578,9 @@ function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $m
             list ($facultyFirst, $facultyMiddle, $facultyLast) = NameMatcher::splitName($facultyName, 3);
             $formattedFacultyName = formatName($facultyFirst, $facultyMiddle, $facultyLast);
             $traineeName = trim($line[1]);
+            if (NameMatcher::getNumberOfNodes($traineeName) >= $nodeLimit) {
+                $comments["Name"] = "$traineeName has more than $nodeLimit names. Please separate the rows for the names so that they will process. A value is required for both Past or Current Trainee AND Training Period.";
+            }
             list ($traineeFirst, $traineeMiddle, $traineeLast) = NameMatcher::splitName($traineeName, 3);
             $formattedTraineeName = formatName($traineeFirst, $traineeMiddle, $traineeLast);
             if (in_array($formattedTraineeName, $seenTraineeNames)) {
@@ -614,13 +621,13 @@ function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $m
                     $trainingEndDate = processDate($trainingEndYear, "06-30");
                 } else if (preg_match("/^Present/", $trainingEndYear)) {
                     $comments["Training Period"] = "$formattedTraineeName has '$trainingEndYear' as their end year of training. It appears that you have hidden or special characters at the end of this field. Please remove them and transform the date into a numerical year.";
-                } else {
+                } else if ($trainingEndYear !== "") {
                     $comments["Training Period"] = "$formattedTraineeName has an unusual end year of training, with '$trainingEndYear.' This sometimes is due to hidden or special characters in the CSV. A numerical year is expected.";
                 }
             } else if (DateManagement::isYear($trainingPeriod) || DateManagement::isDate($trainingPeriod)) {
                 $trainingStartDate = processDate($trainingPeriod, "01-01");
                 $trainingEndDate = processDate($trainingPeriod, "12-31");
-            } else {
+            } else if ($trainingPeriod !== "") {
                 $comments["Training Period"] = "$formattedTraineeName has an unusual Training Period. The format of [StartYear]-[EndYear] is expected; you have '$trainingPeriod.' This is sometimes due to hidden or special characters in the CSV. Please correct this.";
             }
             if (!empty($comments)) {

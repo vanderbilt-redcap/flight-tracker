@@ -1388,11 +1388,8 @@ function enforceOneNumber(ob1, ob2, ob3) {
 }
 
 function copyToClipboard(element) {
-    var $temp = $("<input>");
-    $("body").append($temp);
-    $temp.val($(element).text()).select();
-    document.execCommand("copy");
-    $temp.remove();
+	const text = $(element).text() ? $(element).text() : $(element).val();
+	navigator.clipboard.writeText(text);
 }
 
 function confirmRestartData(url, recordId, csrfToken, fetchType) {
