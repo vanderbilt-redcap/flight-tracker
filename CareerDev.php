@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.22.1";
+		return "4.22.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -419,8 +419,11 @@ class CareerDev {
 
     private static function getThisPageURL($project_id) {
         if (Application::isPluginProject($project_id)) {
-            $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-            $url = $protocol . $_SERVER['HTTP_HOST'] . explode("?", $_SERVER['REQUEST_URI'])[0];
+            $port = $_SERVER['SERVER_PORT'] ?? "";
+            $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || ($port == 443)) ? "https://" : "http://";
+            $host = $_SERVER['HTTP_HOST'] ?? "";
+            $fileLocation = explode("?", $_SERVER['REQUEST_URI'] ?? "")[0];
+            $url = $protocol . $host . $fileLocation;
             if ($project_id) {
                 $url .= "?pid=".urlencode($project_id);
             } else {

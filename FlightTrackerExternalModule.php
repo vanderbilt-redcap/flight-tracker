@@ -1023,7 +1023,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		if (!CareerDev::isFAQ()) {
 			$str .= "<div class='shadow' id='help'></div>\n";
 		}
-	
+
 		return $str;
 	}
 

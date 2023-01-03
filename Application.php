@@ -239,11 +239,13 @@ class Application {
         }
         $isCopiedPluginProject = FALSE;
         global $info;
-        foreach (array_values($info) as $row) {
-            if ($project_id == $row['pid']) {
-                if (isset($row['copied'])) {
-                    if ($row['copied']) {
-                        $isCopiedPluginProject = TRUE;
+        if (isset($info)) {
+            foreach (array_values($info) as $row) {
+                if ($project_id == $row['pid']) {
+                    if (isset($row['copied'])) {
+                        if ($row['copied']) {
+                            $isCopiedPluginProject = TRUE;
+                        }
                     }
                 }
             }
