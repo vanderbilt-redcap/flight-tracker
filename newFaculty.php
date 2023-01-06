@@ -3,7 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/small_base.php");
-require_once(dirname(__FILE__)."/Application.php");
+require_once(__DIR__ . '/ClassLoader.php');
 
 header('Content-Type: text/csv');
 header('Content-Disposition: attachment; filename="newScholars.csv"');

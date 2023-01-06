@@ -4,8 +4,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
-require_once(dirname(__FILE__)."/Application.php");
+require_once(__DIR__ . '/classes/ClassLoader.php');
 
 if (isset($_GET['import']) && isset($_FILES['csv'])) {
     $tmpFilename = $_FILES['csv']['tmp_name'] ?? "";
