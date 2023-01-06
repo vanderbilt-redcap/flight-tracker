@@ -222,18 +222,56 @@ class Publications {
 		return "Last/Full Name:<br><input id='search' type='text' style='width: 100%;'><br><div style='width: 100%; color: #ff0000;' id='searchDiv'></div>";
 	}
 
-	public function getNumberFirstAuthors($startTs = NULL, $endTs = NULL, $asFraction = TRUE) {
+    private function getCitationsForTimespanHelper($startTs, $endTs) {
         $type = "Included";
         if ($startTs) {
             if ($endTs) {
-                $citations = $this->getSortedCitationsInTimespan($startTs, $endTs, $type);
+                return $this->getSortedCitationsInTimespan($startTs, $endTs, $type);
             }  else {
-                $citations = $this->getSortedCitationsInTimespan($startTs, FALSE, $type);
+                return $this->getSortedCitationsInTimespan($startTs, FALSE, $type);
             }
         } else {
-            $citations = $this->getCitations($type);
+            return $this->getCitations($type);
         }
+    }
+
+    public function getFirstAuthors($startTs = NULL, $endTs = NULL) {
+        $citations = $this->getCitationsForTimespanHelper($startTs, $endTs);
+        return self::getAuthorsHelper("first", $citations, $this->getName());
+    }
+
+    public function getLastAuthors($startTs = NULL, $endTs = NULL) {
+        $citations = $this->getCitationsForTimespanHelper($startTs, $endTs);
+        return self::getAuthorsHelper("last", $citations, $this->getName());
+    }
+
+    public function getMiddleAuthors($startTs = NULL, $endTs = NULL) {
+        $citations = $this->getCitationsForTimespanHelper($startTs, $endTs);
+        return self::getAuthorsHelper("middle", $citations, $this->getName());
+    }
+
+    public function getNumberFirstAuthors($startTs = NULL, $endTs = NULL, $asFraction = TRUE) {
+        $citations = $this->getCitationsForTimespanHelper($startTs, $endTs);
         return self::getNumberAuthorsHelper("first", $citations, $this->getName(), $asFraction);
+    }
+
+    private static function getAuthorsHelper($pos, $citations, $name) {
+        if ($pos == "first") {
+            $method = "isFirstAuthor";
+        } else if ($pos == "last") {
+            $method = "isLastAuthor";
+        } else if ($pos == "middle") {
+            $method = "isMiddleAuthor";
+        } else {
+            throw new \Exception("Invalid position $pos");
+        }
+        $filteredCitations = [];
+        foreach ($citations as $citation) {
+            if ($citation->$method($name)) {
+                $filteredCitations[] = $citation;
+            }
+        }
+        return $filteredCitations;
     }
 
     private static function getNumberAuthorsHelper($pos, $citations, $name, $asFraction = TRUE) {
@@ -241,6 +279,8 @@ class Publications {
             $method = "isFirstAuthor";
         } else if ($pos == "last") {
             $method = "isLastAuthor";
+        } else if ($pos == "middle") {
+            $method = "isMiddleAuthor";
         } else {
             throw new \Exception("Invalid position $pos");
         }
@@ -259,17 +299,13 @@ class Publications {
     }
 
     public function getNumberLastAuthors($startTs = NULL, $endTs = NULL, $asFraction = TRUE) {
-        $type = "Included";
-        if ($startTs) {
-            if ($endTs) {
-                $citations = $this->getSortedCitationsInTimespan($startTs, $endTs, $type);
-            }  else {
-                $citations = $this->getSortedCitationsInTimespan($startTs, FALSE, $type);
-            }
-        } else {
-            $citations = $this->getCitations($type);
-        }
+        $citations = $this->getCitationsForTimespanHelper($startTs, $endTs);
         return self::getNumberAuthorsHelper("last", $citations, $this->getName(), $asFraction);
+    }
+
+    public function getNumberMiddleAuthors($startTs = NULL, $endTs = NULL, $asFraction = TRUE) {
+        $citations = $this->getCitationsForTimespanHelper($startTs, $endTs);
+        return self::getNumberAuthorsHelper("middle", $citations, $this->getName(), $asFraction);
     }
 
     public static function getNumberFirstAuthor($citations, $name) {

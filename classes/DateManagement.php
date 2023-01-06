@@ -30,7 +30,7 @@ class DateManagement {
     }
 
     public static function isNumericalMonth($month) {
-        if (is_integer($month)) {
+        if (is_numeric($month)) {
             if (($month >= 1) && ($month <= 12)) {
                 return TRUE;
             }
@@ -361,14 +361,29 @@ class DateManagement {
     }
 
     public static function convertExcelDate($d) {
-        if (preg_match("/^(\w{3})[-\/](\d{2}|\d{4})$/", $d, $matches)) {
+        if (preg_match("/^(\w{3})[-\/](\d+)$/", $d, $matches)) {
             try {
                 $monthNum = self::getMonthNumber($matches[1]);
-                $year = $matches[2];
-                if ($year < 100) {
-                    $year += 2000;
+                if (is_numeric($monthNum) && is_numeric($matches[2])) {
+                    $year = (int) $matches[2];
+                    if ($year < 100) {
+                        $year += 2000;
+                    }
+                    return "$monthNum-$year";
                 }
-                return "$monthNum-$year";
+            } catch (\Exception $e) {
+                return FALSE;
+            }
+        } else if (preg_match("/^(\d+)[-\/](\w{3})$/", $d, $matches)) {
+            try {
+                $monthNum = self::getMonthNumber($matches[2]);
+                if (is_numeric($monthNum) && is_numeric($matches[1])) {
+                    $year = (int) $matches[1];
+                    if ($year < 100) {
+                        $year += 2000;
+                    }
+                    return "$monthNum-$year";
+                }
             } catch (\Exception $e) {
                 return FALSE;
             }

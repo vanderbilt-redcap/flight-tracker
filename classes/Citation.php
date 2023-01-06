@@ -216,6 +216,33 @@ class CitationCollection {
 		return $str;
 	}
 
+    public function filterForAuthorPositions($positions, $name) {
+        $methods = [];
+        if (in_array("first", $positions)) {
+            $methods[] = "isFirstAuthor";
+        }
+        if (in_array("middle", $positions)) {
+            $methods[] = "isMiddleAuthor";
+        }
+        if (in_array("last", $positions)) {
+            $methods[] = "isLastAuthor";
+        }
+
+        $newCitations = [];
+        foreach ($this->getCitations() as $citation) {
+            $match = FALSE;
+            foreach ($methods as $method) {
+                if ($citation->$method($name)) {
+                    $match = TRUE;
+                }
+            }
+            if ($match) {
+                $newCitations[] = $citation;
+            }
+        }
+        $this->citations = $newCitations;
+    }
+
 	public function filterForTimespan($startTs, $endTs) {
 	    $newCitations = [];
 	    foreach ($this->getCitations() as $citation) {
@@ -341,6 +368,10 @@ class Citation {
 		}
 		return FALSE;
 	}
+
+    public function isMiddleAuthor($name) {
+        return !$this->isFirstAuthor($name) && !$this->isLastAuthor($name);
+    }
 
 	public function isFirstAuthor($name) {
         return $this->isAuthorIdx("first", $name);

@@ -382,6 +382,9 @@ function decodeEmail($str) {
 }
 
 function translatePostToEmailSetting($post) {
+    if (!is_array($post)) {
+        return ["", "", []];
+    }
 	$emailSetting = EmailManager::getBlankSetting();
 
 	$settingName = $post['name'] ?: "";

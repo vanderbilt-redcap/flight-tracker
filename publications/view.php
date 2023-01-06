@@ -9,6 +9,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\URLManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -76,7 +77,7 @@ if (isset($_GET['grantCounts'])) {
 
     $html = "";
     $html .= "<form method='GET' action='$url'>";
-    $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
+    $html .= URLManagement::makeHiddenInputs($trainingPeriodParams, TRUE);
     $html .= "<h4>Pubs Associated With a Grant</h4>";
     $allSelected = "";
     if (!$_GET['grant'] || $_GET['grant'] == "all") {
@@ -149,7 +150,6 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
         $pubs = new Publications($token, $server, $metadata);
         $pubs->setRows($redcapData);
         if (isset($_GET['test'])) {
-            Application::log("Downloaded ".count($redcapData)." rows with metadata ".count($metadata)." rows");
             Application::log($pubs->getCitationCount("Included")." citations included");
         }
         $notDone = $pubs->getCitationCollection("Not Done");
@@ -204,6 +204,16 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
                 $notDone->filterForTimespan($startTs, $endTs);
                 $dates[$record] = date("m-d-Y", $startTs)." - ".date("m-d-Y", $endTs);
             }
+        }
+        if (isset($_GET['author_first']) || isset($_GET['author_last']) || isset($_GET['author_middle'])) {
+            $positions = [];
+            foreach (["first", "middle", "last"] as $pos) {
+                if ($_GET['author_'.$pos] == "on") {
+                    $positions[] = $pos;
+                }
+            }
+            $included->filterForAuthorPositions($positions, "{$firstNames[$record]} {$lastNames[$record]}");
+            $notDone->filterForAuthorPositions($positions, "{$firstNames[$record]} {$lastNames[$record]}");
         }
 
         if (isset($_GET['test'])) {
@@ -264,7 +274,7 @@ function makePublicationListHTML($citations, $names, $dates) {
 
 function makeExtraURLParams($exclude = []) {
     $additionalParams = "";
-    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grant", "begin", "end", "cohort", "limitPubs"];
+    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grant", "begin", "end", "cohort", "limitPubs", "author_first", "author_middle", "author_last"];
     foreach ($_GET as $key => $value) {
         if (isset($_GET[$key]) && in_array($key, $expected) && !in_array($key, $exclude)) {
             $key = Sanitizer::sanitize($key);
@@ -279,10 +289,19 @@ function makeExtraURLParams($exclude = []) {
 }
 
 function makeCustomizeTable($token, $server, $metadata) {
+    if (isset($_GET['author_first']) || isset($_GET['author_middle']) || isset($_GET['author_last'])) {
+        $authorFirstChecked = ($_GET['author_first'] == "on") ? "checked" : "";
+        $authorMiddleChecked = ($_GET['author_middle'] == "on") ? "checked" : "";
+        $authorLastChecked = ($_GET['author_last'] == "on") ? "checked" : "";
+    } else {
+        $authorFirstChecked = "checked";
+        $authorMiddleChecked = "checked";
+        $authorLastChecked = "checked";
+    }
     $cohort = isset($_GET['cohort']) ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
     $cohorts = new Cohorts($token, $server, Application::getModule());
     $html = "";
-    $style = "style='width: 250px; padding: 15px; vertical-align: top;'";
+    $style = "style='width: 450px; padding: 15px; vertical-align: top;'";
     $defaultDays = "";
     if (isset($_GET['trainingPeriodPlusDays']) && is_numeric($_GET['trainingPeriodPlusDays'])) {
         $defaultDays = Sanitizer::sanitize($_GET['trainingPeriodPlusDays']);
@@ -298,31 +317,42 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= "<td colspan='2' $style><h2 class='nomargin'>Customize</h2></td>\n";
     $html .= "</tr>\n";
     $html .= "<tr>\n";
-    $html .= "<td $style>".Altmetric::makeClickText()."</td>\n";
-    $html .= "<td $style>";
+    $html .= "<td $style class='yellow'>".Altmetric::makeClickText()."</td>\n";
+    $html .= "<td $style class='green'>";
     $html .= "<h4>Show Pubs During Training</h4>";
     $html .= "<form action='$url' method='GET'>";
-    $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
+    $html .= URLManagement::makeHiddenInputs($trainingPeriodParams, TRUE);
     $html .= "<p class='centered'>Additional Days After Training: <input type='number' name='trainingPeriodPlusDays' style='width: 60px;' value='$defaultDays'><br><button>Re-Configure</button></p>";
     $html .= "</form>";
     $html .= "</td>";
     $html .= "</tr>";
     $html .= "<tr>";
-    $html .= "<td>";
-    $html .= $cohorts->makeCohortSelect($cohort, "location.href=\"$fullURLMinusCohort\"+\"&cohort=\"+encodeURIComponent($(this).val());");
-    $html .= "</td>";
-    $html .= "<td>";
-    $html .= "<h4>Show Pubs During Timespan</h4>";
+    $html .= "</tr>";
+    $html .= "<tr>";
+    $html .= "<td class='blue'>";
     $html .= "<form action='$url' method='GET'>";
-    $html .= REDCapManagement::makeHiddenInputs($trainingPeriodParams);
+    $html .= "<h4>Filter for Timespan</h4>";
+    $trainingPeriodParams = REDCapManagement::splitURL(Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs", "author_first", "author_middle", "author_last"]))[1];
+    $html .= URLManagement::makeHiddenInputs($trainingPeriodParams, TRUE);
     if (isset($_GET['limitPubs'])) {
         $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
         $html .= "<input type='hidden' name='limitPubs' value='$limitYear' />";
     }
     $html .= "<p class='centered'>Start Date: <input type='date' name='begin' style='width: 150px;' value='$begin'><br>";
     $html .= "End Date: <input type='date' name='end' value='$end' style='width: 150px;'><br>";
+    $html .= "<h4>Filter for Author Position</h4>";
+    $html .= "<p class='centered'>";
+    $html .= "<input type='checkbox' name='author_first' id='author_first' $authorFirstChecked /> <label for='author_first'>First Author</label>";
+    $html .= "&nbsp;&nbsp;&nbsp;";
+    $html .= "<input type='checkbox' name='author_middle' id='author_middle' $authorMiddleChecked /> <label for='author_middle'>Middle Author</label>";
+    $html .= "&nbsp;&nbsp;&nbsp;";
+    $html .= "<input type='checkbox' name='author_last' id='author_last' $authorLastChecked /> <label for='author_last'>Last Author</label>";
+    $html .= "</p>";
     $html .= "<button>Re-Configure</button></p>";
     $html .= "</form>";
+    $html .= "</td>";
+    $html .= "<td class='orange'>";
+    $html .= $cohorts->makeCohortSelect($cohort, "location.href=\"$fullURLMinusCohort\"+\"&cohort=\"+encodeURIComponent($(this).val());");
     $html .= Publications::makeLimitButton();
     $html .= "<div id='grantCounts'>";
     $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs"])."&grantCounts";
@@ -332,9 +362,9 @@ function makeCustomizeTable($token, $server, $metadata) {
         $html .= "<p class='centered'><a href='javascript:;' onclick='downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\");'>Get Counts to Select a Grant</a><br>(Computationally Expensive)</p>";
     }
     $html .= "</div>";
-    $html .= "</td>\n";
-    $html .= "</tr>\n";
-    $html .= "</table>\n";
+    $html .= "</td>";
+    $html .= "</tr>";
+    $html .= "</table>";
 
     return $html;
 }

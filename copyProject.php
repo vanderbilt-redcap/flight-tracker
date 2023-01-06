@@ -12,9 +12,9 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
-$otherToken = Sanitizer::sanitize($_POST['token']);
-$otherServer = Sanitizer::sanitizeURL($_POST['server']);
-if ($_GET['project_id'] && in_array($_GET['action'], ["setupSettings"])) {
+$otherToken = $_POST['token'] ? Sanitizer::sanitize($_POST['token']) : "";
+$otherServer = $_POST['server'] ? Sanitizer::sanitizeURL($_POST['server']) : "";
+if ($_GET['project_id'] && ($_GET['action'] == "setupSettings")) {
     $pid = is_numeric($_GET['project_id']) ? Sanitizer::sanitize($_GET['project_id']) : FALSE;
     if (empty($_POST)) {
         die("Error: No data are posted.");

@@ -572,7 +572,7 @@ function findLatestEndDate($data, $recordId, $measType) {
 }
 
 function makeXAxisLabel($cnt, $meas) {
-    if (!is_integer($cnt)) {
+    if (is_float($cnt)) {
         $cnt = floor($cnt)."-".ceil($cnt);
     }
     if ($meas == "days") {

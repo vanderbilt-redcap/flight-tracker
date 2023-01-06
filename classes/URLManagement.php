@@ -237,10 +237,13 @@ class URLManagement {
         );
     }
 
-    public static function makeHiddenInputs($params) {
+    public static function makeHiddenInputs($params, $noID = FALSE) {
         $items = [];
         foreach ($params as $key => $value) {
-            $html = "<input type='hidden' id='$key' name='$key'";
+            $html = "<input type='hidden' name='$key'";
+            if (!$noID) {
+                $html .= "id='$key' ";
+            }
             if ($value !== "") {
                 $html .= " value='$value'";
             }

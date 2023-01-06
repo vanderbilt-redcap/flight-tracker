@@ -36,6 +36,7 @@ if (!empty($_POST)) {
     $dateOfSubmission = Sanitizer::sanitizeDate($_POST['dateOfSubmission'] ?? "");
     $action = Sanitizer::sanitize($_POST['action'] ?? "");
     $scope = Sanitizer::sanitize((isset($_POST['scope']) && is_numeric($_POST['scope'])) ? $_POST['scope'] - 1 : "all");
+    $selects = Sanitizer::sanitizeArray($_POST['selects'] ?? []);
     Application::keepAlive($pid);
 
     $data = [];
@@ -46,6 +47,8 @@ if (!empty($_POST)) {
                 $linesToProcess = readFileAsDataLines($filename);
                 if (NIHTables::beginsWith($table, ["5"])) {
                     combineTable5Lines($linesToProcess);
+                } else if (NIHTables::beginsWith($table, ["8"])) {
+                    combineTable8Lines($linesToProcess, $table);
                 }
                 $data['numLines'] = count($linesToProcess);
             } else {
@@ -57,10 +60,12 @@ if (!empty($_POST)) {
                 $linesToProcess = readFileAsDataLines($filename);
                 if (NIHTables::beginsWith($table, ["5"])) {
                     combineTable5Lines($linesToProcess);
+                } else if (NIHTables::beginsWith($table, ["8"])) {
+                    combineTable8Lines($linesToProcess, $table);
                 }
 
                 if (!empty($linesToProcess)) {
-                    list($unprocessedLines, $upload, $warnings) = processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $scope);
+                    list($unprocessedLines, $upload, $warnings) = processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $scope, $selects);
                     $data['lines'] = $unprocessedLines;
                     $data['upload'] = $upload;
                     $data['warnings'] = $warnings;
@@ -81,7 +86,7 @@ if (!empty($_POST)) {
         } else if ($action == "processLines") {
             $linesToProcess = Sanitizer::sanitizeArray($_POST['lines'] ?? []);
             if (!empty($linesToProcess)) {
-                list($unprocessedLines, $upload, $warnings) = processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $scope);
+                list($unprocessedLines, $upload, $warnings) = processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $scope, $selects);
                 $data['lines'] = $unprocessedLines;
                 $data['upload'] = $upload;
                 $data['warnings'] = $warnings;
@@ -129,6 +134,80 @@ function getImportedMentorField($metadata) {
     throw new \Exception("Could not find mentor field in ".implode(", ", $options));
 }
 
+function combineTable8Lines(&$lines, $table) {
+    $combinedLines = [];
+
+    $table8CCols = [
+        0 => " ",
+        1 => ", ",
+        2 => " ",
+        4 => "\n",
+        5 => ", ",
+        6 => " ",
+        7 => "\n",
+        8 => "\n",
+        9 => "\n",
+    ];
+    if ($table == "8A") {
+        $nameCols = [0, 1];
+        $colsToCombine = [];
+        foreach ($table8CCols as $col => $separator) {
+            if ($col !== 1) {
+                if ($col >= 2) {
+                    $colsToCombine[$col - 1] = $separator;
+                } else {
+                    $colsToCombine[$col] = $separator;
+                }
+            }
+        }
+    } else {
+        $nameCols = [0, 2];
+        $colsToCombine = $table8CCols;
+    }
+    foreach ($lines as $line) {
+        $lastLineIndex = count($combinedLines) - 1;
+        if ($line[0] == "Trainee") {
+            continue;
+        } else if (hasColumns($line, $nameCols)) {
+            $combinedLines[] = $line;
+        } else if ($lastLineIndex >= 0) {
+            # trainee names and mentor names
+            foreach ($colsToCombine as $col => $separator) {
+                if (trim($line[$col])) {
+                    $combinedLines[$lastLineIndex][$col] = trim($combinedLines[$lastLineIndex][$col]);
+                    $combinedLines[$lastLineIndex][$col] .= $separator . trim($line[$col]);
+                }
+            }
+        }
+    }
+    $lines = flattenLines($combinedLines);
+}
+
+function flattenLines($lines) {
+    $newLines = [];
+    $keys = array_keys($lines);
+    foreach ($keys as $key) {
+        if (!is_integer($key)) {
+            return $lines;
+        }
+    }
+
+    $maxKey = max($keys);
+    for ($i = 0; $i < $maxKey; $i++) {
+        $newLines[] = $lines[$i] ?? "";
+    }
+    return $newLines;
+}
+
+function hasColumns($ary, $indices) {
+    foreach ($indices as $idx) {
+        if (!isset($ary[$idx]) || (trim($ary[$idx]) === "")) {
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
 function combineTable5Lines(&$lines) {
     $combinedLines = [];
     $citationCol = 4;
@@ -140,7 +219,7 @@ function combineTable5Lines(&$lines) {
         } else if ($lastLineIndex >= 0) {
             # trainee names and mentor names
             foreach ($nameCols as $col) {
-                if ($line[$col]) {
+                if (trim($line[$col])) {
                     $combinedLines[$lastLineIndex][$col] = trim($combinedLines[$lastLineIndex][$col]);
                     $combinedLines[$lastLineIndex][$col] .= " ".trim($line[$col]);
                 }
@@ -152,10 +231,10 @@ function combineTable5Lines(&$lines) {
             }
         }
     }
-    $lines = $combinedLines;
+    $lines = flattenLines($combinedLines);
 }
 
-function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $lineScope = "all") {
+function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $lineScope, $selects) {
     $unprocessedLines = [];
     $upload = [];
     $warnings = [];
@@ -200,7 +279,7 @@ function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $tok
                 } else {
                     throw new \Exception("Invalid table $table");
                 }
-                list($unprocessed, $uploadRows, $warnings) = processTable8Line($line, $awardNo, $category, $token, $server, $metadata, $choices, $firstNames, $lastNames, $trainingStarts, $mentors, $importedMentors, $table);
+                list($unprocessed, $uploadRows, $warnings) = processTable8Line($line, $awardNo, $category, $token, $server, $metadata, $choices, $firstNames, $lastNames, $trainingStarts, $mentors, $importedMentors, $table, $selects);
             } else {
                 $unprocessed = [];
                 $uploadRows = [];
@@ -301,11 +380,7 @@ function parsePublications($publicationText, $traineeName, $facultyName, &$warni
     }
     $pmidsForAuthor = array_unique(array_merge($pmidsForFirstName, $pmidsForFullName));
     try {
-        if (!empty($pubs)) {
-            $publicationREDCap = Publications::getCitationsFromPubMed($pmidsForAuthor, $metadata, "manual", 1, 1, [], $pid, FALSE);
-        } else {
-            $publicationREDCap = [];
-        }
+        $publicationREDCap = Publications::getCitationsFromPubMed($pmidsForAuthor, $metadata, "manual", 1, 1, [], $pid, FALSE);
     } catch (\Exception $e) {
         $publicationREDCap = [];
     }
@@ -412,9 +487,12 @@ function cleanLine(&$line) {
         if (is_integer($i)) {
             $line[$i] = REDCapManagement::clearUnicode($line[$i]);
             $line[$i] = trim($line[$i]);
-            if (strtolower($line[$i]) == "none") {
-                $line[$i] = "";
-            } else if (preg_match("/No Publication/i", $line[$i])) {
+            if (
+                (strtolower($line[$i]) == "none")
+                || preg_match("/No Publication/i", $line[$i])
+                || preg_match("/N\/A/i", $line[$i])
+                || preg_match("/Not Available/i", $line[$i])
+            ) {
                 $line[$i] = "";
             }
         }
@@ -474,7 +552,7 @@ function processTable2Line($line, $pid, $firstNames, $lastNames) {
             } else if (count($matchedRecords) >= 2) {
                 $comments["Record"] = getMoreThan1RecordText($matchedRecords);
             } else {
-                $comments["Record"] = getCreateRecordText();
+                $comments["Record"] = getCreateRecordText($facultyName);
             }
         } catch (\Exception $e) {
             $comments["Exception"] = $e->getMessage();
@@ -543,7 +621,7 @@ function processTable4Line($line, $token, $server, $metadata, $firstNames, $last
                 } else if (count($matchedRecords) >= 2) {
                     $comments["Record"] = getMoreThan1RecordText($matchedRecords);
                 } else {
-                    $comments["Record"] = getCreateRecordText();
+                    $comments["Record"] = getCreateRecordText($facultyName);
                 }
             }
         } catch (\Exception $e) {
@@ -653,7 +731,7 @@ function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $m
                 } else if (count($matchedRecords) >= 2) {
                     $comments["Record"] = getMoreThan1RecordText($matchedRecords);
                 } else {
-                    $comments["Record"] = getCreateRecordText();
+                    $comments["Record"] = getCreateRecordText($traineeName);
                 }
             }
         } catch (\Exception $e) {
@@ -682,7 +760,7 @@ function removeExtraSpaces(&$ary) {
     }
 }
 
-function processTable8Line($line, $awardNo, $category, $token, $server, $metadata, $choices, $firstNames, $lastNames, $trainingStarts, $mentors, $importedMentors, $table) {
+function processTable8Line($line, $awardNo, $category, $token, $server, $metadata, $choices, $firstNames, $lastNames, $trainingStarts, $mentors, $importedMentors, $table, $selects) {
     $unprocessed = [];
     $upload = [];
     $startIndex = ($table == "8A") ? 0 : 1;
@@ -703,11 +781,32 @@ function processTable8Line($line, $awardNo, $category, $token, $server, $metadat
             } else {
                 $degreesAndYears = [];
             }
-            $researchTopic = trim($line[$startIndex + 5]);
+            $researchTopic = trim(replaceReturnsWithSpaces($line[$startIndex + 5]));
 
             $positions = [];
-            parsePositions(trim($line[$startIndex + 6]), $positions);
-            parsePositions(trim($line[$startIndex + 7]), $positions);
+            $texts = [
+                "Initial" => trim($line[$startIndex + 6]),
+                "Current" => trim($line[$startIndex + 7]),
+            ];
+            try {
+                $errors = parsePositions($positions, $line, $startIndex, $texts, $selects, $traineeName."_".$facultyName);
+                if (!empty($errors)) {
+                    foreach ($errors as $mssg) {
+                        if (preg_match("/^Invalid number of (\w+) Position nodes/", $mssg, $matches)) {
+                            processPositionNodeError($line, $startIndex, $matches[1]);
+                        }
+                    }
+                    $unprocessed[] = $line;
+                }
+            } catch(\Exception $e) {
+                $mssg = $e->getMessage();
+                if (preg_match("/^Invalid number of (\w+) Position nodes/", $mssg, $matches)) {
+                    processPositionNodeError($line, $startIndex, $matches[1]);
+                } else {
+                    $line['comments'] = ["Exception" => $mssg];
+                }
+                $unprocessed[] = $line;
+            }
             $grants = parseGrants(trim($line[$startIndex + 8]));
 
             $uploadNames = FALSE;
@@ -732,12 +831,14 @@ function processTable8Line($line, $awardNo, $category, $token, $server, $metadat
                 $line["comments"] = ["Record" => getMoreThan1RecordText($matchedRecords)];
                 $unprocessed[] = $line;
             } else {
-                $line["comments"] = ["Record" => getCreateRecordText()];
+                $line["comments"] = ["Record" => getCreateRecordText($traineeName)];
                 $unprocessed[] = $line;
             }
         } catch (\Exception $e) {
             $line['comments'] = ["Exception" => $e->getMessage()];
             $unprocessed[] = $line;
+        }
+        if (count($unprocessed) > 0) {
         }
         return [$unprocessed, $upload, []];
     } else {
@@ -746,8 +847,31 @@ function processTable8Line($line, $awardNo, $category, $token, $server, $metadat
     }
 }
 
-function getCreateRecordText() {
-    return "No records matched. Would you like to create a record?";
+function processPositionNodeError(&$line, $startIndex, $position) {
+    $col = FALSE;
+    if ($position == "Initial") {
+        $col = $startIndex + 6;
+    } else if ($position == "Current") {
+        $col = $startIndex + 7;
+    }
+    if ($col) {
+        $line["comments"]["$position Position"] = createPositionText($line[$col], $position);
+    } else {
+        $line['comments'] = ["Exception" => "Invalid position $position. This should never happen."];
+    }
+}
+
+function replaceReturnsWithSpaces($line) {
+    $newLine = preg_replace("/<br\s*\/?>/", "\n", $line);
+    return preg_replace("/[\n\r]+/", " ", $newLine);
+}
+
+function getCreateRecordText($name) {
+    if (!preg_match("/,/", $name)) {
+        return "No records matched. All names should appear in the format '[last name], [first name]'. Would you like to create a record?";
+    } else {
+        return "No records matched. Please check the REDCap names list if this name should have been added before. Would you like to create a record?";
+    }
 }
 
 function getMoreThan1RecordText($records) {
@@ -969,22 +1093,29 @@ function parseGrants($text) {
     } while ($j < count($lines));
     if ($unfinishedLine) {
         $nodes = preg_split($regex, $unfinishedLine);
-        list($institute, $activityCode) = processGrantIdentifier($nodes[0]);
-        $role = $nodes[1] ?? "";
-        $year = processDate(getFirstYear($nodes[2] ?? ""), "01-01");
-        $grants[] = [
-            "activity_code" => $activityCode,
-            "institute" => $institute,
-            "role" => $role,
-            "year" => $year,
-        ];
+        if (count($nodes) !== 3) {
+            throw new Exception("In the Subsequent Grants column, each grant should be described by 3 nodes separated by '/'. One line has ".count($nodes).": $unfinishedLine. Please correct this line.");
+        }
+        try {
+            list($institute, $activityCode) = processGrantIdentifier($nodes[0]);
+            $role = $nodes[1] ?? "";
+            $year = processDate(getFirstYear($nodes[2] ?? ""), "01-01");
+            $grants[] = [
+                "activity_code" => $activityCode,
+                "institute" => $institute,
+                "role" => $role,
+                "year" => $year,
+            ];
+        } catch (\Exception $e) {
+            throw new Exception("In the Subsequent Grants column, there is an error on one line that needs correcting: $unfinishedLine. ".$e->getMessage());
+        }
     }
 
     return $grants;
 }
 
 function getFirstYear($year) {
-    if (preg_match("/(\d{4})-\d{4}/", $year, $matches)) {
+    if (preg_match("/(\d{4})[\-\s]\d{4}/", $year, $matches)) {
         return $matches[1];
     } else if (DateManagement::isYear($year)) {
         return $year;
@@ -1028,43 +1159,107 @@ function processGrantLine($line, &$grants, $regex) {
     }
 }
 
-function parsePositions($text, &$positions) {
-    $text = trim($text);
-    if (!$text) {
-        return;
+function createPositionText($text, $positionType) {
+    $lines = breakUpPosition($text);
+    $positionType = strtolower($positionType);
+    if (empty($lines)) {
+        return "";
     }
+    return "Can you line up this $positionType position? ".implode(" / ", $lines);
+}
 
-    $lines = preg_split("/([\n\r]+|[ \t]{2,})/", $text);
+function recombinePosition($lines) {
+    return implode(" / ", $lines);
+}
+
+function breakUpPosition($text) {
+    $regexes = [
+        "/([\n\r]+|[ \t]{2,})/",
+        "/,/",
+        "/;/",
+        "/\//",
+    ];
+
+    $lines = [];
+    foreach ($regexes as $regex) {
+        $linesTemp = preg_split($regex, $text);
+        if (count($linesTemp) > count($lines)) {
+            $lines = $linesTemp;
+        }
+    }
     for ($j = 0; $j < count($lines); $j++) {
         $lines[$j] = trim($lines[$j]);
     }
-    if (count($lines) == 5) {
-        $positions[] = [
-            "title" => trim($lines[0]),
-            "field" => trim($lines[1]),
-            "institution" => trim($lines[2]),
-            "sector" => trim($lines[3]),
-            "activity" => trim($lines[4]),
-        ];
-    } else if (count($lines) == 4) {
-        $positions[] = [
-            "title" => trim($lines[0]),
-            "field" => "",
-            "institution" => trim($lines[1]),
-            "sector" => trim($lines[2]),
-            "activity" => trim($lines[3]),
-        ];
-    } else if (count($lines) == 3) {
-        $positions[] = [
-            "title" => trim($lines[0]),
-            "field" => "",
-            "institution" => trim($lines[1]),
-            "sector" => "",
-            "activity" => trim($lines[2]),
-        ];
-    } else {
-        throw new \Exception("Invalid number of lines (".count($lines).") for position: ".$text);
+    return $lines;
+}
+
+function parsePositions(&$positions, $originalLine, $startIndex, $texts, $selects, $lineId) {
+    $reassignedPositions = [];
+    $positionTypes = ["Initial", "Current"];
+    foreach($positionTypes as $position) {
+        $id = REDCapManagement::makeHTMLId($lineId."_".$position." Position");
+        foreach ($selects as $key => $optionValue) {
+            if ($optionValue && preg_match("/^$id"."___".strtolower($position)."___/", $key)) {
+                $nodes = explode("___", $key);
+                $lines = $texts[$position] ? breakUpPosition($texts[$position]) : [];
+                $i = $nodes[2];
+                $value = $lines[$i];
+                if (isset($reassignedPositions[$position])) {
+                    $reassignedPositions[$position] = [
+                        "title" => "",
+                        "field" => "",
+                        "institution" => "",
+                        "sector" => "",
+                        "activity" => "",
+                    ];
+                }
+                $reassignedPositions[$position][$optionValue] = $value;
+            }
+        }
     }
+
+    $errors = [];
+    foreach ($positionTypes as $position) {
+        if (isset($reassignedPositions[$position])) {
+            $positions[] = $reassignedPositions[$position];
+            if ($position == "Initial") {
+                $col = $startIndex + 6;
+            } else if ($position == "Current") {
+                $col = $startIndex + 7;
+            } else {
+                throw new \Exception("Invalid position $position! This should never happen.");
+            }
+            $originalLine[$col] = implode(" / ", array_values($reassignedPositions[$position]));
+        } else {
+            $text = $texts[$position] ?? "";
+            $text = trim($text);
+            if ($text) {
+                $lines = breakUpPosition($text);
+                if (count($lines) == 5) {
+                    $newPosition = [
+                        "title" => trim($lines[0]),
+                        "field" => trim($lines[1]),
+                        "institution" => trim($lines[2]),
+                        "sector" => trim($lines[3]),
+                        "activity" => trim($lines[4]),
+                    ];
+                    $positions[] = $newPosition;
+                } else if (count($lines) == 4) {
+                    $newPosition = [
+                        "title" => trim($lines[0]),
+                        "field" => "",
+                        "institution" => trim($lines[1]),
+                        "sector" => trim($lines[2]),
+                        "activity" => trim($lines[3]),
+                    ];
+                    $positions[] = $newPosition;
+                } else {
+                    $errors[] = "Invalid number of $position Position nodes (".count($lines).") for position: ".$text;
+                }
+            }
+        }
+    }
+    return $errors;
 }
 
 function processDegreesAndYears($lines) {

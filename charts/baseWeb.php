@@ -6,11 +6,12 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Links;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
-$pid = $_GET['pid'];
+$pid = Sanitizer::sanitizePid($_GET['pid'] ?? "");
 if (!$pid) {
     $pid = Application::getSetting("pid");
 }

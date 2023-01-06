@@ -111,7 +111,7 @@ table.bordered tr td,table.bordered tr th { border: 1px solid #888; }
 table.bordered { border-collapse: collapse; }
 .action_required { color: red; font-weight: bold; }
 input[type=text].action_required { color: black; font-weight: normal; font-size: 16px; background-color: rgba(255, 0, 0, 0.5); }
-p.bordered,div.bordered { border: 1px solid #888; }
+td.bordered,p.bordered,div.bordered { border: 1px solid #888; }
 .finger { cursor: pointer; }
 .blackBorder { border: 1px solid black; }
 .red { background-color: #f0565d; }
@@ -131,6 +131,7 @@ p.bordered,div.bordered { border: 1px solid #888; }
 .orange { background-color: #f79721; }
 .grey { background-color: #dddddd; }
 .greytext { color: #dddddd; }
+.darkgreytext { color: #666666; }
 .light_grey { background-color: #EEE; }
 /* Coordinated with .red, .green, and .yellow */
 .install-metadata-box-danger{ color: #a94442; background-color: #f0565d; border-color: #ebccd1; }

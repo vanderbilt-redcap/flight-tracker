@@ -1884,7 +1884,7 @@ class Grants {
 				# compare ending from R01 to year length of Ks
 				$yearLength = Scholar::getKLength($type);
 				$startKTs = strtotime($row['summary_award_date_'.$i]);
-				if (is_integer($yearLength)) {
+				if (is_numeric($yearLength)) {
 					$adjustedStartKTs = $startKTs - $oneDay;
 					$endKDateFromYearLength = (date("Y", $adjustedStartKTs) + $yearLength).date("-m-d", $adjustedStartKTs); 
 				} else {
