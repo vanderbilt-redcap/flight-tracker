@@ -907,11 +907,23 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 <script>
 	$(document).ready(function() { setTimeout(function() { transformColumn(); }, 500); });
 </script>\n";
-            } else if (PAGE == "ProjectSetup/index.php") {
+        } else if (PAGE == "ProjectSetup/index.php") {
             echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
             echo "
 <script>
     $(document).ready(function() { $('.chklist.round:eq(6)').hide(); });
+</script>\n";
+        } else if (PAGE == "DataEntry/index.php") {
+            echo "<script>
+    $(document).ready(() => {
+        const originalAlert = alert;
+        alert = (mssg) {
+            if (!mssg.match(/ERASE THE VALUE OF THE FIELD/)) {
+                originalAlert(mssg);
+            }
+        }
+        window.alert = alert;
+    });
 </script>\n";
         }
 	}
