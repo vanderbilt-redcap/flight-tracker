@@ -664,7 +664,7 @@ class DataDictionaryManagement {
                 foreach ($newMetadata as $row) {
                     if ($row['field_name'] == $newRow['field_name']) {
                         break;
-                    } else {
+                    } else if (!preg_match($deletionRegEx, $row['field_name'])) {
                         $priorRowField = $row['field_name'];
                     }
                 }
@@ -683,7 +683,10 @@ class DataDictionaryManagement {
                     ) {
                         $tempMetadata[] = $row;
                     }
-                    if (($priorRowField == $row['field_name']) && !preg_match($deletionRegEx, $newRow['field_name'])) {
+                    if (
+                        ($priorRowField == $row['field_name'])
+                        && !preg_match($deletionRegEx, $newRow['field_name'])
+                    ) {
                         $newRow = self::copyMetadataSettingsForField($newRow, $newMetadata, $upload, $token, $server);
 
                         if ($row['form_name'] != $newRow['form_name']) {

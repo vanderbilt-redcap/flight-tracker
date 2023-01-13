@@ -9,6 +9,7 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\NameMatcher;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -28,9 +29,9 @@ form label {
 }
 label {
     display: inline-block;
-    margin-bottom: .5rem;
+    margin-top: .5rem;
 }
-form{width: 700px; margin:auto;    margin-bottom:2em;}
+form{width: 700px; margin:auto; margin-bottom:2em;}
 .form-control {
     display: block;
     width: 200px;
@@ -64,34 +65,24 @@ form input, form select {
 
 }
 
-.tsubmit {
-    color: #ffffff !important;
-    background-color: #63acc2 !important;
-    float: left;
-    font-size: 14px !important;
-    padding-bottom: 7px !important;
-    margin-top: -16px;
+.form-group button.tsubmit {
+    margin-top: -100px;
 }
 
-.btn-light {
-    color: #212529;
-    background-color: #f8f9fa;
-    border-color: #f8f9fa;
-}
-.btn {
+button.tsubmit {
+    color: #ffffff !important;
+    background-color: #63acc2 !important;
+    font-size: 14px !important;
+    padding: .375rem .75rem 7px .75rem !important;
     display: inline-block;
     font-weight: 400;
-    color: #212529;
     text-align: center;
     vertical-align: middle;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
-    background-color: transparent;
     border: 1px solid transparent;
-    padding: .375rem .75rem;
-    font-size: 1rem;
     line-height: 1.5;
     border-radius: .25rem;
     transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
@@ -101,17 +92,26 @@ form input, form select {
     border-top: 1px solid #efefef;
 }
 
+select[multiple] {
+    padding-right: 0;
+    height: 7rem;
+    width: 100%;
+}
+
 </style>
 <?php
 
 $possibleFields = ["citation_grants", "citation_mesh_terms", "citation_journal,eric_source", "eric_subject"];
 $metadata = Download::metadata($token, $server);
+$authors = makeAuthorArray();
 if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
     $fieldsToDisplay = explode(",", Sanitizer::sanitize($_GET['field']));
     $startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['start'] ?? "");
     $endDate = Sanitizer::sanitizeDate($_GET['end'] ?? "");
     $startTs = $startDate ? strtotime($startDate) : "";
     $endTs = $endDate ? strtotime($endDate) : "";
+
+    $subjects = $_GET['terms'] ?? [];
 
     $fields = array_merge(["record_id"], $fieldsToDisplay);
     $includeFields = [];
@@ -122,6 +122,10 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
             && !in_array($includeField, $includeFields)
         ) {
             $includeFields[] = $includeField;
+            $includeFields[] = "citation_authors";
+            if (!empty($subjects)) {
+                $includeFields[] = "citation_mesh_terms";
+            }
             if ($startTs) {
                 $fields[] = "citation_year";
                 $fields[] = "citation_month";
@@ -132,12 +136,17 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
             && !in_array($includeField, $includeFields)
         ) {
             $includeFields[] = $includeField;
+            $includeFields[] = "eric_author";
+            if (!empty($subjects)) {
+                $includeFields[] = "eric_subject";
+            }
             if ($startTs) {
                 $fields[] = "eric_sourceid";
                 $fields[] = "eric_publicationdateyear";
             }
         }
     }
+
     if (!empty($includeFields)) {
         $fields = array_unique(array_merge($fields, $includeFields));
     }
@@ -152,16 +161,23 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
     } else {
         $records = Download::recordIds($token, $server);
     }
+    $firstNames = Download::firstnames($token, $server);
+    $lastNames = Download::lastnames($token, $server);
     $redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
     $wordData = [];
+    $numPubs = 0;
     foreach ($redcapData as $row) {
+        $recordId = $row['record_id'];
         foreach ($fieldsToDisplay as $fieldToDisplay) {
             $includeField = getIncludeField($fieldToDisplay);
             if (
                 $row[$fieldToDisplay]
                 && ($row[$includeField] == '1')
                 && datesCheckOut($row, $startTs, $endTs)
+                && authorFiltersApply($row, $authors, $firstNames[$recordId], $lastNames[$recordId])
+                && subjectTermsApply($row, $subjects)
             ) {
+                $numPubs++;
                 $words = preg_split("/\s*;\s*/", $row[$fieldToDisplay]);
                 if ($fieldToDisplay == "citation_grants") {
                     for ($i = 0; $i < count($words); $i++) {
@@ -190,8 +206,18 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
         $wordData = transformToTitles($wordData);
     }
 
-    echo makeFieldForm($token, $server, $metadata, $possibleFields, $_GET['cohort'] ?: "", $startDate, $endDate);
-    //echo REDCapManagement::json_encode_with_spaces($wordData);
+    echo makeFieldForm($token, $server, $metadata, $possibleFields, $authors, $_GET['cohort'] ?: "", $startDate, $endDate);
+    echo "<br/><br/><br/>";
+    echo "<h2>Frequency Table</h2>";
+    echo "<table class='centered bordered max-width'><thead><tr>";
+    echo "<th style='width: 150px;'>Term</th>";
+    echo "<th>Frequency</th>";
+    echo "</tr></thead><tbody>";
+    foreach ($wordData as $term => $frequency) {
+        echo "<tr><td>$term</td><td>".REDCapManagement::pretty($frequency)."</td></tr>";
+    }
+    echo "</tbody></table>";
+    echo "<br/><br/>";
     ?>
 
     <script type="text/javascript">
@@ -245,7 +271,7 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
             title.fontColor = "#eeeeee";
             title.fontFamily = "europa";
             title.marginBottom = 20;
-            $('.mtitle').html("Most Popular <?= ucfirst(getMainChunk($fieldsToDisplay[0])) ?> Terms");
+            $('.mtitle').html("Most Popular <?= ucfirst(getMainChunk($fieldsToDisplay[0])) ?> Terms Among <?= REDCapManagement::pretty($numPubs) ?> Publications");
             //----
 
             const numBarTerms = <?= $barChartTerms ?>;
@@ -320,16 +346,23 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
     <?php
 
 } else {
-    echo makeFieldForm($token, $server, $metadata, $possibleFields);
+    echo makeFieldForm($token, $server, $metadata, $possibleFields, $authors);
 }
 
-function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCohort = "", $startDate = "", $endDate = "") {
+function makeFieldForm($token, $server, $metadata, $possibleFields, $authors = ["first", "middle", "last"], $defaultCohort = "", $startDate = "", $endDate = "") {
     $link = Application::link("publications/wordCloud.php");
     $linkWithoutGET = explode("?", $link)[0];
     $metadataLabels = REDCapManagement::getLabels($metadata);
+    $meshTerms = Download::oneFieldWithInstances($token, $server, "citation_mesh_terms");
+    $pubmedIncludes = Download::oneFieldWithInstances($token, $server, "citation_include");
+    $ericSubjects = Download::oneFieldWithInstances($token, $server, "eric_subject");
+    $ericIncludes = Download::oneFieldWithInstances($token, $server, "eric_include");
 
     $html = "";
-    $html .= "<h1>Which Field Do You Want to Count Frequency with Publications?</h1>\n";
+    $html .= "<h1>Which Field Do You Want to Count Frequency with Publications?</h1>";
+    if (isset($_GET['field']) && ($_GET['field'] == "")) {
+        $html .= "<h4>Please select a field!</h4>";
+    }
     $html .= "<form action='$linkWithoutGET' method='GET'>";
     if (isset($_GET['limitPubs'])) {
         $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
@@ -365,10 +398,64 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $defaultCoho
     }
     $selectHTML .= "</select>";
     $datesHTML = "<label for='start'>Start Date (optional): </label><input type='date' style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='start' id='start' value='$startDate' /><br/><label for='end'>End Date (optional): </label><input type='date'  style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='end' id='end' value='$endDate' />";
-    $html .= "<div class='centered max-width'><div class='form-group'>$cohortHTML</div> <div class='form-group'>$selectHTML</div> <div class='form-group'>$datesHTML</div> <div class='form-group' style='width: 200px;'><button class='btn btn-light tsubmit'>Make Word Cloud</button></div></div>";
+
+    $html .= "<div class='centered max-width'>";
+    $html .= "<div class='form-group'>$cohortHTML</div>";
+    $html .= "<div class='form-group'>$selectHTML</div>";
+    $html .= "<div class='form-group'>$datesHTML</div>";
+    $html .= "<div class='form-group'>".makeAuthorHTML($authors)."</div>";
+    if (!empty($meshTerms) || !empty($ericSubjects)) {
+        $html .= "<div class='form-group'>".makeTermSelect($meshTerms, $ericSubjects, $pubmedIncludes, $ericIncludes)."</div>";
+    }
+    $html .= "<div class='form-group' style='padding-left: 25px; width: 200px;'><button class='tsubmit'>Make Word Cloud</button></div>";
+    $html .= "</div>";
     $html .= "</form>";
-    $html .= Publications::makeLimitButton();
+    $html .= Publications::makeLimitButton("p", "tsubmit");
     $html .= "<h2 class='mtitle'></h2><div style='width: 1260px; margin: 0 auto;'><div id='chartdivcol'></div><div id='chartdiv'></div>";
+    return $html;
+}
+
+function makeTermSelect($meshTerms, $ericSubjects, $pubMedIncludes, $ericIncludes) {
+    $terms = [];
+    $arrays = [
+        "PubMed" => [
+            "terms" => $meshTerms,
+            "includes" => $pubMedIncludes,
+        ],
+        "ERIC" => [
+            "terms" => $ericSubjects,
+            "includes" => $ericIncludes,
+        ],
+    ];
+    foreach ($arrays as $type => $ary) {
+        foreach ($ary['terms'] as $recordId => $instances) {
+            foreach ($instances as $instance => $instanceTermList) {
+                if ($ary['includes'][$recordId][$instance] == "1") {
+                    $instanceTerms = preg_split("/\s*[,;]\s*/", $instanceTermList);
+                    foreach ($instanceTerms as $term) {
+                        if ($term) {
+                            if (!isset($terms[$term])) {
+                                $terms[$term] = 0;
+                            }
+                            $terms[$term]++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    arsort($terms);
+
+    $html = "<br/>";
+    $html .= "<label for='terms'>MeSH Terms &amp; ERIC Subjects:<br/>(Select multiple; selecting none means all are selected)</label>";
+    $html .= "<select id='terms' name='terms[]' multiple>";
+    foreach ($terms as $term => $cnt) {
+        $selected = in_array($term, $_GET['terms'] ?? []) ? "selected" : "";
+        $html .= "<option value='$term' $selected>$term (".REDCapManagement::pretty($cnt).")</option>";
+    }
+    $html .= "</select>";
+    $html .= "<div class='alignright smallest'><a href='javascript:;' onclick='$(\"#terms option:selected\").attr(\"selected\", false);'>clear</a></div>";
+
     return $html;
 }
 
@@ -474,4 +561,99 @@ function breakTitlesIntoLines($wordData, $maxCharsPerLine) {
         $newWordData[$newTitle] = $cnt;
     }
     return $newWordData;
+}
+
+function makeAuthorArray() {
+    $authors = [];
+    if (isset($_GET['first_author']) && ($_GET['first_author'] == "on")) {
+        $authors[] = "first";
+    }
+    if (isset($_GET['middle_author']) && ($_GET['middle_author'] == "on")) {
+        $authors[] = "middle";
+    }
+    if (isset($_GET['last_author']) && ($_GET['last_author'] == "on")) {
+        $authors[] = "last";
+    }
+    if (empty($authors)) {
+        $authors = ["first", "middle", "last"];
+    }
+    return $authors;
+}
+
+function makeAuthorHTML($authors) {
+    $spacer = "<br/>";
+    $checked = in_array("first", $authors) ? "checked" : "";
+    $html = "<label>Author Placement:</label><br/>";
+    $html .= "<input type='checkbox' name='first_author' $checked id='first_author' /> <label for='first_author'>First Author</label>";
+    $html .= $spacer;
+    $checked = in_array("middle", $authors) ? "checked" : "";
+    $html .= "<input type='checkbox' name='middle_author' $checked id='middle_author' /> <label for='middle_author'>Middle Author</label>";
+    $html .= $spacer;
+    $checked = in_array("last", $authors) ? "checked" : "";
+    $html .= "<input type='checkbox' name='last_author' $checked id='last_author' /> <label for='last_author'>Last Author</label>";
+    return $html;
+}
+
+function subjectTermsApply($row, $requestedSubjectTerms) {
+    if (empty($requestedSubjectTerms)) {
+        return TRUE;
+    }
+    if ($row['redcap_repeat_instrument'] == "eric") {
+        $subjectList = $row['eric_subject'] ?? "";
+    } else if ($row['redcap_repeat_instrument'] == "citation") {
+        $subjectList = $row['citation_mesh_terms'] ?? "";
+    } else {
+        return TRUE;
+    }
+    if (!$subjectList) {
+        return FALSE;
+    }
+    $subjects = preg_split("/\s*[,;]\s*/", strtolower(trim($subjectList)));
+    if (empty($subjects) || REDCapManagement::isArrayBlank($subjects)) {
+        return FALSE;
+    }
+    foreach ($requestedSubjectTerms as $requestedTerm) {
+        $requestedTerm = strtolower($requestedTerm);
+        if ($requestedTerm && in_array($requestedTerm, $subjects)) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+function authorFiltersApply($row, $authorTypes, $nameFirst, $nameLast) {
+    if (empty($authorTypes)) {
+        return FALSE;
+    }
+    if ($row['redcap_repeat_instrument'] == "eric") {
+        $authorList = $row['eric_author'] ?? "";
+    } else if ($row['redcap_repeat_instrument'] == "citation") {
+        $authorList = $row['citation_authors'] ?? "";
+    } else {
+        return TRUE;
+    }
+    if (!$authorList) {
+        return TRUE;
+    }
+
+    $authors = preg_split("/\s*[,;]\s*/", $authorList);
+    if (empty($authors) || REDCapManagement::isArrayBlank($authors)) {
+        return TRUE;
+    }
+    list($firstAuthorFirst, $firstAuthorLast) = NameMatcher::splitName($authors[0]);
+    $matchesFirstAuthor = NameMatcher::matchByInitials($firstAuthorLast, $firstAuthorFirst, $nameLast, $nameFirst);
+    $lastAuthor = $authors[count($authors) - 1];
+    list($lastAuthorFirst, $lastAuthorLast) = NameMatcher::splitName($lastAuthor);
+    $matchesLastAuthor = NameMatcher::matchByInitials($lastAuthorLast, $lastAuthorFirst, $nameLast, $nameFirst);
+    if (in_array("first", $authorTypes) && $matchesFirstAuthor) {
+        return TRUE;
+    }
+    if (in_array("last", $authorTypes) && $matchesLastAuthor) {
+        return TRUE;
+    }
+    if (in_array("middle", $authorTypes) && !$matchesFirstAuthor && !$matchesLastAuthor) {
+        # we know it matched because it's been included in the record's citations
+        return TRUE;
+    }
+    return FALSE;
 }

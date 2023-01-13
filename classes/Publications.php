@@ -49,7 +49,7 @@ class Publications {
         return $startDate;
     }
 
-    public static function makeLimitButton($elementTag = "p") {
+    public static function makeLimitButton($elementTag = "p", $buttonClass = "") {
         $server = $_SERVER['HTTP_HOST'] ?? "";
         $uri = $_SERVER['REQUEST_URI'] ?? "";
         $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://".$server.$uri;
@@ -66,7 +66,11 @@ class Publications {
             $buttonText = "Limit Pubs to After $limitYear";
             $nextLine = "<br/><span class='smallest'>PubMed's match-quality increased after $limitYear</span>";
         }
-        return "<$elementTag class='centered'>$status<br/><button onclick='location.href=\"$newUrl\"; return false;'>$buttonText</button>$nextLine</$elementTag>";
+        $buttonClassText = "";
+        if ($buttonClass) {
+            $buttonClassText = "class='$buttonClass'";
+        }
+        return "<$elementTag class='centered'>$status<br/><button $buttonClassText onclick='location.href=\"$newUrl\"; return false;'>$buttonText</button>$nextLine</$elementTag>";
     }
 
 	public function deduplicateCitations($recordId) {

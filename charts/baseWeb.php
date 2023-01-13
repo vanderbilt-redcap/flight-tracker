@@ -83,8 +83,8 @@ $(document).ready(function() {
 });
 
 function refreshForRecord(page) {
-	var rec = $('#refreshRecord').val();
-	var newStr = "";
+    const rec = $('#refreshRecord').val();
+	let newStr = "";
 <?php
 	if (isset($_GET['new'])) {
 		if (is_numeric($_GET['new'])) {
@@ -94,57 +94,56 @@ function refreshForRecord(page) {
 		}
 	}
 	if (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) {
-        echo "let wranglerType = '&wranglerType=".REDCapManagement::sanitize($_GET['wranglerType'])."';\n";
+        echo "const wranglerType = '&wranglerType=".REDCapManagement::sanitize($_GET['wranglerType'])."';\n";
 	} else {
-        echo "let wranglerType = '';\n";
+        echo "const wranglerType = '';\n";
     }
 ?>
-	if (rec != '') {
+	if (rec !== '') {
 		window.location.href = page + '?pid=<?= urlencode(REDCapManagement::sanitize($_GET['pid'])) ?>&page=<?= urlencode(REDCapManagement::sanitize($_GET['page'])) ?>&prefix=<?= urlencode(REDCapManagement::sanitize($_GET['prefix'])) ?>&record='+rec+newStr+wranglerType;
 	}
 }
 
 function search(page, div, name) {
 	$(div).html("");
-	var name = name.toLowerCase();
-	if (name != '') {
-		var lastNames = <?= json_encode($lastNames) ?>;
-		var fullNames = <?= json_encode($fullNames) ?>;
-		var records = <?= json_encode($allMyRecords) ?>;
-		var foundRecs = {};
-		var numFoundRecs = 0;
-		var re = new RegExp("^"+name);
-		var rec;
+    name = name.toLowerCase();
+	if (name !== '') {
+		const lastNames = <?= json_encode($lastNames) ?>;
+        const fullNames = <?= json_encode($fullNames) ?>;
+        const records = <?= json_encode($allMyRecords) ?>;
+        const foundRecs = {};
+		let numFoundRecs = 0;
+        const re = new RegExp("^"+name);
 		if (!name.match(/\s/)) {
 			// last name only
-			for (var i = 0; i < records.length; i++) {
-				rec = records[i];
-				var ln = lastNames[rec].toLowerCase();
+			for (let i = 0; i < records.length; i++) {
+				const rec = records[i];
+				const ln = lastNames[rec].toLowerCase();
 				if (re.test(ln)) {
 					foundRecs[rec] = ln;
 					numFoundRecs++;
 				}
 			}
 		} else {    // first and last name
-			for (var i = 0; i < records.length; i++) {
-				rec = records[i];
-				var fn = fullNames[rec].toLowerCase();
+			for (let i = 0; i < records.length; i++) {
+				const rec = records[i];
+				const fn = fullNames[rec].toLowerCase();
 				if (re.test(fn)) {
 					foundRecs[rec] = fn;
 					numFoundRecs++;
 				}
 			}
 		}
-		if (numFoundRecs == 1) {
+		if (numFoundRecs === 1) {
 			$('#searchDiv').html("Name found.");
-			let wranglerType = '<?= (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) ? "&wranglerType=".urlencode(REDCapManagement::sanitize($_GET['wranglerType'])) : "" ?>';
-			for (rec in foundRecs) {
+			const wranglerType = '<?= (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) ? "&wranglerType=".urlencode(REDCapManagement::sanitize($_GET['wranglerType'])) : "" ?>';
+			for (let rec in foundRecs) {
 				window.location.href = '?pid=<?= urlencode(REDCapManagement::sanitize($_GET['pid'])) ?>&prefix=<?= urlencode(REDCapManagement::sanitize($_GET['prefix'])) ?>&page='+encodeURIComponent(page)+'&record='+rec+wranglerType;
 			}
 		} else  if (numFoundRecs > 1) {
-			var list = "";
-			for (rec in foundRecs) {
-				if (list != "") {
+			let list = "";
+			for (let rec in foundRecs) {
+				if (list !== "") {
 					list += "; ";
 				}
 				list += fullNames[rec];
@@ -155,6 +154,5 @@ function search(page, div, name) {
 		}
 	}
 }
-
 
 </script>

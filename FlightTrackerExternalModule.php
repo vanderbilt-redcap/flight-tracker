@@ -76,6 +76,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         // CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		foreach ($activePids as $pid) {
 			if (REDCapManagement::isActiveProject($pid)) {
+                Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at beginning of email processing for project.", $pid);
 				$token = $this->getProjectSetting("token", $pid);
 				$server = $this->getProjectSetting("server", $pid);
 				if ($token && $server) {
@@ -99,6 +100,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Email Exception", $mssg);
                     }
                 }
+                Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at end of email processing for project.", $pid);
 			}
 		}
 	}
@@ -722,6 +724,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $activePids = $this->framework->getProjectsWithModuleEnabled();
         }
 		CareerDev::log($this->getName()." running for pids ".json_encode($activePids));
+        foreach ($activePids as $currPid) {
+            Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at beginning.", $currPid);
+        }
 		$pidsUpdated = [];
         CareerDev::log("Checking for redcaptest in ".SERVER_NAME);
         if (preg_match("/redcaptest.vanderbilt.edu/", SERVER_NAME)) {
@@ -752,6 +757,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
 
 		foreach ($activePids as $pid) {
+            Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at beginning of main processing for project.", $pid);
             $this->cleanupLogs($pid);
             $token = $this->getProjectSetting("token", $pid);
             $server = $this->getProjectSetting("server", $pid);
@@ -777,6 +783,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Error in Cron", $e->getMessage());
                 }
             }
+            Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at end of main processing for project.", $pid);
 		}
 	}
 

@@ -432,6 +432,11 @@ class DateManagement {
         return $str;
     }
 
+    public static function datetime2LongDateTime($datetime) {
+        $ts = strtotime($datetime);
+        return date("F j, Y, h:i a", $ts);
+    }
+
     public static function datetime2Date($datetime) {
         if (preg_match("/\s/", $datetime)) {
             $nodes = preg_split("/\s+/", $datetime);

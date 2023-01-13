@@ -69,21 +69,21 @@ class CitationCollection {
 	# citationClass is notDone, included, or omitted
 	public function toHTML($citationClass) {
 		$html = "";
-		$i = 0;
 		if (count($this->getCitations()) == 0) {
 			$html .= "<p class='centered'>None to date.</p>\n";
 		} else {
             $allBoldedNames = $this->getBoldedNames();
-			foreach ($this->getCitations() as $citation) {
+            $i = 0;
+            foreach ($this->getCitations() as $citation) {
                 $boldedNames = $citation->getBoldedNames();
                 $nameClasses = [];
-                foreach ($allBoldedNames as $i => $name) {
+                foreach ($allBoldedNames as $j => $name) {
                     if (in_array($name, $boldedNames)) {
-                        $nameClasses[] = "name$i";
+                        $nameClasses[] = "name$j";
                     }
                 }
 
-				$html .= $citation->toHTML($citationClass, $nameClasses);
+				$html .= $citation->toHTML($citationClass, $nameClasses, $i+1);
 				$i++;
 			}
 		}
@@ -322,7 +322,7 @@ class Citation {
     }
 
 	# citationClass is notDone, included, or omitted
-	public function toHTML($citationClass, $otherClasses = []) {
+	public function toHTML($citationClass, $otherClasses = [], $number = 1) {
 		if ($citationClass == "notDone") {
 			$checkboxClass = "checked";
 		} else if ($citationClass == "included") {
@@ -344,7 +344,7 @@ class Citation {
         $divClasses = "citation $citationClass ".implode(" ", $otherClasses);
 		$html .= "<div class='$divClasses' id='citation_$citationClass$id'>";
 		$html .= "<div class='citationCategories'><span class='tooltiptext'>".$this->makeTooltip()."</span>".$this->getCategory()."</div>";
-		$html .= Wrangler::makeCheckbox($id, $checkboxClass)." ".$source.$this->getCitationWithLink();
+		$html .= Wrangler::makeCheckbox($id, $checkboxClass)."&nbsp;<strong>$number</strong>.&nbsp;".$source.$this->getCitationWithLink(TRUE, TRUE);
 		if (in_array($citationClass, $ableToReset)) {
             $html .= "<div style='text-align: right;' class='smallest'><span onclick='resetCitation(\"$id\");' class='finger'>reset</span></div>";
         }
