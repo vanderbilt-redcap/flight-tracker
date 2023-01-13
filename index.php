@@ -227,7 +227,7 @@ $(document).ready(function() {
 
     <?php
 } catch (\Exception $e) {
-    $mssg = $e->getMessage()."<br/><br/>".$e->getTraceAsString();
+    $mssg = $e->getMessage()."<br/><br/>".Sanitizer::sanitize($e->getTraceAsString());
     echo "Oops! Something went wrong. Please contact <a href='mailto:scott.j.pearson@vumc.org'>scott.j.pearson@vumc.org</a> with the below message.<br/>".$mssg;
 }
 
