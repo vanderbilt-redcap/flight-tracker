@@ -1,6 +1,8 @@
 <?php
 
-# used every time that the summaries are recalculated 
+namespace Vanderbilt\CareerDevLibrary;
+
+# used every time that the summaries are recalculated
 # 15-30 minute runtimes
 
 $sendEmail = false;

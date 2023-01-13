@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 # returns associative array of pairs (prefix for POST => suffix for setting)
 function getPrefixes() {
         return array("from" => "froms", "subject" => "subjects", "text" => "texts");

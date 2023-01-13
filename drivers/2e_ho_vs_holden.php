@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\CareerDevLibrary;
+
 # This manually handles the Ho vs. Holden case
 # Deletes old record and appends two new records of Ho and Holden
 # Handles all of their data manually, including COEUS information

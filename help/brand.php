@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");

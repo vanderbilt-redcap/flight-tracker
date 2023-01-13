@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 # provides a means to reassign catgories, start/end dates, etc. for outside grants
 # to be run on web
 

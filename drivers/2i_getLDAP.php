@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\CareerDevLibrary;
+
 require_once(dirname(__FILE__)."/../small_base.php");
 
 require_once(dirname(__FILE__)."/../../Core/bootstrap.php");

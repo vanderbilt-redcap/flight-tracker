@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;

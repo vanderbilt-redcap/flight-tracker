@@ -1,12 +1,6 @@
-<style>
-td.grants { vertical-align: top; padding: 5px; }
-.blue { color: black; }
-.smaller { font-size: 12px; }
-.centered { text-align: center; }
-.label { margin-top: 3px; margin-bottom: 3px; }
-</style>
-
 <?php
+
+namespace Vanderbilt\FlightTrackerExternalModule;
 
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Download;
@@ -18,6 +12,15 @@ use \Vanderbilt\CareerDevLibrary\Links;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../wrangler/baseSelect.php");
+
+echo "
+<style>
+td.grants { vertical-align: top; padding: 5px; }
+.blue { color: black; }
+.smaller { font-size: 12px; }
+.centered { text-align: center; }
+.label { margin-top: 3px; margin-bottom: 3px; }
+</style>";
 
 $records = Download::recordIds($token, $server);
 

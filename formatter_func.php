@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 function processFiles($token, $server, $pid) {
 	$files = array(
 			"/app001/www/redcap/plugins/career_dev/coeus_award.json",

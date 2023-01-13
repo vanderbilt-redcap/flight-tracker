@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\CareerDevLibrary;
+
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 

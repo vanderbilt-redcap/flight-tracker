@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 # makes a demographics table listing all of the data by first CDA date.
 # intended to be modified
 # for aggregate data

@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 # The following line is necessary to allow for cross-project POSTing.
 # It is turned off (for now) for security reasons.
 // header("access-control-allow-origin: *");

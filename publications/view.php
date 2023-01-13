@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\CitationCollection;
 use \Vanderbilt\CareerDevLibrary\Download;

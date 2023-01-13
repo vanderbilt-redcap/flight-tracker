@@ -1,6 +1,7 @@
 <?php
 
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Upload;
@@ -8,7 +9,6 @@ use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\REDCapLookup;
 use \Vanderbilt\CareerDevLibrary\NIHTables;
-use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");

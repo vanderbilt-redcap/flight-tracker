@@ -1,4 +1,7 @@
 <?php
+
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 use \Vanderbilt\CareerDevLibrary\COEUSConnection;
 
 require_once(dirname(__FILE__)."/small_base.php");

@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\CareerDevLibrary;
+
 # must be run on server with access to its database
 
 use \Vanderbilt\CareerDevLibrary\Download;
