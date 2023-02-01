@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
@@ -1189,7 +1191,7 @@ if (!empty($order)) {
     $ai = 0;
     foreach ($order as $award) {
         $inUse[] = $award['sponsor_award_no'];
-        $careerProgressionAry[] = careerprogression($award, $ai++);
+        $careerProgressionAry[] = \Vanderbilt\FlightTrackerExternalModule\careerprogression($award, $ai++);
     }
 }
 $careerProgressionJSON = json_encode($careerProgressionAry);

@@ -26,7 +26,7 @@ if (isset($_GET['viz']) && isset($_POST['record'])) {
         if (!empty($order)) {
             $ai = 0;
             foreach ($order as $award) {
-                $careerProgressionAry[] = careerprogression($award, $ai++);
+                $careerProgressionAry[] = \Vanderbilt\FlightTrackerExternalModule\careerprogression($award, $ai++);
             }
         }
         echo json_encode($careerProgressionAry);

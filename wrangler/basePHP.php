@@ -1,5 +1,7 @@
 <?php
 
+namespace Vanderbilt\FlightTrackerExternalModule;
+
 define("BLANK_VALUE", "---");
 define("JS_UNDEFINED", "undefined");
 define("ADVANCED_MODE", 'endGrantWranglerTraining');
