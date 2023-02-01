@@ -945,6 +945,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     && !isset($_GET['s'])
                     && class_exists('\Vanderbilt\CareerDevLibrary\NavigationBar')
                 ) {
+                    header("Cross-Origin-Resource-Policy: cross-origin");
                     echo $this->makeHeaders($token, $server, $project_id, $tokenName);
                 }
                 if (preg_match("/online_designer\.php/", $url)) {
@@ -956,7 +957,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     header("Location: ".$this->getUrl("install.php"));
                 }
             }
-            header("Cross-Origin-Resource-Policy: cross-origin");
         }
 	}
 
