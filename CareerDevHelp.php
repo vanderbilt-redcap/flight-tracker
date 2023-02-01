@@ -256,6 +256,7 @@ class CareerDevHelp {
         ];
         $help["Wrangle"] = [
             "Grant Wrangler" => ["grantWrangler.html", "bins.html"],
+            "*NEW* Grant Wrangler" => ["grantWrangler.html", "bins.html"],
             "Publication Wrangler" => ["pubWrangler.html"],
             "Patent Wrangler" => ["pubWrangler.html"],
             "Add a Custom Grant" => ["addNewGrants.html"],

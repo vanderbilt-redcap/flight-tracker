@@ -21,11 +21,45 @@ class Grants {
 		}
 		$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule());
 	}
-	
+
+    public static $FLAGGED_GRANTS_SETTING = "flagged_grants";
 	public static $MAX_GRANTS = 15;
 	public static $NUM_GRANT_TESTS = 20;
 	public static $MIN_TITLE_CHARS = 15;
 
+    public function getFlaggedGrants() {
+        if (empty($this->flaggedGrants) && $this->recordId) {
+            $field = "summary_calculate_flagged_grants";
+            if (empty($this->metadata)) {
+                $metadataFields = Download::metadataFields($this->token, $this->server);
+            } else {
+                $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+            }
+            if (!in_array($field, $metadataFields)) {
+                return $this->flaggedGrants;
+            }
+            $redcapData = Download::fieldsForRecords($this->token, $this->server, ["record_id", $field], [$this->recordId]);
+            $json = REDCapManagement::findField($redcapData, $this->recordId, $field) ?: "[]";
+            $this->flaggedGrants = json_decode($json, TRUE);
+        }
+        return $this->flaggedGrants;
+    }
+
+    public static function areFlagsOn($pid) {
+        return Application::getSetting(self::$FLAGGED_GRANTS_SETTING, $pid);
+    }
+
+    public static function turnFlagsOn($pid) {
+        Application::saveSetting(self::$FLAGGED_GRANTS_SETTING, TRUE, $pid);
+    }
+
+    public static function turnFlagsOff($pid) {
+        Application::saveSetting(self::$FLAGGED_GRANTS_SETTING, FALSE, $pid);
+    }
+
+    public function getFlagStatus() {
+        return self::areFlagsOn(Application::getPID($this->token));
+    }
 
 	public function excludeUnnamedGrants_test($tester) {
 		$patterns = array("/K12\/KL2 - Rec\./", "/Internal K - Rec\./");
@@ -930,6 +964,19 @@ class Grants {
 		# primary order by starting time
 		# secondary order by source ($sourceOrder)
 
+        if ($this->getFlagStatus()) {
+            $myGrants = [];
+            foreach ($this->nativeGrants as $grant) {
+                $awardNo = $grant->getAwardNumber();
+                $source = $grant->getVariable("source");
+                $id = $awardNo."___".$source;
+                if (in_array($id, $this->flaggedGrants)) {
+                    $myGrants[] = $grant;
+                }
+            }
+            return $myGrants;
+        }
+
 		# exclude certain names
 		$exclude = array(
 				new Name("Harold", "L", "Moses"),
@@ -959,7 +1006,7 @@ class Grants {
 			    $filterOut = TRUE;
             }
 			if (!$filterOut) {
-				array_push($filteredGrants, $grant);
+				$filteredGrants[] = $grant;
 			}
 		}
 
@@ -983,30 +1030,30 @@ class Grants {
 				if ($grant->getVariable('type') != "N/A") {
 					$change = new ImportedChange($awardno);
 					$change->setChange("type", $grant->getVariable('type'));
-					array_push($this->changes, $change);
+					$this->changes[] = $change;
 				}
 			} else if (preg_match("/CHANGE/", $action)) {
 				$change1 = new ImportedChange($awardno);
 				$change1->setChange("type", $grant->getVariable('type'));
-				array_push($this->changes, $change1);
+				$this->changes[] = $change1;
 
 				$change2 = new ImportedChange($awardno);
 				$change2->setChange("start", $grant->getVariable("start"));
-				array_push($this->changes, $change2);
+				$this->changes[] = $change2;
 
 				if ($grant->getVariable("end")) {
 					$change3 = new ImportedChange($awardno);
 					$change3->setChange("end", $grant->getVariable("end"));
-					array_push($this->changes, $change3);
+					$this->changes[] = $change3;
 				}
 			} else if ($action == "TAKEOVER") {
 				$change = new ImportedChange($awardno);
 				$change->setTakeOverDate($grant->getVariable("start"));
-				array_push($this->changes, $change);
+				$this->changes[] = $change;
 			} else if ($action == "REMOVE") {
 				$change = new ImportedChange($awardno);
 				$change->setRemove(TRUE);
-				array_push($this->changes, $change);
+				$this->changes[] = $change;
 			}
 		}
 		$this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource);
@@ -1396,7 +1443,7 @@ class Grants {
 	public static function makeOrder($order) {
 		$transformed = array();
 		foreach ($order as $grant) {
-			array_push($transformed, self::makeJSON($grant));
+			$transformed[] = self::makeJSON($grant);
 		}
 		return $transformed;
 	}
@@ -1961,6 +2008,7 @@ class Grants {
                         }
                         $value = self::translateSourcesIntoSourceOrder($key, $value);
 						if (in_array($key, $metadataFields)) {
+                            DateManagement::correctLeapYear($value);
 							$uploadRow[$key] = $value;
 						} else {
 							Application::log($key." not found in metadata, but in compiledGrants");
@@ -2104,6 +2152,7 @@ class Grants {
         return self::$showDebug;
     }
 
+    private $flaggedGrants = [];
     private $metadata;
 	private $lexicalTranslator;
 	private $rows;

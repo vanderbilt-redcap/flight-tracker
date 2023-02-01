@@ -1070,7 +1070,7 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
             }
         }
         $other = $others[$type];
-        $lists[$type] = makeREDCapList($str, $other, $oldItemChoices);
+        $lists[$type] = DataDictionaryManagement::makeREDCapList($str, $other, $oldItemChoices);
     }
 
     $newMetadata = array();
@@ -1091,43 +1091,6 @@ function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadat
 
 	return Upload::metadata($newMetadata, $token, $server);
 }
-
-function makeREDCapList($text, $otherItem = FALSE, $oldItemChoices = []) {
-	$list = explode("\n", $text);
-	$newList = array();
-	$i = 0;
-    $oldChoicesReversed = [];
-    foreach ($oldItemChoices as $index => $label) {
-        $oldChoicesReversed[$label] = $index;
-    }
-    $seenIndices = [];
-    # preserve old indices
-	foreach ($list as $item) {
-		$item = trim($item);
-		if ($item) {
-            if (isset($oldChoicesReversed[$item])) {
-                $index = $oldChoicesReversed[$item];
-                $newList[] = $index.",".$item;
-                $seenIndices[] = $index;
-            } else {
-                do {
-                    $i++;
-                } while (isset($oldItemChoices[$i]) || ($i == $otherItem));
-                $newList[] = $i.",".$item;
-                $seenIndices[] = $i;
-                $i++;
-            }
-		}
-	}
-	if ($otherItem && !in_array($otherItem, $seenIndices)) {
-		$newList[] = $otherItem.",Other";
-	}
-	if (empty($newList)) {
-		$newList[] = "999999,No Resource";
-	}
-	return implode("|", $newList);
-}
-
 
 function isHelpOn() {
 	return  (isset($_SESSION['showHelp']) && $_SESSION['showHelp']);

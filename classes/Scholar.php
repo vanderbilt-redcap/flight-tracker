@@ -875,16 +875,19 @@ class Scholar {
 		foreach ($this->name as $var => $value) {
 			if (self::isValidValue($this->metadata, $choices, $var, $value)) {
 				$uploadRow[$var] = trim($value);
-			}
+                DateManagement::correctLeapYear($uploadRow[$var]);
+            }
 		}
 		foreach ($this->demographics as $var => $value) {
 			if (self::isValidValue($this->metadata, $choices, $var, $value)) {
 				$uploadRow[$var] = trim($value);
-			}
+                DateManagement::correctLeapYear($uploadRow[$var]);
+            }
 		}
 		foreach ($this->metaVariables as $var => $value) {
 			if (self::isValidValue($this->metadata, $choices, $var, $value)) {
 				$uploadRow[$var] = trim($value);
+                DateManagement::correctLeapYear($uploadRow[$var]);
 			}
 		}
 
@@ -892,7 +895,8 @@ class Scholar {
 		foreach ($grantUpload as $var => $value) {
 			if (!isset($uploadRow[$var]) && self::isValidValue($this->metadata, $choices, $var, $value)) {
 				$uploadRow[$var] = trim($value);
-			}
+                DateManagement::correctLeapYear($uploadRow[$var]);
+            }
 		}
 
 		$uploadRow['summary_complete'] = '2';
@@ -1402,6 +1406,9 @@ class Scholar {
         }
         if ($showDebug) {
             Application::log("In getAllOtherInstitutions, returning ".json_encode($seenInstitutions));
+        }
+        foreach ($seenInstitutions as $i => $institution) {
+            $seenInstitutions[$i] = trim($institution);
         }
         return $seenInstitutions;
 	}
@@ -3812,7 +3819,7 @@ class Scholar {
         ) {
             $position = self::makePosition($row, $choices, self::makeJobFields("first", $prefix));
             self::addJobCategory($position, $row, $prefix);
-            $positions[$this->makePositionKey($position, $sep)] = $position;
+            $positions[$this->makePositionKey($position, $sep, $choices)] = $position;
         }
 
         $i = 1;
@@ -3826,7 +3833,7 @@ class Scholar {
                 && $row[$institutionField]
             ) {
                 $position = self::makePosition($row, $choices, self::makeJobFields($i, $prefix));
-                $positions[$this->makePositionKey($position, $sep)] = $position;
+                $positions[$this->makePositionKey($position, $sep, $choices)] = $position;
             }
             $i++;
         }
@@ -3902,15 +3909,25 @@ class Scholar {
         return $position;
     }
 
-    public function makePositionKey($position, $sep = "|") {
-        if (in_array($position['institution'] ?? "", Application::getInstitutions($this->pid))) {
+    public function makePositionKey($position, $sep, $choices) {
+        if (in_array(trim($position['institution']) ?? "", Application::getInstitutions($this->pid))) {
             $positionKey = "home";
         } else {
             $positionKey = strtolower($position['institution'] ?? "");
         }
         $positionKey .= $sep;
         if (isset($position['rank'])) {
-            $positionKey .= strtolower($position['rank']);
+            $found = FALSE;
+            foreach ($choices["promotion_rank"] as $index => $label) {
+                if (strtolower($label) == strtolower($position['rank'])) {
+                    $positionKey .= strtolower($position['rank']);
+                    $found = TRUE;
+                    break;
+                }
+            }
+            if (!$found) {
+                $positionKey .= "other";
+            }
         } else if (isset($position['title'])) {
             $positionKey .= strtolower($position['title']);
         }
@@ -3930,7 +3947,7 @@ class Scholar {
             $value = "";
             foreach ($preferredFields as $field) {
                 if (isset($row[$field]) && $row[$field]) {
-                    if (in_array($row[$field], $homeInstitutions)) {
+                    if (in_array(trim($row[$field]), $homeInstitutions)) {
                         $value = "home";
                     } else if (isset($choices[$field])) {
                         $value = $choices[$field][$row[$field]] ?? $row[$field];

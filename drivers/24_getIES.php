@@ -52,6 +52,7 @@ function matchNamesWithExcel($excelData, $token, $server, $pid) {
         # these spreadsheets' headers are longer than 31 characters,
         # which is the maximum amount allowed by PHPSpreadsheet => hack
         $output = preg_replace("/<title>[^>]+<\/title>/", "<title>IESData</title>", $output);
+        $output = preg_replace("/<img [^>]+>/", "", $output);
         fwrite($fp, $output);
         fclose($fp);
 

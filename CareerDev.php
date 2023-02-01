@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "4.24.9";
+		return "5.0.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -275,7 +275,8 @@ class CareerDev {
         $token = $tokenForPid;
 		if ($token) {
 			$pid = self::getPidFromToken($token);
-			if (!$pid) {
+			if (!$pid && self::$firstPidError) {
+                self::$firstPidError = FALSE;
 			    self::log("ERROR: Could not find pid $pid for $token: ".json_encode(debug_backtrace()));
             }
 			return $pid;
@@ -1136,7 +1137,7 @@ class CareerDev {
             if ($switches->isOnForProject("Grants")) {
                 $ary["Add a Custom Grant"] = self::link("/customGrants.php");
                 $ary["Add Custom Grants by Bulk"] = self::link("/bulkImport.php")."&grants";
-                $ary["Grant Wrangler"] = self::link("/wrangler/index.php");
+                $ary["*NEW* Grant Wrangler"] = self::link("/wrangler/index_new.php");
             }
 			if ($switches->isOnForProject("Publications")) {
                 $ary["Publication Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Publications";
@@ -2273,6 +2274,7 @@ class CareerDev {
     ];
 
     private static $pid = "";
+    private static $firstPidError = TRUE;
 
 	private static $tokenTranslateToPid = [];
 	private static $mentorTokenTranslateToPid = [];

@@ -49,7 +49,7 @@ class ExcludeList {
             $html .= $this->makeJS();
         }
         $html .= "<p class='centered'>";
-        $html .= "Comma-Separated Exclude List: ";
+        $html .= "<span title='A list, separated by commas, of names that are to be *excluded* when matching on this record. This is a list of potential mismatches that should be omitted in any downloads.'>Comma-Separated Exclude List</span>: ";
         $html .= "<input type='text' style='width: 300px;' name='excludeList' id='excludeList' field='{$this->field}' value='$recordExcludeList'>";
         $html .= " <button onclick='updateExcludeList(\"$recordId\", $(\"#excludeList\").val()); return false;'>Update</button>";
         $html .= "</p>";

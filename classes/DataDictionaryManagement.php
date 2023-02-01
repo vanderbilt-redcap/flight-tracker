@@ -11,6 +11,43 @@ class DataDictionaryManagement {
         return "/___delete$/";
     }
 
+    public static function makeREDCapList($text, $otherItem = FALSE, $oldItemChoices = []) {
+        $list = explode("\n", $text);
+        $newList = array();
+        $i = 0;
+        $oldChoicesReversed = [];
+        foreach ($oldItemChoices as $index => $label) {
+            $oldChoicesReversed[$label] = $index;
+        }
+        $seenIndices = [];
+
+        # preserve old indices
+        foreach ($list as $item) {
+            $item = trim($item);
+            if ($item) {
+                if (isset($oldChoicesReversed[$item])) {
+                    $index = $oldChoicesReversed[$item];
+                    $newList[] = $index.",".$item;
+                    $seenIndices[] = $index;
+                } else {
+                    do {
+                        $i++;
+                    } while (isset($oldItemChoices[$i]) || ($i == $otherItem));
+                    $newList[] = $i.",".$item;
+                    $seenIndices[] = $i;
+                    $i++;
+                }
+            }
+        }
+        if ($otherItem && !in_array($otherItem, $seenIndices)) {
+            $newList[] = $otherItem.",Other";
+        }
+        if (empty($newList)) {
+            $newList[] = "999999,No Resource";
+        }
+        return implode("|", $newList);
+    }
+
     public static function removePrefix($fields, $prefix) {
         if (!preg_match("/_$/", $prefix)) {
             $prefix .= "_";
@@ -707,7 +744,23 @@ class DataDictionaryManagement {
         }
         self::sortByForms($existingMetadata);
         self::alterResourcesField($existingMetadata);
+        self::alterDepartmentsFields($existingMetadata, Application::getPID($token));
         return Upload::metadata($existingMetadata, $token, $server);
+    }
+
+    private static function alterDepartmentsFields(&$metadata, $pid) {
+        if ($pid) {
+            $departments = Application::getSetting("departments", $pid);
+            if ($departments) {
+                $fields = REDCapManagement::getSpecialFields("departments", $metadata);
+                $choiceStr = self::makeREDCapList($departments, 999999);
+                foreach ($metadata as $i => $row) {
+                    if (in_array($row['field_name'], $fields)) {
+                        $metadata[$i]['select_choices_or_calculations'] = $choiceStr;
+                    }
+                }
+            }
+        }
     }
 
     private static function alterResourcesField(&$metadata) {

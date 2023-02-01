@@ -434,7 +434,7 @@ class DateManagement {
 
     public static function datetime2LongDateTime($datetime) {
         $ts = strtotime($datetime);
-        return date("F j, Y, h:i a", $ts);
+        return date("F j, Y, g:i a", $ts);
     }
 
     public static function datetime2Date($datetime) {
@@ -457,6 +457,15 @@ class DateManagement {
             return date("F j, Y", $ts);
         }
         return "";
+    }
+
+    public static function correctLeapYear(&$date) {
+        if (preg_match("/[\-\/]02[\-\/]29$/", $date)) {
+            $year = preg_split("/[\-\/]/", $date)[0];
+            if ($year % 4 !== 0) {
+                $date = $year."-02-28";
+            }
+        }
     }
 
     public static function datediff($d1, $d2, $unit=null, $returnSigned=false, $returnSigned2=false)

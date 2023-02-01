@@ -14,6 +14,13 @@ class Grant {
 		$this->translator = $lexicalTranslator;
 	}
 
+    public static function trimApplicationType($awardNo) {
+        if (preg_match("/^\d[A-Za-z]/", $awardNo)) {
+            return substr($awardNo, 1);
+        }
+        return $awardNo;
+    }
+
     public static function makeAryOfBaseAwardNumbers($awardNumbers) {
         $newAry = [];
         foreach ($awardNumbers as $awardNo) {
@@ -523,6 +530,10 @@ class Grant {
 	public function getBaseNumber() {
 		return $this->getVariable("base_award_no");
 	}
+
+    public function getAwardNumber() {
+        return $this->getNumber();
+    }
 
 	public function getNumber() {
 		return $this->getVariable("sponsor_award_no");

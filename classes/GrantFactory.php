@@ -256,7 +256,8 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
 				$grant->setVariable('pi_flag', "Y");
 				$grant->setVariable("role", self::$defaultRole);
-				$grant->setVariable('start', $date1);
+                $grant->setVariable('start', $date1);
+                $grant->setVariable('project_start', $date1);
 				$grant->setVariable('budget', 0);
 				$grant->setVariable('direct_budget', 0);
 				$grant->setVariable('source', "data");
@@ -280,10 +281,12 @@ class NewmanGrantFactory extends GrantFactory {
 					}
 				}
 				if ($isk12kl2) {
-					$grant->setVariable('end', self::addYearsToDate($date1, $k12kl2AwardLength));
+					$endDate = self::addYearsToDate($date1, $k12kl2AwardLength);
 				} else {
-					$grant->setVariable('end', self::addYearsToDate($date1, $internalKAwardLength));
+					$endDate = self::addYearsToDate($date1, $internalKAwardLength);
 				}
+                $grant->setVariable("end", $endDate);
+                $grant->setVariable("project_end", $endDate);
 				if ($include) {
 					$grant->putInBins();
 					$this->grants[] = $grant;
@@ -305,8 +308,11 @@ class NewmanGrantFactory extends GrantFactory {
                 $grant->setVariable('source', "data");
                 $grant->setVariable('url', $url);
 				$grant->setVariable('link', Links::makeLink($url, "See Grant"));
-				$grant->setVariable('start', $date2);
-				$grant->setVariable('end', self::addYearsToDate($date2, $externalKAwardLength));
+                $grant->setVariable('start', $date2);
+                $grant->setVariable('project_start', $date2);
+                $endDate = self::addYearsToDate($date2, $externalKAwardLength);
+                $grant->setVariable('end', $endDate);
+                $grant->setVariable('project_end', $endDate);
 				$grant->setVariable('budget', 0);
 				$grant->setVariable('direct_budget', 0);
 				$grant->setVariable('sponsor_type', $type);
@@ -330,7 +336,10 @@ class NewmanGrantFactory extends GrantFactory {
 			$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
 			$grant->setVariable('pi_flag', "Y");
             $grant->setVariable("role", self::$defaultRole);
-			$grant->setVariable('start', $date3);
+            $grant->setVariable('start', $date3);
+            $grant->setVariable('project_start', $date3);
+            $grant->setVariable('end', "");
+            $grant->setVariable('project_end', "");
 			$grant->setVariable('budget', 0);
 			$grant->setVariable('direct_budget', 0);
 			$grant->setVariable('source', "data");
@@ -404,7 +413,8 @@ class NewmanGrantFactory extends GrantFactory {
 			    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=sheet2";
 				$grant = new Grant($this->lexicalTranslator);
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
-				$grant->setVariable('start', $internalKDate);
+                $grant->setVariable('start', $internalKDate);
+                $grant->setVariable('project_start', $internalKDate);
 				$grant->setVariable('source', "sheet2");
 				$grant->setVariable('url', $url);
 				$grant->setVariable('link', Links::makeLink($url, "See Grant"));
@@ -430,10 +440,12 @@ class NewmanGrantFactory extends GrantFactory {
 					}
 				}
 				if ($isk12kl2) {
-					$grant->setVariable('end', self::addYearsToDate($internalKDate, $k12kl2AwardLength));
+					$endDate = self::addYearsToDate($internalKDate, $k12kl2AwardLength);
 				} else {
-					$grant->setVariable('end', self::addYearsToDate($internalKDate, $internalKAwardLength));
+					$endDate = self::addYearsToDate($internalKDate, $internalKAwardLength);
 				}
+                $grant->setVariable("end", $endDate);
+                $grant->setVariable("project_end", $endDate);
 				if ($include) {
 					$grant->setVariable('pi_flag', "Y");
                     $grant->setVariable("role", self::$defaultRole);
@@ -452,8 +464,11 @@ class NewmanGrantFactory extends GrantFactory {
 				$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=sheet2";
 			    $grant = new Grant($this->lexicalTranslator);
 				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
-				$grant->setVariable('start', $noninstDate);
-				$grant->setVariable('end', self::addYearsToDate($noninstDate, $externalKAwardLength));
+                $grant->setVariable('start', $noninstDate);
+                $grant->setVariable('project_start', $noninstDate);
+                $endDate = self::addYearsToDate($noninstDate, $externalKAwardLength);
+                $grant->setVariable('end', $endDate);
+                $grant->setVariable('project_end', $endDate);
 				$grant->setVariable('source', "sheet2");
 				$grant->setVariable('url', $url);
 				$grant->setVariable('link', Links::makeLink($url, "See Grant"));
@@ -468,7 +483,7 @@ class NewmanGrantFactory extends GrantFactory {
 				}
 				if (!$row['newman_sheet2_first_r01_date'] || preg_match("/none/", $row['newman_sheet2_first_r01_date']) || !preg_match("/[Rr]01/", $awardno)) {
 					$grant->putInBins();
-					array_push($this->grants, $grant);
+					$this->grants[] = $grant;
 				}
 			}
 		}
@@ -481,8 +496,11 @@ class NewmanGrantFactory extends GrantFactory {
 		    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=sheet2";
 			$grant = new Grant($this->lexicalTranslator);
 			$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
-			$grant->setVariable('start', $r01Date);
-			$grant->setVariable('pi_flag', "Y");
+            $grant->setVariable('start', $r01Date);
+            $grant->setVariable('project_start', $r01Date);
+            $grant->setVariable('end', "");
+            $grant->setVariable('project_end', "");
+            $grant->setVariable('pi_flag', "Y");
             $grant->setVariable("role", self::$defaultRole);
 			$grant->setVariable('source', "sheet2");
 			$grant->setVariable('url', $url);
@@ -521,7 +539,8 @@ class NewmanGrantFactory extends GrantFactory {
 			$grant = new Grant($this->lexicalTranslator);
 			$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=new_2017";
 			$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
-			$grant->setVariable('start', $internalKDate);
+            $grant->setVariable('start', $internalKDate);
+            $grant->setVariable('project_start', $internalKDate);
 			$grant->setVariable('source', "new2017");
 			$grant->setVariable('url', $url);
 			$grant->setVariable('link', Links::makeLink($url, "See Grant"));
@@ -546,16 +565,19 @@ class NewmanGrantFactory extends GrantFactory {
 				$isk12kl2 = TRUE;
 			}
 
+            $endDate = "";
 			if ($isk12kl2) {
-				$grant->setVariable('end', self::addYearsToDate($internalKDate, $k12kl2AwardLength));
+				$endDate = self::addYearsToDate($internalKDate, $k12kl2AwardLength);
 			} else {
-				$grant->setVariable('end', self::addYearsToDate($internalKDate, $internalKAwardLength));
+				$endDate = self::addYearsToDate($internalKDate, $internalKAwardLength);
 			}
+            $grant->setVariable("end", $endDate);
+            $grant->setVariable("project_end", $endDate);
 			if ($include) {
 				$grant->setVariable('pi_flag', "Y");
                 $grant->setVariable("role", self::$defaultRole);
 				$grant->putInBins();
-				array_push($this->grants, $grant);
+				$this->grants[] = $grant;
 			}
 		}
 	
@@ -567,8 +589,11 @@ class NewmanGrantFactory extends GrantFactory {
 		    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=new_2017";
 			$grant = new Grant($this->lexicalTranslator);
 			$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
-			$grant->setVariable('start', $noninstDate);
-			$grant->setVariable('end', self::addYearsToDate($noninstDate, $externalKAwardLength));
+            $grant->setVariable('start', $noninstDate);
+            $grant->setVariable('project_start', $noninstDate);
+            $endDate = self::addYearsToDate($noninstDate, $externalKAwardLength);
+            $grant->setVariable('end', $endDate);
+            $grant->setVariable('project_end', $endDate);
 			$grant->setVariable('source', "new2017");
 			$grant->setVariable('url', $url);
 			$grant->setVariable('link', Links::makeLink($url, "See Grant"));
@@ -1127,8 +1152,10 @@ class CustomGrantFactory extends GrantFactory {
         }
 
 		$grant = new Grant($this->lexicalTranslator);
-		$grant->setVariable('start', $row['custom_start']);
-		$grant->setVariable('end', $row['custom_end']);
+        $grant->setVariable('start', $row['custom_start']);
+        $grant->setVariable('end', $row['custom_end']);
+        $grant->setVariable('project_start', $row['custom_start']);
+        $grant->setVariable('project_end', $row['custom_end']);
 		$grant->setVariable('title', $row['custom_title']);
 		$grant->setVariable('budget', $totalCosts);
 		// $grant->setVariable('fAndA', Grants::getFAndA($awardNo, $row['custom_start']));
@@ -1189,8 +1216,10 @@ class PriorGrantFactory extends GrantFactory {
 			if (isset($row['summary_award_date_'.$i]) && $row['summary_award_date_'.$i]) {
 				$grant = new Grant($this->lexicalTranslator);
 				$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=summary#summary_award_date_".$i;
-				$grant->setVariable('start', $row['summary_award_date_'.$i]);
-				$grant->setVariable('end', $row['summary_award_end_date_'.$i]);
+                $grant->setVariable('start', $row['summary_award_date_'.$i]);
+                $grant->setVariable('end', $row['summary_award_end_date_'.$i]);
+                $grant->setVariable('project_start', $row['summary_award_date_'.$i]);
+                $grant->setVariable('project_end', $row['summary_award_end_date_'.$i]);
 				$grant->setVariable('last_update', $row['summary_award_last_update_'.$i]);
 				$grant->setVariable('title', $row['summary_award_title_'.$i]);
 				$grant->setVariable('budget', $row['summary_award_total_budget_'.$i]);
@@ -1230,7 +1259,9 @@ class NSFGrantFactory extends GrantFactory {
 
         $grant = new Grant($this->lexicalTranslator);
         $grant->setVariable('start', $row['nsf_startdate']);
+        $grant->setVariable('project_start', $row['nsf_startdate']);
         $grant->setVariable('end', $row['nsf_expdate']);
+        $grant->setVariable('project_end', $row['nsf_expdate']);
         $grant->setVariable('title', $title);
         $grant->setVariable('budget', $dollars);
         $grant->setVariable('direct_budget', $dollars);
@@ -1277,7 +1308,9 @@ class IESGrantFactory extends GrantFactory {
 
         $grant = new Grant($this->lexicalTranslator);
         $grant->setVariable('start', $row['ies_start']);
+        $grant->setVariable('project_start', $row['ies_start']);
         $grant->setVariable('end', $row['ies_end']);
+        $grant->setVariable('project_end', $row['ies_end']);
         $grant->setVariable('title', $row['ies_title']);
         $grant->setVariable('budget', $dollars);
         $grant->setVariable('direct_budget', $dollars);

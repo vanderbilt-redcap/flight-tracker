@@ -35,17 +35,21 @@ class CronManager {
 	# dayOfWeek is in string format - "Monday", "Tuesday", etc. or a date in form Y-M-D
     # records here, if specified, overrides the records specified in function run
 	public function addCron($file, $method, $dayOfWeek, $records = [], $numRecordsAtATime = FALSE, $firstParameter = FALSE) {
-	    if ($this->module) {
-            if (is_numeric($records)) {
-                $numRecordsAtATime = $records;
-                $records = [];
+        try {
+            if ($this->module) {
+                if (is_numeric($records)) {
+                    $numRecordsAtATime = $records;
+                    $records = [];
+                }
+                if (!$numRecordsAtATime) {
+                    $numRecordsAtATime = self::getNumberOfRecordsForMethod($method);
+                }
+                $this->addCronForBatch($file, $method, $dayOfWeek, $records, $numRecordsAtATime, $firstParameter);
+            } else {
+                $this->addCronToRunOnce($file, $method, $dayOfWeek, $records, $firstParameter);
             }
-            if (!$numRecordsAtATime) {
-                $numRecordsAtATime = self::getNumberOfRecordsForMethod($method);
-            }
-            $this->addCronForBatch($file, $method, $dayOfWeek, $records, $numRecordsAtATime, $firstParameter);
-        } else {
-	        $this->addCronToRunOnce($file, $method, $dayOfWeek, $records, $firstParameter);
+        } catch(\Exception $e) {
+            Application::log("ERROR: ".$e->getMessage(), $this->pid);
         }
 	}
 
@@ -163,7 +167,7 @@ class CronManager {
             if (date("l") == $dayOfWeek) {
                 $this->enqueueBatch($absFile, $method, $records, $numRecordsAtATime, $firstParameter);
                 if ($this->isDebug) {
-                    Application::log("Assigned cron for $method on $dayOfWeek");
+                    Application::log("Assigned cron for $method on $dayOfWeek", $this->pid);
                 }
             }
         } else if ($dateTs) {
@@ -172,7 +176,7 @@ class CronManager {
             if ($date == date(self::getDateFormat())) {
                 $this->enqueueBatch($absFile, $method, $records, $numRecordsAtATime, $firstParameter);
                 if ($this->isDebug) {
-                    Application::log("Assigned cron for $date");
+                    Application::log("Assigned cron for $date", $this->pid);
                 }
             }
         }
