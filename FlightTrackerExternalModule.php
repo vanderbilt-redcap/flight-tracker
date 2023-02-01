@@ -916,10 +916,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     $(document).ready(function() { $('.chklist.round:eq(6)').hide(); });
 </script>\n";
         } else if (PAGE == "DataEntry/index.php") {
+            echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
             echo "<script>
     $(document).ready(() => {
         const originalAlert = alert;
-        alert = (mssg) {
+        alert = (mssg) => {
             if (!mssg.match(/ERASE THE VALUE OF THE FIELD/)) {
                 originalAlert(mssg);
             }
@@ -955,6 +956,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     header("Location: ".$this->getUrl("install.php"));
                 }
             }
+            header("Cross-Origin-Resource-Policy: cross-origin");
         }
 	}
 
