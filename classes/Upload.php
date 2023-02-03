@@ -578,7 +578,11 @@ public static function metadata($metadata, $token, $server) {
 			$rowsOfRows = array($rows);
 		}
 
-		$pid = Application::getPID($token);
+        $pid = Application::getPID($token);
+        foreach (array_keys($rowsOfRows) as $i) {
+            self::handleLargeJSONs($rowsOfRows[$i], $pid);
+        }
+
 		$saveDataEligible = ($pid && $_GET['pid']  && ($pid == $_GET['pid']) && method_exists('\REDCap', 'saveData'));
 		if (isset(self::$useAPIOnly[$token]) && self::$useAPIOnly[$token]) {
 			$saveDataEligible = FALSE;
@@ -659,6 +663,20 @@ public static function metadata($metadata, $token, $server) {
 		Application::log($method." (pid $pid): ".REDCapManagement::json_encode_with_spaces($allFeedback), $pid);
 		return $allFeedback;
 	}
+
+    private static function handleLargeJSONs(&$rows, $pid) {
+        $maxLength = 65000;
+        foreach (array_keys($rows) as $i) {
+            foreach ($rows[$i] as $field => $value) {
+                if ((strpos($field, "summary_calculate_") !== FALSE) && strlen($value) > $maxLength) {
+                    $recordId = $rows[$i]["record_id"];
+                    $key = $field."___".$recordId;
+                    Application::saveSetting($key, $value, $pid);
+                    $rows[$i][$field] = $key;
+                }
+            }
+        }
+    }
 
 	public static function isProductionServer() {
         if (method_exists("Application", "isTestServer")) {

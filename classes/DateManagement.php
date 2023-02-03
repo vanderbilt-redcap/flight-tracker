@@ -461,7 +461,7 @@ class DateManagement {
 
     public static function correctLeapYear(&$date) {
         if (preg_match("/[\-\/]02[\-\/]29$/", $date)) {
-            $year = preg_split("/[\-\/]/", $date)[0];
+            $year = (int) preg_split("/[\-\/]/", $date)[0];
             if ($year % 4 !== 0) {
                 $date = $year."-02-28";
             }

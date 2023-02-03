@@ -22,7 +22,7 @@ function togglePubMedName(nameSelector, ob, checkedImg, uncheckedImg) {
 	if ($(imgSelector).attr('src').match(/unchecked/)) {
 		$(hiddenValueSelector).val('include');
 		$(imgSelector).attr('src', checkedImg);
-	} else {
+	} else if (!$(imgSelector).attr('src').match(/readonly/)) {
 		$(hiddenValueSelector).val('exclude');
 		$(imgSelector).attr('src', uncheckedImg);
 	}
@@ -929,18 +929,50 @@ function installMetadata(fields) {
 	$("#metadataWarning").removeClass("install-metadata-box-danger");
 	$("#metadataWarning").addClass("install-metadata-box-warning");
 	$("#metadataWarning").html("<em class='fa fa-spinner fa-spin'></em> Installing...");
-	$.post(url, { 'redcap_csrf_token': getCSRFToken(), process: "install", fields: fields }, function(data) {
-		console.log(JSON.stringify(data));
-		$("#metadataWarning").removeClass("install-metadata-box-warning");
-		if (!data.match(/Exception/)) {
+	$.post(url, { 'redcap_csrf_token': getCSRFToken(), process: "install", fields: fields }, function(json) {
+		console.log(json);
+		if (!json.match(/Exception/)) {
+			$("#metadataWarning").removeClass("install-metadata-box-warning");
 			$("#metadataWarning").addClass("install-metadata-box-success");
 			$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
 			setTimeout(function() {
 				$("#metadataWarning").fadeOut(500);
 			}, 3000);
 		} else {
-			$("#metadataWarning").addClass("install-metadata-box-danger");
-			$("#metadataWarning").html("Error in installation! Metadata not updated. "+JSON.stringify(data));
+			const pid = getPid();
+			const data = JSON.parse(json);
+			const errorMssg = data[pid]['Exception'] ?? "";
+			if (errorMssg === "First field is , not record_id!") {
+				$.post(url, { 'redcap_csrf_token': getCSRFToken(), process: "install_from_scratch", fields: [] }, function(json2) {
+					console.log(json2);
+					if (!json2.match(/Exception/)) {
+						$("#metadataWarning").removeClass("install-metadata-box-warning");
+						$("#metadataWarning").addClass("install-metadata-box-success");
+						$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
+						setTimeout(function () {
+							$("#metadataWarning").fadeOut(500);
+						}, 3000);
+					} else {
+						const data2 = JSON.parse(json2);
+						const errorMssg2 = data2[pid]['Exception'] ?? "";
+						$("#metadataWarning").removeClass("install-metadata-box-warning");
+						$("#metadataWarning").addClass("install-metadata-box-danger");
+						if (errorMssg2) {
+							$("#metadataWarning").html("Error in installation! Metadata not updated. "+errorMssg2);
+						} else {
+							$("#metadataWarning").html("Error in installation! Metadata not updated. "+json2);
+						}
+					}
+				});
+			} else if (errorMssg) {
+				$("#metadataWarning").removeClass("install-metadata-box-warning");
+				$("#metadataWarning").addClass("install-metadata-box-danger");
+				$("#metadataWarning").html("Error in installation! Metadata not updated. "+errorMssg);
+			} else {
+				$("#metadataWarning").removeClass("install-metadata-box-warning");
+				$("#metadataWarning").addClass("install-metadata-box-danger");
+				$("#metadataWarning").html("Error in installation! Metadata not updated. "+json);
+			}
 		}
 	});
 }

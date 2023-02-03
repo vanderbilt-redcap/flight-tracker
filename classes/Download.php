@@ -582,8 +582,22 @@ class Download {
                 $redcapData[$i]["record_id"] = Sanitizer::sanitize($redcapData[$i]["record_id"]);
             }
         }
-        return Sanitizer::sanitizeREDCapData($redcapData);
+        $redcapData = Sanitizer::sanitizeREDCapData($redcapData);
+        self::handleLargeJSONs($redcapData, $pid);
+        return $redcapData;
 	}
+
+    private static function handleLargeJSONs(&$redcapData, $pid) {
+        foreach (array_keys($redcapData) as $i) {
+            $recordId = $redcapData[$i]["record_id"] ?? "";
+            foreach ($redcapData[$i] as $field => $value) {
+                $key = $field."___".$recordId;
+                if ((strpos($field, "summary_calculate_") !== FALSE) && ($value == $key)) {
+                    $redcapData[$i][$field] = Application::getSetting($key, $pid);
+                }
+            }
+        }
+    }
 
 	public static function userid($token, $server) {
 		$data = array(

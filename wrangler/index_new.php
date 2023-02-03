@@ -25,12 +25,15 @@ $daysForNew = 60;
 if (isset($_GET['new']) && is_numeric($_GET['new'])) {
 	$daysForNew = Sanitizer::sanitizeInteger($_GET['new']);
 }
-$_GLOBALS['daysForNew'] = $daysForNew;
 
 $cookieName = ADVANCED_MODE."_$pid";
 if (isset($_POST['hideBubble']) && $_POST['hideBubble']) {
     $oneWeek = 7 * 24 * 3600;
-    setcookie($cookieName, TRUE, time() + $oneWeek);
+    if (REDCapManagement::versionGreaterThanOrEqualTo(phpversion(), "7.3.0")) {
+        setcookie($cookieName, "1", ["expires" => time() + $oneWeek]);
+    } else {
+        setcookie($cookieName, "1", time() + $oneWeek);
+    }
     echo "Done.";
     exit();
 }
@@ -319,6 +322,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
     $d_direct_sponsor_name = "";
     $d_prime_sponsor_type = "";
     $d_prime_sponsor_name = "";
+    $d_sponsor_award_no = "";
     $piName = "";
     $telem = "";
     $flagsOn = Grants::areFlagsOn($pid);
@@ -476,8 +480,6 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 			if($value == ''){
 				$d_last_update = '';
 			} else $d_last_update = "<span class='fwb'>Last Updated:</span><br/>".DateManagement::YMD2MDY($value);
-		} else if($key == "redcap_type"){
-            list($doclass, $ftype) = getClassAndFType($value);
         }
     }
 

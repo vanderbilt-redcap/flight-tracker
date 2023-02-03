@@ -1944,6 +1944,7 @@ class Grants {
 				} else {
 					$row['summary_award_end_date_'.$i] = $endKDateFromR01;
 				}
+                DateManagement::correctLeapYear($row['summary_award_end_date_'.$i]);
 			}
 		}
 		return $row;

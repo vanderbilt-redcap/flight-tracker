@@ -1258,14 +1258,14 @@ class Publications {
 
         $html = "";
         $html .= "<h4>Matches to $name</h4>";
-        $html .= "<p class='centered' style='line-height: 2.2em;'>";
+        $html .= "<p class='centered max-width' style='line-height: 2.2em;'>";
         $nameSpans = [];
         $checkedImgLoc = Wrangler::getImageLocation("checked");
         $uncheckedImgLoc = Wrangler::getImageLocation("unchecked");
         foreach ($pubmedNames as $i => $pubmedName) {
             $nameSpans[] .= "<span class='clickableOn' onclick='togglePubMedName(\".name$i\", this, \"$checkedImgLoc\", \"$uncheckedImgLoc\");'>$pubmedName</span>";
         }
-        $html .= implode("&nbsp;&nbsp;&nbsp;", $nameSpans);
+        $html .= implode(" ", $nameSpans);
         $html .= "</p>";
         return $html;
     }

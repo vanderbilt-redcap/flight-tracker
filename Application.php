@@ -164,8 +164,8 @@ class Application {
         return FALSE;
     }
 
-    public static function refreshRecordSummary($token, $server, $pid, $recordId) {
-	    return CareerDev::refreshRecordSummary($token, $server, $pid, $recordId);
+    public static function refreshRecordSummary($token, $server, $pid, $recordId, $throwException = FALSE) {
+        CareerDev::refreshRecordSummary($token, $server, $pid, $recordId, $throwException);
     }
 
     public static function getProgramName() {

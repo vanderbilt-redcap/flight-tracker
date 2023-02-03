@@ -11,6 +11,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/FlightTrackerExternalModule.php");
@@ -102,7 +103,7 @@ if (count($_POST) > 0) {
             echo "In config 2, metadata has ".count($metadata)." rows<br>";
         }
         $token = Application::getSetting("token", $pid);
-        $feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $pid, $lists, CareerDev::getSetting("hasCoeus"), $metadata);
+        $feedback = DataDictionaryManagement::addLists($token, $server, $pid, $lists, CareerDev::getSetting("hasCoeus"), $metadata);
 		if (is_array($feedback)) {
 		    $feedback = json_encode($feedback);
         }

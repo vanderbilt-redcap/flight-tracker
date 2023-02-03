@@ -188,13 +188,16 @@ function combineTable8Lines(&$lines, $table) {
 function flattenLines($lines) {
     $newLines = [];
     $keys = array_keys($lines);
+    $maxKey = $keys[0] ?? 0;
     foreach ($keys as $key) {
         if (!is_integer($key)) {
             return $lines;
         }
+        if ($key > $maxKey) {
+            $maxKey = $key;
+        }
     }
 
-    $maxKey = max($keys);
     for ($i = 0; $i < $maxKey; $i++) {
         $newLines[] = $lines[$i] ?? "";
     }
@@ -1096,7 +1099,7 @@ function parseGrants($text) {
     if ($unfinishedLine) {
         $nodes = preg_split($regex, $unfinishedLine);
         if (count($nodes) !== 3) {
-            throw new Exception("In the Subsequent Grants column, each grant should be described by 3 nodes separated by '/'. One line has ".count($nodes).": $unfinishedLine. Please correct this line.");
+            throw new \Exception("In the Subsequent Grants column, each grant should be described by 3 nodes separated by '/'. One line has ".count($nodes).": $unfinishedLine. Please correct this line.");
         }
         try {
             list($institute, $activityCode) = processGrantIdentifier($nodes[0]);
@@ -1109,7 +1112,7 @@ function parseGrants($text) {
                 "year" => $year,
             ];
         } catch (\Exception $e) {
-            throw new Exception("In the Subsequent Grants column, there is an error on one line that needs correcting: $unfinishedLine. ".$e->getMessage());
+            throw new \Exception("In the Subsequent Grants column, there is an error on one line that needs correcting: $unfinishedLine. ".$e->getMessage());
         }
     }
 

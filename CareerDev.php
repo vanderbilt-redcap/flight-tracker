@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.0.3";
+		return "5.0.4";
 	}
 
 	public static function getLockFile($pid) {
@@ -24,13 +24,17 @@ class CareerDev {
 		return APP_PATH_TEMP.date("Ymdhis", time() + $numHours * 3600)."_6_makeSummary.$pid.lock";
 	}
 
-    public static function refreshRecordSummary($token, $server, $pid, $recordId) {
+    public static function refreshRecordSummary($token, $server, $pid, $recordId, $throwException = FALSE) {
         if (self::getSetting("auto_recalculate", $pid)) {
             require_once(dirname(__FILE__) . "/drivers/6d_makeSummary.php");
             try {
                 \Vanderbilt\CareerDevLibrary\makeSummary($token, $server, $pid, $recordId);
             } catch (\Exception $e) {
-                echo "<div class='centered padded red'>" . $e->getMessage() . "</div>\n";
+                if ($throwException) {
+                    throw $e;
+                } else {
+                    echo "<div class='centered padded red'>" . $e->getMessage() . "</div>\n";
+                }
             }
         }
     }

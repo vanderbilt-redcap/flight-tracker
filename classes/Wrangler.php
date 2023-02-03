@@ -78,29 +78,33 @@ class Wrangler {
         $html .= "</div>\n";
 
         # make button show/hide at various pixelations
-        $html .= "<script>\n";
-
-        $html .= "\tfunction adjustFinalizeButton() {\n";
-        $html .= "\t\tvar mainTable = $('#main').position();\n";
-        $html .= "\t\tvar scrollTop = $(window).scrollTop();\n";
-        $html .= "\t\tvar finalizeTop = mainTable.top - scrollTop;\n";
-        # 100px is fixed position of the sticky class
-        $html .= "\t\tvar finalLoc = 100;\n";
-        $html .= "\t\tvar spacing = 20;\n";
-        $html .= "\t\tvar buttonSize = 40;\n";
-        $html .= "\t\tif (finalizeTop > finalLoc) { $('#finalize').css({ top: (finalizeTop+spacing)+'px' }); $('#uploading').css({ top: (finalizeTop+spacing+buttonSize)+'px' }); }\n";
-        $html .= "\t\telse { $('#finalize').css({ top: finalLoc+'px' }); $('#uploading').css({ top: (finalLoc+buttonSize)+'px' }); }\n";
-        $html .= "\t}\n";
-
-        $html .= "$(document).ready(function() {\n";
-        $html .= "\tadjustFinalizeButton();\n";
-        # timeout to overcome API rate limit; 1.5 seconds seems adeqate; 1.0 seconds fails with immediate click
-        $html .= "\tsetTimeout(function() {\n";
-        $html .= "\t\t$('#finalize').show();\n";
-        $html .= "\t}, 1500)\n";
-        $html .= "\t$(document).scroll(function() { adjustFinalizeButton(); });\n";
-        $html .= "});\n";
-        $html .= "</script>\n";
+        $html .= "
+<script>
+function adjustFinalizeButton() {
+    const mainTable = $('#main').position();
+    const scrollTop = $(window).scrollTop();
+    const finalizeTop = mainTable.top - scrollTop;
+    // 100px is fixed position of the sticky class
+    const finalLoc = 100;
+    const spacing = 20;
+    const buttonSize = 40;
+    if (finalizeTop > finalLoc) {
+        $('#finalize').css({ top: (finalizeTop+spacing)+'px' });
+        $('#uploading').css({ top: (finalizeTop+spacing+buttonSize)+'px' });
+    } else {
+        $('#finalize').css({ top: finalLoc+'px' });
+        $('#uploading').css({ top: (finalLoc+buttonSize)+'px' }); }
+    }
+    
+    $(document).ready(function() {
+        adjustFinalizeButton();
+        // timeout to overcome API rate limit; 1.5 seconds seems adeqate; 1.0 seconds fails with immediate click
+        setTimeout(function() {
+            $('#finalize').show();
+        }, 1500)
+        $(document).scroll(function() { adjustFinalizeButton(); });
+    });
+    </script>";
         return $html;
     }
 

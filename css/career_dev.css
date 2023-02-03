@@ -192,5 +192,5 @@ textarea,input[type=date] { font-family: 'Museo Slab', 'Times New Roman', Times,
 .switch.short input.switch1[type=radio]:checked ~ .switch__indicator { transform: translate3d(1.75rem,0,0); }
 .switch.short input.switch2[type=radio]:checked ~ .switch__indicator { transform: translate3d(4.25rem,0,0); }
 .switch input[type=radio]:not(:checked), .switch input[type=radio]:checked { display: none; }
-span.clickableOn { padding: 4px; background-color: #8dc63f; cursor: pointer; border-radius: 6px; border: 1px solid #888; }
-span.clickableOff { padding: 4px; background-color: white; cursor: pointer; border-radius: 6px; border: 1px solid #888; }
+span.clickableOn { white-space: nowrap; padding: 4px; background-color: #8dc63f; cursor: pointer; border-radius: 6px; border: 1px solid #888; }
+span.clickableOff { white-space: nowrap; padding: 4px; background-color: white; cursor: pointer; border-radius: 6px; border: 1px solid #888; }

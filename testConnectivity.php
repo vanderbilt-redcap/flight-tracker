@@ -35,7 +35,7 @@ $statusMssg = "<p class='centered max-width padded' style='background-color: rgb
 ?>
 
 <h1>Connectivity Checker</h1>
-<p class='centered max-width' style='margin: 1em auto;'>Flight Tracker relies on many external websites for its information. The following sites need to be accessible (added to the allow-list). Your attention is needed only on those portions that are <span class='red'>&nbsp;red&nbsp;</span>. Please contact the <a href='mailto:scott.j.pearson@vumc.org'>Flight Tracker Home Office</a> for further help.</p>
+<p class='centered max-width' style='margin: 1em auto;'>Flight Tracker relies on many external websites for its information. The following sites need to be accessible (added to the allow-list). Your attention is needed only on those portions that are <span class='red'>&nbsp;red&nbsp;</span>. <span class="yellow">Yellow</span> requests need to eventually resolve to green and might be problematic. <span class="green">Green</span> responses are good-to-go. Please contact the <a href='mailto:scott.j.pearson@vumc.org'>Flight Tracker Home Office</a> for further help.</p>
 <?php
 
 echo $statusMssg;

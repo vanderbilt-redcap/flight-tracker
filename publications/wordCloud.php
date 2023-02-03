@@ -106,14 +106,13 @@ select[multiple] {
 $possibleFields = ["citation_grants", "citation_mesh_terms", "citation_journal,eric_source", "eric_subject"];
 $metadata = Download::metadata($token, $server);
 $authors = makeAuthorArray();
+$subjects = is_array($_GET['terms']) ?  $_GET['terms'] : [];
 if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
     $fieldsToDisplay = explode(",", Sanitizer::sanitize($_GET['field']));
     $startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['start'] ?? "");
     $endDate = Sanitizer::sanitizeDate($_GET['end'] ?? "");
     $startTs = $startDate ? strtotime($startDate) : "";
     $endTs = $endDate ? strtotime($endDate) : "";
-
-    $subjects = $_GET['terms'] ?? [];
 
     $fields = array_merge(["record_id"], $fieldsToDisplay);
     $includeFields = [];
@@ -208,7 +207,7 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
         $wordData = transformToTitles($wordData);
     }
 
-    echo makeFieldForm($token, $server, $metadata, $possibleFields, $authors, $_GET['cohort'] ?: "", $startDate, $endDate);
+    echo makeFieldForm($token, $server, $metadata, $possibleFields, $subjects, $authors, $_GET['cohort'] ?: "", $startDate, $endDate);
     echo "<br/><br/><br/>";
     echo "<h2>Frequency Table</h2>";
     echo "<table class='centered bordered max-width'><thead><tr>";
@@ -348,10 +347,10 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
     <?php
 
 } else {
-    echo makeFieldForm($token, $server, $metadata, $possibleFields, $authors);
+    echo makeFieldForm($token, $server, $metadata, $possibleFields, $subjects, $authors);
 }
 
-function makeFieldForm($token, $server, $metadata, $possibleFields, $authors = ["first", "middle", "last"], $defaultCohort = "", $startDate = "", $endDate = "") {
+function makeFieldForm($token, $server, $metadata, $possibleFields, $subjects, $authors = ["first", "middle", "last"], $defaultCohort = "", $startDate = "", $endDate = "") {
     $link = Application::link("publications/wordCloud.php");
     $linkWithoutGET = explode("?", $link)[0];
     $metadataLabels = REDCapManagement::getLabels($metadata);
@@ -407,7 +406,7 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $authors = [
     $html .= "<div class='form-group'>$datesHTML</div>";
     $html .= "<div class='form-group'>".makeAuthorHTML($authors)."</div>";
     if (!empty($meshTerms) || !empty($ericSubjects)) {
-        $html .= "<div class='form-group'>".makeTermSelect($meshTerms, $ericSubjects, $pubmedIncludes, $ericIncludes)."</div>";
+        $html .= "<div class='form-group'>".makeTermSelect($meshTerms, $ericSubjects, $pubmedIncludes, $ericIncludes, $subjects)."</div>";
     }
     $html .= "<div class='form-group' style='padding-left: 25px; width: 200px;'><button class='tsubmit'>Make Word Cloud</button></div>";
     $html .= "</div>";
@@ -417,7 +416,7 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $authors = [
     return $html;
 }
 
-function makeTermSelect($meshTerms, $ericSubjects, $pubMedIncludes, $ericIncludes) {
+function makeTermSelect($meshTerms, $ericSubjects, $pubMedIncludes, $ericIncludes, $subjects) {
     $terms = [];
     $arrays = [
         "PubMed" => [
@@ -452,7 +451,7 @@ function makeTermSelect($meshTerms, $ericSubjects, $pubMedIncludes, $ericInclude
     $html .= "<label for='terms'>MeSH Terms &amp; ERIC Subjects:<br/>(Select multiple; selecting none means all are selected)</label>";
     $html .= "<select id='terms' name='terms[]' multiple>";
     foreach ($terms as $term => $cnt) {
-        $selected = in_array($term, $_GET['terms'] ?? []) ? "selected" : "";
+        $selected = in_array($term, $subjects) ? "selected" : "";
         $html .= "<option value='$term' $selected>$term (".REDCapManagement::pretty($cnt).")</option>";
     }
     $html .= "</select>";

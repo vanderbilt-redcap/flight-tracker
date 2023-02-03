@@ -11,6 +11,90 @@ class DataDictionaryManagement {
         return "/___delete$/";
     }
 
+    public static function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadata = FALSE) {
+        if (trim($lists['departments']) == "") {
+            $lists['departments'] = "Department";
+        }
+        if (trim($lists['resources']) == "") {
+            $lists['resources'] = "Resource";
+        }
+        Application::saveSetting("departments", $lists["departments"], $pid);
+        Application::saveSetting("resources", $lists["resources"], $pid);
+        if (!Application::getSetting("mentoring_resources", $pid)) {
+            Application::saveSetting("mentoring_resources", $lists["resources"], $pid);
+        }
+        $others = [
+            "departments" => 999999,
+            "resources" => FALSE,
+            "mentoring" => FALSE,
+            "institutions" => 5,
+        ];
+
+        $files = [dirname(__FILE__)."/metadata.json"];
+        if (CareerDev::isVanderbilt()) {
+            $files[] = dirname(__FILE__)."/metadata.vanderbilt.json";
+        }
+
+        if (!$metadata) {
+            $metadata = Download::metadata($token, $server);
+            if (count($metadata) < 5) {
+                $metadata = [];
+                foreach ($files as $file) {
+                    $fp = fopen($file, "r");
+                    $json = "";
+                    while ($line = fgets($fp)) {
+                        $json .= $line;
+                    }
+                    fclose($fp);
+                    $newLines = json_decode($json, true);
+                    if ($newLines !== NULL) {
+                        $metadata = array_merge($metadata, $newLines);
+                    } else {
+                        throw new \Exception("Could not unpack json: ".json_last_error_msg()." $json");
+                    }
+                }
+            }
+        }
+
+        $fields = array();
+        $fields["departments"] = REDCapManagement::getSpecialFields("departments", $metadata);
+        $fields["resources"] = REDCapManagement::getSpecialFields("resources", $metadata);
+        $fields["mentoring"] = REDCapManagement::getSpecialFields("mentoring", $metadata);
+        $fields["institutions"] = REDCapManagement::getSpecialFields("institutions", $metadata);
+
+        $choices = DataDictionaryManagement::getChoices($metadata);
+        foreach ($lists as $type => $str) {
+            $oldItemChoices = [];
+            for ($i = 0; $i < count($fields[$type]); $i++) {
+                $field = $fields[$type][$i];
+                $oldItemChoices = $choices[$field];
+                if (!empty($oldItemChoices)) {
+                    break;
+                }
+            }
+            $other = $others[$type];
+            $lists[$type] = DataDictionaryManagement::makeREDCapList($str, $other, $oldItemChoices);
+        }
+
+        $newMetadata = array();
+        foreach ($metadata as $row) {
+            $isCoeusRow = preg_match("/^coeus_/", $row['field_name'])
+                || preg_match("/^coeus2_/", $row['field_name'])
+                || preg_match("/^coeussubmission_/", $row['field_name']);
+            if (($installCoeus && $isCoeusRow || !$isCoeusRow) && !preg_match("/___delete/", $row['field_name'])) {
+                foreach ($fields as $type => $relevantFields) {
+                    if (in_array($row['field_name'], $relevantFields) && isset($lists[$type])) {
+                        $row['select_choices_or_calculations'] = $lists[$type];
+                        break;
+                    }
+                }
+                $newMetadata[] = $row;
+            }
+        }
+
+        return Upload::metadata($newMetadata, $token, $server);
+    }
+
     public static function makeREDCapList($text, $otherItem = FALSE, $oldItemChoices = []) {
         $list = explode("\n", $text);
         $newList = array();

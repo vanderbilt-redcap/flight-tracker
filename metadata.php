@@ -74,4 +74,15 @@ if ($_POST['process'] == "check") {
         }
     }
     echo json_encode($returnData);
+} else if ($_POST['process'] === "install_from_scratch") {
+    $institutions = Application::getInstitutions();
+    $institutionText = implode("\n", $institutions);
+    $departmentText = Application::getSetting("departments", $pid);
+    $resourceText = Application::getSetting("resources", $pid);
+    $lists = [
+        "departments" => $departmentText,
+        "resources" => $resourceText,
+        "institutions" => $institutionText,
+    ];
+    DataDictionaryManagement::addLists($token, $server, $pid, $lists);
 }

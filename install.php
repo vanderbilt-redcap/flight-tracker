@@ -38,7 +38,7 @@ if ($action == "localizeVariables") {
 					"resources" => $resources,
 					"institutions" => implode("\n", $institutions),
 					);
-			$feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $pid, $lists, $installCoeus);
+			DataDictionaryManagement::addLists($token, $server, $pid, $lists, $installCoeus);
 			redirectToAddScholars();
 		} else {
 			echo "<p class='red centered'>You must supply at least one resource and one department!</p>\n";
@@ -117,7 +117,7 @@ if ($action == "localizeVariables") {
         "resources" => Application::getSetting("resources", $pid),
         "institutions" => implode("\n", Application::getInstitutions($pid)),
     ];
-    $feedback = \Vanderbilt\FlightTrackerExternalModule\addLists($token, $server, $pid, $lists, Application::isVanderbilt());
+    $feedback = DataDictionaryManagement::addLists($token, $server, $pid, $lists, Application::isVanderbilt());
     redirectToHomePage();
 } else if (($action === "") && $token && $server) {
     $metadataFields = Download::metadataFields($token, $server);
