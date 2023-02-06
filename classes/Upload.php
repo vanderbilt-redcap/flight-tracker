@@ -326,7 +326,21 @@ public static function metadata($metadata, $token, $server) {
             }
         } else if (isset($feedback['error']) && $feedback['error']) {
             Application::log("Upload error: ".$feedback['error']);
-			throw new \Exception("Error: ".$feedback['error']."\n".json_encode($rows));
+            if (preg_match("/Each multiple choice field \(radio, drop-down, checkbox, etc\.\) must have choices listed in column F, but the following\s+cells have choices missing: ([F\d\s,]+)/", $feedback['error'], $matches)) {
+                $cells = explode(", ", $matches[1]);
+                $displayRows = [];
+                foreach ($cells as $cell) {
+                    $cell = trim($cell);
+                    $lineNum = (int) str_replace("F", "", $cell);
+                    $displayRows[] = $rows[$lineNum];
+                }
+                if (empty($displayRows)) {
+                    $displayRows = $rows;
+                }
+                throw new \Exception("Error: ".$feedback['error']."\n".json_encode($displayRows));
+            } else {
+                throw new \Exception("Error: ".$feedback['error']."\n".json_encode($rows));
+            }
 		}
 		if (isset($feedback['errors']) && $feedback['errors']) {
 		    if (is_array($feedback['errors'])) {

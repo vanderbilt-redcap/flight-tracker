@@ -916,7 +916,7 @@ class DataDictionaryManagement {
         }
         $firstFieldName = "record_id";
         if ($newMetadata[0]['field_name'] !== $firstFieldName) {
-            throw new \Exception("First field is ".$newMetadata[0]['field_name'].", not $firstFieldName!");
+            throw new \Exception("First field is ".$newMetadata[0]['field_name'].", not $firstFieldName! ".json_encode($newMetadata));
         }
         $metadata = $newMetadata;
     }
