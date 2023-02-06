@@ -256,7 +256,7 @@ if ($numMentors > $numInvited["mentors"]) {
 echo "<h1>Mentoring Agreement Responses</h1>";
 
 $homeLink = Application::getMenteeAgreementLink($pid);
-$menteeProgressLink = Application::link("mentor/menteeProgress.php");
+$menteeProgressLink = Application::link("mentor/menteeProgress.php", $pid, TRUE);
 $addLink = Application::link("addMentor.php");
 $configUrl = Application::link("mentor/config.php");
 $redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");

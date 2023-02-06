@@ -95,7 +95,8 @@ if ($_POST['action'] == "getMenteeHTML") {
                 }
                 $html .= "</td>";
                 if ($isFirstRowForProject) {
-                    $html .= "<td class='smallest' rowspan='$numRowsForProject'><a href='$projectLink'>$projectLink</a></td>";
+                    $id = $currPid."___link";
+                    $html .= "<td rowspan='$numRowsForProject'><input id='$id' type='text' style='max-width: 250px; margin-right: 5px; margin-left: 5px;' readonly='readonly' value='$projectLink' onclick='this.select();' /><span class='smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#longurl\"));'>Copy</a></span></td>";
                 }
                 $html .= "</tr>";
             }
@@ -122,6 +123,7 @@ $imageLink = Application::link("mentor/img/loading.gif");
     .centered { text-align: center; }
     .smallest { font-size: 0.5em; }
     .smaller { font-size: 0.75em; }
+    input[readonly=readonly] { background-color: #bbbbbb; }
     .red { color: #ea0e0ecc; }
     .green { color: #35482f; }
     .bolded { font-weight: bold; }
@@ -138,6 +140,11 @@ $imageLink = Application::link("mentor/img/loading.gif");
 </style>
 
 <script>
+    function copyToClipboard(element) {
+        const text = $(element).text() ? $(element).text() : $(element).val();
+        navigator.clipboard.writeText(text);
+    }
+
     function makeMentees(pids, startI, batchSize) {
         const batchPids = [];
         const link = "<?= $thisLink ?>";

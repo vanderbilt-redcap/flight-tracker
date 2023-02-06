@@ -16,7 +16,7 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
     if (isset($_GET['hash']) && MMAHelper::isValidHash($_GET['hash'])) {
         $proposedHash = Sanitizer::sanitize($_GET['hash']);
     } else if (isset($_REQUEST['userid']) && MMAHelper::isValidHash($_REQUEST['userid'])) {
-        $proposedHash = $_REQUEST['userid'];
+        $proposedHash = Sanitizer::sanitize($_REQUEST['userid']);
     } else if ($_GET['hash'] == NEW_HASH_DESIGNATION) {
         $proposedHash = NEW_HASH_DESIGNATION;
     } else {

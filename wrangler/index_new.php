@@ -677,12 +677,16 @@ function toggleFlags(newState) {
         { newState: newState },
         (json) => {
             console.log(json);
-            const data = JSON.parse(json);
-            if (data['error']) {
-                alert("ERROR: Could not turn "+newState+" flags. " + data['error']);
+            if (json.match(/^</)) {
+                alert("ERROR: "+json);
             } else {
-                // so that flag icons will show, refresh page
-                window.location.href = '<?= $thisURL ?>';
+                const data = JSON.parse(json);
+                if (data['error']) {
+                    alert("ERROR: Could not turn "+newState+" flags. " + data['error']);
+                } else {
+                    // so that flag icons will show, refresh page
+                    window.location.href = '<?= $thisURL ?>';
+                }
             }
         }
     );
@@ -705,14 +709,18 @@ function toggleFlag(spanObj) {
         '<?= $updateLink."&flag" ?>',
         { record: '<?= $record ?>', grant: grantID, value: flagOnOff, redcap_csrf_token: getCSRFToken() },
         (json) => {
-            const data = JSON.parse(json);
-            if (data['error']) {
-                alert("ERROR: Could not toggle flag. " + data['error']);
-            } else if (data['error_summary']) {
-                processSummaryError(data['error_summary']);
+            if (json.match(/^</)) {
+                alert("ERROR: "+json);
             } else {
-                $(spanObj).html(newValue);
-                refreshVisualization();
+                const data = JSON.parse(json);
+                if (data['error']) {
+                    alert("ERROR: Could not toggle flag. " + data['error']);
+                } else if (data['error_summary']) {
+                    processSummaryError(data['error_summary']);
+                } else {
+                    $(spanObj).html(newValue);
+                    refreshVisualization();
+                }
             }
         }
     );
@@ -953,13 +961,17 @@ function saveCurrentState() {
         (json) => {
             console.log("saveCurrentState: "+json);
             try {
-                const data = JSON.parse(json);
-                if (data['error_save']) {
-                    alert("ERROR: Could not save data. "+data['error_save']);
-                } else if (data['error_summary']) {
-                    processSummaryError(data['error_summary']);
+                if (json.match(/^</)) {
+                    alert("ERROR: "+json);
                 } else {
-                    refreshVisualization();
+                    const data = JSON.parse(json);
+                    if (data['error_save']) {
+                        alert("ERROR: Could not save data. " + data['error_save']);
+                    } else if (data['error_summary']) {
+                        processSummaryError(data['error_summary']);
+                    } else {
+                        refreshVisualization();
+                    }
                 }
             } catch (e) {
                 alert("ERROR: Something weird happened when saving data. "+e.message);
@@ -974,12 +986,16 @@ function refreshVisualization() {
         { record: '<?= $record ?>', redcap_csrf_token: getCSRFToken() },
         (json) => {
             console.log("Refreshing progression: "+json);
-            const careerProgressionData = JSON.parse(json);
-            if (careerProgressionData['error']) {
-                alert("ERROR: Could not refresh timeline. "+data['error']);
+            if (json.match(/^</)) {
+                alert("ERROR: "+json);
             } else {
-                const subTitle = '<h4 class="nomargin">Calculated on '+getLongDate(new Date(Date.now()))+'</h4>';
-                setupVisualization(careerProgressionData, subTitle);
+                const careerProgressionData = JSON.parse(json);
+                if (careerProgressionData['error']) {
+                    alert("ERROR: Could not refresh timeline. " + data['error']);
+                } else {
+                    const subTitle = '<h4 class="nomargin">Calculated on ' + getLongDate(new Date(Date.now())) + '</h4>';
+                    setupVisualization(careerProgressionData, subTitle);
+                }
             }
         }
     );
@@ -2181,7 +2197,7 @@ function makeStatusButtons($i, $award) {
         "<div id='add_$i' class='add'><span class='thestatus'>[ drag right to prefer ]</span></div>".
         "<a style='display:none;' class='tbutton addbutton' href='javascript:;' onclick='addAward(\"redcap_type_$i\", $i, $awardJSON);'>process award</a>".
         "<div id='left_$i' class='moveleft'><span class='thestatus'>[ drag left to backtrack ]</span></div>".
-        "<div id='remove_$i' class='remove'><span class='thestatus' style='margin-left: 5px; margin-right: 5px; width: 50%;'>[ currently used ]</span><span style='width: 50%; text-align: center;'><button class='setNAButton' onclick='$(\"select#redcap_type_$i option:last-child\").attr(\"selected\", true); prioritizeAward($i, $awardJSON); return false;'>don't use this</button></span></div>".
+        "<div id='remove_$i' class='remove'><span class='thestatus' style='margin-left: 5px; margin-right: 5px; width: 50%;'>[ currently used ]</span><span style='width: 50%; text-align: center;'><button class='setNAButton' onclick='$(\"select#redcap_type_$i option:last-child\").attr(\"selected\", true); const award = $awardJSON; prioritizeAward($i, award); removeAward($i, award); return false;'>don't use this</button></span></div>".
         "<a style='display:none;' class='tbutton removebutton' href='javascript:;' onclick='removeAward($i, $awardJSON);'>remove award</a>".
         "<div id='change_$i' class='change'><span class='thestatus'>[ data changes made ]</span></div>".
         "</div>";
