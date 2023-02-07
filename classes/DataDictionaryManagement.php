@@ -27,7 +27,6 @@ class DataDictionaryManagement {
             "departments" => 999999,
             "resources" => FALSE,
             "mentoring" => FALSE,
-            "institutions" => 5,
         ];
 
         $files = [dirname(__FILE__)."/metadata.json"];
@@ -60,10 +59,11 @@ class DataDictionaryManagement {
         $fields["departments"] = REDCapManagement::getSpecialFields("departments", $metadata);
         $fields["resources"] = REDCapManagement::getSpecialFields("resources", $metadata);
         $fields["mentoring"] = REDCapManagement::getSpecialFields("mentoring", $metadata);
-        $fields["institutions"] = REDCapManagement::getSpecialFields("institutions", $metadata);
 
         $choices = DataDictionaryManagement::getChoices($metadata);
-        foreach ($lists as $type => $str) {
+        $redcapLists = [];
+        foreach (array_keys($fields) as $type) {
+            $str = $lists[$type] ?? [];
             $oldItemChoices = [];
             for ($i = 0; $i < count($fields[$type]); $i++) {
                 $field = $fields[$type][$i];
@@ -73,7 +73,7 @@ class DataDictionaryManagement {
                 }
             }
             $other = $others[$type];
-            $lists[$type] = DataDictionaryManagement::makeREDCapList($str, $other, $oldItemChoices);
+            $redcapLists[$type] = DataDictionaryManagement::makeREDCapList($str, $other, $oldItemChoices);
         }
 
         $newMetadata = array();
@@ -84,13 +84,14 @@ class DataDictionaryManagement {
             if (($installCoeus && $isCoeusRow || !$isCoeusRow) && !preg_match("/___delete/", $row['field_name'])) {
                 foreach ($fields as $type => $relevantFields) {
                     if (in_array($row['field_name'], $relevantFields) && isset($lists[$type])) {
-                        $row['select_choices_or_calculations'] = $lists[$type];
+                        $row['select_choices_or_calculations'] = $redcapLists[$type];
                         break;
                     }
                 }
                 $newMetadata[] = $row;
             }
         }
+        self::alterInstitutionFields($newMetadata, $pid);
 
         return Upload::metadata($newMetadata, $token, $server);
     }
@@ -165,7 +166,6 @@ class DataDictionaryManagement {
     }
 
     public static function installMetadataFromFiles($files, $token, $server, $pid, $eventId, $grantClass, $newChoices, $deletionRegEx, $excludeForms) {
-        $dataToReturn = [];
         $metadata = [];
         $metadata['REDCap'] = Download::metadata($token, $server);
         $metadata['REDCap'] = self::filterOutForms($metadata['REDCap'], $excludeForms);
@@ -178,6 +178,7 @@ class DataDictionaryManagement {
         if (empty($postedFields)) {
             return ["error" => "Nothing to update"];
         }
+        $metadata['file'] = [];
         foreach ($files as $filename) {
             $fp = fopen($filename, "r");
             $json = "";
@@ -186,71 +187,73 @@ class DataDictionaryManagement {
             }
             fclose($fp);
 
-            $metadata['file'] = json_decode($json, TRUE);
-            $metadata['file'] = self::filterOutForms($metadata['file'], $excludeForms);
-            if ($metadata['file']) {
-                if ($grantClass == "K") {
-                    $mentorLabel = "Primary mentor during your K/K12 training period";
-                } else if ($grantClass == "T") {
-                    $mentorLabel = "Primary mentor during your pre-doc/post-doc training period";
-                } else {
-                    $mentorLabel = "Primary mentor (current)";
-                }
-                $fieldLabels = [];
-                foreach ($metadata as $type => $md) {
-                    $fieldLabels[$type] = self::getLabels($md);
-                }
-                $fieldsForMentorLabel = ["check_primary_mentor", "followup_primary_mentor", ];
-                foreach ($fieldsForMentorLabel as $field) {
-                    $metadata['file'] = self::changeFieldLabel($field, $mentorLabel, $metadata['file']);
-                    $fileValue = $fieldLabels['file'][$field]?? "";
-                    $redcapValue = $fieldLabels['REDCap'][$field] ?? "";
-                    if ($fileValue != $redcapValue) {
-                        $postedFields[] = $field;
-                    }
-                }
-                $metadata["REDCap"] = self::reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);
-                $choices = ["REDCap" => self::getChoices($metadata["REDCap"])];
-                $newChoiceStr = REDCapManagement::makeChoiceStr($newChoices);
-                for ($i = 0; $i < count($metadata['file']); $i++) {
-                    $field = $metadata['file'][$i]['field_name'];
-                    $isFieldOfSources = (
-                        (
-                            preg_match("/_source$/", $field)
-                            || preg_match("/_source_\d+$/", $field)
-                        )
-                        && isset($choices["REDCap"][$field]["scholars"])
-                    );
-                    if ($isFieldOfSources) {
-                        $metadata['file'][$i]['select_choices_or_calculations'] = $newChoiceStr;
-                    }
-                }
-
-                try {
-                    $feedback = self::mergeMetadataAndUpload($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
-                    $dataToReturn[] = $feedback;
-                    $newMetadata = Download::metadata($token, $server);
-                    $metadata['REDCap'] = $newMetadata;
-                    $formsAndLabels = self::getRepeatingFormsAndLabels($newMetadata, $token);
-                    $surveysAndLabels = self::getSurveysAndLabels($newMetadata);
-                    self::setupRepeatingForms($eventId, $formsAndLabels);   // runs a REPLACE
-                    self::setupSurveys($pid, $surveysAndLabels);
-                    self::convertOldDegreeData($pid);
-                } catch (\Exception $e) {
-                    $feedback = ["Exception" => $e->getMessage()];
-                    $version = Application::getVersion();
-                    $mssg = "<h1>Metadata Upload Error in ".Application::getProgramName()."</h1>";
-                    $mssg .= "<p>Server: $server</p>";
-                    $mssg .= "<p>PID: $pid</p>";
-                    $mssg .= "<p>Flight Tracker Version: $version</p>";
-                    $mssg .= $e->getMessage();
-                    \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", Application::getProgramName()." Metadata Upload Error", $mssg);
-
-                    $dataToReturn[] = $feedback;
-                }
+            $fileData = json_decode($json, TRUE);
+            if ($fileData) {
+                $fileData = self::filterOutForms($fileData, $excludeForms);
+                $metadata['file'] = array_merge($metadata['file'], $fileData);
+            } else {
+                throw new \Exception("Could not decode data in file $filename!");
             }
         }
-        return $dataToReturn;
+        if (!empty($metadata['file'])) {
+            if ($grantClass == "K") {
+                $mentorLabel = "Primary mentor during your K/K12 training period";
+            } else if ($grantClass == "T") {
+                $mentorLabel = "Primary mentor during your pre-doc/post-doc training period";
+            } else {
+                $mentorLabel = "Primary mentor (current)";
+            }
+            $fieldLabels = [];
+            foreach ($metadata as $type => $md) {
+                $fieldLabels[$type] = self::getLabels($md);
+            }
+            $fieldsForMentorLabel = ["check_primary_mentor", "followup_primary_mentor",];
+            foreach ($fieldsForMentorLabel as $field) {
+                $metadata['file'] = self::changeFieldLabel($field, $mentorLabel, $metadata['file']);
+                $fileValue = $fieldLabels['file'][$field] ?? "";
+                $redcapValue = $fieldLabels['REDCap'][$field] ?? "";
+                if ($fileValue != $redcapValue) {
+                    $postedFields[] = $field;
+                }
+            }
+            $metadata["REDCap"] = self::reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);
+            $choices = ["REDCap" => self::getChoices($metadata["REDCap"])];
+            $newChoiceStr = REDCapManagement::makeChoiceStr($newChoices);
+            for ($i = 0; $i < count($metadata['file']); $i++) {
+                $field = $metadata['file'][$i]['field_name'];
+                $isFieldOfSources = (
+                    (
+                        preg_match("/_source$/", $field)
+                        || preg_match("/_source_\d+$/", $field)
+                    )
+                    && isset($choices["REDCap"][$field]["scholars"])
+                );
+                if ($isFieldOfSources) {
+                    $metadata['file'][$i]['select_choices_or_calculations'] = $newChoiceStr;
+                }
+            }
+            try {
+                $feedback = self::mergeMetadataAndUpload($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
+                $newMetadata = Download::metadata($token, $server);
+                $formsAndLabels = self::getRepeatingFormsAndLabels($newMetadata, $token);
+                $surveysAndLabels = self::getSurveysAndLabels($newMetadata);
+                self::setupRepeatingForms($eventId, $formsAndLabels);   // runs a REPLACE
+                self::setupSurveys($pid, $surveysAndLabels);
+                self::convertOldDegreeData($pid);
+                return $feedback;
+            } catch (\Exception $e) {
+                $feedback = ["Exception" => $e->getMessage()];
+                $version = Application::getVersion();
+                $mssg = "<h1>Metadata Upload Error in " . Application::getProgramName() . "</h1>";
+                $mssg .= "<p>Server: $server</p>";
+                $mssg .= "<p>PID: $pid</p>";
+                $mssg .= "<p>Flight Tracker Version: $version</p>";
+                $mssg .= $e->getMessage();
+                \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", Application::getProgramName() . " Metadata Upload Error", $mssg);
+                return $feedback;
+            }
+        }
+        return [];
     }
 
     public static function setupSurveys($projectId, $surveysAndLabels) {
@@ -668,7 +671,7 @@ class DataDictionaryManagement {
         $selectedRows = array();
         foreach ($metadata as $row) {
             if (in_array($row['field_name'], $fields)) {
-                array_push($selectedRows, $row);
+                $selectedRows[] = $row;
             }
         }
         return $selectedRows;
@@ -703,7 +706,7 @@ class DataDictionaryManagement {
                 } else {
                     $field = $row['field_name'];
                 }
-                array_push($fields, $field);
+                $fields[] = $field;
             }
         }
         return $fields;
@@ -714,7 +717,7 @@ class DataDictionaryManagement {
         foreach ($metadata as $row) {
             if ($row['field_type'] == $fieldType) {
                 if (!$validationType || ($validationType == $row['text_validation_type_or_show_slider_number'])) {
-                    array_push($fields, $row['field_name']);
+                    $fields[] = $row['field_name'];
                 }
             }
         }
@@ -769,7 +772,9 @@ class DataDictionaryManagement {
                     }
                 }
                 self::sortByForms($metadata);
-                self::alterResourcesField($metadata);
+                $pid = Application::getPID($token);
+                self::alterResourcesFields($metadata, $pid);
+                self::alterInstitutionFields($metadata, $pid);
                 return Upload::metadata($metadata, $token, $server);
             }
         }
@@ -834,9 +839,31 @@ class DataDictionaryManagement {
             }
         }
         self::sortByForms($existingMetadata);
-        self::alterResourcesField($existingMetadata);
-        self::alterDepartmentsFields($existingMetadata, Application::getPID($token));
+        $pid = Application::getPID($token);
+        self::alterResourcesFields($existingMetadata, $pid);
+        self::alterInstitutionFields($existingMetadata, $pid);
+        self::alterDepartmentsFields($existingMetadata, $pid);
         return Upload::metadata($existingMetadata, $token, $server);
+    }
+
+    private static function alterInstitutionFields(&$metadata, $pid) {
+        if ($pid) {
+            $institutions = Application::getInstitutions();
+            if (empty($institutions)) {
+                $institutions = ["Home Institution"];
+            }
+            $relevantFields = REDCapManagement::getSpecialFields("institutions", $metadata);
+            $choiceStr = self::makeREDCapList($institutions, 5);
+            self::setSelectStringForFields($metadata, $choiceStr, $relevantFields);
+        }
+    }
+
+    private static function setSelectStringForFields(&$metadata, $choiceStr, $fields) {
+        foreach ($metadata as $i => $row) {
+            if (in_array($row['field_name'], $fields)) {
+                $metadata[$i]['select_choices_or_calculations'] = $choiceStr;
+            }
+        }
     }
 
     private static function alterDepartmentsFields(&$metadata, $pid) {
@@ -845,36 +872,53 @@ class DataDictionaryManagement {
             if ($departments) {
                 $fields = REDCapManagement::getSpecialFields("departments", $metadata);
                 $choiceStr = self::makeREDCapList($departments, 999999);
-                foreach ($metadata as $i => $row) {
-                    if (in_array($row['field_name'], $fields)) {
-                        $metadata[$i]['select_choices_or_calculations'] = $choiceStr;
-                    }
-                }
+                self::setSelectStringForFields($metadata, $choiceStr, $fields);
             }
         }
     }
 
-    private static function alterResourcesField(&$metadata) {
+    private static function alterResourcesFields(&$metadata, $pid) {
         $defaultResourceField = "resources_resource";
+        $blankSetup = ["1" => "Resource"];
         $metadataFields = self::getFieldsFromMetadata($metadata);
-        $resourceField = self::getMentoringResourceField($metadataFields);
-        if (in_array($resourceField, $metadataFields)) {
+        $mentoringResourceField = self::getMentoringResourceField($metadataFields);
+        if (in_array($mentoringResourceField, $metadataFields)) {
             $choices = self::getChoices($metadata);
             if (
-                self::isInitialSetupForResources($choices[$resourceField])
-                && in_array($defaultResourceField, $metadataFields)
+                !empty($choices[$mentoringResourceField])
+                && self::isInitialSetupForResources($choices[$mentoringResourceField])
             ) {
-                if (Application::isVanderbilt()) {
-                    $resourceStr = self::makeChoiceStr(self::getMenteeAgreementVanderbiltResources());
-                } else {
-                    $resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
-                }
-                for ($i = 0; $i < count($metadata); $i++) {
-                    if ($metadata[$i]['field_name'] == $resourceField) {
-                        $metadata[$i]['select_choices_or_calculations'] = $resourceStr;
+                if (in_array($defaultResourceField, $metadataFields)) {
+                    if (Application::isVanderbilt()) {
+                        $resourceStr = self::makeChoiceStr(self::getMenteeAgreementVanderbiltResources());
+                    } else {
+                        $resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
                     }
+                } else {
+                    $resourceStr = self::makeChoiceStr($blankSetup);
                 }
+            } else if (!empty($choices[$mentoringResourceField])) {
+                $resourceStr = self::makeChoiceStr($choices[$mentoringResourceField]);
+            } else if ($pid) {
+                $resourceList = Application::getSetting("resources", $pid);
+                if ($resourceList) {
+                    $resource1DAry = explode("\n", $resourceList);
+                    $resourcesWithIndex = [];
+                    $idx = 1;
+                    foreach ($resource1DAry as $resource) {
+                        $resourcesWithIndex[$idx] = $resource;
+                        $idx++;
+                    }
+                    $resourceStr = self::makeChoiceStr($resourcesWithIndex);
+                } else {
+                    $resourceStr = self::makeChoiceStr($blankSetup);
+                }
+            } else {
+                $resourceStr = self::makeChoiceStr($blankSetup);
             }
+
+            $fieldsToModify = [$mentoringResourceField, $defaultResourceField];
+            self::setSelectStringForFields($metadata, $resourceStr, $fieldsToModify);
         }
     }
 

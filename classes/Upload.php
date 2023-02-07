@@ -332,7 +332,7 @@ public static function metadata($metadata, $token, $server) {
                 foreach ($cells as $cell) {
                     $cell = trim($cell);
                     $lineNum = (int) str_replace("F", "", $cell);
-                    $displayRows[] = $rows[$lineNum];
+                    $displayRows[] = $rows[$lineNum - 2];
                 }
                 if (empty($displayRows)) {
                     $displayRows = $rows;
