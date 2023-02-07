@@ -753,18 +753,25 @@ class DataDictionaryManagement {
         $existingMetadata = $originalMetadata;
 
         if (empty($existingMetadata)) {
-            $metadata = [];
-            foreach ($newMetadata as $row) {
-                if (
-                    !preg_match($deletionRegEx, $row['field_name'])
-                    && !in_array($row['field_name'], $fieldsToDelete)
-                ) {
-                    $metadata[] = $row;
+            if (empty($newMetadata)) {
+                $pid = Application::getPID($token);
+                $eventId = Application::getSetting("event_id", $pid);
+                $switches = new FeatureSwitches($token, $server, $pid);
+                self::installMetadataFromFiles(Application::getMetadataFiles(), $token, $server, $pid, $eventId, Application::getSetting("grant_class", $pid), Application::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
+            } else {
+                $metadata = [];
+                foreach ($newMetadata as $row) {
+                    if (
+                        !preg_match($deletionRegEx, $row['field_name'])
+                        && !in_array($row['field_name'], $fieldsToDelete)
+                    ) {
+                        $metadata[] = $row;
+                    }
                 }
+                self::sortByForms($metadata);
+                self::alterResourcesField($metadata);
+                return Upload::metadata($metadata, $token, $server);
             }
-            self::sortByForms($metadata);
-            self::alterResourcesField($metadata);
-            return Upload::metadata($metadata, $token, $server);
         }
 
         # List of what to do
