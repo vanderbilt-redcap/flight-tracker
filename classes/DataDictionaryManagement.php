@@ -756,21 +756,21 @@ class DataDictionaryManagement {
         $existingMetadata = $originalMetadata;
 
         if (empty($existingMetadata)) {
-            if (empty($newMetadata)) {
+            $metadata = [];
+            foreach ($newMetadata as $row) {
+                if (
+                    !preg_match($deletionRegEx, $row['field_name'])
+                    && !in_array($row['field_name'], $fieldsToDelete)
+                ) {
+                    $metadata[] = $row;
+                }
+            }
+            if (empty($metadata)) {
                 $pid = Application::getPID($token);
                 $eventId = Application::getSetting("event_id", $pid);
                 $switches = new FeatureSwitches($token, $server, $pid);
-                self::installMetadataFromFiles(Application::getMetadataFiles(), $token, $server, $pid, $eventId, Application::getSetting("grant_class", $pid), Application::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
+                return self::installMetadataFromFiles(Application::getMetadataFiles(), $token, $server, $pid, $eventId, Application::getSetting("grant_class", $pid), Application::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
             } else {
-                $metadata = [];
-                foreach ($newMetadata as $row) {
-                    if (
-                        !preg_match($deletionRegEx, $row['field_name'])
-                        && !in_array($row['field_name'], $fieldsToDelete)
-                    ) {
-                        $metadata[] = $row;
-                    }
-                }
                 self::sortByForms($metadata);
                 $pid = Application::getPID($token);
                 self::alterResourcesFields($metadata, $pid);
@@ -967,9 +967,10 @@ class DataDictionaryManagement {
         }
         $firstFieldName = "record_id";
         if ($newMetadata[0]['field_name'] !== $firstFieldName) {
-            throw new \Exception("First field is ".$newMetadata[0]['field_name'].", not $firstFieldName! ".json_encode($newMetadata));
+            throw new \Exception("First field is ".$newMetadata[0]['field_name'].", not $firstFieldName! ".json_encode($newMetadata)." from ".json_encode($metadata));
+        } else {
+            $metadata = $newMetadata;
         }
-        $metadata = $newMetadata;
     }
 
     private static function deleteRowsWithFieldName(&$metadata, $fieldName) {
