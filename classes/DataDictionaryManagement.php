@@ -29,9 +29,9 @@ class DataDictionaryManagement {
             "mentoring" => FALSE,
         ];
 
-        $files = [dirname(__FILE__)."/metadata.json"];
+        $files = [dirname(__FILE__)."/../metadata.json"];
         if (CareerDev::isVanderbilt()) {
-            $files[] = dirname(__FILE__)."/metadata.vanderbilt.json";
+            $files[] = dirname(__FILE__)."/../metadata.vanderbilt.json";
         }
 
         if (!$metadata) {
@@ -63,7 +63,7 @@ class DataDictionaryManagement {
         $choices = DataDictionaryManagement::getChoices($metadata);
         $redcapLists = [];
         foreach (array_keys($fields) as $type) {
-            $str = $lists[$type] ?? [];
+            $str = $lists[$type] ?? "";
             $oldItemChoices = [];
             for ($i = 0; $i < count($fields[$type]); $i++) {
                 $field = $fields[$type][$i];
@@ -216,23 +216,24 @@ class DataDictionaryManagement {
                     $postedFields[] = $field;
                 }
             }
-            $metadata["REDCap"] = self::reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);
-            $choices = ["REDCap" => self::getChoices($metadata["REDCap"])];
-            $newChoiceStr = REDCapManagement::makeChoiceStr($newChoices);
-            for ($i = 0; $i < count($metadata['file']); $i++) {
-                $field = $metadata['file'][$i]['field_name'];
-                $isFieldOfSources = (
-                    (
-                        preg_match("/_source$/", $field)
-                        || preg_match("/_source_\d+$/", $field)
-                    )
-                    && isset($choices["REDCap"][$field]["scholars"])
-                );
-                if ($isFieldOfSources) {
-                    $metadata['file'][$i]['select_choices_or_calculations'] = $newChoiceStr;
-                }
-            }
             try {
+                $metadata["REDCap"] = self::reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);
+                $choices = ["REDCap" => self::getChoices($metadata["REDCap"])];
+                $newChoiceStr = REDCapManagement::makeChoiceStr($newChoices);
+                for ($i = 0; $i < count($metadata['file']); $i++) {
+                    $field = $metadata['file'][$i]['field_name'];
+                    $isFieldOfSources = (
+                        (
+                            preg_match("/_source$/", $field)
+                            || preg_match("/_source_\d+$/", $field)
+                        )
+                        && isset($choices["REDCap"][$field]["scholars"])
+                    );
+                    if ($isFieldOfSources) {
+                        $metadata['file'][$i]['select_choices_or_calculations'] = $newChoiceStr;
+                    }
+                }
+
                 $feedback = self::mergeMetadataAndUpload($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
                 $newMetadata = Download::metadata($token, $server);
                 $formsAndLabels = self::getRepeatingFormsAndLabels($newMetadata, $token);
@@ -345,6 +346,9 @@ class DataDictionaryManagement {
             if ($metadata[$i]['form_name'] == $instrument) {
                 $instrumentRows[] = $metadata[$i];
             }
+        }
+        if (empty($instrumentRows)) {
+            return $metadata;
         }
         if ($metadata[$startI]['field_name'] != $desiredFirstField) {
             $instrumentRows = array_reverse($instrumentRows);
@@ -877,7 +881,7 @@ class DataDictionaryManagement {
                 $institutions = ["Home Institution"];
             }
             $relevantFields = REDCapManagement::getSpecialFields("institutions", $metadata);
-            $choiceStr = self::makeREDCapList($institutions, 5);
+            $choiceStr = self::makeREDCapList(implode("\n", $institutions), 5);
             self::setSelectStringForFields($metadata, $choiceStr, $relevantFields);
         }
     }
@@ -999,7 +1003,7 @@ class DataDictionaryManagement {
         if (empty($newMetadata)) {
             throw new \Exception("New metadata empty from forms ".json_encode($forms)." and metadata ".json_encode($metadata));
         } else if ($newMetadata[0]['field_name'] !== $firstFieldName) {
-            throw new \Exception("First field is ".$newMetadata[0]['field_name'].", not $firstFieldName! ".json_encode($newMetadata)." from ".json_encode($metadata));
+            throw new \Exception("First field is ".$newMetadata[0]['field_name'].", not $firstFieldName!");
         } else {
             $metadata = $newMetadata;
         }
