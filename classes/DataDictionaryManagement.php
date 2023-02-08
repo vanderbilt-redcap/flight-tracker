@@ -838,6 +838,30 @@ class DataDictionaryManagement {
                 $existingMetadata = $tempMetadata;
             }
         }
+        if (empty($existingMetadata)) {
+            # second attempt - allow sort by forms to correct
+            $existingMetadata = $originalMetadata;
+            if (empty($fields)) {
+                $selectedRows = $newMetadata;
+            } else {
+                $selectedRows = self::getRowsForFieldsFromMetadata($fields, $newMetadata);
+            }
+            foreach ($selectedRows as $newRow) {
+                if (!in_array($newRow['field_name'], $fieldsToDelete)) {
+                    $found = FALSE;
+                    foreach ($existingMetadata as $i => $existingRow) {
+                        if ($existingRow['field_name'] == $newRow['field_name']) {
+                            $existingMetadata[$i] = $newRow;
+                            $found = TRUE;
+                        }
+                    }
+
+                    if (!$found && !preg_match($deletionRegEx, $newRow['field_name'])) {
+                        $existingMetadata[] = $newRow;
+                    }
+                }
+            }
+        }
         self::sortByForms($existingMetadata);
         $pid = Application::getPID($token);
         self::alterResourcesFields($existingMetadata, $pid);
@@ -966,7 +990,9 @@ class DataDictionaryManagement {
             throw new \Exception("Improper sort!");
         }
         $firstFieldName = "record_id";
-        if ($newMetadata[0]['field_name'] !== $firstFieldName) {
+        if (empty($newMetadata)) {
+            throw new \Exception("New metadata empty from forms ".json_encode($forms)." and metadata ".json_encode($metadata));
+        } else if ($newMetadata[0]['field_name'] !== $firstFieldName) {
             throw new \Exception("First field is ".$newMetadata[0]['field_name'].", not $firstFieldName! ".json_encode($newMetadata)." from ".json_encode($metadata));
         } else {
             $metadata = $newMetadata;
@@ -977,7 +1003,7 @@ class DataDictionaryManagement {
         $newMetadata = array();
         foreach ($metadata as $row) {
             if ($row['field_name'] != $fieldName) {
-                array_push($newMetadata, $row);
+                $newMetadata[] = $row;
             }
         }
         $metadata = $newMetadata;
@@ -996,7 +1022,7 @@ class DataDictionaryManagement {
             if (count($a) == 2) {
                 $choices[$a[0]] = $a[1];
             } else if (count($a) > 2) {
-                $a = preg_split("/,/", $pair);
+                $a = explode(",", $pair);
                 $b = [];
                 for ($i = 1; $i < count($a); $i++) {
                     $b[] = $a[$i];
@@ -1187,8 +1213,7 @@ class DataDictionaryManagement {
 
     public static function translateFormToName($instrument) {
         $instrument = str_replace("_", " ", $instrument);
-        $instrument = ucwords($instrument);
-        return $instrument;
+        return ucwords($instrument);
     }
 
     public static function transformFieldsIntoPrefixes($fields) {
@@ -1203,7 +1228,7 @@ class DataDictionaryManagement {
     }
 
     public static function getPrefix($field) {
-        $nodes = preg_split("/_/", $field);
+        $nodes = explode("_", $field);
         if ($nodes[0] == "newman") {
             return $nodes[0]."_".$nodes[1];
         }
