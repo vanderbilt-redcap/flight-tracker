@@ -906,44 +906,50 @@ class DataDictionaryManagement {
         $blankSetup = ["1" => "Resource"];
         $metadataFields = self::getFieldsFromMetadata($metadata);
         $mentoringResourceField = self::getMentoringResourceField($metadataFields);
-        if (in_array($mentoringResourceField, $metadataFields)) {
-            $choices = self::getChoices($metadata);
-            if (
-                !empty($choices[$mentoringResourceField])
-                && self::isInitialSetupForResources($choices[$mentoringResourceField])
-            ) {
-                if (in_array($defaultResourceField, $metadataFields)) {
-                    if (Application::isVanderbilt()) {
-                        $resourceStr = self::makeChoiceStr(self::getMenteeAgreementVanderbiltResources());
-                    } else {
-                        $resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
-                    }
+
+        $choices = self::getChoices($metadata);
+        if (
+            !empty($choices[$mentoringResourceField])
+            && !empty($choices[$defaultResourceField])
+            && self::isInitialSetupForResources($choices[$mentoringResourceField])
+        ) {
+            if (in_array($defaultResourceField, $metadataFields)) {
+                if (Application::isVanderbilt()) {
+                    $resourceStr = self::makeChoiceStr(self::getMenteeAgreementVanderbiltResources());
                 } else {
-                    $resourceStr = self::makeChoiceStr($blankSetup);
-                }
-            } else if (!empty($choices[$mentoringResourceField])) {
-                $resourceStr = self::makeChoiceStr($choices[$mentoringResourceField]);
-            } else if ($pid) {
-                $resourceList = Application::getSetting("resources", $pid);
-                if ($resourceList) {
-                    $resource1DAry = explode("\n", $resourceList);
-                    $resourcesWithIndex = [];
-                    $idx = 1;
-                    foreach ($resource1DAry as $resource) {
-                        $resourcesWithIndex[$idx] = $resource;
-                        $idx++;
-                    }
-                    $resourceStr = self::makeChoiceStr($resourcesWithIndex);
-                } else {
-                    $resourceStr = self::makeChoiceStr($blankSetup);
+                    $resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
                 }
             } else {
                 $resourceStr = self::makeChoiceStr($blankSetup);
             }
-
-            $fieldsToModify = [$mentoringResourceField, $defaultResourceField];
-            self::setSelectStringForFields($metadata, $resourceStr, $fieldsToModify);
+        } else if (!empty($choices[$defaultResourceField])) {
+            $resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
+        } else if (!empty($choices[$mentoringResourceField])) {
+            $resourceStr = self::makeChoiceStr($choices[$mentoringResourceField]);
+        } else if ($pid) {
+            $resourceList = Application::getSetting("resources", $pid);
+            if (trim($resourceList)) {
+                $resource1DAry = explode("\n", $resourceList);
+                $resourcesWithIndex = [];
+                $idx = 1;
+                foreach ($resource1DAry as $resource) {
+                    $resourcesWithIndex[$idx] = $resource;
+                    $idx++;
+                }
+                $resourceStr = self::makeChoiceStr($resourcesWithIndex);
+            } else {
+                $resourceStr = self::makeChoiceStr($blankSetup);
+            }
+        } else {
+            $resourceStr = self::makeChoiceStr($blankSetup);
         }
+
+        if (!$resourceStr) {
+            throw new \Exception("Could not put together a resource string! '".Application::getSetting("resources", $pid)."'");
+        }
+
+        $fieldsToModify = [$mentoringResourceField, $defaultResourceField];
+        self::setSelectStringForFields($metadata, $resourceStr, $fieldsToModify);
     }
 
     public static function getMenteeAgreementVanderbiltResources() {
