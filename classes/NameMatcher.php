@@ -19,6 +19,20 @@ class NameMatcher {
         return FALSE;
     }
 
+    public static function makeArrayOfFormattedNames($nameStr) {
+        if (preg_match("/\band\b/", $nameStr)) {
+            $queueToParse = preg_split("/\s*\band\b\s*/", $nameStr);
+            $nameStr = implode("; ", $queueToParse);
+        }
+        $unformattedNames = preg_split("/\s*;\s*/", $nameStr);
+        $formattedNames = [];
+        foreach ($unformattedNames as $unformattedName) {
+            list($first, $middle, $last) = self::splitName($unformattedName, 3);
+            $formattedNames[] = self::formatName($first, $middle, $last);
+        }
+        return $formattedNames;
+    }
+
     private static function getNodes($name, $ridOfSpacesOnly = FALSE) {
         if ($ridOfSpacesOnly) {
             return preg_split("/\s+/", $name);

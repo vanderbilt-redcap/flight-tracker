@@ -21,7 +21,11 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 require_once(dirname(__FILE__)."/../small_base.php");
 
+
 $classes = ["CDAs", "All"];
+if (Grants::areFlagsOn($pid)) {
+    $classes[] = "Flagged";
+}
 $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CSS below
 
 ?>
@@ -98,7 +102,6 @@ body { font-size: 12px; }
         $grantsAndPubs[$c] = [];
 
         if ($c == "All") {
-            $allTimestamps = [];
             list($submissions, $submissionTimestamps) = makeSubmissionDots($grants->getGrants("submissions"), $id);
             list($awards, $awardTimestamps) = makeAwardDots($grants->getGrants("submission_dates"), $id);
             $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $submissions, $awards);
@@ -126,6 +129,8 @@ body { font-size: 12px; }
             $grantType = "all";
         } else if ($c == "CDAs") {
             $grantType = "prior";
+        } else if ($c == "Flagged") {
+            $grantType = "flagged";
         } else {
             throw new \Exception("Class is not set up $c");
         }
@@ -163,6 +168,8 @@ foreach ($classes as $c) {
         $vizTitle = "All Grants (Including Submissions)";
     } else if ($c == "CDAs") {
         $vizTitle = "Career Defining Awards &amp; Publications";
+    } else if ($c == "Flagged") {
+        $vizTitle = "Flagged Grants Only";
     } else {
         $vizTitle = "This should never happen.";
     }

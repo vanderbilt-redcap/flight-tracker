@@ -17,6 +17,8 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\DateManagement;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\Grants;
+use \Vanderbilt\CareerDevLibrary\GrantFactory;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -90,12 +92,18 @@ if (isset($_GET['grants'])) {
 }
 
 if ($includeHeaders) {
+    if (isset($_GET['grants'])) {
+        echo Grants::makeFlagLink($pid);
+    }
     echo "<h1>$title</h1>\n";
     list($url, $params) = REDCapManagement::splitURL(Application::link("socialNetwork/collaboration.php"));
     echo "<form method='GET' action='$url'>\n";
     if (!isset($params['limitPubs']) && isset($_GET['limitPubs'])) {
         $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
         $params['limitPubs'] = $limitYear;
+    }
+    if (isset($_GET['showFlagsOnly'])) {
+        $params['showFlagsOnly'] = '1';
     }
     foreach ($params as $param => $value) {
         echo "<input type='hidden' name='$param' value='$value'>";
@@ -164,19 +172,11 @@ if (isset($_GET['cohort']) && !empty($records)) {
     }
     $citationFields = DataDictionaryManagement::filterOutInvalidFields($metadata, $citationFields);
 
-    $grantFields = [
-        "record_id",
-        "identifier_first_name",
-        "identifier_last_name",
-        "exporter_pi_names",
-        "exporter_full_project_num",
-        "reporter_contactpi",
-        "reporter_otherpis",
-        "reporter_projectnumber",
-        "coeus2_collaborators",
-        "coeus2_agency_grant_number",
-        "coeus2_award_status",
-        ];
+    $grantFields = array_unique(array_merge(
+        ["record_id", "identifier_first_name", "identifier_last_name"],
+        GrantFactory::getAllAwardFields($token, $server),
+        GrantFactory::getAllPIFields($token, $server)
+    ));
     if (!in_array($indexByField, $grantFields)) {
         $grantFields[] = $indexByField;
     }
@@ -611,23 +611,6 @@ function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
     return [$connections, $chartData, $uniqueNames];
 }
 
-$grantFields = [
-    "record_id",
-    "identifier_first_name",
-    "identifier_last_name",
-    "exporter_pi_names",
-    "exporter_full_project_num",
-    "reporter_contactpi",
-    "reporter_otherpis",
-    "reporter_projectnumber",
-    "coeus2_collaborators",
-    "coeus2_agency_grant_number",
-    "coeus2_award_status",
-    "nih_principal_investigators",
-    "nih_project_num",
-    "coeus_award_no",          // COEUS Award Number, not sponsor award number
-];
-
 function findGrantMatchesForRecord(&$index, &$coeusAwardNumbers, $token, $server, $fields, $fromRecordId, $indexByField, $records, $userids, $names) {
     $redcapData = Download::fieldsForRecords($token, $server, $fields, [$fromRecordId]);
     $matches = [];
@@ -637,21 +620,20 @@ function findGrantMatchesForRecord(&$index, &$coeusAwardNumbers, $token, $server
         }
     }
     $authors = [];
+    $awardNumFields = GrantFactory::getAllAwardFields($token, $server);
+    $piFields = GrantFactory::getAllPIFields($token, $server);
     # change to $grants->getGrants('all_pis')???
     foreach ($redcapData as $row) {
         $instance = $row['redcap_repeat_instance'];
         $instrument = $row['redcap_repeat_instrument'];
         $awardNo = "";
-        if ($instrument == "exporter") {
-            $awardNo = $row["exporter_full_project_num"];
-        } else if ($instrument == "reporter") {
-            $awardNo = $row["reporter_projectnumber"];
-        } else if ($instrument == "coeus2") {
-            $awardNo = $row["coeus2_agency_grant_number"];
-        } else if ($instrument == "coeus") {
-            $awardNo = $row["coeus_award_no"];
-        } else if ($instrument == "nih_reporter") {
-            $awardNo = $row["nih_project_num"];
+        $prefix = "";
+        foreach ($awardNumFields as $field) {
+            if (isset($row[$field]) && $row[$field]) {
+                $awardNo = $row[$field];
+                $prefix = REDCapManagement::getPrefix($field);
+                break;
+            }
         }
         if ($awardNo) {
             $baseAwardNo = Grant::translateToBaseAwardNumber($awardNo);
@@ -659,31 +641,26 @@ function findGrantMatchesForRecord(&$index, &$coeusAwardNumbers, $token, $server
                 $authors[$baseAwardNo] = [];
             }
             $myAuthors = [];
-            if ($instrument == "exporter") {
-                $myAuthors = preg_split("/\s*;\s*/", $row['exporter_pi_names']);
-            } else if ($instrument == "nih_reporter") {
-                $myAuthors = preg_split("/\s*;\s*/", $row['nih_principal_investigators']);
-            } else if ($instrument == "reporter") {
-                if ($row['reporter_otherpis']) {
-                    $myAuthors = preg_split("/\s*;\s*/", $row["reporter_otherpis"]);
-                }
-                $myAuthors[] = $row['reporter_contactpi'];
-            } else if (($instrument == "coeus2") && ($row["coeus2_award_status"] == "Awarded")) {
-                foreach ($userids as $recordId => $userid) {
-                    if ($userid && $names[$recordId]
-                        && (preg_match("/\($userid;/", $row['coeus2_collaborators'])
-                            || preg_match("/$userid \(/", $row['coeus2_collaborators']))) {
-                        $myAuthors[] = $names[$recordId];
+            foreach ($piFields as $field) {
+                if (($instrument == "coeus2") && ($row["coeus2_award_status"] == "Awarded")) {
+                    foreach ($userids as $recordId => $userid) {
+                        if ($userid && $names[$recordId]
+                            && (preg_match("/\($userid;/", $row['coeus2_collaborators'])
+                                || preg_match("/$userid \(/", $row['coeus2_collaborators']))) {
+                            $myAuthors[] = $names[$recordId];
+                        }
                     }
+                } else if (($instrument == "coeus") && ($awardNo !== "000") && ($awardNo !== "")) {
+                    if (!isset($coeusAwardNumbers[$awardNo])) {
+                        $coeusAwardNumbers[$awardNo] = [];
+                    }
+                    if (!isset($coeusAwardNumbers[$awardNo][$row['record_id']])) {
+                        $coeusAwardNumbers[$awardNo][$row['record_id']] = [];
+                    }
+                    $coeusAwardNumbers[$awardNo][$row['record_id']][] = $row['redcap_repeat_instance'];
+                } else if ((REDCapManagement::getPrefix($field) == $prefix) && isset($row[$field]) && $row[$field]) {
+                    $myAuthors = array_unique(array_merge($myAuthors, NameMatcher::makeArrayOfFormattedNames($row[$field])));
                 }
-            } else if (($instrument == "coeus") && ($awardNo !== "000") && ($awardNo !== "")) {
-                if (!isset($coeusAwardNumbers[$awardNo])) {
-                    $coeusAwardNumbers[$awardNo] = [];
-                }
-                if (!isset($coeusAwardNumbers[$awardNo][$row['record_id']])) {
-                    $coeusAwardNumbers[$awardNo][$row['record_id']] = [];
-                }
-                $coeusAwardNumbers[$awardNo][$row['record_id']][] = $row['redcap_repeat_instance'];
             }
             for ($i = 0; $i < count($myAuthors); $i++) {
                 $myAuthors[$i] = trim($myAuthors[$i]);

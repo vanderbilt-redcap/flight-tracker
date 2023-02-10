@@ -178,6 +178,7 @@ $(document).ready(() => {
 			<button>Process Names</button>
 		</p></form>
         <h2><b>--OR--</b> supply a CSV Spreadsheet with the specified fields in <a href='<?= Application::link("newFaculty.php") ?>'>this example</a>.</h2>
+        <p class="centered">(Name and institution fields are the most important on this spreadsheet. Other fields are preferred, but still optional.)</p>
         <form enctype='multipart/form-data' method='POST' action='<?= Application::link("this") ?>'><p>
                 <?= Application::generateCSRFTokenHTML() ?>
                 <input type="hidden" name="MAX_FILE_SIZE" value="3000000" />

@@ -123,8 +123,9 @@ if ($hasType && isset($_POST['begin']) && ($_POST['begin'] != "")) {
 	echo "</table>";
 
 } else {
-	echo "<h1>Search Within Timespan</h1>";
-	echo "<form method='POST' action='".CareerDev::link("search/inTimespan.php")."'>";
+	echo "<h1>Search Career-Defining Grants Within Timespan</h1>";
+	$link = CareerDev::link("search/inTimespan.php");
+	echo "<form method='POST' action='$link'>";
 	echo Application::generateCSRFTokenHTML();
 	
 	echo "<table class='centered'><tr><td style='vertical-align: top; padding-right: 16px;'>";

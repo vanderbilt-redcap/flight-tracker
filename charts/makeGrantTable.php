@@ -22,6 +22,9 @@ $warningsOn = FALSE;
 
 $metadata = Download::metadata($token, $server);
 $thisUrlWithParams = Application::link("this");
+if (isset($_GET['showFlagsOnly'])) {
+    $thisUrlWithParams .= "&showFlagsOnly";
+}
 if (isset($_GET['CDA'])) {
     $thisUrlWithParams .= "&CDA";
     $title = "Career Development Awards Over Time";
@@ -33,7 +36,11 @@ if (isset($_GET['CDA'])) {
 } else {
     $title = "Grants Awarded Over Time";
     $maxCols = 25;
-    $grantReach = "all";
+    if (isset($_GET['showFlagsOnly'])) {
+        $grantReach = "flagged";
+    } else {
+        $grantReach = "all";
+    }
     $smallIdentifierFields = ["record_id", "identifier_first_name", "identifier_last_name"];
     $smallSummaryFields = ["record_id", "summary_dob", "summary_first_r01", "summary_first_external_k"];
     $minimalDownloadedGrantFields = REDCapManagement::getMinimalGrantFields($metadata);
@@ -54,6 +61,9 @@ if (isset($_GET['cohort'])) {
     $thisUrlWithParams .= "&cohort=".urlencode($cohort);
 } else {
     $cohort = "";
+}
+if (isset($_GET['plain'])) {
+    $thisUrlWithParams .= "&plain";
 }
 
 if (!empty($_POST['records']) && !empty($_POST['fields'])) {
@@ -206,6 +216,9 @@ if ($showTimeBetweenGrants) {
 
 $cohorts = new Cohorts($token, $server, $module);
 
+if (!isset($_GET['CDA'])) {
+    echo Grants::makeFlagLink($pid, $thisUrlWithParams);
+}
 echo "<h1>$title</h1>";
 echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort, "window.location = \"".Application::link("charts/makeGrantTable.php")."&cohort=\"+$(this).val();")."</p>";
 if (isset($_GET['plain'])) {
@@ -248,6 +261,9 @@ if (isset($_GET['plain'])) {
     echo "<style>";
     echo ".tooltip .tooltiptext { width: 300px; }\n";
     echo "</style>";
+    if (isset($_GET['CDA']) && isset($_GET['showFlagsOnly'])) {
+        echo "<p class='centered max-width'>Because Career-Defining Awards are pre-computed, not all records might be uploaded if you enabled flags recently. If flags have been enabled for over one week, then all data should be current.</p>";
+    }
     echo "<h3>Legend</h3>";
     echo "<table class='noBorderCollapse'>";
     echo "<tr><td class='spacer'></td></tr>";

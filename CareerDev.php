@@ -16,7 +16,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.0.13";
+		return "5.1.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -440,15 +440,22 @@ class CareerDev {
                     $url .= "&limitPubs=".$limitYear;
                 }
             }
+            if (isset($_GET['showFlagsOnly'])) {
+                $url .= "&showFlagsOnly";
+            }
             return $url;
         } else {
             $fullURL = self::constructThisURL();
             $url = explode("?", $fullURL)[0];
-            $paramKeys = ["page", "pid", "prefix", "project_id", "limitPubs"];
+            $paramKeys = ["page", "pid", "prefix", "project_id", "limitPubs", "showFlagsOnly"];
             $initialSeparator = "?";
             foreach ($paramKeys as $key) {
                 if (isset($_GET[$key])) {
-                    $url .= "$initialSeparator$key=".urlencode(urldecode(Sanitizer::sanitize($_GET[$key])));
+                    if ($_GET[$key]) {
+                        $url .= "$initialSeparator$key=".urlencode(urldecode(Sanitizer::sanitize($_GET[$key])));
+                    } else {
+                        $url .= "$initialSeparator$key";
+                    }
                     $initialSeparator = "&";
                 }
             }
@@ -975,7 +982,7 @@ class CareerDev {
                 "Stylized Table of Grants" => self::link("/charts/makeGrantTable.php"),
                 "List of All Grants" => self::link("/charts/makeGrantTable.php")."&plain",
                 "Social Network of Grant Collaboration" => self::link("/socialNetwork/collaboration.php")."&grants",
-                "Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
+//                "Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
                 "Financial ROI for Grants" => self::link("/financial/roi.php"),
                 "Search Grants" => self::link("/search/index.php"),
                 "Search Within a Timespan" => self::link("/search/inTimespan.php"),
@@ -1264,7 +1271,8 @@ class CareerDev {
 						"reporter_orgzipcode",
 						"reporter_projectstartdate",
 						"reporter_projectenddate",
-						"reporter_cfdacode",
+                        "reporter_cfdacode",
+                        "reporter_flagged",
 						);
 
     public static $customFields = [
@@ -1284,6 +1292,7 @@ class CareerDev {
         "custom_last_update",
         "custom_submission_status",
         "custom_submission_date",
+        "custom_flagged",
     ];
 
     public static $exporterFields = array(
@@ -1334,7 +1343,8 @@ class CareerDev {
 						"exporter_total_cost",
 						"exporter_total_cost_sub_project",
 						"exporter_abstract",
-						"exporter_last_update",
+                        "exporter_last_update",
+                        "exporter_flagged",
 						);
 
 	public static $followupFields = array(
@@ -1559,7 +1569,22 @@ class CareerDev {
 						"followup_grant15_role_other",
 						"followup_grant15_start",
 						"followup_grant15_end",
-						"followup_grant15_costs",
+                        "followup_grant15_costs",
+                        "followup_grant1_flagged",
+                        "followup_grant2_flagged",
+                        "followup_grant3_flagged",
+                        "followup_grant4_flagged",
+                        "followup_grant5_flagged",
+                        "followup_grant6_flagged",
+                        "followup_grant7_flagged",
+                        "followup_grant8_flagged",
+                        "followup_grant9_flagged",
+                        "followup_grant10_flagged",
+                        "followup_grant11_flagged",
+                        "followup_grant12_flagged",
+                        "followup_grant13_flagged",
+                        "followup_grant14_flagged",
+                        "followup_grant15_flagged",
 						"followup_date",
 						"followup_complete",
 						);
@@ -1899,7 +1924,22 @@ class CareerDev {
 						"check_grant15_role_other",
 						"check_grant15_start",
 						"check_grant15_end",
-						"check_grant15_costs",
+                        "check_grant15_costs",
+                        "check_grant1_flagged",
+                        "check_grant2_flagged",
+                        "check_grant3_flagged",
+                        "check_grant4_flagged",
+                        "check_grant5_flagged",
+                        "check_grant6_flagged",
+                        "check_grant7_flagged",
+                        "check_grant8_flagged",
+                        "check_grant9_flagged",
+                        "check_grant10_flagged",
+                        "check_grant11_flagged",
+                        "check_grant12_flagged",
+                        "check_grant13_flagged",
+                        "check_grant14_flagged",
+                        "check_grant15_flagged",
 						"check_date",
 						"initial_survey_complete",
 						);
@@ -1929,6 +1969,7 @@ class CareerDev {
         "coeus2_grant_activity_type",
         "coeus2_current_period_direct_funding",
         "coeus2_last_update",
+        "coeus2_flagged",
     ];
 
 	public static $coeusFields = array(
@@ -1990,7 +2031,8 @@ class CareerDev {
 						"coeus_directory_title",
 						"coeus_coeus_department",
 						"coeus_update_timestamp",
-						"coeus_career_active",
+                        "coeus_career_active",
+                        "coeus_flagged",
 						);
 
 	public static $institutionFields = array(
@@ -2225,7 +2267,8 @@ class CareerDev {
 						"record_id",
 						"summary_calculate_order",
 						"summary_calculate_list_of_awards",
-						"summary_calculate_to_import",
+                        "summary_calculate_to_import",
+                        "summary_calculate_flagged_grants",
 						);
 
     public static $nihreporterFields = [
@@ -2275,6 +2318,7 @@ class CareerDev {
         "nih_agency_code",
         "nih_covid_response",
         "nih_last_update",
+        "nih_flagged",
     ];
 
     private static $pid = "";

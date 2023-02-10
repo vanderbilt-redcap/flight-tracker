@@ -27,7 +27,7 @@ function getNumber($field) {
 	return preg_replace("/^[a-zA-Z_]+/", "", $field);
 }
 
-echo "<h1>Search ".CareerDev::getProgramName()." Grants</h1>\n";
+echo "<h1>Search ".CareerDev::getProgramName()." Career-Defining Grants</h1>\n";
 
 $postQuery = "";
 if (isset($_POST['q']) && $_POST['q']) {

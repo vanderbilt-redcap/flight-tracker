@@ -60,9 +60,10 @@ class Grant {
     # if $ts === FALSE, then calculate for all time
     public function getActiveBudgetAtTime($rows, $type, $ts, $sourcesToExclude = []) {
 	    # Do not use Federal RePORTER because data are incomplete
-        $orderedSources = ["nih_reporter", "exporter", "coeus", "reporter", "nsf", "ies_grant", "followup", "custom"];
+        $orderedSources = ["coeus", "nih_reporter", "exporter", "reporter", "nsf", "ies_grant", "followup", "custom"];
         $sourcesToSkip = ["followup", "custom"]; // have numbers over all time period, not current budget
         $baseNumber = $this->getBaseNumber();
+        $awardNo = $this->getNumber();
         if (self::getShowDebug()) {
             echo "Looking for $baseNumber<br>";
         }
@@ -71,9 +72,33 @@ class Grant {
         foreach ($orderedSources as $source) {
             if (!in_array($source, $sourcesToExclude) && !in_array($source, $sourcesToSkip)) {
                 foreach ($rows as $row) {
-                    if ($source == "nih_reporter") {
+                    if (($source == "coeus") && ($awardNo == $row['coeus_sponsor_award_number'])) {
                         if ($type == "Total") {
-                            $fy = REDCapManagement::getCurrentFY("Federal");
+                            $field = "coeus_total_cost_budget_period";
+                        } else if ($type == "Direct") {
+                            $field = "coeus_direct_cost_budget_period";
+                        } else {
+                            throw new \Exception("Invalid type $type!");
+                        }
+                        if ($ts === FALSE) {
+                            $currTotalFunding = $row[$field] ?? 0;
+                            if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                                $runningTotal += $currTotalFunding;
+                                $sourceForRunningTotal = $source;
+                            }
+                        } else if ($row['coeus_budget_start_date'] && $row['coeus_budget_end_date']) {
+                            $startTs = strtotime($row['coeus_budget_start_date']);
+                            $endTs = strtotime($row['coeus_budget_end_date']);
+                            if (($ts >= $startTs) && ($ts <= $endTs)) {
+                                $currTotalFunding = $row[$field] ?? 0;
+                                if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+                                    $runningTotal += $currTotalFunding;
+                                    $sourceForRunningTotal = $source;
+                                }
+                            }
+                        }
+                    } else if (($source == "nih_reporter") && ($awardNo == $row['nih_project_num'])) {
+                        if ($type == "Total") {
                             if ($ts === FALSE) {
                                 if ($row['nih_award_amount']) {
                                     $currTotalFunding = $row['nih_award_amount'];
@@ -83,13 +108,14 @@ class Grant {
                                     }
                                 }
                             } else {
+                                $fy = REDCapManagement::getCurrentFY("Federal", $ts);
                                 $field = "nih_agency_ic_fundings";
                                 if ($row[$field]) {
-                                    $entries = json_decode($row[$field], TRUE);
+                                    $entries = RePORTER::decodeICFundings($row[$field]);
                                     foreach ($entries as $ary) {
                                         if (count($ary) >= 2) {
-                                            $currFY = $ary[0];
-                                            $currTotalFunding = $ary[1];
+                                            $currFY = $ary['fy'] ?? "";
+                                            $currTotalFunding = $ary['total_cost'] ?? "";
                                             if ($currFY == $fy) {
                                                 if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
                                                     $runningTotal += $currTotalFunding;
@@ -101,7 +127,7 @@ class Grant {
                                 }
                             }
                         }
-                    } else if ($source == "exporter") {
+                    } else if (($source == "exporter") && ($awardNo == $row['exporter_full_project_num'])) {
                         if ($row['redcap_repeat_instrument'] == $source) {
                             if ($type == "Direct") {
                                 $budgetField = 'exporter_direct_cost_amt';
@@ -129,7 +155,7 @@ class Grant {
                                 $sourceForRunningTotal = $source;
                             }
                         }
-                    } else if ($source == "coeus2") {
+                    } else if (($source == "coeus2") && ($awardNo == $row['coeus2_agency_grant_number'])) {
                         if (($row['redcap_repeat_instrument'] == $source) && ($row['coeus2_award_status'] == "Awarded")) {
                             if ($type == "Direct") {
                                 $budgetField = 'coeus2_current_period_direct_funding';
@@ -154,7 +180,7 @@ class Grant {
                                 $sourceForRunningTotal = $source;
                             }
                         }
-                    } else if ($source == "reporter") {
+                    } else if (($source == "reporter") && ($awardNo == $row['reporter_projectnumber'])) {
                         if ($row['redcap_repeat_instrument'] == $source) {
                             if ($type == "Total") {
                                 $budgetField = 'reporter_totalcostamount';
@@ -175,7 +201,7 @@ class Grant {
                                 $sourceForRunningTotal = $source;
                             }
                         }
-                    } else if ($source == "custom") {
+                    } else if (($source == "custom") && ($awardNo == $row['custom_number'])) {
                         if ($type == "Direct") {
                             $budgetField = 'custom_costs';
                         } else if ($type == "Total") {

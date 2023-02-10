@@ -83,6 +83,9 @@ class LDAP {
                 } else {
                     if (!isset($rows[0])) {
                         $rows[0] = $defaultRow;
+                        $rows[0]["redcap_repeat_instrument"] = "ldapds";
+                        $rows[0]["redcap_repeat_instance"] = $previousMaxInstance + 1;
+                        $previousMaxInstance++;
                     }
                     $rows[0][$redcapField] = $values[0];
                 }

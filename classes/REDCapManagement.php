@@ -170,9 +170,12 @@ class REDCapManagement {
         return DateManagement::getReporterDateInYMD($dt);
     }
 
-    public static function getCurrentFY($type) {
-        $y = date("Y");
-        $month = date("m");
+    public static function getCurrentFY($type, $ts = "current") {
+        if ($ts == "current") {
+            $ts = time();
+        }
+        $y = date("Y", $ts);
+        $month = date("m", $ts);
 	    if ($type == "Federal") {
 	        if ($month >= 10) {
 	            $y++;

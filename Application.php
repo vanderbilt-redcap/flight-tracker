@@ -1046,6 +1046,7 @@ SELECT DISTINCT s.project_id AS pid
         "custom_last_update",
         "custom_submission_status",
         "custom_submission_date",
+        "custom_flagged",
     ];
 
     public static $positionFields = array(

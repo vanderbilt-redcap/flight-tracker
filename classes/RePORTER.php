@@ -35,6 +35,27 @@ class RePORTER {
         return $awardNo;
     }
 
+    public static function decodeICFundings($mangledJSON)
+    {
+        if (!$mangledJSON) {
+            return [];
+        }
+        $mangledJSON = str_replace("\"fy\"", "'fy'", $mangledJSON);
+        $jsonOfStrings = str_replace("\"total_cost\"", "'total_cost'", $mangledJSON);
+        $strEntries = json_decode($jsonOfStrings, TRUE);
+        $entries = [];
+        foreach ($strEntries as $mangledJSON) {
+            if (is_string($mangledJSON)) {
+                $mangledJSON = str_replace("'", "\"", $mangledJSON);
+                $ary = json_decode($mangledJSON, TRUE);
+            } else {
+                $ary = $mangledJSON;
+            }
+            $entries[] = $ary;
+        }
+        return $entries;
+    }
+
     public function getTitlesOfGrants($awardNumbers) {
         $this->searchAwards($awardNumbers);
         $translate = [];
@@ -67,9 +88,8 @@ class RePORTER {
             $this->currData = $this->runPOSTQuery($location, $payload);
             foreach ($this->currData as $line) {
                 if ($line['nih_agency_ic_fundings']) {
-                    $fiscalData = json_decode($line['nih_agency_ic_fundings']) ?? [];
-                    foreach ($fiscalData as $fiscalRow) {
-                        $oneYearsData = json_decode($fiscalRow, TRUE);
+                    $fiscalData = self::decodeICFundings($line['nih_agency_ic_fundings'] ?: '[]');
+                    foreach ($fiscalData as $oneYearsData) {
                         if ($oneYearsData['fy'] == $fiscalYear) {
                             $total += $oneYearsData['total_cost'];
                         }

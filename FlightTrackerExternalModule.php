@@ -76,7 +76,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         // CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		foreach ($activePids as $pid) {
 			if (REDCapManagement::isActiveProject($pid)) {
-                Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at beginning of email processing for project.", $pid);
+                // Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at beginning of email processing for project.", $pid);
 				$token = $this->getProjectSetting("token", $pid);
 				$server = $this->getProjectSetting("server", $pid);
 				if ($token && $server) {
@@ -100,7 +100,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Email Exception", $mssg);
                     }
                 }
-                Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at end of email processing for project.", $pid);
+                // Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at end of email processing for project.", $pid);
 			}
 		}
 	}

@@ -20,9 +20,14 @@ if ($_POST['date'] && REDCapManagement::isDate($_POST['date'])) {
     $ts = time();
 }
 
-if ($_GET['timespan'] == "active") {
+if (isset($_GET['timespan']) && is_string($_GET['timespan'])) {
+    $getTimespan = Sanitizer::sanitize($_GET['timespan']);
+} else {
+    $getTimespan = "active";
+}
+if ($getTimespan == "active") {
     $timespan = "Active";
-} else if ($_GET['timespan'] == "all") {
+} else if ($getTimespan == "all") {
     $timespan = "All Time";
 } else {
     $timespan = "Active";
@@ -32,6 +37,12 @@ if (isset($_GET['cohort'])) {
     $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
 } else {
     $cohort = "";
+}
+
+if (isset($_GET['showFlagsOnly'])) {
+    $grantType = "flagged";
+} else {
+    $grantType = "all_pis";
 }
 
 $metadata = Download::metadata($token, $server);
@@ -60,17 +71,20 @@ if (Application::isVanderbilt() && in_array("ldap", $metadataForms) && !$hasDepa
     if (isset($_GET['test'])) {
         echo "Downloading LDAP info<br>";
     }
-    $ldapData = Download::fields($token, $server, ["record_id", "ldap_departmentnumber"]);
+    $ldapData = Download::fields($token, $server, ["record_id", "ldap_departmentnumber", "ldapds_departmentnumber"]);
     foreach ($ldapData as $row) {
+        $dept = "";
+        $recordId = $row['record_id'];
         if ($row['redcap_repeat_instrument'] == "ldap") {
-            $recordId = $row['record_id'];
             $dept = $row['ldap_departmentnumber'];
-            if ($dept) {
-                if (!isset($recordsByDept[$dept])) {
-                    $recordsByDept[$dept] = [];
-                }
-                $recordsByDept[$dept][] = $recordId;
+        } else if ($row['redcap_repeat_instrument'] == "ldapds") {
+            $dept = $row['ldapds_departmentnumber'];
+        }
+        if ($dept) {
+            if (!isset($recordsByDept[$dept])) {
+                $recordsByDept[$dept] = [];
             }
+            $recordsByDept[$dept][] = $recordId;
         }
     }
 } else {
@@ -120,7 +134,7 @@ $table["Total"]['grantsSeenTotal']= [];
 $table["Total"]['numFaculty'] = 0;
 
 $figures = [];
-$notes = ["No-Cost Extensions are not represented in these data."];
+$notes = ["No-Cost Extensions are not represented in these data.", "The NIH RePORTER's API does not have Direct Dollars available."];
 $d = array_values($recordsByDept);
 foreach ($recordsByDept as $dept => $records) {
     $numRecords = count($records);
@@ -133,11 +147,16 @@ foreach ($recordsByDept as $dept => $records) {
         $grants = new Grants($token, $server, $metadata);
         $grants->setRows($redcapData);
         $grants->compileGrants();
-        foreach ($grants->getGrants("all_pis") as $grant) {
+        $grantAry = $grants->getGrants($grantType);
+        foreach ($grantAry as $grant) {
             $baseAwardNumber = $grant->getBaseAwardNumber();
             $figureRow = ["Record" => $recordId, "Name" => $names[$recordId], "Grant" => $baseAwardNumber];
             if ($timespan == "Active") {
-                if (($grant->getActiveBudgetAtTime($redcapData, "Total", $ts) > 0) && ($grant->getActiveBudgetAtTime($redcapData, "Direct", $ts) == 0.0)) {
+                if (
+                    ($grant->getActiveBudgetAtTime($redcapData, "Total", $ts) > 0)
+                    && ($grant->getActiveBudgetAtTime($redcapData, "Direct", $ts) == 0.0)
+                    && ($grant->getVariable("source") !== "nih_reporter")
+                ) {
                     $notes[] = "No direct budget for Record $recordId ".$baseAwardNumber;
                 }
             }
@@ -179,12 +198,15 @@ foreach ($recordsByDept as $dept => $records) {
 }
 $currChosenDate = date("Y-m-d", $ts);
 $mdyCurrDate = date("m-d-Y", $ts);
-$link = Application::link("financial/activeBudget.php");
+$link = Application::link("this");
+$linkWithParams = $link.(isset($_GET['cohort']) ? "&cohort=".urlencode($cohort) : "").(isset($_GET['timespan']) ? "&timespan=".urlencode($getTimespan) : "");
+echo Grants::makeFlagLink($pid, $linkWithParams);
 echo "<h1>$timespan Grants in Project at $mdyCurrDate</h1>";
 if ($timespan == "Active") {
     echo "<form action='$link' method='POST'>";
     echo Application::generateCSRFTokenHTML();
     echo "<p class='centered'>Active on <input type='date' name='date' value='$currChosenDate'></p>";
+    echo "<p class='centered'><button>Recalibrate</button></p>";
     echo "</form>";
 }
 
@@ -196,11 +218,6 @@ if (!empty($notes)) {
 
 $cohorts = new Cohorts($token, $server, Application::getModule());
 $thisUrl = Application::link("this");
-if (isset($_GET['timespan']) && is_string($_GET['timespan'])) {
-    $getTimespan = Sanitizer::sanitize($_GET['timespan']);
-} else {
-    $getTimespan = "active";
-}
 echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort, "location.href = \"$thisUrl&timespan=$getTimespan&cohort=\"+$(this).val();")."</p>";
 echo "<table class='centered max-width bordered'>";
 echo "<thead>";

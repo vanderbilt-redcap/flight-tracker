@@ -75,7 +75,7 @@ $excludeList = new ExcludeList("Grants", $pid);
 
 function getTransformArray() {
 	$ary = [];
-	$ary['redcap_type'] = "REDCap Type";
+	$ary['redcap_type'] = "Type / Bin";
 	$ary['person_name'] = "Assigned Person";
 	$ary['start_date'] = "Budget Start Date";
 	$ary['end_date'] = "Budget End Date";
@@ -306,10 +306,12 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
     $projectStartName = preg_replace("/redcap_type/", "project_start_date", $selectName);
     $projectEndName = preg_replace("/redcap_type/", "project_end_date", $selectName);
 	$awardTypes = Grant::getAwardTypes();
-    $startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this);' id='$startName' value='' />";
-    $enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this);)' id='$endName' value='' />";
-    $project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this);' id='$projectStartName' value='' />";
-    $project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this);' id='$projectEndName' value='' />";
+    $source = $ary['source'] ?? "";
+    $awardNo = $ary['sponsor_award_no'] ?? "";
+    $startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"start_date\", \"$source\", \"$awardNo\");' id='$startName' value='' />";
+    $enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"end_date\", \"$source\", \"$awardNo\");' id='$endName' value='' />";
+    $project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_start_date\", \"$source\", \"$awardNo\");' id='$projectStartName' value='' />";
+    $project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_end_date\", \"$source\", \"$awardNo\");' id='$projectEndName' value='' />";
 	$tablenum = 0;
 	$doclass = "class_empty";
     $class_baseaward = "";
@@ -336,7 +338,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 		if ($key == "redcap_type") {
             list($doclass, $ftype) = getClassAndFType($value);
             if ($selectName) {
-                $telem = "<select id='$selectName' onchange='toggleChange(\"$value\", $(this), $i, $(this).closest(\"table\").attr(\"class\"));' style='font-size: 13px;padding: 1px;'>";
+                $telem = "<select id='$selectName' onchange='toggleChange(\"$value\", $(this), $i, $(this).closest(\"table\").attr(\"class\"), \"$source\", \"$awardNo\");' style='font-size: 13px;padding: 1px;'>";
                 foreach ($awardTypes as $type => $num) {
                     if ($value == $type) {
                         $telem .= "<option value='$type' selected>$type</option>";
@@ -351,31 +353,31 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
             }
 		} else if ($key == "start_date") {
 		 	if($value == ''){
-		 		$startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this);' id='$startName' value='' />";
+		 		$startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"start_date\", \"$source\", \"$awardNo\");' id='$startName' value='' />";
 		 	} else {
                 $mdyValue = DateManagement::YMD2MDY($value);
-                $startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this);)' id='$startName' value='$mdyValue' />";
+                $startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"start_date\", \"$source\", \"$awardNo\");' id='$startName' value='$mdyValue' />";
             }
 		} else if ($key == "end_date") {
 			if($value == ''){
-		 		$enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this);)' id='$endName' value='' />";
+		 		$enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"end_date\", \"$source\", \"$awardNo\");' id='$endName' value='' />";
 		 	} else {
                 $mdyValue = DateManagement::YMD2MDY($value);
-                $enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this);)' id='$endName' value='$mdyValue' />";
+                $enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"end_date\", \"$source\", \"$awardNo\");' id='$endName' value='$mdyValue' />";
             }
         } else if($key == "project_start_date"){
             if($value == ''){
-                $project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this);' id='$projectStartName' value='' />";
+                $project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_start_date\", \"$source\", \"$awardNo\");' id='$projectStartName' value='' />";
             } else {
                 $mdyValue = DateManagement::YMD2MDY($value);
-                $project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this);' id='$projectStartName' value='$mdyValue' />";
+                $project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_start_date\", \"$source\", \"$awardNo\");' id='$projectStartName' value='$mdyValue' />";
             }
         } else if($key == "project_end_date"){
             if($value == ''){
-                $project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this);' id='$projectEndName' value='' />";
+                $project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_end_date\", \"$source\", \"$awardNo\");' id='$projectEndName' value='' />";
             } else {
                 $mdyValue = DateManagement::YMD2MDY($value);
-                $project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this);' id='$projectEndName' value='$mdyValue' />";
+                $project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_end_date\", \"$source\", \"$awardNo\");' id='$projectEndName' value='$mdyValue' />";
             }
         } else if(($key == "person_name") && $value){
             if (strlen($value) > 100) {
@@ -547,7 +549,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 	return "<table group='".$show_anawardno."' class='tn".$tablenum." ".$doclass." tlayer_".$show_anawardno." awardt rr".$d_original_award_number_no."' style='width: 380px; margin: 0 auto -12px auto; padding-top: 12px;'>".
 			"<tr class='".$backgroundClass."'>".
                 "<td style='padding: 3px 12px !important;'><div style='text-align: left;font-size: 13px;margin-top: 2px;margin-bottom: -3px; float: left; width:30%;'><strong>Role</strong>: ".$d_role."<br/><strong>Effort</strong>: ".$d_percent_effort."</div><div style='text-align: right;font-size: 13px;margin-top: 2px;margin-bottom: -3px; float: right; width:30%'> ".$d_last_update."</div><div style='float: right; width: 40%; text-align: center;'>$piName</div></td></tr>".
-            "<tr class='$backgroundClass'><td><h3 class='withFlag'>$awardNoWithoutApplicationType</h3><span title='Flag to manually choose' class='flag' onclick='toggleFlag(this);'>$fontAwesomeFlag</span></td></tr>".
+            "<tr class='$backgroundClass'><td><h3 class='withFlag'>$awardNoWithoutApplicationType</h3><span title='Flag to manually choose' class='flag' onclick='toggleFlag(this, \"$awardNo\", \"$source\");'>$fontAwesomeFlag</span></td></tr>".
 			"<tr class='$backgroundClass'><td><div class='row' style='margin-bottom:10px; margin-top: 7px;   padding-left: 15px;padding-right: 15px;'>".
 							"<div class='col-md-7 align-self-center' style='max-width:49%;padding-left: 0px;padding-right: 0px; background-color:#55555536;margin-right: 4px;'>".
 								"<div class='fwb'>PROJECT</div>".
@@ -601,7 +603,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
                         "<div class='display_data' style='text-transform:uppercase;'>".$d_funding_source."</div>".
                     "</div>".
 					"<div class='fl sect' style='width:60%'>".
-						"<div class='fwb'>REDCap Type</div>".
+						"<div class='fwb'>Type / Bin</div>".
 						"<div class='display_data' style='text-transform:uppercase;'>".$telem."</div>".
 					"</div>".
 			"</td></tr>".
@@ -672,6 +674,7 @@ function refreshToDays() {
 }
 
 function toggleFlags(newState) {
+    displayToImport();
     $.post(
         '<?= $updateLink."&flags" ?>',
         { newState: newState },
@@ -692,33 +695,40 @@ function toggleFlags(newState) {
     );
 }
 
-function toggleFlag(spanObj) {
+function toggleFlag(spanObj, awardNo, source) {
     const grantID = $(spanObj).closest('table').attr('group');
     const oldValue = $(spanObj).html();
     let newValue = oldValue;
     let flagOnOff = "off";
+    let newFlagValue = '0';
     if (oldValue.match(/fas redtext/)) {
         newValue = oldValue.replace("fas redtext", "far");
         flagOnOff = "off";
+        newFlagValue = '0';
     } else if (oldValue.match(/far/)) {
         newValue = oldValue.replace("far", "fas redtext");
         flagOnOff = "on";
+        newFlagValue = '1';
     }
 
+    $(spanObj).html(newValue);
+    const newToImport = updateToImport(awardNo, source, 'flagged', newFlagValue, true);
     $.post(
         '<?= $updateLink."&flag" ?>',
-        { record: '<?= $record ?>', grant: grantID, value: flagOnOff, redcap_csrf_token: getCSRFToken() },
+        { record: '<?= $record ?>', grant: grantID, value: flagOnOff, toImport: newToImport, redcap_csrf_token: getCSRFToken() },
         (json) => {
+            console.log(json);
             if (json.match(/^</)) {
+                $(spanObj).html(oldValue);
                 alert("ERROR: "+json);
             } else {
                 const data = JSON.parse(json);
                 if (data['error']) {
+                    $(spanObj).html(oldValue);
                     alert("ERROR: Could not toggle flag. " + data['error']);
                 } else if (data['error_summary']) {
-                    processSummaryError(data['error_summary']);
+                    processSummaryError(data['error_summary'], saveCurrentState);
                 } else {
-                    $(spanObj).html(newValue);
                     refreshVisualization();
                 }
             }
@@ -732,7 +742,7 @@ function hideBubble() {
     $.post('<?= Application::link("this") ?>', { hideBubble: true, redcap_csrf_token: getCSRFToken() }, (html) => { console.log(html); });
 }
 
-function toggleChange(dflt, ob, i, tclasses){
+function toggleChange(dflt, ob, i, tclasses, source, awardNo){
 	const tclass = tclasses.split(' ');
 	const el = tclass.find(a =>a.includes("rr"));
 	const remclass = tclass.find(a =>a.includes("class_"));
@@ -768,11 +778,10 @@ function toggleChange(dflt, ob, i, tclasses){
 	$('.'+(el.replace("rr", "at"))+' .ftype').html(ftype);
 
 	if (ob.val() !== dflt) {
-        enactChange(i);
-	} else {
+        enactChange(i, ob, 'redcap_type', source, awardNo);
+    } else {
 		$("#change_"+i).hide();
 	}
-	saveCurrentState();
     if (isInTrainingMode()) {
         alert('We\'ve updated the RedCap Type for this project from <strong>' + dflt + '</strong> to <strong>' + getclass + '</strong>.');
     }
@@ -783,11 +792,23 @@ function isInList(listID, i) {
     return ($('#'+listID+' #add_'+i).length > 0);
 }
 
-function enactChange(i, ob) {
+function enactChange(i, ob, field, source, awardNo) {
     $('#change_'+i).show();
     changeChangeText(i);
-    if (ob && $(ob).val().match(/^\d{2}[\-\/]\d{2}[\-\/]\d{4}/)) {
-        saveCurrentState();
+    if (ob && field && source && awardNo) {
+        let val = '';
+        if ($(ob).prop('tagName') === "SELECT") {
+            val = $(ob).find(':selected').text();
+        } else {
+            val = $(ob).val();
+        }
+        if ($(ob).attr('type') === 'text') {
+            if (val.match(/^\d\d[\-\/]\d\d[\-\/]\d\d\d\d$/)) {
+                updateToImport(awardNo, source, field, mdy2ymd(val));
+            }
+        } else {
+            updateToImport(awardNo, source, field, val);
+        }
     }
 }
 
@@ -837,12 +858,12 @@ function changeAward(selectName, i, award) {
 	}
 }
 
-function removeAward(i, award, skipAlert) {
+function removeAward(i, award) {
 	$('#remove_'+i).hide();
 	$('#add_'+i).show();
     $('#left_'+i).hide();
     changeChangeText(i);
-	addToImport(award, "REMOVE", i, skipAlert);
+	addToImport(award, "REMOVE");
 }
 
 function addAward(selectName, i, award) {
@@ -871,7 +892,7 @@ function addAward(selectName, i, award) {
         $.sweetModal.confirm("Just to confirm, you're adding a Redcap Type of \"N/A\". This type of grant is usually omitted from the career progression. <strong>Do you want to Continue?</strong>", function(){
             // confirm
             $('.sweet-modal-overlay').addClass('modal'+i);
-            addToImport(award, "ADD", i);
+            addToImport(award, "ADD");
             setTimeout(function(){
                 $('.modal'+i).remove();
             }, 3*1000);
@@ -882,7 +903,7 @@ function addAward(selectName, i, award) {
             $('.modal'+i).remove();
         });
     } else {
-        addToImport(award, "ADD", i);
+        addToImport(award, "ADD");
     }
 }
 
@@ -946,15 +967,24 @@ function getLongDate(date) {
     return month+" "+date.getDate()+", "+date.getFullYear()+", "+hours+":"+minute+" "+ampm;
 }
 
-function processSummaryError(errorMssg) {
+function processSummaryError(errorMssg, cb) {
     if (errorMssg.match(/Script is locked/i)) {
-        alert("ERROR: Could regenerate summary. This will automatically happen later.");
+        // alert("ERROR: Could regenerate summary. This will automatically happen later.");
+        if (cb) {
+            setTimeout(cb, 30000);
+        }
     } else {
         alert("ERROR: Could regenerate summary. This will automatically happen later. "+errorMssg);
     }
 }
 
+function displayToImport() {
+    const toImport = $('#tmainform #toImport').val();
+    console.log("toImport: "+toImport);
+}
+
 function saveCurrentState() {
+    // displayToImport();
     $.post(
         "<?= $updateLink ?>",
         $("#tmainform").serialize(),
@@ -968,7 +998,7 @@ function saveCurrentState() {
                     if (data['error_save']) {
                         alert("ERROR: Could not save data. " + data['error_save']);
                     } else if (data['error_summary']) {
-                        processSummaryError(data['error_summary']);
+                        processSummaryError(data['error_summary'], saveCurrentState);
                     } else {
                         refreshVisualization();
                     }
@@ -1006,7 +1036,7 @@ function find_i(awardno) {
 	const listOfi = new Array();
 	while ($('#listOfAwards_'+i).length) {
 		const awardno_i = $('#listOfAwards_'+i).val();
-		if (awardno_i == awardno) {
+		if (awardno_i === awardno) {
 			listOfi.push(i);
 		}
 		i++;
@@ -1118,7 +1148,33 @@ function updateDateFields(award) {
     return award;
 }
 
-function addToImport(award, action, i, skipAlert) {
+function updateToImport(awardNo, source, field, value, returnValue) {
+    const toImport = $('#tmainform #toImport').val();
+    let tI = JSON.parse(toImport);
+
+    let changed = false;
+    for (let index in tI) {
+        const award = tI[index][1];
+        if (
+            (award['source'] === source)
+            && (award['sponsor_award_no'] === awardNo)
+            && (tI[index][1][field] !== value)
+        ) {
+            console.log("Updating "+field+" from "+tI[index][1][field]+" to "+value);
+            tI[index][1][field] = value;
+            changed = true;
+        }
+    }
+
+    if (returnValue) {
+        return JSON.stringify(tI);
+    } else if (changed) {
+        $('#tmainform #toImport').val(JSON.stringify(tI));
+        saveCurrentState();
+    }
+}
+
+function addToImport(award, action) {
     award = updateDateFields(award);
     const awardno = award['sponsor_award_no'];
 
@@ -1216,6 +1272,7 @@ $careerProgressionJSON = json_encode($careerProgressionAry);
 
 $toImport = json_decode($row["summary_calculate_to_import"], true);
 $listOfAwards = json_decode($row["summary_calculate_list_of_awards"], true);
+$awardDescript = Grants::areFlagsOn($pid) ? "Flagged" : "Career-Defining";
 
 ?>
     <script>
@@ -1312,7 +1369,7 @@ $listOfAwards = json_decode($row["summary_calculate_list_of_awards"], true);
                     //$(this).attr('onclick','domodal(\'+$(this).html()+'\')');
                 });
             });
-            const title = '<h2 style="text-align: center;margin: auto;padding: 30px 0 0 0;font-weight: 700;color: #00000078;">Career-Defining Awards</h2>'+subTitle;
+            const title = '<h2 style="text-align: center;margin: auto;padding: 30px 0 0 0;font-weight: 700;color: #00000078;"><?= $awardDescript ?> Awards</h2>'+subTitle;
             if ($('#visualizationTitle').length > 0) {
                 $('#visualizationTitle').html(title);
             } else {

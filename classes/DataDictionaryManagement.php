@@ -29,11 +29,7 @@ class DataDictionaryManagement {
             "mentoring" => FALSE,
         ];
 
-        $files = [dirname(__FILE__)."/../metadata.json"];
-        if (CareerDev::isVanderbilt()) {
-            $files[] = dirname(__FILE__)."/../metadata.vanderbilt.json";
-        }
-
+        $files = Application::getMetadataFiles();
         if (!$metadata) {
             $metadata = Download::metadata($token, $server);
             if (count($metadata) < 5) {

@@ -43,7 +43,7 @@ abstract class GrantFactory {
 	    $newNodes = array();
 	    foreach ($allNodes as $node) {
 	        if ($n = trim($node)) {
-	            array_push($newNodes, $n);
+	            $newNodes[] = $n;
             }
         }
 	    return count($newNodes);
@@ -60,6 +60,43 @@ abstract class GrantFactory {
     }
 
 	abstract public function processRow($row, $otherRows, $token = "");
+    abstract public function getAwardFields();
+    abstract public function getPIFields();
+
+    private static function getAllClassNames() {
+        $children = [];
+        foreach(get_declared_classes() as $class){
+            if (is_subclass_of($class, '\Vanderbilt\CareerDevLibrary\GrantFactory')) {
+                $children[] = $class;
+            }
+        }
+        return $children;
+    }
+
+    public static function getAllPIFields($token, $server)
+    {
+        return self::getFieldsHelper($token, $server, "PI");
+    }
+
+    public static function getAllAwardFields($token, $server)
+    {
+        return self::getFieldsHelper($token, $server, "Award");
+    }
+
+    public static function getFieldsHelper($token, $server, $type) {
+        $lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule());
+        $fields = [];
+        $metadataFields = Download::metadataFields($token, $server);
+        foreach (self::getAllClassNames() as $class) {
+            $gf = new $class("", $lexicalTranslator, []);
+            if ($type == "PI") {
+                $fields = array_unique(array_merge($fields, $gf->getPIFields()));
+            } else if ($type == "Award") {
+                $fields = array_unique(array_merge($fields, $gf->getAwardFields()));
+            }
+        }
+        return DataDictionaryManagement::filterOutInvalidFieldsFromFieldlist($metadataFields, $fields);
+    }
 
 	protected function extractFromOtherSources($rows, $excludeSources, $variable, $awardNo) {
         $sourceOrder = Grants::getSourceOrder();
@@ -111,7 +148,20 @@ class InitialGrantFactory extends GrantFactory {
         $this->prefix = $prefix;
     }
 
-	# get the Scholars' Survey (always nicknamed check) default spec array
+    public function getAwardFields() {
+        $prefix = $this->prefix;
+        $fields = [];
+        for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
+            $fields[] = $prefix.'_grant'.$i.'_number';
+        }
+        return $fields;
+    }
+
+    public function getPIFields() {
+        return [];
+    }
+
+    # get the Scholars' Survey (always nicknamed check) default spec array
 	public function processRow($row, $otherRows, $token = "") {
         $prefix = $this->prefix;
         list($pid, $event_id) = self::getProjectIdentifiers($token);
@@ -141,7 +191,8 @@ class InitialGrantFactory extends GrantFactory {
 				$grant->setVariable('direct_budget', $costs);
 				// $grant->setVariable('fAndA', Grants::getFAndA($awardno, $row['check_grant'.$i.'_start']));
 				$grant->setVariable('finance_type', Grants::getFinanceType($awardno));
-				$grant->setVariable('sponsor', $row[$prefix.'_grant'.$i.'_org']);
+                $grant->setVariable('sponsor', $row[$prefix.'_grant'.$i.'_org']);
+                $grant->setVariable('flagged', $row[$prefix.'_grant'.$i.'_flagged'] ?? "");
 				$grant->setVariable('url', $url);
 				$grant->setVariable('link', Links::makeLink($url, "See Grant"));
 				# Co-PI or PI, not Co-I or Other
@@ -173,7 +224,20 @@ class InitialGrantFactory extends GrantFactory {
 }
 
 class FollowupGrantFactory extends GrantFactory {
-	public function processRow($row, $otherRows, $token = "") {
+    public function getAwardFields() {
+        $prefix = "followup";
+        $fields = [];
+        for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
+            $fields[] = $prefix.'_grant'.$i.'_number';
+        }
+        return $fields;
+    }
+
+    public function getPIFields() {
+        return [];
+    }
+
+    public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i=1; $i <= Grants::$MAX_GRANTS; $i++) {
 			if (($row["followup_grant$i"."_start"] != "")
@@ -195,7 +259,8 @@ class FollowupGrantFactory extends GrantFactory {
 				// $grant->setVariable('fAndA', Grants::getFAndA($awardno, $row['followup_grant'.$i.'_start']));
 				$grant->setVariable('finance_type', Grants::getFinanceType($awardno));
 				$grant->setVariable('direct_budget', $costs);
-				$grant->setVariable('sponsor', $row['followup_grant'.$i.'_org']);
+                $grant->setVariable('sponsor', $row['followup_grant'.$i.'_org']);
+                $grant->setVariable('flagged', $row['followup_grant'.$i.'_flagged'] ?? "");
 				$grant->setVariable('url', $url);
 				$grant->setVariable('link', Links::makeLink($url, "See Grant"));
 				# Co-PI or PI, not Co-I or Other
@@ -225,7 +290,15 @@ class FollowupGrantFactory extends GrantFactory {
 }
 
 class NewmanGrantFactory extends GrantFactory {
-	public function processRow($row, $otherRows, $token = "") {
+    public function getAwardFields() {
+        return [];
+    }
+
+    public function getPIFields() {
+        return [];
+    }
+
+    public function processRow($row, $otherRows, $token = "") {
 		$this->processNewmanData($row);
 		$this->processSheet2($row);
 		$this->processNew2017($row);
@@ -624,6 +697,14 @@ class NewmanGrantFactory extends GrantFactory {
 	}
 }
 class CoeusSubmissionGrantFactory extends GrantFactory {
+    public function getAwardFields() {
+        return ['coeussubmission_sponsor_proposal_number'];
+    }
+
+    public function getPIFields() {
+        return [];
+    }
+
     public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus_submission&instance={$row['redcap_repeat_instance']}";
@@ -668,6 +749,7 @@ class CoeusSubmissionGrantFactory extends GrantFactory {
         $grant->setVariable('last_update', $row['coeussubmission_last_update']);
         $grant->setVariable('pi_flag', $row['coeussubmission_pi_flag']);
         $grant->setVariable('last_update', $row['coeussubmission_last_update']);
+        $grant->setVariable('flagged', $row['coeussubmission_flagged'] ?? "");
 
         $grant->putInBins();
         $this->grants[] = $grant;
@@ -675,7 +757,15 @@ class CoeusSubmissionGrantFactory extends GrantFactory {
 }
 
 class CoeusGrantFactory extends GrantFactory {
-	public static function cleanAwardNo($awardNo) {
+    public function getAwardFields() {
+        return ['coeus_award_no', 'coeus_sponsor_award_number'];
+    }
+
+    public function getPIFields() {
+        return [];
+    }
+
+    public static function cleanAwardNo($awardNo) {
 		$awardNo = preg_replace("/^\d\d\d\d\d\d-\d\d\d\s-\s\d\s/", "", $awardNo);
 		$awardNo = preg_replace("/^[A-Z][A-Z]\d\d\d\d\d\d\d\d\s-\s\d\s/", "", $awardNo);
 		$awardNo = preg_replace("/^[A-Z]\d\d\d\d\d\s-\s\d\s/", "", $awardNo);
@@ -744,7 +834,8 @@ class CoeusGrantFactory extends GrantFactory {
 		} else {
 			$grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
 		}
-		$grant->setVariable('last_update', $row['coeus_last_update']);
+        $grant->setVariable('last_update', $row['coeus_last_update']);
+        $grant->setVariable('flagged', $row['coeus_flagged'] ?? "");
 		$grant->setVariable('pi_flag', $row['coeus_pi_flag']);
 
 		$grant->putInBins();
@@ -753,6 +844,14 @@ class CoeusGrantFactory extends GrantFactory {
 }
 
 class VERAGrantFactory extends  GrantFactory {
+    public function getAwardFields() {
+        return ['vera_direct_sponsor_award_id', 'vera_award_id'];
+    }
+
+    public function getPIFields() {
+        return [];
+    }
+
     public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
@@ -810,6 +909,7 @@ class VERAGrantFactory extends  GrantFactory {
             $grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
         }
         $grant->setVariable('last_update', $row['vera_last_update']);
+        $grant->setVariable('flagged', $row['vera_flagged'] ?? "");
 
         $grant->putInBins();
         $this->grants[] = $grant;
@@ -817,6 +917,14 @@ class VERAGrantFactory extends  GrantFactory {
 }
 
 class VERASubmissionGrantFactory extends  GrantFactory {
+    public function getAwardFields() {
+        return [];
+    }
+
+    public function getPIFields() {
+        return [];
+    }
+
     public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
@@ -885,6 +993,14 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
         $this->type = $type;
     }
 
+    public function getAwardFields() {
+        return ['coeus2_agency_grant_number', 'coeus2_award_status'];
+    }
+
+    public function getPIFields() {
+        return ['coeus2_collaborators'];
+    }
+
     public function processRow($row, $otherRows, $token = "") {
         $addGrant = FALSE;
         if (in_array($this->type, ["Grant", "Grants"])) {
@@ -916,6 +1032,7 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
             $grant->setVariable('budget', $row['coeus2_current_period_total_funding']);
             $grant->setVariable('direct_budget', $row['coeus2_current_period_direct_funding']);
             $grant->setVariable('last_update', $row['coeus2_last_update']);
+            $grant->setVariable('flagged', $row['coeus2_flagged'] ?? "");
             $grant->setVariable('pi_flag', ($roleText == "Principal Investigator") ? "Y" : "N");
             $grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
             $grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
@@ -942,7 +1059,15 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
 }
 
 class RePORTERGrantFactory extends GrantFactory {
-	public function processRow($row, $otherRows, $token = "") {
+    public function getAwardFields() {
+        return ['reporter_projectnumber'];
+    }
+
+    public function getPIFields() {
+        return ['reporter_contactpi', 'reporter_otherpis'];
+    }
+
+    public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
         $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=reporter&instance={$row['redcap_repeat_instance']}";
 		$awardNo = self::cleanAwardNo($row['reporter_projectnumber']);
@@ -960,7 +1085,8 @@ class RePORTERGrantFactory extends GrantFactory {
 		$grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
 		$grant->setVariable('sponsor', $row['reporter_agency']);
 		$grant->setVariable('sponsor_type', $row['reporter_agency']);
-		$grant->setVariable('last_update', $row['reporter_last_update']);
+        $grant->setVariable('last_update', $row['reporter_last_update']);
+        $grant->setVariable('flagged', $row['reporter_flagged'] ?? "");
 		$grant->setNumber($awardNo);
 		$grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
 		$grant->setVariable('source', "reporter");
@@ -994,6 +1120,15 @@ class RePORTERGrantFactory extends GrantFactory {
 }
 
 class NIHRePORTERGrantFactory extends  GrantFactory {
+    public function getAwardFields() {
+        return ['nih_project_num'];
+    }
+
+    public function getPIFields()
+    {
+        return ["nih_principal_investigators"];
+    }
+
     public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
@@ -1024,9 +1159,10 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         $grant->setVariable('link', Links::makeLink($url, "See Grant"));
         $grant->setVariable('pi_flag', "Y");
         $grant->setVariable('last_update', $row['nih_last_update']);
+        $grant->setVariable('flagged', $row['nih_flagged'] ?? "");
 
         $numNodes = self::numNodes("/\s*;\s*/", $row['nih_principal_investigators']);
-        if ($numNodes <= 1) {
+        if ($numNodes === 1) {
             $grant->setVariable("role", "PI");
         } else if ($numNodes > 1) {
             $grant->setVariable("role", "Co-PI");
@@ -1081,7 +1217,16 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
 }
 
 class ExPORTERGrantFactory extends GrantFactory {
-	public function processRow($row, $otherRows, $token = "")
+    public function getAwardFields() {
+        return ['exporter_full_project_num'];
+    }
+
+    public function getPIFields()
+    {
+        return ["exporter_pi_names"];
+    }
+
+    public function processRow($row, $otherRows, $token = "")
     {
         $totalCosts = $row['exporter_total_cost'];
         if (!$totalCosts) {
@@ -1112,6 +1257,7 @@ class ExPORTERGrantFactory extends GrantFactory {
         $grant->setVariable('pi_flag', "Y");
         $grant->setVariable('subproject', $isSubproject);
         $grant->setVariable('last_update', $row['exporter_last_update']);
+        $grant->setVariable('flagged', $row['exporter_flagged'] ?? "");
 
         $numNodes = self::numNodes("/\s*;\s*/", $row['exporter_pi_names']);
         if ($numNodes == 1) {
@@ -1128,6 +1274,14 @@ class ExPORTERGrantFactory extends GrantFactory {
 }
 
 class CustomGrantFactory extends GrantFactory {
+    public function getAwardFields() {
+        return ['custom_number'];
+    }
+
+    public function getPIFields() {
+        return [];
+    }
+
     public function __construct($name, $lexicalTranslator, $metadata, $type = "Grant", $token = "", $server = "") {
         parent::__construct($name, $lexicalTranslator, $metadata, $token, $server);
         $this->type = $type;
@@ -1189,7 +1343,8 @@ class CustomGrantFactory extends GrantFactory {
 		$grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
 		$grant->setVariable('url', $url);
 		$grant->setVariable('link', Links::makeLink($url, "See Grant"));
-		$grant->setVariable('last_update', $row['custom_last_update']);
+        $grant->setVariable('last_update', $row['custom_last_update']);
+        $grant->setVariable('flagged', $row['custom_flagged'] ?? "");
 
         if (in_array($this->type, ["Grant", "Grants"]) && ($row['custom_is_submission'] != "1")) {
             $this->grants[] = $grant;
@@ -1210,7 +1365,19 @@ class CustomGrantFactory extends GrantFactory {
 }
 
 class PriorGrantFactory extends GrantFactory {
-	public function processRow($row, $otherRows, $token = "") {
+    public function getAwardFields() {
+        $fields = [];
+        for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
+            $fields[] = 'summary_award_sponsorno_'.$i;
+        }
+        return $fields;
+    }
+
+    public function getPIFields() {
+        return [];
+    }
+
+    public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
 		for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 			if (isset($row['summary_award_date_'.$i]) && $row['summary_award_date_'.$i]) {
@@ -1249,6 +1416,15 @@ class PriorGrantFactory extends GrantFactory {
 }
 
 class NSFGrantFactory extends GrantFactory {
+    public function getAwardFields() {
+        return ['nsf_id'];
+    }
+
+    public function getPIFields()
+    {
+        return ["nsf_copdpi", "nsf_pdpiname"];
+    }
+
     public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
@@ -1293,12 +1469,21 @@ class NSFGrantFactory extends GrantFactory {
         $grant->setVariable('url', $url);
         $grant->setVariable('link', Links::makeLink($url, "See Grant"));
         $grant->setVariable('last_update', $row['nsf_last_update']);
+        $grant->setVariable('flagged', $row['nsf_flagged'] ?? "");
 
         $this->grants[] = $grant;
     }
 }
 
 class IESGrantFactory extends GrantFactory {
+    public function getAwardFields() {
+        return ['ies_awardnum'];
+    }
+
+    public function getPIFields() {
+        return [];
+    }
+
     public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token);
@@ -1326,6 +1511,7 @@ class IESGrantFactory extends GrantFactory {
         $grant->setVariable('url', $url);
         $grant->setVariable('link', Links::makeLink($url, "See Grant"));
         $grant->setVariable('last_update', $row['ies_last_update']);
+        $grant->setVariable('flagged', $row['ies_flagged'] ?? "");
 
         $this->grants[] = $grant;
     }

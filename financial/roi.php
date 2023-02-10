@@ -11,7 +11,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(APP_PATH_DOCROOT."Classes/System.php");
 
-\System::increaseMaxExecTime(3600);   // 1 hour
+Application::increaseProcessingMax(1);
 
 $totalClassName = "Non-K Sources";
 if (isset($_POST['cohort']) && isset($_POST['yearsToConvert'])) {
@@ -22,6 +22,11 @@ if (isset($_POST['cohort']) && isset($_POST['yearsToConvert'])) {
         $records = Download::records($token, $server);
     } else {
         $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
+    }
+    if (isset($_GET['showFlagsOnly'])) {
+        $grantType = "flagged";
+    } else {
+        $grantType = "all_pis";
     }
     $names = Download::names($token, $server);
     $records = excludeRecentKs($token, $server, $records, $yearsToConvert);
@@ -34,7 +39,7 @@ if (isset($_POST['cohort']) && isset($_POST['yearsToConvert'])) {
         $grants = new Grants($token, $server, $metadata);
         $grants->setRows($redcapData);
         $grants->compileGrants();
-        foreach ($grants->getGrants("all_pis") as $grant) {
+        foreach ($grants->getGrants($grantType) as $grant) {
             $direct = $grant->getVariable("direct_budget") ?? 0;
             $total = $grant->getVariable("budget") ?? 0;
             $grantClass = $grant->getVariable("type");
@@ -124,6 +129,7 @@ if (isset($_POST['cohort']) && isset($_POST['yearsToConvert'])) {
     $html .= "<style>
 .finalNumber { font-size: 40px; font-weight: bold; }
 </style>";
+    $html .= Grants::makeFlagLink($pid);
     $html .= "<h1>Financial Return on Investment</h1>";
     $html .= "<p class='centered max-width'>Only includes grants in which the scholar is a PI or a Co-PI (i.e., no co-investigator awards or subcontracts). To calculate, this page requires that dollar figures be assigned to all relevant Internal K and K12/KL2 grants. Also, note that a bias exists in these results in that the longer a scholar has been active, the higher the results.</p>";
     $html .= "<p class='centered max-width'>".$cohorts->makeCohortSelect("all", "", TRUE)."</p>";
