@@ -16,7 +16,7 @@ class Sanitizer {
 
         $data = json_decode($str, TRUE);
         if ($data) {
-            $data = self::sanitizeRecursive($data);
+            $data = self::sanitizeRecursive($data, FALSE, FALSE);
             return json_encode($data);
         }
         return "";
@@ -99,16 +99,26 @@ class Sanitizer {
     /**
      * @psalm-taint-specialize
      */
-    private static function sanitizeRecursive($datum) {
+    private static function sanitizeRecursive($datum, $encodeQuotes = TRUE, $stripHTML = TRUE) {
         if (is_array($datum)) {
             $newData = [];
             foreach ($datum as $key => $value) {
-                $key = self::sanitize($key);
-                $newData[$key] = self::sanitizeRecursive($value);
+                if ($encodeQuotes && $stripHTML) {
+                    $key = self::sanitize($key);
+                } else if (!$stripHTML) {
+                    $key = self::sanitizeWithoutStrippingHTML($key, $encodeQuotes);
+                } else {
+                    $key = self::sanitizeWithoutChangingQuotes($key);
+                }
+                $newData[$key] = self::sanitizeRecursive($value, $encodeQuotes, $stripHTML);
             }
             return $newData;
-        } else {
+        } else if ($encodeQuotes && $stripHTML) {
             return self::sanitize($datum);
+        } else if (!$stripHTML) {
+            return self::sanitizeWithoutStrippingHTML($datum, $encodeQuotes);
+        } else {
+            return self::sanitizeWithoutChangingQuotes($datum);
         }
     }
 
@@ -142,7 +152,7 @@ class Sanitizer {
          * @psalm-taint-escape has_quotes
          */
         $str = preg_replace("/<[^>]+>/", '', $str);
-        return htmlentities($str);
+        return htmlentities($str, ENT_NOQUOTES);
     }
 
     /**

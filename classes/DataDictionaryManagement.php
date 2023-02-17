@@ -241,10 +241,12 @@ class DataDictionaryManagement {
             } catch (\Exception $e) {
                 $feedback = ["Exception" => $e->getMessage()];
                 $version = Application::getVersion();
+                $adminEmail = Application::getSetting("admin_email", $pid);
                 $mssg = "<h1>Metadata Upload Error in " . Application::getProgramName() . "</h1>";
                 $mssg .= "<p>Server: $server</p>";
                 $mssg .= "<p>PID: $pid</p>";
                 $mssg .= "<p>Flight Tracker Version: $version</p>";
+                $mssg .= "<p>Admin Email: <a href='mailto:$adminEmail'>$adminEmail</a></p>";
                 $mssg .= $e->getMessage();
                 \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", Application::getProgramName() . " Metadata Upload Error", $mssg);
                 return $feedback;
@@ -867,7 +869,37 @@ class DataDictionaryManagement {
         self::alterResourcesFields($existingMetadata, $pid);
         self::alterInstitutionFields($existingMetadata, $pid);
         self::alterDepartmentsFields($existingMetadata, $pid);
+        self::checkForImproperDeletions($existingMetadata, $originalMetadata, $fieldsToDelete, $pid);
         return Upload::metadata($existingMetadata, $token, $server);
+    }
+
+    private static function checkForImproperDeletions($proposedMetadata, $originalMetadata, $fieldsToDelete, $pid) {
+        $originalMetadataFields = self::getFieldsFromMetadata($originalMetadata);
+        $proposedMetadataFields = self::getFieldsFromMetadata($proposedMetadata);
+        $missingRows = [];
+        foreach ($originalMetadataFields as $field) {
+            if (!in_array($field, $proposedMetadataFields) && !in_array($field, $fieldsToDelete)) {
+                foreach ($originalMetadata as $row) {
+                    if ($row['field_name'] == $field) {
+                        $missingRows[] = $row;
+                    }
+                }
+            }
+        }
+        if (!empty($missingRows)) {
+            $version = Application::getVersion();
+            $server = Application::getSetting("server", $pid);
+            $adminEmail = Application::getSetting("admin_email", $pid);
+            $mssg = "<h1>Metadata Upload Error in " . Application::getProgramName() . "</h1>";
+            $mssg .= "<p>Server: $server</p>";
+            $mssg .= "<p>PID: $pid</p>";
+            $mssg .= "<p>Flight Tracker Version: $version</p>";
+            $mssg .= "<p>Admin Email: <a href='mailto:$adminEmail'>$adminEmail</a></p>";
+            $mssg .= "Upload aborted! Please contact admins. Certain rows were expected yet still missing: ".REDCapManagement::json_encode_with_spaces($missingRows);
+            \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", Application::getProgramName() . " Metadata Upload Error", $mssg);
+
+            throw new \Exception("An accidental field deletion has occurred and the development team has been notified. Someone will be in contact with you soon to coach you how to proceed.");
+        }
     }
 
     private static function alterInstitutionFields(&$metadata, $pid) {

@@ -1527,14 +1527,18 @@ class REDCapManagement {
     }
 
     public static function getPublicSurveyLink($pid) {
-        $sql = "SELECT p.hash AS hash FROM redcap_surveys_participants AS p INNER JOIN redcap_surveys AS s ON s.survey_id = p.survey_id WHERE s.project_id = ? AND p.participant_email IS NULL ORDER BY p.participant_id LIMIT 1";
         $module = Application::getModule();
-        $q = $module->query($sql, [$pid]);
-        if ($row = $q->fetch_assoc()) {
-            $hash = $row['hash'];
-            return APP_PATH_SURVEY_FULL."?s=$hash";
+        $hash = "";
+        if (method_exists($module, "getPublicSurveyHash")) {
+            $hash = $module->getPublicSurveyHash($pid) ?? "";
+        } else {
+            $sql = "SELECT p.hash AS hash FROM redcap_surveys_participants AS p INNER JOIN redcap_surveys AS s ON s.survey_id = p.survey_id WHERE s.project_id = ? AND p.participant_email IS NULL ORDER BY p.participant_id LIMIT 1";
+            $q = $module->query($sql, [$pid]);
+            if ($row = $q->fetch_assoc()) {
+                $hash = $row['hash'];
+            }
         }
-        return "";
+        return $hash ? APP_PATH_SURVEY_FULL."?s=$hash" : "";
     }
 
     public static function isValidSupertoken($supertoken) {
