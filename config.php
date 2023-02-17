@@ -81,8 +81,8 @@ if (count($_POST) > 0) {
 	} else {
 		$lists = array();
 		foreach ($_POST as $key => $value) {
-            $key = Sanitizer::sanitize($key);
-            $value = Sanitizer::sanitize($value);
+            $key = Sanitizer::sanitizeWithoutChangingQuotes($key);
+            $value = Sanitizer::sanitizeWithoutChangingQuotes($value);
 			if (in_array($key, ["departments", "resources"])) {
                 $lists[$key] = $value;
             } else if (in_array($key, ["pid", "event_id"])) {
@@ -94,7 +94,7 @@ if (count($_POST) > 0) {
                 }
                 Application::saveSetting($key, $value, $pid);
 			} else {
-				CareerDev::setSetting($key, $value, $pid);
+                Application::saveSetting($key, $value, $pid);
 			}
 		}
 		$lists["institutions"] = implode("\n", CareerDev::getInstitutions());

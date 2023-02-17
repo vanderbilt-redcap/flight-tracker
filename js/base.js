@@ -1712,3 +1712,10 @@ function lookupREDCapUserid(link, resultsOb) {
 		});
 	}
 }
+
+function makeHTMLId(id) {
+	return id.replace(/[\s\-]+/, "_")
+		.replace(/<[^>]+>/, "")
+		.replace(/[\:\+\"\/\[\]\'\#\<\>\~\`\!\@\#\$\%\^\&\*\(\)\=\;\?\.\,]/, "");
+}
+

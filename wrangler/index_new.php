@@ -524,7 +524,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
     if ($awardNoWithoutApplicationType == "000") {
         $awardNoWithoutApplicationType = "<i>".Grant::$noNameAssigned."</i> (000)";
     }
-    $show_anawardno = $d_ck_original_award_number ?: $d_ck_base_award_no;
+    $show_anawardno = REDCapManagement::makeHTMLId($d_ck_original_award_number ?: $d_ck_base_award_no);
     $show_anawardno .= "___".$d_source;
     if ($flagsOn && in_array($show_anawardno, $flaggedGrants)) {
         $fontAwesomeFlag = "<i class='fas redtext fa-flag'></i>";
@@ -610,7 +610,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 
             "<tr class='$backgroundClass'><td>".
             "</td></tr>".
-            implode("</tr><tr class='$backgroundClass'>", $elems)."</tr><tr><td><div>".$tbuttons."</div><div class='centered' style='float: right; width: calc(50% - 5px); font-size: 12px; margin: 8px auto;'><a href='javascript:;' class='button setNAButton' onclick='disassociate($i, $awardJSON); return false;'>not their grant</a></div></td></tr></table><div class='at ".$doclass." at".$class_baseaward."' style='position:relative;'><div class='ftype'>".$ftype."</div></div>";
+            implode("</tr><tr class='$backgroundClass'>", $elems)."</tr><tr><td><div>".$tbuttons."</div><div class='centered' style='float: right; width: calc(50% - 5px); font-size: 12px; margin: 8px auto;'><a href='javascript:;' class='button setNAButton' onclick='dissociate($i, $awardJSON); return false;'>not their grant</a></div></td></tr></table><div class='at ".$doclass." at".$class_baseaward."' style='position:relative;'><div class='ftype'>".$ftype."</div></div>";
 }
 
 function findNumberOfSimilarAwards($baseAwardNo, $originalKey, $listOfAwards) {
@@ -830,14 +830,14 @@ function prioritizeAward(i, award) {
     removeAward(i, award, true);
 }
 
-function disassociate(i, award) {
+function dissociate(i, award) {
     moveToRightColumn(i, award);
     removeAward(i, award, true);
 }
 
 function moveToRightColumn(i, award) {
     const awardno = award['original_award_number'] ?? award['sponsor_award_no'] ?? "<?= JS_UNDEFINED ?>";
-    const awardnoWithoutLead = awardno.replace(/^\d/, '');
+    const awardnoWithoutLead = makeHTMLId(awardno.match(/^\d[A-Za-z]/) ? awardno.replace(/^\d/, '') : awardno);
     const source = award['source'].replace(/_/g, ' ') ?? "<?= JS_UNDEFINED ?>";
     const sep = "___";
     const group = awardnoWithoutLead+sep+source;
@@ -863,7 +863,8 @@ function removeAward(i, award) {
 	$('#add_'+i).show();
     $('#left_'+i).hide();
     changeChangeText(i);
-	addToImport(award, "REMOVE");
+    $('select#redcap_type_'+i+' option:last-child').attr('selected', true).click();
+    addToImport(award, "REMOVE");
 }
 
 function addAward(selectName, i, award) {
