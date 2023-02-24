@@ -40,7 +40,7 @@ class Cohorts {
          */
         $possibleCohorts = Application::getSetting("configs", $pid);
         if (in_array($cohort, $possibleCohorts)) {
-            return $cohort;
+            return Sanitizer::sanitizeWithoutChangingQuotes($cohort);
         } else {
             return "";
         }
