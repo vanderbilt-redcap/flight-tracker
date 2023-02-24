@@ -139,10 +139,28 @@ class Application {
             if (!$newToken) {
                 $newToken = $allValidTokens[0];
             }
-            Application::saveSetting("token", $newToken, $pid);
+            self::saveSetting("token", $newToken, $pid);
             return $newToken;
         } else {
             return $token;
+        }
+    }
+
+    public static function saveSystemSetting($field, $value) {
+        $module = self::getModule();
+        if ($module) {
+            $module->setSystemSetting($field, $value);
+        } else {
+            throw new \Exception("Could not find module!");
+        }
+    }
+
+    public static function getSystemSetting($field) {
+        $module = self::getModule();
+        if ($module) {
+            return $module->getSystemSetting($field);
+        } else {
+            throw new \Exception("Could not find module!");
         }
     }
 
@@ -252,10 +270,10 @@ class Application {
         }
 
         return (
-            (self::isVanderbilt() && ($project_id == 66635))
+            (self::isVanderbilt() && ($project_id == NEWMAN_SOCIETY_PROJECT))
             || (self::isVanderbilt() && $isCopiedPluginProject)
-            || (self::isLocalhost() && ($project_id == 15))
-            || (self::isServer("redcaptest.vanderbilt.edu") && ($project_id == 761))
+            || (self::isLocalhost() && ($project_id == LOCALHOST_TEST_PROJECT))
+            || (self::isServer("redcaptest.vanderbilt.edu") && ($project_id == REDCAPTEST_TEST_PROJECT))
         );
     }
 
@@ -436,33 +454,62 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
         }
     }
 
+    public static function isTable1Project($mypid = FALSE) {
+        if ($mypid === FALSE) {
+            $mypid = $_GET['pid'] ?? "";
+        }
+        return ($mypid == self::getTable1PID());
+    }
+
     public static function getTable1Title() {
         return "Flight Tracker - NIH Training Table 1";
     }
 
     public static function getTable1PID() {
-        $sql = "SELECT project_id FROM redcap_projects WHERE app_title = ? ORDER BY project_id LIMIT 1";
-        $module = self::getModule();
-        $q = $module->query($sql, [self::getTable1Title()]);
-        if ($row = $q->fetch_assoc()) {
-            return $row['project_id'];
+        if (
+            isset($_GET['pid'])
+            && self::isVanderbilt()
+            && self::isPluginProject($_GET['pid'])
+        ) {
+            $table1Pid = self::getSetting("table1Pid", NEWMAN_SOCIETY_PROJECT);
+        } else {
+            $table1Pid = self::getSystemSetting("table1Pid");
         }
-        return "";
+        if ($table1Pid && REDCapManagement::isActiveProject($table1Pid)) {
+            return $table1Pid;
+        } else {
+            $sql = "SELECT project_id FROM redcap_projects WHERE app_title = ? AND date_deleted IS NULL ORDER BY project_id LIMIT 1";
+            $module = self::getModule();
+            $q = $module->query($sql, [self::getTable1Title()]);
+            if ($row = $q->fetch_assoc()) {
+                $projectId = $row['project_id'];
+                self::saveSystemSetting("table1Pid", $projectId);
+                return $projectId;
+            } else {
+                return "";
+            }
+        }
     }
 
     public static function getTable1SurveyLink() {
         $pid = self::getTable1PID();
         if ($pid) {
-            return REDCapManagement::getPublicSurveyLink($pid);
+            return REDCapManagement::getPublicSurveyLink($pid, "table_1_rows");
         }
         return "";
     }
 
     public static function getPids() {
-        if (Application::isVanderbilt()) {
-            if (Application::isExternalModule()) {
+        if (self::isVanderbilt()) {
+            if (self::isExternalModule()) {
                 $module = self::getModule();
-                $pids = $module->getPids();
+                $allPids = $module ? $module->getPids() : [];
+                $pids = [];
+                foreach ($allPids as $pid) {
+                    if (!self::isTable1Project($pid)) {
+                        $pids[] = $pid;
+                    }
+                }
             } else {
                 $pids = [];
                 $prefix = CareerDev::getPrefix();
@@ -478,16 +525,16 @@ SELECT DISTINCT s.project_id AS pid
       AND m.directory_prefix = ?";
                 $q = $module->query($sql, [$prefix]);
                 while ($row = $q->fetch_assoc()) {
-                    if ($row['pid']) {
+                    if ($row['pid'] && !self::isTable1Project($row['pid'])) {
                         $pids[] = $row['pid'];
                     }
                 }
             }
             if (self::isLocalhost()) {
-                array_unshift($pids, "15");
+                array_unshift($pids, LOCALHOST_TEST_PROJECT);
             } else if (self::isServer("redcap.vanderbilt.edu")) {
-                array_unshift($pids, "66635");
-            } else if (Application::isServer("redcaptest.vanderbilt.edu")) {
+                array_unshift($pids, NEWMAN_SOCIETY_PROJECT);
+            } else if (self::isServer("redcaptest.vanderbilt.edu")) {
                 # TODO Add test projects with plugin
             }
             return $pids;
@@ -522,12 +569,12 @@ SELECT DISTINCT s.project_id AS pid
                 $sourcePid = $info['prod']['pid'];
                 return self::link("mentor/intro.php", $sourcePid, TRUE);
             }
-            Application::log("Warning! Could not find prod in info!");
+            self::log("Warning! Could not find prod in info!");
         } else if (CareerDev::isCopiedProject($pid)) {
             if ($sourcePid = CareerDev::getSourcePid($pid)) {
                 return self::link("mentor/intro.php", $sourcePid, TRUE);
             }
-            Application::log("Warning! Could not find sourcePid in copied project!");
+            self::log("Warning! Could not find sourcePid in copied project!");
         }
         return $defaultLink;
     }
@@ -681,6 +728,10 @@ SELECT DISTINCT s.project_id AS pid
             $prefix = CareerDev::getPrefix();
             return \ExternalModules\ExternalModules::getModuleInstance($prefix);
         }
+    }
+
+    public static function getPrefix() {
+        return CareerDev::getPrefix();
     }
 
     public static function isServer($server) {

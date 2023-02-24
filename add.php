@@ -76,7 +76,10 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 				if (count($nodes) == 6) {
 					$lines[] = $nodes;
 				} else {
-					header("Location: ".Application::link("this")."&mssg=improper_line".$createRecordsURI);
+                    $link = Application::link("this").$createRecordsURI;
+                    $mssg = "A line does not contain the necessary 6 columns. No data have been added. Please try again.";
+                    exitProcess($mssg, $link);
+                    exit;
 				}
 			}
 		}
@@ -123,10 +126,6 @@ $(document).ready(() => {
         echo $mssg;
     }
 } else {                //////////////////// default setup
-    if (isset($_GET['mssg'])) {
-        $mssg = REDCapManagement::sanitize($_GET['mssg']);
-		echo "<p class='red centered'><b>$mssg</b></p>";
-	}
 	echo "<p class='centered'>".CareerDev::makeLogo()."</p>\n";
 ?>
 	<style>
@@ -508,6 +507,7 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
 }
 
 function processMentorName($currMentorName, $currMentorUids, $i, $customLine, $customHidden, $customRadio) {
+    error_log("processing Mentor Name $currMentorName");
     $html = "";
 
     if (count($currMentorUids) == 0) {
@@ -515,7 +515,7 @@ function processMentorName($currMentorName, $currMentorUids, $i, $customLine, $c
         $hiddenField = "<input type='hidden' name='originalmentorname___$i' value='$escapedMentorName'>";
         $mentorKeep = "mentorkeep___$i";
         $html .= "<td class='red'>";
-        $html .= "<strong>No mentors matched with $currMentorName.</strong><br>Keep mentor? <input type='radio' name='$mentorKeep' id='$mentorKeep' value='1'> <label for='$mentorKeep'> Yes, upload anyways</label><br>Or perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
+        $html .= "<strong>No names in REDCap matched with $currMentorName.</strong><br>Keep mentor? <input type='radio' name='$mentorKeep' id='$mentorKeep' value='1'> <label for='$mentorKeep'> Yes, upload anyways</label><br>Or perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
         $html .= "<br>Or try a custom id?<br>".$customLine.$customHidden;
         $html .= "</td>";
     } else if (count($currMentorUids) == 1) {
@@ -687,6 +687,7 @@ function commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecord
 
     $upload = [];
     $messagesSent = FALSE;
+    $mssg = "";
     try {
         list($messagesSent, $upload, $newRecordIds) = processLines($lines, $recordId, $token, $server, $mentorUids, $createRecordsURI);
         $feedback = [];
@@ -697,20 +698,17 @@ function commitChanges($token, $server, $lines, $mentorUids, $pid, $createRecord
             }
         } else {
             $mssg = "No data specified.";
-            header("Location: ".Application::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
         }
         if (isset($feedback["error"])) {
             $mssg = "People not added ". $feedback['error'];
-            header("Location: ".Application::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
-        }
-        if (isset($_GET['mssg']) && ($_GET['mssg'] == "improper_line")) {
-            $mssg = "A line does not contain the necessary 6 columns. No data have been added. Please try again.";
-            echo "<p class='red centered'>$mssg</p>";
-            return;
         }
     } catch (\Exception $e) {
         $mssg = $e->getMessage();
-        header("Location: ".Application::link("this")."&mssg=".urlencode($mssg).$createRecordsURI);
+    }
+    if ($mssg) {
+        $link = Application::link("this").$createRecordsURI;
+        exitProcess($mssg, $link);
+        return;
     }
 
     $timespan = 3;
@@ -736,4 +734,9 @@ function refreshScript($timespan, $link) {
     $html .= "});\n";
     $html .= "</script>\n";
     return $html;
+}
+
+function exitProcess($mssg, $link) {
+    echo "<p class='red centered'>$mssg</p>";
+    echo "<p class='centered'><a href='$link'>Restart Process</a></p>";
 }

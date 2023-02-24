@@ -45,6 +45,26 @@ function runMainCrons(&$manager, $token, $server) {
             $manager->addCron("drivers/updateJobCategories.php", "updateJobCategories", date("Y-m-d"));
         }
 
+        if (
+            Application::getSystemSetting("table1Pid")
+            && (Application::getSystemSetting("lastTable1Email") != date("Y-m-d"))
+        ) {
+            # A few months before due dates, but after the last due date.
+            # Due dates are January, May, and October.
+            if (
+                in_array(date("m"), ["11", "02", "06"])
+                && (date("d") == "15")
+            ) {
+                Application::saveSystemSetting("lastTable1Email", date("Y-m-d"));
+                $manager->addCron("drivers/sendTable1Emails.php", "sendTable1PredocEmails", date("Y-m-d"));
+            }
+            # Once a year: the Ides of March
+            if (date("m-d") == "03-15") {
+                Application::saveSystemSetting("lastTable1Email", date("Y-m-d"));
+                $manager->addCron("drivers/sendTable1Emails.php", "sendTable1PostdocEmails", date("Y-m-d"));
+            }
+        }
+
         if (in_array('reporter', $forms)) {
             // $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
         }

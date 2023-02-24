@@ -3,6 +3,7 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Links;
 use Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Consortium;
@@ -29,6 +30,10 @@ try {
             $url = "?prefix=$prefix&page=install&pid=$pid";
             header("Location: $url");
         }
+    }
+
+    if (Application::isTable1Project($pid)) {
+        header("Location: ".Links::makeProjectHomeURL($pid));
     }
 
     require_once(dirname(__FILE__)."/charts/baseWeb.php");

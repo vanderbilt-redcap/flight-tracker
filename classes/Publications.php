@@ -49,6 +49,29 @@ class Publications {
         return $startDate;
     }
 
+    public static function makeFullCitations($token, $server, $pid, $recordId, $redcapData) {
+        $upload = [];
+        foreach ($redcapData as $row) {
+            if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
+                $citation = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row);
+                $pubmedCitation = $citation->getPubMedCitation();
+                if ($pubmedCitation) {
+                    $upload[] = [
+                        "record_id" => $recordId,
+                        "redcap_repeat_instrument" => "citation",
+                        "redcap_repeat_instance" => $row['redcap_repeat_instance'],
+                        "citation_full_citation" => $pubmedCitation,
+                    ];
+                }
+            }
+        }
+
+        if (!empty($upload)) {
+            Application::log("Adding ".count($upload)." full citations for Record $recordId", $pid);
+            Upload::rows($upload, $token, $server);
+        }
+    }
+
     public static function makeLimitButton($elementTag = "p", $buttonClass = "") {
         $server = $_SERVER['HTTP_HOST'] ?? "";
         $uri = $_SERVER['REQUEST_URI'] ?? "";

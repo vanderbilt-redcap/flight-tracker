@@ -637,6 +637,98 @@ table { border-collapse: collapse; }
         return trim($withoutSectionTags);
     }
 
+    public function getProgramEntriesFromTable1($faculty, $table1Pid, $dateOfReport, &$nihTables) {
+        $nihTables->addFaculty($faculty, $dateOfReport);
+        $depts = $nihTables->getFacultyDepartments();
+
+        $fields = [
+            "record_id",
+            "name",
+            "email",
+            "program",
+            "population",
+            "participating_faculty",
+            "total_with_participating_faculty_predocs",
+            "total_with_participating_faculty_postdocs",
+            "total_with_participating_faculty",
+            "last_update",
+        ];
+        $json = \REDCap::getData($table1Pid, "json", NULL, $fields);
+        $redcapData = json_decode($json, TRUE);
+        $coachings = [];
+        foreach (NIHTables::getLatestTable1Rows($redcapData) as $row) {
+            $program = self::getCoreDepartment($row['program']);
+            foreach ($depts as $faculty => $deptList) {
+                foreach ($deptList as $dept) {
+                    if (NameMatcher::matchDepartment($program, $dept)) {
+                        $lastUpdate = DateManagement::YMD2MDY($row['last_update']);
+                        $name = $row['name'];
+                        $email = $row['email'];
+                        if (!isset($coachings[$faculty])) {
+                            $coachings[$faculty] = [];
+                        }
+                        if ($row['participating_faculty']) {
+                            $numFaculty = self::formatReliability($row['participating_faculty']);
+                            $popWords = [];
+                            if ($row['population'] == "predocs") {
+                                $popWords = ["Predoctorates"];
+                            } else if ($row['population'] == "postdocs") {
+                                $popWords = ["Postdoctorates"];
+                            } else if ($row['population'] == "both") {
+                                $popWords = ["Predoctorates", "Postdoctorates"];
+                            }
+                            if ($numFaculty && !empty($popWords)) {
+                                $coachings[$faculty][] = "On $lastUpdate, <a href='mailto:$email'>$name</a> reported that $program had 'Participating Faculty' for ".REDCapManagement::makeConjunction($popWords)." of $numFaculty.";
+                            }
+                        }
+                        if (in_array($row['population'], ["predocs", "both"])) {
+                            $popWord = "Predoctorates";
+                            $amount = ($row['population'] == "predocs") ? self::formatReliability($row['total_with_participating_faculty']) : self::formatReliability($row['total_with_participating_faculty_predocs']);
+                            if ($amount) {
+                                $coachings[$faculty][] = "On $lastUpdate, <a href='mailto:$email'>$name</a> reported for $program that had '$popWord with Participating Faculty' of $amount.";
+                            }
+                        }
+                        if (in_array($row['population'], ["postdocs", "both"])) {
+                            $popWord = "Postdoctorates";
+                            $amount = ($row['population'] == "postdocs") ? self::formatReliability($row['total_with_participating_faculty']) : self::formatReliability($row['total_with_participating_faculty_postdocs']);
+                            if ($amount) {
+                                $coachings[$faculty][] = "On $lastUpdate, <a href='mailto:$email'>$name</a> reported for $program that had '$popWord with Participating Faculty' of $amount.";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return ["coaching" => $coachings];
+    }
+
+    private static function formatReliability($value) {
+        if (is_numeric($value)) {
+            return "<strong>$value</strong>";
+        }
+        if (preg_match("/^(\d+)\[(\d)\]$/", $value, $matches)) {
+            $num = $matches[1];
+            $reliability = $matches[2];
+            return "<strong>$num</strong> ($reliability/4 reliability)";
+        }
+        return $value;
+    }
+
+    private static function getCoreDepartment($program) {
+        $program = preg_replace("/<br\/?\s*>/i", " ", $program);
+        $program = preg_replace("/[\s\n\r]+/", " ", $program);
+        $extraWordsRegex = [
+            "/Department of /i",
+            "/Program of /i",
+            "/ Program/i",
+            "/ Department/i",
+        ];
+        foreach ($extraWordsRegex as $regex) {
+            $program = preg_replace($regex, "", $program);
+        }
+        return $program;
+    }
+
     public function getDataForTable($post, &$nihTables) {
         $tableNum = Sanitizer::sanitize($post['tableNum']);
         $dateOfReport = Sanitizer::sanitize($post['dateOfReport']);

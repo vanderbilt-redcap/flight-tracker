@@ -16,7 +16,6 @@ if (in_array(gethostname(), ["scottjpearson", "ORIWL-KCXDJK7.local"])) {
     define("NOAUTH", TRUE);
 }
 
-
 $entityBody = file_get_contents('php://input');
 if ($entityBody) {
     $_POST = json_decode($entityBody, TRUE) ?? $_POST;
@@ -29,11 +28,25 @@ Application::increaseProcessingMax(1);
 
 $reactHandler = new ReactNIHTables($token, $server, $pid);
 $module = Application::getModule();
+
 if (isset($_POST['action']) && $token && $server && $pid) {
     $action = Sanitizer::sanitize($_POST['action']);
     $data = [];
     try {
-        if ($action == "getFooter") {
+        if ($action == "getCoaching") {
+            $table1Pid = Application::getTable1PID();
+            if (Application::isLocalhost()) {
+                $table1Pid = 23;   // TODO Remove
+            }
+            $tableNum = Sanitizer::sanitize($_POST['tableNum'] ?? "");
+            if ($table1Pid && ($tableNum == 2)) {
+                $dateOfReport = Sanitizer::sanitize($_POST['date'] ?? "");
+                $metadata = Download::metadata($token, $server);
+                $nihTables = new NIHTables($token, $server, $pid, $metadata);
+                $facultyList = Sanitizer::sanitizeArray($_POST['faculty'] ?? []);
+                $data = $reactHandler->getProgramEntriesFromTable1($facultyList, $table1Pid, $dateOfReport, $nihTables);
+            }
+        } else if ($action == "getFooter") {
             $data['html'] = Application::getFooter();
         } else if ($action == "getTable") {
             $metadata = Download::metadata($token, $server);
@@ -142,8 +155,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
         $data = ["error" => $mssg, "trace" => $trace];
     }
     header("Content-type: application/json");
-    $str = json_encode($data);
-    echo $str;
+    echo json_encode($data);
 } else if (isset($_GET['revise'])) {
     echo Application::makeIcon();
     $email = Sanitizer::sanitize($_GET['revise'] ?? "No email");
@@ -195,7 +207,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
         echo "Invalid request.";
     }
 } else {
-    $manifestUrl = Application::link("reporting/react-2/public/manifest.json", $pid);
+    $manifestUrl = Application::link("reporting/tables2-4/public/manifest.json", $pid);
     $thisLink = Application::link("this", $pid);
 
     echo "<!DOCTYPE html>

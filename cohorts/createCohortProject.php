@@ -39,7 +39,7 @@ if ($pid && $cohort && in_array($cohort, $cohortNames) && $cohorts->hasReadonlyP
             $newEventId = REDCapManagement::getEventIdForClassical($newPid);
             if ($newPid && $newServer && $newEventId) {
                 $metadata = Download::metadata($token, $server);
-                $prefix = $module->getDirectoryPrefix();
+                $prefix = Application::getPrefix();
                 $version = ExternalModules::getModuleVersionByPrefix($prefix);
                 ExternalModules::enableForProject($prefix, $version, $newPid);
 

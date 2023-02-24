@@ -255,11 +255,14 @@ class DataDictionaryManagement {
         return [];
     }
 
-    public static function setupSurveys($projectId, $surveysAndLabels) {
+    public static function setupSurveys($projectId, $surveysAndLabels, $surveyCompletionText = "DEFAULT") {
+        if ($surveyCompletionText == "DEFAULT") {
+            $surveyCompletionText = '<p><strong>Thank you for taking the survey.</strong></p><p>Have a nice day!</p>';
+        }
         $module = Application::getModule();
         foreach ($surveysAndLabels as $form => $label) {
-            $sql = "REPLACE INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES (?, '16', ?, ?, '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', '<p><strong>Thank you for taking the survey.</strong></p>\r\n<p>Have a nice day!</p>', 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
-            $module->query($sql, [$projectId, $form, $label]);
+            $sql = "REPLACE INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES (?, '16', ?, ?, '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', ?, 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
+            $module->query($sql, [$projectId, $form, $label, $surveyCompletionText]);
         }
     }
 

@@ -26,20 +26,24 @@ class Cohorts {
 		$this->readonlySettings = $this->getReadonlyConfiguration();
 	}
 
-	public static function sanitize($cohort) {
+	public static function sanitize($cohort, $pid) {
         if (is_numeric($cohort)) {
             $cohort = (string) $cohort;
         }
         if (!is_string($cohort)) {
             return "";
         }
-        // we want to allow quotes => do nothing to mitigate
+
         /**
          * @psalm-taint-escape has_quotes
          * @psalm-taint-escape html
          */
-        $cohort = preg_replace("/<[^>]+>/", '', $cohort);
-        return $cohort;
+        $possibleCohorts = Application::getSetting("configs", $pid);
+        if (in_array($cohort, $possibleCohorts)) {
+            return $cohort;
+        } else {
+            return "";
+        }
     }
 
 	public function hasReadonlyProjects() {

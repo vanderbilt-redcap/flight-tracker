@@ -19,6 +19,10 @@ class NameMatcher {
         return FALSE;
     }
 
+    public static function matchDepartment($dept1, $dept2) {
+        return self::doInstitutionsMatch($dept1, $dept2);
+    }
+
     public static function makeArrayOfFormattedNames($nameStr) {
         if (preg_match("/\band\b/", $nameStr)) {
             $queueToParse = preg_split("/\s*\band\b\s*/", $nameStr);
@@ -336,15 +340,17 @@ class NameMatcher {
         return $name;
     }
 
-    public static function removeParentheses($name) {
+    public static function removeParenthesesAndQuotes($name) {
         $name = preg_replace("/[\(\)]/", " ", $name);
+        $name = preg_replace("/\"(\w+)\"/", "\1", $name);
+        $name = preg_replace("/'(\w+)'/", "\1", $name);
         $name = trim($name);
         $name = preg_replace("/\s\s+/", " ", $name);
         return $name;
     }
 
 	public static function explodeFirstName($first, $middle = "") {
-        $first = self::removeParentheses($first);
+        $first = self::removeParenthesesAndQuotes($first);
 	    $firstNodes = self::getNodes($first);
 	    $middleNodes = [];
 	    if ($middle) {
@@ -379,7 +385,7 @@ class NameMatcher {
     }
 
     public static function explodeLastName($last) {
-        $last = self::removeParentheses($last);
+        $last = self::removeParenthesesAndQuotes($last);
 	    $nodes = self::getNodes($last);
 	    $newNodes = [$last];
 	    $i = 0;

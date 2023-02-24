@@ -643,7 +643,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
         if ($config['formType'] == "repeating") {
             $canGo = FALSE;
-            $dataValues = array_values($completeData[$sourcePid][$sourceRecordId] ?? []);
+            $dataValues = array_values($completeData[$sourcePid][$sourceRecordId] ?: []);
             foreach ($markedAsComplete as $completeValue) {
                 if (in_array($completeValue, $dataValues)) {
                     $canGo = TRUE;
@@ -985,7 +985,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	function hook_every_page_before_render() {
 		$this->setupApplication();
-		if (PAGE == "DataExport/index.php") {
+        if (Application::isTable1Project()) {
+            return;
+        } else if (PAGE == "DataExport/index.php") {
 			echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
 			echo "<script src='".CareerDev::link("/js/colorCellFunctions.js")."'></script>\n";
 			echo "
@@ -1015,8 +1017,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	function hook_every_page_top($project_id) {
-	    if ($project_id) {
-            $this->setupApplication();
+        $this->setupApplication();
+        if (Application::isTable1Project($project_id)) {
+            return;
+        } else if ($project_id && Application::getUsername()) {
             $tokenName = $this->getProjectSetting("tokenName", $project_id);
             $token = $this->getProjectSetting("token", $project_id);
             $server = $this->getProjectSetting("server", $project_id);
@@ -1045,8 +1049,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	function hook_data_entry_form($project_id, $record, $instrument, $event_id, $group_id, $repeat_instance) {
-		$this->setupApplication();
-		if ($instrument == "summary") {
+        $this->setupApplication();
+        if (Application::isTable1Project($project_id)) {
+            return;
+        } else if ($instrument == "summary") {
 			require_once(dirname(__FILE__)."/hooks/summaryHook.php");
 		} else if (in_array($instrument, ["initial_survey", "initial_short_survey"])) {
 			require_once(dirname(__FILE__)."/hooks/checkHook.php");
@@ -1057,12 +1063,17 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	function hook_save_record($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
-		require_once(dirname(__FILE__)."/hooks/saveHook.php");
+        if (Application::isTable1Project($project_id)) {
+            return;
+        }
+        require_once(dirname(__FILE__)."/hooks/saveHook.php");
 	}
 
 	function hook_survey_page($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
 		$this->setupApplication();
-		if ($instrument == "summary") {
+        if (Application::isTable1Project($project_id)) {
+            require_once(dirname(__FILE__) . "/hooks/table1SurveyHook.php");
+        } else if ($instrument == "summary") {
 			require_once(dirname(__FILE__)."/hooks/summaryHook.php");
 		} else if (in_array($instrument, ["initial_survey", "initial_short_survey"])) {
 			require_once(dirname(__FILE__)."/hooks/checkHook.php");

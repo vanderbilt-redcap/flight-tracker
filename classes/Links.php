@@ -155,9 +155,12 @@ class Links {
         return self::makeLink($url, $text, $markAsNew, $linkClass);
     }
 
+    public static function makeProjectHomeURL($pid) {
+        return APP_PATH_WEBROOT."ProjectSetup/index.php?pid=".$pid;
+    }
+
     public static function makeProjectHomeLink($pid, $text, $markAsNew = FALSE, $linkClass = "") {
-        $url = APP_PATH_WEBROOT."ProjectSetup/index.php?pid=".$pid;
-        return self::makeLink($url, $text, $markAsNew, $linkClass);
+        return self::makeLink(self::makeProjectHomeURL($pid), $text, $markAsNew, $linkClass);
     }
 
     public static function makeEmailManagementLink($pid, $text, $markAsNew = FALSE, $linkClass = "") {

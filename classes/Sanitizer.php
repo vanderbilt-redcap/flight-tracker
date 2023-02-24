@@ -63,7 +63,8 @@ class Sanitizer {
          * @psalm-taint-escape header
          */
         if (filter_var($int, FILTER_VALIDATE_INT) !== FALSE) {
-            return self::sanitize($int);
+            $stringVersion = self::sanitize($int);
+            return (int) $stringVersion;
         } else {
             return "";
         }
@@ -229,8 +230,15 @@ class Sanitizer {
     /**
      * @psalm-taint-specialize
      */
-    public static function sanitizeCohort($cohortName) {
-        return Cohorts::sanitize($cohortName);
+    public static function sanitizeCohort($cohortName, $pid = NULL) {
+        if (!$pid) {
+            $pid = self::sanitizePid($_GET['pid'] ?? "");
+        }
+        if ($pid) {
+            return Cohorts::sanitize($cohortName, $pid);
+        } else {
+            return "";
+        }
     }
 
     /**

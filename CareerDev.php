@@ -12,11 +12,16 @@ use Vanderbilt\CareerDevLibrary\WebOfScience;
 use Vanderbilt\CareerDevLibrary\Cohorts;
 use Vanderbilt\CareerDevLibrary\Sanitizer;
 
+# test projects
+define("LOCALHOST_TEST_PROJECT", 16);
+define("NEWMAN_SOCIETY_PROJECT", 66635);
+define("REDCAPTEST_TEST_PROJECT", 761);
+
 class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.1.2";
+		return "5.2.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -566,16 +571,16 @@ class CareerDev {
 
 		$institutions = array();
 		if (preg_match("/".strtolower($shortInst)."/", strtolower($longInst))) {
-			array_push($institutions, $shortInst);
-			array_push($institutions, $longInst);
+			$institutions[] = $shortInst;
+			$institutions[] = $longInst;
 		} else {
-			array_push($institutions, $longInst);
+			$institutions[] = $longInst;
 		}
 
 		$otherInsts = preg_split("/\s*[,\/]\s*/", self::getSetting("other_institutions", $pid));
 		foreach ($otherInsts as $otherInst) {
 			if ($otherInst && !in_array($otherInst, $institutions)) {
-				array_push($institutions, $otherInst);
+				$institutions[] = $otherInst;
 			}
 		}
 
@@ -746,7 +751,7 @@ class CareerDev {
 	public static function getSetting($field, $pid = "") {
 	    if (
             self::isVanderbilt()
-            && ((Application::isServer("redcap.vanderbilt.edu") && ($pid == 66635))
+            && ((Application::isServer("redcap.vanderbilt.edu") && ($pid == NEWMAN_SOCIETY_PROJECT))
                 || ((Application::isLocalhost() && ($pid == 15))))
         ) {
 	        # TODO add redcaptest.vanderbilt.edu
@@ -909,7 +914,7 @@ class CareerDev {
                 "ldap" => "University Directory",
                 "vera" => "VERA (online database)",
             ]);
-	        if (self::getPid() == 66635) {
+	        if (self::getPid() == NEWMAN_SOCIETY_PROJECT) {
                 $itemChoices = array_merge($itemChoices, [
                     "data" => "Newman Data (spreadsheet)",
                     "sheet2" => "Newman Sheet2 (spreadsheet)",
@@ -1087,6 +1092,7 @@ class CareerDev {
 		}
 		if ($menuName == "General") {
 			return [
+                'NIH Reporting Table 1' => self::link("reporting/table1.php"),
                 'NIH Reporting Tables 2-4' => self::link("reporting/tables2-4/run/index.php"),
                 "NIH Reporting Tables 5 &amp; 8" => self::link("reporting/index.php"),
                 "Upload Prior NIH Reporting Tables" => self::link("reporting/upload_react/run/index.php"),

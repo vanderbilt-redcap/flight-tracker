@@ -906,7 +906,7 @@ class Citation {
         if ($this->getVariable("data_source") == "eric") {
             return $this->getERICCitation($authors);
         } else if ($this->getVariable("data_source") == "citation") {
-            return $this->getPubMedCitation($authors);
+            return $this->makePubMedCitation($authors);
         }
         return "";
     }
@@ -935,7 +935,7 @@ class Citation {
         if ($this->getVariable("data_source") == "eric") {
             return $this->getERICCitation($authors);
         } else if ($this->getVariable("data_source") == "citation") {
-            return $this->getPubMedCitation($authors);
+            return $this->makePubMedCitation($authors);
         }
         return "";
     }
@@ -1008,7 +1008,12 @@ class Citation {
         return ["", ""];
     }
 
-    private function getPubMedCitation($authorText, $addDOI = TRUE) {
+    public function getPubMedCitation($addDOI = TRUE) {
+        $authors = self::addPeriodIfExtant(implode(", ", $this->getAuthorList()));
+        return $this->makePubMedCitation($authors, $addDOI);
+    }
+
+    private function makePubMedCitation($authorText, $addDOI = TRUE) {
         $title = self::addPeriodIfExtant($this->getVariable("title"));
         $journal = self::addPeriodIfExtant($this->getVariable("journal"));
 
@@ -1154,7 +1159,7 @@ class Citation {
             return "";
         }
         $authors = self::addPeriodIfExtant(implode(", ", self::boldName($traineeLastName, $traineeFirstName, $this->getAuthorList())));
-        $citation = $this->getPubMedCitation($authors, $includeDOI);
+        $citation = $this->makePubMedCitation($authors, $includeDOI);
 		if ($includeIDs) {
 		    if ($pmid = $this->getPMID()) {
                 $citation .= self::addPeriodIfExtant("PMID ".$pmid);

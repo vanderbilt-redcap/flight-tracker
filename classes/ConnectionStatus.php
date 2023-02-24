@@ -5,11 +5,10 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class ConnectionStatus {
-    public function __construct($name, $server, $pid) {
+    public function __construct($server, $pid) {
         $this->server = $server;
         $method = "https";
         $this->url = $method."://".$server;
-        $this->name = $name;
         $this->pid = $pid;
     }
 
@@ -91,6 +90,5 @@ class ConnectionStatus {
 
     private $url;
     private $server;
-    private $name;
     private $pid;
 }

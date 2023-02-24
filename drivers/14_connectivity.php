@@ -24,7 +24,7 @@ $(document).ready(function() {
     for (const name in sites) {
         const server = sites[name]
         let encodedName = encodeName(name)
-        $.post('" . Application::link('testConnectionStatus.php') . "', { 'redcap_csrf_token': getCSRFToken(), name: name, server: server }, function(json) {
+        $.post('" . Application::link('testConnectionStatus.php') . "', { 'redcap_csrf_token': getCSRFToken(), name: name }, function(json) {
             console.log(json);
             let results = JSON.parse(json)
             let html = ''
@@ -44,16 +44,16 @@ $(document).ready(function() {
     }
 })
 </script>";
-        foreach ($sites as $name => $server) {
+        foreach ($sites as $name => $outboundServer) {
             $encodedName = ConnectionStatus::encodeName($name);
-            $html .= "<div class='yellow centered' id='$encodedName'>Checking <b>$name</b> at $server...</div>\n";
+            $html .= "<div class='yellow centered' id='$encodedName'>Checking <b>$name</b> at $outboundServer...</div>\n";
         }
         return $html;
     } else {
         $numFailures = 0;
         $numTests = 0;
-        foreach ($sites as $name => $server) {
-            $connStatus = new ConnectionStatus($name, $server, $pid);
+        foreach ($sites as $name => $outboundServer) {
+            $connStatus = new ConnectionStatus($outboundServer, $pid);
             $results = $connStatus->test();
             foreach ($results as $key => $result) {
                 if (preg_match("/error/i", $result)) {

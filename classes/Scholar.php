@@ -179,7 +179,7 @@ class Scholar {
                 Application::log("Lookup $sourceName userids for $firstName $lastName generated no results.", $this->pid);
             }
         }
-        return new Result("", "");
+        return new Result("", "", "", "", $this->pid);
     }
     public function getTwitterHandle($rows) {
         $vars = self::getDefaultOrder("identifier_twitter");
@@ -210,7 +210,7 @@ class Scholar {
 
     public function lookupEmail($rows) {
 	    if ($email = $this->getEmail()) {
-	        return new Result($email, "");
+	        return new Result($email, "", "", "", $this->pid);
         }
         $vars = self::getDefaultOrder("identifier_email");
         $vars = $this->getOrder($vars, "identifier_email");
@@ -250,7 +250,7 @@ class Scholar {
             }
             $keys = array_keys($emails);
             if (count($emails) == 0) {
-                return new Result("", "");
+                return new Result("", "", "", "", $this->pid);
             } else if (count($emails) == 1) {
                 return new Result($keys[0], "ldap", "Computer-Generated", "", $this->pid);
             } else if (count($emails) == $numExpected) {
@@ -269,7 +269,7 @@ class Scholar {
                     } else {
                         # do not throw exception because this could still be a valid pull; treat as if there were 3+ results
                         Application::log("Different emails: ".$emails[$keys[0]][0]." and ".$emails[$keys[1]][0]);
-                        return new Result("", "");
+                        return new Result("", "", "", "", $this->pid);
                     }
                 } else {
                     throw new \Exception("For some reason, I found parts (".count($emails[$keys[0]])." and ".count($emails[$keys[1]]).") when I was expecting $numExpected!");
@@ -280,7 +280,7 @@ class Scholar {
         }
         else {      // == 0 or > 2
             # cannot differentiate between more than one row
-            return new Result("", "");
+            return new Result("", "", "", "", $this->pid);
         }
     }
 
@@ -466,7 +466,7 @@ class Scholar {
                 }
             }
         }
-        return new Result("", "");
+        return new Result("", "", "", "", $this->pid);
     }
 
     private function getEcommonsId($rows) {
@@ -543,7 +543,7 @@ class Scholar {
                 Application::log("Lookup $sourceName userids for $firstName $lastName generated no results.", $this->pid);
             }
         }
-		return new Result("", "");
+		return new Result("", "", "", "", $this->pid);
 	}
 
 	public static function getREDCapUseridsForName($firstName, $lastName) {
@@ -1301,9 +1301,9 @@ class Scholar {
             }
 	        $date = date("Y-m-d", $timestamps[0]);
 	        Application::log("calculateActivity {$this->recordId}: $lastOrFirst $entity returning $date", $this->pid);
-	        return new Result($date, "");
+	        return new Result($date, "", "", "", $this->pid);
         }
-	    return new Result("", "");
+	    return new Result("", "", "", "", $this->pid);
     }
 
     private function calculateCOEUSName($rows) {
@@ -1312,7 +1312,7 @@ class Scholar {
 				new Result($row['coeus_person_name'], "", "", "", $this->pid);
 			}
 		}
-		return new Result("", "");
+		return new Result("", "", "", "", $this->pid);
 	}
 
 	private function getSurvey($rows) {
@@ -1342,7 +1342,7 @@ class Scholar {
 				return new Result($row[$variable_date], $type, "", "", $pid);
 			}
 		}
-		return new Result("", "");
+		return new Result("", "", "", "", $pid);
 	}
 
 
@@ -1351,7 +1351,7 @@ class Scholar {
     private function getAllOtherInstitutionsAsList($rows) {
         $institutions = $this->getAllOtherInstitutions($rows);
         $institutions = REDCapManagement::dedup1DArray($institutions);
-        return new Result(implode(", ", $institutions), "");
+        return new Result(implode(", ", $institutions), "", "", "", $this->pid);
     }
 
     private function getAllOtherInstitutions($rows) {
@@ -1410,6 +1410,9 @@ class Scholar {
         foreach ($seenInstitutions as $i => $institution) {
             $seenInstitutions[$i] = trim($institution);
         }
+        $seenInstitutions = array_filter($seenInstitutions, static function ($elem) {
+            return strtolower($elem) !== "other";
+        });
         return $seenInstitutions;
 	}
 
@@ -2239,10 +2242,10 @@ class Scholar {
         return "";
     }
 
-    private static function translateDegreesFromList($degrees) {
+    private static function translateDegreesFromList($degrees, $pid) {
 	    $value = "";
         if (empty($degrees)) {
-            return new Result("", "");
+            return new Result("", "", "", "", $pid);
         } else if (in_array("mdphd", $degrees)) {
             $value = 10;  # MD/PhD
         } else if (in_array("md", $degrees) || in_array(1, $degrees) || in_array(9, $degrees) || in_array(10, $degrees) || in_array(7, $degrees) || in_array(8, $degrees) || in_array(14, $degrees) || in_array(12, $degrees)) { # MD
@@ -2300,7 +2303,7 @@ class Scholar {
 
 	private function getDegrees($rows) {
 	    $degrees = $this->findAllDegrees($rows);
-        $value = self::translateDegreesFromList($degrees);
+        $value = self::translateDegreesFromList($degrees, $this->pid);
 
         $newValue = self::translateFirstDegree($value);
         return new Result($newValue, "", "", "", $this->pid);
@@ -2489,7 +2492,7 @@ class Scholar {
             }
 			# forget others
 		}
-		return new Result("", "");
+		return new Result("", "", "", "", $this->pid);
 	}
 
 	# returns array of 3 (overall classification, race source, ethnicity source)
@@ -2698,7 +2701,7 @@ class Scholar {
 
 	# $vars is listed in order of priority; key = variable, value = data source
 	private function searchRowsForVars($rows, $vars, $byLatest = FALSE, $pid = "", $showDebug = FALSE) {
-		$result = new Result("", "");
+		$result = new Result("", "", "", "", $this->pid);
         $aryInstance = "";
         $latestTs = 0;
 		foreach ($vars as $var => $source) {
@@ -2820,7 +2823,7 @@ class Scholar {
         if ($showDebug) {
             Application::log("Returning blank");
         }
-		return new Result("", "");
+		return new Result("", "", "", "", $this->pid);
 	}
 
     private static function getEquivalents() {
@@ -2914,7 +2917,7 @@ class Scholar {
             if ($showDebug) {
                 Application::log("getInstitution returning blank");
             }
-			return new Result("", "");
+			return new Result("", "", "", "", $this->pid);
 		} else {
             if ($showDebug) {
                 Application::log("getInstitution returning ".$result->getValue());
@@ -2927,7 +2930,7 @@ class Scholar {
 	public function getCurrentDivision($rows) {
         $result = $this->getGenericValueForField($rows, "summary_current_division");
 		if ($result->getValue() == "N/A") {
-			return new Result("", "");
+			return new Result("", "", "", "", $this->pid);
 		}
 		if ($result->getValue() == "") {
 			$deptName = $this->getPrimaryDepartmentText();
@@ -3147,7 +3150,7 @@ class Scholar {
 				}
 			}
 		}
-		return new Result("", "");
+		return new Result("", "", "", "", $this->pid);
 	}
 
 	public function getDemographicsArray() {
@@ -3321,7 +3324,7 @@ class Scholar {
 					return new Result($row['promotion_in_effect'], "manual", "", "", $this->pid);
 				}
 			}
-			return new Result("", "");   // undecipherable
+			return new Result("", "", "", "", $this->pid);   // undecipherable
         }
 		return $result;
 	}
@@ -3389,7 +3392,7 @@ class Scholar {
 					$nextStart = $row['promotion_in_effect'];
 				}
 			}
-			return new Result("", "");   // undecipherable
+			return new Result("", "", "", "", $this->pid);   // undecipherable
 		}
 		return $result;
 	}
@@ -3416,11 +3419,11 @@ class Scholar {
                 list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
                 $data = json_decode($json, TRUE);
                 if ($this->checkForScopusError($data)) {
-                    return new Result("", "");
+                    return new Result("", "", "", "", $this->pid);
                 } else {
                     foreach ($data["author-retrieval-response"] as $authorRow) {
                         if ($authorRow['h-index']) {
-                            return new Result($authorRow['h-index'], "");
+                            return new Result($authorRow['h-index'], "", "", "", $this->pid);
                         }
                     }
                 }
@@ -3437,7 +3440,7 @@ class Scholar {
                             list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
                             $data = json_decode($json, TRUE);
                             if ($this->checkForScopusError($data)) {
-                                return new Result("", "");
+                                return new Result("", "", "", "", $this->pid);
                             } else if ($data['search-results']) {
                                 foreach ($data['search-results']['entry'] as $authorRow) {
                                     if ($authorRow['dc:identifier']) {
@@ -3453,7 +3456,7 @@ class Scholar {
                                     $data = json_decode($json, TRUE);
                                     foreach ($data["author-retrieval-response"] as $authorRow) {
                                         if ($authorRow['h-index']) {
-                                            return new Result($authorRow['h-index'], "");
+                                            return new Result($authorRow['h-index'], "", "", "", $this->pid);
                                         }
                                     }
                                 }
@@ -3463,7 +3466,7 @@ class Scholar {
                 }
             }
         }
-        return new Result("", "");
+        return new Result("", "", "", "", $this->pid);
     }
 
     private function getWoSHIndex($rows) {
@@ -3493,9 +3496,9 @@ class Scholar {
                 }
             } while ($i < count($timesCitedValues) && ($numValid >= $i));
             $i--;
-            return new Result($i, "");
+            return new Result($i, "", "", "", $this->pid);
         }
-        return new Result("", "");
+        return new Result("", "", "", "", $this->pid);
     }
 
 	private function getURMStatus($rows) {
@@ -3977,7 +3980,7 @@ class Scholar {
 }
 
 class Result {
-	public function __construct($value, $source, $sourceType = "", $date = "", $pid = "") {
+	public function __construct($value, $source, $sourceType, $date, $pid) {
 		$this->value = $value;
 		$this->source = self::translateSourceIfNeeded($source, $pid);
 		$this->sourceType = $sourceType;

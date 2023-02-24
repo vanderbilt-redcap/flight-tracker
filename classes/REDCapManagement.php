@@ -1526,23 +1526,82 @@ class REDCapManagement {
         return DataDictionaryManagement::isMetadataFilled($metadata);
     }
 
-    public static function getPublicSurveyLink($pid) {
+    public static function getPublicSurveyLink($pid, $firstSurveyInstrument, $tryAgain = TRUE) {
         $module = Application::getModule();
-        $hash = "";
-        if (method_exists($module, "getPublicSurveyHash")) {
-            $hash = $module->getPublicSurveyHash($pid) ?? "";
+        if (method_exists($module, "getPublicSurveyUrl")) {
+            $url = $module->getPublicSurveyUrl($pid) ?? "";
+            if ($url) {
+                return $url;
+            }
         } else {
             $sql = "SELECT p.hash AS hash FROM redcap_surveys_participants AS p INNER JOIN redcap_surveys AS s ON s.survey_id = p.survey_id WHERE s.project_id = ? AND p.participant_email IS NULL ORDER BY p.participant_id LIMIT 1";
             $q = $module->query($sql, [$pid]);
             if ($row = $q->fetch_assoc()) {
                 $hash = $row['hash'];
+                if ($hash) {
+                    return APP_PATH_SURVEY_FULL."?s=$hash";
+                }
             }
         }
-        return $hash ? APP_PATH_SURVEY_FULL."?s=$hash" : "";
+        if ($tryAgain) {
+            $sql = "SELECT survey_id FROM redcap_surveys WHERE form_name = ? AND project_id = ?";
+            $params = [$firstSurveyInstrument, $pid];
+            $q = $module->query($sql, $params);
+            $surveyId = "";
+            if ($row = $q->fetch_assoc()) {
+                $surveyId = $row['survey_id'];
+            }
+            if ($surveyId) {
+                require_once(APP_PATH_DOCROOT."Classes/Survey.php");
+                $eventId = self::getEventIdForClassical($pid);
+                $hash = \Survey::setHash($surveyId, NULL, $eventId, NULL, TRUE);
+                if ($hash) {
+                    return APP_PATH_SURVEY_FULL."?s=$hash";
+                }
+            }
+        }
+        return "";
     }
 
     public static function isValidSupertoken($supertoken) {
         return (strlen($supertoken) == 64);
+    }
+
+    public static function userHasAccess($username, $pid) {
+        $users = self::getUsersForProject($pid);
+        return in_array($username, $users);
+    }
+
+    public static function getUsersForProject($pid) {
+        require_once(APP_PATH_DOCROOT."Classes/User.php");
+        $usersWithNames = \User::getProjectUsernames([], FALSE, $pid);
+        return array_keys($usersWithNames);
+    }
+
+    public static function isActiveUser($user) {
+        $module = Application::getModule();
+        if ($module) {
+            $sql = "SELECT user_suspended_time, user_expiration FROM redcap_user_information WHERE username = ?";
+            $q = $module->query($sql, [$user]);
+            $currTs = time();
+            if ($row = $q->fetch_assoc()) {
+                $suspendTime = $row['user_suspended_time'];
+                $expiry = $row['user_expiration'];
+                if ($suspendTime) {
+                    $ts = strtotime($suspendTime);
+                    if ($ts < $currTs) {
+                        return FALSE;
+                    }
+                }
+                if ($expiry) {
+                    $ts = strtotime($expiry);
+                    return ($ts >= $currTs);
+                } else {
+                    return TRUE;
+                }
+            }
+        }
+        return FALSE;
     }
 
 	public static function isValidToken($token) {

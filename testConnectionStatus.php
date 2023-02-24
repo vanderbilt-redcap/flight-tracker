@@ -8,10 +8,11 @@ require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/small_base.php");
 
 $name = REDCapManagement::sanitize($_POST['name']);
-$server = REDCapManagement::sanitize($_POST['server']);
+$sites = Application::getSites(FALSE);
+$server = $sites[$name] ?? "";
 
-if ($name && $server) {
-    $connStatus = new ConnectionStatus($name, $server, $pid);
+if ($server) {
+    $connStatus = new ConnectionStatus($server, $pid);
     $results = $connStatus->test();
     foreach ($results as $key => $result) {
         if (preg_match("/error/i", $result) && !Application::isLocalhost()) {

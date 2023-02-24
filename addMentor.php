@@ -258,7 +258,7 @@ function lookupScholarAndMentorName($names, $scholarFirst, $scholarLast, $mentor
             $hiddenField .= "<input type='hidden' name='originalmentorname___$recordId' value='{$lookup->getName()}' />";
             $noId = "mentor___$recordId" . "___no";
             $skipInput = "<input type='radio' name='mentor___$recordId' id='$noId' value='' /> <label for='$noId'>Yes, please skip</label>";
-            $tableRow .= "<td class='red'><strong>No mentors matched with {$lookup->getName()}.</strong><br/>Do you want to skip this mentor's user-id?<br/>$skipInput<br/>Is there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$recordId' value=''></td>";
+            $tableRow .= "<td class='red'><strong>No names in REDCap matched with {$lookup->getName()}.</strong><br/>Do you want to skip this mentor's user-id?<br/>$skipInput<br/>Is there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$recordId' value=''></td>";
         } else if (count($uids) == 1) {
             $uid = array_keys($uids)[0];
             $userInfo = REDCapLookup::getUserInfo($uid);

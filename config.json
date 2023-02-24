@@ -3,7 +3,7 @@
 
 	"namespace": "Vanderbilt\\FlightTrackerExternalModule",
 
-	"description": "This module tracks a group of faculty's career development by charting publications and grants over time. Only US data supported.",
+	"description": "This extensive module tracks a scholarly group's career development by charting publications, grants, and patents over time. Training grants and other scholar communities can benefit from graphical, analytical, and reporting tools, including automatically produced drafts of NIH Training Tables. Only US data supported.",
 
 	"authors": [
 		{
@@ -69,7 +69,7 @@
 	"framework-version": 6,
 
 	"compatibility": {
-		"php-version-min": "7.0.0",
+		"php-version-min": "7.3.0",
 		"php-version-max": "",
 		"redcap-version-min": "10.6.4",
 		"redcap-version-max": ""

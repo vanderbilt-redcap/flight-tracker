@@ -330,6 +330,86 @@ class NIHTables {
         return $data;
     }
 
+    public static function getLatestTable1Rows($redcapData) {
+        $rowsByPrograms = [];
+        foreach ($redcapData as $row) {
+            $program = $row['program'] ?? "";
+            if (!isset($rowsByPrograms[$program])) {
+                $rowsByPrograms[$program] = [];
+            }
+            $rowsByPrograms[$program][] = $row;
+        }
+
+        $latestRowsByPrograms = [];
+        foreach ($rowsByPrograms as $program => $rows) {
+            $latestRowsByPrograms[$program] = [];
+            foreach ($rows as $row) {
+                $groups = $row['population'];
+                if ($groups == "both") {
+                    $groups = ["predocs", "postdocs"];
+                } else {
+                    $groups = [$groups];
+                }
+                foreach ($groups as $group) {
+                    if (!isset($latestRowsByPrograms[$program][$group])) {
+                        $latestRowsByPrograms[$program][$group] = [];
+                    }
+                    $lastUpdate = $row['last_update'];
+                    $ts = DateManagement::isDate($lastUpdate) ? strtotime($lastUpdate) : time();
+                    if (!empty($latestRowsByPrograms[$program][$group])) {
+                        $latestDate = $latestRowsByPrograms[$program][$group]["last_update"];
+                        $latestTs = DateManagement::isDate($latestDate) ? strtotime($latestDate) : 0;
+                        if ($ts >= $latestTs) {
+                            $latestRowsByPrograms[$program][$group] = $row;
+                        }
+                    } else {
+                        $latestRowsByPrograms[$program][$group] = $row;
+                    }
+                }
+            }
+        }
+        $rowsByRecord = [];
+        foreach ($latestRowsByPrograms as $program => $rowsByGroup) {
+            foreach ($rowsByGroup as $group => $row) {
+                $rowsByRecord[$row['record_id']] = $row;
+            }
+        }
+        return array_values($rowsByRecord);
+    }
+
+    public function getFacultyDepartments() {
+        list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = self::getNamesByPid();
+        $depts = [];
+        $redcapData = [];
+        # Lookup in LDAP (if Vanderbilt)
+        foreach ($this->facultyMembers as $facultyName) {
+            $depts[$facultyName] = [];
+            list($first, $last) = NameMatcher::splitName($facultyName, 2);
+            if (Application::isVanderbilt() && !Application::isLocalhost()) {
+                $ldapREDCapRows = LDAP::getREDCapRowsFromName($first, $last, $this->metadata, 1, ["ldap"]);
+            } else {
+                $ldapREDCapRows = [];
+            }
+            $matches = self::findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
+            foreach ($matches as $match) {
+                list($pid, $recordId) = explode(":", $match);
+                $token = Application::getSetting("token", $pid);
+                $server = Application::getSetting("server", $pid);
+                if ($token && $server && REDCapManagement::isActiveProject($pid)) {
+                    if (!isset($redcapData[$pid])) {
+                        $redcapData[$pid] = Download::fields($token, $server, ["record_id", "summary_primary_dept"]);
+                    }
+                    $deptString = $this->findDepartment($redcapData[$pid], $recordId, $ldapREDCapRows, $pid);
+                    $deptString = preg_replace("/<span class='action_required'>[^<]*<\/span>/i", "", $deptString);
+                    if ($deptString) {
+                        $depts[$facultyName] = preg_split("/\s*;\s*/", $deptString);
+                    }
+                }
+            }
+        }
+        return $depts;
+    }
+
     public function get2Data($table, $savedName) {
         list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = self::getNamesByPid();
         $headers = $this->getHeaders($table);
@@ -355,7 +435,7 @@ class NIHTables {
                 $data[$facultyName] = [$row];
             } else {
                 # Lookup in LDAP (if Vanderbilt)
-                if (Application::isVanderbilt()) {
+                if (Application::isVanderbilt() && !Application::isLocalhost()) {
                     $ldapREDCapRows = LDAP::getREDCapRowsFromName($first, $last, $this->metadata, 1, ["ldap"]);
                 } else {
                     $ldapREDCapRows = [];
@@ -592,7 +672,7 @@ class NIHTables {
     }
 
     private function findDepartment($redcapData, $recordId, $ldapRows, $pid) {
-        $redcapField = "summary_primary_field";
+        $redcapField = "summary_primary_dept";
 	    $value = $this->findFields(
 	        $redcapData,
             $recordId,
