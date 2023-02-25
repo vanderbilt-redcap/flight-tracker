@@ -18,6 +18,7 @@ if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
     $json = \REDCap::getData($table1Pid, "json");
     $redcapData = json_decode($json, TRUE);
 }
+$redcapData = Sanitizer::sanitizeREDCapData($redcapData);
 $metadataJSON = \REDCap::getDataDictionary($table1Pid, "json");
 $metadata = json_decode($metadataJSON, TRUE);
 $fieldLabels = DataDictionaryManagement::getLabels($metadata);
