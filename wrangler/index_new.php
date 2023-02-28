@@ -1221,7 +1221,7 @@ echo "<br/>";
 echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'><span>{$row['identifier_last_name']}</span>, {$row['identifier_first_name']}</h2>";
 echo "<div id='dsearch'>";
 
-if (($row['record_id'] == $record + 1) && (!$nextPageLink))  {
+if (($row['record_id'] == ((int) $record) + 1) && (!$nextPageLink))  {
     $nextPageLink = Application::link("this")."&record=".($record+1).$getClause;
 }
 $summaryLink = Links::makeSummaryLink($pid, $record, $event_id, "REDCap Summary");
