@@ -43,7 +43,7 @@ class ExcludeList {
     }
 
     public function makeEditForm($recordId, $includeJS = TRUE) {
-        $recordExcludeList = implode(", ", $this->excludeList[$recordId]);
+        $recordExcludeList = implode(", ", $this->excludeList[$recordId] ?? []);
         $html = "";
         if ($includeJS) {
             $html .= $this->makeJS();
