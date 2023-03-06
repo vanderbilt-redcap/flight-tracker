@@ -33,7 +33,7 @@ class LDAP {
     }
 
     public static function getREDCapRowsFromUid($uid, $metadata, $recordId, $repeatingForms) {
-        $key = ["cn" => $uid];
+        $key = ["uid" => $uid];
         return self::getREDCapRows(array_keys($key), array_values($key), $metadata, $recordId, 0, $repeatingForms);
     }
 

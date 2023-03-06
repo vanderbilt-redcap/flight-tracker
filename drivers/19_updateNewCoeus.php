@@ -66,15 +66,14 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
         $currFirstNames = Download::firstnames($token, $server);
         $currLastNames = Download::lastnames($token, $server);
 
-        $translate = [];
         foreach ($records as $recordId) {
-            $currUserid = strtolower($userids[$recordId] ?? "");
+            $recordUserids = (isset($userids[$recordId]) && $userids[$recordId]) ? preg_split("/\s*,\s*/", strtolower($userids[$recordId])) : [];
             $matchedData = [];
             $i = 0;
             foreach ($coeusData[$awardDataField] as $row) {
-                $uid = $row['VUNETID'] ?? "";
+                $uid = strtolower($row['VUNETID'] ?? "");
                 if ($uid) {
-                    if ($uid == $currUserid) {
+                    if (in_array($uid, $recordUserids)) {
                         $matchedData[] = $row;
                     }
                 } else {

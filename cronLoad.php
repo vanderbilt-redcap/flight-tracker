@@ -75,7 +75,7 @@ function runMainCrons(&$manager, $token, $server) {
         }
         if (in_array('ldapds', $forms)) {
             $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $records, 10000);
-            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "2022-10-06", $records, 10000);
+            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "2023-03-03", $records, 10000);
         }
         if (in_array("ies_grant", $forms)) {
             $manager->addCron("drivers/24_getIES.php", "getIES", "Friday", $records, 10000);
@@ -88,6 +88,8 @@ function runMainCrons(&$manager, $token, $server) {
             if (in_array('coeus', $forms)) {
                 $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
                 $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
+                $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "2023-03-03", $allRecords, 1000);
+                $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "2023-03-03", $allRecords, 500);
             } else if (in_array('coeus2', $forms)) {
                 $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
             }

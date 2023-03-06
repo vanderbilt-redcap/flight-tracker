@@ -1105,6 +1105,51 @@ class Download {
 		$tester->assertTrue(!empty($ary));
 	}
 
+    public static function fieldsForRecordAndInstances($token, $server, $fields, $record, $instrument, $instances) {
+        if (empty($instances)) {
+            return [];
+        }
+        if (self::isCurrentServer($server)) {
+            $pid = Application::getPID($token);
+            $module = Application::getModule();
+
+            $modifiedInstances = [];
+            foreach ($instances as $instance) {
+                if ($instance == 1) {
+                    $modifiedInstances[] = NULL;
+                } else {
+                    $modifiedInstances[] = $instance;
+                }
+            }
+            $query = $module->createQuery();
+            $sql = "SELECT `field_name`, `instance`, `value` FROM redcap_data WHERE project_id = ?";
+            $query->add($sql, $pid);
+            $query->add("and record = ?", $record);
+            $query->add("and")->addInClause("instance", $modifiedInstances);
+            $query->add("and")->addInClause("field_name", $fields);
+
+            $result = $query->execute();
+            $recordDataByInstance = [];
+            while ($row = $result->fetch_assoc()) {
+                $field = $row['field_name'];
+                $instance = $row['instance'] ?? 1;
+                $value = $row['value'] ?? "";
+                if (!isset($recordDataByInstance[$instance])) {
+                    $recordDataByInstance[$instance] = [
+                        "record_id" => $record,
+                        "redcap_repeat_instrument" => $instrument,
+                        "redcap_repeat_instance" => $instance,
+                    ];
+                }
+                $recordDataByInstance[$instance][$field] = $value;
+            }
+            ksort($recordDataByInstance);
+            return array_values($recordDataByInstance);
+        } else {
+            return self::fieldsForRecords($token, $server, $fields, [$record]);
+        }
+    }
+
 	public static function fieldsForRecords($token, $server, $fields, $records) {
 	    if (isset($_GET['test'])) {
             Application::log("Download::fieldsForRecords ".count($fields)." fields with ".json_encode($records));

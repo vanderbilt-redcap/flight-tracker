@@ -49,19 +49,23 @@ class Publications {
         return $startDate;
     }
 
-    public static function makeFullCitations($token, $server, $pid, $recordId, $redcapData) {
+    public static function makeFullCitations($token, $server, $pid, $recordId, $redcapData, $addTimestamp = FALSE) {
         $upload = [];
         foreach ($redcapData as $row) {
             if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
                 $citation = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row);
                 $pubmedCitation = $citation->getPubMedCitation();
                 if ($pubmedCitation) {
-                    $upload[] = [
+                    $uploadRow = [
                         "record_id" => $recordId,
                         "redcap_repeat_instrument" => "citation",
                         "redcap_repeat_instance" => $row['redcap_repeat_instance'],
                         "citation_full_citation" => $pubmedCitation,
                     ];
+                    if ($addTimestamp) {
+                        $uploadRow["citation_ts"] = date("Y-m-d", $citation->getTimestamp());
+                    }
+                    $upload[] = $uploadRow;
                 }
             }
         }

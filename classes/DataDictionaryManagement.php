@@ -234,7 +234,7 @@ class DataDictionaryManagement {
                 $newMetadata = Download::metadata($token, $server);
                 $formsAndLabels = self::getRepeatingFormsAndLabels($newMetadata, $token);
                 $surveysAndLabels = self::getSurveysAndLabels($newMetadata);
-                self::setupRepeatingForms($eventId, $formsAndLabels);   // runs a REPLACE
+                self::setupRepeatingForms($eventId, $formsAndLabels);   // runs an UPDATE and/or INSERT
                 self::setupSurveys($pid, $surveysAndLabels);
                 self::convertOldDegreeData($pid);
                 return $feedback;
@@ -260,9 +260,20 @@ class DataDictionaryManagement {
             $surveyCompletionText = '<p><strong>Thank you for taking the survey.</strong></p><p>Have a nice day!</p>';
         }
         $module = Application::getModule();
+        $sql = "SELECT form_name FROM redcap_surveys WHERE project_id = ?";
+        $result = $module->query($sql, [$projectId]);
+        $forms = [];
+        while ($row = $result->fetch_assoc()) {
+            $forms[] = $row['form_name'];
+        }
         foreach ($surveysAndLabels as $form => $label) {
-            $sql = "REPLACE INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES (?, '16', ?, ?, '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', ?, 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
-            $module->query($sql, [$projectId, $form, $label, $surveyCompletionText]);
+            if (in_array($form, $forms)) {
+                $sql = "UPDATE redcap_surveys SET title = ?, acknowledgement = ? WHERE project_id = ? AND form_name = ?";
+                $module->query($sql, [$label, $surveyCompletionText, $projectId, $form]);
+            } else {
+                $sql = "INSERT INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES (?, '16', ?, ?, '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', ?, 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
+                $module->query($sql, [$projectId, $form, $label, $surveyCompletionText]);
+            }
         }
     }
 
@@ -361,18 +372,27 @@ class DataDictionaryManagement {
     }
 
     public static function setupRepeatingForms($eventId, $formsAndLabels) {
-        $sqlEntries = array();
-        $values = [];
+        $module = Application::getModule();
+        $sql = "SELECT form_name FROM redcap_events_repeat WHERE event_id = ?";
+        $result = $module->query($sql, [$eventId]);
+        $repeatingForms = [];
+        while ($row = $result->fetch_assoc()) {
+            $repeatingForms[] = $row['form_name'];
+        }
+
+        $sqlEntries = [];
+        $insertValues = [];
         foreach ($formsAndLabels as $form => $label) {
-            $values[] = $eventId;
-            $values[] = $form;
-            $values[] = $label;
-            $sqlEntries[] = "(?, ?, ?)";
+            if (!in_array($form, $repeatingForms)) {
+                $insertValues[] = $eventId;
+                $insertValues[] = $form;
+                $insertValues[] = $label;
+                $sqlEntries[] = "(?, ?, ?)";
+            }
         }
         if (!empty($sqlEntries)) {
-            $module = Application::getModule();
-            $sql = "REPLACE INTO redcap_events_repeat (event_id, form_name, custom_repeat_form_label) VALUES".implode(",", $sqlEntries);
-            $module->query($sql, $values);
+            $sql = "INSERT INTO redcap_events_repeat (event_id, form_name, custom_repeat_form_label) VALUES".implode(",", $sqlEntries);
+            $module->query($sql, $insertValues);
         }
     }
 
@@ -588,6 +608,7 @@ class DataDictionaryManagement {
 
         if (Application::isVanderbilt()) {
             $formsAndLabels["ldap"] = "[ldap_vanderbiltpersonjobname]";
+            $formsAndLabels["ldapds"] = "[ldapds_cn]";
             $formsAndLabels["coeus2"] = "[coeus2_award_status]: [coeus2_agency_grant_number]";
             $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
             $formsAndLabels["coeus_submission"] = "[coeussubmission_proposal_status]: [coeussubmission_sponsor_proposal_number]";

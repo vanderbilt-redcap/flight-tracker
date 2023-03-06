@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Citation;
@@ -24,6 +25,7 @@ header("Access-Control-Allow-Methods: GET");
 header("Access-Control-Allow-Headers: X-PINGOTHER, Content-Type, Access-Control-Allow-Headers, X-Requested-With");
 
 $metadata = Download::metadata($token, $server);
+$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
 if ($_GET['cohort']) {
     $cohort = REDCapManagement::sanitize($_GET['cohort']);
 } else {
@@ -214,6 +216,21 @@ $citationFields = Application::getCitationFields($metadata);
 if (isset($_GET['test'])) {
     echo "Records: ".json_encode($recordIds)."<br>";
 }
+
+$timestampFieldData = Download::oneFieldWithInstances($token, $server, "citation_ts");
+$hasTimestampData = FALSE;
+foreach ($timestampFieldData as $recordId => $timestampInstanceData) {
+    foreach ($timestampInstanceData as $instance => $value) {
+        if ($value !== "") {
+            $hasTimestampData = TRUE;
+            break;
+        }
+    }
+    if ($hasTimestampData) {
+        break;
+    }
+}
+
 foreach ($recordIds as $recordId) {
     if ($hasAfterTraining) {
         $trainingData = Download::fieldsForRecords($token, $server, $trainingFields, [$recordId]);
@@ -258,7 +275,32 @@ foreach ($recordIds as $recordId) {
         echo "Downloading for Record $recordId<br>";
     }
 
-    $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
+    if (in_array("citation_ts", $metadataFields)) {
+        if ($hasTimestampData) {
+            $includeData = Download::fieldsForRecords($token, $server, ["record_id", "citation_include"],[$recordId]);
+            $includes = [];
+            $timestamps = $timestampFieldData[$recordId] ?? [];
+            foreach ($includeData as $row) {
+                if ($row['redcap_repeat_instrument'] == "citation") {
+                    $includes[$row['redcap_repeat_instance']] = $row['citation_include'];
+                }
+            }
+
+            $instancesToDownload = [];
+            foreach ($includes as $instance => $value) {
+                $ts = REDCapManagement::isDate($timestamps[$instance] ?? "") ? strtotime($timestamps[$instance]) : FALSE;
+                if ($ts && ($value == 1) && ($ts >= $startTs) && ($ts <= $endTs)) {
+                    $instancesToDownload[] = $instance;
+                }
+            }
+            $redcapData = Download::fieldsForRecordAndInstances($token, $server, $citationFields, $recordId, "citation", $instancesToDownload);
+        } else {
+            $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
+        }
+    } else {
+        $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
+    }
+
     $pubs = new Publications($token, $server, $pid);
     $pubs->setRows($redcapData);
     $recordCitations = $pubs->getSortedCitationsInTimespan($startTs, $endTs, "Included", FALSE);

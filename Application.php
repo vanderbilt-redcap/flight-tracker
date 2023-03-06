@@ -471,7 +471,7 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
             && self::isVanderbilt()
             && self::isPluginProject($_GET['pid'])
         ) {
-            $table1Pid = self::getSetting("table1Pid", NEWMAN_SOCIETY_PROJECT);
+            $table1Pid = self::getSetting("table1Pid", self::isLocalhost() ? LOCALHOST_TEST_PROJECT : NEWMAN_SOCIETY_PROJECT);
         } else {
             $table1Pid = self::getSystemSetting("table1Pid");
         }
@@ -1020,6 +1020,8 @@ SELECT DISTINCT s.project_id AS pid
         "citation_pmid",
         "citation_doi",
         "citation_include",
+        "citation_ts",
+        "citation_full_citation",
         "citation_source",
         "citation_pmcid",
         "citation_authors",

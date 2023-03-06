@@ -551,7 +551,8 @@ function processMentorName($currMentorName, $currMentorUids, $i, $customLine, $c
             $radios[] = "<input type='radio' name='mentor___$i' id='$noId' value='' checked /> <label for='$noId'>None of the Above</label>";
             foreach ($currMentorUids as $uid => $mentorName) {
                 $id = "mentor___" . $i . "___" . $uid;
-                $radios[] = "<input type='radio' name='mentor___$i' id='$id' value='$uid' /> <label for='$id'>$mentorName ($uid)</label>";
+                $mentorEmail = REDCapLookup::getUserInfo($uid)["user_email"] ?? "";
+                $radios[] = "<input type='radio' name='mentor___$i' id='$id' value='$uid' /> <label for='$id'>$mentorName ($uid<br/>$mentorEmail)</label>";
             }
             $radios[] = $customRadio." ".$customLine;
             $html .= "<td class='yellow'>" . implode("<br>", $radios) . "</td>";

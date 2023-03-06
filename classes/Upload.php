@@ -385,19 +385,23 @@ public static function metadata($metadata, $token, $server) {
 
             require_once(APP_PATH_DOCROOT."Classes/Files.php");
             $docId = \Files::uploadFile($file, $pid);
-            $params = [$pid, $event_id, $record, $field, $docId];
-            $sql = "REPLACE INTO redcap_data SET project_id = ?,
-                        event_id = ?,
-                        record = ?,
-                        field_name = ?,
-                        value = ?,";
-            if ($instance == 1) {
-                $sql .= " instance = NULL";
+
+            $instanceSQLValue = ($instance == 1) ? NULL : $instance;
+            $whereClause = "project_id = ? AND event_id = ? AND record = ? AND field_name = ? AND `instance` = ?";
+
+            $params = [$pid, $event_id, $record, $field, $instanceSQLValue];
+            $sql = "SELECT `value` FROM redcap_data WHERE $whereClause";
+            $result = $module->query($sql, $params);
+            if ($result->num_rows() > 0) {
+                $params = [$docId, $pid, $event_id, $record, $field, $instanceSQLValue];
+                $sql = "UPDATE redcap_data SET `value` = ? WHERE $whereClause";
             } else {
-                $sql .= " instance = ?";
-                $params[] = $instance;
+                $params = [$pid, $event_id, $record, $field, $docId, $instanceSQLValue];
+                $sql = "INSERT INTO redcap_data (project_id, event_id, record, field_name, `value`, `instance`)
+                        VALUES (?, ?, ?, ?, ?, ?)";
             }
-           $module->query($sql, $params);
+
+            $module->query($sql, $params);
             return ["doc_id" => $docId];
         } else {
             return ["error" => "Could not decode base64"];

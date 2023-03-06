@@ -21,7 +21,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.2.4";
+		return "5.2.5";
 	}
 
 	public static function getLockFile($pid) {
@@ -583,6 +583,12 @@ class CareerDev {
 				$institutions[] = $otherInst;
 			}
 		}
+        foreach ($institutions as $i => $institution) {
+            $institutions[$i] = str_replace("&#039;", "'", $institution);
+            $institutions[$i] = str_replace("&#39;", "'", $institutions[$i]);
+            $institutions[$i] = str_replace("&amp;", "&", $institutions[$i]);
+            $institutions[$i] = str_replace("&quot;", "\"", $institutions[$i]);
+        }
 
 		return $institutions;
 	}

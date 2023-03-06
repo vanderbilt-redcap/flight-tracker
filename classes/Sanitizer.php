@@ -281,5 +281,10 @@ class Sanitizer {
         return "";
     }
 
+    public static function sanitizeLDAP($str) {
+        // ldap_escape()
+        return self::sanitize($str);
+    }
+
 
 }

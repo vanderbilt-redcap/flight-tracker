@@ -132,6 +132,8 @@ function getPubs($token, $server, $pid, $records) {
                 $i++;
             }
 		}
+        $hasTimestamp = in_array("citation_ts", $metadataFields);
+        $hasFullCitation = in_array("citation_full_citation", $metadataFields);
         foreach ($pullRecords as $recordId) {
             $cnt = Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $redcapData);
             if ($cnt > 0) {
@@ -140,8 +142,8 @@ function getPubs($token, $server, $pid, $records) {
             Publications::deleteEmptySources($token, $server, $pid, $recordId);
             Publications::deleteMismatchedRows($token, $server, $pid, $recordId, $firstNames, $lastNames);
             Publications::updateNewPMCs($token, $server, $pid, $recordId, $redcapData);
-            if (in_array("citation_full_citation", $metadataFields)) {
-                Publications::makeFullCitations($token, $server, $pid, $recordId, $redcapData);
+            if ($hasFullCitation) {
+                Publications::makeFullCitations($token, $server, $pid, $recordId, $redcapData, $hasTimestamp);
             }
         }
 		binREDCapRows($redcapData, $citationIds);

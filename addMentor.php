@@ -290,7 +290,8 @@ function lookupScholarAndMentorName($names, $scholarFirst, $scholarLast, $mentor
             $radios[] = "<input type='radio' name='mentor___$recordId' id='$noId' value='' checked /> <label for='$noId'>None of the Above</label>";
             foreach ($uids as $uid => $mentorName) {
                 $id = "mentor___" . $recordId . "___" . $uid;
-                $radios[] = "<input type='radio' name='mentor___$recordId' id='$id' value='$uid' /> <label for='$id'>$mentorName</label>";
+                $mentorEmail = REDCapLookup::getUserInfo($uid)["user_email"] ?? "";
+                $radios[] = "<input type='radio' name='mentor___$recordId' id='$id' value='$uid' /> <label for='$id'>$mentorName ($uid<br/>$mentorEmail)</label>";
             }
 
             $tableRow .= "<td class='yellow'>$hiddenField" . implode("<br>", $radios) . "</td>";
