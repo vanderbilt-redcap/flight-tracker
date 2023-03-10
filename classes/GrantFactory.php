@@ -28,6 +28,80 @@ abstract class GrantFactory {
 		return $this->grants;
 	}
 
+    public static function getGrantFactoryForRow($row, $name, $lexicalTranslator, $metadata, $token, $server) {
+        if ($row['redcap_repeat_instrument'] == "coeus") {
+            return new CoeusGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "coeus2") {
+            return new Coeus2GrantFactory($name, $lexicalTranslator, $metadata, "Grants", $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "reporter") {
+            return new RePORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "exporter") {
+            return new ExPORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "nih_reporter") {
+            return new NIHRePORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "vera") {
+            return new VERAGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "custom_grant") {
+            return new CustomGrantFactory($name, $lexicalTranslator, $metadata, "Grants", $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "followup") {
+            return new FollowupGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "nsf") {
+            return new NSFGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] == "ies_grant") {
+            return new IESGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+        } else if ($row['redcap_repeat_instrument'] === "") {
+            $checkGf = new InitialGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+            $checkGf->setPrefix("check");
+            $initImportGf = new InitialGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+            $initImportGf->setPrefix("init_import");
+            return [$checkGf, $initImportGf];
+        } else {
+            return NULL;
+        }
+    }
+
+
+    public static function createFactoriesForRow($row, $name, $lexicalTranslator, $metadata, $token, $server, $allRows, $type = "Awarded") {
+        $gfs = [];
+
+        if ($type == "Submissions") {
+            if ($row['redcap_repeat_instrument'] == "coeus2") {
+                $gfs[] = new Coeus2GrantFactory($name, $lexicalTranslator, $metadata, "Submissions", $token, $server);
+            } else if ($row['redcap_repeat_instrument'] == "coeus_submission") {
+                $gfs[] = new CoeusSubmissionGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+            } else if ($row['redcap_repeat_instrument'] == "vera_submission") {
+                $gfs[] = new VERASubmissionGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+            } else if ($row['redcap_repeat_instrument'] == "custom_grant") {
+                $gfs[] = new CustomGrantFactory($name, $lexicalTranslator, $metadata, "Submissions", $token, $server);
+            }
+        } else if ($type == "Awarded") {
+            if ($row['redcap_repeat_instrument'] == "") {
+                if (Application::isVanderbilt()) {
+                    foreach ($row as $field => $value) {
+                        if (preg_match("/^newman_/", $field)) {
+                            $gfs[] = new NewmanGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+                            break;
+                        }
+                    }
+                }
+                $gfs[] = new PriorGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+            }
+            $gf = self::getGrantFactoryForRow($row, $name, $lexicalTranslator, $metadata, $token, $server);
+            if (is_array($gf)) {
+                $currentGfs = $gf;
+                foreach ($currentGfs as $gf) {
+                    $gfs[] = $gf;
+                }
+            } else if ($gf) {
+                $gfs[] = $gf;
+            }   // else NULL
+        } else {
+            throw new \Exception("Invalid type $type");
+        }
+
+        return $gfs;
+    }
+
 	public static function cleanAwardNo($awardNo) {
         if (!$awardNo) {
             return "";
@@ -748,7 +822,6 @@ class CoeusSubmissionGrantFactory extends GrantFactory {
         $grant->setVariable('percent_effort', $row['coeussubmission_percent_effort']);
         $grant->setVariable('last_update', $row['coeussubmission_last_update']);
         $grant->setVariable('pi_flag', $row['coeussubmission_pi_flag']);
-        $grant->setVariable('last_update', $row['coeussubmission_last_update']);
         $grant->setVariable('flagged', $row['coeussubmission_flagged'] ?? "");
 
         $grant->putInBins();

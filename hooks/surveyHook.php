@@ -67,7 +67,8 @@ if ($finalized->getCount() > 0) {
 	$html .= "</h4>\n";
 	$html .= makeEmptyDiv("finalized")."\n";
 }
-$html .= "<div style='text-align: center;'><label for='pmid'>PMID</label>: <input type='number' id='pmid' value=''><br><button type='button' class='purple' onclick='addPMID($(\"#pmid\").val()); return false;'>Add PMID</button></div>\n";
+$certifyPubURL = Application::link("wrangler/certifyPub.php");
+$html .= "<div style='text-align: center;'><label for='pmid'>PMID</label>: <input type='number' id='pmid' value=''><br><button type='button' class='purple' onclick='addPMID($(\"#pmid\").val(), \"$certifyPubURL\"); return false;'>Add PMID</button></div>\n";
 $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
 
 echo "<script src='".Application::link("js/base.js")."&".CareerDev::getVersion()."'></script>\n";
@@ -111,8 +112,12 @@ function makeCheckboxes($coll, $img, $divId, $style = "") {
 	}
 	$html = "";
 	$html .= "<div id='$divId'$styleFiller>\n";
-	foreach ($coll->getCitations() as $citationObj) {
-		$html .= "<div id='PMID".$citationObj->getPMID()."' style='margin: 8px 0; min-height: 26px;'><img align='left' style='margin: 2px; width: 26px; height: 26px;' src='".Application::link("/wrangler/".$img.".png")."' alt='$img' onclick='changeCheckboxValue(this);'> ".$citationObj->getCitationWithLink(FALSE, TRUE)."</div>\n";
+    $certifyPubURL = Application::link("wrangler/certifyPub.php");
+    $imgURL = Application::link("/wrangler/".$img.".png");
+    foreach ($coll->getCitations() as $citationObj) {
+        $pmid = $citationObj->getPMID();
+        $citationLink = $citationObj->getCitationWithLink(FALSE, TRUE);
+		$html .= "<div id='PMID$pmid' style='margin: 8px 0; min-height: 26px;'><img align='left' style='margin: 2px; width: 26px; height: 26px;' src='$imgURL' alt='$img' onclick='changeCheckboxValue(this, \"$certifyPubURL\");'> $citationLink</div>\n";
 	}
 	$html .= "</div>\n";
 	return $html;

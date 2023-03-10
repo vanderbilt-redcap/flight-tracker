@@ -177,7 +177,7 @@ try {
         echo "<p class='green shadow' id='note' style='width: 600px; margin-left: auto; margin-right: auto; text-align: center; padding: 10px; border-radius: 10px; display: none; font-size: 16px;'></p>\n";
         echo "<p class='centered max-width'>To undo any actions made here, open the Citation form in the given REDCap record and change the answer for the <b>Include?</b> question. Yes means accepted; no means omitted; blank means yet-to-be wrangled.</p>";
 
-        $html .= autoResetTimeHTML($pid);
+        $html .= REDCapManagement::autoResetTimeHTML($pid, ["#lookupTable","#newCitations","#finalCitations"]);
         echo $html;
         if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
             echo "</div>\n";      // #content
@@ -190,25 +190,6 @@ try {
     Application::reportException($e);
 }
 
-
-function autoResetTimeHTML($pid) {
-    $url = APP_PATH_WEBROOT."ProjectGeneral/keep_alive.php?pid=".$pid;
-    $minsToDelay = 10;
-
-    $html = "
-    <script>
-    $(document).ready(function() {
-        setTimeout(function() {
-            $('#lookupTable,#newCitations,#finalCitations').bind('keyup mousemove click', function(){
-                $(this).unbind('keyup mousemove click');
-                $.post('$url', {'redcap_csrf_token': getCSRFToken()}, function(data) {
-                });
-            });
-        }, $minsToDelay * 60000);
-    });
-    </script>";
-    return $html;
-}
 
 function getNextRecordWithData($token, $server, $currRecord, $wranglerType, $records) {
 	if (method_exists("\\Vanderbilt\\FlightTrackerExternalModule\\CareerDev", "filterOutCopiedRecords")) {

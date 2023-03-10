@@ -1105,28 +1105,87 @@ class Download {
 		$tester->assertTrue(!empty($ary));
 	}
 
+    public static function edocIDs($token, $server, $field) {
+        $records = self::recordIds($token, $server);
+        $edocs = [];
+        foreach ($records as $recordId) {
+            $edocs[$recordId] = "";
+        }
+
+        $module = Application::getModule();
+        $pid = Application::getPID($token);
+        $sql = "SELECT record, value FROM redcap_data WHERE project_id = ? AND field_name = ?";
+        $result = $module->query($sql, [$pid, $field]);
+        while ($row = $result->fetch_assoc()) {
+            if (in_array($row['record'], $records)) {
+                $edocs[$row['record']] = $row['value'];
+            }
+        }
+        return $edocs;
+    }
+
+    public static function nonBlankFileFieldsFromProjects($pids, $name, $fileField) {
+        list($first, $last) = NameMatcher::splitName($name, 2);
+        $values = [];
+        foreach ($pids as $currPid) {
+            $currToken = Application::getSetting("token", $currPid);
+            $currServer = Application::getSetting("server", $currPid);
+            if ($currToken && $currServer) {
+                $metadataFields = self::metadataFields($currToken, $currServer);
+                if (in_array($fileField, $metadataFields)) {
+                    $firstNames = self::firstnames($currToken, $currServer);
+                    $lastNames = self::lastnames($currToken, $currServer);
+                    $fieldValues = self::edocIDs($currToken, $currServer, $fileField);
+                    foreach ($firstNames as $recordId => $currFirstName) {
+                        $currLastName = $lastNames[$recordId] ?? "";
+                        if (($fieldValues[$recordId] !== "") && NameMatcher::matchName($first, $last, $currFirstName, $currLastName)) {
+                            $values[$currPid.":".$recordId] = $fieldValues[$recordId];
+                        }
+                    }
+                }
+            }
+        }
+
+        return $values;
+    }
+
     public static function fieldsForRecordAndInstances($token, $server, $fields, $record, $instrument, $instances) {
         if (empty($instances)) {
             return [];
         }
         if (self::isCurrentServer($server)) {
             $pid = Application::getPID($token);
-            $module = Application::getModule();
+            if (Application::isPluginProject()) {
+                $query = \ExternalModules\ExternalModules::createQuery();
+            } else {
+                $module = Application::getModule();
+                $query = $module->createQuery();
+            }
 
             $modifiedInstances = [];
+            $questionMarks = [];
+            $hasInstanceNull = FALSE;
             foreach ($instances as $instance) {
                 if ($instance == 1) {
-                    $modifiedInstances[] = NULL;
+                    $hasInstanceNull = TRUE;
                 } else {
                     $modifiedInstances[] = $instance;
+                    $questionMarks[] = "?";
                 }
             }
-            $query = $module->createQuery();
             $sql = "SELECT `field_name`, `instance`, `value` FROM redcap_data WHERE project_id = ?";
             $query->add($sql, $pid);
             $query->add("and record = ?", $record);
-            $query->add("and")->addInClause("instance", $modifiedInstances);
-            $query->add("and")->addInClause("field_name", $fields);
+            $nullInstanceStr = "";
+            if ($hasInstanceNull) {
+                $nullInstanceStr = "instance IS NULL or";
+            }
+            $query->add("and ($nullInstanceStr instance IN (".implode(",", $questionMarks)."))", $modifiedInstances);
+            $questionMarks = [];
+            while (count($questionMarks) < count($fields)) {
+                $questionMarks[] = "?";
+            }
+            $query->add("and")->addInClause("field_name IN (".implode(",", $questionMarks).")", $fields);
 
             $result = $query->execute();
             $recordDataByInstance = [];
@@ -1140,6 +1199,9 @@ class Download {
                         "redcap_repeat_instrument" => $instrument,
                         "redcap_repeat_instance" => $instance,
                     ];
+                    foreach ($fields as $requestedField) {
+                        $recordDataByInstance[$instance][$requestedField] = "";
+                    }
                 }
                 $recordDataByInstance[$instance][$field] = $value;
             }

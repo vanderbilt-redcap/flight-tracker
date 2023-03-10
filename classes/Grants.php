@@ -561,84 +561,23 @@ class Grants {
             $i = 0;
 			foreach ($rows as $row) {
                 $i++;
-				$gfs = [];
-				$submissionGfs = [];
 				if ($row['redcap_repeat_instrument'] == "") {
-					$hasCoeus = FALSE;
-					foreach ($row as $field => $value) {
-						if ($value && preg_match("/^coeus_/", $field)) {
-							$hasCoeus = TRUE;
-							break;
-						}
-					}
-
-					if ($hasCoeus) {
-						# for non-infinitely-repeating COEUS forms
-						$gfs[] = new CoeusGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
-					} else {
-						foreach ($row as $field => $value) {
-							if (preg_match("/^newman_/", $field)) {
-								$gfs[] = new NewmanGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
-								break;
-							}
-						}
-						$hasInstruments = [];
-						foreach ($row as $field => $value) {
-                            if (preg_match("/^check_/", $field) && !in_array("check", $hasInstruments)) {
-                                $gf = new InitialGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
-                                $gf->setPrefix("check");
-                                $hasInstruments[] = "check";
-                                $gfs[] = $gf;
-                            } else if (preg_match("/^init_import_/", $field) && !in_array("init_import", $hasInstruments)) {
-                                $gf = new InitialGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
-                                $gf->setPrefix("init_import");
-                                $hasInstruments[] = "init_import";
-                                $gfs[] = $gf;
-                            }
-						}
-
-						$this->calculate = array();
-						$this->calculate['to_import'] = json_decode($row['summary_calculate_to_import'] ?? "[]", true);
-						$this->calculate['order'] = json_decode($row['summary_calculate_order'] ?? "[]", true);
-						$this->calculate['list_of_awards'] = json_decode($row['summary_calculate_list_of_awards'] ?? "[]", true);
-						foreach ($this->calculate as $type => $ary) {
-							if (!$ary) {
-								$this->calculate[$type] = array();
-							}
-						}
-
-						$priorGF = new PriorGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
-						$priorGF->processRow($row, $rows);
-						$priorGFGrants = $priorGF->getGrants();
-						foreach ($priorGFGrants as $grant) {
-							$this->priorGrants[] = $grant;
-						}
-					}
-                } else {
-				    $gf = self::getGrantFactoryForRow($row, $this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
-				    if (is_array($gf)) {
-				        $currentGfs = $gf;
-				        foreach ($currentGfs as $gf) {
-				            $gfs[] = $gf;
+                    $this->calculate = array();
+                    $this->calculate['to_import'] = json_decode($row['summary_calculate_to_import'] ?? "[]", true);
+                    $this->calculate['order'] = json_decode($row['summary_calculate_order'] ?? "[]", true);
+                    $this->calculate['list_of_awards'] = json_decode($row['summary_calculate_list_of_awards'] ?? "[]", true);
+                    foreach ($this->calculate as $type => $ary) {
+                        if (!$ary) {
+                            $this->calculate[$type] = array();
                         }
-                    } else if ($gf) {
-				        $gfs[] = $gf;
-                    }   // else NULL
-                }
-                if ($row['redcap_repeat_instrument'] == "coeus2") {
-                    $submissionGfs[] = new Coeus2GrantFactory($this->name, $this->lexicalTranslator, $this->metadata, "Submissions", $this->token, $this->server);
-                } else if ($row['redcap_repeat_instrument'] == "coeus_submission") {
-                    $submissionGfs[] = new CoeusSubmissionGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
-                } else if ($row['redcap_repeat_instrument'] == "vera_submission") {
-                    $submissionGfs[] = new VERASubmissionGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
-                } else if ($row['redcap_repeat_instrument'] == "custom_grant") {
-                    $submissionGfs[] = new CustomGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, "Submissions", $this->token, $this->server);
+                    }
                 }
 				$grantFactories = [
-				    "nativeGrants" => $gfs,
-                    "grantSubmissions" => $submissionGfs,
+				    "nativeGrants" => "Awarded",
+                    "grantSubmissions" => "Submissions",
                     ];
-				foreach ($grantFactories as $variable => $gfList) {
+				foreach ($grantFactories as $variable => $status) {
+                    $gfList = GrantFactory::createFactoriesForRow($row, $this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server, $rows, $status);
                     foreach ($gfList as $gf) {
                         $time1 = microtime(TRUE);
                         $gf->processRow($row, $rows);
@@ -679,38 +618,6 @@ class Grants {
             $fields = array_unique(array_merge($gf->getAwardFields()));
         }
         return $fields;
-    }
-
-	public static function getGrantFactoryForRow($row, $name, $lexicalTranslator, $metadata, $token, $server) {
-        if ($row['redcap_repeat_instrument'] == "coeus") {
-            return new CoeusGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-        } else if ($row['redcap_repeat_instrument'] == "coeus2") {
-            return new Coeus2GrantFactory($name, $lexicalTranslator, $metadata, "Grants", $token, $server);
-        } else if ($row['redcap_repeat_instrument'] == "reporter") {
-            return new RePORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-        } else if ($row['redcap_repeat_instrument'] == "exporter") {
-            return new ExPORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-        } else if ($row['redcap_repeat_instrument'] == "nih_reporter") {
-            return new NIHRePORTERGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-        } else if ($row['redcap_repeat_instrument'] == "vera") {
-            return new VERAGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-        } else if ($row['redcap_repeat_instrument'] == "custom_grant") {
-            return new CustomGrantFactory($name, $lexicalTranslator, $metadata, "Grants", $token, $server);
-        } else if ($row['redcap_repeat_instrument'] == "followup") {
-            return new FollowupGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-        } else if ($row['redcap_repeat_instrument'] == "nsf") {
-            return new NSFGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-        } else if ($row['redcap_repeat_instrument'] == "ies_grant") {
-            return new IESGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-        } else if ($row['redcap_repeat_instrument'] === "") {
-            $checkGf = new InitialGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-            $checkGf->setPrefix("check");
-            $initImportGf = new InitialGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-            $initImportGf->setPrefix("init_import");
-            return [$checkGf, $initImportGf];
-        } else {
-            return NULL;
-        }
     }
 
 	public function getRecordID() {
@@ -1665,7 +1572,7 @@ class Grants {
 				'summary_ever_last_any_k_to_r01_equiv',
 				);
 		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
-			array_push($fields, 'summary_award_type_'.$i);
+			$fields[] = 'summary_award_type_' . $i;
 		}
 		foreach ($fields as $field) {
 			$tester->tag($field);

@@ -38,7 +38,7 @@ class Cohorts {
          * @psalm-taint-escape has_quotes
          * @psalm-taint-escape html
          */
-        $possibleCohorts = Application::getSetting("configs", $pid);
+        $possibleCohorts = Application::getSetting("configs", $pid) ?: [];
         if (in_array($cohort, $possibleCohorts)) {
             return Sanitizer::sanitizeWithoutChangingQuotes($cohort);
         } else {

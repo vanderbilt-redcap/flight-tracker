@@ -127,6 +127,8 @@ function getDisability($value) {
 }
 ?>
 <script>
+function getCSRFToken() { return '<?= Application::generateCSRFToken() ?>'; }
+
 $(document).ready(function() {
 	presetValue("<?= $prefix ?>_name_first", "<?php echo findInCheck(['identifier_first_name', 'check_name_first', 'init_import_name_first']); ?>");
 	presetValue("<?= $prefix ?>_name_middle", "<?php echo findInCheck(['identifier_middle', 'check_name_middle', 'init_import_name_middle']); ?>");

@@ -2623,7 +2623,14 @@ class Grant {
 		$awardTypeConversion = self::getAwardTypes();
 		foreach ($variables as $redcapVar => $specsVar) {
 			$fullREDCapVar = "summary_award_".$redcapVar."_".$i;
-			if ($specsVar == "type") {
+            if ($specsVar == "last_update") {
+                if (isset($this->specs[$specsVar])) {
+                    $ts = strtotime($this->specs[$specsVar]);
+                    $ary[$fullREDCapVar] = date("Y-m-d", $ts);
+                } else {
+                    $ary[$fullREDCapVar] = "";
+                }
+            } else if ($specsVar == "type") {
 				$ary[$fullREDCapVar] = (isset($this->specs[$specsVar]) ? "{$awardTypeConversion[$this->specs[$specsVar]]}" : "");
 			} else if (preg_match("/budget/", $redcapVar)) {
 				$ary[$fullREDCapVar] = (isset($this->specs[$specsVar]) ? self::convertToMoney($this->specs[$specsVar]) : "");

@@ -521,9 +521,9 @@ function refresh() {
 // page is blank if current page is requested
 function getPageUrl(page) {
 	page = page.replace(/^\//, "");
-	var params = getUrlVars();
+	const params = getUrlVars();
 	if (params['page']) {
-		var url = "?pid="+params['pid'];
+		let url = "?pid="+params['pid'];
 		if (page) {
 			page = page.replace(/\.php$/, "");
 			url += "&page="+encodeURIComponent(page);
@@ -1020,9 +1020,9 @@ function getNewWranglerImg(state) {
 	return "";
 }
 
-function getPubImgHTML(newState) {
+function getPubImgHTML(newState, url) {
 	var newImg = getNewWranglerImg(newState);
-	return "<img align='left' style='margin: 2px; width: 26px; height: 26px;' src='"+newImg+"' alt='"+newState+"' onclick='changeCheckboxValue(this);'>";
+	return "<img align='left' style='margin: 2px; width: 26px; height: 26px;' src='"+newImg+"' alt='"+newState+"' onclick='changeCheckboxValue(this, url);'>";
 }
 
 function getBin(pmid) {
@@ -1032,13 +1032,13 @@ function getBin(pmid) {
 	return '';
 }
 
-function addPMID(pmid) {
+function addPMID(pmid, certifyPubURL) {
 	if (!isNaN(pmid) && pmid && notAlreadyUsed(pmid)) {
 		const newState = 'checked';
 		const newDiv = 'notDone';
 		const newId = 'PMID'+pmid;
 		$('#'+newDiv).append('<div id="'+newId+'" style="margin: 8px 0; min-height: 26px;"></div>');
-		submitPMID(pmid, '#'+newId, getPubImgHTML(newState), function() { if (enqueue()) { $('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1); } });
+		submitPMID(pmid, '#'+newId, getPubImgHTML(newState, certifyPubURL), function() { if (enqueue()) { $('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1); } });
 	} else if (isNaN(pmid)) {
 		$.sweetModal({
 			content: 'PMID '+pmid+' is not a number!',
@@ -1059,7 +1059,7 @@ function addPMID(pmid) {
 	}
 }
 
-function changeCheckboxValue(ob) {
+function changeCheckboxValue(ob, url) {
 	const divId = $(ob).parent().attr("id")
 	const state = $(ob).attr('alt')
 	const pmid = $(ob).parent().attr('id').replace(/^PMID/, "")
@@ -1091,7 +1091,7 @@ function changeCheckboxValue(ob) {
 	const newImg = getNewWranglerImg(newState);
 	if (newState) {
 		$(ob).attr('alt', newState)
-		$.post(getPageUrl("wrangler/certifyPub"), { 'redcap_csrf_token': getCSRFToken(), hash: hash, record: recordId, pmid: pmid, state: newState }, function(html) {
+		$.post(url, { 'redcap_csrf_token': getCSRFToken(), hash: hash, record: recordId, pmid: pmid, state: newState }, function(html) {
 			console.log(html);
 		});
 	}

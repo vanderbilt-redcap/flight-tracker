@@ -105,6 +105,25 @@ class FileManagement {
         return "";
     }
 
+    public static function getEdocBase64($id) {
+        if (is_numeric($id)) {
+            $module = Application::getModule();
+            $sql = "SELECT stored_name, mime_type FROM redcap_edocs_metadata WHERE doc_id = ?";
+            $q = $module->query($sql, [$id]);
+            if ($row = $q->fetch_assoc()) {
+                $filename = EDOC_PATH . $row['stored_name'];
+                $content = file_get_contents($filename);
+                if ($content) {
+                    $base64 = base64_encode($content);
+                    $mime = $row['mime_type'];
+                    $header = "data:$mime;charset=utf-8;base64, ";
+                    return $header . $base64;
+                }
+            }
+        }
+        throw new \Exception("Invalid Edoc ID!");
+    }
+
     public static function getEdoc($id) {
         if (!is_numeric($id)) {
             return ["error" => "Invalid id"];

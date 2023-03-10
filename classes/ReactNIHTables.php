@@ -584,6 +584,7 @@ table { border-collapse: collapse; }
         $html .= "<form method='POST' action='$thisUrl'>";
         $html .= Application::generateCSRFTokenHTML();
         $html .= "<input type='hidden' name='dateSubmitted' value='$today' />";
+        $fields = [".action_required"];
         foreach ($tablesToShow as $tableNum) {
             $html .= "<h3>Table $tableNum: ".NIHTables::getTableHeader($tableNum)."</h3>";
             if ($tableNum == 3) {
@@ -596,11 +597,13 @@ table { border-collapse: collapse; }
             }
             $html .= $table;
             $html .= "<h4>Do you have any requested changes for this table?<br>Consider addressing any <span class='action_required'>red</span> items,<br>and make sure you click the Submit Changes button.</h4>";
-            $html .= "<p class='centered'><textarea name='table_$tableNum' style='width: 600px; height: 150px;'></textarea></p>";
-            $html .= "<br><br>";
+            $html .= "<p class='centered'><textarea id='table_$tableNum' name='table_$tableNum' style='width: 600px; height: 150px;'></textarea></p>";
+            $html .= "<br/><br/>";
+            $fields[] = "#table_".$tableNum;
         }
         $html .= "<p class='centered'><button>Submit Changes</button></p>";
         $html .= "</form>";
+        $html .= REDCapManagement::autoResetTimeHTML($this->pid, $fields);
         return $html;
     }
 
@@ -797,10 +800,15 @@ table { border-collapse: collapse; }
     }
 
     public function verify($requestedHash, $email) {
-        foreach ($this->getValidTableOptions() as $tables) {
-            $emailHash = $this->makeEmailHash($email, $tables);
-            if (($requestedHash == $emailHash) && REDCapManagement::isEmail($email)) {
-                return TRUE;
+        if ($email) {
+            $emails = preg_split("/\s*[,;]\s*/", $email);
+            foreach ($emails as $em) {
+                foreach ($this->getValidTableOptions() as $tables) {
+                    $emailHash = $this->makeEmailHash($em, $tables);
+                    if (($requestedHash == $emailHash) && REDCapManagement::isEmail($em)) {
+                        return TRUE;
+                    }
+                }
             }
         }
         return FALSE;
@@ -877,6 +885,7 @@ table { border-collapse: collapse; }
 
     public function getUseridsAndNameAssociatedWithEmail($email) {
         $email = strtolower($email);
+        $emailsToLookFor = preg_split("/\s*[,;]\s*/", $email);
         $allUserids = [];
         $name = "";
         foreach (Application::getPids() as $pid) {
@@ -890,13 +899,16 @@ table { border-collapse: collapse; }
                 $userids = Download::fastField($pid, $useridField);
                 $firstNames = Download::fastField($pid, "identifier_first_name");
                 $lastNames = Download::fastField($pid, "identifier_last_name");
-                foreach ($emails as $recordId => $recordEmail) {
-                    if ($recordEmail && (strtolower($recordEmail) == $email) && ($userids[$recordId])) {
-                        $name = $firstNames[$recordId]." ".$lastNames[$recordId];
-                        $aryOfUserids = preg_split("/\s*[,;]\s*/", $userids[$recordId]);
-                        foreach ($aryOfUserids as $u) {
-                            if (!in_array($u, $allUserids)) {
-                                $allUserids[] = $u;
+                foreach ($emails as $recordId => $fieldValue) {
+                    $recordEmails = $fieldValue ? preg_split("/\s*[,;]\s*/", $fieldValue) : "";
+                    foreach ($recordEmails as $recordEmail) {
+                        if ($recordEmail && in_array(strtolower($recordEmail), $emailsToLookFor) && ($userids[$recordId])) {
+                            $name = $firstNames[$recordId]." ".$lastNames[$recordId];
+                            $aryOfUserids = preg_split("/\s*[,;]\s*/", $userids[$recordId]);
+                            foreach ($aryOfUserids as $u) {
+                                if ($u && !in_array($u, $allUserids)) {
+                                    $allUserids[] = $u;
+                                }
                             }
                         }
                     }
@@ -928,12 +940,20 @@ table { border-collapse: collapse; }
     }
 
     public function makeEmailHash($email, $tableNums) {
-        $key = "email_".$email."_".implode(",", $tableNums);
-        $previousValue = Application::getSetting($key, $this->pid);
-        if ($previousValue) {
-            return $previousValue;
+        if (preg_match("/[,;]/", $email)) {
+            $emails = preg_split("/\s*[,;]\s*/", $email);
+        } else {
+            $emails = [$email];
         }
-
+        foreach ($emails as $email) {
+            $key = "email_".$email."_".implode(",", $tableNums);
+            $previousValue = Application::getSetting($key, $this->pid);
+            if ($previousValue) {
+                return $previousValue;
+            }
+        }
+        $email = $emails[0];
+        $key = "email_".$email."_".implode(",", $tableNums);
         $hash = substr(md5($this->pid.":".$email.":".implode(",", $tableNums)), 0, 64);
         Application::saveSetting($key, $hash, $this->pid);
         return $hash;

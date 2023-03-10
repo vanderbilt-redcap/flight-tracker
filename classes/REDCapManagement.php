@@ -742,8 +742,40 @@ class REDCapManagement {
         }
     }
 
+    public static function autoResetTimeHTML($pid, $fields) {
+        $url = APP_PATH_WEBROOT."ProjectGeneral/keep_alive.php?pid=".$pid;
+        $minsToDelay = 10;
+        $fieldSelector = implode(",", $fields);
+
+        $html = "
+    <script>
+    $(document).ready(function() {
+        setTimeout(function() {
+            $('$fieldSelector').bind('keyup mousemove click', function(){
+                $(this).unbind('keyup mousemove click');
+                $.post('$url', {'redcap_csrf_token': getCSRFToken()}, function(data) {
+                });
+            });
+        }, $minsToDelay * 60000);
+    });
+    </script>";
+        return $html;
+    }
+
+
+
     public static function isEmail($str) {
-	    return filter_var($str, FILTER_VALIDATE_EMAIL);
+        return filter_var($str, FILTER_VALIDATE_EMAIL);
+    }
+
+    public static function isEmailOrEmails($str) {
+        $emails = preg_split("/\s*[,;]\s*/", $str);
+        foreach ($emails as $email) {
+            if (!self::isEmail($email)) {
+                return FALSE;
+            }
+        }
+        return TRUE;
     }
 
     # requestedRecord is from GET/POST

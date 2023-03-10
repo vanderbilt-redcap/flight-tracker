@@ -769,7 +769,12 @@ body { font-size: 1.2em; }
                 continue;
             }
             $instrument = $validInstruments[$method];
-            $endTs = $endsByMethod[$method] ?? 0;
+            $endTs = 0;
+            if (isset($endsByMethod[$method]) && is_numeric($endsByMethod[$method])) {
+                $endTs = (int) $endsByMethod[$method];
+            } else if (isset($endsByMethod[$method]) && strtotime($endsByMethod[$method])) {
+                $endTs = strtotime($endsByMethod[$method]);
+            }
             $startDate = date("Y-m-d", $startTs);
             $endDate = date("Y-m-d", $endTs);
             $dates = self::getDatesInRange($startDate, $endDate);

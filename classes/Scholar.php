@@ -181,9 +181,33 @@ class Scholar {
         }
         return new Result("", "", "", "", $this->pid);
     }
+
+    public function getLinkedInHandle($rows) {
+        $field = "identifier_linkedin";
+        $vars = self::getDefaultOrder($field);
+        $vars = $this->getOrder($vars, $field);
+        $handles = [];
+        foreach ($vars as $var => $source) {
+            foreach ($rows as $row) {
+                if (isset($row[$var]) && ($row[$var] !== "")) {
+                    foreach (preg_split("/\s*[,;]\s*/", $row[$var]) as $value) {
+                        if ($value) {
+                            if (!in_array($value, $handles)) {
+                                $handles[] = $value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        $finalValue = implode(", ", $handles);
+        return new Result($finalValue, "", "", "", $this->pid);
+    }
+
     public function getTwitterHandle($rows) {
-        $vars = self::getDefaultOrder("identifier_twitter");
-        $vars = $this->getOrder($vars, "identifier_twitter");
+        $field = "identifier_twitter";
+        $vars = self::getDefaultOrder($field);
+        $vars = $this->getOrder($vars, $field);
         $handles = [];
         $handlesLowerCase = [];
         foreach ($vars as $var => $source) {
@@ -1846,6 +1870,11 @@ class Scholar {
             "override_twitter" => "manual",
             "manual_twitter" => "manual",
         ];
+        $orders["identifier_linkedin"] = [
+            "check_linkedin" => "scholars",
+            "followup_linkedin" => "followup",
+            "init_import_linkedin" => "manual",
+        ];
         $orders["identifier_userid"] = array(
             "ldapds_cn" => "ldap",
             "ldap_uid" => "ldap",
@@ -3269,6 +3298,7 @@ class Scholar {
             "identifier_orcid" => "getORCIDResult",
             "identifier_email" => "lookupEmail",
             "identifier_twitter" => "getTwitterHandle",
+            "identifier_linkedin" => "getLinkedInHandle",
             "summary_degrees" => "getDegrees",
             "summary_primary_dept" => "getPrimaryDepartment",
             "summary_gender" => "getGender",

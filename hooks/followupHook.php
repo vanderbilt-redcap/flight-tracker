@@ -4,6 +4,7 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Grant;
+use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\CitationCollection;
 use \Vanderbilt\CareerDevLibrary\Download;
@@ -19,6 +20,8 @@ $(document).ready(function() {
 	$('.requiredlabel').html("* required field");
 	showEraseValuePrompt = 0;    // for evalLogic prompt to erase values
 });
+
+function getCSRFToken() { return '<?= Application::generateCSRFToken() ?>'; }
 </script>
 
 <?php

@@ -21,7 +21,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.2.5";
+		return "5.2.6";
 	}
 
 	public static function getLockFile($pid) {
@@ -524,9 +524,12 @@ class CareerDev {
     public static function getLink($relativeUrl, $pid = "", $withWebroot = FALSE) {
         $relativeUrl = preg_replace("/^\//", "", $relativeUrl);
         $isMentorAgreementPage = (
-            preg_match("/^mentor\//", $relativeUrl)
-            && !preg_match("/^mentor\/dashboard/", $relativeUrl)
-            && !preg_match("/^mentor\/config/", $relativeUrl)
+            (
+                preg_match("/^mentor\//", $relativeUrl)
+                && !preg_match("/^mentor\/dashboard/", $relativeUrl)
+                && !preg_match("/^mentor\/config/", $relativeUrl)
+            )
+            || preg_match("/^reporting\/tables2-4WithAuth/", $relativeUrl)
         );
         if (!$pid) {
             $pid = self::getPID();
