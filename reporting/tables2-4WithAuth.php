@@ -5,13 +5,6 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\ReactNIHTables;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
-if (isset($_GET['pid']) && is_numeric($_GET['pid'])) {
-    $myPid = htmlentities($_GET['pid']);
-    $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
-    $url = str_replace("pid=".$myPid, "project_id=".$myPid, $url);
-    header("Location: $url");
-}
-
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 Application::increaseProcessingMax(1);
