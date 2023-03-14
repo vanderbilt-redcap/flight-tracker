@@ -619,6 +619,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	public static function getSurveyLinks($pid, $records, $instrument, $maxInstances = array()) {
 		$newInstances = array();
+        $oldPid = $_GET['pid'];
 		$_GET['pid'] = $pid;    // for the Application::link on the cron
 		foreach ($records as $recordId) {
 			if ($maxInstances[$recordId]) {
@@ -632,26 +633,16 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 				"instrument" => $instrument,
 				"instances" => $newInstances,
 				);
-		$ch = curl_init();
-		$url = Application::link("emailMgmt/makeSurveyLinks.php", $pid, TRUE)."&NOAUTH";
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_VERBOSE, 0);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, Upload::isProductionServer());
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-		$output = curl_exec($ch);
-		curl_close($ch);
+        $url = Application::link("emailMgmt/makeSurveyLinks.php", $pid, TRUE)."&NOAUTH";
+        list($resp, $output) = URLManagement::downloadURLWithPOST($url, $data, $pid);
+        Application::log("makeSurveyLinks POST: ".json_encode($data), $pid);
+        Application::log("makeSurveyLinks output: $output", $pid);
+        $_GET['pid'] = $oldPid;
 		if ($returnList = json_decode((string) $output, TRUE)) {
 			return $returnList;
 		} else {
-		    Application::log($url);
-		    Application::log("Warning! Could not decode JSON: $output");
+		    Application::log("makeSurveyLinks URL: $url", $pid);
+		    Application::log("makeSurveyLinks Warning! Could not decode JSON: $output", $pid);
 			return $output;
 		}
 	}
