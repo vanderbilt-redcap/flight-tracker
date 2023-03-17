@@ -210,14 +210,8 @@ class EmailManager {
                     for ($mins = $minsSinceEpochCurr; $mins > $minsSinceEpochLastRun; $mins--) {
                         $currTimes[] = $mins * 60;
                     }
-                    try {
-                        Application::saveSetting("emails_last_run", $currTime, $this->pid);
-                    } catch (\Exception $e) {
-                        Application::log("Exception ".$e->getMessage()."\n".$e->getTraceAsString(), $this->pid);
-                        sleep(1);
-                        Application::saveSetting("emails_last_run", $currTime, $this->pid);
-                    }
-                    if (Application::isVanderbilt() && $lastRunTs) {
+                    self::saveLastRun($currTime, $this->pid);
+                    if (Application::isVanderbilt()) {
                         foreach ($currTimes as $time) {
                             if ($time <= $lastRunTs) {
                                 $mssg = "Tried to run Flight Tracker's email cron at an earlier time. This should never happen. The time requested is ".date("Y-m-d H:i", (int) $time).". The last run was at ".date("Y-m-d H:i", $lastRunTs).".";
@@ -298,6 +292,27 @@ class EmailManager {
         }
         return $results;
 	}
+
+    private static function saveLastRun($ts, $pid, $retriesLeft = 5) {
+        $field = "emails_last_run";
+        try {
+            Application::saveSetting($field, $ts, $pid);
+        } catch (\Exception $e) {
+            if (
+                ($retriesLeft > 0)
+                && ($e->getMessage() == "Prepared statement execution failed")
+            ) {
+                sleep(5);
+                $retriesLeft--;
+                Application::log("Retrying saving $field; $retriesLeft retries remaining", $pid);
+                self::saveLastRun($ts, $pid, $retriesLeft);
+            } else {
+                Application::log("Exception ".$e->getMessage()."\n".$e->getTraceAsString(), $pid);
+                sleep(5);
+                Application::saveSetting("emails_last_run", $ts, $pid);
+            }
+        }
+    }
 
     public function sendPreviewEmail($emailSetting, $name) {
         $to = $this->adminEmail;

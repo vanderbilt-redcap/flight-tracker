@@ -25,6 +25,7 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 Application::increaseProcessingMax(1);
+Application::keepAlive($pid);
 
 $reactHandler = new ReactNIHTables($token, $server, $pid);
 $module = Application::getModule();
@@ -33,27 +34,22 @@ if (isset($_POST['action']) && $token && $server && $pid) {
     $action = Sanitizer::sanitize($_POST['action']);
     $data = [];
     try {
-        if ($action == "getCoaching") {
-            $table1Pid = Application::getTable1PID();
-            if (Application::isLocalhost()) {
-                $table1Pid = 23;   // TODO Remove
-            }
-            $tableNum = Sanitizer::sanitize($_POST['tableNum'] ?? "");
-            if ($table1Pid && ($tableNum == 2)) {
-                $dateOfReport = Sanitizer::sanitize($_POST['date'] ?? "");
-                $metadata = Download::metadata($token, $server);
-                $nihTables = new NIHTables($token, $server, $pid, $metadata);
-                $facultyList = Sanitizer::sanitizeArray($_POST['faculty'] ?? []);
-                $data = $reactHandler->getProgramEntriesFromTable1($facultyList, $table1Pid, $dateOfReport, $nihTables);
-            }
-        } else if ($action == "getFooter") {
+        if ($action == "getFooter") {
             $data['html'] = Application::getFooter();
         } else if ($action == "getTable") {
             $metadata = Download::metadata($token, $server);
             $nihTables = new NIHTables($token, $server, $pid, $metadata);
-            $data = $reactHandler->getDataForTable(Sanitizer::sanitizeArray($_POST), $nihTables);
+            $data['table'] = $reactHandler->getDataForTable(Sanitizer::sanitizeArray($_POST), $nihTables);
+
+            $table1Pid = Application::getTable1PID();
+            $tableNum = Sanitizer::sanitizeInteger($_POST['tableNum'] ?? "");
+            if ($table1Pid && ($tableNum == 2)) {
+                $data['coaching'] = $reactHandler->getProgramEntriesFromTable1($table1Pid, $nihTables);
+            } else {
+                $data['coaching'] = [];
+            }
         } else if ($action == "saveTable") {
-            $tableData = Sanitizer::sanitizeArray($_POST['tableData'], FALSE);
+            $tableData = $_POST['tableData'];     // sanitizing causes double-escapes of HTML
             $tableNum = Sanitizer::sanitize($_POST['tableNum']);
             $name = Sanitizer::sanitize($_POST['name']);
             $dateOfReport = Sanitizer::sanitize($_POST['date']);

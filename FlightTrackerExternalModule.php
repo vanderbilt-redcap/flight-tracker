@@ -984,13 +984,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	function hook_every_page_before_render($project_id) {
-        if (Application::isVanderbilt()) {
-            error_log("A In hook_every_page_before_render with project-id $project_id");
-        }
 		$this->setupApplication();
-        if (Application::isVanderbilt()) {
-            error_log("B In hook_every_page_before_render with project-id $project_id");
-        }
         if (Application::isTable1Project($project_id)) {
         } else if (PAGE == "DataExport/index.php") {
 			echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
@@ -1016,6 +1010,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             }
         }
         window.alert = alert;
+        
+        $('[data-rc-lang=data_entry_532]').parent().parent().hide();
     });
 </script>\n";
         }
@@ -1023,7 +1019,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	function hook_every_page_top($project_id) {
         $this->setupApplication();
-        if (Application::isTable1Project($project_id)) {
+        if (
+            Application::isTable1Project($project_id)
+            || Application::isSocialMediaProject($project_id)
+        ) {
+            # Do nothing
         } else if ($project_id && Application::getUsername()) {
             $tokenName = $this->getProjectSetting("tokenName", $project_id);
             $token = $this->getProjectSetting("token", $project_id);

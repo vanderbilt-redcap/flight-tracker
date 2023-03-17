@@ -61,7 +61,7 @@ abstract class GrantFactory {
     }
 
 
-    public static function createFactoriesForRow($row, $name, $lexicalTranslator, $metadata, $token, $server, $allRows, $type = "Awarded") {
+    public static function createFactoriesForRow($row, $name, $lexicalTranslator, $metadata, $token, $server, $allRows, $type = "Awarded", $includeSummaries = TRUE) {
         $gfs = [];
 
         if ($type == "Submissions") {
@@ -84,7 +84,9 @@ abstract class GrantFactory {
                         }
                     }
                 }
-                $gfs[] = new PriorGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+                if ($includeSummaries) {
+                    $gfs[] = new PriorGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+                }
             }
             $gf = self::getGrantFactoryForRow($row, $name, $lexicalTranslator, $metadata, $token, $server);
             if (is_array($gf)) {

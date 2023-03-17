@@ -22,7 +22,7 @@ foreach ($filesToInclude as $dir => $fileRegex) {
     }
 }
 
-$driverLink = Application::link("reporting/tables2-4.php");
+$driverLink = Application::link("reporting/tables2-4.php")."&NOAUTH";
 $museoSansLink = Application::link("fonts/exljbris - MuseoSans-500.otf");
 $georgiaLink = Application::link("fonts/georgia.woff");
 $backgroundLink = Application::link("css/general.css");

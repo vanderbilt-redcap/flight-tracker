@@ -12,6 +12,8 @@ Application::increaseProcessingMax(1);
 if (!isset($_GET['pid'])) {
     $_GET['pid'] = $_GET['project_id'] ?? "";
 }
+Application::increaseProcessingMax(1);
+Application::keepAlive($pid);
 $module = Application::getModule();
 $userid = Application::getUsername();
 $reactHandler = new ReactNIHTables($pid, $token, $server);

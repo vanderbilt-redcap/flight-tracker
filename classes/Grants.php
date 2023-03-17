@@ -111,11 +111,8 @@ class Grants {
 	}
 
 	public function getNumberOfGrants($type = "compiled") {
-		if ($type == "precompiled") {
-			return count($this->priorGrants);
-		}
-		if ($type == "prior") {
-			return count($this->priorGrants);
+		if (in_array($type, ["precompiled", "prior"])) {
+            return count($this->priorGrants);
 		}
 		if ($type == "compiled") {
 			return count($this->compiledGrants);
@@ -245,11 +242,8 @@ class Grants {
     }
 
     public function getGrants($type = "compiled") {
-		if ($type == "precompiled") {
-			return $this->priorGrants;
-		}
-		if ($type == "prior") {
-			return $this->priorGrants;
+		if (in_array($type, ["precompiled", "prior"])) {
+            return $this->priorGrants;
 		}
 		if ($type == "compiled") {
 			return $this->compiledGrants;
@@ -571,13 +565,20 @@ class Grants {
                             $this->calculate[$type] = array();
                         }
                     }
+
+                    $priorGF = new PriorGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
+                    $priorGF->processRow($row, $rows);
+                    $priorGFGrants = $priorGF->getGrants();
+                    foreach ($priorGFGrants as $grant) {
+                        $this->priorGrants[] = $grant;
+                    }
                 }
 				$grantFactories = [
 				    "nativeGrants" => "Awarded",
                     "grantSubmissions" => "Submissions",
                     ];
 				foreach ($grantFactories as $variable => $status) {
-                    $gfList = GrantFactory::createFactoriesForRow($row, $this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server, $rows, $status);
+                    $gfList = GrantFactory::createFactoriesForRow($row, $this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server, $rows, $status, $includeSummaryInfo);
                     foreach ($gfList as $gf) {
                         $time1 = microtime(TRUE);
                         $gf->processRow($row, $rows);

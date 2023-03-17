@@ -1001,7 +1001,7 @@ class NIHTables {
                     $data[$matchesStr] = [
                         [
                             $facultyName,
-                            "None",
+                            "None <span class='action_required'>(Flight Tracker has no data on active grants for this person. You may want to confirm manually.)</span>",
                         ]
                     ];
                 }
@@ -1025,7 +1025,7 @@ class NIHTables {
 	    $server = Application::getSetting("server", $pid);
 	    if ($token && $server) {
 	        $redcapData = Download::fieldsForRecords($token, $server, ["record_id", "identifier_email"], [$recordId]);
-	        return REDCapManagement::findField($redcapData, $recordId, "identifier_email");
+	        return strtolower(REDCapManagement::findField($redcapData, $recordId, "identifier_email"));
         }
 	    return "";
     }
@@ -1053,24 +1053,29 @@ class NIHTables {
                 $headers = $rows;
             } else {
 	            $usedEmails = [];
-	            foreach (explode(",", $listOfMatches) as $match) {
-                    list($pid, $recordId) = preg_split("/:/", $match);
-                    $email = self::fetchEmail($pid, $recordId);
-                    if (!in_array($email, $usedEmails)) {
-                        $usedEmails[] = $email;
-                        foreach ($rows as $row) {
-                            $newRow = [];
-                            $recordInstance = self::getUniqueIdentifier($row, $tableNum);
-                            $newRow['pid'] = $pid;
-                            $newRow['record'] = $recordId;
-                            $newRow['recordInstance'] = $recordInstance;
-                            $newRow['email'] = $email;
-                            for ($j = 0; $j < count($row); $j++) {
-                                $newRow[$headers[$j]] = $row[$j];
-                            }
-                            if (!empty($newRow)) {
-                                $newData[$recordInstance] = $newRow;
-                            }
+                $matchAry = explode(",", $listOfMatches);
+                $emailsWithName = [];
+                foreach ($matchAry as $match) {
+                    list($pid, $recordId) = explode(":", $match);
+                    $email = strtolower(self::fetchEmail($pid, $recordId));
+                    if (!in_array($email, $emailsWithName)) {
+                        $emailsWithName[] = $email;
+                    }
+                }
+	            foreach ($matchAry as $match) {
+                    list($pid, $recordId) = explode(":", $match);
+                    foreach ($rows as $row) {
+                        $newRow = [];
+                        $recordInstance = self::getUniqueIdentifier($row, $tableNum);
+                        $newRow['pid'] = $pid;
+                        $newRow['record'] = $recordId;
+                        $newRow['recordInstance'] = $recordInstance;
+                        $newRow['email'] = implode(";", $emailsWithName);
+                        for ($j = 0; $j < count($row); $j++) {
+                            $newRow[$headers[$j]] = $row[$j];
+                        }
+                        if (!empty($newRow)) {
+                            $newData[$recordInstance] = $newRow;
                         }
                     }
                 }
@@ -1111,6 +1116,7 @@ class NIHTables {
             "Post-doctorates Completed Training",
             "Postdoctorates Continued in Research or Related Careers",
         ];
+        $sep = self::HTML_FIELD_SEPARATOR;
 
 	    $html = "";
 	    if (!empty($data)) {
@@ -1122,11 +1128,12 @@ class NIHTables {
 	        $html .= "</tr>";
 	        $html .= "</thead><tbody>";
 	        foreach ($data as $row) {
+                $recordInstance = self::getUniqueIdentifier($row, $tableNum);
 	            $html .= "<tr>";
 	            foreach ($headers as $header) {
 	                $headerWithoutHTML = preg_replace("/<[^>]+>/", " ", $header);
-	                $id = "table_".$tableNum."___".REDCapManagement::makeHTMLId($header);
-	                $inputHTML = in_array($headerWithoutHTML, $numericalFields) ? "<br><input class='action_required' placeholder='Correct?' type='text' name='$id' style='width: 75px;' />" : "";
+	                $id = "table_".$tableNum.$sep.$recordInstance.$sep.REDCapManagement::makeHTMLId($header);
+	                $inputHTML = in_array($headerWithoutHTML, $numericalFields) ? "<br/><input class='action_required' placeholder='Correct?' type='text' name='$id' style='width: 75px;' />" : "";
 	                $html .= "<td>".$row[$header].$inputHTML."</td>";
                 }
 	            $html .= "</tr>";
@@ -2460,7 +2467,7 @@ class NIHTables {
                         $style = " style='display: none;'";
                         // $style = " style='color: green;'";
                     }
-                    array_push($grantDescriptions, "<p$style class='subsequentGrants_$recordId'>".implode(" / ", $ary)." ".self::makeRemove($recordId, $awardNo)."</p>");
+                    $grantDescriptions[] = "<p$style class='subsequentGrants_$recordId'>" . implode(" / ", $ary) . " " . self::makeRemove($recordId, $awardNo) . "</p>";
                 } else {
                     # exclude - this information is for debug only
                     $role = $grant->getVariable("role") ? $grant->getVariable("role") : self::$NA;
@@ -3513,4 +3520,5 @@ class NIHTables {
 	private static $unknownDateText = "Unknown Date";
 	private static $unknownInstitutionText = "Unknown Institution";
 	public static $maxYearsOfGrantReporting = 15;
+    public const HTML_FIELD_SEPARATOR = "_____";
 }

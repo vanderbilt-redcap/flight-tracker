@@ -140,12 +140,17 @@ function runMainCrons(&$manager, $token, $server) {
             $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
         }
         if (in_array("vera", $forms) && in_array("vera_submission", $forms) && !Application::isLocalhost()) {
-            $manager->addCron("drivers/22_getVERA.php", "getVERA", date("Y-m-d"), $allRecords, 100000);
+            $manager->addCron("drivers/22_getVERA.php", "getVERA", "Monday", $allRecords, 100000);
+            $manager->addCron("drivers/22_getVERA.php", "2022-03-17", "Monday", $allRecords, 100000);
         }
 
         $cohorts = new Cohorts($token, $server, Application::getModule());
         if ($cohorts->hasReadonlyProjects()) {
             $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Monday", $allRecords, 100000);
+        }
+
+        if (Application::getSetting("email_highlights_to", $pid)) {
+            // TODO $manager->addCron("drivers/25_emailHighlights.php", "sendEmailHighlights", "Monday", $allRecords, 100000);
         }
 
         $numRecordsForSummary = 15;
@@ -200,6 +205,7 @@ function loadTestingCrons(&$manager) {
     $date = date("Y-m-d");
     $manager->addCron("drivers/14_connectivity.php", "testConnectivity", $date);
 }
+
 function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 	if (!$token) { global $token; }
 	if (!$server) { global $server; }

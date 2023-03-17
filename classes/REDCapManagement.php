@@ -108,15 +108,15 @@ class REDCapManagement {
 	    return $fields;
     }
 
-	public static function makeConjunction($list) {
+	public static function makeConjunction($list, $conjugation = "and") {
         if (count($list) == 0) {
             return "";
         } else if (count($list) == 1) {
             return $list[0];
         } else if (count($list) == 2) {
-	        return $list[0]." and ".$list[1];
+	        return $list[0]." $conjugation ".$list[1];
         } else {
-	        $lastElem = $list[count($list) - 2].", and ".$list[count($list) - 1];
+	        $lastElem = $list[count($list) - 2].", $conjugation ".$list[count($list) - 1];
 	        $elems = [];
 	        for ($i = 0; $i < count($list) - 2; $i++) {
 	            $elems[] = $list[$i];
@@ -276,6 +276,10 @@ class REDCapManagement {
             $prefix = "ldapds";
         } else if ($instrument == "coeus_submission") {
             $prefix = "coeussubmission";
+        } else if ($instrument == "vera") {
+            $prefix = "vera";
+        } else if ($instrument == "vera_submission") {
+            $prefix = "verasubmission";
         } else if ($instrument == "position_change") {
             $prefix = "promotion";
         } else if ($instrument == "exclude_lists") {

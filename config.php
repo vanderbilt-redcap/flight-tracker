@@ -354,7 +354,8 @@ function makeSettings($module, $pid) {
 	$ary["Installation Variables"][] = makeSetting("event_id", "text", "Event ID (read-only)", "", [], TRUE);
 	$ary["Installation Variables"][] = makeSetting("pid", "text", "Project ID (read-only)", "", [], TRUE);
 	$ary["Installation Variables"][] = makeSetting("server", "text", "Server API Address");
-	$ary["Installation Variables"][] = makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated");
+    $ary["Installation Variables"][] = makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated");
+    $ary["Installation Variables"][] = makeSetting("email_highlights_to", "text", "Email Address(es) for a Weekly Social Media report; comma-separated. When filled, this will turn on a weekly email with highlights from these scholars.");
 	$ary["Installation Variables"][] = makeSetting("tokenName", "text", "Project Name");
 	$ary["Installation Variables"][] = makeSetting("timezone", "text", "Timezone");
     $ary["Installation Variables"][] = makeSetting("grant_class", "radio", "Grant Class", "", CareerDev::getGrantClasses());

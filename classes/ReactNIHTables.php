@@ -144,7 +144,7 @@ class ReactNIHTables {
     public function sendVerificationEmail($post, &$nihTables) {
         $email = strtolower(Sanitizer::sanitize($post['email']));
         $scholarEmail = strtolower(Sanitizer::sanitize($post['scholarEmail']));
-        if (!REDCapManagement::isEmail($email) || !REDCapManagement::isEmail($scholarEmail)) {
+        if (!REDCapManagement::isEmailOrEmails($email) || !REDCapManagement::isEmailOrEmails($scholarEmail)) {
             return ["error" => "Improper email"];
         }
         $name = Sanitizer::sanitize($post['name'] ?? "");
@@ -228,6 +228,7 @@ table { border-collapse: collapse; }
         $data = [];
         if (($numRows > 0) || ($tableNum == 3)) {
             $thisLink = Application::link("this", $this->pid);
+            $thisLink = str_replace("pid=", "project_id=", $thisLink);
             $tableName = ($numTables == 1) ? "table" : "tables";
             $hash = $this->makeEmailHash($scholarEmail, $tables);
             $yesLink = $thisLink."&confirm=".urlencode($scholarEmail)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport)."&savedName=".urlencode($savedName);
@@ -253,13 +254,7 @@ table { border-collapse: collapse; }
         $savePid = Sanitizer::sanitize($post['pid']);
         $saveRecord = Sanitizer::sanitize($post['record'] ?? "");
         $awardNo = Sanitizer::sanitize($post['awardNo'] ?? "");
-        if ($saveRecord) {
-            $keyForRow = $saveRecord;
-        } else if ($awardNo) {
-            $keyForRow = $awardNo;
-        } else {
-            $keyForRow = "";
-        }
+        $keyForRow = self::makeKeyForRow($saveRecord, $awardNo);
         $allPids = Application::getPids();
         $dateOfReport = $post['dateOfReport'] ?? date("Y-m-d");
         $data = [];
@@ -283,20 +278,7 @@ table { border-collapse: collapse; }
                         }
                     }
                     if ($col) {
-                        $field = NIHTables::makeCountKey($tableNum, $keyForRow);
-                        $settingsByDate = Application::getSetting($field, $savePid);
-                        if (!$settingsByDate || !is_array($settingsByDate)) {
-                            $settingsByDate = [];
-                        }
-                        if (!isset($settingsByDate[$dateOfReport])) {
-                            $settingsByDate[$dateOfReport] = [];
-                        }
-                        if (!isset($settingsByDate[$dateOfReport][$recordInstance])) {
-                            $settingsByDate[$dateOfReport][$recordInstance] = [];
-                        }
-                        $this->migrateOldRecordInstances($settingsByDate, $dateOfReport, $recordInstance);
-                        $settingsByDate[$dateOfReport][$recordInstance][$col] = $value;
-                        Application::saveSetting($field, $settingsByDate, $savePid);
+                        $this->saveDataPoint($col, $value, $tableNum, $keyForRow, $savePid, $dateOfReport, $recordInstance);
                         $data["Result"] = "Saved.";
                     } else {
                         $data["error"] = "Could not locate column $colWithoutSpacesOrHTML.";
@@ -311,6 +293,23 @@ table { border-collapse: collapse; }
             $data["error"] = "Could not find project";
         }
         return $data;
+    }
+
+    private function saveDataPoint($headerCol, $value, $tableNum, $keyForRow, $savePid, $dateOfReport, $recordInstance) {
+        $field = NIHTables::makeCountKey($tableNum, $keyForRow);
+        $settingsByDate = Application::getSetting($field, $savePid);
+        if (!$settingsByDate || !is_array($settingsByDate)) {
+            $settingsByDate = [];
+        }
+        if (!isset($settingsByDate[$dateOfReport])) {
+            $settingsByDate[$dateOfReport] = [];
+        }
+        if (!isset($settingsByDate[$dateOfReport][$recordInstance])) {
+            $settingsByDate[$dateOfReport][$recordInstance] = [];
+        }
+        $this->migrateOldRecordInstances($settingsByDate, $dateOfReport, $recordInstance);
+        $settingsByDate[$dateOfReport][$recordInstance][$headerCol] = $value;
+        Application::saveSetting($field, $settingsByDate, $savePid);
     }
 
     private function migrateOldRecordInstances(&$settingAry, $dateOfReport, $newRecordInstance) {
@@ -584,6 +583,7 @@ table { border-collapse: collapse; }
         $html .= "<form method='POST' action='$thisUrl'>";
         $html .= Application::generateCSRFTokenHTML();
         $html .= "<input type='hidden' name='dateSubmitted' value='$today' />";
+        $html .= "<input type='hidden' name='dateOfReport' value='$dateOfReport' />";
         $fields = [".action_required"];
         foreach ($tablesToShow as $tableNum) {
             $html .= "<h3>Table $tableNum: ".NIHTables::getTableHeader($tableNum)."</h3>";
@@ -593,7 +593,19 @@ table { border-collapse: collapse; }
                 $table = NIHTables::makeTable1_4DataIntoHTML($tableNum, $data);
             } else {
                 $savedKey = self::makeSaveTableKey($savedName, $tableNum);
-                $table = $nihTables->getHTML($tableNum, FALSE, $savedKey, TRUE);
+                $data = $nihTables->getData($tableNum, $savedKey);
+                $data = $this->loadModifications($data, $tableNum, $nihTables);
+                $table = NIHTables::makeTable1_4DataIntoHTML($tableNum, $data);
+            }
+            foreach ($data['data'] as $row) {
+                $recordInstance = $row['recordInstance'] ?: NIHTables::getUniqueIdentifier($row, $tableNum);
+                $awardNo = "";
+                if ($tableNum == 3) {
+                    $awardNo = $row[$data['headerList'][0]] ?? "";
+                }
+                $recordId = $row['record'] ?? "";
+                $html .= "<input type='hidden' name='awardNo_$recordInstance' value='$awardNo' />";
+                $html .= "<input type='hidden' name='recordId_$recordInstance' value='$recordId' />";
             }
             $html .= $table;
             $html .= "<h4>Do you have any requested changes for this table?<br>Consider addressing any <span class='action_required'>red</span> items,<br>and make sure you click the Submit Changes button.</h4>";
@@ -640,8 +652,8 @@ table { border-collapse: collapse; }
         return trim($withoutSectionTags);
     }
 
-    public function getProgramEntriesFromTable1($faculty, $table1Pid, $dateOfReport, &$nihTables) {
-        $nihTables->addFaculty($faculty, $dateOfReport);
+    public function getProgramEntriesFromTable1($table1Pid, &$nihTables) {
+        // faculty already added $nihTables->addFaculty($faculty, $dateOfReport);
         $depts = $nihTables->getFacultyDepartments();
 
         $fields = [
@@ -702,7 +714,7 @@ table { border-collapse: collapse; }
                 }
             }
         }
-        return ["coaching" => $coachings];
+        return $coachings;
     }
 
     private static function formatReliability($value) {
@@ -775,16 +787,22 @@ table { border-collapse: collapse; }
         }
     }
 
-    public function getConfirmationKey($email, $tables) {
-        if ($email && REDCapManagement::isEmail($email)) {
-            return "confirmation_date_$email"."_".implode(",", $tables);
+    public function getConfirmationKeys($email, $tables) {
+        if ($email && REDCapManagement::isEmailOrEmails($email)) {
+            $emails = preg_split("/\s*[,;]\s*/", $email);
+            $keys = [];
+            foreach ($emails as $em) {
+                $keys[] = "confirmation_date_$em"."_".implode(",", $tables);
+            }
+            return $keys;
         }
-        return "";
+        return [];
     }
 
     public function saveConfirmationTimestamp($email, $tables) {
-        if ($key = $this->getConfirmationKey($email, $tables)) {
-            Application::saveSetting($key, time(), $this->pid);
+        $keys = $this->getConfirmationKeys($email, $tables);
+        if (!empty($keys)) {
+            Application::saveSetting($keys[0], time(), $this->pid);
             return ["mssg" => "Saved."];
         } else {
             return ["error" => "Invalid email."];
@@ -842,13 +860,14 @@ table { border-collapse: collapse; }
 
             $keys = Application::getSettingKeys($this->pid);
             foreach ($emails as $email) {
-                if (REDCapManagement::isEmail($email)) {
-                    $key = $this->getConfirmationKey($email, $tables);
-                    if (in_array($key, $keys)) {
-                        if ($ts = Application::getSetting($key, $this->pid)) {
-                            $data[$email] = date("m-d-Y H:i", $ts);
-                        } else {
-                            $data[$email] = "";
+                if (REDCapManagement::isEmailOrEmails($email)) {
+                    $confirmationKeys = $this->getConfirmationKeys($email, $tables);
+                    $data[$email] = "";
+                    foreach ($confirmationKeys as $key) {
+                        if (in_array($key, $keys)) {
+                            if ($ts = Application::getSetting($key, $this->pid)) {
+                                $data[$email] = date("m-d-Y H:i", $ts);
+                            }
                         }
                     }
                 } else {
@@ -867,20 +886,27 @@ table { border-collapse: collapse; }
     }
 
     public function getNameAssociatedWithEmail($email) {
-        $email = strtolower($email);
-        foreach (Application::getPids() as $pid) {
-            if (REDCapManagement::isActiveProject($pid)) {
-                $emails = Download::fastField($pid, "identifier_email");
-                $firstNames = Download::fastField($pid, "identifier_first_name");
-                $lastNames = Download::fastField($pid, "identifier_last_name");
-                foreach ($emails as $recordId => $recordEmail) {
-                    if ($recordEmail && (strtolower($recordEmail) == $email) && $firstNames[$recordId] && $lastNames[$recordId]) {
-                        return $firstNames[$recordId]." ".$lastNames[$recordId];
+        $namesFromEmails = $this->getNameAssociatedWithEmails([$email]);
+        return $namesFromEmails[$email] ?? "";
+    }
+    public function getNameAssociatedWithEmails($emails) {
+        $translation = [];
+        foreach ($emails as $email) {
+            $requestedEmails = preg_split("/\s*[,;]\s*/", strtolower($email));
+            foreach (Application::getPids() as $pid) {
+                if (REDCapManagement::isActiveProject($pid)) {
+                    $emailsInProject = Download::fastField($pid, "identifier_email");
+                    $firstNames = Download::fastField($pid, "identifier_first_name");
+                    $lastNames = Download::fastField($pid, "identifier_last_name");
+                    foreach ($emailsInProject as $recordId => $recordEmail) {
+                        if ($recordEmail && in_array(strtolower($recordEmail), $requestedEmails) && $firstNames[$recordId] && $lastNames[$recordId]) {
+                            $translation[$recordEmail] = $firstNames[$recordId]." ".$lastNames[$recordId];
+                        }
                     }
                 }
             }
         }
-        return "";
+        return $translation;
     }
 
     public function getUseridsAndNameAssociatedWithEmail($email) {
@@ -964,51 +990,71 @@ table { border-collapse: collapse; }
         return "<link href='$cssLink' rel='stylesheet' />";
     }
 
-    public function makeNotesKey($email, $tables) {
-        if ($email && REDCapManagement::isEmail($email)) {
-            return "table_notes_$email" . "_" . implode(",", $tables);
+    public function makeNotesKeys($email, $tables) {
+        if ($email && REDCapManagement::isEmailOrEmails($email)) {
+            $emails = preg_split("/\s*[,;]\s*/", $email);
+            $keys = [];
+            foreach ($emails as $em) {
+                $keys[] = "table_notes_$em" . "_" . implode(",", $tables);
+            }
+            return $keys;
         }
-        return "";
+        return [];
     }
 
     # returns array keyed by project header, then by date, then by table
     public function getNotesData($post) {
         $emails = Sanitizer::sanitizeArray($post['emails']);
         if ($post['tableNum']) {
-            $tableNums = [Sanitizer::sanitize($post['tableNum'])];
+            if (in_array($post['tableNum'], $this->getTablesToEdit())) {
+                $tableNums = $this->getTablesToEdit();
+            } else {
+                $tableNums = [Sanitizer::sanitize($post['tableNum'])];
+            }
         } else {
             $tableNums = $this->getTablesToEdit();
         }
+        $cleanedUpEmails = [];
+        foreach ($emails as $email) {
+            if ($email) {
+                $allEmails = preg_split("/\s*[,;]\s*/", $email);
+                foreach ($allEmails as $em) {
+                    if (!in_array($em, $cleanedUpEmails)) {
+                        $cleanedUpEmails[] = $em;
+                    }
+                }
+            }
+        }
+        $namesFromEmails = $this->getNameAssociatedWithEmails($cleanedUpEmails);
         $allNotes = [];
         foreach (Application::getPids() as $pid) {
             if (REDCapManagement::isActiveProject($pid)) {
                 $keys = Application::getSettingKeys($pid);
                 $projectHeader = FALSE;
                 foreach ($emails as $email) {
-                    if (REDCapManagement::isEmail($email)) {
-                        $key = $this->makeNotesKey($email, $tableNums);
-                        if (in_array($key, $keys)) {
-                            $name = $this->getNameAssociatedWithEmail($email);
-                            $ary = Application::getSetting($key, $pid);   // keyed by date, then by table
-                            $tableAry = $this->filterNotesByTables($ary, $tableNums);
-                            if (is_array($tableAry) && !empty($tableAry)) {
-                                $currToken = Application::getSetting("token", $pid);
-                                $currServer = Application::getSetting("server", $pid);
-                                $adminEmail = Application::getSetting("admin_email", $pid);
-                                if ($currToken && $currServer) {
-                                    if (!$projectHeader) {
-                                        $projectHeader = $pid.": ".Download::projectTitle($currToken, $currServer);
-                                        if ($adminEmail) {
-                                            $projectHeader = "<a href='mailto:$adminEmail'>$projectHeader</a>";
+                    $name = $namesFromEmails[$email];
+                    if (REDCapManagement::isEmailOrEmails($email)) {
+                        if (!isset($allNotes[$name])) {
+                            $allNotes[$name] = [];
+                        }
+                        $possibleKeys = $this->makeNotesKeys($email, $tableNums);
+                        foreach ($possibleKeys as $key) {
+                            if (in_array($key, $keys)) {
+                                $ary = Application::getSetting($key, $pid);   // keyed by date, then by table
+                                $tableAry = $this->filterNotesByTables($ary, $tableNums);
+                                if (is_array($tableAry) && !empty($tableAry)) {
+                                    $currToken = Application::getSetting("token", $pid);
+                                    $currServer = Application::getSetting("server", $pid);
+                                    $adminEmail = Application::getSetting("admin_email", $pid);
+                                    if ($currToken && $currServer) {
+                                        if (!$projectHeader) {
+                                            $projectHeader = $pid.": ".Download::projectTitle($currToken, $currServer);
+                                            if ($adminEmail) {
+                                                $projectHeader = "<a href='mailto:$adminEmail'>$projectHeader</a>";
+                                            }
                                         }
+                                        $allNotes[$name][$projectHeader] = $tableAry;
                                     }
-                                    if (!isset($allNotes[$name])) {
-                                        $allNotes[$name] = [];
-                                    }
-                                    if (!isset($allNotes[$name][$projectHeader])) {
-                                        $allNotes[$name][$projectHeader] = [];
-                                    }
-                                    $allNotes[$name][$projectHeader] = $tableAry;
                                 }
                             }
                         }
@@ -1035,9 +1081,20 @@ table { border-collapse: collapse; }
     }
 
     public function saveNotes($post, $email, $tables) {
-        $date = Sanitizer::sanitize($post['dateSubmitted']);
-        $notesKey = $this->makeNotesKey($email, $tables);
-        $settings = Application::getSetting($notesKey, $this->pid);
+        $date = Sanitizer::sanitizeDate($post['dateSubmitted']);
+        $dateOfReport = Sanitizer::sanitizeDate($post['dateOfReport']);
+
+        $notesKeys = $this->makeNotesKeys($email, $tables);
+        if (empty($notesKeys)) {
+            return "No email provided.";
+        }
+        $settings = "";
+        foreach ($notesKeys as $notesKey) {
+            $settings = Application::getSetting($notesKey, $this->pid);
+            if (!empty($settings)) {
+                break;
+            }
+        }
         if (!$settings) {
             $settings = [];
         }
@@ -1046,8 +1103,8 @@ table { border-collapse: collapse; }
         $nihTables = new NIHTables($this->token, $this->server, $this->pid, $metadata);
         foreach ($tables as $tableNum) {
             $notes = Sanitizer::sanitizeWithoutChangingQuotes($post['table_'.$tableNum]);
-            $notes = preg_replace("/[\n\r]{2}/", "<br>", $notes);
-            $notes = preg_replace("/[\n\r]/", "<br>", $notes);
+            $notes = preg_replace("/[\n\r]{2}/", "<br/>", $notes);
+            $notes = preg_replace("/[\n\r]/", "<br/>", $notes);
             $headers = $nihTables->getHeaders($tableNum);
             $matchesHeader = FALSE;
             $leadingRegex = "/^table_".$tableNum."___/";
@@ -1057,6 +1114,8 @@ table { border-collapse: collapse; }
                     foreach ($headers as $header) {
                         $headerId = REDCapManagement::makeHTMLId($header);
                         if ($id == $headerId) {
+                            $headerWithoutBreaks = preg_replace("/<br\/?>/i", " ", $header);
+                            $notes .= "<br/>$headerWithoutBreaks: $value";
                             $matchesHeader = TRUE;
                             break;
                         }
@@ -1064,16 +1123,19 @@ table { border-collapse: collapse; }
                 }
             }
             if ($matchesHeader) {
-                $notes .= "<br>";
+                $notes .= "<br/>";
             }
             foreach ($post as $postKey => $value) {
                 if (preg_match($leadingRegex, $postKey) && ($value !== "")) {
-                    $id = preg_replace($leadingRegex, "", $postKey);
+                    $dataKey = preg_replace($leadingRegex, "", $postKey);
+                    list($recordInstance, $id) = explode(NIHTables::HTML_FIELD_SEPARATOR, $dataKey);
                     foreach ($headers as $header) {
                         $headerId = REDCapManagement::makeHTMLId($header);
                         if ($id == $headerId) {
-                            $header = preg_replace("/<br>/", " ", $header);
-                            $notes .= "<br>".$header.": ".$value;
+                            $saveRecord = Sanitizer::sanitize($post["recordId_$recordInstance"] ?? "");
+                            $awardNo = Sanitizer::sanitize($post["awardNo_$recordInstance"] ?? "");
+                            $keyForRow = self::makeKeyForRow($saveRecord, $awardNo);
+                            $this->saveDataPoint($header, $value, $tableNum, $keyForRow, $this->pid, $dateOfReport, $recordInstance);
                             break;
                         }
                     }
@@ -1085,11 +1147,21 @@ table { border-collapse: collapse; }
         }
         if (!empty($tableNotes)) {
             $settings[$date] = $tableNotes;
-            Application::saveSetting($notesKey, $settings, $this->pid);
+            Application::saveSetting($notesKeys[0], $settings, $this->pid);
             $this->saveConfirmationTimestamp($email, $tables);
             return "Data saved. Thank you!";
         } else {
             return "No data to save.";
+        }
+    }
+
+    private static function makeKeyForRow($saveRecord, $awardNo) {
+        if ($saveRecord) {
+            return $saveRecord;
+        } else if ($awardNo) {
+            return $awardNo;
+        } else {
+            return "";
         }
     }
 

@@ -49,10 +49,16 @@ class Publications {
         return $startDate;
     }
 
-    public static function makeFullCitations($token, $server, $pid, $recordId, $redcapData, $addTimestamp = FALSE) {
+    public static function makeFullCitations($token, $server, $pid, $recordId, $metadata, $addTimestamp = FALSE) {
+        $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), [$recordId]);
         $upload = [];
+        $instancesToDelete = [];
         foreach ($redcapData as $row) {
-            if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
+            if (
+                ($row['record_id'] == $recordId)
+                && ($row['redcap_repeat_instrument'] == "citation")
+                && $row['citation_pmid']
+            ) {
                 $citation = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row);
                 $pubmedCitation = $citation->getPubMedCitation();
                 if ($pubmedCitation) {
@@ -67,12 +73,17 @@ class Publications {
                     }
                     $upload[] = $uploadRow;
                 }
+            } else if (!$row['citation_pmid']) {
+                $instancesToDelete[] = $row['redcap_repeat_instance'];
             }
         }
 
         if (!empty($upload)) {
             Application::log("Adding ".count($upload)." full citations for Record $recordId", $pid);
             Upload::rows($upload, $token, $server);
+        }
+        if (!empty($instancesToDelete)) {
+            Upload::deleteFormInstances($token, $server, $pid, "citation_", $recordId, $instancesToDelete);
         }
     }
 

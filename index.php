@@ -32,7 +32,7 @@ try {
         }
     }
 
-    if (Application::isTable1Project($pid)) {
+    if (Application::isTable1Project($pid) || Application::isSocialMediaProject($pid)) {
         header("Location: ".Links::makeProjectHomeURL($pid));
     }
 

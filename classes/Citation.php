@@ -1047,15 +1047,49 @@ class Citation {
         return $matchedAuthors;
     }
 
+    public static function splitAuthorList($authorList) {
+        if (preg_match("/;/", $authorList)) {
+            return preg_split("/\s*;\s*/", $authorList);
+        } else {
+            return preg_split("/\s*,\s*/", $authorList);
+        }
+    }
+
 	public function getAuthorList() {
         if ($this->getVariable("data_source") == "eric") {
-            return preg_split("/\s*;\s*/", $this->getVariable("author"));
+            return self::splitAuthorList($this->getVariable("author"));
         } else {
-            return preg_split("/\s*,\s*/", $this->getVariable("authors"));
+            return self::splitAuthorList($this->getVariable("authors"));
         }
 	}
+    public static function getJournalTranslations() {
+        $filename = __DIR__."/../nlmcatalog.txt";
+        $journals = [];
+        if (file_exists($filename)) {
+            $txt = file_get_contents($filename);
+            $lines = preg_split("/[\n\r]+/", $txt);
+            $i = 0;
+            while ($i < count($lines)) {
+                $currLine = $lines[$i];
+                if (preg_match("/^\d+\. (.+)$/", $currLine, $matches)) {
+                    $journalTitle = $matches[1];
+                    $nextLine = $currLine;
+                    do {
+                        $i++;
+                        $nextLine .= " ".$lines[$i];
+                    } while (($i < count($lines)) && !preg_match("/NLM ID:/", $lines[$i]));
+                    if (preg_match("/NLM Title Abbreviation: ([^\.]+)\./", $nextLine, $matches)) {
+                        $journalAbbrev = $matches[1];
+                        $journals[$journalAbbrev] = $journalTitle;
+                    }
+                }
+                $i++;
+            }
+        }
+        return $journals;
+    }
 
-	private static function getNamesFromNodes($nameNodes) {
+	public static function getNamesFromNodes($nameNodes) {
         $currLastNames = [];
         if (count($nameNodes) > 2) {
             for ($i = 0; $i < count($nameNodes) - 1; $i++) {
@@ -1071,7 +1105,7 @@ class Citation {
     }
 
     private static function isBolded($name) {
-	    return preg_match("/<b>/", $name);
+	    return preg_match("/<b>/i", $name) || preg_match("/<strong>/i", $name);
     }
 
 	public static function boldName($lastName, $firstName, $authorList) {
@@ -1080,37 +1114,8 @@ class Citation {
 		$newAuthorList = [];
 		$boldedName = FALSE;
 		foreach ($authorList as $name) {
-            $nameNodes = preg_split("/\s+/", $name);
-            if (count($nameNodes) >= 2) {
-                list($currLastNames, $currFirstInitial, $currLastName) = self::getNamesFromNodes($nameNodes);
-                if ($firstName && $lastName) {
-                    if (NameMatcher::matchByInitials($lastName, $firstName, $currLastName, $currFirstInitial)) {
-                        if (!self::isBolded($name)) {
-                            $name = "<b>" . $name . "</b>";
-                        }
-                        $boldedName = TRUE;
-                    } else {
-                        // for double last names - must loop through both last names
-                        foreach (NameMatcher::explodeLastName($lastName) as $ln) {
-                            $matched = FALSE;
-                            if (NameMatcher::matchByInitials($ln, $firstName, $currLastName, $currFirstInitial)) {
-                                $matched = TRUE;
-                            }
-                            foreach ($currLastNames as $ln2) {
-                                if (NameMatcher::matchByInitials($ln, $firstName, $ln2, $currFirstInitial)) {
-                                    $matched = TRUE;
-                                }
-                            }
-                            if ($matched) {
-                                if (!self::isBolded($name)) {
-                                    $name = "<b>" . $name . "</b>";
-                                }
-                                $boldedName = TRUE;
-                                break;    // inner
-                            }
-                        }
-                    }
-                }
+            if (NameMatcher::matchPubMedName($name, $firstName, $lastName)) {
+
             }
             $newAuthorList[] = $name;
         }
@@ -1125,7 +1130,7 @@ class Citation {
                     if ($lastName) {
                         if (NameMatcher::matchByLastName($lastName, $currLastName)) {
                             if (!self::isBolded($name)) {
-                                $name = "<b>" . $name . "</b>";
+                                $name = "<strong>" . $name . "</strong>";
                             }
                         } else {
                             foreach (NameMatcher::explodeLastName($lastName) as $ln) {
@@ -1140,7 +1145,7 @@ class Citation {
                                 }
                                 if ($matched) {
                                     if (!self::isBolded($name)) {
-                                        $name = "<b>" . $name . "</b>";
+                                        $name = "<strong>" . $name . "</strong>";
                                     }
                                     break;    // inner
                                 }

@@ -649,6 +649,56 @@ class NameMatcher {
         return preg_match("/^\S+,\s+\S/", $name);
     }
 
+    private static function isAuthorPosition($name, $authorList, $pos) {
+        $authors = Citation::splitAuthorList($authorList);
+        if (empty($authors)) {
+            return FALSE;
+        }
+        if ($pos == "first") {
+            $author = $authors[0];
+        } else if ($pos == "last") {
+            $author = $authors[count($authors) - 1];
+        } else {
+            throw new \Exception("Invalid position $pos!");
+        }
+
+        list($first, $last) = self::splitName($name,2);
+        return self::matchPubMedName($author, $first, $last);
+    }
+
+    public static function matchPubMedName($pubMedName, $firstName, $lastName) {
+        $nameNodes = preg_split("/\s+/", $pubMedName);
+        if (count($nameNodes) >= 2) {
+            list($currLastNames, $currFirstInitial, $currLastName) = Citation::getNamesFromNodes($nameNodes);
+            if ($firstName && $lastName) {
+                if (self::matchByInitials($lastName, $firstName, $currLastName, $currFirstInitial)) {
+                    return TRUE;
+                } else {
+                    // for double last names - must loop through both last names
+                    foreach (self::explodeLastName($lastName) as $ln) {
+                        if (self::matchByInitials($ln, $firstName, $currLastName, $currFirstInitial)) {
+                            return TRUE;
+                        }
+                        foreach ($currLastNames as $ln2) {
+                            if (self::matchByInitials($ln, $firstName, $ln2, $currFirstInitial)) {
+                                return TRUE;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return FALSE;
+    }
+
+    public static function isFirstAuthor($name, $authorList) {
+        return self::isAuthorPosition($name, $authorList, "first");
+    }
+
+    public static function isLastAuthor($name, $authorList) {
+        return self::isAuthorPosition($name, $authorList, "last");
+    }
+
 	# returns list($firstName, $lastName)
 	public static function splitName($name, $parts = 2, $loggingOn = FALSE, $clearOfExtraTitles = TRUE) {
         $simpleLastNamePrefixes = ["von", "van", "de"];
@@ -713,7 +763,7 @@ class NameMatcher {
                     $changed = FALSE;
                     if ($loggingOn) { Application::log("In do-while with ".count($nodes)." nodes<br>"); }
                     if (count($nodes) == $parts) {
-                        if (($parts == 2) && strlen($nodes[1]) <= 2) {
+                        if (($parts == 2) && preg_match("/^[A-Z][A-Z]?[A-Z]?$/", $nodes[1])) {
                             # Initials
                             if ($loggingOn) { Application::log("Do-while A Initials<br>"); }
                             return [$nodes[1], $nodes[0]];

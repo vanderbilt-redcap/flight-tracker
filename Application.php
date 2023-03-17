@@ -506,7 +506,7 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
                 $allPids = $module ? $module->getPids() : [];
                 $pids = [];
                 foreach ($allPids as $pid) {
-                    if (!self::isTable1Project($pid)) {
+                    if (!self::isTable1Project($pid) && !self::isSocialMediaProject($pid)) {
                         $pids[] = $pid;
                     }
                 }
@@ -601,6 +601,10 @@ SELECT DISTINCT s.project_id AS pid
 
     public static function getCustomFields($metadata) {
         return REDCapManagement::screenForFields($metadata, self::$customFields);
+    }
+
+    public static function isSocialMediaProject($pid) {
+        return Application::isVanderbilt() && ($pid == 163109);
     }
 
     public static function getExporterFields($metadata) {

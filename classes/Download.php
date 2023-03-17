@@ -1185,7 +1185,7 @@ class Download {
             while (count($questionMarks) < count($fields)) {
                 $questionMarks[] = "?";
             }
-            $query->add("and")->addInClause("field_name IN (".implode(",", $questionMarks).")", $fields);
+            $query->add("and field_name IN (".implode(",", $questionMarks).")", $fields);
 
             $result = $query->execute();
             $recordDataByInstance = [];

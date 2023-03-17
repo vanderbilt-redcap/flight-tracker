@@ -21,7 +21,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.2.8";
+		return "5.2.9";
 	}
 
 	public static function getLockFile($pid) {
@@ -707,13 +707,29 @@ class CareerDev {
 		return self::link("/index.php");
 	}
 
-	public static function saveCurrentDate($setting, $pid) {
-		$ary = self::getSetting(self::getGeneralSettingName(), $pid);
+	public static function saveCurrentDate($setting, $pid, $retriesLeft = 5) {
+        $field = self::getGeneralSettingName();
+		$ary = self::getSetting($field, $pid);
 		if (!is_array($ary)) {
 		    $ary = [];
         }
 		$ary[$setting] = date("Y-m-d");
-		self::setSetting(self::getGeneralSettingName(), $ary, $pid);
+        try {
+            self::setSetting($field, $ary, $pid);
+        } catch (\Exception $e) {
+            if (
+                ($e->getMessage() == "Prepared statement execution failed")
+                && ($retriesLeft > 0)
+            ) {
+                if ($retriesLeft >= 3) {
+                    sleep(5);
+                } else {
+                    sleep(30);
+                }
+                Application::log("Retrying saving $field; $retriesLeft retries remaining", $pid);
+                self::saveCurrentDate($field, $pid, $retriesLeft - 1);
+            }
+        }
 	}
 
 	public static function clearDate($setting, $pid) {

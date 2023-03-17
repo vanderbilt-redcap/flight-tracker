@@ -25,7 +25,8 @@ if ($_GET['record']) {
             $records = Download::recordIds($token, $server);
         }
     } else {
-        $records = [Sanitizer::sanitize($_GET['record'])];
+        $recordIds = Download::recordIds($token, $server);
+        $records = [Sanitizer::getSanitizedRecord($_GET['record'], $recordIds)];
     }
 } else {
     $records = [];
@@ -384,7 +385,11 @@ function makePublicationSearch($names, $record = NULL) {
 		$html .= ">$name</option>\n";
 	}
 	$html .= "</select></p>\n";
-    if (isset($_GET['record']) && $record) {
+    if (!isset($_GET['record'])) {
+        $grantText = isset($_GET['grant']) ? " all publications associated with ".Sanitizer::sanitize($_GET['grant']) : "";
+        $html .= "<p class='smaller centered max-width'>Select a scholar or click the \"View All\" link to view$grantText.</p>";
+    }
+    if (isset($_GET['record']) && $record && ($record !== "all")) {
         $link = Application::link("wrangler/include.php")."&wranglerType=Publications&record=".$record;
         $html .= "<p class='centered'><a href='javascript:;' onclick='window.location.href=\"$link\";'>Wrangle This Scholar's Publications</a></p>";
     }

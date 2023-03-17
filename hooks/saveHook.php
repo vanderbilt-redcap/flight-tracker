@@ -3,12 +3,80 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use \Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
-require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
+if (Application::isSocialMediaProject($project_id) && ($instrument == "scholars_social_media")) {
+    $handleFields = ["identifier_twitter", "identifier_linkedin"];
+    $myData = \REDCap::getData($project_id, "json-array", [$record]);
+    $hasData = FALSE;
+    foreach ($myData as $row) {
+        foreach ($handleFields as $field) {
+            $myField = makeSocialMediaField($field);
+            if ($row[$myField]) {
+                $hasData = TRUE;
+            }
+        }
+    }
+    if (!$hasData) {
+        exit;
+    }
+
+    $matches = [];
+    foreach (Application::getPids() as $currPid) {
+        if (REDCapManagement::isActiveProject($currPid)) {
+            $currToken = Application::getSetting("token", $currPid);
+            $currServer = Application::getSetting("server", $currPid);
+            foreach ($myData as $row) {
+                $values = [];
+                foreach ($handleFields as $field) {
+                    $myField = makeSocialMediaField($field);
+                    if ($row[$myField]) {
+                        $values[$field] = $row[$myField];
+                    }
+                }
+                if (!empty($values) && $currToken && $currServer) {
+                    $firstNames = Download::firstnames($currToken, $currServer);
+                    $lastNames = Download::lastnames($currToken, $currServer);
+                    foreach ($firstNames as $recordId => $firstName) {
+                        $lastName = $lastNames[$recordId] ?? "";
+                        if (
+                            $firstName && $lastName && $row['first_name'] && $row['last_name']
+                            && NameMatcher::matchName($row['first_name'], $row['last_name'], $firstName, $lastName)
+                        ) {
+                            $id = $currPid.":".$recordId;
+                            $matches[$id] = $values;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    foreach ($matches as $id => $values) {
+        list($currPid, $recordId) = explode(":", $id);
+        $currToken = Application::getSetting("token", $currPid);
+        $currServer = Application::getSetting("server", $currPid);
+        $redcapData = Download::fieldsForRecords($currToken, $currServer, array_merge(["record_id"], $handleFields), [$recordId]);
+        $uploadRow = ["record_id" => $recordId];
+        foreach ($redcapData as $row) {
+            foreach ($fields as $field) {
+                if (isset($values[$field]) && $values[$field]) {
+                    $uploadRow[$field] = $row[$field] ? $row[$field].", ".$values[$field] : $values[$field];
+                }
+            }
+        }
+        if (count($uploadRow) > 1) {
+            Upload::oneRow($uploadRow, $currToken, $currServer);
+        }
+    }
+    exit;
+}
+
+require_once(dirname(__FILE__)."/../small_base.php");
 
 global $token, $server;
 
@@ -150,3 +218,6 @@ function isDataAlreadyCopied($positionData, $transferData) {
     return $hasDataAlready;
 }
 
+function makeSocialMediaField($redcapField) {
+    return str_replace("identifier_", "", $redcapField)."_handle";
+}

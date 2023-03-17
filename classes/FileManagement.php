@@ -105,6 +105,18 @@ class FileManagement {
         return "";
     }
 
+    public static function getBase64OfFile($filename, $mimeType) {
+        if (file_exists($filename)) {
+            $content = file_get_contents($filename);
+            if ($content) {
+                $base64 = base64_encode($content);
+                $header = "data:$mimeType;charset=utf-8;base64, ";
+                return $header . $base64;
+            }
+        }
+        return "";
+    }
+
     public static function getEdocBase64($id) {
         if (is_numeric($id)) {
             $module = Application::getModule();
@@ -112,13 +124,7 @@ class FileManagement {
             $q = $module->query($sql, [$id]);
             if ($row = $q->fetch_assoc()) {
                 $filename = EDOC_PATH . $row['stored_name'];
-                $content = file_get_contents($filename);
-                if ($content) {
-                    $base64 = base64_encode($content);
-                    $mime = $row['mime_type'];
-                    $header = "data:$mime;charset=utf-8;base64, ";
-                    return $header . $base64;
-                }
+                return self::getBase64OfFile($filename, $row['mime_type']);
             }
         }
         throw new \Exception("Invalid Edoc ID!");

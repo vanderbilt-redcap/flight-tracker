@@ -143,7 +143,7 @@ function getPubs($token, $server, $pid, $records) {
             Publications::deleteMismatchedRows($token, $server, $pid, $recordId, $firstNames, $lastNames);
             Publications::updateNewPMCs($token, $server, $pid, $recordId, $redcapData);
             if ($hasFullCitation) {
-                Publications::makeFullCitations($token, $server, $pid, $recordId, $redcapData, $hasTimestamp);
+                Publications::makeFullCitations($token, $server, $pid, $recordId, $metadata, $hasTimestamp);
             }
         }
 		binREDCapRows($redcapData, $citationIds);
