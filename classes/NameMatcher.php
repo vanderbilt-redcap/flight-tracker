@@ -723,6 +723,7 @@ class NameMatcher {
 		if ($clearOfExtraTitles) {
             $nodes = self::clearOfDegrees($nodes);
         }
+        $nodes = self::clearOfHonorifics($nodes);
         if ($loggingOn) { Application::log("Cleared into: ".json_encode($nodes)); }
 		if (count($nodes) == 1) {
 		    if (preg_match("/\band\b/", $name)) {

@@ -29,6 +29,7 @@ Application::keepAlive($pid);
 
 $reactHandler = new ReactNIHTables($token, $server, $pid);
 $module = Application::getModule();
+$titleHTML = "<title>Flight Tracker Feedback for NIH Training Tables</title>".Application::makeIcon();
 
 if (isset($_POST['action']) && $token && $server && $pid) {
     $action = Sanitizer::sanitize($_POST['action']);
@@ -153,7 +154,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
     header("Content-type: application/json");
     echo json_encode($data);
 } else if (isset($_GET['revise'])) {
-    echo Application::makeIcon();
+    echo $titleHTML;
     $email = Sanitizer::sanitize($_GET['revise'] ?? "No email");
     $date = Sanitizer::sanitize($_GET['date']);
     $requestedHash = Sanitizer::sanitize($_GET['hash']);
@@ -162,7 +163,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
     if ($reactHandler->verify($requestedHash, $email)) {
         list($tables, $emailHash) = $reactHandler->getInformation($requestedHash, $email);
         if (!empty($userids) && !isset($_GET['delegate'])) {
-            $newUrl = Application::link("reporting/tables2-4WithAuth.php", $pid)."&revise=".urlencode($email)."&hash=".urlencode($emailHash)."&date=".urlencode($date);
+            $newUrl = Application::link("reporting/tables2-4WithAuth.php", $pid)."&revise=".urlencode($email)."&hash=".urlencode($emailHash)."&date=".urlencode($date)."&NOAUTH";
             header("Location: $newUrl");
         } else {
             echo $reactHandler->getTable1_4Header();
@@ -172,6 +173,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
         echo "Not verified.";
     }
 } else if (isset($_GET['confirm'])) {
+    echo $titleHTML;
     $email = Sanitizer::sanitize($_GET['confirm'] ?? "No email");
     $date = Sanitizer::sanitize($_GET['date']);
     $requestedHash = Sanitizer::sanitize($_GET['hash']);
@@ -179,7 +181,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
         list($tables, $emailHash) = $reactHandler->getInformation($requestedHash, $email);
         if ($reactHandler->hasUseridsAssociatedWithEmail($email) && !isset($_GET['delegate'])) {
             $reactHandler->saveConfirmationTimestamp($email, $tables);
-            $newUrl = Application::link("reporting/tables2-4WithAuth.php", $pid) . "&confirm=" . urlencode($email) . "&hash=" . urlencode($emailHash) . "&date=" . urlencode($date);
+            $newUrl = Application::link("reporting/tables2-4WithAuth.php", $pid) . "&confirm=" . urlencode($email) . "&hash=" . urlencode($emailHash) . "&date=" . urlencode($date) . "&NOAUTH";
             header("Location: $newUrl");
         } else {
             $reactHandler->saveConfirmationTimestamp($email, $tables);
@@ -188,17 +190,14 @@ if (isset($_POST['action']) && $token && $server && $pid) {
         }
     }
 } else if (isset($_GET['email'])) {
+    echo $titleHTML;
     $email = Sanitizer::sanitize($_GET['email'] ?? "No email");
     $requestedHash = Sanitizer::sanitize($_GET['hash']);
     echo $reactHandler->getTable1_4Header();
     if ($reactHandler->verify($requestedHash, $email)) {
         list($userids, $name) = $reactHandler->getUseridsAndNameAssociatedWithEmail($email);
-        if (!empty($userids)) {
-            list($tables, $emailHash) = $reactHandler->getInformation($requestedHash, $email);
-            echo $reactHandler->saveNotes($_POST, $email, $tables);
-        } else {
-            echo "Could not match user-id.";
-        }
+        list($tables, $emailHash) = $reactHandler->getInformation($requestedHash, $email);
+        echo $reactHandler->saveNotes($_POST, $email, $tables);
     } else {
         echo "Invalid request.";
     }

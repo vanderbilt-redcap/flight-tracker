@@ -417,7 +417,7 @@ class NIHTables {
 	    foreach ($this->facultyMembers as $facultyName) {
             list($first, $last) = NameMatcher::splitName($facultyName, 2);
 	        $matches = self::findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
-	        if (empty($matches)) {
+            if (empty($matches)) {
                 $row = [
                     $facultyName,
                     self::$NA,
@@ -485,37 +485,8 @@ class NIHTables {
                     }
                 }
 
-                $otherProjectsValues = [];
-                foreach ($headers as $header) {
-                    $otherProjectsValues[$header] = [];
-                }
-                $combinedEmails = [];
-                foreach ($matches as $match) {
-                    list($pid, $recordId) = explode(":", $match);
-                    $email = $emailsByPid[$pid][$recordId] ?? "";
-                    $emailMailto = Links::makeMailtoLink($email);
-                    if ($emailMailto && !in_array($emailMailto, $combinedEmails)) {
-                        $combinedEmails[] = $emailMailto;
-                    }
-                    $countKey = self::makeCountKey($table, $recordId);
-                    $settingsByDate = Application::getSetting($countKey, $pid) ?: [];
-                    foreach ($settingsByDate as $ymdDate => $settings) {
-                        foreach ($settings as $recordInstance => $s) {
-                            foreach ($headers as $header) {
-                                if (isset($s[$header]) && ($s[$header] !== "")) {
-                                    $value = $s[$header];
-                                    if (!isset($otherProjectsValues[$header][$pid])) {
-                                        $otherProjectsValues[$header][$pid] = [];
-                                    }
-                                    $otherProjectsValues[$header][$pid][$ymdDate] = $value;
-                                }
-                            }
-                        }
-                    }
-                }
-
+                $otherProjectsValues = self::getFeedbackData($headers, $matches, $emailsByPid, $table, $this->pid);
                 $emailHTML = empty($combinedEmails) ? "" : "<br/>".implode("<br/>", $combinedEmails);
-
                 $savedData = $savedName ? Application::getSetting($savedName, $this->pid) : [];
 
                 $defaultPresetValues = [
@@ -554,6 +525,38 @@ class NIHTables {
             }
         }
         return $data;
+    }
+
+    public static function getFeedbackData($headers, $matches, $emailsByPid, $table, $savePid) {
+        $otherProjectsValues = [];
+        foreach ($headers as $header) {
+            $otherProjectsValues[$header] = [];
+        }
+        $combinedEmails = [];
+        foreach ($matches as $match) {
+            list($pid, $recordId) = explode(":", $match);
+            $email = $emailsByPid[$pid][$recordId] ?? "";
+            $emailMailto = Links::makeMailtoLink($email);
+            if ($emailMailto && !in_array($emailMailto, $combinedEmails)) {
+                $combinedEmails[] = $emailMailto;
+            }
+            $countKey = self::makeCountKey($table, $recordId, $pid);
+            $settingsByDate = Application::getSetting($countKey, $savePid) ?: [];
+            foreach ($settingsByDate as $ymdDate => $settings) {
+                foreach ($settings as $recordInstance => $s) {
+                    foreach ($headers as $header) {
+                        if (isset($s[$header]) && ($s[$header] !== "")) {
+                            $value = $s[$header];
+                            if (!isset($otherProjectsValues[$header][$pid])) {
+                                $otherProjectsValues[$header][$pid] = [];
+                            }
+                            $otherProjectsValues[$header][$pid][$ymdDate] = $value;
+                        }
+                    }
+                }
+            }
+        }
+        return $otherProjectsValues;
     }
 
     private static function getOtherProjectsSavedValues($tableNum, $defaultValues, $facultyName) {
@@ -615,7 +618,7 @@ class NIHTables {
         }
     }
 
-    private static function displayOtherProjectsValues($valuesByPid, $savedValuesByPid = []) {
+    public static function displayOtherProjectsValues($valuesByPid, $savedValuesByPid = [], $previousValue = "") {
 	    if (empty($valuesByPid) && empty($savedValuesByPid)) {
 	        return "";
         }
@@ -664,7 +667,9 @@ class NIHTables {
                 }
                 if (!empty($valuesStrings)) {
                     $str = implode("<br/>", $valuesStrings);
-                    $htmlRows[] = "<div class='tooltip smallest left-align' style='text-decoration-color: #BBB;'><span class='widetooltiptext centered'>$str</span>$projectInfo</div><div>$contactInfo</div>";
+                    if (strpos($previousValue, $str) === FALSE) {
+                        $htmlRows[] = "<div class='tooltip smallest left-align' style='text-decoration-color: #BBB;'><span class='widetooltiptext centered'>$str</span>$projectInfo</div><div>$contactInfo</div>";
+                    }
                 }
             }
         }
@@ -699,8 +704,8 @@ class NIHTables {
         );
     }
 
-    public static function makeCountKey($tableNum, $recordId) {
-        return "table_".$tableNum."_record_".$recordId;
+    public static function makeCountKey($tableNum, $recordId, $pid) {
+        return "table_".$tableNum."_record_".$pid.":".$recordId;
     }
 
     private function findFields($redcapData, $recordId, $ldapRows, $ldapField, $redcapField, $separator = ",") {
@@ -1030,54 +1035,60 @@ class NIHTables {
 	    return "";
     }
 
+    public static function getRecordInstance($row, $headers, $tableNum) {
+        return self::getUniqueIdentifier($row, $headers, $tableNum);
+    }
+
     // coordinated with MainGroup.makeRecordInstance
-    public static function getUniqueIdentifier($row, $tableNum) {
+    public static function getUniqueIdentifier($row, $headers, $tableNum) {
 	    $numElems = ($tableNum == 2) ? 1 : 3;
 	    $items = [];
-        $i = 0;
-        foreach ($row as $idx => $val) {
-            if ($i < $numElems) {
-                $item = REDCapManagement::makeHTMLId($val);
-                $items[] = $item;
+        for ($i = 0; $i < count($headers) && $i < $numElems; $i++) {
+            $val = $row[$headers[$i]] ?? $row[$i] ?? "";
+            $item = REDCapManagement::makeHTMLId($val);
+            if (!$item) {
+                $item = "-";
             }
-            $i++;
+            $items[] = $item;
         }
 	    return implode("___", $items);
     }
 
     public static function separateRecordAndHeaders($data, $title, $tableNum) {
-	    $headers = [];
 	    $newData = [];
+        $headers = $data["Headers"] ?? [];
 	    foreach ($data as $listOfMatches => $rows) {
-	        if ($listOfMatches == "Headers") {
-                $headers = $rows;
-            } else {
-	            $usedEmails = [];
+	        if ($listOfMatches != "Headers") {
+                $usedEmails = [];
                 $matchAry = explode(",", $listOfMatches);
                 $emailsWithName = [];
                 foreach ($matchAry as $match) {
-                    list($pid, $recordId) = explode(":", $match);
-                    $email = strtolower(self::fetchEmail($pid, $recordId));
-                    if (!in_array($email, $emailsWithName)) {
-                        $emailsWithName[] = $email;
+                    if (preg_match("/:/", $match)) {
+                        list($pid, $recordId) = explode(":", $match);
+                        $email = strtolower(self::fetchEmail($pid, $recordId));
+                        if (!in_array($email, $emailsWithName)) {
+                            $emailsWithName[] = $email;
+                        }
                     }
                 }
 	            foreach ($matchAry as $match) {
-                    list($pid, $recordId) = explode(":", $match);
-                    foreach ($rows as $row) {
-                        $newRow = [];
-                        $recordInstance = self::getUniqueIdentifier($row, $tableNum);
-                        $newRow['pid'] = $pid;
-                        $newRow['record'] = $recordId;
-                        $newRow['recordInstance'] = $recordInstance;
-                        $newRow['email'] = implode(";", $emailsWithName);
-                        for ($j = 0; $j < count($row); $j++) {
-                            $newRow[$headers[$j]] = $row[$j];
+                    if (preg_match("/:/", $match)) {
+                        list($pid, $recordId) = explode(":", $match);
+                        foreach ($rows as $row) {
+                            $newRow = [];
+                            $recordInstance = self::getUniqueIdentifier($row, $headers, $tableNum);
+                            $newRow['pid'] = $pid;
+                            $newRow['record'] = $recordId;
+                            $newRow['recordInstance'] = $recordInstance;
+                            $newRow['email'] = implode(";", $emailsWithName);
+                            for ($j = 0; $j < count($row); $j++) {
+                                $newRow[$headers[$j]] = $row[$j];
+                            }
+                            if (!empty($newRow)) {
+                                $newData[$recordInstance] = $newRow;
+                            }
                         }
-                        if (!empty($newRow)) {
-                            $newData[$recordInstance] = $newRow;
-                        }
-                    }
+                    }      // else faculty name - no data with match
                 }
             }
         }
@@ -1128,7 +1139,7 @@ class NIHTables {
 	        $html .= "</tr>";
 	        $html .= "</thead><tbody>";
 	        foreach ($data as $row) {
-                $recordInstance = self::getUniqueIdentifier($row, $tableNum);
+                $recordInstance = self::getUniqueIdentifier($row, $headers, $tableNum);
 	            $html .= "<tr>";
 	            foreach ($headers as $header) {
 	                $headerWithoutHTML = preg_replace("/<[^>]+>/", " ", $header);

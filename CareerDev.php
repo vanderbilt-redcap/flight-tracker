@@ -21,7 +21,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.2.9";
+		return "5.3.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -464,6 +464,9 @@ class CareerDev {
                     $initialSeparator = "&";
                 }
             }
+            if (preg_match("/pid=\d+/", $url) && preg_match("/project_id=\d+/", $url)) {
+                $url = preg_replace("/&pid=\d+/", "", $url);
+            }
             return $url;
         }
     }
@@ -529,7 +532,7 @@ class CareerDev {
                 && !preg_match("/^mentor\/dashboard/", $relativeUrl)
                 && !preg_match("/^mentor\/config/", $relativeUrl)
             )
-            || preg_match("/^reporting\/tables2-4WithAuth/", $relativeUrl)
+            || preg_match("/^reporting\/tables2-4WithAuth.php/", $relativeUrl)
         );
         if (!$pid) {
             $pid = self::getPID();

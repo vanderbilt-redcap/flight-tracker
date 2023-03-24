@@ -57,7 +57,7 @@ table { border-collapse: collapse; }
 .hidden { display: none; }
 .biggerButton { font-size: 16px; }
 .twoColumn { vertical-align: top; border: 1px dotted #aaaaaa; padding: 5px; }
-.sticky { position: fixed; top: 100px; }
+.sticky { position: sticky; top: 100px; }
 .shadow { box-shadow: 2px 2px 4px grey; }
 .bigShadow { box-shadow: 6px 6px 6px grey; }
 tr.borderedRow td,tr.borderedRow th { border: 1px solid #bbbbbb; }
@@ -75,7 +75,6 @@ tr.extraPaddedRow td,th { padding: 15px; }
 .custom-combobox { position: relative; display: inline-block; }
 .custom-combobox-toggle { position: absolute; top: 0; bottom: 0; margin-left: -1px; padding: 0; }
 .custom-combobox-input { margin: 0; padding: 5px 10px; width: 200px; }
-.sticky { position: fixed; top: 0; z-index: 1; }
 .padded { padding: 10px; }
 #content { margin-left: 225px; }   /* coordinated with .subnav */
 .subnav { margin: 0; padding: 0; position: fixed; top: 125px; width: 225px; height: 100%; font-family: 'Museo Sans', sans-serif !important; text-align: center; background-color: transparent; overflow: auto; }    /* coordinated with #content and .w3-bar .topHeader */

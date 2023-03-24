@@ -41,7 +41,6 @@ if (isset($_GET['download']) && $records) {
     exit;
 }
 if (isset($_GET['grantCounts'])) {
-    $metadata = Download::metadata($token, $server);
     if (empty($records)) {
         $records = Download::records($token, $server);
     }
@@ -83,13 +82,14 @@ if (isset($_GET['grantCounts'])) {
     $html .= URLManagement::makeHiddenInputs($trainingPeriodParams, TRUE);
     $html .= "<h4>Pubs Associated With a Grant</h4>";
     $allSelected = "";
-    if (!$_GET['grant'] || $_GET['grant'] == "all") {
+    $grants = Sanitizer::sanitizeArray($_GET['grants'] ?? []);
+    if (empty($grants) || in_array("all", $grants)) {
         $allSelected = " selected";
     }
-    $html .= "<p class='centered'><select name='grant'><option value='all'$allSelected>---ALL---</option>";
+    $html .= "<p class='centered'>Hold down Shift or Control to select multiple:<br/><select id='grants' name='grants[]' multiple><option value='all'$allSelected>---ALL---</option>";
     foreach ($grantCounts as $awardNo => $count) {
         $selected = "";
-        if ($_GET['grant'] == $awardNo) {
+        if (in_array($awardNo, $grants)) {
             $selected = " selected";
         }
         if ($_GET['record']) {
@@ -98,9 +98,9 @@ if (isset($_GET['grantCounts'])) {
                 $phrase = "citation";
             }
         } else {
-            $phrase = "names in citations";
+            $phrase = "name-citation pairings";
             if ($count == 1) {
-                $phrase = "name in citations";
+                $phrase = "name-citation pairing";
             }
         }
         $maxLen = 15;
@@ -140,8 +140,13 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
     $trainingStarts = Download::oneField($token, $server, "summary_training_start");
     $trainingEnds = Download::oneField($token, $server, "summary_training_end");
     $confirmed = "Confirmed Publications";
-    if ($_GET['grant'] && $_GET['grant'] != "all") {
-        $confirmed .= " for Grant ".$_GET['grant'];
+    $grants = Sanitizer::sanitizeArray($_GET['grants'] ?? []);
+    if (!empty($grants) && !in_array("all", $grants)) {
+        if (count($grants) == 1) {
+            $confirmed .= " for Grant ".$grants[0];
+        } else {
+            $confirmed .= " for Grants ".REDCapManagement::makeConjunction($grants);
+        }
     }
     $notConfirmed = "Publications Yet to be Confirmed";
     $citations = [$confirmed => [], $notConfirmed => []];
@@ -157,10 +162,9 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
         }
         $notDone = $pubs->getCitationCollection("Not Done");
 
-        if ($_GET['grant'] && ($_GET['grant'] != 'all')) {
-            $awardNo = Sanitizer::sanitize($_GET['grant']);
+        if (!empty($grants) && !in_array("all", $grants)) {
             $included = new CitationCollection($record, $token, $server, "Filtered", [], $metadata, $lastNames, $firstNames);
-            $recordCitations = $pubs->getCitationsForGrants($awardNo, "Included");
+            $recordCitations = $pubs->getCitationsForGrants($grants, "Included");
             foreach ($recordCitations as $citation) {
                 $included->addCitation($citation);
             }
@@ -277,7 +281,7 @@ function makePublicationListHTML($citations, $names, $dates) {
 
 function makeExtraURLParams($exclude = []) {
     $additionalParams = "";
-    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grant", "begin", "end", "cohort", "limitPubs", "author_first", "author_middle", "author_last"];
+    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grants", "begin", "end", "cohort", "limitPubs", "author_first", "author_middle", "author_last"];
     foreach ($_GET as $key => $value) {
         if (isset($_GET[$key]) && in_array($key, $expected) && !in_array($key, $exclude)) {
             $key = Sanitizer::sanitize($key);
@@ -359,10 +363,11 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= Publications::makeLimitButton();
     $html .= "<div id='grantCounts'>";
     $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs"])."&grantCounts";
-    if ($_GET['grant'] && ($_GET['grant'] != "all")) {
+    $grants = Sanitizer::sanitizeArray($_GET['grants'] ?? []);
+    if (!empty($grants) && !in_array("all", $grants)) {
         $html .= "<script>$(document).ready(function() { downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\"); });</script>";
     } else {
-        $html .= "<p class='centered'><a href='javascript:;' onclick='downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\");'>Get Counts to Select a Grant</a><br>(Computationally Expensive)</p>";
+        $html .= "<p class='centered'><a href='javascript:;' onclick='downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\");'>Filter by Grants Cited</a></p>";
     }
     $html .= "</div>";
     $html .= "</td>";
@@ -386,7 +391,8 @@ function makePublicationSearch($names, $record = NULL) {
 	}
 	$html .= "</select></p>\n";
     if (!isset($_GET['record'])) {
-        $grantText = isset($_GET['grant']) ? " all publications associated with ".Sanitizer::sanitize($_GET['grant']) : "";
+        $grants = Sanitizer::sanitizeArray($_GET['grants'] ?? []);
+        $grantText = !empty($grants) ? " all publications associated with ".REDCapManagement::makeConjunction($grants) : "";
         $html .= "<p class='smaller centered max-width'>Select a scholar or click the \"View All\" link to view$grantText.</p>";
     }
     if (isset($_GET['record']) && $record && ($record !== "all")) {

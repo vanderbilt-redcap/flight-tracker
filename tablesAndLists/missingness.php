@@ -404,30 +404,25 @@ if (isset($_GET['csv'])) {
 
 	$headers = "";
 	$headers .= "<tr>";
-    $headers .= "<th><button style='font-size: 12px;' onclick='submitEmailAddresses(); return false;'>Set Up Email</button></th>";
-	$headers .= "<th class='name'>Name</th>";
+    $headers .= "<th style='position: sticky; top: 0;'><button style='font-size: 12px;' onclick='submitEmailAddresses(); return false;'>Set Up Email</button></th>";
+	$headers .= "<th style='position: sticky; top: 0;' class='name'>Name</th>";
 	foreach ($fields as $field => $title) {
 		if (!in_array($field, $skip) && !isset($potentialFields[$title])) {
-			$headers .= "<th>$title</th>";
+			$headers .= "<th style='position: sticky; top: 0;'>$title</th>";
 		}
 	}
 	foreach (array_keys($potentialFields) as $title) {
-        $headers .= "<th>$title</th>";
+        $headers .= "<th style='position: sticky; top: 0;'>$title</th>";
     }
-    $headers .= "<th>Last Admin Update</th>";
-	$headers .= "<th>Last Survey Contact</th>";
+    $headers .= "<th style='position: sticky; top: 0;'>Last Admin Update</th>";
+	$headers .= "<th style='position: sticky; top: 0;'>Last Survey Contact</th>";
 	$headers .= "</tr>";
 	$html = "";
     $html .= "<div class='top-horizontal-scroll'><div class='inner-top-horizontal-scroll'></div></div>";
     $html .= "<div class='horizontal-scroll'>";
-	$html .= "<table style='margin-left: auto; margin-right: auto; display: none;' class='sticky' id='stickyHeader'>";
-	$html .= "<thead>";
-	$html .= $headers;
-	$html .= "</thead>";
-	$html .= "</table>";
 	$html .= "<table style='margin-left: auto; margin-right: auto;' id='maintable'>";
 	$html .= "<thead id='normalHeader'>";
-	$html .= $headers;
+    $html .= $headers;
 	$html .= "</thead>";
 
 	$html .= "<tbody>";

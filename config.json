@@ -63,7 +63,8 @@
 	   "js/xtract.js",
 	   "emailMgmt/makeSurveyLinks",
 	   "copyProject",
-	   "reporting/tables2-4"
+	   "reporting/tables2-4",
+	   "reporting/tables2-4WithAuth"
    ],
 
 

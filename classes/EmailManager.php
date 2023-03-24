@@ -643,11 +643,12 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 				$newInstances[$recordId] = 1;
 			}
 		}
-		$data = array(
+		$data = [
 				"records" => $records,
 				"instrument" => $instrument,
 				"instances" => $newInstances,
-				);
+                "redcap_csrf_token" => Application::generateCSRFToken(),
+        ];
         $url = Application::link("emailMgmt/makeSurveyLinks.php", $pid, TRUE)."&NOAUTH";
         list($resp, $output) = URLManagement::downloadURLWithPOST($url, $data, $pid);
         Application::log("makeSurveyLinks POST: ".json_encode($data), $pid);

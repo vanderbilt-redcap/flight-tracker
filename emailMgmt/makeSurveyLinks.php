@@ -2,6 +2,11 @@
 
 define("NOAUTH", TRUE);      // for plugin
 
+if (empty($_POST)) {
+    $json = file_get_contents("php://input");
+    $_POST = json_decode($json, TRUE) ?? [];
+}
+
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 $records = (isset($_POST['records']) && is_array($_POST['records'])) ? $_POST['records'] : [];
@@ -20,5 +25,5 @@ if ($records && $instrument && $instances && $pid) {
 	}
 	echo json_encode($results);
 } else {
-	throw new \Exception("Must supply records, instrument, and instances!");
+	die("Must supply records, instrument, and instances!");
 }

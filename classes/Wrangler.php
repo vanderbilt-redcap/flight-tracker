@@ -69,8 +69,8 @@ class Wrangler {
     }
 
     public function rightColumnText() {
-        $html = "<button class='sticky biggerButton green' id='finalize' style='display: none; font-weight: bold;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'>Finalize $this->wranglerType</button><br>\n";
-        $html .= "<div class='sticky red shadow' style='height: 180px; padding: 5px; vertical-align: middle; text-align: center; display: none;' id='uploading'>\n";
+        $html = "<button class='biggerButton green bolded' id='finalize' style='display: none; position: fixed; top: 200px;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'>Finalize $this->wranglerType</button><br>\n";
+        $html .= "<div class='red shadow' style='height: 180px; padding: 5px; vertical-align: middle; position: fixed; top: 250px; text-align: center; display: none;' id='uploading'>\n";
         $html .= "<p>Uploading Changes...</p>\n";
         if ($this->wranglerType == "Publications") {
             $html .= "<p style='font-size: 12px;'>Redownloading citations from PubMed to ensure accuracy. May take up to one minute.</p>\n";
@@ -80,31 +80,13 @@ class Wrangler {
         # make button show/hide at various pixelations
         $html .= "
 <script>
-function adjustFinalizeButton() {
-    const mainTable = $('#main').position();
-    const scrollTop = $(window).scrollTop();
-    const finalizeTop = mainTable.top - scrollTop;
-    // 100px is fixed position of the sticky class
-    const finalLoc = 100;
-    const spacing = 20;
-    const buttonSize = 40;
-    if (finalizeTop > finalLoc) {
-        $('#finalize').css({ top: (finalizeTop+spacing)+'px' });
-        $('#uploading').css({ top: (finalizeTop+spacing+buttonSize)+'px' });
-    } else {
-        $('#finalize').css({ top: finalLoc+'px' });
-        $('#uploading').css({ top: (finalLoc+buttonSize)+'px' }); }
-    }
-    
     $(document).ready(function() {
-        adjustFinalizeButton();
         // timeout to overcome API rate limit; 1.5 seconds seems adeqate; 1.0 seconds fails with immediate click
         setTimeout(function() {
             $('#finalize').show();
         }, 1500)
-        $(document).scroll(function() { adjustFinalizeButton(); });
     });
-    </script>";
+</script>";
         return $html;
     }
 

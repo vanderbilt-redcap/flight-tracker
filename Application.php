@@ -126,7 +126,10 @@ class Application {
     }
 
     public static function makeIcon() {
-        return "<link rel='icon' type='image/png' href='" . self::link("/img/flight_tracker_icon.png") . "' />";
+        $mime = "image/png";
+        $filename = __DIR__."/img/flight_tracker_icon.png";
+        $base64 = FileManagement::getBase64OfFile($filename, $mime);
+        return "<link rel='icon' type='$mime' href='$base64' />";
     }
 
     public static function checkOrResetToken($token, $pid) {
