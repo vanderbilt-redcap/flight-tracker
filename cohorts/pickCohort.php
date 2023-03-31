@@ -4,14 +4,14 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
 $recordsIncluded = [];
 foreach ($_POST as $key => $value) {
-    $key = REDCapManagement::sanitizeCohort($key);
+    $key = Sanitizer::sanitize($key);
     if ($value && preg_match("/^record_/", $key)) {
         $recordId = preg_replace("/^record_/", "", $key);
         $recordsIncluded[] = $recordId;
@@ -20,7 +20,7 @@ foreach ($_POST as $key => $value) {
 $name = "";
 $mssg = "";
 if ($_POST['cohort']) {
-    $name = REDCapManagement::sanitizeCohort($_POST['cohort']);
+    $name = Sanitizer::sanitize($_POST['cohort']);    // do not sanitize a cohort because it is not an existing cohort
     $mssg = "<p class='green centered'>New Cohort $name Added</p>";
 }
 if (!empty($recordsIncluded) && $name) {

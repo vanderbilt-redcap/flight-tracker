@@ -229,7 +229,7 @@ class GrantLexicalTranslator {
 				$key = $postValue;
 				$valueKey = preg_replace("/key/", "value", $name); 
 				if ($postValue && isset($post[$valueKey])) {
-					$value = $post[$valueKey];
+					$value = Sanitizer::sanitize($post[$valueKey]);
 					if ($existing) {
 						if ($value) {
 							if ($value != $this->getCategory($key)) {

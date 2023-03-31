@@ -141,7 +141,6 @@ function runMainCrons(&$manager, $token, $server) {
         }
         if (in_array("vera", $forms) && in_array("vera_submission", $forms) && !Application::isLocalhost()) {
             $manager->addCron("drivers/22_getVERA.php", "getVERA", "Monday", $allRecords, 100000);
-            $manager->addCron("drivers/22_getVERA.php", "2022-03-17", "Monday", $allRecords, 100000);
         }
 
         $cohorts = new Cohorts($token, $server, Application::getModule());

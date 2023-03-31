@@ -2061,33 +2061,97 @@ class Grant {
 
 	public function isFederal() {
 		$src = $this->getVariable("source");
+        $isFederal = [
+            "Non-Profit - Foundations/ Associations" => "Non-Federal",
+            "DOD" => "Federal",
+            "NASA" => "Federal",
+            "ED" => "Federal",
+            "NSF" => "Federal",
+            "VA" => "Federal",
+            "Federal" => "Federal",
+            "Institutional Funds" => "Non-Federal",
+            "Non-Profit - Other" => "Non-Federal",
+            "State - Tennessee" => "Non-Federal",
+            "Non-Profit - Education" => "Non-Federal",
+            "State - Other" => "Non-Federal",
+            "DOE" => "Federal",
+            "NIH" => "Federal",
+            "Profit" => "Non-Federal",
+            "PHS" => "Federal",
+            "Local Government" => "Non-Federal",
+            "Endowment" => "Non-Federal",
+            "Non-Profit - Hospital" => "Non-Federal",
+        ];
+        $federalAgencies = [
+            "Patient-Centered Outcomes Research Institute",
+            "National Science Foundation",
+            "National Oceanic and Atmospheric Administration",
+            "National Library of Medicine",
+            "National Institutes of Health/Unknown",
+            "National Institutes of Health/Office of the Director",
+            "National Institute on Minority Health and Health Disparities",
+            "National Institute on Minority Health & Health Disparities",
+            "National Institute on Drug Abuse",
+            "National Institute on Deafness and Communication Disorders",
+            "National Institute on Deafness and Other Communication Disor",
+            "National Institute on Deafness and Other Communication Disorders",
+            "National Institute on Alcohol Abuse and Alcoholism",
+            "National Institute on Alcohol Abuse & Alcoholism",
+            "National Institute on Aging",
+            "National Institute of Nursing Research",
+            "National Institute of Neurological Disorders and Stroke",
+            "National Institute of Neurological Disorders & Stroke",
+            "National Institute of Mental Health",
+            "National Institute of General Medical Sciences",
+            "National Institute of Environmental Health Sciences",
+            "National Institute of Diabetes & Digestive & Kidney Disease",
+            "National Institute of Diabetes and Digestive and Kidney Disease",
+            "National Institute of Child Health and Human Development",
+            "National Institute of Child Health & Human Development",
+            "National Institute of Dental and Craniofacial Research",
+            "National Institute of Dental & Craniofacial Research",
+            "National Institute of Biomedical Imaging and Bioengineering",
+            "National Institute of Biomedical Imaging & Bioengineering",
+            "National Institute of Arthritis, Musculoskeletal and Skin",
+            "National Institute of Arthritis and Musculoskeletal and Skin Diseases",
+            "National Institute of Arthritis & Musculoskeletal & Skin Diseases",
+            "National Institute of Allergy and Infectious Diseases",
+            "National Institute of Allergy & Infectious Diseases",
+            "National Human Genome Research Institute",
+            "National Heart, Lung, and Blood Institute",
+            "National Heart, Lung, & Blood Institute",
+            "National Eye Institute",
+            "National Center for Research Resources",
+            "National Center for Complementary and Integrative Health",
+            "National Center for Complementary & Integrative Health",
+            "National Center for Advancing Translational Sciences",
+            "National Cancer Institute",
+            "NIH Clinical Center",
+            "Center for Information Technology",
+            "Center for Scientific Review",
+            "Fogarty International Center",
+            "Food and Drug Administration/Other",
+            "Food and Drug Administration",
+            "Food & Drug Administration",
+            "Department of Defense",
+            "Congressionally Directed Medical Research Programs",
+            "Centers for Medicare and Medicaid Services",
+            "Centers for Medicare & Medicaid Services",
+            "Centers For Disease Control and Prevention (CDC)",
+            "Centers For Disease Control and Prevention",
+            "Agency for Healthcare Research and Quality",
+            "Agency for Healthcare Research & Quality",
+            "Department of Health and Human Services",
+            "Department of Health & Human Services",
+            "NIH National Research Service Award",
+            "NIH Office of the Director",
+        ];
 		if ($this->isNIH()) {
 		    return TRUE;
         }
 		if (in_array($src, ["exporter", "reporter", "nih_reporter", "nsf", "ies_grant"])) {
 			return TRUE;
 		} else if ($src == "coeus") {
-			$isFederal = array(
-						"Non-Profit - Foundations/ Associations" => "Non-Federal",
-						"DOD" => "Federal",
-						"NASA" => "Federal",
-						"ED" => "Federal",
-						"NSF" => "Federal",
-						"VA" => "Federal",
-						"Federal" => "Federal",
-						"Institutional Funds" => "Non-Federal",
-						"Non-Profit - Other" => "Non-Federal",
-						"State - Tennessee" => "Non-Federal",
-						"Non-Profit - Education" => "Non-Federal",
-						"State - Other" => "Non-Federal",
-						"DOE" => "Federal",
-						"NIH" => "Federal",
-						"Profit" => "Non-Federal",
-						"PHS" => "Federal",
-						"Local Government" => "Non-Federal",
-						"Endowment" => "Non-Federal",
-						"Non-Profit - Hospital" => "Non-Federal",
-					);
 			$directSponsorType = $this->getVariable("direct_sponsor_type");
 			$primeSponsorType = $this->getVariable("prime_sponsor_type");
 			if (($isFederal[$primeSponsorType] == "Federal") && ($directSponsorType != "State - Tennessee")) {
@@ -2095,76 +2159,23 @@ class Grant {
 			}
 		} else if ($src == "coeus2") {
 		    $agency = $this->getVariable("agency_name");
-		    $federalAgencies = [
-		        "Patient-Centered Outcomes Research Institute",
-                "National Science Foundation",
-                "National Oceanic and Atmospheric Administration",
-                "National Library of Medicine",
-                "National Institutes of Health/Unknown",
-                "National Institutes of Health/Office of the Director",
-                "National Institute on Minority Health and Health Disparities",
-                "National Institute on Minority Health & Health Disparities",
-                "National Institute on Drug Abuse",
-                "National Institute on Deafness and Communication Disorders",
-                "National Institute on Deafness and Other Communication Disor",
-                "National Institute on Deafness and Other Communication Disorders",
-                "National Institute on Alcohol Abuse and Alcoholism",
-                "National Institute on Alcohol Abuse & Alcoholism",
-                "National Institute on Aging",
-                "National Institute of Nursing Research",
-                "National Institute of Neurological Disorders and Stroke",
-                "National Institute of Neurological Disorders & Stroke",
-                "National Institute of Mental Health",
-                "National Institute of General Medical Sciences",
-                "National Institute of Environmental Health Sciences",
-                "National Institute of Diabetes & Digestive & Kidney Disease",
-                "National Institute of Diabetes and Digestive and Kidney Disease",
-                "National Institute of Child Health and Human Development",
-                "National Institute of Child Health & Human Development",
-                "National Institute of Dental and Craniofacial Research",
-                "National Institute of Dental & Craniofacial Research",
-                "National Institute of Biomedical Imaging and Bioengineering",
-                "National Institute of Biomedical Imaging & Bioengineering",
-                "National Institute of Arthritis, Musculoskeletal and Skin",
-                "National Institute of Arthritis and Musculoskeletal and Skin Diseases",
-                "National Institute of Arthritis & Musculoskeletal & Skin Diseases",
-                "National Institute of Allergy and Infectious Diseases",
-                "National Institute of Allergy & Infectious Diseases",
-                "National Human Genome Research Institute",
-                "National Heart, Lung, and Blood Institute",
-                "National Heart, Lung, & Blood Institute",
-                "National Eye Institute",
-                "National Center for Research Resources",
-                "National Center for Complementary and Integrative Health",
-                "National Center for Complementary & Integrative Health",
-                "National Center for Advancing Translational Sciences",
-                "National Cancer Institute",
-                "NIH Clinical Center",
-                "Center for Information Technology",
-                "Center for Scientific Review",
-                "Fogarty International Center",
-                "Food and Drug Administration/Other",
-                "Food and Drug Administration",
-                "Food & Drug Administration",
-                "Department of Defense",
-                "Congressionally Directed Medical Research Programs",
-                "Centers for Medicare and Medicaid Services",
-                "Centers for Medicare & Medicaid Services",
-                "Centers For Disease Control and Prevention (CDC)",
-                "Centers For Disease Control and Prevention",
-                "Agency for Healthcare Research and Quality",
-                "Agency for Healthcare Research & Quality",
-                "Department of Health and Human Services",
-                "Department of Health & Human Services",
-                "NIH National Research Service Award",
-                "NIH Office of the Director",
-
-            ];
             if (in_array($agency, $federalAgencies) && ($agency != "State of Tennessee")) {
                 return TRUE;
             }
+        } else {
+            # Try to hack a guess
+            $sponsor = $this->getVariable("sponsor");
+            if (
+                $sponsor
+                && (
+                    ($isFederal[$sponsor] == "Federal")
+                    || in_array($sponsor, $federalAgencies)
+                )
+            ) {
+                return TRUE;
+            }
         }
-		return FALSE;
+        return FALSE;
 	}
 
 	public static function removeCommas($num) {
@@ -2335,13 +2346,10 @@ class Grant {
         return $awardno . $sep . $sponsor . $sep . $startDate;
     }
 
-    // NIH, AHRQ, NSF, Other Federal (Other Fed), University (Univ), Foundation (Fdn), None, or Other
+    # NIH, AHRQ, NSF, Other Federal (Other Fed), University (Univ), Foundation (Fdn), None, or Other
+    # Coordinated with MainGroup::getFundingSource in React Tables 2-4
     public function getTable4AbbreviatedFundingSource() {
-	    if ($this->isNIH()) {
-	        return "NIH";
-        }
-
-	    $acceptedFederalCategories = ["NIH", "AHRQ", "NSF"];
+        $acceptedFederalCategories = ["NIH", "AHRQ", "NSF"];
 	    $fundingSource = $this->getFundingSource();
 	    if ($fundingSource) {
 	        foreach (self::getFundingSourceAbbreviations() as $abbreviation => $name) {
@@ -2364,19 +2372,31 @@ class Grant {
             } else {
                 $type = self::$fdnOrOther;    // Cannot tell difference
                 if (isset($this->specs['sponsor'])) {
-                    return $type."<br>".$this->specs['sponsor'];
+                    return $type."<br/>".$this->specs['sponsor'];
                 } else {
                     return $type;
                 }
             }
         }
-	    return NULL;
+        if ($this->isNIH()) {
+            return "NIH";
+        }
+        return NULL;
     }
 
     # uses private variable specs
-    # for COEUS only
 	public function getFundingSource() {
 		$specs = $this->specs;
+        $agencies = [
+            "CDC" => "CDC",
+            "Centers for Medicare and Medicaid Services" => "CMS",
+            "Agency for Healthcare Research and Quality" => "AHRQ",
+            "Health and Human Services" => "HHS",
+            "Health Resources and Services Administration" => "HRSA",
+            "Health Services Research Administration" => "HRSA",   // old name
+            "Food and Drug Administration" => "FDA",
+            "Health Information Technology" => "ONC",
+        ];
 
 		if ($specs["source"] == "coeus") {
 			if (preg_match("/\b000\b/", $specs['sponsor'])) {
@@ -2385,27 +2405,15 @@ class Grant {
 			$primeSponsorType = $specs['prime_sponsor_type'];
 			$primeSponsorName = $specs['prime_sponsor_name'];
 			$directSponsorType = $specs['direct_sponsor_type'];
-			$directSponsorName = $specs['direct_sponsor_name'];
 			$isFederal = $this->isFederal();
 
 			if ($isFederal) {
-				$matchedAgency = "";
 				switch($primeSponsorType) {
 					case "DOD":
-						return Grant::tellIfSubcontract("DOD", $primeSponsorType, $directSponsorType);
-					case "NIH":
-						return Grant::tellIfSubcontract("NIH", $primeSponsorType, $directSponsorType);
+                    case "NIH":
+                        return Grant::tellIfSubcontract($primeSponsorType, $primeSponsorType, $directSponsorType);
 					case "PHS":
-						$agencies = array(
-								"CDC" => "CDC",
-								"Centers for Medicare and Medicaid Services" => "CMS",
-								"Agency for Healthcare Research and Quality" => "AHRQ",
-								"Health and Human Services" => "HHS",
-								"Health Resources and Services Administration" => "HRSA",
-								"Health Services Research Administration" => "HRSA",   // old name
-								"Food and Drug Administration" => "FDA",
-								"Health Information Technology" => "ONC",
-								);
+                        $matchedAgency = "";
 						foreach ($agencies as $agency => $abbreviation) {
 							if (preg_match("/".$agency."/", $primeSponsorName)) {
 								$matchedAgency = $abbreviation;
@@ -2443,7 +2451,41 @@ class Grant {
 				}
 				return "Non-Federal: Other";
 			}
-		}
+		} else {
+            # Very inexact - best guess
+            $sponsor = $specs['sponsor'];
+            $sponsorType = $specs['sponsor_type'] ?? "";
+
+            foreach ([$sponsor, $sponsorType] as $type) {
+                switch($type) {
+                    case "DOD":
+                    case "NIH":
+                    case "VA":
+                        return $type;
+                    case "PHS":
+                        foreach ($agencies as $agency => $abbreviation) {
+                            if (preg_match("/" . $agency . "/i", $type)) {
+                                return $abbreviation;
+                            }
+                        }
+                        break;
+                    default:
+                        foreach ($agencies as $agency => $abbreviation) {
+                            if (
+                                preg_match("/" . $agency . "/i", $type)
+                                || (strtoupper($abbreviation) == strtoupper($type))
+                            ) {
+                                return $abbreviation;
+                            }
+                        }
+                }
+            }
+            if ($sponsor && $this->isFederal()) {
+                return "Federal: Other";
+            } else if ($sponsor) {
+                return "Non-Federal: Other";
+            }
+        }
 		return "N/A";
 	}
 

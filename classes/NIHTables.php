@@ -872,7 +872,7 @@ class NIHTables {
                 $i = 0;
                 do {
                     $match = $matches[$i];
-                    list($pid, $recordId) = preg_split("/:/", $match);
+                    list($pid, $recordId) = explode(":", $match);
                     $savedData = $savedName ? Application::getSetting($savedName, $pid) : [];
                     $email = $emailsByPid[$pid][$recordId] ?? "";
                     $emailHTML = $email ? "<br/>".Links::makeMailtoLink($email) : "";
@@ -949,11 +949,9 @@ class NIHTables {
                                     }
                                 }
                                 if (!$directBudget) {
-                                    $budgetSource = $grant->getVariable("source");
                                     $directBudget = $grant->getVariable("direct_budget");
                                     if ($directBudget) {
                                         $directBudget = REDCapManagement::prettyMoney($directBudget, FALSE);
-                                        $budgetSource = $grant->getVariable("source");
                                     } else {
                                         $directBudget = self::$NA;
                                         if (Application::isVanderbilt()) {
@@ -965,7 +963,6 @@ class NIHTables {
                                                     && in_array($grant2->getVariable("source"), $localGrantsManagementForms)
                                                 ) {
                                                     $directBudget = REDCapManagement::prettyMoney($grant2->getVariable("direct_budget"));
-                                                    $budgetSource = $grant2->getVariable("source");
                                                     break;
                                                 }
                                             }

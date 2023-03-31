@@ -5,8 +5,12 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\NIHTables;
 use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\ReactNIHTables;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\CustomGrantFactory;
+use \Vanderbilt\CareerDevLibrary\GrantLexicalTranslator;
+use \Vanderbilt\CareerDevLibrary\Grant;
 
 if (in_array(gethostname(), ["scottjpearson", "ORIWL-KCXDJK7.local"])) {
     # Testing only - to allow to run with React server using 'npm start'
@@ -137,6 +141,79 @@ if (isset($_POST['action']) && $token && $server && $pid) {
                 $data = $reactHandler->saveConfirmationTimestamp($email, $tables);
             } else {
                 $data["error"] = "Invalid email";
+            }
+        } else if ($action == "getFundingSource") {
+            $customGrantRow = Sanitizer::sanitizeArray($_POST['customGrant']);
+            $customGrantRow["record_id"] = 1;
+            $customGrantRow["redcap_repeat_instance"] = 1;
+            $customGrantRow["redcap_repeat_instrument"] = "custom_grant";
+            $facultyName = Sanitizer::sanitize($_POST['facultyName']);
+            $lexTrans = new GrantLexicalTranslator($token, $server, Application::getModule(), $pid);
+            $metadata = Download::metadata($token, $server);
+            $gf = new CustomGrantFactory($facultyName, $lexTrans, $metadata, "Grant", $token, $server);
+            $gf->processRow($customGrantRow, [$customGrantRow], $token);
+            $fundingSource = NIHTables::$NA;
+            foreach ($gf->getGrants() as $grant) {
+                $fundingSource = $grant->getTable4AbbreviatedFundingSource() ?? NIHTables::$NA;
+                if (preg_match("/".Grant::$fdnOrOther."/", $fundingSource)) {
+                    $fundingSource = NIHTables::makeComment($fundingSource);
+                }
+                break;
+            }
+            $data['fundingSource'] = $fundingSource;
+        } else if ($action == "saveToREDCap") {
+            $genericUploadRow = Sanitizer::sanitizeArray($_POST['values'], TRUE, FALSE);
+            $facultyName = Sanitizer::sanitize($_POST['name']);
+            $dateOfReport = Sanitizer::sanitizeDate($_POST['dateOfReport']);
+            $instrument = "custom_grant";
+            if ($facultyName && !empty($genericUploadRow)) {
+                $metadata = Download::metadata($token, $server);
+                list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = NIHTables::getNamesByPid();
+                $matches = NIHTables::findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
+                foreach ($matches as $coords) {
+                    list($currPid, $recordId) = explode(":", $coords);
+                    $currToken = Application::getSetting("token", $currPid);
+                    $currServer = Application::getSetting("server", $currPid);
+                    if ($currToken && $currServer && REDCapManagement::isActiveProject($currPid)) {
+                        $maxInstance = Download::getMaxInstanceForRepeatingForm($currToken, $currServer, $instrument, $recordId);
+                        $uploadRow = [
+                            "record_id" => $recordId,
+                            "redcap_repeat_instrument" => $instrument,
+                            "redcap_repeat_instance" => ($maxInstance + 1),
+                        ];
+                        foreach ($genericUploadRow as $field => $value) {
+                            $uploadRow[$field] = $value;
+                        }
+                        try {
+                            $data[$currPid] = Upload::oneRow($uploadRow, $currToken, $currServer);
+                        } catch (\Exception $e) {
+                            $data[$currPid] = ["error" => $e->getMessage()];
+                        }
+                    } else {
+                        $data[$currPid] = ["error" => "Project not active."];
+                    }
+                }
+            } else {
+                $data['error'] = "No name specified.";
+            }
+        } else if ($action == "getInstrumentMetadata") {
+            $instrument = Sanitizer::sanitize($_POST['instrument']);
+            if ($instrument) {
+                $metadata = Download::metadata($token, $server);
+                $requestedFields = DataDictionaryManagement::getFieldsFromMetadata($metadata, $instrument);
+                if (!empty($requestedFields)) {
+                    $metadataToReturn = [];
+                    foreach ($metadata as $row) {
+                        if (in_array($row['field_name'], $requestedFields)) {
+                            $metadataToReturn[] = $row;
+                        }
+                    }
+                    $data = $metadataToReturn;
+                } else {
+                    $data = ["error" => "Invalid instrument."];
+                }
+            } else {
+                $data = ["error" => "No instrument supplied."];
             }
         } else {
             $data = ["error" => "Invalid action."];
