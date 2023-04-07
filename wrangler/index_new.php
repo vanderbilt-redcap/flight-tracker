@@ -398,7 +398,6 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 				$d_original_award_number_no = '';
 				$d_ck_original_award_number = '';
 			} else {
-                addSpacesIfRelevant($value);
                 if ($value !== "000") {
                     $d_ck_original_award_number = Grant::trimApplicationType($value);
                 } else {

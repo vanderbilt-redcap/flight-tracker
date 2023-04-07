@@ -217,7 +217,7 @@ function downloadExcelData($matchedInstitutions, $pid) {
                         throw new \Exception("Could not find filename in HTML! ".$windowHTML);
                     }
                 } else {
-                    throw new \Exception("Invalid Window URL response $windowResp");
+                    throw new \Exception("Invalid Window URL response $windowResp from $windowURL");
                 }
             } else if (URLManagement::isGoodResponse($processingResp)) {
                 throw new \Exception("Could not find filename in POST data");

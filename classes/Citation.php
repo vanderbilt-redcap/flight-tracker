@@ -265,7 +265,10 @@ class CitationCollection {
 }
 
 class Citation {
-	public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array(), $lastName = "", $firstName = "") {
+    # Cf. https://pubmed.ncbi.nlm.nih.gov/help/#journal-lists
+    const PUBMED_JOURNAL_URL = "https://ftp.ncbi.nih.gov/pubmed/J_Medline.txt";
+
+    public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array(), $lastName = "", $firstName = "") {
 		$this->recordId = $recordId;
 		$this->instance = $instance;
 		$this->token = $token;
@@ -1062,28 +1065,89 @@ class Citation {
             return self::splitAuthorList($this->getVariable("authors"));
         }
 	}
-    public static function getJournalTranslations() {
-        $filename = __DIR__."/../nlmcatalog.txt";
-        $journals = [];
-        if (file_exists($filename)) {
-            $txt = file_get_contents($filename);
-            $lines = preg_split("/[\n\r]+/", $txt);
-            $i = 0;
-            while ($i < count($lines)) {
-                $currLine = $lines[$i];
-                if (preg_match("/^\d+\. (.+)$/", $currLine, $matches)) {
-                    $journalTitle = $matches[1];
-                    $nextLine = $currLine;
-                    do {
-                        $i++;
-                        $nextLine .= " ".$lines[$i];
-                    } while (($i < count($lines)) && !preg_match("/NLM ID:/", $lines[$i]));
-                    if (preg_match("/NLM Title Abbreviation: ([^\.]+)\./", $nextLine, $matches)) {
-                        $journalAbbrev = $matches[1];
-                        $journals[$journalAbbrev] = $journalTitle;
-                    }
+
+    private static function updateISSNs(&$issns, $medAbbr, $isoAbbr, $issnPrint, $issnOnline) {
+        $abbreviations = [];
+        if ($medAbbr) {
+            $abbreviations[] = $medAbbr;
+        }
+        if ($isoAbbr) {
+            $abbreviations[] = $isoAbbr;
+        }
+        if (empty($abbreviations)) {
+            return;
+        }
+        if ($issnPrint) {
+            $issns[$issnPrint] = $abbreviations;
+        }
+        if ($issnOnline) {
+            $issns[$issnOnline] = $abbreviations;
+        }
+    }
+
+    public static function getISSNsForAbbreviations() {
+        list($resp, $output) = URLManagement::downloadURL(self::PUBMED_JOURNAL_URL);
+        $issns = [];
+        if ($resp === 200) {
+            $lines = preg_split("/[\n\r]+/", $output);
+            $medAbbr = "";
+            $isoAbbr = "";
+            $issnPrint = "";
+            $issnOnline = "";
+            foreach ($lines as $line) {
+                if (preg_match("/^----------/", $line)) {
+                    self::updateISSNs($issns, $medAbbr, $isoAbbr, $issnPrint, $issnOnline);
+                    $issnPrint = "";
+                    $issnOnline = "";
+                    $medAbbr = "";
+                    $isoAbbr = "";
+                } else if (preg_match("/^MedAbbr: /", $line)) {
+                    $medAbbr = trim(preg_replace("/^MedAbbr: /", "", $line));
+                } else if (preg_match("/^IsoAbbr: /", $line)) {
+                    $isoAbbr = trim(preg_replace("/^IsoAbbr: /", "", $line));
+                } else if (preg_match("/^ISSN \(Print\): /", $line)) {
+                    $issnPrint = trim(preg_replace("/^ISSN \(Print\): /", "", $line));
+                } else if (preg_match("/^ISSN \(Online\): /", $line)) {
+                    $issnOnline = trim(preg_replace("/^ISSN \(Online\): /", "", $line));
                 }
-                $i++;
+            }
+            self::updateISSNs($issns, $medAbbr, $isoAbbr, $issnPrint, $issnOnline);
+        }
+        return $issns;
+    }
+
+    public static function getJournalTranslations() {
+        list($resp, $output) = URLManagement::downloadURL(self::PUBMED_JOURNAL_URL);
+        $journals = [];
+        if ($resp === 200) {
+            $lines = preg_split("/[\n\r]+/", $output);
+            $title = "";
+            $medAbbr = "";
+            $isoAbbr = "";
+            foreach ($lines as $line) {
+                if (preg_match("/^----------/", $line)) {
+                    if ($medAbbr && $title) {
+                        $journals[$medAbbr] = $title;
+                    }
+                    if ($isoAbbr && $title) {
+                        $journals[$isoAbbr] = $title;
+                    }
+                    $title = "";
+                    $medAbbr = "";
+                    $isoAbbr = "";
+                } else if (preg_match("/^JournalTitle: /", $line)) {
+                    $title = trim(preg_replace("/^JournalTitle: /", "", $line));
+                } else if (preg_match("/^MedAbbr: /", $line)) {
+                    $medAbbr = trim(preg_replace("/^MedAbbr: /", "", $line));
+                } else if (preg_match("/^IsoAbbr: /", $line)) {
+                    $isoAbbr = trim(preg_replace("/^IsoAbbr: /", "", $line));
+                }
+            }
+            if ($medAbbr && $title) {
+                $journals[$medAbbr] = $title;
+            }
+            if ($isoAbbr && $title) {
+                $journals[$isoAbbr] = $title;
             }
         }
         return $journals;

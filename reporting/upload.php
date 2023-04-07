@@ -264,7 +264,8 @@ function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $tok
     foreach ($lines as $i => $line) {
         try {
             if (NIHTables::beginsWith($table, ["2"])) {
-                list($unprocessed, $uploadRows, $warnings) = processTable2Line($line, $pid, $firstNames, $lastNames);
+                $nihTables = new NIHTables($token, $server, $pid, $metadata);
+                list($unprocessed, $uploadRows, $warnings) = processTable2Line($line, $pid, $firstNames, $lastNames, $nihTables);
             } else if (NIHTables::beginsWith($table, ["4"])) {
                 list($unprocessed, $uploadRows, $warnings) = processTable4Line($line, $token, $server, $metadata, $firstNames, $lastNames);
             } else if (NIHTables::beginsWith($table, ["5"])) {
@@ -504,7 +505,7 @@ function cleanLine(&$line) {
     }
 }
 
-function processTable2Line($line, $pid, $firstNames, $lastNames) {
+function processTable2Line($line, $pid, $firstNames, $lastNames, &$nihTables) {
     $tableNum = 2;
     $comments = [];
     if ($line[0] && (count($line) >= 12)) {
@@ -541,10 +542,10 @@ function processTable2Line($line, $pid, $firstNames, $lastNames) {
                     addNormativeNameRow($uploadRows, $recordId, $facultyName);
                 }
 
-                $settingKey = NIHTables::makeCountKey($tableNum, $recordId);
+                $settingKey = NIHTables::makeCountKey($tableNum, $recordId, $pid);
                 $setting = Application::getSetting($settingKey, $pid) ?: [];
                 # recordInstance won't have the email in the identifier
-                $recordInstance = NIHTables::getUniqueIdentifier($line, $tableNum);
+                $recordInstance = NIHTables::getUniqueIdentifier($line, $nihTables->getHeaders($tableNum), $tableNum);
                 # in case a recordInstance with the email exists -> use the full recordInstance
                 foreach (array_keys($setting) as $recordInstanceKey) {
                     if (preg_match("/^$recordInstance/", $recordInstanceKey)) {

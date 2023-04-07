@@ -178,14 +178,15 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
             }
         }
 
-        if ($_GET['trainingPeriodPlusDays']) {
+        if (isset($_GET['trainingPeriodPlusDays']) && is_numeric($_GET['trainingPeriodPlusDays'])) {
+            $trainingDays = (int) $_GET['trainingPeriodPlusDays'];
             $trainingStart = $trainingStarts[$record];
             $trainingEnd = $trainingEnds[$record];
             if ($trainingStart) {
                 $startTs = strtotime($trainingStart);
                 if ($trainingEnd) {
                     $endTs = strtotime($trainingEnd);
-                    $daysTimespan = $_GET['trainingPeriodPlusDays'] * 24 * 3600;
+                    $daysTimespan = $trainingDays * 24 * 3600;
                     $endTs += $daysTimespan;
                 } else {
                     # currently training or do not have end date?

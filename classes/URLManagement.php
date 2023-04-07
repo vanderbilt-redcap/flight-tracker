@@ -240,6 +240,7 @@ class URLManagement {
     public static function makeHiddenInputs($params, $noID = FALSE) {
         $items = [];
         foreach ($params as $key => $value) {
+            $key = preg_replace("/\[\d+\]/", "[]", $key);
             $html = "<input type='hidden' name='$key'";
             if (!$noID) {
                 $html .= "id='$key' ";
@@ -260,9 +261,9 @@ class URLManagement {
         foreach ($pairs as $pair) {
             $items = explode("=", $pair);
             if (count($items) == 2) {
-                $params[$items[0]] = urldecode($items[1]);
+                $params[urldecode($items[0])] = urldecode($items[1]);
             } else if (count($items) == 1) {
-                $params[$items[0]] = "";
+                $params[urldecode($items[0])] = "";
             } else {
                 throw new \Exception("This should never happen. A GET parameter has ".count($items)." items.");
             }

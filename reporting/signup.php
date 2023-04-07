@@ -50,7 +50,7 @@ if (count($_POST) > 0) {
         $records = REDCapManagement::sanitizeArray($_POST[$field]);
         if (!empty($records)) {
             $instancesToDelete = [];
-            $redcapData = Download::fieldsForRecords($token, $server, $field, $records);
+            $redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
             foreach ($redcapData as $row) {
                 if (($row['custom_role'] == $idx) && ($row['redcap_repeat_instrument'] == "custom_grant")) {
                     $recordId = $row['record_id'];
@@ -312,6 +312,7 @@ function saveForm() {
         post.changedNoEngaged = getRecords('.engaged.light_red');
         
         const url = '$thisLink';
+        console.log(JSON.stringify(post));
         $.post(url, post, function(html) {
             console.log('Saved '+html);
             $('.engaged.light_green').each(function() {

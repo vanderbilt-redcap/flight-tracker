@@ -121,6 +121,29 @@ class LDAP {
         return "";
     }
 
+    public static function getDepartmentAndRank($uid) {
+        $info = self::getLDAP("cn", $uid);
+        $department = "";
+        $rank = "";
+        if ($info['count'] > 0) {
+            $departments = self::findField($info, "department");
+            $ranks = self::findField($info, "title");
+            foreach ($departments as $dept) {
+                if ($dept) {
+                    $department = $dept;
+                    break;
+                }
+            }
+            foreach ($ranks as $r) {
+                if ($r) {
+                    $rank = $r;
+                    break;
+                }
+            }
+        }
+        return [$department, $rank];
+    }
+
     public static function getVUNet($first, $last) {
         $key = self::getNameAssociations($first, $last);
         $info = self::getLDAPByMultiple(array_keys($key), array_values($key));

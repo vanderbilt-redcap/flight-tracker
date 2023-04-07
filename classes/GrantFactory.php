@@ -142,7 +142,7 @@ abstract class GrantFactory {
     private static function getAllClassNames() {
         $children = [];
         foreach(get_declared_classes() as $class){
-            if (is_subclass_of($class, '\Vanderbilt\CareerDevLibrary\GrantFactory')) {
+            if (is_subclass_of($class, \Vanderbilt\CareerDevLibrary\GrantFactory::class)) {
                 $children[] = $class;
             }
         }

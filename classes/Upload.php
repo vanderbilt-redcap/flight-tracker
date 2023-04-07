@@ -334,9 +334,6 @@ public static function metadata($metadata, $token, $server) {
                     $lineNum = (int) str_replace("F", "", $cell);
                     $displayRows[] = $rows[$lineNum - 2];
                 }
-                if (empty($displayRows)) {
-                    $displayRows = $rows;
-                }
                 throw new \Exception("Error: ".$feedback['error']."\n".json_encode($displayRows));
             } else {
                 throw new \Exception("Error: ".$feedback['error']."\n".json_encode($rows));

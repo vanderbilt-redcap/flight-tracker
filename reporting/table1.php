@@ -28,7 +28,7 @@ if (!$table1Pid) {
         echo "<h1>NIH Training Table 1 Not Set Up</h1>";
         echo "<p class='centered max-width'>NIH Training Table 1 requires a special REDCap project to be set up on this server. This project will track <strong>all institutional data for all Flight Trackers</strong>. Would you like to set it up now? <button onclick='location.href = \"$setupLink\";'>Yes</button></p>";
     } else {
-        $redcapAdminEmail = $homepage_contact_email;
+        $redcapAdminEmail = $homepage_contact_email ?? "";
         $link = Application::link("this", $pid);
         echo "<h1>You Need a REDCap Supertoken to Proceed</h1>";
         echo "<p class='centered max-width'>NIH Training Table 1 requires a special REDCap project to be set up on this server. To do so, you need a 'REDCap Supertoken' to set up this project for your institution. This is different from a 'REDCap Token' that you used to set up Flight Tracker. To acquire one, please contact your <a href='mailto:$redcapAdminEmail'>REDCap Administrator</a> to request this 64-character supertoken.</p>";

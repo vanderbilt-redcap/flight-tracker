@@ -182,24 +182,39 @@ class Sanitizer {
              * @psalm-taint-escape has_quotes
              */
             $newAry = [];
-            foreach ($ary as $key => $value) {
-                if ($stripHTML && $encodeQuotes) {
-                    $key = self::sanitize($key);
-                } else if ($stripHTML && !$encodeQuotes) {
-                    $key = self::sanitizeWithoutChangingQuotes($key);
-                } else {
-                    $key = self::sanitizeWithoutStrippingHTML($key, $encodeQuotes);
+            if (REDCapManagement::isAssoc($ary)) {
+                foreach ($ary as $key => $value) {
+                    if ($stripHTML && $encodeQuotes) {
+                        $key = self::sanitize($key);
+                    } else if ($stripHTML && !$encodeQuotes) {
+                        $key = self::sanitizeWithoutChangingQuotes($key);
+                    } else {
+                        $key = self::sanitizeWithoutStrippingHTML($key, $encodeQuotes);
+                    }
+                    if (is_array($value)) {
+                        $value = self::sanitizeArray($value, $stripHTML, $encodeQuotes);
+                    } else if ($stripHTML && $encodeQuotes) {
+                        $value = self::sanitize($value);
+                    } else if ($stripHTML && !$encodeQuotes) {
+                        $value = self::sanitizeWithoutChangingQuotes($value);
+                    } else {
+                        $value = self::sanitizeWithoutStrippingHTML($value, $encodeQuotes);
+                    }
+                    $newAry[$key] = $value;
                 }
-                if (is_array($value)) {
-                    $value = self::sanitizeArray($value, $stripHTML, $encodeQuotes);
-                } else if ($stripHTML && $encodeQuotes) {
-                    $value = self::sanitize($value);
-                } else if ($stripHTML && !$encodeQuotes) {
-                    $value = self::sanitizeWithoutChangingQuotes($value);
-                } else {
-                    $value = self::sanitizeWithoutStrippingHTML($value, $encodeQuotes);
+            } else {
+                foreach ($ary as $value) {
+                    if (is_array($value)) {
+                        $value = self::sanitizeArray($value, $stripHTML, $encodeQuotes);
+                    } else if ($stripHTML && $encodeQuotes) {
+                        $value = self::sanitize($value);
+                    } else if ($stripHTML && !$encodeQuotes) {
+                        $value = self::sanitizeWithoutChangingQuotes($value);
+                    } else {
+                        $value = self::sanitizeWithoutStrippingHTML($value, $encodeQuotes);
+                    }
+                    $newAry[] = $value;
                 }
-                $newAry[$key] = $value;
             }
             return $newAry;
         } else if ($stripHTML && $encodeQuotes) {

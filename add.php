@@ -450,7 +450,7 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
     $foundMentor = FALSE;
 
     $html = "";
-    $html .= "<form action='$url' method='POST'>";
+    $html .= "<form action='$url' id='mainForm' method='POST'>";
     $html .= Application::generateCSRFTokenHTML();
     $html .= "<table class='bordered centered max-width'>";
     $html .= "<thead>";
@@ -498,6 +498,18 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
     $html .= "<p class='centered'><button>Add Mentors</button></p>";
     $html .= "</form>";
 
+    $html .= "<script>
+$(document).ready(() => {
+    if ($('.mentorKeep').length > 0) {
+        $('form#mainForm').prepend('<p class=\"centered\"><button onclick=\"checkAllMentors(); return false;\">Check All for Uploading Unmatched Mentors</button></p>');
+    }
+});
+
+function checkAllMentors() {
+    $('.mentorKeep').attr('checked', true);
+}
+</script>";
+
 
     if ($foundMentor) {
         return $html;
@@ -515,7 +527,7 @@ function processMentorName($currMentorName, $currMentorUids, $i, $customLine, $c
         $hiddenField = "<input type='hidden' name='originalmentorname___$i' value='$escapedMentorName'>";
         $mentorKeep = "mentorkeep___$i";
         $html .= "<td class='red'>";
-        $html .= "<strong>No names in REDCap matched with $currMentorName.</strong><br>Keep mentor? <input type='radio' name='$mentorKeep' id='$mentorKeep' value='1'> <label for='$mentorKeep'> Yes, upload anyways</label><br>Or perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
+        $html .= "<strong>No names in REDCap matched with $currMentorName.</strong><br>Keep mentor? <input type='radio' class='mentorKeep' name='$mentorKeep' id='$mentorKeep' value='1'> <label for='$mentorKeep'> Yes, upload anyways</label><br>Or perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
         $html .= "<br>Or try a custom id?<br>".$customLine.$customHidden;
         $html .= "</td>";
     } else if (count($currMentorUids) == 1) {

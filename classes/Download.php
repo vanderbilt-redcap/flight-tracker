@@ -1191,7 +1191,7 @@ class Download {
             $recordDataByInstance = [];
             while ($row = $result->fetch_assoc()) {
                 $field = $row['field_name'];
-                $instance = $row['instance'] ?? 1;
+                $instance = $row['instance'] ?: 1;
                 $value = $row['value'] ?? "";
                 if (!isset($recordDataByInstance[$instance])) {
                     $recordDataByInstance[$instance] = [
@@ -1203,7 +1203,9 @@ class Download {
                         $recordDataByInstance[$instance][$requestedField] = "";
                     }
                 }
-                $recordDataByInstance[$instance][$field] = $value;
+                if ($field) {
+                    $recordDataByInstance[$instance][$field] = $value;
+                }
             }
             ksort($recordDataByInstance);
             return array_values($recordDataByInstance);

@@ -21,7 +21,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.4.0";
+		return "5.4.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -780,7 +780,7 @@ class CareerDev {
 	    if (
             self::isVanderbilt()
             && ((Application::isServer("redcap.vanderbilt.edu") && ($pid == NEWMAN_SOCIETY_PROJECT))
-                || ((Application::isLocalhost() && ($pid == 15))))
+                || ((Application::isLocalhost() && ($pid == LOCALHOST_TEST_PROJECT))))
         ) {
 	        # TODO add redcaptest.vanderbilt.edu
 	        $module = ExternalModules::getModuleInstance("vanderbilt_plugin-settings");

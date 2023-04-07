@@ -13,7 +13,7 @@ class NIHTables {
 		$this->token = $token;
 		$this->server = $server;
 		$this->pid = $pid;
-		if (empty($metadata)) {
+        if (empty($metadata)) {
 			$this->metadata = Download::metadata($this->token, $this->server);
 		} else {
 			$this->metadata = $metadata;
@@ -302,7 +302,7 @@ class NIHTables {
             } else {
                 $matchHTML = [];
                 foreach ($matches as $match) {
-                    list($pid, $recordId) = preg_split("/:/", $match);
+                    list($pid, $recordId) = explode(":", $match);
                     $token = Application::getSetting("token", $pid);
                     $server = Application::getSetting("server", $pid);
                     if ($token && $server && REDCapManagement::isActiveProject($pid)) {
@@ -442,8 +442,16 @@ class NIHTables {
                 }
 
                 $allResults = [];
+                $combinedEmails = [];
                 foreach ($matches as $match) {
                     list($pid, $recordId) = explode(":", $match);
+
+                    $email = $emailsByPid[$pid][$recordId] ?? "";
+                    $emailMailto = Links::makeMailtoLink($email);
+                    if ($emailMailto && !in_array($emailMailto, $combinedEmails)) {
+                        $combinedEmails[] = $emailMailto;
+                    }
+
                     $token = Application::getSetting("token", $pid);
                     $server = Application::getSetting("server", $pid);
                     if ($token && $server && REDCapManagement::isActiveProject($pid)) {
@@ -533,6 +541,7 @@ class NIHTables {
             $otherProjectsValues[$header] = [];
         }
         $combinedEmails = [];
+        $allSettingsToProcess = [];
         foreach ($matches as $match) {
             list($pid, $recordId) = explode(":", $match);
             $email = $emailsByPid[$pid][$recordId] ?? "";
@@ -541,16 +550,38 @@ class NIHTables {
                 $combinedEmails[] = $emailMailto;
             }
             $countKey = self::makeCountKey($table, $recordId, $pid);
-            $settingsByDate = Application::getSetting($countKey, $savePid) ?: [];
-            foreach ($settingsByDate as $ymdDate => $settings) {
-                foreach ($settings as $recordInstance => $s) {
-                    foreach ($headers as $header) {
-                        if (isset($s[$header]) && ($s[$header] !== "")) {
-                            $value = $s[$header];
-                            if (!isset($otherProjectsValues[$header][$pid])) {
-                                $otherProjectsValues[$header][$pid] = [];
+            $countKeyOld = str_replace("$pid:", "", $countKey);
+            $possibleKeys = [$countKey, $countKeyOld];
+            if (in_array($pid, [LOCALHOST_TEST_PROJECT, NEWMAN_SOCIETY_PROJECT])) {
+                $prefix = "career_dev_";
+                $possibleKeys[] = $prefix.$countKey;
+                $possibleKeys[] = $prefix.$countKeyOld;
+            }
+            foreach ($possibleKeys as $myKey) {
+                $settingsFromSavePid = Application::getSetting($myKey, $savePid) ?: [];
+                $settingsFromPid = Application::getSetting($myKey, $pid) ?: [];
+                foreach ([$settingsFromSavePid, $settingsFromPid] as $settingsByDate) {
+                    if (!empty($settingsByDate)) {
+                        if (!isset($allSettingsToProcess[$pid])) {
+                            $allSettingsToProcess[$pid] = [];
+                        }
+                        $allSettingsToProcess[$pid][] = $settingsByDate;
+                    }
+                }
+            }
+        }
+        foreach ($allSettingsToProcess as $pid => $pidSettings) {
+            foreach ($pidSettings as $settingsByDate) {
+                foreach ($settingsByDate as $ymdDate => $settings) {
+                    foreach ($settings as $recordInstance => $s) {
+                        foreach ($headers as $header) {
+                            if (isset($s[$header]) && ($s[$header] !== "")) {
+                                $value = $s[$header];
+                                if (!isset($otherProjectsValues[$header][$pid])) {
+                                    $otherProjectsValues[$header][$pid] = [];
+                                }
+                                $otherProjectsValues[$header][$pid][$ymdDate] = $value;
                             }
-                            $otherProjectsValues[$header][$pid][$ymdDate] = $value;
                         }
                     }
                 }
@@ -634,11 +665,11 @@ class NIHTables {
                 $token = Application::getSetting("token", $pid);
                 $server = Application::getSetting("server", $pid);
                 $projectInfo = "pid: $pid";
-                $contactInfo = "<div class='smallest left-align'><a href='mailto:$adminEmail'>$adminEmailSpaced</a></div>";
+                $contactInfo = "<a href='mailto:$adminEmail'>Email Admins</a>";
                 if ($token && $server) {
                     $projectTitle = Download::projectTitle($token, $server);
                     $projectTitle = str_replace("Flight Tracker - ", "", $projectTitle);
-                    $projectInfo = "<strong>$projectTitle</strong><br/>$projectInfo";
+                    $projectInfo = "$projectTitle<br/>$projectInfo";
                 }
                 $valuesStrings = [];
                 if (!empty($values)) {
@@ -668,7 +699,7 @@ class NIHTables {
                 if (!empty($valuesStrings)) {
                     $str = implode("<br/>", $valuesStrings);
                     if (strpos($previousValue, $str) === FALSE) {
-                        $htmlRows[] = "<div class='tooltip smallest left-align' style='text-decoration-color: #BBB;'><span class='widetooltiptext centered'>$str</span>$projectInfo</div><div>$contactInfo</div>";
+                        $htmlRows[] = "<div class='smallest roundedBorder' style='padding: 2px;'><div class='bolded centered'>$str</div><div style='color: #444444;' class='centered'>$projectInfo</div><div class='centered'>$contactInfo</div></div>";
                     }
                 }
             }

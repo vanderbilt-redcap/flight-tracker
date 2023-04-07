@@ -1088,18 +1088,18 @@ table { border-collapse: collapse; }
             $allEmails = $emailList ? preg_split("/\s*[,;]\s*/", strtolower($emailList)) : [];
             $name = "";
             foreach ($allEmails as $email) {
-                $name = $namesFromEmails[$email] ?? "";
-                if ($name) {
+                if (isset($namesFromEmails[$email]) && $namesFromEmails[$email]) {
+                    $name = $namesFromEmails[$email];
+                    if (!isset($allNotes[$name])) {
+                        $allNotes[$name] = [];
+                    }
+                    foreach ($allEmails as $email2) {
+                        $possibleKeys = $this->makeNotesKeys($email2, $tableNums);
+                        if (!empty($possibleKeys)) {
+                            $possibleKeysForEmail[$email2] = $possibleKeys;
+                        }
+                    }
                     break;
-                }
-            }
-            if ($name && REDCapManagement::isEmailOrEmails($emailList)) {
-                if (!isset($allNotes[$name])) {
-                    $allNotes[$name] = [];
-                }
-                $possibleKeys = $this->makeNotesKeys($email, $tableNums);
-                if (!empty($possibleKeys)) {
-                    $possibleKeysForEmail[$email] = $possibleKeys;
                 }
             }
         }
