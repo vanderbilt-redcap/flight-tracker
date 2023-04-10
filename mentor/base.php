@@ -75,7 +75,7 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
             $username = Sanitizer::sanitize($_GET['uid']);
             $isSuperuser = FALSE;
         } else {
-            $isSuperuser = defined('SUPER_USER') && (SUPER_USER == '1');
+            $isSuperuser = defined('SUPER_USER') && (\SUPER_USER == '1');
         }
 
         if (

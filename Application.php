@@ -39,7 +39,7 @@ class Application {
         if (method_exists("\ExternalModules\ExternalModules", "isSuperUser")) {
             $isSuperUser = \ExternalModules\ExternalModules::isSuperUser();
         }
-        return (SUPER_USER || $isSuperUser);
+        return (\SUPER_USER || $isSuperUser);
     }
 
     public static function getRelevantChoices() {

@@ -51,7 +51,7 @@ class ReactNIHTables {
     public static function isAuthorized($userid, $userids) {
         return (
             (!empty($userids) && in_array($userid, $userids))
-            || SUPER_USER
+            || \SUPER_USER
         );
     }
 
