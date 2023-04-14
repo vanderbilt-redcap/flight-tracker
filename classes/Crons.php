@@ -6,6 +6,9 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class CronManager {
+    const MAX_BATCHES_IN_ONE_CRON = 5;
+    const REPEAT_BATCH_WHEN_LESS_THAN = 15;
+
 	public function __construct($token, $server, $pid, $module = NULL) {
 		$this->token = $token;
 		$this->server = $server;
@@ -342,7 +345,7 @@ class CronManager {
     }
 
 
-    public function runBatchJobs() {
+    public function runBatchJobs($numRunBeforeInCron = 0) {
 	    $module = $this->module;
 	    $validBatchStatuses = ["DONE", "ERROR", "RUN", "WAIT"];
         $batchQueue = self::getBatchQueueFromDB($module);
@@ -389,7 +392,13 @@ class CronManager {
             $startTimestamp = self::getTimestamp();
             do {
                 $queueHasRun = FALSE;
-                if ((count($batchQueue) > 0) && (REDCapManagement::isActiveProject($batchQueue[0]['pid']))) {
+                if (
+                    (count($batchQueue) > 0)
+                    && (
+                        REDCapManagement::isActiveProject($batchQueue[0]['pid'])
+                        || isset($batchQueue[0]['pids'])
+                    )
+                ) {
                     try {
                         $cronjob = new CronJob($batchQueue[0]['file'], $batchQueue[0]['method']);
                         $batchQueue[0]['startTs'] = time();
@@ -418,16 +427,27 @@ class CronManager {
                             $queueHasRun = TRUE;
                             $cronjob->run($row['token'], $row['server'], $row['pid'], $row['records']);
                             self::markAsDone($module);
+                            $endTimestamp = self::getTimestamp();
                             $runJob = [
                                 "text" => "Succeeded",
                                 "records" => $row['records'],
                                 "start" => $startTimestamp,
-                                "end" => self::getTimestamp(),
+                                "end" => $endTimestamp,
                                 "pid" => $row['pid'],
                                 "method" => $row['method'],
                                 "file" => $row['file'],
                             ];
                             self::addRunJobToDB($runJob, $module);
+
+                            $elapsedSeconds = strtotime($endTimestamp) - strtotime($startTimestamp);
+                            $numRunBeforeInCron++;
+                            if (
+                                ($elapsedSeconds < self::REPEAT_BATCH_WHEN_LESS_THAN)
+                                && ($numRunBeforeInCron <= self::MAX_BATCHES_IN_ONE_CRON)
+                            ) {
+                                sleep(1);
+                                $this->runBatchJobs($numRunBeforeInCron);
+                            }
                         } else {
                             throw new \Exception("Invalid batch job ".REDCapManagement::json_encode_with_spaces($batchQueue[0]));
                         }
@@ -1423,6 +1443,7 @@ class CronJob {
         }
         error_reporting(E_ALL);
         ini_set('display_errors', '1');
+        Application::setPid($passedPids[0]);
         require_once($this->file);
         if ($this->method) {
             $method = $this->method;
@@ -1436,7 +1457,11 @@ class CronJob {
             }
             URLManagement::resetUnsuccessfulCount();
             $method($passedPids);
+            if (Application::isVanderbilt()) {
+                \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", "Multi Cron Completed!", "$method for ".count($passedPids)." pids<br/>".date("Y-m-d H:i:s"));
+            }
         }
+        Application::unsetPid();
     }
 
 	public function run($passedToken, $passedServer, $passedPid, $records) {
@@ -1445,7 +1470,7 @@ class CronJob {
 		}
 		error_reporting(E_ALL);
 		ini_set('display_errors', '1');
-        $_GET['pid'] = $passedPid;
+        Application::setPid($passedPid);
 		require_once($this->file);
 		if ($this->method) {
             $method = $this->method;
@@ -1470,7 +1495,7 @@ class CronJob {
 		} else {
 			throw new \Exception("No method specified in cronjob using ".$this->file);
 		}
-		unset($_GET['pid']);
+        Application::unsetPid();
 	}
 
 	public function setRecords($records) {

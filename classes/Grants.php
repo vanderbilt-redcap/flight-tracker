@@ -9,6 +9,8 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Grants {
+    const FLAGGED_GRANTS_SETTING = "flagged_grants";
+
 	public function __construct($token, $server, $metadata = []) {
 		$this->token = $token;
 		$this->server = $server;
@@ -23,7 +25,6 @@ class Grants {
 		$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule());
 	}
 
-    public static $FLAGGED_GRANTS_SETTING = "flagged_grants";
 	public static $MAX_GRANTS = 15;
 	public static $NUM_GRANT_TESTS = 20;
 	public static $MIN_TITLE_CHARS = 15;
@@ -47,15 +48,15 @@ class Grants {
     }
 
     public static function areFlagsOn($pid) {
-        return Application::getSetting(self::$FLAGGED_GRANTS_SETTING, $pid);
+        return Application::getSetting(self::FLAGGED_GRANTS_SETTING, $pid);
     }
 
     public static function turnFlagsOn($pid) {
-        Application::saveSetting(self::$FLAGGED_GRANTS_SETTING, TRUE, $pid);
+        Application::saveSetting(self::FLAGGED_GRANTS_SETTING, TRUE, $pid);
     }
 
     public static function turnFlagsOff($pid) {
-        Application::saveSetting(self::$FLAGGED_GRANTS_SETTING, FALSE, $pid);
+        Application::saveSetting(self::FLAGGED_GRANTS_SETTING, FALSE, $pid);
     }
 
     public function getFlagStatus() {

@@ -17,6 +17,7 @@ $metadata = Download::metadata($token, $server);
 $pmids = [];
 if (isset($_POST['finalized'])) {
     $records = Download::recordIds($token, $server);
+    $wranglerType = Sanitizer::sanitize($_POST['wranglerType'] ?? "Publications");
     $newFinalized = json_decode(Sanitizer::sanitizeJSON($_POST['finalized'] ?? "[]"));
     $newOmissions = json_decode(Sanitizer::sanitizeJSON($_POST['omissions'] ?? "[]"));
     $newResets = json_decode(Sanitizer::sanitizeJSON($_POST['resets'] ?? "[]"));
@@ -46,11 +47,12 @@ if (isset($_POST['finalized'])) {
                         && ($row['redcap_repeat_instrument'] == $instrument)
                         && ($id == $row[$idField])
                     ) {
+                        $verifyField = ($wranglerType == "FlagPublications") ? $instrument."_flagged" : $instrument."_include";
                         $uploadRow = array(
                             "record_id" => $recordId,
                             "redcap_repeat_instrument" => $instrument,
                             "redcap_repeat_instance" => $row['redcap_repeat_instance'],
-                            $instrument."_include" => $val,
+                            $verifyField => $val,
                         );
                         $priorIDs[] = $id;
                         $upload[] = $uploadRow;

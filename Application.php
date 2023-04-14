@@ -132,6 +132,14 @@ class Application {
         return "<link rel='icon' type='$mime' href='$base64' />";
     }
 
+    public static function setPid($pid) {
+        CareerDev::setPid($pid);
+    }
+
+    public static function unsetPid() {
+        CareerDev::unsetPid();
+    }
+
     public static function checkOrResetToken($token, $pid) {
         $allValidTokens = REDCapManagement::getToken($pid);
         if (empty($allValidTokens)) {
@@ -1027,6 +1035,7 @@ SELECT DISTINCT s.project_id AS pid
         "citation_pmid",
         "citation_doi",
         "citation_include",
+        "citation_flagged",
         "citation_ts",
         "citation_full_citation",
         "citation_source",

@@ -212,11 +212,11 @@ class NameMatcher {
     }
 
     public static function makeUncommonDefinition() {
-        return "<a class='tooltip'>uncommon<span class='tooltiptext' style='font-weight: normal;'>".Application::getProgramName()." defines uncommon as less than 200,000 people in the 2010 US Census.</span></a>";
+        return "<a class='tooltip'>an uncommon<span class='tooltiptext' style='font-weight: normal;'>".Application::getProgramName()." defines uncommon as less than 200,000 people in the 2010 US Census.</span></a>";
     }
 
     public static function makeLongDefinition() {
-        return "<a class='tooltip'>long<span class='tooltiptext' style='font-weight: normal;'>".Application::getProgramName()." defines long as five or more characters.</span></a>";
+        return "<a class='tooltip'>a long<span class='tooltiptext' style='font-weight: normal;'>".Application::getProgramName()." defines long as five or more characters.</span></a>";
     }
 
     public static function explodeAlternates($name) {
@@ -389,7 +389,7 @@ class NameMatcher {
         return ["I", "II", "III", "IV", "JR", "JR.", "SR", "SR."];
     }
 
-    private static function getRidOfAccentMarks($name) {
+    public static function getRidOfAccentMarks($name) {
         $unwanted_array = array(    'Š'=>'S', 'š'=>'s', 'Ž'=>'Z', 'ž'=>'z', 'À'=>'A', 'Á'=>'A', 'Â'=>'A', 'Ã'=>'A', 'Ä'=>'A', 'Å'=>'A', 'Æ'=>'A', 'Ç'=>'C', 'È'=>'E', 'É'=>'E',
             'Ê'=>'E', 'Ë'=>'E', 'Ì'=>'I', 'Í'=>'I', 'Î'=>'I', 'Ï'=>'I', 'Ñ'=>'N', 'Ò'=>'O', 'Ó'=>'O', 'Ô'=>'O', 'Õ'=>'O', 'Ö'=>'O', 'Ø'=>'O', 'Ù'=>'U',
             'Ú'=>'U', 'Û'=>'U', 'Ü'=>'U', 'Ý'=>'Y', 'Þ'=>'B', 'ß'=>'Ss', 'à'=>'a', 'á'=>'a', 'â'=>'a', 'ã'=>'a', 'ä'=>'a', 'å'=>'a', 'æ'=>'a', 'ç'=>'c',

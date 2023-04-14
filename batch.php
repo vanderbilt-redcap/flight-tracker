@@ -3,6 +3,8 @@
 use \Vanderbilt\CareerDevLibrary\CronManager;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Links;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
@@ -21,48 +23,77 @@ foreach ($queue as $job) {
 }
 
 $datetime = date("m-d-Y H:i:s");
-$skip = ["token", "server"];
+$skip = ["token", "server", "file", "pid"];
+
+echo "<style>
+th {  position: sticky; top: 0; background-color: #d4d4eb; }
+</style>";
 
 echo "<h1>Current Batch Queue (".count($queue).")</h1>";
 echo "<p class='centered'>Last Updated: $datetime</p>";
-echo "<div class='horizontal-scroll'>";
-echo "<table class='centered bordered'>";
+echo "<table class='centered bordered' style='width: 100%;'>";
 echo "<thead>";
 echo "<tr>";
 echo "<th>Pos</th>";
 foreach ($headers as $header) {
     if (!in_array($header, $skip)) {
-        echo "<th>".ucfirst($header)."</th>";
+        if ($header == "firstParameter") {
+            echo "<th>First Parameter</th>";
+        } else if (preg_match("/Ts/", $header)) {
+            $header = str_replace("Ts", " Time", $header);
+            echo "<th>".ucfirst($header)."</th>";
+        } else {
+            echo "<th>".ucfirst($header)."</th>";
+        }
     }
 }
 echo "</tr>";
 echo "</thead>";
 echo "<tbody>";
 foreach ($queue as $i => $row) {
+    $count = $i + 1;
     echo "<tr>";
-    echo "<td>$i</td>";
+    echo "<td>$count</td>";
     foreach ($headers as $header) {
         if (!in_array($header, $skip)) {
             if ($row[$header] || in_array($header, $specialFields)) {
-                if ($header == "file") {
-                    $shortFilename = basename($row[$header]);
-                    echo "<td>$shortFilename</td>";
+                if ($header == "method") {
+                    $shortFilename = basename($row["file"]);
+                    echo "<td>{$row['method']}<br/><span class='smaller'>$shortFilename</span></td>";
                 } else if ($header == "Project Name") {
                     if ($row['token'] && $row['server']) {
                         $title = Download::projectTitle($row['token'], $row['server']);
-                        echo "<td style='max-width: 300px; overflow: auto;'>$title</td>";
+                        $title = str_replace("Flight Tracker - ", "", $title);
+                        $title = str_replace(" - Flight Tracker", "", $title);
+                        $title = preg_replace("/\s*Flight Tracker\s*/", "", $title);
+                        if (isset($row['pid']) && $row['pid']) {
+                            $link = Links::makeProjectHomeLink($row['pid'], $title);
+                            echo "<td style='max-width: 200px;'>$link <span class='smaller'>[pid".$row['pid']."]</span></td>";
+                        } else {
+                            echo "<td style='max-width: 200px;'>$title</td>";
+                        }
                     } else {
                         echo "<td></td>";
                     }
                 } else if (preg_match("/Ts$/", $header) && $row[$header] && is_numeric($row[$header])) {
                     echo "<td>" . date("Y-m-d H:i:s", $row[$header]) . "</td>";
-                } else if (is_array($row[$header])) {
-                    echo "<td style='max-width: 300px; overflow: auto;'>" . implode(", ", $row[$header]) . "</td>";
+                } else if (is_array($row[$header]) && REDCapManagement::isAssoc($row[$header])) {
+                    $values = [];
+                    foreach ($row[$header] as $key => $value) {
+                        if (is_array($value)) {
+                            $values[] = "<strong>$key</strong>: ".implode(", ", $value);
+                        } else {
+                            $values[] = "<strong>$key</strong>: $value";
+                        }
+                    }
+                    echo "<td style='max-width: 200px;'><div class='scrollable'>" . implode("<br/>", $values) . "</div></td>";
+                } else if (is_array($row[$header]) && !REDCapManagement::isAssoc($row[$header])) {
+                    echo "<td style='max-width: 200px;'><div class='scrollable'>" . implode(", ", $row[$header]) . "</div></td>";
                 } else {
                     echo "<td>" . $row[$header] . "</td>";
                 }
             } else if (($header == "records") && isset($row['pids'])) {
-                echo "<td>" . $row['pids'] . "</td>";
+                echo "<td class='bolded'>" . count($row['pids']) . " pids</td>";
             } else {
                 echo "<td></td>";
             }
@@ -72,4 +103,3 @@ foreach ($queue as $i => $row) {
 }
 echo "</tbody>";
 echo "</table>";
-echo "</div>";

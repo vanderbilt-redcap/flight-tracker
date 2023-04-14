@@ -16,15 +16,24 @@ class Publications {
 		$this->server = $server;
 		if ($metadata == "download") {
 			$metadata = Download::metadata($token, $server);
-			$metadata = Download::metadata($token, $server);
 		}
 		$this->metadata = $metadata;
-		$this->choices = Scholar::getChoices($metadata);
 		$this->pid = Application::getPID($token);
         $this->names = Download::names($token, $server);
         $this->lastNames = Download::lastnames($token, $server);
         $this->firstNames = Download::firstnames($token, $server);
-	}
+        $this->wranglerType = Sanitizer::sanitize($_GET['wranglerType'] ?? "");
+    }
+
+    public static function areFlagsOn($pid) {
+        return Grants::areFlagsOn($pid);
+    }
+
+    # alias to Grants class
+    # turns on additional menu item
+    public function getFlagStatus() {
+        return self::areFlagsOn(Application::getPID($this->token));
+    }
 
     public static function adjudicateStartDate($limitYear, $startDate) {
         if ($limitYear && $startDate) {
@@ -441,15 +450,16 @@ class Publications {
 		}
 
 		$this->process();
-		$this->goodCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Final", $this->rows, $this->metadata, $this->lastNames, $this->firstNames);
+        $this->goodCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Final", $this->rows, $this->metadata, $this->lastNames, $this->firstNames);
+        $this->flaggedCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Flagged", $this->rows, $this->metadata, $this->lastNames, $this->firstNames);
+        $this->unflaggedCitations = new CitationCollection($this->recordId, $this->token, $this->server, "Unflagged", $this->rows, $this->metadata, $this->lastNames, $this->firstNames);
 		$this->input = new CitationCollection($this->recordId, $this->token, $this->server, "New", $this->rows, $this->metadata, $this->lastNames, $this->firstNames);
 		$this->omissions = new CitationCollection($this->recordId, $this->token, $this->server, "Omit", $this->rows, $this->metadata, $this->lastNames, $this->firstNames);
 		foreach ($this->omissions->getCitations() as $citation) {
 			$pmid = $citation->getPMID();
 			if ($this->input->has($pmid)) {
 				$this->omissions->removePMID($pmid);
-			}
-			if ($this->goodCitations->has($pmid)) {
+			} else if ($this->goodCitations->has($pmid)) {
 				$this->omissions->removePMID($pmid);
 			}
 		}
@@ -973,7 +983,7 @@ class Publications {
                 "citation_pmid" => $pmid,
                 "citation_include" => "",
                 "citation_source" => $src,
-                "citation_authors" => implode(", ", $authors),
+                "citation_authors" => NameMatcher::getRidOfAccentMarks(implode(", ", $authors)),
                 "citation_title" => $title,
                 "citation_pub_types" => implode("; ", $pubTypes),
                 "citation_mesh_terms" => implode("; ", $meshTerms),
@@ -989,6 +999,9 @@ class Publications {
             ];
             if (in_array("citation_last_update", $metadataFields)) {
                 $row["citation_last_update"] = date("Y-m-d");
+            }
+            if (in_array("citation_flagged", $metadataFields)) {
+                $row["citation_flagged"] = "";
             }
             if ($hasAbstract) {
                 $row['citation_abstract'] = $abstract;
@@ -1213,25 +1226,42 @@ class Publications {
 		sleep($secs);
 	}
 
+    private function makeFlaggedPublicationsHTML() {
+        $flagged = $this->getCitationCollection("Flagged");
+        $unflagged = $this->getCitationCollection("Unflagged");
+
+        $html = "<h4>Flag Publications to Use</h4>";
+        $html .= $flagged->toHTML("Flagged", FALSE);
+        $html .= $unflagged->toHTML("Unflagged", FALSE, $flagged->getCount() + 1);
+
+        return $html;
+    }
+
 	private function leftColumnText() {
+        if ($this->wranglerType == "FlagPublications") {
+            return $this->makeFlaggedPublicationsHTML();
+        }
+
+        $newLabel = "New";
+        $existingLabel = "Existing";
 		$html = "";
 		$notDone = $this->getCitationCollection("Not Done");
 		$notDoneCount = $notDone->getCount();
 		$html .= "<h4 class='newHeader'>";
 		if ($notDoneCount == 0) {
-			$html .= "No New Citations";
+			$html .= "No $newLabel Citations";
 			$html .= "</h4>\n";
 			$html .= "<div id='newCitations'>\n";
 		} else {
 			if ($notDoneCount == 1) {
-				$html .= $notDoneCount." New Citation";
+				$html .= $notDoneCount." $newLabel Citation";
 			} else {
-				$html .= $notDoneCount." New Citations";
+				$html .= $notDoneCount." $newLabel Citations";
 			}
 			$html .= "</h4>\n";
 			$html .= "<div id='newCitations'>\n";
 			if ($notDoneCount > 1) {
-                $html .= "<p class='centered'><a href='javascript:;' onclick='selectAllCitations(\"#newCitations\");'>Select All New Citations</a> | <a href='javascript:;' onclick='unselectAllCitations(\"#newCitations\");'>Deselect All New Citations</a></p>";
+                $html .= "<p class='centered'><a href='javascript:;' onclick='selectAllCitations(\"#newCitations\");'>Select All $newLabel Citations</a> | <a href='javascript:;' onclick='unselectAllCitations(\"#newCitations\");'>Deselect All $newLabel Citations</a></p>";
             }
 			$html .= $notDone->toHTML("notDone");
 		}
@@ -1239,7 +1269,7 @@ class Publications {
 		$html .= "<hr>\n";
 
 		$included = $this->getCitationCollection("Included");
-		$html .= "<h4>Existing Citations</h4>\n";
+		$html .= "<h4>$existingLabel Citations</h4>\n";
 		$html .= "<div id='finalCitations'>\n";
 		$html .= $included->toHTML("included");
 		$html .= "</div>\n";
@@ -1268,22 +1298,30 @@ class Publications {
 
     # returns HTML to edit the publication; used in data wrangling
 	public function getEditText($thisUrl) {
-        $notDone = $this->getCitationCollection("Not Done");
-        $notDoneCount = $notDone->getCount();
-        $included = $this->getCitationCollection("Included");
-        $includedCount = $included->getCount();
-        $wrangler = new Wrangler("Publications", $this->pid);
+        $wrangler = new Wrangler($this->wranglerType, $this->pid);
         $fullName = Download::fullName($this->token, $this->server, $this->recordId) ?: $this->name;
-		$html = $wrangler->getEditText($notDoneCount, $includedCount, $this->recordId, $fullName, $this->lastName);
+        if ($this->wranglerType == "FlagPublications") {
+            $unflagged = $this->getCitationCollection("Unflagged");
+            $flagged = $this->getCitationCollection("Flagged");
 
-		$html .= self::manualLookup($thisUrl);
-        if ($notDoneCount > 0) {
-            $html .= $this->getNameChooser($notDone, $fullName);
+            $html = $wrangler->getEditText($unflagged->getCount(), $flagged->getCount(), $this->recordId, $fullName, $this->lastName);
+        } else {
+
+            $notDone = $this->getCitationCollection("Not Done");
+            $notDoneCount = $notDone->getCount();
+            $included = $this->getCitationCollection("Included");
+            $includedCount = $included->getCount();
+
+            $html = $wrangler->getEditText($notDoneCount, $includedCount, $this->recordId, $fullName, $this->lastName);
+            $html .= self::manualLookup($thisUrl);
+            if ($notDoneCount > 0) {
+                $html .= $this->getNameChooser($notDone, $fullName);
+            }
         }
-		$html .= "<table style='width: 100%;' id='main'><tr>\n";
-		$html .= "<td class='twoColumn yellow' id='left'>".$this->leftColumnText()."</td>\n";
-		$html .= "<td id='right'>".$wrangler->rightColumnText()."</td>\n";
-		$html .= "</tr></table>\n";
+        $html .= "<table style='width: 100%;' id='main'><tr>";
+        $html .= "<td class='twoColumn yellow' id='left'>".$this->leftColumnText()."</td>";
+        $html .= "<td id='right'>".$wrangler->rightColumnText()."</td>";
+        $html .= "</tr></table>";
 
 		return $html;
 	}
@@ -1293,13 +1331,14 @@ class Publications {
         if (count($pubmedNames) <= 1) {
             return "";
         }
+        $wranglerType = Sanitizer::sanitize($_GET['wranglerType'] ?? "");
 
         $html = "";
         $html .= "<h4>Matches to $name</h4>";
         $html .= "<p class='centered max-width' style='line-height: 2.2em;'>";
         $nameSpans = [];
-        $checkedImgLoc = Wrangler::getImageLocation("checked");
-        $uncheckedImgLoc = Wrangler::getImageLocation("unchecked");
+        $checkedImgLoc = Wrangler::getImageLocation("checked", $this->pid, $wranglerType);
+        $uncheckedImgLoc = Wrangler::getImageLocation("unchecked", $this->pid, $wranglerType);
         foreach ($pubmedNames as $i => $pubmedName) {
             $nameSpans[] .= "<span class='clickableOn' onclick='togglePubMedName(\".name$i\", this, \"$checkedImgLoc\", \"$uncheckedImgLoc\");'>$pubmedName</span>";
         }
@@ -1609,8 +1648,19 @@ class Publications {
 	}
 
 	public function getCitationCollection($type = "Included") {
+        if (self::areFlagsOn($this->pid)) {
+            if (($type == "Included") || ($type == "Final")) {
+                return $this->flaggedCitations;
+            } else if (($type == "Omitted") || ($type == "Omit")) {
+                return $this->unflaggedCitations;
+            }
+        }
 		if (($type == "Included") || ($type == "Final")) {
-			return $this->goodCitations;
+            return $this->goodCitations;
+        } else if ($type == "Flagged") {
+            return $this->flaggedCitations;
+        } else if ($type == "Unflagged") {
+            return $this->unflaggedCitations;
 		} else if (($type == "Not done") || ($type == "Not Done") || ($type == "New")) {
 			return $this->input;
 		} else if (($type == "Omitted") || ($type == "Omit")) {
@@ -1688,7 +1738,11 @@ class Publications {
 
 	# returns array of class Citation
 	public function getCitations($type = "Included") {
-		if ($type == "Included") {
+        if ($type == "Flagged") {
+            return $this->flaggedCitations->getCitations();
+        } else if ($type == "Unflagged") {
+            return $this->unflaggedCitations->getCitations();
+        } else if ($type == "Included") {
             return $this->goodCitations->getCitations();
         } else if (in_array($type, ["PubMed", "pubmed"])) {
             $allCitations = $this->getCitations("Included");
@@ -1775,14 +1829,16 @@ class Publications {
     private $metadata;
 	private $server;
 	private $recordId;
-	private $goodCitations;
+    private $goodCitations;
+    private $flaggedCitations;
+    private $unflaggedCitations;
 	private $omissions;
-	private $choices;
 	private $pid;
     private $names;
     private $lastNames;
     private $firstNames;
     private $lastName;
+    private $wranglerType;
 }
 
 class PubmedMatch {

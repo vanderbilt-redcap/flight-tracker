@@ -7,6 +7,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Dashboard;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\LineGraph;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -39,7 +40,7 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 			$totals[$type] = 0;
 		}
 		$budget = $grant->getVariable("total_budget");
-		$totalBudget += $budget;
+		$totalBudget += (int) $budget;
 		foreach ($yearTotals as $year => $yearTotal) {
 			$startTs = strtotime($year."-01-01");
 			$endTs = strtotime($year."-12-31 23:59:59");
@@ -58,4 +59,11 @@ foreach ($yearTotals as $year => $total) {
 	$measurements["Grant Budgets in $year"] = new MoneyMeasurement($total, $totalBudget);
 }
 
+ksort($yearTotals);
+$graph = new LineGraph(array_values($yearTotals), array_keys($yearTotals), "line_graph");
+$graph->setXAxisLabel("Year");
+$graph->setYAxisLabel("Dollars per Year");
+
 echo $dashboard->makeHTML($headers, $measurements, [], $cohort);
+echo $graph->getImportHTML();
+echo $graph->getHTML(800, 600, TRUE);

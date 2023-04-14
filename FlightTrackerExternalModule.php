@@ -807,9 +807,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $activePids = $this->framework->getProjectsWithModuleEnabled();
         }
 		CareerDev::log($this->getName()." running for pids ".json_encode($activePids));
-        foreach ($activePids as $currPid) {
-            Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at beginning.", $currPid);
-        }
 		$pidsUpdated = [];
         CareerDev::log("Checking for redcaptest in ".SERVER_NAME);
         if (preg_match("/redcaptest.vanderbilt.edu/", SERVER_NAME)) {
@@ -868,7 +865,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Error in Cron", $e->getMessage());
                 }
             }
-            Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at end of main processing for project.", $pid);
 		}
 	}
 

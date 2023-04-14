@@ -2317,7 +2317,7 @@ class NIHTables {
                         self::fillInBlankValues($descriptions);
                         $descriptionStr = implode("<br>", $descriptions);
                         $numNotAvailablesInDescription = substr_count($descriptionStr, self::$notAvailable);
-                        $numNotAvailablesInExistingItem = substr_count($positions[$ts] ?? "", self::$notAvailable);
+                        $numNotAvailablesInExistingItem = substr_count(implode(" | ", array_values($positions[$ts] ?? [])), self::$notAvailable);
                         # if new timestamps -OR- if less not available comments, then set
                         if (!isset($positions[$ts])
                             || ($positions[$ts] && ($numNotAvailablesInDescription < $numNotAvailablesInExistingItem))) {

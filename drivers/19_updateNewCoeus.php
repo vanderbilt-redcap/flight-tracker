@@ -28,6 +28,7 @@ function updateCoeusSubmissions($token, $server, $pid, $records, $data = []) {
 }
 
 function updateAllCOEUSMulti($pids) {
+    Application::log("updateAllCOEUSMulti with ".count($pids)." pids");
     $data = getCOEUSData();
     foreach ($pids as $currPid) {
         $currToken = Application::getSetting("token", $currPid);
@@ -36,6 +37,7 @@ function updateAllCOEUSMulti($pids) {
             $forms = Download::metadataForms($currToken, $currServer);
             if (in_array("coeus", $forms)) {
                 $records = Download::records($currToken, $currServer);
+                Application::log("updateAllCOEUSMulti updating COEUS ".count($records)." records", $currPid);
                 updateCoeusGrants($currToken, $currServer, $currPid, $records, $data);
                 updateCoeusSubmissions($currToken, $currServer, $currPid, $records, $data);
             }

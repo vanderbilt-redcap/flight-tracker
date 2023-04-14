@@ -20,14 +20,22 @@ class Wrangler {
             $person = "inventor";
         }
         $people = $person."s";
-        $singularWranglerType = strtolower(substr($this->wranglerType, 0, strlen($this->wranglerType) - 1));
-        $lcWranglerType = strtolower($this->wranglerType);
+        if ($people == "persons") {
+            $people = "people";
+        }
+        $singularWranglerType = ($this->wranglerType == "FlagPublications") ? "publication" : strtolower(substr($this->wranglerType, 0, strlen($this->wranglerType) - 1));
+        $pluralWranglerType = $singularWranglerType."s";
+        $lcWranglerType = ($this->wranglerType == "FlagPublications") ? "publications" : strtolower($this->wranglerType);
         $institutionFieldValues = Download::oneField($this->token, $this->server, "identifier_institution");
         $myInstitutions = $institutionFieldValues[$recordId] ? preg_split("/\s*[,;]\s*/", $institutionFieldValues[$recordId]) : [];
         $institutions = array_unique(array_merge($myInstitutions, Application::getInstitutions($this->pid), Application::getHelperInstitutions()));
 
         $html = "";
-        $html .= "<h1>".ucfirst($singularWranglerType)." Wrangler</h1>\n";
+        if ($this->wranglerType == "FlagPublications") {
+            $html .= "<h1>Publication Flagger</h1>\n";
+        } else {
+            $html .= "<h1>".ucfirst($singularWranglerType)." Wrangler</h1>\n";
+        }
         $html .= "<p class='centered'>This page is meant to confirm the association of $lcWranglerType with $people.</p>\n";
         if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
             $html .= "<h2>".$recordId.": ".$name."</h2>";
@@ -36,28 +44,39 @@ class Wrangler {
 
         if (!NameMatcher::isCommonLastName($lastName) && ($notDoneCount > 0)) {
             $html .= "<p class='centered bolded'>";
-            $html .= $lastName." is an ".self::makeUncommonDefinition()." last name in the United States.<br>";
-            $html .= "You likely can approve these ".strtolower($this->wranglerType)." without close review.<br>";
+            $html .= $lastName." is ".self::makeUncommonDefinition()." last name in the United States.<br>";
+            $html .= "You likely can approve these $lcWranglerType without close review.<br>";
             $html .= "<a href='javascript:;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'><span class='green bolded'>Click here to approve all the $lcWranglerType for this record automatically.</span></a>";
             $html .= "</p>";
         }
 
+        $existingLabel = self::getLabel($this->wranglerType, "Existing");
         if ($includedCount == 1) {
-            $html .= "<h3 class='newHeader'>$includedCount Existing ".ucfirst($singularWranglerType)." | ";
+            $html .= "<h3 class='newHeader'>$includedCount $existingLabel ".ucfirst($singularWranglerType)." | ";
         } else if ($includedCount == 0) {
-            $html .= "<h3 class='newHeader'>No Existing $this->wranglerType | ";
+            $html .= "<h3 class='newHeader'>No $existingLabel ".ucfirst($pluralWranglerType)." | ";
         } else {
-            $html .= "<h3 class='newHeader'>$includedCount Existing $this->wranglerType | ";
+            $html .= "<h3 class='newHeader'>$includedCount $existingLabel ".ucfirst($pluralWranglerType)." | ";
         }
 
+        $newLabel = self::getLabel($this->wranglerType, "New");
         if ($notDoneCount == 1) {
-            $html .= "$notDoneCount New ".ucfirst($singularWranglerType)."</h3>\n";
+            $html .= "$notDoneCount $newLabel ".ucfirst($singularWranglerType)."</h3>\n";
         } else if ($notDoneCount == 0) {
-            $html .= "No New $this->wranglerType</h3>\n";
+            $html .= "No $newLabel ".ucfirst($pluralWranglerType)."</h3>\n";
         } else {
-            $html .= "$notDoneCount New $this->wranglerType</h3>\n";
+            $html .= "$notDoneCount $newLabel ".ucfirst($pluralWranglerType)."</h3>\n";
         }
         return $html;
+    }
+
+    public static function getLabel($wranglerType, $suggestedLabel) {
+        if (($wranglerType == "FlagPublications") && ($suggestedLabel == "Existing")) {
+            return "Flagged";
+        } else if (($wranglerType == "FlagPublications") && ($suggestedLabel == "New")) {
+            return "Unflagged";
+        }
+        return $suggestedLabel;
     }
 
     public static function makeUncommonDefinition() {
@@ -69,7 +88,8 @@ class Wrangler {
     }
 
     public function rightColumnText() {
-        $html = "<button class='biggerButton green bolded' id='finalize' style='display: none; position: fixed; top: 200px;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'>Finalize $this->wranglerType</button><br>\n";
+        $prettyWranglerType = ($this->wranglerType == "FlagPublications") ? "Flagged Publications" : $this->wranglerType;
+        $html = "<button class='biggerButton green bolded' id='finalize' style='display: none; position: fixed; top: 200px;' onclick='submitChanges($(\"#nextRecord\").val()); return false;'>Finalize $prettyWranglerType</button><br>\n";
         $html .= "<div class='red shadow' style='height: 180px; padding: 5px; vertical-align: middle; position: fixed; top: 250px; text-align: center; display: none;' id='uploading'>\n";
         $html .= "<p>Uploading Changes...</p>\n";
         if ($this->wranglerType == "Publications") {
@@ -94,20 +114,24 @@ class Wrangler {
         return 26;
     }
 
-    public static function getImageLocation($img) {
+    public static function getImageLocation($img, $pid = "", $wranglerType = "") {
         $validImages = ["unchecked", "checked", "readonly"];
         if (!in_array($img, $validImages)) {
             throw new \Exception("Image ($img) must be in: ".implode(", ", $validImages));
         }
-        $imgFile = "wrangler/".$img.".png";
-        return Application::link($imgFile);
+        if ($pid && Publications::areFlagsOn($pid) && ($wranglerType == "FlagPublications")) {
+            $imgFile = "wrangler/flagged_".$img.".png";
+        } else {
+            $imgFile = "wrangler/".$img.".png";
+        }
+        return Application::link($imgFile, $pid);
     }
 
     # img is unchecked, checked, or readonly
-    public static function makeCheckbox($id, $img) {
-        $imgFile = self::getImageLocation($img);
-        $checkedImg = self::getImageLocation("checked");
-        $uncheckedImg = self::getImageLocation("unchecked");
+    public static function makeCheckbox($id, $img, $pid = "", $wranglerType = "") {
+        $imgFile = self::getImageLocation($img, $pid,$wranglerType);
+        $checkedImg = self::getImageLocation("checked", $pid, $wranglerType);
+        $uncheckedImg = self::getImageLocation("unchecked", $pid, $wranglerType);
         $size = self::getImageSize()."px";
         $js = "if ($(this).attr(\"src\").match(/unchecked/)) { $(\"#$id\").val(\"include\"); $(this).attr(\"src\", \"$checkedImg\"); } else { $(\"#$id\").val(\"exclude\"); $(this).attr(\"src\", \"$uncheckedImg\"); }";
         if ($img == "unchecked") {
@@ -119,10 +143,10 @@ class Wrangler {
         }
         $input = "<input type='hidden' id='$id' value='$value'>";
         if (($img == "unchecked") || ($img == "checked")) {
-            return "<img src='$imgFile' id='image_$id' onclick='$js' style='width: $size; height: $size;' align='left'>".$input;
+            return "<img src='$imgFile' id='image_$id' onclick='$js' style='width: $size; height: $size; float: left;'>".$input;
         }
         if ($img == "readonly") {
-            return "<img src='$imgFile' id='image_$id' style='width: $size; height: $size;' align='left'>".$input;
+            return "<img src='$imgFile' id='image_$id' style='width: $size; height: $size; float: left;'>".$input;
         }
         return "";
     }

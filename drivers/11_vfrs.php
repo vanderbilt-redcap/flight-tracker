@@ -26,7 +26,7 @@ function updateVFRS($token, $server, $pid, $records) {
 }
 
 function updateVFRSMulti($pids) {
-    # Token for VFRS
+    Application::log("updateVFRSMulti with ".count($pids)." pids");
     $vfrs_token = CareerDev::getVFRSToken();
     $vfrsData = Download::fields($vfrs_token, 'https://redcap.vanderbilt.edu/api/', ["participant_id", "name_first", "name_last"]);
 
@@ -40,6 +40,7 @@ function updateVFRSMulti($pids) {
                 $completes = Download::oneField($currToken, $currServer, "pre_screening_survey_complete");
                 foreach ($records as $recordId) {
                     if ($completes[$recordId] != "2") {
+                        Application::log("updateVFRSMulti calling updateVFRSForRecord for Record $recordId", $currPid);
                         updateVFRSForRecord($currToken, $currServer, $currPid, $recordId, $vfrsData);
                     }
                 }

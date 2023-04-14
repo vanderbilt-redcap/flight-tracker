@@ -10,7 +10,7 @@ use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class CitationCollection {
-	# type = [ Filtered, Final, New, Omit ]
+	# type = [ Filtered, Final, New, Omit, Flagged, Unflagged ]
 	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = "download", $lastNames = [], $firstNames = []) {
 		$this->token = $token;
 		$this->server = $server;
@@ -67,13 +67,13 @@ class CitationCollection {
     }
 
 	# citationClass is notDone, included, or omitted
-	public function toHTML($citationClass) {
+	public function toHTML($citationClass, $displayOnEmpty = TRUE, $startI = 1) {
 		$html = "";
-		if (count($this->getCitations()) == 0) {
-			$html .= "<p class='centered'>None to date.</p>\n";
+		if ($displayOnEmpty && (count($this->getCitations()) == 0)) {
+			$html .= "<p class='centered'>None to date.</p>";
 		} else {
             $allBoldedNames = $this->getBoldedNames();
-            $i = 0;
+            $i = $startI - 1;
             foreach ($this->getCitations() as $citation) {
                 $boldedNames = $citation->getBoldedNames();
                 $nameClasses = [];
@@ -324,19 +324,27 @@ class Citation {
         return $grants;
     }
 
-	# citationClass is notDone, included, or omitted
+	# citationClass is notDone, included, omitted, flagged, or unflagged
 	public function toHTML($citationClass, $otherClasses = [], $number = 1) {
+        $citationClass = strtolower($citationClass);
 		if ($citationClass == "notDone") {
 			$checkboxClass = "checked";
 		} else if ($citationClass == "included") {
 			$checkboxClass = "readonly";
-		} else if ($citationClass == "omitted") {
-			$checkboxClass = "unchecked";
+        } else if ($citationClass == "omitted") {
+            $checkboxClass = "unchecked";
+        } else if ($citationClass == "flagged") {
+            $checkboxClass = "checked";
+        } else if ($citationClass == "unflagged") {
+            $checkboxClass = "unchecked";
 		} else {
 			throw new \Exception("Unknown citationClass $citationClass");
 		}
 
-		$ableToReset = ["included", "omitted"];
+
+        $wranglerType = Sanitizer::sanitize($_GET['wranglerType'] ?? "");
+		$ableToReset = ($wranglerType == "FlagPublications") ? [] : ["included", "omitted"];
+        $pid = Application::getPID($this->token);
 
 		$html = "";
 		$source = $this->getSource();
@@ -347,7 +355,7 @@ class Citation {
         $divClasses = "citation $citationClass ".implode(" ", $otherClasses);
 		$html .= "<div class='$divClasses' id='citation_$citationClass$id'>";
 		$html .= "<div class='citationCategories'><span class='tooltiptext'>".$this->makeTooltip()."</span>".$this->getCategory()."</div>";
-		$html .= Wrangler::makeCheckbox($id, $checkboxClass)."&nbsp;<strong>$number</strong>.&nbsp;".$source.$this->getCitationWithLink(TRUE, TRUE);
+		$html .= Wrangler::makeCheckbox($id, $checkboxClass, $pid, $wranglerType)."&nbsp;<strong>$number</strong>.&nbsp;".$source.$this->getCitationWithLink(TRUE, TRUE);
 		if (in_array($citationClass, $ableToReset)) {
             $html .= "<div style='text-align: right;' class='smallest'><span onclick='resetCitation(\"$id\");' class='finger'>reset</span></div>";
         }
@@ -652,6 +660,11 @@ class Citation {
 		}
 	}
 
+    public function isFlagged() {
+        $pid = Application::getPID($this->token);
+        return (Publications::areFlagsOn($pid)) && ($this->getVariable("flagged") === "1");
+    }
+
 	public function getVariable($var) {
 		$var = strtolower(preg_replace("/^citation_/", "", $var));
 		if (isset($this->data[$var])) {
@@ -744,6 +757,11 @@ class Citation {
     }
 
 	public function getType() {
+        $pid = Application::getPID($this->token);
+        if (Publications::areFlagsOn($pid)) {
+            $flagged = $this->isFlagged();
+            return $flagged ? "Flagged" : "Unflagged";
+        }
 		$include = $this->getVariable("include");
 		if ($include === "") {
 			return "New";
@@ -1262,7 +1280,8 @@ class Citation {
     }
 
     private function makeAddOns($base, $includeREDCapLink, $newTarget) {
-        global $pid, $event_id;
+        global $event_id;
+        $pid = Application::getPID($this->token);
 
         if ($this->getVariable("data_source") == "eric") {
             $fullTextURL = $this->getVariable("e_fulltext");

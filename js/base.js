@@ -623,62 +623,41 @@ function submitChanges(nextRecord) {
 	const resets = [];
 	$('#finalize').hide();
 	$('#uploading').show();
-	let type = "";
+	const params = getUrlVars();
+	const type = params['wranglerType'];
 	$('[type=hidden]').each(function(idx, elem) {
-		const id = $(elem).attr('id');
-		if ((typeof id != 'undefined') && id.match(/^PMID/)) {
-			type = 'Publications';
-			const value = $(elem).val();
-			const pmid = id.replace(/^PMID/, '');
-			if (!isNaN(pmid)) {
-				if (value === 'include') {
-					// checked => put in finalized
-					newFinalized.push(pmid);
-				} else if (value === 'exclude') {
-					// unchecked => put in omits
-					newOmits.push(pmid);
-				} else if (value === 'reset') {
-					resets.push(pmid);
-				}
-			}
-		} else if ((typeof id != 'undefined') && id.match(/^E[DJ]/)) {
-			type = 'Publications';
-			const value = $(elem).val();
-			if (value === 'include') {
-				// checked => put in finalized
-				newFinalized.push(id);
-			} else if (value === 'exclude') {
-				newOmits.push(id);
-			} else if (value === 'reset') {
-				resets.push(id);
-			}
-		} else	if ((typeof id != 'undefined') && id.match(/^USPO/)) {
-			type = 'Patents';
-			const value = $(elem).val();
-			const patentNumber = id.replace(/^USPO/, '');
-			if (!isNaN(patentNumber)) {
-				if (value === 'include') {
-					// checked => put in finalized
-					newFinalized.push(patentNumber);
-				} else if (value === 'exclude') {
-					// unchecked => put in omits
-					newOmits.push(patentNumber);
-				} else if (value === 'reset') {
-					resets.push(patentNumber);
-				}
-			}
+		const elemId = $(elem).attr('id');
+		const value = $(elem).val();
+		let id = "";
+		if ((typeof elemId != 'undefined') && elemId.match(/^PMID/)) {
+			id = elemId.replace(/^PMID/, '');
+		} else if ((typeof elemId != 'undefined') && elemId.match(/^E[DJ]/)) {
+			id = elemId;
+		} else	if ((typeof elemId != 'undefined') && elemId.match(/^USPO/)) {
+			id = elemId.replace(/^USPO/, '');
+		}
+
+		if (id && (value === 'include')) {
+			// checked => put in finalized
+			newFinalized.push(id);
+		} else if (id && (value === 'exclude')) {
+			// unchecked => put in omits
+			newOmits.push(id);
+		} else if (id && (value === 'reset')) {
+			resets.push(id);
 		}
 	});
 
 	let url = '';
 	if (type === 'Patents') {
 		url = getPageUrl('wrangler/savePatents.php');
-	} else if (type === 'Publications') {
+	} else if ((type === 'Publications') || (type === 'FlagPublications')) {
 		url = getPageUrl('wrangler/savePubs.php');
 	}
 	if (url) {
 		const postdata = {
 			record_id: recordId,
+			wranglerType: type,
 			omissions: JSON.stringify(newOmits),
 			resets: JSON.stringify(resets),
 			finalized: JSON.stringify(newFinalized)

@@ -76,7 +76,7 @@ if (isset($_GET['grants'])) {
     $topDefinitions = [
         "Scholar" => "The person whose grant is being examined.",
         "Collaborator" => "A different person who has investigated a grant as a PI or Co-PI with the Scholar.",
-        "Connection" => "A grant awarded with a Scholar and a Collaborator. (One grant may have more than one connection.)",
+        "Collaboration" => "A grant awarded with a Scholar and a Collaborator. (One grant may have more than one collaboration.)",
     ];
 } else {
     $title = "Publishing Collaborations Among Scholars";
@@ -87,7 +87,7 @@ if (isset($_GET['grants'])) {
     $topDefinitions = [
         "Scholar" => "The person whose publication is being examined.",
         "Collaborator" => "A different person who has co-authored a paper with the Scholar.",
-        "Connection" => "A paper published with a Scholar and a Collaborator. (One paper may have more than one connection.)",
+        "Collaboration" => "A paper published with a Scholar and a Collaborator. (One paper may have more than one collaboration.)",
     ];
 }
 
@@ -242,14 +242,14 @@ if (isset($_GET['cohort']) && !empty($records)) {
 //        }
 //    }
 
-    list($connections, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index, $pubs);
+    list($collaborations, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index, $pubs);
 
     if ($includeMentors) {
-        $mentorConnections = getAvgMentorConnections($matches);
+        $mentorCollaborations = getAvgMentorCollaborations($matches);
     } else {
-        $mentorConnections = 0;
+        $mentorCollaborations = 0;
     }
-    list($stats, $maxConnections, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators) = makeSummaryStats($connections, $names, $numCollabsToShow);
+    list($stats, $maxCollaborations, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators) = makeSummaryStats($collaborations, $names, $numCollabsToShow);
 
     if (isset($_GET['test'])) {
         echo "unique IDs: ".implode(", ", array_keys($uniqueIDs))."<br/>";
@@ -267,11 +267,11 @@ if (isset($_GET['cohort']) && !empty($records)) {
         }
         echo "<div class='centered'>".implode("<br>", $lines)."</div>";
         if (isset($_GET['grants'])) {
-            $connections['collaborations'] = $connections['given'];
+            $collaborations['collaborations'] = $collaborations['given'];
             $stats['collaborations'] = $stats['given'];
             $totalCollaborators['collaborations'] = $totalCollaborators['given'];
             $maxCollaborators['collaborations'] = $maxCollaborators['given'];
-            $maxConnections['collaborations'] = $maxConnections['given'];
+            $maxCollaborations['collaborations'] = $maxCollaborations['given'];
             $maxNames['collaborations'] = $maxNames['given'];
             $maxCollabNames['collaborations'] = $maxCollabNames['given'];
         }
@@ -282,18 +282,18 @@ if (isset($_GET['cohort']) && !empty($records)) {
                     echo "<tr><th>Total Number of Papers</th><td>".REDCapManagement::pretty(count($uniqueIDs))."</td></tr>";
                     echo "<tr><th>Total Number of Citations by Papers</th><td>".REDCapManagement::pretty(array_sum(array_values($uniqueIDs)))."</td></tr>";
                 }
-                echo "<tr><th>Total Connections</th><td>".REDCapManagement::pretty(array_sum($stats[$type]->getValues()))."</td></tr>\n";
-                echo "<tr><th>Number of Scholars with Connections</th><td>n = ".REDCapManagement::pretty($stats[$type]->getN())."</td></tr>\n";
-                echo "<tr><th>Average Number of Collaborators with at least one Connection</th><td>".REDCapManagement::pretty($totalCollaborators[$type] / $stats[$type]->getN(), 1)."</td></tr>\n";
-                echo "<tr><th>Mean of Connections</th><td>&mu; = ".REDCapManagement::pretty($stats[$type]->mean(), 1)."</td></tr>\n";
-                echo "<tr><th>Average Connections with a Collaborator</th><td>".REDCapManagement::pretty($stats[$type]->sum() / $totalCollaborators[$type], 1)."</td></tr>\n";
-                echo "<tr><th>Median of Connections</th><td>".REDCapManagement::pretty($stats[$type]->median(), 1)."</td></tr>\n";
-                echo "<tr><th>Mode of Connections</th><td>".implode(", ", $stats[$type]->mode())."</td></tr>\n";
+                echo "<tr><th>Total Collaborations</th><td>".REDCapManagement::pretty(array_sum($stats[$type]->getValues()))."</td></tr>\n";
+                echo "<tr><th>Number of Scholars with Collaborations</th><td>n = ".REDCapManagement::pretty($stats[$type]->getN())."</td></tr>\n";
+                echo "<tr><th>Average Number of Collaborators with at least one Collaboration</th><td>".REDCapManagement::pretty($totalCollaborators[$type] / $stats[$type]->getN(), 1)."</td></tr>\n";
+                echo "<tr><th>Mean of Collaborations</th><td>&mu; = ".REDCapManagement::pretty($stats[$type]->mean(), 1)."</td></tr>\n";
+                echo "<tr><th>Average Collaborations with a Collaborator</th><td>".REDCapManagement::pretty($stats[$type]->sum() / $totalCollaborators[$type], 1)."</td></tr>\n";
+                echo "<tr><th>Median of Collaborations</th><td>".REDCapManagement::pretty($stats[$type]->median(), 1)."</td></tr>\n";
+                echo "<tr><th>Mode of Collaborations</th><td>".implode(", ", $stats[$type]->mode())."</td></tr>\n";
                 echo "<tr><th>Standard Deviation</th><td>&sigma; = ".REDCapManagement::pretty($stats[$type]->getSigma(), 1)."</td></tr>\n";
-                echo "<tr><th>Maximum Connections</th><td>Leading $numCollabsToShow Entries<br/>".formatCollaborators($maxConnections[$type], $maxNames[$type], $numCollabsToShow)."</td></tr>\n";
+                echo "<tr><th>Maximum Collaborations</th><td>Leading $numCollabsToShow Entries<br/>".formatCollaborators($maxCollaborations[$type], $maxNames[$type], $numCollabsToShow)."</td></tr>\n";
                 echo "<tr><th>Maximum Number of Collaborators</th><td>Leading $numCollabsToShow Entries<br/>".formatCollaborators($maxCollaborators[$type], $maxCollabNames[$type], $numCollabsToShow)."</td></tr>\n";
-                if ($includeMentors && ($type != "received") && $mentorConnections) {
-                    echo "<tr><th>Average Connections per Mentor with All Scholars</th><td>".REDCapManagement::pretty($mentorConnections, 1)."</td></tr>\n";
+                if ($includeMentors && ($type != "received") && $mentorCollaborations) {
+                    echo "<tr><th>Average Collaborations per Mentor with All Scholars</th><td>".REDCapManagement::pretty($mentorCollaborations, 1)."</td></tr>\n";
                 }
             }
         }
@@ -313,7 +313,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
             list($barChartCols, $barChartLabels) = makePublicationColsAndLabels($pubs);
             $chart = new BarChart($barChartCols, $barChartLabels, "barChart");
             $chart->setXAxisLabel("Year");
-            $chart->setYAxisLabel("Number of Connections");
+            $chart->setYAxisLabel("Number of Collaborations");
             echo $chart->getImportHTML();
             echo $chart->getHTML(500, 300, TRUE);
         }
@@ -409,14 +409,14 @@ function makeFieldSelect($selectedField, $fields, $metadataLabels) {
     return $html;
 }
 
-function getAvgMentorConnections($matches) {
-    $mentorConnections = 0;
+function getAvgMentorCollaborations($matches) {
+    $mentorCollaborations = 0;
     $mentorCollaborators = [];
     foreach (array_keys($matches) as $fromRecordId) {
         foreach ($matches[$fromRecordId] as $toRecordId => $fromInstances) {
             if (preg_match("/^Mentor/", $toRecordId)) {
                 $mentor = $toRecordId;
-                $mentorConnections += count($fromInstances);
+                $mentorCollaborations += count($fromInstances);
                 if (!in_array($mentor, $mentorCollaborators)) {
                     $mentorCollaborators[] = $mentor;
                 }
@@ -424,7 +424,7 @@ function getAvgMentorConnections($matches) {
         }
     }
     if (count($mentorCollaborators) > 0) {
-        return $mentorConnections / count($mentorCollaborators);
+        return $mentorCollaborations / count($mentorCollaborators);
     }
     return 0;
 }
@@ -524,18 +524,18 @@ function makeLegendHTML($indexByField) {
 }
 
 function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
-    $totalConnections = 0;
+    $totalCollaborations = 0;
     if ($indexByField == PUBYEAR_SELECT) {
         $colorWheel = generateColorWheel(8, START_YEAR, date("Y"));
     } else {
         $colorWheel = getPlainColorWheel();
     }
     $combine = ["VCTRS", "VPSD", "VFRS"];
-    $connections = ["given" => [], "received" => [], ];
+    $collaborations = ["given" => [], "received" => [], ];
     $chartData = [];
     $uniqueNames = [];
     foreach (array_keys($matches) as $fromRecordId) {
-        $connections["given"][$fromRecordId] = [];
+        $collaborations["given"][$fromRecordId] = [];
         foreach ($matches[$fromRecordId] as $toRecordId => $fromInstances) {
             if (isForIndividualScholars($indexByField)) {
                 if (isset($names[$fromRecordId])) {
@@ -599,16 +599,16 @@ function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
                 $chartRow['nodeColor'] = $colorWheel[count($chartData) % count($colorWheel)];
                 $chartData[] = $chartRow;
             }
-            $connections["given"][$fromRecordId][$toRecordId] = $numItems;
+            $collaborations["given"][$fromRecordId][$toRecordId] = $numItems;
 
-            if (!isset($connections["received"][$toRecordId])) {
-                $connections["received"][$toRecordId] = [];
+            if (!isset($collaborations["received"][$toRecordId])) {
+                $collaborations["received"][$toRecordId] = [];
             }
-            $connections["received"][$toRecordId][$fromRecordId] = $numItems;
-            $totalConnections += $numItems;
+            $collaborations["received"][$toRecordId][$fromRecordId] = $numItems;
+            $totalCollaborations += $numItems;
         }
     }
-    return [$connections, $chartData, $uniqueNames];
+    return [$collaborations, $chartData, $uniqueNames];
 }
 
 function findGrantMatchesForRecord(&$index, &$coeusAwardNumbers, $token, $server, $fields, $fromRecordId, $indexByField, $records, $userids, $names) {
@@ -806,25 +806,25 @@ function getExplodedLastNames($token, $server) {
     return $possibilities;
 }
 
-function makeSummaryStats($connections, $names, $numCollabsToShow) {
+function makeSummaryStats($collaborations, $names, $numCollabsToShow) {
     $stats = [];
-    $maxConnections = [];
+    $maxCollaborations = [];
     $maxNames = [];
     $collabsInOrder = [];
     $maxCollaborators = [];
     $maxCollabNames = [];
     $totalCollaborators = [];
-    foreach ($connections as $type => $typeConnections) {
+    foreach ($collaborations as $type => $typeCollaborations) {
         $dataValues = [];
         $maxCollaborators[$type] = [];
         $totalCollaborators[$type] = 0;
         $collabsInOrder[$type] = [];
-        $maxConnections[$type] = [];
-        foreach ($typeConnections as $recordId => $indivConnections) {
-            $numConnections = array_sum(array_values($indivConnections));
-            if ($numConnections > 0) {
-                $dataValues[] = $numConnections;
-                $numCollaborators = count($indivConnections);
+        $maxCollaborations[$type] = [];
+        foreach ($typeCollaborations as $recordId => $indivCollaborations) {
+            $numCollaborations = array_sum(array_values($indivCollaborations));
+            if ($numCollaborations > 0) {
+                $dataValues[] = $numCollaborations;
+                $numCollaborators = count($indivCollaborations);
                 $totalCollaborators[$type] += $numCollaborators;
                 if (!isset($collabsInOrder[$type][$numCollaborators])) {
                     $collabsInOrder[$type][$numCollaborators] = [];
@@ -835,7 +835,7 @@ function makeSummaryStats($connections, $names, $numCollabsToShow) {
         $stats[$type] = new Stats($dataValues);
         rsort($dataValues);
         for ($i = 0; $i < $numCollabsToShow; $i++) {
-            $maxConnections[$type][$i] = $dataValues[$i] ?: 0;
+            $maxCollaborations[$type][$i] = $dataValues[$i] ?: 0;
         }
         $maxNames[$type] = [];
         $maxCollabNames[$type] = [];
@@ -855,11 +855,11 @@ function makeSummaryStats($connections, $names, $numCollabsToShow) {
             }
             $maxNames[$type][$i] = [];
             $maxCollabNames[$type][$i] = [];
-            foreach ($typeConnections as $recordId => $indivConnections) {
-                $numConnections = array_sum(array_values($indivConnections));
-                $numCollaborators = count($indivConnections);
+            foreach ($typeCollaborations as $recordId => $indivCollaborations) {
+                $numCollaborations = array_sum(array_values($indivCollaborations));
+                $numCollaborators = count($indivCollaborations);
 
-                if ($numConnections == $maxConnections[$type][$i]) {
+                if ($numCollaborations == $maxCollaborations[$type][$i]) {
                     if (isset($names[$recordId])) {
                         $maxNames[$type][$i][] = $names[$recordId];
                     } else {
@@ -878,7 +878,7 @@ function makeSummaryStats($connections, $names, $numCollabsToShow) {
             }
         }
     }
-    return [$stats, $maxConnections, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators];
+    return [$stats, $maxCollaborations, $maxNames, $maxCollaborators, $maxCollabNames, $totalCollaborators];
 }
 
 function addMentorNamesForRecords(&$firstNames, &$lastNames, &$records, $mentors, $highlightedRecord = FALSE) {

@@ -11,6 +11,7 @@ use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\WebOfScience;
 use Vanderbilt\CareerDevLibrary\Cohorts;
 use Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\Publications;
 
 # test projects
 define("LOCALHOST_TEST_PROJECT", 16);
@@ -21,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.4.2";
+		return "5.5.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -269,6 +270,12 @@ class CareerDev {
         $_GET['project_id'] = $pid;
 		self::$pid = $pid;
 	}
+
+    public static function unsetPid() {
+        unset($_GET['pid']);
+        unset($_GET['project_id']);
+        self::$pid = NULL;
+    }
 
     private static function constructThisURL() {
         $isHTTPS = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off'));
@@ -784,7 +791,11 @@ class CareerDev {
         ) {
 	        # TODO add redcaptest.vanderbilt.edu
 	        $module = ExternalModules::getModuleInstance("vanderbilt_plugin-settings");
-	        $value = $module->getProjectSetting($field, $pid);
+            $prefix = "";
+            if (!preg_match("/\/plugins\//", $_SERVER['REQUEST_URI'])) {
+                $prefix = "career_dev_";
+            }
+            $value = $module->getProjectSetting($prefix.$field, $pid);
 	        if ($value) {
 	            return $value;
             }
@@ -1182,10 +1193,14 @@ class CareerDev {
             if ($switches->isOnForProject("Grants")) {
                 $ary["Add a Custom Grant"] = self::link("/customGrants.php");
                 $ary["Add Custom Grants by Bulk"] = self::link("/bulkImport.php")."&grants";
-                $ary["*NEW* Grant Wrangler"] = self::link("/wrangler/index_new.php");
+                $ary["Grant Wrangler"] = self::link("/wrangler/index_new.php");
             }
 			if ($switches->isOnForProject("Publications")) {
-                $ary["Publication Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Publications";
+                if (Publications::areFlagsOn($pid)) {
+                    $ary["Publication Flagger"] = self::link("/wrangler/include.php")."&wranglerType=FlagPublications";
+                } else {
+                    $ary["Publication Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Publications";
+                }
             }
             if ($switches->isOnForProject("Grants")) {
                 $ary["Lexical Translator"] = self::link("/lexicalTranslator.php");
@@ -1204,6 +1219,7 @@ class CareerDev {
         "citation_pmid",
         "citation_doi",
         "citation_include",
+        "citation_flagged",
         "citation_source",
         "citation_pmcid",
         "citation_authors",

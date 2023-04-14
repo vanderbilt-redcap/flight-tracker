@@ -30,7 +30,7 @@ $records = Download::recordIds($token, $server);
 $url = Application::link("wrangler/include.php");
 $html = "";
 try {
-    $validWranglerTypes = ["Publications", "Patents", "Grants"];
+    $validWranglerTypes = ["Publications", "Patents", "Grants", "FlagPublications"];
     foreach ($validWranglerTypes as $wt) {
         if ($wt == Sanitizer::sanitize($_GET['wranglerType'])) {
             $wranglerType = $wt;
@@ -42,7 +42,7 @@ try {
         throw new \Exception("Invalid wrangler type!");
     }
 } catch(\Exception $e) {
-    Application::reportException($e);
+    echo Application::reportException($e);
 }
 if (isset($_POST['request'])) {
     if ($_POST['request'] == "check") {
@@ -58,12 +58,17 @@ if (isset($_POST['request'])) {
                 $location = preg_replace("/^record_/", "", (string) $key);
                 list($recordId, $instrument, $instance) = explode(":", $location);
                 if (in_array($recordId, $records) && in_array($instrument, ["citation", "eric", "patent"])) {
-                    $upload[] = [
+                    $uploadRow = [
                         'record_id' => $recordId,
                         'redcap_repeat_instrument' => $instrument,
                         'redcap_repeat_instance' => $instance,
-                        $instrument.'_include' => '1',
                     ];
+                    if (($wranglerType == "FlagPublications") && ($instrument == "citation")) {
+                        $uploadRow["citation_flagged"] = "1";
+                    } else {
+                        $uploadRow[$instrument."_include"] = "1";
+                    }
+                    $upload[] = $uploadRow;
                 }
             }
         }
@@ -93,7 +98,13 @@ try {
         $autoApproveHTML = getAutoApproveHTML($nextRecord, $url.$wranglerTypeParam);
     }
 } catch(\Exception $e) {
-    Application::reportException($e);
+    echo Application::reportException($e);
+}
+
+if (!$record && (count($records) > 0) && ($wranglerType == "FlagPublications")) {
+    $firstRecord = $records[0];
+    $_GET['record'] = $firstRecord;
+    $record = $firstRecord;
 }
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -112,7 +123,7 @@ try {
 
     $metadata = Download::metadata($token, $server);
     $institutions = Download::institutionsAsArray($token, $server);
-    if ($wranglerType == "Publications") {
+    if (in_array($wranglerType, ["Publications", "FlagPublications"])) {
         $fields = Application::getCitationFields($metadata);
     } else if ($wranglerType == "Patents") {
         $fields = Application::getPatentFields($metadata);
@@ -124,11 +135,15 @@ try {
     $nextRecord = getNextRecordWithData($token, $server, $record, $wranglerType, $records);
 
     $thisUrl = Application::link("this")."&wranglerType=$wranglerType&record=$record";
-    if ($wranglerType == "Publications") {
-        $excludeList = new ExcludeList("Publications", $pid, [], $metadata);
+    if (in_array($wranglerType, ["Publications", "FlagPublications"])) {
         $pubs = new Publications($token, $server);
         $pubs->setRows($redcapData);
-        $html = $excludeList->makeEditForm($record).$pubs->getEditText($thisUrl);
+        if ($wranglerType == "Publications") {
+            $excludeList = new ExcludeList("Publications", $pid, [], $metadata);
+            $html = $excludeList->makeEditForm($record).$pubs->getEditText($thisUrl);
+        } else {
+            $html = $pubs->getEditText($thisUrl);
+        }
     } else if ($wranglerType == "Patents") {
         $lastNames = Download::lastnames($token, $server);
         $firstNames = Download::firstnames($token, $server);
@@ -187,7 +202,7 @@ try {
         echo "<h1>Nothing more to wrangle!</h1>\n";
     }
 } catch(\Exception $e) {
-    Application::reportException($e);
+    echo Application::reportException($e);
 }
 
 
@@ -285,10 +300,11 @@ function checkForApprovals($token, $server, $records, $nextRecord, $url, $wrangl
         $records = CareerDev::filterOutCopiedRecords($records);
     }
     $lastNames = Download::lastnames($token, $server);
+    $itemPlural = ($wranglerType == "FlagPublications") ? "publications" : strtolower($wranglerType);
 
     $usedRecords = [];
     $html .= "<div class='max-width centered'>";
-    $html .= "<p class='centered'>The following records have been automatically categorized as auto-approved (<span class='bolded greentext'>&check;</span>) or manual (&#9997; ) according to whether they have ".Publications::makeUncommonDefinition()." and/or ".Publications::makeLongDefinition()." last names. Please review to check if you concur with the recommendations. After you do so, you will be given the option to handle the remaining issues for each scholar (via the traditional process). To directly handle one scholar, click on their name to take you to their list of ".strtolower($wranglerType)." to wrangle.</p>";
+    $html .= "<p class='centered'>The following records have been automatically categorized as auto-approved (<span class='bolded greentext'>&check;</span>) or manual (&#9997; ) according to whether they have ".Publications::makeUncommonDefinition()." and/or ".Publications::makeLongDefinition()." last names. Please review to check if you concur with the recommendations. After you do so, you will be given the option to handle the remaining issues for each scholar (via the traditional process). To directly handle one scholar, click on their name to take you to their list of $itemPlural to wrangle.</p>";
     $html .= "<form action='$url' method='POST'><input type='hidden' name='request' value='approve'>";
     $html .= Application::generateCSRFTokenHTML();
     foreach ($records as $recordId) {
@@ -311,7 +327,7 @@ function checkForApprovals($token, $server, $records, $nextRecord, $url, $wrangl
                 $html .= "<input type='hidden' id='$fieldName' name='$fieldName' class='record_$recordId' value='$isNotCommon'>";
                 $spanId = "record_$recordId"."_idx_$number";
                 $link = "<span id='$spanId'>";
-                if (($wranglerType == "Publications") && ($instrument == "citation")) {
+                if (in_array($wranglerType, ["Publications", "FlagPublications"]) && ($instrument == "citation")) {
                     $linkURL = Citation::getURLForPMID($number);
                     $linkTitle = "PMID".$number;
                 } else if (($wranglerType == "Publications") && ($instrument == "eric")) {
@@ -377,6 +393,10 @@ function getFieldsForWrangler($wranglerType) {
         $indexFields = ["citation_pmid", "eric_id"];
         $includeFields = ["citation_include", "eric_include"];
         $instruments = ["citation", "eric"];
+    } else if ($wranglerType == "FlagPublications") {
+        $indexFields = ["citation_pmid"];
+        $includeFields = ["citation_flagged"];
+        $instruments = ["citation"];
     } else if ($wranglerType == "Patents") {
         $indexFields = ["patent_number"];
         $includeFields = ["patent_include"];
