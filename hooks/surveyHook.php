@@ -71,7 +71,7 @@ $certifyPubURL = Application::link("wrangler/certifyPub.php");
 $html .= "<div style='text-align: center;'><label for='pmid'>PMID</label>: <input type='number' id='pmid' value=''><br><button type='button' class='purple' onclick='addPMID($(\"#pmid\").val(), \"$certifyPubURL\"); return false;'>Add PMID</button></div>\n";
 $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
 
-echo "<script src='".Application::link("js/portal.js")."&".CareerDev::getVersion()."'></script>\n";
+echo "<script src='".Application::link("js/base.js")."&".CareerDev::getVersion()."'></script>\n";
 echo "<script src='".Application::link("js/jquery.sweet-modal.min.js")."&".CareerDev::getVersion()."'></script>\n";
 ?>
 <script>

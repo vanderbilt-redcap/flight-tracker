@@ -15,7 +15,7 @@ This feature is **Under Construction** and _not yet implemented_. If you have fe
 * **classes/** - The core classes that handle the logic that runs the functioning of the code. _These cannot be overwritten!_
 * **drivers/** - The files in this directory are called to run the cron jobs and to perform general maintenance. 
 * **help/** - The HTML that organizes the online help. 
-* **js/portal.js** - The base library of JavaScript functions.
+* **js/base.js** - The base library of JavaScript functions.
 * **css/career_dev.css** - The base CSS styling document.
 * **charts/baseWeb.php** - Handles all of the headers for Flight Tracker and sets up the web environment.
 * **cronLoad.php** - Manages which crons run on which day. (The config.json file sets these to run at midnight server time.)

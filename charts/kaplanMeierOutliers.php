@@ -54,7 +54,7 @@ if (strpos($csslink, "?") !== FALSE) {
 }
 echo "<link rel='stylesheet' href='$csslink'>";
 
-$jsLocs = ["js/portal.js", "js/jquery.min.js"];
+$jsLocs = ["js/base.js", "js/jquery.min.js"];
 foreach ($jsLocs as $jsLoc) {
     $jslink = Application::link($jsLoc);
     if (strpos($jslink, "?") !== FALSE) {

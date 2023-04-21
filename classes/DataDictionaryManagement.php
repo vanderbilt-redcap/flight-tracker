@@ -231,7 +231,7 @@ class DataDictionaryManagement {
         $metadata['REDCap'] = Download::metadata($token, $server);
         $metadata['REDCap'] = self::filterOutForms($metadata['REDCap'], $excludeForms);
         if (isset($_POST['fields'])) {
-            $postedFields = $_POST['fields'];
+            $postedFields = Sanitizer::sanitizeArray($_POST['fields']);
         } else {
             list ($missing, $additions, $changed) = self::findChangedFieldsInMetadata($metadata['REDCap'], $files, $deletionRegEx, $newSourceChoices, $excludeForms, $pid);
             $postedFields = $missing;
