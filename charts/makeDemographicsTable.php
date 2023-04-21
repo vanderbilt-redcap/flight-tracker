@@ -767,7 +767,7 @@ function makeLink($row) {
 		$degreeLetters[] = $legend[$degree];
 	}
 
-	$age = ($row['summary_award_age_1'] && is_numeric($row['summary_award_age_1'])) ? floor($row['summary_award_age_1']) : "";
+	$age = ($row['summary_award_age_1'] && is_numeric($row['summary_award_age_1'])) ? floor((int) $row['summary_award_age_1']) : "";
 	if (!$age) {
 		$age = "<span style='color: red;'>N/A</span>";
 	}
@@ -938,6 +938,7 @@ foreach ($summaries as $header => $ary) {
 	echo "<th>".$header."</th>";
 	echo "<td class='pool'>$pool</td>";
 	echo "<td>";
+    $func = "\\Vanderbilt\\FlightTrackerExternalModule\\".$func;
 	echo $func($redcapData);
 	echo "</td>";
 	echo "</tr>";

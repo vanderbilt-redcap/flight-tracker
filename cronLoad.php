@@ -30,13 +30,6 @@ function runMainCrons(&$manager, $token, $server) {
 
         CareerDev::clearDate("Last Federal RePORTER Download", $pid);
 
-        $sanitizeQuotesSetting = "sanitizeQuotes";
-        if (!Application::getSetting($sanitizeQuotesSetting, $pid) && (time() < strtotime("2022-12-01"))) {
-            $manager->addCron("clean/sanitizerQuotes.php", "transformBadQuotes", date("Y-m-d"), $allRecords, 10000);
-            Application::saveSetting($sanitizeQuotesSetting, "1", $pid);
-        }
-
-
         if (
             in_array("promotion_workforce_sector", $metadataFields)
             && in_array("promotion_activity", $metadataFields)
@@ -74,29 +67,21 @@ function runMainCrons(&$manager, $token, $server) {
             $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday", $records, 20);
         }
         if (in_array('ldapds', $forms)) {
-            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $records, 10000);
-            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "2023-03-03", $records, 10000);
+            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $allRecords, 10000);
         }
         if (in_array("ies_grant", $forms)) {
-            $manager->addCron("drivers/24_getIES.php", "getIES", "Friday", $records, 10000);
+            $manager->addCron("drivers/24_getIES.php", "getIES", "Friday", $allRecords, 10000);
         }
         if (!Application::isLocalhost() && Application::isVanderbilt()) {
             $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
-            $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Monday", $allRecords, 500);
-            $manager->addCron("drivers/2p_updateStudioUse.php", "deleteAllStudios", "2022-11-13");
-            $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "2022-11-13");
+            $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Friday", $allRecords, 500);
             if (in_array('coeus', $forms)) {
-                $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
+                # Put in Multi crons
+                // $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
                 $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
-                $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "2023-03-03", $allRecords, 1000);
-                $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "2023-03-03", $allRecords, 500);
             } else if (in_array('coeus2', $forms)) {
                 $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
             }
-            # Already in updateAllCOEUS
-            // if (in_array('coeus_submission', $forms)) {
-            // $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", "Wednesday", $allRecords, 1000);
-            // }
         }
         if (!$securityTestMode) {
             $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Friday", $allRecords, 100);
@@ -123,9 +108,10 @@ function runMainCrons(&$manager, $token, $server) {
         }
 
         $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $allRecords, 100000);
-        if (in_array("pre_screening_survey", $forms)) {
-            $manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $allRecords, 100000);
-        }
+        # put in multi-crons
+        // if (in_array("pre_screening_survey", $forms)) {
+            // $manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $allRecords, 100000);
+        // }
         if (in_array('patent', $forms) && !$securityTestMode) {
             $manager->addCron("drivers/18_getPatents.php", "getPatents", "Tuesday", $records, 100);
         }
@@ -135,9 +121,10 @@ function runMainCrons(&$manager, $token, $server) {
         if (in_array("eric", $forms)) {
             $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
         }
-        if (in_array("vera", $forms) && in_array("vera_submission", $forms) && !Application::isLocalhost()) {
-            $manager->addCron("drivers/22_getVERA.php", "getVERA", "Monday", $allRecords, 100000);
-        }
+        # now in multi crons
+        // if (in_array("vera", $forms) && in_array("vera_submission", $forms) && !Application::isLocalhost()) {
+            // $manager->addCron("drivers/22_getVERA.php", "getVERA", "Monday", $allRecords, 100000);
+        // }
 
         $cohorts = new Cohorts($token, $server, Application::getModule());
         if ($cohorts->hasReadonlyProjects()) {

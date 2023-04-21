@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
@@ -40,6 +41,7 @@ if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 $nextRecord = REDCapManagement::getNextRecord($record, $token, $server);
 $redcapData = Download::records($token, $server, [$record]);
 $metadata = Download::metadata($token, $server);
+$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
 $institutions = Download::institutionsAsArray($token, $server);
 
 $grants = new Grants($token, $server, $metadata);
@@ -126,6 +128,39 @@ foreach ($mentors as $mentor) {
     } else {
         $mentorsWithArticles[] = $mentor;
     }
+}
+
+$choices = DataDictionaryManagement::getChoices($metadata);
+$metadataLabels = DataDictionaryManagement::getLabels($metadata);
+$optionalRows = [];
+$optionalSettings = REDCapManagement::getOptionalSettings();
+foreach (REDCapManagement::getOptionalFields() as $field) {
+    if (in_array($field, $metadataFields)) {
+        $setting = REDCapManagement::turnOptionalFieldIntoSetting($field);
+        $label = $optionalSettings[$setting] ?? $metadataLabels[$field] ?? $field;
+        $value = REDCapManagement::findField($redcapData, $record, $field);
+        if (isset($choices[$field]) && isset($choices[$field][$value])) {
+            $value = $choices[$field][$value];
+        }
+        if ($label && $value) {
+            $optionalRows[] = [
+                "label" => $label,
+                "value" => $value,
+            ];
+        }
+    }
+}
+
+$optionalRowsHTML = "";
+for ($i = 0; $i < count($optionalRows); $i += 2) {
+    $optionalRowsHTML .= "<tr>";
+    $optionalRowsHTML .= "<td class='label profileHeader'>{$optionalRows[$i]['label']}:</td>";
+    $optionalRowsHTML .= "<td class='value profileHeader'>{$optionalRows[$i]['value']}</td>";
+    if ($i + 1 < count($optionalRows)) {
+        $optionalRowsHTML .= "<td class='label profileHeader'>{$optionalRows[$i+1]['label']}:</td>";
+        $optionalRowsHTML .= "<td class='value profileHeader'>{$optionalRows[$i+1]['value']}</td>";
+    }
+    $optionalRowsHTML .= "</tr>";
 }
 
 ?>
@@ -226,6 +261,7 @@ if (CareerDev::getInstitutionCount() == 1) {
 		<td class='label profileHeader'>Converted?:</td>
 		<td class='value profileHeader allcaps'><?= $converted ?></td>
 	</tr>
+        <?= $optionalRowsHTML ?>
 	<tr>
 		<td class='label profileHeader'>Number of First-Author Articles:</td>
 		<td class='value profileHeader'><?= REDCapManagement::pretty($numFirstAuthors) ?></td>

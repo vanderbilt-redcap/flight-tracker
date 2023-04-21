@@ -7,8 +7,24 @@ use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class DataDictionaryManagement {
+    const DELETION_SUFFIX = "___delete";
+    const DEPARTMENT_OTHER_VALUE = "999999";
+    const OPTION_OTHER_VALUE = "99";
+    const DEGREE_OTHER_VALUE = "99";
+    const INSTITUTION_OTHER_VALUE = "5";
+
     public static function getDeletionRegEx() {
-        return "/___delete$/";
+        $suffix = self::DELETION_SUFFIX;
+        return "/$suffix$/";
+    }
+
+    public static function getFileMetadata() {
+        $filename = __DIR__."/../metadata.json";
+        if (file_exists($filename)) {
+            $json = file_get_contents($filename);
+            return json_decode($json, TRUE);
+        }
+        return [];
     }
 
     public static function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadata = FALSE) {
@@ -20,13 +36,17 @@ class DataDictionaryManagement {
         }
         Application::saveSetting("departments", $lists["departments"], $pid);
         Application::saveSetting("resources", $lists["resources"], $pid);
+        if (isset($lists['person_role'])) {
+            Application::saveSetting("person_role", $lists["person_role"], $pid);
+        }
         if (!Application::getSetting("mentoring_resources", $pid)) {
             Application::saveSetting("mentoring_resources", $lists["resources"], $pid);
         }
         $others = [
-            "departments" => 999999,
+            "departments" => self::DEPARTMENT_OTHER_VALUE,
             "resources" => FALSE,
             "mentoring" => FALSE,
+            "person_role" => self::OPTION_OTHER_VALUE,
         ];
 
         $files = Application::getMetadataFiles();
@@ -55,36 +75,60 @@ class DataDictionaryManagement {
         $fields["departments"] = REDCapManagement::getSpecialFields("departments", $metadata);
         $fields["resources"] = REDCapManagement::getSpecialFields("resources", $metadata);
         $fields["mentoring"] = REDCapManagement::getSpecialFields("mentoring", $metadata);
+        $fields["optional"] = REDCapManagement::getSpecialFields("optional", $metadata);
 
         $choices = DataDictionaryManagement::getChoices($metadata);
         $redcapLists = [];
-        foreach (array_keys($fields) as $type) {
-            $str = $lists[$type] ?? "";
-            $oldItemChoices = [];
-            for ($i = 0; $i < count($fields[$type]); $i++) {
-                $field = $fields[$type][$i];
-                $oldItemChoices = $choices[$field];
-                if (!empty($oldItemChoices)) {
-                    break;
+        foreach ($fields as $type => $fieldsToChange) {
+            if ($type == "optional") {
+                foreach ($fieldsToChange as $field) {
+                    $settingName = REDCapManagement::turnOptionalFieldIntoSetting($field);
+                    $itemText = $lists[$settingName] ?? "";
+                    if ($itemText) {
+                        $redcapLists[$settingName] = self::makeREDCapList($itemText, self::OPTION_OTHER_VALUE);
+                    }
                 }
-            }
-            $other = $others[$type];
-            $redcapLists[$type] = DataDictionaryManagement::makeREDCapList($str, $other, $oldItemChoices);
-        }
-
-        $newMetadata = array();
-        foreach ($metadata as $row) {
-            $isCoeusRow = preg_match("/^coeus_/", $row['field_name'])
-                || preg_match("/^coeus2_/", $row['field_name'])
-                || preg_match("/^coeussubmission_/", $row['field_name']);
-            if (($installCoeus && $isCoeusRow || !$isCoeusRow) && !preg_match("/___delete/", $row['field_name'])) {
-                foreach ($fields as $type => $relevantFields) {
-                    if (in_array($row['field_name'], $relevantFields) && isset($lists[$type])) {
-                        $row['select_choices_or_calculations'] = $redcapLists[$type];
+            } else {
+                $str = $lists[$type] ?? "";
+                $oldItemChoices = [];
+                for ($i = 0; $i < count($fieldsToChange); $i++) {
+                    $field = $fieldsToChange[$i];
+                    $oldItemChoices = $choices[$field];
+                    if (!empty($oldItemChoices)) {
                         break;
                     }
                 }
-                $newMetadata[] = $row;
+                $other = $others[$type];
+                $redcapLists[$type] = self::makeREDCapList($str, $other, $oldItemChoices);
+            }
+        }
+
+        $choiceFieldTypes = ["dropdown", "radio"];
+        $institutionFields = REDCapManagement::getSpecialFields("institutions", $metadata);
+        $newMetadata = [];
+        foreach ($metadata as $row) {
+            $isCoeusRow = self::isCoeusMetadataRow($row);
+            if ((($installCoeus && $isCoeusRow) || !$isCoeusRow) && !preg_match("/___delete/", $row['field_name'])) {
+                foreach ($fields as $type => $relevantFields) {
+                    if (in_array($row['field_name'], $relevantFields) && isset($lists[$type]) && $redcapLists[$type]) {
+                        if ($type == "optional") {
+                            $settingName = REDCapManagement::turnOptionalFieldIntoSetting($row['field_name']);
+                            if (isset($redcapLists[$settingName])) {
+                                $row['select_choices_or_calculations'] = $redcapLists[$settingName];
+                            }
+                        } else {
+                            $row['select_choices_or_calculations'] = $redcapLists[$type];
+                        }
+                        break;
+                    }
+                }
+                if (
+                    !in_array($row['field_type'], $choiceFieldTypes)
+                    || ($row['select_choices_or_calculations'] !== "")
+                    || in_array($row['field_name'], $institutionFields)
+                ) {
+                    $newMetadata[] = $row;
+                }
             }
         }
         self::alterInstitutionFields($newMetadata, $pid);
@@ -92,7 +136,28 @@ class DataDictionaryManagement {
         return Upload::metadata($newMetadata, $token, $server);
     }
 
+    private static function getCoeusForms() {
+        return ["coeus", "coeus2", "coeus_submission"];
+    }
+
+    private static function isCoeusMetadataRow($row) {
+        $forms = self::getCoeusForms();
+        foreach ($forms as $form) {
+            $prefix = REDCapManagement::getPrefixFromInstrument($form);
+            if (!preg_match("/_$/", $prefix)) {
+                $prefix .= "_";
+            }
+            if (preg_match("/^$prefix/", $row['field_name'])) {
+                return TRUE;
+            }
+        }
+        return FALSE;
+    }
+
     public static function makeREDCapList($text, $otherItem = FALSE, $oldItemChoices = []) {
+        if (!$text) {
+            return "";
+        }
         $list = explode("\n", $text);
         $newList = array();
         $i = 0;
@@ -124,7 +189,7 @@ class DataDictionaryManagement {
             $newList[] = $otherItem.",Other";
         }
         if (empty($newList)) {
-            $newList[] = "999999,No Resource";
+            $newList[] = self::DEPARTMENT_OTHER_VALUE.",No Resource";
         }
         return implode("|", $newList);
     }
@@ -161,14 +226,14 @@ class DataDictionaryManagement {
         return $fields;
     }
 
-    public static function installMetadataFromFiles($files, $token, $server, $pid, $eventId, $grantClass, $newChoices, $deletionRegEx, $excludeForms) {
+    public static function installMetadataFromFiles($files, $token, $server, $pid, $eventId, $grantClass, $newSourceChoices, $deletionRegEx, $excludeForms) {
         $metadata = [];
         $metadata['REDCap'] = Download::metadata($token, $server);
         $metadata['REDCap'] = self::filterOutForms($metadata['REDCap'], $excludeForms);
         if (isset($_POST['fields'])) {
             $postedFields = $_POST['fields'];
         } else {
-            list ($missing, $additions, $changed) = self::findChangedFieldsInMetadata($metadata['REDCap'], $files, $deletionRegEx, $newChoices, $excludeForms);
+            list ($missing, $additions, $changed) = self::findChangedFieldsInMetadata($metadata['REDCap'], $files, $deletionRegEx, $newSourceChoices, $excludeForms, $pid);
             $postedFields = $missing;
         }
         if (empty($postedFields)) {
@@ -215,7 +280,7 @@ class DataDictionaryManagement {
             try {
                 $metadata["REDCap"] = self::reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);
                 $choices = ["REDCap" => self::getChoices($metadata["REDCap"])];
-                $newChoiceStr = REDCapManagement::makeChoiceStr($newChoices);
+                $newSourceChoiceStr = REDCapManagement::makeChoiceStr($newSourceChoices);
                 for ($i = 0; $i < count($metadata['file']); $i++) {
                     $field = $metadata['file'][$i]['field_name'];
                     $isFieldOfSources = (
@@ -226,7 +291,7 @@ class DataDictionaryManagement {
                         && isset($choices["REDCap"][$field]["scholars"])
                     );
                     if ($isFieldOfSources) {
-                        $metadata['file'][$i]['select_choices_or_calculations'] = $newChoiceStr;
+                        $metadata['file'][$i]['select_choices_or_calculations'] = $newSourceChoiceStr;
                     }
                 }
 
@@ -326,7 +391,7 @@ class DataDictionaryManagement {
             15 => "psyd",
             17 => "rn",
             19 => "bs",
-            6 => 99,
+            6 => self::DEGREE_OTHER_VALUE,
         ];
 
         $module = Application::getModule();
@@ -406,7 +471,7 @@ class DataDictionaryManagement {
         return [];
     }
 
-    public static function findChangedFieldsInMetadata($projectMetadata, $files, $deletionRegEx, $sourceChoices, $formsToExclude) {
+    public static function findChangedFieldsInMetadata($projectMetadata, $files, $deletionRegEx, $sourceChoices, $formsToExclude, $pid) {
         $missing = [];
         $additions = [];
         $changed = [];
@@ -423,8 +488,11 @@ class DataDictionaryManagement {
 
             $metadata['file'] = json_decode($json, TRUE);
             $metadata['file'] = self::filterOutForms($metadata['file'], $formsToExclude);
+            if (Application::isLocalhost()) {
+                $metadata['file'] = self::filterOutForms($metadata['file'], self::getCoeusForms());
+            }
 
-            $choices = array();
+            $choices = [];
             foreach ($metadata as $type => $md) {
                 $choices[$type] = REDCapManagement::getChoices($md);
             }
@@ -433,11 +501,11 @@ class DataDictionaryManagement {
                 self::insertDeletesForPrefix($metadata['file'], "/^coeus_/");
             }
 
-            $fieldList = array();
-            $indexedMetadata = array();
+            $fieldList = [];
+            $indexedMetadata = [];
             foreach ($metadata as $type => $metadataRows) {
-                $fieldList[$type] = array();
-                $indexedMetadata[$type] = array();
+                $fieldList[$type] = [];
+                $indexedMetadata[$type] = [];
                 foreach ($metadataRows as $row) {
                     $fieldList[$type][$row['field_name']] = $row['select_choices_or_calculations'];
                     $indexedMetadata[$type][$row['field_name']] = $row;
@@ -446,6 +514,7 @@ class DataDictionaryManagement {
 
             $metadataFields = REDCapManagement::getMetadataFieldsToScreen();
             $specialFields = REDCapManagement::getSpecialFields("all", $projectMetadata);
+            $optionalFields = REDCapManagement::getSpecialFields("optional", $projectMetadata);
             foreach ($fieldList["file"] as $field => $choiceStr) {
                 $isSpecialGenderField = Application::isVanderbilt() && in_array($field, $genderFieldsToHandleForVanderbilt);
                 $isFieldOfSources = (
@@ -455,7 +524,26 @@ class DataDictionaryManagement {
                     )
                     && isset($choices["REDCap"][$field]["scholars"])
                 );
-                if (!in_array($field, $specialFields)) {
+                if (in_array($field, $optionalFields)) {
+                    $settingName = REDCapManagement::turnOptionalFieldIntoSetting($field);
+                    $optionChoicesAsText = Application::getSetting($settingName, $pid);
+                    if (!$optionChoicesAsText) {
+                        if (isset($fieldList["REDCap"][$field])) {
+                            $missing[] = $field.self::DELETION_SUFFIX;
+                            $changed[] = $field." [will be deleted]";
+                        }
+                    } else {
+                        if (isset($fieldList["REDCap"][$field])) {
+                            $optionChoiceStr = self::makeREDCapList($optionChoicesAsText, self::OPTION_OTHER_VALUE);
+                            if ($fieldList["REDCap"][$field] != $optionChoiceStr) {
+                                $changed[] = $field." [updated options]";
+                            }
+                        } else {
+                            $missing[] = $field;
+                            $additions[] = $field;
+                        }
+                    }
+                } else if (!in_array($field, $specialFields)) {
                     if (!isset($fieldList["REDCap"][$field])) {
                         $missing[] = $field;
                         if (!preg_match($deletionRegEx, $field)) {
@@ -779,6 +867,17 @@ class DataDictionaryManagement {
     # places new metadata rows AFTER last match from $existingMetadata
     public static function mergeMetadataAndUpload($originalMetadata, $newMetadata, $token, $server, $fields = array(), $deletionRegEx = "/___delete$/") {
         $fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx, TRUE);
+        $filteredFields = [];
+        foreach ($fields as $field) {
+            if (preg_match($deletionRegEx, $field)) {
+                $originalField = preg_replace($deletionRegEx, "", $field);
+                if (!in_array($originalField, $fieldsToDelete)) {
+                    $fieldsToDelete[] = $originalField;
+                }
+            } else {
+                $filteredFields[] = $field;
+            }
+        }
         $existingMetadata = $originalMetadata;
 
         if (empty($existingMetadata)) {
@@ -799,6 +898,7 @@ class DataDictionaryManagement {
             } else {
                 self::sortByForms($metadata);
                 $pid = Application::getPID($token);
+                self::alterOptionalFields($metadata, $pid);
                 self::alterResourcesFields($metadata, $pid);
                 self::alterInstitutionFields($metadata, $pid);
                 return Upload::metadata($metadata, $token, $server);
@@ -812,10 +912,10 @@ class DataDictionaryManagement {
         # 4. add in new forms
         # 5. exclude requested forms
 
-        if (empty($fields)) {
+        if (empty($filteredFields)) {
             $selectedRows = $newMetadata;
         } else {
-            $selectedRows = self::getRowsForFieldsFromMetadata($fields, $newMetadata);
+            $selectedRows = self::getRowsForFieldsFromMetadata($filteredFields, $newMetadata);
         }
         foreach ($selectedRows as $newRow) {
             if (!in_array($newRow['field_name'], $fieldsToDelete)) {
@@ -867,10 +967,10 @@ class DataDictionaryManagement {
         if (empty($existingMetadata)) {
             # second attempt - allow sort by forms to correct
             $existingMetadata = $originalMetadata;
-            if (empty($fields)) {
+            if (empty($filteredFields)) {
                 $selectedRows = $newMetadata;
             } else {
-                $selectedRows = self::getRowsForFieldsFromMetadata($fields, $newMetadata);
+                $selectedRows = self::getRowsForFieldsFromMetadata($filteredFields, $newMetadata);
             }
             foreach ($selectedRows as $newRow) {
                 if (!in_array($newRow['field_name'], $fieldsToDelete)) {
@@ -888,8 +988,10 @@ class DataDictionaryManagement {
                 }
             }
         }
+
         self::sortByForms($existingMetadata);
         $pid = Application::getPID($token);
+        self::alterOptionalFields($existingMetadata, $pid);
         self::alterResourcesFields($existingMetadata, $pid);
         self::alterInstitutionFields($existingMetadata, $pid);
         self::alterDepartmentsFields($existingMetadata, $pid);
@@ -922,7 +1024,34 @@ class DataDictionaryManagement {
             $mssg .= "Upload aborted! Please contact admins. Certain rows were expected yet still missing: ".REDCapManagement::json_encode_with_spaces($missingRows);
             \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", Application::getProgramName() . " Metadata Upload Error", $mssg);
 
-            throw new \Exception("An accidental field deletion has occurred and the development team has been notified. Someone will be in contact with you soon to coach you how to proceed.");
+            $deletionMssg = "";
+            if (!empty($fieldsToDelete)) {
+                $deletionMssg = "Fields to Delete: ".REDCapManagement::makeConjunction($fieldsToDelete);
+            }
+            throw new \Exception("An accidental field deletion has occurred and the development team has been notified. Someone will be in contact with you soon to coach you how to proceed. ".$deletionMssg);
+        }
+    }
+
+    private static function alterOptionalFields(&$metadata, $pid) {
+        if ($pid) {
+            $metadataFields = self::getFieldsFromMetadata($metadata);
+            $relevantFields = REDCapManagement::getSpecialFields("optional", $metadata);
+            foreach ($relevantFields as $field) {
+                $settingName = REDCapManagement::turnOptionalFieldIntoSetting($field);
+                $optionsText = Application::getSetting($settingName, $pid);
+                if ($optionsText) {
+                    $choiceStr = self::makeREDCapList($optionsText, self::OPTION_OTHER_VALUE);
+                    self::setSelectStringForFields($metadata, $choiceStr, [$field]);
+                } else if (in_array($field, $metadataFields)) {
+                    $newMetadata = [];
+                    foreach ($metadata as $row) {
+                        if ($row['field_name'] != $field) {
+                            $newMetadata[] = $row;
+                        }
+                    }
+                    $metadata = $newMetadata;
+                }
+            }
         }
     }
 
@@ -933,7 +1062,7 @@ class DataDictionaryManagement {
                 $institutions = ["Home Institution"];
             }
             $relevantFields = REDCapManagement::getSpecialFields("institutions", $metadata);
-            $choiceStr = self::makeREDCapList(implode("\n", $institutions), 5);
+            $choiceStr = self::makeREDCapList(implode("\n", $institutions), self::INSTITUTION_OTHER_VALUE);
             self::setSelectStringForFields($metadata, $choiceStr, $relevantFields);
         }
     }
@@ -951,7 +1080,7 @@ class DataDictionaryManagement {
             $departments = Application::getSetting("departments", $pid);
             if ($departments) {
                 $fields = REDCapManagement::getSpecialFields("departments", $metadata);
-                $choiceStr = self::makeREDCapList($departments, 999999);
+                $choiceStr = self::makeREDCapList($departments, self::DEPARTMENT_OTHER_VALUE);
                 self::setSelectStringForFields($metadata, $choiceStr, $fields);
             }
         }

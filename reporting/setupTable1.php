@@ -27,7 +27,7 @@ $projectSetup = [
     "record_autonumbering_enabled" => 0,
     "project_title" => Application::getTable1Title(),
 ];
-$table1Token = Upload::createProject($supertoken, $server, $projectSetup);
+$table1Token = Upload::createProject($supertoken, $server, $projectSetup, $pid);
 $projectInfo = Download::getProjectSettings($table1Token, $server);
 $table1Pid = $projectInfo['project_id'] ?? "";
 $table1EventId = REDCapManagement::getEventIdForClassical($table1Pid);

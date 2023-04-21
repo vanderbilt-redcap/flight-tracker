@@ -355,6 +355,13 @@ class Filter {
             "calc_employment" => "Employment Status",
             "calc_email_domain" => "Email Domain",
         ];
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+        $labels = DataDictionaryManagement::getLabels($this->metadata);
+        foreach (REDCapManagement::getOptionalFields() as $field) {
+            if (in_array($field, $metadataFields)) {
+                $ary[$field] = $labels[$field] ?? $field;
+            }
+        }
 		return $ary;
 	}
 

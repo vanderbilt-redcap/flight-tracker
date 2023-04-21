@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.5.0";
+		return "5.6.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -434,7 +434,7 @@ class CareerDev {
         return $newWebroot.$directoryDir."career_dev";
     }
 
-    private static function getThisPageURL($project_id) {
+    private static function getThisPageURL($project_id, $isPortalPage) {
         if (Application::isPluginProject($project_id)) {
             $port = $_SERVER['SERVER_PORT'] ?? "";
             $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || ($port == 443)) ? "https://" : "http://";
@@ -474,6 +474,9 @@ class CareerDev {
             if (preg_match("/pid=\d+/", $url) && preg_match("/project_id=\d+/", $url)) {
                 $url = preg_replace("/&pid=\d+/", "", $url);
             }
+            if ($isPortalPage) {
+                self::clearPIDsFromParams($url);
+            }
             return $url;
         }
     }
@@ -488,7 +491,18 @@ class CareerDev {
         return self::getRootDir($withWebroot)."/".$http;
     }
 
-    public static function getModulePageURL($http, $project_id, $isMentorAgreementPage, $module) {
+    private static function clearPIDsFromParams(&$url) {
+        $projectIds = ["pid", "project_id"];
+        foreach ($projectIds as $id) {
+            if (preg_match("/&$id=/", $url)) {
+                $url = preg_replace("/&$id=\d+/", "", $url);
+            } else if (preg_match("/$id=\d+&/", $url)) {
+                $url = preg_replace("/$id=\d+&/", "", $url);
+            }
+        }
+    }
+
+    public static function getModulePageURL($http, $project_id, $isMentorAgreementPage, $isPortalPage, $module) {
         $page = preg_replace("/^\//", "", $http);
         $url = $module->getUrl($page);
         if (
@@ -507,6 +521,9 @@ class CareerDev {
             } else if (!preg_match("/project_id=/", $url)) {
                 $url .= "&project_id=$project_id";
             }
+        } else if ($isPortalPage) {
+            self::clearPIDsFromParams($url);
+            return $url;
         }
         if ($project_id && is_numeric($project_id)) {
             $url = preg_replace("/pid=\d+/", "pid=$project_id", $url);
@@ -541,17 +558,18 @@ class CareerDev {
             )
             || preg_match("/^reporting\/tables2-4WithAuth.php/", $relativeUrl)
         );
+        $isPortalPage = preg_match("/^portal\//", $relativeUrl);
         if (!$pid) {
             $pid = self::getPID();
         }
         if ($relativeUrl == "this") {
-            return self::getThisPageURL($pid);
+            return self::getThisPageURL($pid, $isPortalPage);
         } else if ($relativeUrl == "signupToREDCap") {
             return self::getREDCapSignupURL();
         } else if (Application::isPluginProject($pid)) {
             return self::getPluginPageURL($relativeUrl, $pid, $withWebroot, $isMentorAgreementPage);
         } else if ($module = self::getModule()) {
-            return self::getModulePageURL($relativeUrl, $pid, $isMentorAgreementPage, $module);
+            return self::getModulePageURL($relativeUrl, $pid, $isMentorAgreementPage, $isPortalPage, $module);
         }
 		return "";
 	}
@@ -791,17 +809,18 @@ class CareerDev {
         ) {
 	        # TODO add redcaptest.vanderbilt.edu
 	        $module = ExternalModules::getModuleInstance("vanderbilt_plugin-settings");
-            $prefix = "";
+            $items = [$field];
             if (!preg_match("/\/plugins\//", $_SERVER['REQUEST_URI'])) {
-                $prefix = "career_dev_";
+                $items[] = "career_dev_".$field;
             }
-            $value = $module->getProjectSetting($prefix.$field, $pid);
-	        if ($value) {
-	            return $value;
+            foreach ($items as $item) {
+                $value = $module->getProjectSetting($item, $pid);
+                if ($value) {
+                    return $value;
+                }
             }
             if (file_exists(self::getCredentialsFile())) {
-                include_once(self::getCredentialsFile());
-                global $info;
+                include(self::getCredentialsFile());
                 if (isset($info['prod'][$field])) {
                     return $info['prod'][$field];
                 }
@@ -1025,6 +1044,7 @@ class CareerDev {
                 "Stylized CDA Table" => self::link("/charts/makeGrantTable.php")."&CDA",
                 "Stylized Table of Grants" => self::link("/charts/makeGrantTable.php"),
                 "List of All Grants" => self::link("/charts/makeGrantTable.php")."&plain",
+                "Table of All Grants" => self::link("/charts/grantTable.php"),
                 "Social Network of Grant Collaboration" => self::link("/socialNetwork/collaboration.php")."&grants",
 //                "Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
                 "Financial ROI for Grants" => self::link("/financial/roi.php"),

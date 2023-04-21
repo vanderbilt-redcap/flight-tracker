@@ -1217,7 +1217,15 @@ $switchFlagStatus = Grants::areFlagsOn($pid) ? "off" : "on";  // deliberately re
 
 
 echo "<br/>";
-echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'><span>{$row['identifier_last_name']}</span>, {$row['identifier_first_name']}</h2>";
+if ($row['identifier_last_name'] && $row['identifier_first_name']) {
+    echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'><span>{$row['identifier_last_name']}</span>, {$row['identifier_first_name']}</h2>";
+} else if ($row['identifier_first_name']) {
+    echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'>{$row['identifier_first_name']}</h2>";
+} else if ($row['identifier_last_name']) {
+    echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'><span>{$row['identifier_last_name']}</span></h2>";
+} else {
+    echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'>No name specified</h2>";
+}
 echo "<div id='dsearch'>";
 
 if (($row['record_id'] == ((int) $record) + 1) && (!$nextPageLink))  {
@@ -1503,7 +1511,7 @@ $awardDescript = Grants::areFlagsOn($pid) ? "Flagged" : "Career-Defining";
 ?>
     <script>
         $(document).ready(() => {
-            const s = <?= $row["summary_calculate_to_import"] ?>;
+            const s = <?= $row["summary_calculate_to_import"] ?: "[]" ?>;
             $('#tmainform #toImport').val(JSON.stringify(s));
             $('#tmainform #origToImport').val(JSON.stringify(s));
         });

@@ -34,6 +34,7 @@ function updateAllCOEUSMulti($pids) {
         $currToken = Application::getSetting("token", $currPid);
         $currServer = Application::getSetting("server", $currPid);
         if (REDCapManagement::isActiveProject($currPid) && $currToken && $currServer) {
+            Application::setPid($currPid);
             $forms = Download::metadataForms($currToken, $currServer);
             if (in_array("coeus", $forms)) {
                 $records = Download::records($currToken, $currServer);

@@ -3,6 +3,7 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 use \ExternalModules\ExternalModules;
+use function Vanderbilt\FlightTrackerExternalModule\json_encode_with_spaces;
 
 # This class handles commonly occuring downloads from the REDCap API.
 
@@ -539,7 +540,7 @@ class Download {
 			curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, Upload::isProductionServer());
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, Upload::isProductionServer($pid));
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 			$output = curl_exec($ch);
             $redcapData = json_decode((string) $output, true);
@@ -662,7 +663,7 @@ class Download {
     }
 
 	public static function vunets($token, $server) {
-        if (method_exists("Application", "isPluginProject") && Application::isPluginProject()) {
+        if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isPluginProject") && Application::isPluginProject()) {
             $userIdField = "identifier_vunet";
         } else {
             $userIdField = "identifier_userid";

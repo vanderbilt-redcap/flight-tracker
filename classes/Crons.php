@@ -1455,10 +1455,11 @@ class CronJob {
                     throw new \Exception("Invalid method $method");
                 }
             }
+            $startTs = time();
             URLManagement::resetUnsuccessfulCount();
             $method($passedPids);
             if (Application::isVanderbilt()) {
-                \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", "Multi Cron Completed!", "$method for ".count($passedPids)." pids<br/>".date("Y-m-d H:i:s"));
+                \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", "Multi Cron Completed!", "$method for ".count($passedPids)." pids<br/>Start: ".date("Y-m-d H:i:s", $startTs)."<br/>Done: ".date("Y-m-d H:i:s"));
             }
         }
         Application::unsetPid();

@@ -10,7 +10,7 @@ class PositionChange {
         global $token, $server;
 
         $records = Download::recordIds($token, $server);
-        if ($filterOutCopiedRecords && method_exists("Application", "filterOutCopiedRecords")) {
+        if ($filterOutCopiedRecords && method_exists("\Vanderbilt\CareerDevLibrary\Application", "filterOutCopiedRecords")) {
             $records = Application::filterOutCopiedRecords($records);
         }
         $names = Download::names($token, $server);

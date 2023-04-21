@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use PhpParser\Node\Expr\AssignOp\BitwiseOr;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/CareerDev.php");
@@ -757,8 +758,19 @@ SELECT DISTINCT s.project_id AS pid
 		return CareerDev::getSetting($field, $pid);
 	}
 
-	public static function isTestServer() {
-	    $value = self::getSetting("server_class");
+	public static function isTestServer($pid) {
+        if (Application::isLocalhost()) {
+            return TRUE;
+        }
+        if (!$pid) {
+            $pids = Application::getPids();
+            if (count($pids) > 1) {
+                $pid = $pids[0];
+            } else {
+                return FALSE;    // best guess
+            }
+        }
+	    $value = self::getSetting("server_class", $pid);
         # TODO may want to consider removing ""; also consider "dev" as an option if specified
 	    $testServerClasses = ["test", ""];
 	    return in_array($value, $testServerClasses);

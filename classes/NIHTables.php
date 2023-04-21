@@ -667,8 +667,7 @@ class NIHTables {
                 $projectInfo = "pid: $pid";
                 $contactInfo = "<a href='mailto:$adminEmail'>Email Admins</a>";
                 if ($token && $server) {
-                    $projectTitle = Download::projectTitle($token, $server);
-                    $projectTitle = str_replace("Flight Tracker - ", "", $projectTitle);
+                    $projectTitle = Download::shortProjectTitle($token, $server);
                     $projectInfo = "$projectTitle<br/>$projectInfo";
                 }
                 $valuesStrings = [];
@@ -2171,7 +2170,7 @@ class NIHTables {
 
     private function getResearchTopic($recordId) {
 	    global $grantClass;
-        if (method_exists("Application", "getGrantClasses")) {
+        if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "getGrantClasses")) {
             $validGrantClasses = Application::getGrantClasses();
         } else {
             $validGrantClasses = array("K", "T", "Other", "");

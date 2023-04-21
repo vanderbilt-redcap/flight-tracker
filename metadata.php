@@ -28,7 +28,7 @@ if ($_POST['process'] == "check") {
     if ($ts > $lastCheckTs + 30) {
         $metadata = Download::metadata($token, $server);
         $switches = new FeatureSwitches($token, $server, $pid);
-        list ($missing, $additions, $changed) = DataDictionaryManagement::findChangedFieldsInMetadata($metadata, $files, $deletionRegEx, CareerDev::getRelevantChoices(), $switches->getFormsToExclude());
+        list ($missing, $additions, $changed) = DataDictionaryManagement::findChangedFieldsInMetadata($metadata, $files, $deletionRegEx, CareerDev::getRelevantChoices(), $switches->getFormsToExclude(), $pid);
         CareerDev::setSetting($lastCheckField, time(), $pid);
         if (count($additions) + count($changed) > 0) {
             if (Application::isSuperUser()) {
@@ -79,10 +79,12 @@ if ($_POST['process'] == "check") {
     $institutionText = implode("\n", $institutions);
     $departmentText = Application::getSetting("departments", $pid);
     $resourceText = Application::getSetting("resources", $pid);
+    $personRoleText = Application::getSetting("person_role", $pid);
     $lists = [
         "departments" => $departmentText,
         "resources" => $resourceText,
         "institutions" => $institutionText,
+        "person_role" => $personRoleText,
     ];
-    DataDictionaryManagement::addLists($token, $server, $pid, $lists);
+    DataDictionaryManagement::addLists($token, $server, $pid, $lists, Application::isVanderbilt() && !Application::isLocalhost());
 }

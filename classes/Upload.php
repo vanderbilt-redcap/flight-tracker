@@ -33,6 +33,7 @@ class Upload
     }
 
     public static function userRights($userRights, $token, $server) {
+        $pid = Application::getPID($token);
         $data = [
             "token" => $token,
             "content" => "user",
@@ -49,7 +50,7 @@ class Upload
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
         curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         $output = (string) curl_exec($ch);
@@ -59,7 +60,7 @@ class Upload
         return $feedback;
     }
 
-    public static function createProject($supertoken, $server, $projectSetup) {
+    public static function createProject($supertoken, $server, $projectSetup, $pid) {
         $data = [
             'token' => $supertoken,
             'content' => 'project',
@@ -69,7 +70,7 @@ class Upload
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $server);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_AUTOREFERER, true);
@@ -167,10 +168,16 @@ class Upload
                                 $instanceClause = " AND instance IS NULL";
                             }
                         }
-                        $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name LIKE ?".$instanceClause;
-                        Application::log("Running SQL $sql with ".json_encode($params));
-                        $q = $module->query($sql, $params);
-                        Application::log("SQL: " . $q->affected_rows . " rows affected");
+
+                        $whereClause = "WHERE project_id = ? AND record = ? AND field_name LIKE ?".$instanceClause;
+                        do {
+                            $sql = "DELETE FROM redcap_data ".$whereClause." LIMIT 1000";
+                            Application::log("Running SQL $sql with ".json_encode($params));
+                            $module->query($sql, $params);
+
+                            $sql = "SELECT record FROM redcap_data ".$whereClause." LIMIT 1";
+                            $q = $module->query($sql, $params);
+                        } while ($q->num_rows > 0);
 
                         if ($completeField) {
                             $params2 = [$pid, $recordId, $completeField];
@@ -248,7 +255,7 @@ class Upload
                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
                 curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
                 $output = (string) curl_exec($ch);
                 $feedback = json_decode($output, TRUE);
                 self::testFeedback($feedback, $output, $ch);
@@ -298,7 +305,7 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
@@ -408,6 +415,7 @@ public static function metadata($metadata, $token, $server) {
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
+        $pid = Application::getPID($token);
         $server = Sanitizer::sanitizeURL($server);
         if (!$server) {
             throw new \Exception("Invalid URL");
@@ -432,7 +440,7 @@ public static function metadata($metadata, $token, $server) {
         curl_setopt($ch, CURLOPT_HTTPHEADER,array("Expect:"));
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
         $output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch, $settings);
@@ -655,7 +663,7 @@ public static function metadata($metadata, $token, $server) {
                 curl_setopt($ch, CURLOPT_HTTPHEADER,array("Expect:"));
                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer());
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
                 $time2 = microtime(TRUE);
 				$output = (string) curl_exec($ch);
                 $feedback = json_decode($output, true);
@@ -693,9 +701,9 @@ public static function metadata($metadata, $token, $server) {
         }
     }
 
-	public static function isProductionServer() {
-        if (method_exists("Application", "isTestServer")) {
-            return !Application::isTestServer();
+	public static function isProductionServer($pid) {
+        if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isTestServer")) {
+            return !Application::isTestServer($pid);
         }
         return FALSE;
     }

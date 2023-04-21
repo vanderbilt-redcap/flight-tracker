@@ -22,6 +22,14 @@ class REDCapLookup {
         return [];
     }
 
+    public static function getCurrentUserIDAndName() {
+        $username = Application::getUsername();
+        $row = REDCapLookup::getUserInfo($username);
+        $firstName = $row['user_firstname'];
+        $lastName = $row['user_lastname'];
+        return [$username, $firstName, $lastName];
+    }
+
     public function getName() {
         return $this->firstName." ".$this->lastName;
     }

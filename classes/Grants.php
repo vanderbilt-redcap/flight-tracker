@@ -255,7 +255,7 @@ class Grants {
         if ($type == "latest") {
             return self::getLatestGrants($this->nativeGrants);
         }
-        if ($type == "all") {
+        if (in_array($type, ["all", "deduped"])) {
             return $this->dedupedGrants;
         }
         if ($type == "current") {
@@ -673,9 +673,9 @@ class Grants {
 	}
 
 	# strategy = ["Conversion", "Financial", "Submission", "All"];
-	public function compileGrants($strategy = "Conversion") {
+	public function compileGrants($strategy = "Conversion", $startTs = FALSE, $endTs = FALSE) {
 		if ($strategy == "Conversion") {
-			$this->compileGrantsForConversion();
+			$this->compileGrantsForConversion(FALSE, $startTs, $endTs);
         } else if ($strategy == "Financial") {
             $this->compileGrantsForFinancial(FALSE);
         } else if ($strategy == "Submission") {
@@ -1016,7 +1016,7 @@ class Grants {
         return $awardsByBaseAwardNumber;
     }
 
-    private function compileGrantsForConversion($includeNAs = FALSE) {
+    private function compileGrantsForConversion($includeNAs = FALSE, $startTs = FALSE, $endTs = FALSE) {
 		# Strategy: Sort by start timestamp and then look for duplicates
 
 		# listOfAwards contain all the awards
@@ -1083,9 +1083,21 @@ class Grants {
 					}
 				}
 			}
+
 			if (in_array($grant->getVariable("source"), $this->sourcesToExclude)) {
 			    $filterOut = TRUE;
             }
+
+            $grantStartDate = $grant->getVariable("start");
+            if ($grantStartDate) {
+                $grantStartTs = strtotime($grantStartDate);
+                if (($startTs !== FALSE) && ($grantStartTs < $startTs)) {
+                    $filterOut = TRUE;
+                } else if (($endTs !== FALSE) && ($grantStartTs > $endTs)) {
+                    $filterOut = TRUE;
+                }
+            }
+
 			if (!$filterOut) {
 				$filteredGrants[] = $grant;
 			}

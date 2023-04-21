@@ -327,7 +327,7 @@ class Citation {
 	# citationClass is notDone, included, omitted, flagged, or unflagged
 	public function toHTML($citationClass, $otherClasses = [], $number = 1) {
         $citationClass = strtolower($citationClass);
-		if ($citationClass == "notDone") {
+		if (in_array($citationClass, ["notDone", "notdone"])) {
 			$checkboxClass = "checked";
 		} else if ($citationClass == "included") {
 			$checkboxClass = "readonly";

@@ -27,7 +27,7 @@ if ($pid && $cohort && in_array($cohort, $cohortNames) && $cohorts->hasReadonlyP
             "record_autonumbering_enabled" => 0,
             "project_title" => $newTitle,
         ];
-        $newToken = Upload::createProject($supertoken, $server, $projectSetup);
+        $newToken = Upload::createProject($supertoken, $server, $projectSetup, $pid);
         if ($newToken && REDCapManagement::isValidToken($newToken)) {
             $newServer = $server;
             $projectSetup = [

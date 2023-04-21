@@ -29,7 +29,7 @@ class FederalRePORTER {
     }
 
     private static function filterForInstitutionsAndName($currData, $institutions, $pid, $recordId, $name) {
-        if (method_exists("Application", "getHelperInstitutions")) {
+        if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "getHelperInstitutions")) {
             $helperInstitutions = Application::getHelperInstitutions();
         } else {
             $helperInstitutions = [];
@@ -72,7 +72,7 @@ class FederalRePORTER {
                             }
                             if (in_array($institution, $helperInstitutions)) {
                                 $proceed = FALSE;
-                                if (method_exists("Application", "getCities")) {
+                                if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "getCities")) {
                                     foreach (Application::getCities() as $city) {
                                         if (preg_match("/".$city."/i", $item['orgCity'])) {
                                             $proceed = TRUE;
@@ -81,7 +81,7 @@ class FederalRePORTER {
                                 }
                             } else {
                                 $proceed = TRUE;
-                                $isVanderbilt = method_exists("Application", "isVanderbilt") && Application::isVanderbilt();
+                                $isVanderbilt = method_exists("\Vanderbilt\CareerDevLibrary\Application", "isVanderbilt") && Application::isVanderbilt();
                                 if ($isVanderbilt && ((strtoupper($myFirstName) != "HAROLD") && (strtoupper($lastName) == "MOSES") && preg_match("/HAROLD L/i", $myFirstName))) {
                                     # Hack: exclude HAROLD L MOSES since HAROLD MOSES JR is valid
                                     $proceed = FALSE;

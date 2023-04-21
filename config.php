@@ -2,14 +2,12 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
@@ -21,7 +19,7 @@ define('MAX_DEGREE_SOURCES', 5);
 if (isset($_GET['uploadOrder'])) {
 	require_once(dirname(__FILE__)."/small_base.php");
 
-	$html = \Vanderbilt\FlightTrackerExternalModule\uploadOrderToMetadata($token, $server, $_POST);
+	$html = uploadOrderToMetadata($token, $server, $_POST);
 	echo $html;
 	exit();
 } else {
@@ -79,11 +77,15 @@ if (count($_POST) > 0) {
 			echo "<p class='red centered'>You must specify the text, a value for its code, and a type.</p>\n";
 		}
 	} else {
-		$lists = array();
+		$lists = [];
+        $optionSettings = REDCapManagement::getOptionalSettings();
 		foreach ($_POST as $key => $value) {
             $key = Sanitizer::sanitizeWithoutChangingQuotes($key);
             $value = Sanitizer::sanitizeWithoutChangingQuotes($value);
-			if (in_array($key, ["departments", "resources"])) {
+            if (isset($optionSettings[$key])) {
+                $lists[$key] = $value;
+                Application::saveSetting($key, $value, $pid);
+            } else if (in_array($key, ["departments", "resources"])) {
                 $lists[$key] = $value;
             } else if (in_array($key, ["pid", "event_id"])) {
                 $module = Application::getModule();
@@ -111,13 +113,13 @@ if (count($_POST) > 0) {
 	}
 }
 
+if (!isset($metadata)) {
+    $metadata = Download::metadata($token, $server);
+}
 if (isset($_GET['order'])) {
-    if (!isset($metadata)) {
-        $metadata = Download::metadata($token, $server);
-    }
 	echo makeOrder($token, $server, $pid, $metadata);
 } else {
-	echo makeSettings(CareerDev::getModule(), $pid);
+	echo makeSettings(CareerDev::getModule(), $pid, $metadata);
 }
 
 function getFieldNames($metadata) {
@@ -161,7 +163,7 @@ function getExistingChoicesTexts($existingChoices, $scholar, $allFields) {
 
 function makeOrder($token, $server, $pid, $metadata = []) {
 	$exampleField = getExampleField();
-	$delim = \Vanderbilt\FlightTrackerExternalModule\getUploadDelim();
+	$delim = getUploadDelim();
 
 	if (empty($metadata)) {
 		$metadata = Download::metadata($token, $server);
@@ -181,7 +183,7 @@ function makeOrder($token, $server, $pid, $metadata = []) {
 		$fieldLabels[$fieldForOrder] = findFieldLabel($fieldForOrder, $metadata);
 	}
 
-	list($sources, $sourceTypes) = \Vanderbilt\FlightTrackerExternalModule\produceSourcesAndTypes($scholar, $metadata);
+	list($sources, $sourceTypes) = produceSourcesAndTypes($scholar, $metadata);
 
 	$existingChoicesTexts = getExistingChoicesTexts($choices[$exampleField], $scholar, $allFields);
 
@@ -337,15 +339,15 @@ function findFieldLabel($fieldName, $metadata) {
 	return "";
 }
 
-function makeSettings($module, $pid) {
-	$ary = array();
+function makeSettings($module, $pid, $metadata) {
+	$ary = [];
 	
-	$ary["Length of K Grants"] = array();
+	$ary["Length of K Grants"] = [];
 	$ary["Length of K Grants"][] = makeSetting("internal_k_length", "number", "Internal K Length in Years", "3");
 	$ary["Length of K Grants"][] = makeSetting("k12_kl2_length", "number", "K12/KL2 Length in Years", "3");
 	$ary["Length of K Grants"][] = makeSetting("individual_k_length", "number", "Length of NIH K Grants in Years", "5");
 
-	$ary["Installation Variables"] = array();
+	$ary["Installation Variables"] = [];
 	$ary["Installation Variables"][] = makeSetting("institution", "text", "Full Name of Institution");
 	$ary["Installation Variables"][] = makeSetting("short_institution", "text", "Short Name of Institution");
 	$ary["Installation Variables"][] = makeSetting("other_institutions", "text", "Other Institutions (if any); comma-separated");
@@ -361,14 +363,26 @@ function makeSettings($module, $pid) {
     $ary["Installation Variables"][] = makeSetting("grant_class", "radio", "Grant Class", "", CareerDev::getGrantClasses());
 	$ary["Installation Variables"][] = makeSetting("grant_number", "text", "Grant Number");
     $ary["Installation Variables"][] = makeSetting("server_class", "radio", "Server Class", "prod", CareerDev::getServerClasses());
-	$ary["Installation Variables"][] = makeSetting("departments", "textarea", "Department Names");
-	$ary["Installation Variables"][] = makeSetting("resources", "textarea", "Resources");
     $ary["Installation Variables"][] = makeSetting("send_error_logs", "yesno", "Report Fatal Errors to Development Team?");
-    $ary["Installation Variables"][] = makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "Share Data Among the Following Resources?");
     $ary["Installation Variables"][] = makeSetting("auto_recalculate", "yesno", "Automatically Re-summarize After Data Saves? (No waits until overnight.)", 0);
     $ary["Installation Variables"][] = makeSetting("security_test_mode", "yesno", "Place in Security-Test mode (disabling unauthorized APIs)?", 0);
 
-	$ary["Emails"] = array();
+    $ary["Administrative Setup"][] = makeSetting("departments", "textarea", "Department Names (One per line.)");
+	$ary["Administrative Setup"][] = makeSetting("resources", "short_textarea", "Resources (One per line.)");
+    $optionSettings = REDCapManagement::getOptionalSettings();
+    $fileMetadata = DataDictionaryManagement::getFileMetadata();
+    foreach(REDCapManagement::getOptionalFields() as $field) {
+        $setting = REDCapManagement::turnOptionalFieldIntoSetting($field);
+        $label = $optionSettings[$setting] ?? $field;
+        $row = DataDictionaryManagement::getRowForFieldFromMetadata($field, $fileMetadata);
+        $form = $row['form_name'] ?? "";
+        $note = (isset($row['field_note']) && $row['field_note']) ? "<div class='smaller'>".$row['field_note']."</div>" : "";
+        $ary["Administrative Setup"][] = makeSetting($setting, "short_textarea", "<div>Options for <strong>$label</strong> on the <strong>".ucfirst($form)."</strong> form.</div>$note<div class='smaller'>(One per line. Optional. When filled in, it will create an extra field in your project once you update your Data Dictionary on Flight Tracker's Home page.)</div>");
+    }
+    $ary["Administrative Setup"][] = makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "Share Data Among the Following Resources?");
+
+
+	$ary["Emails"] = [];
 //	array_push($ary["Emails"], makeHelperText("An initial email can automatically be sent out during the first month after the new record is added to the database. If you desire to use this feature, please complete the following fields."));
 //	array_push($ary["Emails"], makeSetting("init_from", "text", "Initial Email From Address"));
 //	array_push($ary["Emails"], makeSetting("init_subject", "text", "Initial Email Subject"));
@@ -376,12 +390,12 @@ function makeSettings($module, $pid) {
     $ary["Emails"][] = makeSetting("default_from", "text", "Default From Address");
     $ary["Emails"][] = makeSetting("warning_minutes", "number", "Number of Minutes Before An Email to Send a Warning Email", Application::getWarningEmailMinutes($pid));
 
-    $ary["Bibliometrics"] = array();
+    $ary["Bibliometrics"] = [];
     $ary["Bibliometrics"][] = makeSetting("wos_userid", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " User ID");
     $ary["Bibliometrics"][] = makeSetting("wos_password", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " Password");
     $ary["Bibliometrics"][] = makeSetting("scopus_api_key", "text", Links::makeLink("https://www.scopus.com/", "Scopus") . " API Key (for H Index)");
 
-    $ary["Proxy Server (Only if Applicable)"] = array();
+    $ary["Proxy Server (Only if Applicable)"] = [];
     $ary["Proxy Server (Only if Applicable)"][] = makeHelperText("If your REDCap server has a proxy server, please fill out the following information. (If you don't know about this, you probably don't have one, so no worries then.)");
     $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-ip", "text", "Proxy IP Address");
     $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-port", "text", "Proxy Port Number");
@@ -394,10 +408,10 @@ function makeSettings($module, $pid) {
 		$html .= Application::generateCSRFTokenHTML();
 		foreach ($ary as $header => $htmlAry) {
 			$html .= "<h2>$header</h2>\n";
-			$html .= "<table class='centered'>\n";
+			$html .= "<table class='centered' style='max-width: 600px;'>";
 			$html .= implode("\n", $htmlAry);
 			$html .= "<tr><td colspan='2' class='centered'><input type='submit' value='Save Settings'></td></tr>";
-			$html .= "</table>\n";
+			$html .= "</table>";
 		}
 		$html .= "</form>\n";
 	} else {
@@ -509,17 +523,24 @@ function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $re
 			} else {
 				$selected = "";
 			}
-			$html .= "<input type='radio' name='$var' id='$var"."___$idx' value='$idx'$selected><label for='$var"."___$idx'> $fieldLabel</label>\n";
+			$html .= "<div><input type='radio' name='$var' id='$var"."___$idx' value='$idx'$selected><label for='$var"."___$idx'> $fieldLabel</label></div>";
 		}
 		$html .= implode($spacing, $options);
 		$html .= "</td>";
 		$html .= "</tr>";
-	} else if ($type == "textarea") {
+	} else if (in_array($type, ["textarea", "short_textarea"])) {
 		$html .= "<tr>";
 		$html .= "<td colspan='2'>";
-		$html .= $label;
-		$html .= "<br>";
-		$html .= "<textarea class='config' name='$var'>$value</textarea>";
+        if (preg_match("/^<div/", $label)) {
+            $html .= $label;
+        } else {
+            $html .= "<div>$label</div>";
+        }
+        if ($type == "short_textarea") {
+            $html .= "<textarea class='config' style='height: 250px;' name='$var'>$value</textarea>";
+        } else {
+            $html .= "<textarea class='config' name='$var'>$value</textarea>";
+        }
 		$html .= "</td>";
 		$html .= "</tr>";
 	}

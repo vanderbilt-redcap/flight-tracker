@@ -2,6 +2,8 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+
 require_once(__DIR__ . '/ClassLoader.php');
 
 class URLManagement {
@@ -60,7 +62,7 @@ class URLManagement {
         if (!$url) {
             throw new \Exception("Invalid URL!");
         }
-        $defaultOpts = self::getDefaultCURLOpts();
+        $defaultOpts = self::getDefaultCURLOpts($pid);
         $time1 = microtime();
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -152,7 +154,7 @@ class URLManagement {
         return [$resp, $data];
     }
 
-    private static function getDefaultCURLOpts() {
+    private static function getDefaultCURLOpts($pid) {
         return [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_VERBOSE => 0,
@@ -162,7 +164,7 @@ class URLManagement {
             CURLOPT_FRESH_CONNECT => 1,
             CURLOPT_TIMEOUT => 120,
             CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_SSL_VERIFYPEER => Upload::isProductionServer(),
+            CURLOPT_SSL_VERIFYPEER => Upload::isProductionServer($pid),
         ];
     }
 
@@ -170,13 +172,16 @@ class URLManagement {
         return self::isGoodURL($url);
     }
 
-    public static function isGoodURL($url) {
+    public static function isGoodURL($url, $pid = NULL) {
         $url = Sanitizer::sanitizeURL($url);
+        if (!$pid) {
+            $pid = Sanitizer::sanitizePid($_GET['pid']);
+        }
         if (!$url) {
             throw new \Exception("Invalid URL");
         }
         $ch = curl_init();
-        $defaultOpts = self::getDefaultCURLOpts();
+        $defaultOpts = self::getDefaultCURLOpts($pid);
         curl_setopt($ch, CURLOPT_URL, $url);
         foreach ($defaultOpts as $opt => $value) {
             curl_setopt($ch, $opt, $value);
@@ -195,12 +200,14 @@ class URLManagement {
         return self::downloadURLWithPOST($url, [], $pid, $addlOpts, $autoRetriesLeft);
     }
 
-    public static function getParametersAsHiddenInputs($url) {
+    public static function getParametersAsHiddenInputs($url, $excludeParams = []) {
         $params = self::getParameters($url);
         $html = [];
         foreach ($params as $key => $value) {
-            $value = urldecode($value);
-            $html[] = "<input type='hidden' name='$key' value='$value'>";
+            if (!in_array($key, $excludeParams)) {
+                $value = urldecode($value);
+                $html[] = "<input type='hidden' name='$key' value='$value'>";
+            }
         }
         return implode("\n", $html);
     }

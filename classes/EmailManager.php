@@ -602,7 +602,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	public function getSettingsNames() {
 		$allEmailKeys = array_keys($this->data);
 		// Application::log("Email keys: ".json_encode($allEmailKeys));
-		if (method_exists("Application", "getEmailName")) {
+		if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "getEmailName")) {
 			$allRecords = Download::recordIds($this->token, $this->server);
 			$unmatchedKeys = array();
 			foreach ($allEmailKeys as $key) {

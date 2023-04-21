@@ -139,6 +139,32 @@ abstract class GrantFactory {
     abstract public function getAwardFields();
     abstract public function getPIFields();
 
+    protected function getPIs($row) {
+        $fields = $this->getPIFields();
+        if (empty($fields)) {
+            return [];
+        }
+        $pis = [];
+        foreach ($fields as $field) {
+            if ($row[$field]) {
+                if (preg_match("/;/", $row[$field])) {
+                    $pis = array_unique(array_merge($pis, preg_split("/\s*;\s*/", $row[$field])));
+                } else if (preg_match("/,/", $row[$field])) {
+                    list($myFirst, $myLast) = NameMatcher::splitName($this->getName(), 2);
+                    list($fieldFirst, $fieldLast) = NameMatcher::splitName($row[$field], 2);
+                    if (NameMatcher::matchName($myFirst, $myLast, $fieldFirst, $fieldLast)) {
+                        list($myFirst, $myMiddle, $myLast) = NameMatcher::splitName($this->getName(), 3);
+                        $formattedName = NameMatcher::formatName($myFirst, $myMiddle, $myLast);
+                        $pis = array_unique(array_merge($pis, [$formattedName]));
+                    } else {
+                        $pis = array_unique(array_merge($pis, preg_split("/\s*,\s*/", $row[$field])));
+                    }
+                }
+            }
+        }
+        return $pis;
+    }
+
     private static function getAllClassNames() {
         $children = [];
         foreach(get_declared_classes() as $class){
@@ -291,7 +317,8 @@ class InitialGrantFactory extends GrantFactory {
 					$grant->setVariable('nih_mechanism', $match);
 				}
 				$grant->putInBins();
-				$this->grants[] = $grant;
+                $grant->setVariable("pis", $this->getPIs($row));
+                $this->grants[] = $grant;
 			}
 		}
 	}
@@ -359,6 +386,7 @@ class FollowupGrantFactory extends GrantFactory {
 					$grant->setVariable('nih_mechanism', $match);
 				}
                 $grant->putInBins();
+                $grant->setVariable("pis", $this->getPIs($row));
                 $this->grants[] = $grant;
 			}
 		}
@@ -438,7 +466,8 @@ class NewmanGrantFactory extends GrantFactory {
                 $grant->setVariable("project_end", $endDate);
 				if ($include) {
 					$grant->putInBins();
-					$this->grants[] = $grant;
+                    $grant->setVariable("pis", $this->getPIs($row));
+                    $this->grants[] = $grant;
 				}
 			}
 		}
@@ -471,7 +500,8 @@ class NewmanGrantFactory extends GrantFactory {
 					$grant->setNumber("Individual K - Rec. {$row['record_id']}");
 				}
 				$grant->putInBins();
-				$this->grants[] = $grant;
+                $grant->setVariable("pis", $this->getPIs($row));
+                $this->grants[] = $grant;
 			}
 		}
 	
@@ -497,7 +527,8 @@ class NewmanGrantFactory extends GrantFactory {
 			$grant->setVariable('sponsor_type', "R01");
 			$grant->setNumber("R01");
 			$grant->putInBins();
-			$this->grants[] = $grant;
+            $grant->setVariable("pis", $this->getPIs($row));
+            $this->grants[] = $grant;
 		}
 	}
 
@@ -599,6 +630,7 @@ class NewmanGrantFactory extends GrantFactory {
 					$grant->setVariable('pi_flag', "Y");
                     $grant->setVariable("role", self::$defaultRole);
 					$grant->putInBins();
+                    $grant->setVariable("pis", $this->getPIs($row));
 					$this->grants[] = $grant;
 				}
 			}
@@ -632,6 +664,7 @@ class NewmanGrantFactory extends GrantFactory {
 				}
 				if (!$row['newman_sheet2_first_r01_date'] || preg_match("/none/", $row['newman_sheet2_first_r01_date']) || !preg_match("/[Rr]01/", $awardno)) {
 					$grant->putInBins();
+                    $grant->setVariable("pis", $this->getPIs($row));
 					$this->grants[] = $grant;
 				}
 			}
@@ -668,7 +701,8 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setNumber("R01");
 			}
 			$grant->putInBins();
-			$this->grants[] = $grant;
+            $grant->setVariable("pis", $this->getPIs($row));
+            $this->grants[] = $grant;
 		}
 	}
 
@@ -726,7 +760,8 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setVariable('pi_flag', "Y");
                 $grant->setVariable("role", self::$defaultRole);
 				$grant->putInBins();
-				$this->grants[] = $grant;
+                $grant->setVariable("pis", $this->getPIs($row));
+                $this->grants[] = $grant;
 			}
 		}
 	
@@ -757,7 +792,8 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setNumber($awardno);
 			}
 			$grant->putInBins();
-			$this->grants[] = $grant;
+            $grant->setVariable("pis", $this->getPIs($row));
+            $this->grants[] = $grant;
 		}
 	}
 
@@ -827,6 +863,7 @@ class CoeusSubmissionGrantFactory extends GrantFactory {
         $grant->setVariable('flagged', $row['coeussubmission_flagged'] ?? "");
 
         $grant->putInBins();
+        $grant->setVariable("pis", $this->getPIs($row));
         $this->grants[] = $grant;
     }
 }
@@ -914,7 +951,8 @@ class CoeusGrantFactory extends GrantFactory {
 		$grant->setVariable('pi_flag', $row['coeus_pi_flag']);
 
 		$grant->putInBins();
-		$this->grants[] = $grant;
+        $grant->setVariable("pis", $this->getPIs($row));
+        $this->grants[] = $grant;
 	}
 }
 
@@ -987,6 +1025,7 @@ class VERAGrantFactory extends  GrantFactory {
         $grant->setVariable('flagged', $row['vera_flagged'] ?? "");
 
         $grant->putInBins();
+        $grant->setVariable("pis", $this->getPIs($row));
         $this->grants[] = $grant;
     }
 }
@@ -1058,6 +1097,7 @@ class VERASubmissionGrantFactory extends  GrantFactory {
         $grant->setVariable('last_update', $row['verasubmission_last_update']);
 
         $grant->putInBins();
+        $grant->setVariable("pis", $this->getPIs($row));
         $this->grants[] = $grant;
     }
 }
@@ -1126,6 +1166,7 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
 
             $grant->putInBins();
             // Application::log("Coeus2GrantFactory adding ".json_encode($grant->toArray()));
+            $grant->setVariable("pis", $this->getPIs($row));
             $this->grants[] = $grant;
         }
     }
@@ -1177,7 +1218,8 @@ class RePORTERGrantFactory extends GrantFactory {
 
 
 		$grant->putInBins();
-		$this->grants[] = $grant;
+        $grant->setVariable("pis", $this->getPIs($row));
+        $this->grants[] = $grant;
 	}
 
 	# gets the date from a RePORTER formatting (YYYY-MM-DDThh:mm:ss);
@@ -1246,6 +1288,7 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         }
 
         $grant->putInBins();
+        $grant->setVariable("pis", $this->getPIs($row));
         $this->grants[] = $grant;
     }
 
@@ -1344,7 +1387,8 @@ class ExPORTERGrantFactory extends GrantFactory {
         }
 
         $grant->putInBins();
-		$this->grants[] = $grant;
+        $grant->setVariable("pis", $this->getPIs($row));
+        $this->grants[] = $grant;
 	}
 }
 
@@ -1422,6 +1466,7 @@ class CustomGrantFactory extends GrantFactory {
         $grant->setVariable('flagged', $row['custom_flagged'] ?? "");
 
         if (in_array($this->type, ["Grant", "Grants"]) && ($row['custom_is_submission'] != "1")) {
+            $grant->setVariable("pis", $this->getPIs($row));
             $this->grants[] = $grant;
         } else if (in_array($this->type, ["Submission", "Submissions"]) && ($row['custom_is_submission'] == "1")) {
             $statusIdx = $row['custom_submission_status'];
@@ -1432,6 +1477,7 @@ class CustomGrantFactory extends GrantFactory {
             $grant->setVariable("proposal_type", $proposalType);
             $grant->setVariable("submission_id", $awardNo);
 
+            $grant->setVariable("pis", $this->getPIs($row));
             $this->grants[] = $grant;
         }
 	}
@@ -1484,7 +1530,8 @@ class PriorGrantFactory extends GrantFactory {
 				} else {
 					$grant->putInBins();
 				}
-				$this->grants[] = $grant;
+                $grant->setVariable("pis", $this->getPIs($row));
+                $this->grants[] = $grant;
 			}
 		}
 	}
@@ -1546,6 +1593,7 @@ class NSFGrantFactory extends GrantFactory {
         $grant->setVariable('last_update', $row['nsf_last_update']);
         $grant->setVariable('flagged', $row['nsf_flagged'] ?? "");
 
+        $grant->setVariable("pis", $this->getPIs($row));
         $this->grants[] = $grant;
     }
 }
@@ -1588,6 +1636,7 @@ class IESGrantFactory extends GrantFactory {
         $grant->setVariable('last_update', $row['ies_last_update']);
         $grant->setVariable('flagged', $row['ies_flagged'] ?? "");
 
+        $grant->setVariable("pis", $this->getPIs($row));
         $this->grants[] = $grant;
     }
 }

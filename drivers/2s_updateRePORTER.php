@@ -81,12 +81,12 @@ function updateRePORTER($cat, $token, $server, $pid, $records) {
 
 	$today = date("Y-m-d");
 	if (REDCapManagement::dateCompare($today, "<=", "2022-03-01")) {
-        cleanUpMiddleNamesSeepage($token, $server, $pid, $records);
+        cleanUpMiddleNamesSeepage_2s($token, $server, $pid, $records);
     }
     CareerDev::saveCurrentDate("Last $cat RePORTER Download", $pid);
 }
 
-function cleanUpMiddleNamesSeepage($token, $server, $pid, $records) {
+function cleanUpMiddleNamesSeepage_2s($token, $server, $pid, $records) {
     if (empty($records)) {
         $records = Download::recordIds($token, $server);
     }

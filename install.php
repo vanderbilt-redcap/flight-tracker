@@ -30,14 +30,17 @@ if ($action == "localizeVariables") {
 		$installCoeus = Application::getSetting("hasCoeus");
 		$institutions = Application::getInstitutions();
 		displayInstallHeaders($module, $token, $server, $pid, $tokenName);
-        $departments = trim(Sanitizer::sanitize($_POST['departments']));
-        $resources = trim(Sanitizer::sanitize($_POST['resources']));
+        $departments = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST['departments']));
+        $resources = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST['resources']));
 		if ($resources && $departments) {
-			$lists = array(
-					"departments" => $departments,
-					"resources" => $resources,
-					"institutions" => implode("\n", $institutions),
-					);
+			$lists = [
+                "departments" => $departments,
+                "resources" => $resources,
+                "institutions" => implode("\n", $institutions),
+            ];
+            foreach (REDCapManagement::getOptionalSettings() as $setting => $label) {
+                $lists[$setting] = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST[$setting] ?? ""));
+            }
 			DataDictionaryManagement::addLists($token, $server, $pid, $lists, $installCoeus);
 			redirectToAddScholars();
 		} else {
@@ -117,7 +120,10 @@ if ($action == "localizeVariables") {
         "resources" => Application::getSetting("resources", $pid),
         "institutions" => implode("\n", Application::getInstitutions($pid)),
     ];
-    $feedback = DataDictionaryManagement::addLists($token, $server, $pid, $lists, Application::isVanderbilt());
+    foreach (REDCapManagement::getOptionalSettings() as $setting => $label) {
+        $lists[$setting] = Application::getSetting($setting, $pid);
+    }
+    $feedback = DataDictionaryManagement::addLists($token, $server, $pid, $lists, Application::isVanderbilt() && !Application::isLocalhost());
     redirectToHomePage();
 } else if (($action === "") && $token && $server) {
     $metadataFields = Download::metadataFields($token, $server);
@@ -174,10 +180,16 @@ function makeDepartmentPrompt($projectId) {
     $thisUrl = preg_replace("/pid=\d+/", "pid=$projectId", CareerDev::getLink("install.php"));
 	$html .= "<form method='POST' action='$thisUrl&action=localizeVariables'>\n";
 	$html .= Application::generateCSRFTokenHTML();
-	$html .= "<p class='centered max-width'>Please enter a list of your academic departments.<br>(One per line.)<br>\n";
-	$html .= "<textarea name='departments' class='config'>$defaultDepartments</textarea></p>\n";
-	$html .= "<p class='centered max-width'>Please enter a list of resources your scholars may use. These are items that your institution offers to help your scholars achieve career success, like workshops or tools. For example, Vanderbilt offers focused workshops, studios, pilot funding, feedback sessions, and grant writing resources.<br>(One per line.)<br>\n";
+	$html .= "<p class='centered max-width'>Please enter a list of your <strong>Academic Departments</strong>.<br/>(One per line.)<br/>";
+	$html .= "<textarea name='departments' class='config'>$defaultDepartments</textarea></p>";
+	$html .= "<p class='centered max-width'>Please enter a list of <strong>Resources</strong> your scholars may use. These are items that your institution offers to help your scholars achieve career success, like workshops or tools. For example, Vanderbilt offers focused workshops, studios, pilot funding, feedback sessions, and grant writing resources.<br/>(One per line.)<br/>";
 	$html .= "<textarea name='resources' class='config'>$defaultResources</textarea></p>\n";
+
+    foreach (REDCapManagement::getOptionalSettings() as $setting => $label) {
+        $html .= "<p class='centered max-width'>The following field is optional. It can remain blank if desired.<br/><strong>$label</strong><br/>(One per line.)<br/>";
+        $html .= "<textarea name='$setting' class='config'></textarea></p>";
+    }
+
 	$html .= "<p class='centered'><button onclick='if (!verifyFieldsNotBlank([\"departments\", \"resources\"])) { alert(\"Cannot leave fields blank!\"); return false; } else { return true; }'>Configure Fields</button></p>\n";
 	$html .= "</form>\n";
 

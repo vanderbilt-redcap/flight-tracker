@@ -1403,37 +1403,38 @@ class REDCapManagement {
 
 	public static function getSpecialFields($type, $metadata) {
         $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
-		$fields = array();
-		$fields["departments"] = array(
-						"summary_primary_dept",
-						"override_department1",
-						"override_department1_previous",
-						"check_primary_dept",
-						"check_prev1_primary_dept",
-						"check_prev2_primary_dept",
-						"check_prev3_primary_dept",
-						"check_prev4_primary_dept",
-						"check_prev5_primary_dept",
-						"followup_primary_dept",
-						"followup_prev1_primary_dept",
-						"followup_prev2_primary_dept",
-						"followup_prev3_primary_dept",
-						"followup_prev4_primary_dept",
-						"followup_prev5_primary_dept",
-                        "init_import_primary_dept",
-                        "init_import_prev1_primary_dept",
-                        "init_import_prev2_primary_dept",
-                        "init_import_prev3_primary_dept",
-                        "init_import_prev4_primary_dept",
-                        "init_import_prev5_primary_dept",
-						);
+		$fields = [];
+		$fields["departments"] = [
+            "summary_primary_dept",
+            "override_department1",
+            "override_department1_previous",
+            "check_primary_dept",
+            "check_prev1_primary_dept",
+            "check_prev2_primary_dept",
+            "check_prev3_primary_dept",
+            "check_prev4_primary_dept",
+            "check_prev5_primary_dept",
+            "followup_primary_dept",
+            "followup_prev1_primary_dept",
+            "followup_prev2_primary_dept",
+            "followup_prev3_primary_dept",
+            "followup_prev4_primary_dept",
+            "followup_prev5_primary_dept",
+            "init_import_primary_dept",
+            "init_import_prev1_primary_dept",
+            "init_import_prev2_primary_dept",
+            "init_import_prev3_primary_dept",
+            "init_import_prev4_primary_dept",
+            "init_import_prev5_primary_dept",
+        ];
 		$fields["resources"] = [
 		    "resources_resource",
             ];
         $fields["mentoring"] = [
             DataDictionaryManagement::getMentoringResourceField($metadataFields),
         ];
-		$fields["institutions"] = array("check_institution", "followup_institution");
+		$fields["institutions"] = ["check_institution", "followup_institution"];
+        $fields["optional"] = ["identifier_person_role"];
 
 		if (isset($fields[$type])) {
 			return $fields[$type];
@@ -1448,6 +1449,32 @@ class REDCapManagement {
 		}
 		return array();
 	}
+
+    public static function getOptionalFields() {
+        return self::getSpecialFields("optional", []);
+    }
+
+    public static function getOptionalSettings() {
+        $fileMetadata = DataDictionaryManagement::getFileMetadata();
+        $fields = self::getOptionalFields();
+        $settings = [];
+        foreach ($fields as $field) {
+            $setting = self::turnOptionalFieldIntoSetting($field);
+            if ($setting) {
+                $row = DataDictionaryManagement::getRowForFieldFromMetadata($field, $fileMetadata);
+                $settings[$setting] = $row['field_label'] ?? "Optional Field";
+            }
+        }
+        return $settings;
+    }
+
+    public static function turnOptionalFieldIntoSetting($field) {
+        $prefix = self::getPrefix($field);
+        if (!preg_match("/_$/", $prefix)) {
+            $prefix .= "_";
+        }
+        return str_replace($prefix, "", $field);
+    }
 
 	public static function getFileNameForEdoc($edocId) {
         return FileManagement::getFileNameForEdoc($edocId);
