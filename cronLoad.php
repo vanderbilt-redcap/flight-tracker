@@ -132,7 +132,12 @@ function runMainCrons(&$manager, $token, $server) {
         }
 
         if (Application::getSetting("email_highlights_to", $pid)) {
-            // TODO $manager->addCron("drivers/25_emailHighlights.php", "sendEmailHighlights", "Monday", $allRecords, 100000);
+            $frequency = Application::getSetting("highlights_frequency", $pid);
+            if ($frequency == "weekly") {
+                $manager->addCron("drivers/25_emailHighlights.php", "sendEmailHighlights", "Monday", $allRecords, 100000);
+            } else if ($frequency == "monthly") {
+                $manager->addCron("drivers/25_emailHighlights.php", "sendEmailHighlights", date("Y-m-01"), $allRecords, 100000);
+            }
         }
 
         $numRecordsForSummary = 15;

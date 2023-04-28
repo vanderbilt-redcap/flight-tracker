@@ -5,28 +5,19 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
-# TODO publicize https://redcap.link/social_media
-# TODO add to config.php: day # or day of week to send on, highlights_frequency, requested_grants (prefilled with FT-associated grant)
-
 function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) {
     $to = Application::getSetting("email_highlights_to", $pid);
     $frequency = Application::getSetting("highlights_frequency", $pid);
     $grantList = Application::getSetting("requested_grants", $pid);
 
-    if (!$to) {
-        if (Application::isVanderbilt() && ($pid == NEWMAN_SOCIETY_PROJECT)) {
-            $to = "scott.j.pearson@vumc.org,helen.bird@vumc.org,verna.n.wright@vumc.org";
-        } else {
-            $to = Application::getSetting("admin_email", $pid);
-        }
+    if (Application::isVanderbilt() && ($pid == NEWMAN_SOCIETY_PROJECT)) {
+        $to = "scott.j.pearson@vumc.org,helen.bird@vumc.org,verna.n.wright@vumc.org";
         Application::saveSetting("email_highlights_to", $to, $pid);
-    }
-    if (Application::isVanderbilt()) {
-        # TODO - get rid of when in production
-        $to = "scott.j.pearson@vumc.org";
         $frequency = "weekly";
+        Application::saveSetting("highlights_frequency", $frequency, $pid);
     }
     if (!$to) {
+        resetSettings($pid);
         return;
     }
     if ($frequency == "weekly") {
@@ -36,6 +27,7 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
         $numDaysToHighlight = 60;
         $numDaysWithoutWarning = 31;
     } else {
+        resetSettings($pid);
         return;
     }
 
@@ -59,6 +51,7 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
     $warningTs = time() - $numDaysWithoutWarning * $oneDay;
     $thresholdDate = date("m-d-Y", $thresholdTs);
     $allPMIDsIdentified = [];
+    $performancePMIDsIdentified = [];
     $pidsCitationRecordsAndInstances = [];
     $pidsGrantRecordsAndInstances = [];
     $fields = ["record_id", "citation_authors", "citation_pmid", "citation_ts", "citation_include", "citation_rcr", "citation_altmetric_score", "coeus_last_update", "nih_last_update", "vera_last_update"];
@@ -74,9 +67,21 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
     $allMetadata = [];
     $twitterHandles = [];
     $linkedInHandles = [];
-    $translate = Citation::getJournalTranslations();
+
+
+    $highPerformers = [];
     foreach ($pids as $currPid) {
         if (REDCapManagement::isActiveProject($currPid)) {
+            $allHighPerformingPMIDs = Application::getSetting("high_performing_pmids", $currPid) ?: [];
+            $highPerformingPMIDS = [];
+            foreach ($allHighPerformingPMIDs as $date => $pmids) {
+                $ts = strtotime($date);
+                if ($ts >= $thresholdTs) {
+                    $highPerformingPMIDS = array_unique(array_merge($highPerformingPMIDS, $pmids));
+                }
+            }
+            resetSettings($currPid);
+
             $currToken = Application::getSetting("token", $currPid);
             $currServer = Application::getSetting("server", $currPid);
             if ($currToken && $currServer) {
@@ -124,8 +129,25 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
                             if (!isset($allPMIDsIdentified[$pmid])) {
                                 $allPMIDsIdentified[$pmid] = [];
                             }
-                            $allPMIDsIdentified[$pmid][] = $currPid.":".$recordId;
+                            $allPMIDsIdentified[$pmid][] = $currPid . ":" . $recordId;
                             enrollNewInstance($pidsCitationRecordsAndInstances, $currPid, $recordId, $instance);
+                        }
+
+                        if (
+                            ($row['citation_include'] !== "0")
+                            && in_array($pmid, $highPerformingPMIDS)
+                        ) {
+                            if (!isset($highPerformers[$currPid])) {
+                                $highPerformers[$currPid] = [];
+                            }
+                            if (!isset($highPerformers[$currPid][$recordId])) {
+                                $highPerformers[$currPid][$recordId] = [];
+                            }
+                            $highPerformers[$currPid][$recordId][] = $instance;
+                            if (!isset($performancePMIDsIdentified[$pmid])) {
+                                $performancePMIDsIdentified[$pmid] = [];
+                            }
+                            $performancePMIDsIdentified[$pmid][] = $currPid . ":" . $recordId;
                         }
                     } else if (
                         isset($grantInstrumentsAndPrefices[$row['redcap_repeat_instrument']])
@@ -157,12 +179,12 @@ h3 { background-color: #e5f1d5; }
 a { color: #5764ae; }
 </style>";
     $html .= "<p><img src='$ftLogoBase64' alt='Flight Tracker for Scholars' /></p>";
-    $html .= "<h1>Flight Tracker Weekly Scholar Impact Update</h1>";
+    $html .= "<h1>Flight Tracker ".ucfirst($frequency)." Celebrations Email</h1>";
     $html .= "<p>$projectInfo</p>";
 
     $statuses = array_merge($validGrantStatuses, ["Unknown"]);
     $appTypes = REDCapManagement::makeConjunction($statuses, "or");
-    $html .= "<h2>All Grants Downloaded After $thresholdDate</h2>";
+    $html .= "<h2>New Grant Awards After $thresholdDate</h2>";
     if (!empty($pidsGrantRecordsAndInstances)) {
         $dataByName = [];
         foreach ($pidsGrantRecordsAndInstances as $currPid => $grantRecordsAndInstancesByInstrument) {
@@ -180,7 +202,6 @@ a { color: #5764ae; }
                 $currDepartments = Download::oneField($currToken, $currServer, "summary_primary_dept");
                 $currRanks = Download::oneField($currToken, $currServer, "summary_current_rank");
                 $currUserids = Download::userids($currToken, $currServer);
-                $institutionAry = Download::institutionsAsArray($currToken, $currServer);
                 $lexicalTranslator = new GrantLexicalTranslator($currToken, $currServer, Application::getModule(), $currPid);
 
                 $grantFields = REDCapManagement::getAllGrantFields($currMetadata);
@@ -232,6 +253,7 @@ a { color: #5764ae; }
                                         $dataRow['name'] = $formattedName;
                                         $dataRow['email'] = $emails[$currPid][$recordId] ?? "";
                                         $dataRow['awardNo'] = $awardNo;
+                                        $dataRow['institution'] = $grant->getVariable("institution");
                                         $dataRow['type'] = $grant->getVariable("type");
                                         $dataRow['budgetDates'] = DateManagement::YMD2MDY($grant->getVariable("start"))." - ".DateManagement::YMD2MDY($grant->getVariable("end"));
                                         $dataRow['projectDates'] = DateManagement::YMD2MDY($grant->getVariable("project_start"))." - ".DateManagement::YMD2MDY($grant->getVariable("project_end"));
@@ -244,7 +266,7 @@ a { color: #5764ae; }
                                         $dataRow['lastUpdate'] = $grant->getVariable("last_update");
                                         $dataRow['twitter'] = $twitterHandles[$currPid][$recordId] ?? "";
                                         $dataRow['linkedIn'] = $linkedInHandles[$currPid][$recordId] ?? "";
-                                        $dataRow['bio'] = makeBio($recordId, $currUserids[$recordId] ?? "", $institutionAry, $currDepartments, $currRanks, $currChoices);
+                                        $dataRow['bio'] = makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currChoices);
                                         $edocs = Download::nonBlankFileFieldsFromProjects($activePids, $formattedName, "identifier_picture");
                                         if (!empty($edocs)) {
                                             $row['pictures'] = [];
@@ -276,15 +298,18 @@ a { color: #5764ae; }
         $html .= "<p>No new grants have been downloaded since $thresholdDate for the following Application Types: $appTypes</p>";
     }
 
-    $html .= "<h2>Publications After $thresholdDate</h2>";
     $requestedGrants = $grantList ? preg_split("/\s*[,;]\s*/", $grantList) : [];
     for ($i = 0; $i < count($requestedGrants); $i++) {
         $requestedGrants[$i] = Grant::translateToBaseAwardNumber($requestedGrants[$i]);
     }
-    $htmlRows = [];
-    if (!empty($pidsCitationRecordsAndInstances)) {
-        foreach ($pidsCitationRecordsAndInstances as $currPid => $recordsAndInstances) {
-            if (!empty($recordsAndInstances)) {
+    $htmlRows = ["<h2>Publications After $thresholdDate</h2>"];
+    $performanceRows = ["<h2>Publications With Newly Altmetric &gt; " . Altmetric::THRESHOLD_SCORE . " or RCR &gt; " . iCite::THRESHOLD_SCORE . "</h2>"];
+    $publicationPids = array_unique(array_merge(array_keys($highPerformers), array_keys($pidsCitationRecordsAndInstances)));
+    if (!empty($publicationPids)) {
+        foreach ($publicationPids as $currPid) {
+            $recordsAndInstances = $pidsCitationRecordsAndInstances[$currPid] ?? [];
+            $highPerformingRecordInstances = $highPerformers[$currPid] ?? [];
+            if (!empty($highPerformingRecordInstances) || !empty($recordsAndInstances)) {
                 $currToken = Application::getSetting("token", $currPid);
                 $currServer = Application::getSetting("server", $currPid);
                 if (isset($allMetadata[$currPid])) {
@@ -293,11 +318,11 @@ a { color: #5764ae; }
                     $currMetadata = Download::metadata($currToken, $currServer);
                     $allMetadata[$currPid] = $currMetadata;
                 }
+                $alumniAssociations = Download::alumniAssociations($currToken, $currServer);
                 $currChoices = DataDictionaryManagement::getChoices($currMetadata);
                 $currDepartments = Download::oneField($currToken, $currServer, "summary_primary_dept");
                 $currRanks = Download::oneField($currToken, $currServer, "summary_current_rank");
                 $currUserids = Download::userids($currToken, $currServer);
-                $institutionAry = Download::institutionsAsArray($currToken, $currServer);
                 $citationFields = DataDictionaryManagement::getFieldsFromMetadata($currMetadata, "citation");
                 $citationFields[] = "record_id";
                 $redcapData = [];
@@ -305,123 +330,144 @@ a { color: #5764ae; }
                 foreach ($recordsAndInstances as $recordId => $instances) {
                     $recordData = Download::fieldsForRecordAndInstances($currToken, $currServer, $citationFields, $recordId, "citation", $instances);
                     $redcapData = array_merge($redcapData, $recordData);
-                    $bios[$recordId] = makeBio($recordId, $currUserids[$recordId] ?? "", $institutionAry, $currDepartments, $currRanks, $currChoices);
+                    $bios[$recordId] = makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currChoices);
                 }
-                foreach ($redcapData as $row) {
-                    $recordId = $row['record_id'];
+                $performanceREDCapData = [];
+                foreach ($highPerformingRecordInstances as $recordId => $instances) {
+                    $recordData = Download::fieldsForRecordAndInstances($currToken, $currServer, $citationFields, $recordId, "citation", $instances);
+                    $performanceREDCapData = array_merge($performanceREDCapData, $recordData);
+                    if (!isset($bios[$recordId])) {
+                        $bios[$recordId] = makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currChoices);
+                    }
+                }
+                $performanceRows = array_merge($performanceRows, processCitations($performanceREDCapData, $currToken, $currServer, $currPid, $warningTs, $bios, $requestedGrants, $activePids, $performancePMIDsIdentified));
+                $htmlRows = array_merge($htmlRows, processCitations($redcapData, $currToken, $currServer, $currPid, $warningTs, $bios, $requestedGrants, $activePids, $allPMIDsIdentified));
+            }
+        }
+        $caveat = !empty($requestedGrants) ? " associated with your requested grants (".REDCapManagement::makeConjunction($requestedGrants).")" : "";
+        if (count($htmlRows) == 1) {
+            $htmlRows[] = "<p>No new publications$caveat have been published since $thresholdDate</p>";
+        }
+        if (count($performanceRows) == 1) {
+            $performanceRows[] = "<p>No new publications$caveat have been designated high-performing since $thresholdDate</p>";
+        }
+        $html .= implode("", $performanceRows);
+        $html .= implode("", $htmlRows);
+    }
+
+    $defaultFrom = Application::getSetting("default_from", $pid) ?: "noreply.flighttracker@vumc.org";
+    $subject = "Flight Tracker Scholar Impact Update";
+    \REDCap::email($to, $defaultFrom, $subject, $html);
+}
+
+function processCitations($redcapData, $currToken, $currServer, $currPid, $warningTs, $currBios, $requestedGrants, $activePids, $allPMIDsIdentified) {
+    $htmlRows = [];
+    $translate = Citation::getJournalTranslations();
+    foreach ($redcapData as $row) {
+        $recordId = $row['record_id'];
+        if (
+            ($row['redcap_repeat_instrument'] == "citation")
+            && isset($recordsAndInstances[$recordId])
+            && in_array($row['redcap_repeat_instance'], $recordsAndInstances[$recordId])
+        ) {
+            $pmid = $row['citation_pmid'];
+            $altmetric = $row['citation_altmetric_details_url'] ? " <a href='{$row['citation_altmetric_details_url']}'>Altmetric</a>" : "";
+            $matchedNames = [];
+            $namesWithLink = [];
+            $handles = [];
+            $journalHTML = "<div><i>".$row['citation_journal']."</i>";
+            $journal = $row['citation_journal'];
+            $journalFullName = $translate[$journal] ?? "";
+            if ($journalFullName) {
+                $journalHTML .= " - $journalFullName";
+            }
+            if (Application::isVanderbilt() && !Application::isLocalhost()) {
+                $journalPid = 168378;
+                $journalData = \REDCap::getData($journalPid, "json-array");
+                $journalHandles = [];
+                $journalInLC = trim(strtolower($journal));
+                $journalFullNameInLC = trim(strtolower($journalFullName));
+                foreach ($journalData as $journalRow) {
                     if (
-                        ($row['redcap_repeat_instrument'] == "citation")
-                        && isset($recordsAndInstances[$recordId])
-                        && in_array($row['redcap_repeat_instance'], $recordsAndInstances[$recordId])
+                        ($journalInLC == trim(strtolower($journalRow['abbreviation'])))
+                        || ($journalInLC == trim(strtolower($journalRow['name'])))
+                        || ($journalFullNameInLC == trim(strtolower($journalRow['abbreviation'])))
+                        || ($journalFullNameInLC == trim(strtolower($journalRow['name'])))
                     ) {
-                        $pmid = $row['citation_pmid'];
-                        $altmetric = $row['citation_altmetric_details_url'] ? " <a href='{$row['citation_altmetric_details_url']}'>Altmetric</a>" : "";
-                        $matchedNames = [];
-                        $namesWithLink = [];
-                        $handles = [];
-                        $journalHTML = "<div><i>".$row['citation_journal']."</i>";
-                        $journal = $row['citation_journal'];
-                        $journalFullName = $translate[$journal] ?? "";
-                        if ($journalFullName) {
-                            $journalHTML .= " - $journalFullName";
-                        }
-                        if (Application::isVanderbilt() && !Application::isLocalhost()) {
-                            $journalPid = 168378;
-                            $journalData = \REDCap::getData($journalPid, "json-array");
-                            $journalHandles = [];
-                            $journalInLC = trim(strtolower($journal));
-                            $journalFullNameInLC = trim(strtolower($journalFullName));
-                            foreach ($journalData as $journalRow) {
-                                if (
-                                    ($journalInLC == trim(strtolower($journalRow['abbreviation'])))
-                                    || ($journalInLC == trim(strtolower($journalRow['name'])))
-                                    || ($journalFullNameInLC == trim(strtolower($journalRow['abbreviation'])))
-                                    || ($journalFullNameInLC == trim(strtolower($journalRow['name'])))
-                                ) {
-                                    $journalHandles[] = $journalRow['handle'];
-                                }
-                            }
-                            $journalHTML = empty($journalHandles) ? $journalHTML." (<a href='https://redcap.vanderbilt.edu/surveys/?s=D94RMNA3AT94CXTP'>add new journal handle?</a>)" : $journalHTML." (".implode(", ", $journalHandles).")";
-                        }
-                        $journalHTML .= "</div>";
-                        foreach ($allPMIDsIdentified[$pmid] as $match) {
-                            list($matchPID, $matchRecordId) = explode(":", $match);
-                            if (!isset($twitterHandles[$matchPID]) || !isset($linkedInHandles[$matchPID])) {
-                                $matchToken = Application::getSetting("token", $matchPID);
-                                $matchServer = Application::getSetting("server", $matchPID);
-                                $twitterHandles[$matchPID] = Download::oneField($matchToken, $matchServer, "identifier_twitter");
-                                $linkedInHandles[$matchPID] = Download::oneField($matchToken, $matchServer, "identifier_linkedin");
-                            }
-                            foreach ([$twitterHandles, $linkedInHandles] as $handleData) {
-                                if ($handleData[$matchPID][$matchRecordId]) {
-                                    $handles = array_unique(array_merge($handles, preg_split("/\s*,\s*/", $handleData[$matchPID][$matchRecordId])));
-                                }
-                            }
-                            if (
-                                isset($names[$matchPID][$matchRecordId])
-                                && $names[$matchPID][$matchRecordId]
-                                && !in_array($names[$matchPID][$matchRecordId], $matchedNames)
-                            ) {
-                                $name = $names[$matchPID][$matchRecordId];
-                                if (isset($emails[$matchPID][$matchRecordId])) {
-                                    $email = $emails[$matchPID][$matchRecordId];
-                                    $nameWithLink = "$name (<a href='mailto:$email'>$email</a>)";
-                                } else {
-                                    $nameWithLink = $name;
-                                }
-                                $matchedNames[] = $name;
-                                $namesWithLink[] = $nameWithLink;
-                            }
-                        }
-                        $citation = new Citation($currToken, $currServer, $recordId, $row['redcap_repeat_instance'], $row, $currMetadata);
-                        $citationStr = $citation->getCitationWithLink().$altmetric;
-                        $handleHTML = empty($handles) ? "" : "<div>Individual Handles: ".implode(", ", $handles)."</div>";
+                        $journalHandles[] = $journalRow['handle'];
+                    }
+                }
+                $journalHTML = empty($journalHandles) ? $journalHTML." (<a href='https://redcap.vanderbilt.edu/surveys/?s=D94RMNA3AT94CXTP'>add new journal handle?</a>)" : $journalHTML." (".implode(", ", $journalHandles).")";
+            }
+            $journalHTML .= "</div>";
+            foreach ($allPMIDsIdentified[$pmid] as $match) {
+                list($matchPID, $matchRecordId) = explode(":", $match);
+                if (!isset($twitterHandles[$matchPID]) || !isset($linkedInHandles[$matchPID])) {
+                    $matchToken = Application::getSetting("token", $matchPID);
+                    $matchServer = Application::getSetting("server", $matchPID);
+                    $twitterHandles[$matchPID] = Download::oneField($matchToken, $matchServer, "identifier_twitter");
+                    $linkedInHandles[$matchPID] = Download::oneField($matchToken, $matchServer, "identifier_linkedin");
+                }
+                foreach ([$twitterHandles, $linkedInHandles] as $handleData) {
+                    if ($handleData[$matchPID][$matchRecordId]) {
+                        $handles = array_unique(array_merge($handles, preg_split("/\s*,\s*/", $handleData[$matchPID][$matchRecordId])));
+                    }
+                }
+                if (
+                    isset($names[$matchPID][$matchRecordId])
+                    && $names[$matchPID][$matchRecordId]
+                    && !in_array($names[$matchPID][$matchRecordId], $matchedNames)
+                ) {
+                    $name = $names[$matchPID][$matchRecordId];
+                    if (isset($emails[$matchPID][$matchRecordId])) {
+                        $email = $emails[$matchPID][$matchRecordId];
+                        $nameWithLink = "$name <a href='mailto:$email'>$email</a>";
+                    } else {
+                        $nameWithLink = $name;
+                    }
+                    $matchedNames[] = $name;
+                    $namesWithLink[] = $nameWithLink;
+                }
+            }
+            $scholarProfile = " ".Links::makeProfileLink($currPid, "Scholar Profile", $recordId);
+            $citation = new Citation($currToken, $currServer, $recordId, $row['redcap_repeat_instance'], $row, $currMetadata);
+            $citationStr = $citation->getCitationWithLink().$altmetric.$scholarProfile;
+            $handleHTML = empty($handles) ? "" : "<div>Individual Handles: ".implode(", ", $handles)."</div>";
 
-                        $warningHTML = "";
-                        if (strtotime($row['citation_ts']) < $warningTs) {
-                            $warningHTML = "<div class='redtext'><strong>This citation may have been included on last week's email!</strong></div>";
-                        }
+            $warningHTML = "";
+            if (strtotime($row['citation_ts']) < $warningTs) {
+                $warningHTML = "<div class='redtext'><strong>This citation may have been included on the last email!</strong></div>";
+            }
 
-                        $pictureHTML = "";
-                        foreach ($matchedNames as $matchedName) {
-                            $edocs = Download::nonBlankFileFieldsFromProjects($activePids, $matchedName, "identifier_picture");
-                            if (!empty($edocs)) {
-                                foreach ($edocs as $source => $edocId) {
-                                    $base64 = FileManagement::getEdocBase64($edocId);
-                                    $pictureHTML .= "<div><img src='$base64' alt='$matchedName' /> $matchedName</div>";
-                                }
-                            }
-                        }
-
-                        $bio = $bios[$recordId] ? $bios[$recordId]."<br/>" : "";
-                        $citedGrants = $citation->getGrantBaseAwardNumbers();
-                        $grantsHTML = !empty($citedGrants) ? "<p>Associated Grants: ".implode(", ", $citedGrants)."</p>" : "";
-
-                        $include = empty($requestedGrants);
-                        foreach ($requestedGrants as $grant) {
-                            if (in_array($grant, $citedGrants)) {
-                                $include = TRUE;
-                            }
-                        }
-                        if ($include) {
-                            $htmlRows[] = "<h3>".implode(", ", $namesWithLink)."</h3>$bio$warningHTML<p>$citationStr</p>$handleHTML$journalHTML$grantsHTML$pictureHTML<hr/>";
-                        }
+            $pictureHTML = "";
+            foreach ($matchedNames as $matchedName) {
+                $edocs = Download::nonBlankFileFieldsFromProjects($activePids, $matchedName, "identifier_picture");
+                if (!empty($edocs)) {
+                    foreach ($edocs as $source => $edocId) {
+                        $base64 = FileManagement::getEdocBase64($edocId);
+                        $pictureHTML .= "<div><img src='$base64' alt='$matchedName' style='max-width: 300px; max-height: 300px; width: auto; height: auto;' /> $matchedName</div>";
                     }
                 }
             }
-        }
-        if (empty($htmlRows)) {
-            $html .= "<p>No new publications associated with your requested grants (".REDCapManagement::makeConjunction($requestedGrants).") have been downloaded that have been published since $thresholdDate</p>";
-        } else {
-            $html .= implode("", $htmlRows);
-        }
-    } else {
-        $html .= "<p>No new publications have been downloaded that have been published since $thresholdDate</p>";
-    }
+            if ($pictureHTML === "") {
+                $pictureHTML = "<div>".Links::makeUploadPictureLink($currPid, "Upload Picture", $recordId)."</div>";
+            }
 
-    $defaultFrom = Application::getSetting("default_from", $pid);
-    $subject = "Flight Tracker Scholar Impact Update";
-    \REDCap::email($to, $defaultFrom, $subject, $html);
+            $bio = $currBios[$recordId] ? $currBios[$recordId]."<br/>" : "";
+            $citedGrants = $citation->getGrantBaseAwardNumbers();
+
+            $include = empty($requestedGrants);
+            foreach ($requestedGrants as $grant) {
+                if (in_array($grant, $citedGrants)) {
+                    $include = TRUE;
+                }
+            }
+            if ($include) {
+                $htmlRows[] = "<h3>".implode(", ", $namesWithLink)."</h3>$bio$warningHTML<p>$citationStr</p>$handleHTML$journalHTML$pictureHTML<hr/>";
+            }
+        }
+    }
+    return $htmlRows;
 }
 
 function presentGrantDataInHTML($dataByName) {
@@ -449,7 +495,7 @@ function presentGrantDataInHTML($dataByName) {
 
         $formattedNameWithLink = $formattedName;
         if ($email) {
-            $formattedNameWithLink = "$formattedName (<a href='mailto:$email'>$email</a>)";
+            $formattedNameWithLink = "$formattedName <a href='mailto:$email'>$email</a>";
         }
 
         $html .= "<h3>$formattedNameWithLink ($numRows) ".implode(", ", $handles)."</h3>";
@@ -457,15 +503,16 @@ function presentGrantDataInHTML($dataByName) {
             $html .= "<p>".$rows[0]['bio']."</p>";
         }
         foreach ($rows as $row) {
-            $budgetInfo = $row['totalBudget'] ? "<br/>For {$row['totalBudget']}" : "";
+            $budgetInfo = $row['totalBudget'] ? "<br/>For {$row['totalBudget']} total budget" : "";
+            $institution = $row['institution'] ? "<br/>Awarded to {$row['institution']}" : "";
             $projectLink = Links::makeRecordHomeLink($row['pid'], $row['recordId'], $row['projectName']." Record ".$row['recordId']);
             $typeInfo = ($row['type'] != "N/A") ? " - ".$row['type'] : "";
             $lastUpdate = DateManagement::YMD2MDY($row['lastUpdate']);
             $pictures = "";
             foreach ($row['pictures'] ?? [] as $base64) {
-                $pictures .= "<br/><img src='$base64' />";
+                $pictures .= "<br/><img src='$base64' alt='$formattedName' />";
             }
-            $html .= "<p><strong>{$row['awardNo']} - {$row['role']}$typeInfo</strong><br/>From {$row['sponsor']}$budgetInfo<br/>Budget Period: {$row['budgetDates']}<br/>Project Period: {$row['projectDates']}<br/>Title: {$row['title']}<br/>{$row['link']}<br/>$projectLink<br/>Last Updated: $lastUpdate$pictures</p>";
+            $html .= "<p><strong>{$row['awardNo']} - {$row['role']}$typeInfo</strong><br/>From {$row['sponsor']}$institution$budgetInfo<br/>Budget Period: {$row['budgetDates']}<br/>Project Period: {$row['projectDates']}<br/>Title: {$row['title']}<br/>{$row['link']}<br/>$projectLink<br/>Last Updated: $lastUpdate$pictures</p>";
         }
         $html .= "<hr/>";
     }
@@ -568,11 +615,8 @@ function prefillJournals() {
     return [];
 }
 
-function makeBio($recordId, $userid, $institutionAry, $currDepartments, $currRanks, $currChoices) {
+function makeBio($recordId, $userid, $currDepartments, $currRanks, $alumniAssocLinks, $currChoices) {
     $bioData = [];
-    if (isset($institutionAry[$recordId]) && !empty($institutionAry[$recordId])) {
-        $bioData[] = "Institutions: ".REDCapManagement::makeConjunction($institutionAry[$recordId]);
-    }
     $foundLDAP = FALSE;
     if (Application::isVanderbilt() && $userid) {
         list($department, $rank) = LDAP::getDepartmentAndRank($userid);
@@ -581,6 +625,14 @@ function makeBio($recordId, $userid, $institutionAry, $currDepartments, $currRan
             $bioData[] = "Academic Rank: ".$rank;
             $foundLDAP = TRUE;
         }
+    }
+    if (!empty($alumniAssocLinks)) {
+        $links = [];
+        foreach ($alumniAssocLinks as $url) {
+            $domain = URLManagement::getDomain($url);
+            $links[] = Links::makeLink($url, $domain);
+        }
+        $bioData[] = "Alumni Associations: ".implode(", ", $links);
     }
     if (!$foundLDAP) {
         $departmentValue = $currDepartments[$recordId] ?? "";
@@ -595,4 +647,8 @@ function makeBio($recordId, $userid, $institutionAry, $currDepartments, $currRan
         }
     }
     return implode("; ", $bioData);
+}
+
+function resetSettings($pid) {
+    Application::saveSetting("high_performing_pmids", [], $pid);
 }

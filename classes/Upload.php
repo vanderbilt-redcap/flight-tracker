@@ -364,6 +364,8 @@ public static function metadata($metadata, $token, $server) {
 	}
 
 	public static function file($pid, $record, $field, $base64, $filename, $instance = 1) {
+        $base64 = preg_replace("/^data:image\/.+?;base64, /", "", $base64);
+        $base64 = str_replace(" ", "+", $base64);
         $contents = base64_decode($base64);
         if ($contents) {
             $file = [];
@@ -372,11 +374,7 @@ public static function metadata($metadata, $token, $server) {
             $file['size'] = strlen($contents);
             $file['name'] = $filename;
 
-            $fp = fopen($file['tmp_name'], "w");
-            fwrite($fp, $contents);
-            fclose($fp);
-
-            $instance = $instance;
+            file_put_contents($file['tmp_name'], $contents);
 
             $module = Application::getModule();
             $sql = "SELECT m.event_id AS event_id FROM redcap_events_arms AS a INNER JOIN redcap_events_metadata AS m ON a.arm_id = m.arm_id WHERE a.project_id = ?";
@@ -390,17 +388,16 @@ public static function metadata($metadata, $token, $server) {
             require_once(APP_PATH_DOCROOT."Classes/Files.php");
             $docId = \Files::uploadFile($file, $pid);
 
-            $instanceSQLValue = ($instance == 1) ? NULL : $instance;
-            $whereClause = "project_id = ? AND event_id = ? AND record = ? AND field_name = ? AND `instance` = ?";
+            $whereClause = "project_id = ? AND event_id = ? AND record = ? AND field_name = ? AND instance = ?";
 
-            $params = [$pid, $event_id, $record, $field, $instanceSQLValue];
+            $params = [$pid, $event_id, $record, $field, $instance];
             $sql = "SELECT `value` FROM redcap_data WHERE $whereClause";
             $result = $module->query($sql, $params);
-            if ($result->num_rows() > 0) {
-                $params = [$docId, $pid, $event_id, $record, $field, $instanceSQLValue];
+            if ($result->num_rows > 0) {
+                $params = [$docId, $pid, $event_id, $record, $field, $instance];
                 $sql = "UPDATE redcap_data SET `value` = ? WHERE $whereClause";
             } else {
-                $params = [$pid, $event_id, $record, $field, $docId, $instanceSQLValue];
+                $params = [$pid, $event_id, $record, $field, $docId, $instance];
                 $sql = "INSERT INTO redcap_data (project_id, event_id, record, field_name, `value`, `instance`)
                         VALUES (?, ?, ?, ?, ?, ?)";
             }

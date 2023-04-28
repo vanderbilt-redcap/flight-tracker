@@ -904,35 +904,72 @@ class Grants {
 	    return $newTimes;
     }
 
-    private function makeRequestedChanges(&$awards) {
+    private function makeRequestedChanges(&$awards, $unsetRemoves = FALSE) {
         foreach ($this->changes as $change) {
             $changeAwardNo = $change->getNumber();
             if ($change->isRemove()) {
                 $baseNumber = $change->getBaseNumber();
                 foreach (array_keys($awards) as $awardNo) {
-                    if ($baseNumber == $awards[$awardNo]->getBaseNumber()) {
-                        if (self::getShowDebug()) { Application::log("Setting N/A to $awardNo"); }
-                        $awards[$awardNo]->setVariable("type", "N/A");
+                    if (is_array($awards[$awardNo])) {
+                        $grants = $awards[$awardNo];
+                    } else {
+                        $grants = [$awards[$awardNo]];
+                    }
+                    if ($unsetRemoves) {
+                        $numGrants = count($grants);
+                        foreach ($grants as &$grant) {
+                            if ($baseNumber == $grant->getBaseNumber()) {
+                                $numGrants--;
+                            }
+                        }
+                        if ($numGrants === 0) {
+                            unset($awards[$awardNo]);
+                        }
+                    } else {
+                        foreach ($grants as &$grant) {
+                            if ($baseNumber == $grant->getBaseNumber()) {
+                                if (self::getShowDebug()) {
+                                    Application::log("Setting N/A to $awardNo");
+                                }
+                                $grant->setVariable("type", "N/A");
+                            }
+                        }
                     }
                 }
             } else if ($change->getTakeOverDate()) {
                 $takeOverDate = strtotime($change->getTakeOverDate());
                 $baseNumber = $change->getBaseNumber();
                 foreach (array_keys($awards) as $awardNo) {
-                    if ($baseNumber == $awards[$awardNo]->getBaseNumber()) {
-                        $start = strtotime($awards[$awardNo]->getVariable('start'));
-                        if ($start < $takeOverDate) {
-                            if (self::getShowDebug()) {
-                                Application::log("Setting takeover to $awardNo");
+                    if (is_array($awards[$awardNo])) {
+                        $grants = $awards[$awardNo];
+                    } else {
+                        $grants = [$awards[$awardNo]];
+                    }
+                    foreach ($grants as &$grant) {
+                        if ($baseNumber == $grant->getBaseNumber()) {
+                            $start = strtotime($grant->getVariable('start'));
+                            if ($start < $takeOverDate) {
+                                if (self::getShowDebug()) {
+                                    Application::log("Setting takeover to $awardNo");
+                                }
+                                $grant->setVariable("takeover", "TRUE");
                             }
-                            $awards[$awardNo]->setVariable("takeover", "TRUE");
                         }
                     }
                 }
             } else {
                 if ($changeAwardNo && isset($awards[$changeAwardNo])) {
-                    if (self::getShowDebug()) { Application::log("Setting ".$change->getChangeType()." to ".$change->getChangeValue()." for $changeAwardNo"); }
-                    $awards[$changeAwardNo]->setVariable($change->getChangeType(), $change->getChangeValue());
+                    if (is_array($awards[$changeAwardNo])) {
+                        $grants = $awards[$changeAwardNo];
+                    } else {
+                        $grants = [$awards[$changeAwardNo]];
+                    }
+                    foreach ($grants as &$grant) {
+                        if (self::getShowDebug()) {
+                            Application::log("Setting " . $change->getChangeType() . " to " . $change->getChangeValue() . " for $changeAwardNo");
+                        }
+                        $grant->setVariable($change->getChangeType(), $change->getChangeValue());
+                    }
                 } else {
                     if (self::getShowDebug()) { Application::log("Skipping ".$change->getChangeType()." to ".$change->getChangeValue()." for $changeAwardNo"); }
                 }
@@ -1144,7 +1181,9 @@ class Grants {
 			if (self::getShowDebug()) { Application::log("6. ".$baseNumber." ".$grant->getVariable("type")); }
 		}
 
-        $awardsByType = ["deduped" => self::deepCopyGrants($awardsByBaseAwardNumber), "summary" => self::deepCopyGrants($awardsByBaseAwardNumber)];
+        $dedupedGrants = self::deepCopyGrants($awardsByBaseAwardNumber);
+        $this->makeRequestedChanges($dedupedGrants, TRUE);
+        $awardsByType = ["deduped" => $dedupedGrants, "summary" => self::deepCopyGrants($awardsByBaseAwardNumber)];
 
 		if (!$includeNAs) {
             # 7. remove N/A's from summaries
@@ -1461,7 +1500,7 @@ class Grants {
 	public static function makeOrder($order) {
 		$transformed = array();
 		foreach ($order as $grant) {
-			$transformed[] = self::makeJSON($grant);
+			$transformed[] = self::makeArray($grant);
 		}
 		return $transformed;
 	}
@@ -1469,12 +1508,12 @@ class Grants {
 	public static function makeListOfAwards($listOfAwards) {
 		$transformed = array();
 		foreach ($listOfAwards as $awardNo => $grant) {
-			$transformed[$awardNo] = self::makeJSON($grant);
+			$transformed[$awardNo] = self::makeArray($grant);
 		}
 		return $transformed;
 	}
 
-	public static function makeJSON($grant) {
+	public static function makeArray($grant) {
 		$specs = $grant->toArray();
 		$translate = [
 					"start" => "start_date",
@@ -2028,6 +2067,9 @@ class Grants {
                         $value = self::translateSourcesIntoSourceOrder($key, $value);
 						if (in_array($key, $metadataFields)) {
                             DateManagement::correctLeapYear($value);
+                            if (DateManagement::isDate($value) && !DateManagement::hasTime($value)) {
+                                $value = DateManagement::toYMD($value);
+                            }
 							$uploadRow[$key] = $value;
 						} else {
 							Application::log($key." not found in metadata, but in compiledGrants");

@@ -387,6 +387,7 @@ class FollowupGrantFactory extends GrantFactory {
 				}
                 $grant->putInBins();
                 $grant->setVariable("pis", $this->getPIs($row));
+                $grant->setVariable("last_update", $row['followup_date']);
                 $this->grants[] = $grant;
 			}
 		}
@@ -928,6 +929,7 @@ class CoeusGrantFactory extends GrantFactory {
 		$grant->setVariable('title', $row['coeus_title']);
 		$grant->setVariable('sponsor', $row['coeus_direct_sponsor_name']);
 		$grant->setVariable('sponsor_type', $row['coeus_direct_sponsor_type']);
+        $grant->setVariable("institution", "Vanderbilt University Medical Center");
 
 		# used in budgetary calculations
 		$grant->setVariable('prime_sponsor_type', $row['coeus_prime_sponsor_type']);
@@ -1008,6 +1010,7 @@ class VERAGrantFactory extends  GrantFactory {
         $grant->setVariable('prime_sponsor_name', $primeSponsorName);
         $grant->setVariable('direct_sponsor_type', $row['vera_direct_sponsor_type']);
         $grant->setVariable('direct_sponsor_name', $row['vera_direct_sponsor_name']);
+        $grant->setVariable("institution", "Vanderbilt University");
 
         $grant->setNumber($awardNo);
         $grant->setVariable("original_award_number", $row['vera_direct_sponsor_award_id']);
@@ -1269,6 +1272,7 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         $grant->setVariable('original_award_number', $row['nih_project_num']);
         $grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
         $grant->setVariable('subproject', $isSubproject);
+        $grant->setVariable("institution", ucwords(strtolower($row['nih_org_name'])));
         $grant->setNumber($awardNo);
         $grant->setVariable('source', "nih_reporter");
         $grant->setVariable('nih_mechanism', Grant::getActivityCode($awardNo));
@@ -1292,7 +1296,7 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         $this->grants[] = $grant;
     }
 
-    private static function calculateBudgetDates($projectStartDate, $projectEndDate, $awardNoticeDate) {
+    public static function calculateBudgetDates($projectStartDate, $projectEndDate, $awardNoticeDate) {
         $budgetStartTs = FALSE;
         $budgetEndTs = FALSE;
         if ($projectStartDate && $projectEndDate && $awardNoticeDate) {
@@ -1564,6 +1568,7 @@ class NSFGrantFactory extends GrantFactory {
         $grant->setVariable('budget', $dollars);
         $grant->setVariable('direct_budget', $dollars);
         $grant->setVariable('sponsor', $row['nsf_agency']);
+        $grant->setVariable("institution", $row['nsf_awardeename']);
         $grant->setVariable('original_award_number', $awardNo);
         $grant->setNumber($awardNo);
         $grant->setVariable('source', "nsf");
@@ -1627,6 +1632,7 @@ class IESGrantFactory extends GrantFactory {
         $grant->setNumber($awardNo);
         $grant->setVariable('source', "ies");
         $grant->setVariable('pi_flag', 'Y');
+        $grant->setVariable("institution", $row['ies_principalaffiliationname']);
 
         $grant->putInBins();
 

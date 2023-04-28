@@ -263,6 +263,20 @@ class DateManagement {
         return FALSE;
     }
 
+    public static function hasTime($str) {
+        return preg_match("/\d\d:\d\d/", $str);
+    }
+
+    public static function toYMD($date) {
+        if (self::isDate($date)) {
+            $ts = strtotime($date);
+            if ($ts) {
+                return date("Y-m-d", $ts);
+            }
+        }
+        return $date;
+    }
+
     public static function isOracleDate($d) {
         return preg_match("/^\d\d-[A-Z]{3}-\d\d$/", $d);
     }

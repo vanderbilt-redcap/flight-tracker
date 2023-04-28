@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\DateManagement;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\Grants;
+use Vanderbilt\CareerDevLibrary\NIHRePORTERGrantFactory;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\ExcludeList;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
@@ -146,7 +147,8 @@ function getNextRecordWithNewData($currentRecord, $includeCurrentRecord) {
             $myFields[] = $field;
         }
     }
-	$myFields = array_merge($myFields, $grantAgeFields);
+    $nihReporterFields = ['nih_project_start_date', 'nih_project_end_date', 'nih_award_notice_date'];
+	$myFields = array_merge($myFields, $grantAgeFields, $nihReporterFields);
 
 	$records = Download::recordIds($token, $server);
 	$records = Application::filterOutCopiedRecords($records);
@@ -170,7 +172,7 @@ function getNextRecordWithNewData($currentRecord, $includeCurrentRecord) {
 		}
 
 		$data = Download::fieldsForRecords($token, $server, $myFields, $pullRecords);
-		$normativeRow = array();
+		$normativeRow = [];
 		foreach ($data as $row) {
 			if ($includeCurrentRecord) {
 				$isEligibleRecord = ($record <= $row['record_id']);
@@ -183,14 +185,13 @@ function getNextRecordWithNewData($currentRecord, $includeCurrentRecord) {
 			} else if ($isEligibleRecord) {
 				$minAgeUpdate = getMinAgeOfUpdate($row);
 				$minAgeGrant = getMinAgeOfGrants($row, $grantAgeFields);
-				if ((($minAgeUpdate <= $daysForNew) && ($minAgeGrant <= $daysForNew))
+                if ((($minAgeUpdate <= $daysForNew) && ($minAgeGrant <= $daysForNew))
 					&& ($normativeRow['record_id'] == $row['record_id'])) {
 					$listOfAwards = json_decode($normativeRow['summary_calculate_list_of_awards'], true);
 					foreach ($listOfAwards as $idx => $specs) {
 						$specsMinAge = getMinAgeOfUpdate($specs);
 						$grantAge = getAgeOfGrant($specs);    // ensure that not in the distant past
 						if (($specsMinAge <= $daysForNew) && ($grantAge <= $daysForNew) && (findNumberOfSimilarAwards($specs['base_award_no'], $idx, $listOfAwards) == 0)) {
-							// echo "Record ".$row['record_id'].": ".$specs['base_award_no']." with age of $specsMinAge (".$specs['last_update'].") has ".findNumberOfSimilarAwards($specs['base_award_no'], $idx, $listOfAwards)." similar awards<br>\n";
 							return $row['record_id'];
 						}
 					}
@@ -230,6 +231,14 @@ function getMinAgeOfGrants($row, $grantAgeFields = array()) {
 			}
 		}
 	}
+    if ($row['nih_project_start_date'] && $row['nih_project_end_date'] && $row['nih_award_notice_date']) {
+        list($startDate, $endDate) = NIHRePORTERGrantFactory::calculateBudgetDates($row['nih_project_start_date'], $row['nih_project_end_date'], $row['nih_award_notice_date']);
+        $ts = strtotime($endDate);
+        $daysOld = floor((time() - $ts) / (24 * 3600)) + 1;
+        if ($daysOld < $minDays) {
+            $minDays = $daysOld;
+        }
+    }
 	return $minDays;
 }
 

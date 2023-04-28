@@ -12,6 +12,7 @@ use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\iCite;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -182,7 +183,7 @@ function buildDistribution($values, $field) {
     $cols = [];
     $colLabels = [];
     $i = 0;
-    $numBars = 8;
+    $numBars = iCite::THRESHOLD_SCORE;
     if ($field == "citation_rcr") {
         $step = 1;
         $decimals = ".0";

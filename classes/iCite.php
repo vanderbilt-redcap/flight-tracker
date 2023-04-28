@@ -5,7 +5,9 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class iCite {
-	public function __construct($pmids, $pid) {
+    const THRESHOLD_SCORE = 8;
+
+    public function __construct($pmids, $pid) {
 		$this->pmids = $pmids;
 		$this->pid = $pid;
 		$this->data = self::getData($pmids, $pid);

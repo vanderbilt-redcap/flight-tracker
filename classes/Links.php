@@ -25,6 +25,11 @@ class Links {
 		return self::$server;
 	}
 
+    public static function makeUploadPictureLink($pid, $text, $recordId) {
+        $link = Application::link("uploadPicture.php", $pid)."&record=".urlencode($recordId);
+        return self::makeLink($link, $text, TRUE);
+    }
+
     public static function changeTextColorOfLink($str, $color) {
         if (preg_match("/<a /", $str)) {
             if (preg_match("/style\s*=\s*['\"]/", $str, $matches)) {

@@ -1296,7 +1296,7 @@ class Citation {
             $ericText = $ericURL ? " ".Links::makeLink($ericURL, "ERIC", $newTarget) : "";
 
             if ($includeREDCapLink && $this->getRecordId() && $this->getInstance()) {
-                $redcap = " ".Links::makeERICLink($pid, $this->getRecordId(), $event_id, "REDCap", $this->getInstance(), TRUE);
+                $redcap = " ".Links::makeERICLink($pid, $this->getRecordId(), $event_id, "Citation in REDCap", $this->getInstance(), TRUE);
             } else {
                 $redcap = "";
             }
@@ -1320,7 +1320,7 @@ class Citation {
             }
 
             if ($includeREDCapLink && $this->getInstance() && $this->getRecordId()) {
-                $redcap = " ".Links::makePublicationsLink($pid, $this->getRecordId(), $event_id, "REDCap", $this->getInstance(), TRUE);
+                $redcap = " ".Links::makePublicationsLink($pid, $this->getRecordId(), $event_id, "Citation in REDCap", $this->getInstance(), TRUE);
             } else {
                 $redcap = "";
             }

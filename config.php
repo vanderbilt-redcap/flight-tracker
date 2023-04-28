@@ -389,6 +389,9 @@ function makeSettings($module, $pid, $metadata) {
 //	array_push($ary["Emails"], makeSetting("init_message", "textarea", "Initial Email Message"));
     $ary["Emails"][] = makeSetting("default_from", "text", "Default From Address");
     $ary["Emails"][] = makeSetting("warning_minutes", "number", "Number of Minutes Before An Email to Send a Warning Email", Application::getWarningEmailMinutes($pid));
+    $ary["Emails"][] = makeSetting("email_highlights_to", "text", "Email(s) to Send Celebrations Email To (Leave Blank Not to Send)");
+    $ary["Emails"][] = makeSetting("highlights_frequency", "radio", "Frequency of Celebrations Email", "weekly", ["weekly" => "Weekly", "monthly" => "Monthly"]);
+    $ary["Emails"][] = makeSetting("requested_grants", "text", "Comma-Separated List of Grant Numbers to Restrict the Celebrations Email To (Optional; Leave Blank to Use All Grants)");
 
     $ary["Bibliometrics"] = [];
     $ary["Bibliometrics"][] = makeSetting("wos_userid", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " User ID");
@@ -457,6 +460,9 @@ function makeCheckboxes($var, $fieldChoices, $label, $defaultChecked = []) {
 
 function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $readonly = FALSE) {
 	$value = CareerDev::getSetting($var);
+    if ($value === "") {
+        $value = $default;
+    }
     if (in_array($var, ["event_id", "pid", "token"])) {
         $module = Application::getModule();
         $realValue = "";
@@ -510,13 +516,13 @@ function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $re
 		$html .= "</tr>";
 	} else if (($type == "radio") || ($type == "yesno")) {
 		if ($type == "yesno") {
-			$fieldChoices = array("0" => "No", "1" => "Yes");
+			$fieldChoices = ["0" => "No", "1" => "Yes"];
 		}
 		$html .= "<tr>";
 		$html .= "<td style='text-align: right;'>";
 		$html .= $label;
 		$html .= "</td><td style='text-align: left;'>";
-		$options = array();
+		$options = [];
 		foreach ($fieldChoices as $idx => $fieldLabel) {
 			if ($idx == $value) {
 				$selected = " checked";

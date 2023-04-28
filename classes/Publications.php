@@ -484,6 +484,8 @@ class Publications {
                     "redcap_repeat_instrument" => "citation",
                     "redcap_repeat_instance" => $row['redcap_repeat_instance'],
                     "citation_pmid" => $pmid,
+                    "citation_rcr" => $row['citation_rcr'] ?? "",
+                    "citation_altmetric_score" => $row['citation_altmetric_score'] ?? "",
                     "citation_altmetric_last_update" => $row['citation_altmetric_last_update'],
                 ];
 	            $upload[] = $setupFields;
@@ -1156,7 +1158,8 @@ class Publications {
 	}
 
 	private function updateAssocGrantsAndBibliometrics(&$upload, $pmids) {
-	    $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
+        $todaysHighPerformingPMIDs = [];
+        $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
         $rows = self::getCitationsFromPubMed($pmids, $this->metadata, "", $this->recordId, 1, [], $this->pid);
         $fieldsToCopy = [
             "citation_grants",      // associated grants
@@ -1177,7 +1180,16 @@ class Publications {
                 $pmid = $row['citation_pmid'];
                 foreach ($rows as $row2) {
                     if (($pmid == $row2['citation_pmid']) && ($row2['record_id'] == $row['record_id'])) {
+                        $prevRCR = $upload[$i]["citation_rcr"] ?: 0;
                         foreach ($fieldsToCopy as $field) {
+                            if (
+                                ($field == "citation_rcr")
+                                && ($row2[$field] >= iCite::THRESHOLD_SCORE)
+                                && ($prevRCR <= iCite::THRESHOLD_SCORE)
+                                && !in_array($pmid, $todaysHighPerformingPMIDs)
+                            ) {
+                                $todaysHighPerformingPMIDs[] = $pmid;
+                            }
                             $upload[$i][$field] = $row2[$field];
                         }
                         $upload[$i] = REDCapManagement::filterForREDCap($upload[$i], $metadataFields);
@@ -1189,17 +1201,33 @@ class Publications {
 
         $i = 0;
         foreach ($upload as $row) {
+            $prevScore = $row["citation_altmetric_score"] ?: 0;
+            $pmid = $row['citation_pmid'];
             if (
                 $row['citation_doi']
                 && ($row['citation_altmetric_last_update'] != date("Y-m-d"))
             ) {
                 $altmetricRow = self::getAltmetricRow($row['citation_doi'], $metadataFields, $this->pid);
                 foreach ($altmetricRow as $field => $value) {
+                    if (
+                        ($field == "citation_altmetric_score")
+                        && ($value >= Altmetric::THRESHOLD_SCORE)
+                        && ($prevScore <= Altmetric::THRESHOLD_SCORE)
+                        && !in_array($pmid, $todaysHighPerformingPMIDs)
+                    ) {
+                        $todaysHighPerformingPMIDs[] = $pmid;
+                    }
                     // overwrite
                     $upload[$i][$field] = $value;
                 }
             }
             $i++;
+        }
+        if (!empty($todaysHighPerformingPMIDs)) {
+            $today = date("Y-m-d");
+            $allHighPerformingPMIDs = Application::getSetting("high_performing_pmids", $this->pid) ?: [];
+            $allHighPerformingPMIDs[$today] = $todaysHighPerformingPMIDs;
+            Application::saveSetting("high_performing_pmids", $allHighPerformingPMIDs, $this->pid);
         }
 	}
 

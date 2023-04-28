@@ -119,7 +119,12 @@ $(document).ready(function() {
 		echo findInFollowup(array('followup_academic_rank', 'check_academic_rank', 'init_import_academic_rank'));
 	}
     ?>');
-	presetValue('followup_division', '<?php echo findInFollowup(['followup_division', 'check_division', 'init_import_division', 'identifier_starting_division']); ?>');
+    presetValue('followup_division', '<?php echo findInFollowup(['followup_division', 'check_division', 'init_import_division', 'identifier_starting_division']); ?>');
+    presetValue('followup_alumni_assoc1', '<?php echo findInFollowup(['followup_alumni_assoc1', 'check_alumni_assoc1', 'init_import_alumni_assoc1']); ?>');
+    presetValue('followup_alumni_assoc2', '<?php echo findInFollowup(['followup_alumni_assoc2', 'check_alumni_assoc2', 'init_import_alumni_assoc2']); ?>');
+    presetValue('followup_alumni_assoc3', '<?php echo findInFollowup(['followup_alumni_assoc3', 'check_alumni_assoc3', 'init_import_alumni_assoc3']); ?>');
+    presetValue('followup_alumni_assoc4', '<?php echo findInFollowup(['followup_alumni_assoc4', 'check_alumni_assoc4', 'init_import_alumni_assoc4']); ?>');
+    presetValue('followup_alumni_assoc5', '<?php echo findInFollowup(['followup_alumni_assoc5', 'check_alumni_assoc5', 'init_import_alumni_assoc5']); ?>');
 
 <?php
 # Get rid of my extra verbiage

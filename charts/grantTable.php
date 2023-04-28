@@ -59,6 +59,7 @@ if ($_GET['cohort'] !== "all") {
 }
 $metadata = Download::metadata($token, $server);
 $grantFields = REDCapManagement::getAllGrantFields($metadata);
+$grantFields[] = "summary_calculate_to_import";
 $names = Download::names($token, $server);
 
 $headers = [

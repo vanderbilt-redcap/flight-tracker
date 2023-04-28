@@ -42,7 +42,7 @@ if (isset($_GET['CDA'])) {
         $grantReach = "all";
     }
     $smallIdentifierFields = ["record_id", "identifier_first_name", "identifier_last_name"];
-    $smallSummaryFields = ["record_id", "summary_dob", "summary_first_r01", "summary_first_external_k"];
+    $smallSummaryFields = ["record_id", "summary_dob", "summary_first_r01", "summary_first_external_k", "summary_calculate_to_import"];
     $minimalDownloadedGrantFields = REDCapManagement::getMinimalGrantFields($metadata);
     $allPossibleFields = array_unique(array_merge(
             $smallIdentifierFields,

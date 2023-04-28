@@ -5,6 +5,8 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Altmetric {
+    const THRESHOLD_SCORE = 100;
+
     public function __construct($doi, $pid) {
         $this->doi = $doi;
         $this->data = self::getData($doi, $pid);

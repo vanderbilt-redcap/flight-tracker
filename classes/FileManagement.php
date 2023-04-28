@@ -117,6 +117,18 @@ class FileManagement {
         return "";
     }
 
+    public static function getMimeSuffix($mimeType) {
+        if ($mimeType == "image/bmp") {
+            return "bmp";
+        } else if ($mimeType == "image/png") {
+            return "png";
+        } else if (in_array($mimeType, ["image/jpeg", "image/jpg"])) {
+            return "jpg";
+        } else {
+            return preg_replace("/^image\//", "", $mimeType);
+        }
+    }
+
     public static function getEdocBase64($id) {
         if (is_numeric($id)) {
             $module = Application::getModule();
@@ -124,7 +136,12 @@ class FileManagement {
             $q = $module->query($sql, [$id]);
             if ($row = $q->fetch_assoc()) {
                 $filename = EDOC_PATH . $row['stored_name'];
-                return self::getBase64OfFile($filename, $row['mime_type']);
+                $mimeType = $row['mime_type'];
+                if ($mimeType == "application/octet-stream") {
+                    echo "File: ".$row['stored_name']."<br/>";
+                    $mimeType = mime_content_type($row['stored_name']) ?: $mimeType;
+                }
+                return self::getBase64OfFile($filename, $mimeType);
             }
         }
         throw new \Exception("Invalid Edoc ID!");

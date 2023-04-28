@@ -478,6 +478,55 @@ class Download {
 		return (strpos(strtolower($server), strtolower($currServer)) !== FALSE);
 	}
 
+    public static function alumniAssociations($token, $server) {
+        $metadataFields = self::metadataFields($token, $server);
+        $links = [];
+        $middleTrunk = "alumni_assoc_";
+        $numAlumniFields = 5;
+        if (in_array("check_alumni_assoc1_", $metadataFields)) {
+            $prefices = ["check_", "followup_", "init_import_"];
+            $fields = ["record_id"];
+            foreach ($prefices as $prefix) {
+                for ($i = 1; $i <= $numAlumniFields; $i++) {
+                    $fields[] = $prefix.$middleTrunk.$i;
+                }
+            }
+            $redcapData = self::fields($token, $server, $fields);
+            foreach ($redcapData as $row) {
+                $recordId = $row['record_id'];
+                foreach ($prefices as $prefix) {
+                    for ($i = 1; $i <= $numAlumniFields; $i++) {
+                        $field = $prefix . $middleTrunk . $i;
+                        if ($row[$field]) {
+                            $url = URLManagement::makeURL($row[$field]);
+                            if ($url) {
+                                if (!isset($links[$recordId])) {
+                                    $links[$recordId] = [];
+                                }
+                                $links[$recordId][] = $url;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return $links;
+    }
+
+    public static function fileAsBase64($pid, $field, $recordId, $instance = 1) {
+        $module = Application::getModule();
+        # assume classical project
+        $sql = "SELECT value FROM redcap_data WHERE project_id = ? AND field_name = ? AND record = ? AND instance = ?";
+        $result = $module->query($sql, [$pid, $field, $recordId, $instance]);
+        if ($row = $result->fetch_assoc()) {
+            $edocId = $row['value'];
+            if ($edocId) {
+                return FileManagement::getEdocBase64($edocId);
+            }
+        }
+        return "";
+    }
+
 	private static function sendToServer($server, $data, $try = 1) {
 	    $maxTries = 5;
 	    if ($try > $maxTries) {

@@ -210,13 +210,7 @@ class FTStats {
     }
 
     public static function getDomain($server) {
-        if (preg_match("/\.([A-Za-z]+\.[A-Za-z]+)\//", $server, $matches) && (count($matches) >= 2)) {
-            return $matches[1];
-        } else {
-            $withoutProtocol = preg_replace("/^https?:\/\//i", "", $server);
-            $nodes = preg_split("/\//", $withoutProtocol);
-            return $nodes[0];
-        }
+        return URLManagement::getDomain($server);
     }
 
     public static function isLatestRowForProject($recordId, $pid, $server, $allREDCapData) {

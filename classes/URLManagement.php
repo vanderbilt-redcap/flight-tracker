@@ -172,6 +172,30 @@ class URLManagement {
         return self::isGoodURL($url);
     }
 
+    public static function makeURL($url) {
+        try {
+            $sanitizedUrl = Sanitizer::sanitizeURL($url);
+            return $sanitizedUrl;
+        } catch (\Exception $e) {
+            if (!preg_match("/^http/i", $url)) {
+                $newUrl = "https://".$url;
+                return self::makeURL($newUrl);
+            } else {
+                return "";
+            }
+        }
+    }
+
+    public static function getDomain($server) {
+        if (preg_match("/\.([A-Za-z]+\.[A-Za-z]+)\//", $server, $matches) && (count($matches) >= 2)) {
+            return $matches[1];
+        } else {
+            $withoutProtocol = preg_replace("/^https?:\/\//i", "", $server);
+            $nodes = preg_split("/\//", $withoutProtocol);
+            return $nodes[0];
+        }
+    }
+
     public static function isGoodURL($url, $pid = NULL) {
         $url = Sanitizer::sanitizeURL($url);
         if (!$pid) {
