@@ -152,7 +152,7 @@ class Sanitizer {
          * @psalm-taint-escape html
          * @psalm-taint-escape has_quotes
          */
-        $str = preg_replace("/<[^>]+>/", '', $str);
+        $str = htmlspecialchars($str, ENT_QUOTES);
         return htmlentities($str, ENT_NOQUOTES);
     }
 
@@ -275,7 +275,7 @@ class Sanitizer {
         /**
          * @psalm-taint-escape html
          */
-        $str = preg_replace("/<[^>]+>/", '', $origStr);
+        $str = htmlspecialchars($origStr, ENT_QUOTES);
         /**
          * @psalm-taint-escape has_quotes
          */
