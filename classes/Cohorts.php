@@ -35,10 +35,6 @@ class Cohorts {
         }
         $cohort = urldecode($cohort);
 
-        /**
-         * @psalm-taint-escape has_quotes
-         * @psalm-taint-escape html
-         */
         $possibleCohorts = array_keys(Application::getSetting("configs", $pid) ?: []);
         if (in_array($cohort, $possibleCohorts)) {
             return html_entity_decode(Sanitizer::sanitizeWithoutChangingQuotes($cohort));
