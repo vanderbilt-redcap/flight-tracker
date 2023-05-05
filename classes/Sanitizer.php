@@ -9,11 +9,6 @@ class Sanitizer {
      * @psalm-taint-specialize
      */
     public static function sanitizeJSON($str) {
-        /**
-         * @psalm-taint-escape html
-         * @psalm-taint-escape has_quotes
-         */
-
         $data = json_decode($str, TRUE);
         if ($data) {
             $data = self::sanitizeRecursive($data, FALSE, FALSE);
@@ -59,9 +54,6 @@ class Sanitizer {
     }
 
     public static function sanitizeInteger($int) {
-        /**
-         * @psalm-taint-escape header
-         */
         if (filter_var($int, FILTER_VALIDATE_INT) !== FALSE) {
             $stringVersion = self::sanitize($int);
             return (int) $stringVersion;
@@ -74,12 +66,6 @@ class Sanitizer {
      * @psalm-taint-specialize
      */
     public static function sanitizeURL($url) {
-        /**
-         * @psalm-taint-escape html
-         * @psalm-taint-escape has_quotes
-         * @psalm-taint-escape ssrf
-         * @psalm-taint-escape header
-         */
         $url = filter_var($url, FILTER_SANITIZE_URL);
         if (!$url) {
             throw new \Exception("Invalid URL!");
@@ -148,10 +134,6 @@ class Sanitizer {
         if (!is_string($str)) {
             return "";
         }
-        /**
-         * @psalm-taint-escape html
-         * @psalm-taint-escape has_quotes
-         */
         $str = htmlspecialchars($str, ENT_QUOTES);
         return htmlentities($str, ENT_NOQUOTES);
     }
@@ -177,10 +159,6 @@ class Sanitizer {
      */
     public static function sanitizeArray($ary, $stripHTML = TRUE, $encodeQuotes = TRUE) {
         if (is_array($ary)) {
-            /**
-             * @psalm-taint-escape html
-             * @psalm-taint-escape has_quotes
-             */
             $newAry = [];
             if (REDCapManagement::isAssoc($ary)) {
                 foreach ($ary as $key => $value) {
@@ -230,10 +208,6 @@ class Sanitizer {
      * @psalm-taint-specialize
      */
     public static function sanitizeWithoutStrippingHTML($str, $encodeQuotes = TRUE) {
-        /**
-         * @psalm-taint-escape html
-         * @psalm-taint-escape has_quotes
-         */
         $str = preg_replace("/<script[^>]*>/i", '', $str);
         $str = preg_replace("/<\/script[^>]*>/i", '', $str);
         if ($encodeQuotes) {
@@ -272,13 +246,7 @@ class Sanitizer {
         if (!is_string($origStr)) {
             return "";
         }
-        /**
-         * @psalm-taint-escape html
-         */
         $str = htmlspecialchars($origStr, ENT_QUOTES);
-        /**
-         * @psalm-taint-escape has_quotes
-         */
         $str = htmlentities($str, ENT_QUOTES);
         return $str;
     }
