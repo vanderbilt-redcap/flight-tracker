@@ -20,8 +20,18 @@ class CareerDevHelp {
 		$regs = "";
 		foreach ($help as $menu => $titles) {
 			foreach ($titles as $title => $files) {
-				if (in_array($page, $files)) {
-					return self::readFile($page);
+                if (in_array($page, $files)) {
+                    if (in_array($title, ["Publication Wrangler", "Patent Wrangler"])) {
+                        $wranglerType = $_GET['wranglerType'];
+                        if (
+                            (($wranglerType == "Patents") && ($title == "Patent Wrangler"))
+                            || (($wranglerType == "Publications") && ($title == "Publication Wrangler"))
+                        ) {
+                            return self::readFile($page);
+                        }
+                    } else {
+                        return self::readFile($page);
+                    }
 				}
 			}
 		}
@@ -220,7 +230,8 @@ class CareerDevHelp {
                 "External Sites Accessed" => array("whitelist.html"),
 				"Solving Situations" => array("situations.html"),
 				"Manual Curation: Grant Wrangler" => array("grantWrangler.html"),
-				"Manual Curation: Publication Wrangler" => array("pubWrangler.html"),
+                "Manual Curation: Publication Wrangler" => array("pubWrangler.html"),
+                "Manual Curation: Patent Wrangler" => array("patentWrangler.html"),
 				"Importing Old Grant Data and Adding New Grants" => array("addNewGrants.html"),
 				"Missingness Report" => array("missingness.html"),
 				"Designing Cohorts" => array("cohortDesign.html"),
@@ -256,9 +267,8 @@ class CareerDevHelp {
         ];
         $help["Wrangle"] = [
             "Grant Wrangler" => ["grantWrangler.html", "bins.html"],
-            "*NEW* Grant Wrangler" => ["grantWrangler.html", "bins.html"],
             "Publication Wrangler" => ["pubWrangler.html"],
-            "Patent Wrangler" => ["pubWrangler.html"],
+            "Patent Wrangler" => ["patentWrangler.html"],
             "Add a Custom Grant" => ["addNewGrants.html"],
             "Add Custom Grants by Bulk" => ["addNewGrants.html", "nihReporting.html"],
         ];

@@ -352,6 +352,7 @@ class Filter {
             "summary_current_tenure" => "Recorded Tenure Status",
             // "calc_institution" => "Institution",
             "summary_current_rank" => "Current Academic Rank",
+            "identifier_person_role" => "Person Role",
             "calc_employment" => "Employment Status",
             "calc_email_domain" => "Email Domain",
         ];

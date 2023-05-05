@@ -134,7 +134,21 @@ class Upload
                     $prefix .= "_";
                 }
                 $completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
-                if (!empty($instances)) {
+                $metadataFields = Download::metadataFields($token, $server);
+                $fieldsToDelete = [];
+                foreach ($metadataFields as $field) {
+                    if (preg_match("/^$prefix/", $field)) {
+                        $fieldsToDelete[] = $field;
+                    }
+                }
+                if ($completeField) {
+                    $fieldsToDelete[] = $completeField;
+                }
+                $fieldQuestionMarks = [];
+                while (count($fieldsToDelete) > count($fieldQuestionMarks)) {
+                    $fieldQuestionMarks[] = "?";
+                }
+                if (!empty($instances) && !empty($fieldsToDelete)) {
                     Application::log("Instances not empty", $pid);
                     $module = Application::getModule();
                     for ($i = 0; $i < count($instances); $i += $batchSize) {
@@ -143,7 +157,7 @@ class Upload
                             $batchInstances[] = $instances[$j];
                         }
                         $instanceClause = "";
-                        $params = [$pid, $recordId, "$prefix%"];
+                        $params = array_merge([$pid, $recordId], $fieldsToDelete);
                         if (!empty($batchInstances)) {
                             $addOnInstanceClause =  "";
                             if (in_array(1, $batchInstances)) {
@@ -169,7 +183,7 @@ class Upload
                             }
                         }
 
-                        $whereClause = "WHERE project_id = ? AND record = ? AND field_name LIKE ?".$instanceClause;
+                        $whereClause = "WHERE project_id = ? AND record = ? AND field_name IN (".implode(",", $fieldQuestionMarks).")".$instanceClause;
                         do {
                             $sql = "DELETE FROM redcap_data ".$whereClause." LIMIT 1000";
                             Application::log("Running SQL $sql with ".json_encode($params));
@@ -178,17 +192,6 @@ class Upload
                             $sql = "SELECT record FROM redcap_data ".$whereClause." LIMIT 1";
                             $q = $module->query($sql, $params);
                         } while ($q->num_rows > 0);
-
-                        if ($completeField) {
-                            $params2 = [$pid, $recordId, $completeField];
-                            if ($instanceClause) {
-                                $params2 = array_merge($params2, $filteredInstances ?? []);
-                            }
-                            $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name = ?".$instanceClause;
-                            Application::log("Running SQL $sql with ".json_encode($params2));
-                            $q2 = $module->query($sql, $params2);
-                            Application::log("SQL: " . $q2->affected_rows . " rows affected");
-                        }
                     }
                 }
             } else {

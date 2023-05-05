@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use Vanderbilt\CareerDevLibrary\URLManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDevHelp;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
@@ -27,9 +28,19 @@ if (isset($_POST['fullPage'])) {
 			if (!preg_match("/toggleHelp\(.+\)/", $url)) {
 				$itemPage = CareerDev::getPageFromUrl($url);
 				if (strpos($itemPage, $fullPage) !== FALSE) {
-					$pageMenu = $menu;
-					$pageTitle = $itemTitle;
-					break;
+                    if (in_array($itemTitle, ["Patent Wrangler", "Publication Wrangler"])) {
+                        $params = URLManagement::getParameters($url);
+                        $wranglerType = $_POST['wranglerType'];
+                        if ($wranglerType == $params['wranglerType']) {
+                            $pageMenu = $menu;
+                            $pageTitle = $itemTitle;
+                            break;
+                        }
+                    } else {
+                        $pageMenu = $menu;
+                        $pageTitle = $itemTitle;
+                        break;
+                    }
 				}
 			}
 		}

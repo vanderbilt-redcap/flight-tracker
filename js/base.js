@@ -827,22 +827,28 @@ function toggleHelp(helpUrl, helpHiderUrl, currPage) {
 }
 
 function showHelp(helpUrl, currPage) {
-	$.post(helpUrl, { 'redcap_csrf_token': getCSRFToken(), fullPage: currPage }, function(html) {
-		if (html) {
-			$('#help').html(html);
-		} else {
-			$('#help').html("<h4 class='nomargin'>No Help Resources are Available for This Page</h4>");
-		}
+	const params = { 'redcap_csrf_token': getCSRFToken(), fullPage: currPage };
+	if (currPage === "wrangler/include.php") {
+		const urlVars = getUrlVars();
+		params['wranglerType'] = urlVars['wranglerType'];
+	}
+	$.post(helpUrl, params, function(html) {
 		// coordinate with .subnav
-		if ($('.subnav').length == 1) {
-			var right = $('.subnav').position().left + $('.subnav').width(); 
-			var offset = 10;
-			var helpLeft = right + offset;
-			var rightOffset = helpLeft + 40;
-			var helpWidth = "calc(100% - "+rightOffset+"px)";
+		if ($('.subnav').length === 1) {
+			const right = $('.subnav').position().left + $('.subnav').width();
+			const offset = 10;
+			const helpLeft = right + offset;
+			const rightOffset = helpLeft + 40;
+			const helpWidth = "calc(100% - "+rightOffset+"px)";
 			$('#help').css({ left: helpLeft+"px", position: "relative", width: helpWidth });
-		} 
-		$('#help').slideDown();
+		}
+		if (html) {
+			$('#help').html(html)
+				.slideDown();
+		} else if (!isREDCapPage()) {
+			$('#help').html("<h4 class='nomargin'>No Help Resources are Available for This Page</h4>")
+				.slideDown();
+		}
 	});
 }
 
@@ -889,12 +895,27 @@ function installMetadataForProjects(pids) {
 		} else {
 			const data = JSON.parse(json);
 			const numProjects = Object.keys(data).length;
-			$.sweetModal({
-				content: numProjects+' projects were successfully updated.',
-				icon: $.sweetModal.ICON_SUCCESS
-			});
-			$("#metadataWarning").addClass("install-metadata-box-success");
-			$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
+			const exceptions = [];
+			for (const pid in data) {
+				if (typeof data[pid]['Exception'] !== "undefined") {
+					exceptions.push("Project "+pid+": "+data[pid]['Exception']);
+				}
+			}
+			if (exceptions.length === 0) {
+				$.sweetModal({
+					content: numProjects+' projects were successfully updated.',
+					icon: $.sweetModal.ICON_SUCCESS
+				});
+				$("#metadataWarning").addClass("install-metadata-box-success");
+				$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
+			} else {
+				$.sweetModal({
+					content: exceptions.length+' error(s) occurred:<br/>'+exceptions.join('<br/>'),
+					icon: $.sweetModal.ICON_ERROR
+				});
+				$("#metadataWarning").addClass("install-metadata-box-danger");
+				$("#metadataWarning").html("<i class='fa fa-xmark' aria-hidden='true'></i> Installation Errors Occurred");
+			}
 			setTimeout(function() {
 				$("#metadataWarning").fadeOut(500);
 			}, 3000);

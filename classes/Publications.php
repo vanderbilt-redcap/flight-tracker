@@ -609,7 +609,7 @@ class Publications {
 		}
 		$url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id=".implode(",", $pmids);
 		Publications::throttleDown();
-		list($resp, $output) = REDCapManagement::downloadURL($url);
+		list($resp, $output) = URLManagement::downloadURL($url);
 		return $output;
 	}
 

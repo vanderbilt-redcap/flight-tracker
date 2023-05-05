@@ -10,12 +10,6 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
     $frequency = Application::getSetting("highlights_frequency", $pid);
     $grantList = Application::getSetting("requested_grants", $pid);
 
-    if (Application::isVanderbilt() && ($pid == NEWMAN_SOCIETY_PROJECT)) {
-        $to = "scott.j.pearson@vumc.org,helen.bird@vumc.org,verna.n.wright@vumc.org";
-        Application::saveSetting("email_highlights_to", $to, $pid);
-        $frequency = "weekly";
-        Application::saveSetting("highlights_frequency", $frequency, $pid);
-    }
     if (!$to) {
         resetSettings($pid);
         return;
@@ -192,6 +186,7 @@ a { color: #5764ae; }
                 $currToken = Application::getSetting("token", $currPid);
                 $currServer = Application::getSetting("server", $currPid);
                 $currProjectName = Download::projectTitle($currToken, $currServer);
+                $currResources = Download::oneFieldWithInstances($currToken, $currServer, "resources_resource");
                 if (isset($allMetadata[$currPid])) {
                     $currMetadata = $allMetadata[$currPid];
                 } else {
@@ -266,7 +261,7 @@ a { color: #5764ae; }
                                         $dataRow['lastUpdate'] = $grant->getVariable("last_update");
                                         $dataRow['twitter'] = $twitterHandles[$currPid][$recordId] ?? "";
                                         $dataRow['linkedIn'] = $linkedInHandles[$currPid][$recordId] ?? "";
-                                        $dataRow['bio'] = makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currChoices);
+                                        $dataRow['bio'] = makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currResources[$recordId] ?? [], $currChoices);
                                         $edocs = Download::nonBlankFileFieldsFromProjects($activePids, $formattedName, "identifier_picture");
                                         if (!empty($edocs)) {
                                             $row['pictures'] = [];
@@ -323,6 +318,7 @@ a { color: #5764ae; }
                 $currDepartments = Download::oneField($currToken, $currServer, "summary_primary_dept");
                 $currRanks = Download::oneField($currToken, $currServer, "summary_current_rank");
                 $currUserids = Download::userids($currToken, $currServer);
+                $currResources = Download::oneFieldWithInstances($currToken, $currServer, "resources_resource");
                 $citationFields = DataDictionaryManagement::getFieldsFromMetadata($currMetadata, "citation");
                 $citationFields[] = "record_id";
                 $redcapData = [];
@@ -330,14 +326,14 @@ a { color: #5764ae; }
                 foreach ($recordsAndInstances as $recordId => $instances) {
                     $recordData = Download::fieldsForRecordAndInstances($currToken, $currServer, $citationFields, $recordId, "citation", $instances);
                     $redcapData = array_merge($redcapData, $recordData);
-                    $bios[$recordId] = makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currChoices);
+                    $bios[$recordId] = makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currResources[$recordId] ?? [], $currChoices);
                 }
                 $performanceREDCapData = [];
                 foreach ($highPerformingRecordInstances as $recordId => $instances) {
                     $recordData = Download::fieldsForRecordAndInstances($currToken, $currServer, $citationFields, $recordId, "citation", $instances);
                     $performanceREDCapData = array_merge($performanceREDCapData, $recordData);
                     if (!isset($bios[$recordId])) {
-                        $bios[$recordId] = makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currChoices);
+                        $bios[$recordId] = makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currResources[$recordId] ?? [], $currChoices);
                     }
                 }
                 $performanceRows = array_merge($performanceRows, processCitations($performanceREDCapData, $currToken, $currServer, $currPid, $warningTs, $bios, $requestedGrants, $activePids, $performancePMIDsIdentified));
@@ -615,7 +611,7 @@ function prefillJournals() {
     return [];
 }
 
-function makeBio($recordId, $userid, $currDepartments, $currRanks, $alumniAssocLinks, $currChoices) {
+function makeBio($recordId, $userid, $currDepartments, $currRanks, $alumniAssocLinks, $resources, $currChoices) {
     $bioData = [];
     $foundLDAP = FALSE;
     if (Application::isVanderbilt() && $userid) {
@@ -633,6 +629,16 @@ function makeBio($recordId, $userid, $currDepartments, $currRanks, $alumniAssocL
             $links[] = Links::makeLink($url, $domain);
         }
         $bioData[] = "Alumni Associations: ".implode(", ", $links);
+    }
+    if (!empty($resources)) {
+        $resourcesUsed = [];
+        foreach ($resources as $instance => $resourceIndex) {
+            $label = $currChoices["resources_resource"][$resourceIndex];
+            if (!in_array($label, $resourcesUsed)) {
+                $resourcesUsed[] = $label;
+            }
+        }
+        $bioData[] = "Resources Used: ".implode(", ", $resourcesUsed);
     }
     if (!$foundLDAP) {
         $departmentValue = $currDepartments[$recordId] ?? "";

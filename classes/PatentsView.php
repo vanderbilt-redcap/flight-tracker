@@ -166,7 +166,7 @@ class PatentsView {
             $page++;
             $o = ["page" => $page, "per_page" => $numPerPage];
             $url = "https://api.patentsview.org/patents/query?q=".json_encode($query)."&f=".json_encode($fields)."&o=".json_encode($o);
-            list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
+            list($resp, $json) = URLManagement::downloadURL($url, $this->pid);
             if (REDCapManagement::isJSON($json)) {
                 $data = json_decode($json, TRUE);
                 if (($data["patents"] === NULL) || empty($data["patents"])) {

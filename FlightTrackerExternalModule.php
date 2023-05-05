@@ -814,9 +814,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $pidsUpdated = $this->shareDataInternally($activePids, $activePids);
         } else if (count($activePids) > 1) {
             try {
-                if ((date("Y-m-d") == "2023-02-14") && Application::isVanderbilt()) {
-                    $pidsUpdated = $this->shareDataInternally($activePids, $activePids);
-                } else if (date("N") == "6") {
+                if (date("N") == "6") {
                     # only on Saturdays
                     $pidsUpdated = $this->shareDataInternally($activePids, $activePids);
                 } else if ($this->hasProjectToRunTonight($activePids)) {
@@ -1129,11 +1127,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
     function makeHeaders($token, $server, $pid, $tokenName) {
 	    $str = "";
-		if (!CareerDev::isFAQ() && CareerDev::isHelpOn()) {
-			$currPage = CareerDev::getCurrPage();
-			$str .= "<script>$(document).ready(function() { showHelp('".CareerDev::getHelpLink()."', '".$currPage."'); });</script>";
-		}
 	    $str .= Application::getHeader($tokenName);
+        if (!CareerDev::isFAQ() && CareerDev::isHelpOn()) {
+            $currPage = CareerDev::getCurrPage();
+            $str .= "<script>$(document).ready(function() { showHelp('".CareerDev::getHelpLink()."', '".$currPage."'); });</script>";
+        }
 		if (!CareerDev::isREDCap()) {
 		    $str .= Application::getFooter();
 		}

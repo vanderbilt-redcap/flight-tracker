@@ -18,7 +18,7 @@ if (!$pid) {
 if (!$module) {
     $module = Application::getModule();
 }
-$validWranglerTypes = ["Patents", "Publications", "Grants"];
+$validWranglerTypes = ["Patents", "Publications", "FlagPublications", "Grants"];
 $token = Application::getSetting("token", $pid);
 $server = Application::getSetting("server", $pid);
 $event_id = Application::getSetting("event_id", $pid);

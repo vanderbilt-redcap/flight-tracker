@@ -129,17 +129,13 @@ $(document).ready(function() {
             echo "<tr>\n";
             echo "<td>\n";
             echo "<h3><i class='fa fa-info-circle'></i> Getting Started</h3>\n";
-            echo "<ul class='larger'>\n";
-            echo "<li><b>\"Where's my Data?\"</b> Flight Tracker is housed seemlessly in REDCap. Your new scholar records are already added. <i>Automated data collection</i> will start overnight and will continue overnight from here forward. When your data are collected, you will see the latest download information in this box. (We collect data <i>overnight</i> so as not to unduly burden the NIH's servers, which give us the information.)</li>\n";
-            echo "<li><b>Manually Start Collection Tonight:</b> If you want to start collecting all of your data <i>tonight</i>, <a href='javascript:;' onclick='startTonight($pid);'>click here</a>.</li>\n";
-            echo "<li><b>Menus</b> - In the meantime, explore by clicking around the menus above to see the wide array of viewing options.</li>\n";
-            echo "<li><b>Help Menu</b> - The <i>Toggle Help</i> item will show if there are any relevant help topics on your current page. The <i>Brand Your Project</i> item will allow you to put your own logo in the upper-right corner.</li>\n";
-            // DISABLED echo "<li><b>Emails</b> - If you wish to email your scholars an initial survey, click on <i>Scholars &rarr; Configure an Email</i>. It's recommended to wait a week or two for your data to populate until you email your scholars.</li>\n";
-            echo "<li><b>Orientation</b> - Check out the tutorials in the <i>Orientation</i> box on the lower-right.</li>\n";
-            echo "<li><b>Feedback</b> - We want to hear from you! Click on <i>Help &rarr; Feedback</i>. We can improve this software only if you let us know your thoughts!</li>\n";
-            echo "<li><b>Internal Grants</b> - Many institutions have custom grants with custom names. You can enter these as <a href='".CareerDev::link("customGrants")."'>Custom Grants</a> and build the application to categorize them properly via the <a href='".CareerDev::link("lexicalTranslator.php")."'>Lexical Translator</a>.</li>\n";
-            echo "<li><b>Customize</b> - Customize your application to fit your needs. We're building ways for you to customize your application via your own computer programmers and share your tweaks with others. <a href='".CareerDev::link("changes/README.md")."'>Click here to read more.</a></li>\n";
-            echo "</ul>\n";
+            echo "<ul class='larger'>
+<li><strong>Step 1</strong>: Collect some data. Data will come in over the course of a week and stay updated each week. If you want to collect all data at once, click the link to “<a href='javascript:;' onclick='startTonight($pid);'>Run All Updates Tonight</a>” on the Flight Tracker Home page.</li>
+<li><strong>Step 2</strong>: If no data are being pulled in from a given resource, go to the General menu  Test Connectivity page. Green means that a resource can connect to it; yellow means that it’s trying but hasn’t succeeded; and red indicates a failure. Your REDCap server might have a firewall, and you might need to pull in your IT team and REDCap admin to help. You can re-test until all indicators turn green.</li>
+<li><strong>Step 3</strong>: You’ll need to wrangle your data via the Publication Wrangler and the Grant Wrangler. This step ensures that there aren’t false positives – that is, that the name-matching is correct. Also, keep an eye out for data holes (false negatives).</li>
+<li><strong>Step 4</strong>: You might need to adjust scholar names to correspond with PubMed and the NIH RePORTER. You can adjust the names in the Identifiers form on each scholar’s REDCap record. The REDCap form will coach you how to handle maiden names and nicknames. One name option needs to match the data source, or else no data will pull!</li> 
+<li><strong>Step 5</strong>: Add in other institutions specific to each scholar. Flight Tracker will automatically search for the home institution you entered in the setup. If a scholar has another institution (for example, either before or after their time with you), then you can enter it on a Position Change form on the scholar’s REDCap record. Like names, these need to correspond with the NIH RePORTER or PubMed.</li>
+</ul>";
             echo "</td>\n";
             echo "</tr>\n";
         } else {

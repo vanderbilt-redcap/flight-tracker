@@ -389,7 +389,7 @@ function makeSettings($module, $pid, $metadata) {
 //	array_push($ary["Emails"], makeSetting("init_message", "textarea", "Initial Email Message"));
     $ary["Emails"][] = makeSetting("default_from", "text", "Default From Address");
     $ary["Emails"][] = makeSetting("warning_minutes", "number", "Number of Minutes Before An Email to Send a Warning Email", Application::getWarningEmailMinutes($pid));
-    $ary["Emails"][] = makeSetting("email_highlights_to", "text", "Email(s) to Send Celebrations Email To (Leave Blank Not to Send)");
+    $ary["Emails"][] = makeSetting("email_highlights_to", "text", "Email(s) to Send Celebrations Email To (Leave Blank Not to Send; Comma-Separated)");
     $ary["Emails"][] = makeSetting("highlights_frequency", "radio", "Frequency of Celebrations Email", "weekly", ["weekly" => "Weekly", "monthly" => "Monthly"]);
     $ary["Emails"][] = makeSetting("requested_grants", "text", "Comma-Separated List of Grant Numbers to Restrict the Celebrations Email To (Optional; Leave Blank to Use All Grants)");
 
