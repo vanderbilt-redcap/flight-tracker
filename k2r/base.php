@@ -193,7 +193,7 @@ function isRowInKRange($row, $kLength, $orderK, $kType, $kStartDate, $kEndDate, 
     return TRUE;
 }
 
-function getAverages($data, $kLength, $orderK, $kType, $kStartDate, $kEndDate, $excludeUnconvertedKsBefore, $searchIfLeft, $conversionFunc = "isConverted") {
+function getAverages($data, $kLength, $orderK, $kType, $kStartDate, $kEndDate, $excludeUnconvertedKsBefore, $searchIfLeft, $conversionFunc = "\Vanderbilt\FlightTrackerExternalModule\isConverted") {
     global $rs, $pid, $event_id;
 
     $avgs = array(

@@ -251,7 +251,7 @@ function parseHiddenValues($html) {
             if ($name) {
                 $values[$name] = $value;
             } else {
-                Application::log("No name for tag ".Sanitizer::sanitizeWithoutStrippingHTML($html, FALSE));
+                Application::log("No name for tag ".Sanitizer::sanitize($html));
             }
         }
     } else {

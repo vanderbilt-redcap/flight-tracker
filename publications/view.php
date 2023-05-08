@@ -44,13 +44,22 @@ if (isset($_GET['grantCounts'])) {
     if (empty($records)) {
         $records = Download::records($token, $server);
     }
-    $citationFields = ["record_id", "citation_pmid", "citation_include", "citation_grants"];
+    $citationFields = ["record_id", "citation_pmid", "citation_include", "citation_flagged", "citation_grants"];
     $grantCounts = [];
+    $areFlagsOn = Publications::areFlagsOn($pid);
     $redcapData = Download::fieldsForRecords($token, $server, $citationFields, $records);
     foreach ($redcapData as $row) {
         $grantStr = preg_replace("/\s+/", "", $row['citation_grants']);
-        if ($row['citation_pmid'] && $grantStr && ($row['citation_include'] == "1")) {
-            $awardNumbers = preg_split("/;/", $grantStr);
+        if (
+            $row['citation_pmid']
+            && $grantStr
+            && ($row['citation_include'] == "1")
+            && (
+                !$areFlagsOn
+                || ($row['citation_flagged'] == "1")
+            )
+        ) {
+            $awardNumbers = explode(";", $grantStr);
             foreach ($awardNumbers as $awardNo) {
                 if ($awardNo) {
                     if (!isset($grantCounts[$awardNo])) {
@@ -322,7 +331,7 @@ function makeCustomizeTable($token, $server, $metadata) {
 
     $html .= "<table class='centered'>\n";
     $html .= "<tr>\n";
-    $html .= "<td colspan='2' $style><h2 class='nomargin'>Customize</h2></td>\n";
+    $html .= "<td colspan='2' $style><h2 class='nomargin'>Step 1: Customize</h2></td>\n";
     $html .= "</tr>\n";
     $html .= "<tr>\n";
     $html .= "<td $style class='yellow'>".Altmetric::makeClickText()."</td>\n";
@@ -380,7 +389,7 @@ function makeCustomizeTable($token, $server, $metadata) {
 
 function makePublicationSearch($names, $record = NULL) {
 	$html = "";
-	$html .= "<h2>View a Scholar's Publications</h2>\n";
+	$html .= "<h2>Step 2: Select Scholar's Publications</h2>\n";
 	$html .= "<p class='centered'><a href='".Application::link("publications/view.php")."&record=all".makeExtraURLParams(["record"])."'>View All Scholars' Publications</a></p>\n";
 	$html .= "<p class='centered'><select onchange='window.location.href = \"".Application::link("publications/view.php").makeExtraURLParams(["record"])."&record=\" + $(this).val();'><option value=''>---SELECT---</option>\n";
 	foreach ($names as $recordId => $name) {

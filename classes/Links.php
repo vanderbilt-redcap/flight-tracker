@@ -66,7 +66,7 @@ class Links {
 				$url = $server."/".$url;
 			}
 		}
-		$url = REDCapManagement::sanitize($url);
+		$url = Sanitizer::sanitizeURL($url);
 
 		$html = "";
 		$html .= "<a href='$url'";

@@ -58,6 +58,7 @@ table { border-collapse: collapse; }
 .biggerButton { font-size: 16px; }
 .twoColumn { vertical-align: top; border: 1px dotted #aaaaaa; padding: 5px; }
 .sticky { position: sticky; top: 100px; }
+.stickyGrey { position: sticky; top: 0; background-color: #BBBBBB; }
 .shadow { box-shadow: 2px 2px 4px grey; }
 .bigShadow { box-shadow: 6px 6px 6px grey; }
 tr.borderedRow td,tr.borderedRow th { border: 1px solid #bbbbbb; }
