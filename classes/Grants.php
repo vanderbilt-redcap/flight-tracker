@@ -14,6 +14,7 @@ class Grants {
 	public function __construct($token, $server, $metadata = []) {
 		$this->token = $token;
 		$this->server = $server;
+        $this->pid = Application::getPID($token);
 		if (empty($metadata)) {
             $this->metadata = self::getMetadata($token, $server);
 		} else if ($metadata == "empty") {
@@ -535,6 +536,8 @@ class Grants {
 
 	public function setRows($rows) {
 		if ($rows) {
+            $newmanSources = ($this->pid == NEWMAN_SOCIETY_PROJECT) ? self::getNewmanSources() : [];
+            $thresholdTs = strtotime("2023-05-10 00:00:00");
 			$this->rows = $rows;
 			$this->recordId = 0;
             $this->nativeGrants = [];
@@ -590,14 +593,25 @@ class Grants {
 
                         foreach ($gs as $g) {
                             # combine all grants into one unordered list
-                            if (self::getShowDebug()) { Application::log("Prospective grant ".json_encode($g->toArray())); }
-                            $this->setupAbstracts($g);
-                            if ($variable == "nativeGrants") {
-                                $this->nativeGrants[] = $g;
-                            } else if ($variable == "grantSubmissions") {
-                                $this->grantSubmissions[] = $g;
-                            } else {
-                                throw new \Exception("Invalid variable $variable");
+                            if (
+                                empty($newmanSources)
+                                || (
+                                    ($this->pid == NEWMAN_SOCIETY_PROJECT)
+                                    && (!in_array($g->getVariable("source"), $newmanSources)
+                                        || !preg_match("/VCTRS/", $g->getNumber())
+                                    )
+                                )
+                                || (time() < $thresholdTs)
+                            ) {
+                                if (self::getShowDebug()) { Application::log("Prospective grant ".json_encode($g->toArray())); }
+                                $this->setupAbstracts($g);
+                                if ($variable == "nativeGrants") {
+                                    $this->nativeGrants[] = $g;
+                                } else if ($variable == "grantSubmissions") {
+                                    $this->grantSubmissions[] = $g;
+                                } else {
+                                    throw new \Exception("Invalid variable $variable");
+                                }
                             }
                         }
                     }
@@ -1505,6 +1519,10 @@ class Grants {
 		return $transformed;
 	}
 
+    public static function getNewmanSources() {
+        return ["demographics", "data", "sheet2", "nonrespondents", "kl2", "new_2017"];
+    }
+
 	public static function makeListOfAwards($listOfAwards) {
 		$transformed = array();
 		foreach ($listOfAwards as $awardNo => $grant) {
@@ -1695,8 +1713,8 @@ class Grants {
 		$overrideFirstR01OrEquiv = "";
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "") {
-				$overrideFirstR01 = isset($row['override_first_r01']) ? $row['override_first_r01'] : NULL;
-				$overrideFirstR01OrEquiv = isset($row['override_first_r01_or_equiv']) ? $row['override_first_r01_or_equiv'] : NULL;
+				$overrideFirstR01 = $row['override_first_r01'] ?? "";
+				$overrideFirstR01OrEquiv = $row['override_first_r01_or_equiv'] ?? "";
 				break;
 			}
 		}
@@ -1709,7 +1727,7 @@ class Grants {
         foreach ($grants as $grant) {
 			$t = $grant->getVariable("type");
             $role = $grant->getVariable("role");
-			if ($overrideFirstR01 !== "") {
+			if ($overrideFirstR01) {
 				$ary['summary_first_r01_or_equiv'] = $overrideFirstR01;
 				$ary['summary_first_r01_or_equiv_source'] = "manual";
 				$ary['summary_first_r01_or_equiv_sourcetype'] = "2";
@@ -1717,7 +1735,7 @@ class Grants {
 				$ary['summary_first_r01_source'] = "manual";
 				$ary['summary_first_r01_sourcetype'] = "2";
 				$ary['summary_ever_r01_or_equiv'] = 1;
-			} else if ($overrideFirstR01OrEquiv !== "") {
+			} else if ($overrideFirstR01OrEquiv) {
 				$ary['summary_first_r01_or_equiv'] = $overrideFirstR01OrEquiv;
 				$ary['summary_first_r01_or_equiv_source'] = "manual";
 				$ary['summary_first_r01_or_equiv_sourcetype'] = "2";
@@ -2227,6 +2245,7 @@ class Grants {
 	private $grantSubmissions = [];
 	private $token;
 	private $server;
+    private $pid;
 	private $calculate;
 	private $changes;
 	private static $showDebug = FALSE;

@@ -75,7 +75,7 @@ foreach ($queue as $i => $row) {
                     } else {
                         echo "<td></td>";
                     }
-                } else if (preg_match("/Ts$/", $header) && $row[$header] && is_numeric($row[$header])) {
+                } else if (preg_match("/Ts$/", $header) && $row[$header] && is_integer($row[$header])) {
                     echo "<td>" . date("Y-m-d H:i:s", $row[$header]) . "</td>";
                 } else if (is_array($row[$header]) && REDCapManagement::isAssoc($row[$header])) {
                     $values = [];

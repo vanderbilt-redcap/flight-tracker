@@ -134,7 +134,7 @@ class Sanitizer {
         if (!is_string($str)) {
             return "";
         }
-        $str = htmlspecialchars($str, ENT_QUOTES);
+        $str = htmlspecialchars($str, ENT_NOQUOTES);
         return htmlentities($str, ENT_NOQUOTES);
     }
 
@@ -208,12 +208,7 @@ class Sanitizer {
      * @psalm-taint-specialize
      */
     public static function sanitizeWithoutStrippingHTML($str, $encodeQuotes = TRUE) {
-        $str = preg_replace("/<script[^>]*>/i", '', $str);
-        $str = preg_replace("/<\/script[^>]*>/i", '', $str);
-        if ($encodeQuotes) {
-            $str = htmlentities($str, ENT_QUOTES);
-        }
-        return $str;
+        return filter_tags($str, TRUE, TRUE, TRUE, TRUE);
     }
 
     /**

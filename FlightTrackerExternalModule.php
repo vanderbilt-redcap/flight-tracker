@@ -977,7 +977,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         return NULL;
 	}
 
-	function hook_every_page_before_render($project_id) {
+	function redcap_every_page_before_render($project_id) {
 		$this->setupApplication();
         if (Application::isTable1Project($project_id)) {
         } else if (PAGE == "DataExport/index.php") {
@@ -1011,7 +1011,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
 	}
 
-	function hook_every_page_top($project_id) {
+	function redcap_every_page_top($project_id) {
         $this->setupApplication();
         if (
             Application::isTable1Project($project_id)
@@ -1046,7 +1046,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
 	}
 
-	function hook_data_entry_form($project_id, $record, $instrument, $event_id, $group_id, $repeat_instance) {
+	function redcap_data_entry_form($project_id, $record, $instrument, $event_id, $group_id, $repeat_instance) {
         $this->setupApplication();
         if (Application::isTable1Project($project_id)) {
             return;
@@ -1060,14 +1060,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		require_once(dirname(__FILE__)."/hooks/setDateHook.php");
 	}
 
-	function hook_save_record($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
+	function redcap_save_record($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
         if (Application::isTable1Project($project_id)) {
             return;
         }
         require_once(dirname(__FILE__)."/hooks/saveHook.php");
 	}
 
-	function hook_survey_page($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
+	function redcap_survey_page($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
 		$this->setupApplication();
         if (Application::isTable1Project($project_id)) {
             require_once(dirname(__FILE__) . "/hooks/table1SurveyHook.php");
@@ -1077,7 +1077,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			require_once(dirname(__FILE__)."/hooks/checkHook.php");
 		} else if ($instrument == "followup") {
 			require_once(dirname(__FILE__)."/hooks/followupHook.php");
-		}
+		} else if ($instrument == "mstp_individual_development_plan_idp") {
+            require_once(dirname(__FILE__) . "/hooks/mstpIDPHook.php");
+        }
 	}
 
     function hasMentorAgreementRights($project_id, $userid)

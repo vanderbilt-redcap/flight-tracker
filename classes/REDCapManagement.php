@@ -547,21 +547,7 @@ class REDCapManagement {
     }
 
     public static function versionGreaterThanOrEqualTo($version1, $version2) {
-	    $versionRegex = "/^\d+\.\d+\.\d+$/";
-	    if (preg_match($versionRegex, $version1) && preg_match($versionRegex, $version2)) {
-	        $nodes1 = preg_split("/\./", $version1);
-	        $nodes2 = preg_split("/\./", $version2);
-	        for ($i = 0; $i < count($nodes1) && $i < count($nodes2); $i++) {
-                if ($nodes1[$i] > $nodes2[$i]) {
-                    return TRUE;
-                }
-                if ($nodes1[$i] < $nodes2[$i]) {
-                    return FALSE;
-                }
-            }
-	        return TRUE;   // equal
-        }
-	    return FALSE;
+        return version_compare($version1, $version2, ">=");
     }
 
     public static function getFieldsOfType($metadata, $fieldType, $validationType = "") {
@@ -1398,6 +1384,14 @@ class REDCapManagement {
 		if (isset($projectSettings['project_id'])) {
 			return $projectSettings['project_id'];
 		}
+        $module = Application::getModule();
+        if ($module && self::isValidToken($token)) {
+            $sql = "SELECT project_id FROM redcap_user_rights WHERE api_token = ?";
+            $result = $module->query($sql, [$token]);
+            if ($row = $result->fetch_assoc()) {
+                return $row['project_id'];
+            }
+        }
 		throw new \Exception("Could not get project-id from project settings: ".self::json_encode_with_spaces($projectSettings));
 	}
 

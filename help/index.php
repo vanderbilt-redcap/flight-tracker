@@ -6,6 +6,7 @@ use Vanderbilt\CareerDevLibrary\URLManagement;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDevHelp;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Links;
 
 define("NOAUTH", TRUE);
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -85,7 +86,8 @@ if ($pageTitle) {
 	if ($pageMenu) {
 		$pageMenu .= ": ";
 	}
-	$titleHTML = "<h2>Help for ".$pageMenu.$pageTitle."</h2>\n";
+    $videosHTML = CareerDevHelp::getVideoVaultLinkHTML();
+	$titleHTML = $videosHTML."<h2>Help for ".$pageMenu.$pageTitle."</h2>\n";
 }
 
 if ($html) {

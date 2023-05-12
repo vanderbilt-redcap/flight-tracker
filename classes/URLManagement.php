@@ -125,7 +125,7 @@ class URLManagement {
             self::$numUnsuccessfulDownloadInARow++;
         }
         if(curl_errno($ch)){
-            Application::log(curl_error($ch), $pid);
+            Application::log("Error number ".curl_errno($ch)." cURL Error: ".curl_error($ch), $pid);
             if ($autoRetriesLeft > 0) {
                 sleep(30);
                 Application::log("Retrying ($autoRetriesLeft left)...", $pid);

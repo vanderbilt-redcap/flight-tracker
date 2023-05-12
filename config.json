@@ -15,11 +15,11 @@
 
 	
 	"permissions": [
-			"hook_data_entry_form",
-			"hook_every_page_before_render",
-			"hook_every_page_top",
-			"hook_save_record",
-			"hook_survey_page"
+			"redcap_data_entry_form",
+			"redcap_every_page_before_render",
+			"redcap_every_page_top",
+			"redcap_save_record",
+			"redcap_survey_page"
 	],
 
 	"links": {

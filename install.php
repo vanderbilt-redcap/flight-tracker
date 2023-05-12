@@ -224,16 +224,16 @@ function makeIntroPage($projectId) {
 		$defaultToken = $rights[USERID]['api_token'];
 	}
 	if (!$rights[USERID]['api_import']) {
-		array_push($warnings, "This user must have <a href='".APP_PATH_WEBROOT."UserRights/index.php?pid=$projectId'>API Import rights</a> for this project in order to install ".CareerDev::getProgramName());
+		$warnings[] = "This user must have <a href='" . APP_PATH_WEBROOT . "UserRights/index.php?pid=$projectId'>API Import rights</a> for this project in order to install " . CareerDev::getProgramName();
 	}
 	if (!$rights[USERID]['api_export']) {
-		array_push($warnings, "This user must have <a href='".APP_PATH_WEBROOT."UserRights/index.php?pid=$projectId'>API Export rights</a> for this project in order to install ".CareerDev::getProgramName());
+		$warnings[] = "This user must have <a href='" . APP_PATH_WEBROOT . "UserRights/index.php?pid=$projectId'>API Export rights</a> for this project in order to install " . CareerDev::getProgramName();
 	}
 	if (!$rights[USERID]['design']) {
-		array_push($warnings, "This user must have <a href='".APP_PATH_WEBROOT."UserRights/index.php?pid=$projectId'>Design rights</a> for this project in order to install ".CareerDev::getProgramName());
+		$warnings[] = "This user must have <a href='" . APP_PATH_WEBROOT . "UserRights/index.php?pid=$projectId'>Design rights</a> for this project in order to install " . CareerDev::getProgramName();
 	}
 	if ((!$rights[USERID]['api_import']) || (!$rights[USERID]['api_export'])) {
-		array_push($warnings, "To assign API rights, follow the link; select your username from the list; select 'Edit user priviledges;' and check API Import rights, API Export rights."); 
+		$warnings[] = "To assign API rights, follow the link; select your username from the list; select 'Edit user priviledges;' and check API Import rights, API Export rights.";
 	}
     $baseUrl = ExternalModules::$BASE_URL ?? APP_URL_EXTMOD_RELATIVE;
 

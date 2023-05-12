@@ -27,7 +27,7 @@ $indexedRedcapData = Download::getIndexedRedcapData($token, $server, CareerDev::
 
 $yearTotals = [];
 for ($year = date("Y"); $year >= 2001; $year--) {
-	$yearTotals[$year] = 0;
+	$yearTotals["$year"] = 0;
 }
 $totalBudget = 0;
 $totals = [];
@@ -44,7 +44,7 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 		foreach ($yearTotals as $year => $yearTotal) {
 			$startTs = strtotime($year."-01-01");
 			$endTs = strtotime($year."-12-31 23:59:59");
-			$yearTotals[$year] += $grant->getTotalCostsForTimespan($startTs, $endTs);
+			$yearTotals["$year"] += $grant->getTotalCostsForTimespan($startTs, $endTs);
 		}
 	}
 }

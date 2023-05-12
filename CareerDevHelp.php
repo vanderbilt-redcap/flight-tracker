@@ -3,6 +3,9 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\Links;
+
+require_once(__DIR__."/classes/Autoload.php");
 
 class CareerDevHelp {
 	public static function getHelp($title, $menu) {
@@ -14,6 +17,12 @@ class CareerDevHelp {
 		}
 		return "";
 	}
+
+    public static function getVideoVaultLinkHTML() {
+        $url = "https://redcap.vanderbilt.edu/plugins/career_dev/help/videos.php";
+        $videosHTML = Links::makeLink($url, "Flight Tracker Video Vault", TRUE);
+        return "<p class='smaller nomargin centered' style='font-family: europa, Helvetica, Arial, sans-serif;'>$videosHTML</p>";
+    }
 
 	public static function getHelpPage($page) {
 		$help = self::getHelpHash();

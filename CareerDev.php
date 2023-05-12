@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.7.5";
+		return "5.7.6";
 	}
 
 	public static function getLockFile($pid) {
@@ -810,7 +810,7 @@ class CareerDev {
 	        # TODO add redcaptest.vanderbilt.edu
 	        $module = ExternalModules::getModuleInstance("vanderbilt_plugin-settings");
             $items = [$field];
-            if (!preg_match("/\/plugins\//", $_SERVER['REQUEST_URI'])) {
+            if (!preg_match("/\/plugins\//", $_SERVER['REQUEST_URI'] ?? "")) {
                 $items[] = "career_dev_".$field;
             }
             foreach ($items as $item) {
@@ -1041,7 +1041,7 @@ class CareerDev {
 		$r = self::getREDCapDir();
         if ($menuName == "Grants") {
             $ary = [
-                "Stylized CDA Table" => self::link("/charts/makeGrantTable.php")."&CDA",
+                "Stylized Table of Career-Defining Awards" => self::link("/charts/makeGrantTable.php")."&CDA",
                 "Stylized Table of Grants" => self::link("/charts/makeGrantTable.php"),
                 "List of All Grants" => self::link("/charts/makeGrantTable.php")."&plain",
                 "Table of All Grants" => self::link("/charts/grantTable.php"),

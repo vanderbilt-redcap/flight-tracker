@@ -15,7 +15,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $otherToken = $_POST['token'] ? Sanitizer::sanitize($_POST['token']) : "";
-$otherServer = $_POST['server'] ? Sanitizer::sanitizeURL($_POST['server']) : "";
+$otherServer = $_POST['server'] ? Sanitizer::sanitize($_POST['server']) : "";    // do not sanitizeURL to allow for escaping
 if ($_GET['project_id'] && ($_GET['action'] == "setupSettings")) {
     $pid = is_numeric($_GET['project_id']) ? Sanitizer::sanitize($_GET['project_id']) : FALSE;
     if (empty($_POST)) {

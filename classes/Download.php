@@ -36,7 +36,11 @@ class Download {
         if ($instance > 1) {
             $params[] = $instance;
         }
-	    $q = $module->query($sql, $params);
+        if ($module) {
+            $q = $module->query($sql, $params);
+        } else {
+            $q = db_query($sql, $params);
+        }
 
         $returnRow = ["record_id" => $recordId, "redcap_repeat_instrument" => $instrument, "redcap_repeat_instance" => $instance];
 	    while ($row = $q->fetch_assoc()) {
@@ -49,7 +53,11 @@ class Download {
 	    if (self::$rateLimitPerMinute === NULL) {
             $module = Application::getModule();
 	        $sql = "SELECT * FROM redcap_config WHERE field_name = 'page_hit_threshold_per_minute'";
-            $q = $module->query($sql, []);
+            if ($module) {
+                $q = $module->query($sql, []);
+            } else {
+                $q = db_query($sql);
+            }
             if ($row = $q->fetch_assoc()) {
                 self::$rateLimitPerMinute = $row['value'];
             }
@@ -350,7 +358,11 @@ class Download {
         if ($pid && self::isCurrentServer($server)) {
             $module = Application::getModule();
             $sql = "SELECT DISTINCT(form_name) FROM redcap_metadata WHERE project_id = ? ORDER BY field_order";
-            $q = $module->query($sql, [$pid]);
+            if ($module) {
+                $q = $module->query($sql, [$pid]);
+            } else {
+                $q = db_query($sql, [$pid]);
+            }
             $forms = [];
             while ($row = $q->fetch_assoc()) {
                 $forms[] = $row['form_name'];
@@ -367,7 +379,11 @@ class Download {
         if ($pid && self::isCurrentServer($server)) {
             $module = Application::getModule();
             $sql = "SELECT field_name FROM redcap_metadata WHERE project_id = ? ORDER BY field_order";
-            $q = $module->query($sql, [$pid]);
+            if ($module) {
+                $q = $module->query($sql, [$pid]);
+            } else {
+                $q = db_query($sql, [$pid]);
+            }
             $fields = [];
             while ($row = $q->fetch_assoc()) {
                 $fields[] = $row['field_name'];
@@ -517,7 +533,12 @@ class Download {
         $module = Application::getModule();
         # assume classical project
         $sql = "SELECT value FROM redcap_data WHERE project_id = ? AND field_name = ? AND record = ? AND instance = ?";
-        $result = $module->query($sql, [$pid, $field, $recordId, $instance]);
+        $params = [$pid, $field, $recordId, $instance];
+        if ($module) {
+            $result = $module->query($sql, $params);
+        } else {
+            $result = db_query($sql, $params);
+        }
         if ($row = $result->fetch_assoc()) {
             $edocId = $row['value'];
             if ($edocId) {
@@ -808,6 +829,14 @@ class Download {
         return Download::oneField($token, $server, "identifier_first_name");
     }
 
+    public static function email($token, $server, $recordId) {
+        $redcapData = self::fieldsForRecords($token, $server, ["identifier_email"], [$recordId]);
+        if (!$redcapData) {
+            return "";
+        }
+        return $redcapData[0]["identifier_email"];
+    }
+
     public static function fullName($token, $server, $recordId) {
         $redcapData = self::fieldsForRecords($token, $server, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"], [$recordId]);
         if (!$redcapData) {
@@ -1060,7 +1089,11 @@ class Download {
                     FROM redcap_data
                     WHERE project_id = ?
                         AND field_name= ?";
-	    $q = $module->query($sql, [$pid, $field]);
+        if ($module) {
+            $q = $module->query($sql, [$pid, $field]);
+        } else {
+            $q = db_query($sql, [$pid, $field]);
+        }
 
 	    $hasMultipleInstances = FALSE;
 	    while ($row = $q->fetch_assoc()) {
@@ -1165,7 +1198,11 @@ class Download {
         $module = Application::getModule();
         $pid = Application::getPID($token);
         $sql = "SELECT record, value FROM redcap_data WHERE project_id = ? AND field_name = ?";
-        $result = $module->query($sql, [$pid, $field]);
+        if ($module) {
+            $result = $module->query($sql, [$pid, $field]);
+        } else {
+            $result = db_query($sql, [$pid, $field]);
+        }
         while ($row = $result->fetch_assoc()) {
             if (in_array($row['record'], $records)) {
                 $edocs[$row['record']] = $row['value'];

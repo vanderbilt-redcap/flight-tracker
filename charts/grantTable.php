@@ -125,7 +125,7 @@ if (isset($_GET['csv'])) {
 } else {
     require_once(__DIR__."/../charts/baseWeb.php");
 
-    $thisLink = $_SERVER['REQUEST_URI'];
+    $thisLink = $_SERVER['REQUEST_URI'] ?? Application::link("this");
     $headers = $ary[0];
     echo "<h1>$title</h1>";
     if ($cohort) {

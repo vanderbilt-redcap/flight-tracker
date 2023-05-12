@@ -321,6 +321,7 @@ class DataDictionaryManagement {
     }
 
     public static function setupSurveys($projectId, $surveysAndLabels, $surveyCompletionText = "DEFAULT") {
+        $surveyIntroText = '<p><strong>Please complete the survey below.</strong></p><p>Thank you!</p>';
         if ($surveyCompletionText == "DEFAULT") {
             $surveyCompletionText = '<p><strong>Thank you for taking the survey.</strong></p><p>Have a nice day!</p>';
         }
@@ -336,8 +337,8 @@ class DataDictionaryManagement {
                 $sql = "UPDATE redcap_surveys SET title = ?, acknowledgement = ? WHERE project_id = ? AND form_name = ?";
                 $module->query($sql, [$label, $surveyCompletionText, $projectId, $form]);
             } else {
-                $sql = "INSERT INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES (?, '16', ?, ?, '<p><strong>Please complete the survey below.</strong></p>\r\n<p>Thank you!</p>', ?, 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
-                $module->query($sql, [$projectId, $form, $label, $surveyCompletionText]);
+                $sql = "INSERT INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES (?, '16', ?, ?, ?, ?, 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
+                $module->query($sql, [$projectId, $form, $label, $surveyIntroText, $surveyCompletionText]);
             }
         }
     }
