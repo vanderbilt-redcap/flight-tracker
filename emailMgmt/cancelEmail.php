@@ -12,7 +12,7 @@ $module = Application::getModule();
 $mgr = new EmailManager($token, $server, $pid, $module);
 try {
     $mgr->disable($name);
-    echo "$name successfully turned off.";
+    echo Sanitizer::sanitizeOutput($name)." successfully turned off.";
 } catch (\Exception $e) {
-    echo "Could not turn off the email $name<br/>".$e->getMessage();
+    echo "Could not turn off the email ".Sanitizer::sanitizeOutput($name)."<br/>".$e->getMessage();
 }

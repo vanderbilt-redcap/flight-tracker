@@ -101,7 +101,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 
 <form action='<?= CareerDev::link("search/publications.php") ?>' method='POST'>
     <?= Application::generateCSRFTokenHTML() ?>
-<p class='centered'><input type='text' value='<?= preg_replace("/'/", "\'", $postQuery) ?>' name='q' id='q'> <input type='submit' value='Search'</p>
+<p class='centered'><input type='text' value='<?= Sanitizer::sanitizeOutput($postQuery) ?>' name='q' id='q'> <input type='submit' value='Search'</p>
 </form>
 <?php
 	echo "<p class='centered header'>".\Vanderbilt\FlightTrackerExternalModule\pretty(count($scores))." citations in ".\Vanderbilt\FlightTrackerExternalModule\pretty(count($matchedCitations))." profiles matched.</p>";

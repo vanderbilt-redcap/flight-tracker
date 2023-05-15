@@ -214,6 +214,15 @@ class Sanitizer {
     /**
      * @psalm-taint-specialize
      */
+    # This function sanitizes output that is printed to the screen
+    public static function sanitizeOutput($str) {
+        # for now
+        return self::sanitizeArray($str);
+    }
+
+    /**
+     * @psalm-taint-specialize
+     */
     public static function sanitizeCohort($cohortName, $pid = NULL) {
         if (!$pid) {
             $pid = self::sanitizePid($_GET['pid'] ?? "");

@@ -359,6 +359,7 @@ class REDCapManagement {
         $htmlFriendly = preg_replace("/[\s\-]+/", "_", $id);
         $htmlFriendly = preg_replace("/<[^>]+>/", "", $htmlFriendly);
         $htmlFriendly = preg_replace("/[\:\+\"\/\[\]'#<>\~\`\!\@\#\$\%\^\&\*\(\)\=\;\?\.\,]/", "", $htmlFriendly);
+        $htmlFriendly = Sanitizer::sanitizeOutput($htmlFriendly);
         return $htmlFriendly;
     }
 
