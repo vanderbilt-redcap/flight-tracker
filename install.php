@@ -217,6 +217,7 @@ function verifyFieldsNotBlank(fields) {
 }
 
 function makeIntroPage($projectId) {
+    $_GET['pid'] = $projectId;
 	$warnings = array();
 	$rights = \REDCap::getUserRights(USERID);
 	$defaultToken = "";
