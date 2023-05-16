@@ -355,11 +355,15 @@ class DataDictionaryManagement {
     }
 
     public static function getLabels($metadata) {
-        $labels = array();
+        return self::getFieldValues($metadata, "field_label");
+    }
+
+    public static function getFieldValues($metadata, $metadataField) {
+        $values = [];
         foreach ($metadata as $row) {
-            $labels[$row['field_name']] = $row['field_label'];
+            $values[$row['field_name']] = $row[$metadataField];
         }
-        return $labels;
+        return $values;
     }
 
     private static function convertOldDegreeData($pid) {
@@ -924,7 +928,10 @@ class DataDictionaryManagement {
                 foreach ($newMetadata as $row) {
                     if ($row['field_name'] == $newRow['field_name']) {
                         break;
-                    } else if (!preg_match($deletionRegEx, $row['field_name'])) {
+                    } else if (
+                        !preg_match($deletionRegEx, $row['field_name'])
+                        && !in_array($row['field_name'], $fieldsToDelete)
+                    ) {
                         $priorRowField = $row['field_name'];
                     }
                 }
