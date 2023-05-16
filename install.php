@@ -138,7 +138,7 @@ if ($action == "localizeVariables") {
     }
 } else {
 	displayInstallHeaders();
-	echo makeIntroPage(Sanitizer::sanitizePid($_GET['pid']));
+	echo makeIntroPage($pid);
 	echo makeInstallFooter();
 }
 
