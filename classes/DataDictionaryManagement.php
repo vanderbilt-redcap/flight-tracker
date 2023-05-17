@@ -1049,6 +1049,7 @@ class DataDictionaryManagement {
                 $optionsText = Application::getSetting($settingName, $pid);
                 if ($optionsText) {
                     $choiceStr = self::makeREDCapList($optionsText, self::OPTION_OTHER_VALUE);
+                    Application::log("Using optional field $field $choiceStr", $pid);
                     self::setSelectStringForFields($metadata, $choiceStr, [$field]);
                 } else if (in_array($field, $metadataFields)) {
                     $newMetadata = [];
@@ -1057,6 +1058,7 @@ class DataDictionaryManagement {
                             $newMetadata[] = $row;
                         }
                     }
+                    Application::log("Not using optional field $field; shrinking metadata from ".count($metadata)." into ".count($newMetadata), $pid);
                     $metadata = $newMetadata;
                 }
             }
