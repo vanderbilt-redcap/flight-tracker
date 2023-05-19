@@ -13,7 +13,7 @@ if (!defined("NEW_HASH_DESIGNATION")) {
 
 class MMAHelper {
     public static function createHash($token, $server) {
-        $newHash = bin2hex(random_bytes(self::getHashLength()));
+        $newHash = REDCapManagement::makeHash(self::getHashLength());
         $recordIds = Download::recordIds($token, $server);
         $newRecordId = empty($recordIds) ? 1 : (max($recordIds) + 1);
         $uploadRow = [

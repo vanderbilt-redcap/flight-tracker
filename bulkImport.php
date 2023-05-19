@@ -50,6 +50,8 @@ if (isset($_FILES['bulk'])) {
 		$customFields = Application::getCustomFields($metadata);
 		$upload = [];
         foreach ($lines as $line) {
+            $firstName = "";
+            $lastName = "";
             if ($startIdx == 2) {
                 $firstName = $line[0];
                 $lastName = $line[1];
@@ -133,7 +135,11 @@ if (isset($_FILES['bulk'])) {
                     $unmatchedLines[] = $i;
                 }
             } else if ($i != 0) {
-                echo "<p class='red padded centered max-width'>Could not match $recordId with start index of $startIdx.</p>";
+                if ($startIdx == 2) {
+                    echo "<p class='red padded centered max-width'>Could not match $firstName $lastName.</p>";
+                } else {
+                    echo "<p class='red padded centered max-width'>Could not match $recordId with start index of $startIdx.</p>";
+                }
                 $unmatchedLines[] = $i;
             }
             $i++;
@@ -209,6 +215,11 @@ function detectFirstError($fileinfo, $importFile, $expected) {
         array_shift($headers);
         $headers[0] = "Record ID";
         $expected--;
+    }
+
+    # sometimes Excel puts a unicode hidden character before the first element
+    for ($i = 0; $i < count($headers); $i++) {
+        $firstLine[$i] = REDCapManagement::clearUnicode($firstLine[$i]);
     }
 
 	if (preg_match("/import_positions/", $importFile)) {

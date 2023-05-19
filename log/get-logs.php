@@ -32,7 +32,9 @@ $results = $module->queryLogs("
 
 $rows = [];
 while($row = $results->fetch_assoc()){
-	$rows[] = Sanitizer::sanitizeArray($row);
+    $sanitizedRow = Sanitizer::sanitizeArray($row);
+    $sanitizedRow['message'] = html_entity_decode($sanitizedRow['message']);
+	$rows[] = $sanitizedRow;
 }
 $json = json_encode($rows);
 $totalRowCount = Sanitizer::sanitizeInteger($totalRowCount);

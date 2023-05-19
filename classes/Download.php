@@ -610,7 +610,7 @@ class Download {
 			curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, Upload::isProductionServer($pid));
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 			$output = curl_exec($ch);
             $redcapData = json_decode((string) $output, true);

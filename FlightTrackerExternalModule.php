@@ -198,20 +198,29 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     public function cleanupExtModLogs($pid, $daysPrior) {
         Application::log("Cleaning up logs...", $pid);
         $ts = time() - $daysPrior * 24 * 3600;
-        $thresholdTs = date("Y-m-d", $ts);
+        $thresholdDate = date("Y-m-d", $ts);
         $externalModuleId = CareerDev::getModuleId();
-        Application::log("Removing logs prior to $thresholdTs", $pid);
+        Application::log("Removing logs prior to $thresholdDate", $pid);
         $numIterations = 0;
-        $fromAndWhereClause = "FROM redcap_external_modules_log WHERE external_module_id = ? AND timestamp <= ? AND project_id = ?";
+        $maxRowsToDelete = 50000000;
+        $numRowsToDelete = 1000;
+        $maxIterations = $maxRowsToDelete / $numRowsToDelete;
         do {
-            $deleteSql = "DELETE $fromAndWhereClause LIMIT 1000";
-            $selectSql = "SELECT log_id $fromAndWhereClause LIMIT 1";
-            $this->query($deleteSql, [$externalModuleId, $thresholdTs, $pid]);
-            $result = $this->query($selectSql, [$externalModuleId, $thresholdTs, $pid]);
-            $moreToDelete = $result->fetch_assoc();
+            $moreToDelete = $this->deleteLogs($externalModuleId, $thresholdDate, $pid, $numRowsToDelete);
             $numIterations++;
-        } while ($moreToDelete && ($numIterations < 50000));
+            usleep(100000);
+        } while ($moreToDelete && ($numIterations < $maxIterations));
         Application::log("Done removing logs in $numIterations iterations", $pid);
+    }
+
+    public function deleteLogs($externalModuleId, $thresholdDate, $pid, $numToDelete) {
+        $params = [$externalModuleId, $thresholdDate, $pid];
+        $fromAndWhereClause = "FROM redcap_external_modules_log WHERE external_module_id = ? AND timestamp <= ? AND project_id = ?";
+        $deleteSql = "DELETE $fromAndWhereClause LIMIT $numToDelete";
+        $selectSql = "SELECT log_id $fromAndWhereClause LIMIT 1";
+        $this->query($deleteSql, $params);
+        $result = $this->query($selectSql, $params);
+        return $result->fetch_assoc();
     }
 
     private static function isValidToCopy($fields, $sourceRow, $destRow, $sourceChoices, $destChoices) {
@@ -806,11 +815,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         } else {
             $activePids = $this->framework->getProjectsWithModuleEnabled();
         }
-		CareerDev::log($this->getName()." running for pids ".json_encode($activePids));
+		Application::log($this->getName()." running for pids ".json_encode($activePids));
+        foreach ($activePids as $pid) {
+            Application::log("Flight Tracker 'midnight cron' running", $pid);
+        }
 		$pidsUpdated = [];
-        CareerDev::log("Checking for redcaptest in ".SERVER_NAME);
+        Application::log("Checking for redcaptest in ".SERVER_NAME);
         if (preg_match("/redcaptest.vanderbilt.edu/", SERVER_NAME)) {
-            CareerDev::log("Sharing because redcaptest");
+            Application::log("Sharing because redcaptest");
             $pidsUpdated = $this->shareDataInternally($activePids, $activePids);
         } else if (count($activePids) > 1) {
             try {
@@ -837,7 +849,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
 
 		foreach ($activePids as $pid) {
-            Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at beginning of main processing for project.", $pid);
             $this->cleanupLogs($pid);
             $token = $this->getProjectSetting("token", $pid);
             $server = $this->getProjectSetting("server", $pid);
@@ -846,7 +857,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $turnOffSet = $this->getProjectSetting("turn_off", $pid);
             $GLOBALS['namesForMatch'] = [];
             CareerDev::setPid($pid);
-            CareerDev::log("Using $tokenName $adminEmail", $pid);
+            Application::log("Using $tokenName $adminEmail", $pid);
             if ($token && $server && !$turnOffSet) {
                 try {
                     # only have token and server in initialized projects
@@ -1046,6 +1057,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
 	}
 
+    function redcap_survey_acknowledgement_page($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
+        $this->setupApplication();
+        if ($instrument == "mstp_individual_development_plan_idp") {
+            require_once(dirname(__FILE__) . "/hooks/mstpIDPAcknowledgementHook.php");
+        }
+    }
+
 	function redcap_data_entry_form($project_id, $record, $instrument, $event_id, $group_id, $repeat_instance) {
         $this->setupApplication();
         if (Application::isTable1Project($project_id)) {
@@ -1056,7 +1074,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			require_once(dirname(__FILE__)."/hooks/checkHook.php");
 		} else if ($instrument == "followup") {
 			require_once(dirname(__FILE__)."/hooks/followupHook.php");
-		}
+		} else if ($instrument == "mstp_individual_development_plan_idp") {
+            require_once(dirname(__FILE__)."/hooks/mstpIDPFormHook.php");
+        }
 		require_once(dirname(__FILE__)."/hooks/setDateHook.php");
 	}
 

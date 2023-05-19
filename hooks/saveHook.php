@@ -63,7 +63,7 @@ if (Application::isSocialMediaProject($project_id) && ($instrument == "scholars_
         $redcapData = Download::fieldsForRecords($currToken, $currServer, array_merge(["record_id"], $handleFields), [$recordId]);
         $uploadRow = ["record_id" => $recordId];
         foreach ($redcapData as $row) {
-            foreach ($fields as $field) {
+            foreach ($handleFields as $field) {
                 if (isset($values[$field]) && $values[$field]) {
                     $uploadRow[$field] = $row[$field] ? $row[$field].", ".$values[$field] : $values[$field];
                 }

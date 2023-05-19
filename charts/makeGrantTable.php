@@ -220,7 +220,8 @@ if (!isset($_GET['CDA'])) {
     echo Grants::makeFlagLink($pid, $thisUrlWithParams);
 }
 echo "<h1>$title</h1>";
-echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort, "window.location = \"".Application::link("charts/makeGrantTable.php")."&cohort=\"+$(this).val();")."</p>";
+$cda = isset($_GET['CDA']) ? "&CDA" : "";
+echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort, "window.location = \"".Application::link("charts/makeGrantTable.php")."$cda&cohort=\"+$(this).val();")."</p>";
 if (isset($_GET['plain'])) {
     $entries = [];
     $fields = array_unique(array_merge($fields, $titleFields ?? []));

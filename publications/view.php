@@ -279,6 +279,10 @@ function makePublicationListHTML($citations, $names, $dates) {
                         $html .= $citation->getImage("left");
                     }
                     $html .= $citation->getCitationWithLink(TRUE, TRUE);
+                    $rcr = $citation->getVariable("rcr");
+                    if ($rcr) {
+                        $html .= " RCR: ".REDCapManagement::pretty($rcr, 2);
+                    }
                     $html .= "</p>\n";
                 }
             }

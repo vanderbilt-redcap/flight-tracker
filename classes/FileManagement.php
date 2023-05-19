@@ -138,8 +138,11 @@ class FileManagement {
                 $filename = EDOC_PATH . $row['stored_name'];
                 $mimeType = $row['mime_type'];
                 if ($mimeType == "application/octet-stream") {
-                    echo "File: ".$row['stored_name']."<br/>";
-                    $mimeType = mime_content_type($row['stored_name']) ?: $mimeType;
+                    if (preg_match("/\.svg$/", $row['stored_name'])) {
+                        $mimeType = "image/svg+xml";
+                    } else {
+                        $mimeType = mime_content_type($row['stored_name']) ?: $mimeType;
+                    }
                 }
                 return self::getBase64OfFile($filename, $mimeType);
             }

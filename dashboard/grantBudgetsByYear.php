@@ -8,6 +8,7 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Dashboard;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\LineGraph;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -23,7 +24,12 @@ if (isset($_GET['cohort'])) {
 $headers = [];
 $measurements = [];
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, CareerDev::$summaryFields, $cohort, Application::getModule());
+$fields = CareerDev::$summaryFields;
+if (Grants::areFlagsOn($pid)) {
+    $metadata = Download::metadata($token, $server);
+    $fields = REDCapManagement::getAllGrantFields($metadata);
+}
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $cohort, Application::getModule());
 
 $yearTotals = [];
 for ($year = date("Y"); $year >= 2001; $year--) {
@@ -34,7 +40,8 @@ $totals = [];
 foreach ($indexedRedcapData as $recordId => $rows) {
 	$grants = new Grants($token, $server, "empty");
 	$grants->setRows($rows);
-	foreach ($grants->getGrants("prior") as $grant) {
+    $grantAry = Grants::areFlagsOn($pid) ? $grants->getGrants("flagged") : $grants->getGrants("prior");
+	foreach ($grantAry as $grant) {
 		$type = $grant->getVariable("type");
 		if (!isset($totals[$type])) {
 			$totals[$type] = 0;

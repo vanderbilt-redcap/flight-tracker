@@ -363,6 +363,13 @@ class REDCapManagement {
         return $htmlFriendly;
     }
 
+    public static function makeHash($length) {
+        if (is_integer($length)) {
+            return bin2hex(random_bytes($length));
+        }
+        return "";
+    }
+
     public static function getUseridsFromCoeus2($collaborators) {
         $userids = [];
         $nodes = preg_split("/\s*,\s*/", $collaborators);

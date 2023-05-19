@@ -50,7 +50,7 @@ class Upload
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         $output = (string) curl_exec($ch);
@@ -70,7 +70,7 @@ class Upload
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $server);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_AUTOREFERER, true);
@@ -258,7 +258,7 @@ class Upload
                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
                 curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
                 $output = (string) curl_exec($ch);
                 $feedback = json_decode($output, TRUE);
                 self::testFeedback($feedback, $output, $ch);
@@ -308,7 +308,7 @@ public static function metadata($metadata, $token, $server) {
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
@@ -366,8 +366,8 @@ public static function metadata($metadata, $token, $server) {
 		return TRUE;
 	}
 
-	public static function file($pid, $record, $field, $base64, $filename, $instance = 1) {
-        $base64 = preg_replace("/^data:image\/.+?;base64, /", "", $base64);
+	public static function file($pid, $record, $field, $originalBase64, $filename, $instance = 1) {
+        $base64 = preg_replace("/^data:.+?;base64,\s?/", "", $originalBase64);
         $base64 = str_replace(" ", "+", $base64);
         $contents = base64_decode($base64);
         if ($contents) {
@@ -440,7 +440,7 @@ public static function metadata($metadata, $token, $server) {
         curl_setopt($ch, CURLOPT_HTTPHEADER,array("Expect:"));
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         $output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch, $settings);
@@ -663,7 +663,7 @@ public static function metadata($metadata, $token, $server) {
                 curl_setopt($ch, CURLOPT_HTTPHEADER,array("Expect:"));
                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, self::isProductionServer($pid));
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
                 $time2 = microtime(TRUE);
 				$output = (string) curl_exec($ch);
                 $feedback = json_decode($output, true);
@@ -701,6 +701,7 @@ public static function metadata($metadata, $token, $server) {
         }
     }
 
+    # note: do not use this with VERIFYPEER - too many servers use self-signed certificates
 	public static function isProductionServer($pid) {
         if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isTestServer")) {
             return !Application::isTestServer($pid);
