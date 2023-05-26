@@ -1378,6 +1378,14 @@ class Scholar {
         return new Result(implode(", ", $institutions), "", "", "", $this->pid);
     }
 
+    public static function getInstitutionFields($otherFields = []) {
+        return array_unique(array_merge(
+            $otherFields,
+            self::getTrainingInstitutionFields(),
+            self::getPriorAppointmentInstitutionFields()
+        ));
+    }
+
     private function getAllOtherInstitutions($rows) {
 	    $showDebug = SHOW_DEBUG_FOR_INSTITUTIONS;
         $currentProjectInstitutions = Application::getInstitutions();
@@ -1401,11 +1409,7 @@ class Scholar {
 
         $defaultOrder = self::getDefaultOrder("identifier_institution");
         $vars = $this->getOrder($defaultOrder, "identifier_institution");
-        $fields = array_unique(array_merge(
-            array_keys($vars),
-            self::getTrainingInstitutionFields(),
-            self::getPriorAppointmentInstitutionFields()
-        ));
+        $fields = self::getInstitutionFields(array_keys($vars));
         foreach ($fields as $field) {
             $values = REDCapManagement::findAllFields($rows, $this->recordId, $field);
             if ($showDebug) {
@@ -1442,16 +1446,19 @@ class Scholar {
 
 	private static function getPriorAppointmentInstitutionFields() {
         return [
+            "check_institution_oth",
             "check_prev1_institution",
             "check_prev2_institution",
             "check_prev3_institution",
             "check_prev4_institution",
             "check_prev5_institution",
+            "followup_institution_oth",
             "followup_prev1_institution",
             "followup_prev2_institution",
             "followup_prev3_institution",
             "followup_prev4_institution",
             "followup_prev5_institution",
+            "init_import_institution_oth",
             "init_import_prev1_institution",
             "init_import_prev2_institution",
             "init_import_prev3_institution",

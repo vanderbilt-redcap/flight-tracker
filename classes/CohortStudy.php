@@ -174,4 +174,8 @@ class CohortStudy extends Study {
     public function getTreatmentCI($percent) {
         return $this->treatment->confidenceInterval($percent);
     }
+
+    public function getControlCI($percent) {
+        return $this->control->confidenceInterval($percent);
+    }
 }

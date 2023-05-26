@@ -121,6 +121,14 @@ class LDAP {
         return "";
     }
 
+    public static function getNameFromEmail($email) {
+        $info = self::getLDAP("mail", $email);
+        if ($info['count'] > 0) {
+            return self::findField($info, "givenname", 0)." ".self::findField($info, "sn", 0);
+        }
+        return "";
+    }
+
     public static function getDepartmentAndRank($uid) {
         $info = self::getLDAP("cn", $uid);
         $department = "";

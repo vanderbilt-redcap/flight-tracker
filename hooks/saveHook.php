@@ -80,19 +80,6 @@ require_once(dirname(__FILE__)."/../small_base.php");
 
 global $token, $server;
 
-if ($instrument == "identifiers") {
-    $module = Application::getModule();
-	$sql = "SELECT field_name FROM redcap_data WHERE project_id = ? AND record = ? AND field_name LIKE '%_complete'";
-	$q = $module->query($sql, [$project_id, $record]);
-	if ($q->num_rows == 1) {
-		if ($row = $q->fetch_assoc($q)) {
-			if ($row['field_name'] == "identifiers_complete") {
-				# new record => only identifiers form filled out
-				\Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($record);
-			}
-		}
-	}
-}
 Application::refreshRecordSummary($token, $server, $project_id, $record);
 if (in_array($instrument, ["initial_survey", "followup", "initial_import"])) {
     uploadPositionChangesFromSurveys($token, $server, $project_id, $record, $instrument, $repeat_instance ?? 1);

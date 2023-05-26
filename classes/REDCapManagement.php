@@ -15,14 +15,16 @@ class REDCapManagement {
 
     public static function isInProduction($pid) {
         $module = Application::getModule();
-        $sql = "SELECT status FROM redcap_projects WHERE project_id = ?";
-        $q = $module->query($sql, [$pid]);
-        if ($row = $q->fetch_assoc()) {
-            Application::log("inProd? ".json_encode($row));
-            if ($row['status'] === 1) {
-                return TRUE;
-            } else {
-                return FALSE;
+        if ($module) {
+            $sql = "SELECT status FROM redcap_projects WHERE project_id = ?";
+            $q = $module->query($sql, [$pid]);
+            if ($row = $q->fetch_assoc()) {
+                Application::log("inProd? ".json_encode($row));
+                if ($row['status'] === 1) {
+                    return TRUE;
+                } else {
+                    return FALSE;
+                }
             }
         }
         return FALSE;
@@ -1435,7 +1437,7 @@ class REDCapManagement {
         $fields["mentoring"] = [
             DataDictionaryManagement::getMentoringResourceField($metadataFields),
         ];
-		$fields["institutions"] = ["check_institution", "followup_institution"];
+		$fields["institutions"] = ["check_institution", "init_import_institution", "followup_institution"];
         $fields["optional"] = ["identifier_person_role"];
 
 		if (isset($fields[$type])) {
