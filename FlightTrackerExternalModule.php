@@ -806,6 +806,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
     }
 
+    function preprocessScholarPortal($token, $server, $pid) {
+        $this->setProjectSetting("userids", Download::userids($token, $server), $pid);
+        $this->setProjectSetting("first_names", Download::firstnames($token, $server), $pid);
+        $this->setProjectSetting("last_names", Download::lastnames($token, $server), $pid);
+    }
+
 	function executeCron() {
         Application::increaseProcessingMax(8);
 
@@ -860,6 +866,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             Application::log("Using $tokenName $adminEmail", $pid);
             if ($token && $server && !$turnOffSet) {
                 try {
+                    $this->preprocessScholarPortal($token, $server, $pid);
                     # only have token and server in initialized projects
                     $mgr = new CronManager($token, $server, $pid, $this);
                     if ($this->getProjectSetting("run_tonight", $pid)) {

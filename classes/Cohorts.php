@@ -85,7 +85,16 @@ class Cohorts {
 	    return $this->makeCohortSelect($defaultCohort, $onchangeJS, $displayAllOption);
     }
 
-	public function makeCohortSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
+    public function makeHandPickCohortSelect($defaultCohort, $onchangeJS = "") {
+        return self::makeCohortSelectGeneric($defaultCohort, $onchangeJS, FALSE, $this->getCohortTitles(TRUE));
+    }
+
+    public function makeCohortSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
+        return self::makeCohortSelectGeneric($defaultCohort, $onchangeJS, $displayAllOption, $this->getCohortTitles());
+    }
+
+
+	public function makeCohortSelectGeneric($defaultCohort, $onchangeJS, $displayAllOption, $cohortTitles) {
         $html = "<label for='cohort'>Cohort:</label> <select id='cohort' name='cohort'";
         if ($onchangeJS) {
 	        $html .= " onchange='".$onchangeJS."'";
@@ -99,10 +108,9 @@ class Cohorts {
             $html .= "<option value=''>---SELECT---</option>\n";
             $html .= "<option value='all'$allStatus>---ALL---</option>\n";
         } else {
-            $html .= "<option value=''>---ALL---</option>\n";
+            $html .= "<option value=''>---SELECT---</option>\n";
         }
 
-        $cohortTitles = $this->getCohortTitles();
         foreach ($cohortTitles as $title) {
             $html .= "<option value='$title'";
             if ($title == $defaultCohort) {
@@ -174,13 +182,23 @@ class Cohorts {
 		return in_array($cohort, $titles);
 	}
 
-	public function getCohortTitles() {
-		return $this->getCohortNames();
+	public function getCohortTitles($handPickedOnly = FALSE) {
+        return $this->getCohortNames($handPickedOnly);
 	}
 
-	public function getCohortNames() {
+	public function getCohortNames($handPickedOnly = FALSE) {
 		if ($this->configs) {
-			return array_keys($this->configs);
+            if ($handPickedOnly) {
+                $names = [];
+                foreach ($this->configs as $name => $config) {
+                    if (isset($config['records'])) {
+                        $names[] = $name;
+                    }
+                }
+                return $names;
+            } else {
+                return array_keys($this->configs);
+            }
 		}
 		return [];
 	}

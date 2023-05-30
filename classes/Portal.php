@@ -31,11 +31,12 @@ class Portal {
         foreach ($pids as $pid) {
             $token = Application::getSetting("token", $pid);
             $server = Application::getSetting("server", $pid);
-            if ($token && $server) {
+            $turnOffSet = Application::getSetting("turn_off", $pid);
+            if ($token && $server && !$turnOffSet) {
                 Application::setPid($pid);
-                $userids = Download::userids($token, $server);
-                $firstNames = Download::firstnames($token, $server);
-                $lastNames = Download::lastnames($token, $server);
+                $userids = Application::getSetting("userids", $pid) ?: [];
+                $firstNames = Application::getSetting("first_names", $pid) ?: [];
+                $lastNames = Application::getSetting("last_names", $pid) ?: [];
                 $foundMatch = FALSE;
 
                 $matchedRecordsInProject = [];
@@ -107,20 +108,16 @@ class Portal {
                 $efsLink = "https://edgeforscholars.org";
             }
 
-            $pixels = 200;
             $margin = 8;
             $marginWidth = $margin."px";
-            $logoWidth = $pixels."px";
-            $outsideWidth = (2 * $margin + 2 * $pixels)."px";
-            $headerHeight = "85px";
 
             $nameHTML = $name ? "<h1>Hello $name!</h1>" : "";
-            $vumcMessage = Application::isVanderbilt() ? " - [<a href='https://edgeforscholars.vumc.org/' target='_NEW'>Edge for Scholars at Vanderbilt</a>]" : " at Vanderbilt University Medical Center";
+            $vumcMessage = Application::isVanderbilt() ? " - [<a href='https://edgeforscholars.vumc.org/' target='_blank'>Edge for Scholars at Vanderbilt</a>]" : " at Vanderbilt University Medical Center";
             $html = "<p class='centered'>";
-            $html .= "<div style='width: 100%; text-align: center;' class='smaller'>A Career Development Resource from [<a href='https://edgeforscholars.org' target='_NEW'>Edge for Scholars</a>]$vumcMessage</div>";
-            $html .= "<div style='float:left; width: $logoWidth; margin-left: $marginWidth;'><img src='$logoBase64' style='width: $logoWidth; height: $headerHeight;' alt='Flight Tracker for Scholars' /></div>";
-            $html .= "<div style='float: left; width: calc(100% - $outsideWidth); height: $headerHeight; margin-top: $marginWidth; text-align: center;'>$nameHTML</div>";
-            $html .= "<div style='float:right; text-align: right; margin-right: $marginWidth; width: $logoWidth;'><a href='$efsLink' target='_NEW'><img src='$efsBase64' style='width: 136px; height: $headerHeight;' alt='Edge for Scholars' /></a></div>";
+            $html .= "<div style='width: 100%; text-align: center;' class='smaller'>A Career Development Resource from [<a href='https://edgeforscholars.org' target='_blank'>Edge for Scholars</a>]$vumcMessage</div>";
+            $html .= "<div style='float:left; margin-left: $marginWidth;' class='responsiveHeader'><a href='https://redcap.link/flight_tracker' target='_blank'><img src='$logoBase64' class='responsiveHeader' alt='Flight Tracker for Scholars' /></a></div>";
+            $html .= "<div class='centerHeader' style='float: left; text-align: center;'>$nameHTML</div>";
+            $html .= "<div style='float:right; text-align: right; margin-right: $marginWidth;' class='responsiveHeader'><a href='$efsLink' target='_blank'><img src='$efsBase64' class='efsHeader' alt='Edge for Scholars' /></a></div>";
             $html .= "</p>";
             $html .= "<div style='clear: both'></div>";
             return $html;
@@ -128,15 +125,58 @@ class Portal {
         return "";
     }
 
+    # 3 words max
     public static function getMenu() {
         $menu = [];
         $menu[] = [
-            "action" => "testAction",
-            "title" => "Test Action 1",
+            "action" => "bio",
+            "title" => "Your Achievements",     // list of honors, pubs, grants & patents - flagging and can add; encouragement
+        ];
+        // encouraging message if pubs are blank
+        $menu[] = [
+            "action" => "scholar_collaborations",
+            "title" => "Your Publishing Collaborations",      // social network graph
         ];
         $menu[] = [
-            "action" => "testAction",
-            "title" => "Test Action 2",
+            "action" => "pubs_impact",
+            "title" => "Your Publishing Impact",      // combined & deduped RCR graph; Altmetric summary & links
+        ];
+        $menu[] = [
+            "action" => "timelines",
+            "title" => "Your Grant Timelines",     // CDAs & all grants; encouraging message if blank
+        ];
+        if (Application::isVanderbilt()) {
+            // need to check whether FTs track grant submissions
+            $menu[] = [
+                "action" => "submissions",
+                "title" => "Your Grant Submissions",    // timeline
+            ];
+        }
+        $menu[] = [
+            "action" => "group_collaborations",
+            "title" => "Group Publishing Collaborations",
+        ];
+        $menu[] = [
+            "action" => "info",
+            "title" => "Update Your Information",              // surveys; talk to each other
+        ];
+        $menu[] = [
+            "action" => "honors",
+            "title" => "Update Your Honors",             // prior honors + redcap survey; talk to each other
+        ];
+        $menu[] = [
+            "action" => "mma",
+            "title" => "Mentoring Portal",             // set up mentor(s); fill out MMAs; talk to each other
+        ];
+        if (Application::isVanderbilt()) {
+            $menu[] = [
+                "action" => "connect",
+                "title" => "Connect With Colleagues",     // flight connector
+            ];
+        }
+        $menu[] = [
+            "action" => "board",
+            "title" => "Scholar Bulletin Board",
         ];
         return $menu;
     }

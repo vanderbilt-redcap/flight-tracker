@@ -23,13 +23,20 @@ if ($_POST['cohort']) {
     $name = Sanitizer::sanitize($_POST['cohort']);    // do not sanitize a cohort because it is not an existing cohort
     $mssg = "<p class='green centered'>New Cohort $name Added</p>";
 }
+$cohorts = new Cohorts($token, $server, Application::getModule());
 if (!empty($recordsIncluded) && $name) {
     $config = ["records" => $recordsIncluded];
-    $cohorts = new Cohorts($token, $server, Application::getModule());
     $cohorts->addCohort($name, $config);
+}
+if (isset($_GET['cohort'])) {
+    $name = Sanitizer::sanitizeCohort($_GET['cohort'], $pid);
+    if ($name) {
+        $recordsIncluded = $cohorts->getCohort($name)->getManualRecords();
+    }
 }
 
 $link = Application::link("cohorts/pickCohort.php");
+echo "<p class='centered'>Modify an Existing Hand-Picked Cohort:<br/>".$cohorts->makeHandPickCohortSelect($name, "location.href = \"$link&cohort=\"+encodeURIComponent($(this).val());")."</p>";
 echo $mssg;
 echo "<h1>Hand-Pick a Cohort</h1>\n";
 echo "<form action='$link' method='POST'>\n";
