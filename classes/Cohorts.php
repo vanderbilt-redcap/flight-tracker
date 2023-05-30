@@ -192,7 +192,7 @@ class Cohorts {
                 $names = [];
                 foreach ($this->configs as $name => $config) {
                     if (isset($config['records'])) {
-                        $names[] = $name;
+                        $names[] = Sanitizer::sanitizeCohort($name, $this->pid);
                     }
                 }
                 return $names;
