@@ -366,7 +366,7 @@ class REDCapManagement {
     }
 
     public static function makeHash($length) {
-        if (is_integer($length)) {
+        if (is_integer($length) && ($length > 0)) {
             return bin2hex(random_bytes($length));
         }
         return "";

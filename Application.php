@@ -623,6 +623,27 @@ SELECT DISTINCT s.project_id AS pid
         return REDCapManagement::screenForFields($metadata, CareerDev::$exporterFields);
     }
 
+    public static function getMSTPHashFields() {
+        $roles = self::getMSTPConfig();
+        $fields = [];
+        foreach (array_keys($roles) as $role) {
+            $fields[] = self::MSTPRole2Field($role);
+        }
+        return $fields;
+    }
+
+    public static function MSTPRole2Field($role) {
+        return "mstpidp_review_".$role."_hash";
+    }
+
+    public static function getMSTPConfig() {
+        return [
+            "advisor" => "Faculty College Advisor",
+            "mentor" => "Research Mentor",
+            "comentor" => "Research Co-Mentor"
+        ];
+    }
+
     public static function getHelperInstitutions() {
         $ary = [
             "Veterans Health Administration",
