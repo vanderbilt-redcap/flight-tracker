@@ -1485,7 +1485,9 @@ class REDCapManagement {
     }
 
 	public static function exactInArray($item, $ary) {
+        $item = (string) $item;
 	    foreach ($ary as $a) {
+            $a = (string) $a;
 	        if ($item === $a) {
 	            return TRUE;
             }

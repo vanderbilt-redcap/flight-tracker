@@ -942,13 +942,13 @@ public static function metadata($metadata, $token, $server) {
 			if ($line[0] && $line[1]) {
 				$recordId = NameMatcher::matchName($line[1], $line[0], $token, $server);
 			} else {
-				array_push($errors, "On data line $i, you must supply a first and last name.");
+				$errors[] = "On data line $i, you must supply a first and last name.";
 			}
 		} else if (($headers[1] == "identifier_last_name") && ($headers[0] == "identifier_first_name")) {
 			if ($line[0] && $line[1]) {
 				$recordId = NameMatcher::matchName($line[0], $line[1], $token, $server);
 			} else {
-				array_push($errors, "On data line $i, you must supply a first and last name.");
+				$errors[] = "On data line $i, you must supply a first and last name.";
 			}
 		} else if ($headers[0] == "record_id") {
 			if (is_numeric($line[0])) {
@@ -958,12 +958,12 @@ public static function metadata($metadata, $token, $server) {
 			        $errors[] = "On data line $i, your record {$line[0]} is not matching an existing record. Only existing records are supported.";
                 }
 			} else {
-				array_push($errors, "On data line $i, the record id must be numeric. It is {$line[0]}.");
+				$errors[] = "On data line $i, the record id must be numeric. It is {$line[0]}.";
 			}
 		} else {
-			array_push($errors, "Headers not valid: {$headers[0]}, {$headers[1]}");
+			$errors[] = "Headers not valid: {$headers[0]}, {$headers[1]}";
 		}
-		return array($recordId, $errors);
+		return [$recordId, $errors];
 	}
 
 	private static $useAPIOnly = array();
