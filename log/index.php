@@ -50,7 +50,7 @@ $url = Application::link("this");
             presentScreen("Deleting... (Step "+numSteps+")");
         }
         $.post(url, { delete: 1 }, (result) => {
-            if (result === 1) {
+            if (result === '1') {
                 setTimeout(() => {
                     deleteLogs(url, numSteps + 1);
                 }, 300);

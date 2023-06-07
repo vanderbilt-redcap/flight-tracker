@@ -288,7 +288,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $token = $this->getProjectSetting("token", $pid);
             $server = $this->getProjectSetting("server", $pid);
             if ($token && $server) {
-                // Application::log("Got token with length of ".strlen($token)." for pid $pid", $pid);
+                Application::log("Got token with length of ".strlen($token)." for pid $pid", $pid);
                 $tokens[$pid] = $token;
                 $servers[$pid] = $server;
             }
@@ -315,7 +315,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 $metadata = Download::metadata($token, $server);
                 $repeatingForms = DataDictionaryManagement::getRepeatingForms($pid);
                 if (REDCapManagement::isMetadataFilled($metadata)) {
-                    // Application::log("Downloading data for pid $pid", $pid);
+                    Application::log("Downloading data for pid $pid", $pid);
                     $firstNames[$pid] = Download::firstnames($token, $server);
                     $lastNames[$pid] = Download::lastnames($token, $server);
                     $choices[$pid] = REDCapManagement::getChoices($metadata);
@@ -339,13 +339,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	    # push
 	    foreach ($pidsSource as $i => $sourcePid) {
-	        // Application::log("Searching through pid $sourcePid", $sourcePid);
+	        Application::log("Searching through pid $sourcePid", $sourcePid);
 	        if ($tokens[$sourcePid] && $servers[$sourcePid]) {
                 $sourceToken = $tokens[$sourcePid];
                 $sourceServer = $servers[$sourcePid];
                 foreach ($pidsDest as $i2 => $destPid) {
                     if (($destPid != $sourcePid) && $tokens[$destPid] && $servers[$destPid]) {
-                        // Application::log("Communicating between $sourcePid and $destPid", $destPid);
+                        Application::log("Communicating between $sourcePid and $destPid", $destPid);
                         $destToken = $tokens[$destPid];
                         $destServer = $servers[$destPid];
                         foreach (array_keys($firstNames[$destPid] ?? []) as $destRecordId) {
@@ -360,13 +360,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                             foreach ($combos as $nameAry) {
                                 $firstName = $nameAry["first"];
                                 $lastName = $nameAry["last"];
-                                // Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $sourcePid);
-                                // Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $destPid);
+                                Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $sourcePid);
+                                Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $destPid);
                                 $originalPid = CareerDev::getPid();
                                 CareerDev::setPid($sourcePid);
                                 if ($sourceRecordId = NameMatcher::matchName($firstName, $lastName, $sourceToken, $sourceServer)) {
-                                    // Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $sourcePid);
-                                    // Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $destPid);
+                                    Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $sourcePid);
+                                    Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $destPid);
 
                                     $sourceInfo = [
                                         "token" => $sourceToken,
