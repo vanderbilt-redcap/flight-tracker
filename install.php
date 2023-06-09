@@ -28,7 +28,7 @@ if ($action == "localizeVariables") {
 		$pid = Application::getSetting("pid");
 		$tokenName = Application::getSetting("tokenName");
 		$installCoeus = Application::getSetting("hasCoeus");
-		$institutions = Application::getInstitutions();
+        $displayInstitutions = Application::getInstitutions($pid, FALSE);
 		displayInstallHeaders($module, $token, $server, $pid, $tokenName);
         $departments = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST['departments']));
         $resources = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST['resources']));
@@ -36,7 +36,7 @@ if ($action == "localizeVariables") {
 			$lists = [
                 "departments" => $departments,
                 "resources" => $resources,
-                "institutions" => implode("\n", $institutions),
+                "institutions" => implode("\n", $displayInstitutions),
             ];
             foreach (REDCapManagement::getOptionalSettings() as $setting => $label) {
                 $lists[$setting] = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST[$setting] ?? ""));
@@ -77,6 +77,7 @@ if ($action == "localizeVariables") {
             'institution' => Sanitizer::sanitize($_POST['institution']),
             'short_institution' => Sanitizer::sanitize($_POST['short_institution']),
             'other_institutions' => Sanitizer::sanitize($_POST['other_institutions']),
+            'display_institutions' => Sanitizer::sanitize($_POST['display_institutions']),
             'token' => $newToken,
             'event_id' => $eventId,
             'pid' => $projectId,
@@ -118,7 +119,7 @@ if ($action == "localizeVariables") {
     $lists = [
         "departments" => Application::getSetting("departments", $pid),
         "resources" => Application::getSetting("resources", $pid),
-        "institutions" => implode("\n", Application::getInstitutions($pid)),
+        "institutions" => implode("\n", Application::getInstitutions($pid, FALSE)),
     ];
     foreach (REDCapManagement::getOptionalSettings() as $setting => $label) {
         $lists[$setting] = Application::getSetting($setting, $pid);
@@ -306,31 +307,36 @@ function changeGrantClass(name) {
 	$html .= "</tr>\n";
 
 	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'>Title:<br><span class='small'>(i.e., Name of Project)</span></td>\n";
-	$html .= "<td><input type='text' name='title'></td>\n";
+	$html .= "<td style='text-align: right;'><label for='title'>Title:<br><span class='small'>(i.e., Name of Project)</span></label></td>\n";
+	$html .= "<td><input type='text' id='title' name='title'></td>\n";
 	$html .= "</tr>\n";
 
 	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'><a href='".APP_PATH_WEBROOT."API/project_api.php?pid=".$projectId."'>REDCap Token</a> (32 characters):<br><span class='small'>with API Import/Export rights<br>(<b>overwrites entire project</b>)</span></td>\n";
-	$html .= "<td><input type='text' name='token' value='$defaultToken'></td>\n";
+	$html .= "<td style='text-align: right;'><label for='token'><a href='".APP_PATH_WEBROOT."API/project_api.php?pid=".$projectId."'>REDCap Token</a> (32 characters):<br><span class='small'>with API Import/Export rights<br>(<b>overwrites entire project</b>)</span></label></td>\n";
+	$html .= "<td><input type='text' id='token' name='token' value='$defaultToken'></td>\n";
 	$html .= "</tr>\n";
 
 	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'>Full Institution Name:<br><span class='small'>(e.g., Vanderbilt University Medical Center)<br>This should match what is reported on the <a href='https://reporter.nih.gov/' target='_blank'>NIH/Federal RePORTER systems</a> or in a <a href='https://pubmed.ncbi.nlm.nih.gov/' target='_blank'>PubMed paper</a>.</span></td>\n";
-	$html .= "<td><input type='text' name='institution'></td>\n";
+	$html .= "<td style='text-align: right;'><label for='institution'>Full Institution Name:<br><span class='small'>(e.g., Vanderbilt University Medical Center)<br>This should match what is reported on the <a href='https://reporter.nih.gov/' target='_blank'>NIH/Federal RePORTER systems</a> or in a <a href='https://pubmed.ncbi.nlm.nih.gov/' target='_blank'>PubMed paper</a>.</span></label></td>\n";
+	$html .= "<td><input type='text' id='institution' name='institution'></td>\n";
 	$html .= "</tr>\n";
 
 	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'>Short Institution Name:<br><span class='small'>(e.g., Vanderbilt)<br>This is the institution name that your scholars will be searched under in the NIH.</span></td>\n";
-	$html .= "<td><input type='text' name='short_institution'></td>\n";
+	$html .= "<td style='text-align: right;'><label for='short_institution'>Short Institution Name:<br><span class='small'>(e.g., Vanderbilt)<br>This is the institution name that your scholars will be searched under in the NIH.</span></label></td>\n";
+	$html .= "<td><input type='text' id='short_institution' name='short_institution'></td>\n";
 	$html .= "</tr>\n";
 
-	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'>Other Affiliated Institutions:<br><span class='small'>(Short Names, List Separated by Commas)<br>E.g., Vanderbilt pools resources to track scholars from Meharry and Tennessee State. These names will be searched from the NIH as well.<br>Optional.</span></td>\n";
-	$html .= "<td><input type='text' name='other_institutions'></td>\n";
-	$html .= "</tr>\n";
+    $html .= "<tr>\n";
+    $html .= "<td style='text-align: right;'><label for='other_institutions'>Other Affiliated Institutions:<br><span class='small'>(Short Names, List Separated by Commas)<br>E.g., Vanderbilt pools resources to track scholars from Meharry and Tennessee State. These names will be searched from the NIH as well.<br>Optional.</span></label></td>\n";
+    $html .= "<td><input type='text' id='other_institutions' name='other_institutions'></td>\n";
+    $html .= "</tr>\n";
 
-	$html .= "<tr>\n";
+    $html .= "<tr>\n";
+    $html .= "<td style='text-align: right;'><label for='display_institutions'>'Home' Institutions that Your Scholars Belong To:<br/><span class='small'>(Short Names, List Separated by Commas)<br/>E.g., Vanderbilt, Meharry, Tennessee State.</span></label></td>\n";
+    $html .= "<td><input type='text' id='display_institutions' name='display_institutions'></td>\n";
+    $html .= "</tr>\n";
+
+    $html .= "<tr>\n";
 	$html .= "<td style='text-align: right;'>Class of Project:<br><span class='small'>If the project is affiliated with a grant, specify what type of grant. Small variations exist for these grant classes.</span></td>\n";
 	$html .= "<td>";
 	$grantClasses = CareerDev::getGrantClasses();
@@ -338,15 +344,15 @@ function changeGrantClass(name) {
 	$grantClassName = "grant_class";
 	foreach ($grantClasses as $value => $label) {
 		$id = $grantClassName."_".$value;
-		array_push($grantClassRadios, "<input type='radio' id='$id' name='$grantClassName' value='$value' onclick='changeGrantClass(\"$grantClassName\");'><label for='$id'> $label</label>");
+		$grantClassRadios[] = "<input type='radio' id='$id' name='$grantClassName' value='$value' onclick='changeGrantClass(\"$grantClassName\");'><label for='$id'> $label</label>";
 	}
 	$html .= implode("<br>", $grantClassRadios);
 	$html .= "</td>\n";
 	$html .= "</tr>\n";
 
 	$html .= "<tr id='grant_number_row' style='display: none;'>\n";
-	$html .= "<td style='text-align: right;'>Grant Number (e.g., R01CA654321):</td>\n";
-	$html .= "<td><input type='text' name='grant_number'></td>\n";
+	$html .= "<td style='text-align: right;'><label for='grant_number'>Grant Number (e.g., R01CA654321):</label></td>\n";
+	$html .= "<td><input type='text' id='grant_number' name='grant_number'></td>\n";
 	$html .= "</tr>\n";
 
     $html .= "<tr>\n";
@@ -370,9 +376,9 @@ function changeGrantClass(name) {
     $zones = timezone_identifiers_list();
 	$currZone = date_default_timezone_get();
 	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'>Timezone:</td>\n";
+	$html .= "<td style='text-align: right;'><label for='timezone'>Timezone:</label></td>\n";
 	$html .= "<td>\n";
-	$html .= "<select name='timezone'>\n";
+	$html .= "<select name='timezone' id='timezone'>\n";
 	foreach ($zones as $zone) {
 		$html .= "<option value='$zone'";
 		if ($zone == $currZone) {
@@ -385,8 +391,8 @@ function changeGrantClass(name) {
 	$html .= "</tr>\n";
 
 	$html .= "<tr>\n";
-	$html .= "<td style='text-align: right;'>Admin Email(s):<br><span class='small'>(List Separated by Commas)</span></td>\n";
-	$html .= "<td><input type='text' name='email'></td>\n";
+	$html .= "<td style='text-align: right;'><label for='email'>Admin Email(s):<br><span class='small'>(List Separated by Commas)</span></label></td>\n";
+	$html .= "<td><input type='text' id='email' name='email'></td>\n";
 	$html .= "</tr>\n";
 
 	// turn off COEUS since few use it

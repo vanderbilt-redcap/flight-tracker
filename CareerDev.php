@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.7.18";
+		return "5.8.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -596,32 +596,41 @@ class CareerDev {
 		return count(self::getInstitutions());
 	}
 
-	public static function getInstitutions($pid = NULL) {
-		$shortInst = self::getShortInstitution($pid);
-		$longInst = self::getInstitution($pid);
+	public static function getInstitutions($pid = NULL, $searchOnly = TRUE) {
+        if ($searchOnly) {
+            $shortInst = self::getShortInstitution($pid);
+            $longInst = self::getInstitution($pid);
 
-		$institutions = array();
-		if (preg_match("/".strtolower($shortInst)."/", strtolower($longInst))) {
-			$institutions[] = $shortInst;
-			$institutions[] = $longInst;
-		} else {
-			$institutions[] = $longInst;
-		}
+            $institutions = array();
+            if (preg_match("/".strtolower($shortInst)."/", strtolower($longInst))) {
+                $institutions[] = $shortInst;
+                $institutions[] = $longInst;
+            } else {
+                $institutions[] = $longInst;
+            }
 
-		$otherInsts = preg_split("/\s*[,\/]\s*/", self::getSetting("other_institutions", $pid));
-		foreach ($otherInsts as $otherInst) {
-			if ($otherInst && !in_array($otherInst, $institutions)) {
-				$institutions[] = $otherInst;
-			}
-		}
-        foreach ($institutions as $i => $institution) {
-            $institutions[$i] = str_replace("&#039;", "'", $institution);
-            $institutions[$i] = str_replace("&#39;", "'", $institutions[$i]);
-            $institutions[$i] = str_replace("&amp;", "&", $institutions[$i]);
-            $institutions[$i] = str_replace("&quot;", "\"", $institutions[$i]);
+            $otherInsts = preg_split("/\s*[,\/]\s*/", self::getSetting("other_institutions", $pid));
+            foreach ($otherInsts as $otherInst) {
+                if ($otherInst && !in_array($otherInst, $institutions)) {
+                    $institutions[] = $otherInst;
+                }
+            }
+            foreach ($institutions as $i => $institution) {
+                $institutions[$i] = str_replace("&#039;", "'", $institution);
+                $institutions[$i] = str_replace("&#39;", "'", $institutions[$i]);
+                $institutions[$i] = str_replace("&amp;", "&", $institutions[$i]);
+                $institutions[$i] = str_replace("&quot;", "\"", $institutions[$i]);
+            }
+
+            return $institutions;
+        } else {
+            $displayInstitutionList = self::getSetting("display_institutions", $pid);
+            if (!$displayInstitutionList) {
+                return self::getInstitutions($pid, TRUE);
+            } else {
+                return preg_split("/\s*[,;]\s*/", trim($displayInstitutionList));
+            }
         }
-
-		return $institutions;
 	}
 
 	public static function isEligible($pid) {
@@ -821,8 +830,10 @@ class CareerDev {
             }
             if (file_exists(self::getCredentialsFile())) {
                 include(self::getCredentialsFile());
-                if (isset($info['prod'][$field])) {
+                if (isset($info['prod'][$field]) && ($pid == NEWMAN_SOCIETY_PROJECT)) {
                     return $info['prod'][$field];
+                } else if (isset($info['localhost'][$field]) && ($pid == LOCALHOST_TEST_PROJECT)) {
+                    return $info['localhost'][$field];
                 }
             }
             if (($field == "admin_email") || ($field == "adminEmail")) {
@@ -1036,8 +1047,8 @@ class CareerDev {
         return FALSE;
     }
 
-	public static function getMenu($menuName) {
-		$pid = self::getPid();
+	public static function getMenu($menuName, $pid = NULL) {
+		$pid = $pid ?: self::getPid();
 		$r = self::getREDCapDir();
         if ($menuName == "Grants") {
             $ary = [
@@ -1080,7 +1091,7 @@ class CareerDev {
                 "REDCap Reports" => $r."/DataExport/index.php",
                 "Missingness Report<br>(Computationally Expensive)" => self::link("/tablesAndLists/missingness.php"),
             ];
-            if (self::has("patent") && $switches->isOnForProject("Patents")) {
+            if (self::has("patent", $pid) && $switches->isOnForProject("Patents")) {
                 $ary["Patent Viewer"] = self::link("patents/view.php");
             }
             return $ary;
@@ -1090,7 +1101,7 @@ class CareerDev {
             $server = self::getSetting("server", $pid);
             $switches = new FeatureSwitches($token, $server, $pid);
 		    $ary = [];
-		    if (self::has("mentoring_agreement") && $switches->isOnForProject("Mentee-Mentor")) {
+		    if (self::has("mentoring_agreement", $pid) && $switches->isOnForProject("Mentee-Mentor")) {
                 $ary["Configure Mentee-Mentor Agreements"] = self::link("/mentor/config.php");
                 $ary["Add Mentors for Existing Scholars"] = self::link("addMentor.php");
                 $ary["Mentee-Mentor Agreements Dashboard"] = self::link("/mentor/dashboard.php");
@@ -1133,7 +1144,7 @@ class CareerDev {
 					"Dates" => self::link("/dashboard/dates.php"),
 					"Resources" => self::link("/dashboard/resources.php"),
 					];
-			if (self::has("mentoring_agreement")) {
+			if (self::has("mentoring_agreement", $pid)) {
 			    $ary["Mentee-Mentor Agreements"] = self::link("mentor/dashboard.php");
             }
             return $ary;
@@ -1226,7 +1237,7 @@ class CareerDev {
                 $ary["Lexical Translator"] = self::link("/lexicalTranslator.php");
             }
             $ary["Position Change Wrangler"] = self::link("/wrangler/positions.php");
-			if (self::has("patent") && $switches->isOnForProject("Patents")) {
+			if (self::has("patent", $pid) && $switches->isOnForProject("Patents")) {
                 $ary["Patent Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Patents";
             }
 			return $ary;

@@ -133,7 +133,9 @@ $(document).ready(function() {
 	presetValue("<?= $prefix ?>_name_first", "<?php echo findInCheck(['identifier_first_name', 'check_name_first', 'init_import_name_first']); ?>");
 	presetValue("<?= $prefix ?>_name_middle", "<?php echo findInCheck(['identifier_middle', 'check_name_middle', 'init_import_name_middle']); ?>");
 	presetValue("<?= $prefix ?>_name_last", "<?php echo findInCheck(['identifier_last_name', 'check_name_last', 'init_import_name_last']); ?>");
-	presetValue("<?= $prefix ?>_email", "<?php echo findInCheck(['identifier_email', 'check_email', 'init_import_email']); ?>");
+    presetValue("<?= $prefix ?>_email", "<?php echo findInCheck(['identifier_email', 'check_email', 'init_import_email']); ?>");
+    presetValue("<?= $prefix ?>_personal_email", "<?php echo findInCheck(['identifier_personal_email', 'check_personal_email', 'init_import_personal_email']); ?>");
+    presetValue("<?= $prefix ?>_phone", "<?php echo findInCheck(['identifier_phone', 'check_phone', 'init_import_phone']); ?>");
 	presetValue("<?= $prefix ?>_date_of_birth", "<?php echo REDCapManagement::YMD2MDY(findInCheck(['summary_dob', 'check_date_of_birth', 'init_import_date_of_birth'])); ?>");
 	$('#<?= $prefix ?>_date_of_birth-tr td .ui-button').hide();
 	presetValue("<?= $prefix ?>_gender", "<?php echo findInCheck(['summary_gender', 'check_gender', 'init_import_gender']); ?>");

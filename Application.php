@@ -293,8 +293,8 @@ class Application {
 		CareerDev::log($mssg, $pid);
 	}
 
-	public static function getInstitutions($pid = NULL) {
-		return CareerDev::getInstitutions($pid);
+	public static function getInstitutions($pid = NULL, $searchOnly = TRUE) {
+		return CareerDev::getInstitutions($pid, $searchOnly);
 	}
 
 	public static function getImportHTML() {
@@ -325,10 +325,10 @@ class Application {
         return $str;
     }
 
-	public static function getHeader($tokenName = "") {
-        $pid = CareerDev::getPID();
-        $token = self::getSetting("token", $pid);
-        $server = self::getSetting("server", $pid);
+	public static function getHeader($tokenName = "", $token = "", $server = "", $pid = "") {
+        $pid = $pid ?: CareerDev::getPID();
+        $token = $token ?: self::getSetting("token", $pid);
+        $server = $server?: self::getSetting("server", $pid);
 
         if (!$tokenName) {
             $tokenName = self::getSetting("tokenName", $pid);
@@ -412,22 +412,22 @@ p.recessed,div.recessed { margin: 2px; }
 
         $navBar = new NavigationBar();
         $navBar->addFALink("home", "Home", CareerDev::getHomeLink());
-        $navBar->addFAMenu("clinic-medical", "General", CareerDev::getMenu("General"));
+        $navBar->addFAMenu("clinic-medical", "General", CareerDev::getMenu("General", $pid));
         if ($switches->isOnForProject("Grants")) {
             $navBar->addMenu("<img src='".CareerDev::link("/img/grant_small.png")."'>Grants", CareerDev::getMenu("Grants"));
         }
         if ($switches->isOnForProject("Publications")) {
-            $navBar->addFAMenu("sticky-note", "Pubs", CareerDev::getMenu("Pubs"));
+            $navBar->addFAMenu("sticky-note", "Pubs", CareerDev::getMenu("Pubs", $pid));
         }
-        $navBar->addFAMenu("table", "View", CareerDev::getMenu("View"));
-        $navBar->addFAMenu("calculator", "Wrangle", CareerDev::getMenu("Wrangler"));
-        $navBar->addFAMenu("school", "Scholars", CareerDev::getMenu("Scholars"));
-        $navBar->addMenu("<img src='".CareerDev::link("/img/redcap_translucent_small.png")."'>REDCap", CareerDev::getMenu("REDCap"));
-        $navBar->addFAMenu("tachometer-alt", "Dashboards", CareerDev::getMenu("Dashboards"));
-        $navBar->addFAMenu("filter", "Cohorts / Filters", CareerDev::getMenu("Cohorts"));
-        $navBar->addFAMenu("chalkboard-teacher", "Mentors", CareerDev::getMenu("Mentors"));
-        $navBar->addFAMenu("pen", "Resources", CareerDev::getMenu("Resources"));
-        $navBar->addFAMenu("question-circle", "Help", CareerDev::getMenu("Help"));
+        $navBar->addFAMenu("table", "View", CareerDev::getMenu("View", $pid));
+        $navBar->addFAMenu("calculator", "Wrangle", CareerDev::getMenu("Wrangler", $pid));
+        $navBar->addFAMenu("school", "Scholars", CareerDev::getMenu("Scholars", $pid));
+        $navBar->addMenu("<img src='".CareerDev::link("/img/redcap_translucent_small.png")."'>REDCap", CareerDev::getMenu("REDCap", $pid));
+        $navBar->addFAMenu("tachometer-alt", "Dashboards", CareerDev::getMenu("Dashboards", $pid));
+        $navBar->addFAMenu("filter", "Cohorts / Filters", CareerDev::getMenu("Cohorts", $pid));
+        $navBar->addFAMenu("chalkboard-teacher", "Mentors", CareerDev::getMenu("Mentors", $pid));
+        $navBar->addFAMenu("pen", "Resources", CareerDev::getMenu("Resources", $pid));
+        $navBar->addFAMenu("question-circle", "Help", CareerDev::getMenu("Help", $pid));
         $str .= $navBar->getHTML();
 
         return $str;
@@ -549,11 +549,14 @@ SELECT DISTINCT s.project_id AS pid
             } else if (self::isServer("redcaptest.vanderbilt.edu")) {
                 # TODO Add test projects with plugin
             }
-            return $pids;
         } else {
             $module = self::getModule();
-            return $module->getPids();
+            $pids = $module->getPids();
         }
+        for ($i = 0; $i < count($pids); $i++) {
+            $pids[$i] = (string) $pids[$i];
+        }
+        return $pids;
     }
 
     public static function getActiveSourcePids() {

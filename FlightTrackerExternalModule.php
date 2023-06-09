@@ -1009,7 +1009,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
             echo "
 <script>
-    $(document).ready(function() { $('.chklist.round:eq(6)').hide(); });
+    $(document).ready(function() {
+        $('.chklist.round:eq(6)')
+            .hide()
+            .after('<p>By design, Flight Tracker projects should not move to production status because they need to update their Data Dictionaries without manual review. This must be done in development mode. Therefore, moving to production is disabled.</p>')
+    });
 </script>\n";
         } else if (PAGE == "DataEntry/index.php") {
             echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
@@ -1156,7 +1160,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
     function makeHeaders($token, $server, $pid, $tokenName) {
 	    $str = "";
-	    $str .= Application::getHeader($tokenName);
+	    $str .= Application::getHeader($tokenName, $token, $server, $pid);
         if (!CareerDev::isFAQ() && CareerDev::isHelpOn()) {
             $currPage = CareerDev::getCurrPage();
             $str .= "<script>$(document).ready(function() { showHelp('".CareerDev::getHelpLink()."', '".$currPage."'); });</script>";

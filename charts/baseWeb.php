@@ -51,16 +51,17 @@ function makeHeadersOfTables($type) {
 		}
 	</script>";
 }
+if (!isset($_GET['hideHeader'])) {
 
 ?>
 <!DOCTYPE html>
 <title>Flight Tracker for Scholars</title>
 <?php
-if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
-    echo makeHeaders(Application::getModule(), $token, $server, $pid, $tokenName);
-} else {
-    echo Application::getImportHTML();
-}
+    if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
+        echo makeHeaders(Application::getModule(), $token, $server, $pid, $tokenName);
+    } else {
+        echo Application::getImportHTML();
+    }
 
 ?>
 <?= CareerDev::makeBackgroundCSSLink() ?>
@@ -156,3 +157,7 @@ function search(page, div, name) {
 }
 
 </script>
+
+<?php
+
+}

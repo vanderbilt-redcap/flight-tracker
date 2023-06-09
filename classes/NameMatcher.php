@@ -873,7 +873,11 @@ class NameMatcher {
                 }
             }
 		}
-		return array("", "");
+        $ary = [];
+        for ($i = 0; $i < $parts; $i++) {
+            $ary[] = "";
+        }
+        return $ary;
 	}
 
 	public static function clearOfHonorifics($nodes) {

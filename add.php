@@ -19,7 +19,7 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
     list($lines, $matchedMentorUids, $newMentorNames) = parsePostForLines($_POST);
     $newLines = [];
     $originalMentorNames = [];
-    if (!empty($matchedMentorUids)) {
+    if (!empty($matchedMentorUids) || Application::isLocalhost()) {
         $mentorCol = 13;
         for ($i = 0; $i < count($lines); $i++) {
             if (isset($newMentorNames[$i])) {
@@ -35,7 +35,7 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
             }
         }
         $newUids = getUidsForMentors($newLines);
-        if (!empty($newUids)) {
+        if (!empty($newUids) || Application::isLocalhost()) {
             echo makeAdjudicationTable($lines, $newUids, $matchedMentorUids, $originalMentorNames);
         } else {
             commitChanges($token, $server, $lines, $matchedMentorUids, $pid, $createRecordsURI);
@@ -87,7 +87,7 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
         throw new \Exception("This should never happen.");
     }
 	$mentorUids = getUidsForMentors($lines);
-	if (!empty($mentorUids)) {
+	if (!empty($mentorUids) || Application::isLocalhost()) {
         echo makeAdjudicationTable($lines, $mentorUids, [], []);
         $url = APP_PATH_WEBROOT."ProjectGeneral/keep_alive.php?pid=".$pid;
         echo "<script>
@@ -501,7 +501,7 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
     $html .= "<script>
 $(document).ready(() => {
     if ($('.mentorKeep').length > 0) {
-        $('form#mainForm').prepend('<p class=\"centered\"><button onclick=\"checkAllMentors(); return false;\">Check All for Uploading Unmatched Mentors</button></p>');
+        $('form#mainForm').prepend('<p class=\"centered\"><button class=\"green\" onclick=\"checkAllMentors(); return false;\">Check All for Uploading Unmatched Mentors</button></p>');
     }
 });
 
@@ -527,7 +527,7 @@ function processMentorName($currMentorName, $currMentorUids, $i, $customLine, $c
         $hiddenField = "<input type='hidden' name='originalmentorname___$i' value='$escapedMentorName'>";
         $mentorKeep = "mentorkeep___$i";
         $html .= "<td class='red'>";
-        $html .= "<strong>No names in REDCap matched with $currMentorName.</strong><br>Keep mentor? <input type='radio' class='mentorKeep' name='$mentorKeep' id='$mentorKeep' value='1'> <label for='$mentorKeep'> Yes, upload anyways</label><br>Or perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
+        $html .= "<strong>No names in REDCap matched with $currMentorName.</strong><br>Keep mentor? <input type='radio' class='mentorKeep' name='$mentorKeep' id='$mentorKeep' value='1' /> <label for='$mentorKeep'> Yes, upload anyways</label><br>Or perhaps there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$i' value='$escapedMentorName'><br>";
         $html .= "<br>Or try a custom id?<br>".$customLine.$customHidden;
         $html .= "</td>";
     } else if (count($currMentorUids) == 1) {

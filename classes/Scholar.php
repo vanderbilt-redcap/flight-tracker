@@ -232,6 +232,28 @@ class Scholar {
         return new Result($finalValue, "", "", "", $this->pid);
     }
 
+    public function lookupPersonalEmail($rows) {
+        if ($email = $this->getPersonalEmail()) {
+            return new Result($email, "", "", "", $this->pid);
+        }
+        $vars = self::getDefaultOrder("identifier_personal_email");
+        $vars = $this->getOrder($vars, "identifier_personal_email");
+        $result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result->trimResult();
+        return $result;
+    }
+
+    public function lookupPhone($rows) {
+        if ($email = $this->getPhone()) {
+            return new Result($email, "", "", "", $this->pid);
+        }
+        $vars = self::getDefaultOrder("identifier_phone");
+        $vars = $this->getOrder($vars, "identifier_phone");
+        $result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $result->trimResult();
+        return $result;
+    }
+
     public function lookupEmail($rows) {
 	    if ($email = $this->getEmail()) {
 	        return new Result($email, "", "", "", $this->pid);
@@ -308,13 +330,28 @@ class Scholar {
         }
     }
 
-    # lookupEmail calculates the email; this simply returns the value that has already been saved
-	public function getEmail() {
-		$row = self::getNormativeRow($this->rows);
-		return $row['identifier_email'];
-	}
+    private function getNormativeField($field) {
+        $row = self::getNormativeRow($this->rows);
+        if ($row[$field]) {
+            return $row[$field];
+        }
+        return "";
+    }
 
-	public function getResourcesUsed() {
+    # lookupEmail calculates the email; this simply returns the value that has already been saved
+    public function getEmail() {
+        return $this->getNormativeField("identifier_email");
+    }
+
+    public function getPersonalEmail() {
+        return $this->getNormativeField("identifier_personal_email");
+    }
+
+    public function getPhone() {
+        return $this->getNormativeField("identifier_phone");
+    }
+
+    public function getResourcesUsed() {
 		$resources = array();
 		$choices = DataDictionaryManagement::getChoices($this->metadata);
 		foreach ($this->rows as $row) {
@@ -1863,13 +1900,23 @@ class Scholar {
             "followup_orcid_id" => "followup",
             "init_import_orcid_id" => "manual",
         );
-        $orders["identifier_email"] = array(
+        $orders["identifier_email"] = [
             "check_email" => "scholars",
             "followup_email" => "followup",
             "init_import_email" => "manual",
             "ldapds_mail" => "ldap",
             "ldap_mail" => "ldap",
-        );
+        ];
+        $orders["identifier_personal_email"] = [
+            "check_personal_email" => "scholars",
+            "followup_personal_email" => "followup",
+            "init_import_personal_email" => "manual",
+        ];
+        $orders["identifier_phone"] = [
+            "check_phone" => "scholars",
+            "followup_phone" => "followup",
+            "init_import_phone" => "manual",
+        ];
         $orders["identifier_twitter"] = [
             "check_twitter" => "scholars",
             "followup_twitter" => "followup",
@@ -3304,6 +3351,8 @@ class Scholar {
             "identifier_left_department" => "getNewDepartment",
             "identifier_orcid" => "getORCIDResult",
             "identifier_email" => "lookupEmail",
+            "identifier_personal_email" => "lookupPersonalEmail",
+            "identifier_phone" => "lookupPhone",
             "identifier_twitter" => "getTwitterHandle",
             "identifier_linkedin" => "getLinkedInHandle",
             "summary_degrees" => "getDegrees",

@@ -2,6 +2,8 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use function Vanderbilt\FlightTrackerExternalModule\appendCitationLabel;
+
 require_once(__DIR__ . '/ClassLoader.php');
 
 
@@ -15,28 +17,39 @@ class Portal {
             && isset($_GET['uid'])
         ) {
             # pre release
-            $username = Sanitizer::sanitize($_GET['uid']);
-            $info = REDCapLookup::getUserInfo($username);
-            return [$username, $info['user_firstname'] ?? "", $info['user_lastname'] ?? ""];
+            if ($_GET['uid'] == "bastarja") {
+                return ["bastarja", "Julie", "Bastarache"];
+            } else if ($_GET['uid'] == "edwardt5") {
+                return ["edwardt5", "Todd", "Edwards"];
+            } else {
+                $username = Sanitizer::sanitize($_GET['uid']);
+                $info = REDCapLookup::getUserInfo($username);
+                return [$username, $info['user_firstname'] ?? "", $info['user_lastname'] ?? ""];
+            }
         } else {
             return REDCapLookup::getCurrentUserIDAndName();
         }
     }
 
+    private static function downloadAndSave($setting, $func, $token, $server, $pid) {
+        $data = Download::$func($token, $server);
+        Application::saveSetting($setting, $data, $pid);
+        return $data;
+    }
+
     public static function getMatches($username, $firstName, $lastName, $pids) {
         $usernameInLC = strtolower($username);
-        $matchedRecordsByUserid = [];
-        $matchedRecordsByName = [];
+        $matches = [];
         $projectTitles = [];
         foreach ($pids as $pid) {
             $token = Application::getSetting("token", $pid);
             $server = Application::getSetting("server", $pid);
             $turnOffSet = Application::getSetting("turn_off", $pid);
-            if ($token && $server && !$turnOffSet) {
+            if ($token && $server && !$turnOffSet && REDCapManagement::isActiveProject($pid)) {
                 Application::setPid($pid);
-                $userids = Application::getSetting("userids", $pid) ?: [];
-                $firstNames = Application::getSetting("first_names", $pid) ?: [];
-                $lastNames = Application::getSetting("last_names", $pid) ?: [];
+                $userids = Application::getSetting("userids", $pid) ?: self::downloadAndSave("userids", "userids", $token, $server, $pid);
+                $firstNames = Application::getSetting("first_names", $pid) ?: self::downloadAndSave("first_names", "firstnames", $token, $server, $pid);
+                $lastNames = Application::getSetting("last_names", $pid) ?: self::downloadAndSave("last_names", "lastnames", $token, $server, $pid);
                 $foundMatch = FALSE;
 
                 $matchedRecordsInProject = [];
@@ -55,7 +68,7 @@ class Portal {
                     }
                 }
                 if (!empty($matchedRecordsInProject)) {
-                    $matchedRecordsByUserid[$pid] = $matchedRecordsInProject;
+                    $matches[$pid] = $matchedRecordsInProject;
                     $foundMatch = TRUE;
                 }
 
@@ -70,7 +83,7 @@ class Portal {
                     }
                 }
                 if (!empty($matchedRecordsInProject)) {
-                    $matchedRecordsByName[$pid] = $matchedRecordsInProject;
+                    $matches[$pid] = $matchedRecordsInProject;
                     $foundMatch = TRUE;
                 }
                 if ($foundMatch) {
@@ -81,8 +94,30 @@ class Portal {
                 error_log("Portal: Skipping $pid");
             }
         }
-        return [$matchedRecordsByName, $matchedRecordsByUserid, $projectTitles];
+        return [$matches, $projectTitles];
     }
+
+    public static function getPage($relativeFileLocation, $pid, $getParams = []) {
+        $getParams['pid'] = (string) $pid;
+        $page = preg_replace("/^\//", "", $relativeFileLocation);
+        $pageWithoutPHP = preg_replace("/\.php$/", "", $page);
+        $getParams['page'] = $pageWithoutPHP;
+        $getParams['prefix'] = Application::getPrefix();
+        $getParams['hideHeader'] = "1";
+        $getParams['headers'] = "false";
+        error_log("getPage ($pid): ".json_encode($getParams));
+        $filename = __DIR__."/../".$page;
+        error_log("file: ".$filename);
+
+        $oldGet = $_GET;
+        $_GET = $getParams;
+        ob_start();
+        include($filename);
+        $html = ob_get_clean();
+        $_GET = $oldGet;
+        return $html;
+    }
+
 
     public static function makeName($fn, $ln) {
         if ($fn && $ln) {

@@ -23,7 +23,8 @@ use \Vanderbilt\CareerDevLibrary\GrantFactory;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 if (isset($_GET['record'])) {
-    $highlightedRecord = Sanitizer::sanitize($_GET['record']);
+    $allRecords = Download::recordIds($token, $server);
+    $highlightedRecord = Sanitizer::getSanitizedRecord($_GET['record'], $allRecords);
 } else {
     $highlightedRecord = FALSE;
 }
@@ -40,7 +41,7 @@ $userids = Download::userids($token, $server);
 $cohort = $_GET['cohort'] ? ($_GET['cohort'] == "all") ? "all" : Sanitizer::sanitizeCohort($_GET['cohort']) : "";
 if (($cohort !== "") && ($cohort != "all")) {
     $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
-} else if ($cohort == "all") {
+} else if (($cohort == "all") || $highlightedRecord) {
     $records = Download::recordIds($token, $server);
 } else {
     $records = [];
@@ -138,7 +139,9 @@ if ($includeHeaders) {
     echo "</p></form>";
 }
 
-if (isset($_GET['cohort']) && !empty($records)) {
+$display = isset($_GET['cohort']) || $highlightedRecord;
+
+if ($display && !empty($records)) {
     $names = Download::names($token, $server);
     if ($otherMentorsOnly) {
         $possibleLastNames = [];

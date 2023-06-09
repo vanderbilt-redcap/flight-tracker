@@ -314,48 +314,15 @@ if (!empty($mentors)) {
     echo makeStatsHTML($trainingStats);
     echo makeStatsHTML($bibliometricScores);
 
-    ?>
-</table><br><br>
+    echo "</table><br/><br/>";
 
-<h2>Contents</h2>
-<table style='margin-left: auto; margin-right: auto; max-width: 800px; border-radius: 10px; padding: 8px;' class='blue'>
-	<tr>
-		<td class='profileHeader'>
-			<div class='labelCentered'><a href='#grant_wrangler'>Grant Wrangler</a></div>
-			<div class='valueCentered'>The Grant Wrangler helps you make manual changes to the structure of grants that is computed. You can change which grants are included or excluded. You can also change some of the properties in each grant. This information will be fed back into the computed summaries next time that script is run in the background.</div>
-		</td>
-	</tr>
-	<tr>
-		<td class='profileHeader'>
-			<div class='labelCentered'><a href='#pub_wrangler'>Publication Wrangler</a></div>
-			<div class='valueCentered'>The Publication Wrangler helps you filter through each publication to see if names are mismatched. Since names can sometimes be mis-identified in publications, the step of authenticating the citation is required.</div>
-		</td>
-	</tr>
-	<tr>
-		<td class='profileHeader'>
-			<div class='labelCentered'><a href='#data_sources'>Data Source Comparison</a></div>
-			<div class='valueCentered'>This allows you to see all of your data about grants at one glance. The information to the left is preferred over the information to the write. The computer automatically picks the data which is most preferred. Items in green are being used while items in red disagree with the information in the preferred grant. This helps you see where the information comes from.</div>
-		</td>
-	</tr>
-</table><br><br>
+    echo "<h2>Timelines</h2>";
+    require_once(__DIR__."/charts/timeline.php");
+    echo "<br/><br/>\n";
+    echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>\n";
+    echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".Application::link("socialNetwork/collaboration.php")."&record=$record&field=record_id&cohort=all&headers=false&mentors=on'></iframe><br><br>\n";
 
-<?php
-
-require_once(dirname(__FILE__)."/charts/timeline.php");
-echo "<br><br>\n";
-echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>\n";
-echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".Application::link("socialNetwork/collaboration.php")."&record=$record&field=record_id&cohort=all&headers=false&mentors=on'></iframe><br><br>\n";
-
-// if (!CareerDev::isCopiedProject()) {
-	// echo "<iframe class='centered' style='height: 600px;' id='grant_wrangler' src='".Application::link("wrangler/index.php")."&record=$record&headers=false'></iframe><br><br>\n";
-    // echo "<iframe class='centered' style='height: 600px;' id='pub_wrangler' src='".Application::link("wrangler/include.php")."&wranglerType=Publications&record=$record&headers=false'></iframe><br><br>\n";
-// }
-// echo "<iframe class='centered' style='height: 600px;' id='data_sources' src='".Application::link("tablesAndLists/dataSourceCompare.php")."&record=$record&headers=false'></iframe><br><br>\n";
-
-?>
-
-</div>
-<?php
+    echo "</div>";
 
 
 function getSearchForProfile() {

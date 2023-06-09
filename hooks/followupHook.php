@@ -100,7 +100,9 @@ $(document).ready(function() {
     presetValue("followup_name_maiden_enter", "<?php echo findInFollowup(['followup_name_maiden_enter', 'check_name_maiden_enter', 'init_import_name_maiden_enter']); ?>");
     presetValue("followup_name_preferred", "<?php echo findInFollowup(['followup_name_preferred', 'check_name_preferred', 'init_import_name_preferred']); ?>")
     presetValue("followup_name_preferred_enter", "<?php echo findInFollowup(['followup_name_preferred_enter', 'check_name_preferred_enter', 'init_import_name_preferred_enter']); ?>");
- 	presetValue("followup_email", "<?php echo findInFollowup(['identifier_email', 'followup_email', 'check_email', 'init_import_email']); ?>");
+    presetValue("followup_email", "<?php echo findInFollowup(['identifier_email', 'followup_email', 'check_email', 'init_import_email']); ?>");
+    presetValue("followup_personal_email", "<?php echo findInFollowup(['identifier_personal_email', 'followup_personal_email', 'check_personal_email', 'init_import_personal_email']); ?>");
+    presetValue("followup_phone", "<?php echo findInFollowup(['identifier_phone', 'followup_phone', 'check_phone', 'init_import_phone']); ?>");
  	presetValue("followup_primary_mentor", "<?php echo findInFollowup(['followup_primary_mentor', 'check_primary_mentor', 'init_import_primary_mentor', 'summary_mentor']); ?>");
 
 	presetValue('followup_primary_dept', '<?php echo findInFollowup(['followup_primary_dept', 'summary_primary_dept', 'check_primary_dept', 'init_import_primary_dept', "mstp_current_position_dept_institution"]); ?>');

@@ -257,13 +257,7 @@ class DataDictionaryManagement {
             }
         }
         if (!empty($metadata['file'])) {
-            if ($grantClass == "K") {
-                $mentorLabel = "Primary mentor during your K/K12 training period";
-            } else if ($grantClass == "T") {
-                $mentorLabel = "Primary mentor during your pre-doc/post-doc training period";
-            } else {
-                $mentorLabel = "Primary mentor (current)";
-            }
+            $mentorLabel = "Primary mentor during your training period";
             $fieldLabels = [];
             foreach ($metadata as $type => $md) {
                 $fieldLabels[$type] = self::getLabels($md);
@@ -1067,7 +1061,7 @@ class DataDictionaryManagement {
 
     private static function alterInstitutionFields(&$metadata, $pid) {
         if ($pid) {
-            $institutions = Application::getInstitutions();
+            $institutions = Application::getInstitutions($pid, FALSE);
             if (empty($institutions)) {
                 $institutions = ["Home Institution"];
             }
