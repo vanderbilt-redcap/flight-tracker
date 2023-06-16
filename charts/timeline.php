@@ -379,7 +379,7 @@ function makePubDots($rows, $token, $server, &$id, &$minTs, &$maxTs) {
         if ($citation->getVariable("data_source") == "citation") {
             $pmid = $citation->getPMID();
             $journal = $citation->getVariable("journal");
-            $link = Links::makeLink($citation->getURL(), $journal ?: $pmid ? "PMID ".$pmid : "Pub");
+            $link = Links::makeLink($citation->getURL(), $journal ?: ($pmid ? "PMID ".$pmid : "Pub"));
         } else if ($citation->getVariable("data_source") == "eric") {
             $ericID = $citation->getERICID();
             if ($ericID) {
