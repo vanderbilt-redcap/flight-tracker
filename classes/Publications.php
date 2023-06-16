@@ -1368,7 +1368,7 @@ class Publications {
         $checkedImgLoc = Wrangler::getImageLocation("checked", $this->pid, $wranglerType);
         $uncheckedImgLoc = Wrangler::getImageLocation("unchecked", $this->pid, $wranglerType);
         foreach ($pubmedNames as $i => $pubmedName) {
-            $nameSpans[] .= "<span class='clickableOn' onclick='togglePubMedName(\".name$i\", this, \"$checkedImgLoc\", \"$uncheckedImgLoc\");'>$pubmedName</span>";
+            $nameSpans[] .= "<span class='clickableOn' title='Click to Toggle' onclick='togglePubMedName(\".name$i\", this, \"$checkedImgLoc\", \"$uncheckedImgLoc\");'>$pubmedName</span>";
         }
         $html .= implode(" ", $nameSpans);
         $html .= "</p>";

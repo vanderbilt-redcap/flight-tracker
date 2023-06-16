@@ -187,9 +187,9 @@ function insertMentoringLink() {
 }
 
 function insertSurveyLink(selectId) {
-	var form = $('#'+selectId+' option:selected').val();
+	const form = $('#'+selectId+' option:selected').val();
 	if (form) {
-		var surveyLink = "[survey_link_"+form+"]";
+		const surveyLink = "[survey_link_"+form+"]";
 		appendToMessage(surveyLink);
 	} else {
 		alert("You must specify a survey in order to insert a link.");

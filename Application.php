@@ -64,6 +64,10 @@ class Application {
 	    return CareerDev::has($instrument, $pid);
     }
 
+    public static function getFlightConnectorURL() {
+        return "https://redcap.vanderbilt.edu/external_modules/?prefix=flight_connector&page=map&pid=172928&h=5986967536b44df5&NOAUTH";
+    }
+
 	public static function getApplicationColors($alphas = ["1.0"], $inHex = FALSE) {
         $colors = [];
         foreach ($alphas as $alpha) {

@@ -10,6 +10,7 @@ class BarChart extends Chart {
         $this->labels = $labels;
         $this->id = REDCapManagement::makeHTMLId($id);
         $this->displayLegend = FALSE;
+        $this->varName = $this->id."_".REDCapManagement::makeHash(8);
     }
 
     public function isCategoricalData() {
@@ -65,9 +66,9 @@ class BarChart extends Chart {
         $html .= "<div style='margin: 0 auto; width: {$width}px; height: {$height}px;' class='chartWrapper'>";
         $html .= "<canvas id='{$this->id}'></canvas>";
         $html .= "<script>
-    const {$this->id}"."_ctx = document.getElementById('{$this->id}').getContext('2d');
+    const {$this->varName} = document.getElementById('{$this->id}').getContext('2d');
 
-var {$this->id}"."_chart = new Chart({$this->id}"."_ctx, {
+let {$this->varName}_chart = new Chart({$this->varName}, {
     type: 'bar',
     data: {
       labels: ".json_encode($this->labels).",
@@ -129,6 +130,7 @@ $(document).ready(function() {
         return $html;
     }
 
+    protected $varName;
     protected $xAxisLabel = "";
     protected $yAxisLabel = "";
     protected $cols = [];

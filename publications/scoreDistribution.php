@@ -17,13 +17,13 @@ use \Vanderbilt\CareerDevLibrary\iCite;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
-$thresholdRCR = $_GET['thresholdRCR'] ? Sanitizer::sanitize($_GET['thresholdRCR']) : 2.0;
+$thresholdRCR = isset($_GET['thresholdRCR']) ? Sanitizer::sanitize($_GET['thresholdRCR']) : 2.0;
 $startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['start'] ?? "");
 $endDate = Sanitizer::sanitizeDate($_GET['end'] ?? "");
 $startTs = DateManagement::isDate($startDate) ? strtotime($startDate) : 0;
 $oneYear = 365 * 24 * 3600;
 $endTs = DateManagement::isDate($endDate) ? strtotime($endDate) : time() + $oneYear;
-$cohort = $_GET['cohort'] ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
+$cohort = isset($_GET['cohort']) ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
 
 $fields = [
     "record_id",
@@ -39,7 +39,11 @@ $metadata = Download::metadata($token, $server);
 $fieldLabels = REDCapManagement::getLabels($metadata);
 $firstNames = Download::firstnames($token, $server);
 $lastNames = Download::lastnames($token, $server);
-if ($cohort) {
+if (isset($_GET['record'])) {
+    $allRecords = Download::recordIds($token, $server);
+    $records = [Sanitizer::getSanitizedRecord($_GET['record'], $allRecords)];
+    $thresholdRCR = 0;
+} else if ($cohort) {
     $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
     $records = Download::recordIds($token, $server);
@@ -68,7 +72,7 @@ foreach (["citation_rcr", "citation_altmetric_score"] as $field) {
 $recordsToDownload = [];
 $foundList = [];
 foreach ($dist['citation_rcr'] as $location => $rcr) {
-    if ($rcr > $thresholdRCR) {
+    if ($rcr >= $thresholdRCR) {
         list($recordId, $instance) = preg_split("/:/", $location);
         if (!in_array($recordId, $recordsToDownload)) {
             $recordsToDownload[] = $recordId;
@@ -117,25 +121,27 @@ foreach ($pertinentCitations as $rcr => $cits) {
     }
 }
 
-echo "<h1>Publication Impact Measures</h1>";
-$link = Application::link("this");
-$baseLink = REDCapManagement::splitURL($link)[0];
-echo "<form action='$baseLink' method='GET'>";
-echo REDCapManagement::getParametersAsHiddenInputs($link);
-if (isset($_GET['limitPubs'])) {
-    $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
-    echo "<input type='hidden' name='limitPubs' value='$limitYear' />";
+if (!isset($_GET['hideHeader'])) {
+    echo "<h1>Publication Impact Measures</h1>";
+    $link = Application::link("this");
+    $baseLink = REDCapManagement::splitURL($link)[0];
+    echo "<form action='$baseLink' method='GET'>";
+    echo REDCapManagement::getParametersAsHiddenInputs($link);
+    if (isset($_GET['limitPubs'])) {
+        $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+        echo "<input type='hidden' name='limitPubs' value='$limitYear' />";
+    }
+    $cohorts = new Cohorts($token, $server, Application::getModule());
+    echo "<p class='centered'>" . $cohorts->makeCohortSelect($cohort) . "</p>";
+    echo Publications::makeLimitButton();
+    echo "<p class='centered'>";
+    echo "<label for='start'>Start Date (optional)</label>: <input type='date' id='start' name='start' value='$startDate' style='width: 150px;'>";
+    echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date (optional)</label>: <input type='date' id='end' name='end' value='$endDate' style='width: 150px;'>";
+    echo "</p>";
+    echo "<p class='centered'><label for='thresholdRCR'>Threshold Relative Citation Ratio (RCR) for List</label>: <input type='number' id='thresholdRCR' name='thresholdRCR' value='$thresholdRCR' style='width: 100px;'></p>";
+    echo "<p class='centered'><button>Re-Configure</button></p>";
+    echo "</form>";
 }
-$cohorts = new Cohorts($token, $server, Application::getModule());
-echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort)."</p>";
-echo Publications::makeLimitButton();
-echo "<p class='centered'>";
-echo "<label for='start'>Start Date (optional)</label>: <input type='date' id='start' name='start' value='$startDate' style='width: 150px;'>";
-echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date (optional)</label>: <input type='date' id='end' name='end' value='$endDate' style='width: 150px;'>";
-echo "</p>";
-echo "<p class='centered'><label for='thresholdRCR'>Threshold Relative Citation Ratio (RCR) for List</label>: <input type='number' id='thresholdRCR' name='thresholdRCR' value='$thresholdRCR' style='width: 100px;'></p>";
-echo "<p class='centered'><button>Re-Configure</button></p>";
-echo "</form>";
 
 $colorWheel = Application::getApplicationColors();
 $i = 0;
@@ -151,14 +157,12 @@ foreach ($dist as $field => $values) {
 
     echo "<h2>$label</h2>";
     echo "<h4>Median: $median (n = $n)</h4>";
-    $barChart = new BarChart($cols, $colLabels, $field);
+    $barChart = new BarChart($cols, $colLabels, $field."_".$pid);
     if ($i == 0) {
-        $jsLocs = $barChart->getJSLocations();
-        $cssLocs = $barChart->getCSSLocations();
-        foreach ($jsLocs as $loc) {
+        foreach ($barChart->getJSLocations() as $loc) {
             echo "<script src='$loc'></script>";
         }
-        foreach ($cssLocs as $loc) {
+        foreach ($barChart->getCSSLocations() as $loc) {
             echo "<link rel='stylesheet' href='$loc'>";
         }
     }
@@ -170,8 +174,14 @@ foreach ($dist as $field => $values) {
     $i++;
 }
 
-echo "<h2>High-Performing Citations (Above RCR of $thresholdRCR, Count of ".REDCapManagement::pretty(count($sortedCitations)).")</h2>";
-echo "<div class='max-width centered'>".implode("", $sortedCitations)."</div>";
+if (!isset($_GET['hideHeader'])) {
+    if ($thresholdRCR > 0) {
+        echo "<h2>High-Performing Citations (Above RCR of $thresholdRCR, Count of ".REDCapManagement::pretty(count($sortedCitations)).")</h2>";
+    } else {
+        echo "<h3>Citations (Count of ".REDCapManagement::pretty(count($sortedCitations)).")</h3>";
+    }
+    echo "<div class='max-width centered'>".implode("", $sortedCitations)."</div>";
+}
 
 function buildDistribution($values, $field) {
     if (empty($values)) {

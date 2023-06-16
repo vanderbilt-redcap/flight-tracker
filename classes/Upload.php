@@ -125,7 +125,24 @@ class Upload
         return self::rows($newRecordData, $token, $server);
     }
 
-    public static function deleteFormInstances($token, $server, $pid, $prefix, $recordId, $instances) {
+    public static function deleteFormInstances($token, $server, $pid, $prefix, $recordId, $instances)
+    {
+        if (method_exists("\REDCap", "deleteRecord")) {
+            $completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
+            if ($completeField) {
+                $instrument = preg_replace("/_complete$/", "", $completeField);
+                foreach ($instances as $instance) {
+                    \REDCap::deleteRecord($pid, $recordId, NULL, NULL, $instrument, $instance);
+                }
+            } else {
+                self::deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances);
+            }
+        } else {
+            self::deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances);
+        }
+    }
+
+    public static function deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances) {
         $records = Download::recordIds($token, $server);
         $batchSize = 10;
         if (Download::isCurrentServer($server)) {

@@ -15,6 +15,7 @@ use Vanderbilt\CareerDevLibrary\NameMatcher;
 use Vanderbilt\CareerDevLibrary\Upload;
 use Vanderbilt\CareerDevLibrary\MMAHelper;
 use Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\Portal;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/CareerDev.php");
@@ -806,10 +807,48 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
     }
 
-    function preprocessScholarPortal($token, $server, $pid) {
-        $this->setProjectSetting("userids", Download::userids($token, $server), $pid);
-        $this->setProjectSetting("first_names", Download::firstnames($token, $server), $pid);
-        $this->setProjectSetting("last_names", Download::lastnames($token, $server), $pid);
+    function preprocessScholarPortal($pids) {
+        $useridsByPid = [];
+        $firstNamesByPid = [];
+        $lastNamesByPid = [];
+        foreach ($pids as $pid) {
+            Application::log("Preprocessing lists for Scholar Portal", $pid);
+            $token = $this->getProjectSetting("token", $pid);
+            $server = $this->getProjectSetting("server", $pid);
+            if ($token && $server) {
+                $useridsByPid[$pid] = Download::userids($token, $server);
+                $firstNamesByPid[$pid] = Download::firstnames($token, $server);
+                $lastNamesByPid[$pid] = Download::lastnames($token, $server);
+
+                $this->setProjectSetting("userids", $useridsByPid[$pid] , $pid);
+                $this->setProjectSetting("first_names", $firstNamesByPid[$pid], $pid);
+                $this->setProjectSetting("last_names", $lastNamesByPid[$pid], $pid);
+            }
+        }
+
+        $today = date("Y-m-d");
+        foreach ($useridsByPid as $pid => $userids) {
+            Application::log("Preprocessing userids for Scholar Portal", $pid);
+            foreach ($userids as $recordId => $userid) {
+                if ($userid) {
+                    $previousSetting = Application::getSystemSetting($userid) ?: [];
+                    $needToUpdate = empty($previousSetting) || !$previousSetting["done"] || ($previousSetting["date"] != $today);
+                    if ($needToUpdate) {
+                        $firstName = $firstNamesByPid[$pid][$recordId] ?? "";
+                        $lastName = $lastNamesByPid[$pid][$recordId] ?? "";
+                        list($matches, $projectTitles) = Portal::getMatches($userid, $firstName, $lastName, $pids);
+                        $storedData = [
+                            "date" => $today,
+                            "matches" => $matches,
+                            "projectTitles" => $projectTitles,
+                            "done" => TRUE,
+                        ];
+                        Application::saveSystemSetting($userid, $storedData);
+                    }
+                }
+            }
+            Application::log("Done preprocessing", $pid);
+        }
     }
 
 	function executeCron() {
@@ -854,6 +893,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $this->enqueueMultiProjectCrons($activePids);
         }
 
+        $pidsToPreprocess = [];
+        if (Application::isVanderbilt() && !Application::isLocalhost()) {
+            $pidsToPreprocess[] = NEWMAN_SOCIETY_PROJECT;
+        } else if (Application::isLocalhost()) {
+            $pidsToPreprocess[] = LOCALHOST_TEST_PROJECT;
+        }
 		foreach ($activePids as $pid) {
             $this->cleanupLogs($pid);
             $token = $this->getProjectSetting("token", $pid);
@@ -866,7 +911,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             Application::log("Using $tokenName $adminEmail", $pid);
             if ($token && $server && !$turnOffSet) {
                 try {
-                    $this->preprocessScholarPortal($token, $server, $pid);
+                    $pidsToPreprocess[] = $pid;
                     # only have token and server in initialized projects
                     $mgr = new CronManager($token, $server, $pid, $this);
                     if ($this->getProjectSetting("run_tonight", $pid)) {
@@ -882,6 +927,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 }
             }
 		}
+        $this->preprocessScholarPortal($pidsToPreprocess);
 	}
 
     function enqueueMultiProjectCrons($pids) {
@@ -1100,6 +1146,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	function redcap_survey_page($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
 		$this->setupApplication();
+        $pid = $project_id;
+        $token = Application::getSetting("token", $pid);
+        $server = Application::getSetting("server", $pid);
         if (Application::isTable1Project($project_id)) {
             require_once(dirname(__FILE__) . "/hooks/table1SurveyHook.php");
         } else if ($instrument == "summary") {

@@ -2,7 +2,6 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Publications;
@@ -14,9 +13,9 @@ use \Vanderbilt\CareerDevLibrary\DateManagement;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 ?>
-<script src="<?= CareerDev::link("/charts/vis.min.js") ?>"></script>
-<link href="<?= CareerDev::link("charts/vis.min.css") ?>" rel="stylesheet" type="text/css" />
-<link href='<?= CareerDev::link("/css/career_dev.css") ?>' type='text/css' />
+<script src="<?= Application::link("/charts/vis.min.js") ?>"></script>
+<link href="<?= Application::link("charts/vis.min.css") ?>" rel="stylesheet" type="text/css" />
+<link href='<?= Application::link("/css/career_dev.css") ?>' type='text/css' />
 <?php
 
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -29,14 +28,6 @@ if (Grants::areFlagsOn($pid)) {
 $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CSS below
 
 ?>
-
-<style>
-body { font-size: 12px; }
-.visualization { background-color: white; margin-bottom: 32px; margin-top: 32px; }
-.Unfunded { border-color: #888888; }
-.Pending { border-color: #8dc63f; }
-.Awarded { border-color: #f4c3ff; }
-</style>
 
 <?php
 
@@ -183,17 +174,17 @@ foreach ($classes as $c) {
         echo implode("<td>&nbsp;</td>", $cells);
         echo "</tr></tbody></table>";
     }
-    echo "<div id='visualization$c' class='visualization'></div>";
+    echo "<div id='visualization".$pid."_$c' class='visualization'></div>";
 }
 
 ?>
 
 <script type="text/javascript">
-window.onload = function() {
-    const container = [];
-    const items = [];
-    const options = [];
-    const timeline = [];
+$(document).ready(function() {
+    const container_<?= $pid ?> = [];
+    const items_<?= $pid ?> = [];
+    const options_<?= $pid ?> = [];
+    const timeline_<?= $pid ?> = [];
     <?php
     foreach ($classes as $c) {
         $dataset = json_encode($grantsAndPubs[$c]);
@@ -201,14 +192,14 @@ window.onload = function() {
         $endDate = json_encode(date("Y-m-d", (int) $maxTs[$c]));
 
         echo "
-        container['$c'] = document.getElementById('visualization$c');
-        items['$c'] = new vis.DataSet($dataset);
-        options['$c'] = { start: $startDate, end: $endDate };
-        timeline['$c'] = new vis.Timeline(container['$c'], items['$c'], options['$c']);
+        container_".$pid."['$c'] = document.getElementById('visualization".$pid."_$c');
+        items_".$pid."['$c'] = new vis.DataSet($dataset);
+        options_".$pid."['$c'] = { start: $startDate, end: $endDate };
+        timeline_".$pid."['$c'] = new vis.Timeline(container_".$pid."['$c'], items_".$pid."['$c'], options_".$pid."['$c']);
         ";
     }
     ?>
-};
+});
 </script>
 
 
@@ -387,11 +378,8 @@ function makePubDots($rows, $token, $server, &$id, &$minTs, &$maxTs) {
         $ts = $citation->getTimestamp();
         if ($citation->getVariable("data_source") == "citation") {
             $pmid = $citation->getPMID();
-            if ($pmid) {
-                $link = Links::makeLink($citation->getURL(), "PMID: ".$pmid);
-            } else {
-                $link = "Pub";
-            }
+            $journal = $citation->getVariable("journal");
+            $link = Links::makeLink($citation->getURL(), $journal ?: $pmid ? "PMID ".$pmid : "Pub");
         } else if ($citation->getVariable("data_source") == "eric") {
             $ericID = $citation->getERICID();
             if ($ericID) {

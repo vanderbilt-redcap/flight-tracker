@@ -104,16 +104,22 @@ class Portal {
         $getParams['page'] = $pageWithoutPHP;
         $getParams['prefix'] = Application::getPrefix();
         $getParams['hideHeader'] = "1";
+        $getParams['hideHeaders'] = "1";
         $getParams['headers'] = "false";
-        error_log("getPage ($pid): ".json_encode($getParams));
         $filename = __DIR__."/../".$page;
-        error_log("file: ".$filename);
 
         $oldGet = $_GET;
         $_GET = $getParams;
         ob_start();
         include($filename);
         $html = ob_get_clean();
+        $html = preg_replace("/<h1>.+?<\/h1>/i", "", $html);
+        $html = str_replace("<h4>", "<h5>", $html);
+        $html = str_replace("</h4>", "</h5>", $html);
+        $html = str_replace("<h3>", "<h4>", $html);
+        $html = str_replace("</h3>", "</h4>", $html);
+        $html = str_replace("<h2>", "<h4>", $html);
+        $html = str_replace("</h2>", "</h4>", $html);
         $_GET = $oldGet;
         return $html;
     }
@@ -163,55 +169,55 @@ class Portal {
     # 3 words max
     public static function getMenu() {
         $menu = [];
-        $menu[] = [
-            "action" => "bio",
-            "title" => "Your Achievements",     // list of honors, pubs, grants & patents - flagging and can add; encouragement
+        $menu["Your Info"] = [];
+        $menu["Your Graphs"] = [];
+        $menu["Your Network"] = [];
+
+        $menu["Your Info"][] = [
+            "action" => "view",
+            "title" => "View",     // list of honors, pubs, grants & patents - flagging and can add; encouragement
         ];
-        // encouraging message if pubs are blank
-        $menu[] = [
+        $menu["Your Info"][] = [
+            "action" => "survey",
+            "title" => "Update",     // list of honors, pubs, grants & patents - flagging and can add; encouragement
+        ];
+        $menu["Your Info"][] = [
+            "action" => "honors",
+            "title" => "Honors &amp; Awards",     // new survey
+        ];
+        // TODO ORCID Bio Link
+
+        // TODO encouraging message if pubs are blank
+        $menu["Your Graphs"][] = [
             "action" => "scholar_collaborations",
-            "title" => "Your Publishing Collaborations",      // social network graph
+            "title" => "Publishing Collaborations",      // social network graph
         ];
-        $menu[] = [
+        $menu["Your Graphs"][] = [
             "action" => "pubs_impact",
             "title" => "Your Publishing Impact",      // combined & deduped RCR graph; Altmetric summary & links
         ];
-        $menu[] = [
+        $menu["Your Graphs"][] = [
             "action" => "timelines",
             "title" => "Your Grant Timelines",     // CDAs & all grants; encouraging message if blank
         ];
-        if (Application::isVanderbilt()) {
-            // need to check whether FTs track grant submissions
-            $menu[] = [
-                "action" => "submissions",
-                "title" => "Your Grant Submissions",    // timeline
-            ];
-        }
-        $menu[] = [
-            "action" => "group_collaborations",
-            "title" => "Group Publishing Collaborations",
-        ];
-        $menu[] = [
-            "action" => "info",
-            "title" => "Update Your Information",              // surveys; talk to each other
-        ];
-        $menu[] = [
-            "action" => "honors",
-            "title" => "Update Your Honors",             // prior honors + redcap survey; talk to each other
-        ];
-        $menu[] = [
+//         $menu["Your Graphs"][] = [
+//            "action" => "group_collaborations",
+//            "title" => "Group Publishing Collaborations",
+//        ];
+
+        $menu["Your Network"][] = [
             "action" => "mma",
             "title" => "Mentoring Portal",             // set up mentor(s); fill out MMAs; talk to each other
         ];
         if (Application::isVanderbilt()) {
-            $menu[] = [
+            $menu["Your Network"][] = [
                 "action" => "connect",
-                "title" => "Connect With Colleagues",     // flight connector
+                "title" => "Connect",     // flight connector
             ];
         }
-        $menu[] = [
+        $menu["Your Network"][] = [
             "action" => "board",
-            "title" => "Scholar Bulletin Board",
+            "title" => "Bulletin Board",
         ];
         return $menu;
     }

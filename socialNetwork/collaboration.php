@@ -46,7 +46,7 @@ if (($cohort !== "") && ($cohort != "all")) {
 } else {
     $records = [];
 }
-$networkChartName = "chartdiv";
+$networkChartName = "chartdiv_".$pid;
 $includeHeaders = !isset($_GET['headers']) || ($_GET['headers'] != "false");
 $possibleFields = ["record_id", "summary_primary_dept", "summary_gender", "summary_urm", "summary_degrees", "summary_current_division"];
 if (CareerDev::isVanderbilt() && in_array("identifier_grant_type", $metadataFields)) {
@@ -150,7 +150,6 @@ if ($display && !empty($records)) {
         $possibleLastNames = getExplodedLastNames($token, $server);
         $possibleFirstNames = getExplodedFirstNames($token, $server);
     }
-    $mentors = [];
     if ($includeMentors || $otherMentorsOnly) {
         $mentors = Download::primaryMentors($token, $server);
         addMentorNamesForRecords($possibleFirstNames, $possibleLastNames, $records, $mentors, $highlightedRecord);
@@ -314,7 +313,7 @@ if ($display && !empty($records)) {
         if (!$atBottomOfPage) {
             echo "<br><br>";
             list($barChartCols, $barChartLabels) = makePublicationColsAndLabels($pubs);
-            $chart = new BarChart($barChartCols, $barChartLabels, "barChart");
+            $chart = new BarChart($barChartCols, $barChartLabels, "barChart_$pid");
             $chart->setXAxisLabel("Year");
             $chart->setYAxisLabel("Number of Collaborations");
             echo $chart->getImportHTML();
@@ -322,8 +321,6 @@ if ($display && !empty($records)) {
         }
     }
 }
-
-
 
 function formatCollaborators($maxCollaboratorsForType, $maxCollabNamesForType, $numCollabsToShow) {
     $previousEntry = -999999;
@@ -444,7 +441,7 @@ function getPlainColorWheel() {
 //        "#a4c675",
 //        "#f7b768",
 //   ];
-    return Application::getApplicationColors(["1.0", "0.3"], TRUE);
+    return array_reverse(Application::getApplicationColors(["1.0", "0.3"], TRUE));
 }
 
 function generateColorWheel($numColors, $startYear, $endYear) {
@@ -541,18 +538,8 @@ function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
         $collaborations["given"][$fromRecordId] = [];
         foreach ($matches[$fromRecordId] as $toRecordId => $fromInstances) {
             if (isForIndividualScholars($indexByField)) {
-                if (isset($names[$fromRecordId])) {
-                    $from = $fromRecordId.": ".$names[$fromRecordId];
-                } else {
-                    # mentor
-                    $from = $fromRecordId;
-                }
-                if (isset($names[$toRecordId])) {
-                    $to = $toRecordId . ": " . $names[$toRecordId];
-                } else {
-                    # mentor
-                    $to = $toRecordId;
-                }
+                $from = $names[$fromRecordId] ?: "($fromRecordId)";
+                $to = $names[$toRecordId] ?: "($toRecordId)";
             } else if ($choices[$indexByField]) {
                 $from = $choices[$indexByField][$index[$fromRecordId]];
                 $to = $choices[$indexByField][$index[$toRecordId]];

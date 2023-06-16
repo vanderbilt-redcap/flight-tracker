@@ -765,11 +765,11 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	public function getSurveySelect($id = "survey") {
 		$html = "";
 		$html .= "<select id='$id'>\n";
-		$html .= "<option value=''>---SELECT---</option>\n";
+		$html .= "<option value=''>---SELECT---</option>";
 		foreach ($this->getSurveys() as $survey => $title) {
-			$html .= "<option value='$survey'>$title</option>\n";
+			$html .= "<option value='$survey'>$title</option>";
 		}
-		$html .= "</select>\n";
+		$html .= "</select>";
 		return $html;
 	}
 

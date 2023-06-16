@@ -1506,7 +1506,7 @@ class Scholar {
 
 	private static function getTrainingInstitutionFields() {
 	    return [
-	        "imported_degree",
+	        "imported_degree_institution",
             "check_degree0_institution",
             "check_degree1_institution",
             "check_degree2_institution",
@@ -2975,27 +2975,43 @@ class Scholar {
         }
 
 		if (is_numeric($value)) {
-			$choices = DataDictionaryManagement::getChoices($this->metadata);
-			$fieldName = $result->getField();
-			if (
+            $choices = DataDictionaryManagement::getChoices($this->metadata);
+            $fieldName = $result->getField();
+            if (
                 isset($choices[$fieldName])
                 && isset($choices[$fieldName][$value])
             ) {
-				$newValue = $choices[$fieldName][$value];
-				if ($newValue == "Other") {
-					foreach ($rows as $row) {
-						if ($row[$fieldName."_oth"]) {
-							$newValue = $row[$fieldName."_oth"];
-							break;
-						} else if ($row[$fieldName."_other"]) {
-							$newValue = $row[$fieldName."_other"];
-							break;
-						}
-					}
-				}
-				$result->setValue($newValue);
-			}
-			return $result;
+                $newValue = $choices[$fieldName][$value];
+                if ($newValue == "Other") {
+                    foreach ($rows as $row) {
+                        if ($row[$fieldName . "_oth"]) {
+                            $newValue = $row[$fieldName . "_oth"];
+                            break;
+                        } else if ($row[$fieldName . "_other"]) {
+                            $newValue = $row[$fieldName . "_other"];
+                            break;
+                        }
+                    }
+                }
+                $result->setValue($newValue);
+            }
+            return $result;
+        } else if (preg_match("/,/", $value)) {
+            $institutions = preg_split("/\s*,\s*/", $value);
+            $newInstitutions = [];
+            $choices = DataDictionaryManagement::getChoices($this->metadata);
+            $degrees = array_values($choices['imported_degree']);
+            foreach ($institutions as $institution) {
+                // bug from previous iterations - was including degrees, not degree institutions
+                if (!in_array($institution, $degrees)) {
+                    $newInstitutions[] = $institution;
+                }
+            }
+            $result->setValue(implode(", ", $newInstitutions));
+            if ($showDebug) {
+                Application::log("getInstitution returning ".$result->getValue());
+            }
+            return $result;
 		} else if (($value == "") || ($value == Application::getUnknown())) {
             if ($showDebug) {
                 Application::log("getInstitution returning blank");

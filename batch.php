@@ -31,6 +31,7 @@ th {  position: sticky; top: 0; background-color: #d4d4eb; }
 
 echo "<h1>Current Batch Queue (".count($queue).")</h1>";
 echo "<p class='centered'>Last Updated: $datetime</p>";
+echo "<p class='centered max-width'>This page shows the current state of Flight Tracker's batch queue. These data points are set up, usually at midnight, and run until the queue has completed. No rows mean that the batch queue doesn't have any more left to do for the day.</p>";
 echo "<table class='centered bordered' style='width: 100%;'>";
 echo "<thead>";
 echo "<tr>";
