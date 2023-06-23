@@ -550,11 +550,12 @@ class Download {
 
     public static function getDataByPid($pid, $fields, $records) {
         if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
-            return \REDCap::getData($pid, "json-array", $records, $fields);
+            $redcapData = \REDCap::getData($pid, "json-array", $records, $fields);
         } else {
             $json = \REDCap::getData($pid, "json", $records, $fields);
-            return json_decode($json, true);
+            $redcapData = json_decode($json, true);
         }
+        return Sanitizer::sanitizeREDCapData($redcapData);
 
     }
 
