@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.9.2";
+		return "5.10.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -424,7 +424,7 @@ class CareerDev {
     public static function getRootDir($withWebroot = FALSE) {
         global $server;
         $directoryDir = "/plugins/";
-        if ($withWebroot) {
+        if ($withWebroot && $server) {
             $newWebroot = str_replace("/api/", "", $server);
         } else if (Application::isLocalhost()) {
             $newWebroot = "https://localhost/redcap";

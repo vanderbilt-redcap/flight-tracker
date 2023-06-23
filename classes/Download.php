@@ -227,16 +227,16 @@ class Download {
 		$mentors = self::oneField($token, $server, "summary_mentor");
 		foreach ($mentors as $recordId => $mentor) {
 			if ($mentor) {
-                $regex = "/\s*;\s*/";
+                $regex = "/\s*[;\/]\s*/";
                 if (preg_match("/[A-Za-z\.]+\s+[A-Za-z\.]+\s*,\s*[A-Za-z\.]+\s+[A-Za-z\.]+/", $mentor)) {
                     # separating two names - not last name, first name
-                    $regex = "/\s*[;,]\s*/";
+                    $regex = "/\s*[;,\/]\s*/";
                 }
 				$recordMentors = preg_split($regex, $mentor);
 				$prettyRecordMentors = array();
 				foreach ($recordMentors as $recordMentor) {
                     $recordMentor = NameMatcher::pretty($recordMentor);
-					array_push($prettyRecordMentors, $recordMentor);
+					$prettyRecordMentors[] = $recordMentor;
 				}
 				$mentors[$recordId] = $prettyRecordMentors;
 			} else {
@@ -548,6 +548,16 @@ class Download {
         return "";
     }
 
+    public static function getDataByPid($pid, $fields, $records) {
+        if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
+            return \REDCap::getData($pid, "json-array", $records, $fields);
+        } else {
+            $json = \REDCap::getData($pid, "json", $records, $fields);
+            return json_decode($json, true);
+        }
+
+    }
+
 	private static function sendToServer($server, $data, $try = 1) {
 	    $maxTries = 5;
 	    if ($try > $maxTries) {
@@ -579,16 +589,15 @@ class Download {
                 }
                 Application::log("sendToServer: ".$pid." REDCap::getData $numFields fields $numRecords records", $pid);
             }
+            $redcapData = self::getDataByPid($pid, $fields, $records);
             if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
                 $output = "Done";    // to turn off retry
-                $redcapData = \REDCap::getData($pid, "json-array", $records, $fields);
                 $resp = "getData-array";
                 $method = "getData-array";
             } else {
-                $output = \REDCap::getData($pid, "json", $records, $fields);
+                $output = json_encode($redcapData);
                 $resp = "getData";
                 $method = "getData";
-                $redcapData = json_decode($output, true);
             }
             if (isset($_GET['test'])) {
                 Application::log("sendToServer: ".$pid." $method done with ".count($redcapData)." rows", $pid);
@@ -1267,7 +1276,12 @@ class Download {
             if ($hasInstanceNull) {
                 $nullInstanceStr = "instance IS NULL or";
             }
-            $query->add("and ($nullInstanceStr instance IN (".implode(",", $questionMarks)."))", $modifiedInstances);
+            if (!empty($questionMarks)) {
+                $query->add("and ($nullInstanceStr instance IN (".implode(",", $questionMarks)."))", $modifiedInstances);
+            } else {
+                $query->add("and (instance IS NULL)", $modifiedInstances);
+            }
+
             $questionMarks = [];
             while (count($questionMarks) < count($fields)) {
                 $questionMarks[] = "?";

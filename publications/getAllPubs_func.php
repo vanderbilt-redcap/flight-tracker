@@ -203,7 +203,7 @@ function removeDuplicates($token, $server, $rows, $recordId) {
 				echo "Duplicate in record $recordId (instance $instance)!\n";
                 Upload::deleteFormInstances($token, $server, $pid, "citation", $recordId, [$instance]);
 			} else if (($row['citation_include'] === '1') || ($row['citation_include'] === '')) {
-				array_push($alreadySeen, $pmid);
+				$alreadySeen[] = $pmid;
 			}
 		}
 	}
@@ -270,12 +270,12 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $rec
                         foreach ($uploadRows as $uploadRow) {
                             // mark to include only for VICTR
                             $uploadRow['citation_include'] = '1';
-                            array_push($upload, $uploadRow);
+                            $upload[] = $uploadRow;
                         }
                         if (!isset($citationIds['Final'][$recordId])) {
                             $citationIds['Final'][$recordId] = array();
                         }
-                        array_push($citationIds['Final'][$recordId], $newCitationId);
+                        $citationIds['Final'][$recordId][] = $newCitationId;
                     } else {
                         $citationIdsForRecord = [];
                         foreach ($citationIds as $type => $recordsWithData) {
@@ -342,21 +342,13 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         $middle = "";     // can set at some future point as this is searchable
         foreach ($lastNames as $lastName) {
 			foreach ($firstNames as $firstName) {
-				foreach ($institutions as $institution) {
-					if ($institution) {
-						if ($middle) {
-							$firstName .= " ".$middle;
-						}
-						CareerDev::log("Searching $lastName $firstName at $institution");
-						echo "Searching $lastName $firstName at $institution\n";
-                        $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institution);
-                        $uniquePMIDs = array_unique(array_merge($uniquePMIDs, $currPMIDs));
-					}
-				}
-
-				// $naturalFirstName = REDCapManagement::stripNickname($allFirstNames[$recordId]);
-                // $currPMIDs = Publications::searchPubMedForName($naturalFirstName." ".$allLastNames[$recordId]);
-                // addPMIDsIfNotFound($pmids, $citationIds, $currPMIDs, $recordId);
+                if ($middle) {
+                    $firstName .= " ".$middle;
+                }
+                Application::log("Searching $lastName $firstName at ". implode(", ", $institutions), $pid);
+                echo "Searching $lastName $firstName at ".implode(", ", $institutions)."\n";
+                $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institutions);
+                $uniquePMIDs = array_unique(array_merge($uniquePMIDs, $currPMIDs));
 			}
 		}
         addPMIDsIfNotFound($pmids, $citationIds, $uniquePMIDs, $recordId);
@@ -471,7 +463,7 @@ function binREDCapRows($redcapData, &$citationIds) {
 
 			if ($type) {
 				// CareerDev::log("Pushing {$row['citation_pmid']} to $type:$recordId");
-				array_push($citationIds[$type][$recordId], $row['citation_pmid']);
+				$citationIds[$type][$recordId][] = $row['citation_pmid'];
 			} else {
 				throw new \Exception("Could not find type for record {$recordId}.");
 			}

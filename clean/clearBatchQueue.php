@@ -1,6 +1,5 @@
 <?php
 
-
 use \Vanderbilt\CareerDevLibrary\CronManager;
 use \Vanderbilt\CareerDevLibrary\Application;
 

@@ -21,7 +21,7 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
 
-$classes = ["CDAs", "All"];
+$classes = ["PubsCDAs", "All"];
 if (Grants::areFlagsOn($pid)) {
     $classes[] = "Flagged";
 }
@@ -118,14 +118,16 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
         }
         if ($c == "All") {
             $grantType = "all";
-        } else if ($c == "CDAs") {
+        } else if (($c == "PubsCDAs") && !isset($_GET['noCDA'])) {
             $grantType = "prior";
+        } else if (($c == "PubsCDAs") && isset($_GET['noCDA'])) {
+            $grantType = "NONE";
         } else if ($c == "Flagged") {
             $grantType = "flagged";
         } else {
             throw new \Exception("Class is not set up $c");
         }
-        if ($grants->getCount($grantType) > 0) {
+        if (($grantType !== "NONE") && ($grants->getCount($grantType) > 0)) {
             if (isset($_GET['test'])) {
                 echo "grants->$grantType has ".$grants->getCount($grantType)." items<br>";
             }
@@ -133,7 +135,7 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
             $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $grantBars);
         }
 
-        if ($c == "CDAs") {
+        if ($c == "PubsCDAs") {
             $pubDots = makePubDots($rows, $token, $server, $id, $minTs[$c], $maxTs[$c]);
             $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $pubDots);
         }
@@ -155,9 +157,13 @@ if (isset($_GET['next'])) {
 }
 
 foreach ($classes as $c) {
-    if ($c == "All") {
+    if (($c == "All") && $hasSubmissions) {
         $vizTitle = "All Grants (Including Submissions)";
-    } else if ($c == "CDAs") {
+    } else if (($c == "All") && !$hasSubmissions) {
+        $vizTitle = "All Grants";
+    } else if (($c == "PubsCDAs") && isset($_GET['noCDA'])) {
+        $vizTitle = "Publications";
+    } else if (($c == "PubsCDAs") && !isset($_GET['noCDA'])) {
         $vizTitle = "Career Defining Awards &amp; Publications";
     } else if ($c == "Flagged") {
         $vizTitle = "Flagged Grants Only";
@@ -175,16 +181,17 @@ foreach ($classes as $c) {
         echo "</tr></tbody></table>";
     }
     echo "<div id='visualization".$pid."_$c' class='visualization'></div>";
+    echo "<div class='alignright'><button onclick='html2canvas(container_{$pid}[\"$c\"], { onrendered: (canvas) => { downloadCanvas(canvas, \"timeline.png\"); } }); return false;' class='smallest'>Save</button></div>";
 }
 
 ?>
 
 <script type="text/javascript">
-$(document).ready(function() {
-    const container_<?= $pid ?> = [];
-    const items_<?= $pid ?> = [];
-    const options_<?= $pid ?> = [];
-    const timeline_<?= $pid ?> = [];
+const container_<?= $pid ?> = {};
+const items_<?= $pid ?> = {};
+const options_<?= $pid ?> = {};
+const timeline_<?= $pid ?> = {};
+$(document).ready(() => {
     <?php
     foreach ($classes as $c) {
         $dataset = json_encode($grantsAndPubs[$c]);
@@ -272,7 +279,7 @@ function addIfValid($grant, &$grantsAndPubs, &$submissionTimestamps, &$id, $awar
             $grantNumber = $awardStatus.": ".$truncatedTitle;
         }
         $url = $grant->getVariable("url");
-        $grantAry['content'] = Links::makeLink($url, $grantNumber, TRUE);
+        $grantAry['content'] = isset($_GET['hideHeaders']) ? $grantNumber : Links::makeLink($url, $grantNumber, TRUE);
         $grantsAndPubs[] = $grantAry;
         $id++;
     }

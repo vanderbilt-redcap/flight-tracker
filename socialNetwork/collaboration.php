@@ -305,7 +305,7 @@ if ($display && !empty($records)) {
     if (!$noCollaborations) {
         $atBottomOfPage = (!$includeHeaders || isset($_GET['grants']));
         echo makeLegendHTML($indexByField);
-        $socialNetwork = new SocialNetworkChart($networkChartName, $chartData);
+        $socialNetwork = new SocialNetworkChart($networkChartName, $chartData, $pid);
         $socialNetwork->setNonRibbon(count($uniqueNames) > 100);
         echo $socialNetwork->getImportHTML();
         echo $socialNetwork->getHTML(900, 900, TRUE, [], $atBottomOfPage);

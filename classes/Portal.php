@@ -8,6 +8,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 
 class Portal {
+    const NONE = "NONE";
 
     public static function getCurrentUserIDAndName() {
         $version = Application::getVersion();
@@ -185,7 +186,7 @@ class Portal {
             "action" => "honors",
             "title" => "Honors &amp; Awards",     // new survey
         ];
-        // TODO ORCID Bio Link
+        // TODO ORCID Bio Link in Your Info
 
         // TODO encouraging message if pubs are blank
         $menu["Your Graphs"][] = [
@@ -194,11 +195,11 @@ class Portal {
         ];
         $menu["Your Graphs"][] = [
             "action" => "pubs_impact",
-            "title" => "Your Publishing Impact",      // combined & deduped RCR graph; Altmetric summary & links
+            "title" => "Publishing Impact",      // combined & deduped RCR graph; Altmetric summary & links
         ];
         $menu["Your Graphs"][] = [
             "action" => "timelines",
-            "title" => "Your Grant Timelines",     // CDAs & all grants; encouraging message if blank
+            "title" => "Grant &amp; Publication Timelines",     // Pubs & all grants; encouraging message if blank
         ];
 //         $menu["Your Graphs"][] = [
 //            "action" => "group_collaborations",
@@ -206,13 +207,24 @@ class Portal {
 //        ];
 
         $menu["Your Network"][] = [
-            "action" => "mma",
+            "action" => "mentoring",
             "title" => "Mentoring Portal",             // set up mentor(s); fill out MMAs; talk to each other
         ];
         if (Application::isVanderbilt()) {
             $menu["Your Network"][] = [
                 "action" => "connect",
-                "title" => "Connect",     // flight connector
+                "title" => "Connect With Colleagues",     // flight connector
+            ];
+
+            $menu["Your Network"][] = [
+                "action" => "resources",
+                "title" => "Resource Map",     // flight map
+            ];
+
+            # Newman Society success figures: externally launch career_dev/newmanFigures
+            $menu["Your Network"][] = [
+                "action" => "stats",
+                "title" => "Newman Society Statistics",
             ];
         }
         $menu["Your Network"][] = [
@@ -229,6 +241,131 @@ class Portal {
     public static function getHeaders() {
         $html = "<title>Flight Tracker: Scholar Portal</title>";
         $html .= Application::getImportHTML();
+        return $html;
+    }
+
+    public static function makeMentoringPortal($pid, $recordId, $projectTitle, $driverURL) {
+        $redcapData = Download::getDataByPid($pid, ["record_id", "summary_mentor", "summary_mentor_userid"], [$recordId]);
+        $mentorList = REDCapManagement::findField($redcapData, $recordId, "summary_mentor");
+        $mentorUseridList = REDCapManagement::findField($redcapData, $recordId, "summary_mentor_userid");
+        $mentors = $mentorList ? preg_split("/\s*[,;\/]\s*/", $mentorList) : [];
+        $mentorUserids = $mentorUseridList ? preg_split("/\s*[,;]\s*/", $mentorUseridList) : [];
+
+        $mssg = "<p class='centered max-width'>Your do not have a mentor set up. Would you like to add one?</p>";
+        $html = "<h3>Your Mentoring Portal for $projectTitle</h3>";
+        $html .= "<div id='searchResults'></div>";
+        if (Application::isMSTP($pid)) {
+            $html .= "<h4>Coming Soon</h4>";
+        } else if (empty($mentors) && empty($mentorUserids)) {
+            $html .= self::makeMentorSetup($driverURL, $pid, $recordId, $mssg);
+        } else if (empty($mentorUserids)) {
+            $i = 1;
+            foreach ($mentors as $mentorName) {
+                list($firstName, $lastName) = NameMatcher::splitName($mentorName, 2);
+                $lookup = new REDCapLookup($firstName, $lastName);
+                $uidsAndNames = $lookup->getUidsAndNames(TRUE);
+                $html .= self::processUidsAndNames($driverURL, $mentorName, $pid, $recordId, $uidsAndNames, $i, "<p class='centered max-width'>This mentor has no matches. Would you like to add one?</p>");
+                $i++;
+            }
+        } else if (empty($mentors)) {
+            # User ID but no name; This should not happen without a configuration error
+            $mentorNames = [];
+            foreach ($mentorUserids as $mentorUserid) {
+                $info = REDCapLookup::getUserInfo($mentorUserid);
+                if (!empty($info)) {
+                    $mentorNames[] = $info['user_firstname']." ".$info['user_lastname'];
+                }
+            }
+            if (!empty($mentorNames)) {
+                $mentors = $mentorNames;
+                $mentorList = implode(", ", $mentors);
+                $uploadRow = ["record_id" => $recordId, "summary_mentor" => $mentorList];
+                Upload::rowsByPid([$uploadRow], $pid);
+                $html .= self::makeLiveMentorPortal($mentors, $mentorUserids, $pid, $projectTitle);
+            } else {
+                $html .= self::makeMentorSetup($driverURL, $pid, $recordId, $mssg);
+            }
+        } else {
+            $html .= self::makeLiveMentorPortal($mentors, $mentorUserids, $pid, $projectTitle);
+        }
+        return $html;
+    }
+
+    public static function processUidsAndNames($driverURL, $mentorName, $pid, $recordId, $uidsAndNames, $i, $priorMessage = "") {
+        $html = "<h4>$mentorName</h4>";
+        if (empty($uidsAndNames)) {
+            $html .= self::makeMentorSetup($driverURL, $pid, $recordId, $priorMessage, $i);
+        } else {
+            $html .= self::makeConfirmationTable($driverURL, $mentorName, $pid, $recordId, $uidsAndNames, $i);
+        }
+        return $html;
+    }
+
+    private static function makeConfirmationTable($url, $mentorName, $pid, $recordId, $uidsAndNames, $index) {
+        $html = "<table class='centered max-width'><tbody>";
+        if (count($uidsAndNames) == 1) {
+            $radioName = "mentor_$index"."_yn";
+            $html .= "<tr>";
+            foreach ($uidsAndNames as $uid => $name) {
+                $html .= "<td>User-id: $uid ($name)</td>";
+                $html .= "<td>Is this the correct user?";
+                $html .= "<br/><input type='radio' name='$radioName' id='mentor_$index"."_yes' value='1' /> <label for='mentor_$index"."_yes'>Yes</label>";
+                $html .= "<br/><input type='radio' name='$radioName' id='mentor_$index"."_no' value='0' /> <label for='mentor_$index"."_no'>No</label>";
+                $html .= "</td>";
+            }
+            $html .= "</tr>";
+        } else {
+            $radioName = "mentor_$index"."_multi";
+            $html .= "<tr>";
+            $html .= "<td style='max-width: 200px;'>Which of these are mentor $mentorName?</td>";
+            $html .= "<td style='text-align: left;'>";
+            $lines = [];
+            $lines[] = "<input type='radio' name='$radioName' id='mentor_$index"."_".self::NONE."' value='".self::NONE."' /> <label for='mentor_$index"."_".self::NONE."'>None of the below</label>";
+            foreach ($uidsAndNames as $uid => $name) {
+                $lines[] = "<input type='radio' name='$radioName' id='mentor_$index"."_$uid' value='$uid' /> <label for='mentor_$index"."_$uid'>$uid ($name)</label>";
+            }
+            $html .= implode("<br/>", $lines);
+            $html .= "</td>";
+            $html .= "</tr>";
+        }
+        $html .= "</tbody></table>";
+        $html .= "<p class='centered max-width'><button onclick='portal.selectMentors(\"$url\", \"$pid\", \"$recordId\", \"$mentorName\", \"[name=$radioName]\"); return false;'>Make Selection</button></p>";
+        return $html;
+    }
+
+    private static function makeMentorSetup($url, $pid, $recordId, $priorMessage = "", $index = NULL) {
+        $suffix = isset($index) ? "_".$index : "";
+        $html = "";
+        if ($priorMessage) {
+            $html .= $priorMessage;
+        }
+        $html .= "<p class='centered max-width'><input type='text' id='mentor$suffix' name='mentor$suffix' placeholder='Mentor Name' /></p>";
+
+        $lines = [];
+        $lines[] = "<button onclick='portal.searchForMentor(\"$url\", \"$pid\", \"$recordId\", \"#mentor$suffix\"); return false;'>Search If They Have REDCap Access</button>";
+        $lines[] = "";
+        $lines[] = "<strong>-OR-</strong>";
+        $lines[] = "";
+        $lines[] = "<label for='mentor_userid$suffix'>Input the Mentor's User ID for Accessing REDCap</label>";
+        $lines[] = "<input type='text' id='mentor_userid$suffix' name='mentor_userid$suffix' placeholder=\"Mentor's User ID\" />";
+        $lines[] = "<button onclick='portal.submitNameAndUserid(\"$url\", \"$pid\", \"$recordId\", \"#mentor$suffix\", \"#mentor_userid$suffix\"); return false;'>Submit Name &amp; User ID</button>";
+
+        $html .= "<p class='centered max-width'>".implode("<br/>", $lines)."</p>";
+        return $html;
+    }
+
+    private static function makeLiveMentorPortal($mentors, $mentorUserids, $pid, $projectTitle) {
+        $html = "<p class='centered max-width'>";
+        if (count($mentors) == 1) {
+            $mentorUseridList = implode(", ", $mentorUserids);
+            $html .= "Your mentor is {$mentors[0]}, and they have access to REDCap through the user-id $mentorUseridList.";
+        } else {
+            $html .= "Your mentors are ".REDCapManagement::makeConjunction($mentors).". The following user-id(s) provide them access: ".REDCapManagement::makeConjunction($mentorUserids).".";
+        }
+        $html .= "</p>";
+
+        $mmaURL = Application::getMenteeAgreementLink($pid);
+        $html .= "<h4>".Links::makeLink($mmaURL, "Access Your Mentee-Mentor Agreement for $projectTitle", TRUE)."</h4>";
         return $html;
     }
 }

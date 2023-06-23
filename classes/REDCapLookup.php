@@ -36,14 +36,10 @@ class REDCapLookup {
 
     public function getUidsAndNames($showEmails = FALSE) {
         $uids = [];
-        if ($showEmails) {
-            $sqlField = ", user_email";
-        } else {
-            $sqlField = "";
-        }
+        $sqlField = $showEmails ? "user_email" : "";
+        $clause = $showEmails ? ", ".$sqlField : "";
 
         $module = Application::getModule();
-        $params = [];
         if (!$this->firstName || !$this->lastName) {
             if (!$this->firstName) {
                 $name = $this->lastName;
@@ -51,14 +47,14 @@ class REDCapLookup {
                 $name = $this->firstName;
             }
             $params = [strtolower($name), strtolower($name)];
-            $sql = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = ? OR lower(user_lastname) = ?";
+            $sql = "SELECT username, user_firstname, user_lastname$clause FROM redcap_user_information WHERE lower(user_firstname) = ? OR lower(user_lastname) = ?";
         } else {
             $firstNames = NameMatcher::explodeFirstName($this->firstName);
             if (count($firstNames) > 1) {
                 foreach ($firstNames as $firstName) {
                     if ($firstName && !NameMatcher::isInitial($firstName)) {
                         $params2 = [strtolower($this->firstName), strtolower($this->lastName)];
-                        $sql2 = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = ? AND lower(user_lastname) = ?";
+                        $sql2 = "SELECT username, user_firstname, user_lastname$clause FROM redcap_user_information WHERE lower(user_firstname) = ? AND lower(user_lastname) = ?";
                         $results2 = $module->query($sql2, $params2);
                         while ($row2 = $results2->fetch_assoc()) {
                             if ($row2['username']) {
@@ -74,7 +70,7 @@ class REDCapLookup {
                 return $uids;
             } else {
                 $params = [strtolower($this->firstName), strtolower($this->lastName)];
-                $sql = "SELECT username, user_firstname, user_lastname $sqlField FROM redcap_user_information WHERE lower(user_firstname) = ? AND lower(user_lastname) = ?";
+                $sql = "SELECT username, user_firstname, user_lastname$clause FROM redcap_user_information WHERE lower(user_firstname) = ? AND lower(user_lastname) = ?";
             }
         }
         $results = $module->query($sql, $params);
@@ -85,6 +81,9 @@ class REDCapLookup {
                     $uids[$row['username']] .= " ".$row[$sqlField];
                 }
             }
+        }
+        foreach ($uids as $uid => $name) {
+            $uids[$uid] = trim($name);
         }
         ksort($uids);
         return $uids;

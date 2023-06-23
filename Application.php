@@ -325,6 +325,7 @@ class Application {
         }
         $str .= "<link rel='stylesheet' href='".self::link("/css/jquery.sweet-modal.min.css")."' />";
         $str .= "<script src='".self::link("/js/jquery.sweet-modal.min.js")."'></script>";
+        $str .= "<script src='".self::link("/js/html2canvas.min.js")."'></script>";
         $str .= "<script>function getCSRFToken() { return '".self::generateCSRFToken()."'; }</script>";
         return $str;
     }
@@ -406,7 +407,7 @@ p.recessed,div.recessed { margin: 2px; }
         if ($base64 = $module->getBrandLogo()) {
             $str .= "<div class='topBar' style='float:right;'><img src='$base64' class='brandLogo'></div>";
         } else {
-            $str .= "<div class='topBar' style='float:right;'><p class='recessed'>$tokenName</p></div>";
+            $str .= "<div class='topBar' style='float:right;'><p class='alignright greytext padded nomargin bolded'>$tokenName</p></div>";
         }
         $str .= "</div>";
         $str .= "</header>";
@@ -584,8 +585,11 @@ SELECT DISTINCT s.project_id AS pid
                 echo "plugin project<br>";
             }
             global $info;
-            if (isset($info['prod'])) {
+            if (isset($info['prod']) && Application::isVanderbilt()) {
                 $sourcePid = $info['prod']['pid'];
+                return self::link("mentor/intro.php", $sourcePid, TRUE);
+            } else if (isset($info['localhost']) && Application::isLocalhost()) {
+                $sourcePid = $info['localhost']['pid'];
                 return self::link("mentor/intro.php", $sourcePid, TRUE);
             }
             self::log("Warning! Could not find prod in info!");
@@ -628,6 +632,13 @@ SELECT DISTINCT s.project_id AS pid
 
     public static function getExporterFields($metadata) {
         return REDCapManagement::screenForFields($metadata, CareerDev::$exporterFields);
+    }
+
+    public static function isMSTP($pid = NULL) {
+        if (!$pid) {
+            $pid = CareerDev::getPid();
+        }
+        return Application::isVanderbilt() && ($pid == 149668);   // TODO For now
     }
 
     public static function getMSTPHashFields() {

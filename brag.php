@@ -11,6 +11,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Altmetric;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\Links;
 
 if (!isset($_GET['showHeaders'])) {
     define("NOAUTH", TRUE);
@@ -39,7 +40,7 @@ if ($cohort && ($cohort != 'all')) {
 $currRecord = FALSE;
 $currName = "";
 $names = Download::names($token, $server);
-if ($_GET['record']) {
+if (isset($_GET['record']) && ($_GET['record'] !== "")) {
     $currRecord = REDCapManagement::getSanitizedRecord($_GET['record'], $recordIds);
     if ($currRecord && ($currRecord != 'all')) {
         $recordIds = [$currRecord];
@@ -85,7 +86,7 @@ if (isset($_GET['showHeaders'])) {
         $noCitationsMessage = "The widget has not yet been configured.";
     }
 
-    $url = Application::link("this", $pid, TRUE);
+    $url = (empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
     $url = preg_replace("/\&showHeaders[^\&]*/", "", $url);
     $url = preg_replace("/showHeaders[^\&]*\&/", "", $url);
     $url .= "&NOAUTH";
@@ -196,7 +197,6 @@ if (isset($_GET['asc'])) {
 } else {
     $asc = FALSE;
 }
-$allCitations = [];
 $allPMIDs = [];
 $multipleScholarPMIDs = [];
 $firstNames = Download::firstnames($token, $server);
@@ -212,7 +212,26 @@ for ($i = 1; $i <= 5; $i++) {
     $trainingFields[] = "summary_award_end_date_".$i;
 }
 $trainingFields = REDCapManagement::filterOutInvalidFields($metadata, $trainingFields);
-$citationFields = Application::getCitationFields($metadata);
+$citationFields = [
+    "record_id",
+    "citation_pmid",
+    "citation_include",
+    "citation_flagged",
+    "citation_ts",
+    "citation_pmcid",
+    "citation_doi",
+    "citation_authors",
+    "citation_title",
+    "citation_pub_types",
+    "citation_mesh_terms",
+    "citation_journal",
+    "citation_volume",
+    "citation_issue",
+    "citation_year",
+    "citation_month",
+    "citation_day",
+    "citation_pages",
+];
 if (isset($_GET['test'])) {
     echo "Records: ".json_encode($recordIds)."<br>";
 }
@@ -231,6 +250,7 @@ foreach ($timestampFieldData as $recordId => $timestampInstanceData) {
     }
 }
 
+$instancesToDownload = [];
 foreach ($recordIds as $recordId) {
     if ($hasAfterTraining) {
         $trainingData = Download::fieldsForRecords($token, $server, $trainingFields, [$recordId]);
@@ -277,7 +297,11 @@ foreach ($recordIds as $recordId) {
 
     if (in_array("citation_ts", $metadataFields)) {
         if ($hasTimestampData) {
-            $includeData = Download::fieldsForRecords($token, $server, ["record_id", "citation_include"],[$recordId]);
+            $includeData = Download::fieldsForRecords($token, $server, ["record_id", "citation_include"], [$recordId]);
+            if (isset($_GET['test'])) {
+                Application::log("Record $recordId has includeData " . REDCapManagement::json_encode_with_spaces($includeData), $pid);
+            }
+
             $includes = [];
             $timestamps = $timestampFieldData[$recordId] ?? [];
             foreach ($includeData as $row) {
@@ -285,55 +309,114 @@ foreach ($recordIds as $recordId) {
                     $includes[$row['redcap_repeat_instance']] = $row['citation_include'];
                 }
             }
+            if (isset($_GET['test'])) {
+                Application::log("Record $recordId has includes " . REDCapManagement::json_encode_with_spaces($includes), $pid);
+            }
 
-            $instancesToDownload = [];
+            $instancesToDownload[$recordId] = [];
             foreach ($includes as $instance => $value) {
                 $ts = REDCapManagement::isDate($timestamps[$instance] ?? "") ? strtotime($timestamps[$instance]) : FALSE;
-                if ($ts && ($value == 1) && ($ts >= $startTs) && ($ts <= $endTs)) {
-                    $instancesToDownload[] = $instance;
+                if (isset($_GET['test'])) {
+                    Application::log("Record $recordId Instance $instance comparing " . date("Y-m-d", $ts) . " and " . date("Y-m-d", $startTs) . " - " . date("Y-m-d", $endTs), $pid);
+                }
+                if ($ts && ($value == 1) && ($ts >= $startTs) && (($endTs === FALSE) || ($ts <= $endTs))) {
+                    $instancesToDownload[$recordId][] = $instance;
                 }
             }
-            $redcapData = Download::fieldsForRecordAndInstances($token, $server, $citationFields, $recordId, "citation", $instancesToDownload);
-        } else {
-            $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
-        }
-    } else {
-        $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
-    }
-
-    $pubs = new Publications($token, $server, $pid);
-    $pubs->setRows($redcapData);
-    $recordCitations = $pubs->getSortedCitationsInTimespan($startTs, $endTs, "Included", FALSE);
-    foreach ($recordCitations as $citation) {
-        $pmid = $citation->getPMID();
-        if (isset($allPMIDs[$pmid])) {
-            if (!isset($multipleScholarPMIDs[$pmid])) {
-                $multipleScholarPMIDs[$pmid] = [];
-                $multipleScholarPMIDs[$pmid][] = $allPMIDs[$pmid];
-            }
-            $multipleScholarPMIDs[$pmid][] = ["lastName" => $lastNames[$recordId], "firstName" => $firstNames[$recordId]];
-        } else {
-            $allCitations[] = $citation;
-            $allPMIDs[$pmid] = ["lastName" => $lastNames[$recordId], "firstName" => $firstNames[$recordId]];
         }
     }
 }
 
+$totalToDownload = 0;
+foreach ($instancesToDownload as $recordId => $instancesForRecord) {
+    $totalToDownload += count($instancesForRecord);
+}
+
+$doQuickWay = ($totalToDownload > 75);
+if ($doQuickWay) {
+    $citationFields = ["record_id", "citation_pmid", "citation_include", "citation_ts", "citation_full_citation", "citation_doi"];
+    if (isset($_GET['test'])) {
+        Application::log("DOING QUICK WAY", $pid);
+    }
+}
+
 $citationsWithTs = [];
-foreach ($allCitations as $citation) {
-    if (isset($_GET['altmetrics'])) {
-        $citationStr = $citation->getImage("left");
+foreach ($recordIds as $recordId) {
+    if (isset($instancesToDownload[$recordId])) {
+        $redcapData = Download::fieldsForRecordAndInstances($token, $server, $citationFields, $recordId, "citation", $instancesToDownload[$recordId]);
     } else {
-        $citationStr = "";
+        $redcapData = Download::fieldsForRecords($token, $server, $citationFields, [$recordId]);
     }
-    $pmid = $citation->getPMID();
-    if (isset($multipleScholarPMIDs[$pmid])) {
-        // Application::log("Calling getCitation $pmid with multiple: ".REDCapManagement::json_encode_with_spaces($multipleScholarPMIDs[$pmid]));
-        $citationStr .= $citation->getCitation($multipleScholarPMIDs[$pmid]);
-    } else {
-        $citationStr .= $citation->getCitationWithLink(FALSE, TRUE);
+    if (isset($_GET['test'])) {
+        Application::log("Record $recordId has ".count($redcapData)." rows of REDCap data", $pid);
     }
-    $citationsWithTs[$citationStr] = $citation->getTimestamp();
+
+    if ($doQuickWay && !empty($redcapData)) {
+        foreach ($redcapData as $row) {
+            if (isset($_GET['test'])) {
+                Application::log("Record $recordId row: ".json_encode($row));
+            }
+            $ts = $row['citation_ts'] ? strtotime($row['citation_ts']) : FALSE;
+            if (
+                $row['citation_include']
+                && $ts
+                && ($ts >= $startTs)
+                && (
+                    ($endTs === FALSE)
+                    || ($ts <= $endTs)
+                )
+            ) {
+                $pmid = $row['citation_pmid'];
+                $doi = $row['citation_doi'];
+                $citationStr = $row['citation_full_citation']." ".Links::makeLink(Citation::getURLForPMID($pmid), "PubMed PMID: $pmid", TRUE);
+                $citationStr = str_replace("doi:$doi", Links::makeLink("https://www.doi.org/".$doi, "doi:$doi", TRUE), $citationStr);
+                $citationsWithTs[$citationStr] = $ts;
+            }
+        }
+    } else if (!empty($redcapData)) {
+        $allCitations = [];
+        $pubs = new Publications($token, $server, $metadata);
+        $pubs->setRows($redcapData);
+        $recordCitations = $pubs->getSortedCitationsInTimespan($startTs, $endTs, "Included", FALSE);
+        if (isset($_GET['test'])) {
+            Application::log("Record $recordId has ".count($recordCitations)." citations", $pid);
+        }
+        foreach ($recordCitations as $citation) {
+            $pmid = $citation->getPMID();
+            if (isset($allPMIDs[$pmid])) {
+                if (!isset($multipleScholarPMIDs[$pmid])) {
+                    $multipleScholarPMIDs[$pmid] = [];
+                    $multipleScholarPMIDs[$pmid][] = $allPMIDs[$pmid];
+                }
+                $multipleScholarPMIDs[$pmid][] = ["lastName" => $lastNames[$recordId], "firstName" => $firstNames[$recordId]];
+            } else {
+                $allCitations[] = $citation;
+                $allPMIDs[$pmid] = ["lastName" => $lastNames[$recordId], "firstName" => $firstNames[$recordId]];
+            }
+        }
+        if (isset($_GET['test'])) {
+            Application::log("All Citations ".count($allCitations), $pid);
+        }
+        foreach ($allCitations as $citation) {
+            if (isset($_GET['altmetrics'])) {
+                $citationStr = $citation->getImage("left");
+            } else {
+                $citationStr = "";
+            }
+            $pmid = $citation->getPMID();
+            if (isset($multipleScholarPMIDs[$pmid])) {
+                // Application::log("Calling getCitation $pmid with multiple: ".REDCapManagement::json_encode_with_spaces($multipleScholarPMIDs[$pmid]));
+                $citationStr .= $citation->getCitation($multipleScholarPMIDs[$pmid]);
+            } else {
+                $citationStr .= $citation->getCitationWithLink(FALSE, TRUE);
+            }
+            $citationsWithTs[$citationStr] = $citation->getTimestamp();
+        }
+    }
+}
+
+if (isset($_GET['test'])) {
+    Application::log("Citations with TS ".count($citationsWithTs), $pid);
 }
 
 if ($asc) {
@@ -420,7 +503,7 @@ function makeOrList($units, $suffix, $ary) {
                 $priorities[] = "'#$unit2$suffix'";
             }
         }
-        $html[] = "<label for='$unit$suffix'>$ucUnit:</label> <input onchange=\"enforceOneNumber(".implode(", ", $priorities).");\" type=\"number\" min=\"0\" id=\"$unit$suffix\" name=\"$unit$suffix\" style=\"width: 75px;\" value=\"{$ary['days']}\" />";
+        $html[] = "<label for='$unit$suffix'>$ucUnit:</label> <input onchange=\"enforceOneNumber(".implode(", ", $priorities).");\" type=\"number\" min=\"0\" id=\"$unit$suffix\" name=\"$unit$suffix\" style=\"width: 75px;\" value=\"{$ary[$unit]}\" />";
     }
     return implode("&nbsp;<strong>-OR-</strong>&nbsp;", $html);
 }

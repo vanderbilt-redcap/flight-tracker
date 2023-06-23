@@ -28,6 +28,18 @@ function togglePubMedName(nameSelector, ob, checkedImg, uncheckedImg) {
 	}
 }
 
+function downloadCanvas(canvas, filename) {
+	if (filename.match(/\.png$/i)) {
+		const imageData = canvas2PNG(canvas);
+		forceDownloadUrl(imageData, filename);
+	} else if (filename.match(/\.jpg$/) || filename.match(/\.jpeg/)) {
+		const imageData = canvas2JPEG(canvas);
+		forceDownloadUrl(imageData, filename);
+	} else {
+		console.error("Invalid file type");
+	}
+}
+
 function turnOffStatusCron() {
 	$.post(getPageUrl("testConnectivity.php"), { 'redcap_csrf_token': getCSRFToken(), turn_off: 1 }, function(html) {
 		console.log("Turned off "+html);

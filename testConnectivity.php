@@ -8,7 +8,7 @@ require_once(dirname(__FILE__)."/CareerDev.php");
 
 if ($_POST['turn_on'] || $_POST['turn_off']) {
     if ($_POST['turn_on']) {
-        $value = "1";
+        $value = time();
     } else if ($_POST['turn_off']) {
         $value = "";
     } else {
@@ -22,13 +22,14 @@ if ($_POST['turn_on'] || $_POST['turn_off']) {
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/drivers/14_connectivity.php");
 
+$oneHour = 3600;
 $cronStatus = CareerDev::getSetting("send_cron_status", $pid);
-if ($cronStatus) {
+if ($cronStatus && (time() <= $cronStatus + $oneHour)) {
     $status = "On";
     $link = "<button id='status_link' onclick='turnOffStatusCron(); return false;'>Turn off status cron</button>";
 } else {
     $status = "Off";
-    $link = "<button id='status_link' onclick='turnOnStatusCron(); return false;'>Turn on status cron</button>";
+    $link = "<button id='status_link' onclick='turnOnStatusCron(); return false;'>Turn on status cron (for max of 60 minutes)</button>";
 }
 $statusMssg = "<p class='centered max-width padded' style='background-color: rgba(128,128,128,0.3); margin: auto;'>Current Cron Connectivity-Checker Status: <span class='bolded' id='status'>$status</span>. $link<br>If enabled, status alerts every minute are sent to $adminEmail.</p>"
 

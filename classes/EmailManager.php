@@ -257,7 +257,10 @@ class EmailManager {
                                     Application::log("Sending $name scheduled at ".date("Y-m-d H:i", $ts), $this->pid);
                                 }
                                 $result = $this->$func($emailSetting, $name, $type);
-							    $sentEmails[$name] = time();
+                                if (!Application::isLocalhost()) {
+                                    Application::log("Sent to $name scheduled at ".date("Y-m-d H:i", $ts), $this->pid);
+                                }
+                                $sentEmails[$name] = time();
 							} else if ($this->isReadyToSend($ts - $this->preparingMins * $oneMinute, $currTimes)) {
                                 $this->sendPreviewEmail($emailSetting, $name);
                             }
@@ -274,19 +277,17 @@ class EmailManager {
 				}
 			}
 		}
-        if (Application::isVanderbilt()) {
-            # log notes will break on localhost because $_GET['test'] is enabled for verbose output
-            $format = "Y-m-d H:i";
-            foreach ($sentEmails as $sendName => $ts) {
-                if (!Application::isLocalhost()) {
-                    Application::log("$logHeader: $sendName sent at ".date($format, $ts).".", $this->pid);
-                }
+        # log notes will break on localhost because $_GET['test'] is enabled for verbose output
+        $format = "Y-m-d H:i";
+        foreach ($sentEmails as $sendName => $ts) {
+            if (!Application::isLocalhost()) {
+                Application::log("$logHeader: $sendName sent at ".date($format, $ts).".", $this->pid);
             }
-            if (!empty($sentEmails)) {
-                foreach ($currTimes as $currTime) {
-                    if (!Application::isLocalhost()) {
-                        Application::log("$logHeader: Sending emails for " . date($format, (int)$currTime) . "; process spawned at " . date($format, $_SERVER['REQUEST_TIME'] ?? 0), $this->pid);
-                    }
+        }
+        if (!empty($sentEmails)) {
+            foreach ($currTimes as $currTime) {
+                if (!Application::isLocalhost()) {
+                    Application::log("$logHeader: Sending emails for " . date($format, (int)$currTime) . "; process spawned at " . date($format, $_SERVER['REQUEST_TIME'] ?? 0), $this->pid);
                 }
             }
         }
@@ -418,7 +419,9 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	# returns records of emails
 	private function sendEmail($emailSetting, $settingName, $whenType, $toField = "who") {
+        Application::log("Preparing Email to ".$emailSetting["who"], $this->pid);
 		$emailData = $this->prepareEmail($emailSetting, $settingName, $whenType, $toField);
+        Application::log("Prepared ".count($emailData)." Emails", $this->pid);
 		if (!empty($emailData)) {
 			return $this->sendPreparedEmail($emailData, ($toField != "who"));
 		}
@@ -446,6 +449,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	# returns records of emails
 	private function sendPreparedEmail($emailData, $isTest = FALSE) {
+        Application::log("sendPrepared ".count($emailData)." emails: ".($isTest ? "TEST" : "REAL"), $this->pid);
 		$name = $emailData["name"];
 		$mssgs = $emailData["mssgs"];
 		$to = $emailData["to"];

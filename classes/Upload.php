@@ -288,7 +288,44 @@ class Upload
         return array();
     }
 
-public static function metadata($metadata, $token, $server) {
+    // avoids design rights and development mode issues
+    public static function metadataNoAPI($metadata, $pid) {
+        if (!is_array($metadata)) {
+            Application::log("Upload::metadataNoAPI: first parameter should be array", $pid);
+            die();
+        }
+        if (!Sanitizer::sanitizePid($pid)) {
+            throw new \Exception("Invalid pid");
+        }
+
+        require_once(APP_PATH_DOCROOT."Classes/MetaData.php");
+        require_once(APP_PATH_DOCROOT."Classes/Logging.php");
+
+        self::adaptToUTF8($metadata);
+
+        // Save a flat item-based metadata array
+        $dd_array = \MetaData::convertFlatMetadataToDDarray($metadata);
+        list ($errors, $warnings, $dd_array) = \MetaData::error_checking($dd_array, FALSE, FALSE);
+        if (!empty($errors)) {
+            throw new \Exception("Input errors: ".strip_tags(implode("\n", $errors)));
+        }
+
+        $errors = \MetaData::save_metadata($dd_array, FALSE, TRUE, $pid);
+        $count = count($dd_array['A']);
+
+        // Return any errors found when attempting to commit
+        if (!empty($errors)) {
+            throw new \Exception("Upload errors: ".strip_tags(implode("\n", $errors)));
+        } else {
+            \MetaData::createDataDictionarySnapshot();
+            \Logging::logEvent("", "redcap_metadata", "MANAGE", $pid, "project_id = " . $pid, "Upload data dictionary");
+
+            return $count;
+        }
+
+    }
+
+    public static function metadata($metadata, $token, $server) {
 		self::adaptToUTF8($metadata);
 		if (!is_array($metadata)) {
 			Application::log("Upload::metadata: first parameter should be array");
@@ -303,6 +340,9 @@ public static function metadata($metadata, $token, $server) {
         }
 
         $pid = Application::getPID($token);
+        if ($pid) {
+            return self::metadataNoAPI($metadata, $pid);
+        }
         if (REDCapManagement::isInProduction($pid)) {
             REDCapManagement::setToDevelopment($pid);
         }
@@ -428,11 +468,34 @@ public static function metadata($metadata, $token, $server) {
             return ["error" => "Could not decode base64"];
         }
     }
+
+    public static function projectSettingsNotAPI($settings, $pid) {
+        require_once(APP_PATH_DOCROOT."Classes/Project.php");
+        require_once(APP_PATH_DOCROOT."Classes/Logging.php");
+
+        $Proj = new \Project($pid);
+        \Logging::logEvent("", "redcap_projects", "MANAGE", $pid, "project_id = " . $pid, "Import project information");
+
+        $project_fields = \Project::getAttributesApiExportProjectInfo();
+        foreach ($project_fields as $key => $hdr)
+        {
+            if (isset($settings[$hdr]))
+            {
+                $Proj->project[$key] = $settings[$hdr];
+            }
+        }
+        $Proj->setProjectValues();
+        return count($settings);
+    }
+
 	public static function projectSettings($settings, $token, $server) {
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
         $pid = Application::getPID($token);
+        if ($pid) {
+            return self::projectSettingsNotAPI($settings, $pid);
+        }
         $server = Sanitizer::sanitizeURL($server);
         if (!$server) {
             throw new \Exception("Invalid URL");

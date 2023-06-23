@@ -441,7 +441,7 @@ class Scholar {
     }
 
     public function isMSTP() {
-        return Application::isVanderbilt() && ($this->pid == 149668);
+        return Application::isMSTP($this->pid);
     }
 
     private function searchForAndTranslateSpecialResults($rows, $field) {

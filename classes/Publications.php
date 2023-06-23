@@ -177,13 +177,20 @@ class Publications {
 	    return $newRows;
     }
 
-    public static function searchPubMedForName($first, $last, $pid, $institution = "") {
+    public static function searchPubMedForName($first, $last, $pid, $institutions = []) {
+        if (!is_array($institutions)) {
+            $institutions = [$institutions];
+        }
         $first = preg_replace("/\s+/", "+", $first);
         $last = preg_replace("/\s+/", "+", $last);
-        $institution = preg_replace("/\s+/", "+", $institution);
         $term = $first."+".$last."%5Bau%5D";
-        if ($institution) {
-            $term .= "+AND+" . Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "%5Bad%5D";
+        $institutionSearchNodes = [];
+        foreach ($institutions as $institution) {
+            $institution = preg_replace("/\s+/", "+", $institution);
+            $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
+        }
+        if (!empty($institutionSearchNodes)) {
+            $term .= "AND (".implode("+OR+", $institutionSearchNodes).")";
         }
         $pmids = self::queryPubMed($term, $pid);
 
@@ -1448,15 +1455,11 @@ class Publications {
             $pmidsMatchedByFirst = [];
             foreach ($lastNames as $lastName) {
                 foreach ($firstNames as $firstName) {
-                    foreach ($institutions as $institution) {
-                        if ($institution) {
-                            if (isset($middleName) && $middleName) {
-                                $firstName .= " ".$middleName;
-                            }
-                            $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institution);
-                            $pmidsMatchedByFirst = array_unique(array_merge($pmidsMatchedByFirst, $currPMIDs));
-                        }
+                    if (isset($middleName) && $middleName) {
+                        $firstName .= " ".$middleName;
                     }
+                    $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institutions);
+                    $pmidsMatchedByFirst = array_unique(array_merge($pmidsMatchedByFirst, $currPMIDs));
                 }
             }
 
@@ -1464,12 +1467,8 @@ class Publications {
             $pmidsMatchedByMiddle = [];
             foreach ($lastNames as $lastName) {
                 foreach ($candidateNames as $candidateName) {
-                    foreach ($institutions as $institution) {
-                        if ($institution) {
-                            $currPMIDs = Publications::searchPubMedForName($candidateName, $lastName, $pid, $institution);
-                            $pmidsMatchedByMiddle = array_unique(array_merge($pmidsMatchedByMiddle, $currPMIDs));
-                        }
-                    }
+                    $currPMIDs = Publications::searchPubMedForName($candidateName, $lastName, $pid, $institutions);
+                    $pmidsMatchedByMiddle = array_unique(array_merge($pmidsMatchedByMiddle, $currPMIDs));
                 }
             }
 

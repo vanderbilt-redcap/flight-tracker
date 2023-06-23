@@ -44,6 +44,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $this->setupApplication();
         $activePids = $this->getPids();
         foreach ($activePids as $pid) {
+            Application::log("Minute cron running", $pid);      // TODO Remove - temporary
+        }
+        foreach ($activePids as $pid) {
             # note return at end of successful run because only need to run once
             $token = $this->getProjectSetting("token", $pid);
             $server = $this->getProjectSetting("server", $pid);
@@ -63,6 +66,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Batch Job Exception", $mssg);
                 }
                 return;
+            } else {
+                Application::log("No token or server", $pid);
             }
         }
     }
@@ -74,6 +79,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	function emails() {
 	    $this->setupApplication();
         $activePids = $this->getPids();
+        $oneHour = 3600;
         // CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		foreach ($activePids as $pid) {
 			if (REDCapManagement::isActiveProject($pid)) {
@@ -85,7 +91,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         $tokenName = $this->getProjectSetting("tokenName", $pid);
                         $adminEmail = $this->getProjectSetting("admin_email", $pid);
                         $cronStatus = $this->getProjectSetting("send_cron_status", $pid);
-                        if ($cronStatus) {
+                        if ($cronStatus && (time() <= $cronStatus + $oneHour)) {
                             $mgr = new CronManager($token, $server, $pid, $this);
                             loadTestingCrons($mgr);
                             $mgr->run($adminEmail, $tokenName);
@@ -281,7 +287,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $tokens = [];
         $metadataFields = [];
         $choices = [];
-        $pidsUpdated = [];
 
         $allPids = array_unique(array_merge($pidsSource, $pidsDest));
 	    foreach ($allPids as $pid) {
@@ -339,62 +344,105 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
 
 	    # push
-	    foreach ($pidsSource as $i => $sourcePid) {
-	        Application::log("Searching through pid $sourcePid", $sourcePid);
-	        if ($tokens[$sourcePid] && $servers[$sourcePid]) {
+        $usedMatches = self::findMatches($pidsSource, $pidsDest, $tokens, $servers, $firstNames, $lastNames);
+        return $this->processMatches($usedMatches, $tokens, $servers, $forms, $metadataFields, $choices);
+	}
+
+    private function processMatches($matches, $tokens, $servers, $forms, $metadataFields, $choices) {
+        $pidsUpdated = [];
+        foreach ($matches as $destLicencePlate => $sourceMatches) {
+            list($destPid, $destRecordId) = explode(":", $destLicencePlate);
+            $destToken = $tokens[$destPid];
+            $destServer = $servers[$destPid];
+            foreach ($sourceMatches as $sourceLicensePlate) {
+                list($sourcePid, $sourceRecordId) = explode(":", $sourceLicensePlate);
+                $sourceInfo = [
+                    "token" => $tokens[$sourcePid],
+                    "server" => $servers[$sourcePid],
+                    "pid" => $sourcePid,
+                    "record" => $sourceRecordId,
+                ];
+                $destInfo = [
+                    "token" => $destToken,
+                    "server" => $destServer,
+                    "pid" => $destPid,
+                    "record" => $destRecordId,
+                ];
+                $this->copyFormData($completes, $pidsUpdated, $forms, $sourceInfo, $destInfo, $metadataFields, $choices);
+                $this->copyWranglerData($pidsUpdated, $sourceInfo, $destInfo);
+            }
+        }
+        return $pidsUpdated;
+    }
+
+    private static function findMatches($pidsSource, $pidsDest, $tokens, $servers, $firstNames, $lastNames) {
+        $usedMatches = [];   // key is license plate of dest
+        $searchedFor = [];
+        foreach ($pidsSource as $sourcePid) {
+            Application::log("Searching through pid $sourcePid", $sourcePid);
+            if ($tokens[$sourcePid] && $servers[$sourcePid]) {
                 $sourceToken = $tokens[$sourcePid];
                 $sourceServer = $servers[$sourcePid];
-                foreach ($pidsDest as $i2 => $destPid) {
+                $sourceRecords = Download::recordIds($sourceToken, $sourceServer);
+                foreach ($pidsDest as $destPid) {
                     if (($destPid != $sourcePid) && $tokens[$destPid] && $servers[$destPid]) {
                         Application::log("Communicating between $sourcePid and $destPid", $destPid);
-                        $destToken = $tokens[$destPid];
-                        $destServer = $servers[$destPid];
                         foreach (array_keys($firstNames[$destPid] ?? []) as $destRecordId) {
-                            $combos = [];
-                            foreach (NameMatcher::explodeFirstName($firstNames[$destPid][$destRecordId] ?? "") as $firstName) {
-                                foreach (NameMatcher::explodeLastName($lastNames[$destPid][$destRecordId] ?? "") as $lastName) {
-                                    if ($firstName && $lastName) {
-                                        $combos[] = ["first" => $firstName, "last" => $lastName];
+                            $destCombos = self::explodeAllNames($firstNames[$destPid][$destRecordId] ?? "", $lastNames[$destPid][$destRecordId] ?? "");
+                            $searchedFor[] = "$destPid:$destRecordId";
+                            foreach ($sourceRecords as $sourceRecordId) {
+                                if (in_array("$sourcePid:$sourceRecordId", $searchedFor)) {
+                                    # searched for other way - makes algorithm O(n*log(n)) instead of O(n^2)
+                                    if (
+                                        isset($usedMatches["$sourcePid:$sourceRecordId"])
+                                        && in_array("$destPid:$destRecordId", $usedMatches["$sourcePid:$sourceRecordId"])
+                                    ) {
+                                        if (!isset($usedMatches["$destPid:$destRecordId"])) {
+                                            $usedMatches["$destPid:$destRecordId"] = [];
+                                        }
+                                        $usedMatches["$destPid:$destRecordId"][] = "$sourcePid:$sourceRecordId";
+                                    }
+                                } else {
+                                    $sourceCombos = self::explodeAllNames($firstNames[$sourcePid][$sourceRecordId] ?? "", $lastNames[$sourcePid][$sourceRecordId] ?? "");
+                                    foreach ($destCombos as $destAry) {
+                                        $firstName = $destAry["first"];
+                                        $lastName = $destAry["last"];
+                                        Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $sourcePid);
+                                        Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $destPid);
+                                        foreach ($sourceCombos as $sourceAry) {
+                                            if (NameMatcher::matchName($firstName, $lastName, $sourceAry['first'], $sourceAry['last'])) {
+                                                Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $sourcePid);
+                                                Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $destPid);
+                                                if (!isset($usedMatches["$destPid:$destRecordId"])) {
+                                                    $usedMatches["$destPid:$destRecordId"] = [];
+                                                }
+                                                $usedMatches["$destPid:$destRecordId"][] = "$sourcePid:$sourceRecordId";
+                                                break;
+                                            }
+                                        }
                                     }
                                 }
-                            }
-                            foreach ($combos as $nameAry) {
-                                $firstName = $nameAry["first"];
-                                $lastName = $nameAry["last"];
-                                Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $sourcePid);
-                                Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $destPid);
-                                $originalPid = CareerDev::getPid();
-                                CareerDev::setPid($sourcePid);
-                                if ($sourceRecordId = NameMatcher::matchName($firstName, $lastName, $sourceToken, $sourceServer)) {
-                                    Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $sourcePid);
-                                    Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $destPid);
-
-                                    $sourceInfo = [
-                                        "token" => $sourceToken,
-                                        "server" => $sourceServer,
-                                        "pid" => $sourcePid,
-                                        "record" => $sourceRecordId,
-                                    ];
-                                    $destInfo = [
-                                        "token" => $destToken,
-                                        "server" => $destServer,
-                                        "pid" => $destPid,
-                                        "record" => $destRecordId,
-                                    ];
-                                    $this->copyFormData($completes, $pidsUpdated, $forms, $sourceInfo, $destInfo, $metadataFields, $choices);
-                                    $this->copyWranglerData($pidsUpdated, $sourceInfo, $destInfo);
-                                    break; // combos foreach
-                                    # if more than one match, match only first name matched
-                                }
-                                CareerDev::setPid($originalPid);
                             }
                         }
                     }
                 }
             }
         }
-	    return $pidsUpdated;
-	}
+        return $usedMatches;
+    }
+
+    private static function explodeAllNames($lastName, $firstName) {
+        $combos = [];
+        foreach (NameMatcher::explodeFirstName($firstName) as $firstName) {
+            foreach (NameMatcher::explodeLastName($lastName) as $lastName) {
+                if ($firstName && $lastName) {
+                    $combos[] = ["first" => $firstName, "last" => $lastName];
+                }
+            }
+        }
+        return $combos;
+    }
+
 
 	public function copyWranglerData(&$pidsUpdated, $sourceInfo, $destInfo) {
 	    $hasCopiedPubData = $this->copyPubData($sourceInfo, $destInfo);
@@ -653,7 +701,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
         if ($config['formType'] == "repeating") {
             $canGo = FALSE;
-            $dataValues = array_values($completeData[$sourcePid][$sourceRecordId] ?: []);
+            if (is_array($completeData[$sourcePid][$sourceRecordId] ?: [])) {
+                $dataValues = array_values($completeData[$sourcePid][$sourceRecordId] ?: []);
+            } else {
+                $dataValues = [$completeData[$sourcePid][$sourceRecordId]];
+            }
             foreach ($markedAsComplete as $completeValue) {
                 if (in_array($completeValue, $dataValues)) {
                     $canGo = TRUE;

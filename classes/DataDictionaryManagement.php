@@ -918,6 +918,7 @@ class DataDictionaryManagement {
         }
         foreach ($selectedRows as $newRow) {
             if (!in_array($newRow['field_name'], $fieldsToDelete)) {
+                $existingMetadataFields = self::getFieldsFromMetadata($existingMetadata);
                 $priorRowField = end($existingMetadata)['field_name'];
                 foreach ($newMetadata as $row) {
                     if ($row['field_name'] == $newRow['field_name']) {
@@ -925,10 +926,12 @@ class DataDictionaryManagement {
                     } else if (
                         !preg_match($deletionRegEx, $row['field_name'])
                         && !in_array($row['field_name'], $fieldsToDelete)
+                        && in_array($row['field_name'], $existingMetadataFields)
                     ) {
                         $priorRowField = $row['field_name'];
                     }
                 }
+
                 # no longer needed because now allow to finish current form
                 // if (self::atEndOfMetadata($priorRowField, $selectedRows, $newMetadata)) {
                 // $priorRowField = end($originalMetadata)['field_name'];

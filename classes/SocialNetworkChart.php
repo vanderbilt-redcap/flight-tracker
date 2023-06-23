@@ -5,9 +5,10 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class SocialNetworkChart extends Chart {
-    public function __construct($name, $chartData) {
+    public function __construct($name, $chartData, $pid = "") {
         $this->chartData = $chartData;
         $this->name = $name;
+        $this->pid = $pid;
     }
 
     public function setNonRibbon($bool) {
@@ -67,6 +68,7 @@ class SocialNetworkChart extends Chart {
     $(document).ready(function() {
         am4core.useTheme(am4themes_animated);
         const chart = am4core.create('{$this->name}', am4charts.ChordDiagram);
+        window['chartReg_{$this->pid}'] = chart;
         chart.colors.saturation = 0.45;
         chart.colors.step = 3;
         const colors = {};
@@ -212,6 +214,7 @@ class SocialNetworkChart extends Chart {
         return $html;
     }
 
+    protected $pid = "";
     protected $name = "";
     protected $chartData = [];
     protected $isNonRibbon = FALSE;

@@ -10,6 +10,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\REDCapLookup;
 use \Vanderbilt\CareerDevLibrary\NIHTables;
 
+
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
@@ -69,25 +70,25 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
 		}
 	} else if ($_POST['action'] == "importText") {
 	    $list = REDCapManagement::sanitize($_POST['newnames']);
-		$rows = explode("\n", $list);
-		foreach ($rows as $row) {
-			if ($row) {
-				$nodes = preg_split("/\s*[,\t]\s*/", $row);
-				if (count($nodes) == 6) {
-					$lines[] = $nodes;
-				} else {
+        $rows = explode("\n", $list);
+        foreach ($rows as $row) {
+            if ($row) {
+                $nodes = preg_split("/\s*[,\t]\s*/", $row);
+                if (count($nodes) == 6) {
+                    $lines[] = $nodes;
+                } else {
                     $link = Application::link("this").$createRecordsURI;
                     $mssg = "A line does not contain the necessary 6 columns. No data have been added. Please try again.";
                     exitProcess($mssg, $link);
                     exit;
-				}
-			}
-		}
+                }
+            }
+        }
 	} else {
         throw new \Exception("This should never happen.");
     }
 	$mentorUids = getUidsForMentors($lines);
-	if (!empty($mentorUids) || Application::isLocalhost()) {
+	if (!empty($mentorUids)) {
         echo makeAdjudicationTable($lines, $mentorUids, [], []);
         $url = APP_PATH_WEBROOT."ProjectGeneral/keep_alive.php?pid=".$pid;
         echo "<script>

@@ -354,7 +354,12 @@ class CronManager {
             return;
         }
         self::upgradeBatchQueueIfNecessary($batchQueue, $module);
-        if ((count($batchQueue) == 1) && in_array($batchQueue[0]['status'], ["ERROR", "DONE"])) {
+        if (
+            (
+                (count($batchQueue) == 1) && in_array($batchQueue[0]['status'], ["ERROR", "DONE"])
+            )
+            || (count($batchQueue) > 5000)
+        ){
             self::saveBatchQueueToDB([], $module);
             return;
         }
