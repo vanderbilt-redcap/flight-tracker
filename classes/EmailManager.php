@@ -136,15 +136,20 @@ class EmailManager {
 	# $to, if specified, denotes a test email
 	# main way of sending emails
 	public function sendRelevantEmails($to = "", $names = array()) {
-		$messages = $this->enqueueRelevantEmails($to, $names, "sendEmail");
+        register_shutdown_function([$this, "reportCronErrors"]);
+        $messages = $this->enqueueRelevantEmails($to, $names, "sendEmail");
 		$this->sendPreparedEmails($messages, ($to !== ""));
 	}
+
+    public static function reportCronErrors() {
+        CronManager::reportCronErrors("email");
+    }
 
 	private static function transformToTS($datetime) {
 		if (preg_match("/^\d+-\d+-\d\d\d\d/", $datetime, $matches)) {
 			# assume MDY
 			$match = $matches[0];
-			$nodes = preg_split("/-/", $match);
+			$nodes = explode("-", $match);
 
 			# return YMD
 			$datetime = str_replace($match, $nodes[2]."-".$nodes[0]."-".$nodes[1], $datetime);
@@ -419,13 +424,18 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	# returns records of emails
 	private function sendEmail($emailSetting, $settingName, $whenType, $toField = "who") {
-        Application::log("Preparing Email to ".$emailSetting["who"], $this->pid);
-		$emailData = $this->prepareEmail($emailSetting, $settingName, $whenType, $toField);
-        Application::log("Prepared ".count($emailData)." Emails", $this->pid);
-		if (!empty($emailData)) {
-			return $this->sendPreparedEmail($emailData, ($toField != "who"));
-		}
-		return array();
+        try {
+            Application::log("Preparing Email to ".$emailSetting["who"]["to"], $this->pid);
+            $emailData = $this->prepareEmail($emailSetting, $settingName, $whenType, $toField);
+            Application::log("Prepared ".count($emailData)." Emails", $this->pid);
+            if (!empty($emailData)) {
+                return $this->sendPreparedEmail($emailData, ($toField != "who"));
+            }
+            return array();
+        } catch (\Exception $e) {
+            Application::log("Email Exception: ".$e->getMessage(), $this->pid);
+            return [];
+        }
 	}
 
     public function disable($name) {
@@ -574,31 +584,39 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	private function prepareEmail($emailSetting, $settingName, $whenType, $toField = "who") {
 		$rows = $this->getRows($emailSetting["who"], $whenType, $this->getForms($emailSetting["what"]));
 		if (empty($rows)) {
+            Application::log("PrepareEmail: Rows empty", $this->pid);
 			return [];
 		}
 
 		$data = array();
 		$emails = self::processEmails($rows);
 		$names = self::processNames($rows);
+        Application::log("PrepareEmail: Getting names", $this->pid);
         $lastNames = $this->getLastNames(array_keys($rows));
         $firstNames = $this->getFirstNames(array_keys($rows));
+        Application::log("PrepareEmail: Got names", $this->pid);
 		$subject = self::getSubject($emailSetting["what"]);
 		$data['name'] = $settingName;
-		$data['mssgs'] = $this->getMessages($emailSetting["what"], array_keys($rows), $names, $lastNames, $firstNames);
+        Application::log("PrepareEmail: Getting Messages", $this->pid);
+        $data['mssgs'] = $this->getMessages($emailSetting["what"], array_keys($rows), $names, $lastNames, $firstNames);
+        Application::log("PrepareEmail: Got Messages", $this->pid);
 		$data['subjects'] = array();
 		$data['to'] = array();
 		if ($toField == "who") {
+            Application::log("PrepareEmail: Processing who", $this->pid);
 			foreach (array_keys($rows) as $recordId) {
 				$data['to'][$recordId] = $emails[$recordId];
 				$data['subjects'][$recordId] = $subject;
 			}
 		} else {
+            Application::log("PrepareEmail: Processing email address", $this->pid);
 			foreach (array_keys($rows) as $recordId) {
 				$data['to'][$recordId] = $toField;
 				$data['subjects'][$recordId] = $emails[$recordId].": ".$subject;
 			}
 		}
 		$data['from'] = $emailSetting["who"]["from"];
+        Application::log("PrepareEmail: Returning", $this->pid);
 
 		return $data;
 	}

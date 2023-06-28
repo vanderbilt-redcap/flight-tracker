@@ -186,7 +186,9 @@ class Publications {
         $term = $first."+".$last."%5Bau%5D";
         $institutionSearchNodes = [];
         foreach ($institutions as $institution) {
+            $institution = preg_replace("/\s*&\s*/", " ", $institution);
             $institution = preg_replace("/\s+/", "+", $institution);
+            $institution = Sanitizer::repetitivelyDecodeHTML(strtolower($institution));
             $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
         }
         if (!empty($institutionSearchNodes)) {

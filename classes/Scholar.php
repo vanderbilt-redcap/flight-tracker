@@ -1678,7 +1678,7 @@ class Scholar {
             return new Result($earliestPositionChangeDate, "manual", "", $earliestPositionChangeEntryDate, $this->pid);
         }
 
-		return new Result($normativeRow['identifier_left_date'], $normativeRow['identifier_left_date_source'], $normativeRow['identifier_left_date_sourcetype'], "", $this->pid);
+		return new Result("", "", "", "", $this->pid);
 	}
 
 	private function hasInstitution($institutionToCheck) {

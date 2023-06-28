@@ -583,7 +583,7 @@ class Grants {
                     "grantSubmissions" => "Submissions",
                     ];
 				foreach ($grantFactories as $variable => $status) {
-                    $gfList = GrantFactory::createFactoriesForRow($row, $this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server, $rows, $status);
+                    $gfList = GrantFactory::createFactoriesForRow($row, $this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server, $rows, $status, FALSE);
                     foreach ($gfList as $gf) {
                         $time1 = microtime(TRUE);
                         $gf->processRow($row, $rows);

@@ -44,9 +44,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $this->setupApplication();
         $activePids = $this->getPids();
         foreach ($activePids as $pid) {
-            Application::log("Minute cron running", $pid);      // TODO Remove - temporary
-        }
-        foreach ($activePids as $pid) {
             # note return at end of successful run because only need to run once
             $token = $this->getProjectSetting("token", $pid);
             $server = $this->getProjectSetting("server", $pid);

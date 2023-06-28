@@ -1221,7 +1221,7 @@ body { font-size: 1.2em; }
 		return "Y-m-d";
 	}
 
-	public static function reportCronErrors() {
+	public static function reportCronErrors($processType = "cron") {
         $error = error_get_last();
 
         if ($error && Application::getModule()) {
@@ -1229,7 +1229,7 @@ body { font-size: 1.2em; }
 			$adminEmail = self::$lastAdminEmail;
 			$sendErrorLogs = self::$lastSendErrorLogs;
 			$pid = self::$lastPid;
-            $message = "<p>Your cron job failed for pid $pid with the following error message:<br>";
+            $message = "<p>Your $processType job failed for pid $pid with the following error message:<br>";
             $message .= 'Error Message: ' . $error['message'] . "<br>";
             $message .= 'File: ' . $error['file'] . "<br>";
             $message .= 'Line: ' . $error['line'] . "<br>";
