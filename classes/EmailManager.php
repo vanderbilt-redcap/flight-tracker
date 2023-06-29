@@ -136,13 +136,17 @@ class EmailManager {
 	# $to, if specified, denotes a test email
 	# main way of sending emails
 	public function sendRelevantEmails($to = "", $names = array()) {
+	$this->turnOffShutdownFunction = FALSE;
         register_shutdown_function([$this, "reportCronErrors"]);
         $messages = $this->enqueueRelevantEmails($to, $names, "sendEmail");
 		$this->sendPreparedEmails($messages, ($to !== ""));
+	$this->turnOffShutdownFunction = TRUE;
 	}
 
     public static function reportCronErrors() {
-        CronManager::reportCronErrors("email");
+	if (!$this->turnOffShutdownFunction) {
+        	CronManager::reportCronErrors("email");
+	}
     }
 
 	private static function transformToTS($datetime) {
@@ -1593,4 +1597,5 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
     private $adminEmail;
     private $defaultFrom;
     private $preparingMins;
+	private $turnOffShutdownFunction = TRUE;
 }
