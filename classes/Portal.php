@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use ZipStream\File;
 use function Vanderbilt\FlightTrackerExternalModule\appendCitationLabel;
 
 require_once(__DIR__ . '/ClassLoader.php');
@@ -91,11 +92,9 @@ class Portal {
                     $projectTitles[$pid] = Download::shortProjectTitle($token, $server);
                 }
                 Application::unsetPid();
-            } else {
-                error_log("Portal: Skipping $pid");
             }
         }
-        return [$matches, $projectTitles];
+        return [$matches, $projectTitles, self::getPhoto($matches)];
     }
 
     public static function getPage($relativeFileLocation, $pid, $getParams = []) {
@@ -167,6 +166,24 @@ class Portal {
         return "";
     }
 
+    public static function getPhoto($allMatches) {
+        $targetField = "identifier_picture";
+        if ($allMatches) {
+            foreach ($allMatches as $pid => $recordsAndNames) {
+                $fields = Download::metadataFieldsByPid($pid);
+                if (in_array($targetField, $fields)) {
+                    foreach (array_keys($recordsAndNames) as $recordId) {
+                        $base64 = Download::fileAsBase64($pid, $targetField, $recordId);
+                        if ($base64) {
+                            return $base64;
+                        }
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
     # 3 words max
     public static function getMenu() {
         $menu = [];
@@ -186,9 +203,13 @@ class Portal {
             "action" => "honors",
             "title" => "Honors &amp; Awards",     // new survey
         ];
+        $menu["Your Info"][] = [
+            "action" => "photo",
+            "title" => "Photos",     // should search all projects; also, should display
+        ];
         // TODO ORCID Bio Link in Your Info
 
-        // TODO encouraging message if pubs are blank
+        // TODO encouraging message if pubs/grants are blank
         $menu["Your Graphs"][] = [
             "action" => "scholar_collaborations",
             "title" => "Publishing Collaborations",      // social network graph
@@ -201,10 +222,14 @@ class Portal {
             "action" => "timelines",
             "title" => "Grant &amp; Publication Timelines",     // Pubs & all grants; encouraging message if blank
         ];
-//         $menu["Your Graphs"][] = [
-//            "action" => "group_collaborations",
-//            "title" => "Group Publishing Collaborations",
-//        ];
+        $menu["Your Graphs"][] = [
+            "action" => "group_collaborations",
+            "title" => "Group Publishing Collaborations (Computationally Expensive)",
+        ];
+        $menu["Your Graphs"][] = [
+            "action" => "grant_funding",
+            "title" => "Grant Funding by Year",
+        ];
 
         $menu["Your Network"][] = [
             "action" => "mentoring",
@@ -241,6 +266,47 @@ class Portal {
     public static function getHeaders() {
         $html = "<title>Flight Tracker: Scholar Portal</title>";
         $html .= Application::getImportHTML();
+        return $html;
+    }
+
+    # TODO Uploads to all projects - should it only upload to ones without an existing photo? Am checking with Arnita...
+    public static function uploadPhoto($filename, $mimeType, $matches) {
+        $extension = FileManagement::getMimeSuffix($mimeType);
+        $base64 = FileManagement::getBase64OfFile($filename, $mimeType);
+        $oneUploadSuccessful = FALSE;
+        foreach ($matches as $pid => $recordsAndNames) {
+            foreach ($recordsAndNames as $recordId => $name) {
+                $newFilename = FileManagement::makeSafeFilename(strtolower(REDCapManagement::makeHTMLId($name).".".$extension));
+                $result = Upload::file($pid, $recordId, "identifier_picture", $base64, $newFilename);
+                if (isset($result['error']) && $oneUploadSuccessful) {
+                    throw new \Exception("Partially uploaded.".$result['error']);
+                } else if (isset($result['error'])) {
+                    throw new \Exception($result['error']);
+                } else {
+                    $oneUploadSuccessful = TRUE;
+                }
+            }
+        }
+        if ($oneUploadSuccessful) {
+            return $base64;
+        } else {
+            return "";
+        }
+    }
+
+    public static function getModifyPhotoPage($allMatches) {
+        $base64 = self::getPhoto($allMatches);
+        if ($base64) {
+            $html = "<h3>Replace Your Photo</h3>";
+        } else {
+            $html = "<h3>Add a Photo</h3>";
+        }
+        $driverLink = Application::link("portal/driver.php").(isset($_GET['uid']) ? "&uid=".$_GET['uid'] : "");
+        $html .= "<form action='$driverLink' method='POST' enctype='multipart/form-data' id='photoForm'>";
+        $html .= "<input type='hidden' name='action' value='upload_photo' />";
+        $html .= "<p class='centered'><label for='photoFile'>Photo:</label> <input type='file' id='photoFile' name='photoFile' onchange='portal.validateFile(this);' /><br/>";
+        $html .= "<button onclick='portal.uploadPhoto(\"#photoForm\"); return false;'>Upload</button></p>";
+        $html .= "</form>";
         return $html;
     }
 

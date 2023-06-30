@@ -653,7 +653,12 @@ class Scholar {
 
 		foreach ($this->metadata as $row) {
 		    $fieldName = $row['field_name'];
-			if (preg_match("/mentor/", $fieldName) && !preg_match("/^mentoring/", $fieldName)) {
+			if (
+                preg_match("/mentor/", $fieldName)
+                && !preg_match("/_mentor_/", $fieldName)
+                && !preg_match("/comentor/", $fieldName)
+                && !preg_match("/^mentoring/", $fieldName)
+            ) {
 				$skip = FALSE;
 				foreach ($skipRegex as $regex) {
 					if (preg_match($regex, $fieldName)) {
@@ -662,7 +667,7 @@ class Scholar {
 					}
 				}
 				if (!$skip) {
-					array_push($fields, $fieldName);
+					$fields[] = $fieldName;
 				}
 			}
 		}
@@ -3603,10 +3608,68 @@ class Scholar {
         return new Result("", "", "", "", $this->pid);
     }
 
+    private function isLGBTQ($rows) {
+        $prefixes = [
+            "init_import_",
+            "check_",
+            "followup_",
+        ];
+        foreach ($prefixes as $prefix) {
+            $instrument = ($prefix == "followup_") ? "followup" : FALSE;
+            if ($value = REDCapManagement::findField($rows, $this->recordId, $prefix."transgender", $instrument)) {
+                if ($value == "1") {
+                    return TRUE;
+                } else if (is_array($value) && in_array("1", $value)) {
+                    return TRUE;
+                }
+            }
+            if ($value = REDCapManagement::findField($rows, $this->recordId, $prefix."sexual_orientation", $instrument)) {
+                if ($value == "3") {
+                    return TRUE;
+                } else if ($value == "2") {
+                    return TRUE;
+                } else if (
+                    is_array($value)
+                    && (
+                        in_array("2", $value)
+                        || in_array("3", $value)
+                    )
+                ) {
+                    return TRUE;
+                }
+            }
+            if ($value = REDCapManagement::findField($rows, $this->recordId, $prefix."gender", $instrument)) {
+                if ($value == "3") {
+                    return TRUE;
+                } else if (is_array($value) && in_array("3", $value)) {
+                    return TRUE;
+                }
+            }
+        }
+        return FALSE;
+    }
+
 	private function getURMStatus($rows) {
 		$raceEthnicityValue = $this->getRaceEthnicity($rows)->getValue();
 		$disadvValue = $this->getDisadvantagedStatus($rows)->getValue();
 		$disabilityValue = $this->getDisabilityStatus($rows)->getValue();
+
+        if (($this->pid == NEWMAN_SOCIETY_PROJECT) && $this->isLGBTQ($rows)) {
+            return new Result("1", "", "", "", $this->pid);
+        }
+
+        $field = "summary_race_ethnicity";
+        $order = self::getDefaultOrder($field);
+        $order = $this->getOrder($order, $field);
+        $normativeRow = REDCapManagement::getNormativeRow($rows);
+        foreach ($order["ethnicity"] as $variable => $source) {
+            if (isset($normativeRow[$variable]) && ($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 4)) {
+                $eth = $normativeRow[$variable];
+                if ($eth == 1) {      // Hispanic
+                    return new Result("1", "", "", "", $this->pid);
+                }
+            }
+        }
 
         $presetURM = REDCapManagement::findField($rows, $this->recordId, "imported_urm");
         if ($presetURM !== "") {

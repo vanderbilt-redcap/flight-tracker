@@ -885,11 +885,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     if ($needToUpdate) {
                         $firstName = $firstNamesByPid[$pid][$recordId] ?? "";
                         $lastName = $lastNamesByPid[$pid][$recordId] ?? "";
-                        list($matches, $projectTitles) = Portal::getMatches($userid, $firstName, $lastName, $pids);
+                        list($matches, $projectTitles, $photoBase64) = Portal::getMatches($userid, $firstName, $lastName, $pids);
                         $storedData = [
                             "date" => $today,
                             "matches" => $matches,
                             "projectTitles" => $projectTitles,
+                            "photo" => $photoBase64,
                             "done" => TRUE,
                         ];
                         Application::saveSystemSetting($userid, $storedData);

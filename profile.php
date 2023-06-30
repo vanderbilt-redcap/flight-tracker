@@ -31,7 +31,8 @@ if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 	$record = REDCapManagement::getSanitizedRecord($_GET['record'], $recordIds);
 } else {
 	if (count($recordIds) > 0) {
-        	$record = $recordIds[0];
+        $record = $recordIds[0];
+        $_GET['record'] = $record;
 	} else {
 	    echo "<p class='centered'>No records stored.</p>";
 	    exit;
@@ -318,7 +319,10 @@ if (!empty($mentors)) {
 
     echo "<h2>Timelines</h2>";
     require_once(__DIR__."/charts/timeline.php");
-    echo "<br/><br/>\n";
+    echo "<br/><br/>";
+    echo "<h2>Reported Grant Funding (Total Dollars)</h2>";
+    require_once(__DIR__."/charts/scholarGrantFunding.php");
+    echo "<br/><br/>";
     echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>\n";
     echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".Application::link("socialNetwork/collaboration.php")."&record=$record&field=record_id&cohort=all&headers=false&mentors=on'></iframe><br><br>\n";
 

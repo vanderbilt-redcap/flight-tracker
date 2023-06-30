@@ -1545,7 +1545,6 @@ class Grants {
 				"activity_type",
 				"funding_institute",
 				"institute_code",
-				"title",
 				"serial_number",
 				"support_year",
 				"other_suffixes",

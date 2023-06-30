@@ -407,13 +407,12 @@ p.recessed,div.recessed { margin: 2px; }
         if ($base64 = $module->getBrandLogo()) {
             $str .= "<div class='topBar' style='float:right;'><img src='$base64' class='brandLogo'></div>";
         } else {
-            $str .= "<div class='topBar' style='float:right;'><p class='alignright greytext padded nomargin bolded'>$tokenName</p></div>";
+            $str .= "<div class='topBar' style='float:right;'><p class='alignright darkgreytext padded nomargin bolded'>$tokenName</p></div>";
         }
         $str .= "</div>";
         $str .= "</header>";
 
         $switches = new FeatureSwitches($token, $server, $pid);
-        $switchValues = $switches->getSwitches();
 
         $navBar = new NavigationBar();
         $navBar->addFALink("home", "Home", CareerDev::getHomeLink());

@@ -324,6 +324,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 	$tablenum = 0;
 	$doclass = "class_empty";
     $class_baseaward = "";
+    $backgroundClass = "small_padding";
 
     $d_ck_original_award_number = "";
     $d_ck_base_award_no = "";
@@ -334,6 +335,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
     $d_prime_sponsor_type = "";
     $d_prime_sponsor_name = "";
     $d_sponsor_award_no = "";
+    $d_title = "";
     $piName = "";
     $telem = "";
     $flagsOn = Grants::areFlagsOn($pid);
@@ -432,7 +434,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 			} else {
 				$class_baseaward = $value;
 				$d_ck_base_award_no = $value;
-				$d_base_award_no = "<div class='fl wd49 sect' style=''><div class='fwb'>Base Award #</div><div class='display_data'>$value</div></div>";
+				$d_base_award_no = "<div class='fl wd49 sect'><div class='fwb'>Base Award #</div><div class='display_data'>$value</div></div>";
 			}
 		} else if($key == "prime_sponsor_type"){
 			if($value == ''){
@@ -469,7 +471,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 		}  else if($key == "application_type"){
 			if($value == ''){
 				$d_application_type = '';
-			} else $d_application_type = "<div class='fl wd49 sect' style=''><div class='fwb'>Application Type</div><div class='display_data'>$value</div></div>";
+			} else $d_application_type = "<div class='fl wd49 sect'><div class='fwb'>Application Type</div><div class='display_data'>$value</div></div>";
 		}   else if($key == "funding_source"){
 			if($value == ''){
 				$d_funding_source = BLANK_VALUE;
@@ -490,10 +492,13 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 			if($value == ''){
 				$d_last_update = '';
 			} else $d_last_update = "<span class='fwb'>Last Updated:</span><br/>".DateManagement::YMD2MDY($value);
+        } else if ($key == "title") {
+            if ($value != "") {
+                $d_title = "<tr class='$backgroundClass'><td><div class='fl sect display_data centered'>$value</div></td></tr>";
+            }
         }
     }
 
-	$backgroundClass = "small_padding";
     $d_role = $d_role ?? BLANK_VALUE;
     $d_source = $d_source ?? BLANK_VALUE;
     $d_percent_effort = $d_percent_effort ?? BLANK_VALUE;
@@ -510,7 +515,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
     $d_last_update = $d_last_update ?? "";
     $d_original_award_number_no = $d_original_award_number_no ?? "";
 
-    $redcapDiv = "<div class='fl wd49 sect' style=''>";
+    $redcapDiv = "<div class='fl wd49 sect'>";
     if ($d_redcap_url) {
         $redcapDiv .= "<div class='fwb'><a href='".$d_redcap_url."' target='_NEW'>View REDCap</a></div>";
     } else {
@@ -557,8 +562,9 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 	return "<table group='".$show_anawardno."' class='tn".$tablenum." ".$doclass." tlayer_".$show_anawardno." awardt rr".$d_original_award_number_no."' style='width: 380px; margin: 0 auto -12px auto; padding-top: 12px;'>".
 			"<tr class='".$backgroundClass."'>".
                 "<td style='padding: 3px 12px !important;'><div style='text-align: left;font-size: 13px;margin-top: 2px;margin-bottom: -3px; float: left; width:30%;'><strong>Role</strong>: ".$d_role."<br/><strong>Effort</strong>: ".$d_percent_effort."</div><div style='text-align: right;font-size: 13px;margin-top: 2px;margin-bottom: -3px; float: right; width:30%'> ".$d_last_update."</div><div style='float: right; width: 40%; text-align: center;'>$piName</div></td></tr>".
-            "<tr class='$backgroundClass'><td><h3 class='withFlag'>$awardNoWithoutApplicationType</h3><span title='Flag to manually choose' class='flag' onclick='toggleFlag(this, \"$awardNo\", \"$source\");'>$fontAwesomeFlag</span></td></tr>".
-			"<tr class='$backgroundClass'><td><div class='row' style='margin-bottom:10px; margin-top: 7px;   padding-left: 15px;padding-right: 15px;'>".
+                "<tr class='$backgroundClass'><td><h3 class='withFlag'>$awardNoWithoutApplicationType</h3><span title='Flag to manually choose' class='flag' onclick='toggleFlag(this, \"$awardNo\", \"$source\");'>$fontAwesomeFlag</span></td></tr>".
+                $d_title.
+			    "<tr class='$backgroundClass'><td><div class='row' style='margin-bottom:10px; margin-top: 7px;   padding-left: 15px;padding-right: 15px;'>".
 							"<div class='col-md-7 align-self-center' style='max-width:49%;padding-left: 0px;padding-right: 0px; background-color:#55555536;margin-right: 4px;'>".
 								"<div class='fwb'>PROJECT</div>".
 								"<div style='border-bottom: 1px solid;margin-right: 5px;margin-left: 5px;'>".

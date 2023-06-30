@@ -3091,7 +3091,7 @@ class NIHTables {
         } else if (in_array($requestedGrantClass, ["K"])) {
             return [2, 10];
         } else if ($requestedGrantClass == "") {
-            return [2];    // K12 by default
+            return [2, 10];    // K12 by default
         }
         throw new \Exception("Invalid Grant Class: $grantClass");
 	}

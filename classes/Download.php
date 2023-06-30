@@ -374,21 +374,25 @@ class Download {
         }
     }
 
+    public static function metadataFieldsByPid($pid) {
+        $module = Application::getModule();
+        $sql = "SELECT field_name FROM redcap_metadata WHERE project_id = ? ORDER BY field_order";
+        if ($module) {
+            $q = $module->query($sql, [$pid]);
+        } else {
+            $q = db_query($sql, [$pid]);
+        }
+        $fields = [];
+        while ($row = $q->fetch_assoc()) {
+            $fields[] = $row['field_name'];
+        }
+        return $fields;
+    }
+
     public static function metadataFields($token, $server) {
         $pid = Application::getPID($token);
         if ($pid && self::isCurrentServer($server)) {
-            $module = Application::getModule();
-            $sql = "SELECT field_name FROM redcap_metadata WHERE project_id = ? ORDER BY field_order";
-            if ($module) {
-                $q = $module->query($sql, [$pid]);
-            } else {
-                $q = db_query($sql, [$pid]);
-            }
-            $fields = [];
-            while ($row = $q->fetch_assoc()) {
-                $fields[] = $row['field_name'];
-            }
-            return $fields;
+            return self::metadataFieldsByPid($pid);
         } else {
             $metadata = self::metadata($token, $server);
             return DataDictionaryManagement::getFieldsFromMetadata($metadata);
@@ -532,8 +536,13 @@ class Download {
     public static function fileAsBase64($pid, $field, $recordId, $instance = 1) {
         $module = Application::getModule();
         # assume classical project
-        $sql = "SELECT value FROM redcap_data WHERE project_id = ? AND field_name = ? AND record = ? AND instance = ?";
-        $params = [$pid, $field, $recordId, $instance];
+        if ($instance != 1) {
+            $sql = "SELECT value FROM redcap_data WHERE project_id = ? AND field_name = ? AND record = ? AND instance = ?";
+            $params = [$pid, $field, $recordId, $instance];
+        } else {
+            $sql = "SELECT value FROM redcap_data WHERE project_id = ? AND field_name = ? AND record = ? AND instance IS NULL";
+            $params = [$pid, $field, $recordId];
+        }
         if ($module) {
             $result = $module->query($sql, $params);
         } else {
