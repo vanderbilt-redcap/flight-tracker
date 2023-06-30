@@ -34,7 +34,12 @@ foreach ($records as $recordId) {
     $grants = new Grants($token, $server, $metadata);
     $grants->setRows($redcapData);
     $grants->compileGrants();
-    foreach ($grants->getGrants("deduped") as $grant) {
+    if (Grants::areFlagsOn($pid)) {
+        $grantAry = $grants->getGrants("flagged");
+    } else {
+        $grantAry = $grants->getGrants("deduped");
+    }
+    foreach ($grantAry as $grant) {
         $budget = $grant->getVariable($budgetField);
         $budget = (int) str_replace("$", "", $budget);
         if ($budget) {
