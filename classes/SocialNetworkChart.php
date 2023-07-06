@@ -99,12 +99,18 @@ class SocialNetworkChart extends Chart {
         chart.fontSize = 10;
 
         const nodeTemplate = chart.nodes.template;
-        nodeTemplate.readerTitle = 'Click to show/hide or drag to rearrange';
-        nodeTemplate.showSystemTooltip = true;
+        nodeTemplate.draggable = false;
+        nodeTemplate.togglable = false;
+        nodeTemplate.clickable = false;
         nodeTemplate.propertyFields.fill = 'color';
         nodeTemplate.tooltipText = '{name}\'s connections';  // {total}
         $disableLabelsJS
-
+        
+        nodeTemplate.events.on('hidden', function(event) {
+            event.target.disabled = false;
+            event.target.show();
+        });
+        
         // when rolled over the node, make all the links rolled-over
         nodeTemplate.events.on('over', function(event) {
             const node = event.target;
@@ -150,7 +156,7 @@ class SocialNetworkChart extends Chart {
         let labelHS = label.states.create('hover');
         labelHS.properties.fillOpacity = 1;
 
-        nodeTemplate.cursorOverStyle = am4core.MouseCursorStyle.pointer;
+        // nodeTemplate.cursorOverStyle = am4core.MouseCursorStyle.pointer;
         nodeTemplate.adapter.add('fill', function(fill, target) {
             let node = target;
             let counters = {};
@@ -188,7 +194,7 @@ class SocialNetworkChart extends Chart {
             }
 
             return fill;
-        })
+        });
 
         // link template
         const linkTemplate = chart.links.template;

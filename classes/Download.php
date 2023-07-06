@@ -557,6 +557,26 @@ class Download {
         return "";
     }
 
+    # assume classical project
+    public static function oneFieldForRecordByPid($pid, $field, $recordId) {
+        $module = Application::getModule();
+        $sql = "SELECT instance, value FROM redcap_data WHERE project_id = ? AND record = ? AND field_name = ?";
+        $params = [$pid, $recordId, $field];
+        $result = $module->query($sql, $params);
+        if ($result->num_rows == 1) {
+            $row = $result->fetch_assoc();
+            return $row['value'] ?? "";
+        } else if ($result->num_rows > 1) {
+            $resultsByInstance = [];
+            while ($row = $result->fetch_assoc()) {
+                $instance = $row['instance'] ?? 1;
+                $resultsByInstance[$instance] = $row['value'];
+            }
+            return $resultsByInstance;
+        }
+        return "";
+    }
+
     public static function getDataByPid($pid, $fields, $records) {
         if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
             $redcapData = \REDCap::getData($pid, "json-array", $records, $fields);

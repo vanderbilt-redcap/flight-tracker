@@ -3148,6 +3148,7 @@ class NIHTables {
             }
 		    $thisGrantTypes = self::getTrainingTypesForGrantClass();
             $internalKType = 1;
+            $eight3Types = array_unique(array_merge($thisGrantTypes, [$internalKType]));
             if (isset($_GET['test'])) {
                 echo "Looking in part $part with grant types ".json_encode($thisGrantTypes)."<br>";
             }
@@ -3179,7 +3180,7 @@ class NIHTables {
                                 if (
                                     (
                                         self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 5)
-                                        && ($row['custom_type'] == $internalKType)
+                                        && in_array($row['custom_type'], $eight3Types)
                                     )
                                     || !$row['custom_end']
                                 ) {

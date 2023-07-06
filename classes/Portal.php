@@ -10,6 +10,9 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class Portal {
     const NONE = "NONE";
+    const NUM_POSTS_PER_SETTING = 10;
+    const DATETIME_FORMAT = "Y-m-d h:I:s";
+    const BOARD_PREFIX = "board_";
 
     public static function getCurrentUserIDAndName() {
         $version = Application::getVersion();
@@ -317,7 +320,7 @@ class Portal {
         $mentors = $mentorList ? preg_split("/\s*[,;\/]\s*/", $mentorList) : [];
         $mentorUserids = $mentorUseridList ? preg_split("/\s*[,;]\s*/", $mentorUseridList) : [];
 
-        $mssg = "<p class='centered max-width'>Your do not have a mentor set up. Would you like to add one?</p>";
+        $mssg = "<p class='centered max-width'>Your do not have a mentor set up. Would you like to add a Mentor?</p>";
         $html = "<h3>Your Mentoring Portal for $projectTitle</h3>";
         $html .= "<div id='searchResults'></div>";
         if (Application::isMSTP($pid)) {
@@ -330,7 +333,7 @@ class Portal {
                 list($firstName, $lastName) = NameMatcher::splitName($mentorName, 2);
                 $lookup = new REDCapLookup($firstName, $lastName);
                 $uidsAndNames = $lookup->getUidsAndNames(TRUE);
-                $html .= self::processUidsAndNames($driverURL, $mentorName, $pid, $recordId, $uidsAndNames, $i, "<p class='centered max-width'>This mentor has no matches. Would you like to add one?</p>");
+                $html .= self::processUidsAndNames($driverURL, $mentorName, $pid, $recordId, $uidsAndNames, $i, "<p class='centered max-width'>This mentor does not match any REDCap users. Would you like to add another mentor?</p>");
                 $i++;
             }
         } else if (empty($mentors)) {
@@ -355,6 +358,158 @@ class Portal {
             $html .= self::makeLiveMentorPortal($mentors, $mentorUserids, $pid, $projectTitle);
         }
         return $html;
+    }
+
+    private static function makeNewPostHTML() {
+        $html = "<h4>Make a New Post</h4>";
+        $html .= "<p><textarea id='newPost'></textarea></p>";
+        $html .= "<p><button onclick='portal.submitPost(\"#newPost\");'>Submit Post</button></p>";
+        return $html;
+    }
+
+    public static function getInstitutionBulletinBoard() {
+        $posts = self::getBoardPosts();
+        $html = "<h3>Institutional Bulletin Board</h3>";
+        $html .= self::makeNewPostHTML();
+        $html .= "<h4>Existing Posts from Your Colleagues</h4>";
+        $html .= "<div id='posts'>";
+        if (empty($posts)) {
+            $html .= "<p>Nothing has been posted yet.</p>";   // text also in portal.js
+        } else {
+            $rows = [];
+            foreach ($posts as $post) {
+                if (!empty($post)) {
+                    $rows[] = self::formatPost($post);
+                }
+            }
+            $html .= implode("<hr/>", $rows);
+        }
+        $html .= "</div>";
+
+        return $html;
+    }
+
+    # returns boolean if an entry was deleted
+    public static function deletePost($username, $datetime) {
+        $i = 0;
+        $prefix = self::BOARD_PREFIX;
+        do {
+            $i++;
+            $result = Application::getSystemSetting($prefix . $i);
+            if (is_array($result)) {
+                foreach ($result as $i => $post) {
+                    if (($post['username'] == $username) && ($post['date'] == $datetime)) {
+                        $newResult = [];
+                        foreach ($result as $j => $post2) {
+                            if ($j !== $i) {
+                                $newResult[] = $post2;
+                            } else {
+                                $newResult[] = [];
+                            }
+                        }
+                        Application::saveSystemSetting($prefix.$i, $newResult);
+                        return TRUE;
+                    }
+                }
+            }
+        } while ($result !== "");
+        return FALSE;
+    }
+
+    private static function formatPost($post) {
+        $user = $post['username'];
+        $lookup = new REDCapLookupByUserid($user);
+        $name = $lookup->getName();
+        $email = $lookup->getEmail();
+        $date = DateManagement::datetime2LongDateTime($post['date'] ?? date(self::DATETIME_FORMAT));
+        $mssg = $post['message'];
+        $storedData = Application::getSystemSetting($user) ?: [];
+        $matches = $storedData['matches'] ?? [];
+        if (!empty($matches) && !$name) {
+            foreach ($matches as $pid => $recordsAndNames) {
+                foreach ($recordsAndNames as $recordId => $n) {
+                    if ($n) {
+                        $name = $n;
+                        break;
+                    }
+                }
+                if ($name) {
+                    break;
+                }
+            }
+        } else if (!$name) {
+            $name = $user;
+        }
+        $photo = self::getPhoto($matches);
+        if (!$email) {
+            $email = self::getEmail($matches);
+        }
+        return self::makePostHTML($name, $email, $date, $mssg, $photo);
+    }
+
+    private static function makePostHTML($name, $email, $date, $mssg, $photoBase64) {
+        $photoHTML = $photoBase64 ? "<img src='$photoBase64' class='photo' alt='$name' /><br/>" : "";
+        $html = "<p>$photoHTML<strong>$name</strong> at $date (<a href='mailto:$email'>$email</a>)</p>";
+        $html .= "<p>$mssg</p>";
+        return $html;
+    }
+
+    private static function getEmail($allMatches) {
+        foreach ($allMatches as $pid => $recordsAndNames) {
+            foreach (array_keys($recordsAndNames) as $recordId) {
+                $email = Download::oneFieldForRecordByPid($pid, "identifier_email", $recordId);
+                if ($email) {
+                    return $email;
+                } else {
+                    $personalEmail = Download::oneFieldForRecordByPid($pid, "identifier_personal_email", $recordId);
+                    if ($personalEmail) {
+                        return $personalEmail;
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    public static function addPost($postText, $username) {
+        $post = [
+            "message" => $postText,
+            "username" => $username,
+            "date" => date(self::DATETIME_FORMAT),
+        ];
+
+        $i = 0;
+        $prefix = self::BOARD_PREFIX;
+        do {
+            $i++;
+            $result = Application::getSystemSetting($prefix . $i);
+            if (is_array($result) && (count($result) < self::NUM_POSTS_PER_SETTING)) {
+                $result[] = $post;
+                Application::saveSystemSetting($prefix.$i, $result);
+                return self::formatPost($post);
+            }
+        } while ($result !== "");
+
+        Application::saveSystemSetting($prefix.$i, [$post]);
+        return self::formatPost($post);
+    }
+
+    private static function getBoardPosts() {
+        $posts = [];
+        $i = 0;
+        $prefix = self::BOARD_PREFIX;
+        do {
+            $i++;
+            $result = Application::getSystemSetting($prefix.$i);
+            if (is_array($result)) {
+                foreach ($result as $item) {
+                    if (!empty($item)) {
+                        $posts[] = $item;
+                    }
+                }
+            }
+        } while ($result !== "");
+        return $posts;
     }
 
     public static function processUidsAndNames($driverURL, $mentorName, $pid, $recordId, $uidsAndNames, $i, $priorMessage = "") {
