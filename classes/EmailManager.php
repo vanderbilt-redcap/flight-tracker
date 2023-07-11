@@ -660,8 +660,6 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	public static function getSurveyLinks($pid, $records, $instrument, $maxInstances = array()) {
 		$newInstances = array();
-        $oldPid = $_GET['pid'];
-		$_GET['pid'] = $pid;    // for the Application::link on the cron
 		foreach ($records as $recordId) {
 			if ($maxInstances[$recordId]) {
 				$newInstances[$recordId] = $maxInstances[$recordId] + 1;
@@ -669,7 +667,21 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 				$newInstances[$recordId] = 1;
 			}
 		}
-		$data = [
+
+        $results = array();
+        foreach ($records as $record) {
+            $instance = $newInstances[$record] ?? 1;
+            $link = \REDCap::getSurveyLink($record, $instrument, NULL, $instance, $pid);
+            $results[$record] = $link;
+        }
+        return $results;
+
+
+        /*
+         * Old way - POST URL
+		$oldPid = $_GET['pid'];
+		$_GET['pid'] = $pid;    // for the Application::link on the cron
+        $data = [
 				"records" => $records,
 				"instrument" => $instrument,
 				"instances" => $newInstances,
@@ -687,6 +699,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		    Application::log("makeSurveyLinks Warning! Could not decode JSON: $output", $pid);
 			return $output;
 		}
+        */
 	}
 
 	private function getMessages($what, $recordIds, $names, $lastNames, $firstNames) {
@@ -818,14 +831,18 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	private static function processNames($rows) {
 		$lastNames = array();
 		foreach ($rows as $recordId => $row) {
-			$lastNames[$recordId] = $row['last_name'];
+            if ($row['email'] !== '') {
+                $lastNames[$recordId] = $row['last_name'];
+            }
 		}
 		asort($lastNames);
 
 		$names = array();
 		foreach ($lastNames as $recordId => $lastName) {
 			$row = $rows[$recordId];
-			$names[$recordId] = $row['first_name']." ".$row['last_name'];
+            if ($row['email'] !== '') {
+                $names[$recordId] = $row['first_name'] . " " . $row['last_name'];
+            }
 		}
 		return $names;
 	}
