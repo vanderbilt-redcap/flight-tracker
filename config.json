@@ -13,7 +13,7 @@
 		}
 	],
 
-	
+
 	"permissions": [
 		"redcap_data_entry_form",
 		"redcap_every_page_before_render",

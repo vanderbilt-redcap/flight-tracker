@@ -314,6 +314,16 @@ class DataDictionaryManagement {
         return [];
     }
 
+    public static function filterFieldsForPrefix($metadataFields, $prefix) {
+        $filteredFields = [];
+        foreach ($metadataFields as $field) {
+            if (preg_match("/^$prefix/", $field)) {
+                $filteredFields[] = $field;
+            }
+        }
+        return $filteredFields;
+    }
+
     public static function setupSurveys($projectId, $surveysAndLabels, $surveyCompletionText = "DEFAULT") {
         $surveyIntroText = '<p><strong>Please complete the survey below.</strong></p><p>Thank you!</p>';
         if ($surveyCompletionText == "DEFAULT") {

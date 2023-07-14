@@ -14,6 +14,30 @@ class Portal {
     const DATETIME_FORMAT = "Y-m-d h:I:s";
     const BOARD_PREFIX = "board_";
 
+    public function __construct($currPid, $recordId, $name, $projectTitle, $allPids) {
+        $this->pid = $currPid;
+        $this->pidRecords = Download::recordIdsByPid($this->pid);
+        $this->recordId = $recordId;
+        $this->allPids = $allPids;
+        $this->name = $name;
+        $this->projectTitle = $projectTitle;
+        $this->today = date("Y-m-d");
+        list($this->username, $this->firstName, $this->lastName) = self::getCurrentUserIDAndName();
+        $this->driverURL = Application::link("portal/driver.php").(isset($_GET['uid']) ? "&uid=".$this->username : "");
+        $this->mmaURL = Application::link("portal/mmaDriver.php").(isset($_GET['uid']) ? "&uid=".$this->username : "");
+        if (!$this->verifyRequest()) {
+            throw new \Exception("Unverified Access.");
+        }
+    }
+
+    public static function getTestNames() {
+        return [
+            "bastarja" => ["Julie", "Bastarache"],
+            "edwardt5" => ["Todd", "Edwards"],
+            "austine" => ["Eric", "Austin"],
+        ];
+    }
+
     public static function getCurrentUserIDAndName() {
         $version = Application::getVersion();
         if (
@@ -21,11 +45,10 @@ class Portal {
             && REDCapManagement::versionGreaterThanOrEqualTo("6.0.0", $version)
             && isset($_GET['uid'])
         ) {
-            # pre release
-            if ($_GET['uid'] == "bastarja") {
-                return ["bastarja", "Julie", "Bastarache"];
-            } else if ($_GET['uid'] == "edwardt5") {
-                return ["edwardt5", "Todd", "Edwards"];
+            # TODO pre release
+            $testNames = self::getTestNames();
+            if (in_array($_GET['uid'], $testNames)) {
+                return [$_GET['uid'], $testNames[$_GET['uid']][0], $testNames[$_GET['uid']][1]];
             } else {
                 $username = Sanitizer::sanitize($_GET['uid']);
                 $info = REDCapLookup::getUserInfo($username);
@@ -42,7 +65,7 @@ class Portal {
         return $data;
     }
 
-    public static function getMatches($username, $firstName, $lastName, $pids) {
+    public static function getMatchesForUserid($username, $firstName, $lastName, $pids) {
         $usernameInLC = strtolower($username);
         $matches = [];
         $projectTitles = [];
@@ -97,11 +120,58 @@ class Portal {
                 Application::unsetPid();
             }
         }
-        return [$matches, $projectTitles, self::getPhoto($matches)];
+        return [$matches, $projectTitles, self::getPhotoInMatches($matches)];
     }
 
-    public static function getPage($relativeFileLocation, $pid, $getParams = []) {
-        $getParams['pid'] = (string) $pid;
+    public function getMatchesManually($requestedPids) {
+        if (!empty($requestedPids)) {
+            $myPids = [];
+            foreach ($requestedPids as $pid) {
+                if (in_array($pid, $this->allPids)) {
+                    $myPids[] = $pid;
+                }
+            }
+        } else {
+            $myPids = $this->allPids;
+        }
+        list($matches, $projectTitles, $photoBase64) = self::getMatchesForUserid($this->username, $this->firstName, $this->lastName, $myPids);
+        $this->mergeWithStoredData(["matches" => $matches, "projectTitles" => $projectTitles], $myPids);
+        return [$matches, $projectTitles, $photoBase64];
+    }
+
+    private function mergeWithStoredData($data, $myPids) {
+        $storedData = $this->getStoredData();
+        $storedDate = $storedData['date'] ?? "";
+        if ($storedDate == $this->today) {
+            $hasMerged = TRUE;
+            foreach ($data as $key => $pidValues) {
+                if (!isset($storedData[$key])) {
+                    $storedData[$key] = $pidValues;
+                } else {
+                    foreach ($pidValues as $pid => $value) {
+                        $storedData[$key][$pid] = $value;
+                    }
+                }
+            }
+        } else {
+            $hasMerged = FALSE;
+            $storedData = $data;
+            $storedData['date'] = date("Y-m-d");
+        }
+        if ($hasMerged && ($this->allPids[count($this->allPids) - 1] == $myPids[count($myPids) - 1])) {
+            $storedData['done'] = TRUE;
+        } else {
+            $storedData['done'] = FALSE;
+        }
+        Application::saveSystemSetting($this->username, $storedData);
+    }
+
+    public function getStoredMatches() {
+        return $this->getStoredData()['matches'] ?? [];
+    }
+
+    public function getPage($relativeFileLocation, $getParams = []) {
+        $getParams['pid'] = (string) $this->pid;
         $page = preg_replace("/^\//", "", $relativeFileLocation);
         $pageWithoutPHP = preg_replace("/\.php$/", "", $page);
         $getParams['page'] = $pageWithoutPHP;
@@ -130,7 +200,7 @@ class Portal {
 
     public static function makeName($fn, $ln) {
         if ($fn && $ln) {
-            return "$fn $ln";
+            return NameMatcher::formatName($fn, "", $ln);
         } else if ($fn) {
             return $fn;
         } else if ($ln) {
@@ -169,17 +239,15 @@ class Portal {
         return "";
     }
 
-    public static function getPhoto($allMatches) {
+    private static function getPhotoInMatches($matches) {
         $targetField = "identifier_picture";
-        if ($allMatches) {
-            foreach ($allMatches as $pid => $recordsAndNames) {
-                $fields = Download::metadataFieldsByPid($pid);
-                if (in_array($targetField, $fields)) {
-                    foreach (array_keys($recordsAndNames) as $recordId) {
-                        $base64 = Download::fileAsBase64($pid, $targetField, $recordId);
-                        if ($base64) {
-                            return $base64;
-                        }
+        foreach ($matches as $pid => $recordsAndNames) {
+            $fields = Download::metadataFieldsByPid($pid);
+            if (in_array($targetField, $fields)) {
+                foreach (array_keys($recordsAndNames) as $recordId) {
+                    $base64 = Download::fileAsBase64($pid, $targetField, $recordId);
+                    if ($base64) {
+                        return $base64;
                     }
                 }
             }
@@ -187,8 +255,18 @@ class Portal {
         return "";
     }
 
+    public function getPhoto() {
+        $validMatches = [];
+        foreach ($this->getStoredMatches() as $pid => $recordsAndNames) {
+            if (in_array($pid, $this->allPids)) {
+                $validMatches[$pid] = $recordsAndNames;
+            }
+        }
+        return self::getPhotoInMatches($validMatches);
+    }
+
     # 3 words max
-    public static function getMenu() {
+    public function getMenu() {
         $menu = [];
         $menu["Your Info"] = [];
         $menu["Your Graphs"] = [];
@@ -205,6 +283,10 @@ class Portal {
         $menu["Your Info"][] = [
             "action" => "honors",
             "title" => "Honors &amp; Awards",     // new survey
+        ];
+        $menu["Your Info"][] = [
+            "action" => "resources",
+            "title" => "Resource Use",     // info to connect to a CTSA resource
         ];
         $menu["Your Info"][] = [
             "action" => "photo",
@@ -245,7 +327,7 @@ class Portal {
             ];
 
             $menu["Your Network"][] = [
-                "action" => "resources",
+                "action" => "resource_map",
                 "title" => "Resource Map",     // flight map
             ];
 
@@ -262,8 +344,36 @@ class Portal {
         return $menu;
     }
 
-    public static function verifyMatches($matches, $username, $firstName, $lastName) {
-        return TRUE;    // TODO
+    public function getStoredData() {
+        $storedData = Application::getSystemSetting($this->username);
+        $storedDate = $storedData['date'] ?? "";
+        $isDone = $storedData['done'] ?? FALSE;
+        if (!empty($storedData) && ($storedDate === $this->today) && $isDone) {
+            unset($storedData['date']);
+            unset($storedData['done']);
+            if (!Application::isLocalhost()) {
+                foreach ($storedData['matches'] ?? [] as $matchPid => $recordsAndNames) {
+                    if (!REDCapManagement::isActiveProject($matchPid)) {
+                        unset($storedData["matches"][$matchPid]);
+                    }
+                }
+                return $storedData;
+            }
+        } else if (!empty($storedData) && ($storedDate !== $this->today)) {
+            Application::saveSystemSetting($this->username, "");
+        }
+        return [];
+    }
+
+    private function verifyRequest() {
+        if ($this->pid && !in_array($this->pid, $this->allPids)) {
+            return FALSE;
+        }
+        if ($this->recordId && !in_array($this->recordId, $this->pidRecords)) {
+            return FALSE;
+        }
+        # TODO More - username or name goes with pid/recordId?
+        return TRUE;
     }
 
     public static function getHeaders() {
@@ -272,8 +382,8 @@ class Portal {
         return $html;
     }
 
-    # TODO Uploads to all projects - should it only upload to ones without an existing photo? Am checking with Arnita...
-    public static function uploadPhoto($filename, $mimeType, $matches) {
+    public function uploadPhoto($filename, $mimeType) {
+        $matches = $this->getStoredMatches();
         $extension = FileManagement::getMimeSuffix($mimeType);
         $base64 = FileManagement::getBase64OfFile($filename, $mimeType);
         $oneUploadSuccessful = FALSE;
@@ -297,15 +407,14 @@ class Portal {
         }
     }
 
-    public static function getModifyPhotoPage($allMatches) {
-        $base64 = self::getPhoto($allMatches);
+    public function getModifyPhotoPage() {
+        $base64 = $this->getPhoto();
         if ($base64) {
             $html = "<h3>Replace Your Photo</h3>";
         } else {
             $html = "<h3>Add a Photo</h3>";
         }
-        $driverLink = Application::link("portal/driver.php").(isset($_GET['uid']) ? "&uid=".$_GET['uid'] : "");
-        $html .= "<form action='$driverLink' method='POST' enctype='multipart/form-data' id='photoForm'>";
+        $html .= "<form action='{$this->driverURL}' method='POST' enctype='multipart/form-data' id='photoForm'>";
         $html .= "<input type='hidden' name='action' value='upload_photo' />";
         $html .= "<p class='centered'><label for='photoFile'>Photo:</label> <input type='file' id='photoFile' name='photoFile' onchange='portal.validateFile(this);' /><br/>";
         $html .= "<button onclick='portal.uploadPhoto(\"#photoForm\"); return false;'>Upload</button></p>";
@@ -313,27 +422,27 @@ class Portal {
         return $html;
     }
 
-    public static function makeMentoringPortal($pid, $recordId, $projectTitle, $driverURL) {
-        $redcapData = Download::getDataByPid($pid, ["record_id", "summary_mentor", "summary_mentor_userid"], [$recordId]);
-        $mentorList = REDCapManagement::findField($redcapData, $recordId, "summary_mentor");
-        $mentorUseridList = REDCapManagement::findField($redcapData, $recordId, "summary_mentor_userid");
+    public function makeMentoringPortal() {
+        $redcapData = Download::getDataByPid($this->pid, ["record_id", "summary_mentor", "summary_mentor_userid"], [$this->recordId]);
+        $mentorList = REDCapManagement::findField($redcapData, $this->recordId, "summary_mentor");
+        $mentorUseridList = REDCapManagement::findField($redcapData, $this->recordId, "summary_mentor_userid");
         $mentors = $mentorList ? preg_split("/\s*[,;\/]\s*/", $mentorList) : [];
         $mentorUserids = $mentorUseridList ? preg_split("/\s*[,;]\s*/", $mentorUseridList) : [];
 
         $mssg = "<p class='centered max-width'>Your do not have a mentor set up. Would you like to add a Mentor?</p>";
-        $html = "<h3>Your Mentoring Portal for $projectTitle</h3>";
+        $html = "<h3>Your Mentoring Portal for {$this->projectTitle}</h3>";
         $html .= "<div id='searchResults'></div>";
-        if (Application::isMSTP($pid)) {
+        if (Application::isMSTP($this->pid)) {
             $html .= "<h4>Coming Soon</h4>";
         } else if (empty($mentors) && empty($mentorUserids)) {
-            $html .= self::makeMentorSetup($driverURL, $pid, $recordId, $mssg);
+            $html .= $this->makeMentorSetup($mssg);
         } else if (empty($mentorUserids)) {
             $i = 1;
             foreach ($mentors as $mentorName) {
                 list($firstName, $lastName) = NameMatcher::splitName($mentorName, 2);
                 $lookup = new REDCapLookup($firstName, $lastName);
                 $uidsAndNames = $lookup->getUidsAndNames(TRUE);
-                $html .= self::processUidsAndNames($driverURL, $mentorName, $pid, $recordId, $uidsAndNames, $i, "<p class='centered max-width'>This mentor does not match any REDCap users. Would you like to add another mentor?</p>");
+                $html .= $this->processUidsAndNames($mentorName, $uidsAndNames, $i, "<p class='centered max-width'>This mentor does not match any REDCap users. Would you like to add another mentor?</p>");
                 $i++;
             }
         } else if (empty($mentors)) {
@@ -348,29 +457,29 @@ class Portal {
             if (!empty($mentorNames)) {
                 $mentors = $mentorNames;
                 $mentorList = implode(", ", $mentors);
-                $uploadRow = ["record_id" => $recordId, "summary_mentor" => $mentorList];
-                Upload::rowsByPid([$uploadRow], $pid);
-                $html .= self::makeLiveMentorPortal($mentors, $mentorUserids, $pid, $projectTitle);
+                $uploadRow = ["record_id" => $this->recordId, "summary_mentor" => $mentorList];
+                Upload::rowsByPid([$uploadRow], $this->pid);
+                $html .= $this->makeLiveMentorPortal($mentors, $mentorUserids);
             } else {
-                $html .= self::makeMentorSetup($driverURL, $pid, $recordId, $mssg);
+                $html .= $this->makeMentorSetup($mssg);
             }
         } else {
-            $html .= self::makeLiveMentorPortal($mentors, $mentorUserids, $pid, $projectTitle);
+            $html .= $this->makeLiveMentorPortal($mentors, $mentorUserids);
         }
         return $html;
     }
 
-    private static function makeNewPostHTML() {
+    private function makeNewPostHTML() {
         $html = "<h4>Make a New Post</h4>";
         $html .= "<p><textarea id='newPost'></textarea></p>";
-        $html .= "<p><button onclick='portal.submitPost(\"#newPost\");'>Submit Post</button></p>";
+        $html .= "<p><button onclick='portal.submitPost(\"#newPost\"); return false;'>Submit Post</button></p>";
         return $html;
     }
 
-    public static function getInstitutionBulletinBoard() {
-        $posts = self::getBoardPosts();
+    public function getInstitutionBulletinBoard() {
+        $posts = $this->getBoardPosts();
         $html = "<h3>Institutional Bulletin Board</h3>";
-        $html .= self::makeNewPostHTML();
+        $html .= $this->makeNewPostHTML();
         $html .= "<h4>Existing Posts from Your Colleagues</h4>";
         $html .= "<div id='posts'>";
         if (empty($posts)) {
@@ -379,10 +488,10 @@ class Portal {
             $rows = [];
             foreach ($posts as $post) {
                 if (!empty($post)) {
-                    $rows[] = self::formatPost($post);
+                    $rows[] = $this->formatPost($post);
                 }
             }
-            $html .= implode("<hr/>", $rows);
+            $html .= implode("", $rows);
         }
         $html .= "</div>";
 
@@ -390,15 +499,22 @@ class Portal {
     }
 
     # returns boolean if an entry was deleted
-    public static function deletePost($username, $datetime) {
-        $i = 0;
+    public function deletePost($user, $datetime) {
+        if (!$user || !$datetime) {
+            return FALSE;
+        }
+        $prefixIndex = 0;
         $prefix = self::BOARD_PREFIX;
         do {
-            $i++;
-            $result = Application::getSystemSetting($prefix . $i);
+            $prefixIndex++;
+            $result = Application::getSystemSetting($prefix . $prefixIndex);
             if (is_array($result)) {
                 foreach ($result as $i => $post) {
-                    if (($post['username'] == $username) && ($post['date'] == $datetime)) {
+                    if (
+                        ($post['username'] == $user)
+                        && ($post['date'] == $datetime)
+                        && self::canDelete($post['username'])
+                    ) {
                         $newResult = [];
                         foreach ($result as $j => $post2) {
                             if ($j !== $i) {
@@ -407,7 +523,7 @@ class Portal {
                                 $newResult[] = [];
                             }
                         }
-                        Application::saveSystemSetting($prefix.$i, $newResult);
+                        Application::saveSystemSetting($prefix.$prefixIndex, $newResult);
                         return TRUE;
                     }
                 }
@@ -416,54 +532,75 @@ class Portal {
         return FALSE;
     }
 
-    private static function formatPost($post) {
+    private function formatPost($post) {
         $user = $post['username'];
         $lookup = new REDCapLookupByUserid($user);
-        $name = $lookup->getName();
+        $testNames = self::getTestNames();
+        if (isset($testNames[$user])) {
+            $name = self::makeName($testNames[$user][0], $testNames[$user][1]);
+        } else {
+            $name = $lookup->getName();
+        }
         $email = $lookup->getEmail();
-        $date = DateManagement::datetime2LongDateTime($post['date'] ?? date(self::DATETIME_FORMAT));
+        $date = $_POST['date'] ?? date(self::DATETIME_FORMAT);
         $mssg = $post['message'];
         $storedData = Application::getSystemSetting($user) ?: [];
         $matches = $storedData['matches'] ?? [];
         if (!empty($matches) && !$name) {
+            $found = FALSE;
             foreach ($matches as $pid => $recordsAndNames) {
                 foreach ($recordsAndNames as $recordId => $n) {
                     if ($n) {
                         $name = $n;
+                        $found = TRUE;
                         break;
                     }
                 }
-                if ($name) {
+                if ($found) {
                     break;
                 }
             }
         } else if (!$name) {
             $name = $user;
         }
-        $photo = self::getPhoto($matches);
+        $photo = $this->getPhoto();
         if (!$email) {
-            $email = self::getEmail($matches);
+            $email = $this->getEmail();
         }
-        return self::makePostHTML($name, $email, $date, $mssg, $photo);
+        return $this->makePostHTML($name, $user, $email, $date, $mssg, $photo);
     }
 
-    private static function makePostHTML($name, $email, $date, $mssg, $photoBase64) {
+    private function makePostHTML($name, $user, $email, $datetime, $mssg, $photoBase64) {
+        $longDate = DateManagement::datetime2LongDate($datetime);
         $photoHTML = $photoBase64 ? "<img src='$photoBase64' class='photo' alt='$name' /><br/>" : "";
-        $html = "<p>$photoHTML<strong>$name</strong> at $date (<a href='mailto:$email'>$email</a>)</p>";
-        $html .= "<p>$mssg</p>";
+        $deleteButton = self::canDelete($user) ? " <button onclick='portal.deletePost(\"#posts\", \"$user\", \"$datetime\"); return false;'>Delete Post</button>" : "";
+        $emailHTML = $email ? " (<a href='mailto:$email'>$email</a>)" : "";
+        $html = "<p>$photoHTML<strong>$name</strong> at ".$longDate.$emailHTML.$deleteButton."</p>";
+        $lines = preg_split("/[\n\r]+/", $mssg);
+        $postHTML = implode("</p><p class='alignLeft'>", $lines);
+        if (!$postHTML) {
+            return "";
+        }
+        $html .= "<div class='centered max-width-600 post'><p class='alignLeft'>".$postHTML."</p></div>";
         return $html;
     }
 
-    private static function getEmail($allMatches) {
-        foreach ($allMatches as $pid => $recordsAndNames) {
-            foreach (array_keys($recordsAndNames) as $recordId) {
-                $email = Download::oneFieldForRecordByPid($pid, "identifier_email", $recordId);
-                if ($email) {
-                    return $email;
-                } else {
-                    $personalEmail = Download::oneFieldForRecordByPid($pid, "identifier_personal_email", $recordId);
-                    if ($personalEmail) {
-                        return $personalEmail;
+    public static function canDelete($postUser) {
+        return Application::isSuperUser() || ($postUser == Application::getUsername());
+    }
+
+    private function getEmail() {
+        foreach ($this->getStoredMatches() as $pid => $recordsAndNames) {
+            if (in_array($pid, $this->allPids)) {
+                foreach (array_keys($recordsAndNames) as $recordId) {
+                    $email = Download::oneFieldForRecordByPid($pid, "identifier_email", $recordId);
+                    if ($email) {
+                        return $email;
+                    } else {
+                        $personalEmail = Download::oneFieldForRecordByPid($pid, "identifier_personal_email", $recordId);
+                        if ($personalEmail) {
+                            return $personalEmail;
+                        }
                     }
                 }
             }
@@ -471,10 +608,10 @@ class Portal {
         return "";
     }
 
-    public static function addPost($postText, $username) {
+    public function addPost($postText) {
         $post = [
             "message" => $postText,
-            "username" => $username,
+            "username" => $this->username,
             "date" => date(self::DATETIME_FORMAT),
         ];
 
@@ -486,15 +623,15 @@ class Portal {
             if (is_array($result) && (count($result) < self::NUM_POSTS_PER_SETTING)) {
                 $result[] = $post;
                 Application::saveSystemSetting($prefix.$i, $result);
-                return self::formatPost($post);
+                return $this->formatPost($post);
             }
-        } while ($result !== "");
+        } while (isset($result) && ($result !== ""));
 
         Application::saveSystemSetting($prefix.$i, [$post]);
-        return self::formatPost($post);
+        return $this->formatPost($post);
     }
 
-    private static function getBoardPosts() {
+    private function getBoardPosts() {
         $posts = [];
         $i = 0;
         $prefix = self::BOARD_PREFIX;
@@ -509,20 +646,20 @@ class Portal {
                 }
             }
         } while ($result !== "");
-        return $posts;
+        return array_reverse($posts);
     }
 
-    public static function processUidsAndNames($driverURL, $mentorName, $pid, $recordId, $uidsAndNames, $i, $priorMessage = "") {
+    public function processUidsAndNames($mentorName, $uidsAndNames, $i, $priorMessage = "") {
         $html = "<h4>$mentorName</h4>";
         if (empty($uidsAndNames)) {
-            $html .= self::makeMentorSetup($driverURL, $pid, $recordId, $priorMessage, $i);
+            $html .= $this->makeMentorSetup($priorMessage, $i);
         } else {
-            $html .= self::makeConfirmationTable($driverURL, $mentorName, $pid, $recordId, $uidsAndNames, $i);
+            $html .= $this->makeConfirmationTable($mentorName, $uidsAndNames, $i);
         }
         return $html;
     }
 
-    private static function makeConfirmationTable($url, $mentorName, $pid, $recordId, $uidsAndNames, $index) {
+    private function makeConfirmationTable($mentorName, $uidsAndNames, $index) {
         $html = "<table class='centered max-width'><tbody>";
         if (count($uidsAndNames) == 1) {
             $radioName = "mentor_$index"."_yn";
@@ -550,11 +687,11 @@ class Portal {
             $html .= "</tr>";
         }
         $html .= "</tbody></table>";
-        $html .= "<p class='centered max-width'><button onclick='portal.selectMentors(\"$url\", \"$pid\", \"$recordId\", \"$mentorName\", \"[name=$radioName]\"); return false;'>Make Selection</button></p>";
+        $html .= "<p class='centered max-width'><button onclick='portal.selectMentors(\"{$this->driverURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"$mentorName\", \"[name=$radioName]\"); return false;'>Make Selection</button></p>";
         return $html;
     }
 
-    private static function makeMentorSetup($url, $pid, $recordId, $priorMessage = "", $index = NULL) {
+    private function makeMentorSetup($priorMessage = "", $index = NULL) {
         $suffix = isset($index) ? "_".$index : "";
         $html = "";
         if ($priorMessage) {
@@ -563,30 +700,50 @@ class Portal {
         $html .= "<p class='centered max-width'><input type='text' id='mentor$suffix' name='mentor$suffix' placeholder='Mentor Name' /></p>";
 
         $lines = [];
-        $lines[] = "<button onclick='portal.searchForMentor(\"$url\", \"$pid\", \"$recordId\", \"#mentor$suffix\"); return false;'>Search If They Have REDCap Access</button>";
+        $lines[] = "<button onclick='portal.searchForMentor(\"{$this->mmaURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"#mentor$suffix\"); return false;'>Search If They Have REDCap Access</button>";
         $lines[] = "";
         $lines[] = "<strong>-OR-</strong>";
         $lines[] = "";
         $lines[] = "<label for='mentor_userid$suffix'>Input the Mentor's User ID for Accessing REDCap</label>";
         $lines[] = "<input type='text' id='mentor_userid$suffix' name='mentor_userid$suffix' placeholder=\"Mentor's User ID\" />";
-        $lines[] = "<button onclick='portal.submitNameAndUserid(\"$url\", \"$pid\", \"$recordId\", \"#mentor$suffix\", \"#mentor_userid$suffix\"); return false;'>Submit Name &amp; User ID</button>";
+        $lines[] = "<button onclick='portal.submitNameAndUserid(\"{$this->mmaURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"#mentor$suffix\", \"#mentor_userid$suffix\"); return false;'>Submit Name &amp; User ID</button>";
 
         $html .= "<p class='centered max-width'>".implode("<br/>", $lines)."</p>";
         return $html;
     }
 
-    private static function makeLiveMentorPortal($mentors, $mentorUserids, $pid, $projectTitle) {
+    private function makeLiveMentorPortal($mentors, $mentorUserids) {
         $html = "<p class='centered max-width'>";
-        if (count($mentors) == 1) {
+        if ((count($mentors) == 1) && (count($mentorUserids) == 1)) {
             $mentorUseridList = implode(", ", $mentorUserids);
-            $html .= "Your mentor is {$mentors[0]}, and they have access to REDCap through the user-id $mentorUseridList.";
+            $html .= "Your mentor is {$mentors[0]} ($mentorUseridList).";
+        } else if (count($mentors) == count($mentorUserids)) {
+            $names = [];
+            foreach ($mentors as $i => $mentor) {
+                $userid = $mentorUserids[$i];
+                $names[] = "$mentor ($userid)";
+            }
+            $html .= "Your mentors are ".REDCapManagement::makeConjunction($names).".";
         } else {
             $html .= "Your mentors are ".REDCapManagement::makeConjunction($mentors).". The following user-id(s) provide them access: ".REDCapManagement::makeConjunction($mentorUserids).".";
         }
         $html .= "</p>";
 
-        $mmaURL = Application::getMenteeAgreementLink($pid);
-        $html .= "<h4>".Links::makeLink($mmaURL, "Access Your Mentee-Mentor Agreement for $projectTitle", TRUE)."</h4>";
+        $mmaURL = Application::getMenteeAgreementLink($this->pid);
+        $html .= "<h4>".Links::makeLink($mmaURL, "Access Your Mentee-Mentor Agreement for ".$this->projectTitle, TRUE)."</h4>";
         return $html;
     }
+
+    protected $pid;
+    protected $recordId;
+    protected $name;
+    protected $projectTitle;
+    protected $allPids;
+    protected $driverURL;
+    protected $username;
+    protected $lastName;
+    protected $firstName;
+    protected $today;
+    protected $mmaURL;
+    protected $pidRecords;
 }

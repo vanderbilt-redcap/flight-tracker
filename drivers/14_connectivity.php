@@ -15,7 +15,7 @@ function testConnectivity($token, $server, $pid, $howToReturn = "Email") {
 function encodeName(str) {
     str = str.toLowerCase()
     str = str.replace(/\s+/g, '_')
-    str = str.replace(/^[^a-z]+|[^\w:\.\-]+/gi, '')
+    str = str.replace(/[^a-z]+|[^\w:\.\-]+/gi, '')
     return str
 }
 
@@ -25,7 +25,7 @@ $(document).ready(function() {
         const server = sites[name]
         let encodedName = encodeName(name)
         $.post('" . Application::link('testConnectionStatus.php') . "', { 'redcap_csrf_token': getCSRFToken(), name: name }, function(json) {
-            console.log(json);
+            console.log(name+' ('+encodedName+'): '+json);
             let results = JSON.parse(json)
             let html = ''
             html += '<h2>'+name+' (<a href=\"https://'+server+'\">'+server+'</a>)</h2>'

@@ -9,6 +9,8 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class Upload
 {
+    const MAX_RETRIES = 3;
+
     public static function adaptToUTF8(&$ary)
     {
         if (!json_encode($ary)) {
@@ -640,7 +642,7 @@ class Upload
         return TRUE;
     }
 
-	public static function rows($rows, $token, $server) {
+	public static function rows($rows, $token, $server, $retryCount = 0) {
         if (!self::checkRows($rows)) {
             if (isset($_GET['test'])) {
                 echo "Failed test<br>";
@@ -747,9 +749,24 @@ class Upload
                 $time2 = microtime(TRUE);
 				$output = (string) curl_exec($ch);
                 $feedback = json_decode($output, true);
-                self::testFeedback($feedback, $output, $ch, $rows);
                 curl_close($ch);
                 $time3 = microtime(TRUE);
+
+                try {
+                    self::testFeedback($feedback, $output, $ch, $rows);
+                } catch (\Exception $e) {
+                    if ($retryCount < self::MAX_RETRIES) {
+                        $retryCount++;
+                        if ($retryCount == self::MAX_RETRIES) {
+                            sleep(60);
+                        } else {
+                            sleep(5);
+                        }
+                        $feedback = self::rows($rows, $token, $server, $retryCount);
+                    } else {
+                        throw new \Exception($e);
+                    }
+                }
                 Download::throttleIfNecessary($pid);
 			}
 			if (isset($_GET['test']) && $time3 && $time2) {

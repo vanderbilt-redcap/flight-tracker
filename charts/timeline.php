@@ -94,7 +94,12 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
 
         if ($c == "All") {
             list($submissions, $submissionTimestamps) = makeSubmissionDots($grants->getGrants("submissions"), $id);
-            list($awards, $awardTimestamps) = makeAwardDots($grants->getGrants("submission_dates"), $id);
+            if (empty($submissions)) {
+                list($awards, $awardTimestamps) = makeAwardDots($grants->getGrants("submission_dates"), $id);
+            } else {
+                $awards = [];
+                $awardTimestamps = [];
+            }
             $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $submissions, $awards);
             $allTimestamps = array_merge($submissionTimestamps, $awardTimestamps);
             $hasSubmissions = !empty($allTimestamps);
@@ -187,6 +192,14 @@ foreach ($classes as $c) {
 ?>
 
 <script type="text/javascript">
+
+// for mousewheel
+function runTimeoutToTurnOffEvents(el) {
+    setTimeout(() => {
+        el.parentNode.replaceChild(el.cloneNode(true), el);
+    }, 2500);
+}
+
 const container_<?= $pid ?> = {};
 const items_<?= $pid ?> = {};
 const options_<?= $pid ?> = {};
@@ -203,6 +216,8 @@ $(document).ready(() => {
         items_".$pid."['$c'] = new vis.DataSet($dataset);
         options_".$pid."['$c'] = { start: $startDate, end: $endDate };
         timeline_".$pid."['$c'] = new vis.Timeline(container_".$pid."['$c'], items_".$pid."['$c'], options_".$pid."['$c']);
+        $(timeline_".$pid."['$c']).unbind('mousewheel');
+        runTimeoutToTurnOffEvents(container_".$pid."['$c']);
         ";
     }
     ?>
@@ -245,6 +260,7 @@ function addIfValid($grant, &$grantsAndPubs, &$submissionTimestamps, &$id, $awar
         DateManagement::isDate($submissionDate)
         && !in_array($awardNo, $skipNumbers)
         && in_array($awardStatus, $validStatuses)
+        && !preg_match("/-0[23456789]$/", $awardNo)
     ) {
         if (isset($_GET['test'])) {
             echo "Adding $awardNo with $awardStatus and $submissionDate with $id<br/>";
@@ -273,7 +289,7 @@ function addIfValid($grant, &$grantsAndPubs, &$submissionTimestamps, &$id, $awar
         } else {
             $truncatedTitle = $title;
         }
-        if ($grantNumber) {
+        if ($grantNumber && ($grantNumber != "No Title Assigned")) {
             $grantNumber .= " Application";
         } else {
             $grantNumber = $awardStatus.": ".$truncatedTitle;

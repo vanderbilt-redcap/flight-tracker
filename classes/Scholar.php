@@ -1478,7 +1478,7 @@ class Scholar {
             Application::log("In getAllOtherInstitutions, returning ".json_encode($seenInstitutions));
         }
         foreach ($seenInstitutions as $i => $institution) {
-            $seenInstitutions[$i] = trim($institution);
+            $seenInstitutions[$i] = str_replace("&#039", "'", trim($institution));
         }
         $seenInstitutions = array_filter($seenInstitutions, static function ($elem) {
             return strtolower($elem) !== "other";
@@ -2583,35 +2583,51 @@ class Scholar {
 		return new Result("", "", "", "", $this->pid);
 	}
 
+    public function getRace($rows) {
+        $field = "summary_race_ethnicity";
+        $order = self::getDefaultOrder($field);
+        $order = $this->getOrder($order, $field);
+        $normativeRow = self::getNormativeRow($rows);
+        $race = "";
+        $raceSource = "";
+        foreach ($order["race"] as $variable => $source) {
+            if (isset($normativeRow[$variable]) && ($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 8)) {
+                $race = $normativeRow[$variable];
+                $raceSource = $source;
+                break;
+            }
+        }
+        return [$race, $raceSource];
+    }
+
+    public function getEthnicity($rows) {
+        $field = "summary_race_ethnicity";
+        $order = self::getDefaultOrder($field);
+        $order = $this->getOrder($order, $field);
+        $normativeRow = self::getNormativeRow($rows);
+        $eth = "";
+        $ethSource = "";
+        foreach ($order["ethnicity"] as $variable => $source) {
+            if (isset($normativeRow[$variable]) && ($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 4)) {
+                $eth = $normativeRow[$variable];
+                $ethSource = $source;
+                break;
+            }
+        }
+        return [$eth, $ethSource];
+    }
+
 	# returns array of 3 (overall classification, race source, ethnicity source)
 	public function getRaceEthnicity($rows) {
 		$field = "summary_race_ethnicity";
-		$order = self::getDefaultOrder($field);
-		$order = $this->getOrder($order, $field);
-		$normativeRow = self::getNormativeRow($rows);
 		$choices = DataDictionaryManagement::getChoices($this->metadata);
 
-		$race = "";
-		$raceSource = "";
-		foreach ($order["race"] as $variable => $source) {
-			if (isset($normativeRow[$variable]) && ($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 8)) {
-				$race = $normativeRow[$variable];
-				$raceSource = $source;
-				break;
-			}
-		}
+        list ($race, $raceSource) = $this->getRace($rows);
 		if ($race === "") {
 			return new RaceEthnicityResult("", "", "");
 		}
-		$eth = "";
-		$ethSource = "";
-		foreach ($order["ethnicity"] as $variable => $source) {
-			if (isset($normativeRow[$variable]) && ($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 4)) {
-				$eth = $normativeRow[$variable];
-				$ethSource = $source;
-				break;
-			}
-		}
+        list ($eth, $ethSource) = $this->getEthnicity($rows);
+
 		$val = "";
 		if (($race == 98) || ($eth == 98) || ($race == 99) || ($eth == 99)) {
 		    # 98, Unknown | 99, Prefer not to Answer
@@ -3608,7 +3624,7 @@ class Scholar {
         return new Result("", "", "", "", $this->pid);
     }
 
-    private function isLGBTQ($rows) {
+    public function isLGBTQ($rows) {
         $prefixes = [
             "init_import_",
             "check_",
@@ -4078,7 +4094,7 @@ class Scholar {
     }
 
     public function makePositionKey($position, $sep, $choices) {
-        if (in_array(trim($position['institution']) ?? "", Application::getInstitutions($this->pid))) {
+        if (in_array(trim($position['institution'] ?? ""), Application::getInstitutions($this->pid))) {
             $positionKey = "home";
         } else {
             $positionKey = strtolower($position['institution'] ?? "");

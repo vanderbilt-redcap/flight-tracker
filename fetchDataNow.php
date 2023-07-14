@@ -5,7 +5,7 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\ERIC;
-use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -18,6 +18,8 @@ if (!$recordId) {
     die("Error: Invalid Record-ID");
 }
 
+$switches = new FeatureSwitches($token, $server, $pid);
+
 try {
     if ($action == "fetch") {
         if ($fetchType == "summary") {
@@ -27,6 +29,10 @@ try {
         } else if ($fetchType == "publications") {
             require_once(dirname(__FILE__) . "/publications/getAllPubs_func.php");
             \Vanderbilt\CareerDevLibrary\getPubs($token, $server, $pid, [$recordId]);
+            if ($switches->getValue("Update Bibliometrics Monthly") == "On") {
+                require_once(dirname(__FILE__) . "/publications/updateBibliometrics.php");
+                \Vanderbilt\CareerDevLibrary\updateBibliometrics($token, $server, $pid, [$recordId]);
+            }
             if (ERIC::isRecordEnabled($recordId, $token, $server, $pid)) {
                 require_once(dirname(__FILE__) . "/drivers/23_getERIC.php");
                 \Vanderbilt\CareerDevLibrary\getERIC($token, $server, $pid, [$recordId]);

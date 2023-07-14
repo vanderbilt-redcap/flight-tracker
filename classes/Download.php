@@ -1093,6 +1093,24 @@ class Download {
         return $records;
     }
 
+    public static function recordIdsByPid($pid) {
+        $module = Application::getModule();
+        $sql = "SELECT DISTINCT(record) AS record
+                    FROM redcap_data
+                    WHERE project_id = ?
+                    ORDER BY record;";
+        if ($module) {
+            $q = $module->query($sql, [$pid]);
+        } else {
+            $q = db_query($sql, [$pid]);
+        }
+        $records = [];
+        while ($row = $q->fetch_assoc()) {
+            $records[] = $row['record'];
+        }
+        return $records;
+    }
+
 	public static function recordIds($token, $server, $recordIdField = "record_id") {
 		if (isset($_GET['test'])) {
             Application::log("Download::recordIds");

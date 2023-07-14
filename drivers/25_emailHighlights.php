@@ -2,6 +2,8 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule;
+
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
@@ -9,6 +11,7 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
     $to = Application::getSetting("email_highlights_to", $pid);
     $frequency = Application::getSetting("highlights_frequency", $pid);
     $grantList = Application::getSetting("requested_grants", $pid);
+    $scholarScope = Application::getSetting("highlights_scholar_scope", $pid) ?: "all";
 
     if (!$to) {
         resetSettings($pid);
@@ -45,7 +48,7 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
     $warningTs = time() - $numDaysWithoutWarning * $oneDay;
     $thresholdDate = date("m-d-Y", $thresholdTs);
     $allPMIDsIdentified = [];
-    $performancePMIDsIdentified = [];
+    $pmidsIdentified = [];
     $pidsCitationRecordsAndInstances = [];
     $pidsGrantRecordsAndInstances = [];
     $fields = ["record_id", "citation_authors", "citation_pmid", "citation_ts", "citation_include", "citation_rcr", "citation_altmetric_score", "coeus_last_update", "nih_last_update", "vera_last_update"];
@@ -63,7 +66,7 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
     $linkedInHandles = [];
 
 
-    $highPerformers = [];
+    $scholarsIdentified = [];
     foreach ($pids as $currPid) {
         if (REDCapManagement::isActiveProject($currPid)) {
             $allHighPerformingPMIDs = Application::getSetting("high_performing_pmids", $currPid) ?: [];
@@ -80,21 +83,9 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
             $currServer = Application::getSetting("server", $currPid);
             if ($currToken && $currServer) {
                 $metadata = Download::metadata($currToken, $currServer);
-                $atInstitutionRecords = [];
-                $institutionFields = [
-                    "record_id",
-                    "identifier_institution",
-                    "identifier_left_date",
-                ];
-                $institutionData = Download::fields($currToken, $currServer, $institutionFields);
-                foreach ($institutionData as $row) {
-                    $recordId = $row['record_id'];
-                    $scholar = new Scholar($currToken, $currServer, $metadata, $currPid);
-                    $scholar->setRows([$row]);
-                    if (!$scholar->hasLeftInstitution()) {
-                        $atInstitutionRecords[] = $recordId;
-                    }
-                }
+                $filteredRecords = Download::recordIds($currToken, $currServer);
+                filterForScholarScope($filteredRecords, $scholarScope, $currToken, $currServer, $currPid, $metadata);
+                filterForInstitution($filteredRecords, $currToken, $currServer, $currPid, $metadata);
 
                 $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
                 $validFields = DataDictionaryManagement::filterOutInvalidFieldsFromFieldlist($metadataFields, $fields);
@@ -105,7 +96,7 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
                 foreach ($redcapData as $row) {
                     $recordId = $row['record_id'];
                     if (
-                        in_array($recordId, $atInstitutionRecords)
+                        in_array($recordId, $filteredRecords)
                         && ($row['redcap_repeat_instrument'] == "citation")
                     ) {
                         $instance = $row['redcap_repeat_instance'];
@@ -131,21 +122,21 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
                             ($row['citation_include'] !== "0")
                             && in_array($pmid, $highPerformingPMIDS)
                         ) {
-                            if (!isset($highPerformers[$currPid])) {
-                                $highPerformers[$currPid] = [];
+                            if (!isset($scholarsIdentified[$currPid])) {
+                                $scholarsIdentified[$currPid] = [];
                             }
-                            if (!isset($highPerformers[$currPid][$recordId])) {
-                                $highPerformers[$currPid][$recordId] = [];
+                            if (!isset($scholarsIdentified[$currPid][$recordId])) {
+                                $scholarsIdentified[$currPid][$recordId] = [];
                             }
-                            $highPerformers[$currPid][$recordId][] = $instance;
-                            if (!isset($performancePMIDsIdentified[$pmid])) {
-                                $performancePMIDsIdentified[$pmid] = [];
+                            $scholarsIdentified[$currPid][$recordId][] = $instance;
+                            if (!isset($pmidsIdentified[$pmid])) {
+                                $pmidsIdentified[$pmid] = [];
                             }
-                            $performancePMIDsIdentified[$pmid][] = $currPid . ":" . $recordId;
+                            $pmidsIdentified[$pmid][] = $currPid . ":" . $recordId;
                         }
                     } else if (
                         isset($grantInstrumentsAndPrefices[$row['redcap_repeat_instrument']])
-                        && in_array($recordId, $atInstitutionRecords)
+                        && in_array($recordId, $filteredRecords)
                     ) {
                         $instrument = $row['redcap_repeat_instrument'];
                         $prefix = $grantInstrumentsAndPrefices[$instrument];
@@ -299,11 +290,11 @@ a { color: #5764ae; }
     }
     $htmlRows = ["<h2>Publications After $thresholdDate</h2>"];
     $performanceRows = ["<h2>Publications With Newly Altmetric &gt; " . Altmetric::THRESHOLD_SCORE . " or RCR &gt; " . iCite::THRESHOLD_SCORE . "</h2>"];
-    $publicationPids = array_unique(array_merge(array_keys($highPerformers), array_keys($pidsCitationRecordsAndInstances)));
+    $publicationPids = array_unique(array_merge(array_keys($scholarsIdentified), array_keys($pidsCitationRecordsAndInstances)));
     if (!empty($publicationPids)) {
         foreach ($publicationPids as $currPid) {
             $recordsAndInstances = $pidsCitationRecordsAndInstances[$currPid] ?? [];
-            $highPerformingRecordInstances = $highPerformers[$currPid] ?? [];
+            $highPerformingRecordInstances = $scholarsIdentified[$currPid] ?? [];
             if (!empty($highPerformingRecordInstances) || !empty($recordsAndInstances)) {
                 $currToken = Application::getSetting("token", $currPid);
                 $currServer = Application::getSetting("server", $currPid);
@@ -336,7 +327,7 @@ a { color: #5764ae; }
                         $bios[$recordId] = makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currResources[$recordId] ?? [], $currChoices);
                     }
                 }
-                $performanceRows = array_merge($performanceRows, processCitations($performanceREDCapData, $currToken, $currServer, $currPid, $warningTs, $bios, $requestedGrants, $activePids, $performancePMIDsIdentified));
+                $performanceRows = array_merge($performanceRows, processCitations($performanceREDCapData, $currToken, $currServer, $currPid, $warningTs, $bios, $requestedGrants, $activePids, $pmidsIdentified));
                 $htmlRows = array_merge($htmlRows, processCitations($redcapData, $currToken, $currServer, $currPid, $warningTs, $bios, $requestedGrants, $activePids, $allPMIDsIdentified));
             }
         }
@@ -657,4 +648,55 @@ function makeBio($recordId, $userid, $currDepartments, $currRanks, $alumniAssocL
 
 function resetSettings($pid) {
     Application::saveSetting("high_performing_pmids", [], $pid);
+}
+
+function filterForScholarScope(&$records, $scholarScope, $token, $server, $pid, $metadata) {
+    if ($scholarScope == "all") {
+        return;
+    } else {
+        $fields = [
+            "record_id",
+            "identifier_end_of_training",
+        ];
+        $redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
+        if ($scholarScope == "current") {
+            $thresholdTs = time();
+        } else if ($scholarScope == "recent") {
+            $recentYears = FlightTrackerExternalModule::RECENT_YEARS;
+            $thresholdTs = strtotime("-$recentYears year");
+        } else {
+            throw new \Exception("Invalid Scholar Scope $scholarScope!");
+        }
+        $filteredRecords = [];
+        foreach ($redcapData as $row) {
+            if (!$row['identifier_end_of_training']) {
+                $filteredRecords[] = $row['record_id'];
+            } else {
+                $ts = strtotime($row['identifier_end_of_training']);
+                if ($ts >= $thresholdTs) {
+                    $filteredRecords[] = $row['record_id'];
+                }
+            }
+        }
+        $records = $filteredRecords;
+    }
+}
+
+function filterForInstitution(&$records, $token, $server, $pid, $metadata) {
+    $filteredRecords = [];
+    $institutionFields = [
+        "record_id",
+        "identifier_institution",
+        "identifier_left_date",
+    ];
+    $institutionData = Download::fieldsForRecords($token, $server, $institutionFields, $records);
+    foreach ($institutionData as $row) {
+        $recordId = $row['record_id'];
+        $scholar = new Scholar($token, $server, $metadata, $pid);
+        $scholar->setRows([$row]);
+        if (!$scholar->hasLeftInstitution()) {
+            $filteredRecords[] = $recordId;
+        }
+    }
+    $records = $filteredRecords;
 }

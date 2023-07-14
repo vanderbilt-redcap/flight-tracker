@@ -46,9 +46,14 @@ if (!Application::isWebBrowser() && CareerDev::getPid()) {
     date_default_timezone_set(CareerDev::getTimezone());
 }
 
-$pid = Sanitizer::sanitize($module ? $module->getProjectId($_GET['pid'] ?? "") : Sanitizer::sanitizePid($_GET['pid'] ?? ""));
+$pid = Sanitizer::sanitize(isset($module) ? $module->getProjectId($_GET['pid'] ?? "") : Sanitizer::sanitizePid($_GET['pid'] ?? ""));
+if (!$pid && !Application::isWebBrowser() && (count($argv) >= 2) && in_array($argv[1], Application::getPids())) {
+    $pid = $argv[1];
+    $_GET['pid'] = $pid;
+}
 if (!$pid) {
     $pid = CareerDev::getSetting("pid");
+    $_GET['pid'] = $pid;
 }
 define('INSTITUTION', CareerDev::getInstitution($pid));
 define('PROGRAM_NAME', CareerDev::getProgramName());
@@ -1245,7 +1250,7 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
     if (!empty($destRecords)) {
         $feedback = Upload::deleteRecords($destToken, $server, $destRecords);
         CareerDev::log("Delete project: ".count($destRecords)." records: ".json_encode($feedback));
-        array_push($allFeedback, $feedback);
+        $allFeedback[] = $feedback;
     }
 
     # turn off autonumbering in new project
@@ -1275,13 +1280,13 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
                 }
             }
             if (!empty($newRow)) {
-                array_push($newRecordData, $newRow);
+                $newRecordData[] = $newRow;
             }
         }
         if (!empty($newRecordData)) {
             $feedback = Upload::rows($newRecordData, $destToken, $server);
             CareerDev::log("Copy project: Record $record: ".json_encode($feedback));
-            array_push($allFeedback, $feedback);
+            $allFeedback[] = $feedback;
         }
     }
     return $allFeedback;
@@ -1624,7 +1629,7 @@ function produceSourcesAndTypes($scholar, $metadata) {
 					$foundRowSource = "";
 					foreach ($sourceRow as $rowSourceField => $rowSource) {
 						if (in_array($rowSourceField, $allFields)) {
-							array_push($rowFields, $rowSourceField);
+							$rowFields[] = $rowSourceField;
 							$foundRowSource = $rowSource;
 							if (isset($order[$field]) && isset($order[$field][$rowSourceField])) {
 								$sourceType = "original";

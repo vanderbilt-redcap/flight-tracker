@@ -68,7 +68,7 @@ class ConnectionStatus {
     public static function encodeName($str) {
         $str = strtolower($str);
         $str = preg_replace("/\s+/", "_", $str);
-        $str = preg_replace("/^[^a-z]+|[^\w:\.\-]+/", "", $str);
+        $str = preg_replace("/[^a-z]+|[^\w:\.\-]+/", "", $str);
         return $str;
     }
 

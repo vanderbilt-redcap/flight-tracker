@@ -263,7 +263,12 @@ function makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $pre
             $field = $prefix.strtolower($dataField);
             if (in_array($field, $metadataFields)) {
                 if (DateManagement::isOracleDate($value)) {
-                    $value = DateManagement::oracleDate2YMD($value);
+                    try {
+                        $value = DateManagement::oracleDate2YMD($value);
+                    } catch (\Exception $e) {
+                        // Bad date
+                        $value = "";
+                    }
                 } else if ($value == "Y") {
                     $value = "1";
                 } else if ($value == "N") {

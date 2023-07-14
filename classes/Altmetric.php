@@ -40,8 +40,18 @@ class Altmetric {
         if (isset($this->data[$var])) {
             if ($var == "images") {
                 return strval($this->data[$var]["small"]);
+            } else if (preg_match("/^context_/", $var)) {
+                $var = str_replace("higher_than", "higherthan", $var);
+                $nodes = explode("_", $var);
+                if ((count($nodes) == 3) && isset($this->data[$nodes[0]][$nodes[1]])) {
+                    $nodes[1] = str_replace("similarage3m", "similar_age_3m", $nodes[1]);
+                    $nodes[1] = str_replace("similaragejournal3m", "similar_age_journal_3m", $nodes[1]);
+                    $nodes[2] = str_replace("higherthan", "higher_than", $nodes[2]);
+                    return $this->data[$nodes[0]][$nodes[1]][$nodes[2]] ?? "";
+                }
+            } else {
+                return strval($this->data[$var]);
             }
-            return strval($this->data[$var]);
         }
         return "";
     }

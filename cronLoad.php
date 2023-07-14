@@ -102,7 +102,8 @@ function runMainCrons(&$manager, $token, $server) {
             }
             # limited group because bibliometric updates take a lot of time due to rate limiters
             $bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
-            if (!empty($bibliometricRecordsToUpdate)) {
+            $bibliometricsSwitch = $switches->getValue("Update Bibliometrics Monthly");
+            if (!empty($bibliometricRecordsToUpdate) && ($bibliometricsSwitch == "On")) {
                 $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
             }
         }

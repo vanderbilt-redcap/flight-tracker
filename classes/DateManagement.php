@@ -451,6 +451,11 @@ class DateManagement {
         return date("F j, Y, g:i a", $ts);
     }
 
+    public static function datetime2LongDate($datetime) {
+        $ts = strtotime($datetime);
+        return date("F j, Y", $ts);
+    }
+
     public static function datetime2Date($datetime) {
         if (preg_match("/\s/", $datetime)) {
             $nodes = preg_split("/\s+/", $datetime);

@@ -451,6 +451,7 @@ class CronManager {
                                 && ($numRunBeforeInCron <= self::MAX_BATCHES_IN_ONE_CRON)
                             ) {
                                 sleep(1);
+                                Application::log("Flight Tracker repeating cron");
                                 $this->runBatchJobs($numRunBeforeInCron);
                             }
                         } else {
@@ -458,10 +459,10 @@ class CronManager {
                         }
                     } catch (\Throwable $e) {
                         Application::log($e->getMessage()."\n".$e->getTraceAsString());
-                        self::handleBatchError($batchQueue, $module, $startTimestamp, $e);
+                        self::handleBatchError($module, $startTimestamp, $e);
                     } catch (\Exception $e) {
                         Application::log($e->getMessage()."\n".$e->getTraceAsString());
-                        self::handleBatchError($batchQueue, $module, $startTimestamp, $e);
+                        self::handleBatchError($module, $startTimestamp, $e);
                     }
                 } else if (count($batchQueue) > 0) {
                     array_shift($batchQueue);
@@ -1158,7 +1159,8 @@ body { font-size: 1.2em; }
 	    return self::getBatchQueueFromDB($this->module);
     }
 
-    private static function handleBatchError($batchQueue, $module, $startTimestamp, $exception, $record = FALSE) {
+    private static function handleBatchError($module, $startTimestamp, $exception, $record = FALSE) {
+        $batchQueue = self::getBatchQueueFromDB($module);
 	    $mssg = $exception->getMessage();
 	    $trace = $exception->getTraceAsString();
         Application::log("handleBatchError: ".json_encode($batchQueue[0]));

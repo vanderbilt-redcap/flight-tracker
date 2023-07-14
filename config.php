@@ -119,7 +119,7 @@ if (!isset($metadata)) {
 if (isset($_GET['order'])) {
 	echo makeOrder($token, $server, $pid, $metadata);
 } else {
-	echo makeSettings(CareerDev::getModule(), $pid, $metadata);
+	echo makeSettings(CareerDev::getModule(), $pid);
 }
 
 function getFieldNames($metadata) {
@@ -339,7 +339,7 @@ function findFieldLabel($fieldName, $metadata) {
 	return "";
 }
 
-function makeSettings($module, $pid, $metadata) {
+function makeSettings($module, $pid) {
 	$ary = [];
 	
 	$ary["Length of K Grants"] = [];
@@ -357,7 +357,6 @@ function makeSettings($module, $pid, $metadata) {
 	$ary["Installation Variables"][] = makeSetting("event_id", "text", "Event ID (read-only)", "", [], TRUE);
 	$ary["Installation Variables"][] = makeSetting("pid", "text", "Project ID (read-only)", "", [], TRUE);
 	$ary["Installation Variables"][] = makeSetting("server", "text", "Server API Address");
-    $ary["Installation Variables"][] = makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated");
 	$ary["Installation Variables"][] = makeSetting("tokenName", "text", "Project Name");
 	$ary["Installation Variables"][] = makeSetting("timezone", "text", "Timezone");
     $ary["Installation Variables"][] = makeSetting("grant_class", "radio", "Grant Class", "", CareerDev::getGrantClasses());
@@ -387,11 +386,15 @@ function makeSettings($module, $pid, $metadata) {
 //	array_push($ary["Emails"], makeSetting("init_from", "text", "Initial Email From Address"));
 //	array_push($ary["Emails"], makeSetting("init_subject", "text", "Initial Email Subject"));
 //	array_push($ary["Emails"], makeSetting("init_message", "textarea", "Initial Email Message"));
+    $ary["Emails"][] = makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated");
     $ary["Emails"][] = makeSetting("default_from", "text", "Default From Address");
     $ary["Emails"][] = makeSetting("warning_minutes", "number", "Number of Minutes Before An Email to Send a Warning Email", Application::getWarningEmailMinutes($pid));
-    $ary["Emails"][] = makeSetting("email_highlights_to", "text", "Email(s) to Send Celebrations Email To (Leave Blank Not to Send; Comma-Separated)");
-    $ary["Emails"][] = makeSetting("highlights_frequency", "radio", "Frequency of Celebrations Email", "weekly", ["weekly" => "Weekly", "monthly" => "Monthly"]);
-    $ary["Emails"][] = makeSetting("requested_grants", "text", "Comma-Separated List of Grant Numbers to Restrict the Celebrations Email To (Optional; Leave Blank to Use All Grants)");
+
+    $ary["Celebrations Email"] = [];
+    $ary["Celebrations Email"][] = makeSetting("email_highlights_to", "text", "Email(s) to Send to (Leave Blank Not to Send; Comma-Separated)");
+    $ary["Celebrations Email"][] = makeSetting("highlights_frequency", "radio", "Frequency", "weekly", ["weekly" => "Weekly", "monthly" => "Monthly"]);
+    $ary["Celebrations Email"][] = makeSetting("requested_grants", "text", "Comma-Separated List of Grant Numbers to Restrict the Celebrations Email To (Optional; Leave Blank to Use All Grants)");
+    $ary["Celebrations Email"][] = makeSetting("highlights_scholar_scope", "radio", "Current Scholars &amp; Recent Graduates (Last ".FlightTrackerExternalModule::RECENT_YEARS." Years) Only?", "all", ["all" => "All Scholars", "current" => "Current Trainees", "recent" => "Current Trainees &amp; Recent Graduates"]);
 
     $ary["Bibliometrics"] = [];
     $ary["Bibliometrics"][] = makeSetting("wos_userid", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " User ID");

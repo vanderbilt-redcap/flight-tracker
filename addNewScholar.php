@@ -14,7 +14,6 @@ require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
-$nihLink = NIHTables::NIH_LINK;
 
 $fields = [
 		"First Name" => "identifier_first_name",
@@ -93,9 +92,9 @@ if (($_POST['action'] == "oneByOne") && checkPOSTKeys($requiredFields)) {
     echo "<input type='hidden' id='action' name='action' value='intakeTable' />";
     echo "<p class='centered max-width'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />\n";
 	echo "CSV Upload: <input type='file' name='csv'><br/>\n";
-    echo "<input type='checkbox' name='createNewRecords' id='createNewRecords' checked /> <label for='createNewRecords'>Create a New Record for Each Name.</label> (Otherwise, it will try to match names to prior records.)<br/>";
-	echo "<button>Process File</button>\n";
-	echo "</p></form>\n";
+    echo "<input type='checkbox' name='createNewRecords' id='createNewRecords' checked /> <label for='createNewRecords'>Create a New Record for Each Name.</label> If unchecked, it will try to match names to prior records.<br/>";
+	echo "<button>Process File</button><br/>";
+    echo "Please wait for the file to process.</p></form>\n";
 
     echo "<h2>Import Trainees from NIH Training Tables</h2>";
     echo "<p class='centered'>Duplicate names will be skipped.</p>";

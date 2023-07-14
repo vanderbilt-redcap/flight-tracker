@@ -17,15 +17,17 @@ function togglePubMedName(nameSelector, ob, checkedImg, uncheckedImg) {
 	const oldClickableClass = isOn ? 'clickableOn' : 'clickableOff';
 	const newClickableClass = isOn ? 'clickableOff' : 'clickableOn';
 	$(ob).removeClass(oldClickableClass).addClass(newClickableClass);
-	const imgSelector = nameSelector+' img';
-	const hiddenValueSelector = nameSelector+' input[type=hidden]';
-	if ($(imgSelector).attr('src').match(/unchecked/)) {
-		$(hiddenValueSelector).val('include');
-		$(imgSelector).attr('src', checkedImg);
-	} else if (!$(imgSelector).attr('src').match(/readonly/)) {
-		$(hiddenValueSelector).val('exclude');
-		$(imgSelector).attr('src', uncheckedImg);
-	}
+	$(nameSelector).each((idx, ob) => {
+		const imgOb = $(ob).find('img');
+		const hiddenOb = $(ob).find('input[type=hidden]');
+		if (imgOb.attr('src').match(/unchecked/)) {
+			hiddenOb.val('include');
+			imgOb.attr('src', checkedImg);
+		} else if (!imgOb.attr('src').match(/readonly/)) {
+			hiddenOb.val('exclude');
+			imgOb.attr('src', uncheckedImg);
+		}
+	})
 }
 
 function downloadCanvas(canvas, filename) {

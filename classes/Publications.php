@@ -523,8 +523,23 @@ class Publications {
                     "citation_altmetric_posts_count" => "cited_by_posts_count",
                     "citation_altmetric_tweeters_count" => "cited_by_tweeters_count",
                     "citation_altmetric_accounts_count" => "cited_by_accounts_count",
+                    "citation_altmetric_msm_count" => "cited_by_msm_count",
+                    "citation_altmetric_rdts_count" => "cited_by_rdts_count",
+                    "citation_altmetric_videos_count" => "cited_by_videos_count",
+                    "citation_altmetric_patents_count" => "cited_by_patents_count",
+                    "citation_altmetric_wikipedia_count" => "cited_by_wikipedia_count",
+                    "citation_altmetric_qna_count" => "cited_by_qna_count",
+                    "citation_altmetric_policies_count" => "cited_by_policies_count",
                     "citation_altmetric_last_update" => date("Y-m-d"),
                 ];
+                $rankTypes = ["all", "journal", "similarage3m", "similaragejournal3m"];
+                foreach ($rankTypes as $type) {
+                    $altmetricFields["citation_altmetric_context_$type"."_count"] = "context_$type"."_count";
+                    $altmetricFields["citation_altmetric_context_$type"."_mean"] = "context_$type"."_count";
+                    $altmetricFields["citation_altmetric_context_$type"."_rank"] = "context_$type"."_rank";
+                    $altmetricFields["citation_altmetric_context_$type"."_percentage"] = "context_$type"."_pct";
+                    $altmetricFields["citation_altmetric_context_$type"."_higher_than"] = "context_$type"."_higher_than";
+                }
                 foreach ($almetricFields as $redcapField => $variable) {
                     if (in_array($redcapField, $metadataFields)) {
                         if ($redcapField == "citation_altmetric_last_update") {
@@ -687,20 +702,20 @@ class Publications {
 
                             if ($article->PublicationTypeList) {
                                 foreach ($article->PublicationTypeList->PublicationType as $pubType) {
-                                    array_push($pubTypes, $pubType);
+                                    $pubTypes[] = $pubType;
                                 }
                             }
 
                             if ($medlineCitation->MedlineCitation->KeywordList) {
                                 foreach ($medlineCitation->MedlineCitation->KeywordList->Keyword as $keyword) {
-                                    array_push($keywords, $keyword);
+                                    $keywords[] = $keyword;
                                 }
                             }
 
                             if ($medlineCitation->MedlineCitation->MeshHeadingList) {
                                 foreach ($medlineCitation->MedlineCitation->MeshHeadingList->children() as $node) {
                                     if ($node->DescriptorName) {
-                                        array_push($meshTerms, $node->DescriptorName);
+                                        $meshTerms[] = $node->DescriptorName;
                                     }
                                 }
                             }

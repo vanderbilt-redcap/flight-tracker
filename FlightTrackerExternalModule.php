@@ -16,14 +16,16 @@ use Vanderbilt\CareerDevLibrary\Upload;
 use Vanderbilt\CareerDevLibrary\MMAHelper;
 use Vanderbilt\CareerDevLibrary\Sanitizer;
 use Vanderbilt\CareerDevLibrary\Portal;
+use Vanderbilt\CareerDevLibrary\Links;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
-require_once(dirname(__FILE__)."/CareerDev.php");
 require_once(dirname(__FILE__)."/cronLoad.php");
 require_once(APP_PATH_DOCROOT."Classes/System.php");
 
 class FlightTrackerExternalModule extends AbstractExternalModule
 {
+    const RECENT_YEARS = 5;
+
 	function getPrefix() {
 	    if (Application::isLocalhost()) {
 	        return "flight_tracker";
@@ -134,7 +136,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     ) {
                         $destValue = "";
                         foreach ($destChoices[$sourceField] as $destIdx => $destLabel) {
-                            if (strtolower($destLabel) == strtolower($sourceChoices[$sourceChoices][$sourceValue])) {
+                            if (strtolower($destLabel) == strtolower($sourceChoices[$sourceField][$sourceValue])) {
                                 $destValue = $destIdx;
                             }
                         }
@@ -244,10 +246,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     private static function getSharingInformation() {
         $ary = [
             "initial_survey" => ["prefix" => "check", "formType" => "single", "test_fields" => ["check_date"], "always_copy" => TRUE, ],
-            "followup" => ["prefix" => "followup", "formType" => "repeating", "test_fields" => ["followup_date"], "always_copy" => TRUE, ],
+            "followup" => ["prefix" => "followup", "formType" => "repeating", "test_fields" => ["followup_date"], "debug_field" => "followup_name_last", "always_copy" => TRUE, ],
             "position_change" => [ "prefix" => "promotion", "formType" => "repeating", "test_fields" => ["promotion_job_title", "promotion_date"], "always_copy" => FALSE, ],
-            "resources" => [ "prefix" => "resources", "formType" => "repeating", "test_fields" => ["resources_date", "resources_resource"], "always_copy" => FALSE, ],
-            "honors_and_awards" => [ "prefix" => "honor", "formType" => "repeating", "test_fields" => ["honor_name", "honor_date"], "always_copy" => FALSE, ],
+            "resources" => [ "prefix" => "resources", "formType" => "repeating", "test_fields" => ["resources_date", "resources_resource"], "debug_field" => "resources_resource", "always_copy" => FALSE, ],
+            "honors_and_awards" => [ "prefix" => "honor", "formType" => "repeating", "test_fields" => ["honor_name", "honor_date"], "debug_field" => "honor_name", "always_copy" => FALSE, ],
         ];
         if (Application::isVanderbilt()) {
             $ary['resources']['always_copy'] = TRUE;
@@ -341,12 +343,17 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
 
 	    # push
-        $usedMatches = self::findMatches($pidsSource, $pidsDest, $tokens, $servers, $firstNames, $lastNames);
-        return $this->processMatches($usedMatches, $tokens, $servers, $forms, $metadataFields, $choices);
+        $usedMatches = $this->findMatches($pidsSource, $pidsDest, $tokens, $servers, $firstNames, $lastNames);
+        $pidsUpdated = $this->processMatches($usedMatches, $tokens, $servers, $forms, $metadataFields, $choices);
+        foreach ($pidsUpdated as $currPid) {
+            Application::log("Updated match information", $currPid);
+        }
+        return $pidsUpdated;
 	}
 
     private function processMatches($matches, $tokens, $servers, $forms, $metadataFields, $choices) {
         $pidsUpdated = [];
+        $emailsToUpdate = [];
         foreach ($matches as $destLicencePlate => $sourceMatches) {
             list($destPid, $destRecordId) = explode(":", $destLicencePlate);
             $destToken = $tokens[$destPid];
@@ -365,18 +372,130 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     "pid" => $destPid,
                     "record" => $destRecordId,
                 ];
+                if (time() < strtotime("2023-10-01")) {
+                    $this->cleanupFormData($forms, $destInfo, $metadataFields[$destPid]);
+                }
                 $this->copyFormData($completes, $pidsUpdated, $forms, $sourceInfo, $destInfo, $metadataFields, $choices);
                 $this->copyWranglerData($pidsUpdated, $sourceInfo, $destInfo);
+                $this->dedupPositionChanges($destInfo, $metadataFields[$destPid]);
+                if (Application::isVanderbilt()) {    // TODO for now; need to test
+                    $emailData = $this->alertForBlankEmails($sourceInfo, $destInfo);
+                    if ($emailData) {
+                        $emailPid = $emailData["dest"]["pid"];
+                        if (!isset($emailsToUpdate[$emailPid])) {
+                            $emailsToUpdate[$emailPid] = [];
+                        }
+                        $emailsToUpdate[$emailPid][] = $emailData;
+                    }
+                }
+                Application::log("Copied from $sourceLicensePlate to $destLicencePlate", $destPid);
+                Application::log("Copied from $sourceLicensePlate to $destLicencePlate", $sourcePid);
             }
         }
+
+        foreach ($emailsToUpdate as $emailPid => $items) {
+            $adminEmail = Application::getSetting("admin_email", $emailPid);
+            $defaultFrom = Application::getSetting("default_from", $emailPid) ?: "noreply@flightTracker.vumc.org";
+            if ($adminEmail && REDCapManagement::isEmailOrEmails($adminEmail)) {
+                $htmlRows = [];
+                $htmlRows[] = self::makeEmailCopyHTML($items);
+                $projectTitle = Download::projectTitle($tokens[$emailPid], $servers[$emailPid]);
+                $projectTitleHTML = Links::makeProjectHomeLink($emailPid, $projectTitle);
+                $introHTML = "<p>For $projectTitleHTML, the following Flight Tracker scholars have been matched. An email exists from the below source projects, but it is blank in yours. Do you want to change them? If so, please click the link to copy. <span style='text-decoration: underline; font-weight: bold;'>Note: A scholar might be matched to more than one possible email.</span></p>";
+                $html = $introHTML . implode("", $htmlRows);
+                \REDCap::email($adminEmail, $defaultFrom, "Flight Tracker New Email Matches - " . $projectTitle, $html);
+            }
+        }
+
         return $pidsUpdated;
     }
 
-    private static function findMatches($pidsSource, $pidsDest, $tokens, $servers, $firstNames, $lastNames) {
+    private static function makeEmailCopyHTML($items) {
+        $infoByLicensePlate = [];
+        foreach ($items as $copyInfo) {
+            $destPid = $copyInfo['dest']['pid'];
+            $destRecord = $copyInfo['dest']['record'];
+            $licensePlate = "$destPid:$destRecord";
+            if (!isset($infoByLicensePlate[$licensePlate])) {
+                $infoByLicensePlate[$licensePlate] = [];
+            }
+            $infoByLicensePlate[$licensePlate][] = $copyInfo;
+        }
+
+        $html = "";
+        $style = "padding: 6px; border: 1px solid #444; background-color: #AAA; color: black; text-decoration: none;";
+        foreach ($infoByLicensePlate as $destLicensePlate => $copyInfos) {
+            $numEmails = self::getNumberOfEmailAddresses($copyInfos);
+            if ($numEmails > 0) {
+                $baselineInfo = $copyInfos[0];
+                $destInfo = $baselineInfo['dest'];
+                $destRecord = $destInfo['record'];
+                $destName = Download::fullName($destInfo['token'], $destInfo['server'], $destRecord);
+                $matchWord = ($numEmails == 1) ? "Match" : "Matches";
+                $header = "<h2>$destName: Record $destRecord ($numEmails $matchWord)</h2>";
+                $htmlByEmail = [];
+                foreach ($copyInfos as $copyInfo) {
+                    $sourceInfo = $copyInfo['source'];
+                    $email = $copyInfo['email'];
+                    $sourceName = Download::fullName($sourceInfo['token'], $sourceInfo['server'], $sourceInfo['record']);
+                    $sourceProject = Download::projectTitle($sourceInfo['token'], $sourceInfo['server']);
+                    $adoptLink = Application::link("copyEmail.php", $destInfo['pid'])."&sourcePid=".$sourceInfo['pid']."&sourceRecord=".$sourceInfo['record']."&destRecord=$destRecord";
+                    $notAdoptLink = Application::link("copyEmail.php", $destInfo['pid'])."&skip=".urlencode($email)."&destRecord=$destRecord";
+                    $itemHTML = "<div style='margin-top: 1em;'>Matched to $sourceName from $sourceProject. The proposed email is <strong>$email</strong>.</div>";
+                    $itemHTML .= "<div style='margin-bottom: 1.5em; margin-top: 6px;'><a href='$adoptLink' style='$style'>Yes, please adopt this one</a> -or- <a href='$notAdoptLink' style='$style'>do not adopt this one</a></div>";
+                    $htmlByEmail[$email] = $itemHTML;
+                }
+                $html .= $header.implode("", array_values($htmlByEmail));
+            }
+        }
+        return $html;
+    }
+
+    private static function getNumberOfEmailAddresses($infoAry) {
+        $emails = [];
+        foreach ($infoAry as $info) {
+            if ($info['email'] && !in_array($info['email'], $emails) && REDCapManagement::isEmailOrEmails($info['email'])) {
+                $emails[] = $info['email'];
+            }
+        }
+        return count($emails);
+    }
+
+    private function alertForBlankEmails($sourceInfo, $destInfo) {
+        $omitted = Application::getSetting("omittedEmails", $destInfo['pid']) ?: [];
+        $destEmail = Download::oneFieldForRecordByPid($destInfo['pid'], "identifier_email", $destInfo['record']);
+        $sourceEmail = Download::oneFieldForRecordByPid($sourceInfo['pid'], "identifier_email", $sourceInfo['record']);
+        $proceed = TRUE;
+        foreach ($omitted[$destInfo['record']] ?? [] as $omittedEmail) {
+            if (strtolower($omittedEmail) == strtolower($sourceEmail)) {
+                $proceed = FALSE;
+            }
+        }
+        if (!$destEmail && $sourceEmail && $proceed) {
+            return [
+                "source" => $sourceInfo,
+                "dest" => $destInfo,
+                "email" => $sourceEmail,
+            ];
+        } else {
+            return FALSE;
+        }
+    }
+
+    private function findMatches($pidsSource, $pidsDest, $tokens, $servers, $firstNames, $lastNames) {
         $usedMatches = [];   // key is license plate of dest
         $searchedFor = [];
+        $dayNumber = (int) date("j");
+        if ($dayNumber <= 7) {
+            # restart fresh on first week of every month
+            $priorSearchedFor = [];
+            $priorUsedMatches = [];
+        } else {
+            $priorSearchedFor = Application::getSystemSetting("searched_for") ?: [];
+            $priorUsedMatches = Application::getSystemSetting("matches") ?: [];
+        }
+
         foreach ($pidsSource as $sourcePid) {
-            Application::log("Searching through pid $sourcePid", $sourcePid);
             if ($tokens[$sourcePid] && $servers[$sourcePid]) {
                 $sourceToken = $tokens[$sourcePid];
                 $sourceServer = $servers[$sourcePid];
@@ -385,35 +504,51 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     if (($destPid != $sourcePid) && $tokens[$destPid] && $servers[$destPid]) {
                         Application::log("Communicating between $sourcePid and $destPid", $destPid);
                         foreach (array_keys($firstNames[$destPid] ?? []) as $destRecordId) {
+                            $destLicensePlate = "$destPid:$destRecordId";
                             $destCombos = self::explodeAllNames($firstNames[$destPid][$destRecordId] ?? "", $lastNames[$destPid][$destRecordId] ?? "");
-                            $searchedFor[] = "$destPid:$destRecordId";
+                            $searchedFor[] = $destLicensePlate;
                             foreach ($sourceRecords as $sourceRecordId) {
-                                if (in_array("$sourcePid:$sourceRecordId", $searchedFor)) {
+                                $sourceLicensePlate = "$sourcePid:$sourceRecordId";
+                                if (
+                                    in_array($sourceLicensePlate, $priorSearchedFor)
+                                    && in_array($destLicensePlate, $priorSearchedFor)
+                                ) {
+                                    # match cached
+                                    if (in_array($sourceLicensePlate, $priorUsedMatches[$destLicensePlate] ?? [])) {
+                                        if (!isset($usedMatches[$destLicensePlate])) {
+                                            $usedMatches[$destLicensePlate] = [];
+                                        }
+                                        $usedMatches[$destLicensePlate][] = $sourceLicensePlate;
+                                    }
+                                } else if (in_array($sourceLicensePlate, $searchedFor)) {
                                     # searched for other way - makes algorithm O(n*log(n)) instead of O(n^2)
                                     if (
-                                        isset($usedMatches["$sourcePid:$sourceRecordId"])
-                                        && in_array("$destPid:$destRecordId", $usedMatches["$sourcePid:$sourceRecordId"])
+                                        isset($usedMatches[$sourceLicensePlate])
+                                        && in_array($destLicensePlate, $usedMatches[$sourceLicensePlate])
                                     ) {
-                                        if (!isset($usedMatches["$destPid:$destRecordId"])) {
-                                            $usedMatches["$destPid:$destRecordId"] = [];
+                                        if (!isset($usedMatches[$destLicensePlate])) {
+                                            $usedMatches[$destLicensePlate] = [];
                                         }
-                                        $usedMatches["$destPid:$destRecordId"][] = "$sourcePid:$sourceRecordId";
+                                        $usedMatches[$destLicensePlate][] = $sourceLicensePlate;
                                     }
                                 } else {
                                     $sourceCombos = self::explodeAllNames($firstNames[$sourcePid][$sourceRecordId] ?? "", $lastNames[$sourcePid][$sourceRecordId] ?? "");
                                     foreach ($destCombos as $destAry) {
                                         $firstName = $destAry["first"];
                                         $lastName = $destAry["last"];
-                                        Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $sourcePid);
-                                        Application::log("Searching for $firstName $lastName from $destPid in $sourcePid", $destPid);
+                                        // Application::log("Searching for $firstName $lastName from $destPid in $sourceLicensePlate", $sourcePid);
+                                        // Application::log("Searching for $firstName $lastName from $destPid in $sourceLicensePlate", $destPid);
                                         foreach ($sourceCombos as $sourceAry) {
-                                            if (NameMatcher::matchName($firstName, $lastName, $sourceAry['first'], $sourceAry['last'])) {
-                                                Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $sourcePid);
-                                                Application::log("Match in above: source ($sourcePid, $sourceRecordId) to dest ($destPid, $destRecordId)", $destPid);
-                                                if (!isset($usedMatches["$destPid:$destRecordId"])) {
-                                                    $usedMatches["$destPid:$destRecordId"] = [];
+                                            if (
+                                                !in_array($sourceLicensePlate, $usedMatches[$destLicensePlate] ?? [])
+                                                && NameMatcher::matchName($firstName, $lastName, $sourceAry['first'], $sourceAry['last'])
+                                            ) {
+                                                Application::log("Match: source ($sourceLicensePlate) to dest ($destLicensePlate)", $sourcePid);
+                                                Application::log("Match: source ($sourceLicensePlate) to dest ($destLicensePlate)", $destPid);
+                                                if (!isset($usedMatches[$destLicensePlate])) {
+                                                    $usedMatches[$destLicensePlate] = [];
                                                 }
-                                                $usedMatches["$destPid:$destRecordId"][] = "$sourcePid:$sourceRecordId";
+                                                $usedMatches[$destLicensePlate][] = $sourceLicensePlate;
                                                 break;
                                             }
                                         }
@@ -425,19 +560,23 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 }
             }
         }
+        $this->disableUserBasedSettingPermissions();
+        Application::saveSystemSetting("searched_for", $searchedFor);
+        Application::saveSystemSetting("matches", $usedMatches);
         return $usedMatches;
     }
 
     private static function explodeAllNames($lastName, $firstName) {
         $combos = [];
-        foreach (NameMatcher::explodeFirstName($firstName) as $firstName) {
-            foreach (NameMatcher::explodeLastName($lastName) as $lastName) {
-                if ($firstName && $lastName) {
-                    $combos[] = ["first" => $firstName, "last" => $lastName];
+        foreach (NameMatcher::explodeFirstName($firstName) as $fn) {
+            foreach (NameMatcher::explodeLastName($lastName) as $ln) {
+                if ($fn && $ln) {
+                    $name = "$fn $ln";
+                    $combos[$name] = ["first" => $fn, "last" => $ln];
                 }
             }
         }
-        return $combos;
+        return array_values($combos);
     }
 
 
@@ -553,17 +692,35 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	    return [2];
     }
 
+    private function cleanupFormData($forms, $destInfo, $destMetadataFields) {
+        foreach ($forms as $instrument => $sharingData) {
+            if (($sharingData['formType'] == "repeating") && ($sharingData['debug_field'] ?? FALSE)) {
+                $debugField = $sharingData['debug_field'];
+                $completeField = $instrument."_complete";
+                $relevantFields = array_unique(array_merge(["record_id", $completeField], DataDictionaryManagement::filterFieldsForPrefix($destMetadataFields, $sharingData['prefix'])));
+                $redcapData = Download::fieldsForRecords($destInfo['token'], $destInfo['server'], $relevantFields, [$destInfo['record']]);
+                $instancesToDelete = [];
+                foreach ($redcapData as $row) {
+                    if (($row['redcap_repeat_instrument'] == $instrument) && isset($row[$debugField]) && ($row[$debugField] === "")) {
+                        $instancesToDelete[] = $row['redcap_repeat_instance'];
+                    }
+                }
+                if (!empty($instancesToDelete)) {
+                    Upload::deleteFormInstances($destInfo['token'], $destInfo['server'], $destInfo['pid'], $sharingData['prefix'], $destInfo['record'], $instancesToDelete);
+                }
+            }
+        }
+    }
+
 	private function copyFormData(&$completes, &$pidsUpdated, $forms, $sourceInfo, $destInfo, $metadataFieldsByPid, $choicesByPid) {
         $sourceToken = $sourceInfo['token'];
         $sourceServer = $sourceInfo['server'];
         $sourcePid = $sourceInfo['pid'];
         $sourceRecordId = $sourceInfo['record'];
-        $sourceData =[];
         $destToken = $destInfo['token'];
         $destServer = $destInfo['server'];
         $destPid = $destInfo['pid'];
         $destRecordId = $destInfo['record'];
-        $destData = [];
 
         $sharedFormsForSource = $this->getProjectSetting("shared_forms", $sourcePid);
         if (!$sharedFormsForSource) {
@@ -613,7 +770,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     $instrument,
                     $forms,
                     $completeData,
-                    $destData,
                     $destToken,
                     $destServer,
                     $destPid,
@@ -621,16 +777,36 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     $sharedFormsForDest,
                     $choicesByPid[$destPid],
                     $metadataFieldsByPid[$destPid],
-                    $sourceData,
                     $sourceToken,
                     $sourceServer,
                     $sourcePid,
                     $sourceRecordId,
                     $sharedFormsForSource,
-                    $choicesByPid[$sourcePid]
+                    $choicesByPid[$sourcePid],
+                    $metadataFieldsByPid
                 );
                 $pidsUpdated = array_unique(array_merge($pidsProcessed, $pidsUpdated));
             }
+        }
+    }
+
+    private function dedupPositionChanges($info, $metadataFieldsForPid) {
+        $instrument = "position_change";
+        $prefix = "promotion";
+        $fields = array_unique(array_merge(["record_id", $instrument."_complete"], DataDictionaryManagement::filterFieldsForPrefix($metadataFieldsForPid, $prefix)));
+        $redcapData = Download::fieldsForRecords($info['token'], $info['server'], $fields, [$info['record']]);
+        $instancesToDelete = [];
+        $seenItems = [];
+        foreach ($redcapData as $row) {
+            $item = $row['promotion_date'].":".$row['promotion_job_title'].":".$row['promotion_in_effect'].":".$row['promotion_institution'];
+            if (($row['redcap_repeat_instrument'] == $instrument) && in_array($item, $seenItems)) {
+                $instancesToDelete[] = $row['redcap_repeat_instance'];
+            } else if ($row['redcap_repeat_instrument'] == $instrument) {
+                $seenItems[] = $item;
+            }
+        }
+        if (!empty($instancesToDelete)) {
+            Upload::deleteFormInstances($info['token'], $info['server'], $info['pid'], $prefix, $info['record'], $instancesToDelete);
         }
     }
 
@@ -642,13 +818,16 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
         $records = Download::recordIds($projToken, $projServer);
         $metadata = Download::metadata($projToken, $projServer);
-        $instrumentFields = REDCapManagement::getFieldsFromMetadata($metadata, $instrument);
+        $instrumentFields = DataDictionaryManagement::getFieldsFromMetadata($metadata, $instrument);
         if (!in_array("record_id", $instrumentFields)) {
             $instrumentFields[] = "record_id";
         }
+        if (!in_array($instrument."_complete", $instrumentFields)) {
+            $instrumentFields[] = $instrument."_complete";
+        }
         $fieldsByType = [];
         foreach (['dropdown', 'radio', 'checkboxes', 'yesno', 'truefalse'] as $fieldType) {
-            $fieldsByType[$fieldType] = REDCapManagement::getFieldsOfType($metadata, $fieldType);
+            $fieldsByType[$fieldType] = DataDictionaryManagement::getFieldsOfType($metadata, $fieldType);
         }
         foreach ($records as $recordId) {
             $instancesToDelete = [];
@@ -683,7 +862,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
     }
 
-    private function processInstrument($instrument, $forms, $completeData, &$destData, $destToken, $destServer, $destPid, $destRecordId, $sharedFormsForDest, $destChoices, $destFields, &$sourceData, $sourceToken, $sourceServer, $sourcePid, $sourceRecordId, $sharedFormsForSource, $sourceChoices) {
+    private function processInstrument($instrument, $forms, $completeData, $destToken, $destServer, $destPid, $destRecordId, $sharedFormsForDest, $destChoices, $destFields, $sourceToken, $sourceServer, $sourcePid, $sourceRecordId, $sharedFormsForSource, $sourceChoices, $metadataFieldsByPid) {
         $isDebug = Application::isLocalhost();
         $markedAsComplete = self::getMarkedAsComplete();
         $pidsUpdated = [];
@@ -717,14 +896,16 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             throw new \Exception("This should never happen: invalid formType ".$config['formType']);
         }
         if ($canGo) {
-            if (empty($sourceData) || empty($destData)) {
-                $originalPid = CareerDev::getPid();
-                CareerDev::setPid($sourcePid);
-                $sourceData = Download::records($sourceToken, $sourceServer, [$sourceRecordId]);
-                CareerDev::setPid($destPid);
-                $destData = Download::records($destToken, $destServer, [$destRecordId]);
-                CareerDev::setPid($originalPid);
-            }
+            $prefix = $forms[$instrument]["prefix"];
+            $originalPid = CareerDev::getPid();
+            CareerDev::setPid($sourcePid);
+            $sourceFields = array_unique(array_merge(["record_id", $instrument."_complete"], DataDictionaryManagement::filterFieldsForPrefix($metadataFieldsByPid[$sourcePid], $prefix)));
+            $sourceData = Download::fieldsForRecords($sourceToken, $sourceServer, $sourceFields, [$sourceRecordId]);
+            CareerDev::setPid($destPid);
+            $destFields = array_unique(array_merge(["record_id", $instrument."_complete"], DataDictionaryManagement::filterFieldsForPrefix($metadataFieldsByPid[$destPid], $prefix)));
+            $destData = Download::fieldsForRecords($destToken, $destServer, $destFields, [$destRecordId]);
+            CareerDev::setPid($originalPid);
+
             # copy over from source to dest and mark as same as $projectData[$sourceRecordId]
             // CareerDev::log("Matched complete for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId]);
             $newInstance = REDCapManagement::getMaxInstance($destData, $instrument, $destRecordId) + 1;
@@ -767,11 +948,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         && ($sourceRow["redcap_repeat_instrument"] == "")
                     ) {
                         if ($isDebug) {
-                            Application::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $destPid);
-                            Application::log("copyDataFromRowToNormative for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $sourcePid);
+                            Application::log("copyDataFromRowToNormative for $instrument in dest $destPid:$destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid:$sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $destPid);
+                            Application::log("copyDataFromRowToNormative for $instrument in dest $destPid:$destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid:$sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $sourcePid);
                         }
                         $hasChanged = self::copyDataFromRowToNormative($sourceRow,
-                            $completeData[$sourcePid][$sourceRecordId],
+                            "2",
                             $config["prefix"],
                             $destFields,
                             $sourceChoices,
@@ -779,8 +960,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                             $normativeRow,
                             $instrument);
                         if ($hasChanged) {
-                            Application::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $destPid);
-                            Application::log("uploadNormativeRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $sourcePid);
+                            Application::log("uploadNormativeRow for $instrument in dest $destPid:$destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid:$sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $destPid);
+                            Application::log("uploadNormativeRow for $instrument in dest $destPid:$destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid:$sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $sourcePid);
                             $uploadNormativeRow = TRUE;
                         }
                     } else if (
@@ -788,11 +969,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         && ($sourceRow["redcap_repeat_instrument"] == $instrument)
                     ) {
                         if ($isDebug) {
-                            Application::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $destPid);
-                            Application::log("copyDataFromRowToNewRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $sourcePid);
+                            Application::log("copyDataFromRowToNewRow for $instrument in dest $destPid:$destRecordId:$newInstance ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid:$sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $destPid);
+                            Application::log("copyDataFromRowToNewRow for $instrument in dest $destPid:$destRecordId:$newInstance ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid:$sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $sourcePid);
                         }
                         $repeatingRow = self::copyDataFromRowToNewRow($sourceRow,
-                            $completeData[$sourcePid][$sourceRecordId][$sourceRow['redcap_repeat_instance']],
+                            "2",
                             $config["prefix"],
                             $destFields,
                             $sourceChoices,
@@ -802,8 +983,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                             $newInstance);
                         if ($repeatingRow && is_array($repeatingRow)) {
                             if ($isDebug) {
-                                Application::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $destPid);
-                                Application::log("add repeatingRow for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $sourcePid);
+                                Application::log("add repeatingRow for $instrument in dest $destPid:$destRecordId:$newInstance ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid:$sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $destPid);
+                                Application::log("add repeatingRow for $instrument in dest $destPid:$destRecordId:$newInstance ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid:$sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $sourcePid);
                             }
                             $repeatingRows[] = $repeatingRow;
                             $newInstance++;
@@ -815,13 +996,28 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             if ($uploadNormativeRow) {
                 $upload[] = $normativeRow;
             }
-            $upload = array_merge($upload, $repeatingRows);
+            $debugField = $forms[$instrument]["debug_field"] ?? "";
+            if ($debugField) {
+                foreach ($repeatingRows as $prospectiveRow) {
+                    if (isset($prospectiveRow[$debugField]) && ($prospectiveRow[$debugField] !== "")) {
+                        $upload[] = $prospectiveRow;
+                    }
+                }
+            } else {
+                $upload = array_merge($upload, $repeatingRows);
+            }
             if (!empty($upload)) {
                 // Application::log("Uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
                 try {
+                    $uploadedInstruments = [];
+                    foreach ($upload as $row) {
+                        if ($row['redcap_repeat_instrument']) {
+                            $uploadedInstruments[] = $row['redcap_repeat_instrument'];
+                        }
+                    }
                     $feedback = Upload::rows($upload, $destToken, $destServer);
-                    Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId", $destPid);
-                    Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId", $sourcePid);
+                    Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId: ".implode(", ", $uploadedInstruments), $destPid);
+                    Application::log("$destPid: Uploaded ".count($upload)." rows for record $destRecordId from pid $sourcePid record $sourceRecordId: ".implode(", ", $uploadedInstruments), $sourcePid);
                     // Application::log(json_encode($upload), $destPid;
                     if (!in_array($destPid, $pidsUpdated)) {
                         $pidsUpdated[] = $destPid;
@@ -885,7 +1081,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     if ($needToUpdate) {
                         $firstName = $firstNamesByPid[$pid][$recordId] ?? "";
                         $lastName = $lastNamesByPid[$pid][$recordId] ?? "";
-                        list($matches, $projectTitles, $photoBase64) = Portal::getMatches($userid, $firstName, $lastName, $pids);
+                        list($matches, $projectTitles, $photoBase64) = Portal::getMatchesForUserid($userid, $firstName, $lastName, $pids);
                         $storedData = [
                             "date" => $today,
                             "matches" => $matches,
@@ -921,13 +1117,19 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $pidsUpdated = $this->shareDataInternally($activePids, $activePids);
         } else if (count($activePids) > 1) {
             try {
+                $pidsToShare = $activePids;
+                if (Application::isVanderbilt() && !Application::isLocalhost()) {
+                    $pidsToShare[] = NEWMAN_SOCIETY_PROJECT;
+                } else if (Application::isVanderbilt() && Application::isLocalhost()) {
+                    $pidsToShare[] = LOCALHOST_TEST_PROJECT;
+                }
                 if (date("N") == "6") {
                     # only on Saturdays
-                    $pidsUpdated = $this->shareDataInternally($activePids, $activePids);
+                    $pidsUpdated = $this->shareDataInternally($pidsToShare, $pidsToShare);
                 } else if ($this->hasProjectToRunTonight($activePids)) {
                     # only when clicked to run tonight
                     $destPids = $this->getProjectsToRunTonight($activePids);
-                    $pidsUpdated = $this->shareDataInternally($activePids, $destPids);
+                    $pidsUpdated = $this->shareDataInternally($pidsToShare, $destPids);
                 }
             } catch (\Exception $e) {
                 if ((count($activePids) > 0) && CareerDev::isVanderbilt()) {
@@ -1114,15 +1316,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         } else if (PAGE == "DataEntry/index.php") {
             echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
             echo "<script>
-    $(document).ready(() => {
-        const originalAlert = alert;
-        alert = (mssg) => {
-            if (!mssg.match(/ERASE THE VALUE OF THE FIELD/)) {
-                originalAlert(mssg);
+    (function(proxied) {
+        confirm = function() {
+            if (!arguments[0].match(/ERASE THE VALUE OF THE FIELD/)) {
+                return proxied.apply(this, arguments);
             }
-        }
-        window.alert = alert;
-        
+        };
+    })(confirm);
+    $(document).ready(() => {
         $('[data-rc-lang=data_entry_532]').parent().parent().hide();
     });
 </script>\n";

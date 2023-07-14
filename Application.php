@@ -174,7 +174,7 @@ class Application {
     public static function getSystemSetting($field) {
         $module = self::getModule();
         if ($module) {
-            return $module->getSystemSetting($field);
+            return $module->getSystemSetting($field) ?: "";
         } else {
             throw new \Exception("Could not find module!");
         }
@@ -1080,6 +1080,7 @@ SELECT DISTINCT s.project_id AS pid
         "summary_first_any_k_to_first_r01",
     ];
 
+    # intentionally missing many minor Altmetric fields
     private static $citationFields = [
         "record_id",
         "citation_pmid",
@@ -1114,13 +1115,6 @@ SELECT DISTINCT s.project_id AS pid
         "citation_altmetric_score",
         "citation_altmetric_image",
         "citation_altmetric_details_url",
-        "citation_altmetric_id",
-        "citation_altmetric_fbwalls_count",
-        "citation_altmetric_feeds_count",
-        "citation_altmetric_gplus_count",
-        "citation_altmetric_posts_count",
-        "citation_altmetric_tweeters_count",
-        "citation_altmetric_accounts_count",
         "citation_altmetric_last_update",
         "eric_id",
         "eric_link",

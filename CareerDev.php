@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.11.3";
+		return "5.12.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -417,7 +417,10 @@ class CareerDev {
 			return $module;
 		} else if (self::$passedModule) {
 			return self::$passedModule;
-		}
+		} else if (!Application::isWebBrowser()) {
+            $prefix = self::getPrefix();
+            return ExternalModules::getModuleInstance($prefix);
+        }
 		return NULL;
 	}
 
@@ -1247,12 +1250,15 @@ class CareerDev {
 		return [];
 	}
 
+    # intentionally missing many minor Altmetric fields
     private static $citationFields = [
         "record_id",
         "citation_pmid",
         "citation_doi",
         "citation_include",
         "citation_flagged",
+        "citation_ts",
+        "citation_full_citation",
         "citation_source",
         "citation_pmcid",
         "citation_authors",
@@ -1279,13 +1285,6 @@ class CareerDev {
         "citation_altmetric_score",
         "citation_altmetric_image",
         "citation_altmetric_details_url",
-        "citation_altmetric_id",
-        "citation_altmetric_fbwalls_count",
-        "citation_altmetric_feeds_count",
-        "citation_altmetric_gplus_count",
-        "citation_altmetric_posts_count",
-        "citation_altmetric_tweeters_count",
-        "citation_altmetric_accounts_count",
         "citation_altmetric_last_update",
         "eric_id",
         "eric_link",

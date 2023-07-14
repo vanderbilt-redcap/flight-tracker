@@ -86,7 +86,9 @@ if (isset($_GET['showHeaders'])) {
         $noCitationsMessage = "The widget has not yet been configured.";
     }
 
-    $url = (empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
+    $host = $_SERVER['HTTP_HOST'] ?? "";
+    $uri  = $_SERVER['REQUEST_URI'] ?? "";
+    $url = (empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://$host$uri";
     $url = preg_replace("/\&showHeaders[^\&]*/", "", $url);
     $url = preg_replace("/showHeaders[^\&]*\&/", "", $url);
     $url .= "&NOAUTH";
