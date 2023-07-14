@@ -1478,7 +1478,7 @@ class Scholar {
             Application::log("In getAllOtherInstitutions, returning ".json_encode($seenInstitutions));
         }
         foreach ($seenInstitutions as $i => $institution) {
-            $seenInstitutions[$i] = str_replace("&#039", "'", trim($institution));
+            $seenInstitutions[$i] = preg_replace("/&?#039/", "'", trim($institution));
         }
         $seenInstitutions = array_filter($seenInstitutions, static function ($elem) {
             return strtolower($elem) !== "other";

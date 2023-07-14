@@ -11,15 +11,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\DateManagement;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
-
-?>
-<script src="<?= Application::link("/charts/vis.min.js") ?>"></script>
-<link href="<?= Application::link("charts/vis.min.css") ?>" rel="stylesheet" type="text/css" />
-<link href='<?= Application::link("/css/career_dev.css") ?>' type='text/css' />
-<?php
-
 require_once(dirname(__FILE__)."/../small_base.php");
-
 
 $classes = ["PubsCDAs", "All"];
 if (Grants::areFlagsOn($pid)) {
@@ -76,7 +68,6 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
         }
     }
 
-    $hasSubmissions = FALSE;
     $grantsAndPubs = [];
     $maxTs = [];
 	$minTs = [];
@@ -85,24 +76,20 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
     $grants->setRows($rows);
     $grants->compileGrants();
     $grants->compileGrantSubmissions();
+    $id = 1;
+    list($submissions, $submissionTimestamps) = makeSubmissionDots($grants->getGrants("submissions"), $id);
+    if (!empty($submissions)) {
+        $classes[] = "AllWithSubmissions";
+    }
 
     foreach ($classes as $c) {
-        $id = 1;
         $maxTs[$c] = 0;
         $minTs[$c] = time();
         $grantsAndPubs[$c] = [];
 
-        if ($c == "All") {
-            list($submissions, $submissionTimestamps) = makeSubmissionDots($grants->getGrants("submissions"), $id);
-            if (empty($submissions)) {
-                list($awards, $awardTimestamps) = makeAwardDots($grants->getGrants("submission_dates"), $id);
-            } else {
-                $awards = [];
-                $awardTimestamps = [];
-            }
-            $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $submissions, $awards);
-            $allTimestamps = array_merge($submissionTimestamps, $awardTimestamps);
-            $hasSubmissions = !empty($allTimestamps);
+        if ($c == "AllWithSubmissions") {
+            $allTimestamps = $submissionTimestamps;
+            $grantsAndPubs[$c] = $submissions;
 
             foreach ($allTimestamps as $submissionTs) {
                 if ($submissionTs) {
@@ -121,7 +108,7 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
         if ($grantAry) {
             $grantsAndPubs[$c][] = $grantAry;
         }
-        if ($c == "All") {
+        if (in_array($c, ["All", "AllWithSubmissions"])) {
             $grantType = "all";
         } else if (($c == "PubsCDAs") && !isset($_GET['noCDA'])) {
             $grantType = "prior";
@@ -155,6 +142,12 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
         $minTs[$c] -= $spacing;
     }
 
+?>
+    <script src="<?= Application::link("/charts/vis.min.js") ?>"></script>
+    <link href="<?= Application::link("charts/vis.min.css") ?>" rel="stylesheet" type="text/css" />
+    <link href='<?= Application::link("/css/career_dev.css") ?>' type='text/css' />
+<?php
+
 if (isset($_GET['next'])) {
 	echo "<h1>$recordId: $name</h1>\n";
     $timelineLink = Application::link("charts/timeline.php");
@@ -162,10 +155,19 @@ if (isset($_GET['next'])) {
 }
 
 foreach ($classes as $c) {
-    if (($c == "All") && $hasSubmissions) {
-        $vizTitle = "All Grants (Including Submissions)";
-    } else if (($c == "All") && !$hasSubmissions) {
+    $divHeader = "";
+    $divFooter = "";
+    if ($c == "All") {
+        $divHeader = "<div id='allGrants'>";
+        $divFooter = "</div>";
+        if (in_array("AllWithSubmissions", $classes)) {
+            $divFooter = "<p class='centered'><button class='smaller' onclick='$(\"#allGrants\").hide(); $(\"#allGrantsWithSubmissions\").show(); return false;'>Show Grant Submissions</button></p>".$divFooter;
+        }
         $vizTitle = "All Grants";
+    } else if ($c == "AllWithSubmissions") {
+        $vizTitle = "All Grants (Including Submissions)";
+        $divHeader = "<div id='allGrantsWithSubmissions'>";
+        $divFooter = "<p class='centered'><button class='smaller' onclick='$(\"#allGrantsWithSubmissions\").hide(); $(\"#allGrants\").show(); return false;'>Show Grant Awards</button></p></div>";
     } else if (($c == "PubsCDAs") && isset($_GET['noCDA'])) {
         $vizTitle = "Publications";
     } else if (($c == "PubsCDAs") && !isset($_GET['noCDA'])) {
@@ -175,8 +177,10 @@ foreach ($classes as $c) {
     } else {
         $vizTitle = "This should never happen.";
     }
+
+    echo $divHeader;
     echo "<h3>$vizTitle</h3>";
-    if ($hasSubmissions && ($c == "All")) {
+    if ($c == "AllWithSubmissions") {
         echo "<table class='centered max-width'><tbody><tr>";
         $cells = [];
         foreach ($submissionClasses as $submissionClass) {
@@ -187,6 +191,7 @@ foreach ($classes as $c) {
     }
     echo "<div id='visualization".$pid."_$c' class='visualization'></div>";
     echo "<div class='alignright'><button onclick='html2canvas(container_{$pid}[\"$c\"], { onrendered: (canvas) => { downloadCanvas(canvas, \"timeline.png\"); } }); return false;' class='smallest'>Save</button></div>";
+    echo $divFooter;
 }
 
 ?>
@@ -197,7 +202,8 @@ foreach ($classes as $c) {
 function runTimeoutToTurnOffEvents(el) {
     setTimeout(() => {
         el.parentNode.replaceChild(el.cloneNode(true), el);
-    }, 2500);
+        $("#allGrantsWithSubmissions").hide();
+    }, 2000);
 }
 
 const container_<?= $pid ?> = {};
@@ -215,10 +221,8 @@ $(document).ready(() => {
         container_".$pid."['$c'] = document.getElementById('visualization".$pid."_$c');
         items_".$pid."['$c'] = new vis.DataSet($dataset);
         options_".$pid."['$c'] = { start: $startDate, end: $endDate };
-        timeline_".$pid."['$c'] = new vis.Timeline(container_".$pid."['$c'], items_".$pid."['$c'], options_".$pid."['$c']);
-        $(timeline_".$pid."['$c']).unbind('mousewheel');
-        runTimeoutToTurnOffEvents(container_".$pid."['$c']);
         ";
+        echo getJSToLaunchTimeline($pid, $c)."\n";
     }
     ?>
 });
@@ -434,4 +438,12 @@ function makePubDots($rows, $token, $server, &$id, &$minTs, &$maxTs) {
         $id++;
     }
     return $grantsAndPubs;
+}
+
+function getJSToLaunchTimeline($pid, $c) {
+    $lines = [];
+    $lines[] = "timeline_".$pid."[\"$c\"] = new vis.Timeline(container_".$pid."[\"$c\"], items_".$pid."[\"$c\"], options_".$pid."[\"$c\"]);";
+    $lines[] = "$(timeline_".$pid."[\"$c\"]).unbind(\"mousewheel\");";
+    $lines[] = "runTimeoutToTurnOffEvents(container_".$pid."[\"$c\"]);";
+    return implode("", $lines);
 }
