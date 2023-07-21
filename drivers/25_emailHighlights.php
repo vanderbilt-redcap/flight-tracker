@@ -155,6 +155,12 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
     }
     $ftLogoBase64 = FileManagement::getBase64OfFile(__DIR__."/../img/flight_tracker_logo_medium_white_bg.png", "image/png");
     $projectInfo = Links::makeProjectHomeLink($pid, Download::projectTitle($token, $server));
+    if ($pid !== NEWMAN_SOCIETY_PROJECT) {
+        $configureLink = Application::link("config.php", $pid)."#Celebrations_Email";
+        $configureInfo = "<br/>".Links::makeLink($configureLink, "Configure Celebrations Email")." - Current Scope: ".ucfirst($scholarScope);
+    } else {
+        $configureInfo = "";
+    }
 
     $html = "<style>
 .redtext { color: #f0565d; }
@@ -165,7 +171,7 @@ a { color: #5764ae; }
 </style>";
     $html .= "<p><img src='$ftLogoBase64' alt='Flight Tracker for Scholars' /></p>";
     $html .= "<h1>Flight Tracker ".ucfirst($frequency)." Celebrations Email</h1>";
-    $html .= "<p>$projectInfo</p>";
+    $html .= "<p>$projectInfo$configureInfo</p>";
 
     $statuses = array_merge($validGrantStatuses, ["Unknown"]);
     $appTypes = REDCapManagement::makeConjunction($statuses, "or");

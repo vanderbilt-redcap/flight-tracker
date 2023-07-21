@@ -40,7 +40,7 @@ class FeatureSwitches {
             "Patents" => ["patent"],
             "Publications" => ["citation"],
             "ERIC (Education Publications)" => ["eric"],
-            "Grants" => ["coeus", "custom_grant", "reporter", "exporter", "coeus2", "nih_reporter", "coeus_submission"],
+            "Grants" => ["coeus", "custom_grant", "reporter", "exporter", "coeus2", "nih_reporter", "coeus_submission", "vera", "vera_submission", "ies_grant", "nsf"],
         ];
     }
 
@@ -253,14 +253,13 @@ class FeatureSwitches {
 
         if ($this->haveNewSwitchesChanged($allSwitches)) {
             $eventId = Application::getSetting("event_id", $this->pid);
-            $grantClass = Application::getSetting("grant_class", $this->pid);
             $deletionRegEx = DataDictionaryManagement::getDeletionRegEx();
             $files = [];
             if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "getMetadataFiles")) {
                 $files = Application::getMetadataFiles();
             }
             if (!empty($files)) {
-                DataDictionaryManagement::installMetadataFromFiles($files, $this->token, $this->server, $this->pid, $eventId, $grantClass, Application::getRelevantChoices(), $deletionRegEx, $formsToExclude);
+                DataDictionaryManagement::installMetadataFromFiles($files, $this->token, $this->server, $this->pid, $eventId, Application::getRelevantChoices(), $deletionRegEx, $formsToExclude);
             }
         }
         if ($switchType == "project") {

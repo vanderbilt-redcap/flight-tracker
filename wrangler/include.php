@@ -379,11 +379,12 @@ function checkForApprovals($token, $server, $records, $nextRecord, $url, $wrangl
         }
     }
     $html .= "<p class='centered'><button>Auto-Approve $wranglerType</button></p></form>";
-    $html .= "<p class='centered smaller'><a href='$url&record=$nextRecord'>Click here to manually review all records.</a></p>";
+    $startingRecord = $nextRecord ?: $records[0];
+    $html .= "<p class='centered smaller'><a href='$url&record=$startingRecord'>Click here to manually review all records.</a></p>";
     $html .= "</div>";
 
     if (count($usedRecords) == 0) {
-        return "<p class='centered'>No new data to automatically approve. <a href='$url&record=$nextRecord'>Click here to review other records.</a></p>";
+        return "<p class='centered'>No new data to automatically approve. <a href='$url&record=$startingRecord'>Click here to review other records.</a></p>";
     }
     return $html;
 }

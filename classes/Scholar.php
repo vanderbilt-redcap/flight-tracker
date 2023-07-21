@@ -150,9 +150,6 @@ class Scholar {
 
     private function getUserid($rows, $field) {
         $row = self::getNormativeRow($rows);
-	    if ($row[$field]) {
-            return new Result($row[$field], "", "", "", $this->pid);
-        }
         $vars = self::getDefaultOrder($field);
         $vars = $this->getOrder($vars, $field);
         $result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
@@ -164,6 +161,11 @@ class Scholar {
                 return $res;
             }
         }
+
+        if ($row[$field]) {
+            return new Result($row[$field], "", "", "", $this->pid);
+        }
+
         $firstName = NameMatcher::eliminateInitials($this->getName("first"));
         $lastName = $this->getName("last");
         $uids = self::getREDCapUseridsForName($firstName, $lastName);

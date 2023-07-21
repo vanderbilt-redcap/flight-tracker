@@ -66,7 +66,7 @@ class CitationCollection {
         }
     }
 
-	# citationClass is notDone, included, or omitted
+	# citationClass is notDone, included, or excluded/omitted
 	public function toHTML($citationClass, $displayOnEmpty = TRUE, $startI = 1) {
 		$html = "";
 		if ($displayOnEmpty && (count($this->getCitations()) == 0)) {
@@ -324,14 +324,14 @@ class Citation {
         return $grants;
     }
 
-	# citationClass is notDone, included, omitted, flagged, or unflagged
+	# citationClass is notDone, included, excluded/omitted, flagged, or unflagged
 	public function toHTML($citationClass, $otherClasses = [], $number = 1) {
         $citationClass = strtolower($citationClass);
 		if (in_array($citationClass, ["notDone", "notdone"])) {
 			$checkboxClass = "checked";
 		} else if ($citationClass == "included") {
 			$checkboxClass = "readonly";
-        } else if ($citationClass == "omitted") {
+        } else if (in_array($citationClass, ["omitted", "excluded"])) {
             $checkboxClass = "unchecked";
         } else if ($citationClass == "flagged") {
             $checkboxClass = "checked";
@@ -343,7 +343,7 @@ class Citation {
 
 
         $wranglerType = Sanitizer::sanitize($_GET['wranglerType'] ?? "");
-		$ableToReset = ($wranglerType == "FlagPublications") ? [] : ["included", "omitted"];
+		$ableToReset = ($wranglerType == "FlagPublications") ? [] : ["included", "omitted", "excluded"];
         $pid = Application::getPID($this->token);
 
 		$html = "";

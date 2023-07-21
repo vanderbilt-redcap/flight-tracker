@@ -170,11 +170,13 @@ function getPositionDataFromSurvey($row, $choices, $prefix) {
         $transferData['promotion_institution'] = $institutionName;
     }
     $department = $row[$prefix.'primary_dept'];
-    if ($choices["promotion_department"][$department]) {
+    if (isset($choices["promotion_department"][$department])) {
         $transferData['promotion_department'] = $department;
-    } else if ($department !== "") {
+    } else if (isset($choices["promotion_department"]['999999'])) {
         $transferData['promotion_department'] = '999999';
         $transferData['promotion_department_other'] = $choices[$prefix.'primary_dept'][$department];
+    } else {
+        $transferData['promotion_department'] = $choices[$prefix.'primary_dept'][$department] ?? $department;
     }
     $transferData['promotion_division'] = $row[$prefix.'division'] ?? "";
     $transferData['promotion_date'] = date("Y-m-d");

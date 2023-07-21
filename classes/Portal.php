@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use ZipStream\File;
 use function Vanderbilt\FlightTrackerExternalModule\appendCitationLabel;
 
@@ -25,6 +26,11 @@ class Portal {
         list($this->username, $this->firstName, $this->lastName) = self::getCurrentUserIDAndName();
         $this->driverURL = Application::link("portal/driver.php").(isset($_GET['uid']) ? "&uid=".$this->username : "");
         $this->mmaURL = Application::link("portal/mmaDriver.php").(isset($_GET['uid']) ? "&uid=".$this->username : "");
+        $this->module = Application::getModule();
+        if ($this->pid) {
+            $this->token = Application::getSetting("token", $this->pid);
+            $this->server = Application::getSetting("server", $this->pid);
+        }
         if (!$this->verifyRequest()) {
             throw new \Exception("Unverified Access.");
         }
@@ -274,23 +280,24 @@ class Portal {
 
         $menu["Your Info"][] = [
             "action" => "view",
-            "title" => "View",     // list of honors, pubs, grants & patents - flagging and can add; encouragement
+            "title" => "View Profile",
         ];
         $menu["Your Info"][] = [
             "action" => "survey",
-            "title" => "Update",     // list of honors, pubs, grants & patents - flagging and can add; encouragement
+            "title" => "Update Surveys",
         ];
+        // TODO check if exist in metadata fields
         $menu["Your Info"][] = [
             "action" => "honors",
-            "title" => "Honors &amp; Awards",     // new survey
+            "title" => "Submit Honors &amp; Awards",
         ];
         $menu["Your Info"][] = [
             "action" => "resources",
-            "title" => "Resource Use",     // info to connect to a CTSA resource
+            "title" => "Using Resources",
         ];
         $menu["Your Info"][] = [
             "action" => "photo",
-            "title" => "Photos",     // should search all projects; also, should display
+            "title" => "Your Photo",     // should search all projects; also, should display
         ];
         // TODO ORCID Bio Link in Your Info
 
@@ -417,7 +424,7 @@ class Portal {
         $html .= "<form action='{$this->driverURL}' method='POST' enctype='multipart/form-data' id='photoForm'>";
         $html .= "<input type='hidden' name='action' value='upload_photo' />";
         $html .= "<p class='centered'><label for='photoFile'>Photo:</label> <input type='file' id='photoFile' name='photoFile' onchange='portal.validateFile(this);' /><br/>";
-        $html .= "<button onclick='portal.uploadPhoto(\"#photoForm\"); return false;'>Upload</button></p>";
+        $html .= self::makePortalButton("portal.uploadPhoto(\"#photoForm\");", "Upload");
         $html .= "</form>";
         return $html;
     }
@@ -472,7 +479,7 @@ class Portal {
     private function makeNewPostHTML() {
         $html = "<h4>Make a New Post</h4>";
         $html .= "<p><textarea id='newPost'></textarea></p>";
-        $html .= "<p><button onclick='portal.submitPost(\"#newPost\"); return false;'>Submit Post</button></p>";
+        $html .= "<p>".self::makePortalButton("portal.submitPost(\"#newPost\");", "Submit Post")."</p>";
         return $html;
     }
 
@@ -532,8 +539,7 @@ class Portal {
         return FALSE;
     }
 
-    private function formatPost($post) {
-        $user = $post['username'];
+    private static function getNameAndEmailFromUserid($user) {
         $lookup = new REDCapLookupByUserid($user);
         $testNames = self::getTestNames();
         if (isset($testNames[$user])) {
@@ -542,8 +548,14 @@ class Portal {
             $name = $lookup->getName();
         }
         $email = $lookup->getEmail();
+        return [$name, $email];
+    }
+
+    private function formatPost($post) {
+        $user = $post['username'];
         $date = $_POST['date'] ?? date(self::DATETIME_FORMAT);
         $mssg = $post['message'];
+        list($name, $email) = self::getNameAndEmailFromUserid($user);
         $storedData = Application::getSystemSetting($user) ?: [];
         $matches = $storedData['matches'] ?? [];
         if (!empty($matches) && !$name) {
@@ -573,8 +585,8 @@ class Portal {
     private function makePostHTML($name, $user, $email, $datetime, $mssg, $photoBase64) {
         $longDate = DateManagement::datetime2LongDate($datetime);
         $photoHTML = $photoBase64 ? "<img src='$photoBase64' class='photo' alt='$name' /><br/>" : "";
-        $deleteButton = self::canDelete($user) ? " <button onclick='portal.deletePost(\"#posts\", \"$user\", \"$datetime\"); return false;'>Delete Post</button>" : "";
-        $emailHTML = $email ? " (<a href='mailto:$email'>$email</a>)" : "";
+        $deleteButton = self::canDelete($user) ? " ".self::makePortalButton("portal.deletePost(\"#posts\", \"$user\", \"$datetime\");", "Delete Post") : "";
+        $emailHTML = $email ? " (".Links::makeMailtoLink($email, $email).")" : "";
         $html = "<p>$photoHTML<strong>$name</strong> at ".$longDate.$emailHTML.$deleteButton."</p>";
         $lines = preg_split("/[\n\r]+/", $mssg);
         $postHTML = implode("</p><p class='alignLeft'>", $lines);
@@ -586,7 +598,14 @@ class Portal {
     }
 
     public static function canDelete($postUser) {
-        return Application::isSuperUser() || ($postUser == Application::getUsername());
+        return (
+            Application::isSuperUser()
+            || ($postUser == Application::getUsername())
+            || (
+                Application::isVanderbilt()
+                && (Application::getUsername() == "heltonre")     // TODO generalize role
+            )
+        );
     }
 
     private function getEmail() {
@@ -608,12 +627,412 @@ class Portal {
         return "";
     }
 
+    public function getScholarlyProducts() {
+        $conversionStatusField = "summary_ever_last_any_k_to_r01_equiv";
+        $metadata = Download::metadata($this->token, $this->server);
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+        $grantFields = REDCapManagement::getAllGrantFieldsFromFieldlist($metadataFields);
+        $patentFields = ["patent_number", "patent_include"];
+        $allCitationFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, "citation");
+        $altmetricFields = DataDictionaryManagement::filterFieldsForPrefix($allCitationFields, "citation_altmetric");
+        $relevantCitationFields = [];
+        foreach ($allCitationFields as $field) {
+            if (!in_array($field, $altmetricFields) || ($field == "citation_altmetric_score")) {
+                $relevantCitationFields[] = $field;
+            }
+        }
+        $fields = DataDictionaryManagement::filterOutInvalidFields($metadata, array_unique(array_merge(["record_id", $conversionStatusField], $grantFields, $relevantCitationFields, $patentFields)));
+
+        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $pubs = new Publications($this->token, $this->server, $metadata);
+        $pubs->setRows($redcapData);
+        $grants = new Grants($this->token, $this->server, $metadata);
+        $grants->setRows($redcapData);
+        $grants->compileGrants();
+        $patents = new Patents($this->recordId, $this->pid, $this->firstName, $this->lastName);
+        $patents->setRows($redcapData);
+
+        $rcrs = [];
+        $altmetricScores = [];
+        foreach ($pubs->getCitations() as $citation) {
+            $rcr = $citation->getVariable("rcr");
+            if ($rcr) {
+                $rcrs[] = $rcr;
+            }
+            $altmetricScore = $citation->getVariable("altmetric_score");
+            if ($altmetricScore) {
+                $altmetricScores[] = $altmetricScore;
+            }
+        }
+
+        $rcrLink = "https://icite.od.nih.gov/";
+        $entries = [];
+        if ($pubs->getCitationCount() > 0) {
+            $entries["Number of Publications"] = $pubs->getCitationCount();
+            if (count($rcrs) > 0) {
+                $entries["Average ".Links::makeLink($rcrLink, "Relative Citation Ratio (RCR)", TRUE)] = REDCapManagement::pretty(array_sum($rcrs) / count($rcrs), 2);
+                if (count($rcrs) > 1) {
+                    $entries["RCR Range (n=".count($rcrs).")"] = REDCapManagement::pretty(min($rcrs), 1)." - ".REDCapManagement::pretty(max($rcrs), 1);
+                }
+            }
+            if (count($altmetricScores) > 1) {
+                $entries["Range of Altmetric Scores (n=".count($altmetricScores).")"] = REDCapManagement::pretty(min($altmetricScores), 1)." - ".REDCapManagement::pretty(max($altmetricScores), 1);
+            } else if (count($altmetricScores) == 1) {
+                $entries["Altmetric Score (n=1)"] = $altmetricScores[0];
+            }
+        } else {
+            $entries["Publications"] = "We see that you're just getting started... ".REDCapManagement::json_encode_with_spaces($relevantCitationFields);
+        }
+
+        $conversionStatusValue = REDCapManagement::findField($redcapData, $this->recordId, $conversionStatusField);
+        if ($conversionStatusValue) {
+            $conversionChoices = DataDictionaryManagement::getChoicesForField($this->pid, $conversionStatusField);
+            $entries["Conversion Status"] = $conversionChoices[$conversionStatusValue] ?? $conversionStatusValue;
+        }
+
+        if ($grants->getCount("all") > 0) {
+            $js = "portal.takeAction(\"grant_funding\", \"Grant Funding by Year\");";
+            $budgetCaveat = "<span class='smaller'>Budgets often are not precise. See <a href='javascript:;' onclick='$js'>graph by year</a>.</span>";
+            $entries["Total Number of Grants"] = $grants->getCount("all");
+            $totalBudgets = [];
+            $directBudgets = [];
+            foreach ($grants->getGrants("all") as $grant) {
+                $grantTotalBudget = $grant->getVariable("total_budget");
+                $grantDirectBudget = $grant->getVariable("direct_budget");
+                if ($grantTotalBudget) {
+                    $totalBudgets[] = $grantTotalBudget;
+                }
+                if ($grantDirectBudget) {
+                    $directBudgets[] = $grantDirectBudget;
+                }
+            }
+
+            if (count($totalBudgets) == count($directBudgets)) {
+                $entries["Combined Direct Budgets<br/>$budgetCaveat"] = REDCapManagement::prettyMoney(array_sum($directBudgets), FALSE);
+            }
+            $entries["Combined Total Budgets<br/>$budgetCaveat"] = REDCapManagement::prettyMoney(array_sum($totalBudgets), FALSE);
+        }
+
+        if ($patents->getCount() > 0) {
+            $entries["Number of Patents"] = $patents->getCount();
+        }
+
+        $htmlRows = [];
+        foreach ($entries as $label => $value) {
+            if ($value) {
+                if (count($htmlRows) % 2 == 0) {
+                    $portalClass = "portalEven";
+                } else {
+                    $portalClass = "portalOdd";
+                }
+                $htmlRows[] = "<tr class='$portalClass'><th>$label</th><td>$value</td></tr>";
+            }
+        }
+
+        $html = "<h4f>Scholarly Products</h4f>";
+        if (empty($htmlRows)) {
+            $html .= "<p class='centered'>It looks like you are just getting started... Good luck!</p>";
+        } else {
+            $html .= "<table class='centered max-width'><tbody>";
+            $html .= implode("", $htmlRows);
+            $html .= "</tbody></table>";
+        }
+        return $html;
+    }
+
+    public function getDemographics() {
+        $metadataFields = Download::metadataFieldsByPid($this->pid);
+        $summaryFields = array_unique(array_merge(["record_id"], DataDictionaryManagement::filterFieldsForPrefix($metadataFields, "summary")));
+        $awardFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, "summary_award");
+        $fields = [];
+        foreach ($summaryFields as $field) {
+            if (!in_array($field, $awardFields)) {
+                $fields[] = $field;
+            }
+        }
+
+        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $row = REDCapManagement::getNormativeRow($redcapData);
+        $summaryMetadata = Download::metadata($this->token, $this->server, $fields);
+        $summaryChoices = DataDictionaryManagement::getChoices($summaryMetadata);
+        $checkboxFields = DataDictionaryManagement::getFieldsOfType($summaryMetadata,  "checkboxes");
+
+        $disadvUrl= "https://grants.nih.gov/grants/guide/notice-files/NOT-OD-20-031.html";
+        $adaUrl = "https://www.ada.gov/pubs/adastatute08.htm#12102";
+        $urmUrl = "https://grants.nih.gov/grants/guide/notice-files/NOT-OD-20-031.html";
+        $entries = [
+            "Primary Mentor(s)" => "summary_mentor",
+            "Degrees" => "summary_all_degrees",
+            "Primary Department" => "summary_primary_dept",
+            "Gender Identity (NIH Categories)" => "summary_gender",
+            "Race &amp; Ethnicity" => "summary_race_ethnicity",
+            "Date of Birth" => "summary_dob",
+            "Under-Represented Minority Status<br/>(".Links::makeLink($urmUrl, "Federal Definition", TRUE).")" => "summary_urm",
+            "Citizenship Status" => "summary_citizenship",
+            "Disadvantaged Status<br/>(".Links::makeLink($disadvUrl, "Federal Definition", TRUE).")" => "summary_disadvantaged",
+            "Disability Status<br/>(".Links::makeLink($adaUrl, "Federal Definition", TRUE).")" => "summary_disability",
+            "Current Academic Division" => "summary_division",
+            "Current Academic Rank" => "summary_current_rank",
+            "Start of Training" => "summary_training_start",
+            "End of Training" => "summary_training_end",
+            "Tenure Status" => "summary_current_tenure",
+        ];
+
+        $htmlRows = [];
+        foreach ($entries as $label => $field) {
+            $value = "";
+            if (in_array($field, $checkboxFields)) {
+                $checkedIndices = [];
+                foreach ($row as $f => $v) {
+                    if ($v && preg_match("/^$field"."___/", $f)) {
+                        $checkedIndices = str_replace($field."___", "", $f);
+                    }
+                }
+
+                $checkedLabels = [];
+                foreach ($checkedIndices as $index) {
+                    if (isset($summaryChoices[$field][$index])) {
+                        $checkedLabels[] = $summaryChoices[$field][$index];
+                    } else {
+                        $checkedLabels[] = $index;
+                    }
+                }
+                if (!empty($checkedLabels)) {
+                    $value = REDCapManagement::makeConjunction($checkedLabels);
+                }
+            } else if ($row[$field]) {
+                if (isset($summaryChoices[$field])) {
+                    $value = $summaryChoices[$field][$row[$field]] ?? $row[$field];
+                } else if (DateManagement::isDate($row[$field])) {
+                    $value = DateManagement::YMD2LongDate($row[$field]);
+                } else {
+                    $value = $row[$field];
+                }
+            }
+            if ($value) {
+                if (count($htmlRows) % 2 == 0) {
+                    $portalClass = "portalEven";
+                } else {
+                    $portalClass = "portalOdd";
+                }
+                $htmlRows[] = "<tr class='$portalClass'><th>$label</th><td>$value</td></tr>";
+            }
+        }
+
+        $html = "<h4>Demographics</h4>";
+        if (empty($htmlRows)) {
+            $html .= "<p class='centered'>We don't have any information on you!<br/>".self::makePortalButton("portal.takeAction(\"survey\", \"Update a Survey\");", "Submit an Initial Survey")."</p>";
+        } else {
+            $html .= "<table class='centered max-width'><tbody>";
+            $html .= implode("", $htmlRows);
+            $html .= "</tbody></table>";
+        }
+        return $html;
+    }
+
+    public function getHonorsAndAwards() {
+        $instrument = "honors_and_awards";
+        $prefix = REDCapManagement::getPrefixFromInstrument($instrument);
+        $metadataFields = Download::metadataFieldsByPid($this->pid);
+        $fields = array_unique(array_merge(["record_id"], DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $prefix)));
+        $html = "<h4>Honors &amp; Awards</h4>";
+        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $maxInstance = REDCapManagement::getMaxInstance($redcapData, $instrument, $this->recordId);
+        $honorsText = $this->doesHonorsSurveyExist() ? " <a href='javascript:;' onclick='portal.takeAction(\"honors\", \"Submit Honors &amp; Awards\");'>Share some here</a>." : "";
+        if ($maxInstance == 0) {
+            $html .= "<p class='centered'>None have yet been entered.$honorsText Aim high!</p>";
+        } else {
+            $instancesByDate = [];
+            foreach ($redcapData as $row) {
+                if ($row['redcap_repeat_instrument'] == $instrument) {
+                    $instance = $row['redcap_repeat_instance'];
+                    $date = $row['honor_date'] ?: date("Y-m-d");
+                    $key = strtotime($date) + REDCapManagement::padInteger($instance, 6);
+                    $instancesByDate[$key] = $instance;
+                }
+            }
+            krsort($instancesByDate);
+
+            $typeChoices = DataDictionaryManagement::getChoicesForField($this->pid, "honor_type");
+            foreach (array_values($instancesByDate) as $instance) {
+                $row = REDCapManagement::getRow($redcapData, $this->recordId, $instrument, $instance);
+                $name = $row['honor_name'];
+                $org = $row['honor_org'];
+                $type = $row['honor_type'] ? $typeChoices[$row['honor_type']] : "";
+                $exclusivity = $row['honor_exclusivity'];
+                $date = $row['honor_date'] ? " on ".DateManagement::YMD2LongDate($row['honor_date']) : "";
+                $notes = preg_replace("/[\n\r]+/", "<br/>", $row['honor_notes']);
+
+                $html .= "<p class='centered'><strong>$name$date</strong>";
+                if ($org) {
+                    $html .= "<br/>from $org";
+                }
+                if ($type) {
+                    $html .= "<br/>Type of Award: $type";
+                }
+                if ($exclusivity) {
+                    $html .= "<br/>Exclusivity: $exclusivity";
+                }
+                if ($notes) {
+                    $html .= "<div class='alignLeft max-width-600 centered'>$notes</div>";
+                }
+                $html .= "</p>";
+            }
+        }
+        if ($this->doesHonorsSurveyExist()) {
+            $html .= "<p class='centered'><a href='javascript:;' onclick='portal.takeAction(\"honors\", \"Honors &amp; Awards\");' class='portalButton'>Update Your Honors</a>";
+        }
+        return $html;
+    }
+
+    public function viewProfile() {
+        $html = "<p class='portalDescription'>These data have been automatically collected by Flight Tracker and may contain errors. The demographic data can be updated by filling out an Initial Survey. Grant and publication information can be updated by a Followup survey. Surveys are available under <a href=javascript:;' onclick='portal.takeAction(\"survey\", \"Update Surveys\");'>Update Your Info</a>.</p>";
+        $html .= "<h3>Flight Tracker Profile for {$this->name}</h3>";
+        $html .= $this->getDemographics();
+        $html .= "<hr/>";
+        $html .= $this->getScholarlyProducts();
+        if ($this->doesHonorsSurveyExist()) {
+            $html .= "<hr/>";
+            $html .= $this->getHonorsAndAwards();
+        }
+        return $html;
+    }
+
+    public function reopenSurvey($instrument, $instance = 1) {
+        $sql = "DELETE r.* FROM redcap_surveys_response AS r INNER JOIN redcap_surveys_participants AS p ON p.participant_id = r.participant_id INNER JOIN redcap_surveys AS s ON p.survey_id = s.survey_id WHERE r.record=? AND r.instance=? AND s.project_id=? AND s.form_name=?";
+        $this->module->query($sql, [$this->recordId, $instance, $this->pid, $instrument]);
+        return \REDCap::getSurveyLink($this->recordId, $instrument, "", 1, $this->pid)."&resetDate";
+    }
+
+    public function viewResources() {
+        $resources = DataDictionaryManagement::getChoicesForField($this->pid, "resources_resource");
+        if (empty($resources)) {
+            # this should not happen
+            return "<h4>No Resources are Set Up for This Project</h4>";
+        }
+
+        $adminEmail = Application::getSetting("admin_email", $this->pid);
+        $html = "<h4>Project Resources</h4>";
+        $html .= "<p class='portalDescription'></p>";
+        $html .= "<p class='centered'>".implode("<br/>", array_values($resources))."</p>";
+        $html .= "<p class='centered'>Please contact ".Links::makeMailtoLink($adminEmail, "this project's administrator", "Institutional Resources from Flight Tracker")." to learn more about how to access these resources.</p>";
+
+        return $html;
+    }
+
+    private function doesHonorsSurveyExist() {
+        $metadataFields = Download::metadataFieldsByPid($this->pid);
+        $testField = "honorssurvey_honor";
+        return in_array($testField, $metadataFields);
+    }
+
+    public function getHonorsSurvey() {
+        $form = "honors_survey";
+        $testField = "honorssurvey_honor";
+        $description = "Have you just accomplished something great and want to share? Congratulations!";
+        if ($this->doesHonorsSurveyExist()) {
+            if ($this->token && $this->server && $this->recordId) {
+                $fields = ["record_id", $testField];
+                $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+                $maxInstance = REDCapManagement::getMaxInstance($redcapData, $form, $this->recordId);
+
+                $newLink = \REDCap::getSurveyLink($this->recordId, $form, "", $maxInstance + 1, $this->pid);
+                $linkHTML = Links::makeLink($newLink, "Share Your New Honor", TRUE, 'portalButton');
+                $description.= " Please fill out this short REDCap survey to share with your project's administrative staff.";
+                return "<h4>Honors &amp; Awards</h4><p class='portalDescription'>$description</p><p>$linkHTML</p>";
+            }
+        }
+        $adminEmail = Application::getSetting("admin_email", $this->pid);
+        if ($adminEmail) {
+            $description .= " Please email ".Links::makeMailtoLink($adminEmail, "this project's administrator", "An Honor for Flight Tracker")." with the good news.";
+        }
+        return "<p class='portalDescription'>$description</p><h4>Survey Not Available</h4>";
+    }
+
+    public function getFlightTrackerSurveys() {
+        if ($this->token && $this->server && $this->recordId) {
+            $html = "<h3>Flight Tracker Surveys for This Project</h3>";
+            $html .= $this->getInitialSurveyHTML();
+            $html .= "<hr/>";
+            $html .= $this->getFollowupHTML();
+            return $html;
+        } else {
+            return "<h3>Not Available</h3>";
+        }
+    }
+
+    private function getInitialSurveyHTML()
+    {
+        $fields = ["record_id", "check_name_last", "check_date"];
+        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $normativeRow = REDCapManagement::getNormativeRow($redcapData);
+
+        if (!$normativeRow['check_name_last']) {
+            $latestDate = "Never";
+            $text = "Fill out a new survey";
+            $newLink = \REDCap::getSurveyLink($this->recordId, "initial_survey", "", 1, $this->pid);
+            $linkHTML = Links::makeLink($newLink, $text, TRUE, "portalButton");
+        } else {
+            if ($normativeRow['check_date']) {
+                $ymd = $normativeRow['check_date'];
+                $latestDate = DateManagement::YMD2LongDate($ymd);
+                $text = "Update your survey";
+            } else {
+                $latestDate = "Unknown";
+                $text = "Update your survey";
+            }
+            $linkHTML = "<a href='javascript:;' onclick='portal.reopenSurvey(\"initial_survey\", \"{$this->pid}\", \"{$this->recordId}\");' class='portalButton'>$text</a>";
+        }
+        return "<h4>Initial Survey</h4>
+<p class='portalDescription'>This one-time survey contains demographic information, educational history, and information about your grants &amp; publications. This survey takes an estimated 20-30 minutes to complete. With time, this survey will be shared with other Flight Trackers that you are in on this survey.</p>
+<p><strong>Date Completed</strong>: $latestDate<br/>$linkHTML</p>";
+    }
+
+    private function getFollowupHTML() {
+        $fields = ["record_id", "followup_name_last", "followup_date"];
+        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $maxFollowupInstance = REDCapManagement::getMaxInstance($redcapData, "followup", $this->recordId);
+
+        $latestTs = 0;
+        foreach ($redcapData as $row) {
+            if ($row['followup_date']) {
+                $ts = strtotime($row['followup_date']);
+                if ($ts && ($ts > $latestTs)) {
+                    $latestTs = $ts;
+                }
+            }
+        }
+        if ($maxFollowupInstance == 0) {
+            $latestDate = "Never";
+        } else if ($latestTs) {
+            $ymd = date("Y-m-d", $latestTs);
+            $latestDate = DateManagement::YMD2LongDate($ymd);
+        } else {
+            $latestDate = "Unknown";
+        }
+        $newLink = \REDCap::getSurveyLink($this->recordId, "followup", "", $maxFollowupInstance + 1, $this->pid);
+        $linkHTML = Links::makeLink($newLink, "Fill out a new survey", TRUE, 'portalButton');
+        return "<h4>Regular Follow Up Survey</h4>
+<p class='portalDescription'>This periodic survey does not contain demographic information, only information about your professional successes in the near past. This survey takes an estimated 10-15 minutes to complete. With time, this survey will be shared with other Flight Trackers that you are in on this survey.</p>
+<p><strong>Last Updated</strong>: $latestDate<br/>$linkHTML</p>";
+    }
+
     public function addPost($postText) {
         $post = [
             "message" => $postText,
             "username" => $this->username,
             "date" => date(self::DATETIME_FORMAT),
         ];
+        $formattedPost = $this->formatPost($post);
+        list($name, $email) = self::getNameAndEmailFromUserid($this->username);
+        $portalLink = Application::link("portal/index.php");
+        $intro = "<h2>From $name (".Links::makeMailtoLink($email, $email).")</h2><p>".Links::makeLink($portalLink, "Click Here to Access the Scholar Portal")."</p>";
+
+        # TODO Generalize role
+        if (Application::isVanderbilt()) {
+            $to = Application::isLocalhost() ? "scott.j.pearson@vumc.org" : "rebecca.helton@vumc.org,scott.j.pearson@vumc.org";
+            \REDCap::email($to, "noreply.flighttracker@vumc.org", "Flight Tracker - New Bulletin Board Post", $intro.$formattedPost);
+        }
 
         $i = 0;
         $prefix = self::BOARD_PREFIX;
@@ -623,12 +1042,14 @@ class Portal {
             if (is_array($result) && (count($result) < self::NUM_POSTS_PER_SETTING)) {
                 $result[] = $post;
                 Application::saveSystemSetting($prefix.$i, $result);
-                return $this->formatPost($post);
+                return $formattedPost;
             }
         } while (isset($result) && ($result !== ""));
 
         Application::saveSystemSetting($prefix.$i, [$post]);
-        return $this->formatPost($post);
+
+
+        return $formattedPost;
     }
 
     private function getBoardPosts() {
@@ -687,8 +1108,13 @@ class Portal {
             $html .= "</tr>";
         }
         $html .= "</tbody></table>";
-        $html .= "<p class='centered max-width'><button onclick='portal.selectMentors(\"{$this->driverURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"$mentorName\", \"[name=$radioName]\"); return false;'>Make Selection</button></p>";
+        $html .= "<p class='centered max-width'>".self::makePortalButton("portal.selectMentors(\"{$this->driverURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"$mentorName\", \"[name=$radioName]\");", "Make Selection")."</p>";
         return $html;
+    }
+
+    private static function makePortalButton($js, $text) {
+        $js = str_replace("'", "\"", $js);
+        return "<a href='javascript:;' class='portalButton' onclick='$js'>$text</a>";
     }
 
     private function makeMentorSetup($priorMessage = "", $index = NULL) {
@@ -700,13 +1126,13 @@ class Portal {
         $html .= "<p class='centered max-width'><input type='text' id='mentor$suffix' name='mentor$suffix' placeholder='Mentor Name' /></p>";
 
         $lines = [];
-        $lines[] = "<button onclick='portal.searchForMentor(\"{$this->mmaURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"#mentor$suffix\"); return false;'>Search If They Have REDCap Access</button>";
+        $lines[] = self::makePortalButton("portal.searchForMentor(\"{$this->mmaURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"#mentor$suffix\");", "Search If They Have REDCap Access");
         $lines[] = "";
         $lines[] = "<strong>-OR-</strong>";
         $lines[] = "";
         $lines[] = "<label for='mentor_userid$suffix'>Input the Mentor's User ID for Accessing REDCap</label>";
         $lines[] = "<input type='text' id='mentor_userid$suffix' name='mentor_userid$suffix' placeholder=\"Mentor's User ID\" />";
-        $lines[] = "<button onclick='portal.submitNameAndUserid(\"{$this->mmaURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"#mentor$suffix\", \"#mentor_userid$suffix\"); return false;'>Submit Name &amp; User ID</button>";
+        $lines[] = self::makePortalButton("portal.submitNameAndUserid(\"{$this->mmaURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"#mentor$suffix\", \"#mentor_userid$suffix\");", "Submit Name &amp; User ID");
 
         $html .= "<p class='centered max-width'>".implode("<br/>", $lines)."</p>";
         return $html;
@@ -745,5 +1171,8 @@ class Portal {
     protected $firstName;
     protected $today;
     protected $mmaURL;
+    protected $module;
     protected $pidRecords;
+    protected $token;
+    protected $server;
 }

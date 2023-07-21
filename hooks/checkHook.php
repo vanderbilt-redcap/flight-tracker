@@ -31,7 +31,24 @@ $(document).ready(function() {
 <?php
 $token = Application::getSetting("token", $project_id);
 $server = Application::getSetting("server", $project_id);
-$GLOBALS['data'] = Download::records($token, $server, [$record]);
+$prefix = REDCapManagement::getPrefixFromInstrument($instrument);
+$allFields = Download::metadataFieldsByPid($project_id);
+$fields = ["record_id"];
+foreach ($allFields as $field) {
+    if (
+        preg_match("/^$prefix/", $field)
+        || preg_match("/^summary_/", $field)
+        || preg_match("/^vfrs_/", $field)
+        || preg_match("/^identifier_/", $field)
+        || preg_match("/^init_import_/", $field)
+        || preg_match("/^newman_/", $field)
+    ) {
+        $fields[] = $field;
+    }
+}
+$grantFields = REDCapManagement::getAllGrantFieldsFromFieldlist($allFields);
+$fields = array_unique(array_merge($fields, $grantFields));
+$GLOBALS['data'] = Download::fieldsForRecords($token, $server, $fields, [$record]);
 
 $grants = new Grants($token, $server, "empty");
 $grants->setRows($GLOBALS['data']);
@@ -62,36 +79,6 @@ function translateFromVFRS($vfrsField, $destField, $choices) {
     return "";
 }
 
-# returns the value for $coeusField in the first COEUS repeatable instance that matches
-# the sponsor number
-# if sponsor number is unmatched, it returns ""
-# sponsor number may vary by -####+ at the end of the sponsor number
-function findCOEUSEntry($sponsorNoField, $coeusField) {
-	global $data;
-	$sponsorNo = "";
-	foreach ($data as $row) {
-		$instance = $row['redcap_repeat_instance'];
-		if ($instance == "") {
-			$sponsorNo = $row[$sponsorNoField]; 
-		}
-	}
-	if ($sponsorNo != "") {
-		foreach ($data as $row) {
-			$instance = $row['redcap_repeat_instance'];
-			if ($instance != "") {
-				$instanceSponsorNo = $row['coeus_sponsor_award_number'];
-				if (($instanceSponsorNo != "") && (preg_match("/".$sponsorNo."/", $instanceSponsorNo))) {
-					if ($row[$coeusField]) {
-						# return the first with a value
-						return preg_replace("/'/", "\\'", $row[$coeusField]);
-					}
-				}
-			} 
-		}
-	}
-	return "";
-}
-
 function getInstitution($value) {
 	# Scholar's: 1, Vanderbilt | 2, Meharry | 5, Other
 	# VFRS: 1, Yes. I am at Vanderbilt | 2, Yes. I am at Meharry | 3, No, I am not yet at Vanderbilt or Meharry
@@ -106,25 +93,6 @@ function getInstitution($value) {
 	return 1;    // default is at VUMC
 }
 
-function getDisadvantaged($value) {
-	# Scholar's: 1, Yes | 2, No | 3, Prefer not to answer
-	# VFRS: 1, Yes | 2, No | 3, Prefer not to answer
-	return $value;
-}
-
-function getDisability($value) {
-	# Scholar's: 1, Yes | 0, No
-	# VFRS: 1, Yes | 2, No | 3, Prefer not to answer
-	switch($value) {
-		case 1:
-			return 1;
-		case 2:
-			return 0;
-		case 3:
-			return "";
-	}
-	return "";
-}
 ?>
 <script>
 function getCSRFToken() { return '<?= Application::generateCSRFToken() ?>'; }
@@ -399,10 +367,9 @@ function filterSponsorNumber($name) {
 	# make .*_d-tr td background
 	# also .*_d\d+
 
-    $metadataFields = Download::metadataFields($token, $server);
     $prefix = "/^init_import/";
     $initImportFields = [];
-    foreach ($metadataFields as $field) {
+    foreach ($allFields as $field) {
         if (preg_match($prefix, $field)) {
             $initImportFields[] = $field;
         }
@@ -417,6 +384,11 @@ function filterSponsorNumber($name) {
             $value = preg_replace("/'/", "\\'", $value);
             echo "  presetValue('$field', '$value');\n";
         }
+    }
+
+    if (isset($_GET['resetDate'])) {
+        $today = date("Y-m-d");
+        echo "   $('[name=check_date]').val('$today');\n";
     }
 ?>
 

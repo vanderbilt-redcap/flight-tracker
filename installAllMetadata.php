@@ -4,6 +4,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
+use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/small_base.php");
@@ -12,27 +13,24 @@ require_once(dirname(__FILE__)."/classes/Autoload.php");
 Application::increaseProcessingMax(2);
 
 $files = Application::getMetadataFiles();
-$lastCheckField = "prior_metadata_ts";
 $deletionRegEx = DataDictionaryManagement::getDeletionRegEx();
 
 $pidsToRun = [];
 $pids = Application::getPids();
 foreach ($pids as $requestedPid) {
     if (REDCapManagement::isActiveProject($requestedPid)) {
-        $pidsToRun[] = $requestedPid;
+        $requestedToken = Application::getSetting("token", $requestedPid);
+        $requestedServer = Application::getSetting("server", $requestedPid);
+        if ($requestedToken && $requestedServer) {
+            $requestedMetadata = Download::metadata($requestedToken, $requestedServer);
+            $switches = new FeatureSwitches($requestedToken, $requestedServer, $requestedPid);
+            list ($missing, $additions, $changed) = DataDictionaryManagement::findChangedFieldsInMetadata($requestedMetadata, $files, $deletionRegEx, CareerDev::getRelevantChoices(), $switches->getFormsToExclude(), $requestedPid);
+            if (count($additions) + count($changed) > 0) {
+                $pidsToRun[] = $requestedPid;
+            }
+        }
     }
 }
 
-$returnData = [];
-foreach ($pidsToRun as $currPid) {
-    $currToken = Application::getSetting("token", $currPid);
-    $currServer = Application::getSetting("server", $currPid);
-    $currSwitches = new FeatureSwitches($currToken, $currServer, $currPid);
-    $currGrantClass = Application::getSetting("grant_class", $currPid);
-    $currEventId = Application::getSetting("event_id", $currPid);
-    if ($currToken && $currServer && $currEventId) {
-        Application::log("Installing metadata", $currPid);
-        $returnData[$currPid] = DataDictionaryManagement::installMetadataFromFiles($files, $currToken, $currServer, $currPid, $currEventId, $currGrantClass, CareerDev::getRelevantChoices(), $deletionRegEx, $currSwitches->getFormsToExclude());
-    }
-}
+$returnData = DataDictionaryManagement::installMetadataForPids($pidsToRun, $files, $deletionRegEx);
 echo REDCapManagement::json_encode_with_spaces($returnData);

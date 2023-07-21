@@ -150,7 +150,7 @@ class EmailManager {
     }
 
 	private static function transformToTS($datetime) {
-		if (preg_match("/^\d+-\d+-\d\d\d\d/", $datetime, $matches)) {
+        if (preg_match("/^\d+-\d+-\d\d\d\d/", $datetime, $matches)) {
 			# assume MDY
 			$match = $matches[0];
 			$nodes = explode("-", $match);
@@ -161,7 +161,10 @@ class EmailManager {
 
 		$ts = strtotime($datetime);
 		if (!$ts) {
-			throw new \Exception("Could not create timestamp from ".$datetime);
+            if (!$datetime) {
+                throw new \Exception("No date or time for this email was set! This is a required field.");
+            }
+            throw new \Exception("Could not create timestamp from ".$datetime);
 		}
 		return $ts;
 	}

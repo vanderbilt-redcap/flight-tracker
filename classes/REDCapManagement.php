@@ -102,15 +102,28 @@ class REDCapManagement {
     }
 
     public static function getAllGrantFields($metadata) {
-	    $fields = ["record_id"];
-	    $forms = ["exporter", "nih_reporter", "reporter", "nsf", "vera", "coeus", "custom_grant", "coeus2", "ies_grant"];
-	    foreach ($forms as $form) {
-	        $fields = array_unique(array_merge($fields, REDCapManagement::getFieldsFromMetadata($metadata, $form)));
+        $fields = ["record_id"];
+        $forms = ["exporter", "nih_reporter", "reporter", "nsf", "vera", "coeus", "custom_grant", "coeus2", "ies_grant"];
+        foreach ($forms as $form) {
+            $fields = array_unique(array_merge($fields, REDCapManagement::getFieldsFromMetadata($metadata, $form)));
         }
-	    return $fields;
+        return $fields;
     }
 
-	public static function makeConjunction($list, $conjugation = "and") {
+    public static function getAllGrantFieldsFromFieldlist($metadataFields) {
+        $fields = ["record_id"];
+        $prefixes = ["exporter_", "nih_", "reporter_", "nsf_", "vera_", "coeus_", "custom_", "coeus2_", "ies_"];
+        foreach ($prefixes as $prefix) {
+            foreach ($metadataFields as $field) {
+                if (preg_match("/^$prefix/", $field)) {
+                    $fields[] = $field;
+                }
+            }
+        }
+        return array_unique($fields);
+    }
+
+    public static function makeConjunction($list, $conjugation = "and") {
         if (count($list) == 0) {
             return "";
         } else if (count($list) == 1) {
@@ -1047,13 +1060,6 @@ class REDCapManagement {
 	    return DataDictionaryManagement::atEndOfMetadata($priorField, $newRows, $newMetadata);
     }
 
-	# if present, $fields contains the fields to copy over; if left as an empty array, then it attempts to install all fields
-	# $deletionRegEx contains the regular expression that marks fields for deletion
-	# places new metadata rows AFTER last match from $existingMetadata
-	public static function mergeMetadataAndUpload($originalMetadata, $newMetadata, $token, $server, $fields = array(), $deletionRegEx = "/___delete$/") {
-		return DataDictionaryManagement::mergeMetadataAndUpload($originalMetadata, $newMetadata, $token, $server, $fields, $deletionRegEx);
-	}
-
     /**
      * Encode array from latin1 to utf8 recursively
      */
@@ -1182,14 +1188,7 @@ class REDCapManagement {
         }
         if ($decimal && is_int($numDecimalPlaces) && ($numDecimalPlaces > 0)) {
             $decPart = floor($decimal * pow(10, $numDecimalPlaces));
-            $paddedDecPart = $decPart;
-            # start padding at 1/100s place
-            for ($i = 1; $i < $numDecimalPlaces; $i++){
-                $decimalPlaceValue = pow(10, ($numDecimalPlaces - $i));
-                if ($decPart < $decimalPlaceValue) {
-                    $paddedDecPart = "0".$paddedDecPart;
-                }
-            }
+            $paddedDecPart = self::padInteger($decPart, $numDecimalPlaces);
             $decimal = ".".$paddedDecPart;
         } else {
             $decimal = "";
@@ -1212,6 +1211,20 @@ class REDCapManagement {
         } else {
             return $s.$decimal;
         }
+    }
+
+    public static function padInteger($num, $numDecimalPlaces) {
+        if (!is_numeric($num)) {
+            return $num;
+        }
+        $decimal = (int) $num;
+        for ($i = 1; $i < $numDecimalPlaces; $i++){
+            $decimalPlaceValue = pow(10, ($numDecimalPlaces - $i));
+            if ($decimal < $decimalPlaceValue) {
+                $decimal = "0".$decimal;
+            }
+        }
+        return $decimal;
     }
 
     public static function isArrayNumeric($nodes) {

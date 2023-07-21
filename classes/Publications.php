@@ -6,6 +6,8 @@ namespace Vanderbilt\CareerDevLibrary;
 # This class handles publication data from PubMed, the VICTR fetch routine, and surveys.
 # It also provides HTML for data-wrangling the publication data
 
+use phpDocumentor\Reflection\DocBlock\Tags\Link;
+
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Publications {
@@ -177,7 +179,7 @@ class Publications {
 	    return $newRows;
     }
 
-    public static function searchPubMedForName($first, $last, $pid, $institutions = []) {
+    public static function searchPubMedForName($first, $last, $pid, $institutions = [], $recordId = FALSE) {
         if (!is_array($institutions)) {
             $institutions = [$institutions];
         }
@@ -189,7 +191,11 @@ class Publications {
             $institution = preg_replace("/\s*&\s*/", " ", $institution);
             $institution = preg_replace("/\s+/", "+", $institution);
             $institution = Sanitizer::repetitivelyDecodeHTML(strtolower($institution));
-            $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
+            $institution = str_replace("(", "", $institution);
+            $institution = str_replace(")", "", $institution);
+            if (!in_array($institution, ["children", "children'", "children's", "children#039", "children#039s"])) {
+                $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
+            }
         }
         if (!empty($institutionSearchNodes)) {
             $term .= "AND (".implode("+OR+", $institutionSearchNodes).")";
@@ -200,7 +206,12 @@ class Publications {
         if (count($pmids) > $maximumThreshold) {
             $adminEmail = Application::getSetting("admin_email", $pid);
             $defaultFrom = Application::getSetting("default_from", $pid);
-            $mssg = "Searching PubMed for $first $last returned ".count($pmids)." PMIDs in pid $pid! This is likely an error as it is above the threshold of $maximumThreshold. Data not uploaded.";
+            if ($recordId) {
+                $name = Links::makeRecordHomeLink($pid, $recordId, "Record $recordId: $first $last");
+            } else {
+                $name = "$first $last";
+            }
+            $mssg = "Searching PubMed for $name returned ".count($pmids)." PMIDs in pid $pid! This is likely an error as it is above the threshold of $maximumThreshold. Data not uploaded.";
             if ($adminEmail) {
                 \REDCap::email($adminEmail, $defaultFrom, Application::getProgramName()." Error", $mssg);
                 return [];
@@ -1296,35 +1307,44 @@ class Publications {
 
         $newLabel = "New";
         $existingLabel = "Existing";
+        $omittedLabel = "Omitted";
 		$html = "";
 		$notDone = $this->getCitationCollection("Not Done");
 		$notDoneCount = $notDone->getCount();
 		$html .= "<h4 class='newHeader'>";
 		if ($notDoneCount == 0) {
 			$html .= "No $newLabel Citations";
-			$html .= "</h4>\n";
-			$html .= "<div id='newCitations'>\n";
+			$html .= "</h4>";
+			$html .= "<div id='newCitations'>";
 		} else {
 			if ($notDoneCount == 1) {
 				$html .= $notDoneCount." $newLabel Citation";
 			} else {
 				$html .= $notDoneCount." $newLabel Citations";
 			}
-			$html .= "</h4>\n";
-			$html .= "<div id='newCitations'>\n";
+			$html .= "</h4>";
+			$html .= "<div id='newCitations'>";
 			if ($notDoneCount > 1) {
                 $html .= "<p class='centered'><a href='javascript:;' onclick='selectAllCitations(\"#newCitations\");'>Select All $newLabel Citations</a> | <a href='javascript:;' onclick='unselectAllCitations(\"#newCitations\");'>Deselect All $newLabel Citations</a></p>";
             }
 			$html .= $notDone->toHTML("notDone");
 		}
-		$html .= "</div>\n";
-		$html .= "<hr>\n";
+		$html .= "</div>";
+		$html .= "<hr/>";
 
 		$included = $this->getCitationCollection("Included");
-		$html .= "<h4>$existingLabel Citations</h4>\n";
-		$html .= "<div id='finalCitations'>\n";
+		$html .= "<h4>$existingLabel Citations</h4>";
+		$html .= "<div id='finalCitations'>";
 		$html .= $included->toHTML("included");
-		$html .= "</div>\n";
+		$html .= "</div>";
+        $html .= "<hr/>";
+
+        $omitted = $this->getCitationCollection("Omitted");
+        $html .= "<h4>$omittedLabel Citations</h4>";
+        $html .= "<div id='omittedCitations'>";
+        $html .= $omitted->toHTML("excluded");
+        $html .= "</div>";
+
 		return $html;
 	}
 
@@ -1475,7 +1495,7 @@ class Publications {
                     if (isset($middleName) && $middleName) {
                         $firstName .= " ".$middleName;
                     }
-                    $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institutions);
+                    $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institutions, $recordId);
                     $pmidsMatchedByFirst = array_unique(array_merge($pmidsMatchedByFirst, $currPMIDs));
                 }
             }
@@ -1484,7 +1504,7 @@ class Publications {
             $pmidsMatchedByMiddle = [];
             foreach ($lastNames as $lastName) {
                 foreach ($candidateNames as $candidateName) {
-                    $currPMIDs = Publications::searchPubMedForName($candidateName, $lastName, $pid, $institutions);
+                    $currPMIDs = Publications::searchPubMedForName($candidateName, $lastName, $pid, $institutions, $recordId);
                     $pmidsMatchedByMiddle = array_unique(array_merge($pmidsMatchedByMiddle, $currPMIDs));
                 }
             }

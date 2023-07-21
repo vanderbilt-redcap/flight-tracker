@@ -413,7 +413,8 @@ function makeSettings($module, $pid) {
 		$html .= "<form method='POST' action='".Application::link("config.php")."'>\n";
 		$html .= Application::generateCSRFTokenHTML();
 		foreach ($ary as $header => $htmlAry) {
-			$html .= "<h2>$header</h2>\n";
+            $id = REDCapManagement::makeHTMLId($header);
+			$html .= "<a id='$id'></a><h2>$header</h2>";
 			$html .= "<table class='centered' style='max-width: 600px;'>";
 			$html .= implode("\n", $htmlAry);
 			$html .= "<tr><td colspan='2' class='centered'><input type='submit' value='Save Settings'></td></tr>";

@@ -2,16 +2,15 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\Publications;
-use \Vanderbilt\CareerDevLibrary\CitationCollection;
 use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 # This is the hook used for the scholars' followup survey. It is referenced in the hooks file.
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
 ?>
@@ -27,11 +26,26 @@ function getCSRFToken() { return '<?= Application::generateCSRFToken() ?>'; }
 <?php
 
 require_once(dirname(__FILE__)."/surveyHook.php");
-require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$GLOBALS['data'] = Download::records($token, $server, array($record));
 $metadata = Download::metadata($token, $server);
-$choices = Scholar::getChoices($metadata);
+$allFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+$fields = ["record_id"];
+foreach ($allFields as $field) {
+    if (
+        preg_match("/^check_/", $field)
+        || preg_match("/^followup_/", $field)
+        || preg_match("/^summary_/", $field)
+        || preg_match("/^vfrs_/", $field)
+        || preg_match("/^identifier_/", $field)
+        || preg_match("/^init_import_/", $field)
+        || preg_match("/^newman_/", $field)
+    ) {
+        $fields[] = $field;
+    }
+}
+$grantFields = REDCapManagement::getAllGrantFields($metadata);
+$fields = array_unique(array_merge($fields, $grantFields));
+$GLOBALS['data'] = Download::fieldsForRecords($token, $server, $fields, [$record]);
 
 $grants = new Grants($token, $server, $metadata);
 $grants->setRows($GLOBALS['data']);
@@ -46,45 +60,6 @@ function findInFollowup($fields) {
     return REDCapManagement::findInData($data, $fields);
 }
 
-# returns the value for $coeusField in the first COEUS repeatable instance that matches
-# the sponsor number
-# if sponsor number is unmatched, it returns ""
-# sponsor number may vary by -####+ at the end of the sponsor number
-function findCOEUSEntry($sponsorNoField, $coeusField) {
-	global $data;
-	$sponsorNo = "";
-	foreach ($data as $row) {
-		$instance = $row['redcap_repeat_instance'];
-		if ($instance == "") {
-			$sponsorNo = $row[$sponsorNoField]; 
-		}
-	}
-	if ($sponsorNo != "") {
-		foreach ($data as $row) {
-			$instance = $row['redcap_repeat_instance'];
-			if ($instance != "") {
-				$instanceSponsorNo = $row['coeus_sponsor_award_number'];
-				if (($instanceSponsorNo != "") && (preg_match("/".$sponsorNo."/", $instanceSponsorNo))) {
-					if ($row[$coeusField]) {
-						# return the first with a value
-						return preg_replace("/'/", "\\'", $row[$coeusField]);
-					}
-				}
-			} 
-		}
-	}
-	return "";
-}
-
-# returns the citizenship autofill
-function getCitizenship($value) {
-	$value = strtolower($value);
-	$usVariants = array("us", "usa", "u.s.", "u.s.a.", "united states", "america");
-	if (in_array($value, $usVariants)) {
-		return 1;
-	}
-	return "";
-}
 ?>
 <script>
 $(document).ready(function() {

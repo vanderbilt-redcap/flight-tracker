@@ -921,7 +921,7 @@ function installMetadataForProjects(pids) {
 					icon: $.sweetModal.ICON_SUCCESS
 				});
 				$("#metadataWarning").addClass("install-metadata-box-success");
-				$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
+				$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> "+getInstallationCompleteMessage());
 			} else {
 				$.sweetModal({
 					content: exceptions.length+' error(s) occurred:<br/>'+exceptions.join('<br/>'),
@@ -938,6 +938,10 @@ function installMetadataForProjects(pids) {
 	});
 }
 
+function getInstallationCompleteMessage() {
+	return "Installation Complete! Note: Any custom forms may have been moved to the bottom of your form list.";
+}
+
 function installMetadata(fields) {
 	const url = getPageUrl("metadata.php");
 	$("#metadataWarning").removeClass("install-metadata-box-danger");
@@ -948,7 +952,7 @@ function installMetadata(fields) {
 		if (!json.match(/Exception/)) {
 			$("#metadataWarning").removeClass("install-metadata-box-warning");
 			$("#metadataWarning").addClass("install-metadata-box-success");
-			$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
+			$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> "+getInstallationCompleteMessage());
 			setTimeout(function() {
 				$("#metadataWarning").fadeOut(500);
 			}, 3000);
@@ -962,7 +966,7 @@ function installMetadata(fields) {
 					if (!json2.match(/Exception/)) {
 						$("#metadataWarning").removeClass("install-metadata-box-warning");
 						$("#metadataWarning").addClass("install-metadata-box-success");
-						$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> Installation Complete");
+						$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> "+getInstallationCompleteMessage());
 						setTimeout(function () {
 							$("#metadataWarning").fadeOut(500);
 						}, 3000);

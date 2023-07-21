@@ -146,23 +146,48 @@ function sendTestEmails(pid, selectName, selectValue) {
 		var post = {};
 		post['to'] = to;
 		post[selectName] = selectValue;
-		post['redcap_csrf_token'] = getCSRFToken();
-		presentScreen("Preparing Messages...");
+		presentScreen("Preparing Messages... (Please wait. May take some time.)");
+		console.log(JSON.stringify(post));
 		$.post(getPageUrl("/emailMgmt/makeMessages.php"), post, function(json) {
-			console.log("makeMessages: "+json);
-			presentScreen("Sending Messages...");
-			$.post(getPageUrl("/emailMgmt/sendTest.php"), { 'redcap_csrf_token': getCSRFToken(), messages: json }, function(str) {
-				console.log(str);
-				clearScreen();
-				if (!$('#note').hasClass("green")) {
-					$('#note').addClass("green");
+			console.log(json);
+			try {
+				let data = JSON.parse(json);
+				for (var name in data) {
+					for (var name2 in data[name]) {
+						let mssgs = data[name][name2]['mssgs'];
+						var count = 0;
+						for (var recordId in mssgs) {
+							count++;
+						}
+						console.log('makeMessages: '+name+' '+name2+' has '+count+' messages');
+					}
 				}
-				$('#note').html("Test emails sent "+str);
-				$("#enableEmail").slideDown();
-			});
+				presentScreen("Sending Messages... (Please wait. May take some time.)");
+				$.post(getPageUrl("/emailMgmt/sendTest.php"), { messages: json }, function(str) {
+					console.log(str);
+					clearScreen();
+					if (!$('#note').hasClass("green")) {
+						$('#note').addClass("green");
+					}
+					$('#note').html("Test emails sent "+str);
+					$("#enableEmail").slideDown();
+				});
+			} catch (e) {
+				clearScreen();
+				$.sweetModal({
+					content: 'ERROR: '+json,
+					icon: $.sweetModal.ICON_ERROR
+				});
+				console.error(JSON.stringify(e));
+			}
 		});
 	} else {
-		alert(to+" is not formatted properly for an email address. Emails not sent.");
+		const mssg = "ERROR: "+to+" is not formatted properly for an email address. Emails not sent.";
+		$.sweetModal({
+			content: mssg,
+			icon: $.sweetModal.ICON_ERROR
+		});
+		console.error(JSON.stringify(e));
 	}
 }
 

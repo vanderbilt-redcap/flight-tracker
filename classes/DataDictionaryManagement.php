@@ -12,6 +12,7 @@ class DataDictionaryManagement {
     const OPTION_OTHER_VALUE = "99";
     const DEGREE_OTHER_VALUE = "99";
     const INSTITUTION_OTHER_VALUE = "5";
+    const NONE = "NONE";
 
     public static function getDeletionRegEx() {
         $suffix = self::DELETION_SUFFIX;
@@ -226,19 +227,41 @@ class DataDictionaryManagement {
         return $fields;
     }
 
-    public static function installMetadataFromFiles($files, $token, $server, $pid, $eventId, $grantClass, $newSourceChoices, $deletionRegEx, $excludeForms) {
+    public static function installMetadataForPids($pids, $files, $deletionRegEx) {
+        $returnData = [];
+        foreach ($pids as $currPid) {
+            $pidToken = Application::getSetting("token", $currPid);
+            $pidServer = Application::getSetting("server", $currPid);
+            $switches = new FeatureSwitches($pidToken, $pidServer, $currPid);
+            $pidEventId = Application::getSetting("event_id", $currPid);
+            if ($pidToken && $pidServer && $pidEventId) {
+                Application::log("Installing metadata", $currPid);
+                $returnData[$currPid] = DataDictionaryManagement::installMetadataFromFiles($files, $pidToken, $pidServer, $currPid, $pidEventId, CareerDev::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
+            }
+        }
+        return $returnData;
+    }
+
+    public static function installMetadataFromFiles($files, $token, $server, $pid, $eventId, $newSourceChoices, $deletionRegEx, $excludeForms) {
+        $useNewMerger = TRUE;
         $metadata = [];
         $metadata['REDCap'] = Download::metadata($token, $server);
         $metadata['REDCap'] = self::filterOutForms($metadata['REDCap'], $excludeForms);
-        if (isset($_POST['fields'])) {
-            $postedFields = Sanitizer::sanitizeArray($_POST['fields']);
+
+        if (!$useNewMerger) {
+            if (isset($_POST['fields'])) {
+                $postedFields = Sanitizer::sanitizeArray($_POST['fields']);
+            } else {
+                list ($missing, $additions, $changed) = self::findChangedFieldsInMetadata($metadata['REDCap'], $files, $deletionRegEx, $newSourceChoices, $excludeForms, $pid);
+                $postedFields = $missing;
+            }
+            if (empty($postedFields)) {
+                return ["error" => "Nothing to update"];
+            }
         } else {
-            list ($missing, $additions, $changed) = self::findChangedFieldsInMetadata($metadata['REDCap'], $files, $deletionRegEx, $newSourceChoices, $excludeForms, $pid);
-            $postedFields = $missing;
+            $postedFields = [];
         }
-        if (empty($postedFields)) {
-            return ["error" => "Nothing to update"];
-        }
+
         $metadata['file'] = [];
         foreach ($files as $filename) {
             $fp = fopen($filename, "r");
@@ -257,24 +280,24 @@ class DataDictionaryManagement {
             }
         }
         if (!empty($metadata['file'])) {
-            $mentorLabel = "Primary mentor during your training period";
-            $fieldLabels = [];
-            foreach ($metadata as $type => $md) {
-                $fieldLabels[$type] = self::getLabels($md);
-            }
-            $fieldsForMentorLabel = ["check_primary_mentor", "followup_primary_mentor",];
-            foreach ($fieldsForMentorLabel as $field) {
-                $metadata['file'] = self::changeFieldLabel($field, $mentorLabel, $metadata['file']);
-                $fileValue = $fieldLabels['file'][$field] ?? "";
-                $redcapValue = $fieldLabels['REDCap'][$field] ?? "";
-                if ($fileValue != $redcapValue) {
-                    $postedFields[] = $field;
-                }
-            }
             try {
-                $metadata["REDCap"] = self::reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);
-                $choices = ["REDCap" => self::getChoices($metadata["REDCap"])];
-                $newSourceChoiceStr = REDCapManagement::makeChoiceStr($newSourceChoices);
+                $mentorLabel = "Primary mentor during your training period";
+                $fieldLabels = [];
+                foreach ($metadata as $type => $md) {
+                    $fieldLabels[$type] = self::getLabels($md);
+                }
+                $fieldsForMentorLabel = ["check_primary_mentor", "followup_primary_mentor",];
+                foreach ($fieldsForMentorLabel as $field) {
+                    $metadata['file'] = self::changeFieldLabel($field, $mentorLabel, $metadata['file']);
+                    $fileValue = $fieldLabels['file'][$field] ?? "";
+                    $redcapValue = $fieldLabels['REDCap'][$field] ?? "";
+                    if (($fileValue != $redcapValue) && !$useNewMerger) {
+                        $postedFields[] = $field;
+                    }
+                }
+
+                $redcapChoices = self::getChoices($metadata["REDCap"]);
+                $newSourceChoiceStr = self::makeChoiceStr($newSourceChoices);
                 for ($i = 0; $i < count($metadata['file']); $i++) {
                     $field = $metadata['file'][$i]['field_name'];
                     $isFieldOfSources = (
@@ -282,14 +305,23 @@ class DataDictionaryManagement {
                             preg_match("/_source$/", $field)
                             || preg_match("/_source_\d+$/", $field)
                         )
-                        && isset($choices["REDCap"][$field]["scholars"])
+                        && (
+                            isset($redcapChoices[$field]["scholars"])
+                            || isset($redcapChoices[$field]["nih_reporter"])
+                            || isset($redcapChoices[$field]["pubmed"])
+                        )
                     );
                     if ($isFieldOfSources) {
                         $metadata['file'][$i]['select_choices_or_calculations'] = $newSourceChoiceStr;
                     }
                 }
 
-                $feedback = self::mergeMetadataAndUpload($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
+                if ($useNewMerger) {
+                    $feedback = self::mergeMetadataAndUploadNew($metadata['REDCap'], $metadata['file'], $token, $server, $pid, $deletionRegEx);
+                } else {
+                    $metadata["REDCap"] = self::reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);
+                    $feedback = self::mergeMetadataAndUploadOld($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
+                }
                 $newMetadata = Download::metadata($token, $server);
                 $formsAndLabels = self::getRepeatingFormsAndLabels($newMetadata, $token);
                 $surveysAndLabels = self::getSurveysAndLabels($newMetadata);
@@ -871,10 +903,191 @@ class DataDictionaryManagement {
         return TRUE;
     }
 
+    private static function getDeletedFields($metadata, $deletionRegEx) {
+        $fields = [];
+        foreach ($metadata as $row) {
+            if (preg_match($deletionRegEx, $row['field_name'])) {
+                $fields[] = preg_replace($deletionRegEx, "", $row['field_name']);
+            }
+        }
+        return $fields;
+    }
+
+    # fileMetadata as baseline
+    public static function mergeMetadataAndUploadNew($originalMetadata, $fileMetadata, $token, $server, $pid, $deletionRegEx = "/___delete$/") {
+        $fieldsToDelete = self::getDeletedFields($fileMetadata, $deletionRegEx);
+        $originalFormsAndFields = self::getFormsAndFields($originalMetadata, $deletionRegEx, $fieldsToDelete);
+        $fileFormsAndFields = self::getFormsAndFields($fileMetadata, $deletionRegEx, $fieldsToDelete);
+        $switches = new FeatureSwitches($token, $server, $pid);
+        $formsToSkip = $switches->getFormsToExclude();
+        $indexedFileMetadata = self::indexMetadata($fileMetadata);
+        $indexedOriginalMetadata = self::indexMetadata($originalMetadata);
+
+        $mergedMetadata = [];
+        foreach ($fileFormsAndFields as $form => $fileFields) {
+            if (in_array($form, $formsToSkip)) {
+                continue;
+            } else if (
+                !isset($originalFormsAndFields[$form])
+                || REDCapManagement::arraysEqual($fileFields, $originalFormsAndFields[$form])
+            ) {
+                self::addFields($mergedMetadata, $fileMetadata, $fileFields);
+            } else {
+                $originalFields = $originalFormsAndFields[$form];
+                $mergedOrderForForm = self::mergeFields($fileFields, $originalFields);
+                foreach ($mergedOrderForForm as $field) {
+                    $fileForm = $indexedFileMetadata[$field]["form_name"] ?? self::NONE;
+
+                    # get rid of duplicated fields in renamed forms
+                    if (($fileForm == self::NONE) || ($fileForm == $form)) {
+                        if (in_array($field, $fileFields)) {
+                            $row = $indexedFileMetadata[$field];
+                        } else if (in_array($field, $originalFields)) {
+                            $row = $indexedOriginalMetadata[$field];
+                        } else {
+                            throw new \Exception("Field mismatch ($field): This should never happen!");
+                        }
+                        $mergedMetadata[] = $row;
+                    }
+                }
+            }
+        }
+        $mergedFieldsBeforeOriginal = self::getFieldsFromMetadata($mergedMetadata);
+        foreach ($originalFormsAndFields as $form => $originalFields) {
+            if (in_array($form, $formsToSkip)) {
+                continue;
+            } else if (!isset($fileFormsAndFields[$form])) {
+                $fieldsToAdd = [];
+                foreach ($originalFields as $field) {
+                    if (!in_array($field, $mergedFieldsBeforeOriginal)) {
+                        $fieldsToAdd[] = $field;
+                    }
+                }
+                if (!empty($fieldsToAdd)) {
+                    self::addFields($mergedMetadata, $originalMetadata, $fieldsToAdd);
+                }
+            }
+        }
+
+        self::preserveSectionHeaders($mergedMetadata, $originalMetadata);
+        self::alterOptionalFields($mergedMetadata, $pid);
+        self::alterResourcesFields($mergedMetadata, $pid);
+        self::alterInstitutionFields($mergedMetadata, $pid);
+        self::alterDepartmentsFields($mergedMetadata, $pid);
+        return Upload::metadata($mergedMetadata, $token, $server);
+    }
+
+    private static function preserveSectionHeaders(&$currentMetadata, $oldMetadata) {
+        $indexedOldMetadata = self::indexMetadata($oldMetadata);
+        foreach ($currentMetadata as $i => $row) {
+            if (
+                ($row['section_header'] != "")
+                && ($row['section_header'] != $indexedOldMetadata[$row['field_name']]['section_header'])
+                && ($indexedOldMetadata[$row['field_name']]['section_header'] !== "")
+            ) {
+                $currentMetadata[$i]["section_header"] = $indexedOldMetadata[$row['field_name']]['section_header'];
+            }
+        }
+    }
+
+    # in case of major havoc, uses order of baseline and adds new fields at end
+    private static function mergeFields($baselineFields, $newFields) {
+        $fields = [];
+
+        $baselineIndex = 0;
+        $newIndex = 0;
+        while ($baselineIndex < count($baselineFields)) {
+            $baselineField = $baselineFields[$baselineIndex];
+            if ($baselineField == $newFields[$newIndex]) {
+                # in sync (normal case) --> advance both pointers
+                $newIndex++;
+                $fields[] = $baselineField;
+                $baselineIndex++;
+            } else if (
+                in_array($baselineField, $newFields)
+                && !in_array($newFields[$newIndex], $baselineFields)
+            ) {
+                # newFields[newIndex] is not in baselineFields --> catch up then insert
+                while (
+                    ($newFields[$newIndex] != $baselineField)
+                    && !in_array($newFields[$newIndex], $baselineFields)
+                    && ($newIndex < count($newFields))
+                ) {
+                    $fields[] = $newFields[$newIndex];
+                    $newIndex++;
+                }
+                $fields[] = $baselineField;
+                $baselineIndex++;
+            } else if (
+                !in_array($baselineField, $newFields)
+                && in_array($newFields[$newIndex], $baselineFields)
+            ) {
+                # Deleted from newFields --> insert but do not advance newFields
+                $fields[] = $baselineField;
+                $baselineIndex++;
+            } else if (
+                in_array($baselineField, $newFields)
+                && in_array($newFields[$newIndex], $baselineFields)
+            ) {
+                # reshuffled --> restore file order
+                $fields[] = $baselineField;
+                $baselineIndex++;
+                # newIndex will be skipped ahead later
+            } else if (
+                !in_array($baselineField, $newFields)
+                && !in_array($newFields[$newIndex], $baselineFields)
+            ) {
+                # both excluded from other --> add baseline and then new fields until a baseline field is found again
+                # possibly a renamed field
+                $fields[] = $baselineField;
+                $baselineIndex++;
+                while (
+                    !in_array($newFields[$newIndex], $baselineFields)
+                    && ($newIndex < count($newFields))
+                ) {
+                    $fields[] = $newFields[$newIndex];
+                    $newIndex++;
+                }
+            }
+        }
+        while ($newIndex < count($newFields)) {
+            if (!in_array($newFields[$newIndex], $fields)) {
+                $fields[] = $newFields[$newIndex];
+            }
+            $newIndex++;
+        }
+
+        return $fields;
+    }
+
+    private static function addFields(&$destMetadata, $sourceMetadata, $fields) {
+        foreach ($sourceMetadata as $row) {
+            if (in_array($row['field_name'], $fields)) {
+                $destMetadata[] = $row;
+            }
+        }
+    }
+
+    # enforces delete
+    private static function getFormsAndFields($metadata, $deletionRegEx, $fieldsToDelete = []) {
+        $forms = [];
+        foreach ($metadata as $row) {
+            $formName = $row['form_name'];
+            $fieldName = $row['field_name'];
+            if (!preg_match($deletionRegEx, $fieldName) && !in_array($fieldName, $fieldsToDelete)) {
+                if (!isset($forms[$formName])) {
+                    $forms[$formName] = [];
+                }
+                $forms[$formName][] = $fieldName;
+            }
+        }
+        return $forms;
+    }
+
     # if present, $fields contains the fields to copy over; if left as an empty array, then it attempts to install all fields
     # $deletionRegEx contains the regular expression that marks fields for deletion
     # places new metadata rows AFTER last match from $existingMetadata
-    public static function mergeMetadataAndUpload($originalMetadata, $newMetadata, $token, $server, $fields = array(), $deletionRegEx = "/___delete$/") {
+    public static function mergeMetadataAndUploadOld($originalMetadata, $newMetadata, $token, $server, $fields = array(), $deletionRegEx = "/___delete$/") {
         $fieldsToDelete = self::getFieldsWithRegEx($newMetadata, $deletionRegEx, TRUE);
         $filteredFields = [];
         foreach ($fields as $field) {
@@ -903,7 +1116,7 @@ class DataDictionaryManagement {
                 $pid = Application::getPID($token);
                 $eventId = Application::getSetting("event_id", $pid);
                 $switches = new FeatureSwitches($token, $server, $pid);
-                return self::installMetadataFromFiles(Application::getMetadataFiles(), $token, $server, $pid, $eventId, Application::getSetting("grant_class", $pid), Application::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
+                return self::installMetadataFromFiles(Application::getMetadataFiles(), $token, $server, $pid, $eventId, Application::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
             } else {
                 self::sortByForms($metadata);
                 $pid = Application::getPID($token);
@@ -1258,7 +1471,7 @@ class DataDictionaryManagement {
                             foreach ($metadataChoices as $idx => $label) {
                                 if (!isset($mergedChoices[$idx])) {
                                     $mergedChoices[$idx] = $label;
-                                } else if (isset($mergedChoices[$idx]) && ($mergedChoices[$idx] == $label)) {
+                                } else if ($mergedChoices[$idx] == $label) {
                                     # both have same idx/label - no big deal
                                 } else {
                                     # merge conflict => reassign all data values

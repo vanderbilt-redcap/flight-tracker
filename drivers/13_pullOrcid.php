@@ -37,16 +37,16 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
                 foreach ($ary as $recordId => $value) {
                     if ($value == $recordId) {
                         # no match
-                        array_push($noMatches, $recordId);
+                        $noMatches[] = $recordId;
                     } else if ($orcidAry = json_decode($value, TRUE)) {
                         # multi-match
                         $multiples[$recordId] = $orcidAry;
                     } else {
-                        array_push($messages, "Could not decipher $recordId: $value! This should never happen.");
+                        $messages[] = "Could not decipher $recordId: $value! This should never happen.";
                     }
                 }
             } else if ($mssg) {
-                array_push($messages, $mssg);
+                $messages[] = $mssg;
             } else if ($orcid) {
                 $newOrcids[$recordId] = $orcid;
             }
@@ -68,11 +68,7 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
         $feedback = Upload::rows($upload, $token, $server);
         Application::log("ORCID Upload: ".json_encode($feedback));
     }
-    if (function_exists("saveCurrentDate")) {
-        saveCurrentDate("Last ORCID Download", $pid);
-    } else {
-        CareerDev::saveCurrentDate("Last ORCID Download", $pid);
-    }
+    CareerDev::saveCurrentDate("Last ORCID Download", $pid);
     if (!empty($noMatches)) {
         Application::log("Could not find matches for records: ".REDCapManagement::json_encode_with_spaces($noMatches));
     }
@@ -81,8 +77,10 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
         $adminEmail = Application::getSetting("admin_email", $pid);
         $html = makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata);
 
-        require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-        \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), CareerDev::getProgramName().": Multiple ORCIDs Found", $html);
+        if (preg_match("/possible ORCIDs/", $html)) {
+            require_once(dirname(__FILE__)."/../../../redcap_connect.php");
+            \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), CareerDev::getProgramName().": Multiple ORCIDs Found", $html);
+        }
     }
     if (!empty($messages)) {
         throw new \Exception(count($messages)." messages: ".implode("; ", $messages));
@@ -135,7 +133,7 @@ function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {
                 } else {
                     $tag = " (new)";
                 }
-                array_push($orcidLinks, Links::makeLink($url, $orcid).$tag);
+                $orcidLinks[] = Links::makeLink($url, $orcid) . $tag;
             }
             $priorMultiples[$recordId] = $recordORCIDs;
             if (count($orcidLinks) <= $orcidThreshold) {

@@ -42,12 +42,20 @@ class Links {
         return $str;
     }
 
-    public static function makeMailtoLink($email) {
+    public static function makeMailtoLink($email, $text = "", $subject = "") {
 	    if (!$email) {
 	        return "";
         }
+        $classInfo = "";
+        if ($text === "") {
+            $text = $email;
+            $classInfo = " class='smallEmail'";
+        }
 	    if (REDCapManagement::isEmail($email)) {
-            return "<a href='mailto:$email' class='smallEmail'>$email</a>";
+            if ($subject !== "") {
+                $email .= "?subject=$subject";
+            }
+            return "<a href='mailto:$email'$classInfo>$text</a>";
         }
 	    return $email;
     }

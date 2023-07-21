@@ -325,7 +325,7 @@ $(document).ready(function() {
 
 <?php
 		if ($allowFollowups) {
-			echo "<h3 class='purple'>Follow-Up Email (Optional; Only to Non-Respondants)</h3>\n";
+			echo "<h3 class='purple'>Follow-Up Email (Optional; Only to Non-Respondants)</h3>";
 			echo makeDateTime("followup_time", $currSetting['when'], $isReadonly)."\n";
 		}
 
@@ -339,34 +339,34 @@ $(document).ready(function() {
 		if ($hasErrors) {
 			$testStyle = " display: none;";
 		}
-		echo "<div style='margin-top: 50px;' id='status' class='blue padded'>\n";
+		echo "<div style='margin-top: 50px;' id='status' class='blue padded'>";
 		if (isset($currSetting['enabled']) && $currSetting['enabled']) {
-			echo "<h2 class='blue'>Current Status: Activated</h2>\n";
+			echo "<h2 class='blue'>Current Status: Activated</h2>";
 			echo "<p class='centered'><button onclick='disableEmailSetting(); return true;'>Modify Email</button></p>\n";   // button should resubmit entire page
 			$stageText = "Update &amp; Re-Stage to Test";
 			$stageStyle = " display: none;";
 		} else {
-			echo "<h2 class='blue'>Current Status: Not Activated</h2>\n";
+			echo "<h2 class='blue'>Current Status: Not Activated</h2>";
 			$stageText = $intro."Stage to Test";
 			$stageStyle = "";
 		}
-		echo "</div>\n";
-		echo "<div style='margin-top: 50px;$stageStyle' id='save' class='blue padded'>\n";
-		echo "<h2 class='blue'>Advance Process</h2>\n";
-		echo "<input type='hidden' name='enabled' value='".($currSetting['enabled'] ? "true" : "false")."'>\n";
-		echo "<h3 class='blue'>Step 1 of 3</h3>\n";
-		echo "<p class='centered'><button>$stageText</button></p>\n";
-		echo "<div class='padded' style='$testStyle' id='test'>\n";
-		echo "<h3 class='blue'>Step 2 of 3</h3>\n";
-		echo "<p class='centered'>You will receive one email per every recipient.</p>\n";
-		echo "<p class='centered'>Your Email Address: <input type='text' id='test_to'></p>\n";
-		echo "<p class='centered'><button onclick='sendTestEmails(\"$pid\", \"$selectName\", \"$currSettingName\"); return false;'>Test Email Setting</button></p>\n";
-		echo "</div>\n";
-		echo "<div id='enableEmail' style='display: none;' class='padded'>\n";
-		echo "<h3 class='blue'>Step 3 of 3</h3>\n";
-		echo "<p class='centered'><button onclick='enableEmailSetting(); return true;'>Activate Emails &amp; Enqueue to Send</button></p>\n";    // should resubmit entire page
-		echo "</div>\n";
-		echo "</div>\n";
+		echo "</div>";
+		echo "<div style='margin-top: 50px;$stageStyle' id='save' class='blue padded'>";
+		echo "<h2 class='blue'>Advance Process</h2>";
+		echo "<input type='hidden' name='enabled' value='".($currSetting['enabled'] ? "true" : "false")."'>";
+		echo "<h3 class='blue'>Step 1 of 3</h3>";
+		echo "<p class='centered'><button>$stageText</button></p>";
+		echo "<div class='padded' style='$testStyle' id='test'>";
+		echo "<h3 class='blue'>Step 2 of 3</h3>";
+		echo "<p class='centered'>You will receive one email per every recipient. Please note that the links are real links, so any surveys you submit will be added to a scholar's record.</p>";
+		echo "<p class='centered'>Your Email Address: <input type='text' id='test_to'></p>";
+		echo "<p class='centered'><button onclick='sendTestEmails(\"$pid\", \"$selectName\", \"$currSettingName\"); return false;'>Test Email Setting</button></p>";
+		echo "</div>";
+		echo "<div id='enableEmail' style='display: none;' class='padded'>";
+		echo "<h3 class='blue'>Step 3 of 3</h3>";
+		echo "<p class='centered'><button onclick='enableEmailSetting(); return true;'>Activate Emails &amp; Enqueue to Send</button></p>";    // should resubmit entire page
+		echo "</div>";
+		echo "</div>";
 ?>
 	</td>
 	</tr>
@@ -485,7 +485,7 @@ function makeDateTime($field, $when, $isReadonly = "") {
 	}
 
 	$html = "";
-	$html .= "<p class='centered'><input $isReadonly type='text' id='$field' class='datetime' name='$field' value='$value'></p>";
+	$html .= "<p class='centered'><input placeholder='Click to schedule' $isReadonly type='text' id='$field' class='datetime' name='$field' value='$value'></p>";
 
 	return $html;
 }
