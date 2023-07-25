@@ -308,8 +308,8 @@ class DataDictionaryManagement {
                         && (
                             isset($redcapChoices[$field]["scholars"])
                             || isset($redcapChoices[$field]["nih_reporter"])
-                            || isset($redcapChoices[$field]["pubmed"])
                         )
+                        && ($field !== "citation_source")
                     );
                     if ($isFieldOfSources) {
                         $metadata['file'][$i]['select_choices_or_calculations'] = $newSourceChoiceStr;
@@ -564,6 +564,7 @@ class DataDictionaryManagement {
                         || preg_match("/_source_\d+$/", $field)
                     )
                     && isset($choices["REDCap"][$field]["scholars"])
+                    && ($field !== "citation_source")
                 );
                 if (in_array($field, $optionalFields)) {
                     $settingName = REDCapManagement::turnOptionalFieldIntoSetting($field);
