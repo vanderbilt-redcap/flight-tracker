@@ -1040,7 +1040,7 @@ function getNewWranglerImg(state) {
 
 function getPubImgHTML(newState, url) {
 	var newImg = getNewWranglerImg(newState);
-	return "<img align='left' style='margin: 2px; width: 26px; height: 26px;' src='"+newImg+"' alt='"+newState+"' onclick='changeCheckboxValue(this, url);'>";
+	return "<img align='left' style='margin: 2px; width: 26px; height: 26px;' src='"+newImg+"' alt='"+newState+"' onclick='changeCheckboxValue(this, \""+url+"\");'>";
 }
 
 function getBin(pmid) {
@@ -1056,7 +1056,17 @@ function addPMID(pmid, certifyPubURL) {
 		const newDiv = 'notDone';
 		const newId = 'PMID'+pmid;
 		$('#'+newDiv).append('<div id="'+newId+'" style="margin: 8px 0; min-height: 26px;"></div>');
-		submitPMID(pmid, '#'+newId, getPubImgHTML(newState, certifyPubURL), function() { if (enqueue()) { $('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1); } });
+		submitPMID(pmid, '#'+newId, getPubImgHTML(newState, certifyPubURL), function() {
+			if (enqueue()) {
+				$('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1);
+			}
+			const recordId = $("#record_id").val()
+			const params = getUrlVars()
+			const hash = params['s']
+			$.post(certifyPubURL, { 'redcap_csrf_token': getCSRFToken(), hash: hash, record: recordId, pmid: pmid, state: 'checked' }, function(html) {
+				console.log(html);
+			});
+		});
 	} else if (isNaN(pmid)) {
 		$.sweetModal({
 			content: 'PMID '+pmid+' is not a number!',
