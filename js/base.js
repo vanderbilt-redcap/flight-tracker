@@ -1060,7 +1060,7 @@ function addPMID(pmid, certifyPubURL) {
 			if (enqueue()) {
 				$('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1);
 			}
-			const recordId = $("#record_id").val()
+			const recordId = $("[name=record_id]").val()
 			const params = getUrlVars()
 			const hash = params['s']
 			$.post(certifyPubURL, { 'redcap_csrf_token': getCSRFToken(), hash: hash, record: recordId, pmid: pmid, state: 'checked' }, function(html) {
@@ -1091,7 +1091,7 @@ function changeCheckboxValue(ob, url) {
 	const divId = $(ob).parent().attr("id")
 	const state = $(ob).attr('alt')
 	const pmid = $(ob).parent().attr('id').replace(/^PMID/, "")
-	const recordId = $("#record_id").val()
+	const recordId = $("[name=record_id]").val()
 
 	const params = getUrlVars()
 	const hash = params['s']
