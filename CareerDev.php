@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.12.5";
+		return "5.12.6";
 	}
 
 	public static function getLockFile($pid) {
@@ -130,8 +130,11 @@ class CareerDev {
 	    return FALSE;
     }
 
-    public static function isScopusEnabled() {
-	    if (self::getSetting("scopus_api_key")) {
+    public static function isScopusEnabled($pid = NULL) {
+        if (!$pid) {
+            $pid = self::getPid();
+        }
+        if (self::getSetting("scopus_api_key", $pid)) {
 	        return TRUE;
         }
 	    return FALSE;
@@ -147,8 +150,11 @@ class CareerDev {
         return $html;
     }
 
-    public static function getIntroductoryFromEmail() {
-		return self::getSetting("introductory_from");;
+    public static function getIntroductoryFromEmail($pid = NULL) {
+        if (!$pid) {
+            $pid = self::getPid();
+        }
+        return self::getSetting("introductory_from", $pid);;
 	}
 
 	public static function getEmailName($record) {
@@ -333,8 +339,11 @@ class CareerDev {
 		return "ft_data";
 	}
 
-	public static function getInternalKLength() {
-		$value = self::getSetting("internal_k_length");
+	public static function getInternalKLength($pid = NULL) {
+        if (!$pid) {
+            $pid = self::getPid();
+        }
+        $value = self::getSetting("internal_k_length", $pid);
 		if ($value) {
 			return $value;
 		} else {
@@ -342,8 +351,11 @@ class CareerDev {
 		}
 	}
 
-	public static function getK12KL2Length() {
-		$value = self::getSetting("k12_kl2_length");
+	public static function getK12KL2Length($pid = NULL) {
+        if (!$pid) {
+            $pid = self::getPid();
+        }
+        $value = self::getSetting("k12_kl2_length", $pid);
 		if ($value) {
 			return $value;
 		} else {
@@ -351,8 +363,11 @@ class CareerDev {
 		}
 	}
 
-	public static function getIndividualKLength() {
-		$value = self::getSetting("individual_k_length");
+	public static function getIndividualKLength($pid = NULL) {
+        if (!$pid) {
+            $pid = self::getPid();
+        }
+        $value = self::getSetting("individual_k_length", $pid);
 		if ($value) {
 			return $value;
 		} else {
@@ -859,15 +874,24 @@ class CareerDev {
 		return "";
 	}
 
-	public static function getTimezone() {
-		return self::getSetting("timezone");
+	public static function getTimezone($pid = NULL) {
+        if (!$pid) {
+            $pid = self::getPid();
+        }
+		return self::getSetting("timezone", $pid);
 	}
 
-	public static function getShortInstitution($pid) {
+	public static function getShortInstitution($pid = NULL) {
+        if (!$pid) {
+            $pid = self::getPid();
+        }
 		return self::getSetting("short_institution", $pid);
 	}
 
-	public static function getInstitution($pid) {
+	public static function getInstitution($pid = NULL) {
+        if (!$pid) {
+            $pid = self::getPid();
+        }
 		return self::getSetting("institution", $pid);
 	}
 

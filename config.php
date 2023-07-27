@@ -3,6 +3,7 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use \Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Portal;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\Links;
@@ -389,6 +390,9 @@ function makeSettings($module, $pid) {
     $ary["Emails"][] = makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated");
     $ary["Emails"][] = makeSetting("default_from", "text", "Default From Address");
     $ary["Emails"][] = makeSetting("warning_minutes", "number", "Number of Minutes Before An Email to Send a Warning Email", Application::getWarningEmailMinutes($pid));
+    if (Portal::isLive()) {
+        $ary["Emails"][] = makeSystemSetting("bulletin_board_monitor", "text", "Bulletin Board Monitor Email(s) for entire server; comma-separated");
+    }
 
     $ary["Celebrations Email"] = [];
     $ary["Celebrations Email"][] = makeSetting("email_highlights_to", "text", "Email(s) to Send to (Leave Blank Not to Send; Comma-Separated)");
@@ -407,6 +411,10 @@ function makeSettings($module, $pid) {
     $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-port", "text", "Proxy Port Number");
     $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-user", "text", "Proxy Username");
     $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-pass", "text", "Proxy Password");
+
+    $ary["REDCap Configuration"] = [];
+    $ary["REDCap Configuration"][] = makeSetting("safe_servers", "text", "Comma-separated list of domain names (e.g., redcap.vanderbilt.edu) of other <strong>external</strong> servers that (e.g., a separate REDCap Survey Server) that can access Flight Tracker");
+
 
     $html = "";
 	if ($module) {
@@ -462,11 +470,24 @@ function makeCheckboxes($var, $fieldChoices, $label, $defaultChecked = []) {
     return $html;
 }
 
-function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $readonly = FALSE) {
-	$value = CareerDev::getSetting($var);
+function makeSystemSetting($var, $type, $label, $default = "", $fieldChoices = [], $readonly = FALSE) {
+    $value = Application::getSystemSetting($var);
     if ($value === "") {
         $value = $default;
     }
+    return constructSetting($value, $var, $type, $label, $default, $fieldChoices, $readonly);
+}
+
+function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $readonly = FALSE)
+{
+    $value = Application::getSetting($var);
+    if ($value === "") {
+        $value = $default;
+    }
+    return constructSetting($value, $var, $type, $label, $default, $fieldChoices, $readonly);
+}
+
+function constructSetting($value, $var, $type, $label, $default, $fieldChoices, $readonly) {
     if (in_array($var, ["event_id", "pid", "token"])) {
         $module = Application::getModule();
         $realValue = "";

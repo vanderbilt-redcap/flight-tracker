@@ -460,9 +460,9 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
 
     # call REDCap's AutoLogin
     public static function keepAlive($pid) {
-        $oldPid = $_GET['pid'] ?? FALSE;
+        $oldPid = $_GET['pid'] ?? "";
         $_GET['pid'] = $pid;
-        require(APP_PATH_DOCROOT . 'Config/init_project.php');
+        \Authentication::autoLogin(self::getUsername());
         if ($oldPid) {
             $_GET['pid'] = $oldPid;
         } else {
@@ -822,17 +822,42 @@ SELECT DISTINCT s.project_id AS pid
 	    return CareerDev::getSites($all);
     }
 
-	public static function getInternalKLength() {
-		return CareerDev::getInternalKLength();
+	public static function getInternalKLength($pid = NULL) {
+		return CareerDev::getInternalKLength($pid);
 	}
 
-	public static function getK12KL2Length() {
-		return CareerDev::getK12KL2Length();
+	public static function getK12KL2Length($pid = NULL) {
+		return CareerDev::getK12KL2Length($pid);
 	}
 
-	public static function getIndividualKLength() {
-		return CareerDev::getIndividualKLength();
+
+	public static function getIndividualKLength($pid = NULL) {
+		return CareerDev::getIndividualKLength($pid);
 	}
+
+    public static function getProjectUsers($pid) {
+        return array_keys(\User::getProjectUsernames([], FALSE, $pid));
+    }
+
+    public static function getScholarPortalLink() {
+        return self::link("portal/index.php");
+    }
+
+    public static function applySecurityHeaders() {
+        $serverList = Application::getSetting("safe_servers");
+        if (!$serverList) {
+            return;
+        }
+        $servers = preg_split("/\s*,\s*/", $serverList);
+        foreach ($servers as $server) {
+            if (trim($server) !== "*") {
+                header('Access-Control-Allow-Origin: https://'.$server);
+                if (!preg_match("/^www\./", $server)) {
+                    header('Access-Control-Allow-Origin: https://www.'.$server);
+                }
+            }
+        }
+    }
 
     public static $institutionFields = array(
         "record_id",

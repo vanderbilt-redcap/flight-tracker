@@ -4,9 +4,13 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\Application;
+
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+
+Application::applySecurityHeaders();
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $records = Download::recordIds($token, $server);
 $recordId = REDCapManagement::getSanitizedRecord($_POST['record'], $records);
