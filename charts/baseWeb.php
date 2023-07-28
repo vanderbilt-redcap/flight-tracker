@@ -81,6 +81,20 @@ $(document).ready(function() {
 	}
 
 	$("body").css({ "position": "relative" });
+
+    alert = (mssg) => {
+        if (mssg.match(/error/i)) {
+            $.sweetModal({
+                content: mssg,
+                icon: $.sweetModal.ICON_ERROR
+            });
+        } else {
+            $.sweetModal({
+                content: mssg,
+                icon: $.sweetModal.ICON_SUCCESS
+            });
+        }
+    }
 });
 
 function refreshForRecord(page) {

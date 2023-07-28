@@ -16,9 +16,8 @@ function runMainCrons(&$manager, $token, $server) {
     Application::log("loadCrons", $pid);
 
     try {
-        $metadata = Download::metadata($token, $server);
-        $forms = DataDictionaryManagement::getFormsFromMetadata($metadata);
-        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+        $forms = Download::metadataForms($token, $server);
+        $metadataFields = Download::metadataFields($token, $server);
         $switches = new FeatureSwitches($token, $server, $pid);
         if (in_array("identifier_stop_collection", $metadataFields)) {
             $allRecords = Download::recordsWithDownloadActive($token, $server);
@@ -29,6 +28,12 @@ function runMainCrons(&$manager, $token, $server) {
         $securityTestMode = Application::getSetting("security_test_mode", $pid);
 
         CareerDev::clearDate("Last Federal RePORTER Download", $pid);
+
+        if (Application::isVanderbilt()) {
+            $manager->addCron("drivers/updateInstitution.php", "updateInstitution", date("2023-07-26"));
+            $manager->addCron("drivers/updateInstitution.php", "updateInstitution", date("2023-07-27"));
+        }
+        $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Saturday");
 
         if (
             in_array("promotion_workforce_sector", $metadataFields)
@@ -206,16 +211,15 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 
 	if ($token && $server) {
         $pid = Application::getPID($token);
-        Application::log("loadInitialCrons");
-        $metadata = Download::metadata($token, $server);
-        $forms = DataDictionaryManagement::getFormsFromMetadata($metadata);
-        Application::log("Forms: ".json_encode($forms));
+        Application::log("loadInitialCrons", $pid);
+        $forms = Download::metadataForms($token, $server);
 		$records = Download::recordIds($token, $server);
         $securityTestMode = Application::getSetting("security_test_mode", $pid);
 
         // if (in_array("pre_screening_survey", $forms)) {
             // $manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
 		// }
+        $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Saturday");
         if (in_array("coeus", $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", $date, $records, 500);
         } else if (in_array("coeus2", $forms)) {
@@ -245,14 +249,12 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 
         if (in_array("nih_reporter", $forms)) {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", $date, $records, 100);
-        } else if (in_array("exporter", $forms)) {
-            $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", $date, $records, 500);
-        }
-        if (in_array("citation", $forms)) {
-            $manager->addCron("publications/getAllPubs_func.php", "getPubs", $date, $records, 10);
         }
         if (!$securityTestMode) {
             $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", $date, $records, 100);
+        }
+        if (in_array("citation", $forms)) {
+            $manager->addCron("publications/getAllPubs_func.php", "getPubs", $date, $records, 10);
         }
         if (!Application::isLocalhost() && Application::isVanderbilt()) {
             $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", $date, $records, 500);

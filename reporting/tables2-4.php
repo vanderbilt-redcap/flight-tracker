@@ -12,21 +12,24 @@ use \Vanderbilt\CareerDevLibrary\CustomGrantFactory;
 use \Vanderbilt\CareerDevLibrary\GrantLexicalTranslator;
 use \Vanderbilt\CareerDevLibrary\Grant;
 
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+
 if (in_array(gethostname(), ["scottjpearson", "ORIWL-KCXDJK7.local"])) {
     # Testing only - to allow to run with React server using 'npm start'
     header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT");
     header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, X-Requested-With");
     define("NOAUTH", TRUE);
+} else {
+    Application::applySecurityHeaders();
 }
+require_once(dirname(__FILE__)."/../small_base.php");
 
 $entityBody = file_get_contents('php://input');
 if ($entityBody) {
     $_POST = json_decode($entityBody, TRUE) ?? $_POST;
 }
 
-require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 Application::increaseProcessingMax(1);
 Application::keepAlive($pid);

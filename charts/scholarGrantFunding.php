@@ -18,8 +18,10 @@ if (isset($_GET['record'])) {
     } else {
         $records = [];
     }
+} else if (count($allRecords) > 0) {
+    $records = [$allRecords[0]];
 } else {
-    $records = $allRecords;
+    $records = [];
 }
 $metadata = Download::metadata($token, $server);
 $grantFields = REDCapManagement::getMinimalGrantFields($metadata);
@@ -49,12 +51,12 @@ foreach ($records as $recordId) {
             $totalTimespan = $endTs - $startTs;
             $startYear = (int) date("Y", $startTs);
             $endYear = (int) date("Y", $endTs);
-            if ($startYear == $endYear) {
+            if ($startYear && ($startYear == $endYear)) {
                 if (!isset($dollarsByYear[$startYear])) {
                     $dollarsByYear[$startYear] = 0;
                 }
                 $dollarsByYear[$startYear] += $budget;
-            } else {
+            } else if ($startYear) {
                 $startYearEndTs = strtotime(($startYear + 1)."-01-01");
                 $endYearStartTs = strtotime("$endYear-01-01");
                 $secsInStartYear = $startYearEndTs - $startTs;
@@ -85,14 +87,16 @@ foreach ($records as $recordId) {
         }
     }
 }
-ksort($dollarsByYear);
-$years = array_keys($dollarsByYear);
-for ($year = $years[0]; $year <= $years[count($years) - 1]; $year++) {
-    if (!isset($dollarsByYear[$year])) {
-        $dollarsByYear[$year] = 0;
+if (!empty($dollarsByYear)) {
+    ksort($dollarsByYear);
+    $years = array_keys($dollarsByYear);
+    for ($year = $years[0]; $year <= $years[count($years) - 1]; $year++) {
+        if (!isset($dollarsByYear[$year])) {
+            $dollarsByYear[$year] = 0;
+        }
     }
+    ksort($dollarsByYear);
 }
-ksort($dollarsByYear);
 
 $cssLink = Application::link("/css/career_dev.css");
 echo "<link href='$cssLink' type='text/css' />";

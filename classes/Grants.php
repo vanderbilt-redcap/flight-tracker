@@ -1278,7 +1278,7 @@ class Grants {
                                 $start1 = $grant1->getVariable("start");
                                 $start2 = $grant2->getVariable("start");
                                 $ts2 = strtotime($start2);
-                                $yearspan1 = self::findYearSpan($grant1->getVariable("type"));
+                                $yearspan1 = self::findYearSpan($grant1->getVariable("type"), $this->pid);
                                 $naturalEnd1 = self::addYears($start1, $yearspan1);
                                 $naturalTs1 = strtotime($naturalEnd1);
                                 if ($ts2 < $naturalTs1) {
@@ -1294,7 +1294,7 @@ class Grants {
                     }
                     if (!$setEnd && !$grant1->getVariable("end")) {
                         $start1 = $grant1->getVariable("start");
-                        $yearspan = self::findYearSpan($grant1->getVariable("type"));
+                        $yearspan = self::findYearSpan($grant1->getVariable("type"), $this->pid);
                         $awardsByType[$type][$baseNumber1]->setVariable("end", self::addYears($start1, $yearspan));
                     }
                 }
@@ -1834,10 +1834,10 @@ class Grants {
             $ary['summary_award_end_date_'.$i] = $grant->getVariable("end");
 			$i++;
 		}
-		$ary['summary_ever_external_k_to_r01_equiv'] = self::converted($ary, "first_external");
-		$ary['summary_ever_last_external_k_to_r01_equiv'] = self::converted($ary, "last_external");
-		$ary['summary_ever_first_any_k_to_r01_equiv'] = self::converted($ary, "first_any");
-		$ary['summary_ever_last_any_k_to_r01_equiv'] = self::converted($ary, "last_any");
+		$ary['summary_ever_external_k_to_r01_equiv'] = self::converted($ary, "first_external", $this->pid);
+		$ary['summary_ever_last_external_k_to_r01_equiv'] = self::converted($ary, "last_external", $this->pid);
+		$ary['summary_ever_first_any_k_to_r01_equiv'] = self::converted($ary, "first_any", $this->pid);
+		$ary['summary_ever_last_any_k_to_r01_equiv'] = self::converted($ary, "last_any", $this->pid);
 		return $ary;
 	}
 
@@ -1868,13 +1868,13 @@ class Grants {
         return $lastEndDate;
     }
 
-	private static function findYearSpan($type) {
+	private static function findYearSpan($type, $pid) {
 		if (($type == "3") || ($type == "4") || ($type == "Individual K") || ($type == "External K") || ($type == "K Equivalent")) {
-			return Application::getIndividualKLength();
+			return Application::getIndividualKLength($pid);
 		} else if (($type == "2") || ($type == "K12/KL2") || ($type == "K12KL2")) {
-			return Application::getK12KL2Length();
+			return Application::getK12KL2Length($pid);
 		} else if (($type == "1") || ($type == "Internal K")) {
-			return Application::getInternalKLength();
+			return Application::getInternalKLength($pid);
 		}
 		return 0;
 	}
@@ -1903,7 +1903,7 @@ class Grants {
 	#		   5, No K, but R01-or-Equivalent
 	#		   6, No K; No R01-or-Equivalent
 	#			  7, Used K99/R00
-	private static function converted($row, $typeOfK) {
+	private static function converted($row, $typeOfK, $pid) {
 		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
 			if (isset($row['summary_award_type_'.$i]) && ($row['summary_award_type_'.$i] == 9)) {
 				# K99/R00
@@ -1921,7 +1921,7 @@ class Grants {
 			}
 			if (isset($row['summary_'.$prefix.'_external_k']) && isset($row['summary_'.$prefix.'_any_k'])
                 && ($row['summary_'.$prefix.'_external_k'] == $row['summary_'.$prefix.'_any_k'])) {
-				$intendedYearSpan = self::findYearSpan("External K");
+				$intendedYearSpan = self::findYearSpan("External K", $pid);
 				if (self::datediff($row['summary_'.$typeOfK.'_k'], $row['summary_first_r01_or_equiv'], "y") <= $intendedYearSpan) {
 					$value = 1;
 				} else {
@@ -1929,7 +1929,7 @@ class Grants {
 				}
 			} else {
 				$kType = self::getLastKType($row);
-				$intendedYearSpan = self::findYearSpan($kType);
+				$intendedYearSpan = self::findYearSpan($kType, $pid);
 				if (self::datediff($row['summary_'.$typeOfK.'_k'], $row['summary_first_r01_or_equiv'], "y") <= $intendedYearSpan) {
 					$value = 1;
 				} else {
@@ -1946,7 +1946,7 @@ class Grants {
 			if (self::getShowDebug()) { Application::log($typeOfK.": ".$diffToToday); }
 			if (isset($row["summary_".$prefix."_external_k"]) && isset($row["summary_".$prefix."_any_k"])
 			    && ($row["summary_".$prefix."_external_k"] == $row["summary_".$prefix."_any_k"])) {
-				$intendedYearSpan = self::findYearSpan("External K");
+				$intendedYearSpan = self::findYearSpan("External K", $pid);
 				$endDate = self::findLastEndDate("External K", $row);
 				if (
 				    ($diffToToday <= $intendedYearSpan)
@@ -1961,7 +1961,7 @@ class Grants {
 				}
 			} else {
 				$kType = self::getLastKType($row);
-				$intendedYearSpan = self::findYearSpan($kType);
+				$intendedYearSpan = self::findYearSpan($kType, $pid);
                 $endDate = self::findLastEndDate($kType, $row);
                 if (
                     ($diffToToday <= $intendedYearSpan)

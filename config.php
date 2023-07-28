@@ -405,6 +405,9 @@ function makeSettings($module, $pid) {
     $ary["Bibliometrics"][] = makeSetting("wos_password", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " Password");
     $ary["Bibliometrics"][] = makeSetting("scopus_api_key", "text", Links::makeLink("https://www.scopus.com/", "Scopus") . " API Key (for H Index)");
 
+    $ary["Additional Institutional Resources"] = [];
+    $ary["Additional Institutional Resources"][] = makeSetting("mentee_agreement_link", "text", "Additional Institutional Resources for scholars to use. This will appear on the Mentee-Mentor Agreements and the Scholar Portal.");
+
     $ary["Proxy Server (Only if Applicable)"] = [];
     $ary["Proxy Server (Only if Applicable)"][] = makeHelperText("If your REDCap server has a proxy server, please fill out the following information. (If you don't know about this, you probably don't have one, so no worries then.)");
     $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-ip", "text", "Proxy IP Address");
@@ -414,7 +417,6 @@ function makeSettings($module, $pid) {
 
     $ary["REDCap Configuration"] = [];
     $ary["REDCap Configuration"][] = makeSetting("safe_servers", "text", "Comma-separated list of domain names (e.g., redcap.vanderbilt.edu) of other <strong>external</strong> servers that (e.g., a separate REDCap Survey Server) that can access Flight Tracker");
-
 
     $html = "";
 	if ($module) {

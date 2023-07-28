@@ -4,6 +4,7 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\EmailManager;
+use Vanderbilt\CareerDevLibrary\Portal;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
@@ -296,6 +297,9 @@ $(document).ready(function() {
         echo "<div style='display: inline-block;'><button $isDisabled onclick='insertFirstName(); return false;'>Insert First Name</button></div>\n";
 		if (CareerDev::has("mentoring_agreement")) {
             echo "<div style='display: inline-block;'><button $isDisabled onclick='insertMentoringLink(); return false;'>Insert Mentoring Agreement Link</button></div>\n";
+        }
+        if (Portal::isLive()) {
+            echo "<div style='display: inline-block;'><button $isDisabled onclick='insertPortalLink(); return false;'>Insert Scholar Portal Link</button></div>\n";
         }
 		echo "</div>\n";
 		if (!empty($messages) && !$isDisabled) {

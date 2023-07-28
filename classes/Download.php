@@ -760,7 +760,7 @@ class Download {
         return ["identifier_vunet", "identifier_userid"];
     }
 
-    private static function getUseridField($token, $server) {
+    public static function getUseridField($token, $server) {
         $possibleFields = self::getUseridFields();
         $metadataFields = self::metadataFields($token, $server);
         foreach ($possibleFields as $possibleField) {

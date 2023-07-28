@@ -67,7 +67,8 @@ if ($finalized->getCount() > 0) {
 	$html .= "</h4>\n";
 	$html .= makeEmptyDiv("finalized")."\n";
 }
-$certifyPubURL = Application::link("wrangler/certifyPub.php");
+$certifyPubURL = Application::link("wrangler/certifyPub.php")."&NOAUTH";
+$loadingImageUrl = Application::link("img/loading.gif");
 $html .= "<div style='text-align: center;'><label for='pmid'>PMID</label>: <input type='number' id='pmid' value=''><br><button type='button' class='purple' onclick='addPMID($(\"#pmid\").val(), \"$certifyPubURL\"); return false;'>Add PMID</button></div>\n";
 $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
 
@@ -75,16 +76,21 @@ echo "<script src='".Application::link("js/base.js")."&".CareerDev::getVersion()
 echo "<script src='".Application::link("js/jquery.sweet-modal.min.js")."&".CareerDev::getVersion()."'></script>\n";
 ?>
 <script>
-var checkedImg = "<?= Application::link("wrangler/checked.png") ?>";
-var uncheckedImg = "<?= Application::link("wrangler/unchecked.png") ?>";
-var omittedImg = "<?= Application::link("wrangler/omitted.png") ?>";
-var surveyPrefix = "<?= $prefix ?>";
+const checkedImg = "<?= Application::link("wrangler/checked.png") ?>";
+const uncheckedImg = "<?= Application::link("wrangler/unchecked.png") ?>";
+const omittedImg = "<?= Application::link("wrangler/omitted.png") ?>";
+const surveyPrefix = "<?= $prefix ?>";
+
+// in case of multiple surveys
+function getLoadingImageUrlOverride() {
+    return "<?= $loadingImageUrl ?>";
+}
 
 $(document).ready(function() {
-	var html = <?= json_encode(utf8_encode($html)) ?>;
-	var finalizedPubs = <?= json_encode($finalized->getIds()) ?>;
-	var omittedPubs = <?= json_encode($omitted->getIds()) ?>;
-	var skippedPubs = <?= json_encode($notDone->getIds()) ?>;
+    const html = <?= json_encode(utf8_encode($html)) ?>;
+    const finalizedPubs = <?= json_encode($finalized->getIds()) ?>;
+    const omittedPubs = <?= json_encode($omitted->getIds()) ?>;
+    const skippedPubs = <?= json_encode($notDone->getIds()) ?>;
 
 	$('#<?= $prefix ?>_accepted_pubs-sh-tr').hide();
 	$('#<?= $prefix ?>_accepted_pubs-tr').hide();
@@ -112,7 +118,7 @@ function makeCheckboxes($coll, $img, $divId, $style = "") {
 	}
 	$html = "";
 	$html .= "<div id='$divId'$styleFiller>\n";
-    $certifyPubURL = Application::link("wrangler/certifyPub.php");
+    $certifyPubURL = Application::link("wrangler/certifyPub.php")."&NOAUTH";
     $imgURL = Application::link("/wrangler/".$img.".png");
     foreach ($coll->getCitations() as $citationObj) {
         $pmid = $citationObj->getPMID();

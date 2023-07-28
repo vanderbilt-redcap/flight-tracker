@@ -857,6 +857,7 @@ SELECT DISTINCT s.project_id AS pid
                 }
             }
         }
+
     }
 
     public static $institutionFields = array(

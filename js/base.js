@@ -810,7 +810,7 @@ function presentScreen(mssg, imageUrl) {
 	}
 	if ($('#overlayFT').length > 0) {
 		if (!imageUrl) {
-			imageUrl = getPageUrl('img/loading.gif');
+			imageUrl = getLoadingImageUrl();
 		}
 		$('#overlayFT').html('<br><br><br><br><h1 class=\"warning\">'+mssg+'</h1><p class=\"centered\"><img src=\"'+imageUrl+'\" alt=\"Waiting\"></p>');
 		$('#overlayFT').show();
@@ -821,7 +821,7 @@ function getSmallLoadingMessage(mssg) {
 	if (!mssg) {
 		mssg = 'Loading...';
 	}
-	const imageUrl = getPageUrl('img/loading.gif');
+	const imageUrl = getLoadingImageUrl();
 	return '<p class=\"centered\"><strong>'+mssg+'</strong><br/><img src=\"'+imageUrl+'\" alt=\"Loading\" style=\"width: 64px; height: 64px;\" /></p>';
 }
 
@@ -1063,7 +1063,9 @@ function addPMID(pmid, certifyPubURL) {
 			const recordId = $("[name=record_id]").val()
 			const params = getUrlVars()
 			const hash = params['s']
+			presentScreen("Saving...");
 			$.post(certifyPubURL, { 'redcap_csrf_token': getCSRFToken(), hash: hash, record: recordId, pmid: pmid, state: 'checked' }, function(html) {
+				clearScreen();
 				console.log(html);
 			});
 		});
@@ -1118,8 +1120,10 @@ function changeCheckboxValue(ob, url) {
 	}
 	const newImg = getNewWranglerImg(newState);
 	if (newState) {
-		$(ob).attr('alt', newState)
+		$(ob).attr('alt', newState);
+		presentScreen("Saving...");
 		$.post(url, { 'redcap_csrf_token': getCSRFToken(), hash: hash, record: recordId, pmid: pmid, state: newState }, function(html) {
+			clearScreen();
 			console.log(html);
 		});
 	}
@@ -1220,8 +1224,19 @@ function removePMIDFromAutoApprove(record, instance, pmid) {
 	$('#record_'+record+'_idx_'+pmid).hide();
 }
 
+function getLoadingImageUrl(baseUrl) {
+	const imageLoc = "img/loading.gif";
+	if ((typeof baseUrl !== "undefined") && baseUrl.match(/page=/)) {
+		return baseUrl.replace(/page=[^&]+/, "page="+encodeURIComponent(imageLoc));
+	}
+	if (typeof getLoadingImageUrlOverride !== "undefined") {
+		return getLoadingImageUrlOverride();
+	}
+	return getPageUrl(imageLoc);
+}
+
 function downloadUrlIntoPage(url, selector) {
-	let spinnerUrl = getPageUrl("img/loading.gif");
+	let spinnerUrl = getLoadingImageUrl();
 	$(selector).html("<p class='centered'><img src='"+spinnerUrl+"' style='width: 25%;'></p>");
 	let startTs = Date.now();
 	$.ajax(url, {
@@ -1504,7 +1519,7 @@ function restartDataNow(url, recordId, csrfToken, fetchType) {
 		});
 		return;
 	}
-	const imageUrl = url.replace(/page=[^&]+/, "page="+encodeURIComponent("img/loading.gif"));
+	const imageUrl = getLoadingImageUrl(url);
 	presentScreen("Deleting "+fetchType+" for Record "+recordId, imageUrl);
 	$.post(url, postdata, function(html) {
 		console.log(html);
@@ -1534,7 +1549,7 @@ function fetchDataNow(url, recordId, csrfToken, fetchType) {
 		});
 		return;
 	}
-	const imageUrl = url.replace(/page=[^&]+/, "page="+encodeURIComponent("img/loading.gif"));
+	const imageUrl = getLoadingImageUrl(url);
 	presentScreen("Refreshing "+fetchType+" for Record "+recordId, imageUrl);
 	$.post(url, postdata, function(html) {
 		console.log(html);

@@ -5,6 +5,7 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\Links;
 use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Portal;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Consortium;
 use \Vanderbilt\CareerDevLibrary\Grant;
@@ -37,6 +38,44 @@ try {
     }
 
     require_once(dirname(__FILE__)."/charts/baseWeb.php");
+
+    $switches = new FeatureSwitches($token, $server, $pid);
+    $numDaysPerWeek = $switches->getValue("Days per Week to Build Summaries");
+    $scheduledCrons = [];
+    $scheduledCrons[] = "NIH Reporter: Monday";
+    $scheduledCrons[] = "NSF Grants: Monday";
+    $scheduledCrons[] = "Cohort Projects: Monday";
+    if (Application::isVanderbilt()) {
+        $scheduledCrons[] = "LDAP (Personnel Directory): Monday";
+        $scheduledCrons[] = "VERA (VU Grants): Monday";
+        $scheduledCrons[] = "Grant Repository Update: Monday";
+    } else if ($numDaysPerWeek == 1) {
+        if (Application::isVanderbilt()) {
+            $scheduledCrons[] = "Summaries: Tuesday-Wednesday";
+        } else {
+            $scheduledCrons[] = "Summaries: Tuesday";
+        }
+    } else if ($numDaysPerWeek == 3) {
+        $scheduledCrons[] = "Summaries: Monday, Wednesday &amp; Friday";
+    } else if ($numDaysPerWeek == 5) {
+        $scheduledCrons[] = "Summaries: All Weekdays";
+    }
+    $scheduledCrons[] = "Patents: Tuesday";
+    if (Application::isVanderbilt()) {
+        $scheduledCrons[] = "COEUS (VUMC Grants): Wednesday";
+        $scheduledCrons[] = "VFRS Intake Survey: Thursday";
+    }
+    $scheduledCrons[] = "IES (Dept. of Ed.): Thursday";
+    $scheduledCrons[] = "ORCID Identifiers: Thursday";
+    if (Application::isVanderbilt()) {
+        $scheduledCrons[] = "Update VICTR Studios: Friday";
+    }
+    $scheduledCrons[] = "Report Stats to Vanderbilt: Friday";
+    $scheduledCrons[] = "ERIC (Education Pubs): Friday";
+    $scheduledCrons[] = "Data Sharing: Saturday";
+    $scheduledCrons[] = "Refresh Institutions: Saturday";
+    $scheduledCrons[] = "PubMed: Saturday";
+    $scheduledCrons[] = "Bibliometrics: Each Day Throughout Month";
 
     if (!isset($pid)) {
         die("Invalid project id.");
@@ -77,12 +116,21 @@ $(document).ready(function() {
 });
 </script>";
     }
+
+    $edgeLink = Application::isVanderbilt() ? "https://edgeforscholars.vumc.org" : "https://edgeforscholars.org";
     ?>
 
     <h1 style='margin-bottom: 0;'>Flight Tracker Central</h1>
     <h3 class='nomargin' style='background-color: transparent;'>v<?= CareerDev::getVersion() ?></h3>
     <h4 class='nomargin'>Watch Your Scholars Fly</h4>
-    <h5>from <img src="<?= Application::link("img/efs_small_logoonly.png") ?>" alt="Edge for Scholars" style="width: 27px; height: 20px;"> <a href='https://edgeforscholars.org'>Edge for Scholars</a></h5>
+    <h5>from <img src="<?= Application::link("img/efs_small_logoonly.png") ?>" alt="Edge for Scholars" style="width: 27px; height: 20px;"> <a href='<?= $edgeLink ?>' target="_blank">Edge for Scholars</a></h5>
+    <?php
+        if (Portal::isLive()) {
+            $link = Portal::getLink();
+            echo "<input type='hidden' id='scholarPortalUrl' value='$link' />";
+            echo "<h5><a href='javascript:;' onclick='copyToClipboard($(\"#scholarPortalUrl\")); alert(\"Copied to your clipboard!\");'>Click to Share the Scholar Portal Link with Your Scholars</a></h5>";
+        }
+    ?>
 
     <h2><?= $tokenName.$grantNumberHeader ?></h2>
 
@@ -175,8 +223,11 @@ $(document).ready(function() {
             }
             echo "</tr>\n";
             echo "<tr>\n";
-            echo "<td colspan='$numCols' class='centered'><a href='javascript:;' onclick='startTonight(".$pid.");'>Click to Run All Updates Tonight</a><br><span class='small'>(Otherwise, updates will run over the course of the week.)</span></td>\n";
+            echo "<td colspan='$numCols' class='centered'><a href='javascript:;' onclick='startTonight(".$pid.");'>Click to Run All Updates Tonight</a><br/><span class='small'>(Otherwise, updates will run over the course of the week.)</span></td>\n";
             echo "</tr>\n";
+            echo "<tr>";
+            echo "<td colspan='$numCols' class='centered'><a href='javascript:;' onclick='$(\"#schedule\").show();'>Show Update Schedule</a><div id='schedule' style='font-size: 0.95em; display: none;'>".implode("<br/>", $scheduledCrons)."</div></td>";
+            echo "</tr>";
         }
         echo "</table>\n";
 
@@ -188,7 +239,7 @@ $(document).ready(function() {
             <p class='centered'><a href='<?= CareerDev::link("help/why.php") ?>'>Why Use Flight Tracker?</a></p>
             <p class='centered'><a href='<?= CareerDev::link("help/how.php") ?>'>How to Use Flight Tracker?</a></p>
             <p class='centered'><a href='javascript:;' onclick='toggleHelp("<?= CareerDev::getHelpLink() ?>", "<?= CareerDev::getHelpHiderLink() ?>", "index.php");'>Enable Help on All Pages</a></p>
-            <p class='centered'><a href='https://github.com/vanderbilt-redcap/flight-tracker/releases'>Release Log</a> (<a href='https://github.com/scottjpearson/flight-tracker/releases'>Old Releases</a>)</p>
+            <p class='centered'><a href='https://github.com/vanderbilt-redcap/flight-tracker/releases'>Release Log / Change Log</a> (<a href='https://github.com/scottjpearson/flight-tracker/releases'>Old Releases</a>)</p>
             <h3><i class='fa fa-globe-americas'></i> Consortium</h3>
             <p class='centered'><a href='<?= CareerDev::link("community.php") ?>'>About the Consortium</a></p>
             <h4 class='nomargin'>Monthly Planning Meetings</h4>

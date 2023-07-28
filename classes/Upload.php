@@ -179,11 +179,11 @@ class Upload
                         $params = array_merge([$pid, $recordId], $fieldsToDelete);
                         if (!empty($batchInstances)) {
                             $addOnInstanceClause =  "";
-                            if (in_array(1, $batchInstances)) {
+                            if (in_array(1, $batchInstances) || in_array("", $batchInstances)) {
                                 $addOnInstanceClause = " OR instance IS NULL";
                                 $filteredInstances = [];
                                 foreach ($batchInstances as $instance) {
-                                    if ($instance != 1) {
+                                    if (!in_array($instance, ["", 1])) {
                                         $filteredInstances[] = $instance;
                                     }
                                 }

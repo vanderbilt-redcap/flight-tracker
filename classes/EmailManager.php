@@ -786,6 +786,10 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
                 $menteeLink = Application::getMenteeAgreementLink($this->pid);
                 $mssgs[$recordId] = str_replace("[mentoring_agreement]", Links::makeLink($menteeLink, $menteeLink), $mssgs[$recordId]);
             }
+            if (preg_match("/\[scholar_portal\]/", $mssgs[$recordId])) {
+                $portalLink = Application::getScholarPortalLink();
+                $mssgs[$recordId] = str_replace("[scholar_portal]", Links::makeLink($portalLink, $portalLink), $mssgs[$recordId]);
+            }
             if (preg_match("/\[last_name\]/", $mssgs[$recordId])) {
                 if ($lastNames[$recordId]) {
                     $mssgs[$recordId] = str_replace("[last_name]", $lastNames[$recordId], $mssgs[$recordId]);

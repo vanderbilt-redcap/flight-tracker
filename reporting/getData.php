@@ -9,10 +9,12 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Scholar;
 use \Vanderbilt\CareerDevLibrary\NameMatcher;
 
+require_once(dirname(__FILE__)."/../classes/Autoload.php");
+
 define('NOAUTH', TRUE);
+Application::applySecurityHeaders();
 
 require_once(dirname(__FILE__)."/../small_base.php");
-require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $fullUrl = REDCapManagement::sanitize($_POST['origin']);
 list($originUrl, $params) = explode("?", $fullUrl);

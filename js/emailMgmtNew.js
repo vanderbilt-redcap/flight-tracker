@@ -211,6 +211,11 @@ function insertMentoringLink() {
 	appendToMessage(name);
 }
 
+function insertPortalLink() {
+	var name = "[scholar_portal]";
+	appendToMessage(name);
+}
+
 function insertSurveyLink(selectId) {
 	const form = $('#'+selectId+' option:selected').val();
 	if (form) {
