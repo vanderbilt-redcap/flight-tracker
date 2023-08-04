@@ -12,7 +12,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 class Portal {
     const NONE = "NONE";
     const NUM_POSTS_PER_SETTING = 10;
-    const DATETIME_FORMAT = "Y-m-d h:I:s";
+    const DATETIME_FORMAT = "Y-m-d H:i:s";
     const BOARD_PREFIX = "board_";
 
     public function __construct($currPid, $recordId, $name, $projectTitle, $allPids) {
@@ -24,8 +24,16 @@ class Portal {
         $this->projectTitle = $projectTitle;
         $this->today = date("Y-m-d");
         list($this->username, $this->firstName, $this->lastName) = self::getCurrentUserIDAndName();
-        $this->driverURL = Application::link("portal/driver.php").(isset($_GET['uid']) ? "&uid=".$this->username : "");
-        $this->mmaURL = Application::link("portal/mmaDriver.php").(isset($_GET['uid']) ? "&uid=".$this->username : "");
+
+        $uidString = "";
+        if (isset($_GET['uid'])) {
+            $uidString = "&uid=".$this->username;
+        } else if (isset($_GET['match'])) {
+            $uidString = "&match=".Sanitizer::sanitize($_GET['match']);
+        }
+
+        $this->driverURL = Application::link("portal/driver.php").$uidString;
+        $this->mmaDriverURL = Application::link("portal/mmaDriver.php").$uidString;
         $this->module = Application::getModule();
         if ($this->pid) {
             $this->token = Application::getSetting("token", $this->pid);
@@ -45,7 +53,11 @@ class Portal {
     }
 
     public static function isLive() {
-        return Application::isLocalhost() || REDCapManagement::versionGreaterThanOrEqualTo("6.0.0", Application::getVersion());
+        return (
+                Application::isLocalhost()
+                || REDCapManagement::versionGreaterThanOrEqualTo("6.0.0", Application::getVersion())
+                || Application::isVanderbilt()
+            );
     }
 
     public static function getLink() {
@@ -57,8 +69,8 @@ class Portal {
             Application::isVanderbilt()
             && self::isLive()
             && isset($_GET['uid'])
+            && Application::isSuperUser()
         ) {
-            # TODO pre release
             $testNames = self::getTestNames();
             if (in_array($_GET['uid'], $testNames)) {
                 return [$_GET['uid'], $testNames[$_GET['uid']][0], $testNames[$_GET['uid']][1]];
@@ -67,6 +79,38 @@ class Portal {
                 $info = REDCapLookup::getUserInfo($username);
                 return [$username, $info['user_firstname'] ?? "", $info['user_lastname'] ?? ""];
             }
+        } else if (isset($_GET['match']) && is_string($_GET['match']) && preg_match("/:/", $_GET['match'])) {
+            $blank = ["", "", ""];
+            list($currPid, $recordId) = explode(":", Sanitizer::sanitize($_GET['match']));
+            $token = Application::getSetting("token", $currPid);
+            $server = Application::getSetting("server", $currPid);
+            if ($token && $server) {
+                $userRights = Download::userRights($token, $server);
+                $validProjectUsers = [];
+                foreach ($userRights as $row) {
+                    $validProjectUsers[] = $row['username'];
+                }
+                if (!in_array(Application::getUsername(), $validProjectUsers) && !Application::isSuperUser()) {
+                    return $blank;
+                }
+            } else {
+                return $blank;
+            }
+
+            list($firstName, $middleName, $lastName, $username) = Download::threeNamePartsAndUserid($token, $server, $recordId);
+            if (!$username) {
+                $lookup = new REDCapLookup($firstName, $lastName);
+                $uidsAndNames = $lookup->getUidsAndNames();
+                if (empty($uidsAndNames)) {
+                    return $blank;
+                } else if (count($uidsAndNames) == 1) {
+                    $username = array_keys($uidsAndNames)[0];
+                } else {
+                    # TODO Multiple Matches
+                    $username = array_keys($uidsAndNames)[0];
+                }
+            }
+            return [$username, $firstName, $lastName];
         } else {
             return REDCapLookup::getCurrentUserIDAndName();
         }
@@ -237,8 +281,9 @@ class Portal {
 
             $margin = 8;
             $marginWidth = $margin."px";
+            $spoof = isset($_GET['match']) ? " (Spoofing)" : "";
 
-            $nameHTML = $name ? "<h1>Hello $name!</h1>" : "";
+            $nameHTML = $name ? "<h1>Hello $name!$spoof</h1>" : "";
             $vumcMessage = Application::isVanderbilt() ? " - [<a href='https://edgeforscholars.vumc.org/'>Edge for Scholars at Vanderbilt</a>]" : " at Vanderbilt University Medical Center";
             $html = "<p class='centered'>";
             $html .= "<div style='width: 100%; text-align: center;' class='smaller'>A Career Development Resource from [<a href='https://edgeforscholars.org'>Edge for Scholars</a>]$vumcMessage</div>";
@@ -325,7 +370,7 @@ class Portal {
         ];
         $menu["Your Graphs"][] = [
             "action" => "group_collaborations",
-            "title" => "Group Publishing Collaborations (Computationally Expensive)",
+            "title" => "Publishing Collaborations in {$this->projectTitle} (Computationally Expensive)",
         ];
         $menu["Your Graphs"][] = [
             "action" => "grant_funding",
@@ -507,6 +552,15 @@ class Portal {
     public function getInstitutionBulletinBoard() {
         $posts = $this->getBoardPosts();
         $html = "<h3>Institutional Bulletin Board</h3>";
+        if (Application::isVanderbilt()) {    // TODO Vanderbilt-only for now --> change Vanderbilt reference to generalize?
+            $html .= "<div class='portalDescription' style='text-align: left !important;'><p>Do you have supplies, knowledge, or jobs you'd like to trade or share? In need of something your fellow scientists might be able to provide? Post them on our bulletin board! Vanderbilt researchers have access to this board and can respond to your messages.</p>
+<ul>
+Examples:
+<li>I study septic mice, but I only need their hearts. Can anyone use the brains?</li>
+<li>I'm writing an AHA career development award. Is anyone familiar with the process and willing to answer some questions?</li>
+<li>I'm looking to hire a research assistant but my grant can only pay for half. If you're looking for half an RA, let me know--maybe we can share!</li>
+</ul></div>";
+        }
         $html .= $this->makeNewPostHTML();
         $html .= "<h4>Existing Posts from Your Colleagues</h4>";
         $html .= "<div id='posts'>";
@@ -574,7 +628,7 @@ class Portal {
 
     private function formatPost($post) {
         $user = $post['username'];
-        $date = $_POST['date'] ?? date(self::DATETIME_FORMAT);
+        $date = $post['date'] ?? date(self::DATETIME_FORMAT);
         $mssg = $post['message'];
         list($name, $email) = self::getNameAndEmailFromUserid($user);
         $storedData = Application::getSystemSetting($user) ?: [];
@@ -606,7 +660,7 @@ class Portal {
     private function makePostHTML($name, $user, $email, $datetime, $mssg, $photoBase64) {
         $longDate = DateManagement::datetime2LongDate($datetime);
         $photoHTML = $photoBase64 ? "<img src='$photoBase64' class='photo' alt='$name' /><br/>" : "";
-        $deleteButton = self::canDelete($user, $this->pid) ? " ".self::makePortalButton("portal.deletePost(\"#posts\", \"$user\", \"$datetime\");", "Delete Post") : "";
+        $deleteButton = self::canDelete($user, $this->pid) ? " ".self::makePortalButton("portal.deletePost(\"$user\", \"$datetime\");", "Delete Post") : "";
         $emailHTML = $email ? " (".Links::makeMailtoLink($email, $email).")" : "";
         $html = "<p>$photoHTML<strong>$name</strong> at ".$longDate.$emailHTML.$deleteButton."</p>";
         $lines = preg_split("/[\n\r]+/", $mssg);
@@ -854,7 +908,7 @@ class Portal {
                 $checkedIndices = [];
                 foreach ($row as $f => $v) {
                     if ($v && preg_match("/^$field"."___/", $f)) {
-                        $checkedIndices = str_replace($field."___", "", $f);
+                        $checkedIndices[] = str_replace($field."___", "", $f);
                     }
                 }
 
@@ -1173,13 +1227,13 @@ class Portal {
     }
 
     private function makeConfirmationTable($mentorName, $uidsAndNames, $index) {
-        $html = "<table class='centered max-width'><tbody>";
+        $html = "<table class='centered max-width portalGreen'><tbody>";
         if (count($uidsAndNames) == 1) {
             $radioName = "mentor_$index"."_yn";
             $html .= "<tr>";
             foreach ($uidsAndNames as $uid => $name) {
-                $html .= "<td>User-id: $uid ($name)</td>";
-                $html .= "<td>Is this the correct user?";
+                $html .= "<td class='padded'>User-id: $uid ($name)</td>";
+                $html .= "<td class='padded'>Is this the correct user?";
                 $html .= "<br/><input type='radio' name='$radioName' id='mentor_$index"."_yes' value='1' /> <label for='mentor_$index"."_yes'>Yes</label>";
                 $html .= "<br/><input type='radio' name='$radioName' id='mentor_$index"."_no' value='0' /> <label for='mentor_$index"."_no'>No</label>";
                 $html .= "</td>";
@@ -1188,8 +1242,8 @@ class Portal {
         } else {
             $radioName = "mentor_$index"."_multi";
             $html .= "<tr>";
-            $html .= "<td style='max-width: 200px;'>Which of these are mentor $mentorName?</td>";
-            $html .= "<td style='text-align: left;'>";
+            $html .= "<td style='max-width: 200px;' class='padded'>Which of these are mentor $mentorName?</td>";
+            $html .= "<td style='text-align: left;' class='padded'>";
             $lines = [];
             $lines[] = "<input type='radio' name='$radioName' id='mentor_$index"."_".self::NONE."' value='".self::NONE."' /> <label for='mentor_$index"."_".self::NONE."'>None of the below</label>";
             foreach ($uidsAndNames as $uid => $name) {
@@ -1199,9 +1253,70 @@ class Portal {
             $html .= "</td>";
             $html .= "</tr>";
         }
+        $html .= "<tr><td colspan='2' class='centered padded'>".self::makePortalButton("portal.selectMentors(\"{$this->mmaDriverURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"$mentorName\", \"[name=$radioName]\");", "Make Selection")."</td></tr>";
         $html .= "</tbody></table>";
-        $html .= "<p class='centered max-width'>".self::makePortalButton("portal.selectMentors(\"{$this->driverURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"$mentorName\", \"[name=$radioName]\");", "Make Selection")."</p>";
         return $html;
+    }
+
+    private function getPreferredMentorFields() {
+        $metadataFields = Download::metadataFieldsByPid($this->pid);
+        $preferredFields = [
+            ["init_import_primary_mentor", "init_import_primary_mentor_userid"],
+            ["override_mentor", "override_mentor_userid"],
+            ["imported_mentor", "imported_mentor_userid"],
+        ];
+        foreach ($preferredFields as $pair) {
+            if (in_array($pair[0], $metadataFields) && in_array($pair[1], $metadataFields)) {
+                return $pair;
+            }
+        }
+        return ["init_import_primary_mentor", ""];
+    }
+
+    public function addMentorNameAndUid($name, $uid) {
+        list($mentorField, $mentorUseridField) = $this->getPreferredMentorFields();
+        $fields = [
+            "record_id",
+            $mentorField,
+        ];
+        if ($mentorUseridField) {
+            $fields[] = $mentorUseridField;
+        }
+        $mentors = Download::primaryMentors($this->token, $this->server)[$this->recordId] ?? [];
+        $mentorUserids = Download::primaryMentorUserids($this->token, $this->server)[$this->recordId] ?? [];
+        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $row = REDCapManagement::getNormativeRow($redcapData);
+        $initImportMentors = $row[$mentorField] ? preg_split("/\s*[,;]\s*/", $row[$mentorField]) : [];
+        if ($mentorUseridField) {
+            $initImportMentorUserids = $row[$mentorUseridField] ? preg_split("/\s*[,;]\s*/", $row[$mentorUseridField]) : [];
+        } else {
+            $initImportMentorUserids = [];
+        }
+
+        if ($name && !in_array($name, $mentors)) {
+            $mentors[] = $name;
+        }
+        if ($name && !in_array($name, $initImportMentors)) {
+            $initImportMentors[] = $name;
+        }
+        if ($uid && !in_array($uid, $mentorUserids)) {
+            $mentorUserids[] = $uid;
+        }
+        if ($uid && !in_array($uid, $initImportMentorUserids)) {
+            $initImportMentorUserids[] = $uid;
+        }
+
+        $sep = "; ";
+        $uploadRow = [
+            "record_id" => $this->recordId,
+            "summary_mentor" => implode($sep, $mentors),
+            "summary_mentor_userid" => implode($sep, $mentorUserids),
+            $mentorField => implode($sep, $initImportMentors),
+        ];
+        if ($mentorUseridField) {
+            $uploadRow[$mentorUseridField] = implode($sep, $initImportMentorUserids);
+        }
+        return Upload::oneRow($uploadRow, $this->token, $this->server);
     }
 
     private static function makePortalButton($js, $text) {
@@ -1215,16 +1330,16 @@ class Portal {
         if ($priorMessage) {
             $html .= $priorMessage;
         }
-        $html .= "<p class='centered max-width'><input type='text' id='mentor$suffix' name='mentor$suffix' placeholder='Mentor Name' /></p>";
+        $html .= "<p class='centered max-width'><strong>Either Option</strong>: <input type='text' id='mentor$suffix' name='mentor$suffix' placeholder='Mentor Name' /></p>";
 
         $lines = [];
-        $lines[] = self::makePortalButton("portal.searchForMentor(\"{$this->mmaURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"#mentor$suffix\");", "Search If They Have REDCap Access");
+        $lines[] = "<strong>Option 1</strong>: ".self::makePortalButton("portal.searchForMentor(\"{$this->mmaDriverURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"#mentor$suffix\");", "Option 1: Search If They Have REDCap Access");
         $lines[] = "";
         $lines[] = "<strong>-OR-</strong>";
         $lines[] = "";
-        $lines[] = "<label for='mentor_userid$suffix'>Input the Mentor's User ID for Accessing REDCap</label>";
+        $lines[] = "<strong>Option 2</strong>: <label for='mentor_userid$suffix'>Input the Mentor's User ID for Accessing REDCap</label>";
         $lines[] = "<input type='text' id='mentor_userid$suffix' name='mentor_userid$suffix' placeholder=\"Mentor's User ID\" />";
-        $lines[] = self::makePortalButton("portal.submitNameAndUserid(\"{$this->mmaURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"#mentor$suffix\", \"#mentor_userid$suffix\");", "Submit Name &amp; User ID");
+        $lines[] = self::makePortalButton("portal.submitMentorNameAndUserid(\"{$this->mmaDriverURL}\", \"{$this->pid}\", \"{$this->recordId}\", \"#mentor$suffix\", \"#mentor_userid$suffix\");", "Option 2: Submit Name &amp; User ID");
 
         $html .= "<p class='centered max-width'>".implode("<br/>", $lines)."</p>";
         return $html;
@@ -1262,7 +1377,7 @@ class Portal {
     protected $lastName;
     protected $firstName;
     protected $today;
-    protected $mmaURL;
+    protected $mmaDriverURL;
     protected $module;
     protected $pidRecords;
     protected $token;

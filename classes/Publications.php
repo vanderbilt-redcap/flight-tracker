@@ -523,7 +523,7 @@ class Publications {
         if ($doi) {
             $altmetric = new Altmetric($doi, $pid);
             if ($altmetric->hasData()) {
-                $almetricFields = [
+                $altmetricFields = [
                     "citation_altmetric_score" => "score",
                     "citation_altmetric_image" => "images",
                     "citation_altmetric_details_url" => "details_url",
@@ -551,7 +551,7 @@ class Publications {
                     $altmetricFields["citation_altmetric_context_$type"."_percentage"] = "context_$type"."_pct";
                     $altmetricFields["citation_altmetric_context_$type"."_higher_than"] = "context_$type"."_higher_than";
                 }
-                foreach ($almetricFields as $redcapField => $variable) {
+                foreach ($altmetricFields as $redcapField => $variable) {
                     if (in_array($redcapField, $metadataFields)) {
                         if ($redcapField == "citation_altmetric_last_update") {
                             $value = $variable;

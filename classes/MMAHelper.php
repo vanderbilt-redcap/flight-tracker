@@ -12,6 +12,9 @@ if (!defined("NEW_HASH_DESIGNATION")) {
 }
 
 class MMAHelper {
+    public const INSTRUMENT = "mentoring_agreement";
+    public const EVAL_INSTRUMENT = "mentoring_agreement_evaluations";
+
     public static function createHash($token, $server) {
         $newHash = REDCapManagement::makeHash(self::getHashLength());
         $recordIds = Download::recordIds($token, $server);
@@ -287,7 +290,7 @@ function startNow() {
             $myRow = self::getLatestRow($menteeRecordId, [$username], $redcapData);
             $mentorRow = self::getLatestRow($menteeRecordId, $useridsOfMentors, $redcapData);
             if (empty($myRow)) {
-                $instance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId) + 1;
+                $instance = REDCapManagement::getMaxInstance($redcapData, self::INSTRUMENT, $menteeRecordId) + 1;
                 $percentComplete = 0;
                 $mdy = date("m-d-Y");
                 $lastMentorInstance = FALSE;
@@ -631,7 +634,7 @@ function startNow() {
                 global $token, $server;
                 $fields = ["record_id", "mentoring_userid"];
                 $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-                $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $recordId);
+                $maxInstance = REDCapManagement::getMaxInstance($redcapData, MMAHelper::INSTRUMENT, $recordId);
                 return ($maxInstance >= 1);
             } else {
                 return FALSE;
@@ -657,7 +660,7 @@ function startNow() {
         $latestInstance = 0;
         foreach ($redcapData as $row) {
             if (($row['record_id'] == $recordId)
-                && ($row['redcap_repeat_instrument'] = "mentoring_agreement")
+                && ($row['redcap_repeat_instrument'] = MMAHelper::INSTRUMENT)
                 && in_array($row['mentoring_userid'], $usernames)
                 && ($row['redcap_repeat_instance'] > $latestInstance)) {
 
@@ -807,7 +810,7 @@ function startNow() {
 
     public static function filterMetadata($metadata, $skipFields = TRUE) {
         $fieldsToSkip = ["mentoring_userid", "mentoring_last_update", "mentoring_phase"];
-        $metadata = REDCapManagement::filterMetadataForForm($metadata, "mentoring_agreement");
+        $metadata = REDCapManagement::filterMetadataForForm($metadata, MMAHelper::INSTRUMENT);
         $newMetadata = [];
         foreach ($metadata as $row) {
             if (!in_array($row['field_name'], $fieldsToSkip) || !$skipFields) {
@@ -866,7 +869,7 @@ function startNow() {
 
     public static function pullInstanceFromREDCap($redcapData, $instance) {
         foreach ($redcapData as $redcapRow) {
-            if (($redcapRow['redcap_repeat_instrument'] == "mentoring_agreement") && ($redcapRow["redcap_repeat_instance"] == $instance)) {
+            if (($redcapRow['redcap_repeat_instrument'] == MMAHelper::INSTRUMENT) && ($redcapRow["redcap_repeat_instance"] == $instance)) {
                 return $redcapRow;
             }
         }
@@ -923,7 +926,7 @@ function startNow() {
         $maxInstance = 0;
         foreach ($rows as $row) {
             if (($row['record_id'] == $recordId)
-                && ($row['redcap_repeat_instrument'] == "mentoring_agreement")
+                && ($row['redcap_repeat_instrument'] == MMAHelper::INSTRUMENT)
                 && ($row['redcap_repeat_instance'] > $maxInstance)
                 && ($row['mentoring_userid'] == $userid)) {
                 $maxInstance = $row['redcap_repeat_instance'];
@@ -1076,7 +1079,7 @@ function characteristicsPopup(entity) {
         } else {
             $monthsInFuture = 12;
         }
-        $lastUpdate = REDCapManagement::findField($data, $recordId, "mentoring_last_update", "mentoring_agreement", $instance);
+        $lastUpdate = REDCapManagement::findField($data, $recordId, "mentoring_last_update", MMAHelper::INSTRUMENT, $instance);
         if ($lastUpdate) {
             $ts = strtotime($lastUpdate);
         } else {
@@ -1181,7 +1184,7 @@ function characteristicsPopup(entity) {
     }
 
     public static function agreementSigned($redcapData, $menteeRecordId, $currInstance) {
-        $row = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $currInstance);
+        $row = REDCapManagement::getRow($redcapData, $menteeRecordId, MMAHelper::INSTRUMENT, $currInstance);
         $fields = [
             "mentoring_sig_mentee",
             "mentoring_sig_mentee_date",
@@ -1222,7 +1225,7 @@ function characteristicsPopup(entity) {
         }
         $instances = [];
         foreach ($redcapData as $row) {
-            if (($row['record_id'] == $menteeRecordId) && ($row['redcap_repeat_instrument'] == "mentoring_agreement")) {
+            if (($row['record_id'] == $menteeRecordId) && ($row['redcap_repeat_instrument'] == MMAHelper::INSTRUMENT)) {
                 if ($row['redcap_repeat_instance'] == $instance) {
                     foreach ($notesFields as $field) {
                         $priorNotes[$field] = $row[$field];
@@ -1339,7 +1342,7 @@ function characteristicsPopup(entity) {
                 }
             }
             foreach ($fillOutOnce as $section => $fieldToCheck) {
-                $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldToCheck, "mentoring_agreement", $currInstance);
+                $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldToCheck, MMAHelper::INSTRUMENT, $currInstance);
                 if (!$value && !in_array($section, $sectionsToShow)) {
                     $sectionsToShow[] = $section;
                 }
@@ -1381,8 +1384,8 @@ function characteristicsPopup(entity) {
             && REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "10.4.0")
         ) {
             # getSurveyLink has the fifth parameter in REDCap versions >= 10.4.0
-            $menteeEvalLink = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations", NULL, self::getEvalInstance("mentee"), $pid);
-            $mentorEvalLink = \REDCap::getSurveyLink($menteeRecordId, "mentoring_agreement_evaluations", NULL, self::getEvalInstance("mentor"), $pid);
+            $menteeEvalLink = \REDCap::getSurveyLink($menteeRecordId, MMAHelper::EVAL_INSTRUMENT, NULL, self::getEvalInstance("mentee"), $pid);
+            $mentorEvalLink = \REDCap::getSurveyLink($menteeRecordId, MMAHelper::EVAL_INSTRUMENT, NULL, self::getEvalInstance("mentor"), $pid);
             $menteeEvalMessage = self::makeEvaluationMessage($menteeEvalLink);
             $mentorEvalMessage = self::makeEvaluationMessage($mentorEvalLink);
             $evalSubject = "Short Feedback Survey for Mentee-Mentor Agreements";
@@ -1724,7 +1727,7 @@ function characteristicsPopup(entity) {
         $html = "";
         if (in_array($notesField, $notesFields)) {
             $html .= "<td class='tcomments'>\n";
-            $notesData = REDCapManagement::findField($redcapData, $recordId, $notesField, "mentoring_agreement", $instance);
+            $notesData = REDCapManagement::findField($redcapData, $recordId, $notesField, MMAHelper::INSTRUMENT, $instance);
             if ($notesData == "") {
                 $html .= "<a href='javascript:void(0)' onclick='showcomment($(this).closest(\"tr\").attr(\"id\"), true)'>add note</a>\n";
             } else {
@@ -1924,7 +1927,7 @@ function characteristicsPopup(entity) {
     }
 
     public static function handleTimestamps($row, $token, $server, $metadata) {
-        $agreementFields = REDCapManagement::getFieldsFromMetadata($metadata, "mentoring_agreement");
+        $agreementFields = REDCapManagement::getFieldsFromMetadata($metadata, MMAHelper::INSTRUMENT);
         $instance = $row['redcap_repeat_instance'];
         $recordId = $row['record_id'];
         $redcapData = Download::fieldsForRecords($token, $server, $agreementFields, [$recordId]);

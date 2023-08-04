@@ -2557,42 +2557,66 @@ class Grant {
             return "R01";
 		} else if (preg_match("/^\d?[Tt]\d\d/", $awardNo) || preg_match("/^\d?[Dd]43/", $awardNo)) {
 			return "Mentoring/Training Grant Admin";
-		} else if (isset($specs['direct_budget']) && ($specs['direct_budget'] > 0)) {
-			# not R01 or R00
-			if ($specs['project_start'] && $specs['project_end']) {
-                $projStart = strtotime($specs['project_start']);
-                $projEnd = strtotime($specs['project_end']);
-            } else if ($specs['start'] && $specs['end']) {
-                $projStart = strtotime($specs['start']);
-                $projEnd = strtotime($specs['end']);
-            } else {
-			    $projStart = FALSE;
-			    $projEnd = FALSE;
+		} else {
+            # not R01 or R00
+            $budgetField = "";
+            // TODO ['direct_budget', 'budget', 'total_budget']
+            foreach (['direct_budget'] as $specField) {
+                if (isset($specs[$specField]) && ($specs[$specField] > 0)) {
+                    $budgetField = $specField;
+                    break;
+                }
             }
-            if ($projStart && $projEnd) {
-                $yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
-                $isR01EquivEligible = ($specs['direct_budget'] > $r01EquivYearlyThreshold * $yearspan) && ($specs['direct_budget'] >= $r01EquivYearlyThreshold * $r01EquivNumberOfYears);
-                if (self::getShowDebug()) {
-                    Application::log("$awardNo with direct budget \${$specs['direct_budget']} and {$specs['num_grants_combined']} years");
-                }
-                if (!$isR01EquivEligible && isset($specs['num_grants_combined']) && $specs['num_grants_combined'] > 0) {
-                    $isR01EquivEligible = ($specs['direct_budget'] / $specs['num_grants_combined'] > $r01EquivYearlyThreshold);
-                }
-                if (($yearspan >= $r01EquivNumberOfYears) && $isR01EquivEligible) {
-                    if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
-                        if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600))); }
-                        return "R01 Equivalent";
-                    } else {
-                        if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit D"); }
+
+            if ($budgetField) {
+                if ($specs['project_start'] && $specs['project_end']) {
+                    $projStart = strtotime($specs['project_start']);
+                    $projEnd = strtotime($specs['project_end']);
+                    if (self::getShowDebug()) {
+                        Application::log("$awardNo with project {$specs['project_start']} and {$specs['project_end']}");
+                    }
+                } else if ($specs['start'] && $specs['end']) {
+                    $projStart = strtotime($specs['start']);
+                    $projEnd = strtotime($specs['end']);
+                    if (self::getShowDebug()) {
+                        Application::log("$awardNo with budget {$specs['start']} and {$specs['end']}");
                     }
                 } else {
-                    if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit C: ".REDCapManagement::pretty($yearspan, 1)." years"); }
+                    $projStart = FALSE;
+                    $projEnd = FALSE;
+                }
+                if ($projStart && $projEnd) {
+                    $yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
+                    $isR01EquivEligible = ($specs[$budgetField] > $r01EquivYearlyThreshold * $yearspan) && ($specs[$budgetField] >= $r01EquivYearlyThreshold * $r01EquivNumberOfYears);
+                    if (self::getShowDebug()) {
+                        Application::log("$awardNo with $budgetField \${$specs[$budgetField]} and {$specs['num_grants_combined']} / $yearspan years");
+                    }
+                    if (
+                        !$isR01EquivEligible
+                        && isset($specs['num_grants_combined'])
+                        && ($specs['num_grants_combined'] >= 3)
+                    ) {
+                        $isR01EquivEligible = ($specs[$budgetField] / $specs['num_grants_combined'] > $r01EquivYearlyThreshold);
+                        if (self::getShowDebug()) {
+                            Application::log("Route B: $awardNo with $budgetField \${$specs[$budgetField]} and {$specs['num_grants_combined']} years");
+                        }
+                    }
+                    if (($yearspan >= $r01EquivNumberOfYears) && $isR01EquivEligible) {
+                        if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
+                            if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600))); }
+                            return "R01 Equivalent";
+                        } else {
+                            if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit D"); }
+                        }
+                    } else {
+                        if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit C: ".REDCapManagement::pretty($yearspan, 1)." years"); }
+                    }
+                } else {
+                    if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit B"); }
                 }
             } else {
-                if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit B"); }
+                if (self::getShowDebug()) { Application::log("$awardNo has no direct budget ".REDCapManagement::json_encode_with_spaces($specs)); }
             }
-		} else {
-		    if (self::getShowDebug()) { Application::log("$awardNo has no direct budget ".REDCapManagement::json_encode_with_spaces($specs)); }
         }
 
 		if (self::getShowDebug()) { Application::log($awardNo.": Third Pass"); }

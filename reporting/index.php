@@ -113,36 +113,39 @@ if (file_exists(dirname(__FILE__)."/../customGrants.php")) {
 </table>
 
 <h2><?= makeTableHeader("5") ?></h2>
-<p class='centered'><?= makeLink("5A") ?></p>
+<p class='centered max-width'><?= makeLink("5A") ?></p>
 <?php
 if (isset($_GET['appointments'])) {
-    echo "<p class='centered'>".makeLink("5B-VUMC")."</p>\n";
+    echo "<p class='centered max-width'>".makeLink("5B-VUMC")."</p>\n";
 } else {
-    echo "<p class='centered'>".makeLink("5B")."</p>\n";
+    echo "<p class='centered max-width'>".makeLink("5B")."</p>\n";
 }
 
 if (Application::isVanderbilt() && Application::isPluginProject($pid)) {
     echo "<h2>".makeTableHeader("6")."</h2>";
-    echo "<p class='centered'>".makeLink("6AII")."</p>";
+    echo "<p class='centered max-width'>".makeLink("6AII")."</p>";
     if (isset($_GET['appointments'])) {
-        echo "<p class='centered'>".makeLink("6BII-VUMC")."</p>";
+        echo "<p class='centered max-width'>".makeLink("6BII-VUMC")."</p>";
     } else {
-        echo "<p class='centered'>".makeLink("6BII")."</p>";
+        echo "<p class='centered max-width'>".makeLink("6BII")."</p>";
     }
 }
 
+$part1Message = "Only scholars whose appointments overlap with the last ".NIHTables::PART_1_YEARS." are included in this table.";
+$part3Message = "Only scholars whose appointments overlap with the last ".NIHTables::PART_3_YEARS." are included in this table.";
+
 ?>
 <h2><?= makeTableHeader("8") ?></h2>
-<p class='centered'><?= makeLink("8AI") ?></p>
-<p class='centered'><?= makeLink("8AIII") ?></p>
-<p class='centered'><?= makeLink("8AIV") ?></p>
+<p class='centered max-width'><?= makeLink("8AI")."<br/>$part1Message" ?></p>
+<p class='centered max-width'><?= makeLink("8AIII")."<br/>$part3Message" ?></p>
+<p class='centered max-width'><?= makeLink("8AIV") ?></p>
 <?php
 if (isset($_GET['appointments'])) {
-    echo "<p class='centered'>".makeLink("8CI-VUMC")."</p>\n";
-    echo "<p class='centered'>".makeLink("8CIII-VUMC")."</p>\n";
+    echo "<p class='centered max-width'>".makeLink("8CI-VUMC")."<br/>$part1Message</p>";
+    echo "<p class='centered max-width'>".makeLink("8CIII-VUMC")."<br/>$part3Message</p>";
 } else {
-    echo "<p class='centered'>".makeLink("8CI")."</p>\n";
-    echo "<p class='centered'>".makeLink("8CIII")."</p>\n";
+    echo "<p class='centered max-width'>".makeLink("8CI")."<br/>$part1Message</p>";
+    echo "<p class='centered max-width'>".makeLink("8CIII")."<br/>$part3Message</p>";
 }
 
 ?>

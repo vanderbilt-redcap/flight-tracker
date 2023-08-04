@@ -9,35 +9,36 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once dirname(__FILE__).'/_header.php';
 
 if ($_REQUEST['uid'] && MMA_DEBUG) {
-    $userid2 = REDCapManagement::sanitize($_REQUEST['uid']);
+    $userid2 = Sanitizer::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$userid2";
 } else {
-    $userid2 = $hash ? $hash : Application::getUsername();
+    $userid2 = $hash ?: Application::getUsername();
     $uidString = $hash ? "&hash=".$hash : "";
 }
-$phase = isset($_GET['phase']) ? REDCapManagement::sanitize($_GET['phase']) : "";
+$phase = Sanitizer::sanitize($_GET['phase'] ?? "");
 
 $userids = Download::userids($token, $server);
 
 $menteeRecordId = FALSE;
 if (isset($_GET['menteeRecord'])) {
     $records = Download::recordIds($token, $server);
-    $menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
+    $menteeRecordId = Sanitizer::getSanitizedRecord($_GET['menteeRecord'], $records);
     list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");
 }
 
-echo "<link rel='stylesheet' type='text/css' href='".Application::link("mentor/css/simptip.css")."' media='screen,projection' />\n";
+$cssLink = Application::link("mentor/css/simptip.css");
+echo "<link rel='stylesheet' type='text/css' href='$cssLink' media='screen,projection' />\n";
 
 $names = Download::names($token, $server);
 $menteeName = $names[$menteeRecordId];
 
 $metadata = Download::metadata($token, $server);
-$allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
+$allMetadataForms = DataDictionaryManagement::getFormsFromMetadata($metadata);
 $metadata = MMAHelper::filterMetadata($metadata);
-$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-$choices = REDCapManagement::getChoices($metadata);
+$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+$choices = DataDictionaryManagement::getChoices($metadata);
 $notesFields = MMAHelper::getNotesFields($metadataFields);
 
 list($firstName, $lastName) = MMAHelper::getNameFromREDCap($userid2, $token, $server);
@@ -47,11 +48,11 @@ $otherMentees = REDCapManagement::makeConjunction($myMentees["name"] ?? []);
 $fields = array_merge(["record_id", "mentoring_userid", "mentoring_last_update", "mentoring_panel_names", "mentoring_userid"], $metadataFields);
 $redcapData = Download::fieldsForRecords($token, $server, $fields, [$menteeRecordId]);
 if ($_REQUEST['instance']) {
-    $currInstance = REDCapManagement::sanitize($_REQUEST['instance']);
+    $currInstance = Sanitizer::sanitizeInteger($_REQUEST['instance']);
 } else if ($hash) {
     $currInstance = 1;
 } else {
-    $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId);
+    $maxInstance = REDCapManagement::getMaxInstance($redcapData, MMAHelper::INSTRUMENT, $menteeRecordId);
     $currInstance = $maxInstance + 1;
 }
 $dateToRemind = MMAHelper::getDateToRemind($redcapData, $menteeRecordId, $currInstance);
@@ -66,8 +67,8 @@ foreach ($menteeUsernames as $menteeUsername) {
 $surveysAvailableToPrefill = MMAHelper::getMySurveys($userid2, $token, $server, $menteeRecordId, $currInstance);
 list($priorNotes, $instances) = $menteeInstance ? MMAHelper::makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $menteeInstance) : [[], []];
 $currInstanceRow = [];
-$currInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $currInstance);
-$menteeInstanceRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance) : [];
+$currInstanceRow = REDCapManagement::getRow($redcapData, $menteeRecordId, MMAHelper::INSTRUMENT, $currInstance);
+$menteeInstanceRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, MMAHelper::INSTRUMENT, $menteeInstance) : [];
 
 $completeURL = Application::link("mentor/index_complete.php").$uidString."&menteeRecord=$menteeRecordId&instance=$currInstance";
 
@@ -114,7 +115,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                             }
                             // $htmlRows[] = "<div class='subHeader'>$sectionDescription</div>";
                             $tableId = "quest$tableNum";
-                            // $hasAnswers = MMAHelper::hasDataInSection($metadata, $row['section_header'], $menteeRecordId, $menteeInstance, "mentoring_agreement", $menteeInstanceRow);
+                            // $hasAnswers = MMAHelper::hasDataInSection($metadata, $row['section_header'], $menteeRecordId, $menteeInstance, MMAHelper::INSTRUMENT, $menteeInstanceRow);
                             $hasAnswers = TRUE;
                             if ($hasAnswers) {
                                 $tablesShown[] = $tableId;
@@ -155,8 +156,8 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                             $menteeFieldValues = [];
                             $mentorFieldValues = [];
                             if (($row['field_type'] == "radio") || ($row['field_type'] == "notes")) {
-                                $menteeValue = $menteeInstance ? REDCapManagement::findField([$menteeInstanceRow], $menteeRecordId, $field, "mentoring_agreement", $menteeInstance) : "";
-                                $mentorValue = REDCapManagement::findField([$currInstanceRow], $menteeRecordId, $field, "mentoring_agreement", $currInstance);
+                                $menteeValue = $menteeInstance ? REDCapManagement::findField([$menteeInstanceRow], $menteeRecordId, $field, MMAHelper::INSTRUMENT, $menteeInstance) : "";
+                                $mentorValue = REDCapManagement::findField([$currInstanceRow], $menteeRecordId, $field, MMAHelper::INSTRUMENT, $currInstance);
                                 if ($menteeValue) {
                                     $menteeFieldValues = [$menteeValue];
                                 }
@@ -165,12 +166,12 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                                 }
                             } else if ($row['field_type'] == "checkbox") {
                                 foreach ($choices[$field] as $index => $label) {
-                                    $value = $menteeInstance ? REDCapManagement::findField([$menteeInstanceRow], $menteeRecordId, $field."___".$index, "mentoring_agreement", $menteeInstance) : "";
+                                    $value = $menteeInstance ? REDCapManagement::findField([$menteeInstanceRow], $menteeRecordId, $field."___".$index, MMAHelper::INSTRUMENT, $menteeInstance) : "";
                                     if ($value) {
                                         $menteeFieldValues[] = $index;
                                     }
 
-                                    $value = REDCapManagement::findField([$currInstanceRow], $menteeRecordId, $field."___".$index, "mentoring_agreement", $currInstance);
+                                    $value = REDCapManagement::findField([$currInstanceRow], $menteeRecordId, $field."___".$index, MMAHelper::INSTRUMENT, $currInstance);
                                     if ($value) {
                                         $mentorFieldValues[] = $index;
                                     }
@@ -216,7 +217,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                                         $name = $prefix.$field.$spec['suffix'];
                                         $id = $name;
                                         $mentorValue = $spec['values'][0];
-                                        $menteeValue = $menteeInstance ? REDCapManagement::findField($redcapData, $menteeRecordId, $field, "mentoring_agreement", $menteeInstance) : "";
+                                        $menteeValue = $menteeInstance ? REDCapManagement::findField($redcapData, $menteeRecordId, $field, MMAHelper::INSTRUMENT, $menteeInstance) : "";
                                         if ($mentorValue) {
                                             $value = $mentorValue;
                                         } else {

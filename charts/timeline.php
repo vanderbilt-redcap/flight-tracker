@@ -189,8 +189,8 @@ foreach ($classes as $c) {
         echo implode("<td>&nbsp;</td>", $cells);
         echo "</tr></tbody></table>";
     }
-    echo "<div id='visualization".$pid."_$c' class='visualization'></div>";
-    echo "<div class='alignright'><button onclick='html2canvas(container_{$pid}[\"$c\"], { onrendered: (canvas) => { downloadCanvas(canvas, \"timeline.png\"); } }); return false;' class='smallest'>Save</button></div>";
+    echo "<div id='visualization{$pid}_$c' class='visualization'></div>";
+    echo "<div class='alignright'><button onclick='html2canvas(document.getElementById(\"visualization{$pid}_$c\"), { onrendered: (canvas) => { downloadCanvas(canvas, \"timeline.png\"); } }); return false;' class='smallest'>Save</button></div>";
     echo $divFooter;
 }
 

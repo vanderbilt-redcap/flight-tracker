@@ -57,7 +57,7 @@ foreach ($menteeUsernames as $menteeUsername) {
         break;
     }
 }
-$menteeRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, "mentoring_agreement", $menteeInstance) : [];
+$menteeRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, MMAHelper::INSTRUMENT, $menteeInstance) : [];
 $listOfMentors = REDCapManagement::makeConjunction(array_values($myMentors["name"] ?? []));
 if ($hash) {
     $listOfMentees = REDCapManagement::makeConjunction($myMentees["name"] ?? []);

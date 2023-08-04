@@ -648,15 +648,15 @@ class Grants {
 	public static function getSourceOrderWithLabels() {
 		return [
             "modify" => "Manual Modifications",
+            "coeus" => "COEUS",
+            "vera" => "VERA",
+            "local_gms" => "Local Grants Management System",
             "nih_reporter" => "NIH RePORTER",
             "exporter" => "NIH ExPORTER",
             "reporter" => "Federal RePORTER",
             "nsf" => "NSF Grants",
             "ies" => "Dept. of Ed. Grants",
-            "coeus" => "COEUS",
-            "vera" => "VERA",
             "coeus2" => "COEUS",
-            "local_gms" => "Local Grants Management System",
             "custom" => "REDCap Custom Grants",
             "followup" => "Follow-Up Survey",
             "scholars" => "Initial Scholar's Survey",
@@ -699,6 +699,64 @@ class Grants {
 		    $this->compileAllGrants();
         }
 	}
+
+    private function combineEquivalentGrants($awardsByBaseAwardNumber) {
+        $equivalentGrantClasses = [
+            ["R33", "R61"],
+            // For now ["K99", "R00"],
+        ];
+        $combineWith = [];
+        $toCombine = [];
+        foreach (array_keys($awardsByBaseAwardNumber) as $baseAwardNumber1) {
+            $awardClass1 = substr($baseAwardNumber1, 0, 3);
+            $remaining1 = str_replace($awardClass1, "", $baseAwardNumber1);
+            foreach ($equivalentGrantClasses as $equivalentClasses) {
+                if (in_array($awardClass1, $equivalentClasses)) {
+                    foreach (array_keys($awardsByBaseAwardNumber) as $baseAwardNumber2) {
+                        $awardClass2 = substr($baseAwardNumber2, 0, 3);
+                        $remaining2 = str_replace($awardClass2, "", $baseAwardNumber2);
+                        if (
+                            ($awardClass1 != $awardClass2)
+                            && in_array($awardClass2, $equivalentClasses)
+                            && ($remaining1 == $remaining2)
+                        ) {
+                            if (isset($combineWith[$baseAwardNumber2])) {
+                                if (!in_array($baseAwardNumber1, $combineWith[$baseAwardNumber2])) {
+                                    $combineWith[$baseAwardNumber2][] = $baseAwardNumber1;
+                                }
+                            } else {
+                                if (!isset($combineWith[$baseAwardNumber1])) {
+                                    $combineWith[$baseAwardNumber1] = [];
+                                }
+                                $combineWith[$baseAwardNumber1][] = $baseAwardNumber2;
+                            }
+                            $toCombine[] = $baseAwardNumber1;
+                            $toCombine[] = $baseAwardNumber2;
+                        }
+                    }
+                }
+            }
+        }
+
+        $newAwardsByBaseAwardNumber = [];
+        foreach ($awardsByBaseAwardNumber as $baseAwardNumber => $grants) {
+            if (!in_array($baseAwardNumber, $toCombine)) {
+                $newAwardsByBaseAwardNumber[$baseAwardNumber] = $grants;
+            } else if (isset($combineWith[$baseAwardNumber])) {
+                $combinedGrants = $grants;
+                foreach ($combineWith[$baseAwardNumber] as $baseAwardNumber2) {
+                    $combinedGrants = array_merge($combinedGrants, $awardsByBaseAwardNumber[$baseAwardNumber2]);
+                }
+                if (self::getShowDebug()) { Application::log("Combining equivalent grants $baseAwardNumber with ".implode(", ", $combineWith[$baseAwardNumber]), $this->pid); }
+                for ($i = 0; $i < count($combinedGrants); $i++) {
+                    $combinedGrants[$i]->setVariable("project_start", self::getEarliestDate($combinedGrants, "project_start"));
+                    $combinedGrants[$i]->setVariable("project_end", self::getLatestDate($combinedGrants, "project_end"));
+                }
+                $newAwardsByBaseAwardNumber[$baseAwardNumber] = $combinedGrants;
+            }
+        }
+        return $newAwardsByBaseAwardNumber;
+    }
 
 	private function compileGrantsForFinancial($combine = FALSE) {
 		# 1. look for all eligible grants
@@ -919,6 +977,9 @@ class Grants {
     }
 
     private function makeRequestedChanges(&$awards, $unsetRemoves = FALSE) {
+        if (self::getShowDebug()) {
+            Application::log("Making ".count($this->changes)." changes", $this->pid);
+        }
         foreach ($this->changes as $change) {
             $changeAwardNo = $change->getNumber();
             if ($change->isRemove()) {
@@ -998,12 +1059,15 @@ class Grants {
 
     private function loadChanges() {
         $toImport = $this->calculate['to_import'] ?? [];
+        if (self::getShowDebug()) {
+            Application::log("toImport has ".count($toImport)." items", $this->pid);
+        }
         foreach ($toImport as $index => $ary) {
             $action = $ary[0];
             $grant = $this->dataWranglerToGrant($ary[1]);
             $awardno = $grant->getNumber();
             $grant->setVariable('source', "modify");
-            if (in_array($action, ["CHANGE", "ADD"])) {
+            if (in_array($action, ["CHANGE", "ADD", "R_CHANGE", "A_CHANGE"])) {
                 $variables = ["type", "start", "end", "project_start", "project_end"];
                 foreach($variables as $variable) {
                     if ($grant->getVariable($variable)) {
@@ -1022,21 +1086,66 @@ class Grants {
                 $this->changes[] = $change;
             }
         }
+        if (self::getShowDebug()) {
+            Application::log(count($this->changes)." changes loaded", $this->pid);
+        }
     }
 
-    private static function combineByBaseAwardNumber($awardsByStart) {
+    private static function getEarliestDate($grants, $field) {
+        $earliestTs = FALSE;
+        foreach ($grants as $grant) {
+            $value = $grant->getVariable($field);
+            if ($value && DateManagement::isDate($value)) {
+                $ts = strtotime($value);
+                if (
+                    $ts
+                    && (
+                        !$earliestTs
+                        || ($ts < $earliestTs)
+                    )
+                ) {
+                    $earliestTs = $ts;
+                }
+            }
+        }
+        return $earliestTs ? date("Y-m-d", $earliestTs) : "";
+    }
+
+    private static function getLatestDate($grants, $field) {
+        $latestTs = FALSE;
+        foreach ($grants as $grant) {
+            $value = $grant->getVariable($field);
+            if ($value && DateManagement::isDate($value)) {
+                $ts = strtotime($value);
+                if (
+                    $ts
+                    && (
+                        !$latestTs
+                        || ($ts > $latestTs)
+                    )
+                ) {
+                    $latestTs = $ts;
+                }
+            }
+        }
+        return $latestTs ? date("Y-m-d", $latestTs) : "";
+
+    }
+
+    private function combineByBaseAwardNumber($awardsByStart) {
         $awardsByBaseAwardNumberAndSource = [];
         foreach ($awardsByStart as $awardNo => $grant) {
             $baseNumber = $grant->getBaseNumber();
             $source = $grant->getVariable("source");
             if (!isset($awardsByBaseAwardNumberAndSource[$baseNumber])) {
-                $awardsByBaseAwardNumberAndSource[$baseNumber] = array();
+                $awardsByBaseAwardNumberAndSource[$baseNumber] = [];
             }
             if (!isset($awardsByBaseAwardNumberAndSource[$baseNumber][$source])) {
-                $awardsByBaseAwardNumberAndSource[$baseNumber][$source] = array();
+                $awardsByBaseAwardNumberAndSource[$baseNumber][$source] = [];
             }
             $awardsByBaseAwardNumberAndSource[$baseNumber][$source][] = $grant;
         }
+
         $awardsByBaseAwardNumber = [];
         foreach ($awardsByBaseAwardNumberAndSource as $baseNumber => $sources) {
             if (self::spansRePORTERBeginning($sources)) {
@@ -1047,24 +1156,34 @@ class Grants {
             foreach ($mySourceOrder as $source) {
                 if (isset($sources[$source])) {
                     $grants = $sources[$source];
-                    $grantNumbers = [];
-                    foreach ($grants as $grant) {
-                        $grantNumbers[] = $grant->getNumber();
-                    }
-                    $combinedGrant = self::combineGrants($grants);
-                    if (self::getShowDebug()) { Application::log("Combining grants ".implode(", ", $grantNumbers)." to grant ".$combinedGrant->getVariable("start")." - ".$combinedGrant->getVariable("end")); }
-                    if ($combinedGrant) {
-                        if ($combinedGrant->getVariable("type") != "N/A") {
-                            $awardsByBaseAwardNumber[$baseNumber] = $combinedGrant;
-                            break;	// sourceOrder loop
-                        } else if (!isset($awardsByBaseAwardNumber[$baseNumber])) {
-                            $awardsByBaseAwardNumber[$baseNumber] = $combinedGrant;
-                        }
+                    if (!empty($grants)) {
+                        $awardsByBaseAwardNumber[$baseNumber] = $grants;
+                        break;   // source loop
                     }
                 }
             }
         }
-        return $awardsByBaseAwardNumber;
+        $awardsByBaseAwardNumber = $this->combineEquivalentGrants($awardsByBaseAwardNumber);
+        Grant::setShowDebug(self::$showDebug);
+        $combinedAwardsByBaseAwardNumber = [];
+        foreach ($awardsByBaseAwardNumber as $baseNumber => $grants) {
+            $grantNumbers = [];
+            foreach ($grants as $grant) {
+                $grantNumbers[] = $grant->getNumber();
+            }
+            $combinedGrant = self::combineGrants($grants);
+            $combinedGrant->putInBins();
+            $awards = [$baseNumber => $combinedGrant];
+            $this->makeRequestedChanges($awards);
+            $combinedGrant = $awards[$baseNumber];
+
+            if (self::getShowDebug()) { Application::log("Combining grants ".implode(", ", $grantNumbers)." to grant ".$combinedGrant->getVariable("start")." - ".$combinedGrant->getVariable("end")." (".$combinedGrant->getVariable("type").")"); }
+            if ($combinedGrant) {
+                $combinedAwardsByBaseAwardNumber[$baseNumber] = $combinedGrant;
+            }
+        }
+
+        return $combinedAwardsByBaseAwardNumber;
     }
 
     private function compileGrantsForConversion($includeNAs = FALSE, $startTs = FALSE, $endTs = FALSE) {
@@ -1097,7 +1216,7 @@ class Grants {
                 $this->loadChanges();
                 $this->makeRequestedChanges($awardsBySource[$variable]);
                 $awardsByStart = self::orderGrantsByStart($awardsBySource[$variable]);
-                $awardsByBaseAwardNumber = self::combineByBaseAwardNumber($awardsByStart);
+                $awardsByBaseAwardNumber = $this->combineByBaseAwardNumber($awardsByStart);
                 $awards[$variable] = [];
                 foreach (array_values($awardsByBaseAwardNumber) as $grant) {
                     $awards[$variable][] = $grant;
@@ -1174,6 +1293,7 @@ class Grants {
         }
 
 		# 4. make changes
+        $this->loadChanges();
         $this->makeRequestedChanges($awardsBySource);
 		$this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource);
         foreach ($awardsBySource as $awardNo => $grants) {
@@ -1190,7 +1310,7 @@ class Grants {
 		}
 
 		# 6. remove duplicates by sources; most-preferred by sourceOrder
-        $awardsByBaseAwardNumber = self::combineByBaseAwardNumber($awardsByStart);
+        $awardsByBaseAwardNumber = $this->combineByBaseAwardNumber($awardsByStart);
 		foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
 			if (self::getShowDebug()) { Application::log("6. ".$baseNumber." ".$grant->getVariable("type")); }
 		}
@@ -2116,7 +2236,7 @@ class Grants {
                     $value = self::translateSourcesIntoSourceOrder($key, $value);
 					$uploadRow[$key] = $value;
 				} else {
-					Application::log($key." not found in metadata, but in summary variables");
+					Application::log($key." ($value) not found in metadata, but in summary variables");
 
 					# Need to warn silently because of upgrade issues
 					// throw new \Exception($key." not found in metadata, but in summary variables");

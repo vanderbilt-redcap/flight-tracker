@@ -764,7 +764,7 @@ class Upload
                         }
                         $feedback = self::rows($rows, $token, $server, $retryCount);
                     } else {
-                        throw new \Exception($e);
+                        throw new \Exception($e->getMessage());
                     }
                 }
                 Download::throttleIfNecessary($pid);

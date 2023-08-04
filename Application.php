@@ -560,6 +560,15 @@ SELECT DISTINCT s.project_id AS pid
         for ($i = 0; $i < count($pids); $i++) {
             $pids[$i] = (string) $pids[$i];
         }
+
+        if (isset($_GET['match']) && is_string($_GET['match']) && preg_match("/:/", $_GET['match'])) {
+            list($pid, $recordId) = explode(":", Sanitizer::sanitize($_GET['match']));
+            if (!in_array($pid, $pids)) {
+                return [];
+            } else {
+                return [$pid];
+            }
+        }
         return $pids;
     }
 

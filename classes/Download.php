@@ -876,6 +876,20 @@ class Download {
         return $redcapData[0]["identifier_email"];
     }
 
+    public static function threeNamePartsAndUserid($token, $server, $recordId) {
+        $usernameField = self::getUseridField($token, $server);
+        $redcapData = self::fieldsForRecords($token, $server, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name", $usernameField], [$recordId]);
+        if (!$redcapData) {
+            return ["", "", ""];
+        }
+        $row = $redcapData[0];
+        $fn = $row['identifier_first_name'];
+        $middle = $row['identifier_middle'];
+        $ln = $row['identifier_last_name'];
+        $username = $row[$usernameField];
+        return [trim($fn), trim($middle), trim($ln), trim($username)];
+    }
+
     public static function fullName($token, $server, $recordId) {
         $redcapData = self::fieldsForRecords($token, $server, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"], [$recordId]);
         if (!$redcapData) {

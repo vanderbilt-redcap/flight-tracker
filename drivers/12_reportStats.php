@@ -24,7 +24,7 @@ function reportStats($token, $server, $pid, $records) {
             "scholars" => count($recordIds),
             "date" => date("Y-m-d"),
             "version" => CareerDev::getVersion(),
-            "grant_class" => CareerDev::getSetting("grant_class"),
+            "grant_class" => CareerDev::getSetting("grant_class", $pid),
         ];
         // "grants" => $numGrants,
         // "publications" => $numPubs,

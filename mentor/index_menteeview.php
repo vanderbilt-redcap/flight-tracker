@@ -10,23 +10,25 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once dirname(__FILE__).'/_header.php';
 
 if (isset($_REQUEST['uid']) && MMA_DEBUG) {
-    $userid2 = REDCapManagement::sanitize($_REQUEST['uid']);
+    $userid2 = Sanitizer::sanitize($_REQUEST['uid']);
     $uidString = "&uid=".$userid2;
 } else {
-    $userid2 = $hash ? $hash : Application::getUsername();
+    $userid2 = $hash ?: Application::getUsername();
     $uidString = $hash ? "&hash=".$hash : "";
 }
-$phase = isset($_GET['phase']) ? REDCapManagement::sanitize($_GET['phase']) : "";
+$phase = Sanitizer::sanitize($_GET['phase'] ?? "");
 
 $dateToRemind = "now";
 
-echo "<link rel='stylesheet' type='text/css' href='".Application::link("mentor/css/simptip.css")."' media='screen,projection' />\n";
+$cssLink = Application::link("mentor/css/simptip.css");
+echo "<link rel='stylesheet' type='text/css' href='$cssLink' media='screen,projection' />\n";
 
 $names = Download::names($token, $server);
 
 $menteeRecordId = FALSE;
 if ($_REQUEST['menteeRecord']) {
-    $menteeRecordId = REDCapManagement::sanitize($_REQUEST['menteeRecord']);
+    $records = Download::recordIds($token, $server);
+    $menteeRecordId = Sanitizer::getSanitizedRecord($_GET['menteeRecord'], $records);
     list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $userid2, $token, $server);
 } else {
     throw new \Exception("You must specify a mentee record!");
@@ -37,10 +39,10 @@ if (isset($_GET['test'])) {
 }
 
 $metadata = Download::metadata($token, $server);
-$allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
-$metadata = REDCapManagement::filterMetadataForForm($metadata, "mentoring_agreement");
-$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-$choices = REDCapManagement::getChoices($metadata);
+$allMetadataForms = DataDictionaryManagement::getFormsFromMetadata($metadata);
+$metadata = DataDictionaryManagement::filterMetadataForForm($metadata, MMAHelper::INSTRUMENT);
+$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+$choices = DataDictionaryManagement::getChoices($metadata);
 $notesFields = MMAHelper::getNotesFields($metadataFields);
 
 list($firstName, $lastName) = MMAHelper::getNameFromREDCap($userid2, $token, $server);
@@ -48,11 +50,11 @@ $otherMentors = REDCapManagement::makeConjunction($myMentors["name"] ?? []);
 
 $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id"], $metadataFields), [$menteeRecordId]);
 if ($_REQUEST['instance']) {
-    $currInstance = REDCapManagement::sanitize($_REQUEST['instance']);
+    $currInstance = Sanitizer::sanitizeInteger($_REQUEST['instance']);
 } else if ($hash) {
     $currInstance = 1;
 } else {
-    $maxInstance = REDCapManagement::getMaxInstance($redcapData, "mentoring_agreement", $menteeRecordId);
+    $maxInstance = REDCapManagement::getMaxInstance($redcapData, MMAHelper::INSTRUMENT, $menteeRecordId);
     $currInstance = $maxInstance + 1;
 }
 if (!$hash) {
@@ -63,7 +65,7 @@ if (!$hash) {
 $instanceRow = [];
 foreach ($redcapData as $row) {
     if (($row['record_id'] == $menteeRecordId)
-        && ($row['redcap_repeat_instrument'] == "mentoring_agreement")
+        && ($row['redcap_repeat_instrument'] == MMAHelper::INSTRUMENT)
         && ($row['redcap_repeat_instance'] == $currInstance)) {
         $instanceRow = $row;
     }
@@ -257,7 +259,7 @@ foreach ($metadata as $row) {
       <tr id="<?php echo $rowName; ?>"><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2) ?></th>
         <td>
             <?php
-              $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, "mentoring_agreement", $currInstance);
+              $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, MMAHelper::INSTRUMENT, $currInstance);
               $prefix = "exampleRadiosh";
               foreach ($choices[$fieldName] as $key => $label) {
                   $name = $prefix.$fieldName;
@@ -277,7 +279,7 @@ foreach ($metadata as $row) {
               foreach ($choices[$fieldName] as $key => $label) {
                   $name = $prefix.$fieldName;
                   $id = $name."___".$key;
-                  $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName."___".$key, "mentoring_agreement", $currInstance);
+                  $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName."___".$key, MMAHelper::INSTRUMENT, $currInstance);
                   $isChecked = "";
                   if ($value) {
                       $isChecked = "checked";
@@ -297,7 +299,7 @@ foreach ($metadata as $row) {
       $prefix = "exampleTextareash";
       $name = $prefix.$fieldName;
       $id = $name;
-      $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, "mentoring_agreement", $currInstance);
+      $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, MMAHelper::INSTRUMENT, $currInstance);
       ?>
       <tr id="<?= $rowName ?>" <?= $rowCSSStyle ?>><th scope="row"><?= $teaser.MMAHelper::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2) ?></th>
           <td colspan="2">

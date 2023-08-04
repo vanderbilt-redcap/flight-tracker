@@ -736,14 +736,14 @@ class REDCapManagement {
     public static function getToken($pid, $username = "") {
         $module = Application::getModule();
         if ($username) {
-            $sql = "SELECT api_token FROM redcap_user_rights WHERE project_id = ? AND username = ?";
+            $sql = "SELECT r.api_token AS api_token FROM redcap_user_rights AS r INNER JOIN redcap_user_information AS i ON (i.username = r.username) WHERE r.project_id = ? AND r.username = ? AND i.user_suspended_time IS NULL AND (i.user_expiration IS NULL OR i.user_expiration > NOW()) AND (r.expiration IS NULL OR r.expiration > NOW())";
             $q = $module->query($sql, [$pid, $username]);
             if ($row = $q->fetch_assoc()) {
                 return $row['api_token'] ?? "";
             }
             return "";
         } else {
-            $sql = "SELECT api_token FROM redcap_user_rights WHERE project_id = ?";
+            $sql = "SELECT r.api_token AS api_token FROM redcap_user_rights AS r INNER JOIN redcap_user_information AS i ON (i.username = r.username) WHERE r.project_id = ? AND i.user_suspended_time IS NULL AND (i.user_expiration IS NULL OR i.user_expiration > NOW()) AND (r.expiration IS NULL OR r.expiration > NOW())";
             $q = $module->query($sql, [$pid]);
             $tokens = [];
             while ($row = $q->fetch_assoc()) {

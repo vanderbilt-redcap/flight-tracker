@@ -1483,7 +1483,7 @@ class Scholar {
             $seenInstitutions[$i] = preg_replace("/&?#039/", "'", trim($institution));
         }
         $seenInstitutions = array_filter($seenInstitutions, static function ($elem) {
-            return strtolower($elem) !== "other";
+            return (is_string($elem) && (strtolower($elem) !== "other"));
         });
         return $seenInstitutions;
 	}
@@ -3051,9 +3051,6 @@ class Scholar {
 
 	public function getCurrentDivision($rows) {
         $result = $this->getGenericValueForField($rows, "summary_current_division");
-		if ($result->getValue() == "N/A") {
-			return new Result("", "", "", "", $this->pid);
-		}
 		if ($result->getValue() == "") {
 			$deptName = $this->getPrimaryDepartmentText();
 			$nodes = preg_split("/\//", $deptName);

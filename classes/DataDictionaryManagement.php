@@ -242,13 +242,16 @@ class DataDictionaryManagement {
         return $returnData;
     }
 
+    private static function isNewMetadataMergeLive() {
+        return REDCapManagement::versionGreaterThanOrEqualTo(Application::getVersion(), "5.12.2");
+    }
+
     public static function installMetadataFromFiles($files, $token, $server, $pid, $eventId, $newSourceChoices, $deletionRegEx, $excludeForms) {
-        $useNewMerger = TRUE;
         $metadata = [];
         $metadata['REDCap'] = Download::metadata($token, $server);
         $metadata['REDCap'] = self::filterOutForms($metadata['REDCap'], $excludeForms);
 
-        if (!$useNewMerger) {
+        if (!self::isNewMetadataMergeLive()) {
             if (isset($_POST['fields'])) {
                 $postedFields = Sanitizer::sanitizeArray($_POST['fields']);
             } else {
@@ -291,7 +294,7 @@ class DataDictionaryManagement {
                     $metadata['file'] = self::changeFieldLabel($field, $mentorLabel, $metadata['file']);
                     $fileValue = $fieldLabels['file'][$field] ?? "";
                     $redcapValue = $fieldLabels['REDCap'][$field] ?? "";
-                    if (($fileValue != $redcapValue) && !$useNewMerger) {
+                    if (($fileValue != $redcapValue) && !self::isNewMetadataMergeLive()) {
                         $postedFields[] = $field;
                     }
                 }
@@ -316,7 +319,7 @@ class DataDictionaryManagement {
                     }
                 }
 
-                if ($useNewMerger) {
+                if (self::isNewMetadataMergeLive()) {
                     $feedback = self::mergeMetadataAndUploadNew($metadata['REDCap'], $metadata['file'], $token, $server, $pid, $deletionRegEx);
                 } else {
                     $metadata["REDCap"] = self::reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);

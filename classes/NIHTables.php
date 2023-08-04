@@ -7,7 +7,10 @@ use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class NIHTables {
-    const NIH_LINK = "https://grants.nih.gov/grants/funding/datatables-g/Consolidated_Training_Tables.pdf";
+    public const NIH_LINK = "https://grants.nih.gov/grants/funding/datatables-g/Consolidated_Training_Tables.pdf";
+    public const HTML_FIELD_SEPARATOR = "_____";
+    public const PART_1_YEARS = 15;
+    public const PART_3_YEARS = 5;
 
 	public function __construct($token, $server, $pid, $metadata = array()) {
 		$this->token = $token;
@@ -3167,7 +3170,7 @@ class NIHTables {
                             if ($part == 1) {
                                 if (
                                     (
-                                        self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 15)
+                                        self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], self::PART_1_YEARS)
                                         && in_array($row['custom_type'], $thisGrantTypes)
                                     )
                                     || !$row['custom_end']
@@ -3179,7 +3182,7 @@ class NIHTables {
                                 # for new applications only (currently)
                                 if (
                                     (
-                                        self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], 5)
+                                        self::isRecentGraduate($row['custom_type'], $row['custom_start'], $row['custom_end'], self::PART_3_YEARS)
                                         && in_array($row['custom_type'], $eight3Types)
                                     )
                                     || !$row['custom_end']
@@ -3559,5 +3562,4 @@ class NIHTables {
 	private static $unknownDateText = "Unknown Date";
 	private static $unknownInstitutionText = "Unknown Institution";
 	public static $maxYearsOfGrantReporting = 15;
-    public const HTML_FIELD_SEPARATOR = "_____";
 }

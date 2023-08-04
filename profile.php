@@ -13,6 +13,7 @@ use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
+use \Vanderbilt\CareerDevLibrary\Portal;
 
 if (!empty($_POST)) {
     require_once(dirname(__FILE__)."/small_base.php");
@@ -222,8 +223,16 @@ $(document).ready(function() {
 <div id='content'>
 <h1><?= $name ?></h1>
     <?php
+        $lines = [];
+        if (Portal::isLive()) {
+            $scholarPortalUrl = Application::getScholarPortalLink()."&match=$pid:$record";
+            $lines[] = Links::makeLink($scholarPortalUrl, "Spoof This Scholar in the Scholar Portal for This Project Only");
+        }
         if ($imgBase64) {
-            echo "<p class='centered'><img src='$imgBase64' class='thumbnail' alt='Picture for $name'></p>";
+            $lines[] = "<img src='$imgBase64' class='thumbnail' alt='Picture for $name' />";
+        }
+        if (!empty($lines)) {
+            echo "<p class='centered'>".implode("<br/>", $lines)."</p>";
         }
     ?>
     <div style='margin: 0 auto; max-width: 600px; padding: 4px 0;' class='blueBorder translucentBG'>

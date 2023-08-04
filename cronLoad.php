@@ -29,11 +29,7 @@ function runMainCrons(&$manager, $token, $server) {
 
         CareerDev::clearDate("Last Federal RePORTER Download", $pid);
 
-        if (Application::isVanderbilt()) {
-            $manager->addCron("drivers/updateInstitution.php", "updateInstitution", date("2023-07-26"));
-            $manager->addCron("drivers/updateInstitution.php", "updateInstitution", date("2023-07-27"));
-        }
-        $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Saturday");
+        $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Saturday", $allRecords, 10000);
 
         if (
             in_array("promotion_workforce_sector", $metadataFields)

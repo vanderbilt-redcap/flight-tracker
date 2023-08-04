@@ -77,6 +77,8 @@ class GrantLexicalTranslator {
             }
         } else if ($this->data) {
 		    Application::log("Warning: Invalid data ".$this->data);
+        } else {
+            Application::log("Warning: No lexical translator data ");
         }
 		// Application::log("Returning blank for $awardNo");
 		return "";
