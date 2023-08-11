@@ -92,19 +92,23 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
                 Application::log("Record $recordId has ".count($matchedData)." matches for $instrument", $pid);
                 $uniqueFields = [];
                 $timestampField = "";
+                $dateCreatedField = "";
                 if ($instrument == "coeus") {
                     $uniqueFields[] = "coeus_award_no";
                     $uniqueFields[] = "coeus_award_seq";
                     $timestampField = "coeus_update_timestamp";
+                    $dateCreatedField = "coeus_created";
                 } else if ($instrument == "coeus_submission") {
                     $uniqueFields[] = "coeussubmission_ip_number";
                     $uniqueFields[] = "coeussubmission_ip_seq";
                     $timestampField = "coeussubmission_update_timestamp";
+                    $dateCreatedField = "coeussubmission_created";
                 } else {
                     Application::log("No unique fields set => automatically including.", $pid);
                 }
                 $timestampFields = $timestampField ? [$timestampField] : [];
                 $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id"], $uniqueFields, $timestampFields), [$recordId]);
+                $dateCreateds = $dateCreatedField ? Download::oneFieldWithInstances($token, $server, $dateCreatedField) : [];
                 $maxInstance = REDCapManagement::getMaxInstance($redcapData, $instrument, $recordId);
                 $uniqueValues = [];
                 foreach ($uniqueFields as $uniqueField) {
@@ -171,13 +175,13 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
                                     )
                                     && !in_array($instance, $uploadInstances)
                                 ) {
-                                    $upload[] = makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $prefix, $metadataFields);
+                                    $upload[] = makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $prefix, $metadataFields, $dateCreateds);
                                 }
                             }
                         }
                     } else {
                         $maxInstance++;
-                        $upload[] = makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $maxInstance, $prefix, $metadataFields);
+                        $upload[] = makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $maxInstance, $prefix, $metadataFields, $dateCreateds);
                     }
                 }
                 if (!empty($upload)) {
@@ -250,7 +254,7 @@ function dedupCOEUS($token, $server, $pid, $recordId, $instrument, $prefix, $uni
     }
 }
 
-function makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $prefix, $metadataFields) {
+function makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $prefix, $metadataFields, $dateCreateds) {
     $uploadRow = [
         "record_id" => $recordId,
         "redcap_repeat_instrument" => $instrument,
@@ -258,6 +262,10 @@ function makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $pre
         $prefix."last_update" => date("Y-m-d"),
         $instrument."_complete" => "2",
     ];
+    $dateCreated = $dateCreateds[$recordId][$instance] ?? "";
+    if (!$dateCreated) {
+        $uploadRow[$prefix."created"] = date("Y-m-d");
+    }
     foreach ($dataRow as $dataField => $value) {
         if ($value) {
             $field = $prefix.strtolower($dataField);

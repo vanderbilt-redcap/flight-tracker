@@ -154,6 +154,7 @@ if (isset($_GET['next'])) {
 	echo "<p style='text-align: center;'><a href='$timelineLink&record=$nextRecord&next'>Next Record</a></p>\n";
 }
 
+$suffix = $pid."_".time();
 foreach ($classes as $c) {
     $divHeader = "";
     $divFooter = "";
@@ -189,8 +190,8 @@ foreach ($classes as $c) {
         echo implode("<td>&nbsp;</td>", $cells);
         echo "</tr></tbody></table>";
     }
-    echo "<div id='visualization{$pid}_$c' class='visualization'></div>";
-    echo "<div class='alignright'><button onclick='html2canvas(document.getElementById(\"visualization{$pid}_$c\"), { onrendered: (canvas) => { downloadCanvas(canvas, \"timeline.png\"); } }); return false;' class='smallest'>Save</button></div>";
+    echo "<div id='visualization{$suffix}_$c' class='visualization'></div>";
+    echo "<div class='alignright'><button onclick='html2canvas(document.getElementById(\"visualization{$suffix}_$c\"), { onrendered: (canvas) => { downloadCanvas(canvas, \"timeline.png\"); } }); return false;' class='smallest'>Save</button></div>";
     echo $divFooter;
 }
 
@@ -206,10 +207,10 @@ function runTimeoutToTurnOffEvents(el) {
     }, 2000);
 }
 
-const container_<?= $pid ?> = {};
-const items_<?= $pid ?> = {};
-const options_<?= $pid ?> = {};
-const timeline_<?= $pid ?> = {};
+const container_<?= $suffix ?> = {};
+const items_<?= $suffix ?> = {};
+const options_<?= $suffix ?> = {};
+const timeline_<?= $suffix ?> = {};
 $(document).ready(() => {
     <?php
     foreach ($classes as $c) {
@@ -218,11 +219,11 @@ $(document).ready(() => {
         $endDate = json_encode(date("Y-m-d", (int) $maxTs[$c]));
 
         echo "
-        container_".$pid."['$c'] = document.getElementById('visualization".$pid."_$c');
-        items_".$pid."['$c'] = new vis.DataSet($dataset);
-        options_".$pid."['$c'] = { start: $startDate, end: $endDate };
+        container_".$suffix."['$c'] = document.getElementById('visualization".$suffix."_$c');
+        items_".$suffix."['$c'] = new vis.DataSet($dataset);
+        options_".$suffix."['$c'] = { start: $startDate, end: $endDate };
         ";
-        echo getJSToLaunchTimeline($pid, $c)."\n";
+        echo getJSToLaunchTimeline($suffix, $c)."\n";
     }
     ?>
 });
@@ -440,10 +441,10 @@ function makePubDots($rows, $token, $server, &$id, &$minTs, &$maxTs) {
     return $grantsAndPubs;
 }
 
-function getJSToLaunchTimeline($pid, $c) {
+function getJSToLaunchTimeline($suffix, $c) {
     $lines = [];
-    $lines[] = "timeline_".$pid."[\"$c\"] = new vis.Timeline(container_".$pid."[\"$c\"], items_".$pid."[\"$c\"], options_".$pid."[\"$c\"]);";
-    $lines[] = "$(timeline_".$pid."[\"$c\"]).unbind(\"mousewheel\");";
-    $lines[] = "runTimeoutToTurnOffEvents(container_".$pid."[\"$c\"]);";
+    $lines[] = "timeline_".$suffix."[\"$c\"] = new vis.Timeline(container_".$suffix."[\"$c\"], items_".$suffix."[\"$c\"], options_".$suffix."[\"$c\"]);";
+    $lines[] = "$(timeline_".$suffix."[\"$c\"]).unbind(\"mousewheel\");";
+    $lines[] = "runTimeoutToTurnOffEvents(container_".$suffix."[\"$c\"]);";
     return implode("", $lines);
 }

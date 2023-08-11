@@ -39,7 +39,6 @@ if (($_POST['action'] == "oneByOne") && checkPOSTKeys($requiredFields)) {
         $uploadRow[$field] = REDCapManagement::sanitize($_POST[$field]);
     }
     $feedback = Upload::oneRow($uploadRow, $token, $server);
-    \Vanderbilt\FlightTrackerExternalModule\queueUpInitialEmail($recordId);
     Application::refreshRecordSummary($token, $server, $pid, $recordId);
     if ($feedback['error']) {
         echo "<div class='red padded'>ERROR! " . $feedback['error'] . "</div>\n";

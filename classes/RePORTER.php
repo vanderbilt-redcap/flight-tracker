@@ -284,6 +284,7 @@ class RePORTER {
         $dateFields = ["project_start_date", "project_end_date", "init_encumbrance_date", "award_notice_date",];
         $skip = ["spending_categories", "organization_type", ];
         $upload = [];
+        $metadataFields = Download::metadataFieldsByPid($this->pid);
 
         foreach ($this->getData() as $item) {
             if (!in_array($item['project_num'], $existingGrants)) {
@@ -295,6 +296,9 @@ class RePORTER {
                     "nih_reporter_complete" => "2",
                     "nih_last_update" => date("Y-m-d"),
                 ];
+                if (in_array("nih_created", $metadataFields)) {
+                    $uploadRow["nih_created"] = date("Y-m-d");
+                }
                 foreach ($item as $key => $value) {
                     if (!in_array($key, $skip)) {
                         $newField = "nih_" . strtolower($key);

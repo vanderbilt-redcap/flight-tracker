@@ -10,6 +10,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class Grants {
     const FLAGGED_GRANTS_SETTING = "flagged_grants";
+    const SPREADSHEET_SOURCES = ["data", "sheet2", "new2017", ];
 
 	public function __construct($token, $server, $metadata = []) {
 		$this->token = $token;
@@ -1562,7 +1563,11 @@ class Grants {
 
 					$currEndTs = strtotime($currGrant->getVariable("end"));
 					$grantEndTs = strtotime($basisGrant->getVariable("end"));
-					if ($currEndTs > $grantEndTs) {
+                    if (in_array($basisGrant->getVariable("source"), self::SPREADSHEET_SOURCES)) {
+                        $basisGrant->setVariable("end", self::makeDate($currEndTs));
+                    } else if (in_array($currGrant->getVariable("source"), self::SPREADSHEET_SOURCES)) {
+                        $basisGrant->setVariable("end", self::makeDate($grantEndTs));
+                    } else if ($currEndTs > $grantEndTs) {
 						$basisGrant->setVariable("end", self::makeDate($currEndTs));
 					}
 

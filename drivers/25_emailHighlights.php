@@ -51,14 +51,20 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
     $pmidsIdentified = [];
     $pidsCitationRecordsAndInstances = [];
     $pidsGrantRecordsAndInstances = [];
-    $fields = ["record_id", "citation_authors", "citation_pmid", "citation_ts", "citation_include", "citation_rcr", "citation_altmetric_score", "coeus_last_update", "nih_last_update", "vera_last_update"];
+    $fields = ["record_id", "citation_authors", "citation_pmid", "citation_ts", "citation_include", "citation_rcr", "citation_altmetric_score",];
     $grantInstrumentsAndPrefices = [
         "nih_reporter" => "nih",
         "nsf" => "nsf",
         "coeus" => "coeus",
         "vera" => "vera",
         "custom_grant" => "custom",
+        "ies_grant" => "ies",
     ];
+    foreach(array_values($grantInstrumentsAndPrefices) as $prefix) {
+        $fields[] = $prefix."_last_update";
+        $fields[] = $prefix."_created";
+    }
+    $fields = array_unique($fields);
     $names = [];
     $emails = [];
     $allMetadata = [];
@@ -142,9 +148,17 @@ function sendEmailHighlights($token, $server, $pid, $records, $allPids = FALSE) 
                         $prefix = $grantInstrumentsAndPrefices[$instrument];
                         $instance = $row['redcap_repeat_instance'];
                         $lastUpdate = $row[$prefix.'_last_update'];
+                        $dateCreated = $row[$prefix.'_created'] ?? "";
                         if (
-                            $lastUpdate
-                            && (strtotime($lastUpdate) > $warningTs)
+                            (
+                                $dateCreated
+                                && (strtotime($dateCreated) > $warningTs)
+                            )
+                            || (
+                                !$dateCreated
+                                && $lastUpdate
+                                && (strtotime($lastUpdate) > $warningTs)
+                            )
                         ) {
                             enrollNewInstance($pidsGrantRecordsAndInstances, $currPid, $recordId, $instance, $instrument);
                         }
@@ -294,7 +308,7 @@ a { color: #5764ae; }
     for ($i = 0; $i < count($requestedGrants); $i++) {
         $requestedGrants[$i] = Grant::translateToBaseAwardNumber($requestedGrants[$i]);
     }
-    $htmlRows = ["<h2>Publications After $thresholdDate</h2>"];
+    $htmlRows = ["<h2>All Publications After $thresholdDate</h2>"];
     $performanceRows = ["<h2>Publications With Newly Altmetric &gt; " . Altmetric::THRESHOLD_SCORE . " or RCR &gt; " . iCite::THRESHOLD_SCORE . "</h2>"];
     $publicationPids = array_unique(array_merge(array_keys($scholarsIdentified), array_keys($pidsCitationRecordsAndInstances)));
     if (!empty($publicationPids)) {

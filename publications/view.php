@@ -162,8 +162,9 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
     $dates = [];
     $lastNames = Download::lastnames($token, $server);
     $firstNames = Download::firstnames($token, $server);
+    $fields = Application::getCitationFields($metadata);
     foreach ($records as $record) {
-        $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), [$record]);
+        $redcapData = Download::fieldsForRecords($token, $server, $fields, [$record]);
         $pubs = new Publications($token, $server, $metadata);
         $pubs->setRows($redcapData);
         if (isset($_GET['test'])) {

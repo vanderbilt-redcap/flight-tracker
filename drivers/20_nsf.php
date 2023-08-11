@@ -183,6 +183,7 @@ function transformIntoREDCap($recordMatches, $token, $server) {
 
     $errors = [];
     $totalAwards = 0;
+    $metadataFields = Download::metadataFields($token, $server);
     foreach ($recordMatches as $recordId => $awards) {
         if (!empty($awards)) {
             $totalAwards += count($awards);
@@ -198,6 +199,9 @@ function transformIntoREDCap($recordMatches, $token, $server) {
                         "nsf_last_update" => date("Y-m-d"),
                         $instrument."_complete" => "2",
                     ];
+                    if (in_array("nsf_created", $metadataFields)) {
+                        $uploadRow["nsf_created"] = date("Y-m-d");
+                    }
                     foreach ($fields as $field) {
                         if (!isset($award[$field])) {
                             continue;

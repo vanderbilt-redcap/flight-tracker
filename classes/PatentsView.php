@@ -114,6 +114,9 @@ class PatentsView {
             $row['patent_assignees'] = implode(", ", $assignees["names"]);
             $row['patent_assignee_ids'] = implode(", ", $assignees["ids"]);
             $row['patent_last_update'] = date("Y-m-d");
+            if (in_array("patent_created", $metadataFields)) {
+                $row['patent_created'] = date("Y-m-d");
+            }
             $row['patent_complete'] = "2";
             $rows[] = $row;
         }

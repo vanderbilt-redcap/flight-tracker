@@ -92,6 +92,9 @@ function matchNamesWithExcel($excelData, $token, $server, $pid) {
                         "redcap_repeat_instance" => $maxInstance[$recordId] + 1,
                         "ies_grant_complete" => "2",
                     ];
+                    if (in_array("ies_created", $metadataFields)) {
+                        $uploadRow["ies_created"] = date("Y-m-d");
+                    }
                     $originalCount = count($uploadRow);
                     makeREDCapForIES($uploadRow, $spreadsheet->getActiveSheet(), $headerRow, $rowNum, $prefix, $metadataFields);
                     if (

@@ -1037,6 +1037,9 @@ class Publications {
             if (in_array("citation_last_update", $metadataFields)) {
                 $row["citation_last_update"] = date("Y-m-d");
             }
+            if (in_array("citation_created", $metadataFields)) {
+                $row["citation_created"] = date("Y-m-d");
+            }
             if (in_array("citation_flagged", $metadataFields)) {
                 $row["citation_flagged"] = "";
             }

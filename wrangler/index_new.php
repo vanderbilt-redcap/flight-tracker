@@ -1306,6 +1306,13 @@ $awardDescript = Grants::areFlagsOn($pid) ? "Flagged" : "Career-Defining";
             });
         }
 
+        // for mousewheel
+        function runTimeoutToTurnOffEvents(el) {
+            setTimeout(() => {
+                el.parentNode.replaceChild(el.cloneNode(true), el);
+            }, 2000);
+        }
+
         function getEarliestStartDate(cp) {
             let ts = Date.now();
             for (let i=0; i < cp.length; i++) {
@@ -1398,6 +1405,7 @@ $awardDescript = Grants::areFlagsOn($pid) ? "Flagged" : "Career-Defining";
             } else {
                 $('#visualization').before('<div id="visualizationTitle">'+title+'</div>');
             }
+            runTimeoutToTurnOffEvents(container);
         };
 
 

@@ -166,6 +166,10 @@ class DateManagement {
         return strtotime("$year-$month-$day");
     }
 
+    public static function PHPTsToREDCapTs($phpTs) {
+        return date("YmdHis", $phpTs);
+    }
+
     public static function getLatestDate($dates) {
         $latestTs = 0;
         $latestDate = "";

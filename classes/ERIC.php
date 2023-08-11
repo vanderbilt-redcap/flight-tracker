@@ -51,6 +51,9 @@ class ERIC {
                     $prefix."last_update" => date("Y-m-d"),
                     $prefix."link" => "https://eric.ed.gov/?id=$id",
                 ];
+                if (in_array($prefix."created", $ericFields)) {
+                    $uploadRow[$prefix."created"] = date("Y-m-d");
+                }
                 $hasData = FALSE;
                 foreach ($ericFields as $ericField) {
                     $value = $entry[$ericField] ?? "";

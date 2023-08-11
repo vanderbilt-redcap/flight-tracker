@@ -2505,6 +2505,10 @@ class Grant {
             if (self::getShowDebug()) { Application::log($awardNo.": pi_flag is N"); }
             return "N/A";
         }
+        if (isset($specs['type']) && ($specs['type'] !== "")) {
+            if (self::getShowDebug()) { Application::log($awardNo.": preset type ".$specs['type']); }
+            return $specs['type'];
+        }
 
         if (self::getShowDebug()) { Application::log($awardNo.": First Pass"); }
         if ($type = $this->lexicallyTranslate($awardNo)) {
