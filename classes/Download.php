@@ -44,7 +44,7 @@ class Download {
 
         $returnRow = ["record_id" => $recordId, "redcap_repeat_instrument" => $instrument, "redcap_repeat_instance" => $instance];
 	    while ($row = $q->fetch_assoc()) {
-            $returnRow[$row['field_name']] = $row['value'];
+            $returnRow[Sanitizer::sanitize($row['field_name'])] = Sanitizer::sanitizeWithoutChangingQuotes($row['value']);
         }
         return $returnRow;
     }
@@ -59,7 +59,7 @@ class Download {
                 $q = db_query($sql);
             }
             if ($row = $q->fetch_assoc()) {
-                self::$rateLimitPerMinute = $row['value'];
+                self::$rateLimitPerMinute = Sanitizer::sanitizeInteger($row['value']);
             }
         }
         if (!self::$rateLimitTs) {
@@ -222,6 +222,18 @@ class Download {
 	    return $mentors;
     }
 
+    public static function citationFields($token, $server) {
+        $metadataFields = self::metadataFields($token, $server);
+        $allCitationFields = array_unique(array_merge(['record_id'], DataDictionaryManagement::filterFieldsForPrefix($metadataFields, "citation_")));
+        $relevantCitationFields = [];
+        foreach ($allCitationFields as $field) {
+            if (($field == "record_id") || in_array($field, Application::$citationFields)) {
+                $relevantCitationFields[] = $field;
+            }
+        }
+        return $relevantCitationFields;
+    }
+
 	# returns a hash with recordId => array of mentorNames
 	public static function primaryMentors($token, $server) {
 		$mentors = self::oneField($token, $server, "summary_mentor");
@@ -365,7 +377,7 @@ class Download {
             }
             $forms = [];
             while ($row = $q->fetch_assoc()) {
-                $forms[] = $row['form_name'];
+                $forms[] = Sanitizer::sanitize($row['form_name']);
             }
             return $forms;
         } else {
@@ -384,7 +396,7 @@ class Download {
         }
         $fields = [];
         while ($row = $q->fetch_assoc()) {
-            $fields[] = $row['field_name'];
+            $fields[] = Sanitizer::sanitize($row['field_name']);
         }
         return $fields;
     }
@@ -549,7 +561,7 @@ class Download {
             $result = db_query($sql, $params);
         }
         if ($row = $result->fetch_assoc()) {
-            $edocId = $row['value'];
+            $edocId = Sanitizer::sanitizeInteger($row['value']);
             if ($edocId) {
                 return FileManagement::getEdocBase64($edocId);
             }
@@ -569,8 +581,8 @@ class Download {
         } else if ($result->num_rows > 1) {
             $resultsByInstance = [];
             while ($row = $result->fetch_assoc()) {
-                $instance = $row['instance'] ?? 1;
-                $resultsByInstance[$instance] = $row['value'];
+                $instance = Sanitizer::sanitizeInteger($row['instance'] ?? 1);
+                $resultsByInstance[$instance] = Sanitizer::sanitizeWithoutChangingQuotes($row['value']);
             }
             return $resultsByInstance;
         }
@@ -1120,7 +1132,7 @@ class Download {
         }
         $records = [];
         while ($row = $q->fetch_assoc()) {
-            $records[] = $row['record'];
+            $records[] = Sanitizer::sanitize($row['record']);
         }
         return $records;
     }
@@ -1170,12 +1182,12 @@ class Download {
 	    while ($row = $q->fetch_assoc()) {
 	        if ($row['instance']) {
 	            $hasMultipleInstances = TRUE;
-	            $instance = $row['instance'];
+	            $instance = Sanitizer::sanitizeInteger($row['instance']);
             } else {
 	            $instance = 1;
             }
-	        $recordId = $row['record'];
-	        $value = $row['value'];
+	        $recordId = Sanitizer::sanitize($row['record']);
+	        $value = Sanitizer::sanitizeWithoutChangingQuotes($row['value']);
 	        if (!isset($values[$recordId])) {
 	            $values[$recordId] = [];
             }
@@ -1276,7 +1288,7 @@ class Download {
         }
         while ($row = $result->fetch_assoc()) {
             if (in_array($row['record'], $records)) {
-                $edocs[$row['record']] = $row['value'];
+                $edocs[Sanitizer::sanitize($row['record'])] = Sanitizer::sanitizeInteger($row['value']);
             }
         }
         return $edocs;
