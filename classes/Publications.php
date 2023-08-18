@@ -186,19 +186,28 @@ class Publications {
         $first = preg_replace("/\s+/", "+", $first);
         $last = preg_replace("/\s+/", "+", $last);
         $term = $first."+".$last."%5Bau%5D";
-        $institutionSearchNodes = [];
-        foreach ($institutions as $institution) {
-            $institution = preg_replace("/\s*&\s*/", " ", $institution);
-            $institution = preg_replace("/\s+/", "+", $institution);
-            $institution = Sanitizer::repetitivelyDecodeHTML(strtolower($institution));
-            $institution = str_replace("(", "", $institution);
-            $institution = str_replace(")", "", $institution);
-            if (!in_array($institution, ["children", "children'", "children's", "children#039", "children#039s"])) {
-                $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
+        if (
+            (count($institutions) > 1)
+            || (
+                !empty($institutions)
+                && ($institutions[0] != "all")
+            )
+        ) {
+            $institutionSearchNodes = [];
+            foreach ($institutions as $institution) {
+                $institution = preg_replace("/\s*&\s*/", " ", $institution);
+                $institution = preg_replace("/\s+/", "+", $institution);
+                $institution = Sanitizer::repetitivelyDecodeHTML(strtolower($institution));
+                $institution = str_replace("(", "", $institution);
+                $institution = str_replace(")", "", $institution);
+                if (!in_array($institution, ["children", "children'", "children's", "children#039", "children#039s"])) {
+                    $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
+                }
             }
-        }
-        if (!empty($institutionSearchNodes)) {
-            $term .= "AND (".implode("+OR+", $institutionSearchNodes).")";
+
+            if (!empty($institutionSearchNodes)) {
+                $term .= "AND (" . implode("+OR+", $institutionSearchNodes) . ")";
+            }
         }
         $pmids = self::queryPubMed($term, $pid);
 

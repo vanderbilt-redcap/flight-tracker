@@ -70,13 +70,12 @@
 	   "mstpDownload"
    ],
 
-
-	"framework-version": 6,
+	"framework-version": 8,
 
 	"compatibility": {
 		"php-version-min": "7.3.0",
 		"php-version-max": "",
-		"redcap-version-min": "10.6.4",
+		"redcap-version-min": "11.1.1",
 		"redcap-version-max": ""
 	},
 

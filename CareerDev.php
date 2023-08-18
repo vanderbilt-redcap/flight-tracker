@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.13.0";
+		return "5.13.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -1107,6 +1107,7 @@ class CareerDev {
                 "Search Publications" => self::link("/search/publications.php"),
                 "Publication Impact Measures" => self::link("/publications/scoreDistribution.php"),
                 "Public Access Compliance" => self::link("/publications/complianceReport.php"),
+                "Publications with Mentor(s)" => self::link("/publications/pubsWithMentor.php"),
             ];
             return $ary;
         }
@@ -1135,11 +1136,12 @@ class CareerDev {
                 $ary["Mentee-Mentor Agreements Dashboard"] = self::link("/mentor/dashboard.php");
             }
 			$ary = array_merge($ary, [
-					"List of Mentors" => self::link("/tablesAndLists/mentorList.php"),
+					"List of Current Mentors" => self::link("/tablesAndLists/mentorList.php"),
 					"Mentor Performance" => self::link("/tablesAndLists/mentorConversion.php"),
 					"All Mentor Data (CSV)" => self::link("/tablesAndLists/generateMentoringCSV.php"),
                     "Trainees Becoming Mentors" => self::link("/tablesAndLists/trainee2mentor.php"),
-					]);
+                    "Publications with Mentor(s)" => self::link("/publications/pubsWithMentor.php"),
+                ]);
 		    return $ary;
 		}
 		if ($menuName == "Scholars") {

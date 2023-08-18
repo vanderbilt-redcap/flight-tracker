@@ -95,6 +95,8 @@ foreach ($queue as $i => $row) {
                 }
             } else if (($header == "records") && isset($row['pids'])) {
                 echo "<td class='bolded'>" . count($row['pids']) . " pids</td>";
+            } else if (is_array($row[$header])) {
+                echo "<td style='max-width: 200px;'><div class='scrollable'>" . implode(", ", $row[$header]) . "</div></td>";
             } else {
                 echo "<td></td>";
             }

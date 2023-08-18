@@ -37,6 +37,15 @@ try {
                 require_once(dirname(__FILE__) . "/drivers/23_getERIC.php");
                 \Vanderbilt\CareerDevLibrary\getERIC($token, $server, $pid, [$recordId]);
             }
+        } else if ($fetchType == "publications_name") {
+            require_once(dirname(__FILE__) . "/publications/getAllPubs_func.php");
+            \Vanderbilt\CareerDevLibrary\getNamePubs($token, $server, $pid, [$recordId]);
+            require_once(dirname(__FILE__) . "/publications/updateBibliometrics.php");
+            \Vanderbilt\CareerDevLibrary\updateBibliometrics($token, $server, $pid, [$recordId]);
+            if (ERIC::isRecordEnabled($recordId, $token, $server, $pid)) {
+                require_once(dirname(__FILE__) . "/drivers/23_getERIC.php");
+                \Vanderbilt\CareerDevLibrary\getERIC($token, $server, $pid, [$recordId]);
+            }
         } else if ($fetchType == "grants") {
             $forms = Download::metadataForms($token, $server);
 
@@ -52,6 +61,29 @@ try {
 
             require_once(dirname(__FILE__) . "/drivers/2s_updateRePORTER.php");
             \Vanderbilt\CareerDevLibrary\updateNIHRePORTER($token, $server, $pid, [$recordId]);
+
+            if (Application::isVanderbilt() && !Application::isLocalhost()) {
+                require_once(dirname(__FILE__)."/drivers/19_updateNewCoeus.php");
+                require_once(dirname(__FILE__)."/drivers/22_getVERA.php");
+                \Vanderbilt\CareerDevLibrary\updateCoeusGrants($token, $server, $pid, [$recordId]);
+                \Vanderbilt\CareerDevLibrary\updateCoeusSubmissions($token, $server, $pid, [$recordId]);
+                \Vanderbilt\CareerDevLibrary\getVERA($token, $server, $pid, [$recordId]);
+            }
+        } else if ($fetchType == "grants_name") {
+            $forms = Download::metadataForms($token, $server);
+
+            if (in_array("nsf", $forms)) {
+                require_once(dirname(__FILE__) . "/drivers/20_nsf.php");
+                \Vanderbilt\CareerDevLibrary\getNSFGrantsByName($token, $server, $pid, [$recordId]);
+            }
+
+            if (in_array("ies_grant", $forms)) {
+                require_once(dirname(__FILE__) . "/drivers/24_getIES.php");
+                \Vanderbilt\CareerDevLibrary\getIES($token, $server, $pid, [$recordId]);
+            }
+
+            require_once(dirname(__FILE__) . "/drivers/2s_updateRePORTER.php");
+            \Vanderbilt\CareerDevLibrary\updateNIHRePORTERByName($token, $server, $pid, [$recordId]);
 
             if (Application::isVanderbilt() && !Application::isLocalhost()) {
                 require_once(dirname(__FILE__)."/drivers/19_updateNewCoeus.php");

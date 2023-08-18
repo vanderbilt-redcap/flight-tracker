@@ -55,7 +55,7 @@ class Portal {
     public static function isLive() {
         return (
                 Application::isLocalhost()
-                || REDCapManagement::versionGreaterThanOrEqualTo("6.0.0", Application::getVersion())
+                || REDCapManagement::versionGreaterThanOrEqualTo(Application::getVersion(), "6.0.0")
                 || Application::isVanderbilt()
             );
     }
@@ -1364,7 +1364,42 @@ Examples:
 
         $mmaURL = Application::getMenteeAgreementLink($this->pid);
         $html .= "<h4>".Links::makeLink($mmaURL, "Access Your Mentee-Mentor Agreement for ".$this->projectTitle, FALSE)."</h4>";
+        $html .= $this->makePublicationsWithMentors($mentors);
         return $html;
+    }
+
+    private function makePublicationsWithMentors($mentors) {
+        if ($this->token && $this->server && $this->recordId) {
+            $citationFields = Download::citationFields($this->token, $this->server);
+            $redcapData = Download::fieldsForRecords($this->token, $this->server, $citationFields, [$this->recordId]);
+
+            $pubs = new Publications($this->token, $this->server, []);
+            $pubs->setRows($redcapData);
+            $matchedCitations = [];
+            foreach ($pubs->getCitations("Included") as $citation) {
+                foreach ($mentors as $mentorName) {
+                    if ($citation->hasAuthor($mentorName)) {
+                        $matchedCitations[] = $citation;
+                        break;   // just need one mentor match per citation
+                    }
+                }
+            }
+            if (empty($matchedCitations)) {
+                return "";
+            }
+
+            $citationWord = (count($matchedCitations) > 1) ? "Publications" : "Publication";
+            $mentorWord = (count($matchedCitations) == 1) ? "Mentor" : "Mentors";
+            $namesToBold = array_merge([$this->name], $mentors);
+
+            $html = "<h4>".count($matchedCitations)." $citationWord with $mentorWord: ".REDCapManagement::makeConjunction($mentors)."</h4>";
+            foreach ($matchedCitations as $citation) {
+                $html .= "<p class='max-width' style='margin: 1em auto;'>".$citation->getCitationWithLink(FALSE, TRUE, $namesToBold)."</p>";
+            }
+            return $html;
+        } else {
+            return "";
+        }
     }
 
     protected $pid;

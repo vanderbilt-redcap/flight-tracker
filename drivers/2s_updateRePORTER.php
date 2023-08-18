@@ -8,14 +8,18 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 
 function updateFederalRePORTER($token, $server, $pid, $records) {
-    updateRePORTER("Federal", $token, $server, $pid, $records);
+    updateRePORTER("Federal", $token, $server, $pid, $records, FALSE);
 }
 
 function updateNIHRePORTER($token, $server, $pid, $records) {
-    updateRePORTER("NIH", $token, $server, $pid, $records);
+    updateRePORTER("NIH", $token, $server, $pid, $records, FALSE);
 }
 
-function updateRePORTER($cat, $token, $server, $pid, $records) {
+function updateNIHRePORTERByName($token, $server, $pid, $records) {
+    updateRePORTER("NIH", $token, $server, $pid, $records, TRUE);
+}
+
+function updateRePORTER($cat, $token, $server, $pid, $records, $searchWithoutInstitutions) {
 	$metadata = Download::metadata($token, $server);
 	$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	$allFirstNames = Download::firstnames($token, $server);
@@ -54,8 +58,12 @@ function updateRePORTER($cat, $token, $server, $pid, $records) {
 
 	    $lastNames = NameMatcher::explodeLastName($allLastNames[$recordId]);
 	    $firstNames = NameMatcher::explodeFirstName($allFirstNames[$recordId], $allMiddleNames[$recordId]);
-	    $myInstitutions = Scholar::explodeInstitutions(REDCapManagement::findField($redcapData, $recordId, "identifier_institution"));
-	    $institutions = array_unique(array_merge($universalInstitutions, $myInstitutions));
+        if ($searchWithoutInstitutions) {
+            $institutions = ["all"];
+        } else {
+            $myInstitutions = Scholar::explodeInstitutions(REDCapManagement::findField($redcapData, $recordId, "identifier_institution"));
+            $institutions = array_unique(array_merge($universalInstitutions, $myInstitutions));
+        }
 	    $reporter = new RePORTER($pid, $recordId, $cat, $excludeList[$recordId]);
 	    $upload = [];
 	    foreach ($lastNames as $lastName) {

@@ -501,18 +501,28 @@ class RePORTER {
         if (!$piName || empty($institutions)) {
             return [];
         }
+        $searchInstitutions = !((count($institutions) == 1) && ($institutions[0] == "all"));
         if ($this->isFederal()) {
             $query = $this->server."/v1/projects/search?query=PiName:".urlencode($piName);
             $this->currData = $this->runGETQuery($query);
             $this->currData = $this->filterForExcludeList();
-            $this->currData = $this->filterForInstitutionsAndName($piName, $institutions);
+            if ($searchInstitutions) {
+                $this->currData = $this->filterForInstitutionsAndName($piName, $institutions);
+            }
         } else if ($this->isNIH()) {
             list($firstName, $lastName) = NameMatcher::splitName($piName, 2);
-            $payload = [
-                "criteria" => [
-                    "pi_names" => [["first_name" => $firstName], ["last_name" => $lastName]],
+            if ($searchInstitutions) {
+                $criteria = [
+                    "pi_names" => [["last_name" => $lastName]],
                     "org_names" => $institutions,
-                ],
+                ];
+            } else {
+                $criteria = [
+                    "pi_names" => [["last_name" => $lastName]],
+                ];
+            }
+            $payload = [
+                "criteria" => $criteria,
             ];
             $location = $this->server."/v1/projects/search";
             $data = $this->runPOSTQuery($location, $payload);

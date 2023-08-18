@@ -4,9 +4,8 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\Cohorts;
-use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use Vanderbilt\CareerDevLibrary\CelebrationsEmail;
 use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\CronManager;
 use Vanderbilt\CareerDevLibrary\FeatureSwitches;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -133,17 +132,12 @@ function runMainCrons(&$manager, $token, $server) {
             $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Monday", $allRecords, 100000);
         }
 
-        if (Application::getSetting("email_highlights_to", $pid)) {
-            $frequency = Application::getSetting("highlights_frequency", $pid);
-            if ($frequency == "weekly") {
-                $manager->addCron("drivers/25_emailHighlights.php", "sendEmailHighlights", "Monday", $allRecords, 100000);
-            } else if ($frequency == "monthly") {
-                $manager->addCron("drivers/25_emailHighlights.php", "sendEmailHighlights", date("Y-m-01"), $allRecords, 100000);
-            } else {
-                Application::log("25_: highlights_frequency: $frequency", $pid);
-            }
-        } else {
-            Application::log("25_: No email_highlights_to", $pid);
+        $celebrations = new CelebrationsEmail($token, $server, $pid, []);
+        if ($celebrations->hasEmail("weekly")) {
+            $manager->addCron("drivers/25_emailHighlights.php", "sendWeeklyEmailHighlights", "Monday", $allRecords, 100000);
+        }
+        if ($celebrations->hasEmail("monthly")) {
+            $manager->addCron("drivers/25_emailHighlights.php", "sendMonthlyEmailHighlights", date("Y-m-01"), $allRecords, 100000);
         }
 
         $numRecordsForSummary = 15;
@@ -274,10 +268,47 @@ function getRecordsToUpdateBibliometrics($token, $server, $dayOfMonth, $daysInMo
     return $recordsToRun;
 }
 
-function loadMultiProjectCrons(&$manager, $pids) {
-    if (!Application::isLocalhost()) {
+function loadMultiProjectCrons(&$manager, $pids)
+{
+    if (Application::isVanderbilt() && !Application::isLocalhost()) {
         $manager->addMultiCron("drivers/11_vfrs.php", "updateVFRSMulti", "Thursday", $pids);
         $manager->addMultiCron("drivers/19_updateNewCoeus.php", "updateAllCOEUSMulti", "Wednesday", $pids);
         $manager->addMultiCron("drivers/22_getVERA.php", "getVERAMulti", "Monday", $pids);
+    }
+    $manager->addMultiCron("drivers/preprocess.php", "preprocessPortal", date("Y-m-d"), $pids);
+    loadInternalSharingCrons($manager, $pids);
+}
+
+function loadInternalSharingCrons(&$manager, $pids) {
+    $preprocessingPids = [];
+    foreach ($pids as $pid) {
+        if (
+            Application::getSetting("token", $pid)
+            && Application::getSetting("server", $pid)
+            && !Application::getSetting("turn_off", $pid)
+        ) {
+            $preprocessingPids[] = $pid;
+        }
+    }
+    if (Application::isVanderbilt() && !Application::isLocalhost()) {
+        $preprocessingPids[] = NEWMAN_SOCIETY_PROJECT;
+    } else if (Application::isVanderbilt() && Application::isLocalhost()) {
+        $preprocessingPids[] = LOCALHOST_TEST_PROJECT;
+    }
+    if (empty($preprocessingPids)) {
+        return;
+    }
+
+    if (preg_match("/redcaptest.vanderbilt.edu/", SERVER_NAME)) {
+        $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", date("Y-m-d"), $preprocessingPids, $preprocessingPids);
+    } else {
+        $preprocessDayOfWeek = "Saturday";
+        $module = Application::getModule();
+        $destPids = $module->getProjectsToRunTonight($preprocessingPids);
+        if (!empty($destPids) && (date("l") !== $preprocessDayOfWeek)) {
+            $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", $preprocessDayOfWeek, $preprocessingPids, $destPids);
+        } else {
+            $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", $preprocessDayOfWeek, $preprocessingPids, $preprocessingPids);
+        }
     }
 }

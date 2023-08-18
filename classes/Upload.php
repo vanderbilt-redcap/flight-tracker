@@ -305,9 +305,14 @@ class Upload
 
         self::adaptToUTF8($metadata);
 
+        if (!defined("PROJECT_ID")) {
+            define("PROJECT_ID", $pid);    // to satisfy Metadata::error_checking
+        }
+        \MetaData::createDataDictionarySnapshot();
+
         // Save a flat item-based metadata array
         $dd_array = \MetaData::convertFlatMetadataToDDarray($metadata);
-        list ($errors, $warnings, $dd_array) = \MetaData::error_checking($dd_array, FALSE, FALSE);
+        list ($errors, $warnings) = \MetaData::error_checking($dd_array, FALSE, FALSE);
         if (!empty($errors)) {
             throw new \Exception("Input errors: ".strip_tags(implode("\n", $errors)));
         }
@@ -319,7 +324,6 @@ class Upload
         if (!empty($errors)) {
             throw new \Exception("Upload errors: ".strip_tags(implode("\n", $errors)));
         } else {
-            \MetaData::createDataDictionarySnapshot();
             \Logging::logEvent("", "redcap_metadata", "MANAGE", $pid, "project_id = " . $pid, "Upload data dictionary");
 
             return $count;

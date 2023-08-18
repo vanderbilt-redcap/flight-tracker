@@ -55,6 +55,7 @@ class EmailManager {
 	public function deleteEmail($name) {
 		if (isset($this->data[$name])) {
 			unset($this->data[$name]);
+            $this->saveData();
 		}
 	}
 

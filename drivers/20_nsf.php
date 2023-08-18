@@ -4,7 +4,15 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
+function getNSFGrantsByName($token, $server, $pid, $records) {
+    getNSFGrantsGeneric($token, $server, $pid, $records, TRUE);
+}
+
 function getNSFGrants($token, $server, $pid, $records) {
+    getNSFGrantsGeneric($token, $server, $pid, $records, FALSE);
+}
+
+function getNSFGrantsGeneric($token, $server, $pid, $records, $searchWithoutInstitutions) {
     if (empty($records)) {
         $records = Download::recordIds($token, $server);
     }
@@ -58,7 +66,7 @@ function getNSFGrants($token, $server, $pid, $records) {
                                     $recordMatches,
                                     $firstNames[$recordId] ?? "",
                                     $lastNames[$recordId] ?? "",
-                                    $recordInstitutions,
+                                    ($searchWithoutInstitutions ? ["all"] : $recordInstitutions),
                                     $recordId,
                                     $award
                                 );
@@ -128,6 +136,8 @@ function checkForMatches(&$recordMatches, $firstName, $lastName, $institutions, 
     if (!$thisInstitution) {
         return;
     }
+    $searchInstitutions = !((count($institutions) == 1) && ($institutions[0] == "all"));
+
     if (!isset($recordMatches[$recordId][$awardId])) {
         $recordFirstNames = NameMatcher::explodeFirstName($firstName ?? "");
         $recordLastNames = NameMatcher::explodeLastName($lastName ?? "");
@@ -138,7 +148,10 @@ function checkForMatches(&$recordMatches, $firstName, $lastName, $institutions, 
                     if (
                         !isset($recordMatches[$recordId][$awardId])
                         && NameMatcher::matchName($recFirst, $recLast, $piFirst, $piLast)
-                        && NameMatcher::matchInstitution($thisInstitution, $institutions)
+                        && (
+                            NameMatcher::matchInstitution($thisInstitution, $institutions)
+                            || !$searchInstitutions
+                        )
                     ) {
                         if (!isset($recordMatches[$recordId])) {
                             $recordMatches[$recordId] = [];

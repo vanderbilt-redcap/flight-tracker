@@ -161,6 +161,9 @@ if (isset($currSetting["who"]["individuals"])) {
 	}
 }
 
+$thisUrl = Application::link("this");
+$deleteButtonColumn = $currSettingName ? "<td class='centered'><button onclick='$(\"#button_pressed\").val(\"1\"); deleteEmailSetting(\"$currSettingName\", \"$thisUrl\"); return false;'>Delete Setting</button></td>" : "";
+
 ?>
 <link href="<?= CareerDev::link("/css/quill.snow.css") ?>" rel="stylesheet">
 <script src="<?= CareerDev::link("/js/quill.js") ?>"></script>
@@ -208,13 +211,24 @@ $(document).ready(function() {
 
 ?>
 	$(".datetime").on('change', function() { var name = $(this).attr('name'); $('input[type=hidden][name='+name+']').val($(this).val()+'M'); });
+
+    $(window).on("beforeunload", (event) => {
+        if (($('#is_activated').val() === "1") || ($('#button_pressed').val() === '1')) {
+            console.log('beforeunload false: '+$('#is_activated').val()+' and '+$('#button_pressed').val());
+            event.preventDefault();
+            event.returnValue = '';
+        } else {
+            console.log('beforeunload true: '+$('#is_activated').val()+' and '+$('#button_pressed').val());
+            $('#button_pressed').val('0');
+        }
+    });
 });
 </script>
 
 <style>
 .ql-picker-label { z-index: -1; }
 </style>
-<script src='<?= CareerDev::link("/js/emailMgmtNew.js") ?>'></script>
+<script src='<?= CareerDev::link("/emailMgmt/emailMgmtNew.js") ?>'></script>
 <div id='overlay'></div>
 
 <h1>Send an Email</h1>
@@ -226,6 +240,7 @@ $(document).ready(function() {
 		<td class='centered'>Email Name:<br><input type='text' id='name' name='name' class='long' value='<?= $currSettingName ?>'></td>
 		<td class='centered'>--OR--</td>
 		<td class='centered'>Load Existing Email:<br><?= $mgr->getSelectForExistingNames($selectName, $currSettingName) ?></td>
+            <?= $deleteButtonColumn ?>
 	</tr></table>
 
 	<table style='width: 100%;'>
@@ -346,29 +361,32 @@ $(document).ready(function() {
 		echo "<div style='margin-top: 50px;' id='status' class='blue padded'>";
 		if (isset($currSetting['enabled']) && $currSetting['enabled']) {
 			echo "<h2 class='blue'>Current Status: Activated</h2>";
+            echo "<input type='hidden' id='is_activated' value='1' />";
 			echo "<p class='centered'><button onclick='disableEmailSetting(); return true;'>Modify Email</button></p>\n";   // button should resubmit entire page
 			$stageText = "Update &amp; Re-Stage to Test";
 			$stageStyle = " display: none;";
 		} else {
 			echo "<h2 class='blue'>Current Status: Not Activated</h2>";
+            echo "<input type='hidden' id='is_activated' value='0' />";
 			$stageText = $intro."Stage to Test";
 			$stageStyle = "";
 		}
 		echo "</div>";
+        echo "<input type='hidden' id='button_pressed' value='0' />";
 		echo "<div style='margin-top: 50px;$stageStyle' id='save' class='blue padded'>";
 		echo "<h2 class='blue'>Advance Process</h2>";
 		echo "<input type='hidden' name='enabled' value='".($currSetting['enabled'] ? "true" : "false")."'>";
 		echo "<h3 class='blue'>Step 1 of 3</h3>";
-		echo "<p class='centered'><button>$stageText</button></p>";
+		echo "<p class='centered'><button onclick='$(\"#button_pressed\").val(\"1\");'>$stageText</button></p>";
 		echo "<div class='padded' style='$testStyle' id='test'>";
 		echo "<h3 class='blue'>Step 2 of 3</h3>";
 		echo "<p class='centered'>You will receive one email per every recipient. Please note that the links are real links, so any surveys you submit will be added to a scholar's record.</p>";
 		echo "<p class='centered'>Your Email Address: <input type='text' id='test_to'></p>";
-		echo "<p class='centered'><button onclick='sendTestEmails(\"$pid\", \"$selectName\", \"$currSettingName\"); return false;'>Test Email Setting</button></p>";
+		echo "<p class='centered'><button onclick='$(\"#button_pressed\").val(\"1\"); sendTestEmails(\"$pid\", \"$selectName\", \"$currSettingName\"); $(\"#button_pressed\").val(\"0\"); return false;'>Test Email Setting</button></p>";
 		echo "</div>";
 		echo "<div id='enableEmail' style='display: none;' class='padded'>";
 		echo "<h3 class='blue'>Step 3 of 3</h3>";
-		echo "<p class='centered'><button onclick='enableEmailSetting(); return true;'>Activate Emails &amp; Enqueue to Send</button></p>";    // should resubmit entire page
+		echo "<p class='centered'><button class='red' onclick='$(\"#button_pressed\").val(\"1\"); enableEmailSetting(); return true;'>Activate Emails &amp; Enqueue to Send</button></p>";    // should resubmit entire page
 		echo "</div>";
 		echo "</div>";
 ?>

@@ -394,12 +394,6 @@ function makeSettings($module, $pid) {
         $ary["Emails"][] = makeSystemSetting("bulletin_board_monitor", "text", "Bulletin Board Monitor Email(s) for entire server; comma-separated");
     }
 
-    $ary["Celebrations Email"] = [];
-    $ary["Celebrations Email"][] = makeSetting("email_highlights_to", "text", "Email(s) to Send to (Leave Blank Not to Send; Comma-Separated)");
-    $ary["Celebrations Email"][] = makeSetting("highlights_frequency", "radio", "Frequency", "weekly", ["weekly" => "Weekly", "monthly" => "Monthly"]);
-    $ary["Celebrations Email"][] = makeSetting("requested_grants", "text", "Comma-Separated List of Grant Numbers to Restrict the Celebrations Email To (Optional; Leave Blank to Use All Grants)");
-    $ary["Celebrations Email"][] = makeSetting("highlights_scholar_scope", "radio", "Current Scholars &amp; Recent Graduates (Last ".FlightTrackerExternalModule::RECENT_YEARS." Years) Only?", "all", ["all" => "All Scholars", "current" => "Current Trainees", "recent" => "Current Trainees &amp; Recent Graduates"]);
-
     $ary["Bibliometrics"] = [];
     $ary["Bibliometrics"][] = makeSetting("wos_userid", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " User ID");
     $ary["Bibliometrics"][] = makeSetting("wos_password", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " Password");

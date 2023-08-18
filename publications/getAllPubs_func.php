@@ -28,6 +28,14 @@ function dedupPubs($token, $server, $pid, $records) {
 }
 
 function getPubs($token, $server, $pid, $records) {
+    getPubsGeneric($token, $server, $pid, $records, TRUE);
+}
+
+function getNamePubs($token, $server, $pid, $records) {
+    getPubsGeneric($token, $server, $pid, $records, FALSE);
+}
+
+function getPubsGeneric($token, $server, $pid, $records, $searchWithInstitutions) {
 	$cleanOldData = FALSE;
     $metadata = Download::metadata($token, $server);
     $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
@@ -156,9 +164,9 @@ function getPubs($token, $server, $pid, $records) {
 	unset($redcapData);
 
 	if (CareerDev::isVanderbilt()) {
-		processVICTR($citationIds, $maxInstances, $token, $server, $pid, $records);
+		processVICTR($citationIds, $maxInstances, $token, $server, $pid, $records, $searchWithInstitutions);
 	}
-	processPubMed($citationIds, $maxInstances, $token, $server, $pid, $records);
+	processPubMed($citationIds, $maxInstances, $token, $server, $pid, $records, $searchWithInstitutions);
 	postprocess($token, $server, $records);
     cleanUpMiddleNamesSeepage($token, $server, $pid, $records);
     dedupPubs($token, $server, $pid, $records);
@@ -293,7 +301,7 @@ function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $rec
     }
 }
 
-function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $records) {
+function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $records, $searchWithInstitutions) {
 	$allLastNames = Download::lastnames($token, $server);
 	$allFirstNames = Download::firstnames($token, $server);
 	$allMiddleNames = Download::middlenames($token, $server);
@@ -316,15 +324,19 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         $lastNames = NameMatcher::explodeLastName(strtolower($recLastName));
         $firstNames = NameMatcher::explodeFirstName(strtolower($firstName), strtolower($middleName));
 
-        if (isset($allInstitutions[$recordId])) {
-            $institutions = Scholar::explodeInstitutions($allInstitutions[$recordId]);
-        } else {
-            $institutions = [];
-        }
-        foreach ($defaultInstitutions as $defaultInstitution) {
-            if (!in_array($defaultInstitution, $institutions)) {
-                $institutions[] = $defaultInstitution;
+        if ($searchWithInstitutions) {
+            if (isset($allInstitutions[$recordId])) {
+                $institutions = Scholar::explodeInstitutions($allInstitutions[$recordId]);
+            } else {
+                $institutions = [];
             }
+            foreach ($defaultInstitutions as $defaultInstitution) {
+                if (!in_array($defaultInstitution, $institutions)) {
+                    $institutions[] = $defaultInstitution;
+                }
+            }
+        } else {
+            $institutions = ["all"];
         }
 
         $firstNames = REDCapManagement::removeBlanksFromAry($firstNames);

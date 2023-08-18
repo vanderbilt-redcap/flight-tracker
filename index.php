@@ -11,10 +11,13 @@ use \Vanderbilt\CareerDevLibrary\Consortium;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\CelebrationsEmail;
 
 try {
     require_once(dirname(__FILE__)."/small_base.php");
     require_once(dirname(__FILE__)."/classes/Autoload.php");
+
+    $celebrationsHandler = new CelebrationsEmail($token, $server, $pid, []);
 
     if (!empty($_POST)) {
         $switches = new FeatureSwitches($token, $server, $pid);
@@ -128,7 +131,7 @@ $(document).ready(function() {
         if (Portal::isLive()) {
             $link = Portal::getLink();
             echo "<input type='hidden' id='scholarPortalUrl' value='$link' />";
-            echo "<h5><a href='javascript:;' onclick='copyToClipboard($(\"#scholarPortalUrl\")); alert(\"Copied to your clipboard!\");'>Click to Share the Scholar Portal Link with Your Scholars</a></h5>";
+            echo "<p class='centered nomargin smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#scholarPortalUrl\")); alert(\"Copied to your clipboard!\");'>Click to Share the Scholar Portal Link with Your Scholars</a></p>";
         }
     ?>
 
@@ -171,12 +174,12 @@ $(document).ready(function() {
         <?php
         $switches = new FeatureSwitches($token, $server, $pid);
 
-        echo "<table style='margin: 0px auto 0px auto; border-radius: 10px; max-width: 90%;' class='blue'>\n";
+        echo "<table style='margin: 0px auto 0px auto; border-radius: 10px; max-width: 90%;' class='blue'>";
         $settings = \Vanderbilt\FlightTrackerExternalModule\getAllSettings();
         if (empty($settings)) {
-            echo "<tr>\n";
-            echo "<td>\n";
-            echo "<h3><i class='fa fa-info-circle'></i> Getting Started</h3>\n";
+            echo "<tr>";
+            echo "<td>";
+            echo "<h3><i class='fa fa-info-circle'></i> Getting Started</h3>";
             echo "<ul class='larger'>
 <li><strong>Step 1</strong>: Collect some data. Data will come in over the course of a week and stay updated each week. If you want to collect all data at once, click the link to “<a href='javascript:;' onclick='startTonight($pid);'>Run All Updates Tonight</a>” on the Flight Tracker Home page.</li>
 <li><strong>Step 2</strong>: If no data are being pulled in from a given resource, go to the General menu &rarr; Test Connectivity page. Green means that a resource can connect to it; yellow means that it’s trying but hasn’t succeeded; and red indicates a failure. Your REDCap server might have a firewall, and you might need to pull in your IT team and REDCap admin to help. You can re-test until all indicators turn green.</li>
@@ -184,13 +187,13 @@ $(document).ready(function() {
 <li><strong>Step 4</strong>: You might need to adjust scholar names to correspond with PubMed and the NIH RePORTER. You can adjust the names in the Identifiers form on each scholar’s REDCap record. The REDCap form will coach you how to handle maiden names and nicknames. One name option needs to match the data source, or else no data will pull!</li> 
 <li><strong>Step 5</strong>: Add in other institutions specific to each scholar. Flight Tracker will automatically search for the home institution you entered in the setup. If a scholar has another institution (for example, either before or after their time with you), then you can enter it on a Position Change form on the scholar’s REDCap record. Like names, these need to correspond with the NIH RePORTER or PubMed.</li>
 </ul>";
-            echo "</td>\n";
-            echo "</tr>\n";
+            echo "</td>";
+            echo "</tr>";
         } else {
-            echo "<tr>\n";
-            echo "<td colspan='2'><h3><i class='fa fa-info-circle'></i> Status</h3></td>\n";
-            echo "</tr>\n";
-            echo "<tr>\n";
+            echo "<tr>";
+            echo "<td colspan='2'><h3><i class='fa fa-info-circle'></i> Status</h3></td>";
+            echo "</tr>";
+            echo "<tr>";
             $i = 0;
             $numCols = 2;
             foreach ($settings as $setting => $value) {
@@ -198,11 +201,11 @@ $(document).ready(function() {
                 $daysAgo = floor((time() - $tsValue) / (24 * 3600));
                 if (($i + 1 == count($settings)) && ($i % $numCols == 0)) {
                     # last column which spans two columns
-                    echo "<td class='centered' colspan='2'>\n";
+                    echo "<td class='centered' colspan='2'>";
                 } else {
-                    echo "<td class='centered'>\n";
+                    echo "<td class='centered'>";
                 }
-                echo "<h4 style='margin: 0;'>$setting</h4>\n";
+                echo "<h4 style='margin: 0;'>$setting</h4>";
                 if ($tsValue && ($daysAgo >= 0)) {
                     if ($daysAgo == 0) {
                         echo "Today\n";
@@ -214,22 +217,22 @@ $(document).ready(function() {
                 } else {
                     echo "$value\n";
                 }
-                echo "</td>\n";
+                echo "</td>";
                 $i++;
                 if ($i % $numCols == 0) {
-                    echo "</tr>\n";
-                    echo "<tr>\n";
+                    echo "</tr>";
+                    echo "<tr>";
                 }
             }
-            echo "</tr>\n";
-            echo "<tr>\n";
+            echo "</tr>";
+            echo "<tr>";
             echo "<td colspan='$numCols' class='centered'><a href='javascript:;' onclick='startTonight(".$pid.");'>Click to Run All Updates Tonight</a><br/><span class='small'>(Otherwise, updates will run over the course of the week.)</span></td>\n";
-            echo "</tr>\n";
+            echo "</tr>";
             echo "<tr>";
             echo "<td colspan='$numCols' class='centered'><a href='javascript:;' onclick='$(\"#schedule\").show();'>Show Update Schedule</a><div id='schedule' style='font-size: 0.95em; display: none;'>".implode("<br/>", $scheduledCrons)."</div></td>";
             echo "</tr>";
         }
-        echo "</table>\n";
+        echo "</table>";
 
         ?>
 
@@ -251,6 +254,11 @@ $(document).ready(function() {
 
     <div style='float: right;' class='centeredMinus50'>
         <div style='margin: 50px 0px 0px 0px; padding: 4px 0;' class='blueBorder translucentBG'>
+            <div style="background-color: #b0d87a66;">
+                <a id='Celebrations_Email'><h3><i class='fa fa-envelope-open-text'></i> Celebrations Email</h3></a>
+                <p class="centered">A regular email that updates readers about new scholar accomplishments.</p>
+                <?= $celebrationsHandler->getConfigurationHTML() ?>
+            </div>
             <h3><i class='fa fa-toggle-on'></i> Features</h3>
             <?= $switches->makeHTML() ?>
             <h3><i class='fa fa-cogs'></i> Configurations</h3>

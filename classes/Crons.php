@@ -28,9 +28,9 @@ class CronManager {
         self::$lastSendErrorLogs = Application::getSetting("send_error_logs", $pid);
 	}
 
-    public function addMultiCron($file, $method, $dayOfWeek, $pids) {
+    public function addMultiCron($file, $method, $dayOfWeek, $pids, $firstParameter = FALSE) {
         if ($this->module) {
-            $this->addCronForBatchMulti($file, $method, $dayOfWeek, $pids);
+            $this->addCronForBatchMulti($file, $method, $dayOfWeek, $pids, $firstParameter);
         }
     }
 
@@ -109,7 +109,7 @@ class CronManager {
         }
  	}
 
-    private function addCronForBatchMulti($file, $method, $dayOfWeek, $pids) {
+    private function addCronForBatchMulti($file, $method, $dayOfWeek, $pids, $firstParameter = FALSE) {
         if (empty($pids)) {
             return;
         }
@@ -129,7 +129,7 @@ class CronManager {
             # Y-M-D
             $date = date(self::getDateFormat(), $dateTs);
             if ($date == date(self::getDateFormat())) {
-                $this->enqueueBatchMulti($absFile, $method, $pids);
+                $this->enqueueBatchMulti($absFile, $method, $pids, $firstParameter);
                 if ($this->isDebug) {
                     Application::log("Assigned cron for $date");
                 }
@@ -211,7 +211,7 @@ class CronManager {
         }
     }
 
-    private function enqueueBatchMulti($file, $method, $pids) {
+    private function enqueueBatchMulti($file, $method, $pids, $firstParameter = FALSE) {
         if (!empty($pids)) {
             $batchQueue = self::getBatchQueueFromDB($this->module);
             $batchRow = [
@@ -220,6 +220,7 @@ class CronManager {
                 "pids" => $pids,
                 "status" => "WAIT",
                 "enqueueTs" => time(),
+                "firstParameter" => $firstParameter,
             ];
             $batchQueue[] = $batchRow;
             self::saveBatchQueueToDB($batchQueue, $this->module);
@@ -408,6 +409,9 @@ class CronManager {
                         $cronjob = new CronJob($batchQueue[0]['file'], $batchQueue[0]['method']);
                         $batchQueue[0]['startTs'] = time();
                         $batchQueue[0]['status'] = "RUN";
+                        if ($batchQueue[0]['firstParameter']) {
+                            $cronjob->setFirstParameter($batchQueue[0]['firstParameter']);
+                        }
                         Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue)." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp(), $batchQueue[0]['pid']);
                         self::saveBatchQueueToDB($batchQueue, $module);
                         $row = $batchQueue[0];
@@ -1464,7 +1468,11 @@ class CronJob {
             }
             $startTs = time();
             URLManagement::resetUnsuccessfulCount();
-            $method($passedPids);
+            if ($this->firstParameter) {
+                $method($passedPids, $this->firstParameter);
+            } else {
+                $method($passedPids);
+            }
             if (Application::isVanderbilt()) {
                 \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", "Multi Cron Completed!", "$method for ".count($passedPids)." pids<br/>Start: ".date("Y-m-d H:i:s", $startTs)."<br/>Done: ".date("Y-m-d H:i:s"));
             }

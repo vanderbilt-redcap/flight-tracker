@@ -41,8 +41,10 @@ function updateNames(pid, existingPost) {
 			$('#filterItems').hide();
 		}
 		if ($('[name=survey_complete]:checked').val() == "yes") {
+			post['none_complete'] = 'false';
 			$('#whenCompleted').slideDown();
 		} else {
+			post['none_complete'] = 'true';
 			$('#whenCompleted').hide();
 		}
 		if ($('[name=max][value=limited]').is(':checked')) {
@@ -58,10 +60,13 @@ function updateNames(pid, existingPost) {
 
 		post['filter'] = $('[name=filter]:checked').val();
 		if ($('[name=survey_complete]').is(':visible')) {
-			if ($('[name=survey_complete]:checked').val() == "yes") {
+			if ($('[name=survey_complete]:checked').val() == 'yes') {
+				post['none_complete'] = 'false';
 				post['last_complete'] = $('[name=last_complete_months]').val();
-			} else {
-				post['none_complete'] = true;
+			} else if ($('[name=survey_complete]:checked').val() == 'no') {
+				post['none_complete'] = 'true';
+			} else if ($('[name=survey_complete]:checked').val() == 'nomatter') {
+				post['none_complete'] = 'nomatter';
 			}
 		}
 		if ($('[name=new_records_since]').is(':visible')) {
@@ -129,7 +134,7 @@ function transformIntoCheckboxes(html, post) {
 }
 
 function getHTMLLines(html) {
-	var ary = html.split(/<br>/);
+	const ary = html.split(/<br\/?>/);
 	return ary.length;
 }
 
@@ -140,37 +145,69 @@ function isEmail(email) {
 	return false;
 }
 
+function deleteEmailSetting(settingName, refreshUrl) {
+	const post = { settingName: settingName, redcap_csrf_token: getCSRFToken() };
+	$.post(getPageUrl("/emailMgmt/deleteSetting.php"), post, (json) => {
+		console.log(json);
+		try {
+			const data = JSON.parse(json);
+			if (data.error) {
+				$.sweetModal({
+					content: 'ERROR: '+data.error,
+					icon: $.sweetModal.ICON_ERROR
+				});
+				console.error(data.error);
+			} else {
+				$.sweetModal({
+					content: 'Success!',
+					icon: $.sweetModal.ICON_SUCCESS
+				});
+				$('#button_pressed').val('1');
+				$('#is_activated').val('1');
+				location.href = refreshUrl;
+			}
+		} catch (e) {
+			$.sweetModal({
+				content: 'ERROR: '+json,
+				icon: $.sweetModal.ICON_ERROR
+			});
+			console.error(JSON.stringify(e));
+		}
+	});
+}
+
 function sendTestEmails(pid, selectName, selectValue) {
-	var to = $('#test_to').val();
+	const to = $('#test_to').val();
 	if (isEmail(to)) {
-		var post = {};
+		const post = {};
 		post['to'] = to;
 		post[selectName] = selectValue;
+		post['redcap_csrf_token'] = getCSRFToken();
 		presentScreen("Preparing Messages... (Please wait. May take some time.)");
 		console.log(JSON.stringify(post));
 		$.post(getPageUrl("/emailMgmt/makeMessages.php"), post, function(json) {
 			console.log(json);
 			try {
 				let data = JSON.parse(json);
-				for (var name in data) {
-					for (var name2 in data[name]) {
-						let mssgs = data[name][name2]['mssgs'];
-						var count = 0;
-						for (var recordId in mssgs) {
-							count++;
-						}
+				for (const name in data) {
+					for (const name2 in data[name]) {
+						const count = Object.keys(data[name][name2]['mssgs']).length;
 						console.log('makeMessages: '+name+' '+name2+' has '+count+' messages');
 					}
 				}
 				presentScreen("Sending Messages... (Please wait. May take some time.)");
-				$.post(getPageUrl("/emailMgmt/sendTest.php"), { messages: json }, function(str) {
+				$.post(getPageUrl("/emailMgmt/sendTest.php"), { messages: json, redcap_csrf_token: getCSRFToken() }, function(str) {
 					console.log(str);
 					clearScreen();
 					if (!$('#note').hasClass("green")) {
 						$('#note').addClass("green");
 					}
-					$('#note').html("Test emails sent "+str);
+					$('#note').html("Test emails sent. "+str);
 					$("#enableEmail").slideDown();
+					$.sweetModal({
+						content: 'Test emails sent. '+str+'<br/>When ready, you must still click "Activate Emails &amp; Enqueue to Send" below.',
+						icon: $.sweetModal.ICON_SUCCESS
+					});
 				});
 			} catch (e) {
 				clearScreen();
@@ -197,22 +234,22 @@ function insertLastName() {
 }
 
 function insertFirstName() {
-	var name = "[first_name]";
+	const name = "[first_name]";
 	appendToMessage(name);
 }
 
 function insertName() {
-	var name = "[name]";
+	const name = "[name]";
 	appendToMessage(name);
 }
 
 function insertMentoringLink() {
-	var name = "[mentoring_agreement]";
+	const name = "[mentoring_agreement]";
 	appendToMessage(name);
 }
 
 function insertPortalLink() {
-	var name = "[scholar_portal]";
+	const name = "[scholar_portal]";
 	appendToMessage(name);
 }
 

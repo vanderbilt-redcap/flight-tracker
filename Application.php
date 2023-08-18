@@ -12,6 +12,17 @@ class Application {
         return CareerDev::getVersion();
     }
 
+    public static function getActivePids() {
+        $activePids = [];
+        $allPossiblePids = self::getPids();
+        foreach ($allPossiblePids as $pidCandidate) {
+            if (REDCapManagement::isActiveProject($pidCandidate)) {
+                $activePids[] = $pidCandidate;
+            }
+        }
+        return $activePids;
+    }
+
     public static function getCredentialsDir() {
         $options = [
             "/app001/credentials",
@@ -401,13 +412,22 @@ p.recessed,div.recessed { margin: 2px; }
                         $str .= "&nbsp;&nbsp;<button onclick='confirmRestartData(\"$url\", \"$recordId\", \"$csrfToken\", \"$fetchType\"); return false;'>$label</button>";
                     }
                 }
+                $str .= "<br/>";
+                $str .= "Match Without Institutions:";
+                foreach ($fetchConfig as $label => $fetchType) {
+                    if (!in_array($fetchType, ["summary", "patents"])) {
+                        $fetchType .= "_name";
+                        $str .= "&nbsp;&nbsp;<button onclick='fetchDataNow(\"$url\", \"$recordId\", \"$csrfToken\", \"$fetchType\"); return false;'>$label</button>";
+                    }
+                }
                 $str .= "</div>";
             }
         }
         if ($base64 = $module->getBrandLogo()) {
             $str .= "<div class='topBar' style='float:right;'><img src='$base64' class='brandLogo'></div>";
         } else {
-            $str .= "<div class='topBar' style='float:right;'><p class='alignright darkgreytext padded nomargin bolded'>$tokenName</p></div>";
+            $configLink = self::link("config.php", $pid);
+            $str .= "<div class='topBar' style='float:right;'><p class='alignright darkgreytext padded nomargin bolded'>$tokenName<br/><a href='$configLink' title='Configure Application'><i class='fa fa-cog darkgreytext' style='font-size: 24px;'></i></a></p>";
         }
         $str .= "</div>";
         $str .= "</header>";
@@ -1116,7 +1136,7 @@ SELECT DISTINCT s.project_id AS pid
     ];
 
     # intentionally missing many minor Altmetric fields
-    private static $citationFields = [
+    public static $citationFields = [
         "record_id",
         "citation_pmid",
         "citation_doi",

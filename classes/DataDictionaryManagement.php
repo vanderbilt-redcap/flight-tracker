@@ -577,16 +577,14 @@ class DataDictionaryManagement {
                             $missing[] = $field.self::DELETION_SUFFIX;
                             $changed[] = $field." [will be deleted]";
                         }
-                    } else {
-                        if (isset($fieldList["REDCap"][$field])) {
-                            $optionChoiceStr = self::makeREDCapList($optionChoicesAsText, self::OPTION_OTHER_VALUE);
-                            if ($fieldList["REDCap"][$field] != $optionChoiceStr) {
-                                $changed[] = $field." [updated options]";
-                            }
-                        } else {
-                            $missing[] = $field;
-                            $additions[] = $field;
+                    } else if (isset($fieldList["REDCap"][$field])) {
+                        $optionChoiceStr = self::makeREDCapList($optionChoicesAsText, self::OPTION_OTHER_VALUE);
+                        if ($fieldList["REDCap"][$field] != $optionChoiceStr) {
+                            $changed[] = $field." [updated options]";
                         }
+                    } else {
+                        $missing[] = $field;
+                        $additions[] = $field;
                     }
                 } else if (!in_array($field, $specialFields)) {
                     if (!isset($fieldList["REDCap"][$field])) {
@@ -884,7 +882,7 @@ class DataDictionaryManagement {
     }
 
     public static function getMetadataFieldsToScreen() {
-        return ["required_field", "form_name", "identifier", "branching_logic", "section_header", "field_annotation", "text_validation_type_or_show_slider_number", "select_choices_or_calculations"];
+        return ["required_field", "form_name", "identifier", "branching_logic", "field_annotation", "text_validation_type_or_show_slider_number", "select_choices_or_calculations"];
     }
 
     # returns TRUE if and only if fields in $newMetadata after $priorField are fields in $newRows
@@ -939,6 +937,7 @@ class DataDictionaryManagement {
             } else {
                 $originalFields = $originalFormsAndFields[$form];
                 $mergedOrderForForm = self::mergeFields($fileFields, $originalFields);
+                $firstIndex = count($mergedMetadata);
                 foreach ($mergedOrderForForm as $field) {
                     $fileForm = $indexedFileMetadata[$field]["form_name"] ?? self::NONE;
 
@@ -954,6 +953,7 @@ class DataDictionaryManagement {
                         $mergedMetadata[] = $row;
                     }
                 }
+                self::eliminateDuplicateSectionHeadersOnForm($mergedMetadata, $firstIndex, $mergedOrderForForm, $fileFields, $indexedFileMetadata);
             }
         }
         $mergedFieldsBeforeOriginal = self::getFieldsFromMetadata($mergedMetadata);
@@ -979,6 +979,35 @@ class DataDictionaryManagement {
         self::alterInstitutionFields($mergedMetadata, $pid);
         self::alterDepartmentsFields($mergedMetadata, $pid);
         return Upload::metadata($mergedMetadata, $token, $server);
+    }
+
+    private static function eliminateDuplicateSectionHeadersOnForm(&$mergedMetadata, $firstIndexForForm, $mergedOrderForForm, $fileFields, $indexedFileMetadata){
+        $seenFields = [];
+        foreach ($mergedOrderForForm as $mergedFieldIndex => $mergedFieldName) {
+            $outerMergedMetadataIndex = $firstIndexForForm + $mergedFieldIndex;
+            $seenFields[] = $mergedFieldName;
+            $foundDuplicateSectionHeader = FALSE;
+            foreach ($fileFields as $fileField) {
+                if (
+                    ($mergedFieldName != $fileField)
+                    && !in_array($fileField, $seenFields)
+                    && ($mergedMetadata[$outerMergedMetadataIndex]['section_header'] !== "")
+                    && ($mergedMetadata[$outerMergedMetadataIndex]['section_header'] == $indexedFileMetadata[$fileField]['section_header'])
+                ) {
+                    $foundDuplicateSectionHeader = TRUE;
+                    # duplicate section headers on same form ==> Remove second one
+                    foreach ($mergedMetadata as $innerMergedMetadataIndex => $row) {
+                        if ($row['field_name'] == $fileField) {
+                            $mergedMetadata[$innerMergedMetadataIndex]['section_header'] = "";
+                            break;
+                        }
+                    }
+                }
+                if ($foundDuplicateSectionHeader) {
+                    break;
+                }
+            }
+        }
     }
 
     private static function preserveSectionHeaders(&$currentMetadata, $oldMetadata) {
@@ -1022,6 +1051,9 @@ class DataDictionaryManagement {
                 }
                 $fields[] = $baselineField;
                 $baselineIndex++;
+                if ($baselineField == $newFields[$newIndex] ?? "") {
+                    $newIndex++;
+                }
             } else if (
                 !in_array($baselineField, $newFields)
                 && in_array($newFields[$newIndex], $baselineFields)

@@ -8,7 +8,6 @@ use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\CronManager;
 use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use Vanderbilt\CareerDevLibrary\EmailManager;
-use Vanderbilt\CareerDevLibrary\NavigationBar;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\CareerDevLibrary\NameMatcher;
@@ -17,6 +16,7 @@ use Vanderbilt\CareerDevLibrary\MMAHelper;
 use Vanderbilt\CareerDevLibrary\Sanitizer;
 use Vanderbilt\CareerDevLibrary\Portal;
 use Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\CelebrationsEmail;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/cronLoad.php");
@@ -24,7 +24,7 @@ require_once(APP_PATH_DOCROOT."Classes/System.php");
 
 class FlightTrackerExternalModule extends AbstractExternalModule
 {
-    const RECENT_YEARS = 5;
+    const RECENT_YEARS = CelebrationsEmail::RECENT_YEARS;
 
 	function getPrefix() {
 	    if (Application::isLocalhost()) {
@@ -1052,7 +1052,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
     }
 
-    function preprocessScholarPortal($pids) {
+    public function preprocessScholarPortal($pids) {
         $useridsByPid = [];
         $firstNamesByPid = [];
         $lastNamesByPid = [];
@@ -1110,47 +1110,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         foreach ($activePids as $pid) {
             Application::log("Flight Tracker 'midnight cron' running", $pid);
         }
-		$pidsUpdated = [];
-        Application::log("Checking for redcaptest in ".SERVER_NAME);
-        if (preg_match("/redcaptest.vanderbilt.edu/", SERVER_NAME)) {
-            Application::log("Sharing because redcaptest");
-            $pidsUpdated = $this->shareDataInternally($activePids, $activePids);
-        } else if (count($activePids) > 1) {
-            try {
-                $pidsToShare = $activePids;
-                if (Application::isVanderbilt() && !Application::isLocalhost()) {
-                    $pidsToShare[] = NEWMAN_SOCIETY_PROJECT;
-                } else if (Application::isVanderbilt() && Application::isLocalhost()) {
-                    $pidsToShare[] = LOCALHOST_TEST_PROJECT;
-                }
-                if (date("N") == "6") {
-                    # only on Saturdays
-                    $pidsUpdated = $this->shareDataInternally($pidsToShare, $pidsToShare);
-                } else if ($this->hasProjectToRunTonight($activePids)) {
-                    # only when clicked to run tonight
-                    $destPids = $this->getProjectsToRunTonight($activePids);
-                    $pidsUpdated = $this->shareDataInternally($pidsToShare, $destPids);
-                }
-            } catch (\Exception $e) {
-                if ((count($activePids) > 0) && CareerDev::isVanderbilt()) {
-                    \REDCap::email("scott.j.pearson@vumc.org", Application::getSetting("default_from", $activePids[0]), Application::getProgramName().": Error in sharing surveys", $e->getMessage());
-                } else {
-                    Application::log("Error in data sharing", $activePids[0]);
-                }
-            }
-        }
 
         $this->enqueueInitialCrons($activePids);
-        if (Application::isVanderbilt()) {
-            $this->enqueueMultiProjectCrons($activePids);
-        }
+        $this->enqueueMultiProjectCrons($activePids);
 
-        $pidsToPreprocess = [];
-        if (Application::isVanderbilt() && !Application::isLocalhost()) {
-            $pidsToPreprocess[] = NEWMAN_SOCIETY_PROJECT;
-        } else if (Application::isLocalhost()) {
-            $pidsToPreprocess[] = LOCALHOST_TEST_PROJECT;
-        }
 		foreach ($activePids as $pid) {
             $this->cleanupLogs($pid);
             $token = $this->getProjectSetting("token", $pid);
@@ -1163,7 +1126,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             Application::log("Using $tokenName $adminEmail", $pid);
             if ($token && $server && !$turnOffSet) {
                 try {
-                    $pidsToPreprocess[] = $pid;
                     # only have token and server in initialized projects
                     $mgr = new CronManager($token, $server, $pid, $this);
                     if ($this->getProjectSetting("run_tonight", $pid)) {
@@ -1179,7 +1141,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 }
             }
 		}
-        $this->preprocessScholarPortal($pidsToPreprocess);
 	}
 
     function enqueueMultiProjectCrons($pids) {

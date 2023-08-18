@@ -522,7 +522,8 @@ function addCitationLink(citation) {
 
 function getUrlVars() {
 	const vars = {};
-	window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+	const loc = window.location.href.replace(/#.+$/, '');
+	loc.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
 		vars[key] = value;
 	});
 	return vars;
@@ -996,7 +997,7 @@ function installMetadata(fields) {
 }
 
 function checkMetadata(phpTs) {
-	var url = getPageUrl("metadata.php");
+	const url = getPageUrl("metadata.php");
 	$.post(url, { 'redcap_csrf_token': getCSRFToken(), process: "check", timestamp: phpTs }, function(html) {
 		if (html) {
 			$('#metadataWarning').addClass("red");
@@ -1550,7 +1551,12 @@ function fetchDataNow(url, recordId, csrfToken, fetchType) {
 		return;
 	}
 	const imageUrl = getLoadingImageUrl(url);
-	presentScreen("Refreshing "+fetchType+" for Record "+recordId, imageUrl);
+	let presentFetchType = fetchType;
+	if (presentFetchType.match(/_name$/)) {
+		presentFetchType = presentFetchType.replace(/_name$/, "") + " for any institution";
+	}
+	let shortFetchType = fetchType.replace(/_name$/, "");
+	presentScreen("Refreshing "+presentFetchType+" for Record "+recordId, imageUrl);
 	$.post(url, postdata, function(html) {
 		console.log(html);
 		clearScreen();
@@ -1561,7 +1567,7 @@ function fetchDataNow(url, recordId, csrfToken, fetchType) {
 			});
 		} else {
 			$.sweetModal({
-				content: 'Record '+recordId+' has had its '+fetchType+' refreshed. You may need to refresh your browser to see the latest results.',
+				content: 'Record '+recordId+' has had its '+shortFetchType+' refreshed. You need to refresh your browser to see the latest results.',
 				icon: $.sweetModal.ICON_SUCCESS
 			});
 		}
@@ -1762,3 +1768,85 @@ function makeHTMLId(id) {
 		.replace(/[\:\+\"\/\[\]\'\#\<\>\~\`\!\@\#\$\%\^\&\*\(\)\=\;\?\.\,]/, "");
 }
 
+function addCelebrationsSetting(url, settingName, when, who, content, grants) {
+	const postData = {
+		action: 'add',
+		name: settingName,
+		when: when,
+		content: content,
+		who: who,
+		grants: grants,
+		redcap_csrf_token: getCSRFToken()
+	}
+	postToCelebrationsEmail(url, postData);
+}
+
+function deleteCelebrationsSetting(url, settingName) {
+	const postData = {
+		action: 'delete',
+		name: settingName,
+		redcap_csrf_token: getCSRFToken()
+	}
+	postToCelebrationsEmail(url, postData);
+}
+
+function postToCelebrationsEmail(url, postData) {
+	if (postData['name'] === "") {
+		$.sweetModal({
+			content: "No setting name provided!",
+			icon: $.sweetModal.ICON_ERROR
+		});
+	} else if (url.match(/configEmail/)) {
+		$.post(url, postData, (html) => {
+			if (html.match(/error/i)) {
+				console.error(html);
+				$.sweetModal({
+					content: html,
+					icon: $.sweetModal.ICON_ERROR
+				});
+			} else {
+				console.log(html);
+				$.sweetModal({
+					content: "Updated!",
+					icon: $.sweetModal.ICON_SUCCESS
+				});
+				location.reload();
+			}
+		});
+	} else {
+		$.sweetModal({
+			content: "Something has gone wrong.",
+			icon: $.sweetModal.ICON_ERROR
+		});
+	}
+}
+
+function changeCelebrationsEmail(url, email) {
+	const postData = {
+		action: 'changeEmail',
+		email: email,
+		redcap_csrf_token: getCSRFToken()
+	};
+	if (url.match(/configEmail/)) {
+		$.post(url, postData, (html) => {
+			if (html.match(/error/i)) {
+				console.error(html);
+				$.sweetModal({
+					content: html,
+					icon: $.sweetModal.ICON_ERROR
+				});
+			} else {
+				console.log(html);
+				$.sweetModal({
+					content: "Updated!",
+					icon: $.sweetModal.ICON_SUCCESS
+				});
+				$('#celebration_config').show();
+			}
+		});
+	} else {
+		$.sweetModal({
+			content: "Something has gone wrong.",
+			icon: $.sweetModal.ICON_ERROR
+		});
+	}}
