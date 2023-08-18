@@ -255,7 +255,7 @@ class CelebrationsEmail {
                             || ($journalFullNameInLC == trim(strtolower($journalRow['abbreviation'])))
                             || ($journalFullNameInLC == trim(strtolower($journalRow['name'])))
                         ) {
-                            $journalHandles[] = $journalRow['handle'];
+                            $journalHandles[] = Sanitizer::sanitizeWithoutChangingQuotes($journalRow['handle']);
                         }
                     }
                     $journalHTML = empty($journalHandles) ? $journalHTML." (<a href='https://redcap.vanderbilt.edu/surveys/?s=D94RMNA3AT94CXTP'>add new journal handle?</a>)" : $journalHTML." (".implode(", ", $journalHandles).")";
