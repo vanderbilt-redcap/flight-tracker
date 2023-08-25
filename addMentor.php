@@ -107,8 +107,8 @@ if ($_GET['download'] && ($_GET['download'] == "csv")) {
 function hasSuggestions($post) {
     foreach ($post as $key => $value) {
         if (preg_match("/^newmentorname___/", $key)) {
-            $recordId = preg_replace("/^newmentorname___/", "", $key);
-            $originalName = $post["originalmentorname___".$recordId];
+            $recordKey = preg_replace("/^newmentorname___/", "", $key);
+            $originalName = $post["originalmentorname___".$recordKey];
             if ($originalName != $value) {
                 return TRUE;
             }
@@ -121,19 +121,46 @@ function parsePostForData($post) {
     $mentorNames = [];
     $mentorUids = [];
     $newMentorNames = [];
+    $mentorNamesAsArray = [];
+    $mentorUidsAsArray = [];
+    $newMentorNamesAsArray = [];
     foreach ($post as $key => $value) {
-        if (preg_match("/^mentor___\d+$/", $key)) {
-            $recordId = preg_replace("/^mentor___/", "", $key);
-            $mentorUids[$recordId] = $value;
-        } else if (preg_match("/^mentorname___\d+$/", $key) && ($value !== "")) {
-            $recordId = preg_replace("/^mentorname___/", "", $key);
-            $mentorNames[$recordId] = $value;
-        } else if (preg_match("/^newmentorname___\d+$/", $key) && ($value !== "")) {
-            $recordId = preg_replace("/^newmentorname___/", "", $key);
-            $newMentorNames[$recordId] = $value;
+        if (preg_match("/^mentor___[\d:]+$/", $key)) {
+            $recordKey = preg_replace("/^mentor___/", "", $key);
+            addMentorValue($mentorUids, $mentorUidsAsArray, $recordKey, $value);
+        } else if (preg_match("/^mentorname___[\d:]+$/", $key) && ($value !== "")) {
+            $recordKey = preg_replace("/^mentorname___/", "", $key);
+            addMentorValue($mentorNames, $mentorNamesAsArray, $recordKey, $value);
+        } else if (preg_match("/^newmentorname___[\d:]+$/", $key) && ($value !== "")) {
+            $recordKey = preg_replace("/^newmentorname___/", "", $key);
+            addMentorValue($newMentorNames, $newMentorNamesAsArray, $recordKey, $value);
         }
     }
+    collapseMentorArrays($newMentorNames, $newMentorNamesAsArray);
+    collapseMentorArrays($mentorNames, $mentorNamesAsArray);
+    collapseMentorArrays($mentorUids, $mentorUidsAsArray);
     return [$mentorNames, $mentorUids, $newMentorNames];
+}
+
+function addMentorValue(&$textArray, &$arrayOfArrays, $recordKey, $value) {
+    if (strpos($recordKey, ":") === FALSE) {
+        $recordId = $recordKey;
+        $textArray[$recordId] = $value;
+    } else if ($value) {
+        list($recordId, $i) = explode(":", $recordKey);
+        if (!isset($arrayOfArrays[$recordId])) {
+            $arrayOfArrays[$recordId] = [];
+        }
+        $arrayOfArrays[$recordId][$i] = $value;
+    }
+}
+
+function collapseMentorArrays(&$textArray, $valuesAsArray) {
+    foreach ($valuesAsArray as $recordId => $instances) {
+        ksort($instances, SORT_NUMERIC);
+        $newList = implode(", ", array_values($instances));
+        $textArray[$recordId] = $newList;
+    }
 }
 
 function uploadBulkForm($post, $token, $server) {
@@ -169,16 +196,31 @@ function remakeUploadTable($post, $token, $server) {
     $thisUrl = Application::link("this");
 
     $tableRows = [];
-    foreach ($newMentorNames as $recordId => $newMentorName) {
-        list($mentorFirst, $mentorLast) = NameMatcher::splitName($newMentorName, 2);
-        $tableRows[] = lookupScholarAndMentorName($names, $firstNames[$recordId], $lastNames[$recordId], $mentorFirst, $mentorLast, $token, $server);
+    $newMentorNamesAsArray = [];
+    foreach ($newMentorNames as $key => $newMentorName) {
+        if (strpos($key, ":") === FALSE) {
+            $recordId = $key;
+            $tableRows[] = lookupScholarAndMentorName($names, $firstNames[$recordId], $lastNames[$recordId], $newMentorName, $token, $server);
+        } else {
+            list($recordId, $i) = explode(":", $key);
+            if (!isset($newMentorNamesAsArray[$recordId])) {
+                $newMentorNamesAsArray[$recordId] = [];
+            }
+            $newMentorNamesAsArray[$recordId][$i] = $newMentorName;
+        }
     }
+    foreach ($newMentorNamesAsArray as $recordId => $instances) {
+        ksort($instances, SORT_NUMERIC);
+        $newMentorList = implode(", ", array_values($instances));
+        $tableRows[] = lookupScholarAndMentorName($names, $firstNames[$recordId], $lastNames[$recordId], $newMentorList, $token, $server);
+    }
+
     $hiddenRows = [];
-    foreach ($mentorNames as $recordId => $mentorName) {
-        $hiddenRows[] = "<input type='hidden' name='mentorname___$recordId' value='".preg_replace("/'/", "\\'", $mentorName)."'>";
+    foreach ($mentorNames as $key => $mentorName) {
+        $hiddenRows[] = "<input type='hidden' name='mentorname___$key' value='".preg_replace("/'/", "\\'", $mentorName)."'>";
     }
-    foreach ($mentorUids as $recordId => $uid) {
-        $hiddenRows[] = "<input type='hidden' name='mentor___$recordId' value='".preg_replace("/'/", "\\'", $uid)."'>";
+    foreach ($mentorUids as $key => $uid) {
+        $hiddenRows[] = "<input type='hidden' name='mentor___$key' value='".preg_replace("/'/", "\\'", $uid)."'>";
     }
     return makeSubmitTable($thisUrl, getTableHeaders(), $tableRows, $hiddenRows);
 }
@@ -201,7 +243,7 @@ function makeUploadTable($filename, $token, $server) {
                 $scholarLast = $line[1];
                 $mentorFirst = $line[2];
                 $mentorLast = $line[3];
-                $tableRow = lookupScholarAndMentorName($names, $scholarFirst, $scholarLast, $mentorFirst, $mentorLast, $token, $server);
+                $tableRow = lookupScholarAndMentorName($names, $scholarFirst, $scholarLast, "$mentorFirst $mentorLast", $token, $server);
                 if ($tableRow) {
                     $tableRows[] = $tableRow;
                 }
@@ -240,66 +282,84 @@ function makeSubmitTable($thisUrl, $headers, $tableRows, $hiddenRows) {
     return $html;
 }
 
-function lookupScholarAndMentorName($names, $scholarFirst, $scholarLast, $mentorFirst, $mentorLast, $token, $server) {
-    if ($scholarFirst && $scholarLast && $mentorLast && ($recordId = NameMatcher::matchName($scholarFirst, $scholarLast, $token, $server))) {
-        $lookup = new REDCapLookup($mentorFirst, $mentorLast);
-        $uids = $lookup->getUidsAndNames();
-        if (count($uids) == 0) {
-            $lookup = new REDCapLookup("", $mentorLast);
-            $uids = $lookup->getUidsAndNames();
-        }
-        $escapedMentorName = preg_replace("/'/", "\\'", $lookup->getName());
-        $tableRow = "<tr>";
-        $tableRow .= "<td>$recordId {$names[$recordId]}</td>";
-        $tableRow .= "<td>$scholarFirst $scholarLast</td>";
-        $tableRow .= "<td>$mentorFirst $mentorLast</td>";
-        $hiddenField = "<input type='hidden' name='mentorname___$recordId' value='$escapedMentorName' />";
-        if (count($uids) == 0) {
-            $hiddenField .= "<input type='hidden' name='originalmentorname___$recordId' value='{$lookup->getName()}' />";
-            $noId = "mentor___$recordId" . "___no";
-            $skipInput = "<input type='radio' name='mentor___$recordId' id='$noId' value='' /> <label for='$noId'>Yes, please skip</label>";
-            $tableRow .= "<td class='red'><strong>No names in REDCap matched with {$lookup->getName()}.</strong><br/>Do you want to skip this mentor's user-id?<br/>$skipInput<br/>Is there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$recordId' value=''></td>";
-        } else if (count($uids) == 1) {
-            $uid = array_keys($uids)[0];
-            $userInfo = REDCapLookup::getUserInfo($uid);
-            $email = $userInfo['user_email'] ?? "";
-            $emailLink = $email ? "<a href='mailto:$email'>$email</a>" : "Email Unknown";
-
-            $startTs = $userInfo['user_firstvisit'] ? strtotime($userInfo['user_firstvisit']) : FALSE;
-            $endTs = $userInfo['user_lastactivity'] ? strtotime($userInfo['user_lastactivity']) : FALSE;
-            if ($startTs && $endTs) {
-                $startYear = date("Y", $startTs);
-                $endYear = date("Y", $endTs);
-                if ($startYear == $endYear) {
-                    $yearInfo = $startYear;
-                } else {
-                    $yearInfo = $startYear." - ".$endYear;
-                }
-            } else {
-                $yearInfo = "Unknown";
+function lookupScholarAndMentorName($names, $scholarFirst, $scholarLast, $mentorList, $token, $server) {
+    if ($scholarFirst && $scholarLast && $mentorList && ($recordId = NameMatcher::matchName($scholarFirst, $scholarLast, $token, $server))) {
+        if (preg_match("/[,;]/", $mentorList)) {
+            $mentorNames = preg_split("/\s*[,;]\s*/", $mentorList);
+            $i = 1;
+            $tableRow = "";
+            foreach ($mentorNames as $mentorName) {
+                $suffix = ":$i";
+                $tableRow .= makeMentorHTML($names, $scholarFirst, $scholarLast, $mentorName, $recordId, $suffix);
+                $i++;
             }
-
-            $yesId = "mentor___$recordId" . "___yes";
-            $noId = "mentor___$recordId" . "___no";
-            $yesno = "<input type='radio' name='mentor___$recordId' id='$yesId' value='$uid' checked /> <label for='$yesId'>Yes</label><br>";
-            $yesno .= "<input type='radio' name='mentor___$recordId' id='$noId' value='' /> <label for='$noId'>No</label>";
-            $tableRow .= "<td class='green'>$hiddenField" . "Matched: $uid<br/>(last used REDCap: $yearInfo)<br/>$emailLink<br/>$yesno</td>";
         } else {
-            $radios = [];
-            $noId = "mentor___$recordId" . "___no";
-            $radios[] = "<input type='radio' name='mentor___$recordId' id='$noId' value='' checked /> <label for='$noId'>None of the Above</label>";
-            foreach ($uids as $uid => $mentorName) {
-                $id = "mentor___" . $recordId . "___" . $uid;
-                $mentorEmail = REDCapLookup::getUserInfo($uid)["user_email"] ?? "";
-                $radios[] = "<input type='radio' name='mentor___$recordId' id='$id' value='$uid' /> <label for='$id'>$mentorName ($uid<br/>$mentorEmail)</label>";
-            }
-
-            $tableRow .= "<td class='yellow'>$hiddenField" . implode("<br>", $radios) . "</td>";
+            $tableRow = makeMentorHTML($names, $scholarFirst, $scholarLast, $mentorList, $recordId, "");
         }
-        $tableRow .= "</tr>";
         return $tableRow;
     }
     return "";
+}
+
+function makeMentorHTML($names, $scholarFirst, $scholarLast, $mentorName, $recordId, $suffix) {
+    list($mentorFirst, $mentorLast) = NameMatcher::splitName($mentorName, 2);
+    $lookup = new REDCapLookup($mentorFirst, $mentorLast);
+    $uids = $lookup->getUidsAndNames();
+    if (count($uids) == 0) {
+        $lookup = new REDCapLookup("", $mentorLast);
+        $uids = $lookup->getUidsAndNames();
+    }
+    $escapedMentorName = preg_replace("/'/", "\\'", $lookup->getName());
+
+    $tableRow = "<tr>";
+    $tableRow .= "<td>$recordId {$names[$recordId]}</td>";
+    $tableRow .= "<td>$scholarFirst $scholarLast</td>";
+    $tableRow .= "<td>$mentorName</td>";
+    $hiddenField = "<input type='hidden' name='mentorname___$recordId$suffix' value='$escapedMentorName' />";
+    if (count($uids) == 0) {
+        $hiddenField .= "<input type='hidden' name='originalmentorname___$recordId$suffix' value='{$lookup->getName()}' />";
+        $noId = "mentor___$recordId$suffix" . "___no";
+        $skipInput = "<input type='radio' name='mentor___$recordId$suffix' id='$noId' value='' /> <label for='$noId'>Yes, please skip</label>";
+        $tableRow .= "<td class='red'><strong>No names in REDCap matched with {$lookup->getName()}.</strong><br/>Do you want to skip this mentor's user-id?<br/>$skipInput<br/>Is there is a nickname and/or a maiden name at play here. Do you want to try adjusting their name?<br>$hiddenField<input type='text' name='newmentorname___$recordId' value=''></td>";
+    } else if (count($uids) == 1) {
+        $uid = array_keys($uids)[0];
+        $userInfo = REDCapLookup::getUserInfo($uid);
+        $email = $userInfo['user_email'] ?? "";
+        $emailLink = $email ? "<a href='mailto:$email'>$email</a>" : "Email Unknown";
+
+        $startTs = $userInfo['user_firstvisit'] ? strtotime($userInfo['user_firstvisit']) : FALSE;
+        $endTs = $userInfo['user_lastactivity'] ? strtotime($userInfo['user_lastactivity']) : FALSE;
+        if ($startTs && $endTs) {
+            $startYear = date("Y", $startTs);
+            $endYear = date("Y", $endTs);
+            if ($startYear == $endYear) {
+                $yearInfo = $startYear;
+            } else {
+                $yearInfo = $startYear." - ".$endYear;
+            }
+        } else {
+            $yearInfo = "Unknown";
+        }
+
+        $yesId = "mentor___$recordId$suffix" . "___yes";
+        $noId = "mentor___$recordId$suffix" . "___no";
+        $yesno = "<input type='radio' name='mentor___$recordId$suffix' id='$yesId' value='$uid' checked /> <label for='$yesId'>Yes</label><br>";
+        $yesno .= "<input type='radio' name='mentor___$recordId$suffix' id='$noId' value='' /> <label for='$noId'>No</label>";
+        $tableRow .= "<td class='green'>$hiddenField" . "Matched: $uid<br/>(last used REDCap: $yearInfo)<br/>$emailLink<br/>$yesno</td>";
+    } else {
+        $radios = [];
+        $noId = "mentor___$recordId" . "___no";
+        $radios[] = "<input type='radio' name='mentor___$recordId$suffix' id='$noId' value='' checked /> <label for='$noId'>None of the Above</label>";
+        foreach ($uids as $uid => $mentorName) {
+            $id = "mentor___" . $recordId . $suffix . "___" . $uid;
+            $mentorEmail = REDCapLookup::getUserInfo($uid)["user_email"] ?? "";
+            $radios[] = "<input type='radio' name='mentor___$recordId$suffix' id='$id' value='$uid' /> <label for='$id'>$mentorName ($uid<br/>$mentorEmail)</label>";
+        }
+
+        $tableRow .= "<td class='yellow'>$hiddenField" . implode("<br>", $radios) . "</td>";
+    }
+    $tableRow .= "</tr>";
+    return $tableRow;
 }
 
 function makeMainForm($token, $server) {
@@ -318,7 +378,7 @@ function makeMainForm($token, $server) {
     $html .= "<p class='centered smaller'>Or $inviteText</p>";
     $html .= "<h1>Upload Mentors in Bulk</h1>";
     $html .= "<div class='max-width centered'>";
-    $html .= "<p class='centered'>Please follow <a href='$thisUrl&download=csv'>this template</a> and upload the resulting CSV.</p>";
+    $html .= "<p class='centered max-width'>Please follow <a href='$thisUrl&download=csv'>this template</a> and upload the resulting CSV. If you want to add multiple mentors for each scholar, please add multiple spreadsheet rows, one per mentor. Flight Tracker will combine them.</p>";
     $html .= "<form action='$thisUrl&upload=csv' method='POST' enctype='multipart/form-data'>";
     $html .= Application::generateCSRFTokenHTML();
     $html .= "<p class='centered'><input type='file' name='csv_file'></p>";
@@ -347,8 +407,8 @@ function makeMainForm($token, $server) {
 function makeMentorJS($scholarJSON, $mentorJSON) {
     $thisUrl = Application::link("this");
     $js = "<script>
-    let scholarNames = $scholarJSON;
-    let mentorNames = $mentorJSON;
+    const scholarNames = $scholarJSON;
+    const mentorNames = $mentorJSON;
 
     function changeMentor(recordId) {
         const radiosOb = $('[name=chooseMentor]');

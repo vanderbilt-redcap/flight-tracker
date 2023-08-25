@@ -227,6 +227,24 @@ class DataDictionaryManagement {
         return $fields;
     }
 
+    public static function installAllMetadataForNecessaryPids($pids) {
+        $files = Application::getMetadataFiles();
+        $deletionRegEx = self::getDeletionRegEx();
+        foreach (REDCapManagement::getActiveProjects($pids) as $requestedPid) {
+            $requestedToken = Application::getSetting("token", $requestedPid);
+            $requestedServer = Application::getSetting("server", $requestedPid);
+            if ($requestedToken && $requestedServer) {
+                $requestedMetadata = Download::metadata($requestedToken, $requestedServer);
+                $switches = new FeatureSwitches($requestedToken, $requestedServer, $requestedPid);
+                list ($missing, $additions, $changed) = self::findChangedFieldsInMetadata($requestedMetadata, $files, $deletionRegEx, CareerDev::getRelevantChoices(), $switches->getFormsToExclude(), $requestedPid);
+                if (count($additions) + count($changed) > 0) {
+                    $pidsToRun[] = $requestedPid;
+                }
+            }
+        }
+        return self::installMetadataForPids($pidsToRun, $files, $deletionRegEx);
+    }
+
     public static function installMetadataForPids($pids, $files, $deletionRegEx) {
         $returnData = [];
         foreach ($pids as $currPid) {
@@ -1357,8 +1375,8 @@ class DataDictionaryManagement {
         $blankSetup = ["1" => "Resource"];
         $metadataFields = self::getFieldsFromMetadata($metadata);
         $mentoringResourceField = self::getMentoringResourceField($metadataFields);
-
         $choices = self::getChoices($metadata);
+
         if (
             !empty($choices[$mentoringResourceField])
             && !empty($choices[$defaultResourceField])
@@ -1380,7 +1398,7 @@ class DataDictionaryManagement {
         } else if ($pid) {
             $resourceList = Application::getSetting("resources", $pid);
             if (trim($resourceList)) {
-                $resource1DAry = explode("\n", $resourceList);
+                $resource1DAry = explode("\n", trim($resourceList));
                 $resourcesWithIndex = [];
                 $idx = 1;
                 foreach ($resource1DAry as $resource) {

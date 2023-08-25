@@ -17,8 +17,6 @@ try {
     require_once(dirname(__FILE__)."/small_base.php");
     require_once(dirname(__FILE__)."/classes/Autoload.php");
 
-    $celebrationsHandler = new CelebrationsEmail($token, $server, $pid, []);
-
     if (!empty($_POST)) {
         $switches = new FeatureSwitches($token, $server, $pid);
         $data = $switches->savePost($_POST);
@@ -42,6 +40,7 @@ try {
 
     require_once(dirname(__FILE__)."/charts/baseWeb.php");
 
+    $celebrationsHandler = new CelebrationsEmail($token, $server, $pid, []);
     $switches = new FeatureSwitches($token, $server, $pid);
     $numDaysPerWeek = $switches->getValue("Days per Week to Build Summaries");
     $scheduledCrons = [];

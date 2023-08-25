@@ -66,8 +66,9 @@
 	   "copyProject",
 	   "reporting/tables2-4",
 	   "reporting/tables2-4WithAuth",
+	   "mstp/reviewMSTP",
 	   "reviewMSTP",
-	   "mstpDownload"
+	   "mstp/mstpDownload"
    ],
 
 	"framework-version": 8,

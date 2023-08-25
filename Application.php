@@ -13,14 +13,7 @@ class Application {
     }
 
     public static function getActivePids() {
-        $activePids = [];
-        $allPossiblePids = self::getPids();
-        foreach ($allPossiblePids as $pidCandidate) {
-            if (REDCapManagement::isActiveProject($pidCandidate)) {
-                $activePids[] = $pidCandidate;
-            }
-        }
-        return $activePids;
+        return REDCapManagement::getActiveProjects(self::getPids());
     }
 
     public static function getCredentialsDir() {
@@ -51,7 +44,7 @@ class Application {
         if (method_exists("\ExternalModules\ExternalModules", "isSuperUser")) {
             $isSuperUser = \ExternalModules\ExternalModules::isSuperUser();
         }
-        return (\SUPER_USER || $isSuperUser);
+        return ((defined("\SUPER_USER") && \SUPER_USER) || $isSuperUser);
     }
 
     public static function getRelevantChoices() {

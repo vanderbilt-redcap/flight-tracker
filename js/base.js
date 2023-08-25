@@ -675,9 +675,10 @@ function submitChanges(nextRecord) {
 			wranglerType: type,
 			omissions: JSON.stringify(newOmits),
 			resets: JSON.stringify(resets),
-			finalized: JSON.stringify(newFinalized)
+			finalized: JSON.stringify(newFinalized),
+			redcap_csrf_token: getCSRFToken()
 		};
-		console.log('Posting '+JSON.stringify(postdata));
+		console.log('Posting to '+url+' '+JSON.stringify(postdata));
 		presentScreen('Saving...');
 		$.ajax({
 			url: url,
@@ -699,8 +700,17 @@ function submitChanges(nextRecord) {
 					});
 				} else if (e.responseText && (e.status === 200)) {
 					const json = e.responseText;
-					const data = JSON.parse(json);
-					processWranglingResult(data, nextRecord);
+					console.log(json);
+					try {
+						const data = JSON.parse(json);
+						processWranglingResult(data, nextRecord);
+					} catch(exception) {
+						console.error(exception);
+						$.sweetModal({
+							content: exception,
+							icon: $.sweetModal.ICON_ERROR
+						});
+					}
 				} else {
 					console.log(JSON.stringify(e));
 				}
@@ -908,33 +918,42 @@ function installMetadataForProjects(pids) {
 
 			clearScreen();
 		} else {
-			const data = JSON.parse(json);
-			const numProjects = Object.keys(data).length;
-			const exceptions = [];
-			for (const pid in data) {
-				if (typeof data[pid]['Exception'] !== "undefined") {
-					exceptions.push("Project "+pid+": "+data[pid]['Exception']);
+			try {
+				const data = JSON.parse(json);
+				const numProjects = Object.keys(data).length;
+				const exceptions = [];
+				for (const pid in data) {
+					if (typeof data[pid]['Exception'] !== "undefined") {
+						exceptions.push("Project "+pid+": "+data[pid]['Exception']);
+					}
 				}
-			}
-			if (exceptions.length === 0) {
+				if (exceptions.length === 0) {
+					$.sweetModal({
+						content: numProjects+' projects were successfully updated.',
+						icon: $.sweetModal.ICON_SUCCESS
+					});
+					$("#metadataWarning").addClass("install-metadata-box-success");
+					$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> "+getInstallationCompleteMessage());
+				} else {
+					$.sweetModal({
+						content: exceptions.length+' error(s) occurred:<br/>'+exceptions.join('<br/>'),
+						icon: $.sweetModal.ICON_ERROR
+					});
+					$("#metadataWarning").addClass("install-metadata-box-danger");
+					$("#metadataWarning").html("<i class='fa fa-xmark' aria-hidden='true'></i> Installation Errors Occurred");
+				}
+				setTimeout(function() {
+					$("#metadataWarning").fadeOut(500);
+				}, 3000);
+				clearScreen();
+			} catch(exception) {
+				console.error(exception);
+				clearScreen();
 				$.sweetModal({
-					content: numProjects+' projects were successfully updated.',
-					icon: $.sweetModal.ICON_SUCCESS
-				});
-				$("#metadataWarning").addClass("install-metadata-box-success");
-				$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> "+getInstallationCompleteMessage());
-			} else {
-				$.sweetModal({
-					content: exceptions.length+' error(s) occurred:<br/>'+exceptions.join('<br/>'),
+					content: exception,
 					icon: $.sweetModal.ICON_ERROR
 				});
-				$("#metadataWarning").addClass("install-metadata-box-danger");
-				$("#metadataWarning").html("<i class='fa fa-xmark' aria-hidden='true'></i> Installation Errors Occurred");
 			}
-			setTimeout(function() {
-				$("#metadataWarning").fadeOut(500);
-			}, 3000);
-			clearScreen();
 		}
 	});
 }
@@ -958,39 +977,55 @@ function installMetadata(fields) {
 				$("#metadataWarning").fadeOut(500);
 			}, 3000);
 		} else {
-			const pid = getPid();
-			const data = JSON.parse(json);
-			const errorMssg = data[pid]['Exception'] ?? "";
-			if (errorMssg === "First field is , not record_id!") {
-				$.post(url, { 'redcap_csrf_token': getCSRFToken(), process: "install_from_scratch", fields: [] }, function(json2) {
-					console.log(json2);
-					if (!json2.match(/Exception/)) {
-						$("#metadataWarning").removeClass("install-metadata-box-warning");
-						$("#metadataWarning").addClass("install-metadata-box-success");
-						$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> "+getInstallationCompleteMessage());
-						setTimeout(function () {
-							$("#metadataWarning").fadeOut(500);
-						}, 3000);
-					} else {
-						const data2 = JSON.parse(json2);
-						const errorMssg2 = data2[pid]['Exception'] ?? "";
-						$("#metadataWarning").removeClass("install-metadata-box-warning");
-						$("#metadataWarning").addClass("install-metadata-box-danger");
-						if (errorMssg2) {
-							$("#metadataWarning").html("Error in installation! Metadata not updated. "+errorMssg2);
+			try {
+				const pid = getPid();
+				const data = JSON.parse(json);
+				const errorMssg = data[pid]['Exception'] ?? "";
+				if (errorMssg === "First field is , not record_id!") {
+					$.post(url, { 'redcap_csrf_token': getCSRFToken(), process: "install_from_scratch", fields: [] }, function(json2) {
+						console.log(json2);
+						if (!json2.match(/Exception/)) {
+							$("#metadataWarning").removeClass("install-metadata-box-warning");
+							$("#metadataWarning").addClass("install-metadata-box-success");
+							$("#metadataWarning").html("<i class='fa fa-check' aria-hidden='true'></i> "+getInstallationCompleteMessage());
+							setTimeout(function () {
+								$("#metadataWarning").fadeOut(500);
+							}, 3000);
 						} else {
-							$("#metadataWarning").html("Error in installation! Metadata not updated. "+json2);
+							try {
+								const data2 = JSON.parse(json2);
+								const errorMssg2 = data2[pid]['Exception'] ?? "";
+								$("#metadataWarning").removeClass("install-metadata-box-warning");
+								$("#metadataWarning").addClass("install-metadata-box-danger");
+								if (errorMssg2) {
+									$("#metadataWarning").html("Error in installation! Metadata not updated. "+errorMssg2);
+								} else {
+									$("#metadataWarning").html("Error in installation! Metadata not updated. "+json2);
+								}
+							} catch(exception2) {
+								console.error(exception2);
+								$.sweetModal({
+									content: exception2,
+									icon: $.sweetModal.ICON_ERROR
+								});
+							}
 						}
-					}
+					});
+				} else if (errorMssg) {
+					$("#metadataWarning").removeClass("install-metadata-box-warning");
+					$("#metadataWarning").addClass("install-metadata-box-danger");
+					$("#metadataWarning").html("Error in installation! Metadata not updated. "+errorMssg);
+				} else {
+					$("#metadataWarning").removeClass("install-metadata-box-warning");
+					$("#metadataWarning").addClass("install-metadata-box-danger");
+					$("#metadataWarning").html("Error in installation! Metadata not updated. "+json);
+				}
+			} catch(exception) {
+				console.error(exception);
+				$.sweetModal({
+					content: exception,
+					icon: $.sweetModal.ICON_ERROR
 				});
-			} else if (errorMssg) {
-				$("#metadataWarning").removeClass("install-metadata-box-warning");
-				$("#metadataWarning").addClass("install-metadata-box-danger");
-				$("#metadataWarning").html("Error in installation! Metadata not updated. "+errorMssg);
-			} else {
-				$("#metadataWarning").removeClass("install-metadata-box-warning");
-				$("#metadataWarning").addClass("install-metadata-box-danger");
-				$("#metadataWarning").html("Error in installation! Metadata not updated. "+json);
 			}
 		}
 	});
@@ -1304,6 +1339,45 @@ function postValues(path, parameters) {
 	// order for us to be able to submit it.
 	$(document.body).append(form);
 	form.submit();
+}
+
+function lookupUser(url, firstName, lastName, resultsOb) {
+	const postdata = {
+		redcap_csrf_token: getCSRFToken(),
+		firstName: firstName,
+		lastName: lastName
+	}
+	console.log(JSON.stringify(postdata));
+	$.post(url, postdata, (json) => {
+		console.log(json);
+		try {
+			const data = JSON.parse(json);
+			if (typeof data.error !== 'undefined') {
+				console.error(data.error);
+				$.sweetModal({
+					content: data.error,
+					icon: $.sweetModal.ICON_ERROR
+				});
+			} else {
+				if (Object.keys(data).length > 0) {
+					const rows = [];
+					for (const userid in data) {
+						const nameAndEmail = data[userid];
+						rows.push(nameAndEmail+": <strong>"+userid+"</strong>");
+					}
+					resultsOb.html(rows.join("<br/>"));
+				} else {
+					resultsOb.html("No matches to "+firstName+" "+lastName+". Is there a nickname or a maiden name involved?");
+				}
+			}
+		} catch (e) {
+			console.error(e);
+			$.sweetModal({
+				content: e,
+				icon: $.sweetModal.ICON_ERROR
+			});
+		}
+	})
 }
 
 function setupHorizontalScroll(tableWidth) {
@@ -1743,20 +1817,29 @@ function lookupREDCapUserid(link, resultsOb) {
 	} else {
 		const postParams = { 'redcap_csrf_token': getCSRFToken(), firstName: firstName, lastName: lastName };
 		$.post(link, postParams, function(json) {
-			const dataHash = JSON.parse(json);
-			if (Object.keys(dataHash).length > 0) {
-				const userids = [];
-				for (const uid in dataHash) {
-					const name = dataHash[uid];
-					userids.push(uid+': '+name);
+			console.log(json);
+			try {
+				const dataHash = JSON.parse(json);
+				if (Object.keys(dataHash).length > 0) {
+					const userids = [];
+					for (const uid in dataHash) {
+						const name = dataHash[uid];
+						userids.push(uid+': '+name);
+					}
+					let header = '';
+					if (userids.length > 1) {
+						header = '<h4>' + userids.length + ' Matches</h4>';
+					}
+					resultsOb.html(header + userids.join('<br/>'));
+				} else {
+					resultsOb.html('No names found in REDCap.');
 				}
-				let header = '';
-				if (userids.length > 1) {
-					header = '<h4>' + userids.length + ' Matches</h4>';
-				}
-				resultsOb.html(header + userids.join('<br/>'));
-			} else {
-				resultsOb.html('No names found in REDCap.');
+			} catch(exception) {
+				console.error(exception);
+				$.sweetModal({
+					content: exception,
+					icon: $.sweetModal.ICON_ERROR
+				});
 			}
 		});
 	}

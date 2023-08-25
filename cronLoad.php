@@ -274,6 +274,8 @@ function loadMultiProjectCrons(&$manager, $pids)
         $manager->addMultiCron("drivers/11_vfrs.php", "updateVFRSMulti", "Thursday", $pids);
         $manager->addMultiCron("drivers/19_updateNewCoeus.php", "updateAllCOEUSMulti", "Wednesday", $pids);
         $manager->addMultiCron("drivers/22_getVERA.php", "getVERAMulti", "Monday", $pids);
+        $manager->addMultiCron("drivers/updateAllMetadata.php", "updateAllMetadata", "Monday", $pids);
+        $manager->addMultiCron("drivers/updateAllMetadata.php", "updateAllMetadata", "2023-08-22", $pids);
     }
     $manager->addMultiCron("drivers/preprocess.php", "preprocessPortal", date("Y-m-d"), $pids);
     loadInternalSharingCrons($manager, $pids);

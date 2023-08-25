@@ -770,6 +770,13 @@ class Scholar {
 	}
 
     public function getPrimaryDepartmentText() {
+        if (in_array("promotion_joint_appointment", DataDictionaryManagement::getFieldsFromMetadata($this->metadata))) {
+            $jointAppointmentResult = $this->getJointAppointments($this->rows, "promotion_department");
+            if ($jointAppointmentResult->getValue()) {
+                return $jointAppointmentResult->getValue();
+            }
+        }
+
         $deptResult = $this->getPrimaryDepartment($this->rows);
         $dept = $deptResult->getValue();
         $choices = DataDictionaryManagement::getChoices($this->metadata);
@@ -2988,13 +2995,47 @@ class Scholar {
 		return $result->getValue();
 	}
 
+    private function getJointAppointments($rows, $desiredField) {
+        $jointAppointmentData = REDCapManagement::findAllFields($rows, $this->recordId, "promotion_joint_appointment", TRUE);
+        $jointAppointmentInstances = [];
+        foreach ($jointAppointmentData as $instance => $yesNoValue) {
+            if ($yesNoValue == 1) {
+                $jointAppointmentInstances[] = $instance;
+            }
+        }
+        if (!empty($jointAppointmentInstances)) {
+            $values = [];
+            foreach ($jointAppointmentInstances as $instance) {
+                $value = REDCapManagement::findField($rows, $this->recordId, $desiredField, TRUE, $instance);
+                if ($value && !in_array($value, $values)) {
+                    $values[] = $value;
+                }
+            }
+            if (!empty($values)) {
+                $list = REDCapManagement::makeConjunction($values);
+                return new Result($list, "manual", "Manually Entered", "", $this->pid);
+            }
+        }
+        return new Result("", "", "", "", $this->pid);
+    }
+
 	private function getInstitution($rows) {
 	    $showDebug = SHOW_DEBUG_FOR_INSTITUTIONS;
         $result = $this->getGenericValueForField($rows, "identifier_institution", TRUE, SHOW_DEBUG_FOR_INSTITUTIONS);
 		$value = $result->getValue();
 
 		if ($showDebug) {
-		    Application::log("getInstitution has $value");
+		    Application::log("getInstitution has $value", $this->pid);
+        }
+
+        if (in_array("promotion_joint_appointment", DataDictionaryManagement::getFieldsFromMetadata($this->metadata))) {
+            $jointAppointmentResult = $this->getJointAppointments($rows, "promotion_institution");
+            if ($jointAppointmentResult->getValue()) {
+                if ($showDebug) {
+                    Application::log("getInstitution has joint appointments ".$jointAppointmentResult->getValue(), $this->pid);
+                }
+                return $jointAppointmentResult;
+            }
         }
 
 		if (is_numeric($value)) {
@@ -3032,17 +3073,17 @@ class Scholar {
             }
             $result->setValue(implode(", ", $newInstitutions));
             if ($showDebug) {
-                Application::log("getInstitution returning ".$result->getValue());
+                Application::log("getInstitution returning ".$result->getValue(), $this->pid);
             }
             return $result;
 		} else if (($value == "") || ($value == Application::getUnknown())) {
             if ($showDebug) {
-                Application::log("getInstitution returning blank");
+                Application::log("getInstitution returning blank", $this->pid);
             }
 			return new Result("", "", "", "", $this->pid);
 		} else {
             if ($showDebug) {
-                Application::log("getInstitution returning ".$result->getValue());
+                Application::log("getInstitution returning ".$result->getValue(), $this->pid);
             }
 			# typical case
 			return $result;
@@ -3051,7 +3092,7 @@ class Scholar {
 
 	public function getCurrentDivision($rows) {
         $result = $this->getGenericValueForField($rows, "summary_current_division");
-		if ($result->getValue() == "") {
+		if (($result->getValue() == "") && !$this->getJointAppointments($rows, "promotion_department")) {
 			$deptName = $this->getPrimaryDepartmentText();
 			$nodes = preg_split("/\//", $deptName);
 			if (count($nodes) == 2) {
