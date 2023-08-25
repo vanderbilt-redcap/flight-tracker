@@ -1367,7 +1367,7 @@ function lookupUser(url, firstName, lastName, resultsOb) {
 					}
 					resultsOb.html(rows.join("<br/>"));
 				} else {
-					resultsOb.html("No matches to "+firstName+" "+lastName+". Is there a nickname or a maiden name involved?");
+					resultsOb.html("No matches to "+firstName+" "+lastName+". Is there a nickname or a name change involved?");
 				}
 			}
 		} catch (e) {

@@ -185,14 +185,14 @@ class CronManager {
         }
     }
 
-    public static function clearBatchQueue($module) {
-        self::saveBatchQueueToDB([], $module);
+    public static function clearBatchQueue() {
+        self::saveBatchQueueToDB([]);
     }
 
-    public static function resetBatchSettings($module) {
-	    self::saveBatchQueueToDB([], $module);
-	    self::saveErrorsToDB([], $module);
-	    self::saveRunResultsToDB([], $module);
+    public static function resetBatchSettings() {
+	    self::saveBatchQueueToDB([]);
+	    self::saveErrorsToDB([]);
+	    self::saveRunResultsToDB([]);
     }
 
     private static function getNumberOfRecordsForMethod($method) {
@@ -213,7 +213,7 @@ class CronManager {
 
     private function enqueueBatchMulti($file, $method, $pids, $firstParameter = FALSE) {
         if (!empty($pids)) {
-            $batchQueue = self::getBatchQueueFromDB($this->module);
+            $batchQueue = self::getBatchQueueFromDB();
             $batchRow = [
                 "file" => $file,
                 "method" => $method,
@@ -223,12 +223,12 @@ class CronManager {
                 "firstParameter" => $firstParameter,
             ];
             $batchQueue[] = $batchRow;
-            self::saveBatchQueueToDB($batchQueue, $this->module);
+            self::saveBatchQueueToDB($batchQueue);
         }
     }
 
 	private function enqueueBatch($file, $method, $records, $numRecordsAtATime, $firstParameter = FALSE) {
-        $batchQueue = self::getBatchQueueFromDB($this->module);
+        $batchQueue = self::getBatchQueueFromDB();
         for ($i = 0; $i < count($records); $i += $numRecordsAtATime) {
             $subRecords = [];
             for ($j = $i; ($j < count($records)) && ($j < $i + $numRecordsAtATime); $j++) {
@@ -247,61 +247,93 @@ class CronManager {
             ];
             $batchQueue[] = $batchRow;
         }
-        self::saveBatchQueueToDB($batchQueue, $this->module);
+        self::saveBatchQueueToDB($batchQueue);
     }
 
-    private static function saveErrorsToDB($errorQueue, $module) {
+    private static function saveErrorsToDB($errorQueue) {
 	    for ($i = 0; $i < count($errorQueue); $i++) {
 	        if (isset($errorQueue[$i]['token'])) {
 	            unset($errorQueue[$i]['token']);
             }
         }
-        $module->setSystemSetting(self::$errorSetting, $errorQueue);
+        try {
+            Application::saveSystemSetting(self::$errorSetting, $errorQueue);
+        } catch (\Exception $e) {
+            if (self::exceedsMaxCharacters($e->getMessage())) {
+                Application::saveSystemSetting(self::$errorSetting, []);
+            } else {
+                throw $e;
+            }
+        }
     }
 
-    private static function saveRunResultsToDB($runQueue, $module) {
-        $module->setSystemSetting(self::$runSetting, $runQueue);
+    private static function saveRunResultsToDB($runQueue) {
+        try {
+            Application::saveSystemSetting(self::$runSetting, $runQueue);
+        } catch (\Exception $e) {
+            if (self::exceedsMaxCharacters($e->getMessage())) {
+                Application::saveSystemSetting(self::$runSetting, []);
+            } else {
+                throw $e;
+            }
+        }
     }
 
-    private static function saveBatchQueueToDB($batchQueue, $module) {
+    private static function saveBatchQueueToDB($batchQueue) {
 	    $newBatchQueue = [];
 	    for ($i = 0; $i < count($batchQueue); $i++) {
 	        $newBatchQueue[] = $batchQueue[$i];
         }
-	    $module->setSystemSetting(self::$batchSetting, $newBatchQueue);
+        try {
+            Application::saveSystemSetting(self::$batchSetting, $newBatchQueue);
+        } catch (\Exception $e) {
+            if (self::exceedsMaxCharacters($e->getMessage())) {
+                Application::saveSystemSetting(self::$batchSetting, []);
+            } else {
+                throw $e;
+            }
+        }
     }
 
-    private static function getRunResultsFromDB($module) {
-        $runQueue = $module->getSystemSetting(self::$runSetting);
+    private static function exceedsMaxCharacters($mssg) {
+        return (
+            preg_match("/Cannot save the setting/", $mssg)
+            && preg_match("/because the value is larger than the/", $mssg)
+            && preg_match("/byte limit/", $mssg)
+        );
+    }
+
+    private static function getRunResultsFromDB() {
+        $runQueue = Application::getSystemSetting(self::$runSetting);
         if (!$runQueue) {
             return [];
         }
         return $runQueue;
     }
 
-    private static function getBatchQueueFromDB($module) {
-        $batchQueue = $module->getSystemSetting(self::$batchSetting);
+    private static function getBatchQueueFromDB() {
+        $batchQueue = Application::getSystemSetting(self::$batchSetting);
         if (!$batchQueue) {
             return [];
         }
         return $batchQueue;
     }
 
-    private static function getErrorsFromDB($module) {
-        $errors = $module->getSystemSetting(self::$errorSetting);
+    private static function getErrorsFromDB() {
+        $errors = Application::getSystemSetting(self::$errorSetting);
         if (!$errors) {
             return [];
         }
         return $errors;
     }
 
-    private static function addRunJobToDB($runJob, $module) {
-	    $runJobs = self::getRunResultsFromDB($module);
+    private static function addRunJobToDB($runJob) {
+	    $runJobs = self::getRunResultsFromDB();
 	    if (!$runJobs) {
 	        $runJobs = [];
         }
 	    $runJobs[] = $runJob;
-	    self::saveRunResultsToDB($runJobs, $module);
+	    self::saveRunResultsToDB($runJobs);
     }
 
     public static function upgradeBatchQueueIfNecessary(&$batchQueue, $module) {
@@ -314,7 +346,7 @@ class CronManager {
             }
         }
         if ($madeChanges) {
-            self::saveBatchQueueToDB($batchQueue, $module);
+            self::saveBatchQueueToDB($batchQueue);
         }
     }
 
@@ -349,7 +381,7 @@ class CronManager {
     public function runBatchJobs($numRunBeforeInCron = 0) {
 	    $module = $this->module;
 	    $validBatchStatuses = ["DONE", "ERROR", "RUN", "WAIT"];
-        $batchQueue = self::getBatchQueueFromDB($module);
+        $batchQueue = self::getBatchQueueFromDB();
 
         if (empty($batchQueue)) {
             return;
@@ -361,7 +393,7 @@ class CronManager {
             )
             || (count($batchQueue) > 5000)
         ){
-            self::saveBatchQueueToDB([], $module);
+            self::saveBatchQueueToDB([]);
             return;
         }
 
@@ -382,16 +414,16 @@ class CronManager {
         if (in_array($batchQueue[0]['status'], ["DONE", "ERROR"])) {
             if ($batchQueue[0]['status'] == "ERROR") {
                 Application::log("Saving ERROR ".json_encode($batchQueue[0]));
-                $errorJobs = self::getErrorsFromDB($module);
+                $errorJobs = self::getErrorsFromDB();
                 $errorJobs[] = $batchQueue[0];
-                self::saveErrorsToDB($errorJobs, $module);
+                self::saveErrorsToDB($errorJobs);
             }
             array_shift($batchQueue);
         }
         if (empty($batchQueue)) {
             return;
         }
-        self::saveBatchQueueToDB($batchQueue, $module);
+        self::saveBatchQueueToDB($batchQueue);
 
         if ($batchQueue[0]['status'] == "WAIT") {
             register_shutdown_function([$this, "reportCronErrors"]);
@@ -413,7 +445,7 @@ class CronManager {
                             $cronjob->setFirstParameter($batchQueue[0]['firstParameter']);
                         }
                         Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue)." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp(), $batchQueue[0]['pid']);
-                        self::saveBatchQueueToDB($batchQueue, $module);
+                        self::saveBatchQueueToDB($batchQueue);
                         $row = $batchQueue[0];
                         if (isset($row['pids'])) {
                             $queueHasRun = TRUE;
@@ -427,7 +459,7 @@ class CronManager {
                                 "method" => $row['method'],
                                 "file" => $row['file'],
                             ];
-                            self::addRunJobToDB($runJob, $module);
+                            self::addRunJobToDB($runJob);
                         } else if (isset($batchQueue[0]['records'])) {
                             $cronjob->setRecords($row['records']);
                             if ($batchQueue[0]['firstParameter']) {
@@ -446,7 +478,7 @@ class CronManager {
                                 "method" => $row['method'],
                                 "file" => $row['file'],
                             ];
-                            self::addRunJobToDB($runJob, $module);
+                            self::addRunJobToDB($runJob);
 
                             $elapsedSeconds = strtotime($endTimestamp) - strtotime($startTimestamp);
                             $numRunBeforeInCron++;
@@ -470,13 +502,13 @@ class CronManager {
                     }
                 } else if (count($batchQueue) > 0) {
                     array_shift($batchQueue);
-                    self::saveBatchQueueToDB($batchQueue, $module);
+                    self::saveBatchQueueToDB($batchQueue);
                     if (empty($batchQueue)) {
                         return;
                     }
                 } else {
                     # empty batchQueue
-                    self::saveBatchQueueToDB($batchQueue, $module);
+                    self::saveBatchQueueToDB($batchQueue);
                     return;
                 }
             } while (!$queueHasRun);
@@ -486,7 +518,7 @@ class CronManager {
     }
 
     public static function markAsDone($module) {
-        $batchQueue = self::getBatchQueueFromDB($module);
+        $batchQueue = self::getBatchQueueFromDB();
         if (empty($batchQueue)) {
             # queue was cleared
             return;
@@ -494,7 +526,7 @@ class CronManager {
         Application::log("Done with ".$batchQueue[0]['method']." at ".self::getTimestamp());
         $batchQueue[0]['status'] = "DONE";
         $batchQueue[0]['endTs'] = time();
-        self::saveBatchQueueToDB($batchQueue, $module);
+        self::saveBatchQueueToDB($batchQueue);
     }
 
     # likely for non-active projects
@@ -515,7 +547,7 @@ class CronManager {
             }
         }
         if ($hasDeletedRunJob) {
-            self::saveRunResultsToDB($newRunJobs, $module);
+            self::saveRunResultsToDB($newRunJobs);
         }
 
         $newErrorQueue = [];
@@ -531,15 +563,15 @@ class CronManager {
             }
         }
         if ($hasDeletedErrors) {
-            self::saveErrorsToDB($newErrorQueue, $module);
+            self::saveErrorsToDB($newErrorQueue);
         }
         return [$newRunJobs, $newErrorQueue];
     }
 
     public static function sendEmails($pids, $module, $additionalEmailText = "") {
-        $batchQueue = self::getBatchQueueFromDB($module);
-        $runJobs = self::getRunResultsFromDB($module);
-        $errorQueue = self::getErrorsFromDB($module);
+        $batchQueue = self::getBatchQueueFromDB();
+        $runJobs = self::getRunResultsFromDB();
+        $errorQueue = self::getErrorsFromDB();
         list($runJobs, $errorQueue) = self::cleanOldResults($runJobs, $errorQueue, $module);
         if (empty($batchQueue)) {
             foreach ($pids as $pid) {
@@ -569,7 +601,7 @@ class CronManager {
             $text = "";
             $hasData = FALSE;
             $hasErrors = FALSE;
-            $errorQueue = self::getErrorsFromDB($module);
+            $errorQueue = self::getErrorsFromDB();
             foreach ($errorQueue as $errorJob) {
                 if ($errorJob['pid'] == $pid) {
                     $hasErrors = TRUE;
@@ -615,9 +647,9 @@ class CronManager {
                     $remainingErrors[] = $errorJob;
                 }
             }
-            self::saveErrorsToDB($remainingErrors, $module);
+            self::saveErrorsToDB($remainingErrors);
 
-            $runJobs = self::getRunResultsFromDB($module);
+            $runJobs = self::getRunResultsFromDB();
             $remainingJobs = [];
             $methods = [];
             $newMethod = [
@@ -716,7 +748,7 @@ class CronManager {
                 REDCapManagement::cleanupDirectory(APP_PATH_TEMP, "/RePORTER_PRJ/");
             }
 
-            self::saveRunResultsToDB($remainingJobs, $module);
+            self::saveRunResultsToDB($remainingJobs);
         }
     }
 
@@ -1160,11 +1192,11 @@ body { font-size: 1.2em; }
     }
 
     public function getBatchQueue() {
-	    return self::getBatchQueueFromDB($this->module);
+	    return self::getBatchQueueFromDB();
     }
 
     private static function handleBatchError($module, $startTimestamp, $exception, $record = FALSE) {
-        $batchQueue = self::getBatchQueueFromDB($module);
+        $batchQueue = self::getBatchQueueFromDB();
 	    $mssg = $exception->getMessage();
 	    $trace = $exception->getTraceAsString();
         Application::log("handleBatchError: ".json_encode($batchQueue[0]));
@@ -1178,7 +1210,7 @@ body { font-size: 1.2em; }
         if ($record) {
             $batchQueue[0]['record'] = $record;
         }
-        self::saveBatchQueueToDB($batchQueue, $module);
+        self::saveBatchQueueToDB($batchQueue);
 
         if (isset($batchQueue[0]['pids'])) {
             $runJob = [
@@ -1204,7 +1236,7 @@ body { font-size: 1.2em; }
         } else {
             throw new \Exception("Invalid batch queue job: ".REDCapManagement::json_encode_with_spaces($batchQueue[0]));
         }
-        self::addRunJobToDB($runJob, $module);
+        self::addRunJobToDB($runJob);
     }
 
 	private static function getDaysOfWeek() {

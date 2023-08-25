@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.13.3";
+		return "5.13.4";
 	}
 
 	public static function getLockFile($pid) {
@@ -293,6 +293,27 @@ class CareerDev {
         return $protocol.$host.$uri;
     }
 
+    public static function isPageAllowedToBypassUserRights($page) {
+        if (!$page) {
+            return FALSE;
+        }
+
+        $allowedDirectories = [
+            "/^portal\//",
+            "/^mentor\/dashboard/",
+            "/^mentor\/config/",
+            "/^mstp\/reviewAllMSTP/",
+            "/^reporting\/tables2-4WithAuth/",
+        ];
+        foreach ($allowedDirectories as $regex) {
+            if (preg_match($regex, $page)) {
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+
 	public static function getPid($tokenForPid = "") {
         $token = $tokenForPid;
 		if ($token) {
@@ -320,7 +341,7 @@ class CareerDev {
             } else {
                 $requestedPid = Sanitizer::sanitizePid($_GET['pid']);
             }
-		} else if (isset($_GET['project_id'])) {
+		} else if (isset($_GET['project_id']) && self::isPageAllowedToBypassUserRights($_GET['page'] ?? "")) {
             $requestedPid = Sanitizer::sanitizePid($_GET['project_id']);
         }
  		if ($requestedPid && is_numeric($requestedPid)) {
@@ -575,6 +596,7 @@ class CareerDev {
                 && !preg_match("/^mentor\/config/", $relativeUrl)
             )
             || preg_match("/^reporting\/tables2-4WithAuth.php/", $relativeUrl)
+            || preg_match("/^mstp\/reviewAllMSTP.php/", $relativeUrl)
         );
         $isPortalPage = preg_match("/^portal\//", $relativeUrl);
         if (!$pid) {
