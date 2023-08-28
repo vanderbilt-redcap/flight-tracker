@@ -444,7 +444,7 @@ class CronManager {
                         if ($batchQueue[0]['firstParameter']) {
                             $cronjob->setFirstParameter($batchQueue[0]['firstParameter']);
                         }
-                        Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue)." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp(), $batchQueue[0]['pid']);
+                        Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue ?? [])." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp(), $batchQueue[0]['pid']);
                         self::saveBatchQueueToDB($batchQueue);
                         $row = $batchQueue[0];
                         if (isset($row['pids'])) {
