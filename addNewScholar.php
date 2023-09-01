@@ -88,6 +88,7 @@ if (($_POST['action'] == "oneByOne") && checkPOSTKeys($requiredFields)) {
 	echo "<p class='centered'>If the same name is used for a scholar, any new values will overwrite what is already in REDCap.</p>\n";
 	echo "<form enctype='multipart/form-data' method='POST' action='$bulkLink'>\n";
 	echo Application::generateCSRFTokenHTML();
+    echo "<input type='hidden' id='addNewScholar' name='addNewScholar' value='1' />";
     echo "<input type='hidden' id='action' name='action' value='intakeTable' />";
     echo "<p class='centered max-width'><input type='hidden' name='MAX_FILE_SIZE' value='3000000' />\n";
 	echo "CSV Upload: <input type='file' name='csv'><br/>\n";

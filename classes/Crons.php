@@ -444,7 +444,7 @@ class CronManager {
                         if ($batchQueue[0]['firstParameter']) {
                             $cronjob->setFirstParameter($batchQueue[0]['firstParameter']);
                         }
-                        Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue ?? [])." items in batch queue; ".count($batchQueue[0]['records'])." records) at ".self::getTimestamp(), $batchQueue[0]['pid']);
+                        Application::log("Promoting ".$batchQueue[0]['method']." for ".$batchQueue[0]['pid']." to RUN (".count($batchQueue)." items in batch queue; ".count($batchQueue[0]['records'] ?? [])." records) at ".self::getTimestamp(), $batchQueue[0]['pid']);
                         self::saveBatchQueueToDB($batchQueue);
                         $row = $batchQueue[0];
                         if (isset($row['pids'])) {
@@ -462,7 +462,7 @@ class CronManager {
                             self::addRunJobToDB($runJob);
                         } else if (isset($batchQueue[0]['records'])) {
                             $cronjob->setRecords($row['records']);
-                            if ($batchQueue[0]['firstParameter']) {
+                            if (isset($batchQueue[0]['firstParameter'])) {
                                 $cronjob->setFirstParameter($row['firstParameter']);
                             }
                             $queueHasRun = TRUE;
@@ -671,19 +671,19 @@ class CronManager {
                     $currMethod = $newMethod;
                     $priorRecords = [];
                     foreach ($methods[$method] as $settingsAry) {
-                        $priorRecords = array_unique(array_merge($priorRecords, $settingsAry[$prefix."Records"] ?? []));
+                        $priorRecords = array_unique(array_merge($priorRecords, $settingsAry[$prefix . "Records"] ?? []));
                     }
-                    $currMethod[$prefix."Records"] = array_merge($priorRecords, $job['records']);
+                    $currMethod[$prefix . "Records"] = array_merge($priorRecords, $job['records']);
                     $endTs = strtotime($job['end']);
-                    if ($endTs > $currMethod[$prefix."LastTs"]) {
-                        $currMethod[$prefix."LastTs"] = $endTs;
+                    if ($endTs > $currMethod[$prefix . "LastTs"]) {
+                        $currMethod[$prefix . "LastTs"] = $endTs;
                     }
                     $startTs = strtotime($job['start']);
-                    if ($startTs < $currMethod[$prefix."FirstTs"]) {
-                        $currMethod[$prefix."FirstTs"] = $startTs;
+                    if ($startTs < $currMethod[$prefix . "FirstTs"]) {
+                        $currMethod[$prefix . "FirstTs"] = $startTs;
                     }
                     $methods[$method][] = $currMethod;
-                } else if (is_array($job)) {
+                } else if (is_array($job) && !isset($job['pids'])) {
                     $remainingJobs[] = $job;
                 }
             }

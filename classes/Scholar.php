@@ -286,12 +286,14 @@ class Scholar {
 
             $emails = [];
             foreach ($rows as $row) {
+                $doNotUse = $row[$prefix."_donotuse"] ?? 0;
                 if (
                     ($row['redcap_repeat_instrument'] == $instrument)
                     && (
                         !in_array($row['ldap_vanderbiltpersonjobname'], self::$skipJobs)
                         || !in_array($row['ldapds_title'], self::$skipJobs)
                     )
+                    && ($doNotUse !== '1')
                 ) {
                     $emails[$row[$field]] = explode("@", strtolower($row[$prefix."_mail"]));
                 }
@@ -2820,6 +2822,14 @@ class Scholar {
 		foreach ($vars as $var => $source) {
 			$splitVar = explode("/", $var);
 			foreach ($rows as $row) {
+                $instrument = $row['redcap_repeat_instrument'] ?? "";
+                if (preg_match("/^ldap/", $var) && in_array($instrument, ["ldap", "ldapds"])) {
+                    $prefix = $instrument;
+                    $doNotUse = $row[$prefix."_donotuse"] ?? 0;
+                    if ($doNotUse === '1') {
+                        continue;
+                    }
+                }
 				if (
                     (
                         isset($row[$var])

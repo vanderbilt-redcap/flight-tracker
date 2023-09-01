@@ -933,6 +933,7 @@ class Citation {
     }
 
 	public function getCitation($multipleNamesToBold = []) {
+        $html = "";
         if (!empty($multipleNamesToBold)) {
             // Application::log("Has multiple names to bold: ".REDCapManagement::json_encode_with_spaces($multipleNamesToBold));
             $authorList = $this->getAuthorList();
@@ -954,11 +955,11 @@ class Citation {
             $authors = self::addPeriodIfExtant(implode(", ", self::boldName($this->lastName, $this->firstName, $this->getAuthorList())));
         }
         if ($this->getVariable("data_source") == "eric") {
-            return $this->getERICCitation($authors);
+            $html = $this->getERICCitation($authors);
         } else if ($this->getVariable("data_source") == "citation") {
-            return $this->makePubMedCitation($authors);
+            $html = $this->makePubMedCitation($authors);
         }
-        return "";
+        return utf8_encode($html);
     }
 
     private function getERICCitation($authorText) {

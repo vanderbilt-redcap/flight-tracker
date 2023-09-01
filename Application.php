@@ -344,6 +344,7 @@ class Application {
         }
         $module = self::getModule();
         $museoSansLink = self::link("/fonts/exljbris - MuseoSans-500.otf");
+        $horizontalScrollbar = CareerDev::isREDCap() ? ":root { overflow-x: scroll; }" : "";
 
         $str = "";
         $str .= "
@@ -374,6 +375,7 @@ p.centered { text-align: center; margin-left: auto; margin-right: auto; }
 p.recessed { color: #888888; font-size: 11px; margin: 4px 12px 4px 12px; }
 .recessed,.recessed a { color: #888888; font-size: 11px; }
 p.recessed,div.recessed { margin: 2px; }
+$horizontalScrollbar
 </style>";
 
         $str .= self::getImportHTML();
@@ -716,12 +718,14 @@ SELECT DISTINCT s.project_id AS pid
             $phpWord = new \PhpOffice\PhpWord\PhpWord();
             $section = $phpWord->addSection();
             \PhpOffice\PhpWord\Shared\Html::addHtml($section, $html);
+            $saveFilename = APP_PATH_TEMP."publications_".bin2hex(random_bytes(10)).".docx";
+            $phpWord->save($saveFilename, 'Word2007');
 
             $filename = REDCapManagement::makeSafeFilename($filename);
             header('Content-Type: application/octet-stream');
             header('Content-Disposition: attachment;filename="'.$filename.'"');
-            $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
-            $objWriter->save('php://output');
+            readfile($saveFilename);
+            unlink($saveFilename);
         }
     }
 

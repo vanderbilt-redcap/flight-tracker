@@ -64,6 +64,7 @@ class ComposerStaticInit356aec8a2d35171e17e171e2b60bbfb6
             'Psr\\Container\\' => 14,
             'Psalm\\' => 6,
             'PhpParser\\' => 10,
+            'PhpOffice\\PhpWord\\' => 18,
             'PhpOffice\\PhpSpreadsheet\\' => 25,
             'ParagonIE\\ConstantTime\\' => 23,
             'PackageVersions\\' => 16,
@@ -76,6 +77,7 @@ class ComposerStaticInit356aec8a2d35171e17e171e2b60bbfb6
         'L' => 
         array (
             'LanguageServerProtocol\\' => 23,
+            'Laminas\\Escaper\\' => 16,
         ),
         'C' => 
         array (
@@ -184,6 +186,10 @@ class ComposerStaticInit356aec8a2d35171e17e171e2b60bbfb6
         array (
             0 => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser',
         ),
+        'PhpOffice\\PhpWord\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/phpoffice/phpword/src/PhpWord',
+        ),
         'PhpOffice\\PhpSpreadsheet\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet',
@@ -207,6 +213,10 @@ class ComposerStaticInit356aec8a2d35171e17e171e2b60bbfb6
         'LanguageServerProtocol\\' => 
         array (
             0 => __DIR__ . '/..' . '/felixfbecker/language-server-protocol/src',
+        ),
+        'Laminas\\Escaper\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/laminas/laminas-escaper/src',
         ),
         'Composer\\XdebugHandler\\' => 
         array (

@@ -77,7 +77,11 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
                 if (count($nodes) == 6) {
                     $lines[] = $nodes;
                 } else {
-                    $link = Application::link("this").$createRecordsURI;
+                    if (isset($_POST['addNewScholar'])) {
+                        $link = Application::link("addNewScholar.php");
+                    } else {
+                        $link = Application::link("this").$createRecordsURI;
+                    }
                     $mssg = "A line does not contain the necessary 6 columns. No data have been added. Please try again.";
                     exitProcess($mssg, $link);
                     exit;
@@ -403,7 +407,7 @@ function getUidsForMentors($lines) {
     $mentorCol = 13;
     for ($i = 0; $i < count($lines); $i++) {
         $line = $lines[$i];
-        if (isset($line) && isset($line[$mentorCol]) && $line[$mentorCol]) {
+        if (isset($line) && isset($line[$mentorCol]) && trim($line[$mentorCol])) {
             $currentUids = [];
             if (preg_match("/[,;]/", $line[$mentorCol])) {
                 if (NameMatcher::isLastNameFirst($line[$mentorCol])) {

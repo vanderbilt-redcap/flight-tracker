@@ -263,13 +263,13 @@ function makePublicationListHTML($citations, $names, $dates) {
             foreach ($citColls as $record => $citColl) {
                 $name = $names[$record];
                 $date = $dates[$record];
-                $header = "<p class='centered'>$name (".$citColl->getCount().")";
+                $collectionHeader = "<p class='centered'>$name (".$citColl->getCount().")";
                 if ($date) {
-                    $header .= "<br>$date";
+                    $collectionHeader .= "<br/>$date";
                 }
-                $header .= "</p>\n";
+                $collectionHeader .= "</p>\n";
                 if ($citColl->getCount() > 0) {
-                    $html .= $header;
+                    $html .= $collectionHeader;
                 }
 
                 $citations = $citColl->getCitations();
@@ -289,7 +289,7 @@ function makePublicationListHTML($citations, $names, $dates) {
         }
         $html .= "</div>\n";
     }
-    $html .= "<br><br><br>";
+    $html .= "<br/><br/><br/>";
     return $html;
 }
 

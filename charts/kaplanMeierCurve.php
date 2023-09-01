@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 define('ALL_SCHOLARS_LABEL', 'All Scholars');
 
@@ -15,7 +16,7 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 define("CENSORED_DATA_LABEL", "CENSORED DATA");
 $maxKGrants = 4;
-define("NUM_GRANTS_TO_PULL", $maxKGrants < Grants::$MAX_GRANTS ? $maxKGrants : Grants::$MAX_GRANTS);
+define("NUM_GRANTS_TO_PULL", ($maxKGrants < Grants::$MAX_GRANTS) ? $maxKGrants : Grants::$MAX_GRANTS);
 
 
 $colors = array_merge(["rgba(0, 0, 0, 1)"], Application::getApplicationColors(["1.0", "0.6", "0.2"]));
@@ -58,8 +59,9 @@ $resourcesUsedIdx = [];
 $groups = [];
 $cohortTitle = "";
 if ($showRealGraph) {
-    if ($_GET['cohort']) {
-        $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    $cohort = Sanitizer::sanitize($_GET['cohort'] ?: "");
+    if (isset($_GET['cohort']) && !in_array($_GET['cohort'], ["", "all"])) {
+        $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
         $cohortTitle = " (Cohort $cohort)";
         $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
     } else {
@@ -118,7 +120,6 @@ if ($showRealGraph) {
         }
     }
 
-    $curveData = [];
     $maxLife = !empty($serialTimes) ? max(array_values($serialTimes)) : 0;
     if (isset($_GET['test'])) {
         echo "maxLife: $maxLife<br>";
@@ -238,7 +239,7 @@ echo "<h1>Kaplan-Meier Conversion Success Curve</h1>";
 echo "<p class='centered max-width'>A <a href='https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3932959/'>Kaplan-Meier survival plot</a> is used in epidemiology to track deaths over time due to a disease. It's a good way to track the effectiveness of a treatment. In Career Development, deaths are not tracked, but rather whether someone converts from K to R (event), is lost to follow-up (censored), or is still active (censored). This curve will hopefully allow you to gauge the effectiveness of scholarship-promoting efforts.</p>";
 echo "<form action='$url' method='GET'>";
 echo REDCapManagement::makeHiddenInputs($params);
-echo "<p class='centered skinnymargins'>".$cohorts->makeCohortSelect($cohort)."</p>";
+echo "<p class='centered skinnymargins'>".$cohorts->makeCohortSelect($cohort, "", TRUE)."</p>";
 
 // $measurements = ["days", "months", "years"];
 $measurements = ["months", "years"];
@@ -294,6 +295,7 @@ if ($showRealGraph) {
         foreach ($plots as $id => $titles) {
             echo "<h2>".$titles['title']."</h2>";
             echo "<canvas class='kaplanMeier' id='$id' width='800' height='600' style='width: 800px !important; height: 600px !important;'></canvas>";
+            echo "<div class='alignright'><button onclick='html2canvas(document.getElementById(\"$id\"), { onrendered: (canvas) => { downloadCanvas(canvas, \"kaplan-meier.png\"); } }); return false;' class='smallest'>Save</button></div>";
         }
         $projectTitle = Application::getProjectTitle();
 
