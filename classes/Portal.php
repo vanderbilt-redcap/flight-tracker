@@ -382,11 +382,10 @@ class Portal {
             "title" => "Mentoring Portal",             // set up mentor(s); fill out MMAs; talk to each other
         ];
         if (Application::isVanderbilt()) {
-            # TODO - phased release
-            // $menu["Your Network"][] = [
-            //    "action" => "connect",
-            //     "title" => "Connect With Colleagues",     // flight connector
-            // ];
+            $menu["Your Network"][] = [
+               "action" => "connect",
+                "title" => "Connect With Colleagues",     // flight connector
+            ];
 
             // $menu["Your Network"][] = [
             //    "action" => "resource_map",

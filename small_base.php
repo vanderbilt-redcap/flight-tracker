@@ -52,7 +52,11 @@ if (!$pid && !Application::isWebBrowser() && (count($argv) >= 2) && in_array($ar
     $_GET['pid'] = $pid;
 }
 if (!$pid) {
-    $pid = CareerDev::getSetting("pid");
+    if (isset($_GET['project_id'])) {
+        $pid = CareerDev::getSetting("pid", $_GET['project_id']);
+    } else {
+        $pid = CareerDev::getSetting("pid");
+    }
     $_GET['pid'] = $pid;
 }
 define('INSTITUTION', CareerDev::getInstitution($pid));

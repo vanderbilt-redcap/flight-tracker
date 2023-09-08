@@ -21,25 +21,44 @@ function encodeName(str) {
 
 $(document).ready(function() {
     const sites = ".json_encode($sites).";
+    const timeoutSeconds = 10;
     for (const name in sites) {
         const server = sites[name]
         let encodedName = encodeName(name)
-        $.post('" . Application::link('testConnectionStatus.php') . "', { 'redcap_csrf_token': getCSRFToken(), name: name }, function(json) {
-            console.log(name+' ('+encodedName+'): '+json);
-            let results = JSON.parse(json)
-            let html = ''
-            html += '<h2>'+name+' (<a href=\"https://'+server+'\">'+server+'</a>)</h2>'
-            html += '<div class=\"centered bordered shadow\" style=\"max-width: 500px; margin 0 auto;\">'
-            for (const key in results) {
-                let result = results[key]
-                var resultClass = 'green'
-                if (result.match(/error/i)) {
-                    resultClass = 'red'
+        $.ajax({
+            url: '" . Application::link('testConnectionStatus.php') . "',
+            type: 'POST',
+            data: { 'redcap_csrf_token': getCSRFToken(), name: name },
+            timeout: timeoutSeconds * 1000,
+            success: (json) => {
+                console.log(name+' ('+encodedName+'): '+json);
+                const results = JSON.parse(json)
+                let html = ''
+                html += '<h2>'+name+' (<a href=\"https://'+server+'\">'+server+'</a>)</h2>'
+                html += '<div class=\"centered bordered shadow\" style=\"max-width: 500px; margin 0 auto;\">'
+                for (const key in results) {
+                    const result = results[key]
+                    let resultClass = 'green'
+                    if (result.match(/error/i)) {
+                        resultClass = 'red'
+                    }
+                    html += '<p class=\"'+resultClass+' centered\" style=\"max-width: 500px; margin: 0 auto;\"><b>'+key+'</b>: '+result+'</p>'
                 }
-                html += '<p class=\"'+resultClass+' centered\" style=\"max-width: 500px; margin: 0 auto;\"><b>'+key+'</b>: '+result+'</p>'
+                html += '</div>'
+                $('#'+encodedName).removeClass('yellow').html(html)
+            },
+            error: (e) => {
+                console.log(name+' ('+encodedName+'): '+JSON.stringify(e));
+                const resultClass = 'red';
+                const error = e.responseText ?? e.statusText ?? 'General Error';
+                const errorText = (error === 'timeout') ? 'Timeout Error: '+timeoutSeconds+' seconds' : error;
+                let html = ''
+                html += '<h2>'+name+' (<a href=\"https://'+server+'\">'+server+'</a>)</h2>'
+                html += '<div class=\"centered bordered shadow\" style=\"max-width: 500px; margin 0 auto;\">'
+                html += '<p class=\"'+resultClass+' centered\" style=\"max-width: 500px; margin: 0 auto;\">'+errorText+'</p>'
+                html += '</div>'
+                $('#'+encodedName).removeClass('yellow').html(html)
             }
-            html += '</div>'
-            $('#'+encodedName).removeClass('yellow').html(html)
         })
     }
 })

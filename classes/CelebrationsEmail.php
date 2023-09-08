@@ -545,6 +545,8 @@ class CelebrationsEmail {
         $redcapData = Download::fieldsForRecords($this->token, $this->server, $grantFields, $allRequestedRecords);
         $lastNames = Download::lastnames($this->token, $this->server);
         $firstNames = Download::firstnames($this->token, $this->server);
+        $emails = Download::emails($this->token, $this->server);
+        $alumniAssociations = Download::alumniAssociations($this->token, $this->server);
         foreach ($this->grantRecordsAndInstances[$name] as $instrument => $recordsAndInstances) {
             foreach ($redcapData as $row) {
                 $recordId = $row['record_id'];

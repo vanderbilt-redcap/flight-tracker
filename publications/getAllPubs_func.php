@@ -164,7 +164,7 @@ function getPubsGeneric($token, $server, $pid, $records, $searchWithInstitutions
 	unset($redcapData);
 
 	if (CareerDev::isVanderbilt()) {
-		processVICTR($citationIds, $maxInstances, $token, $server, $pid, $records, $searchWithInstitutions);
+		processVICTR($citationIds, $maxInstances, $token, $server, $pid, $records);
 	}
 	processPubMed($citationIds, $maxInstances, $token, $server, $pid, $records, $searchWithInstitutions);
 	postprocess($token, $server, $records);

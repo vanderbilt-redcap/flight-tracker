@@ -34,6 +34,11 @@ $fields = [
     "citation_month",
     "citation_year",
 ];
+$coauthorshipsOnly = FALSE;
+if (isset($_GET['coauthorships']) && ($_GET['coauthorships'] == "on")) {
+    $fields[] = "citation_authors";
+    $coauthorshipsOnly = TRUE;
+}
 
 $metadata = Download::metadata($token, $server);
 $fieldLabels = REDCapManagement::getLabels($metadata);
@@ -55,16 +60,20 @@ foreach ($records as $recordId) {
 $redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
 
 $dist = [];
-$skip = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance"];
 foreach (["citation_rcr", "citation_altmetric_score"] as $field) {
     $dist[$field] = [];
     foreach ($redcapData as $row) {
         if (
-            $row[$field]
-            && inTimespan($row, $startTs, $endTs)
-            && ($row['citation_include'] == "1")
+            !$coauthorshipsOnly
+            || (getNumNameMatches($relevantNames, $row['citation_authors']) >= 2)
         ) {
-            $dist[$field][$row['record_id'].":".$row['redcap_repeat_instance']] = $row[$field];
+            if (
+                $row[$field]
+                && inTimespan($row, $startTs, $endTs)
+                && ($row['citation_include'] == "1")
+            ) {
+                $dist[$field][$row['record_id'] . ":" . $row['redcap_repeat_instance']] = $row[$field];
+            }
         }
     }
 }
@@ -73,7 +82,7 @@ $recordsToDownload = [];
 $foundList = [];
 foreach ($dist['citation_rcr'] as $location => $rcr) {
     if ($rcr >= $thresholdRCR) {
-        list($recordId, $instance) = preg_split("/:/", $location);
+        list($recordId, $instance) = explode(":", $location);
         if (!in_array($recordId, $recordsToDownload)) {
             $recordsToDownload[] = $recordId;
         }
@@ -139,6 +148,8 @@ if (!isset($_GET['hideHeader'])) {
     echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date (optional)</label>: <input type='date' id='end' name='end' value='$endDate' style='width: 150px;'>";
     echo "</p>";
     echo "<p class='centered'><label for='thresholdRCR'>Threshold Relative Citation Ratio (RCR) for List</label>: <input type='number' id='thresholdRCR' name='thresholdRCR' value='$thresholdRCR' style='width: 100px;'></p>";
+    $coauthorshipsChecked = $coauthorshipsOnly ? "checked" : "";
+    echo "<p class='centered'><input type='checkbox' id='coauthorships' name='coauthorships' $coauthorshipsChecked /> <label for='coauthorships'>Show Only Coauthorships</label></p>";
     echo "<p class='centered'><button>Re-Configure</button></p>";
     echo "</form>";
 }
@@ -239,4 +250,18 @@ function inTimespan($row, $startTs, $endTs) {
     $day = $row['citation_day'] ?: "01";
     $ts = strtotime("$year-$month-$day");
     return (($ts >= $startTs) && ($ts <= $endTs));
+}
+
+function getNumNameMatches($relevantNames, $authorList) {
+    $authors = Citation::splitAuthorList($authorList);
+    $numMatches = [];
+    foreach ($authors as $author) {
+        list($authorFirst, $authorLast) = NameMatcher::splitName($author, 2, FALSE, FALSE);
+        foreach ($relevantNames as $nameAry) {
+            if (NameMatcher::matchByInitials($authorLast, $authorFirst, $nameAry['lastName'], $nameAry['firstName'])) {
+                $numMatches[] = $author;
+            }
+        }
+    }
+    return count($numMatches);
 }

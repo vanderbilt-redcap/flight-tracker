@@ -297,9 +297,12 @@ class CronManager {
 
     private static function exceedsMaxCharacters($mssg) {
         return (
-            preg_match("/Cannot save the setting/", $mssg)
-            && preg_match("/because the value is larger than the/", $mssg)
-            && preg_match("/byte limit/", $mssg)
+                (
+                preg_match("/Cannot save the setting/", $mssg)
+                && preg_match("/because the value is larger than the/", $mssg)
+                && preg_match("/byte limit/", $mssg)
+            )
+            || preg_match('/The size of BLOB/TEXT data inserted in one transaction/', $mssg)
         );
     }
 

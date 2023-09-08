@@ -563,7 +563,7 @@ function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
             if ($indexByField == PUBYEAR_SELECT) {
                 $dates = [];
                 foreach ($pubs as $key => $ts) {
-                    $nodes = preg_split("/:/", $key);
+                    $nodes = explode(":", $key);
                     if ($ts && ($fromRecordId == $nodes[0]) && ($toRecordId == $nodes[1])) {
                         $year = date("Y", $ts);
                         if (!isset($dates[$year])) {

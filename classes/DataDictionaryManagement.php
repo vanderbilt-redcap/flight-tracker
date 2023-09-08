@@ -230,6 +230,7 @@ class DataDictionaryManagement {
     public static function installAllMetadataForNecessaryPids($pids) {
         $files = Application::getMetadataFiles();
         $deletionRegEx = self::getDeletionRegEx();
+        $pidsToRun = [];
         foreach (REDCapManagement::getActiveProjects($pids) as $requestedPid) {
             $requestedToken = Application::getSetting("token", $requestedPid);
             $requestedServer = Application::getSetting("server", $requestedPid);
@@ -549,6 +550,9 @@ class DataDictionaryManagement {
             fclose($fp);
 
             $metadata['file'] = json_decode($json, TRUE);
+            if (!$metadata['file']) {
+                throw new \Exception("Could not decode JSON: ".json_last_error_msg());
+            }
             $metadata['file'] = self::filterOutForms($metadata['file'], $formsToExclude);
             if (Application::isLocalhost()) {
                 $metadata['file'] = self::filterOutForms($metadata['file'], self::getCoeusForms());
@@ -574,7 +578,7 @@ class DataDictionaryManagement {
                 }
             }
 
-            $metadataFields = REDCapManagement::getMetadataFieldsToScreen();
+            $metadataFields = self::getMetadataFieldsToScreen();
             $specialFields = REDCapManagement::getSpecialFields("all", $projectMetadata);
             $optionalFields = REDCapManagement::getSpecialFields("optional", $projectMetadata);
             foreach ($fieldList["file"] as $field => $choiceStr) {

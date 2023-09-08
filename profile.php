@@ -24,10 +24,17 @@ if (!empty($_POST)) {
     exit;
 }
 
-require_once(dirname(__FILE__)."/charts/baseWeb.php");
+require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 $recordIds = Download::recordIds($token, $server);
+if (!isset($_GET['record']) && (count($recordIds) > 0)) {
+    $record = $recordIds[0];
+    $thisUrl = Application::link("profile.php", $pid);
+    header("Location: $thisUrl&record=".urlencode($record));
+}
+
+require_once(dirname(__FILE__)."/charts/baseWeb.php");
 if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 	$record = REDCapManagement::getSanitizedRecord($_GET['record'], $recordIds);
 } else {
