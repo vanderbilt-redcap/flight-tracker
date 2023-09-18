@@ -120,8 +120,8 @@ class CitationCollection {
 		return $ids;
 	}
 
-	public function getCitations() {
-		$this->sortCitations();
+	public function getCitations($sortBy = "date") {
+		$this->sortCitations($sortBy);
         $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs'] ?? "");
         if (isset($_GET['limitPubs']) && $limitYear) {
             $thresholdTs = strtotime($limitYear."-01-01");
@@ -138,12 +138,16 @@ class CitationCollection {
         }
 	}
 
-	private static function sortArrays($unorderedArys, $field) {
+	private static function sortArrays($unorderedArys, $field, $descending) {
 		$keys = array();
 		foreach ($unorderedArys as $ary) {
 			$keys[] = $ary[$field];
 		}
-		rsort($keys);
+        if ($descending) {
+            rsort($keys);
+        } else {
+            sort($keys);
+        }
 
 		if (count($keys) != count($unorderedArys)) {
 			throw new \Exception("keys (".count($keys).") != unorderedArys (".count($unorderedArys).")");
@@ -172,16 +176,27 @@ class CitationCollection {
 		return $ordered;
 	}
 
-	public function sortCitations() {
-		$unsorted = [];
+	public function sortCitations($how = "date") {
+        $unsorted = [];
         $myCitations = $this->citations;
-		foreach ($myCitations as $citation) {
-			$unsorted[] = [
-                "citation" => $citation,
-                "timestamp" => $citation->getTimestamp(),
-            ];
-		}
-		$sorted = self::sortArrays($unsorted, "timestamp");
+        $sorted = [];
+        if ($how == "date") {
+            foreach ($myCitations as $citation) {
+                $unsorted[] = [
+                    "citation" => $citation,
+                    "timestamp" => $citation->getTimestamp(),
+                ];
+            }
+            $sorted = self::sortArrays($unsorted, "timestamp", TRUE);
+        } else if (in_array($how, ["altmetric_score", "rcr"])) {
+            foreach ($myCitations as $citation) {
+                $unsorted[] = [
+                    "citation" => $citation,
+                    "impact_factor" => $citation->getVariable($how),
+                ];
+            }
+            $sorted = self::sortArrays($unsorted, "impact_factor", TRUE);
+        }
 		if (count($unsorted) != count($sorted)) {
 			throw new \Exception("Unsorted (".count($unsorted).") != sorted (".count($sorted).")");
 		}

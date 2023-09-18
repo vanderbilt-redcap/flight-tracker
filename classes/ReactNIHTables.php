@@ -16,6 +16,10 @@ class ReactNIHTables {
         }
     }
 
+    public static function makeDelegateEmailId($scholarEmail) {
+        return "table24_delegate___".REDCapManagement::makeHTMLId($scholarEmail);
+    }
+
     public static function transformToCamelCase($data, $keysNotToTransform = []) {
         $newData = [];
         foreach ($data as $row) {
@@ -1056,6 +1060,21 @@ table { border-collapse: collapse; }
             return $keys;
         }
         return [];
+    }
+
+    public function getDelegateEmails($post) {
+        $scholarEmails = Sanitizer::sanitizeArray($post['emails']);
+        $delegateEmails = [];
+        foreach ($scholarEmails as $scholarEmail) {
+            if ($scholarEmail) {
+                $id = self::makeDelegateEmailId($scholarEmail);
+                $delegateEmail = Application::getSetting($id, $this->pid) ?? "";
+            } else {
+                $delegateEmail = "";
+            }
+            $delegateEmails[] = $delegateEmail;
+        }
+        return $delegateEmails;
     }
 
     # returns array keyed by project header, then by date, then by table

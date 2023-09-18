@@ -82,7 +82,7 @@ if (isset($_GET['grantCounts'])) {
         //}
     arsort($grantCounts);
 
-    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs"]);
+    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs", "sort"]);
     list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
 
     $html = "";
@@ -272,7 +272,7 @@ function makePublicationListHTML($citations, $names, $dates) {
                     $html .= $collectionHeader;
                 }
 
-                $citations = $citColl->getCitations();
+                $citations = $citColl->getCitations($_GET['sort'] ?? "date");
                 foreach ($citations as $citation) {
                     $html .= "<p style='text-align: left; padding: 2px 0;'>";
                     if (isset($_GET['altmetrics'])) {
@@ -295,7 +295,7 @@ function makePublicationListHTML($citations, $names, $dates) {
 
 function makeExtraURLParams($exclude = []) {
     $additionalParams = "";
-    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grants", "begin", "end", "cohort", "limitPubs", "author_first", "author_middle", "author_last"];
+    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grants", "begin", "end", "cohort", "limitPubs", "author_first", "author_middle", "author_last", "sort"];
     foreach ($_GET as $key => $value) {
         if (isset($_GET[$key]) && in_array($key, $expected) && !in_array($key, $exclude)) {
             $key = Sanitizer::sanitize($key);
@@ -319,6 +319,18 @@ function makeCustomizeTable($token, $server, $metadata) {
         $authorMiddleChecked = "checked";
         $authorLastChecked = "checked";
     }
+
+    $dateChecked = "";
+    $rcrChecked = "";
+    $altmetricsChecked = "";
+    if (!isset($_GET['sort']) || ($_GET['sort'] == "date")) {
+        $dateChecked = "checked";
+    } else if ($_GET['sort'] == "rcr") {
+        $rcrChecked = "checked";
+    } else if ($_GET['sort'] == "altmetrics") {
+        $altmetricsChecked = "checked";
+    }
+
     $cohort = isset($_GET['cohort']) ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
     $cohorts = new Cohorts($token, $server, Application::getModule());
     $html = "";
@@ -327,7 +339,7 @@ function makeCustomizeTable($token, $server, $metadata) {
     if (isset($_GET['trainingPeriodPlusDays']) && is_numeric($_GET['trainingPeriodPlusDays'])) {
         $defaultDays = Sanitizer::sanitize($_GET['trainingPeriodPlusDays']);
     }
-    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs"]);
+    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs", "sort"]);
     list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
     $fullURLMinusCohort = preg_replace("/&cohort=[^\&]+/", "", $fullURL);
     $begin = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['begin'] ?? "");
@@ -352,8 +364,8 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= "<tr>";
     $html .= "<td class='blue'>";
     $html .= "<form action='$url' method='GET'>";
-    $html .= "<h4>Filter for Timespan</h4>";
-    $trainingPeriodParams = REDCapManagement::splitURL(Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs", "author_first", "author_middle", "author_last"]))[1];
+    $html .= "<h4 style='margin-bottom: 0;'>Filter for Timespan</h4>";
+    $trainingPeriodParams = REDCapManagement::splitURL(Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs", "author_first", "author_middle", "author_last", "sort"]))[1];
     $html .= URLManagement::makeHiddenInputs($trainingPeriodParams, TRUE);
     if (isset($_GET['limitPubs'])) {
         $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
@@ -361,7 +373,15 @@ function makeCustomizeTable($token, $server, $metadata) {
     }
     $html .= "<p class='centered'>Start Date: <input type='date' name='begin' style='width: 150px;' value='$begin'><br>";
     $html .= "End Date: <input type='date' name='end' value='$end' style='width: 150px;'><br>";
-    $html .= "<h4>Filter for Author Position</h4>";
+    $html .= "<h4 style='margin-bottom: 0;'>Sorting</h4>";
+    $html .= "<p class='centered'>";
+    $html .= "<input type='radio' name='sort' id='sort_date' value='date' $dateChecked /> <label for='sort_date'>By Date</label>";
+    $html .= "&nbsp;&nbsp;&nbsp;";
+    $html .= "<input type='radio' name='sort' id='sort_rcr' value='rcr' $rcrChecked /> <label for='sort_rcr'>By RCR</label>";
+    $html .= "&nbsp;&nbsp;&nbsp;";
+    $html .= "<input type='radio' name='sort' id='sort_altmetrics' value='altmetrics' $altmetricsChecked /> <label for='sort_altmetrics'>By Altmetric Score</label>";
+    $html .= "</p>";
+    $html .= "<h4 style='margin-bottom: 0;'>Filter for Author Position</h4>";
     $html .= "<p class='centered'>";
     $html .= "<input type='checkbox' name='author_first' id='author_first' $authorFirstChecked /> <label for='author_first'>First Author</label>";
     $html .= "&nbsp;&nbsp;&nbsp;";
@@ -376,7 +396,7 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= $cohorts->makeCohortSelect($cohort, "location.href=\"$fullURLMinusCohort\"+\"&cohort=\"+encodeURIComponent($(this).val());");
     $html .= Publications::makeLimitButton();
     $html .= "<div id='grantCounts'>";
-    $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs"])."&grantCounts";
+    $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs", "sort"])."&grantCounts";
     $grants = Sanitizer::sanitizeArray($_GET['grants'] ?? []);
     if (!empty($grants) && !in_array("all", $grants)) {
         $html .= "<script>$(document).ready(function() { downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\"); });</script>";

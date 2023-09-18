@@ -283,25 +283,26 @@ function loadMultiProjectCrons(&$manager, $pids)
 
 function loadInternalSharingCrons(&$manager, $pids) {
     $preprocessingPids = [];
+    if (Application::isVanderbilt() && Application::isServer("redcap.vanderbilt.edu")) {
+        $preprocessingPids[] = NEWMAN_SOCIETY_PROJECT;
+    } else if (Application::isVanderbilt() && Application::isLocalhost()) {
+        $preprocessingPids[] = LOCALHOST_TEST_PROJECT;
+    }
     foreach ($pids as $pid) {
         if (
             Application::getSetting("token", $pid)
             && Application::getSetting("server", $pid)
             && !Application::getSetting("turn_off", $pid)
+            && !in_array($pid, $preprocessingPids)
         ) {
             $preprocessingPids[] = $pid;
         }
-    }
-    if (Application::isVanderbilt() && !Application::isLocalhost()) {
-        $preprocessingPids[] = NEWMAN_SOCIETY_PROJECT;
-    } else if (Application::isVanderbilt() && Application::isLocalhost()) {
-        $preprocessingPids[] = LOCALHOST_TEST_PROJECT;
     }
     if (empty($preprocessingPids)) {
         return;
     }
 
-    if (preg_match("/redcaptest.vanderbilt.edu/", SERVER_NAME)) {
+    if (Application::isServer("redcaptest.vanderbilt.edu")) {
         $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", date("Y-m-d"), $preprocessingPids, $preprocessingPids);
     } else {
         $preprocessDayOfWeek = "Saturday";

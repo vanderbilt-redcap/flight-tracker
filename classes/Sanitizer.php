@@ -150,6 +150,7 @@ class Sanitizer {
             }
             return $entity;
         } else {
+            $entity = preg_replace("/([^&])(#\d+;)/", "$1&$2", $entity);
             return html_entity_decode($entity);
         }
     }

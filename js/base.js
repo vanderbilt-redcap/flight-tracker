@@ -727,12 +727,10 @@ function processWranglingResult(data, nextRecord) {
 		wranglerType = '&wranglerType='+params['wranglerType'];
 	}
 	if (data['count'] && (data['count'] > 0)) {
-		const str = (data['count'] === 1) ? 'item' : 'items';
-		const mssg = data['count']+' '+str+' uploaded';
+		const mssg = data['count']+' upload';
 		window.location.href = getPageUrl('wrangler/include.php')+getHeaders()+'&mssg='+encodeURI(mssg)+'&record='+nextRecord+wranglerType;
 	} else if (data['item_count'] && (data['item_count'] > 0)) {
-		const str = (data['item_count'] === 1) ? 'item' : 'items';
-		const mssg = data['item_count']+' '+str+' uploaded';
+		const mssg = data['item_count']+' upload';
 		window.location.href = getPageUrl('wrangler/include.php')+getHeaders()+'&mssg='+encodeURI(mssg)+'&record='+nextRecord+wranglerType;
 	} else if (data['error']) {
 		$('#uploading').hide();
@@ -758,10 +756,6 @@ function makeWranglingMessage(cnt) {
 		str = "item";
 	}
 	return cnt+" "+str+" uploaded";
-}
-
-function getNextWranglingUrl(mssg, nextRecord, wranglerTypeSpecs) {
-	return getPageUrl("wrangler/include.php")+getHeaders()+"&mssg="+encodeURI(mssg)+"&record="+nextRecord+wranglerTypeSpecs;
 }
 
 function checkSticky() {

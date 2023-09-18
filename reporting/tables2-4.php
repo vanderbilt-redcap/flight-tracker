@@ -56,6 +56,16 @@ if (isset($_POST['action']) && $token && $server && $pid) {
             } else {
                 $data['coaching'] = [];
             }
+        } else if ($action == "saveDelegateEmail") {
+            $scholarEmail = Sanitizer::sanitize($_POST['email'] ?? "");
+            if (!$scholarEmail || REDCapManagement::isEmailOrEmails($scholarEmail)) {
+                $databaseKey = ReactNIHTables::makeDelegateEmailId($scholarEmail);
+                $value = Sanitizer::sanitize($_POST['value'] ?? "");
+                if (REDCapManagement::isEmailOrEmails($value) || ($value == "")) {
+                    Application::saveSetting($databaseKey, $value, $pid);
+                    $data['result'] = "Saved.";
+                }
+            }
         } else if ($action == "saveTable") {
             $tableData = $_POST['tableData'];     // sanitizing causes double-escapes of HTML
             $tableNum = Sanitizer::sanitize($_POST['tableNum']);
@@ -125,6 +135,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
         } else if ($action == "getDateOfLastVerification") {
             $data['dates'] = $reactHandler->getDatesOfLastVerification($_POST);
             $data['notes'] = $reactHandler->getNotesData($_POST);
+            $data['delegates'] = $reactHandler->getDelegateEmails($_POST);
         } else if ($action == "getMatches") {
             $faculty = Sanitizer::sanitizeArray($_POST['faculty']);
             $dateOfReport = Sanitizer::sanitize($_POST['date']);

@@ -661,7 +661,13 @@ SELECT DISTINCT s.project_id AS pid
         if (!$pid) {
             $pid = CareerDev::getPid();
         }
-        return Application::isVanderbilt() && ($pid == 149668);   // TODO For now
+        if (Application::isVanderbilt() && ($pid == 149668)) {    // TODO For now
+            return TRUE;
+        }
+        if (Application::isLocalhost() && ($pid == 17)) {
+            return TRUE;
+        }
+        return FALSE;
     }
 
     public static function getMSTPHashFields() {

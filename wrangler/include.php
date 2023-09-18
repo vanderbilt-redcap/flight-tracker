@@ -77,6 +77,9 @@ if (isset($_POST['request'])) {
         }
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);   // after upload
         $url2 = Sanitizer::sanitizeURL("$url$wranglerTypeParam&record=".$nextRecord);
+        if ($nextRecord == $records[0]) {
+            $url2 .= "&mssg=restart";
+        }
         header("Location: $url2");
     } else {
         throw new \Exception("Improper request: ".Sanitizer::sanitize($_POST['request']));
@@ -91,7 +94,9 @@ try {
         $url .= "&headers=false";
     }
 
-    if ($_GET['record']) {
+    if ($_GET['record'] == "restart") {
+        $record = $records[0] ?? "";
+    } else if ($_GET['record']) {
         $record = Sanitizer::getSanitizedRecord($_GET['record'], $records);
     } else {
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);
@@ -157,10 +162,14 @@ try {
             $url2 = Sanitizer::sanitizeURL("$url$wranglerTypeParam&record=".$record);
         } else {
             $url2 = Sanitizer::sanitizeURL("$url$wranglerTypeParam&record=".$nextRecord);
+            if ($nextRecord == $records[0]) {
+                $url2 .= "&mssg=restart";
+            }
         }
         header("Location: $url2");
     } else if ($record != 0) {
-        echo "<input type='hidden' id='nextRecord' value='".$nextRecord."'>\n";
+        $nextRecordText = ($nextRecord == $records[0] ?? "") ? "restart" : $nextRecord;
+        echo "<input type='hidden' id='nextRecord' value='$nextRecordText'>\n";
 
         if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
             echo "<div class='subnav'>\n";
@@ -187,7 +196,20 @@ try {
         }
 
         if (isset($_GET['mssg'])) {
-            echo "<div class='green shadow centered note'>".Sanitizer::sanitize($_GET['mssg'])."</div>";
+            $doneMessage = "All done! You're back at the beginning.";
+            if ($_GET['mssg'] == "restart") {
+                $mssg = $doneMessage;
+            } else if (preg_match("/^(\d+) upload$/", $_GET['mssg'], $matches)) {
+                $cnt = Sanitizer::sanitizeInteger($matches[1]);
+                $item = ($cnt == 1) ? "item" : "items";
+                $mssg = "$cnt $item successfully uploaded!";
+                if ($_GET['record'] == "restart") {
+                    $mssg .= " ".$doneMessage;
+                }
+            } else {
+                $mssg = "This should never happen!";
+            }
+            echo "<div class='green shadow centered note'>$mssg</div>";
         }
         echo "<p class='green shadow' id='note' style='width: 600px; margin-left: auto; margin-right: auto; text-align: center; padding: 10px; border-radius: 10px; display: none; font-size: 16px;'></p>\n";
         echo "<p class='centered max-width'>To undo any actions made here, open the Citation form in the given REDCap record and change the answer for the <b>Include?</b> question. Yes means accepted; no means omitted; blank means yet-to-be wrangled.</p>";
