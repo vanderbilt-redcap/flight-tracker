@@ -39,7 +39,6 @@ function getPubsGeneric($token, $server, $pid, $records, $searchWithInstitutions
 	$cleanOldData = FALSE;
     $metadata = Download::metadata($token, $server);
     $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-    $hasAbstract = in_array("citation_abstract", $metadataFields);
 
     if (empty($records)) {
         $records = Download::recordIds($token, $server);
@@ -71,75 +70,8 @@ function getPubsGeneric($token, $server, $pid, $records, $searchWithInstitutions
 		foreach ($pullRecords as $recordId) {
 		    $maxInstances[$recordId] = REDCapManagement::getMaxInstance($redcapData, "citation", $recordId);
         }
-        $pmidsByRecordForAbstracts = [];
-        $pmidsByRecordForDate = [];
-		foreach ($redcapData as $row) {
-            if ($row['redcap_repeat_instrument'] == "citation") {
-                $recordId = $row['record_id'];
-                $instance = $row['redcap_repeat_instance'];
-                if (!$row['citation_abstract'] && $hasAbstract && $row['citation_pmid']) {
-                    if (!isset($pmidsByRecordForAbstracts[$recordId])) {
-                        $pmidsByRecordForAbstracts[$recordId] = [];
-                    }
-                    $pmidsByRecordForAbstracts[$recordId][$instance] = $row['citation_pmid'];
-                }
-                if (!$row['citation_year'] && !$row['citation_month'] && !$row['citation_day']) {
-                    if (!isset($pmidsByRecordForDate[$recordId])) {
-                        $pmidsByRecordForDate[$recordId] = [];
-                    }
-                    $pmidsByRecordForDate[$recordId][$instance] = $row['citation_pmid'];
-                }
-            }
-        }
-        foreach ($pmidsByRecordForDate as $recordId => $pmidsByInstance) {
-            $pmids = array_values($pmidsByInstance);
-            if (!empty($pmids)) {
-                $rows = Publications::getCitationsFromPubMed($pmids, $metadata, "pubmed", $recordId, 1, [], $pid);
-                foreach ($pmidsByInstance as $instance => $pmid) {
-                    foreach ($rows as $row) {
-                        if (
-                            isset($row['pmid'])
-                            && ($row['pmid'] == $pmid)
-                            && (
-                                $row['citation_year']
-                                || $row['citation_month']
-                                || $row['citation_day']
-                            )
-                        ) {
-                            $uploadRow = [
-                                "record_id" => $recordId,
-                                "redcap_repeat_instrument" => "citation",
-                                "redcap_repeat_instance" => $instance,
-                                "citation_year" => $row['citation_year'],
-                                "citation_month" => $row['citation_month'],
-                                "citation_day" => $row['citation_day'],
-                            ];
-                            Upload::oneRow($uploadRow, $token, $server);
-                        }
-                    }
-                }
-            }
-        }
-        foreach ($pmidsByRecordForAbstracts as $recordId => $pmidsByInstance) {
-            $pubmedMatches = Publications::downloadPMIDs(array_values($pmidsByInstance));
-            $i = 0;
-            foreach ($pmidsByInstance as $instance => $pmid) {
-                if (isset($pubmedMatches[$i]) && $pubmedMatches[$i]) {
-                    $pubmedMatch = $pubmedMatches[$i];
-                    $abstract = $pubmedMatch->getVariable("Abstract");
-                    if ($abstract) {
-                        $uploadRow = [
-                            "record_id" => $recordId,
-                            "redcap_repeat_instrument" => "citation",
-                            "redcap_repeat_instance" => $instance,
-                            "citation_abstract" => $abstract,
-                        ];
-                        Upload::oneRow($uploadRow, $token, $server);
-                    }
-                }
-                $i++;
-            }
-		}
+        backfillDatesAndAffiliations($redcapData, $metadataFields, $token, $server, $pid);
+        backfillAbstracts($redcapData, $metadata, $token, $server, $pid);
         $hasTimestamp = in_array("citation_ts", $metadataFields);
         $hasFullCitation = in_array("citation_full_citation", $metadataFields);
         foreach ($pullRecords as $recordId) {
@@ -179,7 +111,7 @@ function postprocess($token, $server, $records) {
 	for ($i = 0; $i < count($records); $i += $pullSize) {
 		$pullRecords = [];
 		for ($j = $i; ($j < count($records)) && ($j < $i + $pullSize); $j++) {
-			array_push($pullRecords, $records[$j]);
+			$pullRecords[] = $records[$j];
 		}
 		$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), $pullRecords);
 		$indexedData = [];
@@ -554,3 +486,136 @@ function cleanUpMiddleNamesSeepage($token, $server, $pid, $records) {
     Application::saveSetting($cleaningField, $recordsCleanedByMiddleName, $pid);
 }
 
+# a publication may have a month or a day field missing; this fills in the rest to make it a REDCap-compatible date
+function makeCitationDate($row) {
+    $monthNo = $row['citation_month'] ? DateManagement::getMonthNumber($row['citation_month']) : "01";
+    $dayNo = $row['citation_day'] ?: "01";
+    if ($row['citation_year']) {
+        return $row['citation_year']."-".$monthNo."-".$dayNo;
+    } else {
+        return "";
+    }
+}
+
+function backfillAbstracts($redcapData, $metadata, $token, $server, $pid) {
+    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+    $hasAbstract = in_array("citation_abstract", $metadataFields);
+
+    $pmidsByRecordForAbstracts = [];
+    $pmidsByRecordForDate = [];
+    foreach ($redcapData as $row) {
+        if ($row['redcap_repeat_instrument'] == "citation") {
+            $recordId = $row['record_id'];
+            $instance = $row['redcap_repeat_instance'];
+            if (!$row['citation_abstract'] && $hasAbstract && $row['citation_pmid']) {
+                if (!isset($pmidsByRecordForAbstracts[$recordId])) {
+                    $pmidsByRecordForAbstracts[$recordId] = [];
+                }
+                $pmidsByRecordForAbstracts[$recordId][$instance] = $row['citation_pmid'];
+            }
+        }
+    }
+
+    foreach ($pmidsByRecordForDate as $recordId => $pmidsByInstance) {
+        $pmids = array_values($pmidsByInstance);
+        if (!empty($pmids)) {
+            $rows = Publications::getCitationsFromPubMed($pmids, $metadata, "pubmed", $recordId, 1, [], $pid);
+            foreach ($pmidsByInstance as $instance => $pmid) {
+                foreach ($rows as $row) {
+                    if (
+                        isset($row['pmid'])
+                        && ($row['pmid'] == $pmid)
+                        && (
+                            $row['citation_year']
+                            || $row['citation_month']
+                            || $row['citation_day']
+                        )
+                    ) {
+                        $uploadRow = [
+                            "record_id" => $recordId,
+                            "redcap_repeat_instrument" => "citation",
+                            "redcap_repeat_instance" => $instance,
+                            "citation_year" => $row['citation_year'],
+                            "citation_month" => $row['citation_month'],
+                            "citation_day" => $row['citation_day'],
+                        ];
+                        Upload::oneRow($uploadRow, $token, $server);
+                    }
+                }
+            }
+        }
+    }
+
+    foreach ($pmidsByRecordForAbstracts as $recordId => $pmidsByInstance) {
+        $pubmedMatches = Publications::downloadPMIDs(array_values($pmidsByInstance));
+        $i = 0;
+        foreach ($pmidsByInstance as $instance => $pmid) {
+            if (isset($pubmedMatches[$i]) && $pubmedMatches[$i]) {
+                $pubmedMatch = $pubmedMatches[$i];
+                $abstract = $pubmedMatch->getVariable("Abstract");
+                if ($abstract) {
+                    $uploadRow = [
+                        "record_id" => $recordId,
+                        "redcap_repeat_instrument" => "citation",
+                        "redcap_repeat_instance" => $instance,
+                        "citation_abstract" => $abstract,
+                    ];
+                    Upload::oneRow($uploadRow, $token, $server);
+                }
+            }
+            $i++;
+        }
+    }
+}
+
+function backfillDatesAndAffiliations($redcapData, $metadataFields, $token, $server, $pid) {
+    $pmidsToUpdateDates = [];
+    $pmidsToUpdateAffiliations = [];
+    foreach ($redcapData as $row) {
+        if ($row['redcap_repeat_instrument'] == "citation") {
+            $recordId = $row['record_id'];
+            $instance = $row['redcap_repeat_instance'];
+            $fullDate = makeCitationDate($row);
+            if (!$row['citation_date'] && in_array("citation_date", $metadataFields) && $fullDate) {
+                $pmidsToUpdateDates["$recordId:$instance"] = $fullDate;
+            }
+            if (!$row['citation_affiliations'] && in_array("citation_affiliations", $metadataFields)) {
+                $pmidsToUpdateAffiliations["$recordId:$instance"] = $row['citation_pmid'];
+            }
+        }
+    }
+    # back-fill rows
+    $uploadUpdates = [];
+    if (!empty($pmidsToUpdateAffiliations)) {
+        $affiliations = Publications::getAffiliationJSONsForPMIDs(array_unique(array_values($pmidsToUpdateAffiliations)), $metadataFields, $pid);
+        foreach ($pmidsToUpdateAffiliations as $licensePlate => $pmid) {
+            list($recordId, $instance) = explode(":", $licensePlate);
+            $uploadRow = [
+                "record_id" => $recordId,
+                "redcap_repeat_instrument" => "citation",
+                "redcap_repeat_instance" => $instance,
+                "citation_affiliations" => $affiliations[$pmid],
+            ];
+            if (isset($pmidsToUpdateDates[$licensePlate])) {
+                # avoid duplicating upload rows
+                $uploadRow["citation_date"] = $pmidsToUpdateDates[$licensePlate];
+            }
+            $uploadUpdates[] = $uploadRow;
+        }
+    }
+    foreach ($pmidsToUpdateDates as $licensePlate => $newDate) {
+        # avoid duplicating upload rows
+        if (!isset($pmidsToUpdateAffiliations[$licensePlate])) {
+            list($recordId, $instance) = explode(":", $licensePlate);
+            $uploadUpdates[] = [
+                "record_id" => $recordId,
+                "redcap_repeat_instrument" => "citation",
+                "redcap_repeat_instance" => $instance,
+                "citation_date" => $newDate,
+            ];
+        }
+    }
+    if (!empty($uploadUpdates)) {
+        Upload::rows($uploadUpdates, $token, $server);
+    }
+}

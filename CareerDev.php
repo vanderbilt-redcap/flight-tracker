@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.13.8";
+		return "5.14.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -1166,6 +1166,7 @@ class CareerDev {
                 ]);
             if (Application::isMSTP($pid)) {
                 $ary["Configure IDP Reviewers for Classes"] = self::link("mstp/addMSTPReviewers.php");
+                $ary["Start a MSTP Mentee-Mentor Agreement"] = self::link("mstp/mma.php");
             }
 		    return $ary;
 		}
@@ -1322,7 +1323,9 @@ class CareerDev {
         "citation_year",
         "citation_month",
         "citation_day",
+        "citation_date",
         "citation_pages",
+        "citation_affiliations",
         "citation_grants",
         "citation_abstract",
         "citation_is_research",

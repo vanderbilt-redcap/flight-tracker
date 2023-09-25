@@ -310,6 +310,12 @@ class DateManagement {
     }
 
     public static function getMonthNumber($monthStr) {
+        if ($monthStr === "") {
+            return $monthStr;
+        }
+        if (is_numeric($monthStr)) {
+            return $monthStr;
+        }
         $monthStr = strtoupper($monthStr);
         $months = [
             "JAN" => "01",

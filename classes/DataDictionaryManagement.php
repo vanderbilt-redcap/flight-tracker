@@ -762,6 +762,7 @@ class DataDictionaryManagement {
         if (Application::isVanderbilt()) {
             $formsAndLabels["ldap"] = "[ldap_vanderbiltpersonjobname]";
             $formsAndLabels["ldapds"] = "[ldapds_cn]";
+            $formsAndLabels["workday"] = "";
             $formsAndLabels["coeus2"] = "[coeus2_award_status]: [coeus2_agency_grant_number]";
             $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
             $formsAndLabels["coeus_submission"] = "[coeussubmission_proposal_status]: [coeussubmission_sponsor_proposal_number]";

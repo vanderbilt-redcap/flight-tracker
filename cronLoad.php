@@ -250,6 +250,9 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
             $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", $date, $records, 500);
             $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", $date, $records, 500);
         }
+        if (in_array("workday", $forms)) {
+            $manager->addCron("drivers/26_workday.php", "getWorkday", $date, $records, 10000);
+        }
         $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records, 30);
         Application::log("loadInitialCrons loaded");
 	} else {
@@ -275,7 +278,9 @@ function loadMultiProjectCrons(&$manager, $pids)
         $manager->addMultiCron("drivers/19_updateNewCoeus.php", "updateAllCOEUSMulti", "Wednesday", $pids);
         $manager->addMultiCron("drivers/22_getVERA.php", "getVERAMulti", "Monday", $pids);
         $manager->addMultiCron("drivers/updateAllMetadata.php", "updateAllMetadata", "Monday", $pids);
-        $manager->addMultiCron("drivers/updateAllMetadata.php", "updateAllMetadata", "2023-08-22", $pids);
+        if (Application::isServer("redcap.vanderbilt.edu")) {
+            $manager->addMultiCron("drivers/26_workday.php", "getAllWorkday", "Friday", $pids);
+        }
     }
     $manager->addMultiCron("drivers/preprocess.php", "preprocessPortal", date("Y-m-d"), $pids);
     loadInternalSharingCrons($manager, $pids);

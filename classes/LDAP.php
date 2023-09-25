@@ -227,6 +227,26 @@ class LDAP {
         return "";
     }
 
+    public static function getLimitedFields() {
+        return [
+            "cn",
+            "sn",
+            "o",
+            "title",
+            "telephonenumber",
+            "givenname",
+            "displayname",
+            "department",
+            "company",
+            "employeetype",
+            "name",
+            "division",
+            "mail",
+            "departmentnumber",
+            "middlename",
+        ];
+    }
+
     public static function getFields() {
         return [
             "cn",

@@ -289,6 +289,8 @@ class REDCapManagement {
             $prefix = "ldap";
         } else if ($instrument == "ldapds") {
             $prefix = "ldapds";
+        } else if ($instrument == "workday") {
+            $prefix = "workday";
         } else if ($instrument == "coeus_submission") {
             $prefix = "coeussubmission";
         } else if ($instrument == "vera") {
@@ -563,6 +565,27 @@ class REDCapManagement {
 
     public static function isValidURL($url) {
 	    return filter_var($url, FILTER_VALIDATE_URL);
+    }
+
+    # many curses to Microsoft's autocorrect!!
+    public static function changeSlantedQuotes($str) {
+        $str = str_replace("“", "\"", $str);
+        $str = str_replace("”", "\"", $str);
+        $str = str_replace("’", "'", $str);
+        return $str;
+    }
+
+    public static function changeSlantedQuotesInArray($ary) {
+        foreach ($ary as $key => $value) {
+            if (is_array($value)) {
+                $ary[$key] = self::changeSlantedQuotesInArray($value);
+            } else if (is_string($value)) {
+                $ary[$key] = self::changeSlantedQuotes($value);
+            } else {
+                $ary[$key] = $value;
+            }
+        }
+        return $ary;
     }
 
     public static function isGoodURL($url) {

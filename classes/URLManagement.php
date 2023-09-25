@@ -59,6 +59,7 @@ class URLManagement {
             Application::log("Posting ".REDCapManagement::json_encode_with_spaces($postdata)." to $url", $pid);
         }
         $url = Sanitizer::sanitizeURL($url);
+        $url = REDCapManagement::changeSlantedQuotes($url);
         if (!$url) {
             throw new \Exception("Invalid URL!");
         }
@@ -76,6 +77,7 @@ class URLManagement {
         }
         self::applyProxyIfExists($ch, $pid);
         if (!empty($postdata)) {
+            $postdata = REDCapManagement::changeSlantedQuotesInArray($postdata);
             if ($defaultFormat == "json") {
                 if (is_string($postdata)) {
                     $json = $postdata;

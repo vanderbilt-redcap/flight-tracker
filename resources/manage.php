@@ -61,7 +61,10 @@ if (isset($_POST['option'])) {
 			if (!isset($resourceInstances[$resourceNum])) {
 				$resourceInstances[$resourceNum] = [];
 			}
-			$resourceInstances[$resourceNum][$row['redcap_repeat_instance']] = $row['record_id'];
+            if (!isset($resourceInstances[$resourceNum][$row['record_id']])) {
+                $resourceInstances[$resourceNum][$row['record_id']] = [];
+            }
+			$resourceInstances[$resourceNum][$row['record_id']][] = $row['redcap_repeat_instance'];
 		}
 	}
 
@@ -136,15 +139,16 @@ function showMssg(str) {
         echo "<tr class='extraPaddedRow $rowClass'>";
         echo "<td class='centered'>$option</td>";
 	    if (isset($resourceInstances[$num])) {
-            $instances = $resourceInstances[$num];
+            $recordsAndInstances = $resourceInstances[$num];
             echo "<td>";
-            if (count($instances) > 0) {
-                echo "<div class='tooltip centered'>".count($instances)." participants<span class='widetooltiptext smaller'>";
+            if (count($recordsAndInstances) > 0) {
+                echo "<div class='tooltip centered'>".count($recordsAndInstances)." participants<span class='widetooltiptext smaller'>";
                 $namesForOption = array();
-                foreach ($instances as $recordId) {
+                foreach ($recordsAndInstances as $recordId => $instances) {
+                    $suffix = (count($instances) >= 2) ? " (x".count($instances).")" : "";
                     $name = $names[$recordId];
-                    $nameWithLink = Links::makeProfileLink($pid, $name, $recordId);
-                    array_push($namesForOption, $nameWithLink);
+                    $nameWithLink = Links::makeProfileLink($pid, $name.$suffix, $recordId);
+                    $namesForOption[] = $nameWithLink;
                 }
                 echo implode("<br>", $namesForOption);
                 echo "</span></div>";

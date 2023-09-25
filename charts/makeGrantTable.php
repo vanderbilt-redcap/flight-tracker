@@ -301,6 +301,7 @@ if (isset($_GET['plain'])) {
     echo "<div class='loading'></div>";
     $recordsJSON = json_encode($records);
     $fieldsJSON = json_encode($fields);
+    $csrfToken = Application::generateCSRFToken();
     echo "<script>
 const records = $recordsJSON;
 const fields = $fieldsJSON;
@@ -322,7 +323,7 @@ function loadRecords(nextI) {
         } else {
             $('.loading').html(getSmallLoadingMessage('Loading Record '+displayRecordList[0]));
         }
-        const postdata = { records: recordList, fields: fields };
+        const postdata = { records: recordList, fields: fields, redcap_csrf_token: '$csrfToken' };
         $.post('$thisUrlWithParams', postdata, function(html) {
             if (html) {
                 $('#mainBody').append(html);

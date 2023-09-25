@@ -83,6 +83,7 @@ if (count($_POST) > 0) {
 		foreach ($_POST as $key => $value) {
             $key = Sanitizer::sanitizeWithoutChangingQuotes($key);
             $value = Sanitizer::sanitizeWithoutChangingQuotes($value);
+            $value = REDCapManagement::changeSlantedQuotes($value);
             if (isset($optionSettings[$key])) {
                 $lists[$key] = $value;
                 Application::saveSetting($key, $value, $pid);

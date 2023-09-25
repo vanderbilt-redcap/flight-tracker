@@ -105,7 +105,11 @@ class Publications {
         if (isset($_GET['limitPubs'])) {
             $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
             $status = "<span class='smaller bolded'>Currently limiting pubs to after $limitYear</span>";
-            $newUrl = preg_replace("/&limitPubs=\d+/", "", $url);
+            if (preg_match("/&limitPubs=\d+/", $url)) {
+                $newUrl = preg_replace("/&limitPubs=\d+/", "", $url);
+            } else {
+                $newUrl = preg_replace("/limitPubs=\d+&/", "", $url);
+            }
             $buttonText = "Show All Pubs";
             $nextLine = "";
         } else {
@@ -932,7 +936,27 @@ class Publications {
 	    return $numPubsMatched."/".$this->getCount($cat);
     }
 
-    private static function xml2REDCap($xml, $recordId, &$instance, $src, $confirmedPMIDs, $metadataFields) {
+    public static function getAffiliationJSONsForPMIDs($pmids, $metadataFields, $pid) {
+        $affiliations = [];
+        $pullSize = 10;
+        for ($i0 = 0; $i0 < count($pmids); $i0 += $pullSize) {
+            $pmidsToPull = [];
+            for ($j = $i0; ($j < count($pmids)) && ($j < $i0 + $pullSize); $j++) {
+                $pmidsToPull[] = $pmids[$j];
+            }
+            $xml = self::repetitivelyPullFromEFetch($pmidsToPull);
+            if ($xml) {
+                list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, 1, $instance, "pubmed", $pmidsToPull, $metadataFields, $pid);
+                foreach ($parsedRows as $row) {
+                    $affiliations[$row['citation_pmid']] = $row['citation_affiliations'];
+                }
+            }
+        }
+        return $affiliations;
+    }
+
+    # An example XML document is at https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id=37635263
+    private static function xml2REDCap($xml, $recordId, &$instance, $src, $confirmedPMIDs, $metadataFields, $pid) {
         $hasAbstract = in_array("citation_abstract", $metadataFields);
         $pmidsPulled = [];
         $upload = [];
@@ -943,14 +967,20 @@ class Publications {
                 $abstract = strval($article->Abstract->AbstractText);
             }
             $authors = [];
+            $affiliations = [];
             if ($article->AuthorList->Author) {
                 foreach ($article->AuthorList->Author as $authorXML) {
                     $author = $authorXML->LastName . " " . $authorXML->Initials;
-                    if ($author != " ") {
-                        $authors[] = $author;
-                    } else {
-                        $authors[] = strval($authorXML->CollectiveName);
+                    if ($author == " ") {
+                        $author = strval($authorXML->CollectiveName);
                     }
+                    $authors[] = $author;
+
+                    $authorAffiliations = [];
+                    foreach ($authorXML->AffiliationInfo as $affiliationXML) {
+                        $authorAffiliations[] = strval($affiliationXML->Affiliation);
+                    }
+                    $affiliations[$author] = $authorAffiliations;
                 }
             }
             $title = strval($article->ArticleTitle);
@@ -985,7 +1015,6 @@ class Publications {
             $month = "";
             $day = "";
 
-            $date = $issue->PubDate->Year . " " . $issue->PubDate->Month;
             if ($issue->PubDate->Year) {
                 $year = strval($issue->PubDate->Year);
             }
@@ -1006,6 +1035,16 @@ class Publications {
                     $day = "{$article->ArticleDate->Day}";
                 }
             }
+            $numericMonth = DateManagement::getMonthNumber($month);
+            if ($year && $numericMonth && $day) {
+                $date = "$year-$numericMonth-$day";
+            } else if ($year && $numericMonth) {
+                $date = "$year-$numericMonth-01";
+            } else if ($year) {
+                $date = "$year-01-01";
+            } else {
+                $date = "";
+            }
 
             $vol = "";
             if ($issue->Volume) {
@@ -1022,12 +1061,61 @@ class Publications {
             $pmid = strval($medlineCitation->MedlineCitation->PMID);
             $pmidsPulled[] = $pmid;
 
+            $preprintVersions = [];
+            if ($medlineCitation->MedlineCitation->CommentsCorrectionsList) {
+                foreach ($medlineCitation->MedlineCitation->CommentsCorrectionsList as $commentsCorrections) {
+                    $attrs = $commentsCorrections->attributes();
+                    if (($attrs['RefType'] ?? "" == "UpdateOf") && $commentsCorrections->PMID) {
+                        $preprintVersions[] = strval($commentsCorrections->PMID);
+                    }
+                }
+            }
+
+            $matchedPreprint = FALSE;
+            foreach ($preprintVersions as $preprintPMID) {
+                if (in_array($preprintPMID, $confirmedPMIDs)) {
+                    $matchedPreprint = TRUE;
+                }
+            }
+            $newPMIDIncludeStatus = "";
+            if ($matchedPreprint) {
+                # logic: make accepted if old one is accepted; turn old one into no if already accepted; leave both blank if old one blank
+                $smallFields = ["record_id", "citation_include", "citation_pmid"];
+                $token = Application::getSetting("token", $pid);
+                $server = Application::getSetting("server", $pid);
+                $redcapData = Download::fieldsForRecords($token, $server, $smallFields, [$recordId]);
+
+                $includes = [];
+                $pmidsWithInstances = [];
+                foreach ($redcapData as $row) {
+                    $includes[$row['citation_pmid']] = $row['citation_include'];
+                    $pmidsWithInstances[$row['citation_pmid']] = $row['redcap_repeat_instance'];
+                }
+                $includeChangeRows = [];
+                foreach ($preprintVersions as $preprintPMID) {
+                    if (isset($includes[$preprintPMID])) {
+                        if ($includes[$preprintPMID] == "1") {
+                            $newPMIDIncludeStatus = "1";
+                            $includeChangeRows[] = [
+                                "record_id" => $recordId,
+                                "redcap_repeat_instance" => $pmidsWithInstances[$preprintPMID],
+                                "redcap_repeat_instrument" => "citation",
+                                "citation_include" => "0",
+                            ];
+                        }
+                    }
+                }
+                if (!empty($includeChangeRows)) {
+                    Upload::rows($includeChangeRows, $token, $server);
+                }
+            }
+
             $row = [
                 "record_id" => "$recordId",
                 "redcap_repeat_instrument" => "citation",
                 "redcap_repeat_instance" => "$instance",
                 "citation_pmid" => $pmid,
-                "citation_include" => "",
+                "citation_include" => $newPMIDIncludeStatus,
                 "citation_source" => $src,
                 "citation_authors" => NameMatcher::getRidOfAccentMarks(implode(", ", $authors)),
                 "citation_title" => $title,
@@ -1039,6 +1127,8 @@ class Publications {
                 "citation_year" => $year,
                 "citation_month" => $month,
                 "citation_day" => $day,
+                "citation_date" => $date,
+                "citation_affiliations" => json_encode($affiliations),
                 "citation_pages" => $pages,
                 "citation_grants" => implode("; ", $assocGrants),
                 "citation_complete" => "2",
@@ -1123,6 +1213,28 @@ class Publications {
         return $upload;
     }
 
+    private static function repetitivelyPullFromEFetch($pmids) {
+        $output = self::pullFromEFetch($pmids);
+        $xml = simplexml_load_string(utf8_encode($output));
+        $tries = 0;
+        $maxTries = 10;
+        $numSecs = 300; // five minutes? 60;
+        while (!$xml && ($tries < $maxTries)) {
+            $tries++;
+            self::throttleDown($numSecs);
+            $output = self::pullFromEFetch($pmids);
+            $xml = simplexml_load_string(utf8_encode($output));
+        }
+        if (!$xml) {
+            if ($tries >= $maxTries) {
+                Application::log("Warning: Cannot pull from eFetch! Attempted $tries times. " . implode(", ", $pmids) . " " . $output);
+            }
+            return "";
+        } else {
+            return $xml;
+        }
+    }
+
 	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = [], $pid = NULL, $getBibliometricInfo = TRUE) {
         $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		$upload = [];
@@ -1133,23 +1245,9 @@ class Publications {
 			for ($j = $i0; ($j < count($pmids)) && ($j < $i0 + $pullSize); $j++) {
 				$pmidsToPull[] = $pmids[$j];
 			}
-			$output = self::pullFromEFetch($pmidsToPull);
-            $xml = simplexml_load_string(utf8_encode($output));
-			$tries = 0;
-			$maxTries = 10;
-			$numSecs = 300; // five minutes? 60;
-			while (!$xml && ($tries < $maxTries)) {
-				$tries++;
-				Publications::throttleDown($numSecs);
-				$output = self::pullFromEFetch($pmidsToPull);
-                $xml = simplexml_load_string(utf8_encode($output));
-			}
-			if (!$xml) {
-			    if ($tries >= $maxTries) {
-                    Application::log("Warning: Cannot pull from eFetch! Attempted $tries times. " . implode(", ", $pmidsToPull) . " " . $output);
-                }
-			} else {
-                list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, $recordId, $instance, $src, $confirmedPMIDs, $metadataFields);
+            $xml = self::repetitivelyPullFromEFetch($pmidsToPull);
+            if ($xml) {
+                list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, $recordId, $instance, $src, $confirmedPMIDs, $metadataFields, $pid);
                 $upload = array_merge($upload, $parsedRows);
                 $translateFromPMIDToPMC = self::PMIDsToPMCs($pmidsPulled, $pid);
                 if ($getBibliometricInfo) {

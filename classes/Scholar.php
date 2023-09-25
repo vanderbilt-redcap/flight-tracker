@@ -153,12 +153,17 @@ class Scholar {
         $vars = self::getDefaultOrder($field);
         $vars = $this->getOrder($vars, $field);
         $result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
+        $options = [
+            "workday" => "workday_vunetid",
+            "ldapds" => "ldapds_cn",
+            "ldap" => "ldap_uid",
+        ];
         if ($result->getSource() == "ldap") {
-            $res = $this->getLDAPResult($rows, "ldapds_cn", $result, "ldapds");
-            if ($res->getValue() === "") {
-                return $this->getLDAPResult($rows, "ldap_uid", $result);
-            } else {
-                return $res;
+            foreach ($options as $instrument => $candidateField) {
+                $res = $this->getLDAPResult($rows, $candidateField, $result, $instrument);
+                if ($res->getValue() !== "") {
+                    return $res;
+                }
             }
         }
 
@@ -264,13 +269,19 @@ class Scholar {
         $vars = $this->getOrder($vars, "identifier_email");
         $result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
         $result->trimResult();
+        $options = [
+            "workday" => "workday_email_address",
+            "ldapds" => "ldapds_mail",
+            "ldap" => "ldap_mail",
+        ];
         if ($result->getSource() == "ldap") {
-            $res = $this->getLDAPResult($rows, "ldapds_mail", $result, "ldapds");
-            if ($res->getValue() === "") {
-                $res = $this->getLDAPResult($rows, "ldap_mail", $result);
+            foreach ($options as $instrument => $candidateField) {
+                $res = $this->getLDAPResult($rows, $candidateField, $result, $instrument);
+                if ($res->getValue() !== "") {
+                    $res->trimResult();
+                    return $res;
+                }
             }
-            $res->trimResult();
-            return $res;
         }
         return $result;
     }
@@ -290,8 +301,9 @@ class Scholar {
                 if (
                     ($row['redcap_repeat_instrument'] == $instrument)
                     && (
-                        !in_array($row['ldap_vanderbiltpersonjobname'], self::$skipJobs)
-                        || !in_array($row['ldapds_title'], self::$skipJobs)
+                        !in_array($row['ldap_vanderbiltpersonjobname'] ?? "", self::$skipJobs)
+                        || !in_array($row['ldapds_title'] ?? "", self::$skipJobs)
+                        || !in_array($row['workday_jobcode_descr'] ?? "", self::$skipJobs)
                     )
                     && ($doNotUse !== '1')
                 ) {
@@ -1920,6 +1932,7 @@ class Scholar {
             "check_email" => "scholars",
             "followup_email" => "followup",
             "init_import_email" => "manual",
+            "workday_email_address" => "ldap",
             "ldapds_mail" => "ldap",
             "ldap_mail" => "ldap",
         ];
@@ -1932,6 +1945,7 @@ class Scholar {
             "check_phone" => "scholars",
             "followup_phone" => "followup",
             "init_import_phone" => "manual",
+            "workday_business_phone" => "ldap",
         ];
         $orders["identifier_twitter"] = [
             "check_twitter" => "scholars",
@@ -1946,10 +1960,12 @@ class Scholar {
             "init_import_linkedin" => "manual",
         ];
         $orders["identifier_userid"] = array(
+            "workday_vunetid" => "ldap",
             "ldapds_cn" => "ldap",
             "ldap_uid" => "ldap",
         );
         $orders["identifier_vunet"] = array(
+            "workday_vunetid" => "ldap",
             "ldapds_cn" => "ldap",
             "ldap_uid" => "ldap",
         );
@@ -1959,6 +1975,8 @@ class Scholar {
             "check_primary_dept" => "scholars",
             "vfrs_department" => "vfrs",
             "init_import_primary_dept" => "manual",
+            "workday_deptid" => "ldap",
+            "workday_descr" => "ldap",
             "ldapds_departmentnumber" => "ldap",
             "ldapds_department" => "ldap",
             "ldap_vanderbiltpersonhrdeptnumber" => "ldap",
@@ -2076,6 +2094,7 @@ class Scholar {
             "followup_academic_rank" => "followup",
             "check_academic_rank" => "scholars",
             "init_import_academic_rank" => "manual",
+            "workday_jobcode_descr" => "ldap",
             "ldapds_title" => "ldap",
             "ldap_vanderbiltpersonjobname" => "ldap",
             "newman_new_rank" => "new2017",
@@ -2823,7 +2842,13 @@ class Scholar {
 			$splitVar = explode("/", $var);
 			foreach ($rows as $row) {
                 $instrument = $row['redcap_repeat_instrument'] ?? "";
-                if (preg_match("/^ldap/", $var) && in_array($instrument, ["ldap", "ldapds"])) {
+                if (
+                    (
+                        preg_match("/^ldap/", $var)
+                        || preg_match("/^workday/", $var)
+                    )
+                    && in_array($instrument, ["ldap", "ldapds", "workday"])
+                ) {
                     $prefix = $instrument;
                     $doNotUse = $row[$prefix."_donotuse"] ?? 0;
                     if ($doNotUse === '1') {
@@ -3218,20 +3243,20 @@ class Scholar {
             return new Result(1, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);   // Not Tenure track
         }
 
+        $fieldsByInstrument = [
+            "workday" => "workday_jobcode_descr",
+            "ldapds" => "ldapds_title",
+            "ldap" => "ldap_vanderbiltpersonjobname",
+        ];
         $tenured = ["Professor", "Assoc Professor"];
         foreach ($rows as $row) {
-            if ($row['redcap_repeat_instrument'] == "ldapds") {
-                if (in_array($row['ldapds_title'], $tenured)) {
-                    return new Result(3, "ldap", "Computer-Generated", "", $this->pid);;
-                } else if (preg_match("/Research/", $row['ldapds_title'])) {
-                    return new Result(1, "ldap", "Computer-Generated", "", $this->pid);;
-                }
-            }
-            if ($row['redcap_repeat_instrument'] == "ldap") {
-                if (in_array($row['ldap_vanderbiltpersonjobname'], $tenured)) {
-                    return new Result(3, "ldap", "Computer-Generated", "", $this->pid);;
-                } else if (preg_match("/Research/", $row['ldap_vanderbiltpersonjobname'])) {
-                    return new Result(1, "ldap", "Computer-Generated", "", $this->pid);;
+            foreach ($fieldsByInstrument as $instrument => $field) {
+                if ($row['redcap_repeat_instrument'] == $instrument) {
+                    if (in_array($row[$field], $tenured)) {
+                        return new Result(3, "ldap", "Computer-Generated", "", $this->pid);;
+                    } else if (preg_match("/Research/", $row[$field])) {
+                        return new Result(1, "ldap", "Computer-Generated", "", $this->pid);;
+                    }
                 }
             }
         }
