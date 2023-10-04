@@ -12,6 +12,9 @@ use \Vanderbilt\CareerDevLibrary\CustomGrantFactory;
 use \Vanderbilt\CareerDevLibrary\GrantLexicalTranslator;
 use \Vanderbilt\CareerDevLibrary\Grant;
 
+# mostly a driver for the React tables in the tables2-4/ directory - returns a JSON
+# React transforms JSON data into HTML
+
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 if (in_array(gethostname(), ["scottjpearson", "ORIWL-KCXDJK7.local"])) {
@@ -25,6 +28,8 @@ if (in_array(gethostname(), ["scottjpearson", "ORIWL-KCXDJK7.local"])) {
 }
 require_once(dirname(__FILE__)."/../small_base.php");
 
+# if $_POST is a JSON instead of a url-encoded string
+# eventually in newer versions of ExtMod framework
 $entityBody = file_get_contents('php://input');
 if ($entityBody) {
     $_POST = json_decode($entityBody, TRUE) ?? $_POST;
@@ -247,7 +252,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
 } else if (isset($_GET['revise'])) {
     echo $titleHTML;
     $email = Sanitizer::sanitize($_GET['revise'] ?? "No email");
-    $date = Sanitizer::sanitize($_GET['date']);
+    $date = Sanitizer::sanitizeDate($_GET['date']);
     $requestedHash = Sanitizer::sanitize($_GET['hash']);
     $savedName = Sanitizer::sanitize($_GET['savedName'] ?? "");
     list($userids, $name) = $reactHandler->getUseridsAndNameAssociatedWithEmail($email);
@@ -266,7 +271,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
 } else if (isset($_GET['confirm'])) {
     echo $titleHTML;
     $email = Sanitizer::sanitize($_GET['confirm'] ?? "No email");
-    $date = Sanitizer::sanitize($_GET['date']);
+    $date = Sanitizer::sanitizeDate($_GET['date']);
     $requestedHash = Sanitizer::sanitize($_GET['hash']);
     if ($reactHandler->verify($requestedHash, $email)) {
         list($tables, $emailHash) = $reactHandler->getInformation($requestedHash, $email);
@@ -296,6 +301,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
     $manifestUrl = Application::link("reporting/tables2-4/public/manifest.json", $pid);
     $thisLink = Application::link("this", $pid);
 
+    # from React
     echo "<!DOCTYPE html>
 <html lang='en'>
   <head>

@@ -313,7 +313,13 @@ class Application {
         $str .= "<script src='".self::link("/js/base.js")."&$version'></script>";
 
         $baseUrl = $_SERVER['PHP_SELF'] ?? "";
-        $isExtModPage = preg_match("/ExternalModules/", $baseUrl) || preg_match("/external_modules/", $baseUrl);
+        $isExtModPage = (
+            (
+                preg_match("/ExternalModules/", $baseUrl)
+                || preg_match("/external_modules/", $baseUrl)
+            )
+            && preg_match("/".self::getPrefix()."/", $_SERVER['REQUEST_URI'])
+        );
         $isPluginPage = preg_match("/\/plugins\//", $baseUrl);
         $isFTPage = $isPluginPage || $isExtModPage && (preg_match("/odules\/$/", $baseUrl) || preg_match("/odules\/index.php$/", $baseUrl));
         if ($isExtModPage || $isPluginPage) {

@@ -414,6 +414,7 @@ function makeCustomizeTable($token, $server, $metadata) {
 function makePublicationSearch($names, $record = NULL) {
 	$html = "";
 	$html .= "<h2>Step 2: Select Scholar's Publications</h2>\n";
+    $html .= "<p class='centered max-width'>If you have made changes, you must first press the appropriate Re-Configure button above in order for this step to work.</p>";
 	$html .= "<p class='centered'><a href='".Application::link("publications/view.php")."&record=all".makeExtraURLParams(["record"])."'>View All Scholars' Publications</a></p>\n";
 	$html .= "<p class='centered'><select onchange='window.location.href = \"".Application::link("publications/view.php").makeExtraURLParams(["record"])."&record=\" + $(this).val();'><option value=''>---SELECT---</option>\n";
 	foreach ($names as $recordId => $name) {

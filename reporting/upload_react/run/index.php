@@ -53,6 +53,12 @@ $footerHTML = Application::getFooter();
         @font-face{font-family:"Museo Sans";font-style:normal;font-weight:400;src:url("<?= $museoSansLink ?>")}
         @font-face{font-family:'Georgia';font-style:normal;font-weight:normal;src:url("<?= $georgiaLink ?>")}
         </style>
+
+            <script>
+            function getCSRFToken() {
+                return '<?= Application::generateCSRFToken() ?>';
+            }
+        </script>
     </head>
     <body>
         <?= $headerHTML ?>

@@ -36,7 +36,7 @@ if (isset($_GET['upload']) && ($_GET['upload'] == 'table')) {
             }
         }
         $newUids = getUidsForMentors($newLines);
-        if (!empty($newUids) || Application::isLocalhost()) {
+        if (!empty($newUids)) {
             echo makeAdjudicationTable($lines, $newUids, $matchedMentorUids, $originalMentorNames);
         } else {
             commitChanges($token, $server, $lines, $matchedMentorUids, $pid, $createRecordsURI);
@@ -524,7 +524,6 @@ function checkAllMentors() {
 }
 
 function processMentorName($currMentorName, $currMentorUids, $i, $customLine, $customHidden, $customRadio) {
-    error_log("processing Mentor Name $currMentorName");
     $html = "";
 
     if (count($currMentorUids) == 0) {
@@ -589,8 +588,8 @@ function parsePostForLines($post) {
         $key = REDCapManagement::sanitize($key);
         if (preg_match("/^line___\d+$/", $key)) {
             $value = REDCapManagement::sanitizeJSON($value);
-            $i = preg_replace("/^line___/", "", $key);
-            $values = json_decode($value);
+            $i = (int) preg_replace("/^line___/", "", $key);
+            $values = json_decode($value, TRUE);
             $lines[$i] = $values;
             if ($post["mentorname___" . $i]) {
                 $lines[$i][$mentorCol] = $post["mentorname___" . $i];
@@ -601,14 +600,14 @@ function parsePostForLines($post) {
         $key = REDCapManagement::sanitize($key);
         $value = REDCapManagement::sanitize($value);
         if (preg_match("/^mentor___[\d_]+$/", $key) && ($value != $mentorCustomCode)) {
-            $i = preg_replace("/^mentor___/", "", $key);
+            $i = (int) preg_replace("/^mentor___/", "", $key);
             if (preg_match("/_/", $i)) {
                 assignFromParts($mentorUids, $i, $value);
             } else {
                 $mentorUids[$i] = $value;
             }
         } else if (preg_match("/^newmentorname___[\d_]+$/", $key)) {
-            $i = preg_replace("/^newmentorname___/", "", $key);
+            $i = (int) preg_replace("/^newmentorname___/", "", $key);
             $origMentorName = $post['originalmentorname___'.$i];
             if (preg_match("/_/", $i)) {
                 assignFromParts($multiMentors, $i, $origMentorName);
@@ -628,7 +627,7 @@ function parsePostForLines($post) {
                 $newMentorNames[$i] = $value;
             }
         } else if (preg_match("/^mentorcustom___[\d_]+$/", $key) && $value) {
-            $i = preg_replace("/^mentorcustom___/", "", $key);
+            $i = (int) preg_replace("/^mentorcustom___/", "", $key);
             if ($post['mentor___'.$i] == $mentorCustomCode) {
                 if (preg_match("/_/", $i)) {
                     assignFromParts($mentorUids, $i, $value);

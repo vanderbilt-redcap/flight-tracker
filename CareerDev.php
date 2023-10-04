@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.14.0";
+		return "5.14.1";
 	}
 
 	public static function getLockFile($pid) {
@@ -1140,7 +1140,7 @@ class CareerDev {
             $ary = [
                 "Demographics Table" => self::link("/charts/makeDemographicsTable.php"),
                 "REDCap Reports" => $r."/DataExport/index.php",
-                "Missingness Report<br>(Computationally Expensive)" => self::link("/tablesAndLists/missingness.php"),
+                "Missingness Report" => self::link("/tablesAndLists/missingness.php"),
             ];
             if (self::has("patent", $pid) && $switches->isOnForProject("Patents")) {
                 $ary["Patent Viewer"] = self::link("patents/view.php");

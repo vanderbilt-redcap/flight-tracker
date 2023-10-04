@@ -64,12 +64,15 @@
 	   "js/xtract.js",
 	   "emailMgmt/makeSurveyLinks",
 	   "copyProject",
-	   "reporting/tables2-4",
 	   "reporting/tables2-4WithAuth",
 	   "mstp/reviewMSTP",
 	   "reviewMSTP",
 	   "mstp/mstpDownload"
    ],
+
+	"no-csrf-pages": [
+		"reporting/tables2-4WithAuth"
+	],
 
 	"framework-version": 8,
 

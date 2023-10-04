@@ -5,6 +5,12 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\ReactNIHTables;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
+# This page uses NOAUTH but has a unique hash that's used for authentication
+# Links to this page are sent in an email to people not on the REDCap project (delegates and scholars)
+# Therefore, this alternate form of authentication is needed.
+# Links to this page are sent via an email from the Tables 2-4 React app
+# This page provides feedback, which are saved into DB and displayed in React app
+
 define("NOAUTH", TRUE);
 
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -35,7 +41,7 @@ if (isset($_GET['email'])) {
 } else if (isset($_GET['revise']) && REDCapManagement::isEmailOrEmails($_GET['revise'])) {
     $email = Sanitizer::sanitize($_GET['revise'] ?? "No email");
     $requestedHash = Sanitizer::sanitize($_GET['hash']);
-    $dateOfReport = Sanitizer::sanitize($_GET['date'] ?? date("Y-m-d"));
+    $dateOfReport = Sanitizer::sanitizeDate($_GET['date'] ?? date("Y-m-d"));
     $savedName = Sanitizer::sanitize($_GET['savedName'] ?? "");
     echo $reactHandler->getTable1_4Header();
     if ($reactHandler->verify($requestedHash, $email)) {
@@ -57,4 +63,6 @@ if (isset($_GET['email'])) {
     } else {
         echo "Invalid request.";
     }
+} else {
+    echo "Invalid request.";
 }

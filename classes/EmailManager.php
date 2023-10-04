@@ -1494,7 +1494,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
             }
         }
 
-		$logEventTable = method_exists('\REDCap', 'getLogEventTable') ? \REDCap::getLogEventTable(pid) : "redcap_log_event";
+		$logEventTable = method_exists('\REDCap', 'getLogEventTable') ? \REDCap::getLogEventTable($pid) : "redcap_log_event";
         $module = Application::getModule();
 		if (!method_exists($module, "query")) {
 			require_once(dirname(__FILE__)."/../../../redcap_connect.php");

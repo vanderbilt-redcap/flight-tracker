@@ -22,7 +22,7 @@ foreach ($filesToInclude as $dir => $fileRegex) {
     }
 }
 
-$driverLink = Application::link("reporting/tables2-4.php")."&NOAUTH";
+$driverLink = Application::link("reporting/tables2-4.php");
 $museoSansLink = Application::link("fonts/exljbris - MuseoSans-500.otf");
 $georgiaLink = Application::link("fonts/georgia.woff");
 $backgroundLink = Application::link("css/general.css");
@@ -52,6 +52,12 @@ $footerHTML = Application::getFooter();
         @font-face{font-family:"Museo Sans";font-style:normal;font-weight:400;src:url("<?= $museoSansLink ?>")}
         @font-face{font-family:'Georgia';font-style:normal;font-weight:normal;src:url("<?= $georgiaLink ?>")}
         </style>
+
+        <script>
+            function getCSRFToken() {
+                return '<?= Application::generateCSRFToken() ?>';
+            }
+        </script>
     </head>
     <body>
         <?= $headerHTML ?>

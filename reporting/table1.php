@@ -129,7 +129,7 @@ if ($surveyLink) {
 }
 $nihLink = NIHTables::NIH_LINK;
 $table1Link = Links::makeProjectHomeURL($table1Pid);
-$accessMessage = "";
+$accessMessage = " - you might not have access to this REDCap project";
 $username = Application::getUsername();
 $users = REDCapManagement::getUsersForProject($table1Pid);
 if (!in_array($username, $users)) {
