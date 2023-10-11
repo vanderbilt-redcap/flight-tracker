@@ -12,8 +12,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 class CitationCollection {
 	# type = [ Filtered, Final, New, Omit, Flagged, Unflagged ]
 	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = "download", $lastNames = [], $firstNames = []) {
-		$this->token = $token;
-		$this->server = $server;
+        $this->type = $type;
 		$this->citations = array();
 		if ($metadata == "download") {
 		    $this->metadata = Download::metadata($token, $server);
@@ -42,6 +41,10 @@ class CitationCollection {
             # Filtered ==> Manually add
         }
 	}
+
+    public function getType() {
+        return $this->type;
+    }
 
     public function getBoldedNames($withTotals = FALSE) {
         $names = [];
@@ -273,10 +276,9 @@ class CitationCollection {
 		return count($this->getCitations());
 	}
 
-	private $citations = array();
-	private $token = "";
-	private $server = "";
-	private $metadata = [];
+	protected $citations = array();
+    protected $metadata = [];
+    protected $type = "";
 }
 
 class Citation {

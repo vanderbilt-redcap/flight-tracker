@@ -1689,17 +1689,17 @@
         },
         {
             "name": "phpseclib/phpseclib",
-            "version": "3.0.21",
-            "version_normalized": "3.0.21.0",
+            "version": "3.0.23",
+            "version_normalized": "3.0.23.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpseclib/phpseclib.git",
-                "reference": "4580645d3fc05c189024eb3b834c6c1e4f0f30a1"
+                "reference": "866cc78fbd82462ffd880e3f65692afe928bed50"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/4580645d3fc05c189024eb3b834c6c1e4f0f30a1",
-                "reference": "4580645d3fc05c189024eb3b834c6c1e4f0f30a1",
+                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/866cc78fbd82462ffd880e3f65692afe928bed50",
+                "reference": "866cc78fbd82462ffd880e3f65692afe928bed50",
                 "shasum": ""
             },
             "require": {
@@ -1717,7 +1717,7 @@
                 "ext-mcrypt": "Install the Mcrypt extension in order to speed up a few other cryptographic operations.",
                 "ext-openssl": "Install the OpenSSL extension in order to speed up a wide variety of cryptographic operations."
             },
-            "time": "2023-07-09T15:24:48+00:00",
+            "time": "2023-09-18T17:22:01+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -1782,7 +1782,7 @@
             ],
             "support": {
                 "issues": "https://github.com/phpseclib/phpseclib/issues",
-                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.21"
+                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.23"
             },
             "funding": [
                 {
@@ -1853,24 +1853,24 @@
         },
         {
             "name": "psr/http-client",
-            "version": "1.0.2",
-            "version_normalized": "1.0.2.0",
+            "version": "1.0.3",
+            "version_normalized": "1.0.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/php-fig/http-client.git",
-                "reference": "0955afe48220520692d2d09f7ab7e0f93ffd6a31"
+                "reference": "bb5906edc1c324c9a05aa0873d40117941e5fa90"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/php-fig/http-client/zipball/0955afe48220520692d2d09f7ab7e0f93ffd6a31",
-                "reference": "0955afe48220520692d2d09f7ab7e0f93ffd6a31",
+                "url": "https://api.github.com/repos/php-fig/http-client/zipball/bb5906edc1c324c9a05aa0873d40117941e5fa90",
+                "reference": "bb5906edc1c324c9a05aa0873d40117941e5fa90",
                 "shasum": ""
             },
             "require": {
                 "php": "^7.0 || ^8.0",
                 "psr/http-message": "^1.0 || ^2.0"
             },
-            "time": "2023-04-10T20:12:12+00:00",
+            "time": "2023-09-23T14:17:50+00:00",
             "type": "library",
             "extra": {
                 "branch-alias": {
@@ -1902,7 +1902,7 @@
                 "psr-18"
             ],
             "support": {
-                "source": "https://github.com/php-fig/http-client/tree/1.0.2"
+                "source": "https://github.com/php-fig/http-client"
             },
             "install-path": "../psr/http-client"
         },
@@ -2966,17 +2966,17 @@
         },
         {
             "name": "symfony/string",
-            "version": "v5.4.26",
-            "version_normalized": "5.4.26.0",
+            "version": "v5.4.29",
+            "version_normalized": "5.4.29.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/string.git",
-                "reference": "1181fe9270e373537475e826873b5867b863883c"
+                "reference": "e41bdc93def20eaf3bfc1537c4e0a2b0680a152d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/string/zipball/1181fe9270e373537475e826873b5867b863883c",
-                "reference": "1181fe9270e373537475e826873b5867b863883c",
+                "url": "https://api.github.com/repos/symfony/string/zipball/e41bdc93def20eaf3bfc1537c4e0a2b0680a152d",
+                "reference": "e41bdc93def20eaf3bfc1537c4e0a2b0680a152d",
                 "shasum": ""
             },
             "require": {
@@ -2996,7 +2996,7 @@
                 "symfony/translation-contracts": "^1.1|^2",
                 "symfony/var-exporter": "^4.4|^5.0|^6.0"
             },
-            "time": "2023-06-28T12:46:07+00:00",
+            "time": "2023-09-13T11:47:41+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -3035,7 +3035,7 @@
                 "utf8"
             ],
             "support": {
-                "source": "https://github.com/symfony/string/tree/v5.4.26"
+                "source": "https://github.com/symfony/string/tree/v5.4.29"
             },
             "funding": [
                 {

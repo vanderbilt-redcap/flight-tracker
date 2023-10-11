@@ -12,11 +12,42 @@ class NameMatcher {
     public static function matchInstitution($institution, $allInstitutions) {
         foreach ($allInstitutions as $inst) {
             if (self::doInstitutionsMatch($inst, $institution)) {
-                Application::log("$inst and $institution match");
+                // Application::log("$inst and $institution match");
                 return TRUE;
             }
         }
         return FALSE;
+    }
+
+    # parses a name list to reformat names with last-name, first-name syntax
+    public static function parseAndFormatNameList($list) {
+        if (!trim($list)) {
+            return [];
+        }
+        if (preg_match("/[;\/]/", $list)) {
+            $ary = preg_split("/\s*[;\/]\s*/", $list);
+            $formattedNames = [];
+            foreach ($ary as $name) {
+                if ($name) {
+                    list($first, $middle, $last) = self::splitName($name, 3);
+                    $formattedName = self::formatName($first, $middle, $last);
+                    if (!in_array($formattedName, $formattedNames)) {
+                        $formattedNames[] = $formattedName;
+                    }
+                }
+            }
+            return $formattedNames;
+        } else {
+            $ary = preg_split("/\s*,\s*/", $list);
+            if ((count($ary) == 2) && (self::getNumberOfNodes($ary[0]) == 1) && (self::getNumberOfNodes($ary[1]) <= 2)) {
+                # either last-name, first-name or last-name, first-name middle
+                list($first, $middle, $last) = self::splitName($list, 3);
+                return [self::formatName($first, $middle, $last)];
+            } else {
+                return $ary;
+            }
+        }
+
     }
 
     public static function matchDepartment($dept1, $dept2) {

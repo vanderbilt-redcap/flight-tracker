@@ -13,6 +13,7 @@ class DataDictionaryManagement {
     const DEGREE_OTHER_VALUE = "99";
     const INSTITUTION_OTHER_VALUE = "5";
     const NONE = "NONE";
+    const ALUMNI_OTHER_VALUE = "999999";
 
     public static function getDeletionRegEx() {
         $suffix = self::DELETION_SUFFIX;
@@ -392,10 +393,10 @@ class DataDictionaryManagement {
         }
         foreach ($surveysAndLabels as $form => $label) {
             if (in_array($form, $forms)) {
-                $sql = "UPDATE redcap_surveys SET title = ?, acknowledgement = ? WHERE project_id = ? AND form_name = ?";
-                $module->query($sql, [$label, $surveyCompletionText, $projectId, $form]);
+                $sql = "UPDATE redcap_surveys SET title = ?, acknowledgement = ?, save_and_return_code_bypass = ?, edit_completed_response = ? WHERE project_id = ? AND form_name = ?";
+                $module->query($sql, [$label, $surveyCompletionText, 1, 1, $projectId, $form]);
             } else {
-                $sql = "INSERT INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES (?, '16', ?, ?, ?, ?, 0, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
+                $sql = "INSERT INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, save_and_return_code_bypass, edit_completed_response, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES (?, '16', ?, ?, ?, ?, 0, 1, 1, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
                 $module->query($sql, [$projectId, $form, $label, $surveyIntroText, $surveyCompletionText]);
             }
         }
@@ -634,7 +635,7 @@ class DataDictionaryManagement {
                         && !empty($choices["REDCap"][$field])
                         && !REDCapManagement::arraysEqual($choices["file"][$field], $choices["REDCap"][$field])
                     ) {
-                        if (!$isSpecialGenderField) {
+                        if (!$isSpecialGenderField && !self::isAlumniAssociationField($field)) {
                             $missing[] = $field;
                             $changed[] = $field." [choices not equal]";
                         }
@@ -1001,7 +1002,42 @@ class DataDictionaryManagement {
         self::alterResourcesFields($mergedMetadata, $pid);
         self::alterInstitutionFields($mergedMetadata, $pid);
         self::alterDepartmentsFields($mergedMetadata, $pid);
+        self::updateAlumniAssociations($mergedMetadata, $originalMetadata, $pid);
         return Upload::metadata($mergedMetadata, $token, $server);
+    }
+
+    public static function updateAlumniAssociations(&$metadata, $originalMetadata, $pid) {
+        $alumniURL = "https://redcap.vanderbilt.edu/plugins/career_dev/getAlumniAssociations.php?NOAUTH";
+        list($resp, $alumniJSON) = URLManagement::downloadURL($alumniURL, $pid);
+        $indexedOriginalMetadata = self::indexMetadata($originalMetadata);
+        $nativeAlumniAssociations = json_decode($alumniJSON ?: "[]", TRUE);
+        $alumniAssociations = [];
+        foreach ($nativeAlumniAssociations as $url => $group) {
+            $index = preg_replace("/[^a-zA-z0-9_]/", "", $url);
+            $alumniAssociations[$index] = "$group ($url)";
+        }
+        $alumniAssociations[self::ALUMNI_OTHER_VALUE] = "Other";
+        $choiceStr = self::makeChoiceStr($alumniAssociations);
+        if (($resp == 200) && $alumniJSON && REDCapManagement::isJSON($alumniJSON) && $choiceStr) {
+            foreach ($metadata as $i => $row) {
+                if (self::isAlumniAssociationField($row['field_name']) && ($row['field_type'] == "dropdown")) {
+                    $row['select_choices_or_calculations'] = $choiceStr;
+                    $metadata[$i] = $row;
+                }
+            }
+        } else {
+            # keep old values
+            foreach ($metadata as $i => $row) {
+                if (self::isAlumniAssociationField($row['field_name']) && ($row['field_type'] == "dropdown")) {
+                    $row['select_choices_or_calculations'] = $indexedOriginalMetadata[$row['field_name']]["select_choices_or_calculations"];
+                    $metadata[$i] = $row;
+                }
+            }
+        }
+    }
+
+    private static function isAlumniAssociationField($fieldName) {
+        return preg_match("/alumni_assoc_\d$/", $fieldName);
     }
 
     private static function eliminateDuplicateSectionHeadersOnForm(&$mergedMetadata, $firstIndexForForm, $mergedOrderForForm, $fileFields, $indexedFileMetadata){
@@ -1375,6 +1411,30 @@ class DataDictionaryManagement {
         }
     }
 
+    # gets from the database
+    # if database value doesn't exist, supplies default for Vanderbilt and blank for everyone else
+    private static function getSavedResourceChoiceStr($blankSetup, $pid) {
+        $resourceList = Application::getSetting("resources", $pid);
+        if (trim($resourceList)) {
+            $resource1DAry = explode("\n", trim($resourceList));
+            $resourcesWithIndex = [];
+            $idx = 1;
+            foreach ($resource1DAry as $resource) {
+                $resourcesWithIndex[$idx] = $resource;
+                $idx++;
+            }
+            $resourceStr = self::makeChoiceStr($resourcesWithIndex);
+        } else if (Application::isVanderbilt()) {
+            $resourceStr = self::makeChoiceStr(self::getMenteeAgreementVanderbiltResources());
+        } else {
+            $resourceStr = self::makeChoiceStr($blankSetup);
+        }
+        return $resourceStr;
+    }
+
+    # restores the resources field's choices to a working value
+    # metadata won't upload without them
+    # have to be careful that good values aren't overwritten
     private static function alterResourcesFields(&$metadata, $pid) {
         $defaultResourceField = "resources_resource";
         $blankSetup = ["1" => "Resource"];
@@ -1390,30 +1450,20 @@ class DataDictionaryManagement {
             if (in_array($defaultResourceField, $metadataFields)) {
                 if (Application::isVanderbilt()) {
                     $resourceStr = self::makeChoiceStr(self::getMenteeAgreementVanderbiltResources());
-                } else {
+                } else if (!self::isInitialSetupForResources($choices[$defaultResourceField])) {
                     $resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
+                } else {
+                    $resourceStr = self::getSavedResourceChoiceStr($blankSetup, $pid);
                 }
             } else {
                 $resourceStr = self::makeChoiceStr($blankSetup);
             }
+        } else if ($pid) {
+            $resourceStr = self::getSavedResourceChoiceStr($blankSetup, $pid);
         } else if (!empty($choices[$defaultResourceField])) {
             $resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
         } else if (!empty($choices[$mentoringResourceField])) {
             $resourceStr = self::makeChoiceStr($choices[$mentoringResourceField]);
-        } else if ($pid) {
-            $resourceList = Application::getSetting("resources", $pid);
-            if (trim($resourceList)) {
-                $resource1DAry = explode("\n", trim($resourceList));
-                $resourcesWithIndex = [];
-                $idx = 1;
-                foreach ($resource1DAry as $resource) {
-                    $resourcesWithIndex[$idx] = $resource;
-                    $idx++;
-                }
-                $resourceStr = self::makeChoiceStr($resourcesWithIndex);
-            } else {
-                $resourceStr = self::makeChoiceStr($blankSetup);
-            }
         } else {
             $resourceStr = self::makeChoiceStr($blankSetup);
         }

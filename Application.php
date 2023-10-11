@@ -318,7 +318,7 @@ class Application {
                 preg_match("/ExternalModules/", $baseUrl)
                 || preg_match("/external_modules/", $baseUrl)
             )
-            && preg_match("/".self::getPrefix()."/", $_SERVER['REQUEST_URI'])
+            && preg_match("/".self::getPrefix()."/", $_SERVER['REQUEST_URI'] ?? "")
         );
         $isPluginPage = preg_match("/\/plugins\//", $baseUrl);
         $isFTPage = $isPluginPage || $isExtModPage && (preg_match("/odules\/$/", $baseUrl) || preg_match("/odules\/index.php$/", $baseUrl));

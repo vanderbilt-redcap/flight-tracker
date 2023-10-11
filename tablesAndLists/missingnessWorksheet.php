@@ -136,7 +136,7 @@ function generateWorksheetColumns($data, $orders, $metadata) {
 			continue;
 		}
 		$jobCategory = findValue("identifier_left_job_category", $data);
-		if (Scholar::isDependentOnAcademia($field) && Scholar::isOutsideAcademe($jobCategory)) {
+		if (Scholar::isDependentOnAcademia($field) && Scholar::isOutsideAcademia($jobCategory)) {
 			continue;
 		}
 

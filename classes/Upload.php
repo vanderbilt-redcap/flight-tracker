@@ -542,16 +542,10 @@ class Upload
 	public static function resource($recordId, $value, $token, $server, $date = "AUTOFILL", $grant = "") {
 		$redcapData = Download::resources($token, $server, $recordId);
         $metadataFields = Download::metadataFields($token, $server);
-        $maxInstance = 0;
 		if ($date == "AUTOFILL") {
 			$date = date("Y-m-d");
 		}
-		foreach ($redcapData as $row) {
-			if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "resources")) {
-				$instance = $row['redcap_repeat_instance'];
-				$maxInstance = ($instance > $maxInstance) ? $instance : $maxInstance;
-			}
-		}
+        $maxInstance = REDCapManagement::getMaxInstance($redcapData, "resources", $recordId);
 		$maxInstance++;
 
 		$uploadRow = [

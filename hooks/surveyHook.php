@@ -62,7 +62,7 @@ if ($omitted->getCount() > 0) {
 $html .= "<h4 style='$headerStyle'><span id='finalizedCount'>".$finalized->getCount()."</span> Citations Already Accepted and Finalized";
 if ($finalized->getCount() > 0) {
 	$html .= " ".makeShow("finalized")."</h4>\n";
-	$html .= makeCheckboxes($finalized, "readonly", "finalized", "display: none;");
+	$html .= makeCheckboxes($finalized, "checked", "finalized", "display: none;");
 } else {
 	$html .= "</h4>\n";
 	$html .= makeEmptyDiv("finalized")."\n";
@@ -123,7 +123,7 @@ function makeCheckboxes($coll, $img, $divId, $style = "") {
     foreach ($coll->getCitations() as $citationObj) {
         $pmid = $citationObj->getPMID();
         $citationLink = $citationObj->getCitationWithLink(FALSE, TRUE);
-		$html .= "<div id='PMID$pmid' style='margin: 8px 0; min-height: 26px;'><img align='left' style='margin: 2px; width: 26px; height: 26px;' src='$imgURL' alt='$img' onclick='changeCheckboxValue(this, \"$certifyPubURL\");'> $citationLink</div>\n";
+		$html .= "<div id='PMID$pmid' style='margin: 8px 0; min-height: 26px;'><img style='margin: 2px; width: 26px; height: 26px;' src='$imgURL' alt='$img' data-original='$divId' onclick='changeCheckboxValue(this, \"$certifyPubURL\");'> $citationLink</div>\n";
 	}
 	$html .= "</div>\n";
 	return $html;

@@ -1792,6 +1792,9 @@ function importNIHTable($post, $filename, $token, $server) {
         $fp = fopen($filename, "r");
         if ($fp) {
             $headers = fgetcsv($fp);
+            foreach ($headers as $i => $header) {
+                $headers[$i] = REDCapManagement::clearUnicode($header);
+            }
             $cols = [];
             $colsToTest = [];
             if ($tableNum == 5) {

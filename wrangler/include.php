@@ -195,7 +195,7 @@ try {
             }
         }
 
-        if (isset($_GET['mssg'])) {
+        if (isset($_GET['mssg']) && is_string($_GET['mssg'])) {
             $doneMessage = "All done! You're back at the beginning.";
             if ($_GET['mssg'] == "restart") {
                 $mssg = $doneMessage;

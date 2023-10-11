@@ -1124,6 +1124,7 @@ function changeCheckboxValue(ob, url) {
 	const state = $(ob).attr('alt')
 	const pmid = $(ob).parent().attr('id').replace(/^PMID/, "")
 	const recordId = $("[name=record_id]").val()
+	const originatingDiv = $(ob).attr('data-original');
 
 	const params = getUrlVars()
 	const hash = params['s']
@@ -1166,7 +1167,9 @@ function changeCheckboxValue(ob, url) {
 		$(obDiv).show()
 		$('#'+newDiv+'Count').html(parseInt($('#'+newDiv+'Count').html(), 10) + 1)
 	}
-	if (oldDiv) {
+	if (originatingDiv) {
+		$("#"+originatingDiv+"Count").html(parseInt($('#'+originatingDiv+'Count').html(), 10) - 1)
+	} else if (oldDiv) {
 		$("#"+oldDiv+"Count").html(parseInt($('#'+oldDiv+'Count').html(), 10) - 1)
 	}
 	// enqueue();

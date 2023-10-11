@@ -2614,6 +2614,9 @@ class NIHTables {
                     $i++;
                 }
             }
+            for ($j=0; $j < count($line); $j++) {
+                $line[$j] = REDCapManagement::clearUnicode($line[$j]);
+            }
             foreach ($cols as $col) {
                 $name = $line[$col] ?? "";
                 if (preg_match("/\s*;\s*/", $name)) {

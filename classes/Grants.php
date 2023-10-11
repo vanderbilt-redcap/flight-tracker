@@ -1187,6 +1187,29 @@ class Grants {
         return $combinedAwardsByBaseAwardNumber;
     }
 
+    # excludes all F grants (fellowship-based PhD and postdoc grants) if the scholar has received a K-class grant
+    # K-class grants are individual awards; F grants NEVER come after Ks
+    # Sometimes, though, an F grant shows up on a scholar's record after a K grant - when their TRAINEE has won it
+    # The trainee's award is an improper association; hence this method
+    private static function excludeFsAfterKs(&$orderedGrants) {
+        $filteredGrants = [];
+        $hasK = FALSE;
+        foreach ($orderedGrants as $awardNo => $grant) {
+            if (in_array($grant->getVariable("type"), ["Internal K", "K12/KL2", "Individual K", "K Equivalent", 1, 2, 3, 4])) {
+                $hasK = TRUE;
+                $filteredGrants[$awardNo] = $grant;
+            } else if ($hasK) {
+                $activityCode = Grant::getActivityCode($awardNo);
+                if (!preg_match("/^[Ff]/", $activityCode)) {
+                    $filteredGrants[$awardNo] =  $grant;
+                }
+            } else {
+                $filteredGrants[$awardNo] = $grant;
+            }
+        }
+        $orderedGrants = $filteredGrants;
+    }
+
     private function compileGrantsForConversion($includeNAs = FALSE, $startTs = FALSE, $endTs = FALSE) {
 		# Strategy: Sort by start timestamp and then look for duplicates
 
@@ -1306,6 +1329,7 @@ class Grants {
         # grants are ordered by source; need to order by start date
 		# 5. order grants
 		$awardsByStart = self::orderGrantsByStart($awardsBySource);
+        self::excludeFsAfterKs($awardsByStart);
 		foreach ($awardsByStart as $awardNo => $grant) {
 			if (self::getShowDebug()) { Application::log("5. awardsByStart: ".$awardNo." ".$grant->getVariable("type")." ".$grant->getVariable("start")); }
 		}

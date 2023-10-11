@@ -43,10 +43,10 @@ if (isset($_POST['resource']) && $_POST['resource'] && isset($_POST['matched']) 
 	$numUploaded = 0;
 	foreach ($records as $pidAndRecord) {
 	    if (preg_match("/:/", $pidAndRecord)) {
-            list($currPid, $recordId, $mechanism) = preg_split("/:/", $pidAndRecord);
-            $token = Application::getSetting("token", $currPid);
-            $server = Application::getSetting("server", $currPid);
-            if ($token && $server && in_array($currPid, $pids)) {
+            list($currPid, $recordId, $mechanism) = explode(":", $pidAndRecord);
+            $currToken = Application::getSetting("token", $currPid);
+            $currServer = Application::getSetting("server", $currPid);
+            if ($currToken && $currServer && in_array($currPid, $pids)) {
                 $resourceChoices = DataDictionaryManagement::getChoicesForField($currPid, "resources_resource");
                 $resource = FALSE;
                 foreach ($resourceChoices as $idx => $label) {
@@ -57,7 +57,7 @@ if (isset($_POST['resource']) && $_POST['resource'] && isset($_POST['matched']) 
                     }
                 }
                 if ($resource) {
-                    $feedback = Upload::resource($recordId, $resource, $token, $server, $requestedDate, $mechanism);
+                    $feedback = Upload::resource($recordId, $resource, $currToken, $currServer, $requestedDate, $mechanism);
                     if ($feedback['count']) {
                         $numUploaded += $feedback['count'];
                     } else if ($feedback['item_count']) {

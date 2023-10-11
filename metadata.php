@@ -62,6 +62,15 @@ if ($_POST['process'] == "check") {
         $pidsToRun = [$pid];
     }
     $returnData = DataDictionaryManagement::installMetadataForPids($pidsToRun, $files, $deletionRegEx);
+    if (time() < strtotime("2023-11-30")) {
+        $module = Application::getModule();
+        foreach ($pidsToRun as $currPid) {
+            foreach (["followup", "initial_survey"] as $form) {
+                $sql = "UPDATE redcap_surveys SET save_and_return_code_bypass = ?, edit_completed_response = ? WHERE project_id = ? AND form_name = ?";
+                $module->query($sql, [1, 1, $currPid, $form]);
+            }
+        }
+    }
     echo json_encode($returnData);
 } else if ($_POST['process'] === "install_from_scratch") {
     $institutions = Application::getInstitutions();

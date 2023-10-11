@@ -26,33 +26,55 @@ class ExcludeList {
             $this->metadata = $metadata;
         }
         if (empty($excludeList)) {
-            $this->excludeList = Download::excludeList($this->token, $this->server, $this->field, $this->metadata);
+            $this->excludeList = [$this->field => Download::excludeList($this->token, $this->server, $this->field, $this->metadata)];
         } else {
-            $this->excludeList = $excludeList;
+            $this->excludeList = [$this->field => $excludeList];
         }
+
+        $metadataFields = Download::metadataFields($this->token, $this->server);
+        $this->topicField = "exclude_publication_topics";
+        if (($this->type == "Publications") && in_array($this->topicField, $metadataFields)) {
+            $this->excludeList[$this->topicField] = Download::excludeList($this->token, $this->server, $this->topicField, $this->metadata);
+        }
+
         $this->link = Application::link("/wrangler/updateExcludeList.php");
     }
 
-    public function updateValue($recordId, $value) {
-        $row = [
-            "record_id" => $recordId,
-            $this->field => $value,
+    public function updateValue($recordId, $field, $value) {
+        if (($field == $this->field) || ($field == $this->topicField)) {
+            $row = [
+                "record_id" => $recordId,
+                $field => $value,
             ];
-        $feedback = Upload::oneRow($row, $this->token, $this->server);
-        return $feedback;
+            $feedback = Upload::oneRow($row, $this->token, $this->server);
+            return $feedback;
+        } else {
+            return [];
+        }
     }
 
     public function makeEditForm($recordId, $includeJS = TRUE) {
-        $recordExcludeList = implode(", ", $this->excludeList[$recordId] ?? []);
         $html = "";
         if ($includeJS) {
             $html .= $this->makeJS();
         }
-        $html .= "<p class='centered'>";
-        $html .= "<span title='A list, separated by commas, of names that are to be *excluded* when matching on this record. This is a list of potential mismatches that should be omitted in any downloads.'>Comma-Separated Exclude List</span>: ";
-        $html .= "<input type='text' style='width: 300px;' name='excludeList' id='excludeList' field='{$this->field}' value='$recordExcludeList'>";
-        $html .= " <button onclick='updateExcludeList(\"$recordId\", $(\"#excludeList\").val()); return false;'>Update</button>";
-        $html .= "</p>";
+        $recordExcludeList = [];
+        if (($this->type == "Publications") && isset($this->excludeList[$this->topicField])) {
+            $recordExcludeList[$this->field] = implode(", ", $this->excludeList[$this->field][$recordId] ?? []);
+            $fields = [$this->field => "<span title='A list, separated by commas, of names that are to be *excluded* when matching on this record. This is a list of potential mismatches that should be omitted in any downloads.'>Comma-Separated Author Exclude List</span>: "];
+            $fields[$this->topicField] = "<span title=\"A list, separated by commas, of words that are to be *excluded* when matching in this record's publication titles. This is a list of potential mismatches that should be omitted in any downloads.\">Comma-Separated Title-Words Exclude List</span>: ";
+            $recordExcludeList[$this->topicField] = implode(", ", $this->excludeList[$this->topicField][$recordId] ?? []);
+        } else {
+            $fields = [$this->field => "<span title='A list, separated by commas, of names that are to be *excluded* when matching on this record. This is a list of potential mismatches that should be omitted in any downloads.'>Comma-Separated Exclude List</span>: "];
+            $recordExcludeList[$this->field] = implode(", ", $this->excludeList[$this->field][$recordId] ?? []);
+        }
+        foreach ($fields as $field => $title) {
+            $html .= "<p class='centered'>";
+            $html .= $title;
+            $html .= "<input type='text' style='width: 300px;' name='excludeList_$field' id='excludeList_$field' value='{$recordExcludeList[$field]}'>";
+            $html .= " <button onclick='updateExcludeList(\"$recordId\", \"$field\", $(\"#excludeList_$field\").val()); return false;'>Update</button>";
+            $html .= "</p>";
+        }
         return $html;
     }
 
@@ -60,9 +82,9 @@ class ExcludeList {
         $link = $this->link;
         $type = $this->type;
         $html = "<script>
-        function updateExcludeList(record, value) {
+        function updateExcludeList(record, field, value) {
             presentScreen('Saving...');
-            $.post('$link', {'redcap_csrf_token': getCSRFToken(), type: '$type', record: record, value: value}, function(html) {
+            $.post('$link', {'redcap_csrf_token': getCSRFToken(), field: field, type: '$type', record: record, value: value}, function(html) {
                 console.log(html);
                 clearScreen();
             });
@@ -75,6 +97,7 @@ class ExcludeList {
     protected $type;
     protected $field;
     protected $excludeList;
+    protected $topicField;
     protected $token;
     protected $server;
     protected $metadata;

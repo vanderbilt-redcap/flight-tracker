@@ -498,7 +498,7 @@ class Portal {
         $redcapData = Download::getDataByPid($this->pid, ["record_id", "summary_mentor", "summary_mentor_userid"], [$this->recordId]);
         $mentorList = REDCapManagement::findField($redcapData, $this->recordId, "summary_mentor");
         $mentorUseridList = REDCapManagement::findField($redcapData, $this->recordId, "summary_mentor_userid");
-        $mentors = $mentorList ? preg_split("/\s*[,;\/]\s*/", $mentorList) : [];
+        $mentors = $mentorList ? NameMatcher::parseAndFormatNameList($mentorList) : [];
         $mentorUserids = $mentorUseridList ? preg_split("/\s*[,;]\s*/", $mentorUseridList) : [];
 
         $mssg = "<p class='centered max-width'>Your do not have a mentor set up. Would you like to add a Mentor?</p>";
@@ -927,6 +927,9 @@ Examples:
                     $value = $summaryChoices[$field][$row[$field]] ?? $row[$field];
                 } else if (DateManagement::isDate($row[$field])) {
                     $value = DateManagement::YMD2LongDate($row[$field]);
+                } else if ($field == "summary_mentor") {
+                    $mentors = NameMatcher::parseAndFormatNameList($row[$field]);
+                    $value = REDCapManagement::makeConjunction($mentors);
                 } else {
                     $value = $row[$field];
                 }

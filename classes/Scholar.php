@@ -26,7 +26,7 @@ class Scholar {
 	}
 
 	# for identifier_left_job_category
-	public static function isOutsideAcademe($jobCategory) {
+	public static function isOutsideAcademia($jobCategory) {
 		$outside = array(3, 4, 6);
 		if (in_array($jobCategory, $outside)) {
 			return TRUE;
@@ -509,9 +509,9 @@ class Scholar {
                     list ($mentorFirst, $mentorLast) = NameMatcher::splitName($mentorName);
                     if ($comentor) {
                         list($comentorFirst, $comentorLast) = NameMatcher::splitName($comentor);
-                        $names = "$mentorFirst $mentorLast, $comentorFirst $comentorLast";
+                        $names = NameMatcher::formatName($mentorFirst, "", $mentorLast).", ".NameMatcher::formatName($comentorFirst, "", $comentorLast);
                     } else {
-                        $names = "$mentorFirst $mentorLast";
+                        $names = NameMatcher::formatName($mentorFirst, "", $mentorLast);
                     }
                     return new Result(trim($names), $source, $sourceType, "", $this->pid);
                 }
@@ -633,7 +633,9 @@ class Scholar {
     }
 
 	private function getMentorText($rows) {
-        return $this->getGenericValueForField($rows, "summary_mentor");
+        $res = $this->getGenericValueForField($rows, "summary_mentor");
+        $names = NameMatcher::parseAndFormatNameList($res->getValue());
+        return new Result(implode(", ", $names), $res->getSource(), $res->getSourceType(), $res->getDate(), $this->pid);
 	}
 
 	public function getAllMentors() {
@@ -641,14 +643,21 @@ class Scholar {
 		$mentors = array();
 		foreach ($this->rows as $row) {
 			foreach ($row as $field => $value) {
-			    if (preg_match("/\s*[\/;]\s*/", $value)) {
-                    $values = preg_split("/\s*[\/;]\s*/", $value);
-                } else {
-                    $values = [$value];
-                }
-			    foreach ($values as $v) {
-                    if ($v && !is_numeric($v) && in_array($field, $mentorFields) && !self::nameInList($v, $mentors)) {
-                        $mentors[] = $v;
+			    if (in_array($field, $mentorFields)) {
+                    if (preg_match("/\s*[\/;]\s*/", $value)) {
+                        $values = preg_split("/\s*[\/;]\s*/", $value);
+                    } else {
+                        $values = [$value];
+                    }
+                    foreach ($values as $v) {
+                        if ($v) {
+                            $formattedNames = NameMatcher::parseAndFormatNameList($v);
+                            foreach ($formattedNames as $name) {
+                                if (!is_numeric($name) && !self::nameInList($name, $mentors)) {
+                                    $mentors[] = $v;
+                                }
+                            }
+                        }
                     }
                 }
 			}

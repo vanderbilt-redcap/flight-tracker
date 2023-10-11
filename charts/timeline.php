@@ -294,7 +294,9 @@ function addIfValid($grant, &$grantsAndPubs, &$submissionTimestamps, &$id, $awar
         } else {
             $truncatedTitle = $title;
         }
-        if ($grantNumber && ($grantNumber != "No Title Assigned")) {
+        if (Application::isVanderbilt() && ($grantNumber == "000")) {
+            $grantNumber = "Internal Co-I Project";
+        } else if ($grantNumber && ($grantNumber != "No Title Assigned")) {
             $grantNumber .= " Application";
         } else {
             $grantNumber = $awardStatus.": ".$truncatedTitle;

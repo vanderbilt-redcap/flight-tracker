@@ -3,6 +3,7 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use Vanderbilt\CareerDevLibrary\DateManagement;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Grant;
 use \Vanderbilt\CareerDevLibrary\Application;
@@ -60,6 +61,28 @@ function findInFollowup($fields) {
     return REDCapManagement::findInData($data, $fields);
 }
 
+function getLastSurveyUpdate($token, $server, $recordId) {
+    $lastUpdateFields = ["check_date", "followup_date"];
+    $fields = array_merge(["record_id"], $lastUpdateFields);
+    $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+    $latestDate = "";
+    foreach ($redcapData as $row) {
+        foreach ($lastUpdateFields as $field) {
+            if ($row[$field]) {
+                if (!$latestDate) {
+                    $latestDate = $row[$field];
+                } else {
+                    $ts = strtotime($row[$field]);
+                    if ($ts > strtotime($latestDate)) {
+                        $latestDate = $row[$field];
+                    }
+                }
+            }
+        }
+    }
+    return $latestDate ? DateManagement::YMD2LongDate($latestDate) : "";
+}
+
 ?>
 <script>
 $(document).ready(function() {
@@ -103,6 +126,18 @@ $(document).ready(function() {
     presetValue('followup_alumni_assoc4', '<?php echo findInFollowup(['followup_alumni_assoc4', 'check_alumni_assoc4', 'init_import_alumni_assoc4']); ?>');
     presetValue('followup_alumni_assoc5', '<?php echo findInFollowup(['followup_alumni_assoc5', 'check_alumni_assoc5', 'init_import_alumni_assoc5']); ?>');
 
+    const lastUpdate = '<?= getLastSurveyUpdate($token, $server, $record) ?>';
+    if (lastUpdate) {
+        const lastUpdateText = ' - last updated on '+lastUpdate;
+
+        const currPosOb = $('#followup_d15a-tr').find('h5');
+        const currPosHeader = currPosOb.html();
+        currPosOb.html(currPosHeader + lastUpdateText);
+
+        const activitiesOb = $('#followup_honors_awards-sh-tr').find('h4');
+        const activitiesHeader = activitiesOb.html();
+        activitiesOb.html(activitiesHeader + lastUpdateText);
+    }
 <?php
 # Get rid of my extra verbiage
 function filterSponsorNumber($name) {

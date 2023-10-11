@@ -154,8 +154,8 @@ class Publications {
         }
     }
 
-    public static function filterExcludeList($rows, $recordExcludeList) {
-	    if (empty($recordExcludeList)) {
+    public static function filterExcludeList($rows, $recordExcludeLists, $recordId) {
+	    if (empty($recordExcludeLists)) {
 	        return $rows;
         }
 	    $newRows = [];
@@ -165,13 +165,23 @@ class Publications {
                 $authors = preg_split("/\s*[,;]\s*/", $row['citation_authors']);
                 foreach ($authors as $author) {
                     $author = trim($author);
-                    foreach ($recordExcludeList as $excludeName) {
+                    foreach ($recordExcludeLists['author'][$recordId] as $excludeName) {
                         if (strtolower($author) == strtolower($excludeName)) {
                             $excludeThisRow = TRUE;
                             break;
                         }
                     }
                     if ($excludeThisRow) {
+                        break;
+                    }
+                }
+            }
+            if (!$excludeThisRow && $row['citation_title'] && isset($recordExcludeLists['title'])) {
+                $title = strtolower($row['citation_title']);
+                foreach ($recordExcludeLists['title'][$recordId] as $excludeWord) {
+                    $excludeWord = strtolower($excludeWord);
+                    if (strpos($title, $excludeWord) !== FALSE) {
+                        $excludeThisRow = TRUE;
                         break;
                     }
                 }

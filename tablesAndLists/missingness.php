@@ -212,7 +212,7 @@ function generateDataColumns($recordData, $requestedFields, $potentialFields) {
 							$colors[$field] = "purple";
 						} else if (Scholar::isDependentOnAcademia($field)) {
 					        $jobCategory = REDCapManagement::findField($recordData, $recordId, "identifier_left_job_category");
-							if (Scholar::isOutsideAcademe($jobCategory)) {
+							if (Scholar::isOutsideAcademia($jobCategory)) {
 								$values[$field] = "N/A";
 								$colors[$field] = "grey";
 							} else {

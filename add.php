@@ -600,19 +600,19 @@ function parsePostForLines($post) {
         $key = REDCapManagement::sanitize($key);
         $value = REDCapManagement::sanitize($value);
         if (preg_match("/^mentor___[\d_]+$/", $key) && ($value != $mentorCustomCode)) {
-            $i = (int) preg_replace("/^mentor___/", "", $key);
-            if (preg_match("/_/", $i)) {
+            $i = preg_replace("/^mentor___/", "", $key);
+            if (preg_match("/_/", "$i")) {
                 assignFromParts($mentorUids, $i, $value);
             } else {
-                $mentorUids[$i] = $value;
+                $mentorUids[(int) $i] = $value;
             }
         } else if (preg_match("/^newmentorname___[\d_]+$/", $key)) {
-            $i = (int) preg_replace("/^newmentorname___/", "", $key);
+            $i = preg_replace("/^newmentorname___/", "", $key);
             $origMentorName = $post['originalmentorname___'.$i];
-            if (preg_match("/_/", $i)) {
+            if (preg_match("/_/", "$i")) {
                 assignFromParts($multiMentors, $i, $origMentorName);
                 if ($post['mentorkeep___'.$i]) {
-                    $parts = explode("_", $i);
+                    $parts = explode("_", "$i");
                     $maxForPart = findMaxForPart($post, $parts);
                     $keepAll = keepAllMentors($post, $parts[0], $maxForPart);
                     if (!$keepAll) {
@@ -622,17 +622,17 @@ function parsePostForLines($post) {
                     assignFromParts($newMentorNames, $i, $value);
                 }
             } else if ($post['mentorkeep___'.$i]) {
-                $lines[$i][$mentorCol] = $origMentorName;
+                $lines[(int) $i][$mentorCol] = $origMentorName;
             } else if ($origMentorName != $value) {
-                $newMentorNames[$i] = $value;
+                $newMentorNames[(int) $i] = $value;
             }
         } else if (preg_match("/^mentorcustom___[\d_]+$/", $key) && $value) {
-            $i = (int) preg_replace("/^mentorcustom___/", "", $key);
+            $i = preg_replace("/^mentorcustom___/", "", $key);
             if ($post['mentor___'.$i] == $mentorCustomCode) {
-                if (preg_match("/_/", $i)) {
+                if (preg_match("/_/", "$i")) {
                     assignFromParts($mentorUids, $i, $value);
                 } else {
-                    $mentorUids[$i] = $value;
+                    $mentorUids[(int) $i] = $value;
                 }
             }
         }
