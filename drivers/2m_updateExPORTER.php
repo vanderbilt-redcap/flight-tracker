@@ -254,7 +254,7 @@ function updateExPORTER($token, $server, $pid, $records) {
 	foreach ($institutions as $inst) {
 		array_push($institutionsRes, "/".$inst."/i");
 	}
-    foreach (Application::getHelperInstitutions() as $institution) {
+    foreach (Application::getHelperInstitutions($pid) as $institution) {
         $regex = "/".$institution."/i";
         if (!in_array($regex, $institutionsRes)) {
             $institutionsRes[] = $regex;

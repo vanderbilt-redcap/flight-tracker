@@ -22,7 +22,6 @@ class Portal {
         $this->allPids = $allPids;
         $this->name = $name;
         $this->projectTitle = $projectTitle;
-        $this->today = date("Y-m-d");
         list($this->username, $this->firstName, $this->lastName) = self::getCurrentUserIDAndName();
 
         $uidString = "";
@@ -193,13 +192,16 @@ class Portal {
         }
         list($matches, $projectTitles, $photoBase64) = self::getMatchesForUserid($this->username, $this->firstName, $this->lastName, $myPids);
         $this->mergeWithStoredData(["matches" => $matches, "projectTitles" => $projectTitles], $myPids);
+        if (Application::isVanderbilt()) {
+            self::filterOutNonNewmanProject($matches);
+        }
         return [$matches, $projectTitles, $photoBase64];
     }
 
     private function mergeWithStoredData($data, $myPids) {
         $storedData = $this->getStoredData();
         $storedDate = $storedData['date'] ?? "";
-        if ($storedDate == $this->today) {
+        if (self::isValidStoredDate($storedDate)) {
             $hasMerged = TRUE;
             foreach ($data as $key => $pidValues) {
                 if (!isset($storedData[$key])) {
@@ -406,24 +408,50 @@ class Portal {
     }
 
     public function getStoredData() {
-        $storedData = Application::getSystemSetting($this->username);
-        $storedDate = $storedData['date'] ?? "";
-        $isDone = $storedData['done'] ?? FALSE;
-        if (!empty($storedData) && ($storedDate === $this->today) && $isDone) {
-            unset($storedData['date']);
-            unset($storedData['done']);
-            if (!Application::isLocalhost()) {
-                foreach ($storedData['matches'] ?? [] as $matchPid => $recordsAndNames) {
-                    if (!REDCapManagement::isActiveProject($matchPid)) {
-                        unset($storedData["matches"][$matchPid]);
+        $storedData = Application::getSystemSetting($this->username) ?: [];
+        if (is_array($storedData)) {
+            $storedDate = $storedData['date'] ?? "";
+            $isDone = $storedData['done'] ?? FALSE;
+            if (!empty($storedData) && self::isValidStoredDate($storedDate) && $isDone) {
+                unset($storedData['date']);
+                unset($storedData['done']);
+                if (!Application::isLocalhost()) {
+                    foreach ($storedData['matches'] ?? [] as $matchPid => $recordsAndNames) {
+                        if (!REDCapManagement::isActiveProject($matchPid)) {
+                            unset($storedData["matches"][$matchPid]);
+                        }
                     }
+                    if (Application::isVanderbilt() && Application::isServer("redcap.vanderbilt.edu")) {
+                        self::filterOutNonNewmanProject($storedData['matches']);
+                    }
+                    return $storedData;
                 }
-                return $storedData;
+            } else if (!empty($storedData) && !self::isValidStoredDate($storedDate)) {
+                Application::saveSystemSetting($this->username, "");
             }
-        } else if (!empty($storedData) && ($storedDate !== $this->today)) {
-            Application::saveSystemSetting($this->username, "");
         }
         return [];
+    }
+
+    # preprocessing can run a few days behind, so we must adjust a week back
+    private static function isValidStoredDate($date) {
+        $ts = strtotime($date);
+        if ($ts) {
+            $thresholdTs = strtotime("-1 week");
+            return ($ts >= $thresholdTs);
+        }
+        return FALSE;
+    }
+
+    # FOR VANDERBILY ONLY
+    # if the scholar portal matches the main Newman project and the "non-Newman" control group, then exclude the non-Newman project
+    # This might be accidentally achieved if someone is at first rejected for Newman and then accepted later
+    # Regardless, Newman data will be the cleanest, and the user does not need to be confused
+    private static function filterOutNonNewmanProject(&$matches) {
+        $nonNewmanProjectPid = 145767;
+        if (isset($matches[NEWMAN_SOCIETY_PROJECT]) && isset($matches[$nonNewmanProjectPid])) {
+            unset($matches[$nonNewmanProjectPid]);
+        }
     }
 
     private function verifyRequest() {
@@ -1413,7 +1441,6 @@ Examples:
     protected $username;
     protected $lastName;
     protected $firstName;
-    protected $today;
     protected $mmaDriverURL;
     protected $module;
     protected $pidRecords;

@@ -16,10 +16,7 @@ if ($table1Pid) {
     die("Project already set up!");
 }
 $supertoken = Application::getSetting("supertoken", $pid);
-if (!REDCapManagement::isValidSupertoken($supertoken)) {
-    require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-    die("No supertoken provided!");
-}
+$table1Token = Application::getTable1Token();
 $projectSetup = [
     "is_longitudinal" => 0,
     "surveys_enabled" => 1,
@@ -27,7 +24,23 @@ $projectSetup = [
     "record_autonumbering_enabled" => 0,
     "project_title" => Application::getTable1Title(),
 ];
-$table1Token = Upload::createProject($supertoken, $server, $projectSetup, $pid);
+if (REDCapManagement::isValidToken($table1Token)) {
+    try {
+        Upload::projectSettings($projectSetup, $table1Token, $server);
+    } catch (\Exception $e) {
+        require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+        $link = Application::link("reporting/table1.php");
+        echo "<p class='centered max-width red'>Error: ".$e->getMessage()."</p>";
+        echo "<p class='centered max-width'>You may need to reset your API token on a new project. <a href='$link'>You can do so here</a>.</p>";
+        exit;
+    }
+} else if (REDCapManagement::isValidSupertoken($supertoken)) {
+    $table1Token = Upload::createProject($supertoken, $server, $projectSetup, $pid);
+    Application::saveSetting("table1Token", $table1Token, $pid);
+} else {
+    require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+    die("<p class='centered max-width red'>No supertoken provided!</p>");
+}
 $projectInfo = Download::getProjectSettings($table1Token, $server);
 $table1Pid = $projectInfo['project_id'] ?? "";
 $table1EventId = REDCapManagement::getEventIdForClassical($table1Pid);
@@ -35,7 +48,7 @@ if ($table1Pid) {
     Application::saveSystemSetting("table1Pid", $table1Pid);
 } else {
     require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-    die("Could not generate a new project!");
+    die("<p class='centered max-width red'>Could not generate a new project!</p>");
 }
 
 if (!Application::isPluginProject($pid)) {
@@ -72,11 +85,11 @@ if (file_exists($file)) {
         }
     } else {
         require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-        die("Could not decode metadata!");
+        die("<p class='centered max-width red'>Could not decode metadata!</p>");
     }
 } else {
     require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-    die("Could not find metadata file!");
+    die("<p class='centered max-width red'>Could not find metadata file!</p>");
 }
 
 $link = Application::link("reporting/table1.php");

@@ -246,7 +246,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         $orcids = [];
     }
     $choices = REDCapManagement::getChoices($metadata);
-    $defaultInstitutions = REDCapManagement::excludeAcronyms(array_unique(array_merge(Application::getInstitutions(), Application::getHelperInstitutions())));
+    $defaultInstitutions = REDCapManagement::excludeAcronyms(array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid))));
     $excludeList = [
         'author' => Download::excludeList($token, $server, "exclude_publications", $metadata),
     ];
@@ -472,7 +472,7 @@ function cleanUpMiddleNamesSeepage($token, $server, $pid, $records) {
     $lastNames = Download::lastnames($token, $server);
     $middleNames = Download::middlenames($token, $server);
     $allInstitutions = Download::institutions($token, $server);
-    $defaultInstitutions = array_unique(array_merge(Application::getInstitutions(), Application::getHelperInstitutions()));
+    $defaultInstitutions = array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid)));
     $metadata = Download::metadata($token, $server);
 
     foreach ($records as $recordId) {

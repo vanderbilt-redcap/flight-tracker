@@ -30,7 +30,7 @@ class FederalRePORTER {
 
     private static function filterForInstitutionsAndName($currData, $institutions, $pid, $recordId, $name) {
         if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "getHelperInstitutions")) {
-            $helperInstitutions = Application::getHelperInstitutions();
+            $helperInstitutions = Application::getHelperInstitutions($pid);
         } else {
             $helperInstitutions = [];
         }

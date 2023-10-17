@@ -41,7 +41,7 @@ function updateRePORTER($cat, $token, $server, $pid, $records, $searchWithoutIns
     }
 
     $excludeList = Download::excludeList($token, $server, "exclude_grants", $metadata);
-    $universalInstitutions = array_unique(array_merge(CareerDev::getInstitutions(), Application::getHelperInstitutions()));
+    $universalInstitutions = array_unique(array_merge(CareerDev::getInstitutions($pid), Application::getHelperInstitutions($pid)));
 	foreach ($records as $recordId) {
 	    $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge(Application::getCustomFields($metadata), $reporterFields, ["identifier_institution"])), [$recordId]);
 	    $existingGrants = [];
@@ -68,7 +68,7 @@ function updateRePORTER($cat, $token, $server, $pid, $records, $searchWithoutIns
 	    $upload = [];
 	    foreach ($lastNames as $lastName) {
 	        foreach ($firstNames as $firstName) {
-	            $name = "$firstName $lastName";
+	            $name = NameMatcher::formatName($firstName, "", $lastName);
                 $reporter->searchPIAndAddToList($name, $institutions);
             }
         }
@@ -85,6 +85,7 @@ function updateRePORTER($cat, $token, $server, $pid, $records, $searchWithoutIns
 	        Upload::rows($upload, $token, $server);
         }
     }
+    RePORTER::updateEndDates($token, $server, $pid, $records, $prefix, $instrument);
     REDCapManagement::deduplicateByKey($token, $server, $pid, $records, $applicationField, $prefix, $instrument);
 
 	$today = date("Y-m-d");
@@ -113,7 +114,7 @@ function cleanUpMiddleNamesSeepage_2s($token, $server, $pid, $records) {
     $lastNames = Download::lastnames($token, $server);
     $middleNames = Download::middlenames($token, $server);
     $allInstitutions = Download::institutions($token, $server);
-    $defaultInstitutions = array_unique(array_merge(Application::getInstitutions(), Application::getHelperInstitutions()));
+    $defaultInstitutions = array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid)));
     $metadata = Download::metadata($token, $server);
 
     foreach (RePORTER::getTypes() as $type) {

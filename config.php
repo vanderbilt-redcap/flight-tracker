@@ -354,6 +354,7 @@ function makeSettings($module, $pid) {
 	$ary["Installation Variables"][] = makeSetting("short_institution", "text", "Short Name of Institution");
     $ary["Installation Variables"][] = makeSetting("other_institutions", "text", "Other Institutions (if any); comma-separated");
     $ary["Installation Variables"][] = makeSetting("display_institutions", "text", "'Home' Institutions that Your Scholars Belong To; comma-separated");
+    $ary["Installation Variables"][] = makeSetting("omit_va", "yesno", "Omit searching for pubs/grants with 'Veterans Health Administration'? (Default: searches for VHA with all scholars for matches.)", 0);
     $ary["Installation Variables"][] = makeSetting("token", "text", "API Token");
     $ary["Installation Variables"][] = makeSetting("supertoken", "text", "REDCap Supertoken (optional, from REDCap Administrator, for turning on Cohort Portals)");
 	$ary["Installation Variables"][] = makeSetting("event_id", "text", "Event ID (read-only)", "", [], TRUE);

@@ -28,7 +28,7 @@ class Wrangler {
         $lcWranglerType = ($this->wranglerType == "FlagPublications") ? "publications" : strtolower($this->wranglerType);
         $institutionFieldValues = Download::oneField($this->token, $this->server, "identifier_institution");
         $myInstitutions = $institutionFieldValues[$recordId] ? preg_split("/\s*[,;]\s*/", $institutionFieldValues[$recordId]) : [];
-        $institutions = array_unique(array_merge($myInstitutions, Application::getInstitutions($this->pid), Application::getHelperInstitutions()));
+        $institutions = array_unique(array_merge($myInstitutions, Application::getInstitutions($this->pid), Application::getHelperInstitutions($this->pid)));
 
         $html = "";
         if ($this->wranglerType == "FlagPublications") {

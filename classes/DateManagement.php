@@ -331,10 +331,17 @@ class DateManagement {
             "NOV" => "11",
             "DEC" => "12",
         ];
-        if (!isset($months[$monthStr])) {
+        for ($i = 1; $i <= 12; $i++) {
+            $month = REDCapManagement::padInteger($i, 2);
+            $ts = strtotime("2020-$month-01");
+            $months[strtoupper(date("F", $ts))] = $month;
+        }
+
+        $value = $months[$monthStr] ?? date_parse($monthStr)['month'] ?? FALSE;
+        if ($value === FALSE) {
             throw new \Exception("Invalid month $monthStr");
         }
-        return $months[$monthStr];
+        return $value;
     }
 
     public static function YMD2MDY($ymd) {

@@ -53,6 +53,13 @@ class Sanitizer {
         }
     }
 
+    public static function sanitizeToken($token) {
+        if (REDCapManagement::isValidToken($token)) {
+            return self::sanitize($token);
+        }
+        return "";
+    }
+
     public static function sanitizeInteger($int) {
         if (filter_var($int, FILTER_VALIDATE_INT) !== FALSE) {
             $stringVersion = self::sanitize($int);

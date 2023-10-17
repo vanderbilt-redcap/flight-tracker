@@ -277,7 +277,7 @@ function loadMultiProjectCrons(&$manager, $pids)
         $manager->addMultiCron("drivers/11_vfrs.php", "updateVFRSMulti", "Thursday", $pids);
         $manager->addMultiCron("drivers/19_updateNewCoeus.php", "updateAllCOEUSMulti", "Wednesday", $pids);
         $manager->addMultiCron("drivers/22_getVERA.php", "getVERAMulti", "Monday", $pids);
-        $manager->addMultiCron("drivers/updateAllMetadata.php", "updateAllMetadata", "Monday", $pids);
+        $manager->addMultiCron("drivers/updateAllMetadata.php", "updateMetadataMulti", "Monday", $pids);
         if (Application::isServer("redcap.vanderbilt.edu")) {
             $manager->addMultiCron("drivers/26_workday.php", "getAllWorkday", "Friday", $pids);
         }

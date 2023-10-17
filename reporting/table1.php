@@ -10,18 +10,36 @@ use \Vanderbilt\CareerDevLibrary\Links;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
+$setupLink = Application::link("reporting/setupTable1.php");
 if (isset($_POST['supertoken'])) {
     $supertoken = Sanitizer::sanitize($_POST['supertoken']);
     if (REDCapManagement::isValidSupertoken($supertoken)) {
         Application::saveSetting("supertoken", $supertoken, $pid);
+        Application::saveSystemSetting("table1Pid", "", $pid);
     } else {
-        echo "<p class='centered red max-width'>Invalid supertoken</p>";
+        echo "<p class='centered red max-width'>Invalid supertoken!</p>";
+    }
+} else if (isset($_POST['token'])) {
+    $blankProjectToken = Sanitizer::sanitizeToken($_POST['token']);
+    if ($blankProjectToken) {
+        Application::saveSystemSetting("table1Pid", "");
+        Application::saveSystemSetting("table1Token", $blankProjectToken);
+        echo "<p class='centered max-width green'>Token saved. <a href='$setupLink'>Click here to set up the project</a>. Note: Clicking the link will <strong>overwrite</strong> the entire REDCap project associated with this token.</p>";
+        exit;
+    } else {
+        echo "<p class='centered red max-width'>Invalid token!</p>";
     }
 }
 
 $table1Pid = Application::getTable1PID();
-$setupLink = Application::link("reporting/setupTable1.php");
-if (!$table1Pid) {
+$table1Token = Application::getTable1Token();
+if (
+    !$table1Pid
+    || (
+        $table1Token
+        && ($table1Pid != REDCapManagement::getPIDFromToken($table1Token, $server))
+    )
+) {
     if (Application::isPluginProject()) {
         echo "<p class='centered max-width'>You must enable the Table 1 project from a project with the Flight Tracker External Module enabled.</p>";
     } else if (Application::getSetting("supertoken", $pid)) {
@@ -30,9 +48,28 @@ if (!$table1Pid) {
     } else {
         $redcapAdminEmail = $homepage_contact_email ?? "";
         $link = Application::link("this", $pid);
-        echo "<h1>You Need a REDCap Supertoken to Proceed</h1>";
-        echo "<p class='centered max-width'>NIH Training Table 1 requires a special REDCap project to be set up on this server. To do so, you need a 'REDCap Supertoken' to set up this project for your institution. This is different from a 'REDCap Token' that you used to set up Flight Tracker. To acquire one, please contact your <a href='mailto:$redcapAdminEmail'>REDCap Administrator</a> to request this 64-character supertoken.</p>";
+        echo "<h1>You Need to Set Up a Project to Proceed</h1>";
+        if ($table1Token && ($table1Pid != REDCapManagement::getPIDFromToken($table1Token, $server))) {
+            echo "<p class='centered max-width red'>Your current token is invalid. Please set up your REDCap project and token for NIH Table 1 again.</p>";
+        }
+        echo "<p class='centered max-width'>NIH Training Table 1 requires a special REDCap project to be set up on this server. You have two options: Submitting a 32-character API token to a blank REDCap project <strong>-or-</strong> providing a 64-character 'supertoken' so that REDCap can create a blank project for you.</p>";
+        echo "<h2>Option 1: Traditional API Token</h2>";
+        echo "<ol class='max-width'>";
+        echo "<li>Create a blank REDCap project. If you cannot do this, you may need to contact your <a href='mailto:$redcapAdminEmail'>REDCap Administrator</a> and ask her/him to set one up for you.</li>";
+        echo "<li>Go to the User Rights page (from the left-hand toolbar) and give yourself API Import Rights and API Export Rights. If you do not see the User Rights page, you may need to contact your <a href='mailto:$redcapAdminEmail'>REDCap Administrator</a>.</li>";
+        echo "<li>Go to the API page (from the left-hand toolbar) and generate an API Token for yourself.</li>";
+        echo "<li>Copy the newly created API Token and paste it in the below field. Then press Submit Token.</li>";
+        echo "</ol>";
         echo "<form action='$link' method='POST'>";
+        echo Application::generateCSRFTokenHTML();
+        echo "<p class='centered'><label for='token'>32-Character API Token</label><br/><input type='text' style='width: 400px;' name='token' id='token' /></p>";
+        echo "<p class='centered'><button>Submit Token</button></p>";
+        echo "</form>";
+
+        echo "<h2>Option 2: Supertoken</h2>";
+        echo "<p class='centered max-width'>To acquire a 64-character REDCap supertoken, please contact your <a href='mailto:$redcapAdminEmail'>REDCap Administrator</a>.</p>";
+        echo "<form action='$link' method='POST'>";
+        echo Application::generateCSRFTokenHTML();
         echo "<p class='centered'><label for='supertoken'>64-Character REDCap Supertoken</label><br/><input type='text' style='width: 400px;' name='supertoken' id='supertoken' /></p>";
         echo "<p class='centered'><button>Submit Supertoken</button></p>";
         echo "</form>";

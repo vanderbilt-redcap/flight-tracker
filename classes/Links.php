@@ -134,7 +134,7 @@ class Links {
 
     # synonym to makeSelectLink
     public static function makeDataWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
-        $url = self::link("wrangler/index.php");
+        $url = self::link("wrangler/index_new.php");
         if ($recordId) {
             $url = $url."&record=".$recordId;
         }

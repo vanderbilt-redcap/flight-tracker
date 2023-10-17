@@ -627,32 +627,36 @@ class CronManager {
             foreach ($errorQueue as $errorJob) {
                 if ($errorJob['pid'] == $pid) {
                     $method = $errorJob['method'];
-                    $text .= "<h3>$method</h3>";
-                    $text .= "<p>";
-                    $text .= "Records in batch job: ".implode(", ", $errorJob['records'])."<br/>";
-                    if (isset($errorJob['record'])) {
-                        $text .= "Failed in record ".$errorJob['record']."<br/>";
-                    }
-                    if (isset($errorJob['error'])) {
-                        $text .= "Error Message: ".$errorJob['error']."<br/>";
-                        if (isset($errorJob['error_location'])) {
-                            $text .= "Location:".$errorJob['error_location']."<br/>";
+                    # throw an error for every method EXCEPT copyAllCohortProjects
+                    if ($method != "copyAllCohortProjects") {
+                        $text .= "<h3>$method</h3>";
+                        $text .= "<p>";
+                        $text .= "Records in batch job: ".implode(", ", $errorJob['records'])."<br/>";
+                        if (isset($errorJob['record'])) {
+                            $text .= "Failed in record ".$errorJob['record']."<br/>";
                         }
-                    } else if (isset($errorJob['cause'])) {
-                        $cause = $errorJob['cause'];
-                        if ($cause == "Long-running") {
-                            $text .= "This cron-job (for $method) was <strong>running longer than expected</strong>. This likely is not a major issue. Sometimes, jobs run longer than expected because one scholar has a lot of data.<br/>";
+                        if (isset($errorJob['error'])) {
+                            $text .= "Error Message: ".$errorJob['error']."<br/>";
+                            if (isset($errorJob['error_location'])) {
+                                $text .= "Location:".$errorJob['error_location']."<br/>";
+                            }
+                        } else if (isset($errorJob['cause'])) {
+                            $cause = $errorJob['cause'];
+                            if ($cause == "Long-running") {
+                                $text .= "This cron-job (for $method) was <strong>running longer than expected</strong>. This likely is not a major issue. Sometimes, jobs run longer than expected because one scholar has a lot of data.<br/>";
+                            } else {
+                                $text .= "Cause: $cause<br/>";
+                            }
                         } else {
-                            $text .= "Cause: $cause<br/>";
+                            $text .= "<strong>Unknown error</strong><br/>";
+                            foreach ($errorJob as $header => $item) {
+                                $text .= "$header: $item<br/>";
+                            }
                         }
-                    } else {
-                        $text .= "<strong>Unknown error</strong><br/>";
-                        foreach ($errorJob as $header => $item) {
-                            $text .= "$header: $item<br/>";
-                        }
+                        $text = preg_replace("/<br\/>$/", "", $text);
+                        $text .= "</p>";
                     }
-                    $text = preg_replace("/<br\/>$/", "", $text);
-                    $text .= "</p>";
+
                 } else {
                     $remainingErrors[] = $errorJob;
                 }

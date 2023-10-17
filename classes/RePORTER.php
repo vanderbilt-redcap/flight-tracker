@@ -532,6 +532,71 @@ class RePORTER {
         return $this->getData();
     }
 
+    # No-Cost Extensions are times when the NIH extends a grant without extending any of the funding
+    # They show up in the NIH RePORTER through extended dates that affect only a small number of fields
+    # This updates any prior versions in REDCap to reflect the extended dates
+    # Meant to be run before REDCap is deduplicated for the NIH Reporter instrument so that there will be two of the same awards
+    public static function updateEndDates($token, $server, $pid, $records, $prefix, $instrument) {
+        $metadataFields = Download::metadataFields($token, $server);
+        $nihReporterFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $prefix);
+        if (empty($nihReporterFields)) {
+            return [];
+        }
+        $fieldsToDownload = array_merge(["record_id"], $nihReporterFields);
+        $fieldsToUpdate = ["nih_project_end_date", "nih_agency_ic_fundings", "nih_award_notice_date"];
+        $lastUpdateField = "nih_last_update";
+        $awardNoField = "nih_project_num";
+        $upload = [];
+        foreach ($records as $recordId) {
+            $awardNoWithInstances = [];
+            $redcapData = Download::fieldsForRecords($token, $server, $fieldsToDownload, [$recordId]);
+            foreach ($redcapData as $row) {
+                if ($row["redcap_repeat_instrument"] == $instrument) {
+                    if (!isset($awardNoWithInstances[$row[$awardNoField]])) {
+                        $awardNoWithInstances[$row[$awardNoField]] = [];
+                    }
+                    $awardNoWithInstances[$row[$awardNoField]][$row['redcap_repeat_instance']] = $row[$lastUpdateField];
+                }
+            }
+
+            foreach ($awardNoWithInstances as $awardNo => $instancesWithDates) {
+                if (count($instancesWithDates) >= 2) {
+                    $latestInstance = array_keys($instancesWithDates)[0];
+                    foreach ($instancesWithDates as $instance => $lastUpdate) {
+                        if (DateManagement::dateCompare($instancesWithDates[$latestInstance], "<", $lastUpdate)) {
+                            $latestInstance = $instance;
+                        }
+                    }
+                    foreach (array_keys($instancesWithDates) as $instance) {
+                        if ($instance != $latestInstance) {
+                            $uploadRow = [
+                                "record_id" => $recordId,
+                                "redcap_repeat_instrument" => $instrument,
+                                "redcap_repeat_instance" => $instance,
+                            ];
+                            foreach ($fieldsToUpdate as $field) {
+                                $latestValue = REDCapManagement::findField($redcapData, $recordId, $field, TRUE, $latestInstance);
+                                $currValue = REDCapManagement::findField($redcapData, $recordId, $field, TRUE, $instance);
+                                if ($latestValue != $currValue) {
+                                    $uploadRow[$field] = $latestValue;
+                                }
+                            }
+                            if (count($uploadRow) >= 3) {
+                                Application::log("Record $recordId: Updated No-Cost Extension for $awardNo instance $instance", $pid);
+                                $upload[] = $uploadRow;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (!empty($upload)) {
+            return Upload::rows($upload, $token, $server);
+        } else {
+            return [];
+        }
+    }
+
     public function deduplicateData() {
         $filteredData = [];
         foreach ($this->currData as $line) {
@@ -596,7 +661,7 @@ class RePORTER {
 
     private function filterForInstitutionsAndName($name, $institutions) {
         if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "getHelperInstitutions")) {
-            $helperInstitutions = Application::getHelperInstitutions();
+            $helperInstitutions = Application::getHelperInstitutions($this->pid);
         } else {
             $helperInstitutions = [];
         }

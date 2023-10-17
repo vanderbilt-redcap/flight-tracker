@@ -127,10 +127,15 @@ $(document).ready(function() {
     <h4 class='nomargin'>Watch Your Scholars Fly - <a href="https://redcap.vanderbilt.edu/flight_tracker/">Flight Tracker Community Support</a></h4>
     <h5>from <img src="<?= Application::link("img/efs_small_logoonly.png") ?>" alt="Edge for Scholars" style="width: 27px; height: 20px;"> <a href='<?= $edgeLink ?>' target="_blank">Edge for Scholars</a></h5>
     <?php
+        $module = CareerDev::getModule();
         if (Portal::isLive()) {
             $link = Portal::getLink();
             echo "<input type='hidden' id='scholarPortalUrl' value='$link' />";
             echo "<p class='centered nomargin smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#scholarPortalUrl\")); alert(\"Copied to your clipboard!\");'>Click to Share the Scholar Portal Link with Your Scholars</a></p>";
+        }
+        if (empty($module->getPids())) {
+            # enabled systemwide and not on a project-by-project basis => wrong (but unlikely use case)
+            echo "<p class='red centered max-width'>It appears as though Flight Tracker has been enabled on every project on this server. This is improper. It should only be enabled one project at a time and not enabled automatically for all projects. Flight Tracker might not function properly until this is corrected.</p>";
         }
     ?>
 
@@ -142,7 +147,6 @@ $(document).ready(function() {
 
     <?php
     ################ Overhead with External Module
-    $module = CareerDev::getModule();
     if ($module) {
         $hours = 12;    // 12 hours prior
         $priorTs = time() - $hours * 3600;

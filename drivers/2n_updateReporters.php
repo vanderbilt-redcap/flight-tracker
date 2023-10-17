@@ -110,7 +110,7 @@ function updateReporterOld($token, $server, $pid, $recordIds) {
 			$listOfNames[] = strtoupper($firstName." ".$lastName);
 		}
 
-        $helperInstitutions = Application::getHelperInstitutions();
+        $helperInstitutions = Application::getHelperInstitutions($pid);
 		$institutions = array();
 		$allInstitutions = array_unique(array_merge(CareerDev::getInstitutions(), $helperInstitutions));
 		if ($row['identifier_institution']) {

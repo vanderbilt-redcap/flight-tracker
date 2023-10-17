@@ -17,7 +17,7 @@ function getNSFGrantsGeneric($token, $server, $pid, $records, $searchWithoutInst
         $records = Download::recordIds($token, $server);
     }
 
-    $generalInstitutions = array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions()));
+    $generalInstitutions = array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid)));
     $printFields = getNSFFields();
     $recordMatches = [];
     $firstNames = Download::firstnames($token, $server);

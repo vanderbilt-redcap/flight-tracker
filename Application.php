@@ -502,6 +502,12 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
         return "Flight Tracker - NIH Training Table 1";
     }
 
+    # gets the token for NIH Training Table 1
+    public static function getTable1Token() {
+        return self::getSystemSetting("table1Token");
+    }
+
+    # gets the project-id for NIH Training Table 1
     public static function getTable1PID() {
         if (
             isset($_GET['pid'])
@@ -697,10 +703,11 @@ SELECT DISTINCT s.project_id AS pid
         ];
     }
 
-    public static function getHelperInstitutions() {
-        $ary = [
-            "Veterans Health Administration",
-        ];
+    public static function getHelperInstitutions($pid) {
+        $ary = [];
+        if (Application::getSetting("omit_va", $pid) !== "1") {
+            $ary[] = "Veterans Health Administration";
+        }
         if (self::isVanderbilt()) {
             $ary[] = "Tennessee Valley Healthcare System";
         }
