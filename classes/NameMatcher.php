@@ -68,6 +68,78 @@ class NameMatcher {
         return $formattedNames;
     }
 
+    public static function matchInternationalAffiliations($affiliations) {
+        $countries = Publications::getCountryNames();
+        $internationalInstitutions = [];
+        foreach ($countries as $country) {
+            # international only
+            if (!in_array($country, ["USA", "Puerto Rico"])) {
+                if (NameMatcher::matchInstitution($country, $affiliations)) {
+                    foreach($affiliations as $affiliation) {
+                        if (
+                            !in_array($affiliation, $internationalInstitutions)
+                            && NameMatcher::matchInstitution($country, [$affiliation])
+                        ) {
+                            if ($country == "Israel") {
+                                if (!preg_match("/USA/", $affiliation) && !preg_match("/Beth Israel/", $affiliation)) {
+                                    $internationalInstitutions[] = $affiliation;
+                                }
+                            } else if (in_array($country, ["Oman", "France"])) {
+                                if (!preg_match("/USA/", $affiliation) && preg_match("/\b$country\b/i", $affiliation)) {
+                                    $internationalInstitutions[] = $affiliation;
+                                }
+                            } else if ($country == "Russia") {
+                                if (!preg_match("/USA/", $affiliation) && !preg_match("/Prussia/", $affiliation)) {
+                                    $internationalInstitutions[] = $affiliation;
+                                }
+                            } else if ($country == "Mexico") {
+                                if (!preg_match("/USA/", $affiliation) && !preg_match("/New Mexico/", $affiliation)) {
+                                    $internationalInstitutions[] = $affiliation;
+                                }
+                            } else if ($country == "Georgia") {
+                                if (!preg_match("/USA/", $affiliation) && !preg_match("/Atlanta/", $affiliation) && !preg_match("/United States of America/", $affiliation)) {
+                                    $internationalInstitutions[] = $affiliation;
+                                }
+                            } else if ($country == "India") {
+                                if (!preg_match("/USA/", $affiliation) && !preg_match("/Indiana/", $affiliation)) {
+                                    $internationalInstitutions[] = $affiliation;
+                                }
+                            } else if ($country == "Jersey") {
+                                if (!preg_match("/USA/", $affiliation) && !preg_match("/New Jersey/", $affiliation)) {
+                                    $internationalInstitutions[] = $affiliation;
+                                }
+                            } else if (preg_match("/\b$country\b/", $affiliation)) {
+                                $internationalInstitutions[] = $affiliation;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return $internationalInstitutions;
+    }
+
+    public static function getCountries($institutions) {
+        # uses filters for false positives so that they won't have to be reproduced
+        $internationalAffiliations = self::matchInternationalAffiliations($institutions);
+        $countries = Publications::getCountryNames();
+        $matchedCountries = [];
+        foreach ($internationalAffiliations as $institution) {
+            foreach ($countries as $country) {
+                # one country has parentheses, which would trip off the regex
+                $country = str_replace("(", "\\(", str_replace(")", "\\)", $country));
+                if (
+                    !in_array($country, ["USA", "Puerto Rico"])
+                    && preg_match("/\b$country\b/", $institution)    // we know that $country does not contain regex fodder besides parentheses
+                    && !in_array($country, $matchedCountries)
+                ) {
+                    $matchedCountries[] = $country;
+                }
+            }
+        }
+        return $matchedCountries;
+    }
+
     private static function getNodes($name, $ridOfSpacesOnly = FALSE) {
         if ($ridOfSpacesOnly) {
             return preg_split("/\s+/", $name);

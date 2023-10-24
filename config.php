@@ -396,10 +396,11 @@ function makeSettings($module, $pid) {
         $ary["Emails"][] = makeSystemSetting("bulletin_board_monitor", "text", "Bulletin Board Monitor Email(s) for entire server; comma-separated");
     }
 
-    $ary["Bibliometrics"] = [];
-    $ary["Bibliometrics"][] = makeSetting("wos_userid", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " User ID");
-    $ary["Bibliometrics"][] = makeSetting("wos_password", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " Password");
-    $ary["Bibliometrics"][] = makeSetting("scopus_api_key", "text", Links::makeLink("https://www.scopus.com/", "Scopus") . " API Key (for H Index)");
+    $ary["Publications"] = [];
+    $ary["Publications"][] = makeSetting("pubmed_api_key", "text", "PubMed API Key for faster queries (".Links::makeLink("https://www.ncbi.nlm.nih.gov/books/NBK25497/#:~:text=API%20Keys", "Acquire an API Key for PubMed").")");
+    $ary["Publications"][] = makeSetting("wos_userid", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " User ID");
+    $ary["Publications"][] = makeSetting("wos_password", "text", Links::makeLink("https://www.webofknowledge.com/", "Web of Science (for H Index)") . " Password");
+    $ary["Publications"][] = makeSetting("scopus_api_key", "text", Links::makeLink("https://www.scopus.com/", "Scopus") . " API Key (for H Index)");
 
     $ary["Additional Institutional Resources"] = [];
     $ary["Additional Institutional Resources"][] = makeSetting("mentee_agreement_link", "text", "Additional Institutional Resources for scholars to use. This will appear on the Mentee-Mentor Agreements and the Scholar Portal.");

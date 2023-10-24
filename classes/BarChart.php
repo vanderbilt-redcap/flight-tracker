@@ -56,7 +56,6 @@ class BarChart extends Chart {
     }
 
     public function getHTML($width, $height, $atBottomOfPage = FALSE) {
-        $bars = count($this->cols);
         $displayLegendText = json_encode($this->displayLegend);
         if (empty($this->labels) || empty($this->cols)) {
             return "";

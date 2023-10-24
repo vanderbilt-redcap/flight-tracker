@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.15.1";
+		return "5.16.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -880,6 +880,12 @@ class CareerDev {
                 return "scott.j.pearson@vumc.org";
             }
             return "";
+        }
+        if (($field == "pubmed_api_key") && Application::isVanderbilt() && file_exists(self::getCredentialsFile())) {
+            include(self::getCredentialsFile());
+            if (isset($pubmedAPIKey) && $pubmedAPIKey) {
+                return $pubmedAPIKey;
+            }
         }
 		$module = Application::getFlightTrackerModule();
 		if ($module) {

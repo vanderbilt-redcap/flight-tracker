@@ -41,9 +41,11 @@ if (($_POST['action'] == "oneByOne") && checkPOSTKeys($requiredFields)) {
     $feedback = Upload::oneRow($uploadRow, $token, $server);
     Application::refreshRecordSummary($token, $server, $pid, $recordId);
     if ($feedback['error']) {
-        echo "<div class='red padded'>ERROR! " . $feedback['error'] . "</div>\n";
+        echo "<div class='red padded'>ERROR! " . $feedback['error'] . "</div>";
     } else {
-        echo "<div class='green padded'>Scholar successfully added to Record $recordId. They will be automatically processed and updated with each overnight run.</div>\n";
+        echo "<div class='green padded'>Scholar successfully added to Record $recordId. They will be automatically processed and updated with each overnight run.</div>";
+        $thisLink = Application::link("this");
+        echo "<p class='centered'><a href='$thisLink'>Add Another</a></p>";
     }
 } else if (in_array($_POST['action'], ["importTrainees", "importFaculty", "importBoth"]) && in_array($_POST['tableNumber'], [5, 8])) {
     if (isset($_FILES['tableCSV']['tmp_name']) && is_string($_FILES['tableCSV']['tmp_name'])) {
@@ -54,7 +56,7 @@ if (($_POST['action'] == "oneByOne") && checkPOSTKeys($requiredFields)) {
     echo \Vanderbilt\FlightTrackerExternalModule\importNIHTable($_POST, $filename, $token, $server);
 } else {
     $incompleteMssg = "";
-    if ((count($_POST) > 0) && (count($_POST) < count($fields) + 1)) {
+    if ((count($_POST) > 0) && !checkPOSTKeys($requiredFields)) {
         $incompleteMssg = "<div class='red padded'>Not all of the fields were filled out. No new record created.</div>";
     }
     echo $incompleteMssg;

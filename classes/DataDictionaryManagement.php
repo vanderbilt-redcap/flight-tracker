@@ -29,6 +29,19 @@ class DataDictionaryManagement {
         return [];
     }
 
+    private static function readMetadataFile($file) {
+        if (file_exists($file)) {
+            $fp = fopen($file, "r");
+            $json = "";
+            while ($line = fgets($fp)) {
+                $json .= $line;
+            }
+            fclose($fp);
+            return json_decode($json, true) ?? [];
+        }
+        return [];
+    }
+
     public static function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadata = FALSE) {
         if (trim($lists['departments']) == "") {
             $lists['departments'] = "Department";
@@ -57,13 +70,7 @@ class DataDictionaryManagement {
             if (count($metadata) < 5) {
                 $metadata = [];
                 foreach ($files as $file) {
-                    $fp = fopen($file, "r");
-                    $json = "";
-                    while ($line = fgets($fp)) {
-                        $json .= $line;
-                    }
-                    fclose($fp);
-                    $newLines = json_decode($json, true);
+                    $newLines = self::readMetadataFile($file);
                     if ($newLines !== NULL) {
                         $metadata = array_merge($metadata, $newLines);
                     } else {
@@ -134,6 +141,7 @@ class DataDictionaryManagement {
             }
         }
         self::alterInstitutionFields($newMetadata, $pid);
+        self::alterOptionalFields($newMetadata, $pid);
 
         return Upload::metadata($newMetadata, $token, $server);
     }
@@ -1355,6 +1363,34 @@ class DataDictionaryManagement {
         }
     }
 
+    private static function insertNewOptionalRow(&$metadata, $field) {
+        $files = Application::getMetadataFiles();
+        foreach ($files as $file) {
+            $fileMetadata = self::readMetadataFile($file);
+            $indexedFileMetadata = self::indexMetadata($fileMetadata);
+            if (isset($indexedFileMetadata[$field])) {
+                $newRow = $indexedFileMetadata[$field];
+                $fieldsInOrder = array_keys($indexedFileMetadata);
+                $prevField = $fieldsInOrder[0];
+                foreach ($fieldsInOrder as $orderedField) {
+                    if ($orderedField == $field) {
+                        break;
+                    } else {
+                        $prevField = $orderedField;
+                    }
+                }
+                $newMetadata = [];
+                foreach ($metadata as $row) {
+                    $newMetadata[] = $row;
+                    if ($row['field_name'] == $prevField) {
+                        $newMetadata[] = $newRow;
+                    }
+                }
+                $metadata = $newMetadata;
+            }
+        }
+    }
+
     private static function alterOptionalFields(&$metadata, $pid) {
         if ($pid) {
             $metadataFields = self::getFieldsFromMetadata($metadata);
@@ -1365,6 +1401,9 @@ class DataDictionaryManagement {
                 if ($optionsText) {
                     $choiceStr = self::makeREDCapList($optionsText, self::OPTION_OTHER_VALUE);
                     Application::log("Using optional field $field $choiceStr", $pid);
+                    if (!in_array($field, $metadataFields)) {
+                        self::insertNewOptionalRow($metadata, $field);
+                    }
                     self::setSelectStringForFields($metadata, $choiceStr, [$field]);
                 } else if (in_array($field, $metadataFields)) {
                     $newMetadata = [];

@@ -1189,17 +1189,31 @@ class Grants {
 
     # excludes all F grants (fellowship-based PhD and postdoc grants) if the scholar has received a K-class grant
     # K-class grants are individual awards; F grants NEVER come after Ks
+    # Likewise, exclude Fs and Ks after an R-class grant
     # Sometimes, though, an F grant shows up on a scholar's record after a K grant - when their TRAINEE has won it
+    # Likewise, sometimes, an F/K grant shows up on a scholar's record after an R grant - when their TRAINEE has won it
     # The trainee's award is an improper association; hence this method
     private static function excludeFsAfterKs(&$orderedGrants) {
         $filteredGrants = [];
         $hasK = FALSE;
+        $hasR = FALSE;
+        $kClasses = ["Internal K", "K12/KL2", "Individual K", "K Equivalent", 1, 2, 3, 4];
         foreach ($orderedGrants as $awardNo => $grant) {
-            if (in_array($grant->getVariable("type"), ["Internal K", "K12/KL2", "Individual K", "K Equivalent", 1, 2, 3, 4])) {
+            if (in_array($grant->getVariable("type"), ["R01", "R01 Equivalent", 5, 6])) {
+                $hasR = TRUE;
+            } else if (in_array($grant->getVariable("type"), $kClasses)) {
                 $hasK = TRUE;
-                $filteredGrants[$awardNo] = $grant;
+            }
+
+            if ($hasR) {
+                $activityCode = Grant::getActivityCode($awardNo);
+                # exclude K's and F's after an R
+                if (!preg_match("/^[Ff]/", $activityCode) && !in_array($grant->getVariable("type"), $kClasses)) {
+                    $filteredGrants[$awardNo] =  $grant;
+                }
             } else if ($hasK) {
                 $activityCode = Grant::getActivityCode($awardNo);
+                # exclude F's after a K
                 if (!preg_match("/^[Ff]/", $activityCode)) {
                     $filteredGrants[$awardNo] =  $grant;
                 }

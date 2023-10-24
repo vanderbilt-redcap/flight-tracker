@@ -1324,6 +1324,7 @@ function postValues(path, parameters) {
 	form.attr("method", "post");
 	form.attr("action", path);
 
+	parameters['redcap_csrf_token'] = getCSRFToken();
 	$.each(parameters, function(key, value) {
 		var field = $('<input></input>');
 		field.attr("type", "hidden");

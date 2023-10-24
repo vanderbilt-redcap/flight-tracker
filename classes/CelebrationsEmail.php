@@ -2,8 +2,6 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-use PhpOffice\PhpSpreadsheet\Shared\Date;
-
 require_once(__DIR__ . '/ClassLoader.php');
 
 class CelebrationsEmail {

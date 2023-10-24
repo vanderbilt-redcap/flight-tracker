@@ -3,7 +3,6 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Grants;
@@ -16,16 +15,16 @@ use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
 use \Vanderbilt\CareerDevLibrary\Portal;
 
 if (!empty($_POST)) {
-    require_once(dirname(__FILE__)."/small_base.php");
-    require_once(dirname(__FILE__)."/classes/Autoload.php");
+    require_once(__DIR__."/small_base.php");
+    require_once(__DIR__."/classes/Autoload.php");
     $switches = new FeatureSwitches($token, $server, $pid);
     $data = $switches->savePost($_POST);
     echo json_encode($data);
     exit;
 }
 
-require_once(dirname(__FILE__)."/small_base.php");
-require_once(dirname(__FILE__)."/classes/Autoload.php");
+require_once(__DIR__."/small_base.php");
+require_once(__DIR__."/classes/Autoload.php");
 
 $recordIds = Download::recordIds($token, $server);
 if (!isset($_GET['record']) && (count($recordIds) > 0)) {
@@ -336,7 +335,7 @@ if (!empty($mentors)) {
     echo "<h2>Timelines</h2>";
     require_once(__DIR__."/charts/timeline.php");
     echo "<br/><br/>";
-    echo "<h2>Reported Grant Funding (Total Dollars)</h2>";
+    echo "<h2>Reported Grant Funding (Total Dollars; PI/Co-PI only)</h2>";
     require_once(__DIR__."/charts/scholarGrantFunding.php");
     echo "<br/><br/>";
     echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>\n";

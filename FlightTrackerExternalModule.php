@@ -82,7 +82,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         // CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		foreach ($activePids as $pid) {
 			if (REDCapManagement::isActiveProject($pid)) {
-                // Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at beginning of email processing for project.", $pid);
+                Application::log("Beginning of email processing for project.", $pid);
 				$token = $this->getProjectSetting("token", $pid);
 				$server = $this->getProjectSetting("server", $pid);
 				if ($token && $server) {
@@ -106,7 +106,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Email Exception", $mssg);
                     }
                 }
-                // Application::log(REDCapManagement::pretty(memory_get_usage())." bytes used at end of email processing for project.", $pid);
+                Application::log("End of email processing for project.", $pid);
 			}
 		}
 	}
@@ -1057,6 +1057,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $firstNamesByPid = [];
         $lastNamesByPid = [];
         foreach ($pids as $pid) {
+            CareerDev::setPid($pid);
             Application::log("Preprocessing lists for Scholar Portal", $pid);
             $token = $this->getProjectSetting("token", $pid);
             $server = $this->getProjectSetting("server", $pid);
@@ -1105,6 +1106,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $activePids = [Sanitizer::sanitizePid($_GET['pid'])];
         } else {
             $activePids = $this->framework->getProjectsWithModuleEnabled();
+            if (Application::isVanderbilt() && Application::isServer("redcap.vanderbilt.edu")) {
+                $activePids[] = NEWMAN_SOCIETY_PROJECT;
+            }
         }
 		Application::log($this->getName()." running for pids ".json_encode($activePids));
         foreach ($activePids as $pid) {

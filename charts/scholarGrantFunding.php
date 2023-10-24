@@ -39,7 +39,7 @@ foreach ($records as $recordId) {
     if (Grants::areFlagsOn($pid)) {
         $grantAry = $grants->getGrants("flagged");
     } else {
-        $grantAry = $grants->getGrants("deduped");
+        $grantAry = $grants->getGrants("all_pis");
     }
     foreach ($grantAry as $grant) {
         $budget = $grant->getVariable($budgetField);
@@ -72,6 +72,7 @@ foreach ($records as $recordId) {
                 }
                 $dollarsByYear[$endYear] += $endYearBudget;
                 if ($endYear - $startYear > 1) {
+                    # spans 3+ years
                     for ($year = $startYear + 1; $year <= $endYear - 1; $year++) {
                         $yearStartTs = strtotime($year."-01-01");
                         $yearEndTs = strtotime(($year + 1)."-01-01");

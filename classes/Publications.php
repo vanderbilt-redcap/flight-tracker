@@ -12,6 +12,9 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class Publications {
     const DEFAULT_LIMIT_YEAR = 2014;
+    const DEFAULT_PUBMED_THROTTLE = 0.5;
+    const API_KEY_PUBMED_THROTTLE = 0.15;
+    const WAIT_SECS_UPON_FAILURE = 60;
 
 	public function __construct($token, $server, $metadata = "download") {
 		$this->token = $token;
@@ -209,12 +212,38 @@ class Publications {
         ) {
             $institutionSearchNodes = [];
             foreach ($institutions as $institution) {
+                # handle HTML escaping; include curly quotes
+                # Many early projects accidentally stored escaped quotes in their database and need to be decoded
+                # This should not have to be heavily used with projects after 11/2023
+                $institution = str_replace("&amp;", "&", $institution);
+                $singleQuoteItems = ["#039", "#39", "#8216", "#8217"];
+                $doubleQuoteItems = ["#8220", "#8221"];
+                $replacements = [
+                    "%27" => $singleQuoteItems,
+                    "%22" => $doubleQuoteItems,
+                ];
+                foreach ($replacements as $replacement => $items) {
+                    foreach ($items as $escapedQuote) {
+                        if (preg_match("/&$escapedQuote;/", $institution)) {
+                            $institution = str_replace("&$escapedQuote;", $replacement, $institution);
+                        } else if (preg_match("/&$escapedQuote\D/", $institution)) {
+                            $institution = str_replace("&$escapedQuote", $replacement, $institution);
+                        } else if (preg_match("/$escapedQuote;/", $institution)) {
+                            $institution = str_replace("$escapedQuote;", $replacement, $institution);
+                        } else if (preg_match("/$escapedQuote\D/", $institution)) {
+                            $institution = str_replace($escapedQuote, $replacement, $institution);
+                        }
+                    }
+                }
+                $institution = preg_replace("/\s*&\s*/", " ", $institution);
                 $institution = preg_replace("/\s*&\s*/", " ", $institution);
                 $institution = preg_replace("/\s+/", "+", $institution);
                 $institution = Sanitizer::repetitivelyDecodeHTML(strtolower($institution));
                 $institution = str_replace("(", "", $institution);
                 $institution = str_replace(")", "", $institution);
-                if (!in_array($institution, ["children", "children'", "children's", "children#039", "children#039s"])) {
+                # Derivations of the word "children" as an institution are interpreted as a MeSH term (topic)
+                # by PubMed; thus, they will explode into thousands of incorrect publications
+                if (!in_array($institution, ["children", "children'", "children's"])) {
                     $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
                 }
             }
@@ -262,7 +291,11 @@ class Publications {
     }
 
     public static function queryPubMed($term, $pid) {
+        $apiKey = Application::getSetting("pubmed_api_key", $pid);
         $url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=100000&retmode=json&term=".$term;
+        if ($apiKey) {
+            $url .= "&api_key=".urlencode($apiKey);
+        }
         Application::log($url);
         list($resp, $output) = REDCapManagement::downloadURL($url, $pid);
         Application::log("$resp: Downloaded ".strlen($output)." bytes");
@@ -287,7 +320,11 @@ class Publications {
                 }
             }
         }
-        Publications::throttleDown();
+        if ($apiKey) {
+            Publications::throttleDown(self::API_KEY_PUBMED_THROTTLE);
+        } else {
+            Publications::throttleDown(self::DEFAULT_PUBMED_THROTTLE);
+        }
         Application::log("$url returned PMIDs: ".REDCapManagement::json_encode_with_spaces($pmids));
         return $pmids;
     }
@@ -657,7 +694,7 @@ class Publications {
 		return 10;
 	}
 
-	public static function pullFromEFetch($pmids) {
+	public static function pullFromEFetch($pmids, $pid = NULL) {
 		if (!is_array($pmids)) {
 			$pmids = array($pmids);
 		}
@@ -666,20 +703,25 @@ class Publications {
 			throw new \Exception("Cannot pull more than $limit PMIDs at once!");
 		}
 		$url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id=".implode(",", $pmids);
-		Publications::throttleDown();
+        $apiKey = Application::getSetting("pubmed_api_key", $pid);
+        if ($apiKey) {
+            Publications::throttleDown(self::API_KEY_PUBMED_THROTTLE);
+        } else {
+            Publications::throttleDown(self::DEFAULT_PUBMED_THROTTLE);
+        }
 		list($resp, $output) = URLManagement::downloadURL($url);
 		return $output;
 	}
 
-    public static function downloadPMID($pmid) {
-	    $ary = self::downloadPMIDs([$pmid]);
+    public static function downloadPMID($pmid, $pid = NULL) {
+	    $ary = self::downloadPMIDs([$pmid], $pid);
 	    if (count($ary) > 0) {
             return $ary[0];
         }
 	    return NULL;
     }
 
-	public static function downloadPMIDs($pmids) {
+	public static function downloadPMIDs($pmids, $pid = NULL) {
 	    $limit = self::getPMIDLimit();
 	    $pmidsInGroups = [];
 	    for ($i = 0; $i < count($pmids); $i += $limit) {
@@ -693,13 +735,13 @@ class Publications {
         }
         $pubmedMatches = [];
         foreach ($pmidsInGroups as $pmidGroup) {
-            $output = self::pullFromEFetch($pmidGroup);
+            $output = self::pullFromEFetch($pmidGroup, $pid);
             $xml = simplexml_load_string(utf8_encode($output));
             $numRetries = 5;
             $i = 0;
             while (!$xml && ($numRetries > $i)) {
                 sleep(5);
-                $output = self::pullFromEFetch($pmidGroup);
+                $output = self::pullFromEFetch($pmidGroup, $pid);
                 $xml = simplexml_load_string(utf8_encode($output));
                 $i++;
             }
@@ -954,7 +996,7 @@ class Publications {
             for ($j = $i0; ($j < count($pmids)) && ($j < $i0 + $pullSize); $j++) {
                 $pmidsToPull[] = $pmids[$j];
             }
-            $xml = self::repetitivelyPullFromEFetch($pmidsToPull);
+            $xml = self::repetitivelyPullFromEFetch($pmidsToPull, $pid);
             if ($xml) {
                 list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, 1, $instance, "pubmed", $pmidsToPull, $metadataFields, $pid);
                 foreach ($parsedRows as $row) {
@@ -1223,16 +1265,15 @@ class Publications {
         return $upload;
     }
 
-    private static function repetitivelyPullFromEFetch($pmids) {
-        $output = self::pullFromEFetch($pmids);
+    private static function repetitivelyPullFromEFetch($pmids, $pid) {
+        $output = self::pullFromEFetch($pmids, $pid);
         $xml = simplexml_load_string(utf8_encode($output));
         $tries = 0;
         $maxTries = 10;
-        $numSecs = 300; // five minutes? 60;
         while (!$xml && ($tries < $maxTries)) {
             $tries++;
-            self::throttleDown($numSecs);
-            $output = self::pullFromEFetch($pmids);
+            self::throttleDown(self::WAIT_SECS_UPON_FAILURE);
+            $output = self::pullFromEFetch($pmids, $pid);
             $xml = simplexml_load_string(utf8_encode($output));
         }
         if (!$xml) {
@@ -1245,6 +1286,308 @@ class Publications {
         }
     }
 
+    # https://www.ncbi.nlm.nih.gov/genbank/collab/country/
+    public static function getCountryNames() {
+        return [
+            "Afghanistan",
+            "Albania",
+            "Algeria",
+            "American Samoa",
+            "Andorra",
+            "Angola",
+            "Anguilla",
+            "Antarctica",
+            "Antigua and Barbuda",
+            "Arctic Ocean",
+            "Argentina",
+            "Armenia",
+            "Aruba",
+            "Ashmore and Cartier Islands",
+            "Atlantic Ocean",
+            "Australia",
+            "Austria",
+            "Azerbaijan",
+            "Bahamas",
+            "Bahrain",
+            "Baltic Sea",
+            "Baker Island",
+            "Bangladesh",
+            "Barbados",
+            "Bassas da India",
+            "Belarus",
+            "Belgium",
+            "Belize",
+            "Benin",
+            "Bermuda",
+            "Bhutan",
+            "Bolivia",
+            "Borneo",
+            "Bosnia and Herzegovina",
+            "Botswana",
+            "Bouvet Island",
+            "Brazil",
+            "British Virgin Islands",
+            "Brunei",
+            "Bulgaria",
+            "Burkina Faso",
+            "Burundi",
+            "Cambodia",
+            "Cameroon",
+            "Canada",
+            "Cape Verde",
+            "Cayman Islands",
+            "Central African Republic",
+            "Chad",
+            "Chile",
+            "China",
+            "Christmas Island",
+            "Clipperton Island",
+            "Cocos Islands",
+            "Colombia",
+            "Comoros",
+            "Cook Islands",
+            "Coral Sea Islands",
+            "Costa Rica",
+            "Cote d'Ivoire",
+            "Croatia",
+            "Cuba",
+            "Curacao",
+            "Cyprus",
+            "Czech Republic",
+            "Democratic Republic of the Congo",
+            "Denmark",
+            "Djibouti",
+            "Dominica",
+            "Dominican Republic",
+            "Ecuador",
+            "Egypt",
+            "El Salvador",
+            "Equatorial Guinea",
+            "Eritrea",
+            "Estonia",
+            "Eswatini",
+            "Ethiopia",
+            "Europa Island",
+            "Falkland Islands (Islas Malvinas)",
+            "Faroe Islands",
+            "Fiji",
+            "Finland",
+            "France",
+            "French Guiana",
+            "French Polynesia",
+            "French Southern and Antarctic Lands",
+            "Gabon",
+            "Gambia",
+            "Gaza Strip",
+            "Georgia",
+            "Germany",
+            "Ghana",
+            "Gibraltar",
+            "Glorioso Islands",
+            "Greece",
+            "Greenland",
+            "Grenada",
+            "Guadeloupe",
+            "Guam",
+            "Guatemala",
+            "Guernsey",
+            "Guinea",
+            "Guinea-Bissau",
+            "Guyana",
+            "Haiti",
+            "Heard Island and McDonald Islands",
+            "Honduras",
+            "Hong Kong",
+            "Howland Island",
+            "Hungary",
+            "Iceland",
+            "India",
+            "Indian Ocean",
+            "Indonesia",
+            "Iran",
+            "Iraq",
+            "Ireland",
+            "Isle of Man",
+            "Israel",
+            "Italy",
+            "Jamaica",
+            "Jan Mayen",
+            "Japan",
+            "Jarvis Island",
+            "Jersey",
+            "Johnston Atoll",
+            "Jordan",
+            "Juan de Nova Island",
+            "Kazakhstan",
+            "Kenya",
+            "Kerguelen Archipelago",
+            "Kingman Reef",
+            "Kiribati",
+            "Kosovo",
+            "Kuwait",
+            "Kyrgyzstan",
+            "Laos",
+            "Latvia",
+            "Lebanon",
+            "Lesotho",
+            "Liberia",
+            "Libya",
+            "Liechtenstein",
+            "Line Islands",
+            "Lithuania",
+            "Luxembourg",
+            "Macau",
+            "Madagascar",
+            "Malawi",
+            "Malaysia",
+            "Maldives",
+            "Mali",
+            "Malta",
+            "Marshall Islands",
+            "Martinique",
+            "Mauritania",
+            "Mauritius",
+            "Mayotte",
+            "Mediterranean Sea",
+            "Mexico",
+            "Micronesia, Federated States of",
+            "Midway Islands",
+            "Moldova",
+            "Monaco",
+            "Mongolia",
+            "Montenegro",
+            "Montserrat",
+            "Morocco",
+            "Mozambique",
+            "Myanmar",
+            "Namibia",
+            "Nauru",
+            "Navassa Island",
+            "Nepal",
+            "Netherlands",
+            "New Caledonia",
+            "New Zealand",
+            "Nicaragua",
+            "Niger",
+            "Nigeria",
+            "Niue",
+            "Norfolk Island",
+            "North Korea",
+            "North Macedonia",
+            "North Sea",
+            "Northern Mariana Islands",
+            "Norway",
+            "Oman",
+            "Pacific Ocean",
+            "Pakistan",
+            "Palau",
+            "Palmyra Atoll",
+            "Panama",
+            "Papua New Guinea",
+            "Paracel Islands",
+            "Paraguay",
+            "Peru",
+            "Philippines",
+            "Pitcairn Islands",
+            "Poland",
+            "Portugal",
+            "Puerto Rico",
+            "Qatar",
+            "Republic of the Congo",
+            "Reunion",
+            "Romania",
+            "Ross Sea",
+            "Russia",
+            "Rwanda",
+            "Saint Barthelemy",
+            "Saint Helena",
+            "Saint Kitts and Nevis",
+            "Saint Lucia",
+            "Saint Martin",
+            "Saint Pierre and Miquelon",
+            "Saint Vincent and the Grenadines",
+            "Samoa",
+            "San Marino",
+            "Sao Tome and Principe",
+            "Saudi Arabia",
+            "Senegal",
+            "Serbia",
+            "Seychelles",
+            "Sierra Leone",
+            "Singapore",
+            "Sint Maarten",
+            "Slovakia",
+            "Slovenia",
+            "Solomon Islands",
+            "Somalia",
+            "South Africa",
+            "South Georgia and the South Sandwich Islands",
+            "South Korea",
+            "South Sudan",
+            "Southern Ocean",
+            "Spain",
+            "Spratly Islands",
+            "Sri Lanka",
+            "State of Palestine",
+            "Sudan",
+            "Suriname",
+            "Svalbard",
+            "Sweden",
+            "Switzerland",
+            "Syria",
+            "Taiwan",
+            "Tajikistan",
+            "Tanzania",
+            "Tasman Sea",
+            "Thailand",
+            "Timor-Leste",
+            "Togo",
+            "Tokelau",
+            "Tonga",
+            "Trinidad and Tobago",
+            "Tromelin Island",
+            "Tunisia",
+            "Turkey",
+            "Turkmenistan",
+            "Turks and Caicos Islands",
+            "Tuvalu",
+            "Uganda",
+            "Ukraine",
+            "United Arab Emirates",
+            "United Kingdom",
+            "Uruguay",
+            "USA",
+            "Uzbekistan",
+            "Vanuatu",
+            "Venezuela",
+            "Viet Nam",
+            "Virgin Islands",
+            "Wake Island",
+            "Wallis and Futuna",
+            "West Bank",
+            "Western Sahara",
+            "Yemen",
+            "Zambia",
+            "Zimbabwe",
+            "Belgian Congo",
+            "British Guiana",
+            "Burma",
+            "Czechoslovakia",
+            "East Timor",
+            "Korea",
+            "Macedonia",
+            "Micronesia",
+            "Netherlands Antilles",
+            "Serbia and Montenegro",
+            "Siam",
+            "Swaziland",
+            "The former Yugoslav Republic of Macedonia",
+            "USSR",
+            "Yugoslavia",
+            "Zaire",
+        ];
+    }
+
 	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = [], $pid = NULL, $getBibliometricInfo = TRUE) {
         $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		$upload = [];
@@ -1255,7 +1598,7 @@ class Publications {
 			for ($j = $i0; ($j < count($pmids)) && ($j < $i0 + $pullSize); $j++) {
 				$pmidsToPull[] = $pmids[$j];
 			}
-            $xml = self::repetitivelyPullFromEFetch($pmidsToPull);
+            $xml = self::repetitivelyPullFromEFetch($pmidsToPull, $pid);
             if ($xml) {
                 list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, $recordId, $instance, $src, $confirmedPMIDs, $metadataFields, $pid);
                 $upload = array_merge($upload, $parsedRows);
@@ -1298,7 +1641,6 @@ class Publications {
                     Application::log("ERROR: No PMIDs pulled from ".json_encode($pmidsToPull), $pid);
                 }
             }
-            Publications::throttleDown();
 		}
         if ($getBibliometricInfo) {
             self::addTimesCited($upload, $pid, $pmids, $metadataFields);
@@ -1406,7 +1748,7 @@ class Publications {
     }
 
 	public static function throttleDown($secs = 1) {
-		sleep($secs);
+		usleep(floor($secs * 1000000));
 	}
 
     private function makeFlaggedPublicationsHTML() {
@@ -1744,15 +2086,23 @@ class Publications {
                 $idsBatched[] = $batch;
             }
         }
+        $apiKey = Application::getSetting("pubmed_api_key", $pid);
 
         $translator = [];
 	    foreach ($idsBatched as $batch) {
 	        $id = implode(",", $batch);
 			$query = "ids=".$id."&format=json";
+            if ($apiKey) {
+                $query .= "&api_key=".urlencode($apiKey);
+            }
 			$url = "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?".$query;
 			list($resp, $output) = REDCapManagement::downloadURL($url, $pid);
 
-			Publications::throttleDown();
+            if ($apiKey) {
+                Publications::throttleDown(self::API_KEY_PUBMED_THROTTLE);
+            } else {
+                Publications::throttleDown(self::DEFAULT_PUBMED_THROTTLE);
+            }
 
 			$results = json_decode($output, true);
 			if ($results) {

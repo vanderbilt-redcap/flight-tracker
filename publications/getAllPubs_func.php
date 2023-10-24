@@ -552,7 +552,7 @@ function backfillAbstracts($redcapData, $metadata, $token, $server, $pid) {
     }
 
     foreach ($pmidsByRecordForAbstracts as $recordId => $pmidsByInstance) {
-        $pubmedMatches = Publications::downloadPMIDs(array_values($pmidsByInstance));
+        $pubmedMatches = Publications::downloadPMIDs(array_values($pmidsByInstance), $pid);
         $i = 0;
         foreach ($pmidsByInstance as $instance => $pmid) {
             if (isset($pubmedMatches[$i]) && $pubmedMatches[$i]) {

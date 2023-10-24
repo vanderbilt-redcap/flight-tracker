@@ -282,7 +282,8 @@ function loadMultiProjectCrons(&$manager, $pids)
             $manager->addMultiCron("drivers/26_workday.php", "getAllWorkday", "Friday", $pids);
         }
     }
-    $manager->addMultiCron("drivers/preprocess.php", "preprocessPortal", date("Y-m-d"), $pids);
+    $manager->addMultiCron("drivers/preprocess.php", "preprocessPortal", "Monday", $pids);
+    $manager->addMultiCron("drivers/preprocess.php", "preprocessPortal", "Thursday", $pids);
     loadInternalSharingCrons($manager, $pids);
 }
 

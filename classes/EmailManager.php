@@ -140,6 +140,7 @@ class EmailManager {
 	    self::$turnOffShutdownFunction = FALSE;
         register_shutdown_function([$this, "reportCronErrors"]);
         $messages = $this->enqueueRelevantEmails($to, $names, "sendEmail");
+        Application::log(count($messages)." emails are enqueued to send.", $this->pid);
 		$this->sendPreparedEmails($messages, ($to !== ""));
 	    self::$turnOffShutdownFunction = TRUE;
 	}
@@ -469,7 +470,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	private function sendPreparedEmail($emailData, $isTest = FALSE) {
         Application::log("sendPrepared ".count($emailData)." emails: ".($isTest ? "TEST" : "REAL"), $this->pid);
 		$name = $emailData["name"];
-		$mssgs = $emailData["mssgs"];
+		$mssgs = $emailData["mssgs"] ?? [];
 		$to = $emailData["to"];
 		$from = $emailData["from"];
 		$subjects = $emailData["subjects"];

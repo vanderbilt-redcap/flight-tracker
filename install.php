@@ -74,16 +74,16 @@ if ($action == "localizeVariables") {
         }
 
         $settingFields = [
-            'institution' => Sanitizer::sanitize($_POST['institution']),
-            'short_institution' => Sanitizer::sanitize($_POST['short_institution']),
-            'other_institutions' => Sanitizer::sanitize($_POST['other_institutions']),
-            'display_institutions' => Sanitizer::sanitize($_POST['display_institutions']),
+            'institution' => Sanitizer::sanitizeWithoutChangingQuotes($_POST['institution']),
+            'short_institution' => Sanitizer::sanitizeWithoutChangingQuotes($_POST['short_institution']),
+            'other_institutions' => Sanitizer::sanitizeWithoutChangingQuotes($_POST['other_institutions']),
+            'display_institutions' => Sanitizer::sanitizeWithoutChangingQuotes($_POST['display_institutions']),
             'token' => $newToken,
             'event_id' => $eventId,
             'pid' => $projectId,
             'server' => $newServer,
             'admin_email' => Sanitizer::sanitize($_POST['email']),
-            'tokenName' => Sanitizer::sanitize($_POST['title']),
+            'tokenName' => Sanitizer::sanitizeWithoutChangingQuotes($_POST['title']),
             'timezone' => Sanitizer::sanitize($_POST['timezone']),
             'hasCoeus' => Sanitizer::sanitize($_POST['coeus']),
             'internal_k_length' => '3',
