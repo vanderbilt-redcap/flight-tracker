@@ -30,6 +30,25 @@ class REDCapLookup {
         return [$username, $firstName, $lastName];
     }
 
+    public static function getCurrentUserIDNameAndEmails() {
+        $username = Application::getUsername();
+        $row = REDCapLookup::getUserInfo($username);
+        $firstName = $row['user_firstname'];
+        $lastName = $row['user_lastname'];
+        return [$username, $firstName, $lastName, self::getEmailsFromRow($row)];
+    }
+
+    public static function getEmailsFromRow($row) {
+        $emails = [];
+        $emailFields = ["user_email", "user_email2", "user_email3"];
+        foreach ($emailFields as $field) {
+            if ($row[$field]) {
+                $emails[] = $row[$field];
+            }
+        }
+        return $emails;
+    }
+
     public function getName() {
         return $this->firstName." ".$this->lastName;
     }
@@ -87,6 +106,11 @@ class REDCapLookup {
         }
         ksort($uids);
         return $uids;
+    }
+
+    public static function getAllEmails($username) {
+        $info = self::getUserInfo($username);
+        return self::getEmailsFromRow($info);
     }
 
     private static function formatName($firstName, $lastName) {

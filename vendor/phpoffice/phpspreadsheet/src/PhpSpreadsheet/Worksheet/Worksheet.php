@@ -2418,16 +2418,16 @@ class Worksheet implements IComparable
         $pCoordinate = $this->tryDefinedName($pCoordinate);
 
         // Convert 'A' to 'A:A'
-        $pCoordinate = self::pregReplace('/^([A-Z]+)$/', '${1}:${1}', $pCoordinate);
+        $pCoordinate = self::pregReplace('/^([A-Z]+)$/', '{$1}:{$1}', $pCoordinate);
 
         // Convert '1' to '1:1'
-        $pCoordinate = self::pregReplace('/^(\d+)$/', '${1}:${1}', $pCoordinate);
+        $pCoordinate = self::pregReplace('/^(\d+)$/', '{$1}:{$1}', $pCoordinate);
 
         // Convert 'A:C' to 'A1:C1048576'
-        $pCoordinate = self::pregReplace('/^([A-Z]+):([A-Z]+)$/', '${1}1:${2}1048576', $pCoordinate);
+        $pCoordinate = self::pregReplace('/^([A-Z]+):([A-Z]+)$/', '{$1}1:{$2}1048576', $pCoordinate);
 
         // Convert '1:3' to 'A1:XFD3'
-        $pCoordinate = self::pregReplace('/^(\d+):(\d+)$/', 'A${1}:XFD${2}', $pCoordinate);
+        $pCoordinate = self::pregReplace('/^(\d+):(\d+)$/', 'A{$1}:XFD{$2}', $pCoordinate);
         if (preg_match('/^\\$?[A-Z]{1,3}\\$?\d{1,7}(:\\$?[A-Z]{1,3}\\$?\d{1,7})?$/', $pCoordinate) !== 1) {
             throw new Exception("Invalid setSelectedCells $originalCoordinate $pCoordinate");
         }

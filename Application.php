@@ -2,7 +2,6 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-use PhpParser\Node\Expr\AssignOp\BitwiseOr;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/CareerDev.php");

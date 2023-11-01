@@ -119,7 +119,7 @@ class NameMatcher {
         return $internationalInstitutions;
     }
 
-    public static function getCountries($institutions) {
+    public static function getInternationalCountries($institutions) {
         # uses filters for false positives so that they won't have to be reproduced
         $internationalAffiliations = self::matchInternationalAffiliations($institutions);
         $countries = Publications::getCountryNames();
@@ -128,6 +128,9 @@ class NameMatcher {
             foreach ($countries as $country) {
                 # one country has parentheses, which would trip off the regex
                 $country = str_replace("(", "\\(", str_replace(")", "\\)", $country));
+                if ($country == "Korea") {
+                    $country = "South Korea";
+                }
                 if (
                     !in_array($country, ["USA", "Puerto Rico"])
                     && preg_match("/\b$country\b/", $institution)    // we know that $country does not contain regex fodder besides parentheses

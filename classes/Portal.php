@@ -9,11 +9,13 @@ use function Vanderbilt\FlightTrackerExternalModule\appendCitationLabel;
 require_once(__DIR__ . '/ClassLoader.php');
 
 
-class Portal {
+class Portal
+{
     const NONE = "NONE";
     const NUM_POSTS_PER_SETTING = 10;
     const DATETIME_FORMAT = "Y-m-d H:i:s";
     const BOARD_PREFIX = "board_";
+    const DISASSOCIATE_SUFFIX = "___disassociate";
 
     public function __construct($currPid, $recordId, $name, $projectTitle, $allPids) {
         $this->pid = $currPid;
@@ -22,7 +24,15 @@ class Portal {
         $this->allPids = $allPids;
         $this->name = $name;
         $this->projectTitle = $projectTitle;
-        list($this->username, $this->firstName, $this->lastName) = self::getCurrentUserIDAndName();
+        list($usernames, $this->firstName, $this->lastName, $this->emails) = self::getCurrentUserIDsNameAndEmails();
+        if (empty($usernames)) {
+            $this->username = "";
+        } else if (count($usernames) == 1) {
+            $this->username = $usernames[0];
+        } else {
+            $this->username = Application::getUsername();
+            $this->emails = REDCapLookup::getAllEmails($this->username);
+        }
 
         $uidString = "";
         if (isset($_GET['uid'])) {
@@ -39,15 +49,15 @@ class Portal {
             $this->server = Application::getSetting("server", $this->pid);
         }
         if (!$this->verifyRequest()) {
-            throw new \Exception("Unverified Access.");
+            throw new \Exception("Unverified Access. Your name and email/user-id must match up with a Flight Tracker record.");
         }
     }
 
     public static function getTestNames() {
         return [
-            "bastarja" => ["Julie", "Bastarache"],
-            "edwardt5" => ["Todd", "Edwards"],
-            "austine" => ["Eric", "Austin"],
+            "bastarja" => ["Julie", "Bastarache", ["julie.bastarache@vumc.org"]],
+            "edwardt5" => ["Todd", "Edwards", ["todd.l.edwards@vumc.org"]],
+            "austine" => ["Eric", "Austin", ["eric.austin@vumc.org"]],
         ];
     }
 
@@ -59,60 +69,150 @@ class Portal {
             );
     }
 
+    public function deleteMatch($pid, $recordId) {
+        $licensePlate = "$pid:$recordId";
+        $setting = $this->username.self::DISASSOCIATE_SUFFIX;
+        $oldValues = Application::getSystemSetting($setting) ?: [];
+        if (!in_array($licensePlate, $oldValues)) {
+            $oldValues[] = $licensePlate;
+            Application::saveSystemSetting($setting, $oldValues);
+        }
+    }
+
+    public static function siftThroughUsernamesForErrors($usernames, $isSpoofing = FALSE) {
+        $spoof = $isSpoofing ? " (Spoofing)" : "";
+        if (empty($usernames)) {
+            echo Portal::getLogo();
+            echo "<h1>Flight Tracker Scholar Portal$spoof</h1>";
+            echo "<p class='centered max-width'>No username is available. You must be logged in to REDCap to view your information.</p>";
+            exit;
+        } else if (count($usernames) == 1) {
+            return $usernames[0];
+        } else if ($isSpoofing) {
+            list($currPid, $recordId) = explode(":", Sanitizer::sanitize($_GET['match']));
+            $currToken = Application::getSetting("token", $currPid);
+            $currServer = Application::getSetting("server", $currPid);
+            $databaseUserids = Download::userids($currToken, $currServer);
+            $username = $databaseUserids[$recordId] ?? "";
+            if (!$username) {
+                echo Portal::getLogo();
+                echo "<h1>Flight Tracker Scholar Portal$spoof</h1>";
+                echo "<p class='centered max-width'>This scholar does not have a username set up. To allow her/him access and yourself to spoof them, add a valid REDCap user-id on their Identifiers form.</p>";
+                exit;
+            }
+        } else if (!in_array(Application::getUsername(), $usernames)) {
+            echo Portal::getLogo();
+            echo "<h1>Flight Tracker Scholar Portal</h1>";
+            echo "<p class='centered max-width'>Invalid access.</p>";
+            exit;
+        } else {
+            return Application::getUsername();
+        }
+    }
+
     public static function getLink() {
         return Application::getScholarPortalLink();
     }
 
-    public static function getCurrentUserIDAndName() {
+    private static function getSpoofingUserIDNameAndEmails($match) {
+        $blank = [[], "", "", []];
+        list($currPid, $recordId) = explode(":", $match);
+        $token = Application::getSetting("token", $currPid);
+        $server = Application::getSetting("server", $currPid);
+        if ($token && $server) {
+            $userRights = Download::userRights($token, $server);
+            $username = Application::getUsername();
+            $validProjectUsers = [];
+            foreach ($userRights as $row) {
+                $validProjectUsers[] = $row['username'];
+            }
+            if (!in_array($username, $validProjectUsers) && !Application::isSuperUser()) {
+                return $blank;
+            }
+        } else {
+            return $blank;
+        }
+
+        list($firstName, $middleName, $lastName, $spoofingUsername) = Download::threeNamePartsAndUserid($token, $server, $recordId);
+        if (!$spoofingUsername) {
+            $lookup = new REDCapLookup($firstName, $lastName);
+            $uidsAndNames = $lookup->getUidsAndNames();
+            $usernames = array_keys($uidsAndNames);
+            if (empty($uidsAndNames)) {
+                return $blank;
+            } else {
+                $emails = [];
+                foreach ($usernames as $username) {
+                    $emails = array_unique(array_merge(REDCapLookup::getAllEmails($username)));
+                }
+            }
+        } else {
+            $usernames = [$spoofingUsername];
+            $emails = REDCapLookup::getAllEmails($spoofingUsername);
+        }
+        if (Application::isVanderbilt()) {
+            $emails = self::transformVanderbiltEmails($emails);
+        }
+        return [$usernames, $firstName, $lastName, $emails];
+    }
+
+    public static function getCurrentUserIDsNameAndEmails() {
+        $blank = [[], "", "", []];
         if (
             Application::isVanderbilt()
             && self::isLive()
             && isset($_GET['uid'])
             && Application::isSuperUser()
         ) {
+            # testing
             $testNames = self::getTestNames();
             if (in_array($_GET['uid'], $testNames)) {
-                return [$_GET['uid'], $testNames[$_GET['uid']][0], $testNames[$_GET['uid']][1]];
+                return [[$_GET['uid']], $testNames[$_GET['uid']][0], $testNames[$_GET['uid']][1], $testNames[$_GET['uid']][2]];
             } else {
                 $username = Sanitizer::sanitize($_GET['uid']);
                 $info = REDCapLookup::getUserInfo($username);
-                return [$username, $info['user_firstname'] ?? "", $info['user_lastname'] ?? ""];
+                return [[$username], $info['user_firstname'] ?? "", $info['user_lastname'] ?? "", REDCapLookup::getEmailsFromRow($info)];
             }
         } else if (isset($_GET['match']) && is_string($_GET['match']) && preg_match("/:/", $_GET['match'])) {
-            $blank = ["", "", ""];
-            list($currPid, $recordId) = explode(":", Sanitizer::sanitize($_GET['match']));
-            $token = Application::getSetting("token", $currPid);
-            $server = Application::getSetting("server", $currPid);
-            if ($token && $server) {
-                $userRights = Download::userRights($token, $server);
-                $validProjectUsers = [];
-                foreach ($userRights as $row) {
-                    $validProjectUsers[] = $row['username'];
-                }
-                if (!in_array(Application::getUsername(), $validProjectUsers) && !Application::isSuperUser()) {
-                    return $blank;
-                }
-            } else {
-                return $blank;
-            }
-
-            list($firstName, $middleName, $lastName, $username) = Download::threeNamePartsAndUserid($token, $server, $recordId);
-            if (!$username) {
-                $lookup = new REDCapLookup($firstName, $lastName);
-                $uidsAndNames = $lookup->getUidsAndNames();
-                if (empty($uidsAndNames)) {
-                    return $blank;
-                } else if (count($uidsAndNames) == 1) {
-                    $username = array_keys($uidsAndNames)[0];
-                } else {
-                    # TODO Multiple Matches
-                    $username = array_keys($uidsAndNames)[0];
-                }
-            }
-            return [$username, $firstName, $lastName];
+            # check user rights
+            return self::getSpoofingUserIDNameAndEmails(Sanitizer::sanitize($_GET['match']));
         } else {
-            return REDCapLookup::getCurrentUserIDAndName();
+            # main login
+            $info = REDCapLookup::getCurrentUserIDNameAndEmails();
+            if (empty($info)) {
+                return $blank;
+            } else {
+                if (Application::isVanderbilt()) {
+                    $info[3] = self::transformVanderbiltEmails($info[3]);
+                }
+
+                # turn username/string into an array
+                $info[0] = [$info[0]];
+                return $info;
+            }
         }
+    }
+
+    # in case someone hasn't updated until after the split
+    private static function transformVanderbiltEmails($emails) {
+        $newEmails = $emails;
+        foreach ($emails as $email) {
+            $email = strtolower($email);
+            if (strpos($email, "@")) {
+                list($userid, $domain) = explode("@", $email);
+                if (in_array($domain, ["vumc.org", "vanderbilt.edu"])) {
+                    $newDomain = ($domain == "vumc.org") ? "vanderbilt.edu" : "vumc.org";
+                    $newEmails[] = $userid."@".$newDomain;
+                    $useridNodes = explode(".", $userid);
+                    if ((count($useridNodes) == 3) && (strlen($useridNodes[1]) == 1)) {
+                        $newUserid = $useridNodes[0].".".$useridNodes[2];
+                        $newEmails[] = $newUserid."@vumc.org";
+                        $newEmails[] = $newUserid."@vanderbilt.edu";
+                    }
+                }
+            }
+        }
+        return $newEmails;
     }
 
     private static function downloadAndSave($setting, $func, $token, $server, $pid) {
@@ -191,6 +291,7 @@ class Portal {
             $myPids = $this->allPids;
         }
         list($matches, $projectTitles, $photoBase64) = self::getMatchesForUserid($this->username, $this->firstName, $this->lastName, $myPids);
+        $this->removeDisassociations($matches);
         $this->mergeWithStoredData(["matches" => $matches, "projectTitles" => $projectTitles], $myPids);
         if (Application::isVanderbilt()) {
             self::filterOutNonNewmanProject($matches);
@@ -421,16 +522,30 @@ class Portal {
                             unset($storedData["matches"][$matchPid]);
                         }
                     }
+                    $this->removeDisassociations($storedData['matches']);
                     if (Application::isVanderbilt() && Application::isServer("redcap.vanderbilt.edu")) {
                         self::filterOutNonNewmanProject($storedData['matches']);
                     }
                     return $storedData;
                 }
             } else if (!empty($storedData) && !self::isValidStoredDate($storedDate)) {
-                Application::saveSystemSetting($this->username, "");
+                Application::saveSystemSetting($this->username, []);
             }
         }
         return [];
+    }
+
+    private function removeDisassociations(&$matches) {
+        $diassociateList = Application::getSystemSetting($this->username.self::DISASSOCIATE_SUFFIX) ?: [];
+        foreach ($diassociateList as $licensePlate) {
+            list($pid, $recordId) = explode(":", $licensePlate);
+            if (isset($matches[$pid][$recordId])) {
+                unset($matches[$pid][$recordId]);
+                if (empty($matches[$pid])) {
+                    unset($matches[$pid]);
+                }
+            }
+        }
     }
 
     # preprocessing can run a few days behind, so we must adjust a week back
@@ -464,11 +579,13 @@ class Portal {
 
         if ($this->token && $this->server) {
             $useridField = Download::getUseridField($this->token, $this->server);
-            $redcapData = Download::fieldsForRecords($this->token, $this->server, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name", $useridField], [$this->recordId]);
+            $redcapData = Download::fieldsForRecords($this->token, $this->server, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name", "identifier_email", "identifier_personal_email", $useridField], [$this->recordId]);
             $normativeRow = REDCapManagement::getNormativeRow($redcapData);
             if (
                 !NameMatcher::matchName($this->firstName, $this->lastName, $normativeRow["identifier_first_name"], $normativeRow["identifier_last_name"])
                 && (strtolower($this->username) != $normativeRow[$useridField])
+                && !in_array($normativeRow['identifier_email'], $this->emails)
+                && !in_array($normativeRow['identifier_personal_email'], $this->emails)
             ) {
                 return FALSE;
             }
@@ -1435,6 +1552,7 @@ Examples:
     protected $pid;
     protected $recordId;
     protected $name;
+    protected $emails;
     protected $projectTitle;
     protected $allPids;
     protected $driverURL;

@@ -206,6 +206,7 @@ $lastNames = Download::lastnames($token, $server);
 $trainingFields = [
     "record_id",
     "identifier_start_of_training",
+    "identifier_end_of_training",
     "identifier_left_date",
 ];
 for ($i = 1; $i <= 5; $i++) {
@@ -471,6 +472,11 @@ function getTrainingStartDate($redcapData, $recordId) {
 }
 
 function getTrainingEndDate($redcapData, $recordId) {
+    $endAtInstitution = REDCapManagement::findField($redcapData, $recordId, "identifier_end_of_training");
+    if ($endAtInstitution) {
+        return $endAtInstitution;
+    }
+
     $latestDate = "";
     $kTypes = [1, 2, 3, 4, 9];
     for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {

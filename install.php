@@ -61,7 +61,7 @@ if ($action == "localizeVariables") {
     $newServer = APP_PATH_WEBROOT_FULL . "api/";
     if (isValidToken($newToken)) {
         $title = Sanitizer::sanitize($_POST['title']);
-        $feedback = \Vanderbilt\FlightTrackerExternalModule\uploadProjectSettings($newToken, $newServer, $title);
+        \Vanderbilt\FlightTrackerExternalModule\uploadProjectSettings($newToken, $newServer, $title);
         $projectId = REDCapManagement::getPIDFromToken($newToken, $newServer);
         $eventId = REDCapManagement::getEventIdForClassical($projectId);
 
@@ -156,7 +156,7 @@ function isValidToken($token) {
 }
 
 function sendErrorMessage($mssg) {
-	header("Location: ".Application::link("install.php")."?mssg=".urlencode($mssg));
+	header("Location: ".Application::link("install.php")."&mssg=".urlencode($mssg));
 }
 
 function makeDepartmentPrompt($projectId) {
@@ -265,7 +265,7 @@ function changeGrantClass(name) {
 	}
 
 	if (isset($_GET['mssg'])) {
-	    $mssg = Sanitizer::sanitize($_GET['mssg']);
+	    $mssg = Sanitizer::sanitizeWithoutChangingQuotes($_GET['mssg']);
 		$html .= "<p class='centered red'>{$mssg}</p>";
 	}
     $thisUrl = Application::link("this");

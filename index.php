@@ -131,7 +131,7 @@ $(document).ready(function() {
         if (Portal::isLive()) {
             $link = Portal::getLink();
             echo "<input type='hidden' id='scholarPortalUrl' value='$link' />";
-            echo "<p class='centered nomargin smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#scholarPortalUrl\")); alert(\"Copied to your clipboard!\");'>Click to Share the Scholar Portal Link with Your Scholars</a></p>";
+            echo "<p class='centered nomargin smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#scholarPortalUrl\"), () => { alert(\"Copied to your clipboard!\"); });'>Click to Share the Scholar Portal Link with Your Scholars</a></p>";
         }
         if (empty($module->getPids())) {
             # enabled systemwide and not on a project-by-project basis => wrong (but unlikely use case)

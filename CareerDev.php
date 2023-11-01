@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "5.16.0";
+		return "6.0.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -642,7 +642,7 @@ class CareerDev {
             $longInst = self::getInstitution($pid);
 
             $institutions = array();
-            if (preg_match("/".strtolower($shortInst)."/", strtolower($longInst))) {
+            if (!preg_match("/".strtolower($shortInst)."/", strtolower($longInst))) {
                 $institutions[] = $shortInst;
                 $institutions[] = $longInst;
             } else {
@@ -1130,10 +1130,11 @@ class CareerDev {
             $ary = [
                 "Publication List" => self::link("/publications/view.php"),
                 "Brag: Publications Widget" => self::link("/brag.php")."&showHeaders",
-                "Social Network of Co-Authorship" => self::link("/socialNetwork/collaboration.php"),
+                "Social Network of Collaborations" => self::link("/socialNetwork/collaboration.php"),
                 "Word Clouds of Publications" => self::link("/publications/wordCloud.php"),
                 "Search Publications" => self::link("/search/publications.php"),
                 "Publication Impact Measures" => self::link("/publications/scoreDistribution.php"),
+                "Multi-Site Collaborations" => self::link("/socialNetwork/multisiteCollaborations.php"),
                 "Public Access Compliance" => self::link("/publications/complianceReport.php"),
                 "Publications with Mentor(s)" => self::link("/publications/pubsWithMentor.php"),
             ];

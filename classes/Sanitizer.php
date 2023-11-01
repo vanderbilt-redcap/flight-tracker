@@ -60,6 +60,16 @@ class Sanitizer {
         return "";
     }
 
+    public static function sanitizeNumber($num) {
+        if (is_integer($num)) {
+            return self::sanitizeInteger($num);
+        } else if (is_numeric($num)) {
+            return (double) self::sanitize($num);
+        } else {
+            return "";
+        }
+    }
+
     public static function sanitizeInteger($int) {
         if (filter_var($int, FILTER_VALIDATE_INT) !== FALSE) {
             $stringVersion = self::sanitize($int);

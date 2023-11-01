@@ -74,7 +74,7 @@ class DataDictionaryManagement {
                     if ($newLines !== NULL) {
                         $metadata = array_merge($metadata, $newLines);
                     } else {
-                        throw new \Exception("Could not unpack json: ".json_last_error_msg()." $json");
+                        throw new \Exception("Could not unpack json in $file: ".json_last_error_msg());
                     }
                 }
             }

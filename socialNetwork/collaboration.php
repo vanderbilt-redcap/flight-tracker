@@ -363,13 +363,13 @@ function makePublicationColsAndLabels($pubs) {
 
     # avoid infinite loop
     if (!empty($data)) {
-        ksort($data);
+        ksort($data, SORT_NUMERIC);
         for ($year = min(array_keys($data)); $year <= max(array_keys($data)); $year++) {
             if (!isset($data[$year])) {
-                $data[$year] = 0;
+                $data["$year"] = 0;
             }
         }
-        ksort($data);
+        ksort($data, SORT_NUMERIC);
     }
 
     $labels = array_keys($data);

@@ -42,49 +42,12 @@ foreach ($records as $recordId) {
         $grantAry = $grants->getGrants("all_pis");
     }
     foreach ($grantAry as $grant) {
-        $budget = $grant->getVariable($budgetField);
-        $budget = (int) str_replace("$", "", $budget);
-        if ($budget) {
-            $startTs = strtotime($grant->getVariable("start"));
-            $endDate = $grant->getVariable("end");
-            $endTs = $endDate ? strtotime($endDate) : time();
-            $totalTimespan = $endTs - $startTs;
-            $startYear = (int) date("Y", $startTs);
-            $endYear = (int) date("Y", $endTs);
-            if ($startYear && ($startYear == $endYear)) {
-                if (!isset($dollarsByYear[$startYear])) {
-                    $dollarsByYear[$startYear] = 0;
-                }
-                $dollarsByYear[$startYear] += $budget;
-            } else if ($startYear) {
-                $startYearEndTs = strtotime(($startYear + 1)."-01-01");
-                $endYearStartTs = strtotime("$endYear-01-01");
-                $secsInStartYear = $startYearEndTs - $startTs;
-                $secsInEndYear = $endTs - $endYearStartTs;
-                $startYearBudget = round($secsInStartYear * $budget / $totalTimespan);
-                $endYearBudget = round($secsInEndYear * $budget / $totalTimespan);
-                if (!isset($dollarsByYear[$startYear])) {
-                    $dollarsByYear[$startYear] = 0;
-                }
-                $dollarsByYear[$startYear] += $startYearBudget;
-                if (!isset($dollarsByYear[$endYear])) {
-                    $dollarsByYear[$endYear] = 0;
-                }
-                $dollarsByYear[$endYear] += $endYearBudget;
-                if ($endYear - $startYear > 1) {
-                    # spans 3+ years
-                    for ($year = $startYear + 1; $year <= $endYear - 1; $year++) {
-                        $yearStartTs = strtotime($year."-01-01");
-                        $yearEndTs = strtotime(($year + 1)."-01-01");
-                        $secsInYear = $yearEndTs - $yearStartTs;
-                        $yearBudget = round($secsInYear * $budget / $totalTimespan);
-                        if (!isset($dollarsByYear[$year])) {
-                            $dollarsByYear[$year] = 0;
-                        }
-                        $dollarsByYear[$year] += $yearBudget;
-                    }
-                }
+        $grantDollarsByYear = $grant->getFundingByYear($budgetField);
+        foreach ($grantDollarsByYear as $year => $dollars) {
+            if (!isset($dollarsByYear[$year])) {
+                $dollarsByYear[$year] = 0;
             }
+            $dollarsByYear[$year] += $dollars;
         }
     }
 }

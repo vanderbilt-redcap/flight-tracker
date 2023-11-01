@@ -28,11 +28,7 @@ class BarChart extends Chart {
     }
 
     public function setColor($color) {
-        if ((strlen($color) == 6) && preg_match("/^[0-9A-Fa-f]{6}$/", $color)) {
-            $this->color = "#".$color;
-        } else {
-            $this->color = $color;
-        }
+        $this->color = Chart::ensureHex($color) ?: $this->color;
     }
 
     public function setXAxisLabel($str) {

@@ -1535,9 +1535,15 @@ function enforceOneNumber(ob1, ob2, ob3) {
 	}
 }
 
-function copyToClipboard(element) {
+function copyToClipboard(element, cb) {
 	const text = $(element).text() ? $(element).text() : $(element).val();
-	navigator.clipboard.writeText(text);
+	const copy = async(text) => {
+		await navigator.clipboard.writeText(text);
+		if (cb) {
+			cb();
+		}
+	};
+	copy(text);
 }
 
 function confirmRestartData(url, recordId, csrfToken, fetchType) {
