@@ -154,7 +154,7 @@ try {
 } catch (\Exception $e) {
     $data['error'] = $e->getMessage();
     if (Application::isLocalhost()) {
-        $data['error'] .= " ".$e->getTraceAsString();
+        $data['error'] .= " ".Sanitizer::sanitizeWithoutChangingQuotes($e->getTraceAsString());
     }
 }
 echo json_encode($data);
