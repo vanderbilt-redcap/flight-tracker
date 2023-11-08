@@ -213,45 +213,7 @@ function makePublicationColsAndLabels($pubs) {
 }
 
 function getPlainColorWheel() {
-    // Flight Tracker colors
-//    return [
-//        "#5764ae",
-//        "#f0565d",
-//        "#8dc63f",
-//        "#f79721",
-//        "#8c91ae",
-//        "#f09599",
-//        "#a4c675",
-//        "#f7b768",
-//   ];
     return array_reverse(Application::getApplicationColors(["1.0", "0.3"], TRUE));
-}
-
-function collapseColorWheel($colorWheel) {
-    $newWheel = [];
-    $reverseWheel = [];
-    ksort($colorWheel);
-    foreach ($colorWheel as $label => $hex) {
-        if (is_numeric($label)) {
-            $year = $label;
-            if (!isset($reverseWheel[$hex])) {
-                $reverseWheel[$hex] = ["start" => $year, "end" => $year];
-            }
-            $reverseWheel[$hex]["end"] = $year;
-        } else {
-            # unknown
-            $newWheel[$label] = $hex;
-        }
-    }
-    foreach ($reverseWheel as $hex => $ary) {
-        if ($ary["start"] == $ary["end"]) {
-            $yearspan = $ary["start"];
-        } else {
-            $yearspan = $ary["start"]."-".$ary["end"];
-        }
-        $newWheel[$yearspan] = $hex;
-    }
-    return $newWheel;
 }
 
 function makeEdges($matches, $requestedInstitutions) {
@@ -410,12 +372,12 @@ function findMatchesForInstitutions($token, $server, $fields, $requestedInstitut
                 $ts = DateManagement::isDate($row['citation_ts']) ? strtotime($row['citation_ts']) : 0;
                 if (canApproveTimestamp($ts, $startTs, $endTs) && ($row['citation_include'] == '1')) {
                     $licensePlate = $recordId.":".$row['redcap_repeat_instance'];
-                    $affiliations = [];
+                    $affiliationsByAuthor = [];
                     if ($row['citation_affiliations']) {
-                        $affiliations = json_decode($row['citation_affiliations'], TRUE) ?: [];
+                        $affiliationsByAuthor = json_decode($row['citation_affiliations'], TRUE) ?: [];
                     }
                     $matchedInstitutions = [];
-                    $publicationAffiliations = getAllAffiliations($affiliations);
+                    $publicationAffiliations = Publications::getAllAffiliationsFromAuthorArray($affiliationsByAuthor);
                     foreach ($requestedInstitutions as $institution) {
                         # match 1+ $publicationAffiliations
                         if (NameMatcher::matchInstitution($institution, $publicationAffiliations)) {
@@ -491,40 +453,6 @@ function getNumberOfCollaborations($typeCollaborations) {
         }
     }
     return array_sum($dataValues);
-}
-
-function getAllAffiliations($pubmedAffiliationAry) {
-    $ary = [];
-    foreach ($pubmedAffiliationAry as $author => $institutions) {
-        foreach ($institutions as $inst) {
-            $inst = preg_replace("/^1\]/", "", $inst);
-            $inst = preg_replace("/\[\d+\]/", ";", $inst);
-            if (preg_match("/^a/", $inst)) {
-                # institutions listed with preface of a, b, c, d, ... before word
-                # e.g., aVanderbilt Institute..., bDivision of ...
-                # assume next word is a title => starts in a capital letter
-                $inst = preg_replace("/[a-z]([A-Z])/", "; $1", $inst);
-            }
-            foreach (Publications::getCountryNames() as $country) {
-                if (!in_array($country, ["Jersey", "Georgia"])) {
-                    $inst = str_replace("$country,", "$country;", $inst);
-                    $inst = str_replace("$country.", "$country;", $inst);
-                    $inst = str_replace(", $country and ", ", $country; ", $inst);
-                }
-            }
-            if (strpos($inst, ";") !== FALSE) {
-                $explodedAry = preg_split("/\s*;\s*/", $inst);
-                foreach ($explodedAry as $explodedInst) {
-                    if (!in_array($explodedInst, $ary)) {
-                        $ary[] = $explodedInst;
-                    }
-                }
-            } else if (!in_array($inst, $ary)) {
-                $ary[] = $inst;
-            }
-        }
-    }
-    return $ary;
 }
 
 function findOrganization($nodes, $candidateIndices) {
@@ -743,7 +671,7 @@ function makeCSVLinesForInternationalAffiliations($records, $token, $server, $fi
             ) {
                 $affiliationsByAuthor = json_decode($row['citation_affiliations'], TRUE) ?? [];
                 if (!empty($affiliationsByAuthor)) {
-                    $publicationAffiliations = getAllAffiliations($affiliationsByAuthor);
+                    $publicationAffiliations = Publications::getAllAffiliationsFromAuthorArray($affiliationsByAuthor);
                     $internationalInstitutions = NameMatcher::matchInternationalAffiliations($publicationAffiliations);
                     if (!empty($internationalInstitutions)) {
                         if ($oneRowPerInstitution) {

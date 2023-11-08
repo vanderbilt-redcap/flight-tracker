@@ -196,13 +196,107 @@ class Publications {
 	    return $newRows;
     }
 
-    public static function searchPubMedForName($first, $last, $pid, $institutions = [], $recordId = FALSE) {
+    private static function makePubMedNameClause($unexplodedFirst, $unexplodedLast, $middle = "") {
+        $suffix = "%5Bau%5D";
+        $nameClauses = [];
+        foreach (NameMatcher::explodeFirstName($unexplodedFirst) as $first) {
+            foreach (NameMatcher::explodeLastName($unexplodedLast) as $last) {
+                if ($first && $last) {
+                    $first = preg_replace("/\s+/", "+", $first);
+                    $last = preg_replace("/\s+/", "+", $last);
+                    if ($middle) {
+                        $nameClauses[] = $first . "+" . $middle . "+" . $last . $suffix;
+                    } else {
+                        $nameClauses[] = $first . "+" . $last . $suffix;
+                    }
+                }
+            }
+        }
+        if (!empty($nameClauses)) {
+            return "(".implode(" OR ", $nameClauses).")";
+        } else {
+            return "";
+        }
+    }
+
+    public static function searchPubMedForNameAndDate($unexplodedFirst, $middle, $unexplodedLast, $pid, $institutions, $startDate, $endDate = "3000")
+    {
         if (!is_array($institutions)) {
             $institutions = [$institutions];
         }
-        $first = preg_replace("/\s+/", "+", $first);
-        $last = preg_replace("/\s+/", "+", $last);
-        $term = $first."+".$last."%5Bau%5D";
+
+        $term = self::makePubMedNameClause($unexplodedFirst, $unexplodedLast, $middle);
+        if (!$term) {
+            return [];
+        }
+
+        $institutionClause = self::makePubMedInstitutionClause($institutions);
+        $term .= $institutionClause ? " AND ".$institutionClause : "";
+
+        if ($startDate) {
+            $encodedStartDate = str_replace("-", "%2F", $startDate);
+            $encodedEndDate = str_replace("-", "%2F", $endDate);
+            $term .= " AND (\"$encodedStartDate\"%5BDate+-+Publication%5D+%3A+\"$encodedEndDate\"%5BDate+-+Publication%5D)";
+        }
+
+        return self::queryPubMed($term, $pid);
+    }
+
+    private static function makePubMedInstitutionClause($institutions) {
+        $institutionSearchNodes = [];
+        foreach ($institutions as $institution) {
+            # handle HTML escaping; include curly quotes
+            # Many early projects accidentally stored escaped quotes in their database and need to be decoded
+            # This should not have to be heavily used with projects after 11/2023
+            $institution = str_replace("&amp;", "&", $institution);
+            $singleQuoteItems = ["#039", "#39", "#8216", "#8217"];
+            $doubleQuoteItems = ["#8220", "#8221"];
+            $replacements = [
+                "%27" => $singleQuoteItems,
+                "%22" => $doubleQuoteItems,
+            ];
+            foreach ($replacements as $replacement => $items) {
+                foreach ($items as $escapedQuote) {
+                    if (preg_match("/&$escapedQuote;/", $institution)) {
+                        $institution = str_replace("&$escapedQuote;", $replacement, $institution);
+                    } else if (preg_match("/&$escapedQuote\D/", $institution)) {
+                        $institution = str_replace("&$escapedQuote", $replacement, $institution);
+                    } else if (preg_match("/$escapedQuote;/", $institution)) {
+                        $institution = str_replace("$escapedQuote;", $replacement, $institution);
+                    } else if (preg_match("/$escapedQuote\D/", $institution)) {
+                        $institution = str_replace($escapedQuote, $replacement, $institution);
+                    }
+                }
+            }
+            $institution = preg_replace("/\s*&\s*/", " ", $institution);
+            $institution = preg_replace("/\s*&\s*/", " ", $institution);
+            $institution = preg_replace("/\s+/", "+", $institution);
+            $institution = Sanitizer::repetitivelyDecodeHTML(strtolower($institution));
+            $institution = str_replace("(", "", $institution);
+            $institution = str_replace(")", "", $institution);
+            # Derivations of the word "children" as an institution are interpreted as a MeSH term (topic)
+            # by PubMed; thus, they will explode into thousands of incorrect publications
+            if (!in_array($institution, ["children", "children'", "children's"])) {
+                $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
+            }
+        }
+
+        if (!empty($institutionSearchNodes)) {
+            return "(" . implode("+OR+", $institutionSearchNodes) . ")";
+        } else {
+            return "";
+        }
+    }
+
+
+    public static function searchPubMedForName($first, $middle, $last, $pid, $institutions = [], $recordId = FALSE) {
+        if (!is_array($institutions)) {
+            $institutions = [$institutions];
+        }
+        $term = self::makePubMedNameClause($first, $last, $middle);
+        if (!$term) {
+            return [];
+        }
         if (
             (count($institutions) > 1)
             || (
@@ -210,47 +304,8 @@ class Publications {
                 && ($institutions[0] != "all")
             )
         ) {
-            $institutionSearchNodes = [];
-            foreach ($institutions as $institution) {
-                # handle HTML escaping; include curly quotes
-                # Many early projects accidentally stored escaped quotes in their database and need to be decoded
-                # This should not have to be heavily used with projects after 11/2023
-                $institution = str_replace("&amp;", "&", $institution);
-                $singleQuoteItems = ["#039", "#39", "#8216", "#8217"];
-                $doubleQuoteItems = ["#8220", "#8221"];
-                $replacements = [
-                    "%27" => $singleQuoteItems,
-                    "%22" => $doubleQuoteItems,
-                ];
-                foreach ($replacements as $replacement => $items) {
-                    foreach ($items as $escapedQuote) {
-                        if (preg_match("/&$escapedQuote;/", $institution)) {
-                            $institution = str_replace("&$escapedQuote;", $replacement, $institution);
-                        } else if (preg_match("/&$escapedQuote\D/", $institution)) {
-                            $institution = str_replace("&$escapedQuote", $replacement, $institution);
-                        } else if (preg_match("/$escapedQuote;/", $institution)) {
-                            $institution = str_replace("$escapedQuote;", $replacement, $institution);
-                        } else if (preg_match("/$escapedQuote\D/", $institution)) {
-                            $institution = str_replace($escapedQuote, $replacement, $institution);
-                        }
-                    }
-                }
-                $institution = preg_replace("/\s*&\s*/", " ", $institution);
-                $institution = preg_replace("/\s*&\s*/", " ", $institution);
-                $institution = preg_replace("/\s+/", "+", $institution);
-                $institution = Sanitizer::repetitivelyDecodeHTML(strtolower($institution));
-                $institution = str_replace("(", "", $institution);
-                $institution = str_replace(")", "", $institution);
-                # Derivations of the word "children" as an institution are interpreted as a MeSH term (topic)
-                # by PubMed; thus, they will explode into thousands of incorrect publications
-                if (!in_array($institution, ["children", "children'", "children's"])) {
-                    $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
-                }
-            }
-
-            if (!empty($institutionSearchNodes)) {
-                $term .= "AND (" . implode("+OR+", $institutionSearchNodes) . ")";
-            }
+            $institutionClause = self::makePubMedInstitutionClause($institutions);
+            $term .= $institutionClause ? " AND ".$institutionClause : "";
         }
         $pmids = self::queryPubMed($term, $pid);
 
@@ -988,6 +1043,63 @@ class Publications {
 	    return $numPubsMatched."/".$this->getCount($cat);
     }
 
+    public static function getAllAffiliationsFromAuthorArray($pubmedAffiliationAry) {
+        $ary = [];
+        foreach ($pubmedAffiliationAry as $author => $institutions) {
+            foreach ($institutions as $inst) {
+                $inst = preg_replace("/^1\]/", "", $inst);
+                $inst = preg_replace("/\[\d+\]/", ";", $inst);
+                if (preg_match("/^a/", $inst)) {
+                    # institutions listed with preface of a, b, c, d, ... before word
+                    # e.g., aVanderbilt Institute..., bDivision of ...
+                    # assume next word is a title => starts in a capital letter
+                    $inst = preg_replace("/[a-z]([A-Z])/", "; $1", $inst);
+                }
+                foreach (self::getCountryNames() as $country) {
+                    if (!in_array($country, ["Jersey", "Georgia"])) {
+                        $inst = str_replace("$country,", "$country;", $inst);
+                        $inst = str_replace("$country.", "$country;", $inst);
+                        $inst = str_replace(", $country and ", ", $country; ", $inst);
+                    }
+                }
+                if (strpos($inst, ";") !== FALSE) {
+                    $explodedAry = preg_split("/\s*;\s*/", $inst);
+                    foreach ($explodedAry as $explodedInst) {
+                        if (!in_array($explodedInst, $ary)) {
+                            $ary[] = $explodedInst;
+                        }
+                    }
+                } else if (!in_array($inst, $ary)) {
+                    $ary[] = $inst;
+                }
+            }
+        }
+        return $ary;
+    }
+
+    public static function getAffiliationsAndDatesForPMIDs($pmids, $metadataFields, $pid) {
+        $itemsByPMID = [];
+        $pullSize = 10;
+        for ($i0 = 0; $i0 < count($pmids); $i0 += $pullSize) {
+            $pmidsToPull = [];
+            for ($j = $i0; ($j < count($pmids)) && ($j < $i0 + $pullSize); $j++) {
+                $pmidsToPull[] = $pmids[$j];
+            }
+            $xml = self::repetitivelyPullFromEFetch($pmidsToPull, $pid);
+            if ($xml) {
+                list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, 1, $instance, "pubmed", $pmidsToPull, $metadataFields, $pid);
+                foreach ($parsedRows as $row) {
+                    $itemsByPMID[$row['citation_pmid']] = [
+                        "affiliations" => json_decode($row['citation_affiliations'] ?? "[]", TRUE),
+                        "date" => $row['citation_ts'],
+                        "citation" => $row['citation_full_citation'] ?? "",
+                    ];
+                }
+            }
+        }
+        return $itemsByPMID;
+    }
+
     public static function getAffiliationJSONsForPMIDs($pmids, $metadataFields, $pid) {
         $affiliations = [];
         $pullSize = 10;
@@ -1000,7 +1112,7 @@ class Publications {
             if ($xml) {
                 list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, 1, $instance, "pubmed", $pmidsToPull, $metadataFields, $pid);
                 foreach ($parsedRows as $row) {
-                    $affiliations[$row['citation_pmid']] = $row['citation_affiliations'];
+                    $affiliations[$row['citation_pmid']] = $row['citation_affiliations'] ?? "";
                 }
             }
         }
@@ -1185,6 +1297,14 @@ class Publications {
                 "citation_grants" => implode("; ", $assocGrants),
                 "citation_complete" => "2",
             ];
+            $citation = new Citation($token, $server, $recordId, $instance, $row);
+            if (in_array("citation_full_citation", $metadataFields)) {
+                $pubmedCitation = $citation->getPubMedCitation();
+                $row["citation_full_citation"] = $pubmedCitation;
+            }
+            if (in_array("citation_ts", $metadataFields)) {
+                $row["citation_ts"] = date("Y-m-d", $citation->getTimestamp());
+            }
             if (in_array("citation_last_update", $metadataFields)) {
                 $row["citation_last_update"] = date("Y-m-d");
             }
@@ -2556,47 +2676,6 @@ class Publications {
             }
         }
         return $upload;
-    }
-
-    public static function deleteMiddleNameOnlyMatches($token, $server, $pid, $recordId, $redcapData, $firstName, $lastName, $middleName, $institutions) {
-	    if (NameMatcher::isInitial($middleName)) {
-            $firstNames = NameMatcher::explodeFirstName($firstName);
-            $lastNames = NameMatcher::explodeLastName($lastName);
-            $pmidsMatchedByFirst = [];
-            foreach ($lastNames as $lastName) {
-                foreach ($firstNames as $firstName) {
-                    if (isset($middleName) && $middleName) {
-                        $firstName .= " ".$middleName;
-                    }
-                    $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institutions, $recordId);
-                    $pmidsMatchedByFirst = array_unique(array_merge($pmidsMatchedByFirst, $currPMIDs));
-                }
-            }
-
-            $candidateNames = [$middleName, $middleName." ".$middleName];
-            $pmidsMatchedByMiddle = [];
-            foreach ($lastNames as $lastName) {
-                foreach ($candidateNames as $candidateName) {
-                    $currPMIDs = Publications::searchPubMedForName($candidateName, $lastName, $pid, $institutions, $recordId);
-                    $pmidsMatchedByMiddle = array_unique(array_merge($pmidsMatchedByMiddle, $currPMIDs));
-                }
-            }
-
-            $instancesToDelete = [];
-            foreach ($redcapData as $row) {
-                if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
-                    $pmid = $row['citation_pmid'];
-                    if (in_array($pmid, $pmidsMatchedByMiddle) && !in_array($pmid, $pmidsMatchedByFirst)) {
-                        $instancesToDelete[] = $row['redcap_repeat_instance'];
-                    }
-                }
-            }
-
-            if (!empty($instancesToDelete)) {
-                Application::log("Deleting publication instances for record $recordId: ".implode(", ", $instancesToDelete), $pid);
-                Upload::deleteFormInstances($token, $server, $pid, "citation_", $recordId, $instancesToDelete);
-            }
-        }
     }
 
     public static function PMIDsToPMCs($pmids, $pid) {

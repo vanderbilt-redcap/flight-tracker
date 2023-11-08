@@ -1752,7 +1752,7 @@ class DataDictionaryManagement {
 
     public static function getSurveys($pid, $metadata = []) {
         $module = Application::getModule();
-        if (!method_exists($module, "query")) {
+        if (!method_exists($module, "query") || !class_exists("\REDCap")) {
             require_once(dirname(__FILE__)."/../../../redcap_connect.php");
         }
 
@@ -1766,7 +1766,7 @@ class DataDictionaryManagement {
                 $currentInstruments[$instrumentName] = self::translateFormToName($instrumentName);
             }
         } else {
-            $currentInstruments = \REDCap::getInstrumentNames();
+            $currentInstruments = \REDCap::getInstrumentNames(NULL, $pid);
         }
 
         $forms = array();

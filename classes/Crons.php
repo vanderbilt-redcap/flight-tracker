@@ -8,6 +8,8 @@ require_once(__DIR__ . '/ClassLoader.php');
 class CronManager {
     const MAX_BATCHES_IN_ONE_CRON = 5;
     const REPEAT_BATCH_WHEN_LESS_THAN = 15;
+    const EXCEPTION_EMAIL_SUBJECT = "Flight Tracker Batch Job Exception";
+    const DIGEST_EMAIL_SETTING = "exception_emails";
 
 	public function __construct($token, $server, $pid, $module = NULL) {
 		$this->token = $token;
@@ -108,6 +110,22 @@ class CronManager {
             Application::log("Added cron $method: ".$this->getNumberOfCrons()." total crons now");
         }
  	}
+
+     public static function enqueueExceptionsMessageInDigest($to, $mssg) {
+        $priorMessages = Application::getSystemSetting(self::DIGEST_EMAIL_SETTING) ?: [];
+        if (!isset($priorMessages[$to])) {
+            $priorMessages[$to] = [];
+        }
+        $priorMessages[$to][] = date("Y-m-d H:i:s")."<br/>".$mssg;
+        Application::saveSystemSetting(self::DIGEST_EMAIL_SETTING, $priorMessages);
+     }
+
+     public static function sendExceptionDigests() {
+         $priorMessages = Application::getSystemSetting(self::DIGEST_EMAIL_SETTING) ?: [];
+         foreach ($priorMessages as $to => $messages) {
+             \REDCap::email($to, "noreply.flighttracker@vumc.org", self::EXCEPTION_EMAIL_SUBJECT, implode("<hr/>", $messages));
+         }
+     }
 
     private function addCronForBatchMulti($file, $method, $dayOfWeek, $pids, $firstParameter = FALSE) {
         if (empty($pids)) {

@@ -13,6 +13,10 @@ class REDCapManagement {
 	    return isset($_GET['pid']);
     }
 
+    public static function compressArray(&$ary) {
+        $ary = array_values($ary);
+    }
+
     public static function isInProduction($pid) {
         $module = Application::getModule();
         if ($module) {
@@ -1619,6 +1623,20 @@ class REDCapManagement {
         ];
 
         return strtr(html_entity_decode($text, ENT_QUOTES, "UTF-8"), $quoteMapping);
+    }
+
+    public static function clearUnicodeInArray($ary) {
+        $newAry = [];
+        foreach ($ary as $key => $value) {
+            $key = self::clearUnicode($key);
+            if (is_array($value)) {
+                $value = self::clearUnicodeInArray($value);
+            } else {
+                $value = self::clearUnicode($value);
+            }
+            $newAry[$key] = $value;
+        }
+        return $newAry;
     }
 
     public static function clearUnicode($str) {

@@ -1497,7 +1497,7 @@ function omitGrant(recordId, grantNumber, source) {
 }
 
 function copyProject(token, server) {
-	if (token && server && (token.length == 32)) {
+	if (token && server && (token.length === 32)) {
 		presentScreen('Copying project...<br>May take some time depending on size');
 		$.post(getPageUrl('copyProject.php'), { 'redcap_csrf_token': getCSRFToken(), token: token, server: server }, function(html) {
 			clearScreen();
@@ -1936,4 +1936,114 @@ function changeCelebrationsEmail(url, email) {
 			content: "Something has gone wrong.",
 			icon: $.sweetModal.ICON_ERROR
 		});
-	}}
+	}
+}
+
+function downloadNewInstitutionsFromPubMed(url, records, resultsSel, loadingSel, startIndex, priorNameCount) {
+	const pullSize = 4;
+	const recordsToPull = [];
+	for (let i = startIndex * pullSize; (i < records.length) && (i < (startIndex + 1) * pullSize); i++) {
+		recordsToPull.push(records[i]);
+	}
+	if (recordsToPull.length === 0) {
+		$(loadingSel).html("");
+		return;
+	}
+	$(loadingSel).html(getSmallLoadingMessage("Loading Records "+recordsToPull.join(", ")+"..."));
+	console.log("Iteration "+startIndex+": Downloading for "+recordsToPull.join(", "));
+	$.post(url, { records: recordsToPull, redcap_csrf_token: getCSRFToken() }, (json) => {
+		console.log((json.length < 300) ? json : json.substring(0, 300)+"...");
+		try {
+			const data = JSON.parse(json);
+			let html = "";
+			const numCols = 6;
+			for (const recordId in data) {
+				const rowClass = (priorNameCount % 2 === 0) ? "even" : "odd";
+				const numRecordMatches = Object.keys(data[recordId]).length;
+				const recordClass = "record_"+recordId;
+				const recordClassHeader = recordClass+"_header";
+				const count = Object.keys(data[recordId]).length;
+				if (count > 0) {
+					const firstPMID = Object.keys(data[recordId])[0];
+					const name = data[recordId][firstPMID].name;
+					const pubWord = (count == 1) ? "Publication" : "Publications";
+					html += "<tr class='"+rowClass+" "+recordClassHeader+"'><td class='centered padded' colspan='"+numCols+"'><a href='javascript:;' onclick='$(\"."+recordClass+"\").show(); $(\"."+recordClassHeader+"\").hide();'>Show "+count+" "+pubWord+" for Record "+recordId+": "+name+"</a></td></tr>";
+					for (const pmid in data[recordId]) {
+						const info = data[recordId][pmid];
+						const pubmedUrl = "https://pubmed.ncbi.nlm.nih.gov/"+pmid+"/";
+						html += "<tr class='"+rowClass+" "+recordClass+"' style='display: none;'><th>Record "+recordId+":<br/>"+info.name+"<br/><span class='unbolded'>"+numRecordMatches+" new matches</span></th><td class='smaller alignLeft max-width-300'>"+info.citation+"<div class='centered'><a href='"+pubmedUrl+"' target='_blank'>PubMed</a></div></td><td>"+info.date+"</td><td class='max-width-300'>"+makeUnorderedList(info.institutions)+"</td><td>"+info.authors.join("<br/>")+"</td><td class='max-width-300'>"+makeAffiliationButtons(url, info.affiliations, pmid, recordId)+"</td></tr>"
+					}
+					priorNameCount++;
+				}
+			}
+			$(resultsSel).append(html);
+
+			if ((startIndex + 1) * pullSize >= records.length) {
+				if ($(resultsSel).html() === "") {
+					$(loadingSel).html("<p class='centered max-width green'>No new institutional matches were found.</p>");
+				} else {
+					$(loadingSel).html("");
+				}
+			} else {
+				downloadNewInstitutionsFromPubMed(url, records, resultsSel, loadingSel, startIndex + 1, priorNameCount);
+			}
+		} catch(e) {
+			console.error(JSON.stringify(e));
+			$.sweetModal({
+				content: "ERROR: "+e+"<br/>"+json,
+				icon: $.sweetModal.ICON_ERROR
+			});
+		}
+	})
+}
+
+function makeAffiliationButtons(url, affiliations, pmid, recordId) {
+	if (affiliations.length === 0) {
+		return "";
+	}
+	const items = [];
+	for (let i=0; i < affiliations.length; i++) {
+		const affiliation = affiliations[i];
+		const textareaName = "affil_"+recordId+"_"+pmid+"_"+i;
+		const divName = "affilDiv_"+recordId+"_"+pmid+"_"+i;
+		const editDiv = "<div id='"+divName+"' style='display: none;'><label class='smaller' for='"+textareaName+"'>Shorten to institution name:</label><br/><textarea id='"+textareaName+"' style='font-size: 0.9em; width: 250px; height: 80px;'>"+affiliation+"</textarea><br/><button class='smallest' onclick='addAffiliation(\""+url+"\", \""+recordId+"\", \"#"+textareaName+"\"); return false;'>Add to REDCap Record</button></div>";
+		items.push(affiliation+"<br/><button class='smallest' onclick='$(\"#"+divName+"\").show(); $(this).hide(); return false;'>Edit Institution Name</button>"+editDiv)
+	}
+	const mssg = (items.length === 1) ? "Is this the right institution?" : "Are these correct institutions?";
+	return "<div class='smaller bolded'>"+mssg+"</div>"+makeUnorderedList(items);
+}
+
+function addAffiliation(url, recordId, valueSelector) {
+	const text = $(valueSelector).val();
+	if (text !== "") {
+		const postData = { redcap_csrf_token: getCSRFToken(), record: recordId, institution: text };
+		$.post(url, postData, (result) => {
+			console.log(result);
+			if (result.match(/error/i)) {
+				$.sweetModal({
+					content: result,
+					icon: $.sweetModal.ICON_ERROR
+				});
+			} else {
+				$.sweetModal({
+					content: "Added "+text+" as an institution to the REDCap record.",
+					icon: $.sweetModal.ICON_SUCCESS
+				});
+			}
+		});
+	}
+}
+
+function makeUnorderedList(ary) {
+	if (ary.length === 0) {
+		return "";
+	} else if (ary.length === 1) {
+		return ary[0];
+	}
+
+	const rows = [];
+	for (let i=0; i < ary.length; i++) {
+		rows.push("<li class='alignLeft'>"+ary[i]+"</li>");
+	}
+	return "<ul style='margin: 0 0; padding-left: 8px;'>"+rows.join("")+"</ul>";
+}

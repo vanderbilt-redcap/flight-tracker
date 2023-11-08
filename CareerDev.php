@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.0.1";
+		return "6.1.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -1182,6 +1182,7 @@ class CareerDev {
                 "Add a New Scholar" => self::link("/addNewScholar.php"),
                 "Scholar Profiles" => self::link("/profile.php"),
                 "Inactivity Report" => self::link("/inactive.php"),
+                "Search PubMed for New Institutions" => self::link("publications/checkForNewInstitutions.php"),
             ];
             $ary["Configure an Email"] = self::link("/emailMgmt/configure.php");
             $ary["View Email Log"] = self::link("/emailMgmt/log.php");

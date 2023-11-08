@@ -43,6 +43,7 @@ div.right { border-left: 1px dotted black; border-right: 1px solid #888888; padd
 .centered { text-align: center; }
 .left-align { text-align: left; }
 .bolded { font-weight: bold; }
+.unbolded { font-weight: normal; }
 div.centered,table.centered { margin: 0px auto; }
 table { border-collapse: collapse; }
 .duplicated { background-color: #fff360; }
@@ -205,3 +206,4 @@ div.scrollable { width: 100%; max-height: 75px; margin: 0; padding: 0; overflow:
 .Unfunded { border-color: #888888 !important; }
 .Pending { border-color: #8dc63f !important; }
 .Awarded { border-color: #f4c3ff !important; }
+.sameLine { word-wrap:break-word; }

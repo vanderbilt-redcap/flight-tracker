@@ -100,7 +100,6 @@ function getPubsGeneric($token, $server, $pid, $records, $searchWithInstitutions
 	}
 	processPubMed($citationIds, $maxInstances, $token, $server, $pid, $records, $searchWithInstitutions);
 	postprocess($token, $server, $records);
-    cleanUpMiddleNamesSeepage($token, $server, $pid, $records);
     dedupPubs($token, $server, $pid, $records);
 	CareerDev::saveCurrentDate("Last PubMed Download", $pid);
 }
@@ -258,8 +257,6 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         $recLastName = $allLastNames[$recordId];
 		$firstName = $allFirstNames[$recordId];
 		$middleName = $allMiddleNames[$recordId];
-        $lastNames = NameMatcher::explodeLastName(strtolower($recLastName));
-        $firstNames = NameMatcher::explodeFirstName(strtolower($firstName), strtolower($middleName));
 
         if ($searchWithInstitutions) {
             if (isset($allInstitutions[$recordId])) {
@@ -276,8 +273,6 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
             $institutions = ["all"];
         }
 
-        $firstNames = REDCapManagement::removeBlanksFromAry($firstNames);
-        $lastNames = REDCapManagement::removeBlanksFromAry($lastNames);
         $institutions = REDCapManagement::removeBlanksFromAry($institutions);
 
 		$pmids = array();
@@ -287,21 +282,10 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
             addPMIDsIfNotFound($pmids, $citationIds, $orcidPMIDs, $recordId);
         }
 
-        $uniquePMIDs = [];
-        $middle = "";     // can set at some future point as this is searchable
-        foreach ($lastNames as $lastName) {
-			foreach ($firstNames as $firstName) {
-                if ($middle) {
-                    $firstName .= " ".$middle;
-                }
-                Application::log("Searching $lastName $firstName at ". implode(", ", $institutions), $pid);
-                echo "Searching $lastName $firstName at ".implode(", ", $institutions)."\n";
-                $currPMIDs = Publications::searchPubMedForName($firstName, $lastName, $pid, $institutions);
-                $uniquePMIDs = array_unique(array_merge($uniquePMIDs, $currPMIDs));
-			}
-		}
+        Application::log("Searching $recLastName $firstName at ".implode(", ", $institutions), $pid);
+        $uniquePMIDs = Publications::searchPubMedForName($firstName, $middleName, $recLastName, $pid, $institutions);
         addPMIDsIfNotFound($pmids, $citationIds, $uniquePMIDs, $recordId);
-		CareerDev::log("$recordId at ".count($pmids)." new PMIDs ".json_encode($pmids));
+		Application::log("$recordId at ".count($pmids)." new PMIDs ".json_encode($pmids), $pid);
 
 		if (!isset($maxInstances[$recordId])) {
 			$maxInstances[$recordId] = 0;
@@ -451,44 +435,6 @@ function fetchPMIDs($pubMedData) {
         }
     }
     return $pmids;
-}
-
-function cleanUpMiddleNamesSeepage($token, $server, $pid, $records) {
-    if (empty($records)) {
-        $records = Download::recordIds($token, $server);
-    }
-
-    $cleaningField = "cleaned_by_middle_name";
-    $recordsCleanedByMiddleName = Application::getSetting($cleaningField, $pid);
-    if (!is_array($recordsCleanedByMiddleName)) {
-        $recordsCleanedByMiddleName = [];
-    }
-    if (count(array_unique(array_merge($records, $recordsCleanedByMiddleName))) == count($recordsCleanedByMiddleName)) {
-        # nothing new
-        return;
-    }
-
-    $firstNames = Download::firstnames($token, $server);
-    $lastNames = Download::lastnames($token, $server);
-    $middleNames = Download::middlenames($token, $server);
-    $allInstitutions = Download::institutions($token, $server);
-    $defaultInstitutions = array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid)));
-    $metadata = Download::metadata($token, $server);
-
-    foreach ($records as $recordId) {
-        if (
-            $middleNames[$recordId]
-            && NameMatcher::isInitial($middleNames[$recordId])
-            && !in_array($recordId, $recordsCleanedByMiddleName)
-        ) {
-            $redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), [$recordId]);
-            $institutions = isset($allInstitutions[$recordId]) ? Scholar::explodeInstitutions($allInstitutions[$recordId]) : [];
-            $institutions = array_unique(array_merge($institutions, $defaultInstitutions));
-            Publications::deleteMiddleNameOnlyMatches($token, $server, $pid, $recordId, $redcapData, $firstNames[$recordId], $lastNames[$recordId], $middleNames[$recordId], $institutions);
-        }
-    }
-    $recordsCleanedByMiddleName = array_unique(array_merge($recordsCleanedByMiddleName, $records));
-    Application::saveSetting($cleaningField, $recordsCleanedByMiddleName, $pid);
 }
 
 # a publication may have a month or a day field missing; this fills in the rest to make it a REDCap-compatible date

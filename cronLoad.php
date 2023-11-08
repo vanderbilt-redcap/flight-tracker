@@ -72,7 +72,8 @@ function runMainCrons(&$manager, $token, $server) {
         if (in_array("ies_grant", $forms)) {
             $manager->addCron("drivers/24_getIES.php", "getIES", "Thursday", $allRecords, 10000);
         }
-        if (!Application::isLocalhost() && Application::isVanderbilt()) {
+        if (!Application::isLocalhost() && Application::isVanderbilt() && !Application::isServer("redcaptest.vanderbilt.edu")) {
+            # only on redcap.vanderbilt.edu
             $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
             $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Friday", $allRecords, 500);
             if (in_array('coeus', $forms)) {

@@ -1131,7 +1131,7 @@ function cleanOutJSONs($metadata) {
 	return $metadata;
 }
 
-function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $metadata) {
+function resetRemoteRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $destMetadata) {
     $destServer = Sanitizer::sanitizeURL($destServer);
     $srcServer = Sanitizer::sanitizeURL($srcServer);
     if (!$destServer || !$srcServer) {
@@ -1158,12 +1158,12 @@ function resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServe
 	$output = (string) curl_exec($ch);
 	curl_close($ch);
 
-	$metadataForms = REDCapManagement::getFormsFromMetadata($metadata);
-	Application::log("Metadata forms: ".implode(", ", $metadataForms));
+    $destMetadataForms = DataDictionaryManagement::getFormsFromMetadata($destMetadata);
+	Application::log("Metadata forms: ".implode(", ", $destMetadataForms));
 	$data = json_decode($output, TRUE);
 	$newData = [];
 	foreach ($data as $row) {
-	    if (in_array($row['form_name'], $metadataForms)) {
+	    if (in_array($row['form_name'], $destMetadataForms)) {
 	        $newData[] = $row;
         }
     }
@@ -1268,7 +1268,7 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
     $calcFields = REDCapManagement::getFieldsOfType($metadata, "calc");
     $timeFields = REDCapManagement::getFieldsOfType($metadata, "text", "datetime_ymd");
 
-    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcToken, $server, $destToken, $server, $metadata);
+    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRemoteRepeatingInstruments($srcToken, $server, $destToken, $server, $metadata);
     CareerDev::log("Reset Repeating Instruments: ".json_encode($feedback));
     echo "Reset Repeating Instruments: ".json_encode($feedback)."<br>";
 
@@ -1480,15 +1480,20 @@ function getValidProjectSettingsForUpload() {
     ];
 }
 
-function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer) {
+function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer, $restartNumbering) {
     $metadata = Download::metadata($srcToken, $srcServer);
 
     $allFeedback = [];
     $destRecords = Download::recordIds($destToken, $destServer);
-    if (!empty($destRecords)) {
+    if (!empty($destRecords) && $restartNumbering) {
         $feedback = Upload::deleteRecords($destToken, $destServer, $destRecords);
         Application::log("Delete project: ".count($destRecords)." records: ".json_encode($feedback));
         $allFeedback[] = $feedback;
+        $maxDestRecord = 0;
+    } else if (!empty($destRecords)) {
+        $maxDestRecord = max($destRecords);
+    } else {
+        $maxDestRecord = 0;
     }
 
     $projectSettings = Download::getProjectSettings($srcToken, $srcServer);
@@ -1502,11 +1507,17 @@ function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer) 
     $destProjectSettings = Download::getProjectSettings($destToken, $destServer);
     $destPid = $destProjectSettings['project_id'];
 
-    $feedback = Upload::metadata(cleanOutJSONs($metadata), $destToken, $destServer);
-    $calcFields = REDCapManagement::getFieldsOfType($metadata, "calc");
-    $timeFields = REDCapManagement::getFieldsOfType($metadata, "text", "datetime_ymd");
+    if ($restartNumbering) {
+        $destMetadata = cleanOutJSONs($metadata);
+        $feedback = Upload::metadata($destMetadata, $destToken, $destServer);
+    } else {
+        $destMetadata = Download::metadata($destToken, $destServer);
+    }
+    $destMetadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+    $calcFields = REDCapManagement::getFieldsOfType($destMetadata, "calc");
+    $timeFields = REDCapManagement::getFieldsOfType($destMetadata, "text", "datetime_ymd");
 
-    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $metadata);
+    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRemoteRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $metadata);
     Application::log("Reset Repeating Instruments: ".json_encode($feedback));
 
     $records = Download::recordIds($srcToken, $srcServer);
@@ -1516,7 +1527,14 @@ function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer) 
         foreach ($recordData as $row) {
             $newRow = [];
             foreach ($row as $field => $value) {
-                if (!in_array($field, $calcFields) && !in_array($field, $timeFields)) {
+                if ($field == "record_id") {
+                    if (is_numeric($value) && ($maxDestRecord > 0)) {
+                        $value += $maxDestRecord;
+                    } else if (!is_numeric($value) && ($maxDestRecord > 0)) {
+                        throw new \Exception("Invalid Record ID $value! Record IDs must be numeric to automatically increment.");
+                    }
+                    $newRow[$field] = $value;
+                } else if (!in_array($field, $calcFields) && !in_array($field, $timeFields) && in_array($field, $destMetadataFields)) {
                     $newRow[$field] = $value;
                 }
             }
@@ -1537,7 +1555,7 @@ function getQuestionsForForm($token, $server, $form) {
 	$formMetadata = Download::formMetadata($token, $server, array($form));
 	$labels = array();
 	foreach ($formMetadata as $row) {
-		array_push($labels, $row['field_label']);
+		$labels[] = $row['field_label'];
 	}
 	return $labels;
 }

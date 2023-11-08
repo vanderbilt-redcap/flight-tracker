@@ -98,7 +98,7 @@ class Application {
                 } else {
                     throw new \Exception("Invalid pattern $color");
                 }
-                $hexColors[] = strtoupper("#$aa$rr$gg$bb");
+                $hexColors[] = strtoupper("#$rr$gg$bb$aa");
             }
             return $hexColors;
         } else {

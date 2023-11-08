@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\Grants;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Publications;
@@ -9,6 +10,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Links;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\DateManagement;
+use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -18,6 +20,8 @@ if (Grants::areFlagsOn($pid)) {
     $classes[] = "Flagged";
 }
 $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CSS below
+$switches = new FeatureSwitches($token, $server, $pid);
+$switchSettings = $switches->getSwitches();
 
 ?>
 
@@ -25,29 +29,31 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
 
 	$records = Download::recordIds($token, $server);
     $metadataFields = Download::metadataFields($token, $server);
-    $validPrefixes = [
+    $validPrefixes = [];
+    $grantPrefixes = [
         "coeus_",
         "coeussubmission_",
         "vera_",
         "verasubmission_",
         "summary_",
-        "citation_",
-        "eric_",
         "nih_",
         "reporter_",
         "custom_",
     ];
+    $pubPrefixes = [
+        "citation_",
+        "eric_",
+    ];
+    if (($switchSettings["Grants"] != "Off") && !isset($_GET['noCDA'])) {
+        $validPrefixes = array_merge($validPrefixes, $grantPrefixes);
+    }
+    if ($switchSettings["Publications"] != "Off") {
+        $validPrefixes = array_merge($validPrefixes, $pubPrefixes);
+    }
     $fieldsToDownload = ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"];
-    foreach ($metadataFields as $field) {
-        $matched = FALSE;
-        foreach ($validPrefixes as $prefix) {
-            if (preg_match("/^".$prefix."/", $field)) {
-                $matched = TRUE;
-            }
-        }
-        if ($matched) {
-            $fieldsToDownload[] = $field;
-        }
+    foreach ($validPrefixes as $prefix) {
+        $prefixFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $prefix);
+        $fieldsToDownload = array_unique(array_merge($fieldsToDownload, $prefixFields));
     }
 
 	$recordId = isset($_GET['record']) ? REDCapManagement::getSanitizedRecord($_GET['record'], $records) : $records[0];
@@ -108,7 +114,9 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
         if ($grantAry) {
             $grantsAndPubs[$c][] = $grantAry;
         }
-        if (in_array($c, ["All", "AllWithSubmissions"])) {
+        if ($switchSettings["Grants"] == "Off") {
+            $grantType = "NONE";
+        } else if (in_array($c, ["All", "AllWithSubmissions"])) {
             $grantType = "all";
         } else if (($c == "PubsCDAs") && !isset($_GET['noCDA'])) {
             $grantType = "prior";
@@ -127,7 +135,7 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
             $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $grantBars);
         }
 
-        if ($c == "PubsCDAs") {
+        if (($c == "PubsCDAs") && ($switchSettings["Publications"] != "Off")) {
             $pubDots = makePubDots($rows, $token, $server, $id, $minTs[$c], $maxTs[$c]);
             $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $pubDots);
         }

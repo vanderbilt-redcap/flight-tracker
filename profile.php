@@ -232,13 +232,13 @@ $(document).ready(function() {
         $lines = [];
         if (Portal::isLive()) {
             $scholarPortalUrl = Application::getScholarPortalLink()."&match=$pid:$record";
-            $lines[] = Links::makeLink($scholarPortalUrl, "Spoof This Scholar in the Scholar Portal for This Project Only");
+            $lines[] = Links::makeLink($scholarPortalUrl, "Spoof This Scholar in the Scholar Portal for This Project Only")."<br/>Spoofing or mimicking a scholar allows you to see what they might see or to troubleshoot issues as they arise.";
         }
         if ($imgBase64) {
             $lines[] = "<img src='$imgBase64' class='thumbnail' alt='Picture for $name' />";
         }
         if (!empty($lines)) {
-            echo "<p class='centered'>".implode("<br/>", $lines)."</p>";
+            echo "<p class='centered max-width'>".implode("<br/>", $lines)."</p>";
         }
     ?>
     <div style='margin: 0 auto; max-width: 600px; padding: 4px 0;' class='blueBorder translucentBG'>

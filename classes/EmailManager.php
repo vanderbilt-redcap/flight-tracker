@@ -140,7 +140,7 @@ class EmailManager {
 	    self::$turnOffShutdownFunction = FALSE;
         register_shutdown_function([$this, "reportCronErrors"]);
         $messages = $this->enqueueRelevantEmails($to, $names, "sendEmail");
-        Application::log(count($messages)." emails are enqueued to send.", $this->pid);
+        // Application::log(count($messages)." emails are enqueued to send.", $this->pid);
 		$this->sendPreparedEmails($messages, ($to !== ""));
 	    self::$turnOffShutdownFunction = TRUE;
 	}
@@ -440,7 +440,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
             if (!empty($emailData)) {
                 return $this->sendPreparedEmail($emailData, ($toField != "who"));
             }
-            return array();
+            return [];
         } catch (\Exception $e) {
             Application::log("Email Exception: ".$e->getMessage(), $this->pid);
             return [];
@@ -592,10 +592,10 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	private function prepareEmail($emailSetting, $settingName, $whenType, $toField = "who") {
 		$rows = $this->getRows($emailSetting["who"], $whenType, $this->getForms($emailSetting["what"]));
-		if (empty($rows)) {
+        if (empty($rows)) {
             Application::log("PrepareEmail: Rows empty", $this->pid);
-			return [];
-		}
+            return [];
+        }
 
 		$data = array();
 		$emails = self::processEmails($rows);

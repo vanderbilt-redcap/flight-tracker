@@ -45,6 +45,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         Application::increaseProcessingMax(8);
         $this->setupApplication();
         $activePids = $this->getPids();
+
         foreach ($activePids as $pid) {
             # note return at end of successful run because only need to run once
             $token = $this->getProjectSetting("token", $pid);
@@ -62,7 +63,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     }
                     Application::log("batch F $pid: ".memory_get_usage());
                     $mssg = $e->getMessage()."<br><br>".$e->getTraceAsString();
-                    \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Batch Job Exception", $mssg);
+                    if (Application::isVanderbilt()) {
+                        \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", CronManager::EXCEPTION_EMAIL_SUBJECT, $mssg);
+                    } else {
+                        CronManager::enqueueExceptionsMessageInDigest($adminEmail, $mssg);
+                    }
                 }
                 return;
             } else {
@@ -82,7 +87,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         // CareerDev::log($this->getName()." sending emails for pids ".json_encode($pids));
 		foreach ($activePids as $pid) {
 			if (REDCapManagement::isActiveProject($pid)) {
-                Application::log("Beginning of email processing for project.", $pid);
 				$token = $this->getProjectSetting("token", $pid);
 				$server = $this->getProjectSetting("server", $pid);
 				if ($token && $server) {
@@ -106,7 +110,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", "Flight Tracker Email Exception", $mssg);
                     }
                 }
-                Application::log("End of email processing for project.", $pid);
 			}
 		}
 	}
@@ -1040,6 +1043,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     }
 
     function cron() {
+        CronManager::sendExceptionDigests();
 	    if (CareerDev::isVanderbilt()) {
 	        try {
 	            $this->executeCron();
@@ -1267,7 +1271,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			echo "
 <script>
 	$(document).ready(function() { setTimeout(function() { transformColumn(); }, 500); });
-</script>\n";
+</script>";
         } else if (PAGE == "ProjectSetup/index.php") {
             echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
             echo "
@@ -1291,7 +1295,23 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     $(document).ready(() => {
         $('[data-rc-lang=data_entry_532]').parent().parent().hide();
     });
-</script>\n";
+</script>";
+            if (Application::isMSTP($project_id) && ($_GET['page'] == "mstp_mentee_mentor_agreement")) {
+                $token = Application::getSetting("token", $project_id);
+                $server = Application::getSetting("server", $project_id);
+                $records = Download::recordIds($token, $server);
+                $record = Sanitizer::getSanitizedRecord($_GET['id'], $records);
+                $instance = Sanitizer::sanitizeInteger($_GET['instance'] ?? 1);
+                if ($record && $instance) {
+                    $viewLink = Application::link("mstp/downloadMMA.php")."&record=$record&instance=$instance";
+                    echo "
+<script>
+	$(document).ready(function() {
+        $('#mstpmma_document_html-tr td.data').append('<div style=\"text-align: right;\"><a href=\"$viewLink\">View Document</a></div>')
+	 });
+</script>";
+                }
+            }
         }
 	}
 

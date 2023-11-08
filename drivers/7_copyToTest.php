@@ -32,7 +32,7 @@ echo "DESTINATION: ".$info['test']['server']."\n";
 echo "DESTINATION: ".$info['test']['token']."\n";
 echo "\n";
 
-$feedback = resetRepeatingInstruments($info['prod']['token'], $info['prod']['server'], $info['test']['token'], $info['test']['server']);
+$feedback = resetRemoteRepeatingInstruments($info['prod']['token'], $info['prod']['server'], $info['test']['token'], $info['test']['server']);
 $output = json_encode($feedback);
 echo "Copied repeating instruments: ".$output."\n";
 

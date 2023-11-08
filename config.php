@@ -381,7 +381,7 @@ function makeSettings($module, $pid) {
         $note = (isset($row['field_note']) && $row['field_note']) ? "<div class='smaller'>".$row['field_note']."</div>" : "";
         $ary["Administrative Setup"][] = makeSetting($setting, "short_textarea", "<div>Options for <strong>$label</strong> on the <strong>".ucfirst($form)."</strong> form.</div>$note<div class='smaller'>(One per line. Optional. When filled in, it will create an extra field in your project once you update your Data Dictionary on Flight Tracker's Home page.)</div>");
     }
-    $ary["Administrative Setup"][] = makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "Share Data Among the Following Resources?");
+    $ary["Administrative Setup"][] = makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "In Flight Tracker's data-sharing on the same server, in addition to surveys, what data should be shared among the following forms?");
 
 
 	$ary["Emails"] = [];
@@ -463,7 +463,7 @@ function makeCheckboxes($var, $fieldChoices, $label, $defaultChecked = []) {
         } else {
             $first = FALSE;
         }
-        $html .= "<input type='checkbox' name='$var"."[]' id='$var"."___$idx' value='$idx'$selected><label for='$var"."___$idx'> $fieldLabel</label>\n";
+        $html .= "<span class='sameLine'><input type='checkbox' name='$var"."[]' id='$var"."___$idx' value='$idx'$selected><label for='$var"."___$idx'> $fieldLabel</label></span>";
     }
     $html .= "</td></tr>\n";
     return $html;

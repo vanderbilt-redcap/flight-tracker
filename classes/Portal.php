@@ -48,6 +48,7 @@ class Portal
             $this->token = Application::getSetting("token", $this->pid);
             $this->server = Application::getSetting("server", $this->pid);
         }
+        $this->featureSwitches = new FeatureSwitches($this->token, $this->server, $this->pid);
         if (!$this->verifyRequest()) {
             throw new \Exception("Unverified Access. Your name and email/user-id must match up with a Flight Tracker record.");
         }
@@ -426,9 +427,10 @@ class Portal
         return self::getPhotoInMatches($validMatches);
     }
 
-    # 3 words max
     public function getMenu() {
+        $settings = $this->featureSwitches->getSwitches();
         $menu = [];
+        # 3 words max in menu title
         $menu["Your Info"] = [];
         $menu["Your Graphs"] = [];
         $menu["Your Network"] = [];
@@ -459,26 +461,45 @@ class Portal
         ];
         // TODO ORCID Bio Link in Your Info
 
-        $menu["Your Graphs"][] = [
-            "action" => "scholar_collaborations",
-            "title" => "Publishing Collaborations",      // social network graph
-        ];
-        $menu["Your Graphs"][] = [
-            "action" => "pubs_impact",
-            "title" => "Publishing Impact",      // combined & deduped RCR graph; Altmetric summary & links
-        ];
-        $menu["Your Graphs"][] = [
-            "action" => "timelines",
-            "title" => "Grant &amp; Publication Timelines",     // Pubs & all grants; encouraging message if blank
-        ];
-        $menu["Your Graphs"][] = [
-            "action" => "group_collaborations",
-            "title" => "Publishing Collaborations in {$this->projectTitle} (Computationally Expensive)",
-        ];
-        $menu["Your Graphs"][] = [
-            "action" => "grant_funding",
-            "title" => "Grant Funding by Year",
-        ];
+        if ($settings["Publications"] != "Off") {
+            $menu["Your Graphs"][] = [
+                "action" => "scholar_collaborations",
+                "title" => "Publishing Collaborations",      // social network graph
+            ];
+            $menu["Your Graphs"][] = [
+                "action" => "pubs_impact",
+                "title" => "Publishing Impact",      // combined & deduped RCR graph; Altmetric summary & links
+            ];
+        }
+        if (($settings["Publications"] != "Off") && ($settings["Grants"] != "Off")) {
+            $menu["Your Graphs"][] = [
+                "action" => "timelines",
+                "title" => "Grant &amp; Publication Timelines",     // Pubs & all grants; encouraging message if blank
+            ];
+        } else if ($settings["Grants"] != "Off") {
+            $menu["Your Graphs"][] = [
+                "action" => "timelines",
+                "title" => "Grant Timelines",
+            ];
+        } else if ($settings["Publications"] != "Off") {
+            $menu["Your Graphs"][] = [
+                "action" => "timelines",
+                "title" => "Publication Timelines",
+            ];
+        }
+
+        if ($settings["Publications"] != "Off") {
+            $menu["Your Graphs"][] = [
+                "action" => "group_collaborations",
+                "title" => "Publishing Collaborations in {$this->projectTitle} (Computationally Expensive)",
+            ];
+        }
+        if ($settings["Grants"] != "Off") {
+            $menu["Your Graphs"][] = [
+                "action" => "grant_funding",
+                "title" => "Grant Funding by Year",
+            ];
+        }
 
         $menu["Your Network"][] = [
             "action" => "mentoring",
@@ -1564,4 +1585,5 @@ Examples:
     protected $pidRecords;
     protected $token;
     protected $server;
+    protected $featureSwitches;
 }

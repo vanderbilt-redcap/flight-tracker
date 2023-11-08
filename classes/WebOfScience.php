@@ -40,30 +40,30 @@ class WebOfScience {
                 if (empty($pmids)) {
                     Application::log("No PMIDs", $this->pid);
                 } else {
-                    Application::log("Web of Science Downloading for ".count($pmids)." PMIDs", $this->pid);
-                    $xml = $this->makeXML($pmids);
-                    // Application::log("Uploading ".$xml, $this->pid);
-                    $url = 'https://ws.isiknowledge.com/cps/xrpc';
-
-                    $curl = curl_init($url);
-                    curl_setopt($curl, CURLOPT_HTTPHEADER, array("Content-Type: text/xml"));
-                    curl_setopt($curl, CURLOPT_POST, true);
-                    curl_setopt($curl, CURLOPT_POSTFIELDS, $xml);
-                    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-                    $result = (string) curl_exec($curl);
-                    if (curl_errno($curl)) {
-                        throw new \Exception(curl_error($curl));
-                    }
-                    curl_close($curl);
-                    Application::log("Got ".strlen($result)." bytes from ".$url, $this->pid);
-                    // Application::log($result, $this->pid);
-
-                    $maxTries = 5;
+                    $maxTries = 2;
                     $tryNum = 0;
                     $done = FALSE;
                     $values = [];
                     while (($tryNum < $maxTries) && !$done) {
                         $tryNum++;
+                        Application::log("Web of Science Downloading for ".count($pmids)." PMIDs", $this->pid);
+                        $xml = $this->makeXML($pmids);
+                        // Application::log("Uploading ".$xml, $this->pid);
+                        $url = 'https://ws.isiknowledge.com/cps/xrpc';
+
+                        $curl = curl_init($url);
+                        curl_setopt($curl, CURLOPT_HTTPHEADER, array("Content-Type: text/xml"));
+                        curl_setopt($curl, CURLOPT_POST, true);
+                        curl_setopt($curl, CURLOPT_POSTFIELDS, $xml);
+                        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+                        $result = (string) curl_exec($curl);
+                        if (curl_errno($curl)) {
+                            throw new \Exception(curl_error($curl));
+                        }
+                        curl_close($curl);
+                        Application::log("Got ".strlen($result)." bytes from ".$url, $this->pid);
+                        // Application::log($result, $this->pid);
+
                         try {
                             $values = $this->parseXML($result);
                             Application::log("On try $tryNum, got ".count($values)." values from XML", $this->pid);
@@ -151,6 +151,10 @@ class WebOfScience {
                     }
                 }
             }
+        } else if ($xml->fn && $xml->fn->error) {
+            $error = (string) $xml->fn->error;
+            Application::log("WebOfScience Error: ".$error, $this->pid);
+            return [];
         } else {
             throw new \Exception("Could not parse XML!");
         }
@@ -159,13 +163,14 @@ class WebOfScience {
     }
 
     public static function getCredentials($pid) {
-        $userid = "";
-        $passwd = "";
-        $file = Application::getCredentialsDir()."/career_dev/wos.php";
-        if (file_exists($file)) {
-            require($file);
-            return [$userid, $passwd];
-        }
+        # Vanderbilt seems to have cancelled its Web of Science account
+        // $userid = "";
+        // $passwd = "";
+        // $file = Application::getCredentialsDir()."/career_dev/wos.php";
+        // if (file_exists($file)) {
+            // require($file);
+            // return [$userid, $passwd];
+        // }
         $userid = Application::getSetting("wos_userid", $pid);
         $passwd = Application::getSetting("wos_password", $pid);
         return [$userid, $passwd];
