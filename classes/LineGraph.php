@@ -11,6 +11,10 @@ class LineGraph extends Chart {
         $this->id = REDCapManagement::makeHTMLId($id);
     }
 
+    public function setDataLabel($label) {
+        $this->mainDatasetTitle = $label;
+    }
+
     public function setColor($color) {
         $this->color = Chart::ensureHex($color) ?: $this->color;
     }
@@ -52,7 +56,7 @@ const {$this->id}"."_chart = new Chart({$this->id}"."_ctx, {
     data: {
       labels: ".json_encode($this->labels).",
       datasets: [{
-        label: '',
+        label: '{$this->mainDatasetTitle}',
         data: ".json_encode($this->cols).",
         borderColor: '{$this->color}',
         fill: false,
@@ -117,4 +121,5 @@ $(document).ready(function() {
     protected $color = "#d4d4eb";
     protected $id = "";
     protected $additionalDatasets = [];
+    protected $mainDatasetTitle = "";
 }

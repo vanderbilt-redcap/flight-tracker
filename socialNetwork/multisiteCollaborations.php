@@ -722,7 +722,7 @@ function getInternationalCollaborations($token, $server, $fields, $records, $sta
                     if ($row['citation_affiliations']) {
                         $affiliations = json_decode($row['citation_affiliations'], TRUE) ?: [];
                     }
-                    $countries = NameMatcher::getInternationalCountries(getAllAffiliations($affiliations));
+                    $countries = NameMatcher::getInternationalCountries(Publications::getAllAffiliationsFromAuthorArray($affiliations));
                     foreach ($countries as $country) {
                         if (!isset($collaborations[$country])) {
                             $collaborations[$country] = 0;

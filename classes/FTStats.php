@@ -5,6 +5,9 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/ClassLoader.php");
 
 class FTStats {
+    # 3 years is arbitrary, but our data is growing; started collecting data in 2020
+    const NUM_YEARS_OF_RECORDS = 3;
+
     public static function getItemsToBeTotaled() {
         return [
             "Number of Scholars Currently Tracked (Newman)",
@@ -52,8 +55,74 @@ class FTStats {
         return $results;
     }
 
+    public static function getRecentData($token, $server) {
+        # since thousands of records, screen by date
+        $initialRequest = [
+            'token' => $token,
+            'content' => 'record',
+            'format' => 'json',
+            'type' => 'flat',
+            'csvDelimiter' => '',
+            'fields' => ["record_id", "date"],
+            'rawOrLabel' => 'raw',
+            'rawOrLabelHeaders' => 'raw',
+            'exportCheckboxLabel' => 'false',
+            'exportSurveyFields' => 'false',
+            'exportDataAccessGroups' => 'false',
+            'returnFormat' => 'json'
+        ];
+        $initialREDCapData = self::sendToServer($server, $initialRequest);
+
+        # should be sufficient - we really only need the last week, but this covers edge conditions
+        $downloadThresholdTs = strtotime("-2 weeks");
+        $deleteThresholdTs = strtotime("-".self::NUM_YEARS_OF_RECORDS." years");
+
+        $recordsToDownload = [];
+        $recordsToDelete = [];
+        foreach ($initialREDCapData as $row) {
+            if ($row['date']) {
+                $rowTs = strtotime($row['date']);
+                if ($rowTs >= $downloadThresholdTs) {
+                    $recordsToDownload[] = $row['record_id'];
+                } else if ($rowTs < $deleteThresholdTs) {
+                    $recordsToDelete[] = $row['record_id'];
+                }
+            }
+        }
+
+        if (!empty($recordsToDelete)) {
+            $deleteRequest = [
+                'token' => $token,
+                'content' => 'record',
+                'action' => 'delete',
+                'records' => $recordsToDelete,
+            ];
+            self::sendToServer($server, $deleteRequest);
+        }
+
+        if (empty($recordsToDownload)) {
+            return [];
+        }
+
+        $dataRequest = array(
+            'token' => $token,
+            'content' => 'record',
+            'format' => 'json',
+            'type' => 'flat',
+            'csvDelimiter' => '',
+            'records' => $recordsToDownload,
+            'rawOrLabel' => 'raw',
+            'rawOrLabelHeaders' => 'raw',
+            'exportCheckboxLabel' => 'false',
+            'exportSurveyFields' => 'false',
+            'exportDataAccessGroups' => 'false',
+            'returnFormat' => 'json'
+        );
+        return self::sendToServer($server, $dataRequest);
+    }
+
     public static function getAllData($token, $server) {
-        $data = array(
+        $dataRequest = array(
             'token' => $token,
             'content' => 'record',
             'format' => 'json',
@@ -66,7 +135,7 @@ class FTStats {
             'exportDataAccessGroups' => 'false',
             'returnFormat' => 'json'
         );
-        return self::sendToServer($server, $data);
+        return self::sendToServer($server, $dataRequest);
     }
 
     public static function gatherStats($redcapData, $server, $ts, $includeNewman = TRUE) {

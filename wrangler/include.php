@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\Patents;
 use \Vanderbilt\CareerDevLibrary\Citation;
@@ -127,6 +128,7 @@ try {
     }
 
     $metadata = Download::metadata($token, $server);
+    $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
     $institutions = Download::institutionsAsArray($token, $server);
     if (in_array($wranglerType, ["Publications", "FlagPublications"])) {
         $fields = Application::getCitationFields($metadata);
@@ -144,7 +146,7 @@ try {
         $pubs = new Publications($token, $server);
         $pubs->setRows($redcapData);
         if ($wranglerType == "Publications") {
-            $excludeList = new ExcludeList("Publications", $pid, [], $metadata);
+            $excludeList = new ExcludeList("Publications", $pid, [], $metadataFields);
             $html = $excludeList->makeEditForm($record).$pubs->getEditText($thisUrl);
         } else {
             $html = $pubs->getEditText($thisUrl);

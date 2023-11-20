@@ -11,13 +11,14 @@ require_once dirname(__FILE__).'/_header.php';
 if ($_REQUEST['uid'] && MMA_DEBUG) {
     $userid2 = Sanitizer::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$userid2";
+    $userids = Download::userids($token, $server);
 } else {
     $userid2 = $hash ?: Application::getUsername();
     $uidString = $hash ? "&hash=".$hash : "";
+    $userids = [];
 }
 $phase = Sanitizer::sanitize($_GET['phase'] ?? "");
 
-$userids = Download::userids($token, $server);
 
 $menteeRecordId = FALSE;
 if (isset($_GET['menteeRecord'])) {
@@ -31,7 +32,7 @@ if (isset($_GET['menteeRecord'])) {
 $cssLink = Application::link("mentor/css/simptip.css");
 echo "<link rel='stylesheet' type='text/css' href='$cssLink' media='screen,projection' />\n";
 
-$names = Download::names($token, $server);
+$names = MMAHelper::downloadAndMakeNames($token, $server);
 $menteeName = $names[$menteeRecordId];
 
 $metadata = Download::metadata($token, $server);
@@ -56,7 +57,7 @@ if ($_REQUEST['instance']) {
     $currInstance = $maxInstance + 1;
 }
 $dateToRemind = MMAHelper::getDateToRemind($redcapData, $menteeRecordId, $currInstance);
-$menteeUsernames = MMAHelper::getMenteeUserids($userids[$menteeRecordId]);
+$menteeUsernames = MMAHelper::getMenteeUserids($userids[$menteeRecordId] ?? "");
 $menteeInstance = FALSE;
 foreach ($menteeUsernames as $menteeUsername) {
     $menteeInstance = MMAHelper::getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);

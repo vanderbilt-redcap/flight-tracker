@@ -21,7 +21,7 @@ $fields = [
         "Email" => "identifier_email",
         "<a href='javascript:;' onclick='lookupREDCapUserid(\"$redcapLookupUrl\", $(\"#results\"));' title='Click to Look Up'>REDCap User-ID</a><br/><span class='smaller'>(optional; click to look up)</span>" => "identifier_userid",
 		];
-$requiredFields = ["identifier_first_name", "identifier_last_name", "identifier_email"];
+$requiredFields = ["identifier_first_name", "identifier_last_name"];
 if (($_POST['action'] == "oneByOne") && checkPOSTKeys($requiredFields)) {
     $recordIds = Download::recordIds($token, $server);
     $max = 0;

@@ -23,7 +23,7 @@ $dateToRemind = "now";
 $cssLink = Application::link("mentor/css/simptip.css");
 echo "<link rel='stylesheet' type='text/css' href='$cssLink' media='screen,projection' />\n";
 
-$names = Download::names($token, $server);
+$names = MMAHelper::downloadAndMakeNames($token, $server);
 
 $menteeRecordId = FALSE;
 if ($_REQUEST['menteeRecord']) {

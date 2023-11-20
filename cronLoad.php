@@ -312,13 +312,33 @@ function loadInternalSharingCrons(&$manager, $pids) {
     if (Application::isServer("redcaptest.vanderbilt.edu")) {
         $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", date("Y-m-d"), $preprocessingPids, $preprocessingPids);
     } else {
-        $preprocessDayOfWeek = "Saturday";
+        # this is the most time-consuming process in Flight Tracker
+        # time required increases by n^2, where n is the number of scholars
+        # Have to be careful that it doesn't exceed REDCap limits --> separate into batches
+        $preprocessDayOfWeek = "Friday";   # lightest day
         $module = Application::getModule();
         $destPids = $module->getProjectsToRunTonight($preprocessingPids);
         if (!empty($destPids) && (date("l") !== $preprocessDayOfWeek)) {
+            # just run for newer projects requested to "run tonight"
             $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", $preprocessDayOfWeek, $preprocessingPids, $destPids);
         } else {
-            $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", $preprocessDayOfWeek, $preprocessingPids, $preprocessingPids);
+            # run for everybody in batches
+            $batchSize = 20;    // arbitrary and adjustable - number of projects/pids
+            for ($i = 0; $i < count($preprocessingPids); $i += $batchSize) {
+                $batch = [];
+                $endIndex = $i + $batchSize;
+                if ($endIndex > count($preprocessingPids)) {
+                    $endIndex = count($preprocessingPids);
+                }
+                if ($endIndex + $batchSize / 2 > count($preprocessingPids)) {
+                    # because small runs are computationally expensive
+                    $endIndex += $batchSize / 2;
+                }
+                for ($j = $i; $j < $endIndex; $j++) {
+                    $batch[] = $preprocessingPids[$j];
+                }
+                $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", $preprocessDayOfWeek, $preprocessingPids, $batch);
+            }
         }
     }
 }

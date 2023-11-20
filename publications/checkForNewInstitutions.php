@@ -37,7 +37,9 @@ if (isset($_POST['records']) && is_array($_POST['records'])) {
     $citationIncludes = Download::oneFieldWithInstances($token, $server, "citation_include");
     $citationPMIDs = Download::oneFieldWithInstances($token, $server, "citation_pmid");
 
+    $excludeLists = Download::excludeList($token, $server, "exclude_publications", $metadataFields);
     $nameMismatches = [];
+    $lastConfirmedPubDates = [];
     foreach ($records as $recordId) {
         $latestTs = FALSE;
         foreach ($citationDates[$recordId] ?? [] as $instance => $date) {
@@ -50,6 +52,9 @@ if (isset($_POST['records']) && is_array($_POST['records'])) {
             }
         }
         if ($latestTs < $thresholdTs) {
+            if ($latestTs > 0) {
+                $lastConfirmedPubDates[$recordId] = date("Y-m-d", $latestTs);
+            }
             $firstName = $firstNames[$recordId] ?? "";
             $lastName = $lastNames[$recordId] ?? "";
             $middleName = $middleNames[$recordId] ?? "";
@@ -81,10 +86,12 @@ if (isset($_POST['records']) && is_array($_POST['records'])) {
                         $matchedAuthorAffiliations = [];
                         $matchedAuthors = [];
                         foreach ($authors as $author) {
-                            list($authorInitials, $authorLast) = NameMatcher::splitName($author, 2, FALSE, FALSE);
-                            if (NameMatcher::matchByInitials($lastName, $firstName, $authorLast, $authorInitials)) {
-                                $matchedAuthorAffiliations = array_unique(array_merge($matchedAuthorAffiliations, $affiliationsByAuthor[$author]));
-                                $matchedAuthors[] = $author;
+                            if (!in_array($author, $excludeLists[$recordId] ?? [])) {
+                                list($authorInitials, $authorLast) = NameMatcher::splitName($author, 2, FALSE, FALSE);
+                                if (NameMatcher::matchByInitials($lastName, $firstName, $authorLast, $authorInitials)) {
+                                    $matchedAuthorAffiliations = array_unique(array_merge($matchedAuthorAffiliations, $affiliationsByAuthor[$author]));
+                                    $matchedAuthors[] = $author;
+                                }
                             }
                         }
                         if (!empty($matchedAuthorAffiliations)) {
@@ -115,7 +122,7 @@ if (isset($_POST['records']) && is_array($_POST['records'])) {
             }
         }
     }
-    echo json_encode($nameMismatches);
+    echo json_encode(["pubMatchData" => $nameMismatches, "lastPubData" => $lastConfirmedPubDates]);
     exit;
 } else if (isset($_POST['institution']) && isset($_POST['record'])) {
     $recordId = Sanitizer::getSanitizedRecord($_POST['record'], $allRecords);

@@ -16,8 +16,7 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
     $lastnames = Download::lastnames($token, $server);
     $middlenames = Download::middlenames($token, $server);
     $institutions = Download::institutions($token, $server);
-    $metadata = Download::metadata($token, $server);
-    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+    $metadataFields = Download::metadataFields($token, $server);
     $blockOrcids = in_array("identifer_block_orcid", $metadataFields) ? Download::oneField($token, $server, "identifier_block_orcid") : [];
 
     $newOrcids = [];
@@ -54,7 +53,7 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
     }
 
     if (in_array("identifier_orcid", $metadataFields)) {
-        $excludeList = Download::excludeList($token, $server, "exclude_orcid", $metadata);
+        $excludeList = Download::excludeList($token, $server, "exclude_orcid", $metadataFields);
         $upload = [];
         foreach ($newOrcids as $recordId => $orcid) {
             if (!in_array($orcid, $excludeList[$recordId])) {
@@ -75,7 +74,7 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
     if (countNewMultiples($multiples, $pid) > 0) {
         # send email
         $adminEmail = Application::getSetting("admin_email", $pid);
-        $html = makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata);
+        $html = makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid);
 
         if (preg_match("/possible ORCIDs/", $html)) {
             require_once(dirname(__FILE__)."/../../../redcap_connect.php");
@@ -104,7 +103,7 @@ function countNewMultiples($multiples, $pid) {
     return $newMultiples;
 }
 
-function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid, $metadata) {
+function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid) {
     $orcidThreshold = 6;
     $orcidSearchLink = "https://orcid.org/orcid-search/search";
     $priorMultiples = Application::getSetting("prior_orcids", $pid);

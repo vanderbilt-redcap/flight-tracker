@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.1.0";
+		return "6.2.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -641,13 +641,17 @@ class CareerDev {
             $shortInst = self::getShortInstitution($pid);
             $longInst = self::getInstitution($pid);
 
-            $institutions = array();
-            if (!preg_match("/".strtolower($shortInst)."/", strtolower($longInst))) {
-                $institutions[] = $shortInst;
-                $institutions[] = $longInst;
+            if (preg_match("/[,;]/", $shortInst)) {
+                $shortInstitutions = preg_split("/\s*[,;]\s*/", $shortInst);
             } else {
-                $institutions[] = $longInst;
+                $shortInstitutions = [$shortInst];
             }
+            if (preg_match("/[,;]/", $longInst)) {
+                $longInstitutions = preg_split("/\s*[,;]\s*/", $longInst);
+            } else {
+                $longInstitutions = [$longInst];
+            }
+            $institutions = array_unique(array_merge($shortInstitutions, $longInstitutions));
 
             $otherInsts = preg_split("/\s*[,\/]\s*/", self::getSetting("other_institutions", $pid));
             foreach ($otherInsts as $otherInst) {

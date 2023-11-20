@@ -721,15 +721,17 @@ function getCohortSelect($token, $server, $pid) {
 }
 
 function getCohortHeaderHTML() {
-	global $pid;
 	$html = "";
 	$html .= "<div class='subnav'>\n";
-	$html .= "<a class='yellow' href='".CareerDev::link("cohorts/addCohort.php")."'>Add a New Cohort</a>\n";
-	$html .= "<a class='yellow' href='".CareerDev::link("cohorts/viewCohorts.php")."'>View Existing Cohorts</a>\n";
-	$html .= "<a class='purple' href='".CareerDev::link("cohorts/manageCohorts.php")."'>Manage Cohorts</a>\n";
-	$html .= "<a class='purple' href='".CareerDev::link("cohorts/exportCohort.php")."'>Export a Cohort</a>\n";
-	$html .= "<a class='green' href='".CareerDev::link("cohorts/profile.php")."'>Cohort Profiles</a>\n";
-	$html .= "<a class='green' href='".CareerDev::link("cohorts/selectCohort.php")."'>View Cohort Metrics</a>\n";
+	$html .= "<a class='yellow' href='".CareerDev::link("cohorts/addCohort.php")."'>Add a New Cohort</a>";
+	$html .= "<a class='yellow' href='".CareerDev::link("cohorts/viewCohorts.php")."'>View Existing Cohorts</a>";
+	$html .= "<a class='purple' href='".CareerDev::link("cohorts/manageCohorts.php")."'>Manage Cohorts</a>";
+	$html .= "<a class='purple' href='".CareerDev::link("cohorts/exportCohort.php")."'>Export a Cohort</a>";
+	$html .= "<a class='green' href='".CareerDev::link("cohorts/profile.php")."'>Cohort Profiles</a>";
+	$html .= "<a class='green' href='".CareerDev::link("cohorts/selectCohort.php")."'>View Cohort Metrics</a>";
+    # this CSS gives dropdowns enough space to stay above the footer
+    # I put it here so that it'd only apply to cohorts, not other pages, which seem not to have this problem
+    $html .= "<style>#ui-id-1 { padding-bottom: 75px; }</style>";
 	$html .= "</div>\n";
 
 	return $html;

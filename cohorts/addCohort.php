@@ -28,7 +28,7 @@ if (isset($_POST['title'])) {
 	require_once(dirname(__FILE__)."/../wrangler/css.php");
 
 	echo \Vanderbilt\FlightTrackerExternalModule\getCohortHeaderHTML();
-    echo "<main><div id='content'>\n";
+    echo "<main><div id='content'>";
 
     $metadata = Download::metadata($token, $server);
     $cohorts = new Cohorts($token, $server, CareerDev::getModule());

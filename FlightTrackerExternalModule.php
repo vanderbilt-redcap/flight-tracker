@@ -17,6 +17,7 @@ use Vanderbilt\CareerDevLibrary\Sanitizer;
 use Vanderbilt\CareerDevLibrary\Portal;
 use Vanderbilt\CareerDevLibrary\Links;
 use Vanderbilt\CareerDevLibrary\CelebrationsEmail;
+use Vanderbilt\CareerDevLibrary\MSTP;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/cronLoad.php");
@@ -27,10 +28,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     const RECENT_YEARS = CelebrationsEmail::RECENT_YEARS;
 
 	function getPrefix() {
-	    if (Application::isLocalhost()) {
-	        return "flight_tracker";
-        }
-		return $this->prefix;
+        return Application::getPrefix();
 	}
 
 	function getName() {
@@ -101,6 +99,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         }
                         $mgr = new EmailManager($token, $server, $pid, $this);
                         $mgr->sendRelevantEmails();
+                        if (
+                            Application::isMSTP($pid)
+                            && MSTP::isTimeToSend($pid)
+                        ) {
+                            MSTP::sendReminders($pid);
+                        }
                     } catch (\Exception $e) {
                         # should only happen in rarest of circumstances
                         if (preg_match("/'batchCronJobs' because the value is larger than the \d+ byte limit/", $e->getMessage())) {
@@ -1117,6 +1121,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		Application::log($this->getName()." running for pids ".json_encode($activePids));
         foreach ($activePids as $pid) {
             Application::log("Flight Tracker 'midnight cron' running", $pid);
+            if (Application::isMSTP($pid)) {
+                Application::saveSetting(MSTP::REMINDER_SETTING, "", $pid);
+            }
         }
 
         $this->enqueueInitialCrons($activePids);
@@ -1444,6 +1451,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     }
 
     function makeHeaders($token, $server, $pid, $tokenName) {
+        if (isset($_GET['prefix']) && ($_GET['prefix'] != self::getPrefix())) {
+            # another ExtMod - sometimes, scripts don't work well; e.g., jquery declared twice
+            return "";
+        }
 	    $str = "";
 	    $str .= Application::getHeader($tokenName, $token, $server, $pid);
         if (!CareerDev::isFAQ() && CareerDev::isHelpOn()) {
@@ -1569,6 +1580,5 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		return FALSE;
 	}
 
-	private $prefix = "flightTracker";
 	private $name = "Flight Tracker";
 }

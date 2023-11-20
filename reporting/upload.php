@@ -78,7 +78,10 @@ if (!empty($_POST)) {
                 $data['error'] = "File not uploaded.";
             }
         } else if ($action == "uploadREDCap") {
-            $upload = Sanitizer::sanitizeArray($_POST['upload'] ?? [], FALSE);
+            $upload = [];
+            if (isset($_POST['upload']) && is_array($_POST['upload'])) {
+                $upload = decodeJSONArray($_POST['upload']);
+            }
             $upload = changeNewRecordIds($upload, $token, $server);
             if (!empty($upload)) {
                 Upload::rows($upload, $token, $server);
@@ -86,7 +89,10 @@ if (!empty($_POST)) {
                 $data['error'] = "Empty data.";
             }
         } else if ($action == "processLines") {
-            $linesToProcess = Sanitizer::sanitizeArray($_POST['lines'] ?? []);
+            $linesToProcess = [];
+            if (isset($_POST['lines']) && is_array($_POST['lines'])) {
+                $linesToProcess = decodeJSONArray($_POST['lines']);
+            }
             if (!empty($linesToProcess)) {
                 list($unprocessedLines, $upload, $warnings) = processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $scope, $selects);
                 $data['lines'] = $unprocessedLines;
@@ -378,13 +384,7 @@ function parsePublications($publicationText, $traineeName, $facultyName, &$warni
         return [];
     }
     list($traineeFirst, $traineeMiddle, $traineeLast) = NameMatcher::splitName($traineeName, 3);
-    $pmidsForFirstName = Publications::searchPubMedForName($traineeFirst, $traineeLast, $pid);
-    if ($traineeMiddle) {
-        $pmidsForFullName = Publications::searchPubMedForName("$traineeFirst $traineeMiddle", $traineeLast, $pid);
-    } else {
-        $pmidsForFullName = [];
-    }
-    $pmidsForAuthor = array_unique(array_merge($pmidsForFirstName, $pmidsForFullName));
+    $pmidsForAuthor = Publications::searchPubMedForName($traineeFirst, $traineeMiddle, $traineeLast, $pid);
     try {
         $publicationREDCap = Publications::getCitationsFromPubMed($pmidsForAuthor, $metadata, "manual", 1, 1, [], $pid, FALSE);
     } catch (\Exception $e) {
@@ -1328,4 +1328,17 @@ function readFileAsDataLines($filename) {
     }
     fclose($fp);
     return $lines;
+}
+
+function decodeJSONArray($aryOfJSONS) {
+    $ary = [];
+    foreach ($aryOfJSONS as $json) {
+        $data = json_decode($json, TRUE);
+        if ($data) {
+            $ary[] = Sanitizer::sanitizeArray($data, FALSE);
+        } else {
+            throw new \Exception("Could not process JSON ".Sanitizer::sanitizeWithoutChangingQuotes($json));
+        }
+    }
+    return $ary;
 }

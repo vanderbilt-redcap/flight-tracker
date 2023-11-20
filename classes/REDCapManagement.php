@@ -386,7 +386,7 @@ class REDCapManagement {
 
     public static function makeHash($length) {
         if (is_integer($length) && ($length > 0)) {
-            return bin2hex(random_bytes($length));
+            return bin2hex(random_bytes(floor($length / 2)));
         }
         return "";
     }
@@ -514,6 +514,23 @@ class REDCapManagement {
         return self::screenForFields($metadata, $allFields);
     }
 
+    public static function getGrantNumberFields($metadata) {
+        $candidateFields = [
+            "custom_number",
+            "reporter_projectnumber",
+            "exporter_full_project_num",
+            "nih_project_num",
+            "coeus_award_no",
+        ];
+        for ($i=1; $i <= Grants::$MAX_GRANTS; $i++) {
+            $candidateFields[] = "summary_award_sponsorno_".$i;
+            $candidateFields[] = "check_grant".$i."_number";
+            $candidateFields[] = "followup_grant".$i."_number";
+            $candidateFields[] = "init_import_grant".$i."_number";
+        }
+        return self::screenForFields($metadata, $candidateFields);
+    }
+
 	public static function getFieldsFromMetadata($metadata, $instrument = FALSE) {
 	    return DataDictionaryManagement::getFieldsFromMetadata($metadata, $instrument);
 	}
@@ -541,7 +558,7 @@ class REDCapManagement {
     }
 
 	public static function applyProxyIfExists(&$ch, $pid) {
-	    return URLManagement::applyProxyIfExists($ch, $pid);
+	    URLManagement::applyProxyIfExists($ch, $pid);
     }
 
     public static function makeChoiceStr($fieldChoices) {

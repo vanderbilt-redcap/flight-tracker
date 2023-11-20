@@ -473,7 +473,8 @@ class DataDictionaryManagement {
         }
         foreach ($convert as $oldValue => $newValue) {
             $params = array_merge([$newValue, $pid, $oldValue], $fields);
-            $sql = "UPDATE redcap_data SET value=? WHERE project_id=? AND value=? AND field_name IN (".implode(",", $questionMarks).")";
+            $dataTable = Application::getDataTable($pid);
+            $sql = "UPDATE $dataTable SET value=? WHERE project_id=? AND value=? AND field_name IN (".implode(",", $questionMarks).")";
             Application::log("Running SQL $sql with ".json_encode($params));
             $module->query($sql, $params);
         }

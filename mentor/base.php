@@ -12,7 +12,7 @@ $hash = "";
 $hashRecordId = "";
 $isNewHash = FALSE;
 if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") {
-    $currPage = REDCapManagement::sanitize($_GET['page']);
+    $currPage = Sanitizer::sanitize($_GET['page']);
     if (isset($_GET['hash']) && MMAHelper::isValidHash($_GET['hash'])) {
         $proposedHash = Sanitizer::sanitize($_GET['hash']);
     } else if (isset($_REQUEST['userid']) && MMAHelper::isValidHash($_REQUEST['userid'])) {
@@ -31,7 +31,7 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
         )
     ) {
         $records = Download::recordIds($token, $server);
-        $proposedRecordId = isset($_GET['menteeRecordId']) ? REDCapManagement::getSanitizedRecord($_GET['menteeRecordId'], $records) : "";
+        $proposedRecordId = isset($_GET['menteeRecord']) ? Sanitizer::getSanitizedRecord($_GET['menteeRecord'], $records) : "";
         $res = MMAHelper::validateHash($proposedHash, $token, $server, $proposedRecordId);
         $hashRecordId = $res['record'];
         $hash = $res['hash'];
@@ -87,4 +87,3 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
         }
     }
 }
-

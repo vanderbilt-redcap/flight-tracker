@@ -26,25 +26,39 @@ if ($_POST['process'] == "check") {
 
     # check a maximum of once every 30 seconds
     if ($ts > $lastCheckTs + 30) {
-        $metadata = Download::metadata($token, $server);
-        $switches = new FeatureSwitches($token, $server, $pid);
-        list ($missing, $additions, $changed) = DataDictionaryManagement::findChangedFieldsInMetadata($metadata, $files, $deletionRegEx, CareerDev::getRelevantChoices(), $switches->getFormsToExclude(), $pid);
-        CareerDev::setSetting($lastCheckField, time(), $pid);
-        if (count($additions) + count($changed) > 0) {
-            if (Application::isSuperUser()) {
-                $module = Application::getModule();
-                $pids = $module->getPids();
-                $protocol = isset($_SERVER["HTTPS"]) ? 'https' : 'http';
-                echo "<div id='metadataWarning' class='install-metadata-box install-metadata-box-danger'>
+        $requiredCustomFields = ["resources", "departments"];
+        $missingField = FALSE;
+        foreach ($requiredCustomFields as $setting) {
+            if (!trim(Application::getSetting($setting, $pid))) {
+                $missingField = TRUE;
+                break;
+            }
+        }
+        if ($missingField) {
+            $configLink = Application::link("config.php");
+            $mssg = "You are missing a required field that is necessary to upgrade your Data Dictionary. The fields ".REDCapManagement::makeConjunction($requiredCustomFields)." are required and can be set via the <a href='$configLink'>Configure Application page</a>.";
+            echo "<script>$.sweetModal({content: '$mssg', icon: $.sweetModal.ICON_ERROR});</script>";
+        } else {
+            $metadata = Download::metadata($token, $server);
+            $switches = new FeatureSwitches($token, $server, $pid);
+            list ($missing, $additions, $changed) = DataDictionaryManagement::findChangedFieldsInMetadata($metadata, $files, $deletionRegEx, CareerDev::getRelevantChoices(), $switches->getFormsToExclude(), $pid);
+            CareerDev::setSetting($lastCheckField, time(), $pid);
+            if (count($additions) + count($changed) > 0) {
+                if (Application::isSuperUser()) {
+                    $module = Application::getModule();
+                    $pids = $module->getPids();
+                    $protocol = isset($_SERVER["HTTPS"]) ? 'https' : 'http';
+                    echo "<div id='metadataWarning' class='install-metadata-box install-metadata-box-danger'>
                 <i class='fa fa-exclamation-circle' aria-hidden='true'></i> <a href='javascript:;' onclick='installMetadataForProjects(" . json_encode($pids) . ");'>Click here to install for all " . Application::getProgramName() . " projects (REDCap SuperUsers only).</a>
                 </div>";
-            }
-            echo "<script>const missing = " . json_encode($missing) . ";</script>\n";
-            echo "<div id='metadataWarning' class='install-metadata-box install-metadata-box-danger'>
+                }
+                echo "<script>const missing = " . json_encode($missing) . ";</script>\n";
+                echo "<div id='metadataWarning' class='install-metadata-box install-metadata-box-danger'>
                 <i class='fa fa-exclamation-circle' aria-hidden='true'></i> An upgrade in your Data Dictionary exists. <a href='javascript:;' onclick='installMetadata(missing);'>Click here to install.</a>
                 <p>The following fields will be added: " . (empty($additions) ? "<i>None</i>" : "<strong>" . implode(", ", $additions) . "</strong>") . "</p>
                 <p>The following fields will be changed: " . (empty($changed) ? "<i>None</i>" : "<strong>" . implode(", ", $changed) . "</strong>") . "</p>
             </div>";
+            }
         }
     }
 } else if (in_array($_POST['process'], ["install", "install_all"])) {

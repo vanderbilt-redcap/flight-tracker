@@ -21,8 +21,10 @@ class Stats
     public function median() {
         $n = $this->getN();
         $arr = $this->arr;
-        asort($arr);
-        if ($n > 0) {
+        asort($arr, SORT_NUMERIC);
+        if ($n == 1) {
+            return $arr[0];
+        } else if ($n > 1) {
             if ($n % 2 == 0) {
                 return $arr[$n / 2];
             } else {
@@ -36,7 +38,7 @@ class Stats
     public function mode() {
         $n = $this->getN();
         $arr = $this->arr;
-        asort($arr);
+        asort($arr, SORT_NUMERIC);
         if ($n > 0) {
             $counts = [];
             foreach ($arr as $item) {
@@ -134,7 +136,7 @@ class Stats
             return FALSE;
         }
 
-        sort($this->arr);
+        sort($this->arr, SORT_NUMERIC);
         $size = count($this->arr);
         switch($quartile) {
             case 0:

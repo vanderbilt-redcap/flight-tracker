@@ -71,6 +71,10 @@ class Application {
         return "https://redcap.vanderbilt.edu/external_modules/?prefix=flight_connector&page=map&pid=172928&h=5986967536b44df5&NOAUTH";
     }
 
+    public static function getDataTable($pid) {
+        return method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($pid) : "redcap_data";
+    }
+
 	public static function getApplicationColors($alphas = ["1.0"], $inHex = FALSE) {
         $colors = [];
         foreach ($alphas as $alpha) {
@@ -480,6 +484,9 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
 
     # call REDCap's AutoLogin
     public static function keepAlive($pid) {
+        if (!class_exists('\Auth')) {
+            require_once APP_PATH_DOCROOT . 'Libraries/PEAR/Auth.php';
+        }
         $oldPid = $_GET['pid'] ?? "";
         $_GET['pid'] = $pid;
         \Authentication::autoLogin(self::getUsername());

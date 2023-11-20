@@ -158,9 +158,9 @@ class NameMatcher {
 
     public static function formatName($first, $middle, $last) {
         if ($middle) {
-            return $first." ".$middle." ".$last;
+            return trim($first." ".$middle." ".$last);
         } else {
-            return $first." ".$last;
+            return trim($first." ".$last);
         }
     }
 

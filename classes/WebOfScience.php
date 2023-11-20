@@ -44,7 +44,7 @@ class WebOfScience {
                     $tryNum = 0;
                     $done = FALSE;
                     $values = [];
-                    while (($tryNum < $maxTries) && !$done) {
+                    while (($tryNum <= $maxTries) && !$done) {
                         $tryNum++;
                         Application::log("Web of Science Downloading for ".count($pmids)." PMIDs", $this->pid);
                         $xml = $this->makeXML($pmids);

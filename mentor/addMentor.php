@@ -22,7 +22,7 @@ if (!MMAHelper::isMentee($recordId, $username)) {
 }
 
 
-$names = Download::names($token, $server);
+$names = MMAHelper::downloadAndMakeNames($token, $server);
 $myName = $names[$recordId];
 $allPrimaryMentors = Download::primaryMentors($token, $server);
 $allPrimaryMentorUserids = Download::primaryMentorUserids($token, $server);

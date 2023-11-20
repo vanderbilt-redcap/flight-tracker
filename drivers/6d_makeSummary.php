@@ -75,7 +75,7 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $rows = Download::records($token, $server, [$recordId]);
     $time2 = microtime(TRUE);
     if (Application::isVanderbilt()) {
-        Application::log("6d CareerDev downloading $recordId took ".($time2 - $time1), $pid);
+        Application::log("6d CareerDev downloading $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
     }
 
     $time1 = microtime(TRUE);
@@ -87,7 +87,7 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $errors = array_merge($errors, $myErrors);
     $time2 = microtime(TRUE);
     if (Application::isVanderbilt()) {
-        Application::log("6d CareerDev processing grants $recordId took ".($time2 - $time1), $pid);
+        Application::log("6d CareerDev processing grants $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
     }
 
     # update rows with new data
@@ -100,7 +100,7 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
     $scholar->updatePositionChangeForms();
     $time2 = microtime(TRUE);
     if (Application::isVanderbilt()) {
-        Application::log("6d CareerDev processing scholar $recordId took ".($time2 - $time1), $pid);
+        Application::log("6d CareerDev processing scholar $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
     }
 
     $myErrors = Upload::isolateErrors($result);
@@ -113,7 +113,7 @@ function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
         $result = $pubs->uploadSummary();
         $time2 = microtime(TRUE);
         if (Application::isVanderbilt()) {
-            Application::log("6d CareerDev processing publications $recordId took ".($time2 - $time1), $pid);
+            Application::log("6d CareerDev processing publications $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
         }
         $myErrors = Upload::isolateErrors($result);
         $errors = array_merge($errors, $myErrors);

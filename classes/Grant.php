@@ -1336,8 +1336,13 @@ class Grant {
     }
 
 	# https://www.nlm.nih.gov/bsd/grant_acronym.html
-	public static function getFundingInstitute($awardNo, $abbreviated = FALSE) {
-		$instituteCode = self::getInstituteCode($awardNo);
+	public static function getFundingInstitute($awardNo, $abbreviated = FALSE)
+    {
+        $instituteCode = self::getInstituteCode($awardNo);
+        return self::decodeInstituteCode($instituteCode, $abbreviated);
+    }
+
+    public static function decodeInstituteCode($instituteCode, $abbreviated = FALSE) {
 		switch ($instituteCode) {
             case "NH":
                 if ($abbreviated) {

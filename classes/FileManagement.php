@@ -2,9 +2,35 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
 require_once(__DIR__ . '/ClassLoader.php');
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once(__DIR__ . '/../vendor/autoload.php');
+}
 
 class FileManagement {
+    public static function makePDFToTempFile($html) {
+        $options = new Options();
+        $options->set('tempDir', preg_replace("/\/$/", "", APP_PATH_TEMP));   // for images
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->render();
+        $output = $dompdf->output();
+        $count = 0;
+        do {
+            $count++;
+            $filename = APP_PATH_TEMP.self::makeSafeFilename(REDCapManagement::makeHash(8)."_flight_tracker.pdf");
+        } while (file_exists($filename) && ($count < 10000));
+        if (!file_exists($filename)) {
+            file_put_contents($filename, $output);
+            return $filename;
+        } else {
+            return "";
+        }
+    }
+
     public static function makeSafeFilename($filename) {
         $filename = str_replace("..", "", $filename);
         $filename = str_replace("/", "", $filename);

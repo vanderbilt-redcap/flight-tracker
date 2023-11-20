@@ -1957,19 +1957,19 @@ function downloadNewInstitutionsFromPubMed(url, records, resultsSel, loadingSel,
 			const data = JSON.parse(json);
 			let html = "";
 			const numCols = 6;
-			for (const recordId in data) {
+			for (const recordId in data['pubMatchData']) {
 				const rowClass = (priorNameCount % 2 === 0) ? "even" : "odd";
-				const numRecordMatches = Object.keys(data[recordId]).length;
+				const numRecordMatches = Object.keys(data['pubMatchData'][recordId]).length;
 				const recordClass = "record_"+recordId;
 				const recordClassHeader = recordClass+"_header";
-				const count = Object.keys(data[recordId]).length;
-				if (count > 0) {
-					const firstPMID = Object.keys(data[recordId])[0];
-					const name = data[recordId][firstPMID].name;
-					const pubWord = (count == 1) ? "Publication" : "Publications";
-					html += "<tr class='"+rowClass+" "+recordClassHeader+"'><td class='centered padded' colspan='"+numCols+"'><a href='javascript:;' onclick='$(\"."+recordClass+"\").show(); $(\"."+recordClassHeader+"\").hide();'>Show "+count+" "+pubWord+" for Record "+recordId+": "+name+"</a></td></tr>";
-					for (const pmid in data[recordId]) {
-						const info = data[recordId][pmid];
+				const lastPubDate = (typeof data['lastPubData'][recordId] !== "undefined") ? "Last Confirmed Publication Date: "+ymd2mdy(data['lastPubData'][recordId])+"." : "No Confirmed Publications.";
+				if (numRecordMatches > 0) {
+					const firstPMID = Object.keys(data['pubMatchData'][recordId])[0];
+					const name = data['pubMatchData'][recordId][firstPMID].name;
+					const pubWord = (numRecordMatches === 1) ? "Publication" : "Publications";
+					html += "<tr class='"+rowClass+" "+recordClassHeader+"'><td class='centered padded' colspan='"+numCols+"'><a href='javascript:;' onclick='$(\"."+recordClass+"\").show(); $(\"."+recordClassHeader+"\").hide();'>Show "+numRecordMatches+" "+pubWord+" for Record "+recordId+": "+name+".</a> "+lastPubDate+"</td></tr>";
+					for (const pmid in data['pubMatchData'][recordId]) {
+						const info = data['pubMatchData'][recordId][pmid];
 						const pubmedUrl = "https://pubmed.ncbi.nlm.nih.gov/"+pmid+"/";
 						html += "<tr class='"+rowClass+" "+recordClass+"' style='display: none;'><th>Record "+recordId+":<br/>"+info.name+"<br/><span class='unbolded'>"+numRecordMatches+" new matches</span></th><td class='smaller alignLeft max-width-300'>"+info.citation+"<div class='centered'><a href='"+pubmedUrl+"' target='_blank'>PubMed</a></div></td><td>"+info.date+"</td><td class='max-width-300'>"+makeUnorderedList(info.institutions)+"</td><td>"+info.authors.join("<br/>")+"</td><td class='max-width-300'>"+makeAffiliationButtons(url, info.affiliations, pmid, recordId)+"</td></tr>"
 					}
@@ -2045,5 +2045,25 @@ function makeUnorderedList(ary) {
 	for (let i=0; i < ary.length; i++) {
 		rows.push("<li class='alignLeft'>"+ary[i]+"</li>");
 	}
-	return "<ul style='margin: 0 0; padding-left: 8px;'>"+rows.join("")+"</ul>";
+	return "<ul style='margin: 0; padding-left: 8px;'>"+rows.join("")+"</ul>";
+}
+
+function ymd2mdy(date) {
+	if (date === "") {
+		return "";
+	}
+	const nodes = date.split(/[\/\-.]/);
+	const sep = "-";
+	if (nodes.length === 3) {
+		return nodes[1]+sep+nodes[2]+sep+nodes[0];
+	}
+	return date;
+}
+
+function fetchSetting(url, setting, thisOb, count) {
+	const trOb = $(thisOb).parent().parent();
+	$.post(url, { setting: setting, count: count, redcap_csrf_token: getCSRFToken() }, (html) => {
+		console.log(html);
+		trOb.html(html);
+	});
 }

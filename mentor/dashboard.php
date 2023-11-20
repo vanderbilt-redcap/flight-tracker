@@ -49,7 +49,7 @@ if (isset($_POST['newUids'])) {
 } else if (isset($_POST['updateMentors'])) {
     require_once(dirname(__FILE__)."/../small_base.php");
     $records = Download::recordIds($token, $server);
-    $names = Download::names($token, $server);
+    $names = MMAHelper::downloadAndMakeNames($token, $server);
     $mentorNames = Download::primaryMentors($token, $server);
     $mentorUserids = Download::primaryMentorUserids($token, $server);
     $upload = [];
@@ -148,7 +148,7 @@ $completedInitial = ["mentees" => [], "mentors" => []];
 $completedFollowup = ["mentees" => [], "mentors" => []];
 $timesToComplete = ["mentees" => [], "mentors" => []];
 $numMentors = MMAHelper::getElementCount($mentorNames);
-$names = Download::names($token, $server);
+$names = MMAHelper::downloadAndMakeNames($token, $server);
 
 $numMenteeUserids = 0;
 $numMentees = 0;

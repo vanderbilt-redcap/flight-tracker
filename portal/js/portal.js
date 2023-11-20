@@ -123,7 +123,7 @@ class Portal {
             this.selectedRecord = recordId;
             $('.match[record='+recordId+'][pid='+pid+']').addClass('selectedMatch');
             const projectTitle = $('.selectedMatch .projectTitle').html();
-            this.getMenu(projectTitle);
+            this.getMenu(projectTitle, pid, recordId);
         }
     }
 
@@ -141,7 +141,8 @@ class Portal {
                         this.selectedPid = pid;
                         this.selectedRecord = recordId;
                         const projectTitle = $('.selectedMatch .projectTitle').html();
-                        this.getMenu(projectTitle);
+                        const cb = () => { window.scrollTo({ top: 0, behavior: 'smooth' }) };
+                        this.getMenu(projectTitle, pid, recordId, cb);
                     }
                     return;
                 }
@@ -200,11 +201,11 @@ class Portal {
         }
     }
 
-    getMenu = function(projectTitle) {
+    getMenu = function(projectTitle, pid, recordId, cb) {
         this.updateLoadingBox("Loading Menu...");
         this.stateData.menu = [];
         this.refreshMenu(projectTitle);
-        this.runPost(this.url, { action: 'getMenu', matches: this.stateData.matchData.matches }, (data) => {
+        this.runPost(this.url, { action: 'getMenu', record: recordId, pid: pid }, (data) => {
             this.stateData.menu = data.menu ?? {};
             this.refreshMenu(projectTitle);
             this.updateLoadingBox("");
@@ -218,6 +219,9 @@ class Portal {
                 }
             } else {
                 $('#welcomeMessage').show();
+            }
+            if (cb) {
+                cb();
             }
         });
     }

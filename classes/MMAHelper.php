@@ -59,7 +59,10 @@ class MMAHelper {
     }
 
     public static function isValidHash($str) {
-        return (strlen($str) == self::getHashLength() * 2);
+        # older versions had a bug where hashes were produced with twice the size
+        # this code allows for both
+        # hashes are still checked whether they correspond with the value in REDCap
+        return (strlen($str) == self::getHashLength()) || (strlen($str) == self::getHashLength() * 2);
     }
 
     public static function makePublicApplicationForm($token, $server, $hash, $recordId = FALSE) {
@@ -248,13 +251,24 @@ function startNow() {
         return $html;
     }
 
+    public static function downloadAndMakeNames($token, $server) {
+        $firstNames = Download::firstnames($token, $server);
+        $lastNames = Download::lastnames($token, $server);
+        $names = [];
+        foreach ($firstNames as $recordId => $firstName) {
+            $lastName = $lastNames[$recordId] ?? "";
+            $names[$recordId] = NameMatcher::formatName($firstName, "", $lastName);
+        }
+        return $names;
+    }
+
     public static function makeMainTable($token, $server, $username, $metadata, $menteeRecordIds, $uidString = "") {
         $html = "";
 
         $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
         list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
-        $names = Download::names($token, $server);
-        $userids = Download::userids($token, $server);
+        $names = self::downloadAndMakeNames($token, $server);
+        $userids = Download::userids($token, $server);   // no hash defined -> not public project
         $allMentorUids = Download::primaryMentorUserids($token, $server);
         $allMentors = Download::primaryMentors($token, $server);
         $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge($metadataFields, ["record_id"])), $menteeRecordIds);
@@ -880,7 +894,9 @@ function startNow() {
         if (isset($_GET['test'])) {
             echo "Username $username<br>";
         }
-        if (self::isValidHash($username)) {
+        if ($username == NEW_HASH_DESIGNATION) {
+            return ["", ""];
+        } else if (self::isValidHash($username)) {
             $hashToLookFor = $username;
             if ($token && $server) {
                 if (self::isMentee()) {
@@ -1201,12 +1217,16 @@ function characteristicsPopup(entity) {
 
     public static function getMySurveys($username, $token, $server, $currentRecordId, $currentInstance) {
         $redcapData = Download::fields($token, $server, ["record_id", "mentoring_userid", "mentoring_last_update"]);
-        $names = Download::names($token, $server);
-        $userids = Download::userids($token, $server);
+        $names = self::downloadAndMakeNames($token, $server);
+        if (self::isValidHash($username)) {
+            $userids = [];
+        } else {
+            $userids = Download::userids($token, $server);
+        }
         $surveyLocations = [];
         foreach ($redcapData as $row) {
             if(($row['mentoring_userid'] == $username) && (($row['record_id'] != $currentRecordId) || ($row['redcap_repeat_instance'] != $currentInstance))) {
-                $recordUserids = self::getUserids($userids[$row['record_id']]);
+                $recordUserids = self::getUserids($userids[$row['record_id']] ?? "");
                 if (in_array(strtolower($username), $recordUserids)) {
                     $menteeName = "yourself";
                 } else {
@@ -1258,7 +1278,8 @@ function characteristicsPopup(entity) {
             $instanceClause = "instance = ?";
             $params[] = $instance;
         }
-        $sql = "SELECT value FROM redcap_data
+        $dataTable = Application::getDataTable($pid);
+        $sql = "SELECT value FROM $dataTable
             WHERE project_id = ?
             AND record=?
             AND field_name=?

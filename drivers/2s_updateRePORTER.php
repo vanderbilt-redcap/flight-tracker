@@ -40,7 +40,7 @@ function updateRePORTER($cat, $token, $server, $pid, $records, $searchWithoutIns
         $applicationField = "reporter_smapplid";
     }
 
-    $excludeList = Download::excludeList($token, $server, "exclude_grants", $metadata);
+    $excludeList = Download::excludeList($token, $server, "exclude_grants", $metadataFields);
     $universalInstitutions = array_unique(array_merge(CareerDev::getInstitutions($pid), Application::getHelperInstitutions($pid)));
 	foreach ($records as $recordId) {
 	    $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge(Application::getCustomFields($metadata), $reporterFields, ["identifier_institution"])), [$recordId]);

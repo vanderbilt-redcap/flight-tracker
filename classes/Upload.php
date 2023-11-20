@@ -104,7 +104,8 @@ class Upload
                         $params[] = $instance;
                     }
                 }
-                $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name = ?".$instanceClause;
+                $dataTable = Application::getDataTable($pid);
+                $sql = "DELETE FROM $dataTable WHERE project_id = ? AND record = ? AND field_name = ?".$instanceClause;
                 Application::log("Running SQL $sql with ".json_encode($params));
                 $module = Application::getModule();
                 $q = $module->query($sql, $params);
@@ -147,6 +148,7 @@ class Upload
     public static function deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances) {
         $records = Download::recordIds($token, $server);
         $batchSize = 10;
+        $dataTable = Application::getDataTable($pid);
         if (Download::isCurrentServer($server)) {
             if (in_array($recordId, $records)) {
                 if (!preg_match("/_$/", $prefix)) {
@@ -204,11 +206,12 @@ class Upload
 
                         $whereClause = "WHERE project_id = ? AND record = ? AND field_name IN (".implode(",", $fieldQuestionMarks).")".$instanceClause;
                         do {
-                            $sql = "DELETE FROM redcap_data ".$whereClause." LIMIT 1000";
+
+                            $sql = "DELETE FROM $dataTable ".$whereClause." LIMIT 1000";
                             Application::log("Running SQL $sql with ".json_encode($params));
                             $module->query($sql, $params);
 
-                            $sql = "SELECT record FROM redcap_data ".$whereClause." LIMIT 1";
+                            $sql = "SELECT record FROM $dataTable ".$whereClause." LIMIT 1";
                             $q = $module->query($sql, $params);
                         } while ($q->num_rows > 0);
                     }
@@ -223,7 +226,7 @@ class Upload
 
     public static function deleteForm($token, $server, $pid, $prefix, $recordId, $instance = NULL) {
         $records = Download::recordIds($token, $server);
-        $batchSize = 10;
+        $dataTable = Application::getDataTable($pid);
         if (Download::isCurrentServer($server)) {
             if (in_array($recordId, $records)) {
                 if ($instance !== NULL) {
@@ -231,7 +234,7 @@ class Upload
                 } else {
                     $module = Application::getModule();
                     $params = [$pid, $recordId, "$prefix%"];
-                    $sql = "DELETE FROM redcap_data WHERE project_id = ? AND record = ? AND field_name LIKE ?";
+                    $sql = "DELETE FROM $dataTable WHERE project_id = ? AND record = ? AND field_name LIKE ?";
                     Application::log("Running SQL $sql with ".json_encode($params));
                     $q = $module->query($sql, $params);
                     Application::log("SQL: " . $q->affected_rows . " rows affected");
@@ -456,15 +459,16 @@ class Upload
 
             $whereClause = "project_id = ? AND event_id = ? AND record = ? AND field_name = ? AND instance = ?";
 
+            $dataTable = Application::getDataTable($pid);
             $params = [$pid, $event_id, $record, $field, $instance];
-            $sql = "SELECT `value` FROM redcap_data WHERE $whereClause";
+            $sql = "SELECT `value` FROM $dataTable WHERE $whereClause";
             $result = $module->query($sql, $params);
             if ($result->num_rows > 0) {
                 $params = [$docId, $pid, $event_id, $record, $field, $instance];
-                $sql = "UPDATE redcap_data SET `value` = ? WHERE $whereClause";
+                $sql = "UPDATE $dataTable SET `value` = ? WHERE $whereClause";
             } else {
                 $params = [$pid, $event_id, $record, $field, $docId, $instance];
-                $sql = "INSERT INTO redcap_data (project_id, event_id, record, field_name, `value`, `instance`)
+                $sql = "INSERT INTO $dataTable (project_id, event_id, record, field_name, `value`, `instance`)
                         VALUES (?, ?, ?, ?, ?, ?)";
             }
 

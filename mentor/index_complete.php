@@ -20,9 +20,11 @@ if ($_GET['uid']) {
 } else if ($hash) {
     $username = $hash;
     $trailingUidString = "&hash=$hash&menteeRecordId=$menteeRecordId";
+    $userids = [];
 } else {
     $username = Application::getUsername();
     $trailingUidString = "";
+    $userids = Download::userids($token, $server);
 }
 
 require_once dirname(__FILE__).'/_header.php';
@@ -39,7 +41,6 @@ if (isset($_GET['instance'])) {
     throw new \Exception("You must specify an instance");
 }
 list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
-$userids = Download::userids($token, $server);
 $metadata = Download::metadata($token, $server);
 $allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
 $metadata = MMAHelper::filterMetadata($metadata);
@@ -48,7 +49,7 @@ $notesFields = MMAHelper::getNotesFields($metadataFields);
 $choices = REDCapManagement::getChoices($metadata);
 $redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
 $row = MMAHelper::pullInstanceFromREDCap($redcapData, $instance);
-$menteeUsernames = MMAHelper::getMenteeUserids($userids[$menteeRecordId]);
+$menteeUsernames = MMAHelper::getMenteeUserids($userids[$menteeRecordId] ?? "");
 $date = "";
 $menteeInstance = FALSE;
 foreach ($menteeUsernames as $menteeUsername) {

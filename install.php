@@ -30,8 +30,8 @@ if ($action == "localizeVariables") {
 		$installCoeus = Application::getSetting("hasCoeus");
         $displayInstitutions = Application::getInstitutions($pid, FALSE);
 		displayInstallHeaders($module, $token, $server, $pid, $tokenName);
-        $departments = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST['departments']));
-        $resources = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST['resources']));
+        $departments = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST['departments'])) ?: "Department";
+        $resources = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST['resources'])) ?: "Resource";
 		if ($resources && $departments) {
 			$lists = [
                 "departments" => $departments,

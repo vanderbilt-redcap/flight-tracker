@@ -238,7 +238,7 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
 	$allMiddleNames = Download::middlenames($token, $server);
     $allInstitutions = Download::institutions($token, $server);
     $metadata = Download::metadata($token, $server);
-    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+    $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
     if (in_array("identifier_orcid", $metadataFields)) {
         $orcids = Download::ORCIDs($token, $server);
     } else {
@@ -247,10 +247,10 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
     $choices = REDCapManagement::getChoices($metadata);
     $defaultInstitutions = REDCapManagement::excludeAcronyms(array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid))));
     $excludeList = [
-        'author' => Download::excludeList($token, $server, "exclude_publications", $metadata),
+        'author' => Download::excludeList($token, $server, "exclude_publications", $metadataFields),
     ];
     if (in_array("exclude_publication_topics", $metadataFields)) {
-        $excludeList["title"] = Download::excludeList($token, $server, "exclude_publication_topics", $metadata);
+        $excludeList["title"] = Download::excludeList($token, $server, "exclude_publication_topics", $metadataFields);
     }
 
 	foreach ($records as $recordId) {
@@ -418,7 +418,8 @@ function clearAllCitations($pid, $records) {
 	foreach ($records as $record) {
 		CareerDev::log("Clearing record $record in $pid");
 		echo "Clearing record $record in $pid\n";
-		$sql = "DELETE FROM redcap_data WHERE field_name LIKE 'citation_%' AND project_id = ? AND record = ?";
+        $dataTable = Application::getDataTable($pid);
+		$sql = "DELETE FROM $dataTable WHERE field_name LIKE 'citation_%' AND project_id = ? AND record = ?";
         $module->query($sql, [$pid, $record]);
 	}
 }

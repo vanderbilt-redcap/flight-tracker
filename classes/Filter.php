@@ -90,21 +90,29 @@ class Filter {
 		}
 	}
 
-	# function used in dynamic variable
-	public function calc_activity_code($type, $rows = array()) {
-		$func = "getActivityCodes";
-		if ($type == self::GET_CHOICES) {
-			$fields = array();
-			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
-				$fields[] = "summary_award_sponsorno_" . $i;
-			}
-			return $this->getCalcSettingsChoicesFromData($fields, $func);
-		} else if ($type == self::GET_VALUE) {
-			return $this->$func($rows);
-		}
-	}
+    # function used in dynamic variable
+    public function calc_activity_code($type, $rows = array()) {
+        $func = "getActivityCodes";
+        if ($type == self::GET_CHOICES) {
+            $fields = REDCapManagement::getGrantNumberFields($this->metadata);
+            return $this->getCalcSettingsChoicesFromData($fields, $func);
+        } else if ($type == self::GET_VALUE) {
+            return $this->$func($rows);
+        }
+    }
 
-	# function used in dynamic variable
+    # function used in dynamic variable
+    public function calc_institute($type, $rows = array()) {
+        $func = "getInstitutes";
+        if ($type == self::GET_CHOICES) {
+            $fields = REDCapManagement::getGrantNumberFields($this->metadata);
+            return $this->getCalcSettingsChoicesFromData($fields, $func);
+        } else if ($type == self::GET_VALUE) {
+            return $this->$func($rows);
+        }
+    }
+
+    # function used in dynamic variable
 	public function calc_pub_category($type, $rows = array()) {
 		if ($type == self::GET_CHOICES) {
 			$hashOfChoices = Citation::getCategories();
@@ -259,6 +267,7 @@ class Filter {
 			}
 		}
 
+        sort($allChoices);
 		$calcSettings = new CalcSettings("choices");
 		$calcSettings->setChoices($allChoices);
 		return $calcSettings;
@@ -318,19 +327,35 @@ class Filter {
 		return $types;
 	}
 
-	private function getActivityCodes($rows) {
-		$codes = array();
-		foreach ($rows as $row) {
-			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
-				$field = "summary_award_sponsorno_".$i;
-				if ($row[$field]) {
-					if ($code = Grant::getActivityCode($row[$field])) {
-						$codes[] = $code;
-					}
-				}
-			}
-		}
-		return $codes;
+    private function getInstitutes($rows) {
+        $codes = $this->getCodesFromAwardNumber($rows, "getInstituteCode");
+        $texts = [];
+        foreach ($codes as $code) {
+            $institute = Grant::decodeInstituteCode($code, TRUE);
+            if ($institute) {
+                $texts[] = "$institute ($code)";
+            }
+        }
+        return $texts;
+    }
+
+    private function getCodesFromAwardNumber($rows, $grantClassFunc) {
+        $codes = [];
+        $awardNumberFields = REDCapManagement::getGrantNumberFields($this->metadata);
+        foreach ($rows as $row) {
+            foreach ($awardNumberFields as $field) {
+                if ($row[$field] ?? FALSE) {
+                    if ($code = Grant::$grantClassFunc($row[$field])) {
+                        $codes[] = $code;
+                    }
+                }
+            }
+        }
+        return array_unique($codes);
+    }
+
+    private function getActivityCodes($rows) {
+        return $this->getCodesFromAwardNumber($rows, "getActivityCode");
 	}
 
 	# variable => label
@@ -369,18 +394,19 @@ class Filter {
 	# variable => label
 	public function getGrantChoices() {
 		$ary = [
-				"calc_award_type" => "Award Type",
-                "summary_ever_last_any_k_to_r01_equiv" => "Conversion Status",
-                "summary_award_type_1" => "First Award Type",
-				"summary_award_sponsorno_1" => "First Award Sponsor Number",
-				"calc_sponsorno" => "Any Award Sponsor Number",
-				"calc_activity_code" => "Activity Code",
-                "summary_t_start" => "Start of First Training Grant",
-                "summary_t_end" => "End of Last Training Grant",
-				"summary_first_any_k" => "First Any K",
-                "summary_last_any_k" => "Last Any K",
-				"summary_first_r01_or_equiv" => "First R01 or Equivalent",
-				];
+            "calc_award_type" => "Award Type",
+            "summary_ever_last_any_k_to_r01_equiv" => "Conversion Status",
+            "summary_award_type_1" => "First Award Type",
+            "summary_award_sponsorno_1" => "First Award Sponsor Number",
+            "calc_sponsorno" => "Any Award Sponsor Number",
+            "calc_activity_code" => "Activity Code",
+            "calc_institute" => "Institute/Center Abbrev.",
+            "summary_t_start" => "Start of First Training Grant",
+            "summary_t_end" => "End of Last Training Grant",
+            "summary_first_any_k" => "First Any K",
+            "summary_last_any_k" => "Last Any K",
+            "summary_first_r01_or_equiv" => "First R01 or Equivalent",
+        ];
         $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
         foreach ($ary as $field => $label) {
             if (preg_match("/^summary_/", $field) && !in_array($field, $metadataFields)) {

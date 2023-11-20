@@ -13,6 +13,10 @@ class BarChart extends Chart {
         $this->varName = $this->id."_".REDCapManagement::makeHash(8);
     }
 
+    public function setDataLabel($label) {
+        $this->mainDatasetLabel = $label;
+    }
+
     public function isCategoricalData() {
         $isAllNumeric = TRUE;
         foreach ($this->labels as $i => $label) {
@@ -68,7 +72,7 @@ let {$this->varName}_chart = new Chart({$this->varName}, {
     data: {
       labels: ".json_encode($this->labels).",
       datasets: [{
-        label: '',
+        label: '{$this->mainDatasetLabel}',
         data: ".json_encode($this->cols).",
         backgroundColor: '{$this->color}',
       }";
@@ -134,4 +138,5 @@ $(document).ready(function() {
     protected $id = "";
     protected $displayLegend = TRUE;
     protected $additionalDatasets = [];
+    protected $mainDatasetLabel = "";
 }

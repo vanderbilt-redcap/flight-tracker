@@ -148,8 +148,9 @@ if ((count($testRecords) > 0) && (!$selectRecord)) {
 	echo "Deleted records on test: $output\n";
 }
 
+$dataTable = Application::getDataTable($info['prod']['pid']);
 $module = Application::getModule();
-$sql = "SELECT * FROM redcap_data WHERE project_id = ?";
+$sql = "SELECT * FROM $dataTable WHERE project_id = ?";
 $q = $module->query($sql, [$info['prod']['pid']]);
 $insertRows = array();
 $fields = array("project_id", "event_id", "record", "field_name", "value", "instance");
@@ -174,20 +175,21 @@ while ($row = $q->fetch_assoc()) {
 	$insertRows[] = "(".implode(",", $questionMarks).")";
     $insertRowValues[] = $insertRowFields;
 	if (count($insertRows) > 50) {
-		$cnt_up += insertRows($fields, $insertRows, $insertRowValues);
+		$cnt_up += insertRows($fields, $insertRows, $insertRowValues, $info['test']['pid']);
 		$insertRows = array();
 	}
 	$cnt++;
 }
 if (count($insertRows) > 0) {
-	$cnt_up += insertRows($fields, $insertRows, $insertRowValues);
+	$cnt_up += insertRows($fields, $insertRows, $insertRowValues, $info['test']['pid']);
 }
 echo "Downloaded $cnt rows\n";
 echo "Uploaded $cnt_up rows\n";
 
-function insertRows($fields, $insertRows, $rowValues) {
+function insertRows($fields, $insertRows, $rowValues, $pid) {
     $module = Application::getModule();
-	$sql = "INSERT INTO redcap_data (".implode(",", $fields).") VALUES ".implode(",", $insertRows);
+    $dataTable = Application::getDataTable($pid);
+	$sql = "INSERT INTO $dataTable (".implode(",", $fields).") VALUES ".implode(",", $insertRows);
 	$module->query($sql, $rowValues);
     echo "<br><br>$sql";
 	return count($insertRows);

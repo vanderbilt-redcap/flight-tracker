@@ -5,7 +5,7 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/ClassLoader.php");
 
 class ExcludeList {
-    public function __construct($type, $pid, $excludeList = [], $metadata = []) {
+    public function __construct($type, $pid, $excludeList = [], $metadataFields = []) {
         $fields = [
             "Grants" => "exclude_grants",
             "Publications" => "exclude_publications",
@@ -20,21 +20,20 @@ class ExcludeList {
         $this->field = $fields[$type];
         $this->token = Application::getSetting("token", $this->pid);
         $this->server = Application::getSetting("server", $this->pid);
-        if (empty($metadata)) {
-            $this->metadata = Download::metadata($this->token, $this->server);
+        if (empty($metadataFields)) {
+            $this->metadataFields = Download::metadataFields($this->token, $this->server);
         } else {
-            $this->metadata = $metadata;
+            $this->metadataFields = $metadataFields;
         }
         if (empty($excludeList)) {
-            $this->excludeList = [$this->field => Download::excludeList($this->token, $this->server, $this->field, $this->metadata)];
+            $this->excludeList = [$this->field => Download::excludeList($this->token, $this->server, $this->field, $this->metadataFields)];
         } else {
             $this->excludeList = [$this->field => $excludeList];
         }
 
-        $metadataFields = Download::metadataFields($this->token, $this->server);
         $this->topicField = "exclude_publication_topics";
         if (($this->type == "Publications") && in_array($this->topicField, $metadataFields)) {
-            $this->excludeList[$this->topicField] = Download::excludeList($this->token, $this->server, $this->topicField, $this->metadata);
+            $this->excludeList[$this->topicField] = Download::excludeList($this->token, $this->server, $this->topicField, $this->metadataFields);
         }
 
         $this->link = Application::link("/wrangler/updateExcludeList.php");
@@ -100,6 +99,6 @@ class ExcludeList {
     protected $topicField;
     protected $token;
     protected $server;
-    protected $metadata;
+    protected $metadataFields;
     protected $link;
 }
