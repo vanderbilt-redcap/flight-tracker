@@ -632,7 +632,7 @@ function makeSiteForm($action, $extraParams, $cohort, $cohorts, $requestedInstit
     $html .= $cohorts->makeCohortSelect($cohort, "", TRUE) . "</p>";
     if ($action == "multisite") {
         $html .= "<p class='centered max-width green'>More concise institution names will receive more matches.</p>";
-        $html .= "<p class='centered max-width'><label for='institutions'>List of Institutions or Fragments of Institution Names (one per line):</label><br/><textarea style='width: 300px; height: 200px;' id='institutions' name='institutions'>".implode("\n", Sanitizer::sanitizeArray($requestedInstitutions))."</textarea></p>";
+        $html .= "<p class='centered max-width'><label for='institutions'>List of Institutions or Fragments of Institution Names (one per line):</label><br/><textarea style='width: 300px; height: 200px;' id='institutions' name='institutions'>".implode("\n", $requestedInstitutions)."</textarea></p>";
     }
     if (isset($extraParams['csv'])) {
         $checked = ($_GET['oneInstitutionPerRow'] == "on") ? "checked" : "";

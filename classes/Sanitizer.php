@@ -151,7 +151,28 @@ class Sanitizer {
         if (!is_string($str)) {
             return "";
         }
-        $str = htmlspecialchars($str, ENT_NOQUOTES);
+
+        $quotesInHTML = [
+            "&lsquo;" => "'",
+            "&rsquo;" => "'",
+            "&#8216;" => "'",
+            "&#8217;" => "'",
+            "&#39;" => "'",
+            "&#039;" => "'",
+            "&apos;" => "'",
+            "&quot;" => '"',
+            "&ldquo;" => '"',
+            "&rdquo;" => '"',
+            "&#8220;" => '"',
+            "&#8221;" => '"',
+            "&#34;" => '"',
+            "&#034;" => '"',
+        ];
+
+        $str = htmlspecialchars($str, ENT_QUOTES);
+        foreach ($quotesInHTML as $encoded => $decoded) {
+            $str = str_replace($encoded, $decoded, $str);
+        }
         return htmlentities($str, ENT_NOQUOTES);
     }
 
