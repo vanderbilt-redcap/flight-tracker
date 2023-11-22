@@ -579,7 +579,7 @@ class CronManager {
 
         Application::log("Currently running ".$firstBatchQueue['method']." for pid ".$firstBatchQueue['pid']." with status ".$firstBatchQueue['status'], $firstBatchQueue['pid']);
         if ($firstBatchQueue['status'] == "RUN") {
-            $startTs = isset($firstBatchQueue['startTs']) && is_numeric($batchQueue[0]['startTs']) ? $firstBatchQueue['startTs'] : 0;
+            $startTs = isset($firstBatchQueue['startTs']) && is_numeric($firstBatchQueue['startTs']) ? $firstBatchQueue['startTs'] : 0;
             $timespan = 90 * 60;   // max of 90 minutes per segment
             Application::log("Running until ".date("Y-m-d H:i:s", $startTs + $timespan));
             if (time() > $startTs + $timespan) {
@@ -593,7 +593,7 @@ class CronManager {
         }
         if (in_array($firstBatchQueue['status'], ["DONE", "ERROR"])) {
             if ($firstBatchQueue['status'] == "ERROR") {
-                Application::log("Saving ERROR ".json_encode($batchQueue[0]));
+                Application::log("Saving ERROR ".json_encode($firstBatchQueue));
                 $errorJobs = self::getErrorsFromDB();
                 self::addErrorToDB($firstBatchQueue, $errorJobs);
             }
