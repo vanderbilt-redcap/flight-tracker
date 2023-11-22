@@ -304,6 +304,15 @@ class Application {
 		CareerDev::log($mssg, $pid);
 	}
 
+    public static function getBase64($relativeURL) {
+        $relativeURL = preg_replace("/^\//", "", $relativeURL);
+        $filename = __DIR__."/".$relativeURL;
+        if (file_exists($filename)) {
+            return FileManagement::getBase64OfFile($filename, mime_content_type($filename));
+        }
+        return "";
+    }
+
 	public static function getInstitutions($pid = NULL, $searchOnly = TRUE) {
 		return CareerDev::getInstitutions($pid, $searchOnly);
 	}

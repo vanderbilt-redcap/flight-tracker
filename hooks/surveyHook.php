@@ -76,9 +76,9 @@ echo "<script src='".Application::link("js/base.js")."&".CareerDev::getVersion()
 echo "<script src='".Application::link("js/jquery.sweet-modal.min.js")."&".CareerDev::getVersion()."'></script>\n";
 ?>
 <script>
-const checkedImg = "<?= Application::link("wrangler/checked.png") ?>";
-const uncheckedImg = "<?= Application::link("wrangler/unchecked.png") ?>";
-const omittedImg = "<?= Application::link("wrangler/omitted.png") ?>";
+const checkedImg = "<?= Application::getBase64("wrangler/checked.png") ?>";
+const uncheckedImg = "<?= Application::getBase64("wrangler/unchecked.png") ?>";
+const omittedImg = "<?= Application::getBase64("wrangler/omitted.png") ?>";
 const surveyPrefix = "<?= $prefix ?>";
 
 // in case of multiple surveys
@@ -103,9 +103,9 @@ $(document).ready(function() {
 	$('#publications_wrangler').html(html);
 	$('#publications_wrangler').show();
 	if ($('#surveyinstructions').length > 0) {
-		$('#surveyinstructions').prepend('<img align="right" src="<?= Application::link("img/flight_tracker_logo_small.png") ?>">');
+		$('#surveyinstructions').prepend('<img align="right" src="<?= Application::getBase64("img/flight_tracker_logo_small.png") ?>">');
 	} else {
-		$('#surveytitlelogo').append('<img src="<?= Application::link("img/flight_tracker_logo_small.png") ?>"><br>');
+		$('#surveytitlelogo').append('<img src="<?= Application::getBase64("img/flight_tracker_logo_small.png") ?>"><br>');
 	}
 });
 </script>
@@ -119,7 +119,7 @@ function makeCheckboxes($coll, $img, $divId, $style = "") {
 	$html = "";
 	$html .= "<div id='$divId'$styleFiller>\n";
     $certifyPubURL = Application::link("wrangler/certifyPub.php")."&NOAUTH";
-    $imgURL = Application::link("/wrangler/".$img.".png");
+    $imgURL = Application::getBase64("/wrangler/".$img.".png");
     foreach ($coll->getCitations() as $citationObj) {
         $pmid = $citationObj->getPMID();
         $citationLink = $citationObj->getCitationWithLink(FALSE, TRUE);
