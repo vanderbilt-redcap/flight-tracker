@@ -385,8 +385,9 @@ class REDCapManagement {
     }
 
     public static function makeHash($length) {
-        if (is_integer($length) && ($length > 0)) {
-            return bin2hex(random_bytes(floor($length / 2)));
+        $byteAmount = (int) floor($length / 2);
+        if ($byteAmount > 0) {
+            return bin2hex(random_bytes($byteAmount));
         }
         return "";
     }

@@ -104,7 +104,7 @@ function makeJobRowHTML($setting, $headers, $count, &$cachedTitles) {
             } else {
                 $html .= "<td></td>";
             }
-        } else if ($row[$header]) {
+        } else if (isset($row[$header]) && ($row[$header] !== FALSE)) {
             if ($header == "method") {
                 $shortFilename = basename($row["file"]);
                 $html .= "<td>{$row['method']}<br/><span class='smaller'>$shortFilename</span></td>";

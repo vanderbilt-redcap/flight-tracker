@@ -534,14 +534,28 @@ class DataDictionaryManagement {
         }
     }
 
-    public static function getChoicesForField($pid, $field) {
-        $module = Application::getModule();
-        $sql = "SELECT element_enum FROM redcap_metadata WHERE project_id = ? AND field_name = ?";
-        $q = $module->query($sql, [$pid, $field]);
-        if ($row = $q->fetch_assoc()) {
-            return self::getRowChoices($row['element_enum'], TRUE);
+    public static function getChoicesForFields($pid, $fields) {
+        if (empty($fields)) {
+            return [];
         }
-        return [];
+        $questionMarks = [];
+        for ($i = 0; $i < count($fields); $i++) {
+            $questionMarks[] = "?";
+        }
+        $sqlArray = "(".implode(",", $questionMarks).")";
+        $module = Application::getModule();
+        $sql = "SELECT field_name, element_enum FROM redcap_metadata WHERE project_id = ? AND field_name IN $sqlArray";
+        $q = $module->query($sql, array_merge([$pid], $fields));
+        $choices = [];
+        while ($row = $q->fetch_assoc()) {
+            $choices[$row['field_name']] = self::getRowChoices($row['element_enum'], TRUE);
+        }
+        return $choices;
+    }
+
+    public static function getChoicesForField($pid, $field) {
+        $choices = self::getChoicesForFields($pid, [$field]);
+        return $choices[$field] ?? [];
     }
 
     public static function findChangedFieldsInMetadata($projectMetadata, $files, $deletionRegEx, $sourceChoices, $formsToExclude, $pid) {
@@ -1919,6 +1933,16 @@ class DataDictionaryManagement {
             return FALSE;
         }
         if ($metadata[0]['field_name'] != "record_id") {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    public static function isMetadataFieldsFilled($metadataFields) {
+        if (count($metadataFields) < 10) {
+            return FALSE;
+        }
+        if ($metadataFields[0] != "record_id") {
             return FALSE;
         }
         return TRUE;

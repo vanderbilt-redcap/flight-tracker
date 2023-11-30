@@ -85,7 +85,7 @@ if (isset($_POST['average']) || isset($_POST['list'])) {
 			echo "<li class='k2r'>Omit anyone with a most-recent CDA less than $kLength years old</li>";
 		}
 		echo "<li class='k2r'>Omit anyone with no matched CDA</li>";
-		echo "<li class='k2r'>Omit anyone with a K99/R00</li>";
+		echo "<li class='k2r'>Omit anyone with a Bridge Award (e.g., K99/R00)</li>";
 		if ($searchIfLeft) {
             echo "<li class='k2r'>Omit anyone who has left ".INSTITUTION." who has not converted and who did not fill out an Initial Survey</li>";
             if (Application::isVanderbilt()) {

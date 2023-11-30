@@ -704,7 +704,6 @@ class Grants {
     private function combineEquivalentGrants($awardsByBaseAwardNumber) {
         $equivalentGrantClasses = [
             ["R33", "R61"],
-            // For now ["K99", "R00"],
         ];
         $combineWith = [];
         $toCombine = [];
@@ -951,7 +950,7 @@ class Grants {
 	                [10],         // Training Grant Appt.
                     [7],          // Research Fellowship
                     [1, 2, 3, 4], // K-class
-                    [9],          // K99/R00
+                    [9],          // Bridge Awards
                     [5, 6],       // R-class
                     [8],          // Mentoring/Training Grant Admin.
                 ];
@@ -2065,11 +2064,11 @@ class Grants {
 	#		   4, Not On K; No R01-or-Equivalent
 	#		   5, No K, but R01-or-Equivalent
 	#		   6, No K; No R01-or-Equivalent
-	#			  7, Used K99/R00
+	#			  7, Used Bridge Award (K99/R00 or F99/K00)
 	private static function converted($row, $typeOfK, $pid) {
 		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
 			if (isset($row['summary_award_type_'.$i]) && ($row['summary_award_type_'.$i] == 9)) {
-				# K99/R00
+				# Bridge Awards
 				return 7;
 			}
 		}

@@ -1109,10 +1109,10 @@ class Scholar {
 		return FALSE;
 	}
 
-	private function hasK99R00() {
+	private function hasBridgeAward() {
 		if ($this->grants) {
 			foreach ($this->grants->getGrants("native") as $grant) {
-				if ($grant->getVariable("type") == "K99/R00") {
+				if ($grant->getVariable("type") == "Bridge Award") {
 					return TRUE;
 				}
 			}
@@ -1245,7 +1245,7 @@ class Scholar {
             $kLengthInSeconds = NULL;
         }
 		if ($this->hasMetaVariables()) {
-			if ($this->hasK99R00()) {
+			if ($this->hasBridgeAward()) {
 				return "Not Eligible";
 			} else if ($this->hasK()) {
 				if ($this->hasR01OrEquiv()) {
@@ -3520,6 +3520,12 @@ class Scholar {
 
 
 	private function getTrainingStart($rows) {
+        if (Application::isMSTP($this->pid) && Application::isVanderbilt()) {
+            $result = $this->getMSTPMatriculationDate($rows);
+            if ($result->getValue()) {
+                return $result;
+            }
+        }
         $result = $this->getGenericValueForField($rows, "summary_training_start");
 		$fieldName = $result->getField();
         // Application::log("getTrainingStart found result in $fieldName");
@@ -3575,7 +3581,35 @@ class Scholar {
 		return $changes;
 	}
 
+    private function getMSTPMatriculationDate($rows) {
+        $startYear = REDCapManagement::findField($rows, $this->recordId, "mstp_matriculation_date_vu");
+        if ($startYear) {
+            return new Result("$startYear-07-01", "manual", "Manually Entered", "", $this->pid);   // undecipherable
+        } else {
+            return new Result("", "", "", "", $this->pid);   // undecipherable
+        }
+    }
+
+    private function getMSTPGraduationDate($rows) {
+        $phdYear = REDCapManagement::findField($rows, $this->recordId, "mstp_phd_completion_year");
+        $mdYear = REDCapManagement::findField($rows, $this->recordId, "mstp_md_degree_received_date");
+        if (!$phdYear || !$mdYear) {
+            // current student - never graduated
+            return new Result("", "", "", "", $this->pid);   // undecipherable
+        } else if ($phdYear > $mdYear) {
+            return new Result("$phdYear-06-01", "manual", "Manually Entered", "", $this->pid);   // undecipherable
+        } else {
+            return new Result("$mdYear-06-01", "manual", "Manually Entered", "", $this->pid);   // undecipherable
+        }
+    }
+
 	private function getTrainingEnd($rows) {
+        if (Application::isMSTP($this->pid) && Application::isVanderbilt()) {
+            $result = $this->getMSTPGraduationDate($rows);
+            if ($result->getValue()) {
+                return $result;
+            }
+        }
         $result = $this->getGenericValueForField($rows, "summary_training_end");
 		$fieldName = $result->getField();
 		// Application::log("getTrainingEnd found result in $fieldName");

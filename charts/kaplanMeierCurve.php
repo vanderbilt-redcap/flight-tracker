@@ -98,7 +98,7 @@ if ($showRealGraph) {
         }
         $conversionStatusIdx = REDCapManagement::findField($redcapData, $record, "summary_ever_last_any_k_to_r01_equiv");
         if (in_array($conversionStatusIdx, [7])) {
-            # K99/R00
+            # Bridge Award
             continue;
         }
 

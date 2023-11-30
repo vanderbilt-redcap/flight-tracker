@@ -781,7 +781,7 @@ function toggleChange(dflt, ob, i, tclasses, source, awardNo){
 		doclass = 'class_c7';  ftype='RF';
 	} else if(getclass === 'Mentoring/Training Grant Admin'){
 		doclass = 'class_c8';  ftype='TG';
-	} else if(getclass === 'K99/R00'){
+	} else if(getclass === 'Bridge Award'){
 		doclass = 'class_c9';   ftype='KR';
 	} else if(getclass === 'N/A'){
 		doclass = 'class_c10';   ftype='N';
@@ -1383,7 +1383,7 @@ $awardDescript = Grants::areFlagsOn($pid) ? "Flagged" : "Career-Defining";
                     doclass = 'class_c7';  ftype='RF';
                 } else if(getclass === 'Training Grant Admin'){
                     doclass = 'class_c8';  ftype='TG';
-                } else if(getclass === 'K99/R00'){
+                } else if(getclass === 'Bridge Award'){
                     doclass = 'class_c9';   ftype='KR';
                 } else if(getclass === 'N/A'){
                     doclass = 'class_c10';   ftype='N';
@@ -2235,7 +2235,7 @@ function getClassAndFType($type) {
         $doclass = 'class_c7';   $ftype='RF';
     } else if($type == 'Training Grant Admin'){
         $doclass = 'class_c8';  $ftype='TG';
-    } else if($type == 'K99/R00'){
+    } else if($type == 'Bridge Award'){
         $doclass = 'class_c9';    $ftype='KR';
     } else if($type == 'N/A'){
         $doclass = 'class_c10';   $ftype='N';

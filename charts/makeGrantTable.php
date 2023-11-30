@@ -278,7 +278,7 @@ if (isset($_GET['plain'])) {
     echo "<td class='legendCell k12kl2 type'>K12/KL2</td>";
     echo "<td class='legendCell individualK type'>Individual K</td>";
     echo "<td class='legendCell kEquivalent type'>K Equivalent</td>";
-    echo "<td class='legendCell k99r00 type'>K99/R00</td>";
+    echo "<td class='legendCell bridge type'>Bridge Award</td>";
     echo "<td class='legendCell r01 type'>R01</td>";
     echo "<td class='legendCell rEquivalent type'>R01 Equivalent</td>";
     echo "<td class='legendCell trainingAdmin type'>Mentoring / Training Grant Admin</td>";
@@ -356,7 +356,8 @@ function printRowsForRecord($recordId, $fields, $token, $server, $pid, $grantRea
         "R01" => "r01",
         "R01 Equivalent" => "rEquivalent",
         "Training Appointment" => "trainingAppt",
-        "K99/R00" => "k99r00",
+        "K99/R00" => "bridge",
+        "Bridge Award" => "bridge",
         "Mentoring/Training Grant Admin" => "trainingAdmin",
         "Training Grant Admin" => "trainingAdmin",
         "Research Fellowship" => "fellowship",

@@ -283,7 +283,7 @@ class Upload
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
                 $output = (string) curl_exec($ch);
                 $feedback = json_decode($output, TRUE);
-                self::testFeedback($feedback, $output, $ch);
+                self::testFeedback($feedback, $output, $ch, [], $pid);
                 curl_close($ch);
                 Application::log("Deleted ".$output);
 
@@ -378,7 +378,7 @@ class Upload
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 		$output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
-        self::testFeedback($feedback, $output, $ch, $metadata);
+        self::testFeedback($feedback, $output, $ch, $metadata, $pid);
 		curl_close($ch);
 
         $pid = Application::getPID($token);
@@ -393,7 +393,7 @@ class Upload
 		return $feedback;
 	}
 
-	private static function testFeedback($feedback, $originalText, $curlHandle, $rows = array()) {
+	private static function testFeedback($feedback, $originalText, $curlHandle, $rows = array(), $pid = NULL) {
         if (!$feedback && $curlHandle) {
             $returnCode = curl_getinfo($curlHandle, CURLINFO_RESPONSE_CODE);
             $curlError = curl_error($curlHandle);
@@ -401,7 +401,7 @@ class Upload
                 throw new \Exception("Upload error (non-JSON): $originalText [$returnCode] - $curlError");
             }
         } else if (isset($feedback['error']) && $feedback['error']) {
-            Application::log("Upload error: ".$feedback['error']);
+            Application::log("Upload error: ".$feedback['error'], $pid);
             if (preg_match("/Each multiple choice field \(radio, drop-down, checkbox, etc\.\) must have choices listed in column F, but the following\s+cells have choices missing: ([F\d\s,]+)/", $feedback['error'], $matches)) {
                 $cells = explode(", ", $matches[1]);
                 $displayRows = [];
@@ -625,7 +625,7 @@ class Upload
             $feedback = \REDCap::saveData($pid, "json", json_encode($rows), "overwrite");
         }
         $output = json_encode($feedback);
-        self::testFeedback($feedback, $output, FALSE);
+        self::testFeedback($feedback, $output, FALSE, [], $pid);
         return $feedback;
     }
 
@@ -724,7 +724,7 @@ class Upload
                     }
                     $time3 = microtime(TRUE);
                     $output = json_encode($feedback);
-                    self::testFeedback($feedback, $output, NULL);
+                    self::testFeedback($feedback, $output, NULL, [], $pid);
                     $runAPI = FALSE;
                 }
 			}
@@ -755,7 +755,7 @@ class Upload
                 $time3 = microtime(TRUE);
 
                 try {
-                    self::testFeedback($feedback, $output, $ch, $rows);
+                    self::testFeedback($feedback, $output, $ch, $rows, $pid);
                 } catch (\Exception $e) {
                     if ($retryCount < self::MAX_RETRIES) {
                         $retryCount++;

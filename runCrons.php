@@ -9,19 +9,20 @@ require_once(dirname(__FILE__)."/cronLoad.php");
 
 define('REDIRECT_EMAILS', FALSE);
 
-$manager = new CronManager($token, $server, $pid, Application::getModule());
+$module = Application::getModule();
+$module->cronManager = new CronManager($token, $server, $pid, $module);
 $specialOnly = FALSE;
 if (isset($argv[2]) && ($argv[2] = "special")) {
 	$specialOnly = TRUE;
 }
 if (isset($_GET['initial'])) {
-    \Vanderbilt\FlightTrackerExternalModule\loadInitialCrons($manager, $specialOnly);
+    \Vanderbilt\FlightTrackerExternalModule\loadInitialCrons($module->cronManager, $specialOnly);
 } else {
-    \Vanderbilt\FlightTrackerExternalModule\loadCrons($manager, $specialOnly);
+    \Vanderbilt\FlightTrackerExternalModule\loadCrons($module->cronManager, $specialOnly);
 }
-error_log($manager->getNumberOfCrons()." total crons loaded in");
+error_log($module->cronManager->getNumberOfCrons()." total crons loaded in");
 if (REDIRECT_EMAILS) {
     $adminEmail = "scott.j.pearson@vumc.org";
 }
-$manager->runBatchJobs();
-// $manager->run($adminEmail, $tokenName, $pid);
+$module->cronManager->runBatchJobs();
+// $module->cronManager->run($adminEmail, $tokenName, $pid);

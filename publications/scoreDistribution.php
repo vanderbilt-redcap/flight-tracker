@@ -5,6 +5,7 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\BarChart;
+use \Vanderbilt\CareerDevLibrary\LineGraph;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\DateManagement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
@@ -17,7 +18,8 @@ use \Vanderbilt\CareerDevLibrary\iCite;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
-$thresholdRCR = isset($_GET['thresholdRCR']) ? Sanitizer::sanitize($_GET['thresholdRCR']) : 2.0;
+$thresholdRCR = isset($_GET['thresholdRCR']) ? Sanitizer::sanitizeNumber($_GET['thresholdRCR']) : 2.0;
+$highImpactRCR = isset($_GET['highImpactRCR']) ? Sanitizer::sanitizeNumber($_GET['highImpactRCR']) : 8.0;
 $startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['start'] ?? "");
 $endDate = Sanitizer::sanitizeDate($_GET['end'] ?? "");
 $startTs = DateManagement::isDate($startDate) ? strtotime($startDate) : 0;
@@ -30,9 +32,7 @@ $fields = [
     "citation_include",
     "citation_rcr",
     "citation_altmetric_score",
-    "citation_day",
-    "citation_month",
-    "citation_year",
+    "citation_ts",
 ];
 $coauthorshipsOnly = FALSE;
 if (isset($_GET['coauthorships']) && ($_GET['coauthorships'] == "on")) {
@@ -59,9 +59,16 @@ foreach ($records as $recordId) {
 }
 $redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
 
+$metrics = [
+    "citation_rcr" => "Relative Citation Ratio",
+    "citation_altmetric_score" => "Altmetric Score",
+];
 $dist = [];
-foreach (["citation_rcr", "citation_altmetric_score"] as $field) {
+$byYear = [];
+$highImpactRCRsByYear = [];
+foreach (array_keys($metrics) as $field) {
     $dist[$field] = [];
+    $byYear[$field] = [];
     foreach ($redcapData as $row) {
         if (
             !$coauthorshipsOnly
@@ -73,9 +80,54 @@ foreach (["citation_rcr", "citation_altmetric_score"] as $field) {
                 && ($row['citation_include'] == "1")
             ) {
                 $dist[$field][$row['record_id'] . ":" . $row['redcap_repeat_instance']] = $row[$field];
+                if ($row['citation_ts']) {
+                    $year = DateManagement::getYear($row['citation_ts']);
+                    if (!isset($byYear[$field][$year])) {
+                        $byYear[$field][$year] = [];
+                    }
+                    $byYear[$field][$year][] = $row[$field];
+
+                    if (($field == "citation_rcr") && ($row[$field] >= $highImpactRCR)) {
+                        if (!isset($highImpactRCRsByYear[$year])) {
+                            $highImpactRCRsByYear[$year] = 0;
+                        }
+                        $highImpactRCRsByYear[$year]++;
+                    }
+                }
             }
         }
     }
+}
+
+$averagesByYear = [];
+foreach ($byYear as $field => $yearsWithValues) {
+    $averagesByYear[$field] = ["mean" => [], "median" => []];
+    foreach ($yearsWithValues as $year => $scores) {
+        sort($scores, SORT_NUMERIC);
+        if (isset($_GET['test'])) {
+            echo "Year $year (n=".count($scores)."): ".implode(", ", $scores)."<br/>";
+        }
+        $averagesByYear[$field]["mean"][$year] = avg($scores);
+        $averagesByYear[$field]["median"][$year] = REDCapManagement::getMedian($scores);
+    }
+    if (!empty($yearsWithValues)) {
+        for ($year = min(array_keys($yearsWithValues)); $year <= max(array_keys($yearsWithValues)); $year++) {
+            if (!isset($averagesByYear[$field]["mean"][$year])) {
+                $averagesByYear[$field]["mean"][$year] = 0;
+                $averagesByYear[$field]["median"][$year] = 0;
+            }
+        }
+    }
+    ksort($averagesByYear[$field]["mean"], SORT_NUMERIC);
+    ksort($averagesByYear[$field]["median"], SORT_NUMERIC);
+}
+if (!empty($highImpactRCRsByYear)) {
+    for ($year = min(array_keys($highImpactRCRsByYear)); $year <= max(array_keys($highImpactRCRsByYear)); $year++) {
+        if (!isset($highImpactRCRsByYear[$year])) {
+            $highImpactRCRsByYear[$year] = 0;
+        }
+    }
+    ksort($highImpactRCRsByYear, SORT_NUMERIC);
 }
 
 $recordsToDownload = [];
@@ -148,13 +200,17 @@ if (!isset($_GET['hideHeader'])) {
     echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date (optional)</label>: <input type='date' id='end' name='end' value='$endDate' style='width: 150px;'>";
     echo "</p>";
     echo "<p class='centered'><label for='thresholdRCR'>Threshold Relative Citation Ratio (RCR) for List</label>: <input type='number' id='thresholdRCR' name='thresholdRCR' value='$thresholdRCR' style='width: 100px;'></p>";
+    echo "<p class='centered'><label for='highImpactRCR'>High-Impact Relative Citation Ratio (RCR) for Histogram</label>: <input type='number' id='highImpactRCR' name='highImpactRCR' value='$highImpactRCR' style='width: 100px;'></p>";
     $coauthorshipsChecked = $coauthorshipsOnly ? "checked" : "";
     echo "<p class='centered'><input type='checkbox' id='coauthorships' name='coauthorships' $coauthorshipsChecked /> <label for='coauthorships'>Show Only Coauthorships</label></p>";
     echo "<p class='centered'><button>Re-Configure</button></p>";
     echo "</form>";
 }
 
-$colorWheel = Application::getApplicationColors();
+$colorWheel = Application::getApplicationColors(["1.0"], TRUE);
+if (isset($_GET['test'])) {
+    echo "Colors: ".json_encode($colorWheel)."<br/>";
+}
 $i = 0;
 foreach ($dist as $field => $values) {
     $label = $fieldLabels[$field];
@@ -177,11 +233,37 @@ foreach ($dist as $field => $values) {
             echo "<link rel='stylesheet' href='$loc'>";
         }
     }
+    $barChart->setDataLabel("Number of Papers in Range");
     $barChart->setColor($color);
     $barChart->setXAxisLabel(REDCapManagement::stripHTML($label));
     $barChart->setYAxisLabel("Number of Articles");
     $barChart->showLegend(FALSE);
     echo "<div class='centered max-width'>".$barChart->getHTML(800, 500, FALSE)."</div>";
+
+    echo "<h4>{$metrics[$field]}s Over Time</h4>";
+    $lineChart = new LineGraph(array_values($averagesByYear[$field]["mean"]), array_keys($averagesByYear[$field]["mean"]), "mean_line_graph_".$i);
+    $lineChart->setColor($colorWheel[2]);
+    $lineChart->setDataLabel("Mean ".$metrics[$field]);
+    $lineChart->setXAxisLabel("Year of Publication");
+    $lineChart->setYAxisLabel("Average ".$metrics[$field]);
+    $lineChart->addDataset($averagesByYear[$field]["median"], $colorWheel[3], "Median ".$metrics[$field]);
+    echo "<div class='centered max-width'>".$lineChart->getHTML(800, 500, FALSE)."</div>";
+
+    if ($field == "citation_rcr") {
+        if (empty($highImpactRCRsByYear)) {
+            echo "<p class='centered max-width'>No high-impact (&gt; $highImpactRCR) publications have been identified.</p>";
+        } else {
+            echo "<h4>Number of High-Impact RCRs (&gt; $highImpactRCR) Over Time</h4>";
+            $highImpactBar = new BarChart(array_values($highImpactRCRsByYear), array_keys($highImpactRCRsByYear), "high-impact-rcrs");
+            $highImpactBar->setDataLabel("Papers with RCR > ".$highImpactRCR);
+            $highImpactBar->setColor($color);
+            $highImpactBar->setXAxisLabel("Year");
+            $highImpactBar->setYAxisLabel("Number of High-Impact Papers (> $highImpactRCR)");
+            $highImpactBar->showLegend(FALSE);
+            echo "<div class='centered max-width'>".$highImpactBar->getHTML(800, 500, FALSE)."</div>";
+        }
+    }
+
     $i++;
 }
 
@@ -242,13 +324,10 @@ function buildDistribution($values, $field) {
 }
 
 function inTimespan($row, $startTs, $endTs) {
-    $year = $row['citation_year'];
-    if (!$year) {
+    if (!$row['citation_ts']) {
         return FALSE;
     }
-    $month = $row['citation_month'] ?: "01";
-    $day = $row['citation_day'] ?: "01";
-    $ts = strtotime("$year-$month-$day");
+    $ts = strtotime($row['citation_ts']);
     return (($ts >= $startTs) && ($ts <= $endTs));
 }
 

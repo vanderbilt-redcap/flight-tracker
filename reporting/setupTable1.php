@@ -11,7 +11,8 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
 $table1Pid = Application::getTable1PID();
-if ($table1Pid) {
+$surveyLink = Application::getTable1SurveyLink();
+if ($table1Pid && $surveyLink) {
     require_once(dirname(__FILE__)."/../charts/baseWeb.php");
     die("Project already set up!");
 }
@@ -39,7 +40,7 @@ if (REDCapManagement::isValidToken($table1Token)) {
     Application::saveSetting("table1Token", $table1Token, $pid);
 } else {
     require_once(dirname(__FILE__)."/../charts/baseWeb.php");
-    die("<p class='centered max-width red'>No supertoken provided!</p>");
+    die("<p class='centered max-width red'>No token or supertoken provided!</p>");
 }
 $projectInfo = Download::getProjectSettings($table1Token, $server);
 $table1Pid = $projectInfo['project_id'] ?? "";

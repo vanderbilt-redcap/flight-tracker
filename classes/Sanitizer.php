@@ -144,6 +144,9 @@ class Sanitizer {
     /**
      * @psalm-taint-specialize
      */
+    # Used in cases where $str must be escaped so that it can be used in APIs or searching API data
+    # This should NOT be used in cases where $str is only displayed to the screen to avoid spurious alerts
+    # In most cases, Santizer::sanitize() should be used instead
     public static function sanitizeWithoutChangingQuotes($str) {
         if (is_numeric($str)) {
             $str = (string) $str;

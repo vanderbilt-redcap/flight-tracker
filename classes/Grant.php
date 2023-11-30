@@ -38,8 +38,13 @@ class Grant {
             return $dollars;
         }
         if (!isset($cpis[$year]) || !isset($cpis[$currYear])) {
-            $minYear = min(array_keys($cpis));
-            $maxYear = max(array_keys($cpis));
+            $minYear = "NONE";
+            $maxYear = "NONE";
+            $years = array_keys($cpis);
+            if (!empty($years)) {
+                $minYear = min($years);
+                $maxYear = max($years);
+            }
             throw new \Exception("Invalid year ($year or $currYear). Minimum year is $minYear. Maximum year is $maxYear.");
         }
         $currCPI = $cpis[$currYear];
@@ -2755,8 +2760,13 @@ class Grant {
 			return "N/A";
 		} else if (preg_match("/Unknown individual/", $awardNo)) {
 			return "K Equivalent";
-		} else if (preg_match("/^\d?[Rr]00/", $awardNo) || preg_match("/^\d?[Kk]\s*99/", $awardNo)) {
-			return "K99/R00";
+		} else if (
+            preg_match("/^\d?[Rr]00/", $awardNo)
+            || preg_match("/^\d?[Kk]\s*99/", $awardNo)
+            || preg_match("/^\d?[Ff]\s*99/", $awardNo)
+            || preg_match("/^\d?[Kk]\s*00/", $awardNo)
+        ) {
+			return "Bridge Award";
         } else if (preg_match("/^\d?[Rr]01/", $awardNo)) {
             return "R01";
 		} else if (preg_match("/^\d?[Tt]\d\d/", $awardNo) || preg_match("/^\d?[Dd]43/", $awardNo)) {
@@ -2848,10 +2858,8 @@ class Grant {
 			return "K12/KL2";
 		} else if (preg_match("/Individual K/", $awardNo)) {
 			return "Individual K";
-		} else if (preg_match("/^\d?[Kk]99/", $awardNo)) {
-			return "K99/R00";
 		} else if (preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
-			if (!preg_match("/[Kk]99/", $awardNo)) {
+			if (!preg_match("/[Kk]99/", $awardNo) && !preg_match("/[Kk]00/", $awardNo)) {
 				# after all other special cases for K
 				return "Individual K";
 			}
@@ -3011,7 +3019,7 @@ class Grant {
 				"Research Fellowship" => 7,
                 "Mentoring/Training Grant Admin" => 8,
                 "Training Grant Admin" => 8,
-				"K99/R00" => 9,
+				"Bridge Award" => 9,
 				"N/A" => 99,
 		);
 		return $awardTypes;

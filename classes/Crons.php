@@ -39,6 +39,14 @@ class CronManager {
         self::$lastSendErrorLogs = Application::getSetting("send_error_logs", $pid);
 	}
 
+    public function addMultiCronInBatches($file, $method, $dateOrDay, $allPids, $batchSize) {
+        foreach (array_chunk($allPids, $batchSize) as $batchPids) {
+            $this->addMultiCron($file, $method, $dateOrDay, $allPids, $batchPids);
+        }
+    }
+
+
+
     public function addMultiCron($file, $method, $dayOfWeek, $pids, $firstParameter = FALSE) {
         if ($this->module) {
             $this->addCronForBatchMulti($file, $method, $dayOfWeek, $pids, $firstParameter);
@@ -83,7 +91,7 @@ class CronManager {
         if (!empty($records)) {
             $cronjob->setRecords($records);
         }
-        if ($firstParameter) {
+        if ($firstParameter !== FALSE) {
             $cronjob->setFirstParameter($firstParameter);
         }
         if ($this->isDebug) {
@@ -621,7 +629,7 @@ class CronManager {
                         $cronjob = new CronJob($firstBatchQueue['file'], $firstBatchQueue['method']);
                         $firstBatchQueue['startTs'] = time();
                         $firstBatchQueue['status'] = "RUN";
-                        if ($firstBatchQueue['firstParameter']) {
+                        if ($firstBatchQueue['firstParameter'] !== FALSE) {
                             $cronjob->setFirstParameter($firstBatchQueue['firstParameter']);
                         }
                         if (isset($firstBatchQueue['pid'])) {
@@ -648,7 +656,7 @@ class CronManager {
                             self::addRunJobToDB($runJob);
                         } else if (isset($firstBatchQueue['records'])) {
                             $cronjob->setRecords($firstBatchQueue['records']);
-                            if (isset($firstBatchQueue['firstParameter'])) {
+                            if ($firstBatchQueue['firstParameter'] !== FALSE) {
                                 $cronjob->setFirstParameter($firstBatchQueue['firstParameter']);
                             }
                             $queueHasRun = TRUE;
@@ -687,9 +695,6 @@ class CronManager {
                     # inactive project
                     array_shift($batchQueue);
                     self::saveBatchQueueToDB($batchQueue);
-                    if (empty($batchQueue)) {
-                        return;
-                    }
                 } else {
                     # empty batchQueue
                     self::saveBatchQueueToDB($batchQueue);
@@ -1736,7 +1741,7 @@ class CronJob {
             }
             $startTs = time();
             URLManagement::resetUnsuccessfulCount();
-            if ($this->firstParameter) {
+            if ($this->firstParameter !== FALSE) {
                 $method($passedPids, $this->firstParameter);
             } else {
                 $method($passedPids);

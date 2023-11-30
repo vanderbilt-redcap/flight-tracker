@@ -430,7 +430,7 @@ class Download {
 	public static function metadata($token, $server, $fields = [])
     {
         $pid = Application::getPID($token);
-        $cachedMetadata = self::getCachedMetadata($pid);
+        $cachedMetadata = self::getCachedMetadata($pid, $fields);
         if (!empty($cachedMetadata)) {
             return $cachedMetadata;
         }
@@ -459,7 +459,7 @@ class Download {
         }
     }
 
-    private static function getCachedMetadata($pid) {
+    private static function getCachedMetadata($pid, $fields) {
         if (
             $pid
             && isset($_SESSION['lastMetadata'.$pid])
@@ -489,7 +489,7 @@ class Download {
         if (isset($_GET['test'])) {
             Application::log("Download::metadataByPid", $pid);
         }
-        $cachedMetadata = self::getCachedMetadata($pid);
+        $cachedMetadata = self::getCachedMetadata($pid, $fields);
         if (!empty($cachedMetadata)) {
             return $cachedMetadata;
         }
@@ -693,11 +693,11 @@ class Download {
             Application::log("sendToServer: API in ".($time2 - $time1)." seconds with ".count($redcapData)." rows");
         }
         if (!$output) {
-            Application::log("Retrying because no output");
+            Application::log("Retrying because no output", $pid);
             usleep(500);
             $redcapData = self::callAPI($server, $data, $pid, $try + 1);
-            if (($redcapData === NULL) && ($try == $maxTries)) {
-                Application::log("ERROR: ".$output);
+            if (($redcapData === NULL) && ($try >= $maxTries)) {
+                Application::log("ERROR: Null output", $pid);
                 throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
             }
             if (isset($redcapData['error']) && !empty($redcapData['error'])) {
@@ -706,11 +706,11 @@ class Download {
             return $redcapData;
         }
         if ($redcapData === NULL) {
-            Application::log("Retrying because undecipherable output");
+            Application::log("Retrying because undecipherable output", $pid);
             usleep(500);
             $redcapData = self::callAPI($server, $data, $pid, $try + 1);
-            if (($redcapData === NULL) && ($try == $maxTries)) {
-                Application::log("ERROR: ".$output);
+            if (($redcapData === NULL) && ($try >= $maxTries)) {
+                Application::log("ERROR: ".$output, $pid);
                 throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
             }
         }
@@ -1191,6 +1191,7 @@ class Download {
         while ($row = $q->fetch_assoc()) {
             $records[] = Sanitizer::sanitize($row['record']);
         }
+        sort($records, SORT_NUMERIC);
         return $records;
     }
 

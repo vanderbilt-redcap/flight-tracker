@@ -15,7 +15,7 @@ if (isset($_POST['supertoken'])) {
     $supertoken = Sanitizer::sanitize($_POST['supertoken']);
     if (REDCapManagement::isValidSupertoken($supertoken)) {
         Application::saveSetting("supertoken", $supertoken, $pid);
-        Application::saveSystemSetting("table1Pid", "", $pid);
+        Application::saveSystemSetting("table1Pid", "");
     } else {
         echo "<p class='centered red max-width'>Invalid supertoken!</p>";
     }

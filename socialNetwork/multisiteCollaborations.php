@@ -169,6 +169,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
                 $maxColor = Sanitizer::sanitize($_GET['maxColor'] ?: "#336e8c");
                 $globalChart->setHeatColors($minColor, $maxColor);
             }
+            echo $globalChart->setShowLabels($_GET['showLabels'] ?? FALSE);
             echo $globalChart->getImportHTML();
             echo $globalChart->getHTML(1000, 650);
         }
@@ -641,7 +642,10 @@ function makeSiteForm($action, $extraParams, $cohort, $cohorts, $requestedInstit
     if ($action == "international") {
         $defaultLat = Sanitizer::sanitizeNumber($_GET['source_latitude'] ?? "");
         $defaultLong = Sanitizer::sanitizeNumber($_GET['source_longitude'] ?? "");
+        $isShowLabelsChecked = $_GET['showLabels'] ?? TRUE;
+        $showLabels = $isShowLabelsChecked ? "checked" : "";
         $html .= "<p class='centered max-width'>Home Coordinates for Global Arcs on Graph (optional; leave blank to turn off):<br/><label for='source_latitude'>Latitude (negative for south): </label><input type='number' step='0.0001' id='source_latitude' name='source_latitude' style='width: 200px;' value='$defaultLat'/><br/><label for='source_longitude'>Longitude (negative for west): </label><input type='number' step='0.0001' id='source_longitude' name='source_longitude' style='width: 200px;' value='$defaultLong'/></p>";
+        $html .= "<p class='centered max-width'><input type='checkbox' id='showLabels' name='showLabels' value='1' $showLabels /> <label for='showLabels'>Show Numbers on Each Country</label></p>";
     }
 
     $html .= "<div class='centered max-width'><label for='start'>Start Date (on-or-after ".START_YEAR."): </label><input type='date' id='start' name='start' value='$startDate' />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<label for='end'>End Date: </label><input type='date' id='end' name='end' value='$endDate' /></div>";

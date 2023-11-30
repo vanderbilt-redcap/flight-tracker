@@ -1297,6 +1297,8 @@ class Publications {
                 "citation_grants" => implode("; ", $assocGrants),
                 "citation_complete" => "2",
             ];
+            $token = Application::getSetting("token", $pid);
+            $server = Application::getSetting("server", $pid);
             $citation = new Citation($token, $server, $recordId, $instance, $row);
             if (in_array("citation_full_citation", $metadataFields)) {
                 $pubmedCitation = $citation->getPubMedCitation();

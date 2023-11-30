@@ -23,7 +23,7 @@ class FileManagement {
             $count++;
             $filename = APP_PATH_TEMP.self::makeSafeFilename(REDCapManagement::makeHash(8)."_flight_tracker.pdf");
         } while (file_exists($filename) && ($count < 10000));
-        if (!file_exists($filename)) {
+        if (!file_exists($filename) && $output) {
             file_put_contents($filename, $output);
             return $filename;
         } else {

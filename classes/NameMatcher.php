@@ -941,7 +941,8 @@ class NameMatcher {
                             $newNodes[] = $nodes[$lastNodeIdx - 2] . " " . $nodes[$lastNodeIdx - 1] . " " . $nodes[$lastNodeIdx];
                             $changed = TRUE;
                             $nodes = $newNodes;
-                        } else if (preg_match("/^\((.+)\)$/", $nodes[$lastNodeIdx] ?? "", $matches)) {
+                        } else if (preg_match("/^[\(\"'](.+)[\)\"']$/", $nodes[$lastNodeIdx] ?? "", $matches)) {
+                            # name surrounded by parentheses or quotes => remove
                             if ($loggingOn) {
                                 Application::log("Do-while E: ".json_encode($nodes)."<br>");
                             }
@@ -949,7 +950,7 @@ class NameMatcher {
                             for ($i = 0; $i < $lastNodeIdx - 1; $i++) {
                                 $newNodes[] = $nodes[$i];
                             }
-                            $newNodes[] = $nodes[$lastNodeIdx - 1] . " " . $matches[1];   # remove parentheses
+                            $newNodes[] = $nodes[$lastNodeIdx - 1] . " " . $matches[1];
                             $changed = TRUE;
                             $nodes = $newNodes;
                         } else {

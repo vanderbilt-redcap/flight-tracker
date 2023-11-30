@@ -176,7 +176,6 @@ function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
 	if ($specialOnly) {
 		// $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", date("Y-m-d"));
 		// $manager->addCron("drivers/2n_updateReporters.php", "updateReporter", date("Y-m-d"));
-		// $manager->addCron("drivers/2o_updateCoeus.php", "processCoeus", date("Y-m-d"));
 		// $manager->addCron("publications/getAllPubs_func.php", "getPubs", date("Y-m-d"));
 		// $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", date("Y-m-d"));
         if (!Application::isLocalhost()) {
@@ -206,6 +205,11 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         $forms = Download::metadataForms($token, $server);
 		$records = Download::recordIds($token, $server);
         $securityTestMode = Application::getSetting("security_test_mode", $pid);
+
+        if (!Application::getSetting("dedupResources122023", $pid)) {
+            $manager->addCron("drivers/preprocess.php", "dedupResources", date("Y-m-d"));
+            Application::saveSetting("dedupResources122023", TRUE, $pid);
+        }
 
         // if (in_array("pre_screening_survey", $forms)) {
             // $manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
@@ -283,8 +287,10 @@ function loadMultiProjectCrons(&$manager, $pids)
             $manager->addMultiCron("drivers/26_workday.php", "getAllWorkday", "Friday", $pids);
         }
     }
-    $manager->addMultiCron("drivers/preprocess.php", "preprocessPortal", "Monday", $pids);
-    $manager->addMultiCron("drivers/preprocess.php", "preprocessPortal", "Thursday", $pids);
+    $manager->addMultiCron("drivers/preprocess.php", "downloadPortalData", "Monday", $pids);
+    $manager->addMultiCron("drivers/preprocess.php", "downloadPortalData", "Thursday", $pids);
+    $manager->addMultiCronInBatches("drivers/preprocess.php", "preprocessPortal", "Monday", $pids, 10);
+    $manager->addMultiCronInBatches("drivers/preprocess.php", "preprocessPortal", "Thursday", $pids, 10);
     loadInternalSharingCrons($manager, $pids);
 }
 
@@ -309,8 +315,12 @@ function loadInternalSharingCrons(&$manager, $pids) {
         return;
     }
 
-    if (Application::isServer("redcaptest.vanderbilt.edu")) {
-        $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", date("Y-m-d"), $preprocessingPids, $preprocessingPids);
+    if (Application::isLocalhost()) {
+        $manager->addMultiCron("drivers/preprocess.php", "preprocessFindSharingMatches", date("Y-m-d"), $preprocessingPids);
+        $manager->addMultiCron("drivers/preprocess.php", "preprocessMissingEmails", date("Y-m-d"), $preprocessingPids);
+    } else if (Application::isServer("redcaptest.vanderbilt.edu")) {
+        $manager->addMultiCron("drivers/preprocess.php", "preprocessFindSharingMatches", date("Y-m-d"), $preprocessingPids);
+        $manager->addMultiCron("drivers/preprocess.php", "preprocessSharingMatches", date("Y-m-d"), $preprocessingPids);
     } else {
         # this is the most time-consuming process in Flight Tracker
         # time required increases by n^2, where n is the number of scholars
@@ -320,25 +330,10 @@ function loadInternalSharingCrons(&$manager, $pids) {
         $destPids = $module->getProjectsToRunTonight($preprocessingPids);
         if (!empty($destPids) && (date("l") !== $preprocessDayOfWeek)) {
             # just run for newer projects requested to "run tonight"
-            $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", $preprocessDayOfWeek, $preprocessingPids, $destPids);
+            $manager->addMultiCron("drivers/preprocess.php", "preprocessFindSharingMatches", date("Y-m-d"), $preprocessingPids, $destPids);
         } else {
-            # run for everybody in batches
-            $batchSize = 20;    // arbitrary and adjustable - number of projects/pids
-            for ($i = 0; $i < count($preprocessingPids); $i += $batchSize) {
-                $batch = [];
-                $endIndex = $i + $batchSize;
-                if ($endIndex > count($preprocessingPids)) {
-                    $endIndex = count($preprocessingPids);
-                }
-                if ($endIndex + $batchSize / 2 > count($preprocessingPids)) {
-                    # because small runs are computationally expensive
-                    $endIndex += $batchSize / 2;
-                }
-                for ($j = $i; $j < $endIndex; $j++) {
-                    $batch[] = $preprocessingPids[$j];
-                }
-                $manager->addMultiCron("drivers/preprocess.php", "preprocessSharing", $preprocessDayOfWeek, $preprocessingPids, $batch);
-            }
+            $manager->addMultiCron("drivers/preprocess.php", "preprocessFindSharingMatches", $preprocessDayOfWeek, $preprocessingPids);
         }
+        $manager->addMultiCron("drivers/preprocess.php", "preprocessMissingEmails", $preprocessDayOfWeek, $preprocessingPids);
     }
 }

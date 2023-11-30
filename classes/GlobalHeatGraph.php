@@ -16,6 +16,11 @@ class GlobalHeatGraph extends Chart
         $this->homeLatitude = FALSE;
         $this->homeLongitude = FALSE;
         $this->legendTitle = "";
+        $this->showLabels = TRUE;
+    }
+
+    public function setShowLabels($b) {
+        $this->showLabels = $b;
     }
 
     public function setHeatColors($hexColorMin, $hexColorMax) {
@@ -82,6 +87,20 @@ class GlobalHeatGraph extends Chart
 
         $polygonJSON = json_encode($polygonData);
         $imageJSON = json_encode($imageData);
+
+        $labelJS = "";
+        if ($this->showLabels) {
+            $labelJS = "
+        let text = imageSeriesTemplate.createChild(am4core.Label);
+        text.verticalCenter = 'middle';
+        text.horizontalCenter = 'middle';
+        text.nonScaling = true;
+        text.interactionsEnabled = false;
+        text.zIndex = 100;
+        text.fontSize = 11;
+        text.text = '[bold]{title}[/]';
+";
+        }
 
         $arcJS = "";
         if (($this->homeLongitude !== FALSE) && ($this->homeLatitude !== FALSE) && !empty($imageData)) {
@@ -155,14 +174,7 @@ class GlobalHeatGraph extends Chart
 
         let imageSeries = map.series.push(new am4maps.MapImageSeries());
         let imageSeriesTemplate = imageSeries.mapImages.template;
-        let text = imageSeriesTemplate.createChild(am4core.Label);
-        text.verticalCenter = 'middle';
-        text.horizontalCenter = 'middle';
-        text.nonScaling = true;
-        text.interactionsEnabled = false;
-        text.zIndex = 100;
-        text.fontSize = 11;
-        text.text = '[bold]{title}[/]';
+        $labelJS
         imageSeriesTemplate.propertyFields.latitude = 'latitude';
         imageSeriesTemplate.propertyFields.longitude = 'longitude';
 
@@ -186,5 +198,6 @@ class GlobalHeatGraph extends Chart
     protected $homeLatitude = FALSE;
     protected $homeLongitude = FALSE;
     protected $legendTitle = "";
+    protected $showLabels;
 }
 
