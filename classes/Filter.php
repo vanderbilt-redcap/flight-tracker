@@ -360,6 +360,7 @@ class Filter {
 
 	# variable => label
 	public function getDemographicChoices() {
+        # optional fields added via foreach loop below
 		$ary = [
             "summary_gender" => "Gender",
             "summary_race_ethnicity" => "Race/Ethnicity",
@@ -377,7 +378,6 @@ class Filter {
             "summary_current_tenure" => "Recorded Tenure Status",
             // "calc_institution" => "Institution",
             "summary_current_rank" => "Current Academic Rank",
-            "identifier_person_role" => "Person Role",
             "calc_employment" => "Employment Status",
             "calc_email_domain" => "Email Domain",
         ];

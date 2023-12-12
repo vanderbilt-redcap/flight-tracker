@@ -255,28 +255,6 @@ if ($numMentors > $numInvited["mentors"]) {
 
 echo "<h1>Mentoring Agreement Responses</h1>";
 
-$homeLink = Application::getMenteeAgreementLink($pid);
-$menteeProgressLink = Application::link("mentor/menteeProgress.php", $pid, TRUE);
-$addLink = Application::link("addMentor.php");
-$configUrl = Application::link("mentor/config.php");
-$redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
-echo "<h2>Getting Started</h2>";
-echo "<h3>Step 1: Configure</h3>";
-echo "<p class='centered max-width'><a href='$configUrl'>Configure the Agreements for your institution and project</a>.</p>";
-echo "<h3>Step 2: Get User IDs</h3>";
-echo "<p class='centered max-width'>You will need to make sure you have REDCap user-ids for any mentees <strong>and</strong> for their mentors. Currently, you have $numMentees scholars/mentees, $numMenteeUserids user-ids for mentees, $numMentorNames mentor names, and $numMentorUserids user-ids for mentors. Input the mentee userid <strong>on each record's Identifiers form</strong>. Mentor names can be input using <a href='$addLink'>this tool</a> or manually input <strong>on each record's Manual Import form</strong>. Multiple mentor names and user-ids can be separated by commas.</p>";
-echo "<p class='centered max-width'><a href='javascript:;' onclick='$(\"#useridLookup\").show();'>Lookup REDCap User IDs</a></p>";
-echo "<div class='centered max-width' style='display: none; background-color: rgba(191,191,191,0.5);' id='useridLookup'>";
-echo "<h4>Lookup a REDCap User ID</h4>";
-echo "<p class='centered nomargin'>Please remember that some users might employ nicknames or maiden names.</p>";
-echo "<p class='green' id='message'></p>";
-echo "<p><label for='first_name'>First Name</label>: <input type='text' id='first_name' /><br>";
-echo "<label for='last_name'>Last Name</label>: <input type='text' id='last_name' /><br>";
-echo "<button onclick='lookupREDCapUserid(\"$redcapLookupUrl\", $(\"#message\")); return false;'>Look up name</button>";
-echo "</div>";
-echo "<h3>Step 3: Pass on the Links</h3>";
-echo "<p class='centered max-width'>Pass along this link to any mentee or mentor that (A) has a REDCap userid and (B) is registered in your Flight Tracker as a Scholar/Mentee or a Primary Mentor (with a <a href='$addLink'>registered userid</a>). With this link, they can access their relevant mentoring information anytime.<br/><input id='homeurl' value='$homeLink' onclick='this.select();' readonly='readonly' style='width: 90%; margin-right: 5px; margin-left: 5px;' /><div class='max-width alignright smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#homeurl\"));'>Copy</a></div></p>";
-echo "<p class='centered max-width'>Pass along this link to mentors so that they can check their mentees' progress.<br/><input id='progressurl' value='$menteeProgressLink' onclick='this.select();' readonly='readonly' style='width: 90%; margin-right: 5px; margin-left: 5px;' /><div class='max-width alignright smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#progressurl\"));'>Copy</a></div></p>";
 echo "<h2>Submissions</h2>";
 echo "<table class='centered bordered max-width'>";
 echo "<thead><tr>";

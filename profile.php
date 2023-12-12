@@ -143,18 +143,22 @@ $metadataLabels = DataDictionaryManagement::getLabels($metadata);
 $optionalRows = [];
 $optionalSettings = REDCapManagement::getOptionalSettings();
 foreach (REDCapManagement::getOptionalFields() as $field) {
-    if (in_array($field, $metadataFields)) {
-        $setting = REDCapManagement::turnOptionalFieldIntoSetting($field);
-        $label = $optionalSettings[$setting] ?? $metadataLabels[$field] ?? $field;
-        $value = REDCapManagement::findField($redcapData, $record, $field);
-        if (isset($choices[$field]) && isset($choices[$field][$value])) {
-            $value = $choices[$field][$value];
-        }
-        if ($label && $value) {
-            $optionalRows[] = [
-                "label" => $label,
-                "value" => $value,
-            ];
+    $numSettings = REDCapManagement::getOptionalFieldsNumber($field);
+    for ($i = 1; $i <= $numSettings; $i++) {
+        $field = REDCapManagement::getOptionalFieldSetting($field, $i);
+        if (in_array($field, $metadataFields)) {
+            $setting = REDCapManagement::turnOptionalFieldIntoSetting($field);
+            $label = $optionalSettings[$setting] ?? $metadataLabels[$field] ?? $field;
+            $value = REDCapManagement::findField($redcapData, $record, $field);
+            if (isset($choices[$field]) && isset($choices[$field][$value])) {
+                $value = $choices[$field][$value];
+            }
+            if ($label && $value) {
+                $optionalRows[] = [
+                    "label" => $label,
+                    "value" => $value,
+                ];
+            }
         }
     }
 }

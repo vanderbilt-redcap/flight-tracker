@@ -1536,7 +1536,14 @@ function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer, 
                         throw new \Exception("Invalid Record ID $value! Record IDs must be numeric to automatically increment.");
                     }
                     $newRow[$field] = $value;
-                } else if (!in_array($field, $calcFields) && !in_array($field, $timeFields) && in_array($field, $destMetadataFields)) {
+                } else if (
+                    in_array($field, ["redcap_repeat_instance", "redcap_repeat_instrument"])
+                    || (
+                        !in_array($field, $calcFields)
+                        && !in_array($field, $timeFields)
+                        && in_array($field, $destMetadataFields)
+                    )
+                ){
                     $newRow[$field] = $value;
                 }
             }

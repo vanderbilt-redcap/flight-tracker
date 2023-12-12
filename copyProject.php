@@ -10,7 +10,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(__DIR__."/classes/Autoload.php");
 
@@ -41,6 +41,11 @@ if ($_GET['project_id'] && ($_GET['action'] == "setupSettings")) {
                         Application::saveSetting($key, $value, $pid);
                     }
                 }
+
+                # metadata should have been set up before this URL is called
+                $metadata = Download::metadataByPid($pid);
+                $formsAndLabels = DataDictionaryManagement::getRepeatingFormsAndLabels($metadata);
+                DataDictionaryManagement::setupRepeatingForms($eventId, $formsAndLabels);
                 echo "Project $pid successfully set up on server.";
             } else {
                 echo "Error: Module not enabled.";

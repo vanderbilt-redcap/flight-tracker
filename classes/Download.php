@@ -916,8 +916,14 @@ class Download {
     public static function getSingleValue($pid, $recordId, $field, $instance = NULL) {
         $module = Application::getModule();
         $dataTable = Application::getDataTable($pid);
-        $sql = "SELECT value FROM $dataTable WHERE project_id = ? AND field_name = ? AND record = ? AND instance = ?";
-        $params = [$pid, $field, $recordId, $instance];
+        $sql = "SELECT value FROM $dataTable WHERE project_id = ? AND field_name = ? AND record = ?";
+        $params = [$pid, $field, $recordId];
+        if (isset($instance) && ($instance != 1)) {
+            $sql .= " AND instance = ?";
+            $params[] = $instance;
+        } else {
+            $sql .= " AND instance IS NULL";
+        }
         $result = $module->query($sql, $params);
         if ($row = $result->fetch_assoc()) {
             return $row['value'];
@@ -1139,7 +1145,8 @@ class Download {
 		$redcapData = self::sendToServer($server, $data);
 		$ordered = array();
 		foreach ($redcapData as $row) {
-			$ordered[$row['identifier_last_name'].", ".$row['identifier_first_name']." ".$row['record_id']] = $row;
+            # case insensitive
+			$ordered[strtoupper($row['identifier_last_name'].", ".$row['identifier_first_name']." ".$row['record_id'])] = $row;
 		}
 		ksort($ordered);
 

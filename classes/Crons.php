@@ -398,7 +398,7 @@ class CronManager {
     }
 
     private static function getNewIndex($prefix) {
-        $i = 0;
+        $i = 1;
         while (
             Application::getSystemSetting($prefix.$i)
             && ($i < self::MAX_BATCHES_IN_QUEUE)
@@ -487,7 +487,7 @@ class CronManager {
 	    if (!$runJobs) {
 	        $runJobs = [];
         }
-        $index = self::getNewRunJobIndex() + 1;
+        $index = self::getNewRunJobIndex();
         $setting = self::RUN_JOB_PREFIX.$index;
 	    $runJobs[] = $setting;
         Application::saveSystemSetting($setting, $runJob);

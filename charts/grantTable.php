@@ -15,6 +15,9 @@ require_once(__DIR__."/../classes/Autoload.php");
 
 $title = "Make a Table of Grants";
 if (!isset($_GET['cohort']) || !$_GET['cohort']) {
+    if (isset($_GET['NOAUTH'])) {
+        die("Improper access!");
+    }
     require_once(__DIR__."/../charts/baseWeb.php");
 
     $cohorts = new Cohorts($token, $server, Application::getModule());
@@ -115,6 +118,9 @@ foreach ($records as $recordId) {
 }
 
 if (isset($_GET['csv'])) {
+    if (isset($_GET['NOAUTH'])) {
+        die("Improper access!");
+    }
     header('Content-Type: text/csv');
     header('Content-Disposition: attachment; filename="grants.csv"');
     $fp = fopen("php://output", "w");
@@ -122,8 +128,34 @@ if (isset($_GET['csv'])) {
         fputcsv($fp, $line);
     }
     fclose($fp);
+} else if (isset($_GET['json'])) {
+    $myToken = Application::getSetting("grant_table_token", $pid);
+    $data = [];
+    # The token protects the NOAUTH from nefarious access
+    if ($myToken && ($myToken == $_GET['json'])) {
+        for ($i = 1; $i < count($ary); $i++) {
+            $dataRow = [];
+            $row = $ary[$i];
+            for ($j = 0; $j < count($headers); $j++) {
+                $header = $headers[$j];
+                $dataRow[$header] = REDCapManagement::clearUnicode($row[$j]);
+            }
+            $data[] = $dataRow;
+        }
+    }
+    echo json_encode($data);
 } else {
+    if (isset($_GET['NOAUTH'])) {
+        die("Improper access!");
+    }
     require_once(__DIR__."/../charts/baseWeb.php");
+
+    # if this is used widely, a reset token feature might be needed to enhance security
+    $myToken = Application::getSetting("grant_table_token", $pid);
+    if (!$myToken) {
+        $myToken = REDCapManagement::makeHash(16);
+        Application::saveSetting("grant_table_token", $pid);
+    }
 
     $thisLink = $_SERVER['REQUEST_URI'] ?? Application::link("this");
     $headers = $ary[0];
@@ -132,7 +164,8 @@ if (isset($_GET['csv'])) {
         echo "<h2>Cohort $cohort</h2>";
     }
     echo $dates ? "<p class='centered'>$dates</p>" : "";
-    echo "<p class='centered'><a href='$thisLink&csv'>Download as CSV</a></p>";
+    echo "<p class='centered'><a href='$thisLink&csv'>Download as CSV</a><br/>";
+    echo "<a href='$thisLink&json=$myToken&NOAUTH'>Access as a JSON (Dynamically Updated)</a></p>";
     echo "<p class='centered max-width'>Note: Budget dates are the dates that we have financial data for. Project dates are the prospective dates of the entire project.</p>";
     echo "<table class='bordered'>";
     echo "<thead><tr>";

@@ -30,6 +30,11 @@ function runMainCrons(&$manager, $token, $server) {
 
         $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Saturday", $allRecords, 10000);
 
+        if (!Application::getSetting("dedupResources122023", $pid)) {
+            $manager->addCron("drivers/preprocess.php", "dedupResources", date("Y-m-d"));
+            Application::saveSetting("dedupResources122023", TRUE, $pid);
+        }
+
         if (
             in_array("promotion_workforce_sector", $metadataFields)
             && in_array("promotion_activity", $metadataFields)
@@ -88,7 +93,7 @@ function runMainCrons(&$manager, $token, $server) {
             $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Thursday", $allRecords, 100);
         }
         if (in_array('citation', $forms)) {
-            $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Saturday", $records, 10);
+            $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Tuesday", $records, 10);
             if (!Application::getSetting("fixedPMCs", $pid)) {
                 $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"), $records, 1000);
                 Application::saveSetting("fixedPMCs", TRUE, $pid);
@@ -115,7 +120,7 @@ function runMainCrons(&$manager, $token, $server) {
             // $manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $allRecords, 100000);
         // }
         if (in_array('patent', $forms) && !$securityTestMode) {
-            $manager->addCron("drivers/18_getPatents.php", "getPatents", "Tuesday", $records, 100);
+            $manager->addCron("drivers/18_getPatents.php", "getPatents", "Thursday", $records, 100);
         }
         if (in_array("nsf", $forms)) {
             $manager->addCron("drivers/20_nsf.php", "getNSFGrants", "Monday", $records, 100);
@@ -143,7 +148,7 @@ function runMainCrons(&$manager, $token, $server) {
 
         $numRecordsForSummary = 15;
         if (Application::isVanderbilt()) {
-            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Tuesday", $allRecords, $numRecordsForSummary, TRUE);
+            $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday", $allRecords, $numRecordsForSummary, TRUE);
         } else {
             $numDaysPerWeek = $switches->getValue("Days per Week to Build Summaries");
             if (!$numDaysPerWeek) {
@@ -206,15 +211,10 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 		$records = Download::recordIds($token, $server);
         $securityTestMode = Application::getSetting("security_test_mode", $pid);
 
-        if (!Application::getSetting("dedupResources122023", $pid)) {
-            $manager->addCron("drivers/preprocess.php", "dedupResources", date("Y-m-d"));
-            Application::saveSetting("dedupResources122023", TRUE, $pid);
-        }
-
         // if (in_array("pre_screening_survey", $forms)) {
             // $manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
 		// }
-        $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Saturday");
+        $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Tuesday");
         if (in_array("coeus", $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", $date, $records, 500);
         } else if (in_array("coeus2", $forms)) {
@@ -287,10 +287,13 @@ function loadMultiProjectCrons(&$manager, $pids)
             $manager->addMultiCron("drivers/26_workday.php", "getAllWorkday", "Friday", $pids);
         }
     }
-    $manager->addMultiCron("drivers/preprocess.php", "downloadPortalData", "Monday", $pids);
-    $manager->addMultiCron("drivers/preprocess.php", "downloadPortalData", "Thursday", $pids);
-    $manager->addMultiCronInBatches("drivers/preprocess.php", "preprocessPortal", "Monday", $pids, 10);
-    $manager->addMultiCronInBatches("drivers/preprocess.php", "preprocessPortal", "Thursday", $pids, 10);
+    $manager->addMultiCron("drivers/preprocess.php", "downloadPortalPersonalData", "Monday", $pids);
+    $manager->addMultiCron("drivers/preprocess.php", "downloadPortalPersonalData", "Thursday", $pids);
+
+    # setting at batches of 10 took about one hour per batch at Vanderbilt
+    # Therefore, setting at batches of 7 projects per batch is a little more conservative
+    $manager->addMultiCronInBatches("drivers/preprocess.php", "preprocessPortal", "Monday", $pids, 7);
+    $manager->addMultiCronInBatches("drivers/preprocess.php", "preprocessPortal", "Thursday", $pids, 7);
     loadInternalSharingCrons($manager, $pids);
 }
 

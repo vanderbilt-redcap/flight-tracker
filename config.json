@@ -62,6 +62,7 @@
 	   "wrangler/certifyPub",
 	   "reporting/getData",
 	   "js/xtract.js",
+	   "charts/grantTable",
 	   "emailMgmt/makeSurveyLinks",
 	   "copyProject",
 	   "reporting/tables2-4WithAuth",

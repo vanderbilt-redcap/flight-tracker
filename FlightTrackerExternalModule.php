@@ -1276,7 +1276,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
     }
 
-    public function preprocessScholarPortalData($pids) {
+    public function preprocessScholarPortalPersonalData($pids) {
         foreach ($pids as $pid) {
             CareerDev::setPid($pid);
             Application::log("Preprocessing lists for Scholar Portal", $pid);

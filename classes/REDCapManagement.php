@@ -1463,6 +1463,13 @@ class REDCapManagement {
 		throw new \Exception("Could not get project-id from project settings: ".self::json_encode_with_spaces($projectSettings));
 	}
 
+    public static function getOptionalFieldsNumber($field) {
+        if (preg_match("/person_role/", $field)) {
+            return 6;
+        }
+        return 1;
+    }
+
 	public static function getSpecialFields($type, $metadata) {
         $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
 		$fields = [];
@@ -1498,6 +1505,16 @@ class REDCapManagement {
 		$fields["institutions"] = ["check_institution", "init_import_institution", "followup_institution"];
         $fields["optional"] = ["identifier_person_role"];
 
+        if ($type == "optional") {
+            $fieldsWithNumbers = [];
+            foreach ($fields[$type] as $redcapField) {
+                $numFields = self::getOptionalFieldsNumber($redcapField);
+                for ($i = 1; $i <= $numFields; $i++) {
+                    $fieldsWithNumbers[] = self::getOptionalFieldSetting($redcapField, $i);
+                }
+            }
+            return $fieldsWithNumbers;
+        }
 		if (isset($fields[$type])) {
 			return $fields[$type];
 		}
@@ -1516,6 +1533,14 @@ class REDCapManagement {
         return self::getSpecialFields("optional", []);
     }
 
+    # can be used for a REDCap field or an ExtMod Setting
+    public static function getOptionalFieldSetting($field, $i) {
+        if ($i == 1) {
+            return $field;
+        }
+        return $field."_".$i;
+    }
+
     public static function getOptionalSettings() {
         $fileMetadata = DataDictionaryManagement::getFileMetadata();
         $fields = self::getOptionalFields();
@@ -1524,7 +1549,9 @@ class REDCapManagement {
             $setting = self::turnOptionalFieldIntoSetting($field);
             if ($setting) {
                 $row = DataDictionaryManagement::getRowForFieldFromMetadata($field, $fileMetadata);
-                $settings[$setting] = $row['field_label'] ?? "Optional Field";
+                if ($row) {
+                    $settings[$setting] = $row['field_label'] ?? "Optional Field";
+                }
             }
         }
         return $settings;

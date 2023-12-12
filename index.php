@@ -44,6 +44,15 @@ try {
     $switches = new FeatureSwitches($token, $server, $pid);
     $numDaysPerWeek = $switches->getValue("Days per Week to Build Summaries");
     $scheduledCrons = [];
+    if (Application::isVanderbilt()) {
+        $scheduledCrons[] = "Summaries: Saturday-Sunday";
+    } else if ($numDaysPerWeek == 1) {
+        $scheduledCrons[] = "Summaries: Tuesday";
+    } else if ($numDaysPerWeek == 3) {
+        $scheduledCrons[] = "Summaries: Monday, Wednesday &amp; Friday";
+    } else if ($numDaysPerWeek == 5) {
+        $scheduledCrons[] = "Summaries: All Weekdays";
+    }
     $scheduledCrons[] = "NIH Reporter: Monday";
     $scheduledCrons[] = "NSF Grants: Monday";
     $scheduledCrons[] = "Cohort Projects: Monday";
@@ -51,32 +60,22 @@ try {
         $scheduledCrons[] = "LDAP (Personnel Directory): Monday";
         $scheduledCrons[] = "VERA (VU Grants): Monday";
         $scheduledCrons[] = "Grant Repository Update: Monday";
-    } else if ($numDaysPerWeek == 1) {
-        if (Application::isVanderbilt()) {
-            $scheduledCrons[] = "Summaries: Tuesday-Wednesday";
-        } else {
-            $scheduledCrons[] = "Summaries: Tuesday";
-        }
-    } else if ($numDaysPerWeek == 3) {
-        $scheduledCrons[] = "Summaries: Monday, Wednesday &amp; Friday";
-    } else if ($numDaysPerWeek == 5) {
-        $scheduledCrons[] = "Summaries: All Weekdays";
     }
-    $scheduledCrons[] = "Patents: Tuesday";
+    $scheduledCrons[] = "Refresh Institutions: Tuesday";
+    $scheduledCrons[] = "PubMed: Tuesday";
     if (Application::isVanderbilt()) {
         $scheduledCrons[] = "COEUS (VUMC Grants): Wednesday";
         $scheduledCrons[] = "VFRS Intake Survey: Thursday";
     }
     $scheduledCrons[] = "IES (Dept. of Ed.): Thursday";
     $scheduledCrons[] = "ORCID Identifiers: Thursday";
+    $scheduledCrons[] = "Patents: Thursday";
     if (Application::isVanderbilt()) {
         $scheduledCrons[] = "Update VICTR Studios: Friday";
     }
     $scheduledCrons[] = "Report Stats to Vanderbilt: Friday";
     $scheduledCrons[] = "ERIC (Education Pubs): Friday";
-    $scheduledCrons[] = "Data Sharing: Saturday";
-    $scheduledCrons[] = "Refresh Institutions: Saturday";
-    $scheduledCrons[] = "PubMed: Saturday";
+    $scheduledCrons[] = "Data Sharing: Friday";
     $scheduledCrons[] = "Bibliometrics: Each Day Throughout Month";
 
     if (!isset($pid)) {

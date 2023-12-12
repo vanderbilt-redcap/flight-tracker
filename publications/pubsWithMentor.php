@@ -9,7 +9,7 @@ use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\Cohorts;
 use Vanderbilt\CareerDevLibrary\Sanitizer;
 
-require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $cohorts = new Cohorts($token, $server, Application::getModule());
@@ -19,8 +19,8 @@ $cohort = "all";
 if (isset($_GET['cohort']) && ($_GET['cohort'] == "all")) {
     $records = Download::recordIds($token, $server);
 } else if (isset($_GET['cohort'])) {
-    $cohort = Sanitizer::sanitizeCohort($_GET['cohort'], $pid);
-    if ($cohort) {
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort'], $pid) ?: "all";
+    if ($cohort != "all") {
         $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
     } else {
         $records = Download::recordIds($token, $server);
@@ -40,13 +40,6 @@ foreach ($records as $recordId) {
         $numMentors += count($mentors[$recordId]);
     }
 }
-
-echo "<h1>Publications with Mentors</h1>";
-if (empty($recordsWithMentors)) {
-    echo "<p class='centered'>No mentors present. Try adding some in each record's Initial Import form.</p>";
-    exit;
-}
-echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort ?? "", "location.href=\"$thisUrl&cohort=\"+$(this).val();", TRUE)."</p>";
 
 $numMatches = 0;
 $matchedCitations = [];
@@ -70,13 +63,66 @@ foreach ($recordsWithMentors as $recordId) {
     }
 }
 
+if (isset($_GET['csv'])) {
+    $lines = [];
+    $headers = [
+        "Record ID",
+        "Name",
+        "Mentor List",
+        "PMID",
+        "DOI",
+        "Full Citation",
+    ];
+    $lines[] = $headers;
+    foreach ($matchedCitations as $recordId => $citations) {
+        $name = $names[$recordId];
+        $mentorList = implode(", ", $mentors[$recordId]);
+        foreach ($citations as $citation) {
+            $pmid = $citation->getVariable("pmid");
+            $doi = $citation->getVariable("doi");
+            $fullCitation = $citation->getPubMedCitation();
+            $line = [
+                $recordId,
+                $name,
+                $mentorList,
+                $pmid,
+                $doi,
+                utf8_encode($fullCitation),
+            ];
+            $lines[] = $line;
+        }
+    }
+    header("Content-type: text/csv");
+    header("Content-Disposition: attachment; filename=pubs_with_mentors.csv");
+    header("Pragma: no-cache");
+    header("Expires: 0");
+
+    $fp = fopen('php://output', 'w');
+    foreach ($lines as $line) {
+        fputcsv($fp, $line);
+    }
+    fclose($fp);
+
+    exit;
+}
+require_once(dirname(__FILE__)."/../charts/baseWeb.php");
+
+echo "<h1>Publications with Mentors</h1>";
+if (empty($recordsWithMentors)) {
+    echo "<p class='centered'>No mentors present. Try adding some in each record's Initial Import form.</p>";
+    exit;
+}
+echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort ?? "", "location.href=\"$thisUrl&cohort=\"+$(this).val();", TRUE)."</p>";
+
 if (empty($matchedCitations)) {
     $pubWranglerLink = Application::link("wrangler/pubs.php", $pid);
     echo "<p class='centered'>No matches with the $numMentors mentors present in the ".count($recordsWithMentors)." scholars that have mentors. Are you up to date on your <a href='$pubWranglerLink'>Publication Wrangling</a>?</p>";
     exit;
 }
 
+$encodedCohort = urlencode($cohort ?? "all");
 echo "<h2>".REDCapManagement::pretty($numMatches)." Publications with Mentors among ".count($matchedCitations)." Scholars</h2>";
+echo "<p class='centered'><a href='$thisUrl&cohort=$encodedCohort&csv'>Download as CSV</a></p>";
 foreach ($matchedCitations as $recordId => $citations) {
     $name = $names[$recordId] ?? "Unknown";
     $mentorWord = (count($mentors[$recordId]) > 1) ? "mentors" : "mentor";

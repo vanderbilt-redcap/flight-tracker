@@ -1811,9 +1811,15 @@ function forceDownloadUrl(source, fileName){
 	el.remove();
 }
 
-function lookupREDCapUserid(link, resultsOb) {
-	const firstName = $('#first_name').val();
-	const lastName = $('#last_name').val();
+function lookupREDCapUserid(link, resultsOb, firstNameSelector, lastNameSelector) {
+	if (!firstNameSelector) {
+		firstNameSelector = '#first_name';
+	}
+	if (!lastNameSelector) {
+		lastNameSelector = '#last_name';
+	}
+	const firstName = $(firstNameSelector).val();
+	const lastName = $(lastNameSelector).val();
 	if (!lastName && !firstName) {
 		$.sweetModal({icon: $.sweetModal.ICON_ERROR, content: 'You must supply a name'});
 	} else {
@@ -1830,7 +1836,7 @@ function lookupREDCapUserid(link, resultsOb) {
 					}
 					let header = '';
 					if (userids.length > 1) {
-						header = '<h4>' + userids.length + ' Matches</h4>';
+						header = '<h4 style="margin: 0 0 1em 0;">' + userids.length + ' Matches</h4>';
 					}
 					resultsOb.html(header + userids.join('<br/>'));
 				} else {
@@ -1964,12 +1970,14 @@ function downloadNewInstitutionsFromPubMed(url, records, resultsSel, loadingSel,
 				if (numRecordMatches > 0) {
 					const firstPMID = Object.keys(data['pubMatchData'][recordId])[0];
 					const name = data['pubMatchData'][recordId][firstPMID].name;
+					const emailAddress = data['pubMatchData'][recordId][firstPMID].email;
+					const email = emailAddress ? "<br/><a class='smallest' href='mailto:"+emailAddress+"'>"+emailAddress+"</a>" : "";
 					const pubWord = (numRecordMatches === 1) ? "Publication" : "Publications";
 					html += "<tr class='"+rowClass+" "+recordClassHeader+"'><td class='centered padded' colspan='"+numCols+"'><a href='javascript:;' onclick='$(\"."+recordClass+"\").show(); $(\"."+recordClassHeader+"\").hide();'>Show "+numRecordMatches+" "+pubWord+" for Record "+recordId+": "+name+".</a> "+lastPubDate+"</td></tr>";
 					for (const pmid in data['pubMatchData'][recordId]) {
 						const info = data['pubMatchData'][recordId][pmid];
 						const pubmedUrl = "https://pubmed.ncbi.nlm.nih.gov/"+pmid+"/";
-						html += "<tr class='"+rowClass+" "+recordClass+"' style='display: none;'><th>Record "+recordId+":<br/>"+info.name+"<br/><span class='unbolded'>"+numRecordMatches+" new matches</span></th><td class='smaller alignLeft max-width-300'>"+info.citation+"<div class='centered'><a href='"+pubmedUrl+"' target='_blank'>PubMed</a></div></td><td>"+info.date+"</td><td class='max-width-300'>"+makeUnorderedList(info.institutions)+"</td><td>"+info.authors.join("<br/>")+"</td><td class='max-width-300'>"+makeAffiliationButtons(url, info.affiliations, pmid, recordId)+"</td></tr>"
+						html += "<tr class='"+rowClass+" "+recordClass+"' style='display: none;'><th>Record "+recordId+":<br/>"+info.name+"<br/><span class='unbolded'>"+numRecordMatches+" new matches</span>"+email+"</th><td class='smaller alignLeft max-width-300'>"+info.citation+"<div class='centered'><a href='"+pubmedUrl+"' target='_blank'>PubMed</a></div></td><td>"+info.date+"</td><td class='max-width-300'>"+makeUnorderedList(info.institutions)+"</td><td>"+info.authors.join("<br/>")+"</td><td class='max-width-300'>"+makeAffiliationButtons(url, info.affiliations, pmid, recordId)+"</td></tr>"
 					}
 					priorNameCount++;
 				}

@@ -52,13 +52,13 @@ function preprocessPortal($pids, $destPids = NULL) {
     }
 }
 
-function downloadPortalData($pids) {
+function downloadPortalPersonalData($pids) {
     if (empty($pids)) {
         return;
     }
     $module = Application::getModule();
     if ($module) {
-        $module->preprocessScholarPortalData($pids);
+        $module->preprocessScholarPortalPersonalData($pids);
     }
 }
 

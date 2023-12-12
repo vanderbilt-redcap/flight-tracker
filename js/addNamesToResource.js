@@ -66,14 +66,15 @@ function recalculateNames(lines) {
 			for (const pid in names) {
 				for (const rec in names[pid]) {
 					const name = {};
-					name['f'] = names[pid][rec]['first'].split(/[\s\-\(\)]/);
-					name['l'] = names[pid][rec]['last'].split(/[\s\-\(\)]/);
+					name['f'] = names[pid][rec]['first'].split(/[\s\-\(\)]+/);
+					name['l'] = names[pid][rec]['last'].split(/[\s\-\(\)]+/);
 
-					// filter out empty places
+					// filter out empty places and trailing .'s
 					for (const place in name) {
 						const ary = [];
 						for (let k = 0; k < name[place].length; k++) {
 							if (name[place][k]) {
+								name[place][k] = name[place][k].replace(/\.$/, '');
 								ary.push(name[place][k]);
 							}
 						}
@@ -83,7 +84,10 @@ function recalculateNames(lines) {
 					const matches = [];
 					for (const place in name) {
 						for (let k = 0; k < name[place].length; k++) {
-							const re = new RegExp(name[place][k].toLowerCase());
+							// If five-or-more characters, require name to "fit" inside of other name
+							// if four-or-less characters, require word boundaries to be respected (\b)
+							const regexStr = (name[place][k].length >= 5) ? name[place][k] : "\\b"+name[place][k]+"\\b";
+							const re = new RegExp(regexStr, 'i');
 							if (nameInLine.match(re)) {
 								matches.push(place);
 								break;

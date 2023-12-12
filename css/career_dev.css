@@ -65,6 +65,7 @@ table { border-collapse: collapse; }
 tr.borderedRow td,tr.borderedRow th { border: 1px solid #bbbbbb; }
 tr.centeredRow td,tr.centeredRow th { text-align: center; }
 tr.paddedRow td,tr.paddedRow th { padding: 5px; }
+tr.padded td,tr.padded th { padding: 10px; }
 tr.whiteRow td,tr.whiteRow th { background-color: white; }
 tr.extraPaddedRow td,th { padding: 15px; }
 .tooltip { position: relative; display: inline-block; text-decoration: underline; }
@@ -78,6 +79,7 @@ tr.extraPaddedRow td,th { padding: 15px; }
 .custom-combobox-toggle { position: absolute; top: 0; bottom: 0; margin-left: -1px; padding: 0; }
 .custom-combobox-input { margin: 0; padding: 5px 10px; width: 200px; }
 .padded { padding: 10px; }
+table.padded tr td,table.padded tr th { padding: 10px; }
 #content { margin-left: 225px; }   /* coordinated with .subnav */
 .subnav { margin: 0; padding: 0; position: fixed; top: 125px; width: 225px; height: 100%; font-family: 'Museo Sans', sans-serif !important; text-align: center; background-color: transparent; overflow: auto; }    /* coordinated with #content and .w3-bar .topHeader */
 .topHeader { background-color: white; height: 50px; top: 0px; width: 100%; }    /* coordinated with .w3-bar */
@@ -97,6 +99,7 @@ p.blockquote { padding-left: 15px; }
 #mainHelp { column-count: 2; }
 #faq { padding: 15px; column-count: 2; }
 .nomargin { margin-top: 0; margin-bottom: 0; }
+.halfMargin { margin-top: 0.5em; margin-bottom: 0.5em; }
 ul.centered { text-align: center; list-style-type: none; list-style: inside; }
 .wrapTightly { clear: both; width: min-content; }
 input[type=text].long { width: 300px; }

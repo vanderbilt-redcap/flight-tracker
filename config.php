@@ -375,20 +375,18 @@ function makeSettings($module, $pid) {
     $fileMetadata = DataDictionaryManagement::getFileMetadata();
     foreach(REDCapManagement::getOptionalFields() as $field) {
         $setting = REDCapManagement::turnOptionalFieldIntoSetting($field);
+        $numSettings = REDCapManagement::getOptionalFieldsNumber($field);
         $label = $optionSettings[$setting] ?? $field;
         $row = DataDictionaryManagement::getRowForFieldFromMetadata($field, $fileMetadata);
         $form = $row['form_name'] ?? "";
         $note = (isset($row['field_note']) && $row['field_note']) ? "<div class='smaller'>".$row['field_note']."</div>" : "";
-        $ary["Administrative Setup"][] = makeSetting($setting, "short_textarea", "<div>Options for <strong>$label</strong> on the <strong>".ucfirst($form)."</strong> form.</div>$note<div class='smaller'>(One per line. Optional. When filled in, it will create an extra field in your project once you update your Data Dictionary on Flight Tracker's Home page.)</div>");
+        $message = "<div>Options for <strong>$label</strong> on the <strong>".ucfirst($form)."</strong> form.</div>$note<div class='smaller'>(One per line. Optional. When filled in, it will create an extra field in your project once you update your Data Dictionary on Flight Tracker's Home page.)</div>";
+        $ary["Administrative Setup"][] = makeOptionalSetting($setting, "short_textarea", $message, $numSettings);
     }
     $ary["Administrative Setup"][] = makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "In Flight Tracker's data-sharing on the same server, in addition to surveys, what data should be shared among the following forms?");
 
 
 	$ary["Emails"] = [];
-//	array_push($ary["Emails"], makeHelperText("An initial email can automatically be sent out during the first month after the new record is added to the database. If you desire to use this feature, please complete the following fields."));
-//	array_push($ary["Emails"], makeSetting("init_from", "text", "Initial Email From Address"));
-//	array_push($ary["Emails"], makeSetting("init_subject", "text", "Initial Email Subject"));
-//	array_push($ary["Emails"], makeSetting("init_message", "textarea", "Initial Email Message"));
     $ary["Emails"][] = makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated");
     $ary["Emails"][] = makeSetting("default_from", "text", "Default From Address");
     $ary["Emails"][] = makeSetting("warning_minutes", "number", "Number of Minutes Before An Email to Send a Warning Email", Application::getWarningEmailMinutes($pid));
@@ -474,7 +472,35 @@ function makeSystemSetting($var, $type, $label, $default = "", $fieldChoices = [
     if ($value === "") {
         $value = $default;
     }
-    return constructSetting($value, $var, $type, $label, $default, $fieldChoices, $readonly);
+    return constructSetting($value, $var, $type, $label, $default, $fieldChoices, $readonly, "", "");
+}
+
+function makeOptionalSetting($var, $type, $message, $numSettings) {
+    $divPrefix = "div_";
+    $i = 1;
+    $baseField = preg_replace("/_\d+$/", "", $var);
+    if (preg_match("/_(\d+)$/", $var, $matches)) {
+        $i = (int) $matches[1];
+    }
+    if ($i < $numSettings) {
+        $nextField = REDCapManagement::getOptionalFieldSetting($baseField, $i + 1);
+    } else {
+        $nextField = "";
+    }
+    if ($i == 1) {
+        $lastValue = FALSE;
+    } else {
+        $lastI = $i - 1;
+        $lastField = REDCapManagement::getOptionalFieldSetting($baseField, $lastI);
+        $lastValue = Application::getSetting($lastField);
+    }
+    $value = Application::getSetting($var);
+    $trAttributes = "id='$divPrefix$var'";
+    if (($i > 1) && !$value && !$lastValue) {
+        $trAttributes = "id='$divPrefix$var' style='display: none;'";
+    }
+    $js = $nextField ? "if ($(this).val() || $('#$divPrefix$nextField').val()) { $('#$divPrefix$nextField').show(); } else { $('#$divPrefix$nextField').hide(); }" : "";
+    return constructSetting($value, $var, $type, $message, "", [], FALSE, $js, $trAttributes);
 }
 
 function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $readonly = FALSE)
@@ -483,10 +509,13 @@ function makeSetting($var, $type, $label, $default = "", $fieldChoices = [], $re
     if ($value === "") {
         $value = $default;
     }
-    return constructSetting($value, $var, $type, $label, $default, $fieldChoices, $readonly);
+    return constructSetting($value, $var, $type, $label, $default, $fieldChoices, $readonly, "", "");
 }
 
-function constructSetting($value, $var, $type, $label, $default, $fieldChoices, $readonly) {
+function constructSetting($value, $var, $type, $label, $default, $fieldChoices, $readonly, $js, $trAttributes) {
+    # only one of these is used
+    $onblur = $js ? " onblur=\"$js\" " : "";
+    $onchange = $js ? " onchange=\"$js\" " : "";
     if (in_array($var, ["event_id", "pid", "token"])) {
         $module = Application::getModule();
         $realValue = "";
@@ -521,7 +550,7 @@ function constructSetting($value, $var, $type, $label, $default, $fieldChoices, 
         $spacing .= "&nbsp;";
     }
 	if (($type == "text") || ($type == "number")) {
-		$html .= "<tr>";
+		$html .= "<tr $trAttributes>";
 		$html .= "<td style='text-align: right;'>";
 		$html .= $label;
 		if ($default) {
@@ -531,7 +560,7 @@ function constructSetting($value, $var, $type, $label, $default, $fieldChoices, 
 			}
 		}
 		$html .= "</td><td style='text-align: left;'>";
-		$html .= "<input type='$type' name='$var' value=\"$value\"";
+		$html .= "<input type='$type' name='$var' value=\"$value\" $onblur";
 		if ($readonly) {
 		    $html .= " readonly";
         }
@@ -542,7 +571,7 @@ function constructSetting($value, $var, $type, $label, $default, $fieldChoices, 
 		if ($type == "yesno") {
 			$fieldChoices = ["0" => "No", "1" => "Yes"];
 		}
-		$html .= "<tr>";
+		$html .= "<tr $trAttributes>";
 		$html .= "<td style='text-align: right;'>";
 		$html .= $label;
 		$html .= "</td><td style='text-align: left;'>";
@@ -553,13 +582,13 @@ function constructSetting($value, $var, $type, $label, $default, $fieldChoices, 
 			} else {
 				$selected = "";
 			}
-			$html .= "<div><input type='radio' name='$var' id='$var"."___$idx' value='$idx'$selected><label for='$var"."___$idx'> $fieldLabel</label></div>";
+			$html .= "<div><input type='radio' name='$var' id='$var"."___$idx' value='$idx'$selected$onchange /><label for='$var"."___$idx'> $fieldLabel</label></div>";
 		}
 		$html .= implode($spacing, $options);
 		$html .= "</td>";
 		$html .= "</tr>";
 	} else if (in_array($type, ["textarea", "short_textarea"])) {
-		$html .= "<tr>";
+		$html .= "<tr $trAttributes>";
 		$html .= "<td colspan='2'>";
         if (preg_match("/^<div/", $label)) {
             $html .= $label;
@@ -567,9 +596,9 @@ function constructSetting($value, $var, $type, $label, $default, $fieldChoices, 
             $html .= "<div>$label</div>";
         }
         if ($type == "short_textarea") {
-            $html .= "<textarea class='config' style='height: 250px;' name='$var'>$value</textarea>";
+            $html .= "<textarea class='config' style='height: 250px;' name='$var' $onblur>$value</textarea>";
         } else {
-            $html .= "<textarea class='config' name='$var'>$value</textarea>";
+            $html .= "<textarea class='config' name='$var' $onblur>$value</textarea>";
         }
 		$html .= "</td>";
 		$html .= "</tr>";

@@ -30,6 +30,7 @@ if (isset($_POST['records']) && is_array($_POST['records'])) {
     $firstNames = Download::firstnames($token, $server);
     $middleNames = Download::middlenames($token, $server);
     $lastNames = Download::lastnames($token, $server);
+    $emails = Download::emails($token, $server);
     $metadataFields = Download::metadataFields($token, $server);
     $institutionData = Download::institutions($token, $server);
     $everybodysInstitutions = array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid)));
@@ -112,6 +113,7 @@ if (isset($_POST['records']) && is_array($_POST['records'])) {
                                     "affiliations" => REDCapManagement::clearUnicodeInArray($matchedAuthorAffiliations),
                                     "date" => DateManagement::YMD2MDY($publicationDate),
                                     "name" => NameMatcher::formatName($firstName, $middleName, $lastName),
+                                    "email" => $emails[$recordId],
                                     "citation" => REDCapManagement::clearUnicode($fullCitation),
                                     "institutions" => $recordInstitutions,
                                 ];
