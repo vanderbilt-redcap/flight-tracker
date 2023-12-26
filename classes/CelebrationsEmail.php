@@ -165,10 +165,6 @@ class CelebrationsEmail {
                         ($row['citation_include'] !== "0")
                         && DateManagement::isDate($dateOfPublication)
                         && (strtotime($dateOfPublication) > $thresholdTs)
-                        && (
-                            NameMatcher::isFirstAuthor($names[$recordId], $row['citation_authors'])
-                            || NameMatcher::isLastAuthor($names[$recordId], $row['citation_authors'])
-                        )
                     ) {
                         if (!isset($this->allPMIDsIdentified[$name][$pmid])) {
                             $this->allPMIDsIdentified[$name][$pmid] = [];
@@ -202,12 +198,12 @@ class CelebrationsEmail {
                     if (
                         (
                             $dateCreated
-                            && (strtotime($dateCreated) > $warningTs)
+                            && (strtotime($dateCreated) > $thresholdTs)
                         )
                         || (
                             !$dateCreated
                             && $lastUpdate
-                            && (strtotime($lastUpdate) > $warningTs)
+                            && (strtotime($lastUpdate) > $thresholdTs)
                         )
                     ) {
                         $this->enrollNewInstance("grantRecordsAndInstances", $name, $recordId, $instance, $instrument);
@@ -217,17 +213,24 @@ class CelebrationsEmail {
         }
     }
 
-    private function processCitations($redcapData, $warningTs, $currBios, $requestedGrants, $pmidsIdentified) {
+    private function processCitations($redcapData, $warningTs, $currBios, $requestedGrants, $pmidsIdentified, $dataScope, $settingName) {
         $emails = Download::emails($this->token, $this->server);
         $names = Download::names($this->token, $this->server);
         $htmlRows = [];
         $translate = Citation::getJournalTranslations();
         foreach ($redcapData as $row) {
             $recordId = $row['record_id'];
+            $isAuthorOk = TRUE;
+            if ($dataScope == "First/Last Author") {
+                $isAuthorOk = (
+                    NameMatcher::isFirstAuthor($names[$recordId], $row['citation_authors'])
+                    || NameMatcher::isLastAuthor($names[$recordId], $row['citation_authors'])
+                );
+            }
             if (
                 ($row['redcap_repeat_instrument'] == "citation")
-                && isset($this->citationRecordsAndInstances[$recordId])
-                && in_array($row['redcap_repeat_instance'], $this->citationRecordsAndInstances[$recordId])
+                && in_array($row['redcap_repeat_instance'], $this->citationRecordsAndInstances[$settingName][$recordId] ?? [])
+                && $isAuthorOk
             ) {
                 $pmid = $row['citation_pmid'];
                 $altmetric = $row['citation_altmetric_details_url'] ? " <a href='{$row['citation_altmetric_details_url']}'>Altmetric</a>" : "";
@@ -519,12 +522,16 @@ class CelebrationsEmail {
     private function getThresholds($frequency) {
         list($numDaysToHighlight, $numDaysWithoutWarning) = $this->getNumDays($frequency);
         $oneDay = 24 * 3600;
-        $thresholdTs = time() - $numDaysToHighlight * $oneDay;
+        if (DateManagement::isDate($frequency)) {
+            $thresholdTs = strtotime($frequency);
+        } else {
+            $thresholdTs = time() - $numDaysToHighlight * $oneDay;
+        }
         $warningTs = time() - $numDaysWithoutWarning * $oneDay;
         return [$thresholdTs, $warningTs];
     }
 
-    private function makeGrantData($name) {
+    private function makeGrantData($name, $thresholdTs) {
         $dataByName = [];
         $currProjectName = Download::projectTitle($this->token, $this->server);
         $currResources = Download::oneFieldWithInstances($this->token, $this->server, "resources_resource");
@@ -560,7 +567,6 @@ class CelebrationsEmail {
                     $formattedName = NameMatcher::formatName($firstName, "", $lastName);
                     $nameToList = $lastName.($firstName ? ", ".$firstName : "");
                     $grantFactories = GrantFactory::createFactoriesForRow($row, $formattedName, $lexicalTranslator, $this->metadata, $this->token, $this->server, $redcapData, "Awarded");
-                    $currTs = time();
                     foreach ($grantFactories as $gf) {
                         $gf->processRow($row, $redcapData);
                         $grants = $gf->getGrants();
@@ -571,8 +577,8 @@ class CelebrationsEmail {
                             $projectDate = $grant->getVariable("project_start") ?: $grant->getVariable("project_end") ?: date("Y-m-d", 0);
                             if (
                                 (
-                                    (strtotime($budgetDate) > $currTs)
-                                    || (strtotime($projectDate) > $currTs)
+                                    (strtotime($budgetDate) > $thresholdTs)
+                                    || (strtotime($projectDate) > $thresholdTs)
                                 )
                                 && in_array($applicationType, array_merge([""], self::VALID_GRANT_STATUSES))
                             ) {
@@ -637,7 +643,7 @@ class CelebrationsEmail {
         }
     }
 
-    public function getEmailHTML($frequency) {
+    public function getEmailHTML($frequency, $thresholdDate = NULL) {
         if (!$this->hasEmail($frequency)) {
             return "";
         }
@@ -672,7 +678,7 @@ a { color: #5764ae; }
             $dataScope = $setting["scope"];
             $associatedGrants = $setting["grants"] ?? "";
 
-            list($thresholdTs, $warningTs) = $this->getThresholds($frequency);
+            list($thresholdTs, $warningTs) = $this->getThresholds($thresholdDate ?? $frequency);
             $thresholdDateYMD = date("Y-m-d", $thresholdTs);
             $thresholdDateMDY = DateManagement::YMD2MDY($thresholdDateYMD);
             $longThresholdDate = DateManagement::YMD2LongDate($thresholdDateYMD);
@@ -682,7 +688,7 @@ a { color: #5764ae; }
                 $appTypes = REDCapManagement::makeConjunction($statuses, "or");
                 $html .= "<h2>$settingName for $scholarTitle<br/>Grant Awards After $thresholdDateMDY</h2>";
                 if (!empty($this->grantRecordsAndInstances)) {
-                    $dataByName = $this->makeGrantData($settingName);
+                    $dataByName = $this->makeGrantData($settingName, $thresholdTs);
                     $html .= "<p>Application Types: $appTypes<br/><a href='https://www.era.nih.gov/files/Deciphering_NIH_Application.pdf'>Deciphering NIH Grant Numbers</a></p>";
                     $html .= $this->presentGrantDataInHTML($dataByName, $longThresholdDate);
                 } else {
@@ -705,20 +711,20 @@ a { color: #5764ae; }
 
                     $caveat = !empty($requestedGrants) ? " associated with your requested grants (".REDCapManagement::makeConjunction($requestedGrants).")" : "";
                     $bios = [];
-                    if ($dataScope == "All") {
+                    if (in_array($dataScope, ["All", "First/Last Author"])) {
                         $redcapData = [];
                         foreach ($this->citationRecordsAndInstances[$settingName] as $recordId => $instances) {
                             $recordData = Download::fieldsForRecordAndInstances($this->token, $this->server, $citationFields, $recordId, "citation", $instances);
                             $redcapData = array_merge($redcapData, $recordData);
                             $bios[$recordId] = $this->makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currResources[$recordId] ?? [], $currChoices);
                         }
-                        $htmlRows = $this->processCitations($redcapData, $warningTs, $bios, $requestedGrants, $this->allPMIDsIdentified[$settingName]);
+                        $htmlRows = $this->processCitations($redcapData, $warningTs, $bios, $requestedGrants, $this->allPMIDsIdentified[$settingName], $dataScope, $settingName);
                         if (empty($htmlRows)) {
                             $htmlRows[] = "<p>No new publications$caveat have been published since $longThresholdDate.</p>";
                         }
                         $html .= "<h2>$settingName for $scholarTitle<br/>All Publications After $thresholdDateMDY</h2>";
                         if (!empty($requestedGrants)) {
-                            $html .= "<p>For grants ".REDCapManagement::makeConjunction($requestedGrants)."</p>";
+                            $html .= "<p>For grants " . REDCapManagement::makeConjunction($requestedGrants) . "</p>";
                         }
                         $html .= implode("", $htmlRows);
                     } else if ($dataScope == "High-Impact") {
@@ -730,7 +736,7 @@ a { color: #5764ae; }
                                 $bios[$recordId] = $this->makeBio($recordId, $currUserids[$recordId] ?? "", $currDepartments, $currRanks, $alumniAssociations[$recordId] ?? [], $currResources[$recordId] ?? [], $currChoices);
                             }
                         }
-                        $performanceRows = $this->processCitations($performanceREDCapData, $warningTs, $bios, $requestedGrants, $this->pmidsIdentified[$settingName]);
+                        $performanceRows = $this->processCitations($performanceREDCapData, $warningTs, $bios, $requestedGrants, $this->pmidsIdentified[$settingName], $dataScope, $settingName);
                         if (empty($performanceRows)) {
                             $performanceRows[] = "<p>No new publications$caveat have been designated high-performing since $thresholdDateMDY</p>";
                         }
@@ -759,6 +765,7 @@ a { color: #5764ae; }
         $contentOptions = [
             "<option value='new_grants' selected>New Grants</option>",
             "<option value='all_pubs'>All New Publications</option>",
+            "<option value='first_last_author_pubs'>All First/Last Author Publications</option>",
             "<option value='high_impact_pubs'>New High-Impact Publications</option>",
         ];
         $scholarScopeOptions = [

@@ -500,6 +500,7 @@ class LdapLookup {
 
             if ($sr) {
                 $data = ldap_get_entries($ldapConn, $sr);
+                $data = Sanitizer::sanitizeArray($data, TRUE, FALSE);
                 if ($oneLine) {
                     for ($i=0; $i < count($data); $i++) {
                         return $data[$i];

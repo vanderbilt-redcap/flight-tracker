@@ -25,6 +25,9 @@ if ($action == "delete") {
     } else if ($content == "all_pubs") {
         $scope = "All";
         $what = "Publications";
+    } else if ($content == "first_last_author_pubs") {
+        $scope = "First/Last Author";
+        $what = "Publications";
     } else if ($content == "high_impact_pubs") {
         $scope = "High-Impact";
         $what = "Publications";

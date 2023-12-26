@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.3.1";
+		return "6.3.2";
 	}
 
 	public static function getLockFile($pid) {
@@ -1166,6 +1166,7 @@ class CareerDev {
 		    if (self::has("mentoring_agreement", $pid) && $switches->isOnForProject("Mentee-Mentor")) {
                 $ary["Start Mentee-Mentor Agreements"] = self::link("/mentor/config.php");
                 $ary["Mentee-Mentor Agreements Dashboard"] = self::link("/mentor/dashboard.php");
+                $ary["Add Mentors for Existing Scholars"] = self::link("addMentor.php");
             }
 			$ary = array_merge($ary, [
 					"List of Current Mentors" => self::link("/tablesAndLists/mentorList.php"),

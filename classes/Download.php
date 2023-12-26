@@ -191,14 +191,15 @@ class Download {
 	}
 
 	# returns array of $recordId => $menteeName
-	public static function menteesForMentor($token, $server, $requestedMentorUserid) {
-		$mentorUserids = self::primaryMentorUserids($token, $server);
-		$names = self::names($token, $server);
+	public static function menteesForMentor($token, $server, $requestedMentorUserid, $mentorUserids = []) {
+        if (empty($mentorUserids)) {
+            $mentorUserids = self::primaryMentorUserids($token, $server);
+        }
 
 		$menteeNames = array();
 		foreach ($mentorUserids as $recordId => $userids) {
 			if (in_array($requestedMentorUserid, $userids)) {
-				$menteeNames[$recordId] = $names[$recordId];
+				$menteeNames[$recordId] = Download::fullName($token, $server, $recordId);
 			}
 		}
 		return $menteeNames;
@@ -491,7 +492,11 @@ class Download {
         }
         $cachedMetadata = self::getCachedMetadata($pid, $fields);
         if (!empty($cachedMetadata)) {
-            return $cachedMetadata;
+            if (empty($fields)) {
+                return $cachedMetadata;
+            } else {
+                return DataDictionaryManagement::getRowsForFieldsFromMetadata($fields, $cachedMetadata);
+            }
         }
         $method = "REDCap";
         if (!empty($fields)) {
@@ -706,7 +711,7 @@ class Download {
             return $redcapData;
         }
         if ($redcapData === NULL) {
-            Application::log("Retrying because undecipherable output", $pid);
+            Application::log("Retrying because undecipherable output: ".$data['content'], $pid);
             usleep(500);
             $redcapData = self::callAPI($server, $data, $pid, $try + 1);
             if (($redcapData === NULL) && ($try >= $maxTries)) {
@@ -777,6 +782,20 @@ class Download {
 		}
 		return $ids;
 	}
+
+    public static function singleUserid($pid, $recordId) {
+        $module = Application::getModule();
+        $dataTable = Application::getDataTable($pid);
+        foreach(["identifier_userid", "identifier_vunet"] as $useridField) {
+            $sql = "SELECT value FROM $dataTable WHERE project_id = ? AND record = ? AND field_name = ?";
+            $params = [$pid, $recordId, $useridField];
+            $result = $module->query($sql, $params);
+            if ($row = $result->fetch_assoc()) {
+                return $row['value'];
+            }
+        }
+        return "";
+    }
 
 	public static function userids($token, $server) {
 		return self::vunets($token, $server);
@@ -1474,11 +1493,9 @@ class Download {
         $redcapData = self::getDataByPid($pid, $fields, $records);
         if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
             $output = "Done";    // to turn off retry
-            $resp = "getData-array";
             $method = "getData-array";
         } else {
             $output = json_encode($redcapData);
-            $resp = "getData";
             $method = "getData";
         }
         if (isset($_GET['test'])) {
@@ -1496,15 +1513,6 @@ class Download {
                 throw new \Exception("Download Exception $pid: ".$redcapData['error']);
             }
             return $redcapData;
-        }
-        if ($redcapData === NULL) {
-            Application::log("Retrying because undecipherable output");
-            usleep(500);
-            $redcapData = self::fieldsForRecordsByPid($pid, $fields, $records, $try + 1);
-            if (($redcapData === NULL) && ($try == $maxTries)) {
-                Application::log("ERROR: ".$output);
-                throw new \Exception("$pid: Download returned null ($resp) '$output'");
-            }
         }
         if (isset($redcapData['error']) && !empty($redcapData['error'])) {
             throw new \Exception("Download Exception $pid: ".$redcapData['error']);

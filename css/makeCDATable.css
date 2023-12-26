@@ -30,7 +30,7 @@ div.spacerYear { font-size: 11px; text-align: center; }
 .kEquivalent { background-color: #aaaaaa; }
 .r01 { background-color: #ffd545; }
 .rEquivalent { background-color: #ffd545; }
-.k99r00{ background-color: #ffedaf; }
+.k99r00,.bridge { background-color: #ffedaf; }
 .trainingAdmin { background-color: #ffd545; border: 10px solid #9fdcf8; }
 .leftBox { background-color: #9fdcf8; width: 225px; min-width: 225px; max-width: 225px; }
 a { color: black; }
