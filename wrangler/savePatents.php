@@ -10,17 +10,17 @@ use \Vanderbilt\CareerDevLibrary\Sanitizer;
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$metadata = Download::metadata($token, $server);
+$patentFields = array_merge(["record_id"], Download::metadataFieldsByPidWithPrefix($pid, "patent_"));
+$metadata = Download::metadataByPid($pid, $patentFields);
 $pmids = [];
 $numbers = [];
 if (isset($_POST['finalized'])) {
     $records = Download::recordIds($token, $server);
-    $newFinalized = json_decode(Sanitizer::sanitizeJSON($_POST['finalized'] ?? "[]"));
-    $newOmissions = json_decode(Sanitizer::sanitizeJSON($_POST['omissions'] ?? "[]"));
-    $newResets = json_decode(Sanitizer::sanitizeJSON($_POST['resets'] ?? "[]"));
+    $newFinalized = Sanitizer::sanitizeArray($_POST['finalized'] ?? []);
+    $newOmissions = Sanitizer::sanitizeArray($_POST['omissions'] ?? []);
+    $newResets = Sanitizer::sanitizeArray($_POST['resets'] ?? []);
     $recordId = Sanitizer::getSanitizedRecord($_POST['record_id'], $records);
 
-    $patentFields = Application::getPatentFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $patentFields, [$recordId]);
     $maxInstance = REDCapManagement::getMaxInstance($redcapData, "patent", $recordId);
 
@@ -78,7 +78,6 @@ if (isset($_POST['finalized'])) {
 if ($numbers && !empty($numbers)) {
     $records = Download::recordIds($token, $server);
     $recordId = Sanitizer::getSanitizedRecord($_POST['record_id'], $records);
-    $patentFields = Application::getPatentFields($metadata);
     $redcapData = Download::fieldsForRecords($token, $server, $patentFields, [$recordId]);
 
     $existingNumbers = [];

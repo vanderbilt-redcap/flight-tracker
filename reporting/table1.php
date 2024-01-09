@@ -195,11 +195,46 @@ echo "<p class='centered max-width'>Share the following link with Program Manage
 echo "<p class='centered max-width'>Available in each Flight Tracker project on your server, this page contains all <a href='$nihLink'>NIH Training Table 1</a> entries available for sharing (from <a href='$table1Link' target='_NEW'>the REDCap project at pid $table1Pid</a>$accessMessage). $inputText Use the Search feature to filter information, either by Source, Department/Program, or Population. You can also sort by the first four columns to prioritize entries. The Source's email address, if available, can be accessed by clicking on the name.</p>";
 echo DataTables::makeIncludeHTML();
 echo DataTables::makeMainHTML('reporting/getTable1.php', Application::getModule(), $columns, TRUE);
+echo "<div class='alignright smaller'><a class='darkgreytext' href='javascript:;' onclick='copyTable();'>Copy Entire Table</a></div>";
 echo "<script>
+function copyTable() {
+    const headers = $headersJSON;
+    let html = '<table><thead><th>'+headers.join('</th><th>')+'</th></thead><tbody>';
+    $('table#em-log-module-log-entries tbody').children('tr').each((idx, trOb) => {
+        html += '<tr>';
+        html += copyTDsForRow(trOb);
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    copyHTML(html);
+}
+
+function copyHTML(html) {
+    const spreadSheetRow = new Blob([html], {type: 'text/html'});
+    navigator.clipboard.write([new ClipboardItem({'text/html': spreadSheetRow})])
+}
+
+function copyTDsForRow(trOb) {
+    let html = '';
+    $(trOb).children('td').each((idx, tdOb) => {
+        if ((idx >= $copyStartCol) && (idx <= $copyEndCol)) {
+            let value = '';
+            if ($(tdOb).find('.value').length === 1) {
+                value = $(tdOb).find('.value').html();
+            } else {
+                value = $(tdOb).html();
+            }
+            html += '<td>'+value+'</td>';
+        }
+    });
+    return html;
+}
+
 function copyRow(trOb) {
     let headers = $headersJSON;
     $(trOb).children('td').each((idx, tdOb) => {
         if (idx === $copyStartCol - 1) {
+            // replace with pre-doc vs. post-doc depending on row
             const value = $(tdOb).html();
             if (value) {
                 for (let i=0; i < headers.length; i++) {
@@ -210,18 +245,9 @@ function copyRow(trOb) {
     });
     let html = '<table><thead><th>'+headers.join('</th><th>')+'</th></thead><tbody><tr>';
     $(trOb).children('td').each((idx, tdOb) => {
-        if ((idx >= $copyStartCol) && (idx <= $copyEndCol)) {
-            let value = '';
-            if ($(tdOb).find('.value').length == 1) {
-                value = $(tdOb).find('.value').html();
-            } else {
-                value = $(tdOb).html();
-            }
-            html += '<td>'+value+'</td>';
-        }
+        html += copyTDsForRow(trOb);
     });
-    html += '</tbody></tr></table>';
-    const spreadSheetRow = new Blob([html], {type: 'text/html'});
-    navigator.clipboard.write([new ClipboardItem({'text/html': spreadSheetRow})])
+    html += '</tr></tbody></table>';
+    copyHTML(html);
 }
 </script>";

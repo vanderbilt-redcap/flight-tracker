@@ -1192,6 +1192,7 @@ SELECT DISTINCT s.project_id AS pid
         "citation_affiliations",
         "citation_grants",
         "citation_abstract",
+        "citation_pilot_grants",
         "citation_is_research",
         "citation_num_citations",
         "citation_citations_per_year",
@@ -1227,6 +1228,7 @@ SELECT DISTINCT s.project_id AS pid
         "eric_e_datemodified",
         "eric_e_fulltext",
         "eric_educationlevel",
+        "eric_pilot_grants",
         "eric_last_update",
     ];
 

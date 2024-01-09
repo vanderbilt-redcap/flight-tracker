@@ -206,7 +206,7 @@ class Patents {
         $html .= self::manualLookup($thisUrl);
         $html .= "<table style='width: 100%;' id='main'><tr>\n";
         $html .= "<td class='twoColumn blue' id='left'>".$this->leftColumnText()."</td>\n";
-        $html .= "<td id='right'>".$wrangler->rightColumnText()."</td>\n";
+        $html .= "<td id='right'>".$wrangler->rightColumnText($this->recordId)."</td>\n";
         $html .= "</tr></table>\n";
 
         return $html;
@@ -243,7 +243,7 @@ class Patents {
         return $html;
     }
 
-    private function rightColumnText() {
+    private function rightColumnText($recordId) {
 
     }
 

@@ -163,7 +163,7 @@ function getTenureStatus($value) {
 	$priorDate = (date("Y") - 1).date("-m-d");
 	$priorTs = strtotime($priorDate);
 	$j = 1;
-	foreach ($grants->getGrants("compiled") as $grant) {
+	foreach ($grants->getGrants("all_pis") as $grant) {
 		$beginDate = $grant->getVariable("start");
 		$endDate = $grant->getVariable("end");
 		if (($j <= Grants::$MAX_GRANTS) && (($beginDate && strtotime($beginDate) >= $priorTs) || ($endDate && strtotime($endDate) >= $priorTs))) {

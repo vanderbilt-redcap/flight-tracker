@@ -6,10 +6,6 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
-define("NO_MATCHES", "NO_MATCHES");
-define("MORE_THAN_ONE", "MORE_THAN_ONE");
-define("ORCID_DELIM", "|");
-
 function pullORCIDs($token, $server, $pid, $recordIds) {
     $orcids = Download::ORCIDs($token, $server);
     $firstnames = Download::firstnames($token, $server);
@@ -31,8 +27,8 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
         ) && ($firstnames[$recordId] && $lastnames[$recordId])
             && (!$blockThisOrcid)
         ) {
-            list($orcid, $mssg) = downloadORCID($recordId, $firstnames[$recordId], $middlenames[$recordId], $lastnames[$recordId], $institutions[$recordId]);
-            if ($ary = isCodedMessage($mssg)) {
+            list($orcid, $mssg) = ORCID::downloadORCID($recordId, $firstnames[$recordId], $middlenames[$recordId], $lastnames[$recordId], $institutions[$recordId], $pid);
+            if ($ary = ORCID::isCodedMessage($mssg)) {
                 foreach ($ary as $recordId => $value) {
                     if ($value == $recordId) {
                         # no match
@@ -71,16 +67,19 @@ function pullORCIDs($token, $server, $pid, $recordIds) {
     if (!empty($noMatches)) {
         Application::log("Could not find matches for records: ".REDCapManagement::json_encode_with_spaces($noMatches));
     }
-    if (countNewMultiples($multiples, $pid) > 0) {
+    # 2023-12-26: Disabling for now and replacing with the ORCID Wrangler.
+    # I don't think this was being used much. I'm preserving the code in case it's helpful in the future.
+    # It may be helpful to remove after 3-6 months for readability.
+    // if (countNewMultiples($multiples, $pid) > 0) {
         # send email
-        $adminEmail = Application::getSetting("admin_email", $pid);
-        $html = makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid);
+        // $adminEmail = Application::getSetting("admin_email", $pid);
+        // $html = makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid);
 
-        if (preg_match("/possible ORCIDs/", $html)) {
-            require_once(dirname(__FILE__)."/../../../redcap_connect.php");
-            \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), CareerDev::getProgramName().": Multiple ORCIDs Found", $html);
-        }
-    }
+        // if (preg_match("/possible ORCIDs/", $html)) {
+            // require_once(dirname(__FILE__) . "/../../../redcap_connect.php");
+            // \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), CareerDev::getProgramName() . ": Multiple ORCIDs Found", $html);
+        // }
+    // }
     if (!empty($messages)) {
         throw new \Exception(count($messages)." messages: ".implode("; ", $messages));
     }
@@ -142,177 +141,7 @@ function makeORCIDsEmail($multiples, $firstnames, $lastnames, $pid) {
             }
         }
     }
-    CareerDev::setSetting("prior_orcids", $priorMultiples, $pid);
+    CareerDev::saveSetting("prior_orcids", $priorMultiples, $pid);
     $html .= "<h3>".Links::makeLink($orcidSearchLink, $orcidSearchLink)."</h3>";
     return $html;
 }
-
-# returns list($orcid, $message)
-function downloadORCID($recordId, $first, $middle, $last, $institutionList) {
-    $delim = ORCID_DELIM;
-    $identifier = "$recordId: $first $last $institutionList";
-    if (!$last) {
-        return array(FALSE, "No last name for $identifier!");
-    }
-    $params = array();
-    $params["family-name"] = NameMatcher::explodeLastName($last);
-    if ($first) {
-        $params["given-names"] = NameMatcher::explodeFirstName($first, $middle);
-    }
-    $params["affiliation-org-name"] = getInstitutionArray(preg_split("/\s*[,\/]\s*/", $institutionList));
-    // Test server $baseUrl = "https://pub.sandbox.orcid.org/v3.0/search/";
-    $baseUrl = "https://pub.orcid.org/v3.0/search/";
-    $q = makeQueryFromParams($params);
-    if ($q) {
-        $url = $baseUrl . "?q=" . $q;
-        $options = fetchAndParseURL($url);
-        if (is_string($options)) {
-            $mssg = $options;
-            Application::log($mssg);
-            return array(FALSE, $mssg);
-        }
-
-        if (count($options) == 0) {
-            unset($params["affiliation-org-name"]);
-            Application::log("Searching name '$first $last' without institution");
-            $q = makeQueryFromParams($params);
-            if ($q) {
-                $url = $baseUrl . "?q=" . $q;
-                $options = fetchAndParseURL($url);
-                if (is_string($options)) {
-                    $mssg = $options;
-                    Application::log($mssg);
-                    return array(FALSE, $mssg);
-                }
-            }
-        }
-
-        $numOptions = count($options);
-        if ($numOptions == 0) {
-            $mssg = NO_MATCHES."$delim$recordId";
-            Application::log($mssg);
-            return array(FALSE, $mssg);
-        } else if ($numOptions > 1) {
-            $orcids = array();
-            foreach ($options as $result) {
-                if ($result["path"]) {
-                    array_push($orcids, $result["path"]);
-                }
-            }
-            $mssg = MORE_THAN_ONE."$delim$recordId$delim".json_encode($orcids);
-            Application::log($mssg);
-            return array(FALSE, $mssg);
-        } else {
-            $orcid = $options[0]["path"];
-            Application::log("************** Returning $orcid");
-            return array($orcid, "");
-        }
-    } else {
-        return array(FALSE, "No parameters available for $identifier");
-    }
-}
-
-# returns array or FALSE
-function isCodedMessage($mssg) {
-    $delim = ORCID_DELIM;
-    $valid = array(MORE_THAN_ONE, NO_MATCHES);
-    foreach ($valid as $beginning) {
-        $regex = "/^".$beginning."/";
-        if (preg_match($regex, $mssg)) {
-            $nodes = explode($delim, $mssg);
-            if (count($nodes) == 1) {
-                return FALSE;
-            } else if (count($nodes) == 2) {
-                return array($nodes[1] => $nodes[1]);
-            } else if (count($nodes) == 3) {
-                return array($nodes[1] => $nodes[2]);
-            } else {
-                throw new \Exception("Could not decode $mssg! This should never happen.");
-            }
-        }
-    }
-    return FALSE;
-}
-
-function getInstitutionArray($additionalInstitutions) {
-    $institutions = Application::getInstitutions();
-    foreach ($additionalInstitutions as $institution) {
-        if ($institution && !in_array($institution, $institutions)) {
-            array_push($institutions, formatInstitutionName($institution));
-        }
-    }
-    return $institutions;
-}
-
-function formatInstitutionName($inst) {
-    $inst = str_replace("&", "", $inst);
-    $inst = preg_replace("/\s\s+/", " ", $inst);
-    return $inst;
-}
-
-# returns string if an error; else returns an array
-function fetchAndParseURL($url) {
-    $i = 0;
-    $numRetries = 3;
-    $xml = NULL;
-    do {
-        usleep(300000);
-        if (function_exists("downloadURL")) {
-            list($resp, $output) = downloadURL($url);
-        } else {
-            list($resp, $output) = \Vanderbilt\FlightTrackerExternalModule\downloadURL($url);
-        }
-        if ($resp == 200) {
-            $xml = simplexml_load_string(utf8_encode($output));
-        }
-        $i++;
-    } while ((!$xml || ($resp != 200)) && ($numRetries > $i));
-    if ($resp != 200) {
-        $mssg = "Could not contact $url; response $resp";
-        return $mssg;
-    } else if (!$xml) {
-        $mssg = "Could not contact $url; could not parse $output";
-        return $mssg;
-    }
-
-    $searchNs = "http://www.orcid.org/ns/search";
-    $commonNs = "http://www.orcid.org/ns/common";
-    $options = array();
-    foreach ($xml->children($searchNs) as $result) {
-        foreach ($result->children($commonNs) as $child) {
-            $result = array();
-            foreach ($child->children($commonNs) as $grandChild) {
-                $result[$grandChild->getName()] = strval($grandChild);
-            }
-            array_push($options, $result);
-        }
-    }
-    return $options;
-
-}
-
-function replaceWhitespaceWithPlus($str) {
-    return preg_replace("/\s+/", "+", $str);
-}
-
-function makeQueryFromParams($params) {
-    $queryStrings = array();
-    foreach ($params as $key => $value) {
-        if (is_array($value)) {
-            $values = array();
-            foreach ($value as $v) {
-                array_push($values, $v);
-            }
-            if (count($values) > 1) {
-                array_push($queryStrings, $key . ":" . "(" . implode(" OR ", $values) . ")");
-            } else {
-                $value = $values[0];
-                array_push($queryStrings, $key . ":" . $value);
-            }
-        } else if ($value) {
-            array_push($queryStrings, $key . ":" . $value);
-        }
-    }
-    return urlencode(implode(" AND ", $queryStrings));
-}
-

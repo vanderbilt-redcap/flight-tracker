@@ -25,7 +25,7 @@ class URLManagement {
         $proxyPort = Application::getSetting("proxy-port", $pid);
         $proxyUsername = Application::getSetting("proxy-user", $pid);
         $proxyPassword = Application::getSetting("proxy-pass", $pid);
-        if ($proxyIP && $proxyPort && is_numeric($proxyPort)&& $proxyPassword && $proxyUsername) {
+        if ($proxyIP && $proxyPort && is_numeric($proxyPort)) {
             $proxyOpts = [
                 CURLOPT_HTTPPROXYTUNNEL => 1,
                 CURLOPT_PROXY => $proxyIP,

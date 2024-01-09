@@ -84,7 +84,9 @@ class CohortConfig {
 					foreach ($redcapRecordRows as $row) {
 						if ($row[$variable]) {
 							return self::compare($row[$variable], $comparison, $choice);
-						}
+						} else if (isset($row[$variable."___".$choice])) {
+                            return self::compare($row[$variable."___".$choice], $comparison, "1");
+                        }
 					}
 				} else {
 					$value = $configRow['value'];
@@ -458,7 +460,7 @@ class CohortConfig {
 					} else if (($field == "choice") && isset($choices[$row['variable']]) && $choices[$row['variable']][$row[$field]]) {
 						$value = $choices[$row['variable']][$row[$field]];
 						$usesContains = TRUE;
-					} else if (($field == "variable") && (isset($labels[$row[$field]]))) {
+					} else if (($field == "variable") && isset($labels[$row[$field]])) {
 						$value = $labels[$row[$field]];
 					} else if (($field == "choice") && ($row["variable"] == "calc_award_type") && (isset($reverseAwardTypes[$row[$field]]))) {
 						$value = $reverseAwardTypes[$row[$field]];

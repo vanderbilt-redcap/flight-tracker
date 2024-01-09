@@ -13,7 +13,8 @@ class CitationCollection {
 	# type = [ Filtered, Final, New, Omit, Flagged, Unflagged ]
 	public function __construct($recordId, $token, $server, $type = 'Final', $redcapData = array(), $metadata = "download", $lastNames = [], $firstNames = []) {
         $this->type = $type;
-		$this->citations = array();
+        $this->pid = Application::getPID($token);
+		$this->citations = [];
 		if ($metadata == "download") {
 		    $this->metadata = Download::metadata($token, $server);
         } else {
@@ -31,7 +32,7 @@ class CitationCollection {
         if ($type != "Filtered") {
             foreach ($redcapData as $row) {
                 if (in_array($row['redcap_repeat_instrument'], ["citation", "eric"]) && ($row['record_id'] == $recordId)) {
-                    $c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $lastNames[$recordId], $firstNames[$recordId]);
+                    $c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $lastNames[$recordId], $firstNames[$recordId], $this->pid);
                     if ($c->getType() == $type) {
                         $this->citations[] = $c;
                     }
@@ -70,13 +71,17 @@ class CitationCollection {
     }
 
 	# citationClass is notDone, included, or excluded/omitted
-	public function toHTML($citationClass, $displayOnEmpty = TRUE, $startI = 1) {
+	public function toHTML($citationClass, $displayOnEmpty = TRUE, $startI = 1, $displayREDCapLink = TRUE) {
 		$html = "";
 		if ($displayOnEmpty && (count($this->getCitations()) == 0)) {
 			$html .= "<p class='centered'>None to date.</p>";
 		} else {
             $allBoldedNames = $this->getBoldedNames();
             $i = $startI - 1;
+            $arePilotGrantsOn = Wrangler::arePilotGrantsOn($this->pid);
+            $options = Wrangler::getPilotGrantOptions($this->pid);
+            $isWranglingPage = in_array($_GET['page'] ?? "", ["portal/index", "portal/driver", "wrangler/include", "portal%2Findex", "portal%2Fdriver", "wrangler%2Finclude"]);
+
             foreach ($this->getCitations() as $citation) {
                 $boldedNames = $citation->getBoldedNames();
                 $nameClasses = [];
@@ -86,12 +91,36 @@ class CitationCollection {
                     }
                 }
 
-				$html .= $citation->toHTML($citationClass, $nameClasses, $i+1);
+                $pilotGrantHTML = "";
+                if (
+                    $arePilotGrantsOn
+                    && in_array($citationClass, ["notDone", "notdone", "included", "flagged", "unflagged"])
+                    && $isWranglingPage
+                ) {
+                    $pilotGrantHTML = $this->makePilotGrantHTML($citation, $options);
+                }
+				$html .= $citation->toHTML($citationClass, $nameClasses, $i+1, $pilotGrantHTML, $displayREDCapLink);
 				$i++;
 			}
 		}
 		return $html;
 	}
+
+    private function makePilotGrantHTML($citation, $options) {
+        if (empty($options)) {
+            return "";
+        }
+        $citationID = $citation->getUniqueID();
+        $checkedPilotGrants = $citation->getVariable("pilot_grants");
+        $html = "<div class='pilotGrant'><strong>Is the above publication related to a pilot grant?</strong>";
+        foreach ($options as $optionID => $label) {
+            $combinedID = $citationID."___".$optionID;
+            $checked = in_array($optionID, $checkedPilotGrants) ? "checked" : "";
+            $html .= "<br/><input type='checkbox' id='$combinedID' value='1' $checked /><label for='$combinedID'> $label</label>";
+        }
+        $html .= "</div>";
+        return $html;
+    }
 
 	# for bookkeeping purposes only; does not write to DB
 	public function removePMID($pmid) {
@@ -279,17 +308,19 @@ class CitationCollection {
 	protected $citations = array();
     protected $metadata = [];
     protected $type = "";
+    protected $pid;
 }
 
 class Citation {
     # Cf. https://pubmed.ncbi.nlm.nih.gov/help/#journal-lists
     const PUBMED_JOURNAL_URL = "https://ftp.ncbi.nih.gov/pubmed/J_Medline.txt";
 
-    public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array(), $lastName = "", $firstName = "") {
+    public function __construct($token, $server, $recordId, $instance, $row = array(), $metadata = array(), $lastName = "", $firstName = "", $pid = NULL) {
 		$this->recordId = $recordId;
 		$this->instance = $instance;
 		$this->token = $token;
 		$this->server = $server;
+        $this->pid = $pid ?? Application::getPID($token);
 		$this->origRow = $row;
 		$this->metadata = $metadata;
 		$this->lastName = $lastName;
@@ -342,7 +373,7 @@ class Citation {
     }
 
 	# citationClass is notDone, included, excluded/omitted, flagged, or unflagged
-	public function toHTML($citationClass, $otherClasses = [], $number = 1) {
+	public function toHTML($citationClass, $otherClasses = [], $number = 1, $pilotGrantHTML = "", $displayREDCapLink = TRUE) {
         $citationClass = strtolower($citationClass);
 		if (in_array($citationClass, ["notDone", "notdone"])) {
 			$checkboxClass = "checked";
@@ -361,7 +392,6 @@ class Citation {
 
         $wranglerType = Sanitizer::sanitize($_GET['wranglerType'] ?? "");
 		$ableToReset = ($wranglerType == "FlagPublications") ? [] : ["included", "omitted", "excluded"];
-        $pid = Application::getPID($this->token);
 
 		$html = "";
 		$source = $this->getSource();
@@ -372,9 +402,17 @@ class Citation {
         $divClasses = "citation $citationClass ".implode(" ", $otherClasses);
 		$html .= "<div class='$divClasses' id='citation_$citationClass$id'>";
 		$html .= "<div class='citationCategories'><span class='tooltiptext'>".$this->makeTooltip()."</span>".$this->getCategory()."</div>";
-		$html .= Wrangler::makeCheckbox($id, $checkboxClass, $pid, $wranglerType)."&nbsp;<strong>$number</strong>.&nbsp;".$source.$this->getCitationWithLink(TRUE, TRUE);
-		if (in_array($citationClass, $ableToReset)) {
-            $html .= "<div style='text-align: right;' class='smallest'><span onclick='resetCitation(\"$id\");' class='finger'>reset</span></div>";
+		$html .= Wrangler::makeCheckbox($id, $checkboxClass, $this->pid, $wranglerType)."&nbsp;<strong>$number</strong>.&nbsp;".$source.$this->getCitationWithLink($displayREDCapLink, TRUE);
+        if ($pilotGrantHTML) {
+            $html .= $pilotGrantHTML;
+            if (in_array($citationClass, $ableToReset)) {
+                $html .= "<div style='text-align: right; width: 50px; float: right;' class='smallest'><span onclick='resetCitation(\"$id\");' class='finger'>reset</span></div>";
+            }
+            $html .= "<div style='clear: both;'></div>";
+        } else {
+            if (in_array($citationClass, $ableToReset)) {
+                $html .= "<div style='text-align: right;' class='smallest'><span onclick='resetCitation(\"$id\");' class='finger'>reset</span></div>";
+            }
         }
 		$html .= "</div>\n";
 		return $html;
@@ -678,13 +716,17 @@ class Citation {
 	}
 
     public function isFlagged() {
-        $pid = Application::getPID($this->token);
-        return (Publications::areFlagsOn($pid)) && ($this->getVariable("flagged") === "1");
+        return (Publications::areFlagsOn($this->pid)) && ($this->getVariable("flagged") === "1");
     }
 
 	public function getVariable($var) {
 		$var = strtolower(preg_replace("/^citation_/", "", $var));
-		if (isset($this->data[$var])) {
+        if ($var === "pilot_grants") {
+           if (isset($this->data[$var]) && $this->data[$var] !== "") {
+               return preg_split("/\s*[,;]\s*/", $this->data[$var], -1, PREG_SPLIT_NO_EMPTY);
+           }
+           return [];
+        } else if (isset($this->data[$var])) {
             $value = $this->data[$var];
 		    $value = REDCapManagement::stripHTML($value);
 		    $value = REDCapManagement::formatMangledText($value);     // REDCap and PubMed save in incompatible formats
@@ -774,8 +816,7 @@ class Citation {
     }
 
 	public function getType() {
-        $pid = Application::getPID($this->token);
-        if (Publications::areFlagsOn($pid)) {
+        if (Publications::areFlagsOn($this->pid)) {
             $flagged = $this->isFlagged();
             return $flagged ? "Flagged" : "Unflagged";
         }
@@ -1299,7 +1340,6 @@ class Citation {
 
     private function makeAddOns($base, $includeREDCapLink, $newTarget) {
         global $event_id;
-        $pid = Application::getPID($this->token);
 
         if ($this->getVariable("data_source") == "eric") {
             $fullTextURL = $this->getVariable("e_fulltext");
@@ -1314,7 +1354,7 @@ class Citation {
             $ericText = $ericURL ? " ".Links::makeLink($ericURL, "ERIC", $newTarget) : "";
 
             if ($includeREDCapLink && $this->getRecordId() && $this->getInstance()) {
-                $redcap = " ".Links::makeERICLink($pid, $this->getRecordId(), $event_id, "Citation in REDCap", $this->getInstance(), TRUE);
+                $redcap = " ".Links::makeERICLink($this->pid, $this->getRecordId(), $event_id, "Citation in REDCap", $this->getInstance(), TRUE);
             } else {
                 $redcap = "";
             }
@@ -1338,7 +1378,7 @@ class Citation {
             }
 
             if ($includeREDCapLink && $this->getInstance() && $this->getRecordId()) {
-                $redcap = " ".Links::makePublicationsLink($pid, $this->getRecordId(), $event_id, "Citation in REDCap", $this->getInstance(), TRUE);
+                $redcap = " ".Links::makePublicationsLink($this->pid, $this->getRecordId(), $event_id, "Citation in REDCap", $this->getInstance(), TRUE);
             } else {
                 $redcap = "";
             }
@@ -1589,9 +1629,8 @@ class Citation {
 			return $this->sourceChoices[$src];
 		} else {
 			if (!$this->sourceChoices && empty($this->sourceChoices)) {
-                $pid = Application::getPID($this->token);
-                if (empty($this->metadata) && $pid) {
-                    $this->sourceChoices = DataDictionaryManagement::getChoicesForField($pid, "citation_source");
+                if (empty($this->metadata) && $this->pid) {
+                    $this->sourceChoices = DataDictionaryManagement::getChoicesForField($this->pid, "citation_source");
                 } else {
                     $choices = Scholar::getChoices($this->metadata);
                     if (isset($choices["citation_source"])) {
@@ -1617,15 +1656,16 @@ class Citation {
 		return $this->instance;
 	}
 
-	private $data = array();
-	private $origRow = array();
-	private $recordId = 0;
-	private $instance = 0;
-	private $token = "";
-	private $server = "";
-	private $sourceChoices = array();
-	private $metadata = [];
-    private $firstName = "";
-    private $lastName = "";
+	private $data = [];
+	private $origRow;
+	private $recordId;
+	private $instance;
+	private $token;
+	private $server;
+	private $sourceChoices;
+	private $metadata;
+    private $firstName;
+    private $lastName;
+    private $pid;
 }
 

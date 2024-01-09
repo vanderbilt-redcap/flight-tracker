@@ -92,11 +92,13 @@ if ($_POST['process'] == "check") {
     $departmentText = Application::getSetting("departments", $pid);
     $resourceText = Application::getSetting("resources", $pid);
     $personRoleText = Application::getSetting("person_role", $pid);
+    $programRoleText = Application::getSetting("program_roles", $pid);
     $lists = [
         "departments" => $departmentText,
         "resources" => $resourceText,
         "institutions" => $institutionText,
         "person_role" => $personRoleText,
+        "program_roles" => $programRoleText,
     ];
     DataDictionaryManagement::addLists($token, $server, $pid, $lists, Application::isVanderbilt() && !Application::isLocalhost());
 }

@@ -104,7 +104,8 @@ select[multiple] {
 <?php
 
 $possibleFields = ["citation_grants", "citation_mesh_terms", "citation_journal,eric_source", "eric_subject"];
-$metadata = Download::metadata($token, $server);
+$allCitationFields = Application::$citationFields;
+$metadata = Download::metadata($token, $server, $allCitationFields);
 $authors = makeAuthorArray();
 $subjects = is_array($_GET['terms']) ?  $_GET['terms'] : [];
 if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
@@ -381,7 +382,7 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $subjects, $
         $nodes = explode(",", $field);
         if (count($nodes) > 1) {
             $label = $metadataLabels[$nodes[0]]." (PubMed and ERIC)";
-        } else {
+        } else if (isset($metadataLabels[$field])) {
             if (preg_match("/^citation_/", $field)) {
                 $source = " (PubMed)";
             } else if (preg_match("/^eric_/", $field)) {
@@ -390,12 +391,16 @@ function makeFieldForm($token, $server, $metadata, $possibleFields, $subjects, $
                 $source = "";
             }
             $label = $metadataLabels[$field].$source;
+        } else {
+            $label = "";
         }
-        $selected = "";
-        if ($field == $_GET['field']) {
-            $selected = " selected";
+        if ($label) {
+            $selected = "";
+            if ($field == $_GET['field']) {
+                $selected = " selected";
+            }
+            $selectHTML .= "<option value='$field'$selected>$label</option>";
         }
-        $selectHTML .= "<option value='$field'$selected>$label</option>";
     }
     $selectHTML .= "</select>";
     $datesHTML = "<label for='start'>Start Date (optional): </label><input type='date' style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='start' id='start' value='$startDate' /><br/><label for='end'>End Date (optional): </label><input type='date'  style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='end' id='end' value='$endDate' />";

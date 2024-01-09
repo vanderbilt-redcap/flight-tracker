@@ -524,7 +524,7 @@ class RePORTER {
             $payload = [
                 "criteria" => $criteria,
             ];
-            $location = $this->server."/v1/projects/search";
+            $location = $this->server."/v2/projects/search";
             $data = $this->runPOSTQuery($location, $payload);
             $this->currData = self::filterNIHDataForName($data, $firstName, $lastName);
             $this->currData = $this->filterForExcludeList();

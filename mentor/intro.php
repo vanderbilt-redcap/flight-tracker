@@ -10,7 +10,7 @@ require_once dirname(__FILE__)."/../classes/Autoload.php";
 require_once dirname(__FILE__).'/_header.php';
 
 $username = REDCapManagement::sanitize($_GET['uid'] ?? "");
-if (!$username || !MMA_DEBUG) {
+if (!$username || !MMAHelper::getMMADebug()) {
     $username = Application::getUsername();
 }
 if (isset($_GET['test'])) {
@@ -20,12 +20,14 @@ if (isset($_GET['test'])) {
 
 $hashParam = (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") ? "&hash=".NEW_HASH_DESIGNATION : "";
 
-if(isset($_REQUEST['uid']) && MMA_DEBUG){
-    $username = REDCapManagement::sanitize($_REQUEST['uid']);
+if(isset($_REQUEST['uid']) && MMAHelper::getMMADebug()){
+    $username = Sanitizer::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$username";
+    $spoofing = MMAHelper::makeSpoofingNotice($username);
 } else {
     $username = Application::getUsername();
     $uidString = "";
+    $spoofing = "";
 }
 
 if ($username) {
@@ -56,6 +58,7 @@ if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
         <div class="row">
             <div class="col-lg-12">
                 <h2 style="color: #727272;"><?= $welcomeMssg ?></h2>
+                <?= $spoofing ?>
                 <div class="blue-box" onclick="window.location.href = '<?= Application::link("mentor/index.php").$uidString.$hashParam ?>';"><h1>Start Now</h1></div>
 
                 <?= MMAHelper::makePopupJS() ?>

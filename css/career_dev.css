@@ -48,7 +48,7 @@ div.centered,table.centered { margin: 0px auto; }
 table { border-collapse: collapse; }
 .duplicated { background-color: #fff360; }
 .citation,.finalCitation,.finalOmit,.patent { padding: 5px; }
-.citationCategories { float: right; background-color: white; padding: 6px 3px 6px 3px; font-weight: bold; position: relative; display: inline-block; }
+.citationCategories { float: right; background-color: white; margin: 2px; padding: 6px 3px 6px 3px; font-weight: bold; position: relative; display: inline-block; }
 .citationCategories .tooltiptext { font-size: 13px; font-weight: normal; visibility: hidden; width: 250px; background-color: #555; color: #fff; text-align: center; padding: 5px 0; border-radius: 6px; position: absolute; z-index: 1; bottom: 100%; left: 50%; margin-left: -125px; opacity: 0; transition: opacity 0.3s; }
 .citationCategories .tooltiptext b { font-size: 14px; font-weight: bold; }
 .citationCategories:hover .tooltiptext { visibility: visible; opacity: 1; }
@@ -111,11 +111,12 @@ canvas { background-color: white; margin-top: 25px; }
 li.nobullets { list-style: none; }
 .nowrap { white-space: nowrap; }
 .centeredMinus50 { text-align: center; width: 50%; }
-.max-width { margin-left: auto; margin-right: auto; max-width: 800px; }
+.max-width,.max-width-800 { margin-left: auto; margin-right: auto; max-width: 800px; }
 .max-width-200 { margin-left: auto; margin-right: auto; max-width: 200px; }
 .max-width-300 { margin-left: auto; margin-right: auto; max-width: 300px; }
 .max-width-400 { margin-left: auto; margin-right: auto; max-width: 400px; }
 .max-width-600 { margin-left: auto; margin-right: auto; max-width: 600px; }
+.max-width-1000 { margin-left: auto; margin-right: auto; max-width: 1000px; }
 table.bordered tr td,table.bordered tr th { border: 1px solid #888; }
 table.bordered { border-collapse: collapse; }
 .action_required { color: red; font-weight: bold; }
@@ -132,6 +133,7 @@ td.bordered,p.bordered,div.bordered { border: 1px solid #888; }
 .really_light_green { background-color: #e8ffe8; }
 .greentext { color: #8dc63f; }
 .greenTextShadow { text-shadow: 2px 2px 6px #8dc63f; }
+.darkgreentext { color: #547625; }
 .yellow { background-color: #f1f6d6; }
 .blue { background-color: #d4d4eb; }
 .bluetext { color: #48489d; }
@@ -158,7 +160,7 @@ td.leftAlignedCell p.citation,p.patent { padding: 6px 0; margin: 0; }
 .sourceInCitation { font-weight: bold; color: #888; }
 .smallmargin { margin: 5px 0; }
 .bigger { font-size: 18px; }
-textarea.config { width: 400px; height: 400px; }
+textarea.config { width: 400px; height: 250px; }
 textarea.bigTextarea { width: 600px; height: 200px; }
 img.thumbnail { width: 125px; height: auto; }
 .horizontal-scroll { overflow-x: scroll; overflow-y: hidden; white-space: nowrap; }
@@ -210,3 +212,7 @@ div.scrollable { width: 100%; max-height: 75px; margin: 0; padding: 0; overflow:
 .Pending { border-color: #8dc63f !important; }
 .Awarded { border-color: #f4c3ff !important; }
 .sameLine { word-wrap:break-word; }
+.strikethrough { text-decoration: line-through; }
+.pilotGrant input[type='checkbox'] { -webkit-appearance: none; width: 16px; height: 16px; background: white; border-radius: 4px; border: 1px solid #888; }
+.pilotGrant input[type='checkbox']:checked { background: #8dc63f; }
+.pilotGrant { float: left; width: calc(100% - 75px); padding-left: 50px; font-size: 13px; }

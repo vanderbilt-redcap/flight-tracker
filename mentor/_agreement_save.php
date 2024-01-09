@@ -7,7 +7,7 @@ require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/base.php";
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$metadata = Download::metadata($token, $server);
+$metadata = MMAHelper::getMetadata($pid);
 $records = Download::recordIds($token, $server);
 if (!$_POST['record_id'] || !in_array($_POST['record_id'], $records)) {
     die("Improper Record Id");

@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.3.2";
+		return "6.5.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -1301,9 +1301,10 @@ class CareerDev {
                 } else {
                     $ary["Publication Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Publications";
                 }
+                $ary["ORCID Wrangler"] = self::link("/wrangler/orcid.php");
             }
             if ($switches->isOnForProject("Grants")) {
-                $ary["Lexical Translator"] = self::link("/lexicalTranslator.php");
+                $ary["Grant Lexical Translator"] = self::link("/lexicalTranslator.php");
             }
             $ary["Position Change Wrangler"] = self::link("/wrangler/positions.php");
 			if (self::has("patent", $pid) && $switches->isOnForProject("Patents")) {
@@ -1340,6 +1341,7 @@ class CareerDev {
         "citation_affiliations",
         "citation_grants",
         "citation_abstract",
+        "citation_pilot_grants",
         "citation_is_research",
         "citation_num_citations",
         "citation_citations_per_year",
@@ -1375,6 +1377,7 @@ class CareerDev {
         "eric_e_datemodified",
         "eric_e_fulltext",
         "eric_educationlevel",
+        "eric_pilot_grants",
         "eric_last_update",
     ];
 

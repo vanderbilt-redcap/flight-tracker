@@ -9,7 +9,7 @@ require_once dirname(__FILE__)."/base.php";
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/../classes/Autoload.php";
 
-if(isset($_REQUEST['uid']) && MMA_DEBUG){
+if(isset($_REQUEST['uid']) && MMAHelper::getMMADebug()){
     $username = REDCapManagement::sanitize($_REQUEST['uid']);
     $uidString = "&uid=$username";
 } else {

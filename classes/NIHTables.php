@@ -2920,6 +2920,26 @@ class NIHTables {
 	    return self::integerToRoman($romanNumeral);
     }
 
+    private static function getHeaderTooltip($header) {
+        if ($header == "Faculty Member") {
+            return "From anywhere an system; can import using Manual Import instrument.";
+        } else if (in_array($header, ["Faculty Member", "Past or Current Trainee", "Start Date", "Topic of Research Project<br/>(From ".self::getResearchTopicSource().")"])) {
+            return "From Quick Sign-Up page on the NIH Tables 5 & 8 page.";
+        } else if ($header == "Publication") {
+            return "All Wrangled publications during timespan on grant + 18 months.";
+        } else if (in_array($header, ["Terminal Degree(s)<br/>Received and Year(s)", "Doctoral<br/>Degree(s)<br/>and Year(s)", "Degree(s)<br/>Resulting from<br/>Postdoctoral<br/>Training and<br/>Year(s)"])) {
+            return "From Manual Degree instrument.";
+        } else if ($header == "Summary of Support During Training") {
+            return "Not in REDCap; data will be saved for future iterations.";
+        } else if ($header == "Subsequent Grant(s)/Role/Year Awarded") {
+            return "All grants in Flight Tracker; in NIH format.";
+        } else if (in_array($header, ["Initial Position<br/>Department<br/>Institution<br/>Activity", "Current Position<br/>Department<br/>Institution<br/>Activity"])) {
+            return "From Position Change instrument, ordered by date (in effect).";
+        } else {
+            return "";
+        }
+    }
+
 	private static function makeDataIntoHTML($data, $namesPre = [], $namesPost = []) {
 		if (count($data) == 0) {
 		    $prefatoryRemarks = "";
@@ -2932,13 +2952,19 @@ class NIHTables {
 		$htmlRows = array();
 		foreach ($data as $row) {
 			if (empty($htmlRows)) {
-				$currRow = array();
+				$currRow = [];
 				foreach ($row as $field => $value) {
-					array_push($currRow, "<th>$field</th>");
+                    $tooltip = self::getHeaderTooltip($field);
+                    if ($tooltip) {
+                        $currRow[] = "<th title='$tooltip'>$field</th>";
+                    } else {
+                        $currRow[] = "<th>$field</th>";
+                    }
 				}
-				array_push($htmlRows, "<tr>".implode("", $currRow)."</tr>\n"); 
+				$htmlRows[] = "<thead><tr>" . implode("", $currRow) . "</tr></thead>";
+                $htmlRows[] = "<tbody>";
 			}
-			$currRow = array();
+			$currRow = [];
 			foreach ($row as $field => $value) {
 			    $style = "";
 			    if ($field == "Publication") {
@@ -2949,17 +2975,18 @@ class NIHTables {
                     }
                 }
                 if ($value == self::$blank) {
-                    array_push($currRow, "<td".$style."></td>");
+                    $currRow[] = "<td" . $style . "></td>";
                 } else if ($value) {
-                    array_push($currRow, "<td".$style.">$value</td>");
+                    $currRow[] = "<td" . $style . ">$value</td>";
                 } else {
-			        array_push($currRow, "<td".$style.">".self::$NA."</td>");
+			        $currRow[] = "<td" . $style . ">" . self::$NA . "</td>";
                 }
 			}
-			array_push($htmlRows, "<tr>".implode("", $currRow)."</tr>\n"); 
+			$htmlRows[] = "<tr>" . implode("", $currRow) . "</tr>";
 		}
+        $htmlRows[] = "</tbody>";
 
-		$html = "<table class='centered bordered'>".implode("", $htmlRows)."</table>\n";
+		$html = "<table class='centered bordered'>".implode("", $htmlRows)."</table>";
 		return $html;
 	}
 

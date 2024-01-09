@@ -55,13 +55,15 @@ if (($_POST['action'] == "updateField") && in_array($_POST['field'], ['mentor_na
     $menteeEmails = Download::emails($token, $server);
     $primaryMentors = Download::primaryMentors($token, $server);
     $matchedRecords = [];
-    foreach ($requestedRecords as $recordId) {
-        $sanitizedRecord = Sanitizer::getSanitizedRecord($recordId, $allRecords);
-        if ($sanitizedRecord) {
-            $matchedRecords[] = $sanitizedRecord;
-        } else {
-            echo json_encode(["error" => "Not all records could be matched. There might be multiple users accessing these data at the same time."]);
-            exit;
+    if (is_array($requestedRecords)) {
+        foreach ($requestedRecords as $recordId) {
+            $sanitizedRecord = Sanitizer::getSanitizedRecord($recordId, $allRecords);
+            if ($sanitizedRecord) {
+                $matchedRecords[] = $sanitizedRecord;
+            } else {
+                echo json_encode(["error" => "Not all records could be matched. There might be multiple users accessing these data at the same time."]);
+                exit;
+            }
         }
     }
     $emails = [];
@@ -71,7 +73,7 @@ if (($_POST['action'] == "updateField") && in_array($_POST['field'], ['mentor_na
             echo json_encode(["error" => "Not all user-ids are available. This should never happen. You might want to restart the process."]);
             exit;
         }
-        if ($menteeNames[$recordId] ?? "" && REDCapManagement::isEmailOrEmails($menteeEmails[$recordId] ?? "")) {
+        if (($menteeNames[$recordId] ?? "") && REDCapManagement::isEmailOrEmails($menteeEmails[$recordId] ?? "")) {
             $name = $menteeNames[$recordId];
             $email = $menteeEmails[$recordId];
         } else {

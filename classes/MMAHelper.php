@@ -13,7 +13,10 @@ if (!defined("NEW_HASH_DESIGNATION")) {
 
 class MMAHelper {
     public const INSTRUMENT = "mentoring_agreement";
+    public const PREFIX = "mentoring_";
     public const EVAL_INSTRUMENT = "mentoring_agreement_evaluations";
+    public const STEPS_KEY = "mma_steps";
+    public const METADATA_KEY = "mma_metadata";
 
     public static function createHash($token, $server) {
         $newHash = REDCapManagement::makeHash(self::getHashLength());
@@ -200,7 +203,7 @@ function signUpForMMA() {
             }
             post[variable] = value;
         }
-        post['redcap_csrf_token'] = getCSRFToken();
+        post['redcap_csrf_token'] = '".Application::generateCSRFToken()."';
         $.post(url, post, function(json) {
             console.log(json);
             try {
@@ -266,7 +269,7 @@ function startNow() {
         $html = "";
 
         $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-        list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
+        list($firstName, $lastName) = self::getNameFromREDCap($username, $token, $server);
         $names = self::downloadAndMakeNames($token, $server);
         $userids = Download::userids($token, $server);   // no hash defined -> not public project
         $allMentorUids = Download::primaryMentorUserids($token, $server);
@@ -311,7 +314,7 @@ function startNow() {
                 $surveyText = "start";
             } else {
                 $percentComplete = self::getPercentComplete($myRow, $metadata);
-                $mdy = REDCapManagement::YMD2MDY($myRow['mentoring_last_update']);
+                $mdy = DateManagement::YMD2MDY($myRow['mentoring_last_update']);
                 $instance = $myRow['redcap_repeat_instance'];
                 $lastMentorInstance = $mentorRow['redcap_repeat_instance'];
                 $surveyText = "edit";
@@ -396,17 +399,15 @@ function startNow() {
                 $validUserids[] = $menteeUserids[$menteeRecord];
             }
             if (isset($allMentorUserids[$menteeRecord])) {
-                foreach ($allMentorUserids[$menteeRecord] as $mentorUserids) {
-                    foreach ($mentorUserids as $mentorUserid) {
-                        $validUserids[] = $mentorUserid;
-                    }
+                foreach ($allMentorUserids[$menteeRecord] as $mentorUserid) {
+                    $validUserids[] = $mentorUserid;
                 }
             }
         }
         if (in_array($username, $validUserids)) {
             return TRUE;
         }
-        if (MMA_DEBUG && isset($_GET['uid']) && in_array($_GET['uid'], $validUserids)) {
+        if (self::getMMADebug() && isset($_GET['uid']) && in_array($_GET['uid'], $validUserids)) {
             return TRUE;
         }
         return FALSE;
@@ -475,6 +476,9 @@ function startNow() {
     }
 
     public static function getUserids($useridList) {
+        if (!$useridList) {
+            return [];
+        }
         $userids = preg_split("/\s*[,;]\s*/", strtolower($useridList));
         for ($i = 0; $i < count($userids); $i++) {
             $userids[$i] = trim($userids[$i]);
@@ -522,9 +526,9 @@ function startNow() {
     public static function makePercentCompleteJS() {
         $html = "<script>
     function getPercentComplete() {
-        var numer = 0;
-        var denom = 0;
-        var seen = {};
+        let numer = 0;
+        let denom = 0;
+        let seen = {};
        // $('textarea.form-check-input').each(function(idx, ob) {
            // if ($(ob).val()) {
                // numer++;
@@ -557,9 +561,21 @@ function startNow() {
         return $html;
     }
 
+    public static function getMetadata($pid, $metadataFields = []) {
+        if (isset($_SESSION[self::METADATA_KEY])) {
+            return $_SESSION[self::METADATA_KEY];
+        }
+        if (empty($metadataFields)) {
+            $metadataFields = Download::metadataFieldsByPidWithPrefix($pid, self::PREFIX);
+        }
+        $metadata = Download::metadataByPid($pid, $metadataFields);
+        $_SESSION[self::METADATA_KEY] = $metadata;
+        return $metadata;
+    }
+
     public static function makePriorInstancesDropdown($instances, $currInstance) {
         $html = "";
-        $html .= "<div style='margin: 0 auto; width: 100%;'>Open a Prior Instance: <select id='instances' name='instances' style='margin-left: 1em;'>";
+        $html .= "<div style='margin: 0 auto; width: 100%;'><label for='instances'>Use Prior Data:</label><select id='instances' name='instances' style='margin-left: 1em;'>";
         $html .= "<option value=''>--- new ---</option>";
         foreach ($instances as $instance => $date) {
             if ($instance == $currInstance) {
@@ -567,7 +583,7 @@ function startNow() {
             } else {
                 $sel = "";
             }
-            $html .= "<option value='$instance'$sel>$instance: $date</option>";
+            $html .= "<option value='$instance'$sel>$instance: ".DateManagement::YMD2MDY($date)."</option>";
         }
 
         $html .= "</select></div>";
@@ -591,8 +607,8 @@ function startNow() {
     public static function scheduleEmail($to, $from, $subject, $message, $datetime, $pid, $token, $server) {
         if (Application::isLocalhost()) {
             $to = "scott.j.pearson@vumc.org";
-        }
-        if ($datetime == "now") {
+            Application::log($message);
+        } else if ($datetime == "now") {
             \REDCap::email($to, $from, $subject, $message);
         } else {
             $ts = strtotime($datetime);
@@ -604,7 +620,7 @@ function startNow() {
             $settingName = "MMA $subject $datetime TO:$to FROM:$from";
             $mgr->saveSetting($settingName, $emailSetting);
         }
-        if (MMA_DEBUG) {
+        if (Application::isVanderbilt() && self::getMMADebug()) {
             $subject = "DUPLICATE: ".$to.": ".$subject." on ".$datetime;
             \REDCap::email("scott.j.pearson@vumc.org", $from, $subject, $message);
         }
@@ -648,7 +664,7 @@ function startNow() {
                 global $token, $server;
                 $fields = ["record_id", "mentoring_userid"];
                 $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-                $maxInstance = REDCapManagement::getMaxInstance($redcapData, MMAHelper::INSTRUMENT, $recordId);
+                $maxInstance = REDCapManagement::getMaxInstance($redcapData, self::INSTRUMENT, $recordId);
                 return ($maxInstance >= 1);
             } else {
                 return FALSE;
@@ -674,7 +690,7 @@ function startNow() {
         $latestInstance = 0;
         foreach ($redcapData as $row) {
             if (($row['record_id'] == $recordId)
-                && ($row['redcap_repeat_instrument'] = MMAHelper::INSTRUMENT)
+                && ($row['redcap_repeat_instrument'] = self::INSTRUMENT)
                 && in_array($row['mentoring_userid'], $usernames)
                 && ($row['redcap_repeat_instance'] > $latestInstance)) {
 
@@ -775,34 +791,52 @@ function startNow() {
             if (isset($_GET['test'])) {
                 echo "Userid project<br>";
             }
-            $menteeUserids = Download::userids($token, $server);
-            $allMentors = Download::primaryMentors($token, $server);
-            $allMentorUserids = Download::primaryMentorUserids($token, $server);
             $menteeRecords = (strtolower($menteeRecordId) == "all")  ? Download::recordIds($token, $server) : [$menteeRecordId];
-            $menteeNames = Download::menteesForMentor($token, $server, $userid);
+            if (count($menteeRecords) == 1) {
+                $pid = Application::getPID($token);
+                $mentorList = Download::oneFieldForRecordByPid($pid, "summary_mentor", $menteeRecordId);
+                $mentorUseridList = Download::oneFieldForRecordByPid($pid, "summary_mentor_userid", $menteeRecordId);
+                $regex = "/\s*[;\/]\s*/";
+                if (preg_match("/[A-Za-z\.]+\s+[A-Za-z\.]+\s*,\s*[A-Za-z\.]+\s+[A-Za-z\.]+/", $mentorList)) {
+                    # separating two names - not last name, first name
+                    $regex = "/\s*[;,\/]\s*/";
+                }
+                $mentorAry = $mentorList ? preg_split($regex, $mentorList) : [];
+                $mentorUseridAry = $mentorUseridList ? preg_split("/\s*[;,\/]\s*/", $mentorUseridList) : [];
+
+                $menteeUserids = [$menteeRecordId => Download::singleUserid($pid, $menteeRecordId)];
+                $allMentors = [$menteeRecordId => $mentorAry];
+                $allMentorUserids = [$menteeRecordId => $mentorUseridAry];
+                $menteeNamesByRecord = Download::menteesForMentor($token, $server, $userid);
+            } else {
+                $menteeUserids = Download::userids($token, $server);
+                $allMentors = Download::primaryMentors($token, $server);
+                $allMentorUserids = Download::primaryMentorUserids($token, $server);
+                $menteeNamesByRecord = Download::menteesForMentor($token, $server, $userid, $allMentorUserids);
+            }
             $myMentees = [
-                "name" => $menteeNames,
+                "name" => array_values($menteeNamesByRecord),
                 "uid" => [],
             ];
             $myMentors = ["name" => [], "uid" => []];
             foreach ($menteeRecords as $recordId) {
                 $menteeUids = self::getUserids($menteeUserids[$recordId]);
-                $mentorUids = $allMentorUserids[$recordId] ?? [];
+                $mentorUids = $allMentorUserids[$recordId] ?: [];
                 $lowerUserid = strtolower($userid);
                 if (in_array($lowerUserid, $menteeUids) || in_array($lowerUserid, $mentorUids)) {
                     # On Record (Mentee or Mentor)
-                    if (!empty($allMentors[$recordId] ?? [])) {
-                        $myMentors["name"] = array_unique(array_merge($myMentors['name'], $allMentors[$recordId]));
+                    if (!empty($allMentors[$recordId] ?: [])) {
+                        $myMentors["name"] = array_unique(array_merge($myMentors['name'], $allMentors[$recordId] ?: []));
                     }
-                    if (!empty($allMentorUserids[$recordId] ?? [])) {
-                        $myMentors["uid"] = array_unique(array_merge($myMentors['uid'], $allMentorUserids[$recordId]));
+                    if (!empty($allMentorUserids[$recordId] ?: [])) {
+                        $myMentors["uid"] = array_unique(array_merge($myMentors['uid'], $allMentorUserids[$recordId] ?: []));
                     }
                 }
                 if (in_array($lowerUserid, $mentorUids)) {
                     # Mentor on Record
-                    foreach ($myMentees["name"] as $recordId2 => $name) {
-                        if (isset($menteeUserids[$recordId2]) && $menteeUserids[$recordId2]) {
-                            $myMentees["uid"][$recordId2] = $menteeUserids[$recordId2];
+                    foreach ($menteeNamesByRecord as $recordId2 => $name) {
+                        if ($menteeUserids[$recordId2] ?? "") {
+                            $myMentees["uid"][] = $menteeUserids[$recordId2];
                         }
                     }
                 }
@@ -824,7 +858,6 @@ function startNow() {
 
     public static function filterMetadata($metadata, $skipFields = TRUE) {
         $fieldsToSkip = ["mentoring_userid", "mentoring_last_update", "mentoring_phase"];
-        $metadata = REDCapManagement::filterMetadataForForm($metadata, MMAHelper::INSTRUMENT);
         $newMetadata = [];
         foreach ($metadata as $row) {
             if (!in_array($row['field_name'], $fieldsToSkip) || !$skipFields) {
@@ -883,7 +916,7 @@ function startNow() {
 
     public static function pullInstanceFromREDCap($redcapData, $instance) {
         foreach ($redcapData as $redcapRow) {
-            if (($redcapRow['redcap_repeat_instrument'] == MMAHelper::INSTRUMENT) && ($redcapRow["redcap_repeat_instance"] == $instance)) {
+            if (($redcapRow['redcap_repeat_instrument'] == self::INSTRUMENT) && ($redcapRow["redcap_repeat_instance"] == $instance)) {
                 return $redcapRow;
             }
         }
@@ -942,7 +975,7 @@ function startNow() {
         $maxInstance = 0;
         foreach ($rows as $row) {
             if (($row['record_id'] == $recordId)
-                && ($row['redcap_repeat_instrument'] == MMAHelper::INSTRUMENT)
+                && ($row['redcap_repeat_instrument'] == self::INSTRUMENT)
                 && ($row['redcap_repeat_instance'] > $maxInstance)
                 && ($row['mentoring_userid'] == $userid)) {
                 $maxInstance = $row['redcap_repeat_instance'];
@@ -1088,14 +1121,13 @@ function characteristicsPopup(entity) {
 
     # returns MDY
     public static function getDateToRevisit($data, $recordId, $instance) {
-        $module = Application::getModule();
-        $userid = $module->getUsername();
+        $userid = Application::getUsername();
         if (self::isFirstEntryForUser($data, $userid, $recordId, $instance)) {
             $monthsInFuture = 6;
         } else {
             $monthsInFuture = 12;
         }
-        $lastUpdate = REDCapManagement::findField($data, $recordId, "mentoring_last_update", MMAHelper::INSTRUMENT, $instance);
+        $lastUpdate = REDCapManagement::findField($data, $recordId, "mentoring_last_update", self::INSTRUMENT, $instance);
         if ($lastUpdate) {
             $ts = strtotime($lastUpdate);
         } else {
@@ -1139,7 +1171,383 @@ function characteristicsPopup(entity) {
         return $month."-".$day."-".$year;
     }
 
-# returns MDY
+    public static function getAllSections() {
+        return [
+            'Mentee_Mentor_11_Meetings' => "Mentee-Mentor 1:1 Meetings",
+            'Lab_Meetings' => "Lab Meetings",
+            'Communication' => "Communication",
+            'Mentoring_Panel' => "Mentoring Panel",
+            'Financial_Support' => "Financial Support",
+            'Scientific_Development' => "Scientific Development",
+            'Approach_to_Scholarly_Products' => "Approach to Scholarly Products",
+            'Career_and_Professional_Development' => "Career and Professional Development",
+            'Individual_Development_Plan' => "Individual Development Plan",
+        ];
+    }
+
+    private static function getMetadataForStep($metadata, $step) {
+        $newMetadata = [];
+        $start = FALSE;
+        $sections = self::getAllSections();
+        $stepTitle = $sections[$step];
+        foreach ($metadata as $row) {
+            $sectionHeaderTitle = "";
+            if (preg_match("/<h3>(.+)<\/h3>/i", $row['section_header'], $matches)) {
+                $sectionHeaderTitle = $matches[1];
+            }
+            if ($sectionHeaderTitle) {
+                if ($stepTitle == $sectionHeaderTitle) {
+                    $start = TRUE;
+                } else {
+                    $start = FALSE;
+                }
+            }
+            if ($start) {
+                $newMetadata[] = $row;
+            }
+        }
+        return $newMetadata;
+    }
+
+    public static function makePrefillDropdownHTML($surveysAvailableToPrefill, $uidString, $instances, $currInstance) {
+        $html = "<div class='row col-lg-12 tdata' style='text-align: center;'>";
+        if (!empty($surveysAvailableToPrefill)) {
+            $html .= self::makePrefillHTML($surveysAvailableToPrefill, $uidString);
+        }
+        $instancesWithoutCurrent = $instances;
+        unset($instancesWithoutCurrent[$currInstance]);
+        if (!empty($instancesWithoutCurrent)) {
+            $html .= self::makePriorInstancesDropdown($instancesWithoutCurrent, $currInstance);
+        }
+        $html .= "<h4 style='margin: 0 auto; width: 100%; max-width: 800px;'>Please independently fill out the checklist below. Tables will appear one page at a time. When complete, click on the button to alert your mentor.</h4>";
+        $html .= "</div>";
+        return $html;
+    }
+
+    private static function makeStepsHTML($selectedSteps, $currStep) {
+        $stepHTML = [];
+        $allSections = self::getAllSections();
+        foreach ($selectedSteps as $step) {
+            $currentStep = ($step == $currStep) ? "currentStep" : "";
+            $stepHTML[] = "<span class='$currentStep step'>".$allSections[$step]."</span>";
+        }
+        $stepHTML [] = "<span class='step'>Notify Mentor(s)</span>";
+        return "<div class='max-width smaller centered'>".implode(" &rarr; ", $stepHTML)."</div>";
+    }
+
+    public static function makeStepHTML($metadata, $step, $redcapData, $menteeRecordId, $currInstance, $phase, $notesFields, $userid2, $thisUrl, $token, $server, $pid) {
+        $choices = DataDictionaryManagement::getChoices($metadata);
+        $secHeaders = self::getSectionHeadersWithMenteeQuestions($metadata);
+        $steps = $_SESSION[self::STEPS_KEY];
+        if (in_array($step, $steps)) {
+            $index = array_search($step, $steps);
+            $recordInformation = "&menteeRecord=".urlencode($menteeRecordId)."&instance=$currInstance";
+            if ($index == 0) {
+                $priorButtonText = "";
+                $priorButtonOnClick = "";
+            } else {
+                $priorStep = $steps[$index - 1];
+                $priorButtonText = "move back";
+                $priorButtonOnClick = "saveagreement(() => { window.location.href = \"$thisUrl$recordInformation&step=$priorStep\"; });";
+            }
+            if ($index < count($steps) - 1) {
+                $nextStep = $steps[$index + 1];
+                $buttonText = "next form";
+                $buttonOnClick = "saveagreement(() => { window.location.href = \"$thisUrl$recordInformation&step=$nextStep\"; });";
+            } else {
+                $buttonText = "save mentoring agreement &amp; notify mentor(s)";
+                $buttonOnClick = "saveagreementandnotify();";
+            }
+        } else {
+            return "";
+        }
+        $stepsHTML = self::makeStepsHTML($steps, $step);
+
+        $html = "<form id='tsurvey' name='tsurvey'>
+      <input type='hidden' class='form-hidden-data' name='mentoring_phase' id='mentoring_phase' value='$phase'>
+<input type='hidden' class='form-hidden-data' name='mentoring_start' id='mentoring_start' value='".date("Y-m-d H:i:s")."'>
+<section class='bg-light'>
+    $stepsHTML
+    <div class='container'>
+        <div class='row'>
+            <div class='col-lg-12 tdata'>
+
+                <div style='display: none'><table><tbody>";
+        $skipFieldTypes = ["file", "text"];
+        $sectionMetadata = self::getMetadataForStep($metadata, $step);
+        foreach ($sectionMetadata as $row) {
+            list($sec_header, $sectionDescription) = self::parseSectionHeader($row['section_header']);
+            $fieldName = $row['field_name'];
+            $rowName = $fieldName."-tr";
+            if(in_array($sec_header, $secHeaders) && !in_array($row['field_type'], $skipFieldTypes)) {
+                $encodedSection = REDCapManagement::makeHTMLId($sec_header);
+                $sectionDescriptionHTML = $sectionDescription ? "<div class='subHeader'>".strip_tags($sectionDescription)."</div>" : "";
+
+                $answerHeadersHTML = "<th style='text-align: center;' scope='col'>mentee responses</th>
+                                <th style='text-align: center;' scope='col'>latest note<br>(click for full conversation)</th>";
+                $lineHeadersHTML = "<th style='text-align: center; border-right: 0;' scope='col'></th>
+                                <th style='text-align: center;' scope='col'></th>";
+                if (preg_match("/Individual Development Plan/", $sec_header)) {
+                    $answerHeadersHTML = "<th style='text-align: center;' scope='col' colspan='2'>mentee responses</th>";
+                    $lineHeadersHTML = "<th style='text-align: center;' scope='col' colspan='2'></th>";
+                }
+
+                $html .= "</tbody></table></div>
+                <div class='tabledquestions'>
+                    <div class='mainHeader' onclick='toggleSectionTable(\"$encodedSection\");'>".strip_tags($sec_header)."
+                        $sectionDescriptionHTML
+                    </div>
+                    <table id='quest1' class='table $encodedSection' style='margin-left: 0;'>";
+                if ($row['field_type'] != "descriptive") {
+                    $html .= "<thead>
+                            <tr>
+                                <th style='text-align: left;' scope='col'></th>
+                                $lineHeadersHTML
+                            </tr>
+                            <tr>
+                                <th style='text-align: left;' scope='col'>question</th>
+                                $answerHeadersHTML
+                            </tr>
+                            </thead>";
+                }
+                $html .= "<tbody>";
+            }
+
+            if (preg_match("/@HIDDEN/", $row['field_annotation'])) {
+                continue;
+            } else if ($row['field_type'] == "radio") {
+                $html .= "<tr id='$rowName'><th scope='row'>".self::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2)."</th>
+                                <td>";
+                $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, MMAHelper::INSTRUMENT, $currInstance);
+                $prefix = "exampleRadiosh";
+                foreach ($choices[$fieldName] as $key => $label) {
+                    $name = $prefix.$fieldName;
+                    $id = $name."___".$key;
+                    $html .= "<div class='form-check'><input class='form-check-input' type='radio' onclick='doMMABranching();' name='$name' id='$id' value='$key' ".(($value == $key) ? "checked" : "")."><label class='form-check-label' for='$id'>$label</label></div>";
+                }
+                $html .= "</td>".self::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields)."
+              </tr>";
+
+            } else if ($row['field_type'] == "checkbox" ) {
+                $html .= "<tr id='$rowName'><th scope='row'>".self::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2)."</th>
+                      <td>";
+                $prefix = "exampleChecksh";
+                foreach ($choices[$fieldName] as $key => $label) {
+                    $name = $prefix.$fieldName;
+                    $id = $name."___".$key;
+                    $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName."___".$key, MMAHelper::INSTRUMENT, $currInstance);
+                    $isChecked = "";
+                    if ($value) {
+                        $isChecked = "checked";
+                    }
+
+                    $html .= "<div class='form-check'><input class='form-check-input' onclick='doMMABranching();' type='checkbox' name='$name' id='$id' $isChecked ><label class='form-check-label' for='$id'>$label</label></div>";
+                }
+                $html .="</td>".self::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields)."
+             </tr>";
+            } else if (($row['field_type'] == "notes") && (!in_array($fieldName, $notesFields))) {
+                $rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
+                $prefix = "exampleTextareash";
+                $name = $prefix.$fieldName;
+                $id = $name;
+                $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, MMAHelper::INSTRUMENT, $currInstance);
+                $html .= "<tr id='$rowName' $rowCSSStyle><th scope='row'>".self::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2)."</th>
+                      <td colspan='2'>";
+                $priorInfo = self::getPriorValue($token, $server, $fieldName, $menteeRecordId, $currInstance, $userid2);
+                if ($priorInfo) {
+                    echo "<p><strong>Prior Response</strong>: $priorInfo</p>";
+                }
+                $html .= "<div class='form-check' style='height: 100px;'>
+                      <textarea class='form-check-input' name='$name' id='$id'>$value</textarea>
+                  </div>";
+                if ($row['field_note']) {
+                    $html .= "<p class='smaller'>".$row['field_note']."</p>";
+                }
+                $html .= "</td></tr>";
+            } else if ($row['field_type'] == "descriptive") {
+                $rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
+                if ($row['field_name'] == "mentoring_idp_skills_survey") {
+                    $surveyLink = Application::getSetting("idp_link", $pid);
+                    if ($surveyLink) {
+                        $text = str_replace("[this REDCap Survey]", "<a href='$surveyLink'>this REDCap Survey</a>", $row['field_label']);
+                        $html .="<tr id='$rowName' $rowCSSStyle>
+                             <td colspan='3'>$text</td>
+                         </tr>";
+                    }
+                } else {
+                    $html .= "<tr id='$rowName' $rowCSSStyle>
+                          <td colspan='3'>".self::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $userid2)."</td>
+                      </tr>";
+                }
+            }
+        }
+        $priorButtonHTML = $priorButtonText ? "<button type='button' class='btn btn-light viewagreement' style=\"margin-top: 22px;margin-bottom: 8em; color:#ffffff; background-color: #056c7d; border-color: #056c7d;\" onclick='$priorButtonOnClick return false;'>$priorButtonText</button> " : "";
+        $html .="               </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        $stepsHTML
+        <div style='width:100%;text-align:center;'>$priorButtonHTML<button type='button' class='btn btn-light viewagreement' style=\"margin-top: 22px;margin-bottom: 8em; color:#ffffff; background-color: #056c7d; border-color: #056c7d;\" onclick='$buttonOnClick return false;'>$buttonText</button></div>
+
+</section>
+</form>
+<div class='fauxcomment' style='display: none;'></div>";
+        return $html;
+    }
+
+    public static function getInitialSetup($thisUrl, $phase, $menteeRecord, $instance) {
+        $stages = [
+            "Predoctoral" => "predoc",
+            "Postdoctoral" => "postdoc",
+            "Early Career Faculty" => "early_career",
+        ];
+        $stageRows = [];
+        foreach ($stages as $label => $id) {
+            $stageRows[] = "<input type='radio' name='stage' id='$id' value='$id' /> <label for='$id'>$label</label>";
+        }
+        $stageHTML = "<p class='left-align'>".implode("<br/>", $stageRows)."</p>";
+
+        $sections = self::getAllSections();
+        $checkboxes = [];
+        foreach ($sections as $id => $label) {
+            $checkboxes[] = "<input type='checkbox' class='sections' id='$id' name='$id' value='1' /> <label for='$id'>$label</label>";
+        }
+        $checkboxHTML = implode("<br/>", $checkboxes);
+
+        $startChecked = "";
+        $monthsChecked = "";
+        $laterChecked = "";
+        if ($phase == 1) {
+            $startChecked = "checked";
+        } else if ($phase == 2) {
+            $monthsChecked = "checked";
+        } else if ($phase == 3) {
+            $laterChecked = "checked";
+        }
+
+        $html = "<div class='max-width-400' id='setup1'>
+<h4>What career stage are you in?</h4>
+$stageHTML
+<h4>How far into the mentorship are you?</h4>
+<p class='left-align'><input type='radio' name='phase' id='start' value='start' $startChecked /> <label for='start'>At Start</label><br/>
+<input type='radio' name='phase' id='7_12_months' value='7_12_months' $monthsChecked /> <label for='7_12_months'>7-12 Months</label><br/>
+<input type='radio' name='phase' id='later' value='later' $laterChecked /> <label for='later'>More than 6 Months</label></p>
+<h4>Would you like to make an Individual Development Plan (IDP)?</h4>
+<p class='left-align'><input type='radio' name='idp' id='idp_yes' value='yes' /> <label for='idp_yes'>Yes</label><br/>
+<input type='radio' name='idp' id='idp_no' value='no' /> <label for='idp_no'>No</label></p>
+<p class='centered'><button onclick='setupCheckboxes(\"[name=stage]\", \"[name=idp]\", \"[name=phase]\"); return false;'>Next</button></p>
+</div>
+<div class='max-width-400' id='setup2' style='display: none;'>
+<h4>What topics would you like to discuss?</h4>
+<p class='centered smaller'>Suggested topics have been checked.</p>
+<p class='left-align'>$checkboxHTML</p>
+<p class='centered'><button onclick='setupAgreement(\"$thisUrl\"); return false;'>Start Agreement</button></p>
+</div>
+<script>
+function setupAgreement(url) {
+    const sections = [];
+    $('input[type=checkbox].sections:checked').each((idx, ob) => {
+        const id = $(ob).attr('id');
+        sections.push(id);
+    });
+    const postdata = {
+        redcap_csrf_token: '".Application::generateCSRFToken()."',
+        sectionsToShow: sections
+    };
+    if (sections.length > 0) {
+        $.post(url, postdata, (json) => {
+            console.log(json);
+            try {
+                const data = JSON.parse(json);
+                if (data.error) {
+                    $.sweetModal({
+                        content: 'Error: '+data.error,
+                        icon: $.sweetModal.ICON_ERROR
+                    });
+                } else {
+                    window.location.href = url+'&menteeRecord=".urlencode($menteeRecord)."&instance=$instance&step='+sections[0];
+                }
+            } catch(e) {
+                $.sweetModal({
+                    content: 'Error: '+json,
+                    icon: $.sweetModal.ICON_ERROR
+                });
+            }
+        });
+    } else {
+        $.sweetModal({
+            content: 'At least one section must be checked!',
+            icon: $.sweetModal.ICON_ERROR
+        });
+    }
+}
+
+function setupCheckboxes(stageSel, idpSel, phaseSel) {
+    if (
+        ($(stageSel+':checked').length > 0)
+        && ($(idpSel+':checked').length > 0)
+        && ($(phaseSel+':checked').length > 0)
+    ) {
+        const idpAnswer =$(idpSel+':checked').val();
+        const stage = $(stageSel+':checked').val();
+        const phase = $(phaseSel+':checked').val();
+
+        const sectionsToShow = [];
+        if ((stage === 'predoc') && (phase === 'start')) {
+            sectionsToShow.push('Mentee_Mentor_11_Meetings');
+            sectionsToShow.push('Lab_Meetings');
+            sectionsToShow.push('Communication');
+            sectionsToShow.push('Financial_Support');
+            sectionsToShow.push('Scientific_Development');
+        } else if ((stage === 'predoc') && (phase === '7_12_months')) {
+            sectionsToShow.push('Mentoring_Panel');
+            sectionsToShow.push('Approach_to_Scholarly_Products');
+            sectionsToShow.push('Career_and_Professional_Development');
+        } else if ((stage === 'postdoc') && (phase === 'start')) {
+            sectionsToShow.push('Mentee_Mentor_11_Meetings');
+            sectionsToShow.push('Lab_Meetings');
+            sectionsToShow.push('Communication');
+            sectionsToShow.push('Mentoring_Panel');
+            sectionsToShow.push('Financial_Support');
+        } else if ((stage === 'postdoc') && (phase === '7_12_months')) {
+            sectionsToShow.push('Scientific_Development');
+            sectionsToShow.push('Approach_to_Scholarly_Products');
+            sectionsToShow.push('Career_and_Professional_Development');
+        } else if ((stage === 'early_career') || (phase === 'later')) {
+            sectionsToShow.push('Mentee_Mentor_11_Meetings');
+            sectionsToShow.push('Lab_Meetings');
+            sectionsToShow.push('Communication');
+            sectionsToShow.push('Mentoring_Panel');
+            sectionsToShow.push('Financial_Support');
+            sectionsToShow.push('Scientific_Development');
+            sectionsToShow.push('Approach_to_Scholarly_Products');
+            sectionsToShow.push('Career_and_Professional_Development');
+        }
+        if (idpAnswer === 'yes') {
+            sectionsToShow.push('Individual_Development_Plan');
+        }
+        
+        $('input[type=checkbox].sections').attr('checked', false);
+        for (let i=0; i < sectionsToShow.length; i++) {
+            const section = sectionsToShow[i];
+            $('input[type=checkbox]#'+section).attr('checked', true);
+        }
+        
+        $(\"#setup1\").slideUp();
+        $(\"#setup2\").slideDown();
+    } else {
+        $.sweetModal({
+            content: 'The career stage, your time in the program &amp; whether to use the IDP all need to be checked!',
+            icon: $.sweetModal.ICON_ERROR
+        });
+    }
+}
+</script>";
+        return $html;
+    }
+
+    # returns MDY
     public static function adjustDate($ts, $monthsInFuture) {
         $month = date("m", $ts);
         $year = date("Y", $ts);
@@ -1147,12 +1555,730 @@ function characteristicsPopup(entity) {
         $month += $monthsInFuture;
         return self::fixDate($month, $day, $year);
     }
+    
+    public static function getCompleteHead($trailingUidString, $menteeRecordId, $instance) {
+        return "
+<script src='".Application::link("mentor/js/jSignature.min.js")."'></script>
+<style>
+.signature { width: 500px; }
+</style>
+<script>
+    function toggleAllNotes(ob) {
+        const showMssg = 'show all chatter';
+        const hideMssg = 'hide all chatter';
+        if ($(ob).html() === showMssg) {
+            $(ob).html(hideMssg);
+            $('.notesText').show();
+        } else {
+            $(ob).html(showMssg);
+            $('.notesText').hide();
+        }
+    }
+
+    function showHide(ob) {
+        const noteDiv = $(ob).closest('div.notesText');
+        const showMssg = 'show chatter';
+        const hideMssg = 'hide chatter';
+        if ($(ob).html() === showMssg) {
+            $(ob).html(hideMssg);
+            noteDiv.show();
+        } else {
+            $(ob).html(showMssg);
+            noteDiv.hide();
+        }
+    }
+
+    function saveSignature(field, ymdDate) {
+        const ob = '#'+field;
+        const datapair = $(ob).jSignature('getData', 'svgbase64');
+        $.post('".Application::link("mentor/uploadSignature.php")."$trailingUidString',
+            { menteeRecord: '$menteeRecordId',
+                field: field,
+                b64image: datapair[1],
+                mime_type: datapair[0],
+                instance: '$instance',
+                'redcap_csrf_token': '".Application::generateCSRFToken()."',
+                date: ymdDate },
+            function(html) {
+                console.log(html);
+                window.location.reload();
+            });
+    }
+
+    function resetSignature(ob) {
+        $(ob).jSignature('reset');
+    }
+</script>
+
+<style>
+.box_bg{
+    background-image: url(".Application::link("mentor/img/box_trans.png").")
+}
+</style>";
+    }
+
+    public static function getMentorHead($menteeRecordId, $currInstance, $uidString, $userid2, $sections, $commentJS, $isAgreementSigned) {
+        $sectionJS = "";
+        foreach ($sections as $tableNum => $header) {
+            $encodedSection = REDCapManagement::makeHTMLId($header);
+            $header = strtolower($header);
+            $header = addslashes(self::beautifyHeader($header));
+            $sectionJS .= "const header$tableNum = '$encodedSection';\n";
+            $sectionJS .= "
+            if (\$('#quest".$tableNum."').is(':visible')) {
+                \$('#quest".$tableNum."').before('<div class=\"verticalheader\" id=\"vh$tableNum\">$header</div>');
+            }
+            ";
+        }
+        $highlightingJS = "";
+        if (!$isAgreementSigned) {
+            $highlightingJS = "
+            if (valuesAgree($(ob).attr('name'), getOtherName(ob))) {
+                $(ob).closest('tr').removeClass('disagree');
+                $(ob).closest('tr').addClass('agree');
+            } else {
+                $(ob).closest('tr').addClass('disagree');
+                $(ob).closest('tr').removeClass('agree');
+            }
+            ";
+        }
+
+
+        return "
+<link rel='stylesheet' type='text/css' href='".Application::link("mentor/css/simptip.css")."' media='screen,projection' />
+<link rel='stylesheet' href='".Application::link("mentor/css/jquery.sweet-modal.min.css")."' />
+<link rel='stylesheet' href='".Application::link("mentor/css/mentor.css")."' />
+<style>
+.box_bg{
+    background-image: url(".Application::link("mentor/img/box_trans.png").")
+}
+</style>
+<script src='".Application::link("mentor/js/jquery.sweet-modal.min.js")."'></script>
+".self::makePercentCompleteJS()."
+<script>
+    dfn = function(obj) {
+        const objta = '#' + obj + ' td:nth-of-type(4) .tnote';
+        obj = '#' + obj + ' .dfn';
+        if ($(obj).attr('src') === '".Application::link("mentor/img/images/dfb_off_03.png")."') {
+            $(obj).attr('src', '".Application::link("mentor/img/images/dfb_on_03.png")."');
+            $(objta).removeClass('tnote_d');
+            $(objta).addClass('tnote_e');
+        } else {
+            $(obj).attr('src', '".Application::link("mentor/img/images/dfb_off_03.png")."');
+            $(objta).removeClass('tnote_e');
+            $(objta).addClass('tnote_d');
+        }
+    }
+
+    $(document).ready(function() {
+        $('tbody tr .thementee').each(function(index, element) {
+            $(this).find('input').prop( 'disabled',true);
+        });
+
+        $('input[type=checkbox].form-check-input').change(function() { updateData(this); });
+        $('input[type=radio].form-check-input').change(function() { updateData(this); });
+        $('textarea.form-check-input').on('blur', function() { updateData(this); });
+        $sectionJS
+        doMMABranching();
+    });
+
+    ".self::getBranchingJS()."
+
+    function valuesAgree(name1, name2) {
+        const values1 = [];
+        $('[name='+name1+']:checked').each(function(idx, ob) {
+            values1.push($(ob).val());
+        });
+        const values2 = [];
+        $('[name='+name2+']:checked').each(function(idx, ob) {
+            values2.push($(ob).val());
+        });
+        if (values1.length !== values2.length) {
+            return false;
+        }
+        for (let i=0; i < values1.length; i++) {
+            if (values2.indexOf(values1[i]) < 0) {
+                return false;
+            }
+            if (values1.indexOf(values2[i]) < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function getOtherName(ob) {
+        if ($(ob).attr('name').match(/_menteeanswer/)) {
+            return $(ob).attr('name').replace(/_menteeanswer/, '');
+        } else {
+            return $(ob).attr('name') + '_menteeanswer';
+        }
+    }
+
+    function changeHighlightingFromAgreements(ob) {
+        $highlightingJS
+    }
+
+    function updateData(ob) {
+        const mentoringStart = $('#mentoring_start').val();
+        const phase = $('#mentoring_phase').val();
+        console.log('updateData with '+$(ob).attr('id'));
+        changeHighlightingFromAgreements(ob);
+        let suffix = '';
+        if ($(ob).attr('id').match(/_menteeanswer/)) {
+            suffix = '_menteeanswer';
+        }
+        if ($(ob).attr('id').match(/^exampleChecksh/)) {
+            let fullFieldName = $(ob).attr('id').replace(/^exampleChecksh/, '').replace(/_menteeanswer/, '');
+
+            let a = $(ob).attr('id').replace(/^exampleChecksh/, '').replace(/_menteeanswer/, '').split(/___/)
+            let fieldName = a[0]
+            let value = a[1]
+
+            let checkValue = $(ob).is(':checked') ? '1' : '0'
+            let thisbox = '#exampleChecksh'+fieldName+suffix+'___'+value;
+
+            $(thisbox).addClass('simptip-position-left').attr('data-tooltip','option saved!');
+            let type = 'checkbox';
+            console.log(thisbox+' '+type);
+
+            $.post('".Application::link("mentor/change.php")."$uidString', {
+                'redcap_csrf_token': '".Application::generateCSRFToken()."',
+                type: type,
+                record: '$menteeRecordId',
+                instance: '$currInstance',
+                field_name: fullFieldName,
+                value: checkValue,
+                userid: '$userid2',
+                start: mentoringStart,
+                phase: phase
+            }, function (html) {
+                console.log(html);
+                $(thisbox).delay(300).removeClass('simptip-position-left').removeAttr('data-tooltip');
+            })
+        } else if ($(ob).attr('id').match(/^exampleRadiosh/)) {
+            let a = $(ob).attr('id').replace(/^exampleRadiosh/, '').replace(/_menteeanswer/, '').split(/___/)
+            let fieldName = a[0]
+            let value = a[1]
+            let thisbox = '#exampleRadiosh'+fieldName+suffix+'___'+value;
+            $(thisbox).addClass('simptip-position-left').attr('data-tooltip','option saved!');
+
+            let type = 'radio';
+            console.log(thisbox+' '+type);
+            $.post('".Application::link("mentor/change.php")."$uidString', {
+                'redcap_csrf_token': '".Application::generateCSRFToken()."',
+                type: type,
+                record: '$menteeRecordId',
+                instance: '$currInstance',
+                field_name: fieldName,
+                value: value,
+                userid: '$userid2',
+                start: mentoringStart,
+                phase: phase
+            }, function(html) {
+                console.log(html);
+                $(thisbox).delay(300).removeClass('simptip-position-left').removeAttr('data-tooltip');
+            });
+        } else if ($(ob).attr('id').match(/^exampleTextareash/)) {
+            let fieldName = $(ob).attr('id').replace(/^exampleTextareash/, '');
+            let value = $(ob).val();
+            let thisbox = '#exampleTextareash'+fieldName;
+            $(thisbox).attr('disabled', true);
+            let type = 'textarea';
+            console.log(thisbox+' '+type);
+            $.post('".Application::link("mentor/change.php").$uidString."', {
+                'redcap_csrf_token': '".Application::generateCSRFToken()."',
+                type: type,
+                record: '$menteeRecordId',
+                instance: '$currInstance',
+                field_name: fieldName,
+                value: value,
+                userid: '$userid2',
+                start: mentoringStart,
+                phase: phase
+            }, function(html) {
+                console.log(html);
+                $(thisbox).attr('disabled', false);
+            });
+        }
+        $('.chart').data('easyPieChart').update(getPercentComplete());
+    }
+</script>
+$commentJS
+";
+    }
+
+    public static function getIndexHead($firstName, $lastName) {
+        $reminderJS = self::makeReminderJS(NameMatcher::formatName($firstName, "", $lastName));
+
+        $html = "$reminderJS
+<link rel='stylesheet' href='".Application::link("mentor/css/jquery.sweet-modal.min.css")."' />
+<link rel='stylesheet' href='".Application::link("mentor/css/index.css")."' />
+<script src='".Application::link("mentor/js/jquery.sweet-modal.min.js")."'></script>
+
+<style>
+.note_agreementchecklist{
+    /* background-image: url(" . Application::link("mentor/images/note_viewagreement.png") . "); */
+}
+.note_viewagreementstatus{
+    background-image: url(" . Application::link("mentor/images/note_viewagreementstatus.png") . ");
+}
+.box_bg{
+    background-image: url(".Application::link("mentor/img/box_trans.png").");
+}
+</style>
+
+<script>
+    dfn=function(obj){
+        const objta = '#'+obj+' td:nth-of-type(4) .tnote';
+        obj = '#'+obj+' .dfn';
+        let offImgSrc = '".Application::link("mentor/img/images/dfb_off_03.png")."';
+        let onImgSrc = '".Application::link("mentor/img/images/dfb_on_03.png")."';
+        if($(obj).attr('src') && ($(obj).attr('src') === offImgSrc)) {
+            $(obj).attr('src', onImgSrc);
+            $(objta).removeClass('tnote_d');
+            $(objta).addClass('tnote_e');
+        } else {
+            $(obj).attr('src',offImgSrc);
+            $(objta).removeClass('tnote_e');
+            $(objta).addClass('tnote_d');
+        }
+    }
+
+    yn_discussed=function(obj,yn){
+        const questnum = $('#'+obj).closest('table').attr('id');
+        let objta;
+        let objtaother;
+        if(yn === 1){
+            objta = '#'+obj+' th:nth-of-type(1) img';
+            objtaother = '#'+obj+' td:nth-of-type(1) img';
+        } else {
+            objta = '#'+obj+' td:nth-of-type(1) img';
+            objtaother = '#'+obj+' th:nth-of-type(1) img';
+        }
+        if($(objta).attr('src') === '".Application::link("mentor/img/images/yn_off_03.jpg")."'){
+            $(objta).addClass('isactive').attr('src','".Application::link("mentor/img/images/yn_on_07.png")."');// set 'yes' on
+            $(objtaother).removeClass('isactive').attr('src','".Application::link("mentor/img/images/yn_off_05.jpg")."');// set 'no' off
+        } else if($(objta).attr('src') === '".Application::link("mentor/img/images/yn_on_07.png")."'){
+            $(objta).removeClass('isactive').attr('src','".Application::link("mentor/img/images/yn_off_03.jpg")."');// set 'no' on
+            $(objtaother).removeClass('isactive').attr('src','".Application::link("mentor/img/images/yn_off_05.jpg")."');// set 'yes' off
+        } else if($(objta).attr('src') === '".Application::link("mentor/img/images/yn_off_05.jpg")."'){
+            $(objta).addClass('isactive').attr('src','".Application::link("mentor/img/images/yn_on_03.png")."');// set 'yes' on
+            $(objtaother).removeClass('isactive').attr('src','".Application::link("mentor/img/images/yn_off_03.jpg")."');// set 'no' off
+        } else if($(objta).attr('src') === '".Application::link("mentor/img/images/yn_on_03.png")."'){
+            $(objta).attr('src','".Application::link("mentor/img/images/yn_off_05.jpg")."').removeClass('isactive');
+            $(objtaother).removeClass('isactive');// set 'no' off
+        }
+        const questnum_t = questnum.replace('quest','');
+        $('#quest_num'+questnum_t).html($('#'+questnum+' .isactive').length);
+        $.sweetModal({
+            title: '',
+            content: 'Discussion response updated!',
+            timeout: 800
+        });
+    }
+
+  function minutes_with_leading_zeros(dt) {
+    return (dt.getMinutes() < 10 ? '0' : '') + dt.getMinutes();
+  }
+  let currcomment = '0';
+  showcomment = function(servicerequest_id) {
+    const offset = $('#' + servicerequest_id + ' .tcomments').offset();
+    const offsetleft = offset.left + 50;
+    const offsettop = offset.top - 16;
+    let commentcontent = '<div style=\"position: relative;height: 250px;\"><div class=\"closecomments\"><span style=\"float:left;color: #000000;font-weight: 700;font-size: 12px;margin-left: 6px;\">Comments for question/option ' + servicerequest_id + '</span><a style=\"float:right;\" href=\"javascript:$(\'.fauxcomment\').css(\'display\',\'none\');\"><img src=\"".Application::link("mentor/images/x-circle.svg")."\" /></a></div><div id=\"lcomments\" class=\"listofcomments\" style=\"position: absolute;bottom: 0;height: 220px;display: inline-block;overflow: scroll;\">';
+
+    //data here (commentcontent) is only used for demo purpposes. Use actual data either via ajax or add hidden div in data row to read from
+    commentcontent += '<div class=\"acomment\">This is a test for the discussion/notes comment section.<span class=\"timestamp\">(Burks, B) 6/22/18 15:30</span></div>';
+    commentcontent += '<div class=\"acomment odd\">Checked the data and it is correct. Need to alter temp tag to allow for subjegation.<span class=\"timestamp\">(Lightner, C) Yesterday 07:23</span></div><div class\"datemarker\">Today</div>';
+    commentcontent += '<div class=\"acomment\">Official U.S. edition with full color illustrations throughout. New York Times Bestseller A Summer Reading Pick for President Barack Obama, Bill Gates, and Mark Zuckerberg From<span class=\"timestamp\">(Patton, D) Today 03:17</span></div>';
+    commentcontent += '<div class=\"acomment odd\">Nashville pollen level for 3/18/2019: 9.4 (Medium-High)<span class='timestamp'>(Moore, R) Today 05:42</span></div>';
+    commentcontent += '</div></div><div class=\"insertcomment\"><input id=\"addcomment\" type=\"text\" placeholder=\"add comment...\"><span><a href=\"javascript:addcomment(\'' + servicerequest_id + '\')\"><img src=\"".Application::link("mentor/images/at-sign.svg")."\" style=\"height: 18px;margin-left: 8px;\"></a></span></div>';
+    $('.fauxcomment')
+        .css('display', 'none')
+        .css('top', offsettop + 'px')
+        .css('left', offsetleft + 'px')
+        .html('<!--img class=\"thefauxcomment ' + servicerequest_id + '\" src=\"".Application::link("mentor/images/comments.png")."\"-->' + commentcontent)
+        .css('display', 'inline-block');
+
+    currcomment = servicerequest_id;
+    $('.acomment:odd').css('background-color', '#eceff5');
+    let element = document.getElementById('lcomments'); //scrolls to bottom
+    element.scrollTop = element.scrollHeight;
+  }
+
+  addcomment = function(servicerequest_id) {
+    $('#' + servicerequest_id + ' .tcomments .timestamp').remove();
+    const d = new Date();
+    const addCommentOb = $('#addcomment');
+    const commentText = addCommentOb.val();
+    const latestcomment = commentText + '<span class=\"timestamp\">(me) Today ' + d.getHours() + ':' + minutes_with_leading_zeros(d) + '</span>';
+    $('<div class=\"acomment\">' + latestcomment + '</div>').appendTo('.listofcomments');
+    $('#' + servicerequest_id + ' .tcomments a')
+        .html(commentText)
+        .after('<span class=\"timestamp\" style=\"display: inline;margin-left: 6px;\">(me) Today ' + d.getHours() + ':' + minutes_with_leading_zeros(d) + '</span>');
+    addCommentOb.val('');
+    $('.acomment:odd').css('background-color', '#eceff5');
+    const element = document.getElementById('lcomments'); //scrolls to bottom
+    element.scrollTop = element.scrollHeight;
+  }
+
+  changePhase=function(ob) {
+      const phase = $(ob).val();
+      const parentRow = $(ob).parent().parent();
+      const link = parentRow.find('a.surveylink');
+      const origUrl = link.attr('href').replace(/&phase=\d+/, '');
+      const newUrl = origUrl + '&phase='+encodeURI(phase);
+      link.attr('href', newUrl);
+  }
+
+$(document).ready(function() {
+    $('.tnote').focusout(function(){
+        $.sweetModal({
+            title: '',
+            content: 'Your note has been saved!',
+            timeout: 1000
+        });
+    });
+
+    $('.box_bg').hover(function() {
+        let boxcolor = '';
+        if($(this).hasClass('boxa')){
+            boxcolor = '#26798a';
+        }
+        if($(this).hasClass('boxb')){
+            boxcolor = '#de6339';
+        }
+        if($(this).hasClass('boxc')){
+            boxcolor = '#666666';
+        }
+        console.log('#'+this.id+' .box_title strong');
+        $('#'+this.id+' .box_guys img').attr('src','".Application::link("mentor/img/guys.png")."');
+        $(this).css('background-color', boxcolor);
+        $('#'+this.id+' .box_title').addClass('colorWhite').removeClass('colorBlack');
+        $('#'+this.id+' .box_title strong').removeClass('colorBlack').removeClass('colorAqua').removeClass('colorOrange').addClass('colorWhite');
+        $('#'+this.id+' .box_body, #'+this.id+' .box_body p:first-of-type').addClass('colorWhite');
+    }, function() {
+        $(this).css('background-color', '#ffffff');
+        $('#'+this.id+' .box_title').addClass('colorBlack').removeClass('colorWhite');
+        $('#boxa .box_title strong').addClass('colorAqua').removeClass('colorWhite');
+        $('#boxb .box_title strong').addClass('colorOrange').removeClass('colorWhite');
+        $('#boxc .box_title strong').addClass('colorBlack').removeClass('colorWhite');
+        $('#'+this.id+' .box_body, #'+this.id+'.box_body p:first-of-type').removeClass('colorWhite').removeClass('colorGrey');
+        $('#'+this.id+' .box_body p:first-of-type').removeClass('colorWhite').removeClass('colorGrey');
+
+        if(this.id === 'boxa'){
+          $('#'+this.id+' .box_guys img').attr('src','".Application::link("mentor/img/images/box_imgs_03.jpg")."');
+        } else if(this.id === 'boxb'){
+          $('#'+this.id+' .box_guys img').attr('src','". Application::link("mentor/img/images/box_imgs_06.jpg")."');
+        } else if(this.id === 'boxc'){
+          $('#'+this.id+' .box_guys img').attr('src','". Application::link("mentor/img/images/box_imgs_08.jpg")."');
+        }
+    });
+
+    const agreementOb = $('.viewagreement');
+    agreementOb.after('<div class=\"note_agreementchecklist\"></div>');
+    agreementOb.hover(
+      function() {
+        $('.note_agreementchecklist').addClass('opacity100');
+      }, function() {
+        $('.note_agreementchecklist').removeClass('opacity100');
+      }
+    );
+
+    const status = $('.viewagreementstatus'); 
+    status.append('<div class=\"note_viewagreementstatus\"></div>');
+    status.hover(
+      function() {
+        $('.note_viewagreementstatus').addClass('opacity100');
+      }, function() {
+        $('.note_viewagreementstatus').removeClass('opacity100');
+      }
+    );
+});
+</script>";
+        return $html;
+    }
+
+    private static function getTableCSS($step) {
+        $enqueuedSections = $_SESSION[self::STEPS_KEY] ?? [];
+        $index = array_search($step, $enqueuedSections);
+        $colors = [
+            "#41a9de14",
+            "#f6dd6645",
+            "#ec9d5045",
+            "#5fb7494a",
+            "#a6609721",
+            "#9ba4ac21",
+        ];
+        if ($index !== FALSE) {
+            $color = $colors[$index % count($colors)];
+        } else {
+            $color = $colors[0];
+        }
+        return ".tabledquestions { padding: 1em; background-color: $color; }";
+    }
+
+    public static function getMenteeHead($hash, $menteeRecordId, $currInstance, $uidString, $userid2, $commentJS) {
+        $hashStr = $hash ? '&hash=$hash' : '';
+        if (isset($_REQUEST['uid'])) {
+            $uid = Sanitizer::sanitize($_REQUEST['uid']);
+            $uidStatement = "uidStr = '&uid='+encodeURI('$uid')+'$hashStr'\n";
+        } else {
+            $uidStatement = "uidStr = '$hashStr'\n";
+        }
+        $branchingJS = self::getBranchingJS();
+        $percCompleteJS = self::makePercentCompleteJS();
+        $tableCSS = self::getTableCSS($_GET['step'] ?? "initial");
+        return "
+<link rel='stylesheet' type='text/css' href='".Application::link("mentor/css/simptip.css")."' media='screen,projection' />
+<link rel='stylesheet' href='".Application::link("mentor/css/jquery.sweet-modal.min.css")."' />
+<script src='".Application::link("mentor/js/jquery.sweet-modal.min.js")."'></script>
+$percCompleteJS
+<link rel='stylesheet' href='".Application::link("mentor/css/mentee.css")."' />
+
+<style>
+.note_viewagreementstatus{
+    background-image: url(" . Application::link("mentor/images/note_viewagreementstatus.png") . ");
+}
+
+.note_agreementchecklist{
+    /* background-image: url(" . Application::link("mentor/images/note_viewagreement.png") . "); */
+}
+
+.box_bg{
+    background-image: url(".Application::link("mentor/img/box_trans.png").")
+}
+
+$tableCSS
+</style>
+
+<script type='text/javascript'>
+    $branchingJS
+
+    $(document).ready(function(){
+        $('.box_bg').hover(function() { 
+            let boxcolor = '';
+            if($(this).hasClass('boxa')){
+                boxcolor = '#26798a';
+            }
+            if($(this).hasClass('boxb')){
+                boxcolor = '#de6339';
+            }
+            if($(this).hasClass('boxc')){
+                boxcolor = '#ffffff';
+            }
+            console.log('#'+this.id+' .box_title strong');
+            $(this).css('background-color', boxcolor); 
+            $('#'+this.id+' .box_title').addClass('colorWhite').removeClass('colorBlack');
+            $('#'+this.id+' .box_title strong').removeClass('colorBlack').removeClass('colorAqua').removeClass('colorOrange').addClass('colorWhite');
+            $('#'+this.id+' .box_body, #'+this.id+' .box_body p:first-of-type').addClass('colorWhite');
+            $('#'+this.id+' .box_guys img').attr('src','".Application::link("mentor/img/guys.png")."');
+        }, function() { 
+            $(this).css('background-color', '#ffffff'); 
+            $('#'+this.id+' .box_title').addClass('colorBlack').removeClass('colorWhite');
+            $('#boxa .box_title strong').addClass('colorAqua').removeClass('colorWhite');
+            $('#boxb .box_title strong').addClass('colorOrange').removeClass('colorWhite');
+            $('#boxc .box_title strong').addClass('colorBlack').removeClass('colorWhite');
+            $('#'+this.id+' .box_body, #'+this.id+'.box_body p:first-of-type').removeClass('colorWhite').removeClass('colorGrey');
+            $('#'+this.id+' .box_body p:first-of-type').removeClass('colorWhite').removeClass('colorGrey');
+            
+            if(this.id === 'boxa'){
+              $('#'+this.id+' .box_guys img').attr('src','".Application::link("mentor/img/images/box_imgs_03.jpg")."');
+            } else if(this.id === 'boxb'){
+              $('#'+this.id+' .box_guys img').attr('src','".Application::link("mentor/img/images/box_imgs_06.jpg")."');
+            } else if(this.id === 'boxc'){
+              $('#'+this.id+' .box_guys img').attr('src','".Application::link("mentor/img/images/box_imgs_08.jpg")."');
+            }
+        }); 
+
+        const viewer = $('.viewagreement');
+        viewer.after('<div class=\"note_agreementchecklist\"></div>');  
+        viewer.hover(
+            function() {
+                $('.note_agreementchecklist').addClass('opacity100');
+            }, function() {
+                $('.note_agreementchecklist').removeClass('opacity100');
+            }
+        );
+
+        $('.tnote').focusout(function(){
+            $.sweetModal({
+                title: '',
+                content: 'Your note has been saved!',
+                timeout: 1000
+            });
+        });
+
+        $('input[type=checkbox].form-check-input').change(function() { updateData(this); });
+        $('input[type=radio].form-check-input').change(function() { updateData(this); });
+        $('textarea.form-check-input').on('blur', function() { updateData(this); });
+
+        $('select#instances').change(() => {
+            let value = $('select#instances option:selected').val()
+            let uidStr = '';
+            $uidStatement
+            const baseUrl = '".Application::link("mentor/index_menteeview.php")."&menteeRecord=$menteeRecordId' + uidStr;
+            if (value) {
+                window.location.href = baseUrl + '&instance=' + encodeURI(value);
+            } else {
+                window.location.href = baseUrl;
+            }
+        });
+        doMMABranching();
+    });
+
+    dfn=function(obj){
+        let objta = '#'+obj+' td:nth-of-type(4) .tnote';
+        obj = '#'+obj+' .dfn';
+        if($(obj).attr('src') === '".Application::link("mentor/img/images/dfb_off_03.png" )."'){
+            $(obj).attr('src','".Application::link("mentor/img/images/dfb_on_03.png")."');
+            $(objta).removeClass('tnote_d');
+            $(objta).addClass('tnote_e');
+        } else {
+            $(obj).attr('src','".Application::link("mentor/img/images/dfb_off_03.png")."');
+            $(objta).removeClass('tnote_e');
+            $(objta).addClass('tnote_d');
+        }
+    }
+
+    yn_discussed=function(obj,yn){
+        const questnum = $('#'+obj).closest('table').attr('id');
+        let objta;
+        let objtaother;
+        if((yn === 1) || (yn === '1')){
+            objta = '#'+obj+' th:nth-of-type(1) img';
+            objtaother = '#'+obj+' td:nth-of-type(1) img';
+        } else {
+            objta = '#'+obj+' td:nth-of-type(1) img';
+            objtaother = '#'+obj+' th:nth-of-type(1) img';
+        }
+        if($(objta).attr('src') === '".Application::link("mentor/img/images/yn_off_03.jpg")."'){
+            $(objta).addClass('isactive').attr('src','".Application::link("mentor/img/images/yn_on_07.png")."');// set 'yes' on
+            $(objtaother).removeClass('isactive').attr('src','".Application::link("mentor/img/images/yn_off_05.jpg")."');// set 'no' off
+        } else if($(objta).attr('src') === '".Application::link("mentor/img/images/yn_on_07.png")."'){
+            $(objta).removeClass('isactive').attr('src','".Application::link("mentor/img/images/yn_off_03.jpg")."');// set 'no' on
+            $(objtaother).removeClass('isactive').attr('src','".Application::link("mentor/img/images/yn_off_05.jpg")."');// set 'yes' off
+        } else if($(objta).attr('src') === '".Application::link("mentor/img/images/yn_off_05.jpg")."'){
+            $(objta).addClass('isactive').attr('src','".Application::link("mentor/img/images/yn_on_03.png")."');// set 'yes' on
+            $(objtaother).removeClass('isactive').attr('src','".Application::link("mentor/img/images/yn_off_03.jpg")."');// set 'no' off
+        } else if($(objta).attr('src') === '".Application::link("mentor/img/images/yn_on_03.png")."'){
+            $(objta).attr('src','".Application::link("mentor/img/images/yn_off_05.jpg")."').removeClass('isactive');
+            $(objtaother).removeClass('isactive');// set 'no' off
+        }
+        //console.log($('#'+questnum+' .isactive').length); //number of unique yes/no questions answerd
+        //console.log($('#'+questnum+' tbody tr').length); //number of yes/no questions
+        const questnum_t = questnum.replace('quest','');
+        $('#quest_num'+questnum_t).html($('#'+questnum+' .isactive').length);
+        $.sweetModal({
+            title: '',
+            content: 'Discussion response updated!',
+            timeout: 800
+        });
+
+    }
+
+    function updateData(ob) {
+        const mentoringStart = $('#mentoring_start').val();
+        const phase = $('#mentoring_phase').val();
+        if ($(ob).attr('id').match(/^exampleChecksh/)) {
+            let fullFieldName = $(ob).attr('id').replace(/^exampleChecksh/, '')
+
+            let a = $(ob).attr('id').replace(/^exampleChecksh/, '').split(/___/)
+            let fieldName = a[0]
+            let value = a[1]
+
+            let checkValue = $(ob).is(':checked') ? '1' : '0'
+            let thisbox = '#exampleChecksh'+fieldName+'___'+value;
+            console.log(thisbox);
+
+            $(thisbox).addClass('simptip-position-left').attr('data-tooltip','option saved!');
+
+            $.post('".Application::link("mentor/change.php")."$uidString', {
+                type: 'checkbox',
+                record: '$menteeRecordId',
+                instance: '$currInstance',
+                field_name: fullFieldName,
+                value: checkValue,
+                userid: '$userid2',
+                start: mentoringStart,
+                'redcap_csrf_token': '".Application::generateCSRFToken()."',
+                phase: phase
+            }, function (html) {
+                console.log(html);
+                $(thisbox).delay(300).removeClass('simptip-position-left').removeAttr('data-tooltip');
+            })
+        } else if ($(ob).attr('id').match(/^exampleRadiosh/)) {
+            let a = $(ob).attr('id').replace(/^exampleRadiosh/, '').split(/___/)
+            let fieldName = a[0]
+            let value = a[1]
+            let thisbox = '#exampleRadiosh'+fieldName+'___'+value;
+            $(thisbox).addClass('simptip-position-left').attr('data-tooltip','option saved!');
+
+            $.post('".Application::link("mentor/change.php")."$uidString', {
+                type: 'radio',
+                record: '$menteeRecordId',
+                instance: '$currInstance',
+                field_name: fieldName,
+                value: value,
+                userid: '$userid2',
+                'redcap_csrf_token': '".Application::generateCSRFToken()."',
+                start: mentoringStart,
+                phase: phase
+            }, function(html) {
+                console.log(html);
+                $(thisbox).delay(300).removeClass('simptip-position-left').removeAttr('data-tooltip');
+            });
+        } else if ($(ob).attr('id').match(/^exampleTextareash/)) {
+            let fieldName = $(ob).attr('id').replace(/^exampleTextareash/, '');
+            let value = $(ob).val();
+            let thisbox = '#exampleTextareash'+fieldName;
+            $(thisbox).attr('disabled', true);
+            $.post('".Application::link("mentor/change.php")."$uidString', {
+                type: 'textarea',
+                record: '$menteeRecordId',
+                instance: '$currInstance',
+                field_name: fieldName,
+                value: value,
+                userid: '$userid2',
+                'redcap_csrf_token': '".Application::generateCSRFToken()."',
+                start: mentoringStart,
+                phase: phase
+            }, function(html) {
+                console.log(html);
+                $(thisbox).attr('disabled', false);
+            });
+        }
+
+        $('.chart').data('easyPieChart').update(getPercentComplete());
+    }
+</script>
+$commentJS
+";
+    }
+
+    private static function getPercentCompleteBySections() {
+        $step = $_GET['step'] ?? "initial";
+        if ($step == "initial") {
+            return 0;
+        }
+        $enqueuedSections = $_SESSION[self::STEPS_KEY] ?? [];
+        if (empty($enqueuedSections)) {
+            return 0;
+        }
+        $pos = array_search($step, $enqueuedSections);
+        if ($pos === FALSE) {
+            return 0;
+        } else {
+            return ceil($pos * 100 / count($enqueuedSections));
+        }
+    }
 
     public static function makeSurveyHTML($partners, $partnerRelationship, $row, $metadata) {
         $html = "";
         $imageLink = Application::link("mentor/img/temp_image.jpg");
         $scriptLink = Application::link("mentor/js/jquery.easypiechart.min.js");
-        $percComplete = self::getPercentComplete($row, $metadata);
+        $percComplete = self::getPercentCompleteBySections();
 
         $html .= "
 <p><div>
@@ -1160,15 +2286,12 @@ function characteristicsPopup(entity) {
         <span class='chart' data-percent='$percComplete'>
             <span class='percent'></span>
         </span>
-        <div style='text-align: center;margin-top: 0px;font-size: 13px;width: 115px;'>(complete)</div>
+        <div style='text-align: center;margin-top: 0;font-size: 13px;width: 115px;'>(complete)</div>
     </div>
 </div></p>";
         $html .= "<p>Welcome to the Mentoring Agreement. The first step to completing the Mentoring Agreement is to reflect on what is important to you in a successful mentee-mentor relationship. Through a series of questions on topics such as meetings, communication, research, and approach to scholarly products, to name a few, this survey will help guide you through that process and provide you with a tool to capture your thoughts. The survey should take about 30 minutes to complete. Your $partnerRelationship ($partners) will also complete a survey.</p>";
-        $html .= "<p><img src='$imageLink' style='float: left; margin-right: 39px;width: 296px;'>The mentee should complete the agreement first. An email will alert the mentor(s) whenever the agreement is submitted. The mentor(s) should arrange a time to meet with the mentee to fill out their part of the agreement, which will act as the final authorized/completed agreement. Then the completed agreement can be viewed, signed, and printed. A follow-up email will be scheduled for when the agreement should be revisited.</p>";
+        $html .= "<p><img alt='Welcome!' src='$imageLink' style='float: left; margin-right: 39px;width: 296px;' />The mentee should complete the agreement first. An email will alert the mentor(s) whenever the agreement is submitted. The mentor(s) should arrange a time to meet with the mentee to fill out their part of the agreement, which will act as the final authorized/completed agreement. Then the completed agreement can be viewed, signed, and printed. A follow-up email will be scheduled for when the agreement should be revisited.</p>";
         $html .= "<p>Each section below will explore expectations and goals regarding relevant topics for the relationship, such as the approach to direct one-on-one meetings.</p>";
-        if (Application::getProgramName() != "Flight Tracker Mentee-Mentor Agreements") {
-            $html .= "<p>All sections recommended for you to fill out now are open, and other sections that aren't as timely are collapsed. You may revisit these collapsed sections as you wish by clicking on the header.</p>";
-        }
 
         $html .= "<script src='$scriptLink'></script>";
         $html .= "<script>
@@ -1189,9 +2312,9 @@ function characteristicsPopup(entity) {
                 $(this.el).find('.percent').text(Math.round(percent));
             }
         });
-        var chart = window.chart = $('.chart').data('easyPieChart');
+        const chart = window.chart = $('.chart').data('easyPieChart');
         $('.js_update').on('click', function() {
-            chart.update($percComplete);
+            chart.update('$percComplete');
         });
     });
     </script>";
@@ -1200,7 +2323,7 @@ function characteristicsPopup(entity) {
     }
 
     public static function agreementSigned($redcapData, $menteeRecordId, $currInstance) {
-        $row = REDCapManagement::getRow($redcapData, $menteeRecordId, MMAHelper::INSTRUMENT, $currInstance);
+        $row = REDCapManagement::getRow($redcapData, $menteeRecordId, self::INSTRUMENT, $currInstance);
         $fields = [
             "mentoring_sig_mentee",
             "mentoring_sig_mentee_date",
@@ -1245,7 +2368,7 @@ function characteristicsPopup(entity) {
         }
         $instances = [];
         foreach ($redcapData as $row) {
-            if (($row['record_id'] == $menteeRecordId) && ($row['redcap_repeat_instrument'] == MMAHelper::INSTRUMENT)) {
+            if (($row['record_id'] == $menteeRecordId) && ($row['redcap_repeat_instrument'] == self::INSTRUMENT)) {
                 if ($row['redcap_repeat_instance'] == $instance) {
                     foreach ($notesFields as $field) {
                         $priorNotes[$field] = $row[$field];
@@ -1338,41 +2461,35 @@ function characteristicsPopup(entity) {
             return $sectionsToShow;
         }
 
-        $isFirstTime = self::isFirstEntryForUser($redcapData, $username, $menteeRecordId, $currInstance);
-        $firstTimeSections = [
-            "<h3>Getting Started</h3>",
-            "<h3>Mentee-Mentor 1:1 Meetings</h3>",
-            "<h3>Lab Meetings</h3>",
-            "<h3>Communication</h3>",
-            "<h3>Mentoring Panel</h3>",
-        ];
         $fillOutOnce = [
             "h3Mentoring_Panelh3" => "mentoring_panel_names",
         ];
         $sectionsToShow = [];
-        if ($isFirstTime) {
-            foreach ($firstTimeSections as $section) {
-                $encodedSection = REDCapManagement::makeHTMLId($section);
-                $sectionsToShow[] = $encodedSection;
-            }
-        } else {
-            foreach ($secHeaders as $secHeader) {
-                $encodedSection = REDCapManagement::makeHTMLId($secHeader);
-                if (!in_array($encodedSection, $firstTimeSections) && !isset($fillOutOnce[$encodedSection])) {
-                    $sectionsToShow[] = $encodedSection;
-                }
-            }
-            foreach ($fillOutOnce as $section => $fieldToCheck) {
-                $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldToCheck, MMAHelper::INSTRUMENT, $currInstance);
-                if (!$value && !in_array($section, $sectionsToShow)) {
-                    $sectionsToShow[] = $section;
-                }
+        foreach ($secHeaders as $secHeader) {
+            $encodedSection = REDCapManagement::makeHTMLId($secHeader);
+            $sectionsToShow[] = $encodedSection;
+        }
+        foreach ($fillOutOnce as $section => $fieldToCheck) {
+            $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldToCheck, self::INSTRUMENT, $currInstance);
+            if (!$value && !in_array($section, $sectionsToShow)) {
+                $sectionsToShow[] = $section;
             }
         }
         return $sectionsToShow;
     }
 
-    public static function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInstance, $priorNotes, $menteeName, $dateToRemind, $isMenteePage, $hasEvaluationComponent, $pid) {
+    public static function isLastStep($step) {
+        $enqueuedSteps = $_SESSION[self::STEPS_KEY] ?: [];
+        $index = array_search($step, $enqueuedSteps);
+        if ($index === FALSE) {
+            return FALSE;
+        } else {
+            return ($index === count($enqueuedSteps) - 1);
+        }
+    }
+
+    public static function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInstance, $priorNotes, $menteeName, $dateToRemind, $isMenteePage, $hasEvaluationComponent, $pid)
+    {
         $html = "";
         $uidString = "";
         if (isset($_GET['uid'])) {
@@ -1381,7 +2498,7 @@ function characteristicsPopup(entity) {
             $uidString = "&hash=$username";
         }
         $verticalOffset = 50;
-        $recordString = "&record=".$menteeRecordId;
+        $recordString = "&record=" . $menteeRecordId;
 
         if (self::isValidHash($username)) {
             if (self::isMentee($menteeRecordId)) {
@@ -1394,7 +2511,11 @@ function characteristicsPopup(entity) {
         }
 
         if ($isMenteePage) {
-            $functionToCall = "scheduleMentorEmail";
+            if (self::isLastStep($_GET['step'] ?? "initial")) {
+                $functionToCall = "scheduleMentorEmail";
+            } else {
+                $functionToCall = "";
+            }
         } else {
             $functionToCall = "scheduleReminderEmail";
         }
@@ -1405,8 +2526,8 @@ function characteristicsPopup(entity) {
             && REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "10.4.0")
         ) {
             # getSurveyLink has the fifth parameter in REDCap versions >= 10.4.0
-            $menteeEvalLink = \REDCap::getSurveyLink($menteeRecordId, MMAHelper::EVAL_INSTRUMENT, NULL, self::getEvalInstance("mentee"), $pid);
-            $mentorEvalLink = \REDCap::getSurveyLink($menteeRecordId, MMAHelper::EVAL_INSTRUMENT, NULL, self::getEvalInstance("mentor"), $pid);
+            $menteeEvalLink = \REDCap::getSurveyLink($menteeRecordId, self::EVAL_INSTRUMENT, NULL, self::getEvalInstance("mentee"), $pid);
+            $mentorEvalLink = \REDCap::getSurveyLink($menteeRecordId, self::EVAL_INSTRUMENT, NULL, self::getEvalInstance("mentor"), $pid);
             $menteeEvalMessage = self::makeEvaluationMessage($menteeEvalLink);
             $mentorEvalMessage = self::makeEvaluationMessage($mentorEvalLink);
             $evalSubject = "Short Feedback Survey for Mentee-Mentor Agreements";
@@ -1431,9 +2552,6 @@ function characteristicsPopup(entity) {
             $scheduleEmailHTML = $mainScheduleEmailCall;
         }
 
-        $agreementSaveURL = Application::link("mentor/_agreement_save.php").$uidString.$recordString;
-        $priorNotesJSON = json_encode($priorNotes);
-
         if (self::isValidHash($username)) {
             $entryPageURL = Application::link("mentor/index_mentorview.php").$uidString."&menteeRecord=".$menteeRecordId;
             $menteeEntryPageURL = Application::link("mentor/index_menteeview.php").$uidString."&menteeRecord=".$menteeRecordId;
@@ -1441,12 +2559,39 @@ function characteristicsPopup(entity) {
             $entryPageURL = Application::link("mentor/index.php");
             $menteeEntryPageURL = $entryPageURL;
         }
+        if ($functionToCall) {
+            $postSaveJS = "
+                $functionToCall(\"$menteeRecordId\", \"$menteeName\", \"$dateToRemind\", (json) => {
+                    console.log(json);
+                    $('.sweet-modal-overlay').remove();
+                    const data = JSON.parse(json);
+                    if (data.error) {
+                        $.sweetModal({
+                            content: data.error,
+                            icon: $.sweetModal.ICON_ERROR
+                        });
+                    } else if (cb) {
+                        cb();
+                    } else {
+                        $.sweetModal({
+                            content: 'We\'ve saved your agreement and notified your mentor. You can update your responses or return to <a href=\"$menteeEntryPageURL\">Flight Tracker\'s Mentoring Agreement</a>. Thank you!',
+                            icon: $.sweetModal.ICON_SUCCESS
+                        });
+                    }
+                });";
+        } else {
+            $postSaveJS = "cb();";
+        }
+
+        $agreementSaveURL = Application::link("mentor/_agreement_save.php").$uidString.$recordString;
+        $priorNotesJSON = json_encode($priorNotes);
+
         $completedPageURL = Application::link("mentor/index_complete.php").$uidString."&menteeRecord=".$menteeRecordId."&instance=2";
         $changeURL = Application::link("mentor/change.php").$uidString.$recordString;
         $html .="
 <script>
-    var currcomment = '0';
-    var priorNotes = $priorNotesJSON;
+    let currcomment = '0';
+    const priorNotes = $priorNotesJSON;
 
     function toggleSectionTable(selector) {
         if ($(selector).is(':visible')) {
@@ -1482,7 +2627,7 @@ function characteristicsPopup(entity) {
     showcomment = function(servicerequest_id, insert_comment) {
         $('.fauxcomment').css('display', 'none');
         dounbindenter();
-        var offset = $('#' + servicerequest_id + ' .tcomments').offset();
+        let offset = $('#' + servicerequest_id + ' .tcomments').offset();
         let offsetleft = offset.left + 50;
         let offsettop = offset.top - $verticalOffset;
         let fieldName = servicerequest_id.replace(/-tr$/, '');
@@ -1490,7 +2635,7 @@ function characteristicsPopup(entity) {
         let priorNote = priorNotes[notesFieldName] ? priorNotes[notesFieldName] : '';
         let commentcontent = '<div style=\"position: relative;height: 250px;\"><div class=\"closecomments\"><span style=\"float:left;color: #000000;font-weight: 700;font-size: 13px;margin-left: 6px;\">Notes/comments:</span><a style=\"float:right;\" href=\"javascript:$(\'.fauxcomment\').css(\'display\',\'none\');dounbindenter()\"><img src=\"".Application::link("mentor/images/x-circle.svg")."\"></a></div><div id=\"'+fieldName+'-lcomments\" class=\"listofcomments\" style=\"position: absolute;bottom: 0;height: 220px;display: inline-block;overflow: scroll;\">';
 
-        for(var line of priorNote.split(/\\n/)) {
+        for(let line of priorNote.split(/\\n/)) {
             if(line != ''){
                 commentcontent += '<div class=\"acomment\">'+line+'</div>';
             }
@@ -1516,7 +2661,7 @@ function characteristicsPopup(entity) {
 
         currcomment = servicerequest_id;
         $('.acomment:odd').css('background-color', '#eceff5');
-        var element = document.getElementById(fieldName+'-lcomments'); //scrolls to bottom
+        let element = document.getElementById(fieldName+'-lcomments'); //scrolls to bottom
         if (element) {
             element.scrollTop = element.scrollHeight;
         }
@@ -1535,26 +2680,20 @@ function characteristicsPopup(entity) {
         $.ajax({
             url: '$agreementSaveURL',
             type : 'POST',
-            //dataType : 'json', // data type
-            data :  'record_id=$menteeRecordId&redcap_repeat_instance=$currentInstance&'+serialized+'&redcap_csrf_token='+getCSRFToken(),
+            data :  'record_id=$menteeRecordId&redcap_repeat_instance=$currentInstance&'+serialized+'&redcap_csrf_token='+'".Application::generateCSRFToken()."',
             success : function(result) {
                 console.log(result);
-                $functionToCall(\"$menteeRecordId\", \"$menteeName\", \"$dateToRemind\", function(html) {
-                    console.log(html);
-                    $('.sweet-modal-overlay').remove();
-                    if (cb) {
-                        cb();
-                    } else {
-                        $.sweetModal({
-                            content: 'We\'ve saved your agreement and notified your mentor. You can update your responses or return to Flight Tracker\'s Mentoring Agreement. Thank you!',
-                            icon: $.sweetModal.ICON_SUCCESS
-                        });
-                    }
-                });
+                cb();
             },
             error: function(xhr, resp, text) {
                 console.log(xhr, resp, text);
             }
+        });
+    }
+
+    saveagreementandnotify=function(cb){
+        saveagreement(() => {
+            $postSaveJS
         });
     }
 
@@ -1576,7 +2715,7 @@ function characteristicsPopup(entity) {
             $('.acomment:odd').css('background-color', '#eceff5');
             let fieldName = servicerequest_id.replace(/-tr$/, '');
             let notesFieldName = fieldName + '_notes';
-            var element = document.getElementById(fieldName+'-lcomments'); //scrolls to bottom
+            let element = document.getElementById(fieldName+'-lcomments'); //scrolls to bottom
             if (element) {
                 element.scrollTop = element.scrollHeight;
             }
@@ -1594,7 +2733,7 @@ function characteristicsPopup(entity) {
                     instance: '$menteeInstance',
                     field_name: notesFieldName,
                     value: latestcomment,
-                    'redcap_csrf_token': getCSRFToken()
+                    'redcap_csrf_token': '".Application::generateCSRFToken()."'
                 }, function(html) {
                     console.log(html);
                 });
@@ -1673,25 +2812,34 @@ function characteristicsPopup(entity) {
         $html = "<script>
     function scheduleEmail(recipientType, menteeRecord, subject, message, dateToSend, cb) {
         const datetimeToSend = (dateToSend === 'now') ? 'now' : dateToSend+' 09:00';
-        const postdata = { 'redcap_csrf_token': getCSRFToken(), menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend };
+        const postdata = { 'redcap_csrf_token': '".Application::generateCSRFToken()."', menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend };
         console.log(JSON.stringify(postdata));
         $.post('$emailSendURL'+menteeRecord,
             postdata,
-            function(html) {
-            if (cb) {
-                cb(html);
-            } else if (html.match(/error/i)) {
-                $.sweetModal({
-                    content: html,
-                    icon: $.sweetModal.ICON_ERROR
-                });
-            } else {
-                $.sweetModal({
-                    content: html,
-                    icon: $.sweetModal.ICON_SUCCESS
-                });
+            (json) => {
+                if (cb) {
+                    cb(json);
+                } else {
+                    const data = JSON.parse(json);
+                    if (data.error) {
+                        $.sweetModal({
+                            content: data.error,
+                            icon: $.sweetModal.ICON_ERROR
+                        });
+                    } else if (data.result) {
+                        $.sweetModal({
+                            content: data.result,
+                            icon: $.sweetModal.ICON_SUCCESS
+                        });
+                    } else {
+                        $.sweetModal({
+                            content: json,
+                            icon: $.sweetModal.ICON_SUCCESS
+                        });
+                    }
+                }
             }
-        });
+        );
     }
 </script>";
         return $html;
@@ -1748,7 +2896,7 @@ function characteristicsPopup(entity) {
         $html = "";
         if (in_array($notesField, $notesFields)) {
             $html .= "<td class='tcomments'>\n";
-            $notesData = REDCapManagement::findField($redcapData, $recordId, $notesField, MMAHelper::INSTRUMENT, $instance);
+            $notesData = REDCapManagement::findField($redcapData, $recordId, $notesField, self::INSTRUMENT, $instance);
             if ($notesData == "") {
                 $html .= "<a href='javascript:void(0)' onclick='showcomment($(this).closest(\"tr\").attr(\"id\"), true)'>add note</a>\n";
             } else {
@@ -1791,7 +2939,7 @@ function characteristicsPopup(entity) {
             let a = location.split(/:/);
             let recordId = a[0];
             let instance = a[1];
-            $.post('$link', { 'redcap_csrf_token': getCSRFToken(), record: recordId, instance: instance }, function(json) {
+            $.post('$link', { 'redcap_csrf_token': '".Application::generateCSRFToken()."', record: recordId, instance: instance }, function(json) {
                 let data = JSON.parse(json);
                 clearAll();
                 for (let field in data) {
@@ -1841,16 +2989,13 @@ function characteristicsPopup(entity) {
         return "";
     }
 
-    public static function getSectionExpandMessage() {
-        return "If desired, you may click on this header to toggle the section.";
-    }
-
     public static function beautifyHeader($str) {
         $str = preg_replace("/Career and Professional Development/i", "Career Dev't", $str);
         $str = preg_replace("/Approach to Scholarly Products/i", "Scholarship", $str);
         $str = preg_replace("/Scientific Development/i", "Scientific Dev't", $str);
         $str = preg_replace("/Financial Support/i", "Financials", $str);
         $str = preg_replace("/Mentee-Mentor 1:1 Meetings/i", "Meetings", $str);
+        $str = preg_replace("/Individual Development Plan/i", "IDP", $str);
         $str = preg_replace("/Getting Started/i", "", $str);
         $str = preg_replace("/Next/i", "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Next", $str);
         return $str;
@@ -1870,7 +3015,7 @@ function characteristicsPopup(entity) {
             return names[0]+' and '+names[1];
         } else if (names.length > 2) {
             let newNames = [];
-            for (var i=0; i < names.length - 2; i++) {
+            for (let i=0; i < names.length - 2; i++) {
                 newNames.push(names[i]);
             }
             newNames.push(names[names.length - 2]+', and '+names[names.length - 1]);
@@ -1926,6 +3071,10 @@ function characteristicsPopup(entity) {
         }
     }
 
+    public static function makeSpoofingNotice($userid) {
+        return "<p style='text-align: center; font-size: 12px;'><strong>Spoofing user $userid</strong></p>";
+    }
+
     public static function getREDCapUsers($pid) {
         $rights = \UserRights::getPrivileges($pid)[$pid];
         return array_keys($rights);
@@ -1948,16 +3097,15 @@ function characteristicsPopup(entity) {
     }
 
     public static function handleTimestamps($row, $token, $server, $metadata) {
-        $agreementFields = REDCapManagement::getFieldsFromMetadata($metadata, MMAHelper::INSTRUMENT);
+        $agreementFields = REDCapManagement::getFieldsFromMetadata($metadata, self::INSTRUMENT);
         $instance = $row['redcap_repeat_instance'];
         $recordId = $row['record_id'];
         $redcapData = Download::fieldsForRecords($token, $server, $agreementFields, [$recordId]);
         if (REDCapManagement::findField($redcapData, $recordId, "mentoring_start", $instance)) {
             unset($row['mentoring_start']);
         }
-        if (!REDCapManagement::findField($redcapData, $recordId, "mentoring_end", $instance)) {
-            $row['mentoring_end'] = date("Y-m-d H:i:s");
-        }
+        $row['mentoring_end'] = date("Y-m-d H:i:s");
+        $row["mentoring_last_update"] = date("Y-m-d");
         return $row;
     }
 
@@ -1970,8 +3118,7 @@ function characteristicsPopup(entity) {
                 foreach ($choices[$field] as $index => $value) {
                     $value = REDCapManagement::findField([$dataRow], $recordId, $field."___".$index, $instrument, $instance);
                     if ($value) {
-                        $hasAnswers = TRUE;
-                        break; // choices
+                        return TRUE;
                     }
                 }
             } else {
@@ -2174,4 +3321,14 @@ function characteristicsPopup(entity) {
         }
         return $text;
     }
+
+    public static function getMMADebug() {
+        return self::$isDebug;
+    }
+
+    public static function setMMADebug($b) {
+        self::$isDebug = $b;
+    }
+
+    protected static $isDebug = FALSE;
 }

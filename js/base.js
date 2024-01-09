@@ -98,6 +98,7 @@ function downloadOnePMC(i, pmcs, textId, prefixHTML) {
 			pmc = 'PMC' + pmc;
 		}
 		const url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&retmode=xml&id=' + pmc;
+		console.log("Calling "+url);
 		$.ajax({
 			url: url,
 			success: function (xml) {
@@ -156,7 +157,14 @@ function downloadOnePMC(i, pmcs, textId, prefixHTML) {
 					if ($(elem).attr('contrib-type') === 'author') {
 						const surname = $(elem).find(namePrefix + 'surname').text();
 						const givenNames = $(elem).find(namePrefix + 'given-names').text();
-						names.push(surname + ' ' + givenNames);
+						if (surname || givenNames) {
+							names.push(surname + ' ' + givenNames);
+						} else {
+							const groupName = $(elem).find('collab').text();
+							if (groupName) {
+								names.push(groupName);
+							}
+						}
 					}
 				});
 
@@ -629,133 +637,6 @@ function getRecord() {
 		return 1;
 	}
 	return recordId;
-}
-
-function submitChanges(nextRecord) {
-	const recordId = getRecord();
-	const newFinalized = [];
-	const newOmits = [];
-	const resets = [];
-	$('#finalize').hide();
-	$('#uploading').show();
-	const params = getUrlVars();
-	const type = params['wranglerType'];
-	$('[type=hidden]').each(function(idx, elem) {
-		const elemId = $(elem).attr('id');
-		const value = $(elem).val();
-		let id = "";
-		if ((typeof elemId != 'undefined') && elemId.match(/^PMID/)) {
-			id = elemId.replace(/^PMID/, '');
-		} else if ((typeof elemId != 'undefined') && elemId.match(/^E[DJ]/)) {
-			id = elemId;
-		} else	if ((typeof elemId != 'undefined') && elemId.match(/^USPO/)) {
-			id = elemId.replace(/^USPO/, '');
-		}
-
-		if (id && (value === 'include')) {
-			// checked => put in finalized
-			newFinalized.push(id);
-		} else if (id && (value === 'exclude')) {
-			// unchecked => put in omits
-			newOmits.push(id);
-		} else if (id && (value === 'reset')) {
-			resets.push(id);
-		}
-	});
-
-	let url = '';
-	if (type === 'Patents') {
-		url = getPageUrl('wrangler/savePatents.php');
-	} else if ((type === 'Publications') || (type === 'FlagPublications')) {
-		url = getPageUrl('wrangler/savePubs.php');
-	}
-	if (url) {
-		const postdata = {
-			record_id: recordId,
-			wranglerType: type,
-			omissions: JSON.stringify(newOmits),
-			resets: JSON.stringify(resets),
-			finalized: JSON.stringify(newFinalized),
-			redcap_csrf_token: getCSRFToken()
-		};
-		console.log('Posting to '+url+' '+JSON.stringify(postdata));
-		presentScreen('Saving...');
-		$.ajax({
-			url: url,
-			method: 'POST',
-			data: postdata,
-			dataType: 'json',
-			success: function(data) {
-				clearScreen();
-				processWranglingResult(data, nextRecord);
-			},
-			error: function(e) {
-				clearScreen();
-				if (!e.status || (e.status !== 200)) {
-					$('#uploading').hide();
-					$('#finalize').show();
-					$.sweetModal({
-						content: 'ERROR: '+JSON.stringify(e),
-						icon: $.sweetModal.ICON_ERROR
-					});
-				} else if (e.responseText && (e.status === 200)) {
-					const json = e.responseText;
-					console.log(json);
-					try {
-						const data = JSON.parse(json);
-						processWranglingResult(data, nextRecord);
-					} catch(exception) {
-						console.error(exception);
-						$.sweetModal({
-							content: exception,
-							icon: $.sweetModal.ICON_ERROR
-						});
-					}
-				} else {
-					console.log(JSON.stringify(e));
-				}
-			}
-		});
-	}
-	console.log('Done');
-}
-
-function processWranglingResult(data, nextRecord) {
-	const params = getUrlVars();
-	let wranglerType = '';
-	if (params['wranglerType']) {
-		wranglerType = '&wranglerType='+params['wranglerType'];
-	}
-	if (data['count'] && (data['count'] > 0)) {
-		const mssg = data['count']+' upload';
-		window.location.href = getPageUrl('wrangler/include.php')+getHeaders()+'&mssg='+encodeURI(mssg)+'&record='+nextRecord+wranglerType;
-	} else if (data['item_count'] && (data['item_count'] > 0)) {
-		const mssg = data['item_count']+' upload';
-		window.location.href = getPageUrl('wrangler/include.php')+getHeaders()+'&mssg='+encodeURI(mssg)+'&record='+nextRecord+wranglerType;
-	} else if (data['error']) {
-		$('#uploading').hide();
-		$('#finalize').show();
-		$.sweetModal({
-			content: 'ERROR: '+data['error'],
-			icon: $.sweetModal.ICON_ERROR
-		});
-	} else {
-		$('#uploading').hide();
-		$('#finalize').show();
-		$.sweetModal({
-			content: 'Unexplained return value. '+JSON.stringify(data),
-			icon: $.sweetModal.ICON_ERROR
-		});
-		console.log('Unexplained return value. '+JSON.stringify(data));
-	}
-}
-
-function makeWranglingMessage(cnt) {
-	let str = "items";
-	if (cnt === 1) {
-		str = "item";
-	}
-	return cnt+" "+str+" uploaded";
 }
 
 function checkSticky() {
@@ -1803,7 +1684,7 @@ function canvas2JPEG(canvasOb) {
 }
 
 function forceDownloadUrl(source, fileName){
-	var el = document.createElement("a");
+	let el = document.createElement("a");
 	el.setAttribute("href", source);
 	el.setAttribute("download", fileName);
 	document.body.appendChild(el);

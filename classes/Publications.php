@@ -2495,14 +2495,11 @@ class Publications {
         return $html;
     }
 
-	private function leftColumnText() {
+	public function leftColumnText($newLabel = "New", $existingLabel = "Existing", $omittedLabel = "Omitted", $displayREDCapLink = TRUE) {
         if ($this->wranglerType == "FlagPublications") {
             return $this->makeFlaggedPublicationsHTML();
         }
 
-        $newLabel = "New";
-        $existingLabel = "Existing";
-        $omittedLabel = "Omitted";
 		$html = "";
 		$notDone = $this->getCitationCollection("Not Done");
 		$notDoneCount = $notDone->getCount();
@@ -2522,7 +2519,7 @@ class Publications {
 			if ($notDoneCount > 1) {
                 $html .= "<p class='centered'><a href='javascript:;' onclick='selectAllCitations(\"#newCitations\");'>Select All $newLabel Citations</a> | <a href='javascript:;' onclick='unselectAllCitations(\"#newCitations\");'>Deselect All $newLabel Citations</a></p>";
             }
-			$html .= $notDone->toHTML("notDone");
+			$html .= $notDone->toHTML("notDone", TRUE, 1, $displayREDCapLink);
 		}
 		$html .= "</div>";
 		$html .= "<hr/>";
@@ -2530,14 +2527,14 @@ class Publications {
 		$included = $this->getCitationCollection("Included");
 		$html .= "<h4>$existingLabel Citations</h4>";
 		$html .= "<div id='finalCitations'>";
-		$html .= $included->toHTML("included");
+		$html .= $included->toHTML("included", TRUE, 1, $displayREDCapLink);
 		$html .= "</div>";
         $html .= "<hr/>";
 
         $omitted = $this->getCitationCollection("Omitted");
         $html .= "<h4>$omittedLabel Citations</h4>";
         $html .= "<div id='omittedCitations'>";
-        $html .= $omitted->toHTML("excluded");
+        $html .= $omitted->toHTML("excluded", TRUE, 1, $displayREDCapLink);
         $html .= "</div>";
 
 		return $html;
@@ -2587,7 +2584,7 @@ class Publications {
         }
         $html .= "<table style='width: 100%;' id='main'><tr>";
         $html .= "<td class='twoColumn yellow' id='left'>".$this->leftColumnText()."</td>";
-        $html .= "<td id='right'>".$wrangler->rightColumnText()."</td>";
+        $html .= "<td id='right'>".$wrangler->rightColumnText($this->recordId)."</td>";
         $html .= "</tr></table>";
 
 		return $html;
@@ -2614,21 +2611,21 @@ class Publications {
         return $html;
     }
 
-	private function manualLookup($thisUrl) {
+	public static function manualLookup($refreshPageUrl, $submitButtonClass = "green") {
 		$html = "";
 		$html .= "<table id='lookupTable' style='margin-left: auto; margin-right: auto; border-radius: 10px;' class='bin'><tr>\n";
 		$html .= "<td style='width: 250px; height: 200px; text-align: left; vertical-align: top;'>\n";
-		$html .= "<h4 style='margin-bottom: 0px;'>Lookup PMID</h4>\n";
+		$html .= "<h4 style='margin-bottom: 0;'>Lookup PMID</h4>\n";
         $html .= "<p class='oneAtATime'><input type='text' id='pmid'> <button onclick='submitPMID($(\"#pmid\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide(); checkSubmitButton(\"#manualCitation\", \".list\");'>Switch to Bulk</a></p>\n";
         $html .= "<p class='list' style='display: none;'><textarea id='pmidList'></textarea> <button onclick='submitPMIDs($(\"#pmidList\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton' readonly>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show(); checkSubmitButton(\"#manualCitation\", \".oneAtATime\");'>Switch to Single</a></p>\n";
-		$html .= "<h4 style='margin-bottom: 0px;'>Lookup PMC</h4>\n";
+		$html .= "<h4 style='margin-bottom: 0;'>Lookup PMC</h4>\n";
         $html .= "<p class='oneAtATime'><input type='text' id='pmc'> <button onclick='submitPMC($(\"#pmc\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").show(); $(\".oneAtATime\").hide(); checkSubmitButton(\"#manualCitation\", \".list\");'>Switch to Bulk</a></p>\n";
         $html .= "<p class='list' style='display: none;'><textarea id='pmcList'></textarea> <button onclick='submitPMCs($(\"#pmcList\").val(), \"#manualCitation\", \"\"); return false;' class='biggerButton'>Go!</button><br><a class='smaller' href='javascript:;' onclick='$(\".list\").hide(); $(\".oneAtATime\").show(); checkSubmitButton(\"#manualCitation\", \".oneAtATime\");'>Switch to Single</a></p>\n";
 		$html .= "</td><td style='width: 500px;'>\n";
 		$html .= "<div id='lookupResult'>\n";
 		$html .= "<p><textarea style='width: 100%; height: 150px; font-size: 16px;' id='manualCitation' readonly></textarea></p>\n";
-        $html .= "<p class='oneAtATime'><button class='biggerButton green includeButton' style='display: none;' onclick='includeCitation($(\"#manualCitation\").val(), \"$thisUrl\"); return false;'>Include &amp; Accept This Citation</button></p>\n";
-        $html .= "<p class='list' style='display: none;'><button class='biggerButton green includeButton' style='display: none;' onclick='includeCitations($(\"#manualCitation\").val(), \"$thisUrl\"); return false;'>Include &amp; Accept These Citations</button></p>\n";
+        $html .= "<p class='oneAtATime'><button class='biggerButton $submitButtonClass includeButton' style='display: none;' onclick='includeCitation($(\"#manualCitation\").val(), \"$refreshPageUrl\"); return false;'>Include &amp; Accept This Citation</button></p>\n";
+        $html .= "<p class='list' style='display: none;'><button class='biggerButton $submitButtonClass includeButton' style='display: none;' onclick='includeCitations($(\"#manualCitation\").val(), \"$refreshPageUrl\"); return false;'>Include &amp; Accept These Citations</button></p>\n";
 		$html .= "</div>\n";
 		$html .= "</td>\n";
 		$html .= "</tr></table>\n";

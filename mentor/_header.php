@@ -57,7 +57,7 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
   <!-- Navigation -->
   <nav class="navbar navbar-light bg-light static-top">
     <div class="container">
-      <a class="navbar-brand" href="<?= Application::link("mentor/intro.php").$uidString ?>" title="<?= $restartMssg ?>"><img alt="<?= Application::getProgramName() ?>" src="<?= Application::link("mentor/img/logo.jpg") ?>" style="max-width: 175px;"></a>
+      <a class="navbar-brand" href="<?= Application::link("mentor/intro.php").$uidString ?>" title="<?= $restartMssg ?>"><img alt="<?= Application::getProgramName() ?>" src="<?= Application::link("mentor/img/logo.png") ?>" style="max-width: 175px;"></a>
         <a class="navbar-btn" href="<?= Application::link("mentor/intro.php").$uidString ?>"><?= $restartMssg ?></a>
     </div>
   </nav>

@@ -11,6 +11,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\Wrangler;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/FlightTrackerExternalModule.php");
@@ -80,10 +81,25 @@ if (count($_POST) > 0) {
 	} else {
 		$lists = [];
         $optionSettings = REDCapManagement::getOptionalSettings();
+        $associativeArrays = [];
 		foreach ($_POST as $key => $value) {
             $key = Sanitizer::sanitizeWithoutChangingQuotes($key);
             $value = Sanitizer::sanitizeWithoutChangingQuotes($value);
             $value = REDCapManagement::changeSlantedQuotes($value);
+            if (preg_match("/^(\w+)___(\d+)___(code|text)$/", $key, $matches)) {
+                $var = $matches[1];
+                $i = $matches[2];
+                $type = $matches[3];
+                if (($value !== "") && ($type == "code") && isset($_POST[$var."___".$i."___text"])) {
+                    $code = $value;
+                    $textLabel = Sanitizer::sanitizeWithoutChangingQuotes($_POST[$var."___".$i."___text"]);
+                    $textLabel = REDCapManagement::changeSlantedQuotes($textLabel);
+                    if (!isset($associativeArrays[$var])) {
+                        $associativeArrays[$var] = [];
+                    }
+                    $associativeArrays[$var][$code] = $textLabel;
+                }
+            }
             if (isset($optionSettings[$key])) {
                 $lists[$key] = $value;
                 Application::saveSetting($key, $value, $pid);
@@ -101,6 +117,9 @@ if (count($_POST) > 0) {
                 Application::saveSetting($key, $value, $pid);
 			}
 		}
+        foreach ($associativeArrays as $var => $array) {
+            Application::saveSetting($var, $array, $pid);
+        }
 		$lists["institutions"] = implode("\n", CareerDev::getInstitutions());
 		$metadata = Download::metadata($token, $server);
         if (isset($_GET['test'])) {
@@ -115,10 +134,12 @@ if (count($_POST) > 0) {
 	}
 }
 
-if (!isset($metadata)) {
-    $metadata = Download::metadata($token, $server);
-}
+$configJSLink = Application::link("js/config.js");
+echo "<script src='$configJSLink'></script>";
 if (isset($_GET['order'])) {
+    if (!isset($metadata)) {
+        $metadata = Download::metadata($token, $server);
+    }
 	echo makeOrder($token, $server, $pid, $metadata);
 } else {
 	echo makeSettings(CareerDev::getModule(), $pid);
@@ -379,11 +400,13 @@ function makeSettings($module, $pid) {
         $label = $optionSettings[$setting] ?? $field;
         $row = DataDictionaryManagement::getRowForFieldFromMetadata($field, $fileMetadata);
         $form = $row['form_name'] ?? "";
+        $fieldType = $row['field_type'];
         $note = (isset($row['field_note']) && $row['field_note']) ? "<div class='smaller'>".$row['field_note']."</div>" : "";
-        $message = "<div>Options for <strong>$label</strong> on the <strong>".ucfirst($form)."</strong> form.</div>$note<div class='smaller'>(One per line. Optional. When filled in, it will create an extra field in your project once you update your Data Dictionary on Flight Tracker's Home page.)</div>";
+        $message = "<div>Options for <strong>$label</strong> on the <strong>".ucfirst($form)."</strong> form. These will be made into a $fieldType.</div>$note<div class='smaller'>(One per line. Optional. When filled in, it will create an extra field in your project once you update your Data Dictionary on Flight Tracker's Home page.)</div>";
         $ary["Administrative Setup"][] = makeOptionalSetting($setting, "short_textarea", $message, $numSettings);
     }
     $ary["Administrative Setup"][] = makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "In Flight Tracker's data-sharing on the same server, in addition to surveys, what data should be shared among the following forms?");
+    $ary["Administrative Setup"][] = makeAssociativeArray(Wrangler::PILOT_GRANT_SETTING, "Enter a unique code (left) and a label (right) to set up pilot grants to be associated during data wrangling.");
 
 
 	$ary["Emails"] = [];
@@ -604,4 +627,28 @@ function constructSetting($value, $var, $type, $label, $default, $fieldChoices, 
 		$html .= "</tr>";
 	}
 	return $html;
+}
+
+function makeAssociativeArray($var, $label) {
+    $priorSettings = Application::getSetting($var);
+    $html = "<tr><td colspan='2'>$label</td></tr>";
+    $i = 1;
+    $html .= "<tr><th>Code for REDCap<div class='smaller unbolded'>This text will be stored in REDCap. An example is \"field_name\". It should remain constant once it is assigned.</div></th><th>Label Text<br/><div class='unbolded smaller'>This text will be displayed during data wrangling. It can be changed and refined over time if desired. An example is \"Option 1\".</div></th></tr>";
+    foreach ($priorSettings as $code => $text) {
+        $html .= makeAssociativeRow($var, $i, $code, $text);
+        $i++;
+    }
+    $html .= makeAssociativeRow($var, $i);
+
+    return $html;
+}
+
+# also in js/config.js checkForNextField
+function makeAssociativeRow($var, $i, $code = "", $text = "") {
+    $id = $var."___".$i."___";
+    $html = "<tr id='$id"."tr' class='$var"."___row'>";
+    $html .= "<td><input type='text' id='$id"."code' name='$id"."code' value='$code' onblur='checkForNextField(\"$var\", \"$i\");' /></td>";
+    $html .= "<td><input type='text' id='$id"."text' name='$id"."text' value='$text' onblur='checkForNextField(\"$var\", \"$i\");' /></td>";
+    $html .= "</tr>";
+    return $html;
 }

@@ -34,13 +34,7 @@ class Portal
             $this->emails = REDCapLookup::getAllEmails($this->username);
         }
 
-        $uidString = "";
-        if (isset($_GET['uid'])) {
-            $uidString = "&uid=".$this->username;
-        } else if (isset($_GET['match'])) {
-            $uidString = "&match=".Sanitizer::sanitize($_GET['match']);
-        }
-
+        $uidString = $this->getUIDString();
         $this->driverURL = Application::link("portal/driver.php").$uidString;
         $this->mmaDriverURL = Application::link("portal/mmaDriver.php").$uidString;
         $this->module = Application::getModule();
@@ -52,6 +46,15 @@ class Portal
         if (!$this->verifyRequest()) {
             throw new \Exception("Unverified Access. Your name and email/user-id must match up with a Flight Tracker record.");
         }
+    }
+
+    private function getUIDString() {
+        if (isset($_GET['uid'])) {
+            return "&uid=".$this->username;
+        } else if (isset($_GET['match'])) {
+            return "&match=".Sanitizer::sanitize($_GET['match']);
+        }
+        return "";
     }
 
     public static function getTestNames() {
@@ -427,6 +430,57 @@ class Portal
         return self::getPhotoInMatches($validMatches);
     }
 
+    public function addORCID($orcid) {
+        $orcidList = Download::oneFieldForRecordByPid($this->pid, "identifier_orcid", $this->recordId);
+        $orcids = preg_split("/\s*[,;]\s*/", $orcidList, -1, PREG_SPLIT_NO_EMPTY);
+        if (in_array($orcid, $orcids)) {
+            throw new \Exception("This ORCID is already in your list!");
+        } else {
+            $orcids[] = $orcid;
+            $this->saveORCIDs($orcids);
+        }
+    }
+
+    public function removeORCID($orcid) {
+        $orcidList = Download::oneFieldForRecordByPid($this->pid, "identifier_orcid", $this->recordId);
+        $orcids = preg_split("/\s*[,;]\s*/", $orcidList, -1, PREG_SPLIT_NO_EMPTY);
+        if (!in_array($orcid, $orcids)) {
+            throw new \Exception("This ORCID is not in your list!");
+        } else {
+            array_splice($orcids, array_search($orcid, $orcids), 1);
+            $this->saveORCIDs($orcids);
+        }
+    }
+
+    private function saveORCIDs($orcids) {
+        $newORCIDList = implode(", ", $orcids);
+        $uploadRow = [
+            "record_id" => $this->recordId,
+            "redcap_repeat_instrument" => "",
+            "redcap_repeat_instance" => "",
+            "identifier_orcid" => $newORCIDList,
+        ];
+        Upload::oneRow($uploadRow, $this->token, $this->server);
+    }
+
+    public function getORCIDLink() {
+        $orcidList = Download::oneFieldForRecordByPid($this->pid, "identifier_orcid", $this->recordId);
+        $orcids = preg_split("/\s*[,;]\s*/", $orcidList, -1, PREG_SPLIT_NO_EMPTY);
+        $html = "<h3>View Your ORCID Profile (External Link)</h3>";
+        if (empty($orcids)) {
+            $html .= "<p class='centered'><a href='https://orcid.org/register'>Sign up for an ORCID Identifier</a></p>";
+        } else {
+            foreach ($orcids as $orcid) {
+                if ($orcid) {
+                    $url = "https://orcid.org/$orcid";
+                    $html .= "<p class='centered'><a href='$url' target='_new'>$orcid</a><br/><span class='smaller'><a href='javascript:;' onclick='portal.disassociateORCID(\"{$this->driverURL}\", \"$orcid\", \"{$this->recordId}\", \"{$this->pid}\");'>This is not me.</a></span></p>";
+                }
+            }
+        }
+        $html .= "<p class='centered'><label for='new_orcid'>New ORCID: </label><input type='text' style='width: 250px;' value='' id='new_orcid' /> <button onclick='portal.addORCID(\"{$this->driverURL}\", \"#new_orcid\", \"{$this->recordId}\", \"{$this->pid}\"); return false;'>Add</button></p>";
+        return $html;
+    }
+
     public function getMenu() {
         $settings = $this->featureSwitches->getSwitches();
         $menu = [];
@@ -443,6 +497,10 @@ class Portal
             "action" => "survey",
             "title" => "Update Surveys",
         ];
+        $menu["Your Info"][] = [
+            "action" => "wrangle_pubs",
+            "title" => "Validate Your Publications",
+        ];
         if ($this->doesHonorsSurveyExist()) {
             $menu["Your Info"][] = [
                 "action" => "honors",
@@ -457,9 +515,14 @@ class Portal
         }
         $menu["Your Info"][] = [
             "action" => "photo",
-            "title" => "Your Photo",     // should search all projects; also, should display
+            "title" => "Edit Your Photo",     // should search all projects; also, should display
         ];
-        // TODO ORCID Bio Link in Your Info
+        $orcidList = Download::oneFieldForRecordByPid($this->pid, "identifier_orcid", $this->recordId);
+        $orcidTitle = $orcidList ? "View Your ORCID Identifiers" : "Add Your ORCID Identifier";
+        $menu["Your Info"][] = [
+            "action" => "orcid_profile",
+            "title" => $orcidTitle,
+        ];
 
         if ($settings["Publications"] != "Off") {
             $menu["Your Graphs"][] = [
@@ -590,6 +653,37 @@ class Portal
         }
     }
 
+    public static function authenticatePost($pid, $recordId, $allPids) {
+        if (!$pid || !in_array($pid, $allPids)) {
+            return FALSE;
+        }
+        $pidRecords = Download::recordIdsByPid($pid);
+        if (!$recordId || !in_array($recordId, $pidRecords)) {
+            return FALSE;
+        }
+        list($usernames, $firstName, $lastName, $emails) = self::getCurrentUserIDsNameAndEmails();
+        if (empty($usernames)) {
+            return FALSE;
+        } else if (count($usernames) == 1) {
+            $username = $usernames[0];
+        } else {
+            $username = Application::getUsername();
+            $emails = REDCapLookup::getAllEmails($username);
+        }
+        $useridField = Download::getUseridFieldByPid($pid);
+        $redcapData = Download::fieldsForRecordsByPid($pid, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name", "identifier_email", "identifier_personal_email", $useridField], [$recordId]);
+        $normativeRow = REDCapManagement::getNormativeRow($redcapData);
+        if (
+            !NameMatcher::matchName($firstName, $lastName, $normativeRow["identifier_first_name"], $normativeRow["identifier_last_name"])
+            && (strtolower($username) != $normativeRow[$useridField])
+            && !in_array($normativeRow['identifier_email'], $emails)
+            && !in_array($normativeRow['identifier_personal_email'], $emails)
+        ) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
     private function verifyRequest() {
         if ($this->pid && !in_array($this->pid, $this->allPids)) {
             return FALSE;
@@ -598,9 +692,9 @@ class Portal
             return FALSE;
         }
 
-        if ($this->token && $this->server) {
-            $useridField = Download::getUseridField($this->token, $this->server);
-            $redcapData = Download::fieldsForRecords($this->token, $this->server, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name", "identifier_email", "identifier_personal_email", $useridField], [$this->recordId]);
+        if ($this->pid) {
+            $useridField = Download::getUseridFieldByPid($this->pid);
+            $redcapData = Download::fieldsForRecordsByPid($this->pid, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name", "identifier_email", "identifier_personal_email", $useridField], [$this->recordId]);
             $normativeRow = REDCapManagement::getNormativeRow($redcapData);
             if (
                 !NameMatcher::matchName($this->firstName, $this->lastName, $normativeRow["identifier_first_name"], $normativeRow["identifier_last_name"])
@@ -907,7 +1001,7 @@ Examples:
 
     public function getScholarlyProducts() {
         $conversionStatusField = "summary_ever_last_any_k_to_r01_equiv";
-        $metadata = Download::metadata($this->token, $this->server);
+        $metadata = Download::metadataByPid($this->pid);
         $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
         $grantFields = REDCapManagement::getAllGrantFieldsFromFieldlist($metadataFields);
         $patentFields = ["patent_number", "patent_include"];
@@ -921,7 +1015,7 @@ Examples:
         }
         $fields = DataDictionaryManagement::filterOutInvalidFields($metadata, array_unique(array_merge(["record_id", $conversionStatusField], $grantFields, $relevantCitationFields, $patentFields)));
 
-        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $redcapData = Download::fieldsForRecordsByPid($this->pid, $fields, [$this->recordId]);
         $pubs = new Publications($this->token, $this->server, $metadata);
         $pubs->setRows($redcapData);
         $grants = new Grants($this->token, $this->server, $metadata);
@@ -1039,9 +1133,9 @@ Examples:
             }
         }
 
-        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $redcapData = Download::fieldsForRecordsByPid($this->pid, $fields, [$this->recordId]);
         $row = REDCapManagement::getNormativeRow($redcapData);
-        $summaryMetadata = Download::metadata($this->token, $this->server, $fields);
+        $summaryMetadata = Download::metadataByPid($this->pid, $fields);
         $summaryChoices = DataDictionaryManagement::getChoices($summaryMetadata);
         $checkboxFields = DataDictionaryManagement::getFieldsOfType($summaryMetadata,  "checkboxes");
 
@@ -1237,7 +1331,7 @@ Examples:
         if ($this->doesHonorsSurveyExist()) {
             if ($this->token && $this->server && $this->recordId) {
                 $fields = ["record_id", $testField];
-                $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+                $redcapData = Download::fieldsForRecordsByPid($this->pid, $fields, [$this->recordId]);
                 $maxInstance = REDCapManagement::getMaxInstance($redcapData, $form, $this->recordId);
 
                 $newLink = \REDCap::getSurveyLink($this->recordId, $form, "", $maxInstance + 1, $this->pid);
@@ -1265,10 +1359,38 @@ Examples:
         }
     }
 
+    public function getPublicationWrangler() {
+        if ($this->recordId) {
+            $fields = array_merge(
+                ["record_id"],
+                Download::metadataFieldsByPidWithPrefix($this->pid, "citation_"),
+                Download::metadataFieldsByPidWithPrefix($this->pid, "eric_")
+            );
+            $redcapData = Download::fieldsForRecordsByPid($this->pid, $fields, [$this->recordId]);
+            $pubs = new Publications($this->token, $this->server, []);
+            $pubs->setRows($redcapData);
+
+            $html = "<h3>Validate Your Publications</h3>";
+            $html .= "<div id='overlayFT'></div>";
+            $html .= Wrangler::getWranglerJS($this->recordId, $this->driverURL, $this->pid);
+            $html .= "<div class='max-width alignleft lightyellow' style='padding-top: 24px;'>";
+            $thisUrl = Application::link("portal/index.php").$this->getUIDString()."#wrangle_pubs:".$this->pid.":".$this->recordId;
+            $html .= "<div id='manualLookup' style='display: none;'>".Publications::manualLookup($thisUrl, "portalGreen")."</div>";
+            $html .= "<p id='lookupText' class='centered'><button class='smaller' onclick='$(\"#lookupText\").hide(); $(\"#manualLookup\").slideDown();'>Lookup from PubMed Manually</button></p>";
+            $html .= "<p class='centered'><button class='portalGreen' onclick='submitWranglerChanges(\"{$this->recordId}\"); return false;'>Save Validations</button></p>";
+            $html .= $pubs->leftColumnText("Unvalidated", "Already Validated", "Omitted", FALSE);
+            $html .= "<p class='centered'><button class='portalGreen' onclick='submitWranglerChanges(\"{$this->recordId}\"); return false;'>Save Validations</button></p>";
+            $html .= "</div>";
+            return $html;
+        } else {
+            return "";
+        }
+    }
+
     private function getInitialSurveyHTML()
     {
         $fields = ["record_id", "check_name_last", "check_date"];
-        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $redcapData = Download::fieldsForRecordsByPid($this->pid, $fields, [$this->recordId]);
         $normativeRow = REDCapManagement::getNormativeRow($redcapData);
 
         if (!$normativeRow['check_name_last']) {
@@ -1301,7 +1423,7 @@ Examples:
 
     private function getFollowupHTML() {
         $fields = ["record_id", "followup_name_last", "followup_date"];
-        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $redcapData = Download::fieldsForRecordsByPid($this->pid, $fields, [$this->recordId]);
         $maxFollowupInstance = REDCapManagement::getMaxInstance($redcapData, "followup", $this->recordId);
 
         $latestTs = 0;
@@ -1452,7 +1574,7 @@ Examples:
         }
         $mentors = Download::primaryMentors($this->token, $this->server)[$this->recordId] ?? [];
         $mentorUserids = Download::primaryMentorUserids($this->token, $this->server)[$this->recordId] ?? [];
-        $redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, [$this->recordId]);
+        $redcapData = Download::fieldsForRecordsByPid($this->pid, $fields, [$this->recordId]);
         $row = REDCapManagement::getNormativeRow($redcapData);
         $initImportMentors = $row[$mentorField] ? preg_split("/\s*[,;]\s*/", $row[$mentorField]) : [];
         if ($mentorUseridField) {
@@ -1539,7 +1661,7 @@ Examples:
     private function makePublicationsWithMentors($mentors) {
         if ($this->token && $this->server && $this->recordId) {
             $citationFields = Download::citationFields($this->token, $this->server);
-            $redcapData = Download::fieldsForRecords($this->token, $this->server, $citationFields, [$this->recordId]);
+            $redcapData = Download::fieldsForRecordsByPid($this->pid, $citationFields, [$this->recordId]);
 
             $pubs = new Publications($this->token, $this->server, []);
             $pubs->setRows($redcapData);

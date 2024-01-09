@@ -1023,13 +1023,8 @@ class REDCapManagement {
     }
 
     public static function getEmailFromUseridFromREDCap($userid) {
-        $module = Application::getModule();
-        $sql = "select user_email from redcap_user_information WHERE LOWER(username) = ?";
-        $q = $module->query($sql, [$userid]);
-        if ($row = $q->fetch_assoc()) {
-            return $row['user_email'];
-        }
-        return "";
+        $lookup = new REDCapLookupByUserid($userid);
+        return $lookup->getEmail();
     }
 
     public static function getUseridFromREDCap($firstName, $lastName) {
@@ -1503,7 +1498,7 @@ class REDCapManagement {
             DataDictionaryManagement::getMentoringResourceField($metadataFields),
         ];
 		$fields["institutions"] = ["check_institution", "init_import_institution", "followup_institution"];
-        $fields["optional"] = ["identifier_person_role"];
+        $fields["optional"] = ["identifier_person_role", "identifier_program_roles"];
 
         if ($type == "optional") {
             $fieldsWithNumbers = [];

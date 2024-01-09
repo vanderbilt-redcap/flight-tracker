@@ -349,7 +349,7 @@ function filterSponsorNumber($name) {
 }
 
 	$i = 1;
-	foreach ($grants->getGrants("compiled") as $grant) {
+	foreach ($grants->getGrants("all_pis") as $grant) {
 		if ($i <= Grants::$MAX_GRANTS) {
 			echo "	presetValue('$prefix"."_grant{$i}_start', '".REDCapManagement::YMD2MDY($grant->getVariable("start"))."');\n";
 			echo "	presetValue('$prefix"."_grant{$i}_end', '".REDCapManagement::YMD2MDY($grant->getVariable("end"))."');\n";

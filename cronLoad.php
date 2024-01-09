@@ -67,7 +67,7 @@ function runMainCrons(&$manager, $token, $server) {
             // $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
         }
         if (in_array('nih_reporter', $forms)) {
-            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 30);
+            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 100);
         } else if (in_array('exporter', $forms)) {
             $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday", $records, 20);
         }

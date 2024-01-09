@@ -3,18 +3,40 @@
 use \Vanderbilt\CareerDevLibrary\Portal;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Wrangler;
 
 require_once(__DIR__."/../classes/Autoload.php");
 
 $action = Sanitizer::sanitize($_POST['action'] ?? "");
-$projectTitle = Sanitizer::sanitizeArray($_POST['projectTitle'] ?? "Unknown Project");
 $currPid = Sanitizer::sanitizePid($_POST['pid'] ?? "");
-$name = Sanitizer::sanitizeWithoutChangingQuotes($_POST['name'] ?? "");
-$recordId = Sanitizer::sanitize($_POST['record'] ?? "");
+$recordId = Sanitizer::sanitize($_POST['record'] ?? $_POST['record_id'] ?? "");
 $allPids = Application::getPids();
 if (count($allPids) > 0) {
     Application::keepAlive($allPids[0]);
 }
+
+if ($action == "save") {
+    try {
+        if (!Portal::authenticatePost($currPid, $recordId, $allPids)) {
+            $data = ['error' => "Could not authenticate user!"];
+        } else {
+            $_GET['pid'] = $currPid;
+            $currToken = Application::getSetting("token", $currPid);
+            $currServer = Application::getSetting("server", $currPid);
+            $data = Wrangler::uploadCitations($_POST, $currToken, $currServer, $currPid);
+        }
+    } catch(\Exception $e) {
+        $data = ['error' => $e->getMessage()];
+        if (Application::isLocalhost()) {
+            $data['error'] .= " ".Sanitizer::sanitizeWithoutChangingQuotes($e->getTraceAsString());
+        }
+    }
+    echo json_encode($data);
+    exit;
+}
+
+$projectTitle = Sanitizer::sanitizeArray($_POST['projectTitle'] ?? "Unknown Project");
+$name = Sanitizer::sanitizeWithoutChangingQuotes($_POST['name'] ?? "");
 Application::increaseProcessingMax(1);
 
 $inDevelopment = [
@@ -60,6 +82,8 @@ try {
         }
     } else if ($action == "survey") {
         $data['html'] = $portal->getFlightTrackerSurveys();
+    } else if ($action == "wrangle_pubs") {
+        $data['html'] = $portal->getPublicationWrangler();
     } else if ($action == "board") {
         $data['html'] = $portal->getInstitutionBulletinBoard();
     } else if ($action == "submit_post") {
@@ -148,13 +172,24 @@ try {
         $data['html'] = "Success";
     } else if ($action == "mentoring") {
         $data['html'] = $portal->makeMentoringPortal();
+    } else if ($action == "orcid_profile") {
+        $data['html'] = $portal->getORCIDLink();
+    } else if (in_array($action, ["addORCID", "removeORCID"])) {
+        $orcid = Sanitizer::sanitize($_POST['orcid']);
+        if (!$orcid) {
+            $data['error'] = "No ORCID specified.";
+        } else if ($action == "addORCID") {
+            $portal->addORCID($orcid);
+        } else {
+            $portal->removeORCID($orcid);
+        }
     } else {
         $data['error'] = "Illegal action.";
     }
 } catch (\Exception $e) {
     $data['error'] = $e->getMessage();
     if (Application::isLocalhost()) {
-        $data['error'] .= " ".Sanitizer::sanitize($e->getTraceAsString());
+        $data['error'] .= " ".Sanitizer::sanitizeWithoutChangingQuotes($e->getTraceAsString());
     }
 }
 echo json_encode($data);

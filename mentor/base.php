@@ -52,7 +52,7 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
     if (Application::isExternalModule()) {
         $module = Application::getModule();
         $username = $module->getUsername();
-        if (MMA_DEBUG && isset($_GET['uid'])) {
+        if (MMAHelper::getMMADebug() && isset($_GET['uid'])) {
             $username = Sanitizer::sanitize($_GET['uid']);
             $isSuperuser = FALSE;
         } else {
@@ -71,7 +71,7 @@ if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") 
         }
     } else {
         $username = Application::getUsername();
-        if (MMA_DEBUG && isset($_GET['uid'])) {
+        if (MMAHelper::getMMADebug() && isset($_GET['uid'])) {
             $username = Sanitizer::sanitize($_GET['uid']);
             $isSuperuser = FALSE;
         } else {

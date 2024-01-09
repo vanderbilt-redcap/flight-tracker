@@ -19,6 +19,44 @@ class Portal {
     postsDiv = '#posts';
     numRefreshes = 0;
 
+    disassociateORCID = function(url, orcid, recordId, pid) {
+        const postData = {
+            action: 'removeORCID',
+            record: recordId,
+            pid: pid,
+            orcid: orcid
+        };
+        this.runPost(url, postData, (data) => {
+            $.sweetModal({
+                icon: $.sweetModal.ICON_SUCCESS,
+                title: 'Removed',
+                content: "Removed!"
+            });
+            this.refreshAction();
+        });
+    }
+
+    addORCID = function(url, orcidSel, recordId, pid) {
+        const orcid = $(orcidSel).val();
+        if (orcid === '') {
+            return;
+        }
+        const postData = {
+            action: 'addORCID',
+            record: recordId,
+            pid: pid,
+            orcid: orcid
+        };
+        this.runPost(url, postData, (data) => {
+            $.sweetModal({
+                icon: $.sweetModal.ICON_SUCCESS,
+                title: 'Added',
+                content: "Added!"
+            });
+            this.refreshAction();
+        });
+    }
+
     setLoadingUrl = function(url) {
         this.loadingUrl = url;
     }

@@ -168,7 +168,7 @@ foreach (array_keys($names) as $recordId) {
 }
 
 $selectFieldTypes = ["dropdown", "radio", "checkbox", ];
-$metadata = Download::metadata($token, $server);
+$metadata = MMAHelper::getMetadata($pid);
 $choices = REDCapManagement::getChoices($metadata);
 $agreementFields = REDCapManagement::getFieldsFromMetadata($metadata, "mentoring_agreement");
 $agreementFields[] = "record_id";
@@ -184,7 +184,7 @@ foreach ($metadata as $row) {
 $recordsWithMenteeResponse = [];
 $values = [];
 foreach ($records as $recordId) {
-    $redcapData = Download::fieldsForRecords($token, $server, $agreementFields, [$recordId]);
+    $redcapData = Download::fieldsForRecordsByPid($pid, $agreementFields, [$recordId]);
 
     foreach ($selectFieldsAndLabels as $fieldName => $fieldLabel) {
         if (!isset($values[$fieldName])) {
@@ -270,6 +270,28 @@ echo MMAHelper::makeGeneralTableRow("Number of Mentors Who Haven't<br>Filled Out
 echo MMAHelper::makeDropdownTableRow($pid, $event_id, "View Responses", $recordsWithMenteeResponse);
 echo "</tbody>";
 echo "</table>";
+
+echo "<h2>Spoof a User</h2>";
+echo "<p class='centered max-width'>Only users with REDCap user-ids can access Mentee-Mentor Agreements. Authorized Fight Tracker users can 'spoof' a user to see what their view looks like - that is, they can see what a user's view looks like. Select a name from the below dropdown to see more.</p>";
+$userids = Download::userids($token, $server);
+$names = Download::names($token, $server);
+$combos = [];
+foreach ($userids as $recordId => $userid) {
+    if ($userid) {
+        $combos[$userid] = $names[$recordId] ?? "Unknown name";
+    }
+}
+if (!empty($combos)) {
+    $introUrl = Application::link("mentor/intro.php");
+    echo "<p class='centered max-width'><label for='uid'>User: </label><select id='uid' onchange='if ($(this).val()) { location.href = \"$introUrl&uid=\"+encodeURIComponent($(this).val()); }'>";
+    echo "<option value=''>---SELECT---</option>";
+    foreach ($combos as $userid => $name) {
+        echo "<option value='$userid'>$name ($userid)</option>";
+    }
+    echo "</select></p>";
+} else {
+    echo "<p class='centered max-width'>No user-ids have been entered.</p>";
+}
 
 echo "<script>
 function checkForNewMentorUserids(link) {

@@ -54,6 +54,9 @@ class DataDictionaryManagement {
         if (isset($lists['person_role'])) {
             Application::saveSetting("person_role", $lists["person_role"], $pid);
         }
+        if (isset($lists['program_roles'])) {
+            Application::saveSetting("program_roles", $lists["program_roles"], $pid);
+        }
         if (!Application::getSetting("mentoring_resources", $pid)) {
             Application::saveSetting("mentoring_resources", $lists["resources"], $pid);
         }
@@ -94,7 +97,7 @@ class DataDictionaryManagement {
                     $settingName = REDCapManagement::turnOptionalFieldIntoSetting($field);
                     $itemText = $lists[$settingName] ?? "";
                     if ($itemText) {
-                        $redcapLists[$settingName] = self::makeREDCapList($itemText, self::OPTION_OTHER_VALUE);
+                        $redcapLists[$settingName] = self::makeREDCapList($itemText, self::getOptionalOtherItem($field));
                     }
                 }
             } else {
@@ -107,12 +110,12 @@ class DataDictionaryManagement {
                         break;
                     }
                 }
-                $other = $others[$type];
+                $other = $others[$type] ?? FALSE;
                 $redcapLists[$type] = self::makeREDCapList($str, $other, $oldItemChoices);
             }
         }
 
-        $choiceFieldTypes = ["dropdown", "radio"];
+        $choiceFieldTypes = ["dropdown", "radio", "checkbox"];
         $institutionFields = REDCapManagement::getSpecialFields("institutions", $metadata);
         $newMetadata = [];
         foreach ($metadata as $row) {
@@ -144,6 +147,13 @@ class DataDictionaryManagement {
         self::alterOptionalFields($newMetadata, $pid);
 
         return Upload::metadata($newMetadata, $token, $server);
+    }
+
+    private static function getOptionalOtherItem($field) {
+        if (preg_match("/person_role/", $field)) {
+            return self::OPTION_OTHER_VALUE;
+        }
+        return FALSE;
     }
 
     private static function getCoeusForms() {
@@ -186,9 +196,9 @@ class DataDictionaryManagement {
                     $newList[] = $index.",".$item;
                     $seenIndices[] = $index;
                 } else {
-                    do {
+                    while (isset($oldItemChoices[$i]) || ($i == $otherItem)) {
                         $i++;
-                    } while (isset($oldItemChoices[$i]) || ($i == $otherItem));
+                    }
                     $newList[] = $i.",".$item;
                     $seenIndices[] = $i;
                     $i++;
@@ -624,7 +634,7 @@ class DataDictionaryManagement {
                             $changed[] = $field." [will be deleted]";
                         }
                     } else if (isset($fieldList["REDCap"][$field])) {
-                        $optionChoiceStr = self::makeREDCapList($optionChoicesAsText, self::OPTION_OTHER_VALUE);
+                        $optionChoiceStr = self::makeREDCapList($optionChoicesAsText, self::getOptionalOtherItem($field));
                         if ($fieldList["REDCap"][$field] != $optionChoiceStr) {
                             $changed[] = $field." [updated options]";
                         }
@@ -1414,7 +1424,7 @@ class DataDictionaryManagement {
                 $settingName = REDCapManagement::turnOptionalFieldIntoSetting($field);
                 $optionsText = Application::getSetting($settingName, $pid);
                 if ($optionsText) {
-                    $choiceStr = self::makeREDCapList($optionsText, self::OPTION_OTHER_VALUE);
+                    $choiceStr = self::makeREDCapList($optionsText, self::getOptionalOtherItem($field));
                     Application::log("Using optional field $field $choiceStr", $pid);
                     if (!in_array($field, $metadataFields)) {
                         self::insertNewOptionalRow($metadata, $field);

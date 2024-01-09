@@ -27,7 +27,7 @@ switch($instrument) {
 		break;
 }
 
-$metadata = Download::metadata($token, $server);
+$metadata = Download::metadata($token, $server, Application::$citationFields);
 $recordData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($record));
 $pubs = new Publications($token, $server, $metadata);
 $pubs->setRows($recordData);

@@ -405,6 +405,7 @@ class Download {
 
     public static function metadataFieldsByPidWithPrefix($pid, $prefix) {
         $module = Application::getModule();
+        $prefix = str_replace("_", "\_", $prefix);  // _ is a wildcard in MySQL lingo
         $sql = "SELECT field_name FROM redcap_metadata WHERE project_id = ? AND field_name LIKE ? ORDER BY field_order";
         $q = $module->query($sql, [$pid, "$prefix%"]);
         $fields = [];
@@ -824,15 +825,24 @@ class Download {
         return ["identifier_vunet", "identifier_userid"];
     }
 
-    public static function getUseridField($token, $server) {
+    public static function getUseridFieldByPid($pid) {
+        $metadataFields = self::metadataFieldsByPid($pid);
+        return self::getUseridFieldHelper($metadataFields);
+    }
+
+    private static function getUseridFieldHelper($metadataFields) {
         $possibleFields = self::getUseridFields();
-        $metadataFields = self::metadataFields($token, $server);
         foreach ($possibleFields as $possibleField) {
             if (in_array($possibleField, $metadataFields)) {
                 return $possibleField;
             }
         }
         return "";
+    }
+
+    public static function getUseridField($token, $server) {
+        $metadataFields = self::metadataFields($token, $server);
+        return self::getUseridFieldHelper($metadataFields);
     }
 
 	public static function vunets($token, $server) {
@@ -979,8 +989,12 @@ class Download {
     }
 
     public static function fullName($token, $server, $recordId) {
-        $module = Application::getModule();
         $pid = Application::getPID($token);
+        return self::fullNameByPid($pid, $recordId);
+    }
+
+    public static function fullNameByPid($pid, $recordId) {
+        $module = Application::getModule();
         $dataTable = Application::getDataTable($pid);
         $sql = "SELECT d1.value AS first_name, d2.value AS middle_name, d3.value AS last_name FROM $dataTable AS d1 INNER JOIN $dataTable AS d2 ON (d1.project_id = d2.project_id AND d1.field_name = d2.field_name AND d1.record = d2.record) INNER JOIN $dataTable AS d3 ON (d1.project_id = d3.project_id AND d1.field_name = d3.field_name AND d1.record = d3.record) WHERE d1.project_id = ? AND d1.record = ? AND d1.field_name = ? AND d2.field_name = ? AND d3.field_name = ?";
         $params = [$pid, $recordId, "identifier_first_name", "identifier_middle", "identifier_last_name"];
@@ -989,7 +1003,7 @@ class Download {
             return NameMatcher::formatName($row['first_name'], $row['middle_name'], $row['last_name']);
         }
 
-        $redcapData = self::fieldsForRecords($token, $server, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"], [$recordId]);
+        $redcapData = self::fieldsForRecordsByPid($pid, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"], [$recordId]);
         if (!$redcapData) {
             return "";
         }

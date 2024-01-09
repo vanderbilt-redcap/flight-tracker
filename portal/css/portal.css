@@ -6,11 +6,11 @@ footer { height: 40px; position: fixed; top: calc(100% - 40px); width: 100%; col
 #menu { margin: 0 auto; height: 100px; }
 #welcomeMessage,#noDataMessage,.post { font-size: 1.25em; padding: 8px; margin: 30px auto 0 auto; max-width: 900px; background-color: #fff482; }
 #noDataMessage { text-align: center; }
-#welcomeMessage,#noDataMessage,.portalDescription,nav:not(:empty),iframe,.post { box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); }
+#welcomeMessage,#noDataMessage,.portalDescription,nav:not(:empty),iframe,.post { box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2); }
 .portalDescription { background-color: #b0d87a; padding: 8px; text-align: center; max-width: 600px; margin: 24px auto; }
 .portalGreen { background-color: #b0d87a; }
 .portalButton { font-family: "Museo Sans", Arial, Helvetica, sans-serif; background-color: #f79721; padding: 6px; text-align: center; border: 1px solid #444; line-height: 42px; font-size: 18px; text-decoration: none; box-shadow: 0px 4px 8px 0px rgba(0,0,0,0.2); }
-.menuText { font-size: 0.9em; margin: 0; position: absolute; top: 50%;   left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); }
+.menuText { font-size: 0.9em; margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); }
 .match:nth-of-type(odd) { background-color: #f4c3ff44; }
 .match:nth-of-type(even) { background-color: #d4d4eb88; }
 tr.portalOdd td,tr.portalOdd th { background-color: #fff48288; }
@@ -20,6 +20,12 @@ tr.portalOdd,tr.portalEven { border: 1px solid #888; }
 h5 { font-weight: bold; font-size: 17px !important; margin: 16px auto; }
 iframe { border: 1px #dddddd solid; margin: 0 auto; }
 .notme { font-size: 9px; }
+.pilotGrant input[type='checkbox'] { -webkit-appearance: none; width: 16px; height: 16px; background: white; border-radius: 4px; border: 1px solid #888; }
+.pilotGrant input[type='checkbox']:checked { background: #b0d87a; }
+.pilotGrant { float: left; width: calc(100% - 75px); padding-left: 50px; font-size: 13px; }
+.alignleft { text-align: left; }
+.lightyellow { background-color: #fffbcfff; box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2); padding: 3px; }
+#overlayFT { position: fixed; display: none; width: 100%; height: 100%; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.7); z-index: 2; cursor: pointer; text-align: center; vertical-align: middle; }
 
 nav { margin: 0 auto 50px auto; height: 60px; }
 nav:has(> :last-child:nth-child(5)) {
@@ -39,7 +45,7 @@ nav:has(> :last-child:nth-child(1)) {
 }
 .dropbtn { width: 140px; height: 60px; font-family: "Museo Sans", Arial, Helvetica, sans-serif; color: black; padding: 16px; font-size: 16px; border: none; cursor: pointer; }
 .dropdown { position: relative; display: inline-block; }
-.dropdown-content { display: none; position: absolute; background-color: #eeeeee; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1; }
+.dropdown-content { display: none; position: absolute; background-color: #eeeeee; min-width: 160px; box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2); z-index: 1; }
 .dropdown-content a { font-size: 0.85em; font-family: "Museo Sans", Arial, Helvetica, sans-serif; color: black; padding: 12px 16px; text-decoration: none; display: block; }
 .dropdown-content a:hover { background-color: #d4d4eb; }
 .dropdown:hover .dropdown-content { display: block; }

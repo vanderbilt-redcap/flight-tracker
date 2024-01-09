@@ -15,8 +15,8 @@ $instance = REDCapManagement::sanitize($_REQUEST['instance']);
 $date = REDCapManagement::sanitize($_REQUEST['date']);
 
 $dateField = $field."_date";
-$metadata = Download::metadata($token, $server);
-$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+$metadataFields = Download::metadataFieldsByPid($pid);
+$metadata = MMAHelper::getMetadata($pid, $metadataFields);
 $metadataRow = REDCapManagement::getRowForFieldFromMetadata($field, $metadata);
 if (
     $field &&

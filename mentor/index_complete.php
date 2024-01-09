@@ -17,14 +17,17 @@ if (isset($_GET['menteeRecord'])) {
 if ($_GET['uid']) {
     $username = REDCapManagement::sanitize($_GET['uid']);
     $trailingUidString = "&uid=$username";
+    $spoofing = MMAHelper::makeSpoofingNotice($username);
 } else if ($hash) {
     $username = $hash;
     $trailingUidString = "&hash=$hash&menteeRecordId=$menteeRecordId";
     $userids = [];
+    $spoofing = "";
 } else {
     $username = Application::getUsername();
     $trailingUidString = "";
     $userids = Download::userids($token, $server);
+    $spoofing = "";
 }
 
 require_once dirname(__FILE__).'/_header.php';
@@ -41,13 +44,13 @@ if (isset($_GET['instance'])) {
     throw new \Exception("You must specify an instance");
 }
 list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
-$metadata = Download::metadata($token, $server);
+$userids = Download::userids($token, $server);
+$metadataFields = Download::metadataFieldsByPid($pid);
+$metadata = MMAHelper::getMetadata($pid, $metadataFields);
 $allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
-$metadata = MMAHelper::filterMetadata($metadata);
-$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 $notesFields = MMAHelper::getNotesFields($metadataFields);
 $choices = REDCapManagement::getChoices($metadata);
-$redcapData = Download::fieldsForRecords($token, $server, array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
+$redcapData = Download::fieldsForRecordsByPid($pid, array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
 $row = MMAHelper::pullInstanceFromREDCap($redcapData, $instance);
 $menteeUsernames = MMAHelper::getMenteeUserids($userids[$menteeRecordId] ?? "");
 $date = "";
@@ -65,7 +68,12 @@ if ($hash) {
 } else if (MMAHelper::isMentee($menteeRecordId, $username)) {
     $listOfMentees =  $firstName." ".$lastName;
 } else {
-    $listOfMentees = "[Mentee]";
+    $menteeName = Download::fullName($token, $server, $menteeRecordId);
+    if ($menteeName) {
+        $listOfMentees = $menteeName;
+    } else {
+        $listOfMentees = "[Mentee]";
+    }
 }
 $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $instance);
 if ($hash) {
@@ -183,232 +191,7 @@ if ($hash) {
   </div>
 </section>
 
-<script src="<?= Application::link("mentor/js/jSignature.min.js") ?>"></script>
-
-<script>
-    function toggleAllNotes(ob) {
-        let showMssg = "show all chatter";
-        let hideMssg = "hide all chatter";
-        if ($(ob).html() == showMssg) {
-            $(ob).html(hideMssg);
-            $(".notesText").show();
-        } else {
-            $(ob).html(showMssg);
-            $(".notesText").hide();
-        }
-    }
-
-    function showHide(ob) {
-        let noteDiv = $(ob).closest("div.notesText");
-        let showMssg = "show chatter";
-        let hideMssg = "hide chatter";
-        if ($(ob).html() == showMssg) {
-            $(ob).html(hideMssg);
-            noteDiv.show();
-        } else {
-            $(ob).html(showMssg);
-            noteDiv.hide();
-        }
-    }
-
-    function saveSignature(field, ymdDate) {
-        let ob = '#'+field;
-        let datapair = $(ob).jSignature('getData', 'svgbase64');
-        $.post('<?= Application::link("mentor/uploadSignature.php").$trailingUidString ?>',
-            { menteeRecord: '<?= $menteeRecordId ?>',
-                field: field,
-                b64image: datapair[1],
-                mime_type: datapair[0],
-                instance: '<?= $instance ?>',
-                'redcap_csrf_token': getCSRFToken(),
-                date: ymdDate },
-            function(html) {
-            console.log(html);
-            window.location.reload();
-        });
-    }
-
-    function resetSignature(ob) {
-        $(ob).jSignature("reset");
-    }
-</script>
-
-<style type="text/css">
-.notesShowHide {
-    text-decoration: underline;
-    color: black;
-}
-
-
-body {
-
-    font-family: europa, sans-serif !important;
-    letter-spacing: -0.5px;
-    font-size: 1.3em;
-}
-.h2, h2 {
-    font-weight: 700;
-}  
-.bg-light {
-    background-color: #ffffff!important;
-}
-.box_bg{height: 371px;width: 100%;background-size: contain;    padding: 34px;
-    padding-top: 26px;background-image: url(<?= Application::link("mentor/img/box_trans.png") ?>)}
-.box_bg img{width: 142px;
-    margin-left: -29px;}
-.box_body{    font-family: synthese, sans-serif;
-    font-weight: 200;
-    font-size: 17px;
-    line-height: 22px;
-    padding-top: 22px;
-}
-.box_body button{font-family: europa, sans-serif;}
-.box_white{background-color: #ffffff}
-.box_orange{background-color: #de6339}
-
-.box_title{    font-size: 23px;
-    line-height: 27px;
-  }
-  .boxa .box_title strong{
-    color: #26798a;
-  }
-  .boxb .box_title strong{
-    color: #de6339;
-}
-.tcontainer{
-  display: table;
-  width:90vw;
-  height: 323px;
-  border: 3px solid steelblue;
-  margin: auto;
-}
-
-.signature {
-    width: auto;
-    height: auto;
-}
-.signatureDate {
-    padding-left: 25px;
-    text-align: right;
-    width: 400px;
-}
-
-.getstarted{
-    display: table-cell;
-  text-align: center;
-  vertical-align: middle;
-  margin: auto;
-  background: tomato;
-  width: 50vw; height: 323px;
-  background-color: #056c7d;
-  text-align: center;
-}
-
-  .timestamp {
-      display: inline;
-      margin-left: 6px;
-      font-size: 12px;
-      font-weight: 100;
-      color: #a8a8a8;
-      text-decoration: none !important;
-  }
-  .smaller {
-      padding-left: 20px;
-      font-size: 14px;
-  }
-
-.btn-light{color: #26798a}
-.lm{text-align: center}
-.lm button{color:#000000;}
-
-.catquestions{
-  width: 96%;text-align:left; margin-top: 2em;
-}
-.categ{
-    font-family: din-2014, sans-serif;
-    letter-spacing: 14px;
-    margin-top: 2em;
-    margin-left: 0px;
-    position: relative;
-    z-index: 4;
-    top: 0;
-    left: 0;
-}
-.categ+div{
-    border-left: 1px solid #ffc66e;
-    padding-left: 19px;
-    margin-left: 7px;
-    font-size: 16px;
-    font-weight: 100;
-}
-.categ+div ul{
-  list-style: decimal;
-}
-.categ+div ul li span{
-  font-weight:700;text-decoration: underline;
-}
-.categ::before{
-    content: '';
-    display: inline-block;
-    width: 32px;
-    height: 32px;
-    -moz-border-radius: 7.5px;
-    -webkit-border-radius: 7.5px;
-    border-radius: 22.5px;
-    background-color: #ffc66e;
-    margin-right: -2px;
-    margin-top: 0px;
-    position: absolute;
-    top: -1px;
-    left: -6px;
-    z-index: -1;
-}
-
-  .categ:nth-of-type(1)+div {border-left: 1px solid #f6dd66;}
-  .categ:nth-of-type(2)+div {border-left: 1px solid #ec9d50;}
-  .categ:nth-of-type(3)+div {border-left: 1px solid #5fb749;}
-  .categ:nth-of-type(4)+div {border-left: 1px solid #a66097;}
-  .categ:nth-of-type(5)+div {border-left: 1px solid #9ba4ac;}
-  .categ:nth-of-type(6)+div {border-left: 1px solid #41a9de;}
-  .categ:nth-of-type(7)+div {border-left: 1px solid #f6dd66;}
-  .categ:nth-of-type(8)+div {border-left: 1px solid #ec9d50;}
-  .categ:nth-of-type(9)+div {border-left: 1px solid #5fb749;}
-  .categ:nth-of-type(10)+div {border-left: 1px solid #a66097;}
-  .categ:nth-of-type(11)+div {border-left: 1px solid #9ba4ac;}
-  .categ:nth-of-type(12)+div {border-left: 1px solid #41a9de;}
-  .categ:nth-of-type(13)+div {border-left: 1px solid #f6dd66;}
-  .categ:nth-of-type(14)+div {border-left: 1px solid #ec9d50;}
-  .categ:nth-of-type(15)+div {border-left: 1px solid #5fb749;}
-  .categ:nth-of-type(16)+div {border-left: 1px solid #a66097;}
-  .categ:nth-of-type(17)+div {border-left: 1px solid #9ba4ac;}
-  .categ:nth-of-type(18)+div {border-left: 1px solid #41a9de;}
-  .categ:nth-of-type(19)+div {border-left: 1px solid #f6dd66;}
-
-
-  .categ:nth-of-type(1)::before {background-color: #f6dd66;}
-  .categ:nth-of-type(2)::before {background-color: #ec9d50;}
-  .categ:nth-of-type(3)::before {background-color: #5fb749;}
-  .categ:nth-of-type(4)::before {background-color: #a66097;}
-  .categ:nth-of-type(5)::before {background-color: #9ba4ac;}
-  .categ:nth-of-type(6)::before {background-color: #41a9de;}
-  .categ:nth-of-type(7)::before {background-color: #f6dd66;}
-  .categ:nth-of-type(8)::before {background-color: #ec9d50;}
-  .categ:nth-of-type(9)::before {background-color: #5fb749;}
-  .categ:nth-of-type(10)::before {background-color: #a66097;}
-  .categ:nth-of-type(11)::before {background-color: #9ba4ac;}
-  .categ:nth-of-type(12)::before {background-color: #41a9de;}
-  .categ:nth-of-type(13)::before {background-color: #f6dd66;}
-  .categ:nth-of-type(14)::before {background-color: #ec9d50;}
-  .categ:nth-of-type(15)::before {background-color: #5fb749;}
-  .categ:nth-of-type(16)::before {background-color: #a66097;}
-  .categ:nth-of-type(17)::before {background-color: #9ba4ac;}
-  .categ:nth-of-type(18)::before {background-color: #41a9de;}
-  .categ:nth-of-type(19)::before {background-color: #f6dd66;}
-
-
-</style>
-
-
-
-
-<?php include dirname(__FILE__).'/_footer.php'; ?>
+<?php
+echo MMAHelper::getCompleteHead($trailingUidString, $menteeRecordId, $instance);
+include dirname(__FILE__).'/_footer.php';
+?>

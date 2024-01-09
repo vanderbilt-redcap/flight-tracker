@@ -36,14 +36,15 @@ if (isset($_POST['title'])) {
     echo "<h2>".count($cohortTitles)." Existing Cohorts (Click to Edit)</h2>\n";
     $cohortTitlesWithEditLinks = [];
     $link = Application::link("this");
+    $handpickLink = Application::link("cohorts/pickCohort.php");
     foreach ($cohortTitles as $cohortName) {
         $cohortConfig = $cohorts->getCohort($cohortName);
         if ($cohortConfig && count($cohortConfig->getManualRecords()) === 0) {
             $url = $link."&edit=".urlencode($cohortName);
-            $cohortTitlesWithEditLinks[] = "<a href='$url'>$cohortName</a>";
         } else {
-            $cohortTitlesWithEditLinks[] = $cohortName;
+            $url = $handpickLink."&cohort=".urlencode($cohortName);
         }
+        $cohortTitlesWithEditLinks[] = "<a href='$url'>$cohortName</a>";
     }
     echo "<p class='centered'>".implode("<br>", $cohortTitlesWithEditLinks)."</p>\n";
 

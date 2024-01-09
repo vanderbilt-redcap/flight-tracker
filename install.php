@@ -186,9 +186,21 @@ function makeDepartmentPrompt($projectId) {
 	$html .= "<p class='centered max-width'>Please enter a list of <strong>Resources</strong> your scholars may use. These are items that your institution offers to help your scholars achieve career success, like workshops or tools. For example, Vanderbilt offers focused workshops, studios, pilot funding, feedback sessions, and grant writing resources.<br/>(One per line.)<br/>";
 	$html .= "<textarea name='resources' class='config'>$defaultResources</textarea></p>\n";
 
-    foreach (REDCapManagement::getOptionalSettings() as $setting => $label) {
+    $optionalSettings = REDCapManagement::getOptionalSettings();
+    $optionalSettingKeys = array_keys($optionalSettings);
+    $suffix = "_div";
+    foreach ($optionalSettingKeys as $currIndex => $setting) {
+        $label = $optionalSettings[$setting];
+        $id = $setting.$suffix;
+        $nextIndex = $currIndex + 1;
+        $nextSetting = $optionalSettingKeys[$nextIndex] ?? "";
+        $nextId = ($nextIndex < count($optionalSettings)) ? $optionalSettingKeys[$nextIndex].$suffix : "";
+        $onblur = ($nextId && $nextSetting) ? "onblur='if ($(this).val() !== \"\") { $(\"#$nextId\").show(); } else  if ($(\"[name=$nextSetting]\").val() === \"\") { $(\"#$nextId\").hide(); }'" : "";
+        $styleCSS = preg_match("/_\d+$/", $setting) ? "style='display: none;'" : "";
+        $html .= "<div id='$id' $styleCSS>";
         $html .= "<p class='centered max-width'>The following field is optional. It can remain blank if desired.<br/><strong>$label</strong><br/>(One per line.)<br/>";
-        $html .= "<textarea name='$setting' class='config'></textarea></p>";
+        $html .= "<textarea name='$setting' class='config' $onblur ></textarea></p>";
+        $html .= "</div>";
     }
 
 	$html .= "<p class='centered'><button onclick='if (!verifyFieldsNotBlank([\"departments\", \"resources\"])) { alert(\"Cannot leave fields blank!\"); return false; } else { return true; }'>Configure Fields</button></p>\n";
@@ -448,6 +460,6 @@ function getCSS() {
 	$html .= "td { padding: 8px; }\n";
 	$html .= "input[type=text],select { width: 200px; }\n";
 	$html .= "button { font-size: 20px; color: white; background-color: black; }\n";
-	$html .= "textarea.config { width: 400px; height: 400px; }\n";
+	$html .= "textarea.config { width: 400px; height: 250px; }\n";
 	return $html;
 }
