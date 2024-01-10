@@ -70,8 +70,10 @@ class Wrangler {
                                     "redcap_repeat_instrument" => $instrument,
                                     "redcap_repeat_instance" => $row['redcap_repeat_instance'],
                                     $verifyField => $val,
-                                    $pilotGrantField => implode(", ", $pilotGrantHash[$id] ?? []),
                                 ];
+                                if (in_array($pilotGrantField, $allCitationFields)) {
+                                    $uploadRow[$pilotGrantField] = implode(", ", $pilotGrantHash[$id] ?? []);
+                                }
                                 $priorIDs[] = $id;
                                 $upload[] = $uploadRow;
                                 $matched = TRUE;
@@ -112,8 +114,10 @@ class Wrangler {
                                     "record_id" => $recordId,
                                     "redcap_repeat_instrument" => $instrument,
                                     "redcap_repeat_instance" => $row['redcap_repeat_instance'],
-                                    $pilotGrantField => implode(", ", $pilotGrants),
                                 ];
+                                if (in_array($pilotGrantField, $allCitationFields)) {
+                                    $uploadRow[$pilotGrantField] = implode(", ", $pilotGrants);
+                                }
                                 $upload[] = $uploadRow;
                                 $priorIDs[] = $id;
                                 break;
@@ -130,14 +134,16 @@ class Wrangler {
                         ($row['record_id'] == $recordId)
                         && ($row['redcap_repeat_instrument'] == $instrument)
                         && !in_array($row[$idField], $priorIDs)
-                        && ($row[$pilotGrantField] !== "")
+                        && ($row[$pilotGrantField] ?? "" !== "")
                     ) {
                         $uploadRow = [
                             "record_id" => $recordId,
                             "redcap_repeat_instrument" => $instrument,
                             "redcap_repeat_instance" => $row['redcap_repeat_instance'],
-                            $pilotGrantField => "",
                         ];
+                        if (in_array($pilotGrantField, $allCitationFields)) {
+                            $uploadRow[$pilotGrantField] = "";
+                        }
                         $upload[] = $uploadRow;
                     }
                 }
