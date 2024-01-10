@@ -507,7 +507,7 @@ class CronManager {
         if (is_array($firstItem) && isset($firstItem['file']) && !preg_match("/$currentVersion/", $firstItem['file'])) {
             for ($i = 0; $i < count($batchQueue); $i++) {
                 $setting = $batchQueue[$i];
-                if (strpos($setting, self::BATCH_FILE_PREFIX)) {
+                if (strpos($setting, self::BATCH_FILE_PREFIX) !== FALSE) {
                     $item = Application::getSystemSetting($setting) ?: [];
                     $item['file'] = preg_replace("/_v\d+\.\d+\.\d+\//", "_$currentVersion/", $item['file']);
                     Application::saveSystemSetting($setting, $item);
