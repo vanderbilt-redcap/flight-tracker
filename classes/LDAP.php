@@ -189,7 +189,7 @@ class LDAP {
 					}
 				}
 			}
-			$values[] = $value;
+			$values[] = Sanitizer::sanitizeWithoutChangingQuotes($value);
 		}
 		if (isset($_GET['test'])) {
 		    echo "findField values: ".json_encode($values)."<br>\n";
