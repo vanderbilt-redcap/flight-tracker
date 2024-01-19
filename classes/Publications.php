@@ -213,7 +213,7 @@ class Publications {
             }
         }
         if (!empty($nameClauses)) {
-            return "(".implode(" OR ", $nameClauses).")";
+            return "(".implode("+OR+", $nameClauses).")";
         } else {
             return "";
         }
@@ -231,12 +231,12 @@ class Publications {
         }
 
         $institutionClause = self::makePubMedInstitutionClause($institutions);
-        $term .= $institutionClause ? " AND ".$institutionClause : "";
+        $term .= $institutionClause ? "+AND+".$institutionClause : "";
 
         if ($startDate) {
             $encodedStartDate = str_replace("-", "%2F", $startDate);
             $encodedEndDate = str_replace("-", "%2F", $endDate);
-            $term .= " AND (\"$encodedStartDate\"%5BDate+-+Publication%5D+%3A+\"$encodedEndDate\"%5BDate+-+Publication%5D)";
+            $term .= "+AND+(\"$encodedStartDate\"%5BDate+-+Publication%5D+%3A+\"$encodedEndDate\"%5BDate+-+Publication%5D)";
         }
 
         return self::queryPubMed($term, $pid);
@@ -305,7 +305,7 @@ class Publications {
             )
         ) {
             $institutionClause = self::makePubMedInstitutionClause($institutions);
-            $term .= $institutionClause ? " AND ".$institutionClause : "";
+            $term .= $institutionClause ? "+AND+".$institutionClause : "";
         }
         $pmids = self::queryPubMed($term, $pid);
 
@@ -355,12 +355,11 @@ class Publications {
         list($resp, $output) = REDCapManagement::downloadURL($url, $pid);
         Application::log("$resp: Downloaded ".strlen($output)." bytes");
 
-        $pmids = array();
+        $pmids = [];
         $pmData = json_decode($output, true);
         if (isset($pmData['esearchresult']) && isset($pmData['esearchresult']['idlist'])) {
             # if the errorlist is not blank, it might search for simplified
             # it might search for simplified names and produce bad results
-            $pmidCount = count($pmData['esearchresult']['idlist']);
             if (
                 !isset($pmData['esearchresult']['errorlist'])
                 || !$pmData['esearchresult']['errorlist']
@@ -1392,7 +1391,11 @@ class Publications {
         $xml = simplexml_load_string(utf8_encode($output));
         $tries = 0;
         $maxTries = 10;
-        while (!$xml && ($tries < $maxTries)) {
+        $oldOutput = "BAD OUTPUT";
+        while (!$xml && ($tries < $maxTries) && (!$output || ($oldOutput != $output))) {
+            if ($output) {
+                $oldOutput = $output;
+            }
             $tries++;
             self::throttleDown(self::WAIT_SECS_UPON_FAILURE);
             $output = self::pullFromEFetch($pmids, $pid);
@@ -1400,7 +1403,9 @@ class Publications {
         }
         if (!$xml) {
             if ($tries >= $maxTries) {
-                Application::log("Warning: Cannot pull from eFetch! Attempted $tries times. " . implode(", ", $pmids) . " " . $output);
+                Application::log("Warning: Cannot pull from eFetch! Attempted $tries times. " . implode(", ", $pmids) . " " . $output, $pid);
+            } else if (!$output || ($oldOutput != $output)) {
+                Application::log("Warning: Empty pull from eFetch! ".$output, $pid);
             }
             return "";
         } else {

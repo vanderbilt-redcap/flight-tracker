@@ -25,6 +25,23 @@ class Dashboard {
         ];
     }
 
+    private function addGrantTypeSelect($selectedOption, $cohort, $target) {
+        $thisUrl = Application::link("this");
+        $options = [
+            "prior" => "Career-Defining Awards",
+            "all_pis" => "All Awards in PI/Co-PI Role",
+            "deduped" => "All Awards, Regardless of Role",
+        ];
+        $cohortParam = $cohort ? "&cohort=".urlencode($cohort) : "";
+        $html = "<p class='centered'><label for='grantType'>Type of Grant: </label><select name='grantType' id='grantType' onchange='location.href=\"$thisUrl$cohortParam&layout=$target&grantType=\"+$(\"#grantType :selected\").val();'>";
+        foreach ($options as $value => $label) {
+            $selected = ($selectedOption == $value) ? "selected" : "";
+            $html .= "<option value='$value' $selected>$label</option>";
+        }
+        $html .= "</select></p>";
+        return $html;
+    }
+
     public function getTarget() {
         if (!isset($_GET['layout'])) {
             return "display";
@@ -145,7 +162,7 @@ class Dashboard {
         }
     }
 
-    public function displayDashboardHeader($target, $otherTarget, $pid, $cohort = "") {
+    private function displayDashboardHeader($target, $otherTarget, $pid, $cohort = "", $grantType = "") {
         global $token, $server;
         $html = "";
 
@@ -164,13 +181,14 @@ class Dashboard {
             Application::link("dashboard/publicationsByMetrics.php", $pid).$trailingParams => "Miscellaneous Metrics",
         ];
 
+        $grantTypeParam = $grantType ? "&grantType=$grantType" : "";
         $html .= "<div class='subnav'>\n";
         $html .= "<a class='yellow' href='".Application::link("dashboard/overall.php")."&layout=$target$cohortUrl'>Overall Summary</a>\n";
-        $html .= "<a class='yellow' href='".Application::link("this")."&layout=$otherTarget$cohortUrl'>Switch Layouts</a>\n";
+        $html .= "<a class='yellow' href='".Application::link("this")."&layout=$otherTarget$cohortUrl$grantTypeParam'>Switch Layouts</a>\n";
 
-        $html .= "<a class='green' href='".Application::link("dashboard/grants.php")."&layout=$target$cohortUrl'>Grants</a>\n";
-        $html .= "<a class='green' href='".Application::link("dashboard/grantBudgets.php")."&layout=$target$cohortUrl'>Grant Budgets</a>\n";
-        $html .= "<a class='green' href='".Application::link("dashboard/grantBudgetsByYear.php")."&layout=$target$cohortUrl'>Grant Budgets by Year</a>\n";
+        $html .= "<a class='green' href='".Application::link("dashboard/grants.php")."&layout=$target$cohortUrl$grantTypeParam'>Grants</a>\n";
+        $html .= "<a class='green' href='".Application::link("dashboard/grantBudgets.php")."&layout=$target$cohortUrl$grantTypeParam'>Grant Budgets</a>\n";
+        $html .= "<a class='green' href='".Application::link("dashboard/grantBudgetsByYear.php")."&layout=$target$cohortUrl$grantTypeParam'>Grant Budgets by Year</a>\n";
 
         $html .= "<a class='orange' href='javascript:;' onclick='return false;'>Publications <select onchange='changePub(this);'>\n";
         $getPage = self::getPage();
@@ -203,9 +221,8 @@ class Dashboard {
 
         $cohorts = new Cohorts($token, $server, Application::getModule());
         $cohortTitles = $cohorts->getCohortTitles();
-        $page = Sanitizer::sanitize($_GET['page']);
-        $prefix = Sanitizer::sanitize($_GET['prefix']);
-        $html .= "<a href='javascript:;' onclick='return false;' class='purple'>Select Cohort: <select onchange='if ($(this).val()) { window.location.href = \"?layout=$target&pid=$pid&page=".$page."&prefix=".$prefix."&cohort=\" + $(this).val(); } else { window.location.href = \"?layout=$target&pid=$pid&page=".$page."&prefix=".$prefix."\"; }'>\n";
+        $thisUrl = Application::link("this");
+        $html .= "<a href='javascript:;' onclick='return false;' class='purple'>Select Cohort: <select id='cohort' onchange='if ($(this).val()) { window.location.href = \"$thisUrl&layout=$target$grantTypeParam&cohort=\" + $(this).val(); } else { window.location.href = \"$thisUrl&layout=$target$grantTypeParam\"; }'>\n";
         $html .= "<option value=''>---ALL---</option>\n";
         foreach ($cohortTitles as $title) {
             $html .= "<option value='$title'";
@@ -222,18 +239,18 @@ class Dashboard {
         return $html;
     }
 
-    public function makeHTML($headers, $measurements, $lines = [], $cohort = "", $numInRow = 4) {
+    public function makeHTML($headers, $measurements, $lines = [], $cohort = "", $numInRow = 4, $defaultGrantType = "") {
         $target = $this->getTarget();
         if ($target == "table") {
-            return $this->makeTableHTML($headers, $measurements, $lines, $cohort);
+            return $this->makeTableHTML($headers, $measurements, $lines, $cohort, $defaultGrantType);
         } else if ($target == "display") {
-            return $this->makeDisplayHTML($headers, $measurements, $lines, $cohort, $numInRow);
+            return $this->makeDisplayHTML($headers, $measurements, $lines, $cohort, $numInRow, $defaultGrantType);
         } else {
             throw new \Exception("Invalid Target: $target");
         }
     }
 
-    private function makeDisplayHTML($headers, $measurements, $lines = array(), $cohort = "", $numInRow = 4) {
+    private function makeDisplayHTML($headers, $measurements, $lines = array(), $cohort = "", $numInRow = 4, $defaultGrantType = "") {
         global $pid;
 
         if (empty($measurements) && empty($headers)) {
@@ -255,8 +272,11 @@ class Dashboard {
         }
 
         $html = "";
-        $html .= $this->displayDashboardHeader($target, $otherTarget, $pid, $cohort);
+        $html .= $this->displayDashboardHeader($target, $otherTarget, $pid, $cohort, $defaultGrantType);
         $html .= "<div id='content'>\n";
+        if ($defaultGrantType) {
+            $html .= $this->addGrantTypeSelect($defaultGrantType, $cohort, $target);
+        }
 
         $html .= self::makeHeaders($headers);
 
@@ -352,7 +372,7 @@ class Dashboard {
         return $html;
     }
 
-    private function makeTableHTML($headers, $measurements, $lines = array(), $cohort = "") {
+    private function makeTableHTML($headers, $measurements, $lines = array(), $cohort = "", $defaultGrantType = "") {
         if (empty($measurements) && empty($headers)) {
             return "<h1>Under Construction!</h1>\n";
         }
@@ -372,8 +392,11 @@ class Dashboard {
         }
 
         $html = "";
-        $html .= $this->displayDashboardHeader($target, $otherTarget, $this->pid, $cohort);
+        $html .= $this->displayDashboardHeader($target, $otherTarget, $this->pid, $cohort, $defaultGrantType);
         $html .= "<div id='content'>\n";
+        if ($defaultGrantType) {
+            $html .= $this->addGrantTypeSelect($defaultGrantType, $cohort, $target);
+        }
 
         $html .= self::makeHeaders($headers);
         if (empty($measurements)) {

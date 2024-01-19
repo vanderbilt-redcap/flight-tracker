@@ -902,7 +902,7 @@ class Scholar {
 		if ((count($this->rows) == 1) && self::hasDemographics($this->rows, $this->metadata) && ($this->rows[0]['redcap_repeat_instrument'] == "")) {
 			$this->loadDemographics();
 		} else {
-			$this->processDemographics();
+            $this->processDemographics();
 		}
 		if (!isset($this->grants)) {
 			$this->initGrants();
@@ -1067,7 +1067,7 @@ class Scholar {
 		if ($this->isLastKExternal()) {
 			return FALSE;
 		} else {
-			$grantAry = $this->grants->getGrants("native");
+			$grantAry = $this->grants->getGrants("deduped");
 			if (empty($grantAry)) {
 				$grantAry = $this->grants->getGrants("prior");
 			}
@@ -1096,7 +1096,7 @@ class Scholar {
 	private function hasK() {
 		if ($this->grants) {
 			$ks = array("Internal K", "K12/KL2", "Individual K", "External K");
-			$grantAry = $this->grants->getGrants("native");
+			$grantAry = $this->grants->getGrants("deduped");
 			if (empty($grantAry)) {
 				$grantAry = $this->grants->getGrants("prior");
 			}
@@ -1111,7 +1111,7 @@ class Scholar {
 
 	private function hasBridgeAward() {
 		if ($this->grants) {
-			foreach ($this->grants->getGrants("native") as $grant) {
+			foreach ($this->grants->getGrants("deduped") as $grant) {
 				if ($grant->getVariable("type") == "Bridge Award") {
 					return TRUE;
 				}
@@ -1122,7 +1122,7 @@ class Scholar {
 
 	private function hasR01() {
 		if ($this->grants) {
-			$grantAry = $this->grants->getGrants("native");
+			$grantAry = $this->grants->getGrants("deduped");
 			if (empty($grantAry)) {
 				$grantAry = $this->grants->getGrants("prior");
 			}
@@ -1137,7 +1137,7 @@ class Scholar {
 
 	private function hasR01OrEquiv() {
 		if ($this->grants) {
-			$grantAry = $this->grants->getGrants("native");
+			$grantAry = $this->grants->getGrants("deduped");
 			if (empty($grantAry)) {
 				$grantAry = $this->grants->getGrants("prior");
 			}
@@ -1276,7 +1276,7 @@ class Scholar {
 					if ($this->onK()) {
 					    return "Not Eligible";
                     } else {
-					    return "Not Converted";
+                        return "Not Converted";
                     }
 				}
 			} else {
@@ -1287,7 +1287,7 @@ class Scholar {
 			return $this->isConverted(FALSE);
 		} else {
 			if ($this->hasK()) {
-				return "Not Converted";
+                return "Not Converted";
 			} else {
 				return "Not Eligible";
 			}
@@ -3494,6 +3494,10 @@ class Scholar {
             "summary_wos_h_index" => "getWoSHIndex",
             "summary_icite_h_index" => "getiCiteHIndex",
             "summary_scopus_h_index" => "getScopusHIndex",
+            "summary_hi" => "getHI",
+            "summary_hi_norm" => "getHINorm",
+            "summary_hi_annual" => "getHIAnnual",
+            "summary_g_index" => "getGIndex",
             "summary_disability" => "getDisabilityStatus",
             "summary_disadvantaged" => "getDisadvantagedStatus",
             "summary_training_start" => "getTrainingStart",
@@ -3718,24 +3722,136 @@ class Scholar {
         return $this->getHIndex($rows, "citation_num_citations");
     }
 
-    private function getHIndex($rows, $timesCitedField) {
-	    $timesCitedValues = [];
+    # From Measuring and Improving Research Impact by Anne-Wil Harzing, pp. 25-29
+    # normalizes each H-Index input to [number of citations] / [number of co-authors]
+    private function getHINorm($rows) {
+        $field = "citation_num_citations";
+        $authorField = "citation_authors";
+        $hIndexInputs = [];
         foreach ($rows as $row) {
-            if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == 1) && $row[$timesCitedField]) {
-                $timesCitedValues[] = $row[$timesCitedField];
+            if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == 1) && $row[$field] && $row[$authorField]) {
+                $authorAry = preg_split("/\s*[,;]\s*/", $row[$authorField], -1, PREG_SPLIT_NO_EMPTY);
+                $numCitations = $row[$field];
+                $numCoAuthors = count($authorAry) - 1;
+                if ($numCoAuthors > 0) {
+                    $hIndexInputs[] = $numCitations / $numCoAuthors;
+                }
             }
         }
+        return $this->runHIndexAlgorithm($hIndexInputs);
+    }
+
+    # From Measuring and Improving Research Impact by Anne-Wil Harzing, pp. 25-29
+    # hI = hIndex / [average number of authors in contributing pubs]
+    private function getHI($rows) {
+        $field = "citation_num_citations";
+        $authorField = "citation_authors";
+        $numAuthors = [];
+        foreach ($rows as $row) {
+            if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == 1) && $row[$field]) {
+                $authorAry = preg_split("/\s*[,;]\s*/", $row[$authorField] ?? "", -1, PREG_SPLIT_NO_EMPTY);
+                $numAuthors[] = count($authorAry);
+            }
+        }
+        $hIndex = $this->getHIndex($rows, $field)->getValue();
+        if (!empty($numAuthors) && is_numeric($hIndex)) {
+            $avgAuthors = array_sum($numAuthors) / count($numAuthors);
+            $hi = $hIndex / $avgAuthors;
+            $prettyHI = REDCapManagement::pretty($hi, 3);
+            return new Result($prettyHI, "", "", "", $this->pid);
+        }
+        return new Result("", "", "", "", $this->pid);
+    }
+
+    # From Measuring and Improving Research Impact by Anne-Wil Harzing, pp. 25-29
+    # HI,norm / [number of years of publications]
+    private function getHIAnnual($rows) {
+        $field = "citation_num_citations";
+        $dateField = "citation_ts";
+        $hiNorm = $this->getHINorm($rows)->getValue();
+        if ($hiNorm) {
+            $earliestTs = time();
+            $latestTs = 0;
+            $numRelevant = 0;
+            foreach ($rows as $row) {
+                if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == 1) && $row[$field] && DateManagement::isDate($row[$dateField])) {
+                    $ts = strtotime($row[$dateField]);
+                    if ($ts < $earliestTs) {
+                        $earliestTs = $ts;
+                    }
+                    if ($ts > $latestTs) {
+                        $latestTs = $ts;
+                    }
+                    $numRelevant++;
+                }
+            }
+            if ($numRelevant >= 2) {
+                $earliestDate = date("Y-m-d", $earliestTs);
+                $latestDate = date("Y-m-d", $latestTs);
+                $numYears = ceil(DateManagement::getYearDuration($earliestDate, $latestDate));
+                if ($numYears > 0) {
+                    $hiAnnual = $hiNorm / $numYears;
+                    return new Result(REDCapManagement::pretty($hiAnnual, 3), "", "", "", $this->pid);
+                }
+            }
+        }
+        return new Result("", "", "", "", $this->pid);
+    }
+
+    # From Measuring and Improving Research Impact by Anne-Wil Harzing, pp. 25-29
+    # 1. Rank articles in decreasing order from most cited to least cited
+    # 2. g-index is the largest integer such that the top g articles received together at least g^2 citations
+    private function getGIndex($rows) {
+        $field = "citation_num_citations";
+        $timesCitedValues = $this->getTimesCitedValues($rows, $field);
+        rsort($timesCitedValues);
+
         if (!empty($timesCitedValues)) {
+            $g = 1;
+            do {
+                $g++;
+                $numCitations = 0;
+                for ($i = 0; $i <= $g; $i++) {
+                    $numCitations += $timesCitedValues[$i];
+                }
+            } while (($g < count($timesCitedValues) && ($numCitations >= $g * $g)));
+            if ($numCitations < $g * $g) {
+                # overcounted --> reduce by one
+                # this might not be called when $g = count($timesCitedValues)
+                $g--;
+            }
+            return new Result($g, "", "", "", $this->pid);
+        }
+        return new Result("", "", "", "", $this->pid);
+    }
+
+    private function getTimesCitedValues($rows, $timesCitedField) {
+        $values = [];
+        foreach ($rows as $row) {
+            if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_include'] == 1) && $row[$timesCitedField]) {
+                $values[] = $row[$timesCitedField];
+            }
+        }
+        return $values;
+    }
+
+    private function getHIndex($rows, $timesCitedField) {
+        $timesCitedValues = $this->getTimesCitedValues($rows, $timesCitedField);
+        return $this->runHIndexAlgorithm($timesCitedValues);
+    }
+
+    private function runHIndexAlgorithm($values) {
+        if (!empty($values)) {
             $i = 0;
             do {
                 $i++;
                 $numValid = 0;
-                foreach ($timesCitedValues as $value) {
+                foreach ($values as $value) {
                     if ($value >= $i) {
                         $numValid++;
                     }
                 }
-            } while ($i < count($timesCitedValues) && ($numValid >= $i));
+            } while ($i < count($values) && ($numValid >= $i));
             $i--;
             return new Result($i, "", "", "", $this->pid);
         }

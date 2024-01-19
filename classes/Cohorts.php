@@ -74,7 +74,7 @@ class Cohorts {
 	    if (!$this->module) {
 	        return [];
         }
-	    $readonlySettings = $this->module->getProjectSetting($this->readonlySettingName);
+	    $readonlySettings = $this->module->getProjectSetting($this->readonlySettingName, $this->pid);
 	    if (!$readonlySettings) {
 	        return [];
         }
@@ -141,7 +141,7 @@ class Cohorts {
 
 	private function getConfigs() {
 		if ($this->module) {
-			$configs = $this->module->getProjectSetting($this->settingName); 
+			$configs = $this->module->getProjectSetting($this->settingName, $this->pid);
 			if ($configs) {
 				return $configs;
 			}

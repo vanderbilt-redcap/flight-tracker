@@ -88,6 +88,10 @@ $wosHIndex = REDCapManagement::findField($redcapData, $record, "summary_wos_h_in
 $scopusHIndex = REDCapManagement::findField($redcapData, $record, "summary_scopus_h_index");
 $altmetricRange = $pubs->getAltmetricRange("Original Included");
 $avgRCR = $pubs->getAverageRCR("Original Included");
+$HI = REDCapManagement::findField($redcapData, $record, "summary_hi");
+$HINorm = REDCapManagement::findField($redcapData, $record, "summary_hi_norm");
+$HIAnnual = REDCapManagement::findField($redcapData, $record, "summary_hi_annual");
+$gIndex = REDCapManagement::findField($redcapData, $record, "summary_g_index");
 
 $normativeRow = array();
 foreach ($redcapData as $row) {
@@ -330,7 +334,11 @@ if (!empty($mentors)) {
     if ($scopusHIndex) { $bibliometricScores[Links::makeLink("https://blog.scopus.com/topics/h-index", "H Index", TRUE)."<br>from".Links::makeLink("https://www.scopus.com/", "Scopus", TRUE)] = $scopusHIndex; };
     if ($altmetricRange) { $bibliometricScores["Range of ".Links::makeLink("https://www.altmetric.com/", "Altmetric", TRUE)." Scores"] = $altmetricRange; }
     if ($avgRCR) { $bibliometricScores["Average ".Links::makeLink("https://dpcpsi.nih.gov/sites/default/files/iCite%20fact%20sheet_0.pdf", "Relative Citation<br> Ratio", TRUE)." from ".Links::makeLink("https://icite.od.nih.gov/", "iCite", TRUE)." Scores"] = $avgRCR; }
-    if ($iCiteHIndex) { $bibliometricScores["iCite H Index, calculated<br>from ".Links::makeLink("https://icite.od.nih.gov/", "iCite (NIH)", TRUE)] = $iCiteHIndex; }
+    if ($iCiteHIndex) { $bibliometricScores["H-Index, calculated from iCite figures<br/>from ".Links::makeLink("https://icite.od.nih.gov/", "iCite (NIH)", TRUE)] = $iCiteHIndex; }
+    if ($HI) { $bibliometricScores["HI, calculated from iCite figures<br/>(hIndex / [average number of authors in contributing pubs])"] = $HI; }
+    if ($HINorm) { $bibliometricScores["HI,norm, calculated from iCite figures<br/>(normalizes each H-Index input to [number of citations] / [number of co-authors])"] = $HINorm; }
+    if ($HIAnnual) { $bibliometricScores["HI,annual, calculated from iCite figures<br/>(HI,norm / [number of years of publications])"] = $HIAnnual; }
+    if ($gIndex) { $bibliometricScores["G-Index, calculated from iCite figures<br/>(the largest integer such that the most-cited g articles received together at least g^2 citations)"] = $gIndex; }
     echo makeStatsHTML($trainingStats);
     echo makeStatsHTML($bibliometricScores);
 

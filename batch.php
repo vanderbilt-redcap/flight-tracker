@@ -22,6 +22,11 @@ $headers = [
     "startTs",
     "endTs",
 ];
+$queues = [
+    "",
+    FlightTrackerExternalModule::INTENSE_BATCH_SUFFIX,
+    FlightTrackerExternalModule::LONG_RUNNING_BATCH_SUFFIX,
+];
 
 if (isset($_POST['setting']) && isset($_POST['count'])) {
     $setting = Sanitizer::sanitize($_POST['setting']);
@@ -33,53 +38,83 @@ if (isset($_POST['setting']) && isset($_POST['count'])) {
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 
-$mgr = new CronManager($token, $server, $pid, Application::getModule());
-$queue = $mgr->getBatchQueue();
-$datetime = date("m-d-Y H:i:s");
-
 echo "<style>
 th {  position: sticky; top: 0; background-color: #8dc63f; }
 </style>";
 
-echo "<h1>Current Batch Queue (".count($queue).")</h1>";
-echo "<p class='centered'>Last Updated: $datetime</p>";
-echo "<p class='centered max-width'>This page shows the current state of Flight Tracker's batch queue. These data points are set up, usually at midnight, and run until the queue has completed.</p>";
-echo "<table class='centered bordered' style='width: 100%;'>";
-echo "<thead>";
-echo "<tr>";
-echo "<th>Pos</th>";
-foreach ($headers as $header) {
-    if ($header == "firstParameter") {
-        echo "<th>First Parameter</th>";
-    } else if (preg_match("/Ts/", $header)) {
-        $header = str_replace("Ts", " Time", $header);
-        echo "<th>".ucfirst($header)."</th>";
-    } else {
-        echo "<th>".ucfirst($header)."</th>";
+echo "<h1>Batch Queues</h1>";
+$datetime = date("m-d-Y H:i:s");
+$queueLinks = [];
+foreach ($queues as $suffix) {
+    $mgr = new CronManager($token, $server, $pid, Application::getModule(), $suffix);
+    $count = count($mgr->getBatchQueue());
+    $suffixTitle = CronManager::getTitle($suffix);
+    $id = $suffix;
+    if (!$id) {
+        $id = "main";
     }
+    $queueLinks[] = "<a href='#$id' class='orange roundedBorder smallShadow small nounderline' style='margin-right: 8px; margin-left: 8px; padding: 4px 6px;'>".ucfirst($suffixTitle)." Queue ($count)</a>";
 }
-echo "</tr>";
-echo "</thead>";
-echo "<tbody>";
-$thisUrl = Application::link("this");
-$numCols = count($headers);
-if (empty($queue)) {
-    $myNumCols = $numCols + 1;
-    echo "<tr><td colspan='$myNumCols' class='centered padded even'>Currently, your job queue is empty. Typically, this fills up overnight before each job is run.</td></tr>";
-}
-$titles = [];
-for ($i = 0; $i < count($queue); $i++) {
-    $count = $i + 1;
-    $setting = $queue[$i];
-    $rowClass = ($count % 2 === 0) ? "even" : "odd";
-    if ($count <= 2) {
-        echo "<tr class='$rowClass'>".makeJobRowHTML($setting, $headers, $count, $titles)."</tr>";
-    } else {
-        echo "<tr class='$rowClass'><td>$count</td><td colspan='$numCols' class='centered padded'><a href='javascript:;' onclick='fetchSetting(\"$thisUrl\", \"$setting\", this, $count); return false;'>Fetch Row</a></td></tr>";
+echo "<p class='centered max-width'>This page shows the current state of Flight Tracker's batch queues. These jobs are set up daily, usually at midnight, and run until the queue has completed.<br/><strong>Last Updated</strong>: $datetime</p>";
+echo "<p class='centered max-width'>".implode("", $queueLinks)."</p>";
+foreach ($queues as $suffix) {
+    $mgr = new CronManager($token, $server, $pid, Application::getModule(), $suffix);
+    $queue = $mgr->getBatchQueue();
+    $suffixTitle = CronManager::getTitle($suffix);
+    $id = $suffix;
+    if (!$id) {
+        $id = "main";
     }
+    echo "<h2 id='$id'>$suffixTitle Queue (".count($queue)." Jobs)</h2>";
+    $restrictionStart = CronManager::getRestrictedTime($suffix, "start");
+    $restrictionEnd = CronManager::getRestrictedTime($suffix, "end");
+    if (
+        (
+            ($restrictionStart != "00:00:00")
+            || ($restrictionEnd != "00:00:00")
+        )
+        && !Application::isLocalhost()
+    ) {
+       echo "<p class='centered'>Processing does not occur on this queue from $restrictionStart until $restrictionEnd on weekdays.</p>";
+    }
+    echo "<table class='centered bordered' style='width: 100%;'>";
+    echo "<thead>";
+    echo "<tr>";
+    echo "<th>Pos</th>";
+    foreach ($headers as $header) {
+        if ($header == "firstParameter") {
+            echo "<th>First Parameter</th>";
+        } else if (preg_match("/Ts/", $header)) {
+            $header = str_replace("Ts", " Time", $header);
+            echo "<th>".ucfirst($header)."</th>";
+        } else {
+            echo "<th>".ucfirst($header)."</th>";
+        }
+    }
+    echo "</tr>";
+    echo "</thead>";
+    echo "<tbody>";
+    $thisUrl = Application::link("this");
+    $numCols = count($headers);
+    if (empty($queue)) {
+        $myNumCols = $numCols + 1;
+        echo "<tr><td colspan='$myNumCols' class='centered padded even'>Currently, this job queue is empty. Typically, this fills up overnight before each job is run.</td></tr>";
+    }
+    $titles = [];
+    for ($i = 0; $i < count($queue); $i++) {
+        $count = $i + 1;
+        $setting = $queue[$i];
+        $rowClass = ($count % 2 === 0) ? "even" : "odd";
+        if ($count <= 2) {
+            echo "<tr class='$rowClass'>".makeJobRowHTML($setting, $headers, $count, $titles)."</tr>";
+        } else {
+            echo "<tr class='$rowClass'><td>$count</td><td colspan='$numCols' class='centered padded'><a href='javascript:;' onclick='fetchSetting(\"$thisUrl\", \"$setting\", this, $count); return false;'>Fetch Row</a></td></tr>";
+        }
+    }
+    echo "</tbody>";
+    echo "</table>";
+    echo "<br/><br/><br/>";
 }
-echo "</tbody>";
-echo "</table>";
 
 function makeJobRowHTML($setting, $headers, $count, &$cachedTitles) {
     $row = Application::getSystemSetting($setting) ?: [];

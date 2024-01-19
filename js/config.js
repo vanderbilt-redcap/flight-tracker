@@ -99,3 +99,28 @@ function checkForNextField(variable, i) {
 		}
 	}
 }
+
+function checkForRequiredFields() {
+	const requiredFields = ["tokenName", "token", "server", "pid", "event_id", "institution"];
+	const missingFields = [];
+	for (let i=0; i < requiredFields.length; i++) {
+		const field = requiredFields[i];
+		if ($('[name='+field+']').val() === "") {
+			if (field === "tokenName") {
+				missingFields.push("Project Name");
+			} else if (field === "institution") {
+				missingFields.push("Full Name of Institution");
+			} else {
+				missingFields.push(field);
+			}
+		}
+	}
+	if (missingFields.length > 0) {
+		$.sweetModal({
+			content: "The following fields are required for Flight Tracker to work: "+missingFields.join(", "),
+			icon: $.sweetModal.ICON_ERROR
+		})
+		return false;
+	}
+	return true;
+}

@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.5.3";
+		return "6.6.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -1239,7 +1239,7 @@ class CareerDev {
                 "Kaplan-Meier Conversion Success Curve" => self::link("/charts/kaplanMeierCurve.php"),
                 "Configure Application" => self::link("/config.php"),
                 "Configure Summaries" => self::link("/config.php")."&order",
-                "Batch Queue" => self::link("batch.php"),
+                "Batch Queues" => self::link("batch.php"),
                 "Logging" => self::link("/log/index.php"),
                 "Custom Programming" => self::link("/changes/README.md"),
                 "Test Connectivity" => self::link("/testConnectivity.php"),

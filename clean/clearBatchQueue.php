@@ -10,5 +10,10 @@ require_once(dirname(__FILE__)."/../small_base.php");
 $module = Application::getModule();
 $suffix = Sanitizer::sanitize($_GET['suffix'] ?? "");
 $manager = new CronManager($token, $server, $pid, $module, $suffix);
-$manager->clearBatchQueue();
+if (isset($_GET['first'])) {
+    $manager->markFirstItemAsDone();
+    # also might need to reset External Module (disable then re-enable system-wide) to reset redcap_crons table settings
+} else {
+    $manager->clearBatchQueue();
+}
 echo "Done.";

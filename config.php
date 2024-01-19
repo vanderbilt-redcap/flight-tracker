@@ -445,7 +445,7 @@ function makeSettings($module, $pid) {
 			$html .= "<a id='$id'></a><h2>$header</h2>";
 			$html .= "<table class='centered' style='max-width: 600px;'>";
 			$html .= implode("\n", $htmlAry);
-			$html .= "<tr><td colspan='2' class='centered'><input type='submit' value='Save Settings'></td></tr>";
+			$html .= "<tr><td colspan='2' class='centered'><button onclick='return checkForRequiredFields();'>Save Settings</button></td></tr>";
 			$html .= "</table>";
 		}
 		$html .= "</form>\n";

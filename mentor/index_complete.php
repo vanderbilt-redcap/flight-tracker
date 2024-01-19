@@ -44,7 +44,6 @@ if (isset($_GET['instance'])) {
     throw new \Exception("You must specify an instance");
 }
 list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
-$userids = Download::userids($token, $server);
 $metadataFields = Download::metadataFieldsByPid($pid);
 $metadata = MMAHelper::getMetadata($pid, $metadataFields);
 $allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
@@ -52,13 +51,18 @@ $notesFields = MMAHelper::getNotesFields($metadataFields);
 $choices = REDCapManagement::getChoices($metadata);
 $redcapData = Download::fieldsForRecordsByPid($pid, array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
 $row = MMAHelper::pullInstanceFromREDCap($redcapData, $instance);
-$menteeUsernames = MMAHelper::getMenteeUserids($userids[$menteeRecordId] ?? "");
 $date = "";
 $menteeInstance = FALSE;
-foreach ($menteeUsernames as $menteeUsername) {
-    $menteeInstance = MMAHelper::getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);
-    if ($menteeInstance) {
-        break;
+if ($hash) {
+    $menteeInstance = 1;
+} else {
+    $userids = Download::userids($token, $server);
+    $menteeUsernames = MMAHelper::getMenteeUserids($userids[$menteeRecordId] ?? "");
+    foreach ($menteeUsernames as $menteeUsername) {
+        $menteeInstance = MMAHelper::getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);
+        if ($menteeInstance) {
+            break;
+        }
     }
 }
 $menteeRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, MMAHelper::INSTRUMENT, $menteeInstance) : [];
@@ -114,13 +118,18 @@ if ($hash) {
               if ($menteeRow['field_type'] == "descriptive") {
                   continue;
               }
+              $metadataRow['field_label'] = preg_replace("/:$/", "", $metadataRow["field_label"]);
               if ($metadataRow['section_header']) {
                   list($sec_header, $sec_descript) = MMAHelper::parseSectionHeader($metadataRow['section_header']);
                   if (!empty($htmlRows)) {
                       if (!$hasRows) {
-                          $htmlRows[] = "<div>$noInfo</div>";
+                          array_pop($htmlRows);
+                          array_pop($htmlRows);
+                          array_pop($htmlRows);
+                          // $htmlRows[] = "<div>$noInfo</div>";
+                      } else {
+                          $htmlRows[] = $closing;
                       }
-                      $htmlRows[] = $closing;
                   }
                   $htmlRows[] = '<p class="catquestions">';
                   $htmlRows[] = "<div class='categ'>$sec_header</div>";
@@ -177,12 +186,35 @@ if ($hash) {
                             </script>";
                   }
                   $hasRows = TRUE;
+              } else if ($metadataRow['field_type'] == "checkbox") {
+                  $notesText = "";
+                  if ($menteeRow[$possibleNotesField]) {
+                      $notesText = "<div class='smaller notesText'>".preg_replace("/\n/", "<br>", $menteeRow[$possibleNotesField])."</div><!-- <div class='smaller'><a href='javascript:;' class='notesShowHide' onclick='showHide(this);'>hide chatter</a></div> -->";
+                  }
+                  $values = [];
+                  foreach ($row as $f => $v) {
+                      if (($v == "1") && preg_match("/^$field"."___/", $f)) {
+                          $index = explode("___", $f)[1];
+                          $label = $choices[$field][$index] ?? "";
+                          if ($label) {
+                              $values[] = $label;
+                          }
+                      }
+                  }
+                  if (!empty($values)) {
+                      $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).": <span>".implode("; ", $values)."</span>$notesText</li>";
+                      $hasRows = TRUE;
+                  }
               }
           }
           if (!$hasRows) {
-              $htmlRows[] = "<div>$noInfo</div>";
+              array_pop($htmlRows);
+              array_pop($htmlRows);
+              array_pop($htmlRows);
+              // $htmlRows[] = "<div>$noInfo</div>";
+          } else {
+              $htmlRows[] = $closing;
           }
-          $htmlRows[] = $closing;
           echo implode("\n", $htmlRows)."\n";
 
           ?>

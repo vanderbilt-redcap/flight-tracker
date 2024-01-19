@@ -29,6 +29,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     const SHARING_SETTING = "matches";
     const COMPLETE_INDICES = [2];
     const MATCHES_BATCH_SIZE = 200;
+    const LONG_RUNNING_BATCH_SUFFIX = "long";
+    const INTENSE_BATCH_SUFFIX = "intense";
+    const TEST_CRON = "test";
+    const WEEKDAYS = [1, 2, 3, 4, 5];
 
 	function getPrefix() {
         return Application::getPrefix();
@@ -42,7 +46,46 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		$this->setProjectSetting("run_tonight", TRUE);
 	}
 
-	function batch() {
+    # Vanderbilt's REDCap traffic tends to speed up around 8am and decrease after 6pm
+    # give one hour for crons to complete before traffic speedup
+    # these should already be partitioned to run more quickly
+    function intense_batch() {
+        $currTs = time();
+        # purposefully switch windows - start of restricted time = end of window
+        $endWindow = strtotime(CronManager::getRestrictedTime("intense", "start"));
+        $startWindow = strtotime(CronManager::getRestrictedTime("intense", "end"));
+        if (
+            !in_array(date("N"), self::WEEKDAYS)
+            || ($currTs < $endWindow)
+            || ($currTs > $startWindow)
+            || Application::isLocalhost()
+        ) {
+            $this->runBatch(self::INTENSE_BATCH_SUFFIX);
+        }
+    }
+
+    # Vanderbilt's REDCap traffic tends to speed up around 8am and decrease after 6pm
+    # give two hours for long-running crons to complete before traffic speedup
+    function long_batch() {
+        $currTs = time();
+        # purposefully switch windows - start of restricted time = end of window
+        $endWindow = strtotime(CronManager::getRestrictedTime("long", "start"));
+        $startWindow = strtotime(CronManager::getRestrictedTime("long", "end"));
+        if (
+            !in_array(date("N"), self::WEEKDAYS)
+            || ($currTs < $endWindow)
+            || ($currTs > $startWindow)
+            || Application::isLocalhost()
+        ) {
+            $this->runBatch(self::LONG_RUNNING_BATCH_SUFFIX);
+        }
+    }
+
+    function main_batch() {
+        $this->runBatch("");
+    }
+
+    private function runBatch($suffix) {
         Application::increaseProcessingMax(8);
         $this->setupApplication();
         $activePids = $this->getPids();
@@ -54,15 +97,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $adminEmail = $this->getProjectSetting("admin_email", $pid);
             if ($token && $server) {
                 try {
-                    CronManager::sendEmails($activePids, $this);
-                    $this->cronManager = new CronManager($token, $server, $pid, $this);
+                    $this->cronManager = new CronManager($token, $server, $pid, $this, $suffix);
+                    $this->cronManager->sendEmails($activePids, $this);
                     $this->cronManager->runBatchJobs();
                 } catch (\Exception $e) {
                     # should only happen in rarest of circumstances
                     if (preg_match("/'batchCronJobs' because the value is larger than the \d+ byte limit/", $e->getMessage())) {
                         Application::saveSetting("batchCronJobs", [], $pid);
                     }
-                    Application::log("batch F $pid: ".memory_get_usage());
                     $mssg = $e->getMessage()."<br><br>".$e->getTraceAsString();
                     if (Application::isVanderbilt()) {
                         \REDCap::email($adminEmail, "noreply.flighttracker@vumc.org", CronManager::EXCEPTION_EMAIL_SUBJECT, $mssg);
@@ -96,7 +138,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         $adminEmail = $this->getProjectSetting("admin_email", $pid);
                         $cronStatus = $this->getProjectSetting("send_cron_status", $pid);
                         if ($cronStatus && (time() <= $cronStatus + $oneHour)) {
-                            $this->cronManager = new CronManager($token, $server, $pid, $this);
+                            $this->cronManager = new CronManager($token, $server, $pid, $this, self::TEST_CRON);
                             loadTestingCrons($this->cronManager);
                             $this->cronManager->run($adminEmail, $tokenName);
                         }
@@ -1360,12 +1402,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             if ($token && $server && !$turnOffSet) {
                 try {
                     # only have token and server in initialized projects
-                    $this->cronManager = new CronManager($token, $server, $pid, $this);
                     if ($this->getProjectSetting("run_tonight", $pid)) {
                         $this->setProjectSetting("run_tonight", FALSE, $pid);
                         # already done in enqueueInitialCrons
                     } else {
-                        loadCrons($this->cronManager, FALSE, $token, $server);
+                        $regularManager = new CronManager($token, $server, $pid, $this, "");
+                        loadCrons($regularManager, FALSE, $token, $server);
+
+                        $intenseManager = new CronManager($token, $server, $pid, $this, self::INTENSE_BATCH_SUFFIX);
+                        loadIntenseCrons($intenseManager, FALSE, $token, $server);
                     }
                     Application::log($this->getName().": $tokenName enqueued crons", $pid);
                 } catch(\Exception $e) {
@@ -1378,20 +1423,24 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
     function enqueueMultiProjectCrons($pids) {
         if (!empty($pids)) {
-            $token = "";
-            $server = "";
-            $pid = "";
+            $standbyToken = "";
+            $standbyServer = "";
+            $standbyPid = "";
             for ($i = 0; $i < count($pids); $i++) {
                 $pid = $pids[$i];
                 $token = $this->getProjectSetting("token", $pid);
                 $server = $this->getProjectSetting("server", $pid);
-                if ($pid && $token && $server) {
-                    break;
+                $longManager = new CronManager($token, $server, $pid, $this, self::LONG_RUNNING_BATCH_SUFFIX);
+                loadLongRunningCrons($longManager, $token, $server, $pid);
+                if (!$standbyPid && !$standbyServer && !$standbyToken && $token && $server && $pid) {
+                    $standbyServer = $server;
+                    $standbyToken = $token;
+                    $standbyPid = $pid;
                 }
             }
-            if ($pid && $token && $server) {
-                $this->cronManager = new CronManager($token, $server, $pid, $this);
-                loadMultiProjectCrons($this->cronManager, $pids);
+            if ($standbyPid && $standbyServer && $standbyToken) {
+                $longManager = new CronManager($standbyToken, $standbyServer, $standbyPid, $this, self::LONG_RUNNING_BATCH_SUFFIX);
+                loadMultiProjectCrons($longManager, $pids);
             }
         }
     }
@@ -1406,8 +1455,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             if ($token && $server && !$turnOffSet) {
                 try {
                     if ($this->getProjectSetting("run_tonight", $pid)) {
-                        $this->cronManager = new CronManager($token, $server, $pid, $this);
-                        loadInitialCrons($this->cronManager, FALSE, $token, $server);
+                        $initialCronManager = new CronManager($token, $server, $pid, $this, "");
+                        loadInitialCrons($initialCronManager, FALSE, $token, $server);
                         Application::log($this->getName().": $tokenName enqueued initial crons", $pid);
                     }
                 } catch (\Exception $e) {

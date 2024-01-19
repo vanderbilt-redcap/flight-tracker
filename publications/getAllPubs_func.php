@@ -12,21 +12,6 @@ function cleanEmptySources($token, $server, $pid, $records) {
     }
 }
 
-function dedupPubs($token, $server, $pid, $records) {
-    if (empty($records)) {
-        $records = Download::recordIds($token, $server);
-    }
-    $metadata = Download::metadata($token, $server);
-    foreach ($records as $recordId) {
-        $fields = ["record_id", "citation_pmid", "eric_id"];
-        $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-
-        $pubs = new Publications($token, $server, $metadata);
-        $pubs->setRows($redcapData);
-        $pubs->deduplicateCitations($recordId);
-    }
-}
-
 function getPubs($token, $server, $pid, $records) {
     getPubsGeneric($token, $server, $pid, $records, TRUE);
 }
@@ -36,214 +21,140 @@ function getNamePubs($token, $server, $pid, $records) {
 }
 
 function getPubsGeneric($token, $server, $pid, $records, $searchWithInstitutions) {
-	$cleanOldData = FALSE;
     $metadata = Download::metadata($token, $server);
-    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-
+    $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+    $firstNames = Download::firstnames($token, $server);
+    $lastNames = Download::lastnames($token, $server);
     if (empty($records)) {
         $records = Download::recordIds($token, $server);
     }
-    $firstNames = Download::firstnames($token, $server);
-    $lastNames = Download::lastnames($token, $server);
 
-	$citationIds = [];
-	$pullSize = 1;
-	$maxInstances = [];
-	for ($i0 = 0; $i0 < count($records); $i0 += $pullSize) {
-		$pullRecords = [];
-		for ($j = $i0; $j < count($records) && $j < $i0 + $pullSize; $j++) {
-			$pullRecords[] = $records[$j];
-		}
-
-		if ($cleanOldData && $pid) {
-			$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), $pullRecords);
-			foreach ($redcapData as $row) {
-				if ($row['redcap_repeat_instrument'] == "citation") {
-					$recordId = $row['record_id'];
-					clearAllCitations($pid, array($recordId));
-					break;
-				}
-			}
-		}
-
-		$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), $pullRecords);
-		foreach ($pullRecords as $recordId) {
-		    $maxInstances[$recordId] = REDCapManagement::getMaxInstance($redcapData, "citation", $recordId);
+    if (Application::isVanderbilt() && !Application::isLocalhost()) {
+        processVICTR($token, $server, $pid, $records, $metadata);
+    }
+    foreach ($records as $recordId) {
+		$redcapData = Download::fieldsForRecordsByPid($pid, Application::getCitationFields($metadata), [$recordId]);
+        if (
+            in_array("citation_date", $metadataFields)
+            && hasBlankCitationField($redcapData, "citation_date")
+            && in_array("citation_affiliations", $metadataFields)
+            && hasBlankCitationField($redcapData, "citation_affiliations")
+        ) {
+            backfillDatesAndAffiliations($redcapData, $metadataFields, $pid);
         }
-        backfillDatesAndAffiliations($redcapData, $metadataFields, $token, $server, $pid);
-        backfillAbstracts($redcapData, $metadata, $token, $server, $pid);
-        $hasTimestamp = in_array("citation_ts", $metadataFields);
-        $hasFullCitation = in_array("citation_full_citation", $metadataFields);
-        foreach ($pullRecords as $recordId) {
+        if (in_array("citation_abstract", $metadataFields) && hasBlankCitationField($redcapData, "citation_abstract")) {
+            backfillAbstracts($redcapData, $pid);
+        }
+        if (hasBlankCitationField($redcapData, "citation_pmid")) {
             $cnt = Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $redcapData);
             if ($cnt > 0) {
                 Application::log("Uploaded $cnt blank rows for $recordId", $pid);
             }
-            Publications::deleteEmptySources($token, $server, $pid, $recordId);
-            Publications::deleteMismatchedRows($token, $server, $pid, $recordId, $firstNames, $lastNames);
-            Publications::updateNewPMCs($token, $server, $pid, $recordId, $redcapData);
-            if ($hasFullCitation) {
-                Publications::makeFullCitations($token, $server, $pid, $recordId, $metadata, $hasTimestamp);
-            }
         }
-		binREDCapRows($redcapData, $citationIds);
+        Publications::deleteMismatchedRows($token, $server, $pid, $recordId, $firstNames, $lastNames);
+        if (hasBlankCitationField($redcapData, "citation_pmcid")) {
+            Publications::updateNewPMCs($token, $server, $pid, $recordId, $redcapData);
+        }
+        if (
+            DateManagement::dateCompare(date("Y-m-d"), "<=", "2024-06-01")  // remove because assuming everyone has upgraded
+            && in_array("citation_full_citation", $metadataFields)
+            && hasBlankCitationField($redcapData, "citation_full_citation")
+        ) {
+            $hasTimestamp = in_array("citation_ts", $metadataFields);
+            Publications::makeFullCitations($token, $server, $pid, $recordId, $metadata, $hasTimestamp);
+        }
 	}
-	foreach ($citationIds as $type => $typeCitationIds) {
-		foreach ($typeCitationIds as $recordId => $recordCitationIds) {
-			CareerDev::log("citationIds[$type][$recordId] has ".count($recordCitationIds));
-		}
-	}
-	unset($redcapData);
-
-	if (CareerDev::isVanderbilt()) {
-		processVICTR($citationIds, $maxInstances, $token, $server, $pid, $records);
-	}
-	processPubMed($citationIds, $maxInstances, $token, $server, $pid, $records, $searchWithInstitutions);
-	postprocess($token, $server, $records);
-    dedupPubs($token, $server, $pid, $records);
+    processPubMed( $token, $server, $pid, $records, $metadata, $searchWithInstitutions);
+    foreach ($records as $recordId) {
+        $redcapData = Download::fieldsForRecordsByPid($pid, ["record_id", "citation_pmid", "eric_id"], [$recordId]);
+        $pubs = new Publications($token, $server, $metadata);
+        $pubs->setRows($redcapData);
+        $pubs->deduplicateCitations($recordId);
+    }
 	CareerDev::saveCurrentDate("Last PubMed Download", $pid);
 }
 
-function postprocess($token, $server, $records) {
-	$metadata = Download::metadata($token, $server);
-	$pullSize = 3;
-	for ($i = 0; $i < count($records); $i += $pullSize) {
-		$pullRecords = [];
-		for ($j = $i; ($j < count($records)) && ($j < $i + $pullSize); $j++) {
-			$pullRecords[] = $records[$j];
-		}
-		$redcapData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), $pullRecords);
-		$indexedData = [];
-		foreach ($redcapData as $row) {
-			$recordId = $row['record_id'];
-			if (($row['redcap_repeat_instrument'] == "citation") && ($row['citation_is_research'] === "") && ($row['citation_pmid'])) {
-				// processUncategorizedRow($token, $server, $row);
-			}
-			if (!isset($indexedData[$recordId])) {
-				$indexedData[$recordId] = [];
-			}
-			$indexedData[$recordId][] = $row;
-		}
-		foreach ($indexedData as $recordId => $rows) {
-			removeDuplicates($token, $server, $rows, $recordId);
-		}
-	}
+function hasBlankCitationField($redcapData, $field) {
+    foreach ($redcapData as $row) {
+        if (($row['redcap_repeat_instrument'] == "citation") && isset($row[$field]) && ($row[$field] === "")) {
+            return TRUE;
+        }
+    }
+    return FALSE;
 }
 
-function removeDuplicates($token, $server, $rows, $recordId) {
-	$alreadySeen = array();
-	$pid = Application::getPID($token);
-	foreach ($rows as $row) {
-		if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "citation")) {
-			$pmid = $row['citation_pmid'];
-			if (in_array($pmid, $alreadySeen)) {
-				$instance = $row['redcap_repeat_instance'];
-				CareerDev::log("Duplicate in record $recordId (instance $instance)!");
-				echo "Duplicate in record $recordId (instance $instance)!\n";
-                Upload::deleteFormInstances($token, $server, $pid, "citation", $recordId, [$instance]);
-			} else if (($row['citation_include'] === '1') || ($row['citation_include'] === '')) {
-				$alreadySeen[] = $pmid;
-			}
-		}
-	}
-}
-
-function processUncategorizedRow($token, $server, $row) {
-	$pmid = $row['citation_pmid'];
-	if ($pmid) {
-		CareerDev::log("Uncategorized row: {$row['record_id']}:{$row['redcap_repeat_instance']} $pmid");
-		echo "Uncategorized row: {$row['record_id']}:{$row['redcap_repeat_instance']} $pmid\n";
-		$iCite = new iCite($pmid, Application::getPID($token));
-		if ($iCite->getVariable($pmid, "is_research_article")) {
-			$uploadRow = array(
-						"record_id" => $row['record_id'],
-						"redcap_repeat_instrument" => "citation",
-						"redcap_repeat_instance" => $row['redcap_repeat_instance'],
-						"citation_doi" => $iCite->getVariable($pmid, "doi"),
-						"citation_is_research" => $iCite->getVariable($pmid, "is_research_article"),
-						"citation_num_citations" => $iCite->getVariable($pmid, "citation_count"),
-						"citation_citations_per_year" => $iCite->getVariable($pmid, "citations_per_year"),
-						"citation_expected_per_year" => $iCite->getVariable($pmid, "expected_citations_per_year"),
-						"citation_field_citation_rate" => $iCite->getVariable($pmid, "field_citation_rate"),
-						"citation_nih_percentile" => $iCite->getVariable($pmid, "nih_percentile"),
-						"citation_rcr" => $iCite->getVariable($pmid, "relative_citation_ratio"),
-						);
-			upload(array($uploadRow), $token, $server);
-		}
-	}
-}
-
-function reverseArray($ary) {
-	$newAry = array();
-	foreach ($ary as $idx => $val) {
-		$newAry[$val] = $idx;
-	}
-	return $newAry;
-}
-
-function processVICTR(&$citationIds, &$maxInstances, $token, $server, $pid, $records) {
-    $metadata = Download::metadata($token, $server);
-    $vunets = Download::vunets($token, $server);
+function processVICTR($token, $server, $pid, $records, $metadata) {
     $file = Application::getCredentialsDir()."/con_redcap_ldap_user.php";
     if (!file_exists($file)) {
         return;
     }
     include $file;
 
+    $vunets = Download::userids($token, $server);
+    $allIncludes = Download::oneFieldWithInstances($token, $server, "citation_include");
+    $allPMIDs = Download::oneFieldWithInstances($token, $server, "citation_pmid");
+    $allSources = Download::oneFieldWithInstances($token, $server, "citation_source");
+
     $upload = [];
     foreach ($records as $recordId) {
         $vunet = $vunets[$recordId] ?? "";
         if ($vunet) {
             $data = StarBRITE::accessSRI("pub-match/vunet/", [$vunet], $pid);
-            $pmids = fetchPMIDs($data);
-            foreach ($pmids as $newCitationId) {
-                if ($recordId) {
-                    $foundType = inCitationIds($citationIds, $newCitationId, $recordId);
-                    if (!$foundType) {
-                        Application::log("vunet: " . $vunet . " PMID: " . $newCitationId . " recordId: " . $recordId);
-                        if (!isset($maxInstances[$recordId])) {
-                            $maxInstances[$recordId] = 0;
-                        }
-                        $maxInstances[$recordId]++;
-                        $uploadRows = Publications::getCitationsFromPubMed(array($newCitationId), $metadata, "victr", $recordId, $maxInstances[$recordId], [$newCitationId], $pid);
-                        foreach ($uploadRows as $uploadRow) {
-                            // mark to include only for VICTR
-                            $uploadRow['citation_include'] = '1';
-                            $upload[] = $uploadRow;
-                        }
-                        if (!isset($citationIds['Final'][$recordId])) {
-                            $citationIds['Final'][$recordId] = array();
-                        }
-                        $citationIds['Final'][$recordId][] = $newCitationId;
-                    } else {
-                        $citationIdsForRecord = [];
-                        foreach ($citationIds as $type => $recordsWithData) {
-                            $citationIdsForRecord[$type] = $recordsWithData[$recordId] ?? [];
-                        }
-                        Application::log("$recordId: Skipping because matched: " . $vunet . " PMID: " . $newCitationId." citationIds: ".REDCapManagement::json_encode_with_spaces($citationIdsForRecord));
+            $pmids = StarBRITE::fetchPMIDs($data);
+            $recordIncludes = $allIncludes[$recordId] ?? [];
+            $recordPMIDs = $allPMIDs[$recordId] ?? [];
+            $recordSources = $allSources[$recordId] ?? [];
+            $maxInstance = max(array_keys($recordPMIDs) ?: [0]);
+            foreach ($pmids as $newPMID) {
+                if (!in_array($newPMID, array_values($recordPMIDs))) {
+                    Application::log("$recordId: New PMID for userid: " . $vunet . " PMID: " . $newPMID, $pid);
+                    $maxInstance++;
+                    $uploadRows = Publications::getCitationsFromPubMed([$newPMID], $metadata, "victr", $recordId, $maxInstance, [$newPMID], $pid);
+                    foreach ($uploadRows as $uploadRow) {
+                        // mark to include only for VICTR
+                        $uploadRow['citation_include'] = '1';
+                        $upload[] = $uploadRow;
                     }
+                } else {
+                    # already exist --> update source to VICTR and mark as included automatically
+                    foreach ($recordPMIDs as $instance => $pmid) {
+                        if (
+                            ($pmid == $newPMID)
+                            && ($recordIncludes[$instance] ?? "" !== "0")
+                            && in_array($recordSources[$instance] ?? "", ["", "pubmed", "manual"])
+                        ) {
+                            $uploadRow = [
+                                "record_id" => $recordId,
+                                "redcap_repeat_instrument" => "citation",
+                                "redcap_repeat_instance" => $instance,
+                                "citation_pmid" => $pmid,
+                                "citation_include" => "1",
+                                "citation_source" => "victr",
+                            ];
+                            $upload[] = $uploadRow;
+                            break;
+                        }
+                    }
+                    Application::log("$recordId: Skipping because matched: " . $vunet . " PMID: " . $newPMID, $pid);
                 }
             }
         }
     }
     CareerDev::saveCurrentDate("Last VICTR PubMed Fetch Download", $pid);
     if (!empty($upload)) {
-        upload($upload, $token, $server);
+        uploadPublications($upload, $pid);
     }
 }
 
-function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $records, $searchWithInstitutions) {
+function processPubMed($token, $server, $pid, $records, $metadata, $searchWithInstitutions) {
+    $allIncludes = Download::oneFieldWithInstances($token, $server, "citation_include");
+    $allPMIDs = Download::oneFieldWithInstances($token, $server, "citation_pmid");
+    $allSources = Download::oneFieldWithInstances($token, $server, "citation_source");
 	$allLastNames = Download::lastnames($token, $server);
 	$allFirstNames = Download::firstnames($token, $server);
 	$allMiddleNames = Download::middlenames($token, $server);
     $allInstitutions = Download::institutions($token, $server);
-    $metadata = Download::metadata($token, $server);
     $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
-    if (in_array("identifier_orcid", $metadataFields)) {
-        $orcids = Download::ORCIDs($token, $server);
-    } else {
-        $orcids = [];
-    }
     $choices = REDCapManagement::getChoices($metadata);
     $defaultInstitutions = REDCapManagement::excludeAcronyms(array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid))));
     $excludeList = [
@@ -252,11 +163,19 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
     if (in_array("exclude_publication_topics", $metadataFields)) {
         $excludeList["title"] = Download::excludeList($token, $server, "exclude_publication_topics", $metadataFields);
     }
+    if (in_array("identifier_orcid", $metadataFields)) {
+        $orcids = Download::ORCIDs($token, $server);
+    } else {
+        $orcids = [];
+    }
 
 	foreach ($records as $recordId) {
-        $recLastName = $allLastNames[$recordId];
-		$firstName = $allFirstNames[$recordId];
-		$middleName = $allMiddleNames[$recordId];
+        $uploadRows = [];
+        $recordPMIDs = $allPMIDs[$recordId] ?? [];
+        $maxInstance = (int) max(array_keys($recordPMIDs) ?: [0]);
+        $recLastName = $allLastNames[$recordId] ?? "";
+		$firstName = $allFirstNames[$recordId] ?? "";
+		$middleName = $allMiddleNames[$recordId] ?? "";
 
         if ($searchWithInstitutions) {
             if (isset($allInstitutions[$recordId])) {
@@ -272,50 +191,76 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
         } else {
             $institutions = ["all"];
         }
-
         $institutions = REDCapManagement::removeBlanksFromAry($institutions);
 
-		$pmids = array();
-		$orcidPMIDs = array();
+		$orcidPMIDsToDownload = [];
+		$orcidPMIDs = [];
         if ($orcids[$recordId]) {
-            $orcidPMIDs = Publications::searchPubMedForORCID($orcids[$recordId], $pid);
-            addPMIDsIfNotFound($pmids, $citationIds, $orcidPMIDs, $recordId);
-        }
-
-        Application::log("Searching $recLastName $firstName at ".implode(", ", $institutions), $pid);
-        $uniquePMIDs = Publications::searchPubMedForName($firstName, $middleName, $recLastName, $pid, $institutions);
-        addPMIDsIfNotFound($pmids, $citationIds, $uniquePMIDs, $recordId);
-		Application::log("$recordId at ".count($pmids)." new PMIDs ".json_encode($pmids), $pid);
-
-		if (!isset($maxInstances[$recordId])) {
-			$maxInstances[$recordId] = 0;
-		}
-        $nonOrcidPMIDs = [];
-        foreach ($pmids as $pmid) {
-            if (!in_array($pmid, $orcidPMIDs)) {
-                $nonOrcidPMIDs[] = $pmid;
-            }
-        }
-        $pubmedRows = [];
-        $orcidRows = [];
-        $max = $maxInstances[$recordId];
-        $max++;
-        if (!empty($nonOrcidPMIDs)) {
-            $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDs, $metadata, "pubmed", $recordId, $max, $orcidPMIDs, $pid);
-        }
-        if (!empty($orcidPMIDs)) {
-            if (!empty($pubmedRows)) {
-                $max = REDCapManagement::getMaxInstance($pubmedRows, "citation", $recordId);
-                $max++;
-            }
             $src = "orcid";
             if (!isset($choices["citation_source"][$src])) {
                 $src = "pubmed";
             }
-            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $max, $orcidPMIDs, $pid);
+            foreach (preg_split("/\s*[,;]\s*/", $orcids[$recordId], -1, PREG_SPLIT_NO_EMPTY) as $orcid) {
+                $orcidPMIDs = array_unique(array_merge($orcidPMIDs, Publications::searchPubMedForORCID($orcid, $pid)));
+            }
+            foreach ($orcidPMIDs as $pmid) {
+                $matchedInstance = FALSE;
+                foreach ($recordPMIDs as $instance => $recordPMID) {
+                    if ($pmid == $recordPMID) {
+                        $matchedInstance = $instance;
+                        break;
+                    }
+                }
+                if ($matchedInstance === FALSE) {
+                    $orcidPMIDsToDownload[] = $pmid;
+                } else if (
+                    ($allIncludes[$recordId][$matchedInstance] ?? "" !== "0")
+                    && ($allSources[$recordId][$matchedInstance] ?? "" != "orcid")
+                ) {
+                    $uploadRows[] = [
+                        "record_id" => $recordId,
+                        "redcap_repeat_instrument" => "citation",
+                        "redcap_repeat_instance" => $matchedInstance,
+                        "citation_pmid" => $pmid,
+                        "citation_include" => "1",
+                        "citation_source" => $src,
+                    ];
+                }
+            }
+        }
+
+        Application::log("Searching $recLastName $firstName at ".implode(", ", $institutions), $pid);
+        $pubmedPMIDs = Publications::searchPubMedForName($firstName, $middleName, $recLastName, $pid, $institutions);
+        $nonOrcidPMIDsToDownload = [];
+        foreach ($pubmedPMIDs as $pmid) {
+            if (!in_array($pmid, $recordPMIDs) && !in_array($pmid, $orcidPMIDs)) {
+                $nonOrcidPMIDsToDownload[] = $pmid;
+            }
+        }
+        if (!empty($orcidPMIDsToDownload)) {
+            Application::log("$recordId at ".count($orcidPMIDsToDownload)." new ORCID PMIDs ".json_encode($orcidPMIDsToDownload), $pid);
+        }
+        if (!empty($nonOrcidPMIDsToDownload)) {
+            Application::log("$recordId at ".count($nonOrcidPMIDsToDownload)." new PubMed PMIDs ".json_encode($nonOrcidPMIDsToDownload), $pid);
+        }
+
+        $pubmedRows = [];
+        $orcidRows = [];
+        $maxInstance++;
+        if (!empty($nonOrcidPMIDsToDownload)) {
+            $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDsToDownload, $metadata, "pubmed", $recordId, $maxInstance, $orcidPMIDs, $pid);
+            $maxInstance = REDCapManagement::getMaxInstance($pubmedRows, "citation", $recordId);
+            $maxInstance++;
+        }
+        if (!empty($orcidPMIDs)) {
+            $src = "orcid";
+            if (!isset($choices["citation_source"][$src])) {
+                $src = "pubmed";
+            }
+            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $maxInstance, $orcidPMIDs, $pid);
         }
         Application::log("$recordId: Combining ".count($pubmedRows)." PubMed rows with ".count($orcidRows)." ORCID rows", $pid);
-        $uploadRows = array_merge($pubmedRows, $orcidRows);
+        $uploadRows = array_merge($pubmedRows, $orcidRows, $uploadRows);
 		if (!empty($uploadRows)) {
 		    $uploadRows = Publications::filterExcludeList($uploadRows, $excludeList, $recordId);
 		    $instances = [];
@@ -323,119 +268,35 @@ function processPubMed(&$citationIds, &$maxInstances, $token, $server, $pid, $re
 		        $instances[] = $row['redcap_repeat_instance'];
             }
 		    Application::log("$recordId: Uploading ".count($uploadRows)." rows: ".json_encode($instances), $pid);
-			upload($uploadRows, $token, $server);
+			uploadPublications($uploadRows, $pid);
 		}
 	}
 	CareerDev::saveCurrentDate("Last PubMed Download", $pid);
 }
 
-function addPMIDsIfNotFound(&$pmids, &$citationIds, $currPMIDs, $recordId) {
-    $pmidNum = 1;
-    $pmidCount = count($currPMIDs);
-    foreach ($currPMIDs as $pmid) {
-        $foundType = inCitationIds($citationIds, $pmid, $recordId);
-        $alreadyInPMIDs = in_array($pmid, $pmids);
-        if (!$foundType && !$alreadyInPMIDs) {
-            $pmids[] = $pmid;
-            if (!isset($citationIds['New'][$recordId])) {
-                $citationIds['New'][$recordId] = [];
+function uploadPublications($upload, $pid) {
+    if (!empty($upload)) {
+        $pmids = [];
+        for ($i = 0; $i < count($upload); $i++) {
+            if ($upload[$i]['redcap_repeat_instrument'] == "citation") {
+                $upload[$i]['citation_complete'] = '2';
+                $pmids[$upload[$i]['citation_pmid']] = $upload[$i]['record_id'].":".$upload[$i]['redcap_repeat_instance'];
             }
-            $citationIds['New'][$recordId][] = $pmid;
-        } else if ($foundType) {
-            Application::log("Record $recordId: Skipping $pmid because in citation ids ($pmidNum/$pmidCount)");
-        } else if ($alreadyInPMIDs) {
-            Application::log("Record $recordId: Skipping $pmid because in pmids ($pmidNum/$pmidCount)");
-        } else {
-            Application::log("Record $recordId: Skipping $pmid - this should never happen");
         }
-        $pmidNum++;
+        Upload::rowsByPid($upload, $pid);
+        Application::log("Uploaded PMIDs ".REDCapManagement::json_encode_with_spaces($pmids), $pid);
     }
 }
 
-function upload($upload, $token, $server) {
-    $pmids = [];
-    for ($i = 0; $i < count($upload); $i++) {
-        if ($upload[$i]['redcap_repeat_instrument'] == "citation") {
-            $upload[$i]['citation_complete'] = '2';
-            $pmids[$upload[$i]['citation_pmid']] = $upload[$i]['redcap_repeat_instance'];
-        }
-    }
-    Upload::rows($upload, $token, $server);
-    Application::log("Uploaded PMIDS ".REDCapManagement::json_encode_with_spaces($pmids));
-}
-
-function binREDCapRows($redcapData, &$citationIds) {
-	if (!$citationIds) {
-		$citationIds = array();
-	}
-	if (empty($citationIds)) {
-		$citationIds['New'] = array();
-		$citationIds['Omit'] = array();
-		$citationIds['Final'] = array();
-	}
-	foreach ($redcapData as $row) {
-		if ($row['redcap_repeat_instrument'] == "citation") {
-			$recordId = $row['record_id'];
-			
-			if (!isset($citationIds['Final'][$recordId])) {
-				$citationIds['New'][$recordId] = array();
-				$citationIds['Omit'][$recordId] = array();
-				$citationIds['Final'][$recordId] = array();
-			}
-
-			$type = "";
-			if ($row['citation_include'] === "0") {
-				$type = "Omit";
-			} else if ($row['citation_include'] === "") {
-				$type = "New";
-			} else if ($row['citation_include'] == "1") {
-				$type = "Final";
-			} else {
-				throw new \Exception("Cannot find include category for record {$recordId} with value {$row['citation_include']}.");
-			}
-
-			if ($type) {
-				// CareerDev::log("Pushing {$row['citation_pmid']} to $type:$recordId");
-				$citationIds[$type][$recordId][] = $row['citation_pmid'];
-			} else {
-				throw new \Exception("Could not find type for record {$recordId}.");
-			}
-		}
-	}
-}
-
-function inCitationIds($citationIds, $pmid, $recordId) {
-	foreach ($citationIds as $type => $typeCitationIds) {
-		if (in_array($pmid, $typeCitationIds[$recordId] ?? [])) {
-			return $type;
-		}
-	}
-	return "";
-}
-
+# not used, but here in case needed
 function clearAllCitations($pid, $records) {
     $module = Application::getModule();
 	foreach ($records as $record) {
-		CareerDev::log("Clearing record $record in $pid");
-		echo "Clearing record $record in $pid\n";
+		Application::log("Clearing record $record", $pid);
         $dataTable = Application::getDataTable($pid);
 		$sql = "DELETE FROM $dataTable WHERE field_name LIKE 'citation_%' AND project_id = ? AND record = ?";
         $module->query($sql, [$pid, $record]);
 	}
-}
-
-function fetchPMIDs($pubMedData) {
-    $pmids = [];
-    if (isset($pubMedData["data"])) {
-        foreach ($pubMedData["data"] as $sourceData) {
-            if ($sourceData["publications"]) {
-                foreach ($sourceData["publications"] as $pub) {
-                    $pmids[] = $pub["pubMedId"];
-                }
-            }
-        }
-    }
-    return $pmids;
 }
 
 # a publication may have a month or a day field missing; this fills in the rest to make it a REDCap-compatible date
@@ -449,17 +310,13 @@ function makeCitationDate($row) {
     }
 }
 
-function backfillAbstracts($redcapData, $metadata, $token, $server, $pid) {
-    $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-    $hasAbstract = in_array("citation_abstract", $metadataFields);
-
+function backfillAbstracts($redcapData, $pid) {
     $pmidsByRecordForAbstracts = [];
-    $pmidsByRecordForDate = [];
     foreach ($redcapData as $row) {
         if ($row['redcap_repeat_instrument'] == "citation") {
             $recordId = $row['record_id'];
             $instance = $row['redcap_repeat_instance'];
-            if (!$row['citation_abstract'] && $hasAbstract && $row['citation_pmid']) {
+            if (!$row['citation_abstract'] && $row['citation_pmid']) {
                 if (!isset($pmidsByRecordForAbstracts[$recordId])) {
                     $pmidsByRecordForAbstracts[$recordId] = [];
                 }
@@ -468,36 +325,7 @@ function backfillAbstracts($redcapData, $metadata, $token, $server, $pid) {
         }
     }
 
-    foreach ($pmidsByRecordForDate as $recordId => $pmidsByInstance) {
-        $pmids = array_values($pmidsByInstance);
-        if (!empty($pmids)) {
-            $rows = Publications::getCitationsFromPubMed($pmids, $metadata, "pubmed", $recordId, 1, [], $pid);
-            foreach ($pmidsByInstance as $instance => $pmid) {
-                foreach ($rows as $row) {
-                    if (
-                        isset($row['pmid'])
-                        && ($row['pmid'] == $pmid)
-                        && (
-                            $row['citation_year']
-                            || $row['citation_month']
-                            || $row['citation_day']
-                        )
-                    ) {
-                        $uploadRow = [
-                            "record_id" => $recordId,
-                            "redcap_repeat_instrument" => "citation",
-                            "redcap_repeat_instance" => $instance,
-                            "citation_year" => $row['citation_year'],
-                            "citation_month" => $row['citation_month'],
-                            "citation_day" => $row['citation_day'],
-                        ];
-                        Upload::oneRow($uploadRow, $token, $server);
-                    }
-                }
-            }
-        }
-    }
-
+    $upload = [];
     foreach ($pmidsByRecordForAbstracts as $recordId => $pmidsByInstance) {
         $pubmedMatches = Publications::downloadPMIDs(array_values($pmidsByInstance), $pid);
         $i = 0;
@@ -506,21 +334,23 @@ function backfillAbstracts($redcapData, $metadata, $token, $server, $pid) {
                 $pubmedMatch = $pubmedMatches[$i];
                 $abstract = $pubmedMatch->getVariable("Abstract");
                 if ($abstract) {
-                    $uploadRow = [
+                    $upload[] = [
                         "record_id" => $recordId,
                         "redcap_repeat_instrument" => "citation",
                         "redcap_repeat_instance" => $instance,
                         "citation_abstract" => $abstract,
                     ];
-                    Upload::oneRow($uploadRow, $token, $server);
                 }
             }
             $i++;
         }
     }
+    if (!empty($upload)) {
+        Upload::rowsByPid($upload, $pid);
+    }
 }
 
-function backfillDatesAndAffiliations($redcapData, $metadataFields, $token, $server, $pid) {
+function backfillDatesAndAffiliations($redcapData, $metadataFields, $pid) {
     $pmidsToUpdateDates = [];
     $pmidsToUpdateAffiliations = [];
     foreach ($redcapData as $row) {
@@ -568,6 +398,6 @@ function backfillDatesAndAffiliations($redcapData, $metadataFields, $token, $ser
         }
     }
     if (!empty($uploadUpdates)) {
-        Upload::rows($uploadUpdates, $token, $server);
+        Upload::rowsByPid($uploadUpdates, $pid);
     }
 }

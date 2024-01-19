@@ -62,6 +62,7 @@ table { border-collapse: collapse; }
 .stickyGrey { position: sticky; top: 0; background-color: #BBBBBB; }
 .shadow { box-shadow: 2px 2px 4px grey; }
 .bigShadow { box-shadow: 6px 6px 6px grey; }
+.smallShadow { box-shadow: 2px 2px 2px grey; }
 tr.borderedRow td,tr.borderedRow th { border: 1px solid #bbbbbb; }
 tr.centeredRow td,tr.centeredRow th { text-align: center; }
 tr.paddedRow td,tr.paddedRow th { padding: 5px; }

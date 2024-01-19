@@ -1013,7 +1013,8 @@ Examples:
                 $relevantCitationFields[] = $field;
             }
         }
-        $fields = DataDictionaryManagement::filterOutInvalidFields($metadata, array_unique(array_merge(["record_id", $conversionStatusField], $grantFields, $relevantCitationFields, $patentFields)));
+        $publishingPerformanceFields = ["summary_hi", "summary_hi_norm", "summary_hi_annual", "summary_g_index", "summary_icite_h_index", ];
+        $fields = DataDictionaryManagement::filterOutInvalidFields($metadata, array_unique(array_merge(["record_id", $conversionStatusField], $grantFields, $relevantCitationFields, $patentFields, $publishingPerformanceFields)));
 
         $redcapData = Download::fieldsForRecordsByPid($this->pid, $fields, [$this->recordId]);
         $pubs = new Publications($this->token, $this->server, $metadata);
@@ -1052,6 +1053,17 @@ Examples:
             } else if (count($altmetricScores) == 1) {
                 $entries["Altmetric Score (n=1)"] = $altmetricScores[0];
             }
+
+            $hIndex = REDCapManagement::findField($redcapData, $this->recordId, "summary_icite_h_index");
+            $HI = REDCapManagement::findField($redcapData, $this->recordId, "summary_hi");
+            $HINorm = REDCapManagement::findField($redcapData, $this->recordId, "summary_hi_norm");
+            $HIAnnual = REDCapManagement::findField($redcapData, $this->recordId, "summary_hi_annual");
+            $gIndex = REDCapManagement::findField($redcapData, $this->recordId, "summary_g_index");
+            if ($hIndex) { $entries["H-Index, calculated from iCite figures"] = $hIndex; }
+            if ($HI) { $entries["HI, calculated from iCite figures<br/>(hIndex / [average number of authors in contributing pubs])"] = $HI; }
+            if ($HINorm) { $entries["HI,norm, calculated from iCite figures<br/>(normalizes each H-Index input to [number of citations] / [number of co-authors])"] = $HINorm; }
+            if ($HIAnnual) { $entries["HI,annual, calculated from iCite figures<br/>(HI,norm / [number of years of publications])"] = $HIAnnual; }
+            if ($gIndex) { $entries["G-Index, calculated from iCite figures<br/>(the largest integer such that the most-cited g articles received together at least g^2 citations)"] = $gIndex; }
         } else {
             $entries["Publications"] = "We see that you're just getting started... ".REDCapManagement::json_encode_with_spaces($relevantCitationFields);
         }

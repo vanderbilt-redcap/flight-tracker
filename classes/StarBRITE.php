@@ -26,6 +26,21 @@ class StarBRITE {
         return REDCapManagement::makeHTMLId(strtolower($label));
     }
 
+    static function fetchPMIDs($pubMedData) {
+        $pmids = [];
+        if (isset($pubMedData["data"])) {
+            foreach ($pubMedData["data"] as $sourceData) {
+                if ($sourceData["publications"]) {
+                    foreach ($sourceData["publications"] as $pub) {
+                        $pmids[] = $pub["pubMedId"];
+                    }
+                }
+            }
+        }
+        return $pmids;
+    }
+
+
     static function getCOEUSCollabs($userid, $awardUsers) {
         $collabs = [];
         foreach ($awardUsers as $user) {

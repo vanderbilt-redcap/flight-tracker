@@ -9,7 +9,7 @@ require_once(dirname(__FILE__)."/cronLoad.php");
 require_once(dirname(__FILE__)."/small_base.php");
 
 $module = Application::getModule();
-$module->cronManager = new CronManager($token, $server, $pid, $module);
+$module->cronManager = new CronManager($token, $server, $pid, $module, "");
 loadInitialCrons($module->cronManager, FALSE, $token, $server);
 $module->cronManager->runBatchJobs();
 

@@ -77,7 +77,7 @@ $lexicon = [
 		"Converted while on K" => "Converted<br>while on K",
 		"Converted while not on K" => "Converted<br>while not on K",
 		"Not Converted" => "Not Converted (".Scholar::getKLength("Internal")." years for Internal K;<br>".Scholar::getKLength("External")." years for External K)",
-		"Not Eligible" => "Not Eligible (includes Bridge Awards &amp; those on K-Grants)",
+		"Not Eligible" => "Not Eligible (includes K99/R00s &amp; those on K-Grants)",
 		FOLLOWUP_LOST => "Followup Lost to Other Institution (Not Eligible)",
         PATENTS_INCLUDED => "Number of Wrangled Patents",
 		];

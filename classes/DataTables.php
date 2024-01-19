@@ -32,21 +32,21 @@ class DataTables {
 <div id='em-log-module-wrapper'>
     $init
 	<script>
-		var details = {}
+		const details = {}
 
-		var showDetails = function(logId){
-			var width = window.innerWidth - 100;
-			var height = window.innerHeight - 200;
-			var content = '<pre style=\"max-height: \" + height + \"px\">' + details[logId] + '</pre>';
+		let showDetails = function(logId){
+			const width = window.innerWidth - 100;
+			const height = window.innerHeight - 200;
+			const content = '<pre style=\"max-height: \" + height + \"px\">' + details[logId] + '</pre>';
 
 			simpleDialog(content, 'Details', null, width)
 		}
 
-		var showSyncCancellationDetails = function(){
-			var div = $('#em-log-module-cancellation-details').clone()
+		let showSyncCancellationDetails = function(){
+			const div = $('#em-log-module-cancellation-details').clone()
 			div.show()
 
-			var pre = div.find('pre');
+			const pre = div.find('pre');
 
 			// Replace tabs with spaces for easy copy pasting into the mysql command line interface
 			pre.html(pre.html().replace(/\t/g, '    '))
@@ -56,10 +56,10 @@ class DataTables {
 			simpleDialog(div, 'Sync Cancellation', null, 1000)
 		}
 
-		var trimPreIndentation = function(pre){
-			var content = pre.innerHTML
-			var firstNonWhitespaceIndex = content.search(/\S/)
-			var leadingWhitespace = content.substr(0, firstNonWhitespaceIndex)
+		let trimPreIndentation = function(pre){
+			const content = pre.innerHTML
+			const firstNonWhitespaceIndex = content.search(/\S/)
+			const leadingWhitespace = content.substr(0, firstNonWhitespaceIndex)
 			pre.innerHTML = content.replace(new RegExp(leadingWhitespace, 'g'), '');
 		}
 	</script>
@@ -127,8 +127,8 @@ class DataTables {
 		})
 
 		$(function(){
-            var ajaxRequest = function(args) {
-                var spinnerElement = $('<div class=\"em-log-module-spinner\"></div>')[0]
+            let ajaxRequest = function(args) {
+                const spinnerElement = $('<div class=\"em-log-module-spinner\"></div>')[0]
 				new Spinner().spin(spinnerElement)
 
 				Swal.fire({
@@ -137,10 +137,10 @@ class DataTables {
 					showConfirmButton: false
 				})
 
-				var startTime = Date.now()
+				const startTime = Date.now()
 				$.post(args.url, { 'redcap_csrf_token': getCSRFToken() }, function (response) {
-                    var millisPassed = Date.now() - startTime
-					var delay = 2000 - millisPassed
+                    const millisPassed = Date.now() - startTime
+					let delay = 2000 - millisPassed
 					if (delay < 0) {
                         delay = 0
 					}
@@ -161,8 +161,8 @@ class DataTables {
 		$(function(){
             $.fn.dataTable.ext.errMode = 'throw';
 
-            var lastOverlayDisplayTime = 0
-			var table = $('#em-log-module-log-entries').DataTable({
+            let lastOverlayDisplayTime = 0
+			let table = $('#em-log-module-log-entries').DataTable({
 				'pageLength': 100,
                 'processing': true,
 		        'serverSide': $serverSideText,

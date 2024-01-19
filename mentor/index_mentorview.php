@@ -53,10 +53,14 @@ if ($_REQUEST['instance']) {
 $dateToRemind = MMAHelper::getDateToRemind($redcapData, $menteeRecordId, $currInstance);
 $menteeUsernames = MMAHelper::getMenteeUserids(Download::singleUserid($pid, $menteeRecordId));
 $menteeInstance = FALSE;
-foreach ($menteeUsernames as $menteeUsername) {
-    $menteeInstance = MMAHelper::getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);
-    if ($menteeInstance) {
-        break;
+if ($hash) {
+    $menteeInstance = 1;
+} else {
+    foreach ($menteeUsernames as $menteeUsername) {
+        $menteeInstance = MMAHelper::getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);
+        if ($menteeInstance) {
+            break;
+        }
     }
 }
 $surveysAvailableToPrefill = MMAHelper::getMySurveys($userid2, $token, $server, $menteeRecordId, $currInstance);

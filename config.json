@@ -49,9 +49,23 @@
 			"cron_max_run_time": "300"
 		},
 		{
-			"cron_name": "flight_tracker_batch",
-			"cron_description": "Flight Tracker Batch Cron; runs every minute",
-			"method": "batch",
+			"cron_name": "flight_tracker_main_batch",
+			"cron_description": "Flight Tracker Batch Cron for external APIs; runs every minute",
+			"method": "main_batch",
+			"cron_frequency": "60",
+			"cron_max_run_time": "3600"
+		},
+		{
+			"cron_name": "flight_tracker_intense_batch",
+			"cron_description": "Flight Tracker Batch Cron for intense jobs for DB/CPU; runs every minute",
+			"method": "intense_batch",
+			"cron_frequency": "60",
+			"cron_max_run_time": "3600"
+		},
+		{
+			"cron_name": "flight_tracker_long_batch",
+			"cron_description": "Flight Tracker Batch Cron for long-running jobs; runs every minute",
+			"method": "long_batch",
 			"cron_frequency": "60",
 			"cron_max_run_time": "3600"
 		}

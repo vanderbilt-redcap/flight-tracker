@@ -16,28 +16,35 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 $dashboard = new Dashboard($pid);
 require_once(dirname(__FILE__)."/".$dashboard->getTarget().".php");
 
-if (isset($_GET['cohort'])) {
-    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
-} else {
-    $cohort = "";
-}
+$cohort = Sanitizer::sanitizeCohort($_GET['cohort'] ?? "");
+$grantType = Grants::areFlagsOn($pid) ? "" : Sanitizer::sanitize($_GET['grantType'] ?? "prior");
 
 $headers = [];
 $measurements = [];
 
-$fields = CareerDev::$summaryFields;
 if (Grants::areFlagsOn($pid)) {
-    $metadata = Download::metadata($token, $server);
+    $metadata = Download::metadataByPid($pid);
+    $fields = REDCapManagement::getAllGrantFields($metadata);
+} else if ($grantType == "prior") {
+    $fields = CareerDev::$summaryFields;
+} else {
+    $metadata = Download::metadataByPid($pid);
     $fields = REDCapManagement::getAllGrantFields($metadata);
 }
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $cohort, Application::getModule());
+if ($cohort) {
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
+} else {
+    $records = Download::recordIdsByPid($pid);
+}
 
 $totals = [];
 $totalBudget = 0;
-foreach ($indexedRedcapData as $recordId => $rows) {
+foreach ($records as $recordId) {
+    $rows = Download::fieldsForRecordsByPid($pid, $fields, [$recordId]);
 	$grants = new Grants($token, $server, "empty");
 	$grants->setRows($rows);
-    $grantAry = Grants::areFlagsOn($pid) ? $grants->getGrants("flagged") : $grants->getGrants("prior");
+    $grants->compileGrants();
+    $grantAry = Grants::areFlagsOn($pid) ? $grants->getGrants("flagged") : $grants->getGrants($grantType);
     foreach ($grantAry as $grant) {
 		$type = $grant->getVariable("type");
 		if (!isset($totals[$type])) {
@@ -53,7 +60,17 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 
 
 if (!empty($totals)) {
-	$headers[] = "Grant Budgets";
+    if (Grants::areFlagsOn($pid)) {
+        $headers[] = "Budgets for Flagged Grants";
+    } else if ($grantType == "prior") {
+        $headers[] = "Budgets for Career-Defining Grants";
+    } else if ($grantType == "deduped") {
+        $headers[] = "Budgets for All Grants";
+    } else if ($grantType == "all_pis") {
+        $headers[] = "Budgets for PI/Co-PI Grants";
+    } else {
+        $headers[] = "Grant Budgets";
+    }
     if ($cohort) {
         $headers[] = "For Cohort " . $cohort;
     }
@@ -66,9 +83,9 @@ if (!empty($totals)) {
 		$measurements["$type Grant Q3 Budgets"] = new MoneyMeasurement($stats->getQuartile(3));
 	}
 
-	echo $dashboard->makeHTML($headers, $measurements, [], $cohort, 5);
+	echo $dashboard->makeHTML($headers, $measurements, [], $cohort, 5, $grantType);
 } else {
 	$headers[] = "Grant Budgets";
-	echo $dashboard->makeHTML($headers, $measurements, [], $cohort);
+	echo $dashboard->makeHTML($headers, $measurements, [], $cohort, 4, $grantType);
 
 }

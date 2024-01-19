@@ -26,7 +26,72 @@ function runMainCrons(&$manager, $token, $server) {
         $records = $switches->downloadRecordIdsToBeProcessed($allRecords);
         $securityTestMode = Application::getSetting("security_test_mode", $pid);
 
-        CareerDev::clearDate("Last Federal RePORTER Download", $pid);
+        if (in_array('nih_reporter', $forms)) {
+            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 100);
+        }
+        if (in_array("ies_grant", $forms)) {
+            $manager->addCron("drivers/24_getIES.php", "getIES", "Thursday", $allRecords, 10000);
+        }
+        if (!$securityTestMode) {
+            $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Thursday", $allRecords, 100);
+        }
+        if (in_array('citation', $forms)) {
+            $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Tuesday", $records, 20);
+            if (!Application::getSetting("fixedPMCs", $pid)) {
+                $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"), $records, 1000);
+                Application::saveSetting("fixedPMCs", TRUE, $pid);
+            }
+            if (!Application::getSetting("fixedPMCsBlank", $pid)) {
+                $manager->addCron("clean/updatePMCs.php", "cleanUpBlankInstances", date("Y-m-d"), $records, 1000);
+                Application::saveSetting("fixedPMCsBlank", TRUE, $pid);
+            }
+            if (Application::isVanderbilt() && !Application::getSetting("initializedLexTranslator", $pid)) {
+                $manager->addCron("drivers/initializeLexicalTranslator.php", "initialize", date("Y-m-d"), $records, 10);
+                Application::saveSetting("initializedLexTranslator", TRUE, $pid);
+            }
+            # limited group because bibliometric updates take a lot of time due to rate limiters
+            $bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
+            $bibliometricsSwitch = $switches->getValue("Update Bibliometrics Monthly");
+            if (!empty($bibliometricRecordsToUpdate) && ($bibliometricsSwitch == "On")) {
+                $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
+            }
+        }
+
+        if (in_array('patent', $forms) && !$securityTestMode) {
+            $manager->addCron("drivers/18_getPatents.php", "getPatents", "Thursday", $records, 100);
+        }
+        if (in_array("nsf", $forms)) {
+            $manager->addCron("drivers/20_nsf.php", "getNSFGrants", "Monday", $records, 100);
+        }
+        if (in_array("eric", $forms)) {
+            $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
+        }
+        if (Application::isLocalhost()) {
+            $manager->addCron("publications/getAllPubs_func.php", "getPubs", "2024-01-10", $records, 20);
+            $manager->addCron("publications/getAllPubs_func.php", "getPubs", "2024-01-11", $records, 20);
+        }
+
+    } catch(\Exception $e) {
+        Application::log("ERROR in runMainCrons: ".$e->getMessage(), $pid);
+    }
+}
+
+# internal resources, either based in Vanderbilt, Flight Tracker, or REDCap
+function runIntenseCrons(&$manager, $token, $server) {
+    $pid = CareerDev::getPid($token);
+    Application::log("loadIntenseCrons", $pid);
+
+    try {
+        $forms = Download::metadataForms($token, $server);
+        $metadataFields = Download::metadataFields($token, $server);
+        $switches = new FeatureSwitches($token, $server, $pid);
+        if (in_array("identifier_stop_collection", $metadataFields)) {
+            $allRecords = Download::recordsWithDownloadActive($token, $server);
+        } else {
+            $allRecords = Download::recordIds($token, $server);
+        }
+        $records = $switches->downloadRecordIdsToBeProcessed($allRecords);
+        $securityTestMode = Application::getSetting("security_test_mode", $pid);
 
         $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Saturday", $allRecords, 10000);
 
@@ -63,19 +128,8 @@ function runMainCrons(&$manager, $token, $server) {
             }
         }
 
-        if (in_array('reporter', $forms)) {
-            // $manager->addCron("drivers/2s_updateRePORTER.php", "updateFederalRePORTER", "Tuesday", $records, 40);
-        }
-        if (in_array('nih_reporter', $forms)) {
-            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 100);
-        } else if (in_array('exporter', $forms)) {
-            $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", "Monday", $records, 20);
-        }
         if (in_array('ldapds', $forms)) {
             $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $allRecords, 10000);
-        }
-        if (in_array("ies_grant", $forms)) {
-            $manager->addCron("drivers/24_getIES.php", "getIES", "Thursday", $allRecords, 10000);
         }
         if (!Application::isLocalhost() && Application::isVanderbilt() && !Application::isServer("redcaptest.vanderbilt.edu")) {
             # only on redcap.vanderbilt.edu
@@ -89,54 +143,7 @@ function runMainCrons(&$manager, $token, $server) {
                 $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
             }
         }
-        if (!$securityTestMode) {
-            $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Thursday", $allRecords, 100);
-        }
-        if (in_array('citation', $forms)) {
-            $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Tuesday", $records, 10);
-            if (!Application::getSetting("fixedPMCs", $pid)) {
-                $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"), $records, 1000);
-                Application::saveSetting("fixedPMCs", TRUE, $pid);
-            }
-            if (!Application::getSetting("fixedPMCsBlank", $pid)) {
-                $manager->addCron("clean/updatePMCs.php", "cleanUpBlankInstances", date("Y-m-d"), $records, 1000);
-                Application::saveSetting("fixedPMCsBlank", TRUE, $pid);
-            }
-            if (Application::isVanderbilt() && !Application::getSetting("initializedLexTranslator", $pid)) {
-                $manager->addCron("drivers/initializeLexicalTranslator.php", "initialize", date("Y-m-d"), $records, 10);
-                Application::saveSetting("initializedLexTranslator", TRUE, $pid);
-            }
-            # limited group because bibliometric updates take a lot of time due to rate limiters
-            $bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
-            $bibliometricsSwitch = $switches->getValue("Update Bibliometrics Monthly");
-            if (!empty($bibliometricRecordsToUpdate) && ($bibliometricsSwitch == "On")) {
-                $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
-            }
-        }
-
         $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $allRecords, 100000);
-        # put in multi-crons
-        // if (in_array("pre_screening_survey", $forms)) {
-            // $manager->addCron("drivers/11_vfrs.php", "updateVFRS", "Thursday", $allRecords, 100000);
-        // }
-        if (in_array('patent', $forms) && !$securityTestMode) {
-            $manager->addCron("drivers/18_getPatents.php", "getPatents", "Thursday", $records, 100);
-        }
-        if (in_array("nsf", $forms)) {
-            $manager->addCron("drivers/20_nsf.php", "getNSFGrants", "Monday", $records, 100);
-        }
-        if (in_array("eric", $forms)) {
-            $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
-        }
-        # now in multi crons
-        // if (in_array("vera", $forms) && in_array("vera_submission", $forms) && !Application::isLocalhost()) {
-            // $manager->addCron("drivers/22_getVERA.php", "getVERA", "Monday", $allRecords, 100000);
-        // }
-
-        $cohorts = new Cohorts($token, $server, Application::getModule());
-        if ($cohorts->hasReadonlyProjects()) {
-            $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Monday", $allRecords, 100000);
-        }
 
         $celebrations = new CelebrationsEmail($token, $server, $pid, []);
         if ($celebrations->hasEmail("weekly")) {
@@ -169,27 +176,38 @@ function runMainCrons(&$manager, $token, $server) {
             }
         }
     } catch(\Exception $e) {
-        Application::log("ERROR in runMainCrons: ".$e->getMessage(), $pid);
+        Application::log("ERROR in runIntenseCrons: ".$e->getMessage(), $pid);
     }
 }
 
 # supply day of the week or YYYY-MM-DD
 function loadCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
-	if (!$token) { global $token; }
-	if (!$server) { global $server; }
+    if (!$token) { global $token; }
+    if (!$server) { global $server; }
 
-	if ($specialOnly) {
-		// $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", date("Y-m-d"));
-		// $manager->addCron("drivers/2n_updateReporters.php", "updateReporter", date("Y-m-d"));
-		// $manager->addCron("publications/getAllPubs_func.php", "getPubs", date("Y-m-d"));
-		// $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", date("Y-m-d"));
+    if ($specialOnly) {
+        // $manager->addCron("drivers/2m_updateExPORTER.php", "updateExPORTER", date("Y-m-d"));
+        // $manager->addCron("drivers/2n_updateReporters.php", "updateReporter", date("Y-m-d"));
+        // $manager->addCron("publications/getAllPubs_func.php", "getPubs", date("Y-m-d"));
+        // $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", date("Y-m-d"));
+    } else if ($token && $server) {
+        runMainCrons($manager, $token, $server);
+    }
+}
+
+# supply day of the week or YYYY-MM-DD
+function loadIntenseCrons(&$manager, $specialOnly = FALSE, $token = "", $server = "") {
+    if (!$token) { global $token; }
+    if (!$server) { global $server; }
+
+    if ($specialOnly) {
         if (!Application::isLocalhost()) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", date("Y-m-d"));
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", date("Y-m-d"));
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", date("Y-m-d"));
         }
-	} else if ($token && $server) {
-        runMainCrons($manager, $token, $server);
+    } else if ($token && $server) {
+        runIntenseCrons($manager, $token, $server);
     }
 }
 
@@ -211,9 +229,9 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 		$records = Download::recordIds($token, $server);
         $securityTestMode = Application::getSetting("security_test_mode", $pid);
 
-        // if (in_array("pre_screening_survey", $forms)) {
-            // $manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
-		// }
+        if (Application::isVanderbilt() && !Application::isLocalhost() && in_array("pre_screening_survey", $forms)) {
+            $manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
+		}
         $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Tuesday");
         if (in_array("coeus", $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", $date, $records, 500);
@@ -249,13 +267,13 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
             $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", $date, $records, 100);
         }
         if (in_array("citation", $forms)) {
-            $manager->addCron("publications/getAllPubs_func.php", "getPubs", $date, $records, 10);
+            $manager->addCron("publications/getAllPubs_func.php", "getPubs", $date, $records, 20);
         }
         if (!Application::isLocalhost() && Application::isVanderbilt()) {
             $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", $date, $records, 500);
             $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", $date, $records, 500);
         }
-        if (in_array("workday", $forms)) {
+        if (Application::isVanderbilt() && !Application::isLocalhost() && in_array("workday", $forms)) {
             $manager->addCron("drivers/26_workday.php", "getWorkday", $date, $records, 10000);
         }
         $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", $date, $records, 30);
@@ -274,6 +292,16 @@ function getRecordsToUpdateBibliometrics($token, $server, $dayOfMonth, $daysInMo
         }
     }
     return $recordsToRun;
+}
+
+function loadLongRunningCrons(&$manager, $currToken, $currServer, $currPid) {
+    if ($currToken && $currServer && $currPid) {
+        $cohorts = new Cohorts($currToken, $currServer, Application::getModule());
+        if ($cohorts->hasReadonlyProjects()) {
+            $allRecords = Download::recordIdsByPid($currPid);
+            $manager->addCron("drivers/2q_refreshCohortProjects.php", "copyAllCohortProjects", "Monday", $allRecords, 100000);
+        }
+    }
 }
 
 function loadMultiProjectCrons(&$manager, $pids)
