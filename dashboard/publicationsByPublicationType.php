@@ -28,7 +28,13 @@ if (isset($_GET['cohort'])) {
 }
 $headers[] = Publications::makeLimitButton();
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, ["citation_pub_types"]))), $cohort, Application::getModule());
+$thresholdTs = -100000;
+if (isset($_GET['limitPubs'])) {
+    $thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+    $thresholdTs = strtotime("$thresholdYear-01-01");
+}
+
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, ["citation_pub_types", "citation_ts"]))), $cohort, Application::getModule());
 
 $numConfirmedPubs = 0;
 $numForPubType = [];
@@ -38,19 +44,20 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	$pubs->setRows($rows);
 	$goodCitations = $pubs->getCitationCollection("Included");
 	if ($goodCitations) {
-		$confirmedCount = $goodCitations->getCount();
-		$numConfirmedPubs += $confirmedCount;
 		foreach ($goodCitations->getCitations() as $citation) {
-			if ($citation->isResearchArticle()) {
-				$pubTypes = $citation->getPubTypes();
-				foreach ($pubTypes as $pubType) {
-					if (!isset($numForPubType[$pubType])) {
-						$numForPubType[$pubType] = 0;
-					}
-	
-					$numForPubType[$pubType]++;
-				}
-			}
+            if ($citation->getTimestamp() >= $thresholdTs) {
+                $numConfirmedPubs++;
+                if ($citation->isResearchArticle()) {
+                    $pubTypes = $citation->getPubTypes();
+                    foreach ($pubTypes as $pubType) {
+                        if (!isset($numForPubType[$pubType])) {
+                            $numForPubType[$pubType] = 0;
+                        }
+
+                        $numForPubType[$pubType]++;
+                    }
+                }
+            }
 		}
 	}
 }

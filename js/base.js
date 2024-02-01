@@ -1186,14 +1186,25 @@ function createCohortProject(cohort, src) {
 	if (src) {
 		$(src).dialog("close");
 	}
-	presentScreen("Creating project...<br>May take some time to set up project");
-	$.post(getPageUrl("cohorts/createCohortProject.php"), { 'redcap_csrf_token': getCSRFToken(), "cohort": cohort }, function(mssg) {
+	presentScreen("Creating project...<br/>May take some time to set up project");
+	$.post(getPageUrl("cohorts/createCohortProject.php"), { 'redcap_csrf_token': getCSRFToken(), "cohort": cohort }, function(json) {
+		console.log(json);
 		clearScreen();
-		console.log(mssg);
-		$.sweetModal({
-			content: mssg,
-			icon: $.sweetModal.ICON_SUCCESS
-		});
+		const data = JSON.parse(json);
+		if (data.error) {
+			console.error(data.error);
+			$.sweetModal({
+				content: data.error,
+				icon: $.sweetModal.ICON_ERROR
+			});
+		} else {
+			const mssg = data.result ?? "No message";
+			$.sweetModal({
+				content: mssg,
+				icon: $.sweetModal.ICON_SUCCESS,
+				onClose: () => { location.reload(); }
+			});
+		}
 	});
 }
 

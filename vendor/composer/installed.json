@@ -1080,17 +1080,17 @@
         },
         {
             "name": "netresearch/jsonmapper",
-            "version": "v4.2.0",
-            "version_normalized": "4.2.0.0",
+            "version": "v4.4.1",
+            "version_normalized": "4.4.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cweiske/jsonmapper.git",
-                "reference": "f60565f8c0566a31acf06884cdaa591867ecc956"
+                "reference": "132c75c7dd83e45353ebb9c6c9f591952995bbf0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cweiske/jsonmapper/zipball/f60565f8c0566a31acf06884cdaa591867ecc956",
-                "reference": "f60565f8c0566a31acf06884cdaa591867ecc956",
+                "url": "https://api.github.com/repos/cweiske/jsonmapper/zipball/132c75c7dd83e45353ebb9c6c9f591952995bbf0",
+                "reference": "132c75c7dd83e45353ebb9c6c9f591952995bbf0",
                 "shasum": ""
             },
             "require": {
@@ -1101,10 +1101,10 @@
                 "php": ">=7.1"
             },
             "require-dev": {
-                "phpunit/phpunit": "~7.5 || ~8.0 || ~9.0",
+                "phpunit/phpunit": "~7.5 || ~8.0 || ~9.0 || ~10.0",
                 "squizlabs/php_codesniffer": "~3.5"
             },
-            "time": "2023-04-09T17:37:40+00:00",
+            "time": "2024-01-31T06:18:54+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -1128,7 +1128,7 @@
             "support": {
                 "email": "cweiske@cweiske.de",
                 "issues": "https://github.com/cweiske/jsonmapper/issues",
-                "source": "https://github.com/cweiske/jsonmapper/tree/v4.2.0"
+                "source": "https://github.com/cweiske/jsonmapper/tree/v4.4.1"
             },
             "install-path": "../netresearch/jsonmapper"
         },
@@ -1372,26 +1372,26 @@
         },
         {
             "name": "phenx/php-font-lib",
-            "version": "0.5.4",
-            "version_normalized": "0.5.4.0",
+            "version": "0.5.5",
+            "version_normalized": "0.5.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/dompdf/php-font-lib.git",
-                "reference": "dd448ad1ce34c63d09baccd05415e361300c35b4"
+                "reference": "671df0f3516252011aa94f9e8e3b3b66199339f8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/dompdf/php-font-lib/zipball/dd448ad1ce34c63d09baccd05415e361300c35b4",
-                "reference": "dd448ad1ce34c63d09baccd05415e361300c35b4",
+                "url": "https://api.github.com/repos/dompdf/php-font-lib/zipball/671df0f3516252011aa94f9e8e3b3b66199339f8",
+                "reference": "671df0f3516252011aa94f9e8e3b3b66199339f8",
                 "shasum": ""
             },
             "require": {
                 "ext-mbstring": "*"
             },
             "require-dev": {
-                "symfony/phpunit-bridge": "^3 || ^4 || ^5"
+                "symfony/phpunit-bridge": "^3 || ^4 || ^5 || ^6"
             },
-            "time": "2021-12-17T19:44:54+00:00",
+            "time": "2024-01-07T18:13:29+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -1401,7 +1401,7 @@
             },
             "notification-url": "https://packagist.org/downloads/",
             "license": [
-                "LGPL-3.0"
+                "LGPL-2.1-or-later"
             ],
             "authors": [
                 {
@@ -1413,7 +1413,7 @@
             "homepage": "https://github.com/PhenX/php-font-lib",
             "support": {
                 "issues": "https://github.com/dompdf/php-font-lib/issues",
-                "source": "https://github.com/dompdf/php-font-lib/tree/0.5.4"
+                "source": "https://github.com/dompdf/php-font-lib/tree/0.5.5"
             },
             "install-path": "../phenx/php-font-lib"
         },
@@ -2352,17 +2352,17 @@
         },
         {
             "name": "sabberworm/php-css-parser",
-            "version": "8.4.0",
-            "version_normalized": "8.4.0.0",
+            "version": "8.5.0",
+            "version_normalized": "8.5.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sabberworm/PHP-CSS-Parser.git",
-                "reference": "e41d2140031d533348b2192a83f02d8dd8a71d30"
+                "reference": "4e9a54c2a368fcd73ecc6b45f98c7714b54a7db0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sabberworm/PHP-CSS-Parser/zipball/e41d2140031d533348b2192a83f02d8dd8a71d30",
-                "reference": "e41d2140031d533348b2192a83f02d8dd8a71d30",
+                "url": "https://api.github.com/repos/sabberworm/PHP-CSS-Parser/zipball/4e9a54c2a368fcd73ecc6b45f98c7714b54a7db0",
+                "reference": "4e9a54c2a368fcd73ecc6b45f98c7714b54a7db0",
                 "shasum": ""
             },
             "require": {
@@ -2370,14 +2370,19 @@
                 "php": ">=5.6.20"
             },
             "require-dev": {
-                "codacy/coverage": "^1.4",
-                "phpunit/phpunit": "^4.8.36"
+                "codacy/coverage": "^1.4.3",
+                "phpunit/phpunit": "^5.7.27"
             },
             "suggest": {
                 "ext-mbstring": "for parsing UTF-8 CSS"
             },
-            "time": "2021-12-11T13:40:54+00:00",
+            "time": "2024-02-01T00:40:08+00:00",
             "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "9.0.x-dev"
+                }
+            },
             "installation-source": "dist",
             "autoload": {
                 "psr-4": {
@@ -2402,7 +2407,7 @@
             ],
             "support": {
                 "issues": "https://github.com/sabberworm/PHP-CSS-Parser/issues",
-                "source": "https://github.com/sabberworm/PHP-CSS-Parser/tree/8.4.0"
+                "source": "https://github.com/sabberworm/PHP-CSS-Parser/tree/8.5.0"
             },
             "install-path": "../sabberworm/php-css-parser"
         },
@@ -2477,17 +2482,17 @@
         },
         {
             "name": "symfony/console",
-            "version": "v5.4.34",
-            "version_normalized": "5.4.34.0",
+            "version": "v5.4.35",
+            "version_normalized": "5.4.35.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/console.git",
-                "reference": "4b4d8cd118484aa604ec519062113dd87abde18c"
+                "reference": "dbdf6adcb88d5f83790e1efb57ef4074309d3931"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/console/zipball/4b4d8cd118484aa604ec519062113dd87abde18c",
-                "reference": "4b4d8cd118484aa604ec519062113dd87abde18c",
+                "url": "https://api.github.com/repos/symfony/console/zipball/dbdf6adcb88d5f83790e1efb57ef4074309d3931",
+                "reference": "dbdf6adcb88d5f83790e1efb57ef4074309d3931",
                 "shasum": ""
             },
             "require": {
@@ -2525,7 +2530,7 @@
                 "symfony/lock": "",
                 "symfony/process": ""
             },
-            "time": "2023-12-08T13:33:03+00:00",
+            "time": "2024-01-23T14:28:09+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -2559,7 +2564,7 @@
                 "terminal"
             ],
             "support": {
-                "source": "https://github.com/symfony/console/tree/v5.4.34"
+                "source": "https://github.com/symfony/console/tree/v5.4.35"
             },
             "funding": [
                 {
@@ -3245,17 +3250,17 @@
         },
         {
             "name": "symfony/string",
-            "version": "v5.4.34",
-            "version_normalized": "5.4.34.0",
+            "version": "v5.4.35",
+            "version_normalized": "5.4.35.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/string.git",
-                "reference": "e3f98bfc7885c957488f443df82d97814a3ce061"
+                "reference": "c209c4d0559acce1c9a2067612cfb5d35756edc2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/string/zipball/e3f98bfc7885c957488f443df82d97814a3ce061",
-                "reference": "e3f98bfc7885c957488f443df82d97814a3ce061",
+                "url": "https://api.github.com/repos/symfony/string/zipball/c209c4d0559acce1c9a2067612cfb5d35756edc2",
+                "reference": "c209c4d0559acce1c9a2067612cfb5d35756edc2",
                 "shasum": ""
             },
             "require": {
@@ -3275,7 +3280,7 @@
                 "symfony/translation-contracts": "^1.1|^2",
                 "symfony/var-exporter": "^4.4|^5.0|^6.0"
             },
-            "time": "2023-12-09T13:20:28+00:00",
+            "time": "2024-01-23T13:51:25+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -3314,7 +3319,7 @@
                 "utf8"
             ],
             "support": {
-                "source": "https://github.com/symfony/string/tree/v5.4.34"
+                "source": "https://github.com/symfony/string/tree/v5.4.35"
             },
             "funding": [
                 {

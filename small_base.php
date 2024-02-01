@@ -731,7 +731,10 @@ function getCohortHeaderHTML() {
 	$html .= "<a class='green' href='".CareerDev::link("cohorts/selectCohort.php")."'>View Cohort Metrics</a>";
     # this CSS gives dropdowns enough space to stay above the footer
     # I put it here so that it'd only apply to cohorts, not other pages, which seem not to have this problem
-    $html .= "<style>#ui-id-1 { padding-bottom: 75px; }</style>";
+    $html .= "<style>
+#ui-id-1 { padding-bottom: 75px; }
+.ui-dialog #ui-id-1 { padding-bottom: 0; }
+</style>";
 	$html .= "</div>\n";
 
 	return $html;

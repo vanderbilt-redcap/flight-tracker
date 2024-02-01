@@ -899,6 +899,11 @@ class Citation {
             }
             return $year."-01-01";
         } else if ($this->getVariable("data_source") == "citation") {
+            if ($this->getVariable("ts")) {
+                return $this->getVariable("ts");
+            } else if ($this->getVariable("date")) {
+                return $this->getVariable("date");
+            }
             $year = $this->getYear();
             $sep = "-";
             if ($dateAsNumber) {

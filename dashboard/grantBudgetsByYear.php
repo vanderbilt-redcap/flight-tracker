@@ -88,6 +88,6 @@ $graph = new LineGraph(array_values($yearTotals), array_keys($yearTotals), "line
 $graph->setXAxisLabel("Year");
 $graph->setYAxisLabel("Dollars per Year");
 
-echo $dashboard->makeHTML($headers, $measurements, [], $cohort);
+echo $dashboard->makeHTML($headers, $measurements, [], $cohort, 4, $grantType);
 echo $graph->getImportHTML();
 echo $graph->getHTML(800, 600, TRUE);

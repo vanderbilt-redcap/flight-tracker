@@ -365,13 +365,14 @@ class DataDictionaryManagement {
                 }
                 $newMetadata = Download::metadata($token, $server);
                 $formsAndLabels = self::getRepeatingFormsAndLabels($newMetadata, $token);
-                $surveysAndLabels = self::getSurveysAndLabels($newMetadata);
+                $surveysAndLabels = self::getSurveysAndLabels($newMetadata, $pid);
                 self::setupRepeatingForms($eventId, $formsAndLabels);   // runs an UPDATE and/or INSERT
                 self::setupSurveys($pid, $surveysAndLabels);
                 self::convertOldDegreeData($pid);
                 return $feedback;
             } catch (\Exception $e) {
-                $feedback = ["Exception" => $e->getMessage()];
+                $configurationLink = Application::link("config.php", $pid);
+                $feedback = ["Exception" => $e->getMessage()."<p>Note that both the Departments and Resources fields must have some information specified (i.e., non-blank) in the <a href='$configurationLink'>Configure Application page</a>.</p>"];
                 $version = Application::getVersion();
                 $adminEmail = Application::getSetting("admin_email", $pid);
                 $mssg = "<h1>Metadata Upload Error in " . Application::getProgramName() . "</h1>";
@@ -519,19 +520,25 @@ class DataDictionaryManagement {
         return $metadata;
     }
 
-    public static function setupRepeatingForms($eventId, $formsAndLabels) {
+    public static function getRepeatingFormsAndLabelsForProject($eventId) {
         $module = Application::getModule();
-        $sql = "SELECT form_name FROM redcap_events_repeat WHERE event_id = ?";
+        $sql = "SELECT form_name, custom_repeat_form_label FROM redcap_events_repeat WHERE event_id = ?";
         $result = $module->query($sql, [$eventId]);
         $repeatingForms = [];
         while ($row = $result->fetch_assoc()) {
-            $repeatingForms[] = $row['form_name'];
+            $repeatingForms[$row['form_name']] = $row['custom_repeat_form_label'] ?? "";
+            # a NULL value will fail an isset() statement in self::setupRepeatingForms()
         }
+        return $repeatingForms;
+    }
 
+    public static function setupRepeatingForms($eventId, $formsAndLabels) {
+        $module = Application::getModule();
+        $repeatingForms = self::getRepeatingFormsAndLabelsForProject($eventId);
         $sqlEntries = [];
         $insertValues = [];
         foreach ($formsAndLabels as $form => $label) {
-            if (!in_array($form, $repeatingForms)) {
+            if (!isset($repeatingForms[$form])) {
                 $insertValues[] = $eventId;
                 $insertValues[] = $form;
                 $insertValues[] = $label;
@@ -706,12 +713,20 @@ class DataDictionaryManagement {
         }
     }
 
-    public static function getSurveysAndLabels($metadata) {
-        $surveysAndLabelsCandidates = [
+    public static function getDefaultSurveysAndLabels($pid) {
+        $defaultSurveys = [
             "initial_survey" => "Flight Tracker Initial Survey",
             "followup" => "Flight Tracker Followup Survey",
             "mentoring_agreement_evaluations" => "Mentoring Agreement Evaluations",
         ];
+        if (Application::isMSTP($pid)) {
+            $defaultSurveys["mstp_individual_development_plan_idp"] = "MSTP Individual Development Plan IDP";
+        }
+        return $defaultSurveys;
+    }
+
+    public static function getSurveysAndLabels($metadata, $pid) {
+        $surveysAndLabelsCandidates = self::getDefaultSurveysAndLabels($pid);
         $forms = self::getFormsFromMetadata($metadata);
 
         $surveysAndLabels = [];
@@ -1036,6 +1051,7 @@ class DataDictionaryManagement {
         self::alterInstitutionFields($mergedMetadata, $pid);
         self::alterDepartmentsFields($mergedMetadata, $pid);
         self::updateAlumniAssociations($mergedMetadata, $originalMetadata, $pid);
+        unset($_SESSION['metadata'.$pid]);
         return Upload::metadata($mergedMetadata, $token, $server);
     }
 
@@ -1251,6 +1267,7 @@ class DataDictionaryManagement {
                 self::alterOptionalFields($metadata, $pid);
                 self::alterResourcesFields($metadata, $pid);
                 self::alterInstitutionFields($metadata, $pid);
+                unset($_SESSION['metadata'.$pid]);
                 return Upload::metadata($metadata, $token, $server);
             }
         }
@@ -1352,6 +1369,7 @@ class DataDictionaryManagement {
         self::alterInstitutionFields($existingMetadata, $pid);
         self::alterDepartmentsFields($existingMetadata, $pid);
         self::checkForImproperDeletions($existingMetadata, $originalMetadata, $fieldsToDelete, $pid);
+        unset($_SESSION['metadata'.$pid]);
         return Upload::metadata($existingMetadata, $token, $server);
     }
 

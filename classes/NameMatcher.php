@@ -867,7 +867,12 @@ class NameMatcher {
                 }
                 return $returnValues;
             } else {     // $parts > count($nodes)
-                $nodesInRightOrder = [$nodes[1]];   // first name
+                $firstNodes = preg_split("/\s+/", $nodes[1], -1, PREG_SPLIT_NO_EMPTY);
+                if ((count($firstNodes) == 1) || (count($nodes) + count($firstNodes) - 1 > $parts)) {
+                    $nodesInRightOrder = [$nodes[1]];   // first name
+                } else {
+                    $nodesInRightOrder = $firstNodes;
+                }
                 for ($i = 2; $i < count($nodes); $i++) {
                     $nodesInRightOrder[] = $nodes[$i];
                 }

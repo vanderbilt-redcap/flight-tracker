@@ -181,7 +181,7 @@ class Dashboard {
             Application::link("dashboard/publicationsByMetrics.php", $pid).$trailingParams => "Miscellaneous Metrics",
         ];
 
-        $grantTypeParam = $grantType ? "&grantType=$grantType" : "";
+        $grantTypeParam = $grantType ? "&grantType=".urlencode($grantType) : "";
         $html .= "<div class='subnav'>\n";
         $html .= "<a class='yellow' href='".Application::link("dashboard/overall.php")."&layout=$target$cohortUrl'>Overall Summary</a>\n";
         $html .= "<a class='yellow' href='".Application::link("this")."&layout=$otherTarget$cohortUrl$grantTypeParam'>Switch Layouts</a>\n";

@@ -31,7 +31,7 @@ class Stats
                 return ($arr[floor($n / 2)] + $arr[ceil($n / 2)]) / 2;
             }
         } else {
-            return self::$nan;
+            return self::NAN;
         }
     }
 
@@ -61,14 +61,14 @@ class Stats
             }
             return $maxItems;
         } else {
-            return self::$nan;
+            return self::NAN;
         }
     }
 
     public function mean() {
         $n = $this->getN();
         if ($n == 0) {
-            return self::$nan;
+            return self::NAN;
         }
         $sum = 0;
         for ($i = 0; $i < $n; $i++) {
@@ -97,18 +97,22 @@ class Stats
     public function standardDeviation() {
         $n = $this->getN();
         if (in_array($n, [0, 1])) {
-            return self::$nan;
+            return self::NAN;
+        }
+        $mu = $this->mean();
+        if ($mu == self::NAN) {
+            return self::NAN;
         }
         $sum = 0;
         for ($i = 0; $i < $n; $i++) {
-            $sum = $sum + ($this->arr[$i] - $this->mean()) * ($this->arr[$i] - $this->mean());
+            $sum = $sum + ($this->arr[$i] - $mu) * ($this->arr[$i] - $mu);
         }
         return sqrt($sum / ($n - 1));
     }
 
     // Unimplemented
     public static function pairedTTest($stats) {
-        return self::$nan;
+        return self::NAN;
     }
 
     // Function to find t-test of two set of statistical data.
@@ -165,21 +169,24 @@ class Stats
 
     public function unpairedTTest($comparison) {
         if (get_class($comparison) != "Vanderbilt\CareerDevLibrary\Stats") {
-            return self::$nan;
+            return self::NAN;
         }
         $n = $this->getN();
         $m = $comparison->getN();
         if ($n == 0) {
-            return self::$nan;
+            return self::NAN;
         }
         if ($m == 0) {
-            return self::$nan;
+            return self::NAN;
         }
 
         $mean1 = $this->mean();
         $mean2 = $comparison->mean();
         $sd1 = $this->standardDeviation();
         $sd2 = $comparison->standardDeviation();
+        if (in_array(self::NAN, [$mean1, $mean2, $sd1, $sd2])) {
+            return self::NAN;
+        }
 
         // Formula to find t-test of two set of data.
         $t_test = ($mean1 - $mean2) / sqrt(($sd1 * $sd1) / $n + ($sd2 * $sd2) / $m);
@@ -188,7 +195,7 @@ class Stats
 
     public function z($x) {
         if ($this->getN() == 0) {
-            return self::$nan;
+            return self::NAN;
         }
         return ($x - $this->mean()) / $this->standardDeviation();
     }
@@ -226,10 +233,13 @@ class Stats
     public function confidenceInterval($percent, $df = FALSE) {
         $n = $this->getN();
         if ($n == 0) {
-            return [self::$nan, self::$nan];
+            return [self::NAN, self::NAN];
         }
         $mu = $this->mean();
         $sigma = $this->standardDeviation();
+        if (in_array(self::NAN, [$mu, $sigma])) {
+            return [self::NAN, self::NAN];
+        }
         if ($df) {
             # T score
             $z = CohortStudy::convertPercentToZ($percent, $df);
@@ -243,5 +253,6 @@ class Stats
     }
 
     protected $arr = [];
-    public static $nan = "NaN";
+    const NAN = "NaN";
+    public static $nan = self::NAN;
 }

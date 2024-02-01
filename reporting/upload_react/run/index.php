@@ -47,7 +47,7 @@ $footerHTML = Application::getFooter();
 ?>
         <link href="<?= $backgroundLink ?>" rel="stylesheet" />
         <?= $iconHTML ?>
-        <title>Flight Tracker - NIH Training Tables 2-4</title>
+        <title>Flight Tracker - Upload NIH Training Tables</title>
 
         <style>
         @font-face{font-family:"Museo Sans";font-style:normal;font-weight:400;src:url("<?= $museoSansLink ?>")}

@@ -433,11 +433,18 @@ class Download {
     {
         $pid = Application::getPID($token);
         $cachedMetadata = self::getCachedMetadata($pid, $fields);
+        if (isset($_GET['testPSU'])) {
+            echo "cachedMetadata: ".count($cachedMetadata)." entries<br/>";
+        }
         if (!empty($cachedMetadata)) {
             return $cachedMetadata;
         }
         if ($pid && Application::isServer($server)) {
-            return self::metadataByPid($pid, $fields);
+            $metadata = self::metadataByPid($pid, $fields);
+            if (isset($_GET['testPSU'])) {
+                echo "metadataByPid: ".count($metadata)." entries<br/>";
+            }
+            return $metadata;
         } else {
             $method = "API";
             $data = array(
@@ -453,7 +460,13 @@ class Download {
             if (isset($_GET['test'])) {
                 Application::log("Download::metadata $method returning " . count($rows) . " rows", $pid);
             }
+            if (isset($_GET['testPSU'])) {
+                echo "metadata by API: ".count($rows)." entries<br/>";
+            }
             if (empty($fields)) {
+                if (isset($_GET['testPSU'])) {
+                    echo "caching metadata by API<br/>";
+                }
                 $_SESSION['metadata'.$pid] = $rows;
                 $_SESSION['lastMetadata'.$pid] = time();
             }
@@ -488,8 +501,9 @@ class Download {
     }
 
     public static function metadataByPid($pid, $fields = []) {
-        if (isset($_GET['test'])) {
+        if (isset($_GET['test']) || isset($_GET['testPSU'])) {
             Application::log("Download::metadataByPid", $pid);
+            echo "Download::metadataByPid<br/>";
         }
         $cachedMetadata = self::getCachedMetadata($pid, $fields);
         if (!empty($cachedMetadata)) {
@@ -506,10 +520,12 @@ class Download {
             $json = \REDCap::getDataDictionary($pid, "json");
         }
         $rows = json_decode($json, TRUE);
-        if (isset($_GET['test'])) {
+        if (isset($_GET['test']) || isset($_GET['testPSU'])) {
             Application::log("Download::metadata $method returning " . count($rows) . " rows", $pid);
+            echo "Download::metadata $method returning " . count($rows) . " rows<br/>";
+            echo "JSON: $json<br/>";
             if (count($rows) === 0) {
-                Application::log($json);
+                Application::log($json, $pid);
             }
         }
         if (empty($fields)) {
@@ -700,7 +716,7 @@ class Download {
         }
         if (!$output) {
             Application::log("Retrying because no output", $pid);
-            usleep(500);
+            usleep(500000);
             $redcapData = self::callAPI($server, $data, $pid, $try + 1);
             if (($redcapData === NULL) && ($try >= $maxTries)) {
                 Application::log("ERROR: Null output", $pid);
@@ -713,7 +729,7 @@ class Download {
         }
         if ($redcapData === NULL) {
             Application::log("Retrying because undecipherable output: ".$data['content'], $pid);
-            usleep(500);
+            usleep(500000);
             $redcapData = self::callAPI($server, $data, $pid, $try + 1);
             if (($redcapData === NULL) && ($try >= $maxTries)) {
                 Application::log("ERROR: ".$output, $pid);
@@ -1517,7 +1533,7 @@ class Download {
         }
         if (!$output) {
             Application::log("Retrying because no output");
-            usleep(500);
+            usleep(500000);
             $redcapData = self::fieldsForRecordsByPid($pid, $fields, $records, $try + 1);
             if (($redcapData === NULL) && ($try == $maxTries)) {
                 Application::log("ERROR: ".$output);

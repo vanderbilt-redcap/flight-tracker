@@ -183,7 +183,7 @@ class PatentsView {
                 } else {
                     throw new \Exception("Could not find 'patents' in data: ".json_encode($data));
                 }
-                usleep(500);
+                usleep(500000);
             } else {
                 Application::log("Could not decode JSON for Record {$this->recordId} from URL ".$url, $this->pid);
             }

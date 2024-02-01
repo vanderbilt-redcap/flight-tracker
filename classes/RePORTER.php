@@ -281,7 +281,15 @@ class RePORTER {
             "agency_ic_fundings" => ["fy", "total_cost"],
             "agency_ic_admin" => "name",
         ];
-        $dateFields = ["project_start_date", "project_end_date", "init_encumbrance_date", "award_notice_date",];
+        $dateFields = [
+            "project_start_date",
+            "project_end_date",
+            "init_encumbrance_date",
+            "award_notice_date",
+            "budget_start",
+            "budget_end",
+            "date_added",
+            ];
         $skip = ["spending_categories", "organization_type", ];
         $upload = [];
         $metadataFields = Download::metadataFieldsByPid($this->pid);

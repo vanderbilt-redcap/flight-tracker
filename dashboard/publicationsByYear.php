@@ -28,7 +28,13 @@ if (isset($_GET['cohort'])) {
 }
 $headers[] = Publications::makeLimitButton();
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, array("citation_year")))), $cohort, Application::getModule());
+$thresholdTs = -100000;
+if (isset($_GET['limitPubs'])) {
+    $thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+    $thresholdTs = strtotime("$thresholdYear-01-01");
+}
+
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, array("citation_year", "citation_ts")))), $cohort, Application::getModule());
 
 $numForYear = array();
 $numPubs = 0;
@@ -36,21 +42,22 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	$pubs = new Publications($token, $server, []);
 	$pubs->setRows($rows);
 	$goodCitations = $pubs->getCitationCollection("Included");
-	$confirmedCount = $goodCitations->getCount();
-	$numPubs += $confirmedCount;
 	foreach ($goodCitations->getCitations() as $citation) {
-		if ($citation->isResearchArticle()) {
-			$ts = $citation->getTimestamp();
-			$tsYear = "";
-			if ($ts) {
-				$tsYear = date("Y", $ts);
-				if ($tsYear) {
-					if (!isset($numForYear[$tsYear])) {
-						$numForYear[$tsYear] = 0;
-					}
-					$numForYear[$tsYear]++;
-				}
-			}
+        if ($citation->getTimestamp() >= $thresholdTs) {
+            $numPubs++;
+            if ($citation->isResearchArticle()) {
+                $ts = $citation->getTimestamp();
+                $tsYear = "";
+                if ($ts) {
+                    $tsYear = date("Y", $ts);
+                    if ($tsYear) {
+                        if (!isset($numForYear[$tsYear])) {
+                            $numForYear[$tsYear] = 0;
+                        }
+                        $numForYear[$tsYear]++;
+                    }
+                }
+            }
 		}
 	}
 }

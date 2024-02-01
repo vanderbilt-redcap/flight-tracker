@@ -457,7 +457,9 @@ $horizontalScrollbar
             $navBar->addFAMenu("sticky-note", "Pubs", CareerDev::getMenu("Pubs", $pid));
         }
         $navBar->addFAMenu("table", "View", CareerDev::getMenu("View", $pid));
-        $navBar->addFAMenu("calculator", "Wrangle", CareerDev::getMenu("Wrangler", $pid));
+        if (!CareerDev::isCopiedProject($pid)) {
+            $navBar->addFAMenu("calculator", "Wrangle", CareerDev::getMenu("Wrangler", $pid));
+        }
         $navBar->addFAMenu("school", "Scholars", CareerDev::getMenu("Scholars", $pid));
         $navBar->addMenu("<img src='".CareerDev::link("/img/redcap_translucent_small.png")."'>REDCap", CareerDev::getMenu("REDCap", $pid));
         $navBar->addFAMenu("tachometer-alt", "Dashboards", CareerDev::getMenu("Dashboards", $pid));

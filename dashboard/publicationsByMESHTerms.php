@@ -27,7 +27,13 @@ if (isset($_GET['cohort'])) {
 }
 $headers[] = Publications::makeLimitButton();
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_merge(CareerDev::$smallCitationFields, ["citation_mesh_terms"])), $cohort, Application::getModule());
+$thresholdTs = -100000;
+if (isset($_GET['limitPubs'])) {
+    $thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+    $thresholdTs = strtotime("$thresholdYear-01-01");
+}
+
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_merge(CareerDev::$smallCitationFields, ["citation_mesh_terms", "citation_ts"])), $cohort, Application::getModule());
 
 $numConfirmedPubs = 0;
 $numForMESHTerms = [];
@@ -38,18 +44,20 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	$goodCitations = $pubs->getCitationCollection("Included");
 	if ($goodCitations) {
 		$confirmedCount = $goodCitations->getCount();
-		$numConfirmedPubs += $confirmedCount;
 		foreach ($goodCitations->getCitations() as $citation) {
-			if ($citation->isResearchArticle() && ($citation->getVariable("data_source") == "citation")) {
-				$meshTerms = $citation->getMESHTerms();
-				foreach ($meshTerms as $meshTerm) {
-					if (!isset($numForMESHTerms[$meshTerm])) {
-						$numForMESHTerms[$meshTerm] = 0;
-					}
-	
-					$numForMESHTerms[$meshTerm]++;
-				}
-			}
+            if ($citation->getTimestamp() >= $thresholdTs) {
+                $numConfirmedPubs++;
+                if ($citation->isResearchArticle() && ($citation->getVariable("data_source") == "citation")) {
+                    $meshTerms = $citation->getMESHTerms();
+                    foreach ($meshTerms as $meshTerm) {
+                        if (!isset($numForMESHTerms[$meshTerm])) {
+                            $numForMESHTerms[$meshTerm] = 0;
+                        }
+
+                        $numForMESHTerms[$meshTerm]++;
+                    }
+                }
+            }
 		}
 	}
 }

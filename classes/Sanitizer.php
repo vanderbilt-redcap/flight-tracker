@@ -170,6 +170,7 @@ class Sanitizer {
             "&#8221;" => '"',
             "&#34;" => '"',
             "&#034;" => '"',
+            "&amp;" => "&",
         ];
 
         $str = htmlspecialchars($str, ENT_QUOTES);

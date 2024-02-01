@@ -2001,6 +2001,7 @@ class Scholar {
             "check_gender" => "scholars",
             "followup_gender" => "followup",
             "vfrs_gender" => "vfrs",
+            "vfrs_gender_identity" => "vfrs",
             "imported_gender" => "manual",
             "init_import_gender" => "manual",
             "newman_new_gender" => "new2017",
@@ -2011,11 +2012,13 @@ class Scholar {
         $orders["summary_transgender"] = [
             "check_transgender" => "scholars",
             "followup_transgender" => "followup",
+            "vfrs_transgender" => "vfrs",
             "init_import_transgender" => "manual",
         ];
         $orders["summary_sexual_orientation"] = [
             "check_sexual_orientation" => "scholars",
             "followup_sexual_orientation" => "followup",
+            "vfrs_sex_orient" => "vfrs",
             "init_import_sexual_orientation" => "manual",
         ];
         $orders["summary_race_ethnicity"] = [];

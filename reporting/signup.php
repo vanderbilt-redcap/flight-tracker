@@ -133,7 +133,7 @@ $hasIsEngaged = in_array("identifier_is_engaged", $metadataFields);
 $choices = REDCapManagement::getChoices($metadata);
 
 echo "<h1>Sign Up for NIH Tables</h1>";
-echo "<h4 class='max-width'>Click on a Colored Cell to Change. Dates and Project Titles, though necessary for NIH tables, are not required to sign up a scholar.</h4>";
+echo "<h4 class='max-width'>Click on a Colored Cell to Change. Dates and Research Project Topics, though necessary for NIH tables, are not required to sign up a scholar.</h4>";
 echo "<p class='submit centered'><button onclick='saveForm();'>Save Changes</button></p>";
 
 echo "<table class='centered bordered'>";
@@ -407,7 +407,7 @@ function editCell(ob) {
 function makeRange($recordId, $startDate = "", $endDate = "", $title = "") {
     $startLine = "Start: <input type='date' class='startDate pickDate' value='$startDate' record='$recordId'>";
     $endLine = "End: <input type='date' class='endDate pickDate' value='$endDate' record='$recordId'>";
-    $titleLine = "<input type='text' class='title pickDate' value='$title' record='$recordId' placeholder='Project Title'>";
+    $titleLine = "<input type='text' class='title pickDate' value='$title' record='$recordId' placeholder='Research Project Topics'>";
     return $titleLine."<br>".$startLine."<br>".$endLine;
 }
 

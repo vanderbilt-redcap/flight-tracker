@@ -30,7 +30,13 @@ if (isset($_GET['cohort'])) {
 }
 $headers[] = Publications::makeLimitButton();
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, ["record_id", "citation_rcr", "citation_authors", "citation_year", "citation_month", "citation_day", "citation_num_citations", "summary_training_start", "summary_training_end"]))), $cohort, Application::getModule());
+$thresholdTs = -100000;
+if (isset($_GET['limitPubs'])) {
+    $thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+    $thresholdTs = strtotime("$thresholdYear-01-01");
+}
+
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, ["record_id", "citation_rcr", "citation_authors", "citation_ts", "citation_num_citations", "summary_training_start", "summary_training_end"]))), $cohort, Application::getModule());
 
 $tooltip = [
 		"Relative Citation Ratio" => "The article citation rate (ACR) divided by the expected citation rate (ECR), which is normalized by field (the author's co-citation network) and time (years since publication). Cf. ".Links::changeTextColorOfLink(Links::makeLink('https://www.doi.org/10.1371/journal.pbio.1002541', "doi"), "white").".",
@@ -63,6 +69,9 @@ foreach ($indexedRedcapData as $recordId => $rows) {
     $authorPos["papers"]["total"][] = $pubs->getCitationCount($type);
     if ($trainingStartDate) {
         $startTs = strtotime($trainingStartDate);
+        if ($startTs < $thresholdTs) {
+            $startTs = $thresholdTs;
+        }
         if ($trainingEndDate) {
             $endTs = strtotime($trainingEndDate);
             $authorPos["first"]["training"][] = $pubs->getNumberFirstAuthors($startTs, $endTs, FALSE);
@@ -76,24 +85,30 @@ foreach ($indexedRedcapData as $recordId => $rows) {
     }
 	if ($goodCitations) {
 		foreach ($goodCitations->getCitations() as $citation) {
-			if ($citation->isResearchArticle()) {
-				foreach ($metrics as $metric => $variable) {
-					if (!isset($numForMetric[$metric])) {
-						$numForMetric[$metric] = [];
-					}
+            if ($citation->getTimestamp() >= $thresholdTs) {
+                if ($citation->isResearchArticle()) {
+                    foreach ($metrics as $metric => $variable) {
+                        if (!isset($numForMetric[$metric])) {
+                            $numForMetric[$metric] = [];
+                        }
 
-					$val = $citation->getVariable($variable);
-					if ($val) {
-						$numForMetric[$metric][] = $val;
-					}
-				}
+                        $val = $citation->getVariable($variable);
+                        if ($val) {
+                            $numForMetric[$metric][] = $val;
+                        }
+                    }
+                }
 			}
 		}
 	}
 
 	$notDoneCitations = $pubs->getCitationCollection("Not done");
 	if ($notDoneCitations) {
-		$numUnconfirmedPubs += $notDoneCitations->getCount();
+        foreach ($notDoneCitations as $citation) {
+            if ($citation->getTimestamp() >= $thresholdTs) {
+                $numUnconfirmedPubs++;
+            }
+        }
 	}
 }
 

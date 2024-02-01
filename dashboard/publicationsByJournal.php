@@ -11,6 +11,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Dashboard;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -30,7 +31,13 @@ if (isset($_GET['cohort'])) {
 }
 $headers[] = Publications::makeLimitButton();
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, ['citation_journal', "eric_source"]))), $cohort, Application::getModule());
+$thresholdTs = -100000;
+if (isset($_GET['limitPubs'])) {
+    $thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+    $thresholdTs = strtotime("$thresholdYear-01-01");
+}
+
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, ['citation_journal', 'citation_ts', "eric_source"]))), $cohort, Application::getModule());
 
 $numConfirmedPubs = 0;
 $numForJournal = [];
@@ -41,17 +48,19 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	$goodCitations = $pubs->getCitationCollection("Included");
 	if ($goodCitations) {
 		$confirmedCount = $goodCitations->getCount();
-		$numConfirmedPubs += $confirmedCount;
 		foreach ($goodCitations->getCitations() as $citation) {
-			if ($citation->isResearchArticle()) {
-                $field = ($citation->getVariable("data_source") == "citation") ? "journal" : "source";
-				$journal = $citation->getVariable($field);
+            if ($citation->getTimestamp() >= $thresholdTs) {
+                $numConfirmedPubs++;
+                if ($citation->isResearchArticle()) {
+                    $field = ($citation->getVariable("data_source") == "citation") ? "journal" : "source";
+                    $journal = $citation->getVariable($field);
 
-				if (!isset($numForJournal[$journal])) {
-					$numForJournal[$journal] = 0;
-				}
+                    if (!isset($numForJournal[$journal])) {
+                        $numForJournal[$journal] = 0;
+                    }
 
-				$numForJournal[$journal]++;
+                    $numForJournal[$journal]++;
+                }
 			}
 		}
 	}

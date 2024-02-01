@@ -532,6 +532,99 @@ class REDCapManagement {
         return self::screenForFields($metadata, $candidateFields);
     }
 
+    public static function getSurveyResponseField($responseId, $field) {
+        $module = Application::getModule();
+        $sql = "SELECT `$field` FROM redcap_surveys_response WHERE response_id = ?";
+        $result = $module->query($sql, [$responseId]);
+        if ($row = $result->fetch_assoc()) {
+            return $row[$field];
+        }
+        return "";
+    }
+
+    public static function updateSurveyResponseField($responseId, $field, $newValue) {
+        $module = Application::getModule();
+        $sql = "UPDATE redcap_surveys_response SET `$field` = ? WHERE response_id = ?";
+        $module->query($sql, [$newValue, $responseId]);
+    }
+
+    public static function copyParticipantRow($responseId, $newPid, $instrument) {
+        $module = Application::getModule();
+        $newEventId = REDCapManagement::getEventIdForClassical($newPid);
+        $sql = "SELECT survey_id FROM redcap_surveys WHERE project_id = ? AND form_name = ? LIMIT 1";
+        $result = $module->query($sql, [$newPid, $instrument]);
+        if ($row = $result->fetch_assoc()) {
+            $surveyId = $row['survey_id'];
+        } else {
+            return "";
+        }
+        $sql = "SELECT
+                        p.participant_id AS participant_id,
+                        p.participant_email AS participant_email,
+                        p.participant_identifier AS participant_identifier,
+                        p.participant_phone AS participant_phone,
+                        p.delivery_preference AS delivery_preference
+                    FROM redcap_surveys_participants AS p
+                    INNER JOIN redcap_surveys_response AS r
+                        ON (r.participant_id = p.participant_id)
+                    WHERE r.response_id = ?";
+        $result = $module->query($sql, [$responseId]);
+        require_once(APP_PATH_DOCROOT."Config/init_functions.php");
+        do {
+            $newHash = \generateRandomHash(10);
+            $sql2 = "SELECT participant_id FROM redcap_surveys_participants WHERE hash = ? LIMIT 1";
+            $result2 = $module->query($sql2, [$newHash]);
+        } while ($result2->num_rows > 0);
+        if ($row = $result->fetch_assoc()) {
+            $sql = "INSERT INTO redcap_surveys_participants (survey_id, event_id, participant_email, participant_identifier, participant_phone, hash, delivery_preference)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $module->query($sql, [$surveyId, $newEventId, $row['participant_email'], $row['participant_identifier'], $row['participant_phone'], $newHash, $row['delivery_preference']]);
+            return db_insert_id();
+        }
+        return "";
+    }
+
+    # assumes classical REDCap project
+    public static function getSurveyMaxInstance($pid, $recordId, $instrument) {
+        $module = Application::getModule();
+        $sql = "SELECT MAX(r.instance) AS max_instance
+                    FROM redcap_surveys_response AS r
+                        INNER JOIN redcap_surveys_participants AS p
+                            ON r.participant_id = p.participant_id
+                        INNER JOIN redcap_surveys AS s
+                            ON p.survey_id = s.survey_id
+                    WHERE
+                        s.project_id = ?
+                      AND s.form_name = ?
+                      AND r.record = ?";
+        $result = $module->query($sql, [$pid, $instrument, $recordId]);
+        if ($row = $result->fetch_assoc()) {
+            return $row['max_instance'];
+        }
+        return "";
+    }
+
+    # assumes classical REDCap project
+    public static function getSurveyResponseId($pid, $recordId, $instance, $instrument) {
+        $module = Application::getModule();
+        $sql = "SELECT r.response_id AS response_id
+                    FROM redcap_surveys_response AS r
+                        INNER JOIN redcap_surveys_participants AS p
+                            ON r.participant_id = p.participant_id
+                        INNER JOIN redcap_surveys AS s
+                            ON p.survey_id = s.survey_id
+                    WHERE
+                        s.project_id = ?
+                      AND s.form_name = ?
+                      AND r.record = ?
+                      AND r.instance = ?";
+        $result = $module->query($sql, [$pid, $instrument, $recordId, $instance]);
+        if ($row = $result->fetch_assoc()) {
+            return $row['response_id'];
+        }
+        return "";
+    }
+
 	public static function getFieldsFromMetadata($metadata, $instrument = FALSE) {
 	    return DataDictionaryManagement::getFieldsFromMetadata($metadata, $instrument);
 	}
@@ -1341,9 +1434,11 @@ class REDCapManagement {
 	    $newRow = [];
 	    $redcapManagementFields = ["record_id", "redcap_repeat_instrument", "redcap_repeat_instance"];
 	    foreach ($row as $field => $value) {
-	        if (in_array($field, $metadataFields)
+	        if (
+                in_array($field, $metadataFields)
                 || preg_match("/_complete$/", $field)
-                || in_array($field, $redcapManagementFields)) {
+                || in_array($field, $redcapManagementFields)
+            ) {
 	            $newRow[$field] = $value;
             } else {
 	            Application::log("Filtering out ".$field);

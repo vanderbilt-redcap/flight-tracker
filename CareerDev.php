@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.6.0";
+		return "6.7.0";
 	}
 
 	public static function getLockFile($pid) {
@@ -320,7 +320,7 @@ class CareerDev {
 			$pid = self::getPidFromToken($token);
 			if (!$pid && self::$firstPidError) {
                 self::$firstPidError = FALSE;
-			    self::log("ERROR: Could not find pid $pid for $token: ".json_encode(debug_backtrace()));
+			    self::log("WARNING: Could not find pid $pid for $token: ".json_encode(debug_backtrace()));
             }
 			return $pid;
 		}
@@ -1310,10 +1310,25 @@ class CareerDev {
 			if (self::has("patent", $pid) && $switches->isOnForProject("Patents")) {
                 $ary["Patent Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Patents";
             }
+            if (!empty(self::getAdditionalSurveys($pid))) {
+                $ary["Share Survey Data"] = self::link("/wrangler/shareSurveys.php");
+            }
 			return $ary;
 		}
 		return [];
 	}
+
+    public static function getAdditionalSurveys($pid) {
+        $surveys = DataDictionaryManagement::getSurveys($pid);
+        $defaultSurveys = DataDictionaryManagement::getDefaultSurveysAndLabels($pid);
+        $additionalSurveys = [];
+        foreach ($surveys as $instrument => $label) {
+            if (!isset($defaultSurveys[$instrument])) {
+                $additionalSurveys[$instrument] = $label;
+            }
+        }
+        return $additionalSurveys;
+    }
 
     # intentionally missing many minor Altmetric fields
     private static $citationFields = [
@@ -2469,6 +2484,16 @@ class CareerDev {
         "nih_agency_code",
         "nih_covid_response",
         "nih_last_update",
+        "nih_opportunity_number",
+        "nih_arra_funded",
+        "nih_budget_start",
+        "nih_budget_end",
+        "nih_cfda_code",
+        "nih_funding_mechanism",
+        "nih_direct_cost_amt",
+        "nih_indirect_cost_amt",
+        "nih_project_detail_url",
+        "nih_date_added",
         "nih_flagged",
     ];
 

@@ -67,24 +67,30 @@ if (count($_POST) > 0) {
 				}
 				$res = Scholar::addSourceType(CareerDev::getModule(), $code, $type, $pid);
 				if ($res) {
-					$feedback = Upload::metadata($metadata, $token, $server);
-					echo "<p class='green centered'>$rowsAffected fields affected.</p>\n";
+					Upload::metadata($metadata, $token, $server);
+					echo "<p class='green centered'>$rowsAffected fields affected.</p>";
 				} else {
-					echo "<p class='red centered'>Could not add ".Sanitizer::sanitize($code)." to data sources!</p>\n";
+					echo "<p class='red centered'>Could not add ".Sanitizer::sanitize($code)." to data sources!</p>";
 				}
 			} else {
-				echo "<p class='red centered'>Could not add because code ('".Sanitizer::sanitize($code)."') already exists.</p>\n";
+				echo "<p class='red centered'>Could not add because code ('".Sanitizer::sanitize($code)."') already exists.</p>";
 			}
 		} else {
-			echo "<p class='red centered'>You must specify the text, a value for its code, and a type.</p>\n";
+			echo "<p class='red centered'>You must specify the text, a value for its code, and a type.</p>";
 		}
 	} else {
 		$lists = [];
         $optionSettings = REDCapManagement::getOptionalSettings();
         $associativeArrays = [];
+        Application::saveSetting(Wrangler::PILOT_GRANT_SETTING, [], $pid);   // clear out associative arrays
 		foreach ($_POST as $key => $value) {
             $key = Sanitizer::sanitizeWithoutChangingQuotes($key);
             $value = Sanitizer::sanitizeWithoutChangingQuotes($value);
+            while (preg_match("/&amp;/", $value)) {
+                # to correct for but where repetitive ampersands were being produced on every save
+                # e.g., &amp;amp;amp;...
+                $value = str_replace("&amp;", "&", $value);
+            }
             $value = REDCapManagement::changeSlantedQuotes($value);
             if (preg_match("/^(\w+)___(\d+)___(code|text)$/", $key, $matches)) {
                 $var = $matches[1];
@@ -406,7 +412,7 @@ function makeSettings($module, $pid) {
         $ary["Administrative Setup"][] = makeOptionalSetting($setting, "short_textarea", $message, $numSettings);
     }
     $ary["Administrative Setup"][] = makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "In Flight Tracker's data-sharing on the same server, in addition to surveys, what data should be shared among the following forms?");
-    $ary["Administrative Setup"][] = makeAssociativeArray(Wrangler::PILOT_GRANT_SETTING, "Enter a unique code (left) and a label (right) to set up pilot grants to be associated during data wrangling.");
+    $ary["Administrative Setup"][] = makeAssociativeArray(Wrangler::PILOT_GRANT_SETTING, "Options for <strong>Pilot Grants</strong><br/>Enter a unique code (left) and a label (right) to set up pilot grants to be associated during data wrangling.");
 
 
 	$ary["Emails"] = [];

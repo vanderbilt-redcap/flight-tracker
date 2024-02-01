@@ -8,6 +8,7 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -27,7 +28,13 @@ if (isset($_GET['cohort'])) {
 }
 $headers[] = Publications::makeLimitButton();
 
-$indexedRedcapData = Download::getIndexedRedcapData($token, $server, CareerDev::$smallCitationFields, $cohort, Application::getModule());
+$thresholdTs = -100000;
+if (isset($_GET['limitPubs'])) {
+    $thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+    $thresholdTs = strtotime("$thresholdYear-01-01");
+}
+
+$indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_unique(array_merge(CareerDev::$smallCitationFields, ["citation_ts"])), $cohort, Application::getModule());
 
 $numConfirmedPubs = 0;
 $numUnconfirmedPubs = 0;
@@ -40,16 +47,17 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	$pubs->setRows($rows);
 	$goodCitations = $pubs->getCitationCollection("Included");
 	if ($goodCitations) {
-		$confirmedCount = $goodCitations->getCount();
-		$numConfirmedPubs += $confirmedCount;
 		foreach ($goodCitations->getCitations() as $citation) {
-			$cat = $citation->getCategory();
-	
-			if (!isset($numForCategory[$cat])) {
-				$numForCategory[$cat] = 0;
-			}
-	
-			$numForCategory[$cat]++;
+            if ($citation->getTimestamp() >= $thresholdTs) {
+                $numConfirmedPubs++;
+                $cat = $citation->getCategory();
+
+                if (!isset($numForCategory[$cat])) {
+                    $numForCategory[$cat] = 0;
+                }
+
+                $numForCategory[$cat]++;
+            }
 		}
 	}
 

@@ -73,7 +73,9 @@ if ($action == "downloadORCIDs") {
         $priorExcludeList = Download::oneFieldForRecordByPid($pid, "exclude_orcid", $recordId);
         $excludeORCIDs = $priorExcludeList ? preg_split("/\s*[,;]\s*/", $priorExcludeList) : [];
         if ($action == "addORCID") {
-            $orcids[] = $orcid;
+            if (!in_array($orcid, $orcids)) {
+                $orcids[] = $orcid;
+            }
             if (in_array($orcid, $excludeORCIDs)) {
                 $pos = array_search($orcid, $excludeORCIDs);
                 array_splice($excludeORCIDs, $pos, 1);
@@ -202,9 +204,13 @@ function makeORCIDRow(data, recordId, redcapIDs) {
     const institutionHTML = (institutionAry.length > 0) ? institutionAry.join('<br/>') : '[none listed]';
     const orcids = data.orcids ?? [];
     const message = data.message ?? '';
-    const webInfo = (orcids.length > 0) ? displayORCIDLinks(orcids, redcapIDs, 'add', recordId) : parseORCIDMessage(message, redcapIDs, recordId);
+    const fullWebInfo = (orcids.length > 0) ? displayORCIDLinks(orcids, redcapIDs, 'add', recordId) : parseORCIDMessage(message, redcapIDs, recordId);
+    if (fullWebInfo.match(/Could not contact/)) {
+        console.error(fullWebInfo);
+    }
+    const webInfo = fullWebInfo.match(/Could not contact/) ? 'Could not contact ORCID. Please try again.' : fullWebInfo;
     const blockButton = blocking[recordId] ? makeTurnOffCell(recordId) : makeTurnOnCell(recordId);
-    return '<th>'+nameWithLink+'</th><td>'+institutionHTML+'</td><td>'+blockButton+'</td><td>'+displayORCIDLinks(redcapIDs, redcapIDs, 'remove', recordId)+'</td><td>'+webInfo+'</td>';
+    return '<th>'+nameWithLink+'</th><td>'+institutionHTML+'</td><td>'+blockButton+'</td><td>'+displayORCIDLinks(redcapIDs, redcapIDs, 'remove', recordId)+'<br/>'+addCustomORCID(recordId)+'</td><td>'+webInfo+'</td>';
 }
 
 function makeTurnOnCell(recordId) {
@@ -254,17 +260,27 @@ function parseORCIDMessage(message, redcapORCIDIDs, recordId) {
     return message;
 }
 
+function addCustomORCID(recordId) {
+    return '<input type=\"text\" id=\"custom_orcid_'+recordId+'\" placeholder=\"Add Custom ORCID\" value=\"\" style=\"width: 180px; margin-top: 12px;\" /> <button onclick=\"addORCIDToRecord(\'$thisUrl\', \''+recordId+'\', $(\'#custom_orcid_'+recordId+'\').val(), this); return false;\" class=\"smallest\">add</button>';
+}
+
 function addORCIDToRecord(url, recordId, orcid, buttonOb) {
-    const myRow = $(buttonOb).closest('tr');
-    const postdata = {
-        redcap_csrf_token: getCSRFToken(),
-        record: recordId,
-        orcid: orcid,
-        action: 'addORCID'
-    };
-    let cb = (data) => { excludes[recordId] = data.recordExcludes ?? ''; const redcapIDs = data.redcapORCIDs ? data.redcapORCIDs.split(/\s*[,;]\s*/) : []; $(myRow).html(makeORCIDRow(data, recordId, redcapIDs)); }
-    myRow.html('<td colspan=\"5\">'+getSmallLoadingMessage(\"Reloading\")+'</td>')
-    runORCIDPOST(url, postdata, cb);
+    if (orcid === '') {
+        displayORCIDError('No ORCID specified!');
+    } else if (orcid.match(/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/)) {
+        const myRow = $(buttonOb).closest('tr');
+        const postdata = {
+            redcap_csrf_token: getCSRFToken(),
+            record: recordId,
+            orcid: orcid,
+            action: 'addORCID'
+        };
+        let cb = (data) => { excludes[recordId] = data.recordExcludes ?? ''; const redcapIDs = data.redcapORCIDs ? data.redcapORCIDs.split(/\s*[,;]\s*/) : []; $(myRow).html(makeORCIDRow(data, recordId, redcapIDs)); }
+        myRow.html('<td colspan=\"5\">'+getSmallLoadingMessage(\"Reloading\")+'</td>')
+        runORCIDPOST(url, postdata, cb);
+    } else {
+        displayORCIDError('Improper <a href=\"https://support.orcid.org/hc/en-us/articles/360006897674-Structure-of-the-ORCID-Identifier\" target=\"_new\">ORCID format</a>!')
+    }
 }
 
 function removeORCIDFromRecord(url, recordId, orcid, buttonOb) {
@@ -340,7 +356,11 @@ function displayORCIDLinks(orcids, redcapORCIDIDs, action, recordId) {
             html.push(link);
         }
     }
-    return html.join('<br/>');
+    if (html.length === 0) {
+        return 'None';
+    } else {
+        return html.join('<br/>');
+    }
 }
 
 const records = ".json_encode($records).";

@@ -498,13 +498,15 @@ class Upload
         return count($settings);
     }
 
-	public static function projectSettings($settings, $token, $server) {
+	public static function projectSettings($settings, $token, $server, $useAPIOnly = FALSE) {
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
-        $pid = Application::getPID($token);
-        if ($pid) {
-            return self::projectSettingsNotAPI($settings, $pid);
+        if (!$useAPIOnly) {
+            $pid = Application::getPID($token);
+            if ($pid) {
+                return self::projectSettingsNotAPI($settings, $pid);
+            }
         }
         $server = Sanitizer::sanitizeURL($server);
         if (!$server) {

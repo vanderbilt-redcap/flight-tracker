@@ -2483,9 +2483,9 @@ class Publications {
     }
 
 	public static function throttleDown($secs = 1) {
-        $milliseconds = (int) round($secs * 1000000);
-        if ($milliseconds > 0) {
-            usleep($milliseconds);
+        $microseconds = (int) round($secs * 1000000);
+        if ($microseconds > 0) {
+            usleep($microseconds);
         }
 	}
 

@@ -1260,12 +1260,10 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         $grant->setVariable('project_start', $row['nih_project_start_date']);
         $grant->setVariable('project_end', $row['nih_project_end_date']);
         list ($budgetStartDate, $budgetEndDate) = self::calculateBudgetDates($row['nih_project_start_date'], $row['nih_project_end_date'], $row['nih_award_notice_date']);
-        if ($budgetStartDate && $budgetEndDate) {
-            $grant->setVariable('start', $budgetStartDate);
-            $grant->setVariable('end', $budgetEndDate);
-        }
+        $grant->setVariable('start', $row['nih_budget_start'] ?: $budgetStartDate);
+        $grant->setVariable('end', $row['nih_budget_end'] ?: $budgetEndDate);
         $grant->setVariable('title', $row['nih_project_title']);
-        $grant->setVariable('budget', $row['nih_award_amount']);
+        $grant->setVariable('budget', $row['nih_direct_cost_amt'] ?: $row['nih_award_amount']);
         $grant->setVariable('total_budget', $row['nih_award_amount']);
         $grant->setVariable('sponsor', $row['nih_agency_ic_admin']);
         $grant->setVariable('sponsor_type', $row['nih_agency_ic_admin']);

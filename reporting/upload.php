@@ -39,6 +39,10 @@ if (!empty($_POST)) {
     $action = Sanitizer::sanitize($_POST['action'] ?? "");
     $scope = Sanitizer::sanitize((isset($_POST['scope']) && is_numeric($_POST['scope'])) ? $_POST['scope'] - 1 : "all");
     $selects = Sanitizer::sanitizeArray($_POST['selects'] ?? []);
+    $matchedFaculty = Sanitizer::sanitizeArray($_POST['matchedFaculty'] ?: []);
+    if (is_string($matchedFaculty)) {
+        $matchedFaculty = [$matchedFaculty];
+    }
     Application::keepAlive($pid);
 
     $data = [];
@@ -67,10 +71,11 @@ if (!empty($_POST)) {
                 }
 
                 if (!empty($linesToProcess)) {
-                    list($unprocessedLines, $upload, $warnings) = processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $scope, $selects);
+                    list($unprocessedLines, $upload, $warnings) = processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $scope, $selects, $matchedFaculty);
                     $data['lines'] = $unprocessedLines;
                     $data['upload'] = $upload;
                     $data['warnings'] = $warnings;
+                    $data['matchedFaculty'] = $matchedFaculty;
                 } else {
                     $data['error'] = "No data specified.";
                 }
@@ -83,6 +88,7 @@ if (!empty($_POST)) {
                 $upload = decodeJSONArray($_POST['upload']);
             }
             $upload = changeNewRecordIds($upload, $token, $server);
+            $upload = adjustRepeatingInstances($upload);
             if (!empty($upload)) {
                 Upload::rows($upload, $token, $server);
             } else {
@@ -94,10 +100,11 @@ if (!empty($_POST)) {
                 $linesToProcess = decodeJSONArray($_POST['lines']);
             }
             if (!empty($linesToProcess)) {
-                list($unprocessedLines, $upload, $warnings) = processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $scope, $selects);
+                list($unprocessedLines, $upload, $warnings) = processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $scope, $selects, $matchedFaculty);
                 $data['lines'] = $unprocessedLines;
                 $data['upload'] = $upload;
                 $data['warnings'] = $warnings;
+                $data['matchedFaculty'] = $matchedFaculty;
             } else {
                 $data['error'] = "No lines to process specified.";
             }
@@ -111,6 +118,31 @@ if (!empty($_POST)) {
     header("Content-type: application/json");
     echo $json;
     exit;
+}
+
+function adjustRepeatingInstances($rows) {
+    $usedInstances = [];
+    $newRows = [];
+    foreach ($rows as $row) {
+        if ($row['redcap_repeat_instrument']) {
+            $instrument = $row['redcap_repeat_instrument'];
+            $recordId = $row['record_id'];
+            if (!isset($usedInstances[$recordId])) {
+                $usedInstances[$recordId] = [];
+            }
+            if (!isset($usedInstances[$recordId][$instrument])) {
+                $usedInstances[$recordId][$instrument] = [];
+            }
+            $requestedInstance = $row['redcap_repeat_instance'];
+            while (in_array($requestedInstance, $usedInstances[$recordId][$instrument]) && ($requestedInstance < 100000)) {
+                $requestedInstance++;
+            }
+            $row["redcap_repeat_instance"] = $requestedInstance;
+            $usedInstances[$recordId][$instrument][] = $requestedInstance;
+        }
+        $newRows[] = $row;
+    }
+    return $newRows;
 }
 
 function changeNewRecordIds($rows, $token, $server) {
@@ -245,7 +277,7 @@ function combineTable5Lines(&$lines) {
     $lines = flattenLines($combinedLines);
 }
 
-function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $lineScope, $selects) {
+function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $token, $server, $pid, $lineScope, $selects, &$matchedFaculty) {
     $unprocessedLines = [];
     $upload = [];
     $warnings = [];
@@ -273,7 +305,7 @@ function processLines($linesToProcess, $table, $dateOfSubmission, $awardNo, $tok
                 $nihTables = new NIHTables($token, $server, $pid, $metadata);
                 list($unprocessed, $uploadRows, $warnings) = processTable2Line($line, $pid, $firstNames, $lastNames, $nihTables);
             } else if (NIHTables::beginsWith($table, ["4"])) {
-                list($unprocessed, $uploadRows, $warnings) = processTable4Line($line, $token, $server, $metadata, $firstNames, $lastNames);
+                list($unprocessed, $uploadRows, $warnings) = processTable4Line($line, $token, $server, $metadata, $firstNames, $lastNames, $matchedFaculty);
             } else if (NIHTables::beginsWith($table, ["5"])) {
                 if ($table == "5A") {
                     $category = "Predoctoral";
@@ -408,8 +440,10 @@ function parsePublications($publicationText, $traineeName, $facultyName, &$warni
                 $journalLower = strtolower($journal);
                 if (preg_match("/PMID/i", $pub)) {
                     $pmids[] = Publications::getCurrentPMID($pub);
+                    $isPubMatched = TRUE;
                 } else if (preg_match("/PMC/i", $pub)) {
                     $pmcs[] = Publications::getCurrentPMC($pub);
+                    $isPubMatched = TRUE;
                 } else {
                     foreach ($publicationREDCap as $row) {
                         similar_text(strtolower($row['citation_title']), $titleLower, $titlePerc);
@@ -507,6 +541,7 @@ function cleanLine(&$line) {
 
 function processTable2Line($line, $pid, $firstNames, $lastNames, &$nihTables) {
     $tableNum = 2;
+    $uploadRows = [];
     $comments = [];
     if ($line[0] && (count($line) >= 12)) {
         try {
@@ -568,11 +603,11 @@ function processTable2Line($line, $pid, $firstNames, $lastNames, &$nihTables) {
         $line['comments'] = $comments;
         return [[$line], [], []];
     } else {
-        return [[], [], []];
+        return [[], $uploadRows, []];
     }
 }
 
-function processTable4Line($line, $token, $server, $metadata, $firstNames, $lastNames) {
+function processTable4Line($line, $token, $server, $metadata, $firstNames, $lastNames, &$matchedFaculty) {
     $uploadRows = [];
     $comments = [];
     if ($line[0] && $line[1] && (strtolower($line[1]) != "none") && (count($line) >= 7)) {
@@ -626,8 +661,12 @@ function processTable4Line($line, $token, $server, $metadata, $firstNames, $last
                     addCustomGrantToSignUp($uploadRows, $matchedRecordId, $grantNumber, $role, $grantTitle, $startDate, $endDate, $token, $server, $metadata, $yearlyDirectCosts);
                 } else if (count($matchedRecords) >= 2) {
                     $comments["Record"] = getMoreThan1RecordText($matchedRecords);
-                } else {
+                } else if (!in_array($facultyName, $matchedFaculty)) {
+                    $matchedFaculty[] = $facultyName;
                     $comments["Record"] = getCreateRecordText($facultyName);
+                } else {
+                    $matchedRecordId = NEW_PREFIX.$facultyName;
+                    addCustomGrantToSignUp($uploadRows, $matchedRecordId, $grantNumber, $role, $grantTitle, $startDate, $endDate, $token, $server, $metadata, $yearlyDirectCosts);
                 }
             }
         } catch (\Exception $e) {
