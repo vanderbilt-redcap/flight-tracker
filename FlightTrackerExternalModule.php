@@ -1705,13 +1705,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $validUserids = array_unique(array_merge($validUserids, $menteeUserids[$menteeRecord], $mentorUserids[$menteeRecord]));
         }
 
-        if (MMA_DEBUG) {
+        if (MMAHelper::getMMADebug()) {
             Application::log("Comparing $userid to " . json_encode($validUserids));
         }
         if (in_array($userid, $validUserids)) {
             return TRUE;
         }
-        if (defined(MMA_DEBUG) && MMA_DEBUG && isset($_GET['uid']) && in_array($_GET['uid'], $validUserids)) {
+        if (MMAHelper::getMMADebug() && isset($_GET['uid']) && in_array($_GET['uid'], $validUserids)) {
             return TRUE;
         }
         return FALSE;
