@@ -593,7 +593,7 @@ class NIHTables {
         return $otherProjectsValues;
     }
 
-    private static function getOtherProjectsSavedValues($tableNum, $defaultValues, $facultyName) {
+    private static function getOtherProjectsSavedValues($tableNum, $facultyName, $defaultValues) {
         $otherProjectsSavedValues = [];
         foreach (Application::getPids() as $currPid) {
             if (REDCapManagement::isActiveProject($currPid)) {
@@ -2171,6 +2171,16 @@ class NIHTables {
         }
     }
 
+    private function getCustomGrantTitle($recordId, $validGrantTypes) {
+        $redcapData = Download::fieldsForRecords($this->token, $this->server, ["record_id", "custom_type", "custom_title"], [$recordId]);
+        foreach ($redcapData as $row) {
+            if ($row['custom_title'] && (in_array($row['custom_type'], $validGrantTypes))) {
+                return $row['custom_title'];
+            }
+        }
+        return "";
+    }
+
     private function getResearchTopic($recordId) {
 	    global $grantClass;
         if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "getGrantClasses")) {
@@ -2196,6 +2206,9 @@ class NIHTables {
                     }
                 }
             }
+            if (!$lastValidKTitle) {
+                return $this->getCustomGrantTitle($recordId, [1, 2, 10]);
+            }
             return $lastValidKTitle;
         } else if ($grantClass == "T") {
             # if T => from survey (check_degree0_topic or custom_title)
@@ -2203,14 +2216,7 @@ class NIHTables {
             if ($topics[$recordId]) {
                 return $topics[$recordId];
             }
-            $redcapData = Download::fieldsForRecords($this->token, $this->server, ["record_id", "custom_type", "custom_title"], [$recordId]);
-            $tTypes = self::getTrainingTypesForGrantClass();
-            foreach ($redcapData as $row) {
-                if ($row['custom_title'] && (in_array($row['custom_type'], $tTypes))) {
-                    return $row['custom_title'];
-                }
-            }
-            return "";
+            return $this->getCustomGrantTitle($recordId, self::getTrainingTypesForGrantClass());
         } else if (($grantClass == "Other") || ($grantClass == "")) {
             # if other => blank
             return "";
@@ -2313,7 +2319,7 @@ class NIHTables {
                             $descriptions["department"] = $row['promotion_division'];
                         }
                         $descriptions["institution"] = $row['promotion_institution'];
-                        $descriptions["activity"] = self::translateJobCategoryToActivity($row['promotion_job_category']);
+                        $descriptions["activity"] = $row['promotion_activity'] ? self::translatePrincipalActivityToActivity($row['promotion_activity']) : self::translateJobCategoryToActivity($row['promotion_job_category']);
                         $descriptions["original_category"] = ($row["promotion_job_category"] ? $choices["promotion_job_category"][$row["promotion_job_category"]] : "");
                         $descriptions["original_category_num"] = $row["promotion_job_category"];
                         self::fillInBlankValues($descriptions);
@@ -2321,8 +2327,13 @@ class NIHTables {
                         $numNotAvailablesInDescription = substr_count($descriptionStr, self::$notAvailable);
                         $numNotAvailablesInExistingItem = substr_count(implode(" | ", array_values($positions[$ts] ?? [])), self::$notAvailable);
                         # if new timestamps -OR- if less not available comments, then set
-                        if (!isset($positions[$ts])
-                            || ($positions[$ts] && ($numNotAvailablesInDescription < $numNotAvailablesInExistingItem))) {
+                        if (
+                            !isset($positions[$ts])
+                            || (
+                                $positions[$ts]
+                                && ($numNotAvailablesInDescription < $numNotAvailablesInExistingItem)
+                            )
+                        ) {
                             $positions[$ts] = $descriptions;
                         }
                     }
@@ -2334,25 +2345,46 @@ class NIHTables {
     }
 
     private static function translateJobCategoryToActivity($jobCategory) {
-	    # 1, Academia, still research-dominant (PI)
+        # 1, Academia, still research-dominant (PI)
         # 5, Academia, still research-dominant (Staff)
         # 2, Academia, not research dominant
         # 7, Academia, training program
         # 3, Private practice
         # 4, Industry, federal, non-profit, or other - research dominant
         # 6, Industry, federal, non-profit, or other - not research dominant
-	    $categories = array(
-	        "Research-Intensive" => array(1, 5, 4),
+        $categories = array(
+            "Research-Intensive" => array(1, 5, 4),
             "Research-Related" => array(2, 6),
             "Further Training" => array(7),
             "Other" => array(3),
         );
-	    foreach ($categories as $key => $jobCategories) {
-	        if (in_array($jobCategory, $jobCategories)) {
-	            return $key;
+        foreach ($categories as $key => $jobCategories) {
+            if (in_array($jobCategory, $jobCategories)) {
+                return $key;
             }
         }
-	    return "";
+        return "";
+    }
+
+    private static function translatePrincipalActivityToActivity($principalActivity) {
+        # 1, Primarily Research
+        # 2, Primarily Teaching
+        # 3, Primarily Clinical
+        # 4, Research-related
+        # 5, Further Training
+        # 6, Unrelated to Research
+        $categories = array(
+            "Research-Intensive" => array(1),
+            "Research-Related" => array(4),
+            "Further Training" => array(5),
+            "Other" => array(2, 3, 6),
+        );
+        foreach ($categories as $key => $jobCategories) {
+            if (in_array($principalActivity, $jobCategories)) {
+                return $key;
+            }
+        }
+        return "";
     }
 
     private static function fillInBlankValues(&$ary) {

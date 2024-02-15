@@ -201,7 +201,7 @@ class Wrangler {
                 if (!empty($upload)) {
                     $data = Upload::rows($upload, $token, $server);
                 } else {
-                    $data = [ "error" => "Upload queue empty!" ];
+                    $data = [ "error" => "PubMed no longer reports information for these PMIDs: ".REDCapManagement::makeConjunction($dedupedPMIDs) ];
                 }
             } else {
                 $data = ["error" => "All of the requested PMIDs exist in the database. Perhaps they have been omitted earlier."];
@@ -264,7 +264,7 @@ class Wrangler {
         function processWranglingResult(data, nextRecord, nextPageUrl) {
             const params = getUrlVars();
             const wranglerType = params['wranglerType'] ? '&wranglerType='+params['wranglerType'] : '';
-            const isSuccessful = ((data['count'] && (data['count'] > 0)) || (data['item_count'] && (data['item_count'] > 0)));            
+            const isSuccessful = ((data['count'] && (data['count'] > 0)) || (data['item_count'] && (data['item_count'] > 0)));
             if (isSuccessful && nextRecord && nextPageUrl) {
                 const count = data['count'] ?? data['item_count'] ?? 0;
                 const mssg = count+' upload';   // coded message
@@ -454,8 +454,12 @@ class Wrangler {
                     }
                 }
             }
+            lookupPMIDs(pmids, nextUrl);
+        }
+        
+        function lookupPMIDs(pmids, nextUrlOrCb) {
             if (pmids.length > 0) {
-                presentScreen('Saving...');
+                presentScreen('Downloading...');
                 const postdata = {
                     'redcap_csrf_token': '$csrfToken',
                     record_id: '$recordId',
@@ -463,7 +467,7 @@ class Wrangler {
                     pid: '$currPid',
                     action: 'save'
                 };
-                saveItems('$submissionUrl', postdata, nextUrl);
+                saveItems('$submissionUrl', postdata, nextUrlOrCb);
             } else {
                 $.sweetModal({
                     content: 'Please specify a citation!',
@@ -471,8 +475,54 @@ class Wrangler {
                 });
             }
         }
+        
+        function lookForMatches(url, destSel) {
+            $.post(url, { request: 'matchName', redcap_csrf_token: '$csrfToken' }, (json) => {
+                console.log(json);
+                $(destSel).html('');
+                const data = JSON.parse(json);
+                if (data.matches.length > 0) {
+                    let html = '<div class=\"max-width bin padded light_grey\">';
+                    for (let i=0; i < data.matches.length; i++) {
+                        const info = data.matches[i];
+                        const pid = info['pid'] ?? '';
+                        const record = info['record'] ?? '';
+                        const name = info['name'] ?? '';
+                        const projectName = info['project'] ?? '';
+                        const newCitations = info['new_citations'] ?? [];
+                        if (pid && record && name && (newCitations.length > 0)) {
+                            const tag = name+' in '+projectName;
+                            html += '<h4>'+newCitations.length+' Already Accepted from PubMed<br/>In Record '+record+': '+tag+' (pid '+pid+')</h4>';
+                            if (newCitations.length > 1) {
+                                const allPMIDs = [];
+                                for (let j=0; j < newCitations.length; j++) {
+                                    // allPMIDs cannot have quotes lest it interfere with the quotations
+                                    // therefore, convert PMIDs to integers
+                                    allPMIDs.push(parseInt(newCitations[j]['pmid']));
+                                }
+                                html += '<p class=\"centered\"><button class=\"green\" onclick=\"lookupPMIDs('+JSON.stringify(allPMIDs)+', () => { location.reload(); });\">Add All for This Project &amp; Refresh Page</button></p>';
+                            }
+                            for (let j=0; j < newCitations.length; j++) {
+                                const citInfo = newCitations[j];
+                                const citation = citInfo['citation'] ?? '';
+                                const pmid = citInfo['pmid'] ?? '';
+                                const pmcid = citInfo['pmcid'] ?? '';
+                                const pmcidText = pmcid ? ' (PMC '+pmcid+')' : '';
+                                const addButton = ' <button class=\"smallest\" onclick=\"lookupPMIDs(['+pmid+']); return false;\">add</button>';
+                                html += '<p class=\"alignLeft\"><strong>PMID '+pmid+pmcidText+'</strong>'+addButton+' <span class=\"smaller\">'+tag+'</span><br/>'+citation+'</p>';
+                            }
+                        }
+                    }
+                    html += '<p class=\"centered\">After adding any citations:<br/><button class=\"green\" onclick=\"location.reload();\">Refresh Page</button></p>';
+                    html += '</div>';
+                    $(destSel).html(html);
+                } else if (data.matches.length === 0) {
+                    $(destSel).html('<p class=\"centered\">No matches in other projects.</p>');
+                }
+            });
+        }
     
-    function saveItems(url, postdata, nextUrl) {
+    function saveItems(url, postdata, nextUrlOrCb) {
         $.post(url, postdata, function(json) {
             console.log(json);
             const data = JSON.parse(json);
@@ -490,10 +540,12 @@ class Wrangler {
                     icon: $.sweetModal.ICON_ERROR
                 });
                 clearScreen();
-            } else if (nextUrl && (window.location.href !== nextUrl)) {
-                window.location.href = nextUrl;
-            } else if (nextUrl && (window.location.href === nextUrl)) {
+            } else if (nextUrlOrCb && (typeof nextUrlOrCb === 'string') && (window.location.href !== nextUrlOrCb)) {
+                window.location.href = nextUrlOrCb;
+            } else if (nextUrlOrCb && (typeof nextUrlOrCb === 'string') && (window.location.href === nextUrlOrCb)) {
                 location.reload();
+            } else if (nextUrlOrCb && (typeof nextUrlOrCb === 'function')) {
+                nextUrlOrCb();
             } else {
                 makeNote();
                 clearScreen();

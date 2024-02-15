@@ -681,7 +681,11 @@ class DataDictionaryManagement {
                         }
                     } else {
                         foreach ($metadataFields as $metadataField) {
-                            if (self::hasMetadataChanged($indexedMetadata["REDCap"][$field][$metadataField], $indexedMetadata["file"][$field][$metadataField], $metadataField)) {
+                            if (($field == "record_id") && ($metadataField == "form_name")) {
+                                # allow for record_id to be on another form first, like a public survey
+                            } else if (
+                                self::hasMetadataChanged($indexedMetadata["REDCap"][$field][$metadataField], $indexedMetadata["file"][$field][$metadataField], $metadataField)
+                            ) {
                                 $missing[] = $field;
                                 $changed[] = $field." [$metadataField changed]";
                                 break; // metadataFields loop

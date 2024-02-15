@@ -775,6 +775,10 @@ class Publications {
 	    return NULL;
     }
 
+    private static function isEmptyArticleSet($output) {
+        return preg_match("/<PubmedArticleSet><\/PubmedArticleSet>/", $output);
+    }
+
 	public static function downloadPMIDs($pmids, $pid = NULL) {
 	    $limit = self::getPMIDLimit();
 	    $pmidsInGroups = [];
@@ -793,7 +797,7 @@ class Publications {
             $xml = simplexml_load_string(utf8_encode($output));
             $numRetries = 5;
             $i = 0;
-            while (!$xml && ($numRetries > $i)) {
+            while (!$xml && ($numRetries > $i) && !self::isEmptyArticleSet($output)) {
                 sleep(5);
                 $output = self::pullFromEFetch($pmidGroup, $pid);
                 $xml = simplexml_load_string(utf8_encode($output));
@@ -922,8 +926,9 @@ class Publications {
                 $authors = [];
                 foreach ($authorList as $authorName) {
                     $authorName = trim($authorName);
-                    list($first, $last) = NameMatcher::splitName($authorName, 2);
-                    $authors[] = ["first" => $first, "last" => $last];
+                    list($first, $last) = NameMatcher::splitName($authorName, 2, FALSE, FALSE);
+                    $author = ["first" => $first, "last" => $last];
+                    $authors[] = $author;
                 }
                 $foundCurrInAuthorList = FALSE;
                 $foundAnotherInAuthorList = FALSE;
@@ -1392,7 +1397,7 @@ class Publications {
         $tries = 0;
         $maxTries = 10;
         $oldOutput = "BAD OUTPUT";
-        while (!$xml && ($tries < $maxTries) && (!$output || ($oldOutput != $output))) {
+        while (!$xml && ($tries < $maxTries) && (!$output || ($oldOutput != $output)) && !self::isEmptyArticleSet($output)) {
             if ($output) {
                 $oldOutput = $output;
             }
@@ -2583,6 +2588,10 @@ class Publications {
 
             $html = $wrangler->getEditText($notDoneCount, $includedCount, $this->recordId, $fullName, $this->lastName);
             $html .= self::manualLookup($thisUrl);
+            $numPids = count(Application::getPids());
+            if ($numPids > 1) {
+                $html .= self::lookForMatches($thisUrl, $numPids);
+            }
             if ($notDoneCount > 0) {
                 $html .= $this->getNameChooser($notDone, $fullName);
             }
@@ -2594,6 +2603,16 @@ class Publications {
 
 		return $html;
 	}
+
+    private static function lookForMatches($thisUrl, $numPids) {
+        $html = "<div class='centered' id='nameMatches'><img src='".Application::link("img/loading.gif")."' alt='loading' style='width: 128px; height: 128px;' /><br/>Searching for Matches from $numPids Other Projects...</div>";
+        $html .= "<script>
+$(document).ready(() => {
+    lookForMatches('$thisUrl', '#nameMatches');
+});
+</script>";
+        return $html;
+    }
 
     private function getNameChooser($citationCollection, $name) {
         $pubmedNames = $citationCollection->getBoldedNames(TRUE);

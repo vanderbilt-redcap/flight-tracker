@@ -46,7 +46,79 @@ try {
     echo Application::reportException($e);
 }
 if (isset($_POST['request'])) {
-    if ($_POST['request'] == "check") {
+    if ($_POST['request'] == "matchName") {
+        $matches = [];
+        $data = ["matches" => []];
+        $records = Download::recordIds($token, $server);
+        $recordId = Sanitizer::getSanitizedRecord($_GET['record'] ?? "", $records);
+        if ($recordId) {
+            list($first, $middle, $last, $userid) = Download::threeNamePartsAndUserid($token, $server, $recordId);
+            foreach (Application::getActivePids() as $currPid) {
+                if ($currPid != $pid) {
+                    $firstNames = Application::getSetting("first_names", $currPid) ?: [];
+                    $lastNames = Application::getSetting("last_names", $currPid) ?: [];
+                    if (empty($firstNames) || empty($lastNames)) {
+                        $currToken = Application::getSetting("token", $currPid);
+                        $currServer = Application::getSetting("server", $currPid) ?: $server;
+                        try {
+                            $firstNames = Download::firstnames($currToken, $currServer);
+                            $lastNames = Download::lastnames($currToken, $currServer);
+                        } catch (\Exception $e) {
+                            if (preg_match("/The following values in the parameter \"fields\" are not valid/", $e->getMessage())) {
+                                $firstNames = [];
+                                $lastNames = [];
+                            } else {
+                                throw $e;
+                            }
+                        }
+                    }
+                    foreach ($firstNames as $currRecord => $fn) {
+                        $ln = $lastNames[$currRecord] ?? "";
+                        if (NameMatcher::matchName($first, $last, $fn, $ln)) {
+                            $matches[] = "$currPid:$currRecord";
+                        }
+                    }
+                }
+            }
+            if (!empty($matches)) {
+                $values = Download::oneFieldForRecordByPid($pid, "citation_pmid", $recordId) ?: [];
+                if (is_string($values)) {
+                    $values = [$values];
+                }
+                $matchPMIDs = array_values($values);
+                $citationFields = ["record_id", "citation_full_citation", "citation_include", "citation_pmid", "citation_pmcid"];
+                foreach ($matches as $licensePlate) {
+                    list($currPid, $currRecord) = explode(":", $licensePlate);
+                    $currName = Download::fullNameByPid($currPid, $currRecord);
+                    $projectTitle = Download::shortProjectTitleByPid($currPid);
+                    $info = [
+                        "pid" => $currPid,
+                        "name" => $currName,
+                        "record" => $currRecord,
+                        "project" => $projectTitle,
+                        "new_citations" => [],
+                    ];
+                    $redcapData = Download::fieldsForRecordsByPid($currPid, $citationFields, [$currRecord]);
+                    foreach ($redcapData as $row) {
+                        if (
+                            ($row['redcap_repeat_instrument'] == "citation")
+                            && ($row['citation_include'] == "1")
+                            && $row['citation_pmid']
+                            && !in_array($row['citation_pmid'], $matchPMIDs)
+                        ) {
+                            $info["new_citations"][] = [
+                                "pmid" => $row['citation_pmid'],
+                                "pmcid" => $row['citation_pmcid'],
+                                "citation" => $row['citation_full_citation'],
+                            ];
+                        }
+                    }
+                    $data["matches"][] = $info;
+                }
+            }
+        }
+        echo json_encode($data);
+    } else if ($_POST['request'] == "check") {
         $records = Download::recordIds($token, $server);
         $nextRecord = getNextRecordWithData($token, $server, 0, $wranglerType, $records);
         $html = checkForApprovals($token, $server, $records, $nextRecord, $url.$wranglerTypeParam, $wranglerType);
@@ -119,7 +191,11 @@ require_once(dirname(__FILE__)."/baseSelect.php");
 try {
     if (!$record) {
         if ($autoApproveHTML) {
-            echo "<h1>".ucfirst($wranglerType)." Wrangler</h1>";
+            if ($wranglerType == "FlagPublications") {
+                echo "<h1>Publications Flagger</h1>";
+            } else {
+                echo "<h1>".ucfirst($wranglerType)." Wrangler</h1>";
+            }
             echo $autoApproveHTML;
         } else {
             echo "<h1>No Data Available</h1>\n";

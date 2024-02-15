@@ -12,6 +12,10 @@ function updateFederalRePORTER($token, $server, $pid, $records) {
 }
 
 function updateNIHRePORTER($token, $server, $pid, $records) {
+    if (!Application::getSetting("update_nih_reporter_v2", $pid)) {
+        backfillVersion2NIHFields($pid, $records);
+        Application::saveSetting("update_nih_reporter_v2", "1", $pid);
+    }
     updateRePORTER("NIH", $token, $server, $pid, $records, FALSE);
 }
 
@@ -93,6 +97,59 @@ function updateRePORTER($cat, $token, $server, $pid, $records, $searchWithoutIns
         cleanUpMiddleNamesSeepage_2s($token, $server, $pid, $records);
     }
     CareerDev::saveCurrentDate("Last $cat RePORTER Download", $pid);
+}
+
+function backfillVersion2NIHFields($pid, $records) {
+    $newFields = [
+        "nih_opportunity_number",
+        "nih_organization",
+        "nih_arra_funded",
+        "nih_budget_start",
+        "nih_budget_end",
+        "nih_cfda_code",
+        "nih_funding_mechanism",
+        "nih_direct_cost_amt",
+        "nih_indirect_cost_amt",
+        "nih_project_detail_url",
+        "nih_date_added",
+    ];
+    $projectField = "project_num";
+    $instrument = "nih_reporter";
+    $prefix = "nih_";
+    $testField = "nih_opportunity_number";
+    foreach ($records as $recordId) {
+        $fields = ["record_id", $prefix.$projectField, $testField];
+        $redcapData = Download::fieldsForRecordsByPid($pid, $fields, [$recordId]);
+        $awardsToFill = [];
+        foreach ($redcapData as $row) {
+            if (
+                ($row["redcap_repeat_instrument"] == $instrument)
+                && !$row[$testField]
+                && ($row[$prefix.$projectField])
+            ) {
+                $awardsToFill[$row[$prefix.$projectField]] = $row['redcap_repeat_instance'];
+            }
+        }
+        $upload = [];
+        $reporter = new RePORTER($pid, $recordId, "NIH");
+        $reporter->searchAwards(array_keys($awardsToFill));
+        $unnecessaryMaxInstance = 0;
+        $unnecessaryExistingGrants = [];
+        $rows = $reporter->getUploadRows($unnecessaryMaxInstance, $unnecessaryExistingGrants);
+        foreach ($rows as $row) {
+            foreach ($row as $field => $value) {
+                $row[$field] = REDCapmanagement::convert_from_latin1_to_utf8_recursively($value);
+            }
+            if (isset($awardsToFill[$row[$prefix.$projectField]])) {
+                $row['redcap_repeat_instance'] = $awardsToFill[$row[$prefix.$projectField]];
+                $upload[] = REDCapManagement::filterForREDCap($row, $newFields);
+            }
+        }
+        if (!empty($upload)) {
+            Application::log("Backfilling old NIH RePORTER Data for record $recordId: ".count($upload)." rows", $pid);
+            Upload::rowsByPid($upload, $pid);
+        }
+    }
 }
 
 function cleanUpMiddleNamesSeepage_2s($token, $server, $pid, $records) {

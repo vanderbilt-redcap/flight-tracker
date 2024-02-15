@@ -75,6 +75,7 @@ try {
     }
     $scheduledCrons[] = "Report Stats to Vanderbilt: Friday";
     $scheduledCrons[] = "ERIC (Education Pubs): Friday";
+    $scheduledCrons[] = "TAGGS (HHS Grants): Friday";
     $scheduledCrons[] = "Data Sharing: Friday";
     $scheduledCrons[] = "Bibliometrics: Each Day Throughout Month";
 
@@ -93,12 +94,21 @@ try {
     if ($projectSettings['project_notes']) {
         $projectNotes = "<p class='centered'>".$projectSettings['project_notes']."</p>";
     }
-
+    $currVersion = CareerDev::getVersion();
+    $latestVersion = CareerDev::getLatestReleaseVersion();
+    $versionText = "";
+    if ($latestVersion == $currVersion) {
+        $versionText = "(latest version)";
+    } else if ($latestVersion && REDCapManagement::versionGreaterThanOrEqualTo($currVersion, $latestVersion)) {
+        $versionText = "(pre-release version)";
+    } else if ($latestVersion) {
+        $versionText = "(latest: v$latestVersion)";
+    }
 
     ?>
-    <html>
+    <html lang="en">
     <head>
-        <title>Flight Tracker <?= CareerDev::getVersion() ?> Dashboard</title>
+        <title>Flight Tracker <?= $currVersion ?> Dashboard</title>
     </head>
     <body>
     <style>
@@ -122,7 +132,7 @@ $(document).ready(function() {
     ?>
 
     <h1 style='margin-bottom: 0;'>Flight Tracker Central</h1>
-    <h3 class='nomargin' style='background-color: transparent;'>v<?= CareerDev::getVersion() ?></h3>
+    <h3 class='nomargin' style='background-color: transparent;'>v<?= $currVersion ?> <span style="font-size: 0.7em;" class="darkgreytext" title="Contact your REDCap administrator for any Flight Tracker upgrades"><?= $versionText ?></span></h3>
     <h4 class='nomargin'>Watch Your Scholars Fly - <a href="https://redcap.vanderbilt.edu/flight_tracker/">Flight Tracker Community Support</a></h4>
     <h5>from <img src="<?= Application::link("img/efs_small_logoonly.png") ?>" alt="Edge for Scholars" style="width: 27px; height: 20px;"> <a href='<?= $edgeLink ?>' target="_blank">Edge for Scholars</a></h5>
     <?php

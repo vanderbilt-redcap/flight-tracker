@@ -102,11 +102,11 @@ function processVICTR($token, $server, $pid, $records, $metadata) {
             $data = StarBRITE::accessSRI("pub-match/vunet/", [$vunet], $pid);
             $pmids = StarBRITE::fetchPMIDs($data);
             $recordIncludes = $allIncludes[$recordId] ?? [];
-            $recordPMIDs = $allPMIDs[$recordId] ?? [];
+            $recordPMIDsWithInstances = $allPMIDs[$recordId] ?? [];
             $recordSources = $allSources[$recordId] ?? [];
-            $maxInstance = max(array_keys($recordPMIDs) ?: [0]);
+            $maxInstance = max(array_keys($recordPMIDsWithInstances) ?: [0]);
             foreach ($pmids as $newPMID) {
-                if (!in_array($newPMID, array_values($recordPMIDs))) {
+                if (!in_array($newPMID, array_values($recordPMIDsWithInstances))) {
                     Application::log("$recordId: New PMID for userid: " . $vunet . " PMID: " . $newPMID, $pid);
                     $maxInstance++;
                     $uploadRows = Publications::getCitationsFromPubMed([$newPMID], $metadata, "victr", $recordId, $maxInstance, [$newPMID], $pid);
@@ -117,10 +117,10 @@ function processVICTR($token, $server, $pid, $records, $metadata) {
                     }
                 } else {
                     # already exist --> update source to VICTR and mark as included automatically
-                    foreach ($recordPMIDs as $instance => $pmid) {
+                    foreach ($recordPMIDsWithInstances as $instance => $pmid) {
                         if (
                             ($pmid == $newPMID)
-                            && ($recordIncludes[$instance] ?? "" !== "0")
+                            && (($recordIncludes[$instance] ?? "") !== "0")
                             && in_array($recordSources[$instance] ?? "", ["", "pubmed", "manual"])
                         ) {
                             $uploadRow = [
@@ -171,8 +171,8 @@ function processPubMed($token, $server, $pid, $records, $metadata, $searchWithIn
 
 	foreach ($records as $recordId) {
         $uploadRows = [];
-        $recordPMIDs = $allPMIDs[$recordId] ?? [];
-        $maxInstance = (int) max(array_keys($recordPMIDs) ?: [0]);
+        $recordPMIDsWithInstances = $allPMIDs[$recordId] ?? [];
+        $maxInstance = (int) max(array_keys($recordPMIDsWithInstances) ?: [0]);
         $recLastName = $allLastNames[$recordId] ?? "";
 		$firstName = $allFirstNames[$recordId] ?? "";
 		$middleName = $allMiddleNames[$recordId] ?? "";
@@ -205,7 +205,7 @@ function processPubMed($token, $server, $pid, $records, $metadata, $searchWithIn
             }
             foreach ($orcidPMIDs as $pmid) {
                 $matchedInstance = FALSE;
-                foreach ($recordPMIDs as $instance => $recordPMID) {
+                foreach ($recordPMIDsWithInstances as $instance => $recordPMID) {
                     if ($pmid == $recordPMID) {
                         $matchedInstance = $instance;
                         break;
@@ -214,10 +214,10 @@ function processPubMed($token, $server, $pid, $records, $metadata, $searchWithIn
                 if ($matchedInstance === FALSE) {
                     $orcidPMIDsToDownload[] = $pmid;
                 } else if (
-                    ($allIncludes[$recordId][$matchedInstance] ?? "" !== "0")
-                    && ($allSources[$recordId][$matchedInstance] ?? "" != "orcid")
+                    (($allIncludes[$recordId][$matchedInstance] ?? "") !== "0")
+                    && (($allSources[$recordId][$matchedInstance] ?? "") != $src)
                 ) {
-                    $uploadRows[] = [
+                    $uploadRow = [
                         "record_id" => $recordId,
                         "redcap_repeat_instrument" => "citation",
                         "redcap_repeat_instance" => $matchedInstance,
@@ -225,15 +225,17 @@ function processPubMed($token, $server, $pid, $records, $metadata, $searchWithIn
                         "citation_include" => "1",
                         "citation_source" => $src,
                     ];
+                    $uploadRows[] = $uploadRow;
                 }
             }
         }
 
         Application::log("Searching $recLastName $firstName at ".implode(", ", $institutions), $pid);
+        Application::log("Prior Record PMIDs ".count($recordPMIDsWithInstances).": ".json_encode($recordPMIDsWithInstances), $pid);
         $pubmedPMIDs = Publications::searchPubMedForName($firstName, $middleName, $recLastName, $pid, $institutions);
         $nonOrcidPMIDsToDownload = [];
         foreach ($pubmedPMIDs as $pmid) {
-            if (!in_array($pmid, $recordPMIDs) && !in_array($pmid, $orcidPMIDs)) {
+            if (!in_array($pmid, array_values($recordPMIDsWithInstances)) && !in_array($pmid, $orcidPMIDsToDownload)) {
                 $nonOrcidPMIDsToDownload[] = $pmid;
             }
         }
@@ -248,18 +250,18 @@ function processPubMed($token, $server, $pid, $records, $metadata, $searchWithIn
         $orcidRows = [];
         $maxInstance++;
         if (!empty($nonOrcidPMIDsToDownload)) {
-            $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDsToDownload, $metadata, "pubmed", $recordId, $maxInstance, $orcidPMIDs, $pid);
+            $pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDsToDownload, $metadata, "pubmed", $recordId, $maxInstance, $orcidPMIDsToDownload, $pid);
             $maxInstance = REDCapManagement::getMaxInstance($pubmedRows, "citation", $recordId);
             $maxInstance++;
         }
-        if (!empty($orcidPMIDs)) {
+        if (!empty($orcidPMIDsToDownload)) {
             $src = "orcid";
             if (!isset($choices["citation_source"][$src])) {
                 $src = "pubmed";
             }
-            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $maxInstance, $orcidPMIDs, $pid);
+            $orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $maxInstance, $orcidPMIDsToDownload, $pid);
         }
-        Application::log("$recordId: Combining ".count($pubmedRows)." PubMed rows with ".count($orcidRows)." ORCID rows", $pid);
+        Application::log("$recordId: Combining ".count($pubmedRows)." PubMed rows with ".count($orcidRows)." ORCID rows and ".count($uploadRows)." prior rows", $pid);
         $uploadRows = array_merge($pubmedRows, $orcidRows, $uploadRows);
 		if (!empty($uploadRows)) {
 		    $uploadRows = Publications::filterExcludeList($uploadRows, $excludeList, $recordId);

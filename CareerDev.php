@@ -22,8 +22,24 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.7.2";
+		return "6.8.0";
 	}
+
+    public static function getLatestReleaseVersion() {
+        $module = self::getModule();
+        $sql = "SELECT `value` FROM redcap_config WHERE field_name = ?";
+        $result = $module->query($sql, ['external_modules_updates_available']);
+        if ($row = $result->fetch_assoc()) {
+            $json = $row['value'] ?: "[]";
+            $updates = json_decode($json, TRUE);
+            foreach ($updates as $id => $info) {
+                if ($info["name"] == "flight_tracker") {
+                    return $info["version"] ?? "";
+                }
+            }
+        }
+        return "";
+    }
 
 	public static function getLockFile($pid) {
 	    $numHours = 4;
@@ -108,6 +124,7 @@ class CareerDev {
             "NSF Grants" => "api.nsf.gov",
             "ERIC" => "api.ies.ed.gov",
             "Dept. of Ed. Grants" => "ies.ed.gov",
+            "TAGGS (HHS)" => "taggs.hhs.gov",
         ];
         if ($all || self::isScopusEnabled()) {
             $sites["Scopus (API)"] = "api.elsevier.com";

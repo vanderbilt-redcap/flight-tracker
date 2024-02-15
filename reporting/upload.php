@@ -654,7 +654,7 @@ function processTable4Line($line, $token, $server, $metadata, $firstNames, $last
                     $matchedRecords = getMatchedRecords($facultyName, $firstNames, $lastNames);
                 }
                 if (count($matchedRecords) == 1) {
-                    $matchedRecordId = $matchedRecords[0];
+                    $matchedRecordId = (string) $matchedRecords[0];
                     if ($uploadNames) {
                         addNormativeNameRow($uploadRows, $matchedRecordId, $facultyName);
                     }
@@ -758,7 +758,7 @@ function processTable5Line($line, $awardNo, $category, $token, $server, $pid, $m
                 return [[$line], [], []];
             } else {
                 if (count($matchedRecords) == 1) {
-                    $matchedRecordId = $matchedRecords[0];
+                    $matchedRecordId = (string) $matchedRecords[0];
                     addCustomGrantToSignUp($uploadForRecord, $matchedRecordId, $awardNo, $category, "", $trainingStartDate, $trainingEndDate, $token, $server, $metadata);
                     addNormativeRow($uploadForRecord, $matchedRecordId, $facultyName, "", $trainingStartDate, $trainingStarts, $mentors, $importedMentors, $metadata, $uploadNames ? $traineeName : "");
 
@@ -866,7 +866,7 @@ function processTable8Line($line, $awardNo, $category, $token, $server, $metadat
                 $matchedRecords = getMatchedRecords($traineeName, $firstNames, $lastNames);
             }
             if (count($matchedRecords) == 1) {
-                $matchedRecordId = $matchedRecords[0];
+                $matchedRecordId = (string) $matchedRecords[0];
                 addCustomGrantToSignUp($upload, $matchedRecordId, $awardNo, $category, $researchTopic, $trainingStartDate, "", $token, $server, $metadata);
                 transformDegreesToREDCap($token, $server, $upload, $matchedRecordId, $degreesAndYears, $choices);
                 transformPositionsToREDCap($token, $server, $upload, $matchedRecordId, $positions, $choices);

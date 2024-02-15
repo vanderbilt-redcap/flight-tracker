@@ -33,6 +33,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     const INTENSE_BATCH_SUFFIX = "intense";
     const TEST_CRON = "test";
     const WEEKDAYS = [1, 2, 3, 4, 5];
+    const OLD_FIRST_NAMES = "old_first_names";
+    const OLD_LAST_NAMES = "old_last_names";
+    const FIRST_NAMES = "first_names";
+    const LAST_NAMES = "last_names";
 
 	function getPrefix() {
         return Application::getPrefix();
@@ -414,8 +418,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 $firstNames[$pid] = Download::firstnames($token, $server);
                 $lastNames[$pid] = Download::lastnames($token, $server);
                 if (in_array($pid, $pidsDest)) {
-                    $oldFirstNames = Application::getSetting("old_first_names", $pid) ?: [];
-                    $oldLastNames = Application::getSetting("old_last_names", $pid) ?: [];
+                    $oldFirstNames = Application::getSetting(self::OLD_FIRST_NAMES, $pid) ?: [];
+                    $oldLastNames = Application::getSetting(self::OLD_LAST_NAMES, $pid) ?: [];
                     $updatedRecords[$pid] = [];
                     foreach ($firstNames[$pid] as $recordId => $fn1) {
                         $fn2 = $oldFirstNames[$recordId] ?? "";
@@ -432,8 +436,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     if (empty($updatedRecords[$pid])) {
                         unset($updatedRecords[$pid]);
                     }
-                    Application::saveSetting("old_first_names", $firstNames[$pid], $pid);
-                    Application::saveSetting("old_last_names", $lastNames[$pid], $pid);
+                    Application::saveSetting(self::OLD_FIRST_NAMES, $firstNames[$pid], $pid);
+                    Application::saveSetting(self::OLD_LAST_NAMES, $lastNames[$pid], $pid);
                 }
             }
         }
@@ -1330,8 +1334,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 $lastNames = Download::lastnames($token, $server);
 
                 $this->setProjectSetting("userids", $userids, $pid);
-                $this->setProjectSetting("first_names", $firstNames, $pid);
-                $this->setProjectSetting("last_names", $lastNames, $pid);
+                $this->setProjectSetting(self::FIRST_NAMES, $firstNames, $pid);
+                $this->setProjectSetting(self::LAST_NAMES, $lastNames, $pid);
             }
         }
     }
@@ -1341,8 +1345,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         foreach ($pidsToSearch as $pid) {
             Application::log("Preprocessing userids for Scholar Portal", $pid);
             $userids = $this->getProjectSetting("userids", $pid);
-            $firstNames = $this->getProjectSetting("first_names", $pid);
-            $lastNames = $this->getProjectSetting("last_names", $pid);
+            $firstNames = $this->getProjectSetting(self::FIRST_NAMES, $pid);
+            $lastNames = $this->getProjectSetting(self::LAST_NAMES, $pid);
             foreach ($userids as $recordId => $userid) {
                 if ($userid) {
                     $previousSetting = Application::getSystemSetting($userid) ?: [];

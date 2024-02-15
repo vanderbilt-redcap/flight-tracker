@@ -66,7 +66,7 @@ class Download {
         if (!self::$rateLimitTs) {
             self::$rateLimitTs = time();
         }
-        $thresholdFraction = 0.75;
+        $thresholdFraction = 0.5;    // 0.75 is too high
 	    if (self::$rateLimitPerMinute && (self::$rateLimitCounter * $thresholdFraction > self::$rateLimitPerMinute)) {
 	        $timespanExpended = time() - self::$rateLimitTs;
 	        $sleepTime = 60 - $timespanExpended + 5;
@@ -535,15 +535,29 @@ class Download {
         return Sanitizer::sanitizeArray($rows, FALSE, FALSE);
     }
 
-	public static function shortProjectTitle($token, $server) {
-	    $title = self::projectTitle($token, $server);
-        $shortTitle = trim(preg_replace("/Flight Tracker\s?(-\s)?/i", "", $title));
-        $shortTitle = str_replace("(", "[", $shortTitle);
-        $shortTitle = str_replace(")", "]", $shortTitle);
-        return $shortTitle;
+    public static function shortProjectTitle($token, $server) {
+        $title = self::projectTitle($token, $server);
+        return self::shortenTitle($title);
     }
 
-	public static function projectTitle($token, $server) {
+    private static function shortenTitle($title) {
+        $shortTitle = trim(preg_replace("/Flight Tracker\s?(-\s)?/i", "", $title));
+        $shortTitle = str_replace("(", "[", $shortTitle);
+        return str_replace(")", "]", $shortTitle);
+    }
+
+    public static function shortProjectTitleByPid($pid) {
+        $module = Application::getModule();
+        $sql = "SELECT app_title FROM redcap_projects WHERE project_id = ?";
+        $result = $module->query($sql, [$pid]);
+        $title = "";
+        if ($row = $result->fetch_assoc()) {
+            $title = $row['app_title'];
+        }
+        return self::shortenTitle($title);
+    }
+
+    public static function projectTitle($token, $server) {
 	    $settings = self::getProjectSettings($token, $server);
 	    if ($settings['project_title']) {
 	        return $settings['project_title'];
@@ -729,8 +743,15 @@ class Download {
         }
         if ($redcapData === NULL) {
             Application::log("Retrying because undecipherable output: ".$data['content'], $pid);
-            usleep(500000);
-            $redcapData = self::callAPI($server, $data, $pid, $try + 1);
+            if (Application::isLocalhost()) {
+                Application::log(json_encode(debug_backtrace()), $pid);
+            }
+            if (preg_match("/has been banned due to suspected abuse/", $output)) {
+                $try = 1000000;
+            } else {
+                usleep(500000);
+                $redcapData = self::callAPI($server, $data, $pid, $try + 1);
+            }
             if (($redcapData === NULL) && ($try >= $maxTries)) {
                 Application::log("ERROR: ".$output, $pid);
                 throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
@@ -750,7 +771,7 @@ class Download {
     }
 
     private static function handleLargeJSONs(&$redcapData, $pid) {
-        foreach (array_keys($redcapData) as $i) {
+        for ($i = 0; $i < count($redcapData); $i++) {
             $recordId = $redcapData[$i]["record_id"] ?? "";
             foreach ($redcapData[$i] as $field => $value) {
                 $key = $field."___".$recordId;
@@ -951,11 +972,23 @@ class Download {
     }
 
 	public static function lastnames($token, $server) {
-		return Download::oneField($token, $server, "identifier_last_name");
+		$lastNames = Download::oneField($token, $server, "identifier_last_name");
+        return self::filterOutBlanks($lastNames);
 	}
 
+    private static function filterOutBlanks($fieldData) {
+        $newFieldData = [];
+        foreach ($fieldData as $recordId => $value) {
+            if ($value !== "") {
+                $newFieldData[$recordId] = $value;
+            }
+        }
+        return $newFieldData;
+    }
+
     public static function firstnames($token, $server) {
-        return Download::oneField($token, $server, "identifier_first_name");
+        $firstNames = Download::oneField($token, $server, "identifier_first_name");
+        return self::filterOutBlanks($firstNames);
     }
 
     public static function getSingleValue($pid, $recordId, $field, $instance = NULL) {
@@ -1036,6 +1069,7 @@ class Download {
 
     public static function middlenames($token, $server) {
 		return Download::oneField($token, $server, "identifier_middle");
+        # do not use self::filterOutBlanks() because nothing is keyed off of middle names
 	}
 
 	public static function emails($token, $server) {
@@ -1201,7 +1235,10 @@ class Download {
 
 		$names = array();
 		foreach ($ordered as $key => $row) {
-			$names[$row['record_id']] = NameMatcher::formatName($row['identifier_first_name'], $row['identifier_middle'], $row['identifier_last_name']);
+			$name = NameMatcher::formatName($row['identifier_first_name'], $row['identifier_middle'], $row['identifier_last_name']);
+            if ($name !== "") {
+                $names[$row['record_id']] = $name;
+            }
 		}
 		return $names;
 	}
@@ -1234,46 +1271,72 @@ class Download {
     public static function recordIdsByPid($pid) {
         $module = Application::getModule();
         $dataTable = Application::getDataTable($pid);
-        $sql = "SELECT DISTINCT(record) AS record
+        if (Application::getProgramName() == "Flight Tracker") {
+            # blank first/last names do not have an entry in the redcap_data table
+            # this avoids pulling records with blank names
+            $sql = "SELECT DISTINCT(record) AS record
+                    FROM $dataTable
+                    WHERE project_id = ?
+                        AND field_name IN (?, ?)
+                    ORDER BY record;";
+            $params = [$pid, "identifier_first_name", "identifier_last_name"];
+        } else {
+            $sql = "SELECT DISTINCT(record) AS record
                     FROM $dataTable
                     WHERE project_id = ?
                     ORDER BY record;";
-        if ($module) {
-            $q = $module->query($sql, [$pid]);
-        } else {
-            $q = db_query($sql, [$pid]);
+            $params = [$pid];
         }
+        if ($module) {
+            $recordResult = $module->query($sql, $params);
+        } else {
+            $recordResult = db_query($sql, $params);
+        }
+
         $records = [];
-        while ($row = $q->fetch_assoc()) {
+        while ($row = $recordResult->fetch_assoc()) {
             $records[] = Sanitizer::sanitize($row['record']);
         }
         sort($records, SORT_NUMERIC);
         return $records;
     }
 
-	public static function recordIds($token, $server, $recordIdField = "record_id") {
-		if (isset($_GET['test'])) {
+	public static function recordIds($token, $server, $recordIdField = "record_id")
+    {
+        if (isset($_GET['test'])) {
             Application::log("Download::recordIds");
         }
-		$data = array(
-			'token' => $token,
-			'content' => 'record',
-			'format' => 'json',
-			'type' => 'flat',
-			'rawOrLabel' => 'raw',
-			'fields' => [$recordIdField],
-			'rawOrLabelHeaders' => 'raw',
-			'exportCheckboxLabel' => 'false',
-			'exportSurveyFields' => 'false',
-			'exportDataAccessGroups' => 'false',
-			'returnFormat' => 'json'
-		);
-		$redcapData = self::sendToServer($server, $data);
-        return self::filterOutRecords($redcapData, $recordIdField);
-	}
+        if (Application::getProgramName() == "Flight Tracker") {
+            # this avoids pulling records with blank names
+            $fields = [$recordIdField, "identifier_first_name", "identifier_last_name"];
+        } else {
+            $fields = [$recordIdField];
+        }
+        $data = array(
+            'token' => $token,
+            'content' => 'record',
+            'format' => 'json',
+            'type' => 'flat',
+            'rawOrLabel' => 'raw',
+            'fields' => $fields,
+            'rawOrLabelHeaders' => 'raw',
+            'exportCheckboxLabel' => 'false',
+            'exportSurveyFields' => 'false',
+            'exportDataAccessGroups' => 'false',
+            'returnFormat' => 'json'
+        );
+        $redcapData = self::sendToServer($server, $data);
+        if (Application::getProgramName() == "Flight Tracker") {
+            # this avoids pulling records with blank names
+            $records = self::filterOutBlankNames($redcapData, $recordIdField);
+        } else {
+            $records = self::filterOutRecords($redcapData, $recordIdField);
+        }
+        return $records;
+    }
 
     private static function filterOutRecords($redcapData, $recordIdField) {
-        $records = array();
+        $records = [];
         foreach ($redcapData as $row) {
             if (isset($row[$recordIdField]) && !in_array($row[$recordIdField], $records)) {
                 $records[] = $row[$recordIdField];
@@ -1282,7 +1345,24 @@ class Download {
         return $records;
     }
 
-	public static function fastField($pid, $field) {
+    private static function filterOutBlankNames($redcapData, $recordIdField) {
+        $records = [];
+        foreach ($redcapData as $row) {
+            if (
+                isset($row[$recordIdField])
+                && !in_array($row[$recordIdField], $records)
+                && (
+                    ($row['identifier_first_name'] !== "")
+                    || ($row['identifier_last_name'] !== "")
+                )
+            ) {
+                $records[] = $row[$recordIdField];
+            }
+        }
+        return $records;
+    }
+
+    public static function fastField($pid, $field) {
 	    $values = [];
 
         $dataTable = Application::getDataTable($pid);

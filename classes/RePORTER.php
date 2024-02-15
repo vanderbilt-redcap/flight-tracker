@@ -5,6 +5,8 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class RePORTER {
+    const NIH_API_VERSION = "v2";
+    
     public function __construct($pid, $recordId, $category, $recordExcludeList = []) {
         $this->pid = $pid;
         $this->recordId = $recordId;
@@ -84,7 +86,7 @@ class RePORTER {
                     "org_names" => [$institution],
                 ],
             ];
-            $location = $this->server."/v1/projects/search";
+            $location = $this->server."/".self::NIH_API_VERSION."/projects/search";
             $this->currData = $this->runPOSTQuery($location, $payload);
             foreach ($this->currData as $line) {
                 if ($line['nih_agency_ic_fundings']) {
@@ -394,21 +396,21 @@ class RePORTER {
         return $upload;
     }
 
-    public function searchAwards($baseAwardNumbers) {
+    public function searchAwards($awardNumbers) {
         if ($this->isFederal()) {
             // $query = $this->server."/v1/projects/search?query=projectNumber:*".urlencode($baseAwardNo)."*";
             // $this->currData = $this->runGETQuery($query);
         } else if ($this->isNIH()) {
             $payload = [
-                "criteria" => ["project_nums" => $baseAwardNumbers],
+                "criteria" => ["project_nums" => $awardNumbers],
                 "include_fields" => $this->includeFields,
             ];
-            $location = $this->server."/v1/projects/search";
+            $location = $this->server."/".self::NIH_API_VERSION."/projects/search";
             $this->currData = $this->runPOSTQuery($location, $payload);
         }
         return $this->getData();
     }
-
+    
     public function searchAward($baseAwardNo) {
         if ($this->isFederal()) {
             $query = $this->server."/v1/projects/search?query=projectNumber:*".urlencode($baseAwardNo)."*";
@@ -418,7 +420,7 @@ class RePORTER {
                 "criteria" => ["project_nums" => ["?$baseAwardNo*"]],
                 "include_fields" => $this->includeFields,
             ];
-            $location = $this->server."/v1/projects/search";
+            $location = $this->server."/".self::NIH_API_VERSION."/projects/search";
             $this->currData = $this->runPOSTQuery($location, $payload);
         }
         return $this->getData();
@@ -477,7 +479,7 @@ class RePORTER {
                     "project_nums" => $searchStrings,
                 ],
             ];
-            $location = $this->server."/v1/projects/search";
+            $location = $this->server."/".self::NIH_API_VERSION."/projects/search";
             $this->currData = $this->runPOSTQuery($location, $payload);
             $this->currData = $this->filterForExcludeList();
             $this->currData = $this->filterForGrantTypes($grantTypes);
@@ -532,7 +534,7 @@ class RePORTER {
             $payload = [
                 "criteria" => $criteria,
             ];
-            $location = $this->server."/v2/projects/search";
+            $location = $this->server."/".self::NIH_API_VERSION."/projects/search";
             $data = $this->runPOSTQuery($location, $payload);
             $this->currData = self::filterNIHDataForName($data, $firstName, $lastName);
             $this->currData = $this->filterForExcludeList();
