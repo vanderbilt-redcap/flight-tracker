@@ -14,6 +14,45 @@ class DataDictionaryManagement {
     const INSTITUTION_OTHER_VALUE = "5";
     const NONE = "NONE";
     const ALUMNI_OTHER_VALUE = "999999";
+    const HONORACTIVITY_OTHER_VALUE = '999999';
+    const HONORACTIVITY_SPECIAL_FIELDS = [
+        "activityhonor_committee_name_other" => [
+            "activityhonor_committee_name",
+            "surveyactivityhonor_committee_name",
+            "check_honor1_committee_name",
+            "check_honor2_committee_name",
+            "check_honor3_committee_name",
+            "check_honor4_committee_name",
+            "check_honor5_committee_name",
+            "followup_honor1_committee_name",
+            "followup_honor2_committee_name",
+            "followup_honor3_committee_name",
+            "followup_honor4_committee_name",
+            "followup_honor5_committee_name",
+        ],
+        "activityhonor_name" => [
+            "activityhonor_local_name",
+            "surveyactivityhonor_local_name",
+        ],
+        "surveyactivityhonor_committee_name_other" => [
+            "activityhonor_committee_name",
+            "surveyactivityhonor_committee_name",
+            "check_honor1_committee_name",
+            "check_honor2_committee_name",
+            "check_honor3_committee_name",
+            "check_honor4_committee_name",
+            "check_honor5_committee_name",
+            "followup_honor1_committee_name",
+            "followup_honor2_committee_name",
+            "followup_honor3_committee_name",
+            "followup_honor4_committee_name",
+            "followup_honor5_committee_name",
+        ],
+        "surveyactivityhonor_name" => [
+            "activityhonor_local_name",
+            "surveyactivityhonor_local_name",
+        ],
+    ];
 
     public static function getDeletionRegEx() {
         $suffix = self::DELETION_SUFFIX;
@@ -91,13 +130,16 @@ class DataDictionaryManagement {
 
         $choices = DataDictionaryManagement::getChoices($metadata);
         $redcapLists = [];
+        $allDataUploads = [];
         foreach ($fields as $type => $fieldsToChange) {
             if ($type == "optional") {
                 foreach ($fieldsToChange as $field) {
                     $settingName = REDCapManagement::turnOptionalFieldIntoSetting($field);
                     $itemText = $lists[$settingName] ?? "";
                     if ($itemText) {
-                        $redcapLists[$settingName] = self::makeREDCapList($itemText, self::getOptionalOtherItem($field));
+                        $oldItemChoices = $choices[$field] ?? [];
+                        list($redcapLists[$settingName], $upload) = self::makeREDCapList($itemText, self::getOptionalOtherItem($field), $oldItemChoices, $pid, $field);
+                        $allDataUploads = array_merge($allDataUploads, $upload);
                     }
                 }
             } else {
@@ -111,7 +153,7 @@ class DataDictionaryManagement {
                     }
                 }
                 $other = $others[$type] ?? FALSE;
-                $redcapLists[$type] = self::makeREDCapList($str, $other, $oldItemChoices);
+                list($redcapLists[$type], $upload) = self::makeREDCapList($str, $other, $oldItemChoices);
             }
         }
 
@@ -144,9 +186,12 @@ class DataDictionaryManagement {
             }
         }
         self::alterInstitutionFields($newMetadata, $pid);
-        self::alterOptionalFields($newMetadata, $pid);
-
-        return Upload::metadata($newMetadata, $token, $server);
+        $upload = self::alterOptionalFields($newMetadata, $pid);
+        $feedback = Upload::metadata($newMetadata, $token, $server);
+        if (!empty($upload)) {
+            Upload::rowsByPid($upload, $pid);
+        }
+        return $feedback;
     }
 
     private static function getOptionalOtherItem($field) {
@@ -174,13 +219,15 @@ class DataDictionaryManagement {
         return FALSE;
     }
 
-    public static function makeREDCapList($text, $otherItem = FALSE, $oldItemChoices = []) {
+    # returns [new REDCap list, list of items to adjust with an upload]
+    public static function makeREDCapList($text, $otherItem = FALSE, $oldItemChoices = [], $pid = "", $field = "") {
+        $upload = [];
         if (!$text) {
-            return "";
+            return ["", $upload];
         }
         $list = explode("\n", $text);
         $newList = array();
-        $i = 0;
+        $i = 1;    // starting at 0 causes troubles with matching cohort logic
         $oldChoicesReversed = [];
         foreach ($oldItemChoices as $index => $label) {
             $oldChoicesReversed[$label] = $index;
@@ -193,6 +240,29 @@ class DataDictionaryManagement {
             if ($item) {
                 if (isset($oldChoicesReversed[$item])) {
                     $index = $oldChoicesReversed[$item];
+                    if ($index == 0) {
+                        // old bug
+                        $max = 0;
+                        foreach (array_keys($oldItemChoices) as $idx) {
+                            if (is_numeric($idx) && ($idx > $max)) {
+                                $max = $idx;
+                            }
+                        }
+                        $index = $max + 1;
+
+                        # convert data from 0 to $index
+                        if ($field && $pid) {
+                            $previousValues = Download::oneFieldByPid($pid, $field);
+                            foreach ($previousValues as $recordId => $previousValue) {
+                                if ($previousValue === "0") {
+                                    $upload[] = [
+                                        "record_id" => $recordId,
+                                        $field => $index,
+                                    ];
+                                }
+                            }
+                        }
+                    }
                     $newList[] = $index.",".$item;
                     $seenIndices[] = $index;
                 } else {
@@ -211,7 +281,7 @@ class DataDictionaryManagement {
         if (empty($newList)) {
             $newList[] = self::DEPARTMENT_OTHER_VALUE.",No Resource";
         }
-        return implode("|", $newList);
+        return [implode("|", $newList), $upload];
     }
 
     public static function removePrefix($fields, $prefix) {
@@ -398,6 +468,13 @@ class DataDictionaryManagement {
         return $filteredFields;
     }
 
+    private static function getSurveyRepeatButtonText($form) {
+        if ($form == "honors_awards_and_activities_survey") {
+            return "Add Another Honor or Activity";
+        }
+        return "";
+    }
+
     public static function setupSurveys($projectId, $surveysAndLabels, $surveyCompletionText = "DEFAULT") {
         $surveyIntroText = '<p><strong>Please complete the survey below.</strong></p><p>Thank you!</p>';
         if ($surveyCompletionText == "DEFAULT") {
@@ -411,12 +488,37 @@ class DataDictionaryManagement {
             $forms[] = $row['form_name'];
         }
         foreach ($surveysAndLabels as $form => $label) {
+            $repeatButtonText = self::getSurveyRepeatButtonText($form);
             if (in_array($form, $forms)) {
-                $sql = "UPDATE redcap_surveys SET title = ?, acknowledgement = ?, save_and_return_code_bypass = ?, edit_completed_response = ? WHERE project_id = ? AND form_name = ?";
-                $module->query($sql, [$label, $surveyCompletionText, 1, 1, $projectId, $form]);
+                $params = [$label, $surveyCompletionText, 1, 1];
+                if ($repeatButtonText) {
+                    $repeatSurveyValue = "1";
+                    $repeatButtonValue = "?";
+                    $params[] = $repeatSurveyValue;
+                    $params[] = $repeatButtonText;
+                } else {
+                    $repeatSurveyValue = "0";
+                    $repeatButtonValue = "NULL";
+                    $params[] = $repeatSurveyValue;
+                }
+                $params[] = $projectId;
+                $params[] = $form;
+                $sql = "UPDATE redcap_surveys SET title = ?, acknowledgement = ?, save_and_return_code_bypass = ?, edit_completed_response = ?, repeat_survey_enabled = ?, repeat_survey_btn_text = $repeatButtonValue WHERE project_id = ? AND form_name = ?";
+                $module->query($sql, $params);
             } else {
-                $sql = "INSERT INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, save_and_return_code_bypass, edit_completed_response, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration) VALUES (?, '16', ?, ?, ?, ?, 0, 1, 1, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL)";
-                $module->query($sql, [$projectId, $form, $label, $surveyIntroText, $surveyCompletionText]);
+                $params = [$projectId, $form, $label, $surveyIntroText, $surveyCompletionText];
+                if ($repeatButtonText) {
+                    $repeatSurveyValue = "1";
+                    $repeatButtonValue = "?";
+                    $params[] = $repeatSurveyValue;
+                    $params[] = $repeatButtonText;
+                } else {
+                    $repeatSurveyValue = "0";
+                    $repeatButtonValue = "NULL";
+                    $params[] = $repeatSurveyValue;
+                }
+                $sql = "INSERT INTO redcap_surveys (project_id, font_family, form_name, title, instructions, acknowledgement, question_by_section, question_auto_numbering, survey_enabled, save_and_return, save_and_return_code_bypass, edit_completed_response, logo, hide_title, view_results, min_responses_view_results, check_diversity_view_results, end_survey_redirect_url, survey_expiration, repeat_survey_enabled, repeat_survey_btn_text) VALUES (?, '16', ?, ?, ?, ?, 0, 1, 1, 1, 1, 1, NULL, 0, 0, 10, 0, NULL, NULL, ?, $repeatButtonValue)";
+                $module->query($sql, $params);
             }
         }
     }
@@ -641,7 +743,7 @@ class DataDictionaryManagement {
                             $changed[] = $field." [will be deleted]";
                         }
                     } else if (isset($fieldList["REDCap"][$field])) {
-                        $optionChoiceStr = self::makeREDCapList($optionChoicesAsText, self::getOptionalOtherItem($field));
+                        list($optionChoiceStr, $upload) = self::makeREDCapList($optionChoicesAsText, self::getOptionalOtherItem($field));
                         if ($fieldList["REDCap"][$field] != $optionChoiceStr) {
                             $changed[] = $field." [updated options]";
                         }
@@ -722,6 +824,7 @@ class DataDictionaryManagement {
             "initial_survey" => "Flight Tracker Initial Survey",
             "followup" => "Flight Tracker Followup Survey",
             "mentoring_agreement_evaluations" => "Mentoring Agreement Evaluations",
+            "honors_awards_and_activities_survey" => "Flight Tracker Honors, Awards & Activities Survey",
         ];
         if (Application::isMSTP($pid)) {
             $defaultSurveys["mstp_individual_development_plan_idp"] = "MSTP Individual Development Plan IDP";
@@ -784,7 +887,9 @@ class DataDictionaryManagement {
             "exporter" => "[exporter_full_project_num]",
             "citation" => "[citation_pmid] [citation_title]",
             "resources" => "[resources_resource]: [resources_date]",
-            "honors_and_awards" => "[honor_name]: [honor_date]",
+            "old_honors_and_awards" => "[honor_name]: [honor_date]",
+            "honors_awards_and_activities" => "[activityhonor_name]: [activityhonor_datetime]",
+            "honors_awards_and_activities_survey" => "[surveyactivityhonor_name]: [surveyactivityhonor_datetime]",
             "manual_degree" => "[imported_degree]",
             "nih_reporter" => "[nih_project_num]",
         ];
@@ -855,15 +960,7 @@ class DataDictionaryManagement {
         return $newFields;
     }
 
-    public static function filterOutInvalidFields($metadata, $fields) {
-        if (empty($metadata)) {
-            global $token, $server;
-            $metadataFields = Download::metadataFields($token, $server);
-            $metadataForms = Download::metadataForms($token, $server);
-        } else {
-            $metadataFields = self::getFieldsFromMetadata($metadata);
-            $metadataForms = self::getFormsFromMetadata($metadata);
-        }
+    public static function filterOutInvalidFieldsByFields($metadataFields, $metadataForms, $fields) {
         $newFields = [];
         foreach ($fields as $field) {
             if (in_array($field, $metadataFields)) {
@@ -878,6 +975,18 @@ class DataDictionaryManagement {
             }
         }
         return $newFields;
+    }
+
+    public static function filterOutInvalidFields($metadata, $fields) {
+        if (empty($metadata)) {
+            global $token, $server;
+            $metadataFields = Download::metadataFields($token, $server);
+            $metadataForms = Download::metadataForms($token, $server);
+        } else {
+            $metadataFields = self::getFieldsFromMetadata($metadata);
+            $metadataForms = self::getFormsFromMetadata($metadata);
+        }
+        return self::filterOutInvalidFieldsByFields($metadataFields, $metadataForms, $fields);
     }
 
     public static function getFormsFromMetadata($metadata) {
@@ -1050,13 +1159,17 @@ class DataDictionaryManagement {
         }
 
         self::preserveSectionHeaders($mergedMetadata, $originalMetadata);
-        self::alterOptionalFields($mergedMetadata, $pid);
+        $upload = self::alterOptionalFields($mergedMetadata, $pid);
         self::alterResourcesFields($mergedMetadata, $pid);
         self::alterInstitutionFields($mergedMetadata, $pid);
         self::alterDepartmentsFields($mergedMetadata, $pid);
         self::updateAlumniAssociations($mergedMetadata, $originalMetadata, $pid);
         unset($_SESSION['metadata'.$pid]);
-        return Upload::metadata($mergedMetadata, $token, $server);
+        $feedback = Upload::metadata($mergedMetadata, $token, $server);
+        if (!empty($upload)) {
+            Upload::rowsByPid($upload, $pid);
+        }
+        return $feedback;
     }
 
     public static function updateAlumniAssociations(&$metadata, $originalMetadata, $pid) {
@@ -1268,11 +1381,15 @@ class DataDictionaryManagement {
             } else {
                 self::sortByForms($metadata);
                 $pid = Application::getPID($token);
-                self::alterOptionalFields($metadata, $pid);
+                $upload = self::alterOptionalFields($metadata, $pid);
                 self::alterResourcesFields($metadata, $pid);
                 self::alterInstitutionFields($metadata, $pid);
                 unset($_SESSION['metadata'.$pid]);
-                return Upload::metadata($metadata, $token, $server);
+                $feedback = Upload::metadata($metadata, $token, $server);
+                if (!empty($upload)) {
+                    Upload::rowsByPid($upload, $pid);
+                }
+                return $feedback;
             }
         }
 
@@ -1368,13 +1485,17 @@ class DataDictionaryManagement {
 
         self::sortByForms($existingMetadata);
         $pid = Application::getPID($token);
-        self::alterOptionalFields($existingMetadata, $pid);
+        $upload = self::alterOptionalFields($existingMetadata, $pid);
         self::alterResourcesFields($existingMetadata, $pid);
         self::alterInstitutionFields($existingMetadata, $pid);
         self::alterDepartmentsFields($existingMetadata, $pid);
         self::checkForImproperDeletions($existingMetadata, $originalMetadata, $fieldsToDelete, $pid);
         unset($_SESSION['metadata'.$pid]);
-        return Upload::metadata($existingMetadata, $token, $server);
+        $feedback = Upload::metadata($existingMetadata, $token, $server);
+        if (!empty($upload)) {
+            Upload::rowsByPid($upload, $pid);
+        }
+        return $feedback;
     }
 
     private static function checkForImproperDeletions($proposedMetadata, $originalMetadata, $fieldsToDelete, $pid) {
@@ -1439,14 +1560,18 @@ class DataDictionaryManagement {
     }
 
     private static function alterOptionalFields(&$metadata, $pid) {
+        $allUpload = [];
         if ($pid) {
             $metadataFields = self::getFieldsFromMetadata($metadata);
             $relevantFields = REDCapManagement::getSpecialFields("optional", $metadata);
+            $priorChoices = DataDictionaryManagement::getChoices($metadata);
             foreach ($relevantFields as $field) {
                 $settingName = REDCapManagement::turnOptionalFieldIntoSetting($field);
                 $optionsText = Application::getSetting($settingName, $pid);
                 if ($optionsText) {
-                    $choiceStr = self::makeREDCapList($optionsText, self::getOptionalOtherItem($field));
+                    $priorFieldChoices = $priorChoices[$field] ?? [];
+                    list($choiceStr, $upload) = self::makeREDCapList($optionsText, self::getOptionalOtherItem($field), $priorFieldChoices, $pid, $field);
+                    $allUpload = array_merge($allUpload, $upload);
                     Application::log("Using optional field $field $choiceStr", $pid);
                     if (!in_array($field, $metadataFields)) {
                         self::insertNewOptionalRow($metadata, $field);
@@ -1464,6 +1589,7 @@ class DataDictionaryManagement {
                 }
             }
         }
+        return $allUpload;
     }
 
     private static function alterInstitutionFields(&$metadata, $pid) {
@@ -1473,7 +1599,7 @@ class DataDictionaryManagement {
                 $institutions = ["Home Institution"];
             }
             $relevantFields = REDCapManagement::getSpecialFields("institutions", $metadata);
-            $choiceStr = self::makeREDCapList(implode("\n", $institutions), self::INSTITUTION_OTHER_VALUE);
+            list($choiceStr, $upload) = self::makeREDCapList(implode("\n", $institutions), self::INSTITUTION_OTHER_VALUE);
             self::setSelectStringForFields($metadata, $choiceStr, $relevantFields);
         }
     }
@@ -1491,7 +1617,7 @@ class DataDictionaryManagement {
             $departments = Application::getSetting("departments", $pid);
             if ($departments) {
                 $fields = REDCapManagement::getSpecialFields("departments", $metadata);
-                $choiceStr = self::makeREDCapList($departments, self::DEPARTMENT_OTHER_VALUE);
+                list($choiceStr, $upload) = self::makeREDCapList($departments, self::DEPARTMENT_OTHER_VALUE);
                 self::setSelectStringForFields($metadata, $choiceStr, $fields);
             }
         }
@@ -1870,28 +1996,21 @@ class DataDictionaryManagement {
 
     public static function prefix2CompleteField($prefix) {
         $prefix = preg_replace("/_$/", "", $prefix);
-        if ($prefix == "promotion") {
-            return "position_change_complete";
-        } else if ($prefix == "check") {
-            return "initial_survey_complete";
-        } else if ($prefix == "custom") {
-            return "custom_grant_complete";
-        } else if ($prefix == "imported_degree") {
-            return "manual_degree_complete";
-        } else if ($prefix == "coeussubmission") {
-            return "coeus_submission_complete";
-        } else if ($prefix == "verasubmission") {
-            return "vera_submission_complete";
-        } else if ($prefix == "mentoring") {
-            return "mentoring_agreement_complete";
-        } else if ($prefix == "mentoringeval") {
-            return "mentoring_agreement_evaluations_complete";
-        } else if ($prefix == "vfrs") {
-            return "pre_screening_survey_complete";
-        } else if ($prefix == "honor") {
-            return "honors_and_awards_complete";
-        }
-        return "";
+        $hash = [
+            "promotion" => "position_change_complete",
+            "check" =>"initial_survey_complete",
+            "custom" => "custom_grant_complete",
+            "imported_degree" => "manual_degree_complete",
+            "coeussubmission" => "coeus_submission_complete",
+            "verasubmission" => "vera_submission_complete",
+            "mentoring" => "mentoring_agreement_complete",
+            "mentoringeval" => "mentoring_agreement_evaluations_complete",
+            "vfrs" => "pre_screening_survey_complete",
+            "honor" => "old_honors_and_awards_complete",
+            "activityhonor" => "honors_awards_and_activities",
+            "surveyactivityhonor" => "honors_awards_and_activities_survey_complete",
+        ];
+        return $hash[$prefix] ?? "";
     }
 
     public static function indexMetadata($metadata) {

@@ -173,7 +173,7 @@ class Download {
 	        "token" => $token,
             "content" => "version"
         ];
-	    return self::sendToServer($server, $data);
+	    return self::sendToServer($server, $data, FALSE);
     }
 
 	# returns a hash with recordId => array of mentorUserids
@@ -367,21 +367,25 @@ class Download {
 		return $filtered;
 	}
 
+    public static function metadataFormsByPid($pid) {
+        $module = Application::getModule();
+        $sql = "SELECT DISTINCT(form_name) FROM redcap_metadata WHERE project_id = ? ORDER BY field_order";
+        if ($module) {
+            $q = $module->query($sql, [$pid]);
+        } else {
+            $q = db_query($sql, [$pid]);
+        }
+        $forms = [];
+        while ($row = $q->fetch_assoc()) {
+            $forms[] = Sanitizer::sanitize($row['form_name']);
+        }
+        return $forms;
+    }
+
     public static function metadataForms($token, $server) {
         $pid = Application::getPID($token);
         if ($pid && self::isCurrentServer($server)) {
-            $module = Application::getModule();
-            $sql = "SELECT DISTINCT(form_name) FROM redcap_metadata WHERE project_id = ? ORDER BY field_order";
-            if ($module) {
-                $q = $module->query($sql, [$pid]);
-            } else {
-                $q = db_query($sql, [$pid]);
-            }
-            $forms = [];
-            while ($row = $q->fetch_assoc()) {
-                $forms[] = Sanitizer::sanitize($row['form_name']);
-            }
-            return $forms;
+            return self::metadataFormsByPid($pid);
         } else {
             $metadata = self::metadata($token, $server);
             return DataDictionaryManagement::getFormsFromMetadata($metadata);
@@ -479,6 +483,7 @@ class Download {
             $pid
             && isset($_SESSION['lastMetadata'.$pid])
             && empty($fields)
+            && !isset($_GET['resetMetadata'])
         ) {
             $metadataKey = 'metadata'.$pid;
             $timestampKey = 'lastMetadata'.$pid;
@@ -671,7 +676,7 @@ class Download {
         return Sanitizer::sanitizeREDCapData($redcapData);
     }
 
-	private static function sendToServer($server, $data) {
+	private static function sendToServer($server, $data, $isJSON = TRUE) {
 	    if (!$server) {
 	        throw new \Exception("No server specified");
         }
@@ -691,11 +696,11 @@ class Download {
             $fields = $data['fields'] ?? NULL;
             return self::fieldsForRecordsByPid($pid, $fields, $records);
 		} else {
-            return self::callAPI($server, $data, $pid);
+            return self::callAPI($server, $data, $pid, 1, $isJSON);
         }
 	}
 
-    private static function callAPI($server, $data, $pid, $try = 1) {
+    private static function callAPI($server, $data, $pid, $try = 1, $isJSON = TRUE) {
         $maxTries = 5;
         if ($try > $maxTries) {
             return [];
@@ -719,7 +724,11 @@ class Download {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         $output = curl_exec($ch);
-        $redcapData = json_decode((string) $output, true);
+        if ($isJSON) {
+            $redcapData = json_decode((string) $output, true);
+        } else {
+            $redcapData = $output;
+        }
         $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $error = curl_error($ch);
         curl_close($ch);
@@ -731,7 +740,7 @@ class Download {
         if (!$output) {
             Application::log("Retrying because no output", $pid);
             usleep(500000);
-            $redcapData = self::callAPI($server, $data, $pid, $try + 1);
+            $redcapData = self::callAPI($server, $data, $pid, $try + 1, $isJSON);
             if (($redcapData === NULL) && ($try >= $maxTries)) {
                 Application::log("ERROR: Null output", $pid);
                 throw new \Exception("$pid: Download returned null from ".$server." ($resp) '$output' error=$error");
@@ -742,7 +751,11 @@ class Download {
             return $redcapData;
         }
         if ($redcapData === NULL) {
-            Application::log("Retrying because undecipherable output: ".$data['content'], $pid);
+            $startOfOutput = $output;
+            if (strlen($startOfOutput) > 150) {
+                $startOfOutput = substr($startOfOutput, 0, 150);
+            }
+            Application::log("Retrying because undecipherable output: ".$data['content']." ".$startOfOutput, $pid);
             if (Application::isLocalhost()) {
                 Application::log(json_encode(debug_backtrace()), $pid);
             }
@@ -750,7 +763,7 @@ class Download {
                 $try = 1000000;
             } else {
                 usleep(500000);
-                $redcapData = self::callAPI($server, $data, $pid, $try + 1);
+                $redcapData = self::callAPI($server, $data, $pid, $try + 1, $isJSON);
             }
             if (($redcapData === NULL) && ($try >= $maxTries)) {
                 Application::log("ERROR: ".$output, $pid);
@@ -760,14 +773,18 @@ class Download {
         if (isset($redcapData['error']) && !empty($redcapData['error'])) {
             throw new \Exception("Download Exception $pid: ".$redcapData['error']);
         }
-        for ($i = 0; $i < count($redcapData); $i++) {
-            if (isset($redcapData[$i]["record_id"])) {
-                $redcapData[$i]["record_id"] = Sanitizer::sanitize($redcapData[$i]["record_id"]);
+        if ($isJSON) {
+            for ($i = 0; $i < count($redcapData); $i++) {
+                if (isset($redcapData[$i]["record_id"])) {
+                    $redcapData[$i]["record_id"] = Sanitizer::sanitize($redcapData[$i]["record_id"]);
+                }
             }
+            $redcapData = Sanitizer::sanitizeREDCapData($redcapData);
+            self::handleLargeJSONs($redcapData, $pid);
+            return $redcapData;
+        } else {
+            return Sanitizer::sanitizeWithoutChangingQuotes($redcapData);
         }
-        $redcapData = Sanitizer::sanitizeREDCapData($redcapData);
-        self::handleLargeJSONs($redcapData, $pid);
-        return $redcapData;
     }
 
     private static function handleLargeJSONs(&$redcapData, $pid) {
@@ -1171,6 +1188,11 @@ class Download {
         return $ary;
     }
 
+    private static function dataForOneFieldByPid($pid, $field) {
+        $fields = ["record_id", $field];
+        return self::fieldsForRecordsByPid($pid, $fields, NULL);
+    }
+
     private static function dataForOneField($token, $server, $field, $recordIdField = "record_id") {
         $data = [
             'token' => $token,
@@ -1188,8 +1210,17 @@ class Download {
         return self::sendToServer($server, $data);
     }
 
+    public static function oneFieldWithInstancesByPid($pid, $field) {
+        $redcapData = self::dataForOneFieldByPid($pid, $field);
+        return self::putDataIntoArray($redcapData, $field);
+    }
+
     public static function oneFieldWithInstances($token, $server, $field) {
         $redcapData = self::dataForOneField($token, $server, $field);
+        return self::putDataIntoArray($redcapData, $field);
+    }
+
+    private static function putDataIntoArray($redcapData, $field) {
         $ary = [];
         foreach ($redcapData as $row) {
             if (isset($row['redcap_repeat_instance']) && $row[$field]) {
@@ -1202,6 +1233,15 @@ class Download {
         return $ary;
     }
 
+    public static function oneFieldByPid($pid, $field) {
+        $redcapData = self::dataForOneFieldByPid($pid, $field);
+        $ary = [];
+        foreach ($redcapData as $row) {
+            $ary[$row["record_id"]] = $row[$field] ?? "";
+        }
+        return $ary;
+    }
+
 	public static function oneField($token, $server, $field, $recordIdField = "record_id") {
 	    $redcapData = self::dataForOneField($token, $server, $field, $recordIdField);
 		$ary = [];
@@ -1210,6 +1250,11 @@ class Download {
 		}
 		return $ary;
 	}
+
+    public static function namesByPid($pid) {
+        $redcapData = Download::fieldsForRecordsByPid($pid, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"], NULL);
+        return self::formatNames($redcapData);
+    }
 
 	public static function names($token, $server) {
 		$data = array(
@@ -1226,22 +1271,26 @@ class Download {
 			'returnFormat' => 'json'
 		);
 		$redcapData = self::sendToServer($server, $data);
-		$ordered = array();
-		foreach ($redcapData as $row) {
-            # case insensitive
-			$ordered[strtoupper($row['identifier_last_name'].", ".$row['identifier_first_name']." ".$row['record_id'])] = $row;
-		}
-		ksort($ordered);
+        return self::formatNames($redcapData);
+	}
 
-		$names = array();
-		foreach ($ordered as $key => $row) {
-			$name = NameMatcher::formatName($row['identifier_first_name'], $row['identifier_middle'], $row['identifier_last_name']);
+    private static function formatNames($redcapData) {
+        $ordered = array();
+        foreach ($redcapData as $row) {
+            # case insensitive
+            $ordered[strtoupper($row['identifier_last_name'].", ".$row['identifier_first_name']." ".$row['record_id'])] = $row;
+        }
+        ksort($ordered);
+
+        $names = array();
+        foreach ($ordered as $key => $row) {
+            $name = NameMatcher::formatName($row['identifier_first_name'], $row['identifier_middle'], $row['identifier_last_name']);
             if ($name !== "") {
                 $names[$row['record_id']] = $name;
             }
-		}
-		return $names;
-	}
+        }
+        return $names;
+    }
 
     public static function recordsWithDownloadActive($token, $server, $recordIdField = "record_id") {
         $stopField = "identifier_stop_collection";
@@ -1325,7 +1374,17 @@ class Download {
             'exportDataAccessGroups' => 'false',
             'returnFormat' => 'json'
         );
-        $redcapData = self::sendToServer($server, $data);
+        try {
+            $redcapData = self::sendToServer($server, $data);
+        } catch (\Exception $e) {
+            if (preg_match("/The following values in the parameter \"fields\" are not valid: 'identifier_first_name', 'identifier_last_name'/", $e->getMessage())) {
+                $data['fields'] = [$recordIdField];
+                $redcapData = self::sendToServer($server, $data);
+                return self::filterOutRecords($redcapData, $recordIdField);
+            } else {
+                throw $e;
+            }
+        }
         if (Application::getProgramName() == "Flight Tracker") {
             # this avoids pulling records with blank names
             $records = self::filterOutBlankNames($redcapData, $recordIdField);

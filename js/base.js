@@ -1386,15 +1386,24 @@ function omitGrant(recordId, grantNumber, source) {
 	});
 }
 
-function copyProject(token, server) {
+function copyProject(token, server, continueNumbering) {
 	if (token && server && (token.length === 32)) {
+		const continueNumberingValue = continueNumbering ? "1" : "0";
+		const postdata = {
+			'redcap_csrf_token': getCSRFToken(),
+			token: token,
+			server: server,
+			continueNumbering: continueNumberingValue,
+		};
 		presentScreen('Copying project...<br>May take some time depending on size');
-		$.post(getPageUrl('copyProject.php'), { 'redcap_csrf_token': getCSRFToken(), token: token, server: server }, function(html) {
+		console.log(JSON.stringify(postdata));
+		$.post(getPageUrl('copyProject.php'), postdata, function(html) {
 			clearScreen();
 			console.log(html);
-			if (html.match(/error:/i) || html.match(/ERROR/)) {
+			if (html.match(/error[:!]/i) || html.match(/ERROR/) || html.match(/exception/i)) {
+				const note = continueNumbering ? '<p>Consider unchecking the checkbox to continue numbering so that a new data dictionary can be started. This is only recommended if you are willing to overwrite any existing data.</p>' : '';
 				$.sweetModal({
-					content: 'ERROR: '+html,
+					content: 'ERROR: '+note+html,
 					icon: $.sweetModal.ICON_ERROR
 				});
 			} else {
@@ -1963,5 +1972,107 @@ function fetchSetting(url, setting, thisOb, count) {
 	$.post(url, { setting: setting, count: count, redcap_csrf_token: getCSRFToken() }, (html) => {
 		console.log(html);
 		trOb.html(html);
+	});
+}
+
+function createActivityHTML(url, trOb, recordId, action, topHeight, upload) {
+	const postdata = {
+		action: action,
+		record: recordId,
+		redcap_csrf_token: getCSRFToken(),
+	};
+	if (upload) {
+		postdata['upload'] = 'upload';
+		trOb.find("input").each((idx, ob) => {
+			const name = $(ob).attr("name") ?? "";
+			let value = "";
+			if (name.match(/^activityhonor_/)) {
+				const type = $(ob).attr("type");
+				if ((type === "radio") && $(ob).is(":checked")) {
+					const checkedId = $(ob).attr("id");
+					const nodes = checkedId.split(/___/);
+					if (nodes.length >= 2) {
+						value = nodes[1];
+					}
+				} else if (type !== "radio") {
+					value = $(ob).val();
+				}
+			}
+			if (value) {
+				postdata[name] = value;
+			}
+		});
+		trOb.find("textarea").each((idx, ob) => {
+			const name = $(ob).attr("name");
+			if (name.match(/^activityhonor_/)) {
+				const value = $(ob).val();
+				if (value) {
+					postdata[name] = value;
+				}
+			}
+		});
+	}
+	console.log(JSON.stringify(postdata));
+	$.post(url, postdata, (json) => {
+		console.log(json);
+		try {
+			const data = JSON.parse(json);
+			if (data.error) {
+				$.sweetModal({
+					content: "ERROR: "+data.error,
+					icon: $.sweetModal.ICON_ERROR,
+				});
+			} else {
+				const headerHeight = trOb.parent().parent().parent().find('thead tr').eq(0).height();
+				trOb.find('td.dataForm').html('<div style=\"margin-top: '+topHeight+'px;\" class="dataForm">'+data.html+'</div>');
+				$('html, body').animate({
+					scrollTop: trOb.offset().top + topHeight - headerHeight
+				}, 1000);
+				if (upload) {
+					$.sweetModal({
+						content: "Added!",
+						icon: $.sweetModal.ICON_SUCCESS,
+					});
+				}
+			}
+		} catch(e) {
+			$.sweetModal({
+				content: "ERROR: You might need to log into REDCap again. "+e,
+				icon: $.sweetModal.ICON_ERROR,
+			});
+		}
+	});
+}
+
+function markHonorAsDone(url, recordId, instrument, instance, trOb) {
+	const postdata = {
+		action: 'markAsDone',
+		record: recordId,
+		instrument: instrument,
+		instance: instance,
+		redcap_csrf_token: getCSRFToken(),
+	};
+	$.post(url, postdata, (json) => {
+		console.log(json);
+		try {
+			const data = JSON.parse(json);
+			if (data.error) {
+				$.sweetModal({
+					content: "ERROR: "+data.error,
+					icon: $.sweetModal.ICON_ERROR,
+				});
+			} else {
+				$.sweetModal({
+					content: "Marked appropriately!",
+					icon: $.sweetModal.ICON_SUCCESS,
+				});
+				trOb.hide();
+			}
+		} catch(e) {
+			$.sweetModal({
+				content: "ERROR: You might need to log into REDCap again. "+e,
+				icon: $.sweetModal.ICON_ERROR,
+			});
+		}
 	});
 }

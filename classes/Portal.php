@@ -48,6 +48,10 @@ class Portal
         }
     }
 
+    public static function isPortalPage() {
+        return preg_match("/^portal/", $_GET['page'] ?? "");
+    }
+
     private function getUIDString() {
         if (isset($_GET['uid'])) {
             return "&uid=".$this->username;
@@ -85,7 +89,7 @@ class Portal
 
     public static function siftThroughUsernamesForErrors($usernames, $isSpoofing = FALSE) {
         $spoof = $isSpoofing ? " (Spoofing)" : "";
-        if (empty($usernames)) {
+        if (empty($usernames) && !$isSpoofing) {
             echo Portal::getLogo();
             echo "<h1>Flight Tracker Scholar Portal$spoof</h1>";
             echo "<p class='centered max-width'>No username is available. You must be logged in to REDCap to view your information.</p>";
@@ -495,7 +499,7 @@ class Portal
         ];
         $menu["Your Info"][] = [
             "action" => "survey",
-            "title" => "Update Surveys",
+            "title" => "Update Surveys / Demographics",
         ];
         $menu["Your Info"][] = [
             "action" => "wrangle_pubs",
@@ -504,7 +508,7 @@ class Portal
         if ($this->doesHonorsSurveyExist()) {
             $menu["Your Info"][] = [
                 "action" => "honors",
-                "title" => "Submit Honors &amp; Awards",
+                "title" => "Add Honors &amp; Awards",
             ];
         }
         if ($this->viewResources()) {
@@ -1228,7 +1232,7 @@ Examples:
     }
 
     public function getHonorsAndAwards() {
-        $instrument = "honors_and_awards";
+        $instrument = "old_honors_and_awards";
         $prefix = REDCapManagement::getPrefixFromInstrument($instrument);
         $metadataFields = Download::metadataFieldsByPid($this->pid);
         $fields = array_unique(array_merge(["record_id"], DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $prefix)));
@@ -1298,7 +1302,7 @@ Examples:
     public function reopenSurvey($instrument, $instance = 1) {
         $sql = "DELETE r.* FROM redcap_surveys_response AS r INNER JOIN redcap_surveys_participants AS p ON p.participant_id = r.participant_id INNER JOIN redcap_surveys AS s ON p.survey_id = s.survey_id WHERE r.record=? AND r.instance=? AND s.project_id=? AND s.form_name=?";
         $this->module->query($sql, [$this->recordId, $instance, $this->pid, $instrument]);
-        return \REDCap::getSurveyLink($this->recordId, $instrument, "", 1, $this->pid)."&resetDate";
+        return \REDCap::getSurveyLink($this->recordId, $instrument, REDCapManagement::getEventIdForClassical($this->pid), 1, $this->pid)."&resetDate";
     }
 
     public function viewResources() {
@@ -1332,13 +1336,13 @@ Examples:
 
     private function doesHonorsSurveyExist() {
         $metadataFields = Download::metadataFieldsByPid($this->pid);
-        $testField = "honorssurvey_honor";
+        $testField = "surveyactivityhonor_name";
         return in_array($testField, $metadataFields);
     }
 
     public function getHonorsSurvey() {
-        $form = "honors_survey";
-        $testField = "honorssurvey_honor";
+        $form = "honors_awards_and_activities_survey";
+        $testField = "surveyactivityhonor_name";
         $description = "Have you just accomplished something great and want to share? Congratulations!";
         if ($this->doesHonorsSurveyExist()) {
             if ($this->token && $this->server && $this->recordId) {
@@ -1346,7 +1350,7 @@ Examples:
                 $redcapData = Download::fieldsForRecordsByPid($this->pid, $fields, [$this->recordId]);
                 $maxInstance = REDCapManagement::getMaxInstance($redcapData, $form, $this->recordId);
 
-                $newLink = \REDCap::getSurveyLink($this->recordId, $form, "", $maxInstance + 1, $this->pid);
+                $newLink = \REDCap::getSurveyLink($this->recordId, $form, REDCapManagement::getEventIdForClassical($this->pid), $maxInstance + 1, $this->pid);
                 $linkHTML = Links::makeLink($newLink, "Share Your New Honor", FALSE, 'portalButton');
                 $description.= " Please fill out this short REDCap survey to share with your project's administrative staff.";
                 return "<h4>Honors &amp; Awards</h4><p class='portalDescription'>$description</p><p>$linkHTML</p>";
@@ -1408,7 +1412,7 @@ Examples:
         if (!$normativeRow['check_name_last']) {
             $latestDate = "Never";
             $text = "Fill out a new survey";
-            $newLink = \REDCap::getSurveyLink($this->recordId, "initial_survey", "", 1, $this->pid);
+            $newLink = \REDCap::getSurveyLink($this->recordId, "initial_survey", REDCapManagement::getEventIdForClassical($this->pid), 1, $this->pid);
             $linkHTML = Links::makeLink($newLink, $text, FALSE, "portalButton");
         } else {
             if ($normativeRow['check_date']) {
@@ -1455,7 +1459,7 @@ Examples:
         } else {
             $latestDate = "Unknown";
         }
-        $newLink = \REDCap::getSurveyLink($this->recordId, "followup", "", $maxFollowupInstance + 1, $this->pid);
+        $newLink = \REDCap::getSurveyLink($this->recordId, "followup", REDCapManagement::getEventIdForClassical($this->pid), $maxFollowupInstance + 1, $this->pid);
         $linkHTML = Links::makeLink($newLink, "Fill out a new survey", FALSE, 'portalButton');
         return "<h4>Regular Follow Up Survey</h4>
 <p class='portalDescription'>This periodic survey requests only infromation about your professional successes in the near past and takes about 10-15 minutes to complete. This survey may also be shared with other Flight Trackers in which you are tracked (see list at the bottom of the page).</p>

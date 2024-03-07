@@ -401,7 +401,8 @@ $horizontalScrollbar
         $str .= "<header class='topHeaderWrapper'>";
         $str .= "<div class='topHeader'>";
         $str .= "<div class='topBar' style='float: left; padding-left: 5px;'><a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'><img alt='Flight Tracker for Scholars' src='".self::link("/img/flight_tracker_logo_small.png")."'></a></div>";
-        if (isset($_GET['id']) || isset($_GET['record'])) {
+        # logged in and on a record
+        if (Application::getUsername() && (isset($_GET['id']) || isset($_GET['record']))) {
             $records = Download::records($token, $server);
             $recordId = Sanitizer::getSanitizedRecord($_GET['id'] ?? $_GET['record'] ?? "", $records);
             if ($recordId) {

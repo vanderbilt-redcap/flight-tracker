@@ -346,6 +346,10 @@ function loadInternalSharingCrons(&$manager, $pids) {
         return;
     }
 
+    if (Application::isVanderbilt()) {
+        $manager->addMultiCron("drivers/updateVanderbiltResources.php", "updateResourcesMulti", "2023-03-07", $preprocessingPids);
+    }
+
     if (Application::isLocalhost()) {
         $manager->addMultiCron("drivers/preprocess.php", "preprocessFindSharingMatches", date("Y-m-d"), $preprocessingPids);
         $manager->addMultiCron("drivers/preprocess.php", "preprocessMissingEmails", date("Y-m-d"), $preprocessingPids);

@@ -23,7 +23,10 @@ if (isset($_GET['record'])) {
 } else {
     $records = [];
 }
-$metadata = Download::metadata($token, $server);
+# this page is included via a require_once, so this variable might have already been downloaded
+if (!isset($metadata)) {
+    $metadata = Download::metadata($token, $server);
+}
 $grantFields = REDCapManagement::getMinimalGrantFields($metadata);
 if (!in_array("record_id", $grantFields)) {
     $grantFields[] = "record_id";
@@ -32,7 +35,10 @@ if (!in_array("record_id", $grantFields)) {
 $budgetField = "total_budget";
 $dollarsByYear = [];
 foreach ($records as $recordId) {
-    $redcapData = Download::fieldsForRecords($token, $server, $grantFields, [$recordId]);
+    # this page is included via a require_once, so this variable might have already been downloaded
+    if (!isset($redcapData) || (count($records) > 1)) {
+        $redcapData = Download::fieldsForRecords($token, $server, $grantFields, [$recordId]);
+    }
     $grants = new Grants($token, $server, $metadata);
     $grants->setRows($redcapData);
     $grants->compileGrants();

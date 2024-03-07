@@ -206,9 +206,8 @@ class Publications {
                     $last = preg_replace("/\s+/", "+", $last);
                     if ($middle) {
                         $nameClauses[] = $first . "+" . $middle . "+" . $last . $suffix;
-                    } else {
-                        $nameClauses[] = $first . "+" . $last . $suffix;
                     }
+                    $nameClauses[] = $first . "+" . $last . $suffix;
                 }
             }
         }
@@ -933,7 +932,10 @@ class Publications {
                 $foundCurrInAuthorList = FALSE;
                 $foundAnotherInAuthorList = FALSE;
                 foreach ($authors as $author) {
-                    if (NameMatcher::matchByInitials($currLastName, $currFirstName, $author['last'], $author['first'])) {
+                    if (
+                        NameMatcher::matchByInitials($currLastName, $currFirstName, $author['last'], $author['first'])
+                        || NameMatcher::matchByInitials($currFirstName, $currLastName, $author['last'], $author['first'])  // reverse for Asian names which sometimes put family name first
+                    ) {
                         $foundCurrInAuthorList = TRUE;
                         // Application::log("Found current $currFirstName $currLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance $pmid", $pid);
                         break;
@@ -944,7 +946,9 @@ class Publications {
                     foreach ($authors as $author) {
                         foreach ($allLastNames as $recordId2 => $otherLastName) {
                             $otherFirstName = $allFirstNames[$recordId2];
-                            if (NameMatcher::matchByInitials($author['last'], $author['first'], $otherLastName, $otherFirstName)) {
+                            if (
+                                NameMatcher::matchByInitials($author['last'], $author['first'], $otherLastName, $otherFirstName)
+                            ) {
                                 // Application::log("Found other $otherFirstName $otherLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance", $pid);
                                 $foundAnotherInAuthorList = TRUE;
                                 break;

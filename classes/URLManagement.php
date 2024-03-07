@@ -48,12 +48,22 @@ class URLManagement {
         return (self::$numUnsuccessfulDownloadInARow > 100);
     }
 
+    public static function isCurrentServer($url) {
+        $serverLower = strtolower(SERVER_NAME);
+        $urlLower = strtolower($url);
+        return (strpos($urlLower, $serverLower) !== FALSE);
+    }
+
     public static function downloadURLWithPOST($url, $postdata = [], $pid = NULL, $addlOpts = [], $autoRetriesLeft = 3, $longRetriesLeft = 2, $defaultFormat = "json") {
         if (self::isCaughtInBadLoop()) {
             throw new \Exception("In bad loop with $url and POST ".REDCapManagement::json_encode_with_spaces($postdata));
         }
         if (!Application::isLocalhost()) {
             Application::log("Contacting $url", $pid);
+        }
+        if (!empty($postdata) && !isset($postdata['redcap_csrf_token']) && self::isCurrentServer($url)) {
+            Application::log("Adding CSRF Token to POST", $pid);
+            $postdata['redcap_csrf_token'] = Application::generateCSRFToken();
         }
         if (!empty($postdata)) {
             Application::log("Posting ".REDCapManagement::json_encode_with_spaces($postdata)." to $url", $pid);
@@ -73,7 +83,9 @@ class URLManagement {
             }
         }
         foreach ($addlOpts as $opt => $value) {
-            curl_setopt($ch, $opt, $value);
+            if ($opt != CURLOPT_HTTPHEADER) {
+                curl_setopt($ch, $opt, $value);
+            }
         }
         self::applyProxyIfExists($ch, $pid);
         if (!empty($postdata)) {
@@ -90,11 +102,11 @@ class URLManagement {
                 }
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge([
                     'Content-Type: application/json',
                     'Content-Length: ' . strlen($json),
                     "Expect:",
-                ]);
+                ], $addlOpts[CURLOPT_HTTPHEADER] ?? []));
             } else if ($defaultFormat == "urlencoded") {
                 if (!is_array($postdata)) {
                     throw new \Exception("Your POST data must be passed as an array!");
@@ -107,16 +119,16 @@ class URLManagement {
                 }
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $postStr);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge([
                     'Content-Type: application/x-www-form-urlencoded',
                     'Content-Length: ' . strlen($postStr),
                     "Expect:",
-                ]);
+                ], $addlOpts[CURLOPT_HTTPHEADER] ?? []));
             } else {
                 throw new \Exception("Unknown format $defaultFormat");
             }
         } else {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ["Expect:"]);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge(["Expect:"], $addlOpts[CURLOPT_HTTPHEADER] ?? []));
         }
 
         $data = (string) curl_exec($ch);
@@ -149,7 +161,7 @@ class URLManagement {
         }
         if (Application::isVanderbilt()) {
             Application::log("$url Response code $resp; ".strlen($data)." bytes".$timeStmt, $pid);
-            if (strlen($data) < 500) {
+            if (strlen($data) < 1000) {
                 Application::log("Result: ".$data, $pid);
             }
         }
@@ -198,24 +210,13 @@ class URLManagement {
         }
     }
 
-    public static function isGoodURL($url, $pid = NULL) {
+    public static function isGoodURL($url) {
         $url = Sanitizer::sanitizeURL($url);
-        if (!$pid) {
-            $pid = Sanitizer::sanitizePid($_GET['pid']);
-        }
         if (!$url) {
             throw new \Exception("Invalid URL");
         }
-        $ch = curl_init();
-        $defaultOpts = self::getDefaultCURLOpts($pid);
-        curl_setopt($ch, CURLOPT_URL, $url);
-        foreach ($defaultOpts as $opt => $value) {
-            curl_setopt($ch, $opt, $value);
-        }
-        curl_exec($ch);
-        $resp = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
-        return self::isGoodResponse($resp);
+        $headers = get_headers($url);
+        return (strpos($headers[0],'200')!==false);
     }
 
     public static function isGoodResponse($resp) {

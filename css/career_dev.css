@@ -217,3 +217,8 @@ div.scrollable { width: 100%; max-height: 75px; margin: 0; padding: 0; overflow:
 .pilotGrant input[type='checkbox'] { -webkit-appearance: none; width: 16px; height: 16px; background: white; border-radius: 4px; border: 1px solid #888; }
 .pilotGrant input[type='checkbox']:checked { background: #8dc63f; }
 .pilotGrant { float: left; width: calc(100% - 75px); padding-left: 50px; font-size: 13px; }
+.honorField { width: 350px; }
+p.honorField { margin: 1em auto; }
+td.dataForm { width: 370px; vertical-align: top; }
+div.dataForm { background-color: #d4d4eb88; padding: 16px 10px; width: 100%; }
+.inputDataForm { background-color: #dddddd88; }

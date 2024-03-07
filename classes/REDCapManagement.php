@@ -235,82 +235,48 @@ class REDCapManagement {
     }
 
 	public static function getPrefixFromInstrument($instrument) {
-        if ($instrument == "initial_survey") {
-            $prefix = "check";
-        } else if ($instrument == "initial_import") {
-            $prefix = "init_import";
-        } else if ($instrument == "followup") {
-            $prefix = "followup";
-        } else if ($instrument == "identifiers") {
-            $prefix = "identifier";
-        } else if ($instrument == "manual") {
-            $prefix = "override";
-        } else if ($instrument == "manual_import") {
-            $prefix = "imported";
-        } else if ($instrument == "manual_degree") {
-            $prefix = "imported";
-        } else if ($instrument == "summary") {
-            $prefix = "summary";
-        } else if ($instrument == "demographics") {
-            $prefix = "newman_demographics";
-        } else if ($instrument == "data") {
-            $prefix = "newman_data";
-        } else if ($instrument == "sheet2") {
-            $prefix = "newman_sheet2";
-        } else if ($instrument == "nonrespondents") {
-            $prefix = "newman_nonrespondents";
-        } else if ($instrument == "new_2017") {
-            $prefix = "newman_new";
-        } else if ($instrument == "spreadsheet") {
-            $prefix = "spreadsheet";
-        } else if ($instrument == "vfrs") {
-            $prefix = "vfrs";
-        } else if ($instrument == "coeus") {
-            $prefix = "coeus";
-        } else if ($instrument == "coeus2") {
-            $prefix = "coeus2";
-        } else if ($instrument == "custom_grant") {
-            $prefix = "custom";
-        } else if ($instrument == "reporter") {
-            $prefix = "reporter";
-        } else if ($instrument == "exporter") {
-            $prefix = "exporter";
-        } else if ($instrument == "nih_reporter") {
-            $prefix = "nih";
-        } else if ($instrument == "nsf") {
-            $prefix = "nsf";
-        } else if ($instrument == "ies_grant") {
-            $prefix = "ies";
-        } else if ($instrument == "eric") {
-            $prefix = "eric";
-        } else if ($instrument == "citation") {
-            $prefix = "citation";
-        } else if ($instrument == "resources") {
-            $prefix = "resources";
-        } else if ($instrument == "honors_and_awards") {
-            $prefix = "honor";
-        } else if ($instrument == "ldap") {
-            $prefix = "ldap";
-        } else if ($instrument == "ldapds") {
-            $prefix = "ldapds";
-        } else if ($instrument == "workday") {
-            $prefix = "workday";
-        } else if ($instrument == "coeus_submission") {
-            $prefix = "coeussubmission";
-        } else if ($instrument == "vera") {
-            $prefix = "vera";
-        } else if ($instrument == "vera_submission") {
-            $prefix = "verasubmission";
-        } else if ($instrument == "position_change") {
-            $prefix = "promotion";
-        } else if ($instrument == "exclude_lists") {
-            $prefix = "exclude";
-        } else if ($instrument == "patent") {
-            $prefix = "patent";
-        } else {
-            $prefix = "";
-        }
-        return $prefix;
+        $ary = [
+            "initial_survey" => "check",
+            "initial_import" => "init_import",
+            "followup" => "followup",
+            "identifiers" => "identifier",
+            "manual" => "override",
+            "manual_import" => "imported",
+            "manual_degree" => "imported",
+            "summary" => "summary",
+            "demographics" => "newman_demographics",
+            "data" => "newman_data",
+            "sheet2" => "newman_sheet2",
+            "nonrespondents" => "newman_nonrespondents",
+            "new_2017" => "newman_new",
+            "spreadsheet" => "spreadsheet",
+            "vfrs" => "vfrs",
+            "coeus" => "coeus",
+            "coeus2" => "coeus2",
+            "custom_grant" => "custom",
+            "reporter" => "reporter",
+            "exporter" => "exporter",
+            "nih_reporter" => "nih",
+            "nsf" => "nsf",
+            "ies_grant" => "ies",
+            "eric" => "eric",
+            "citation" => "citation",
+            "resources" => "resources",
+            "old_honors_and_awards" => "honor",
+            "honors_and_awards" => "honor",
+            "honors_awards_and_activities" => "activityhonor",
+            "honors_awards_and_activities_survey" => "surveyactivityhonor",
+            "ldap" => "ldap",
+            "ldapds" => "ldapds",
+            "workday" => "workday",
+            "coeus_submission" => "coeussubmission",
+            "vera" => "vera",
+            "vera_submission" => "verasubmission",
+            "position_change" => "promotion",
+            "exclude_lists" => "exclude",
+            "patent" => "patent",
+        ];
+        return $ary[$instrument] ?? "";
     }
 
 	public static function dateCompare($d1, $op, $d2) {
@@ -709,6 +675,10 @@ class REDCapManagement {
 
     public static function versionGreaterThanOrEqualTo($version1, $version2) {
         return version_compare($version1, $version2, ">=");
+    }
+
+    public static function versionGreaterThan($version1, $version2) {
+        return version_compare($version1, $version2, ">");
     }
 
     public static function getFieldsOfType($metadata, $fieldType, $validationType = "") {
@@ -1560,10 +1530,9 @@ class REDCapManagement {
         return 1;
     }
 
-	public static function getSpecialFields($type, $metadata) {
-        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
-		$fields = [];
-		$fields["departments"] = [
+    public static function getSpecialFieldsByFields($type, $metadataFields, $metadataForms) {
+        $fields = [];
+        $fields["departments"] = [
             "summary_primary_dept",
             "override_department1",
             "override_department1_previous",
@@ -1586,13 +1555,13 @@ class REDCapManagement {
             "init_import_prev4_primary_dept",
             "init_import_prev5_primary_dept",
         ];
-		$fields["resources"] = [
-		    "resources_resource",
-            ];
+        $fields["resources"] = [
+            "resources_resource",
+        ];
         $fields["mentoring"] = [
             DataDictionaryManagement::getMentoringResourceField($metadataFields),
         ];
-		$fields["institutions"] = ["check_institution", "init_import_institution", "followup_institution"];
+        $fields["institutions"] = ["check_institution", "init_import_institution", "followup_institution"];
         $fields["optional"] = ["identifier_person_role", "identifier_program_roles"];
 
         if ($type == "optional") {
@@ -1605,18 +1574,25 @@ class REDCapManagement {
             }
             return $fieldsWithNumbers;
         }
-		if (isset($fields[$type])) {
-			return $fields[$type];
-		}
-		if ($type == "all") {
-			$allFields = array();
-			foreach ($fields as $type => $typeFields) {
-				$allFields = array_merge($allFields, $typeFields);
-			}
-			$allFields = array_unique($allFields);
-            return DataDictionaryManagement::filterOutInvalidFields($metadata, $allFields);
-		}
-		return array();
+        if (isset($fields[$type])) {
+            return $fields[$type];
+        }
+        if ($type == "all") {
+            $allFields = array();
+            foreach ($fields as $type => $typeFields) {
+                $allFields = array_merge($allFields, $typeFields);
+            }
+            $allFields = array_unique($allFields);
+            return DataDictionaryManagement::filterOutInvalidFieldsByFields($metadataFields, $metadataForms, $allFields);
+        }
+        return array();
+    }
+
+
+    public static function getSpecialFields($type, $metadata) {
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+        $metadataForms = DataDictionaryManagement::getFormsFromMetadata($metadata);
+        return self::getSpecialFieldsByFields($type, $metadataFields, $metadataForms);
 	}
 
     public static function getOptionalFields() {

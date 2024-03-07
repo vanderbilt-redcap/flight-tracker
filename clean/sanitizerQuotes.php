@@ -32,9 +32,10 @@ function transformBadQuotes($token, $server, $pid, $records) {
     ];
 
     $module = Application::getModule();
+    $dataTable = Application::getDataTable($pid);
     foreach ($screens as $char) {
         $regex = "%$char%";
-        $q = $module->query("SELECT * FROM redcap_data WHERE project_id = ? AND value LIKE ?", [$pid, $regex]);
+        $q = $module->query("SELECT * FROM $dataTable WHERE project_id = ? AND value LIKE ?", [$pid, $regex]);
         while ($row = $q->fetch_assoc()) {
             $value = $row['value'];
             $found = FALSE;
@@ -55,7 +56,7 @@ function transformBadQuotes($token, $server, $pid, $records) {
                     $instance = " = ?";
                     $params[] = $row['instance'];
                 }
-                $sql = "UPDATE redcap_data SET value = ? WHERE project_id = ? AND record = ? AND field_name = ? AND instance $instance";
+                $sql = "UPDATE $dataTable SET value = ? WHERE project_id = ? AND record = ? AND field_name = ? AND instance $instance";
                 $module->query($sql, $params);
             }
         }

@@ -13,6 +13,7 @@ use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
 use \Vanderbilt\CareerDevLibrary\Portal;
+use \Vanderbilt\CareerDevLibrary\HonorsAwardsActivities;
 
 if (!empty($_POST)) {
     require_once(__DIR__."/small_base.php");
@@ -225,13 +226,11 @@ $(document).ready(function() {
 </script>
 
 <div class='subnav'>
-	<?= Links::makeProfileLink($pid, "View Profile for Next Record", $nextRecord, FALSE, "purple") ?>
-	<?= Links::makeEmailMgmtLink($pid, "Survey Distribution", FALSE, "purple") ?>
+	<?= Links::makeProfileLink($pid, "View Profile for Next Record", $nextRecord, FALSE, "green") ?>
 	<?= Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green") ?>
 	<?= Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green") ?>
-
-	<a class='yellow'><?= getSelectRecordForProfile() ?></a>
-	<a class='yellow'><?= getSearchForProfile() ?></a>
+	<a class='blue'><?= getSelectRecordForProfile() ?></a>
+	<a class='blue'><?= getSearchForProfile() ?></a>
 </div>
 
 <div id='content'>
@@ -350,8 +349,13 @@ if (!empty($mentors)) {
     echo "<h2>Reported Grant Funding (Total Dollars; PI/Co-PI only)</h2>";
     require_once(__DIR__."/charts/scholarGrantFunding.php");
     echo "<br/><br/>";
-    echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>\n";
-    echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".Application::link("socialNetwork/collaboration.php")."&record=$record&field=record_id&cohort=all&headers=false&mentors=on'></iframe><br><br>\n";
+    echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>";
+    echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".Application::link("socialNetwork/collaboration.php")."&record=$record&field=record_id&cohort=all&headers=false&mentors=on'></iframe>";
+    echo "<br/><br/>";
+    $honors = new HonorsAwardsActivities($redcapData, $pid, $record);
+    echo "<h2>Recorded Honors, Awards &amp; Activities</h2>";
+    echo $honors->getHTML();
+    echo "<br/><br/>";
 
     echo "</div>";
 

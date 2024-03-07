@@ -207,9 +207,12 @@ class Upload
                         $whereClause = "WHERE project_id = ? AND record = ? AND field_name IN (".implode(",", $fieldQuestionMarks).")".$instanceClause;
                         do {
 
+                            $startTs = time();
                             $sql = "DELETE FROM $dataTable ".$whereClause." LIMIT 1000";
                             Application::log("Running SQL $sql with ".json_encode($params));
                             $module->query($sql, $params);
+                            $numSecs = time() - $startTs;
+                            Application::log("In $numSecs seconds, ran SQL $sql with ".json_encode($params), $pid);
 
                             $sql = "SELECT record FROM $dataTable ".$whereClause." LIMIT 1";
                             $q = $module->query($sql, $params);
@@ -322,6 +325,9 @@ class Upload
 
         $errors = \MetaData::save_metadata($dd_array, FALSE, TRUE, $pid);
         $count = count($dd_array['A']);
+
+        $_SESSION['metadata'.$pid] = [];
+        $_SESSION['lastMetadata'.$pid] = 0;
 
         // Return any errors found when attempting to commit
         if (!empty($errors)) {

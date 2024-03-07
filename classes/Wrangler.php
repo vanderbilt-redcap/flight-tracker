@@ -507,7 +507,7 @@ class Wrangler {
                                 const citation = citInfo['citation'] ?? '';
                                 const pmid = citInfo['pmid'] ?? '';
                                 const pmcid = citInfo['pmcid'] ?? '';
-                                const pmcidText = pmcid ? ' (PMC '+pmcid+')' : '';
+                                const pmcidText = pmcid ? ' ('+pmcid+')' : '';
                                 const addButton = ' <button class=\"smallest\" onclick=\"lookupPMIDs(['+pmid+']); return false;\">add</button>';
                                 html += '<p class=\"alignLeft\"><strong>PMID '+pmid+pmcidText+'</strong>'+addButton+' <span class=\"smaller\">'+tag+'</span><br/>'+citation+'</p>';
                             }

@@ -133,7 +133,7 @@ $(document).ready(function() {
 
     <h1 style='margin-bottom: 0;'>Flight Tracker Central</h1>
     <h3 class='nomargin' style='background-color: transparent;'>v<?= $currVersion ?> <span style="font-size: 0.7em;" class="darkgreytext" title="Contact your REDCap administrator for any Flight Tracker upgrades"><?= $versionText ?></span></h3>
-    <h4 class='nomargin'>Watch Your Scholars Fly - <a href="https://redcap.vanderbilt.edu/flight_tracker/">Flight Tracker Community Support</a></h4>
+    <h4 class='nomargin'>Watch Your Scholars Fly - <a href="https://redcap.vanderbilt.edu/flighttracker/">Flight Tracker Community Support</a></h4>
     <h5>from <img src="<?= Application::link("img/efs_small_logoonly.png") ?>" alt="Edge for Scholars" style="width: 27px; height: 20px;"> <a href='<?= $edgeLink ?>' target="_blank">Edge for Scholars</a></h5>
     <?php
         $module = CareerDev::getModule();

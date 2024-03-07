@@ -2,13 +2,16 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\HonorsAwardsActivities;
 use Vanderbilt\CareerDevLibrary\NameMatcher;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
+
 if (Application::isSocialMediaProject($project_id) && ($instrument == "scholars_social_media")) {
     $handleFields = ["identifier_twitter", "identifier_linkedin"];
     $myData = \REDCap::getData($project_id, "json-array", [$record]);
@@ -76,37 +79,139 @@ if (Application::isSocialMediaProject($project_id) && ($instrument == "scholars_
     exit;
 }
 
+# avoids special projects; now, we know that this is a normal Flight Tracker project
 require_once(dirname(__FILE__)."/../small_base.php");
 
 global $token, $server;
 
 Application::refreshRecordSummary($token, $server, $project_id, $record);
 if (in_array($instrument, ["initial_survey", "followup", "initial_import"])) {
-    uploadPositionChangesFromSurveys($token, $server, $project_id, $record, $instrument, $repeat_instance ?? 1);
+    uploadPositionChangesFromSurveys($project_id, $record, $instrument, $repeat_instance ?? 1);
+}
+if (in_array($instrument, ["initial_survey", "followup"])) {
+    uploadActivitiesFromSurveys($project_id, $record, $instrument, $repeat_instance ?? 1);
 }
 
+function uploadActivitiesFromSurveys($pid, $recordId, $instrument, $requestedInstance = 1) {
+    $surveyPrefix = REDCapManagement::getPrefixFromInstrument($instrument);
+    $activityInstrument = "honors_awards_and_activities";
+    $activityPrefix = REDCapManagement::getPrefixFromInstrument($activityInstrument);
+    $metadataFields = Download::metadataFieldsByPid($pid);
+    $allSurveyFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $surveyPrefix);
+    $activityFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $activityPrefix);
 
-
-function uploadPositionChangesFromSurveys($token, $server, $pid, $recordId, $instrument, $requestedInstance = 1) {
-    $metadata = Download::metadata($token, $server);
-    $choices = REDCapManagement::getChoices($metadata);
-    $relevantFields = REDCapManagement::getFieldsFromMetadata($metadata, $instrument);
-    if (empty($relevantFields)) {
-        return;
+    $surveyHonorFields = ["record_id"];
+    foreach ($allSurveyFields as $field) {
+        if (preg_match("/^$surveyPrefix"."_honor\d_/", $field) && !preg_match("/_descr$/", $field)) {
+            $surveyHonorFields[] = $field;
+        }
     }
-    $relevantFields[] = $instrument."_complete";
-    $positionFields = REDCapManagement::getFieldsFromMetadata($metadata, "position_change");
-    $positionFields[] = "position_change_complete";
-    $repeatingForms = REDCapManagement::getRepeatingForms($pid);
+    $surveyHonorFields[] = $surveyPrefix."_date";    // date the survey was filled out
+
+    // Suffixes on the award form should mirror all instances on each survey, except for the date and userid
+    $suffixes = [];
+    foreach ($activityFields as $field) {
+        if (!preg_match("/_datetime$/", $field) && !preg_match("/_userid$/", $field)) {
+            $suffixes[] = preg_replace("/^$activityPrefix/", "", $field);
+        }
+    }
+
+    # activityData will only match on two fields for duplicates: Name and award year
+    # coordinated with function hasMatchWithActivityData
+    # if there's a match based on these two fields, no data will be copied
+    # this should avoid the situation when there are repetitive survey saves
+    $activityData = Download::fieldsForRecordsByPid($pid, ["record_id", $activityPrefix."_name", $activityPrefix."_award_year"], [$recordId]);
+    $surveyData = Download::fieldsForRecordsByPid($pid, $surveyHonorFields, [$recordId]);
+    $surveyRow = REDCapManagement::getNormativeRow($surveyData);
+    foreach ($surveyData as $row) {
+        if (($row['redcap_repeat_instrument'] == $instrument) && ($row['redcap_repeat_instance'] == $requestedInstance)) {
+            # in case of a repeating survey
+            $surveyRow = $row;
+            break;
+        }
+    }
+    $prefixesWithNewData = [];
+    for ($i = 1; $i <= HonorsAwardsActivities::NUM_SURVEY_ACTIVITIES; $i++) {
+        $honorPrefix = $surveyPrefix."_honor$i";
+        $honorName = $surveyRow[$honorPrefix."_name"];   // required
+        $honorYear = $surveyRow[$honorPrefix."_award_year"];
+        if ($honorName && !hasMatchWithActivityData($activityData, $activityPrefix, $honorName, $honorYear)) {
+            foreach ($suffixes as $suffix) {
+                $value = $surveyRow[$honorPrefix.$suffix] ?? "";
+                if ($value !== "") {
+                    $prefixesWithNewData[] = $honorPrefix;
+                    break;
+                }
+            }
+        }
+    }
+
+    $maxActivityInstance = REDCapManagement::getMaxInstance($activityData, $activityInstrument, $recordId);
+    $surveyDate = $surveyRow[$surveyPrefix."_date"] ?: date("Y-m-d");  // will need to append time
+    $upload = [];
+    foreach ($prefixesWithNewData as $prefix) {
+        $honorName = $surveyRow[$prefix."_name"] ?? "";
+        if ($honorName !== "") {      // double-check ==> should always have a name by this point
+            $uploadRow = [
+                "record_id" => $recordId,
+                "redcap_repeat_instrument" => $activityInstrument,
+                "redcap_repeat_instance" => $maxActivityInstance + 1,
+                $activityPrefix."_datetime" => $surveyDate." 00:00",    // unknown time - not super-important
+                $activityPrefix."_userid" => "Scholar",
+                $activityInstrument."_complete" => "2",
+            ];
+            $maxActivityInstance++;
+            foreach ($suffixes as $suffix) {
+                $value = $surveyRow[$prefix.$suffix];
+                if ($value !== "") {
+                    $uploadRow[$activityPrefix.$suffix] = $value;
+                }
+            }
+            if (count($uploadRow) > 6) {
+                # Should always be true, but I want to be safe in case of a bug-laden runaway process
+                $upload[] = $uploadRow;
+            }
+        }
+    }
+    if (!empty($upload)) {
+        Upload::rowsByPid($upload, $pid);
+    }
+}
+
+function hasMatchWithActivityData($activityData, $activityPrefix, $honorName, $honorYear) {
+    if (!$honorName) {
+        return FALSE;
+    }
+    foreach ($activityData as $row) {
+        if (($row[$activityPrefix."_name"] == $honorName) && ($row[$activityPrefix."_award_year"] == $honorYear)) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+function uploadPositionChangesFromSurveys($pid, $recordId, $instrument, $requestedInstance = 1) {
     $prefix = REDCapManagement::getPrefixFromInstrument($instrument);
     if (!preg_match("/_$/", $prefix)) {
         $prefix = $prefix."_";
     }
+    $positionPrefix = REDCapManagement::getPrefixFromInstrument("position_change");
+    $metadataFields = Download::metadataFieldsByPid($pid);
+    $relevantFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $prefix);
+    $positionFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $positionPrefix);
+    $metadata = Download::metadataByPid($pid, array_unique(array_merge($relevantFields, $positionFields)));
+    $choices = DataDictionaryManagement::getChoices($metadata);
+    $repeatingForms = REDCapManagement::getRepeatingForms($pid);
+    if (empty($relevantFields)) {
+        return;
+    }
+    $relevantFields[] = $instrument."_complete";
+    $positionFields[] = "position_change_complete";
     $relevantFields[] = "record_id";
     $positionFields[] = "record_id";
 
-    $redcapData = Download::fieldsForRecords($token, $server, $relevantFields, [$recordId]);
-    $positionData = Download::fieldsForRecords($token, $server, $positionFields, [$recordId]);
+    $redcapData = Download::fieldsForRecordsByPid($pid, $relevantFields, [$recordId]);
+    $positionData = Download::fieldsForRecordsByPid($pid, $positionFields, [$recordId]);
     $maxPositionInstance = REDCapManagement::getMaxInstance($positionData, "position_change", $recordId);
     // Application::log("$recordId has maxInstance $maxInstance");
 
@@ -114,15 +219,15 @@ function uploadPositionChangesFromSurveys($token, $server, $pid, $recordId, $ins
     if (in_array($instrument, $repeatingForms)) {
         foreach ($redcapData as $row) {
             if (($row['redcap_repeat_instrument'] == $instrument) && ($row['redcap_repeat_instance'] == $requestedInstance)) {
-                getDataForPrefixAndPossiblyUpload($token, $server, $row, $choices, $fieldPrefixes, $recordId, $positionData, $maxPositionInstance);
+                getDataForPrefixAndPossiblyUpload($pid, $row, $choices, $fieldPrefixes, $recordId, $positionData, $maxPositionInstance);
             }
         }
     } else {
-        getDataForPrefixAndPossiblyUpload($token, $server, $redcapData[0], $choices, $fieldPrefixes, $recordId, $positionData, $maxPositionInstance);
+        getDataForPrefixAndPossiblyUpload($pid, $redcapData[0], $choices, $fieldPrefixes, $recordId, $positionData, $maxPositionInstance);
     }
 }
 
-function getDataForPrefixAndPossiblyUpload($token, $server, $row, $choices, $prefixes, $recordId, $positionData, &$maxInstance) {
+function getDataForPrefixAndPossiblyUpload($pid, $row, $choices, $prefixes, $recordId, $positionData, &$maxInstance) {
     foreach ($prefixes as $prefix) {
         $transferData = getPositionDataFromSurvey($row, $choices, $prefix);
         if (!empty($transferData) && !isDataAlreadyCopied($positionData, $transferData)) {
@@ -130,7 +235,7 @@ function getDataForPrefixAndPossiblyUpload($token, $server, $row, $choices, $pre
             $transferData['record_id'] = $recordId;
             $transferData['redcap_repeat_instrument'] = "position_change";
             $transferData['redcap_repeat_instance'] = $maxInstance;
-            Upload::oneRow($transferData, $token, $server);
+            Upload::rowsByPid([$transferData], $pid);
         }
     }
 }
@@ -176,7 +281,15 @@ function getPositionDataFromSurvey($row, $choices, $prefix) {
         $transferData['promotion_department'] = '999999';
         $transferData['promotion_department_other'] = $choices[$prefix.'primary_dept'][$department];
     } else {
-        $transferData['promotion_department'] = $choices[$prefix.'primary_dept'][$department] ?? $department;
+        $label = $choices[$prefix.'primary_dept'][$department] ?? $department;
+        $transferData['promotion_department'] = $label;
+        if (isset($choices["promotion_department"])) {
+            foreach ($choices["promotion_department"] as $choiceIndex => $choiceLabel) {
+                if ($choiceLabel == $label) {
+                    $transferData['promotion_department'] = $choiceIndex;
+                }
+            }
+        }
     }
     $transferData['promotion_division'] = $row[$prefix.'division'] ?? "";
     $transferData['promotion_date'] = date("Y-m-d");

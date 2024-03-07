@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use PhpParser\Node\Expr\AssignOp\BitwiseOr;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\CohortConfig;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
@@ -1515,7 +1516,9 @@ function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer, 
     if ($restartNumbering) {
         $destMetadata = cleanOutJSONs($metadata);
         $feedback = Upload::metadata($destMetadata, $destToken, $destServer);
+        Application::log("Upload metadata: ".json_encode($feedback));
     } else {
+        Application::log("Skipping uploading metadata");
         $destMetadata = Download::metadata($destToken, $destServer);
     }
     $destMetadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
@@ -1557,7 +1560,6 @@ function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer, 
         if (!empty($newRecordData)) {
             $feedback = Upload::rows($newRecordData, $destToken, $destServer);
             Application::log("Copy project: Record $record: ".json_encode($feedback));
-            $allFeedback[] = $feedback;
         }
     }
     return $destPid;

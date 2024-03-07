@@ -63,12 +63,12 @@ class Dashboard {
         $html = "";
         $saveDiv = REDCapManagement::makeSaveDiv("canvas", TRUE);
 
-        $html .= "<script src='".Application::link("js/Chart.min.js")."'></script>\n";
+        $html .= "<script src='".Application::link("js/Chart.min.js")."'></script>";
 
         $canvasId = "lineCanvas";
-        $html .= "<canvas id='$canvasId' class='chartjs-render-monitor' style='display: block; width: 700px; height: 350px;'></canvas>\n";
+        $html .= "<canvas id='$canvasId' class='chartjs-render-monitor' style='display: block; width: 700px; height: 350px;'></canvas>";
 
-        $html .= "<script>\n";
+        $html .= "<script>";
         $xs = array();
         $minX = 10000;
         $maxX = 0;
@@ -109,9 +109,9 @@ class Dashboard {
             $data['datasets'][] = $dataset;
         }
 
-        $html .= "var config = {\n";
-        $html .= "\ttype: 'line',\n";
-        $html .= "\tdata: ".json_encode($data).",\n";
+        $html .= "var config = {";
+        $html .= "\ttype: 'line',";
+        $html .= "\tdata: ".json_encode($data).",";
         $html .= "\toptions: {
         responsive: true,
         title: { display: true, text: 'Number of Publications' },
@@ -139,8 +139,8 @@ class Dashboard {
                 }
             }
         }
-    }\n";
-        $html .= "\t};\n";
+    }";
+        $html .= "\t};";
 
         $html .= "
         window.onload = function() { const ctx = document.getElementById('$canvasId').getContext('2d'); window.myLine = new Chart(ctx, config); };
@@ -149,7 +149,7 @@ class Dashboard {
         });
 ";
 
-        $html .= "</script>\n";
+        $html .= "</script>";
 
         return $html;
     }
@@ -181,60 +181,48 @@ class Dashboard {
             Application::link("dashboard/publicationsByMetrics.php", $pid).$trailingParams => "Miscellaneous Metrics",
         ];
 
+        $color = "blue";
         $grantTypeParam = $grantType ? "&grantType=".urlencode($grantType) : "";
-        $html .= "<div class='subnav'>\n";
-        $html .= "<a class='yellow' href='".Application::link("dashboard/overall.php")."&layout=$target$cohortUrl'>Overall Summary</a>\n";
-        $html .= "<a class='yellow' href='".Application::link("this")."&layout=$otherTarget$cohortUrl$grantTypeParam'>Switch Layouts</a>\n";
-
-        $html .= "<a class='green' href='".Application::link("dashboard/grants.php")."&layout=$target$cohortUrl$grantTypeParam'>Grants</a>\n";
-        $html .= "<a class='green' href='".Application::link("dashboard/grantBudgets.php")."&layout=$target$cohortUrl$grantTypeParam'>Grant Budgets</a>\n";
-        $html .= "<a class='green' href='".Application::link("dashboard/grantBudgetsByYear.php")."&layout=$target$cohortUrl$grantTypeParam'>Grant Budgets by Year</a>\n";
-
-        $html .= "<a class='orange' href='javascript:;' onclick='return false;'>Publications <select onchange='changePub(this);'>\n";
+        $html .= "<div class='subnav'>";
+        $html .= "<a class='$color' href='".Application::link("this")."&layout=$otherTarget$cohortUrl$grantTypeParam'>Switch Layouts</a>";
+        $html .= "<a class='$color' href='javascript:;' onclick='return false;'>Publications <select onchange='changePub(this);'>";
         $getPage = self::getPage();
         $sel = preg_match("/publicationsBy/", $getPage) ? "" : "selected";
-        $html .= "<option value='' $sel>---SELECT---</option>\n";
+        $html .= "<option value='' $sel>---SELECT---</option>";
         $getPageForRegEx = preg_replace("/\//", "\\/", $getPage);
         foreach ($pubChoices as $page => $label) {
             $sel = "";
             if (preg_match("/".$getPageForRegEx."/", $page)) {
                 $sel = " selected";
             }
-            $html .= "<option value='$page'$sel>$label</option>\n";
+            $html .= "<option value='$page'$sel>$label</option>";
         }
-        $html .= "</select></a>\n";
-
-        $html .= "<a class='blue' href='".Application::link("dashboard/emails.php")."&layout=$target$cohortUrl'>Emails</a>\n";
-        $html .= "<a class='blue' href='".Application::link("dashboard/demographics.php")."&layout=$target$cohortUrl'>Demographics</a>\n";
-        $html .= "<a class='blue' href='".Application::link("dashboard/resources.php")."&layout=$target$cohortUrl'>Resources</a>\n";
-
-        # This page does not seem to be sufficiently helpful to keep in
-        // $html .= "<a class='blue' href='".Application::link("dashboard/dates.php")."&layout=$target$cohortUrl'>Dates</a>\n";
+        $html .= "</select></a>";
 
 
-        $html .= "<script>\n";
-        $html .= "function changePub(ob) {\n";
-        $html .= "\tvar sel = $(ob).children('option:selected').val();\n";
-        $html .= "\tif (sel) { window.location.href = sel; }\n";
-        $html .= "}\n";
-        $html .= "</script>\n";
+        $html .= "<script>
+function changePub(ob) {
+    const sel = $(ob).children('option:selected').val();
+    if (sel) {
+        window.location.href = sel;
+    }
+}
+</script>";
 
         $cohorts = new Cohorts($token, $server, Application::getModule());
         $cohortTitles = $cohorts->getCohortTitles();
         $thisUrl = Application::link("this");
-        $html .= "<a href='javascript:;' onclick='return false;' class='purple'>Select Cohort: <select id='cohort' onchange='if ($(this).val()) { window.location.href = \"$thisUrl&layout=$target$grantTypeParam&cohort=\" + $(this).val(); } else { window.location.href = \"$thisUrl&layout=$target$grantTypeParam\"; }'>\n";
-        $html .= "<option value=''>---ALL---</option>\n";
+        $html .= "<a href='javascript:;' onclick='return false;' class='$color'>Select Cohort: <select id='cohort' onchange='if ($(this).val()) { window.location.href = \"$thisUrl&layout=$target$grantTypeParam&cohort=\" + $(this).val(); } else { window.location.href = \"$thisUrl&layout=$target$grantTypeParam\"; }'>";
+        $html .= "<option value=''>---ALL---</option>";
         foreach ($cohortTitles as $title) {
             $html .= "<option value='$title'";
             if ($title == $cohort) {
                 $html .= " selected";
             }
-            $html .= ">$title</option>\n";
+            $html .= ">$title</option>";
         }
-        $html .= "</select></a>\n";
-        $html .= "<a class='purple' href='".Application::link("/cohorts/viewCohorts.php")."'>View Cohorts</a>\n";
-
-        $html .= "</div>\n";
+        $html .= "</select></a>";
+        $html .= "</div>";
 
         return $html;
     }
@@ -254,7 +242,7 @@ class Dashboard {
         global $pid;
 
         if (empty($measurements) && empty($headers)) {
-            return "<h1>Under Construction!</h1>\n";
+            return "<h1>Under Construction!</h1>";
         }
 
         if (!isset($headers)) {
@@ -273,7 +261,7 @@ class Dashboard {
 
         $html = "";
         $html .= $this->displayDashboardHeader($target, $otherTarget, $pid, $cohort, $defaultGrantType);
-        $html .= "<div id='content'>\n";
+        $html .= "<div id='content'>";
         if ($defaultGrantType) {
             $html .= $this->addGrantTypeSelect($defaultGrantType, $cohort, $target);
         }
@@ -281,73 +269,73 @@ class Dashboard {
         $html .= self::makeHeaders($headers);
 
         if (empty($measurements)) {
-            $html .= "<p class='centered'>No measurements have been made!</p>\n";
+            $html .= "<p class='centered'>No measurements have been made!</p>";
         }
 
         $i = 0;
-        $html .= "<table style='margin-left: auto; margin-right: auto;'><tr>\n";
+        $html .= "<table style='margin-left: auto; margin-right: auto;'><tr>";
         foreach ($measurements as $header => $count) {
             $htmlHeader = self::addHTMLForParens($header);
             $countClassName = get_class($count);
             if ($countClassName == "Vanderbilt\\CareerDevLibrary\\ObservedMeasurement") {
                 $value = $count->getValue();
                 $n = $count->getN();
-                $html .= "<td class='measurement'>\n";
-                $html .= "<div class='measurementHeader'>".$htmlHeader."</div>\n";
-                $html .= "<div class='measurementNumber'>".REDCapManagement::pretty($value)."</div>\n";
-                $html .= "<div class='measurementDenominator'>(n = <b>".REDCapManagement::pretty($n)."</b>)</div>\n";
-                $html .= "</td>\n";
+                $html .= "<td class='measurement'>";
+                $html .= "<div class='measurementHeader'>".$htmlHeader."</div>";
+                $html .= "<div class='measurementNumber'>".REDCapManagement::pretty($value)."</div>";
+                $html .= "<div class='measurementDenominator'>(n = <b>".REDCapManagement::pretty($n)."</b>)</div>";
+                $html .= "</td>";
             } else if ($countClassName == "Vanderbilt\\CareerDevLibrary\\DateMeasurement") {
                 $date = $count->getMDY();
                 $wDay = $count->getWeekDay();
-                $html .= "<td class='dateMeasurement'>\n";
-                $html .= "<div class='measurementHeader'>".$htmlHeader."</div>\n";
-                $html .= "<div class='measurementDenominator'>$wDay</div>\n";
-                $html .= "<div class='measurementDate'>".$date."</div>\n";
-                $html .= "<div class='animationProgress'>&nbsp;</div>\n";
-                $html .= "</td>\n";
+                $html .= "<td class='dateMeasurement'>";
+                $html .= "<div class='measurementHeader'>".$htmlHeader."</div>";
+                $html .= "<div class='measurementDenominator'>$wDay</div>";
+                $html .= "<div class='measurementDate'>".$date."</div>";
+                $html .= "<div class='animationProgress'>&nbsp;</div>";
+                $html .= "</td>";
             } else if ($countClassName == "Vanderbilt\\CareerDevLibrary\\MoneyMeasurement") {
                 $amt = $count->getAmount();
                 $total = $count->getTotal();
-                $html .= "<td class='moneyMeasurement'>\n";
-                $html .= "<div class='measurementHeader'>".$htmlHeader."</div>\n";
-                $html .= "<div class='measurementMoney'>".REDCapManagement::prettyMoney($amt, FALSE)."</div>\n";
+                $html .= "<td class='moneyMeasurement'>";
+                $html .= "<div class='measurementHeader'>".$htmlHeader."</div>";
+                $html .= "<div class='measurementMoney'>".REDCapManagement::prettyMoney($amt, FALSE)."</div>";
                 if ($total) {
-                    $html .= "<progress class='animationProgress' max='1.0' value='".($amt / $total)."'></progress>\n";
-                    $html .= "<div class='measurementDenominator'>out of ".REDCapManagement::prettyMoney($total, FALSE)."</div>\n";
+                    $html .= "<progress class='animationProgress' max='1.0' value='".($amt / $total)."'></progress>";
+                    $html .= "<div class='measurementDenominator'>out of ".REDCapManagement::prettyMoney($total, FALSE)."</div>";
                 }
-                $html .= "<div class='animationProgress'>&nbsp;</div>\n";
-                $html .= "</td>\n";
+                $html .= "<div class='animationProgress'>&nbsp;</div>";
+                $html .= "</td>";
             } else {
                 $numer = $count->getNumerator();
-                $html .= "<td class='measurement'>\n";
-                $html .= "<div class='measurementHeader'>".$htmlHeader."</div>\n";
-                $html .= "<div class='measurementNumber'>".REDCapManagement::pretty($numer)."</div>\n";
+                $html .= "<td class='measurement'>";
+                $html .= "<div class='measurementHeader'>".$htmlHeader."</div>";
+                $html .= "<div class='measurementNumber'>".REDCapManagement::pretty($numer)."</div>";
                 $denom = $count->getDenominator();
                 if ($denom) {
-                    $html .= "<progress class='animationProgress' max='1.0' value='".($numer / $denom)."'></progress>\n";
-                    $html .= "<div class='measurementDenominator'>out of <b>".REDCapManagement::pretty($denom)."</b> (".self::fractionToPercent($numer / $denom).")</div>\n";
+                    $html .= "<progress class='animationProgress' max='1.0' value='".($numer / $denom)."'></progress>";
+                    $html .= "<div class='measurementDenominator'>out of <b>".REDCapManagement::pretty($denom)."</b> (".self::fractionToPercent($numer / $denom).")</div>";
                 } else {
-                    $html .= "<div class='measurementDenominator'>&nbsp;</div>\n";
-                    $html .= "<div class='animationProgress'>&nbsp;</div>\n";
+                    $html .= "<div class='measurementDenominator'>&nbsp;</div>";
+                    $html .= "<div class='animationProgress'>&nbsp;</div>";
                 }
-                $html .= "</td>\n";
+                $html .= "</td>";
             }
             $i++;
             if ($i % $numInRow == 0) {
-                $html .= "</tr></table>\n";
-                $html .= "<div class='verticalSpacer'>&nbsp;</div>\n";
-                $html .= "<table style='margin-left: auto; margin-right: auto;'><tr>\n";
+                $html .= "</tr></table>";
+                $html .= "<div class='verticalSpacer'>&nbsp;</div>";
+                $html .= "<table style='margin-left: auto; margin-right: auto;'><tr>";
             } else if ($i < count($measurements)) {
-                $html .= "<td class='spacer'>&nbsp;</td>\n";
+                $html .= "<td class='spacer'>&nbsp;</td>";
             }
         }
-        $html .= "</tr></table>\n";
+        $html .= "</tr></table>";
 
         if (!empty($lines)) {
             $html .= $this->makeLineGraph($lines);
         }
-        $html .= "</div>\n";
+        $html .= "</div>";
 
         return $html;
     }
@@ -363,9 +351,9 @@ class Dashboard {
                 }
             }
             if ($plainHTML) {
-                $html .= $header."\n";
+                $html .= $header."";
             } else {
-                $html .= "<h$i>".$header."</h$i>\n";
+                $html .= "<h$i>".$header."</h$i>";
                 $i++;
             }
         }
@@ -374,7 +362,7 @@ class Dashboard {
 
     private function makeTableHTML($headers, $measurements, $lines = array(), $cohort = "", $defaultGrantType = "") {
         if (empty($measurements) && empty($headers)) {
-            return "<h1>Under Construction!</h1>\n";
+            return "<h1>Under Construction!</h1>";
         }
 
         if (!isset($headers)) {
@@ -393,18 +381,18 @@ class Dashboard {
 
         $html = "";
         $html .= $this->displayDashboardHeader($target, $otherTarget, $this->pid, $cohort, $defaultGrantType);
-        $html .= "<div id='content'>\n";
+        $html .= "<div id='content'>";
         if ($defaultGrantType) {
             $html .= $this->addGrantTypeSelect($defaultGrantType, $cohort, $target);
         }
 
         $html .= self::makeHeaders($headers);
         if (empty($measurements)) {
-            $html .= "<p class='centered'>No measurements have been made!</p>\n";
+            $html .= "<p class='centered'>No measurements have been made!</p>";
         }
 
         $i = 1;
-        $html .= "<table style='margin-left: auto; margin-right: auto;'>\n";
+        $html .= "<table style='margin-left: auto; margin-right: auto;'>";
         foreach ($measurements as $header => $count) {
             if (($i % 2) == 1) {
                 $rowClass = "odd";
@@ -416,53 +404,56 @@ class Dashboard {
             if ($countClassName == "Vanderbilt\\CareerDevLibrary\\DateMeasurement") {
                 $date = $count->getMDY();
                 $wDay = $count->getWeekDay();
-                $html .= "<tr class='dateMeasurement $rowClass'>\n";
-                $html .= "<td class='measurementHeader'>".$htmlHeader."</td>\n";
-                $html .= "<td class='measurementDenominator'>$wDay</td>\n";
-                $html .= "<td class='measurementDate'>".$date."</td>\n";
-                $html .= "</tr>\n";
+                $html .= "<tr class='dateMeasurement $rowClass'>";
+                $html .= "<td class='measurementHeader'>".$htmlHeader."</td>";
+                $html .= "<td class='measurementDenominator'>$wDay</td>";
+                $html .= "<td class='measurementDate'>".$date."</td>";
+                $html .= "</tr>";
             } else if ($countClassName == "Vanderbilt\\CareerDevLibrary\\ObservedMeasurement") {
                 $value = $count->getValue();
                 $n = $count->getN();
-                $html .= "<tr class='dateMeasurement $rowClass'>\n";
-                $html .= "<td class='measurementHeader'>".$htmlHeader."</td>\n";
-                $html .= "<td class='measurementNumerator'>".REDCapManagement::pretty($value)."</td>\n";
-                $html .= "<td class='measurementDenominator'>(n = ".REDCapManagement::pretty($n).")</td>\n";
-                $html .= "</tr>\n";
+                $html .= "<tr class='dateMeasurement $rowClass'>";
+                $html .= "<td class='measurementHeader'>".$htmlHeader."</td>";
+                $html .= "<td class='measurementNumerator'>".REDCapManagement::pretty($value)."</td>";
+                $html .= "<td class='measurementDenominator'>(n = ".REDCapManagement::pretty($n).")</td>";
+                $html .= "</tr>";
             } else if ($countClassName == "Vanderbilt\\CareerDevLibrary\\MoneyMeasurement") {
                 $amt = $count->getAmount();
                 $total = $count->getTotal();
-                $html .= "<tr class='measurement $rowClass'>\n";
-                $html .= "<td class='measurementHeader'>".$htmlHeader."</div>\n";
-                $html .= "<td class='measurementMoney'>".REDCapManagement::prettyMoney($amt, FALSE)."</div>\n";
+                $html .= "<tr class='measurement $rowClass'>";
+                $html .= "<td class='measurementHeader'>".$htmlHeader."</div>";
+                $html .= "<td class='measurementMoney'>".REDCapManagement::prettyMoney($amt, FALSE)."</div>";
                 if ($total) {
-                    $html .= "<td><progress class='animationProgress' max='1.0' value='".($amt / $total)."'></progress></td>\n";
-                    $html .= "<td class='measurementDenominator'>out of ".REDCapManagement::prettyMoney($total, FALSE)."</div>\n";
+                    $html .= "<td><progress class='animationProgress' max='1.0' value='".($amt / $total)."'></progress></td>";
+                    $html .= "<td class='measurementDenominator'>out of ".REDCapManagement::prettyMoney($total, FALSE)."</div>";
                 } else {
-                    $html .= "<td></td><td></td>\n";
+                    $html .= "<td></td><td></td>";
                 }
-                $html .= "</td>\n";
-                $html .= "</tr>\n";
+                $html .= "</td>";
+                $html .= "</tr>";
             } else {
                 $numer = $count->getNumerator();
-                $html .= "<tr class='measurement $rowClass'>\n";
-                $html .= "<td class='measurementHeader'>".$htmlHeader."</td>\n";
-                $html .= "<td class='measurementNumber'>".REDCapManagement::pretty($numer)."</td>\n";
+                $html .= "<tr class='measurement $rowClass'>";
+                $html .= "<td class='measurementHeader'>".$htmlHeader."</td>";
+                $html .= "<td class='measurementNumber'>".REDCapManagement::pretty($numer)."</td>";
                 $denom = $count->getDenominator();
                 if ($denom) {
-                    $html .= "<td><progress class='animationProgress' max='1.0' value='".($numer / $denom)."'></progress></td>\n";
-                    $html .= "<td class='measurementDenominator'>out of <b>".REDCapManagement::pretty($denom)."</b> (".self::fractionToPercent($numer / $denom).")</td>\n";
+                    $html .= "<td><progress class='animationProgress' max='1.0' value='".($numer / $denom)."'></progress></td>";
+                    $html .= "<td class='measurementDenominator'>out of <b>".REDCapManagement::pretty($denom)."</b> (".self::fractionToPercent($numer / $denom).")</td>";
+                } else {
+                    $html .= "<td></td>";
+                    $html .= "<td></td>";
                 }
-                $html .= "</tr>\n";
+                $html .= "</tr>";
             }
             $i++;
         }
-        $html .= "</table>\n";
+        $html .= "</table>";
 
         if (!empty($lines)) {
             $html .= $this->makeLineGraph($lines);
         }
-        $html .= "</div>\n";
+        $html .= "</div>";
 
         return $html;
     }

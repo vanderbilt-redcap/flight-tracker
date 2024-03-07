@@ -28,34 +28,6 @@ $switchSettings = $switches->getSwitches();
 <?php
 
 	$records = Download::recordIds($token, $server);
-    $metadataFields = Download::metadataFields($token, $server);
-    $validPrefixes = [];
-    $grantPrefixes = [
-        "coeus_",
-        "coeussubmission_",
-        "vera_",
-        "verasubmission_",
-        "summary_",
-        "nih_",
-        "reporter_",
-        "custom_",
-    ];
-    $pubPrefixes = [
-        "citation_",
-        "eric_",
-    ];
-    if (($switchSettings["Grants"] != "Off") && !isset($_GET['noCDA'])) {
-        $validPrefixes = array_merge($validPrefixes, $grantPrefixes);
-    }
-    if ($switchSettings["Publications"] != "Off") {
-        $validPrefixes = array_merge($validPrefixes, $pubPrefixes);
-    }
-    $fieldsToDownload = ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"];
-    foreach ($validPrefixes as $prefix) {
-        $prefixFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $prefix);
-        $fieldsToDownload = array_unique(array_merge($fieldsToDownload, $prefixFields));
-    }
-
 	$recordId = isset($_GET['record']) ? REDCapManagement::getSanitizedRecord($_GET['record'], $records) : $records[0];
     $nextRecord = $records[0];
 	for ($i = 0; $i < count($records); $i++) {
@@ -64,7 +36,39 @@ $switchSettings = $switches->getSwitches();
 		    break;
 		}
 	}
-	$rows = Download::fieldsForRecords($token, $server, $fieldsToDownload, [$recordId]);
+    if (isset($redcapData)) {
+        # this page is included via a require_once, so this variable might have already been downloaded
+        $rows = $redcapData;
+    } else {
+        $metadataFields = Download::metadataFields($token, $server);
+        $validPrefixes = [];
+        $grantPrefixes = [
+            "coeus_",
+            "coeussubmission_",
+            "vera_",
+            "verasubmission_",
+            "summary_",
+            "nih_",
+            "reporter_",
+            "custom_",
+        ];
+        $pubPrefixes = [
+            "citation_",
+            "eric_",
+        ];
+        if (($switchSettings["Grants"] != "Off") && !isset($_GET['noCDA'])) {
+            $validPrefixes = array_merge($validPrefixes, $grantPrefixes);
+        }
+        if ($switchSettings["Publications"] != "Off") {
+            $validPrefixes = array_merge($validPrefixes, $pubPrefixes);
+        }
+        $fieldsToDownload = ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"];
+        foreach ($validPrefixes as $prefix) {
+            $prefixFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $prefix);
+            $fieldsToDownload = array_unique(array_merge($fieldsToDownload, $prefixFields));
+        }
+        $rows = Download::fieldsForRecords($token, $server, $fieldsToDownload, [$recordId]);
+    }
 
     $name = "";
     foreach ($rows as $row) {

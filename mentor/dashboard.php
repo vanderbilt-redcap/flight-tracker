@@ -139,7 +139,67 @@ if (isset($_POST['newUids'])) {
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
-$records = Download::recordIds($token, $server);
+$records = Download::recordIdsByPid($pid);
+if (Application::isMSTP($pid)) {
+
+    $instrument = "mstp_mentee_mentor_agreement";
+    $downloadUrl = Application::link("mstp/downloadMMA.php");   // add record & instance
+    $fields  = [
+        "record_id",
+        "mstpmma_mentor_link",
+        "mstpmma_mentee_link",
+        "mstpmma_mentor_initiate_date",
+        "mstpmma_mentor_name",
+        "mstpmma_mentee_comments_date",
+        "mstpmma_mentee_signature_date",
+        "mstpmma_mentor_signature_date",
+    ];
+
+    $names = Download::namesByPid($pid);
+    $redcapData = Download::fieldsForRecordsByPid($pid, $fields, $records);
+    $htmlRows = [];
+    foreach ($redcapData as $row) {
+        if (
+            ($row['redcap_repeat_instrument'] == $instrument)
+            && $row['mstpmma_mentor_link']
+            && $row['mstpmma_mentee_link']
+        ) {
+            $recordId = $row['record_id'];
+            $instance = $row['redcap_repeat_instance'];
+            $timestamps = [];
+
+            $html = "<tr>";
+            $html .= "<th>{$names[$recordId]}<br/><a href='{$row['mstpmma_mentee_link']}'>Mentee Access</a></a></th>";
+            $html .= "<th>{$row['mstpmma_mentor_name']}<br/><a href='{$row['mstpmma_mentor_link']}'>Mentor Access</th>";
+            $html .= "<td>".(DateManagement::YMD2MDY($row['mstpmma_mentor_initiate_date']) ?: "Not started")."</td>";
+            $html .= "<td>".(DateManagement::YMD2MDY($row['mstpmma_mentee_comments_date']) ?: "No Mentee Comments")."</td>";
+            $html .= "<td><span class='nobreak'>Mentee: ".(DateManagement::YMD2MDY($row['mstpmma_mentee_signature_date']) ?: "Unsigned")."</span><br/><span class='nobreak'>Mentor: ".(DateManagement::YMD2MDY($row['mstpmma_mentor_signature_date']) ?: "Unsigned")."</span></td>";
+            $html .= "<td><a href='$downloadUrl&record=$recordId&instance=$instance'>View Current Agreement</a></td>";
+            $html .= "</tr>";
+
+            if (empty($timestamps)) {
+                $ts = time();
+            } else {
+                $ts = max($timestamps);
+            }
+            $htmlRows[$ts] = $html;
+        }
+    }
+    krsort($htmlRows);
+
+    echo "<h1>MSTP Mentoring Agreement Dashboard</h1>";
+    if (empty($htmlRows)) {
+        echo "<p class='centered max-width'>No one has initiated an agreement.</p>";
+    } else {
+        echo "<table class='centered max-width-1000 bordered'>";
+        echo "<thead class='stickyGrey'><tr><th>Mentee</th><th>Mentor</th><th>Mentor Start Date</th><th>Mentee Comment Date</th><th>Signature Date(s)</th><th>View</th></tr></thead>";
+        echo "<tbody>";
+        echo implode("", array_values($htmlRows));
+        echo "</tbody>";
+        echo "</table>";
+    }
+    exit;
+}
 $userids = Download::userids($token, $server);
 $mentorNames = Download::primaryMentors($token, $server);
 $mentorUserids = Download::primaryMentorUserids($token, $server);

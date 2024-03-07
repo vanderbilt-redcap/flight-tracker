@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.8.0";
+		return "6.9.0";
 	}
 
     public static function getLatestReleaseVersion() {
@@ -1180,8 +1180,11 @@ class CareerDev {
             $server = self::getSetting("server", $pid);
             $switches = new FeatureSwitches($token, $server, $pid);
 		    $ary = [];
+            $isMSTP = Application::isMSTP($pid);
 		    if (self::has("mentoring_agreement", $pid) && $switches->isOnForProject("Mentee-Mentor")) {
-                $ary["Start Mentee-Mentor Agreements"] = self::link("/mentor/config.php");
+                if (!$isMSTP) {
+                    $ary["Start Mentee-Mentor Agreements"] = self::link("/mentor/config.php");
+                }
                 $ary["Mentee-Mentor Agreements Dashboard"] = self::link("/mentor/dashboard.php");
                 $ary["Add Mentors for Existing Scholars"] = self::link("addMentor.php");
             }
@@ -1192,7 +1195,7 @@ class CareerDev {
                     "Trainees Becoming Mentors" => self::link("/tablesAndLists/trainee2mentor.php"),
                     "Publications with Mentor(s)" => self::link("/publications/pubsWithMentor.php"),
                 ]);
-            if (Application::isMSTP($pid)) {
+            if ($isMSTP) {
                 $ary["Configure IDP Reviewers for Classes"] = self::link("mstp/addMSTPReviewers.php");
                 $ary["Start a MSTP Mentee-Mentor Agreement"] = self::link("mstp/mma.php");
             }
@@ -1224,11 +1227,12 @@ class CareerDev {
 					"Grant Budgets" => self::link("/dashboard/grantBudgets.php"),
 					"Grant Budgets by Year" => self::link("/dashboard/grantBudgetsByYear.php"),
 					"Publications" => self::link("/dashboard/publicationsByCategory.php"),
+                    "Honors, Awards &amp; Activities" => self::link("/dashboard/activities.php"),
 					"Emails" => self::link("/dashboard/emails.php"),
 					"Demographics" => self::link("/dashboard/demographics.php"),
 					"Dates" => self::link("/dashboard/dates.php"),
 					"Resources" => self::link("/dashboard/resources.php"),
-					];
+            ];
 			if (self::has("mentoring_agreement", $pid)) {
 			    $ary["Mentee-Mentor Agreements"] = self::link("mentor/dashboard.php");
             }
@@ -1330,6 +1334,7 @@ class CareerDev {
             if (!empty(self::getAdditionalSurveys($pid))) {
                 $ary["Share Survey Data"] = self::link("/wrangler/shareSurveys.php");
             }
+            $ary["Convert Honors &amp; Awards"] = self::link("/wrangler/convertHonors.php");
 			return $ary;
 		}
 		return [];

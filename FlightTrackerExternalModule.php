@@ -184,6 +184,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 if (
                     preg_match("/^$prefix/", $sourceField)
                     && in_array($sourceField, $metadataFields)
+                    && !preg_match("/honor_imported$/", $sourceField)
                 ) {
                     if (
                         isset($sourceChoices[$sourceField])
@@ -338,11 +339,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             "followup" => ["prefix" => "followup", "formType" => "repeating", "test_fields" => ["followup_date"], "debug_field" => "followup_name_last", "always_copy" => TRUE, ],
             "position_change" => [ "prefix" => "promotion", "formType" => "repeating", "test_fields" => ["promotion_job_title", "promotion_date"], "always_copy" => FALSE, ],
             "resources" => [ "prefix" => "resources", "formType" => "repeating", "test_fields" => ["resources_date", "resources_resource"], "debug_field" => "resources_resource", "always_copy" => FALSE, ],
-            "honors_and_awards" => [ "prefix" => "honor", "formType" => "repeating", "test_fields" => ["honor_name", "honor_date"], "debug_field" => "honor_name", "always_copy" => FALSE, ],
+            "old_honors_and_awards" => [ "prefix" => "honor", "formType" => "repeating", "test_fields" => ["honor_name", "honor_date"], "debug_field" => "honor_name", "always_copy" => FALSE, ],
+            "honors_awards_and_activities" => [ "prefix" => "activityhonor", "formType" => "repeating", "test_fields" => ["activityhonor_name", "activityhonor_datetime"], "debug_field" => "activityhonor_name", "always_copy" => TRUE, ],
+            "honors_awards_and_activities_survey" => [ "prefix" => "surveyactivityhonor", "formType" => "repeating", "test_fields" => ["surveyactivityhonor_datetime"], "debug_field" => "surveyactivityhonor_datetime", "always_copy" => TRUE, ],
         ];
         if (Application::isVanderbilt()) {
             $ary['resources']['always_copy'] = TRUE;
-            $ary['honors_and_awards']['always_copy'] = TRUE;
+            $ary['old_honors_and_awards']['always_copy'] = TRUE;
             $ary['position_change']['always_copy'] = TRUE;
         }
         return $ary;
@@ -499,9 +502,37 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
     }
 
+    private static function cleanSharingItems() {
+        $matches = Application::getSystemSetting(self::SHARING_SETTING) ?: [];
+        $newMatches = [];
+        $changed = FALSE;
+        $recordsByPid = [];
+        foreach ($matches as $matchAry) {
+            $newMatchAry = [];
+            foreach ($matchAry as $licensePlate) {
+                list($currPid, $currRecordId) = explode(":", $licensePlate);
+                if (!isset($recordsByPid[$currPid])) {
+                    $recordsByPid[$currPid] = Download::recordIdsByPid($currPid);
+                }
+                if (in_array($currRecordId, $recordsByPid[$currPid])) {
+                    $newMatchAry[] = $licensePlate;
+                } else {
+                    $changed = TRUE;
+                }
+            }
+            if (count($newMatchAry) >= 2) {
+                $newMatches[] = $newMatchAry;
+            }
+        }
+        if ($changed) {
+            Application::saveSystemSetting(self::SHARING_SETTING, $newMatches);
+        }
+    }
+
     # will be run weekly, in which case $pidsSource = $pidsDest = all active pids
     # can be run on a one-time basis for a set of projects, in which case $pidsDest is a handful of pids
     public function processFoundMatches($allPids, $destPids, $idx) {
+        self::cleanSharingItems();
         $usedMatches = Application::getSystemSetting(self::SHARING_SETTING) ?: [];
         $matchChunks = array_chunk($usedMatches, self::MATCHES_BATCH_SIZE);
         if ($idx >= count($matchChunks)) {
@@ -573,12 +604,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
         foreach ($usedPids as $currPid) {
             $repeatingForms = DataDictionaryManagement::getRepeatingForms($currPid);
+            $validForms = Download::metadataFormsByPid($currPid);
             foreach (array_keys($forms) as $instrument) {
-                $field = $instrument . "_complete";
-                if (in_array($instrument, $repeatingForms)) {
-                    $completes[$instrument][$currPid] = Download::oneFieldWithInstances($tokens[$currPid], $servers[$currPid], $field);
-                } else {
-                    $completes[$instrument][$currPid] = Download::oneField($tokens[$currPid], $servers[$currPid], $field);
+                if (in_array($instrument, $validForms)) {
+                    $field = $instrument . "_complete";
+                    if (in_array($instrument, $repeatingForms)) {
+                        $completes[$instrument][$currPid] = Download::oneFieldWithInstancesByPid($currPid, $field);
+                    } else {
+                        $completes[$instrument][$currPid] = Download::oneFieldByPid($currPid, $field);
+                    }
                 }
             }
         }
@@ -691,7 +725,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     # the main function that updates the matches hash based on name-matching
     # takes a while at first run, but only updates for those specified in $updatedRecordsByPid
     private function updateMatches($pidsSource, $firstNames, $lastNames, $updatedRecordsByPid) {
-        $priorSearchedFor = Application::getSystemSetting(self::SHARING_SETTING) ?: [];
+        if (date("d") <= 7) {
+            # reset once a month, on the first week of the month, to weed out dated matches
+            # cleanSharingItems() already removes bad matches
+            $priorSearchedFor = [];
+        } else {
+            $priorSearchedFor = Application::getSystemSetting(self::SHARING_SETTING) ?: [];
+        }
         foreach ($updatedRecordsByPid as $pid => $records) {
             Application::log("Looking for matches", $pid);
             foreach ($records as $recordId) {
@@ -1237,11 +1277,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         }
 
         # store uploaded data so that we won't upload duplicates
+        $destMetadataForms = Download::metadataFormsByPid($destPid);
         if (!isset($upload[$destLicensePlate])) {
             $upload[$destLicensePlate] = [];
         }
         $upload[$destLicensePlate][$sourceLicensePlate] = [];
         if ($uploadNormativeRow) {
+            self::clearRowOfSpecialFields($normativeRow, $metadataFieldsByPid[$destPid], $destMetadataForms);
             $upload[$destLicensePlate][$sourceLicensePlate][] = $normativeRow;
         }
 
@@ -1250,11 +1292,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         if ($debugField) {
             foreach ($repeatingRows as $prospectiveRow) {
                 if (isset($prospectiveRow[$debugField]) && ($prospectiveRow[$debugField] !== "")) {
+                    self::clearRowOfSpecialFields($prospectiveRow, $metadataFieldsByPid[$destPid], $destMetadataForms);
                     $upload[$destLicensePlate][$sourceLicensePlate][] = $prospectiveRow;
                 }
             }
         } else {
             # no debug field => good to go
+            for ($i = 0; $i < count($repeatingRows); $i++) {
+                self::clearRowOfSpecialFields($repeatingRows[$i], $metadataFieldsByPid[$destPid], $destMetadataForms);
+            }
             $upload[$destLicensePlate][$sourceLicensePlate] = array_merge($upload[$destLicensePlate][$sourceLicensePlate], $repeatingRows);
         }
 
@@ -1266,6 +1312,17 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         } else {
             Application::log("Skipping uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $sourcePid);
             Application::log("Skipping uploading for $instrument in dest $destPid $destRecordId ".$completeData[$destPid][$destRecordId]." and source $sourcePid $sourceRecordId ".$completeData[$sourcePid][$sourceRecordId], $destPid);
+        }
+    }
+
+    private static function clearRowOfSpecialFields(&$row, $metadataFields, $metadataForms) {
+        foreach (["departments", "resources", "mentoring", "optional", "institutions"] as $fieldType) {
+            $fields = REDCapManagement::getSpecialFieldsByFields($fieldType, $metadataFields, $metadataForms);
+            foreach ($fields as $field) {
+                if (isset($row[$field])) {
+                    unset($row[$field]);
+                }
+            }
         }
     }
 
@@ -1571,7 +1628,12 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         };
     })(confirm);
     $(document).ready(() => {
-        $('[data-rc-lang=data_entry_532]').parent().parent().hide();
+        const ob = $('[data-rc-lang=data_entry_532]').parent().parent();
+        const id = ob.attr('id');
+        if (id !== 'center') {
+            // hide development mode note, but some systems put this under #center
+            ob.hide();
+        }
     });
 </script>";
             if (Application::isMSTP($project_id) && ($_GET['page'] == "mstp_mentee_mentor_agreement")) {
@@ -1643,8 +1705,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			require_once(dirname(__FILE__)."/hooks/summaryHook.php");
 		} else if (in_array($instrument, ["initial_survey", "initial_short_survey"])) {
 			require_once(dirname(__FILE__)."/hooks/checkHook.php");
-		} else if ($instrument == "followup") {
-			require_once(dirname(__FILE__)."/hooks/followupHook.php");
+        } else if ($instrument == "followup") {
+            require_once(dirname(__FILE__)."/hooks/followupHook.php");
+        } else if (in_array($instrument, ["honors_awards_and_activities", "honors_awards_and_activities_survey"])) {
+            require_once(dirname(__FILE__)."/hooks/honorHook.php");
 		} else if ($instrument == "mstp_individual_development_plan_idp") {
             require_once(dirname(__FILE__)."/hooks/mstpIDPFormHook.php");
         }
@@ -1653,6 +1717,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	function redcap_save_record($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
         if (Application::isTable1Project($project_id)) {
+            return;
+        }
+        $formsToSkip = [
+            "honors_awards_and_activities",
+            "honors_awards_and_activities_survey",
+            "mstp_individual_development_plan_idp",
+            "mstp_mentee_mentor_agreement",
+        ];
+        if (in_array($instrument, $formsToSkip)) {
             return;
         }
         require_once(dirname(__FILE__)."/hooks/saveHook.php");

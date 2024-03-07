@@ -121,7 +121,7 @@ if (isset($_GET['appointments'])) {
     echo "<p class='centered max-width'>".makeLink("5B")."</p>\n";
 }
 
-if (Application::isVanderbilt() && Application::isPluginProject($pid)) {
+if (Application::isVanderbilt() && Application::isPluginProject($pid) && !Application::isLocalhost()) {
     echo "<h2>".makeTableHeader("6")."</h2>";
     echo "<p class='centered max-width'>".makeLink("6AII")."</p>";
     if (isset($_GET['appointments'])) {
@@ -168,7 +168,9 @@ if (isset($_GET['appointments'])) {
 ?>
 
 <h2>Use with xTRACT for Reporting to NIH</h2>
-<p class="centered"><a href="https://public.era.nih.gov/commons/"><img src="<?= Application::link("img/era.png") ?>" alt="eRA Commons"> eRA Commons</a></p>
+<p class="centeredmax-width"><a href="https://public.era.nih.gov/commons/"><img src="<?= Application::link("img/era.png") ?>" alt="eRA Commons"> eRA Commons</a></p>
+<p class="centered max-width">The eRA Commons recently updated its interface. This change made our bookmarklet obsolete. We plan to investigate revisions in the near future. Please contact <a href="mailto:scott.j.pearson@vumc.org">scott.j.pearson@vumc.org</a> if you'd like an update.</p>
+<!--
 <h4>Step-By-Step Instructions</h4>
 <ol class="max-width centered">
     <li class="left-align">Right-click on the below bookmarklet link.</li>
@@ -185,3 +187,4 @@ if (isset($_GET['appointments'])) {
     <li class="left-align">If the page refreshed, you will need to run the bookmarklet anew on the page. There will be a Flight Tracker logo if the bookmarklet has already been run.</li>
 </ol>
 <p class='centered'><a href="javascript:(function(){var%20script=document.createElement('script');script.type='text/javascript';script.src='<?= $bookmarkletJSURL ?>&'+Math.random();document.getElementsByTagName('head')[0].appendChild(script);setTimeout(function(){var%20x=new%20xTRACT('<?= Application::link("/reporting/getData.php").$cohortParam.$appointmentParam."&NOAUTH" ?>', '<?= $token ?>', '<?= Application::generateCSRFToken() ?>');x.getDataFromREDCap();},1000);})();">Unique Bookmarklet for <?= Application::getProjectTitle() ?></a></p>
+-->

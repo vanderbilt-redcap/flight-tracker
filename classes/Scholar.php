@@ -2173,6 +2173,7 @@ class Scholar {
             "check_ecommons_id" => "scholars",
             "followup_ecommons_id" => "followup",
             "init_import_ecommons_id" => "manual",
+            "identifier_ecommons_id" => "manual",
         );
         for ($i = 1; $i <= self::getNumStudySections(); $i++) {
             $orders["summary_study_section_name_".$i] = [
@@ -3152,6 +3153,50 @@ class Scholar {
 
 	private function getCurrentRank($rows) {
 		$vars = self::getDefaultOrder("summary_current_rank");
+        if (Application::isVanderbilt()) {
+            $preferredField = "ldapds_title";
+            $values = REDCapManagement::findAllFields($rows, $this->recordId, $preferredField);
+            for ($i = 0; $i < count($values); $i++) {
+                $instance = array_keys($values)[$i];
+                $value = $values[$instance];
+                if ($value) {
+                    # Summary: 1, Research Fellow | 2, Clinical Fellow | 3, Instructor | 4, Research Assistant Professor | 5, Assistant Professor | 6, Associate Professor | 7, Professor | 8, Other
+                    switch($value) {
+                        case "Research Fellow":
+                            $index = 1;
+                        case "Clinical Fellow":
+                        case "Resident or Fellow-NIH":
+                            $index = 2;
+                            break;
+                        case "Instructor":
+                        case "Research Instructor":
+                            $index = 3;
+                            break;
+                        case "Research Asst Professor":
+                            $index = 4;
+                            break;
+                        case "Asst Professor":
+                            $index = 5;
+                            break;
+                        case "Assoc Professor of Clinical":
+                        case "Assoc Professor":
+                            $index = 6;
+                            break;
+                        case "Professor":
+                        case "Research Professor":
+                        case "Faculty":
+                        case "Interim Department Chair":
+                        case "Department Chair":
+                            $index = 7;
+                            break;
+                        default:
+                            $index = 8;
+                            break;
+                    }
+                    return new Result($index, "ldap", "Computer-Generated", "", $this->pid);
+                }
+            }
+        }
 		$vars = $this->getOrder($vars, "summary_current_rank");
 		$result = $this->searchRowsForVars($rows, $vars, TRUE, $this->pid);
         // Application::log($this->getName()." summary_current_rank: ".$result->displayInText());
