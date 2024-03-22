@@ -54,7 +54,7 @@ class CronManager {
 
 
     public function addMultiCron($file, $method, $dayOfWeek, $pids, $firstParameter = FALSE) {
-        if ($this->module) {
+        if ($this->module && !Application::isPluginProject($this->pid)) {
             $this->addCronForBatchMulti($file, $method, $dayOfWeek, $pids, $firstParameter);
         }
     }
@@ -64,7 +64,7 @@ class CronManager {
     # records here, if specified, overrides the records specified in function run
 	public function addCron($file, $method, $dayOfWeek, $records = [], $numRecordsAtATime = FALSE, $firstParameter = FALSE) {
         try {
-            if ($this->module) {
+            if ($this->module && !Application::isPluginProject($this->pid)) {
                 if (is_numeric($records)) {
                     $numRecordsAtATime = $records;
                     $records = [];

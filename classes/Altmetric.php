@@ -23,8 +23,7 @@ class Altmetric {
         return $data;
     }
 
-    public static function makeClickText() {
-        $thisLink = Application::link("this");
+    public static function makeClickText($thisLink) {
         if (isset($_GET['altmetrics'])) {
             $url = str_replace("&altmetrics", "", $thisLink);
             $clickStatus = "off";

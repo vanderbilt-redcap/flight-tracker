@@ -14,7 +14,11 @@ $patentFields = array_merge(["record_id"], Download::metadataFieldsByPidWithPref
 $metadata = Download::metadataByPid($pid, $patentFields);
 $pmids = [];
 $numbers = [];
-if (isset($_POST['finalized'])) {
+if (
+    isset($_POST['finalized'])
+    || isset($_POST['omissions'])
+    || isset($_POST['resets'])
+) {
     $records = Download::recordIds($token, $server);
     $newFinalized = Sanitizer::sanitizeArray($_POST['finalized'] ?? []);
     $newOmissions = Sanitizer::sanitizeArray($_POST['omissions'] ?? []);

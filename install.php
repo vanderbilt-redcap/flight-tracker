@@ -62,8 +62,9 @@ if ($action == "localizeVariables") {
     $newServer = APP_PATH_WEBROOT_FULL . "api/";
     if (isValidToken($newToken)) {
         $title = Sanitizer::sanitize($_POST['title']);
-        \Vanderbilt\FlightTrackerExternalModule\uploadProjectSettings($newToken, $newServer, $title);
         $projectId = REDCapManagement::getPIDFromToken($newToken, $newServer);
+        Application::log("Uploading project settings at server $newServer", $projectId);
+        \Vanderbilt\FlightTrackerExternalModule\uploadProjectSettings($newToken, $newServer, $title);
         $eventId = REDCapManagement::getEventIdForClassical($projectId);
 
         displayInstallHeaders(CareerDev::getModule(), $newToken, $newServer, $projectId, $title);
@@ -99,8 +100,10 @@ if ($action == "localizeVariables") {
             'mentee_agreement_link' => $menteeAgreementLink,
             'server_class' => Sanitizer::sanitize($_POST['server_class']),
         ];
+        Application::log("Setting up Module Settings", $projectId);
         \Vanderbilt\FlightTrackerExternalModule\setupModuleSettings($projectId, $settingFields);
 
+        Application::log("Downloading metadata", $projectId);
         $metadata = Download::metadata($newToken, $newServer);
         $formsAndLabels = DataDictionaryManagement::getRepeatingFormsAndLabels($metadata);
         if ($_POST['coeus']) {
@@ -108,13 +111,15 @@ if ($action == "localizeVariables") {
         }
         DataDictionaryManagement::setupRepeatingForms($eventId, $formsAndLabels);
 
-        $surveysAndLabels = DataDictionaryManagement::getSurveysAndLabels($metadata, $pid);
+        $surveysAndLabels = DataDictionaryManagement::getSurveysAndLabels($metadata, $projectId);
+        Application::log("Setting up surveys", $projectId);
         DataDictionaryManagement::setupSurveys($projectId, $surveysAndLabels);
+        Application::log("Done with first steps of setup", $projectId);
 
         echo makeDepartmentPrompt($projectId);
         echo makeInstallFooter();
     } else {
-        sendErrorMessage("Invalid token: $token");
+        sendErrorMessage("Invalid token: $newToken");
     }
 } else if ($action == "restoreMetadata") {
     $lists = [

@@ -483,6 +483,7 @@ class Wrangler {
                 const data = JSON.parse(json);
                 if (data.matches.length > 0) {
                     let html = '<div class=\"max-width bin padded light_grey\">';
+                    let totalCitations = 0;
                     for (let i=0; i < data.matches.length; i++) {
                         const info = data.matches[i];
                         const pid = info['pid'] ?? '';
@@ -490,6 +491,7 @@ class Wrangler {
                         const name = info['name'] ?? '';
                         const projectName = info['project'] ?? '';
                         const newCitations = info['new_citations'] ?? [];
+                        totalCitations += newCitations.length;
                         if (pid && record && name && (newCitations.length > 0)) {
                             const tag = name+' in '+projectName;
                             html += '<h4>'+newCitations.length+' Already Accepted from PubMed<br/>In Record '+record+': '+tag+' (pid '+pid+')</h4>';
@@ -513,9 +515,13 @@ class Wrangler {
                             }
                         }
                     }
-                    html += '<p class=\"centered\">After adding any citations:<br/><button class=\"green\" onclick=\"location.reload();\">Refresh Page</button></p>';
-                    html += '</div>';
-                    $(destSel).html(html);
+                    if (totalCitations > 0) {
+                        html += '<p class=\"centered\">After adding any citations:<br/><button class=\"green\" onclick=\"location.reload();\">Refresh Page</button></p>';
+                        html += '</div>';
+                        $(destSel).html(html);
+                    } else {
+                        $(destSel).html('');
+                    }
                 } else if (data.matches.length === 0) {
                     $(destSel).html('<p class=\"centered\">No matches in other projects.</p>');
                 }

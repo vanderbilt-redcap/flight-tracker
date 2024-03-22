@@ -88,8 +88,8 @@ if (isset($_GET['showHeaders'])) {
 
     $host = $_SERVER['HTTP_HOST'] ?? "";
     $uri  = $_SERVER['REQUEST_URI'] ?? "";
-    $url = (empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://$host$uri";
-    $url = preg_replace("/\&showHeaders[^\&]*/", "", $url);
+    $currentUrl = (empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://$host$uri";
+    $url = preg_replace("/\&showHeaders[^\&]*/", "", $currentUrl);
     $url = preg_replace("/showHeaders[^\&]*\&/", "", $url);
     $url .= "&NOAUTH";
     foreach ($units as $unit) {
@@ -101,7 +101,7 @@ if (isset($_GET['showHeaders'])) {
     $url = str_replace("cohort=&", "", $url);
     ?>
     <h1>Brag on Your Scholars' Publications!</h1>
-    <?= Altmetric::makeClickText(); ?>
+    <?= Altmetric::makeClickText($currentUrl); ?>
     <h2>Include this Page as a Widget in Another Page</h2>
     <div class="max-width centered">
         <p class="centered">Copy the following HTML and place into another HTML webpage to display your scholars' publications. Your website must likely have cross-origin framing turned on (which is the default).</p>
@@ -112,6 +112,10 @@ if (isset($_GET['showHeaders'])) {
         <form method="GET" action="<?= REDCapManagement::getPage(Application::link("brag.php")) ?>">
             <?= REDCapManagement::getParametersAsHiddenInputs(Application::link("brag.php")) ?>
             <?php
+            if (isset($_GET['altmetrics'])) {
+                echo "<input type='hidden' value='1' id='altmetrics' name='altmetrics' />";
+            }
+
             $cohorts = new Cohorts($token, $server, Application::getModule());
             echo "<h4>Step 1: Select a Group</h4>";
             echo "<p class='centered max-width padded' style='background-color: #eeeeee;'>Select a Cohort:<br/>".$cohorts->makeCohortSelect($cohort)."</p>";
@@ -146,7 +150,7 @@ if (isset($_GET['showHeaders'])) {
 
 $forName = "";
 if ($currName) {
-    $forName = " for $currName";
+    $forName = " by $currName";
 }
 foreach ($units as $unit) {
     $ucUnit = ucfirst($unit);
@@ -154,12 +158,12 @@ foreach ($units as $unit) {
         if ($afterTraining[$unit] == 1) {
             $ucUnit = preg_replace("/s$/", "", $ucUnit);
         }
-        echo "<h4>All Publications$forName During Training and {$afterTraining[$unit]} $ucUnit After</h4>";
+        echo "<h4>Publications$forName During Training and within {$afterTraining[$unit]} $ucUnit After</h4>";
     } else if ($prior[$unit] !== "") {
         if ($prior[$unit] == 1) {
             $ucUnit = preg_replace("/s$/", "", $ucUnit);
         }
-        echo "<h4>All Publications$forName in Previous {$prior[$unit]} $ucUnit</h4>";
+        echo "<h4>Publications$forName within Previous {$prior[$unit]} $ucUnit</h4>";
     }
 }
 if (!$hasAfterTraining && !$hasPrior) {
@@ -168,7 +172,7 @@ if (!$hasAfterTraining && !$hasPrior) {
     } else {
         # historical legacy
         $defaultDays = 180;
-        echo "<h4>All Publications$forName in Previous $defaultDays Days</h4>";
+        echo "<h4>Publications$forName within Previous $defaultDays Days</h4>";
         $prior['days'] = $defaultDays;
         $hasPrior = TRUE;
     }
@@ -337,7 +341,7 @@ foreach ($instancesToDownload as $recordId => $instancesForRecord) {
 
 $doQuickWay = ($totalToDownload > 75);
 if ($doQuickWay) {
-    $citationFields = ["record_id", "citation_pmid", "citation_include", "citation_ts", "citation_full_citation", "citation_doi"];
+    $citationFields = ["record_id", "citation_pmid", "citation_include", "citation_ts", "citation_full_citation", "citation_doi", "citation_altmetric_image", "citation_altmetric_details_url"];
     if (isset($_GET['test'])) {
         Application::log("DOING QUICK WAY", $pid);
     }
@@ -371,7 +375,12 @@ foreach ($recordIds as $recordId) {
             ) {
                 $pmid = $row['citation_pmid'];
                 $doi = $row['citation_doi'];
-                $citationStr = $row['citation_full_citation']." ".Links::makeLink(Citation::getURLForPMID($pmid), "PubMed PMID: $pmid", TRUE);
+                if (isset($_GET['altmetrics']) && $row["citation_altmetric_image"]) {
+                    $citationStr = Citation::formatImage($row["citation_altmetric_image"], "left", $row["citation_altmetric_details_url"]);
+                } else {
+                    $citationStr = "";
+                }
+                $citationStr .= $row['citation_full_citation']." ".Links::makeLink(Citation::getURLForPMID($pmid), "PubMed PMID: $pmid", TRUE);
                 $citationStr = str_replace("doi:$doi", Links::makeLink("https://www.doi.org/".$doi, "doi:$doi", TRUE), $citationStr);
                 $citationsWithTs[$citationStr] = $ts;
             }

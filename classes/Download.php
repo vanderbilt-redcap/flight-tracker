@@ -722,6 +722,7 @@ class Download {
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+        URLManagement::applyProxyIfExists($ch, $pid);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         $output = curl_exec($ch);
         if ($isJSON) {
@@ -751,7 +752,7 @@ class Download {
             return $redcapData;
         }
         if ($redcapData === NULL) {
-            $startOfOutput = $output;
+            $startOfOutput = (string) $output;
             if (strlen($startOfOutput) > 150) {
                 $startOfOutput = substr($startOfOutput, 0, 150);
             }
@@ -759,7 +760,7 @@ class Download {
             if (Application::isLocalhost()) {
                 Application::log(json_encode(debug_backtrace()), $pid);
             }
-            if (preg_match("/has been banned due to suspected abuse/", $output)) {
+            if (preg_match("/has been banned due to suspected abuse/", (string) $output)) {
                 $try = 1000000;
             } else {
                 usleep(500000);
@@ -774,7 +775,7 @@ class Download {
             throw new \Exception("Download Exception $pid: ".$redcapData['error']);
         }
         if ($isJSON) {
-            for ($i = 0; $i < count($redcapData); $i++) {
+            for ($i = 0; $i < count($redcapData ?? []); $i++) {
                 if (isset($redcapData[$i]["record_id"])) {
                     $redcapData[$i]["record_id"] = Sanitizer::sanitize($redcapData[$i]["record_id"]);
                 }
@@ -788,12 +789,16 @@ class Download {
     }
 
     private static function handleLargeJSONs(&$redcapData, $pid) {
-        for ($i = 0; $i < count($redcapData); $i++) {
-            $recordId = $redcapData[$i]["record_id"] ?? "";
-            foreach ($redcapData[$i] as $field => $value) {
-                $key = $field."___".$recordId;
-                if ((strpos($field, "summary_calculate_") !== FALSE) && ($value == $key)) {
-                    $redcapData[$i][$field] = Application::getSetting($key, $pid);
+        if (is_array($redcapData)) {
+            for ($i = 0; $i < count($redcapData); $i++) {
+                if (is_array($redcapData[$i])) {
+                    $recordId = $redcapData[$i]["record_id"] ?? "";
+                    foreach ($redcapData[$i] as $field => $value) {
+                        $key = $field."___".$recordId;
+                        if ((strpos($field, "summary_calculate_") !== FALSE) && ($value == $key)) {
+                            $redcapData[$i][$field] = Application::getSetting($key, $pid);
+                        }
+                    }
                 }
             }
         }

@@ -135,6 +135,7 @@ function runIntenseCrons(&$manager, $token, $server) {
             # only on redcap.vanderbilt.edu
             $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
             $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Friday", $allRecords, 500);
+            $manager->addCron("drivers/importHistoricalCOEUS.php", "importHistoricalCOEUS", "2024-03-25", $allRecords, 10000);
             if (in_array('coeus', $forms)) {
                 # Put in Multi crons
                 // $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
@@ -240,6 +241,7 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         }
         if (in_array("coeus_submission", $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", $date, $records, 500);
+            $manager->addCron("drivers/importHistoricalCOEUS.php", "importHistoricalCOEUS", $date, $records, 500);
         }
         if (Application::isVanderbilt() && in_array("coeus", $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", $date, $records, 500);
@@ -347,7 +349,7 @@ function loadInternalSharingCrons(&$manager, $pids) {
     }
 
     if (Application::isVanderbilt()) {
-        $manager->addMultiCron("drivers/updateVanderbiltResources.php", "updateResourcesMulti", "2023-03-07", $preprocessingPids);
+        $manager->addMultiCron("drivers/updateVanderbiltResources.php", "updateResourcesMulti", "2024-03-25", $preprocessingPids);
     }
 
     if (Application::isLocalhost()) {

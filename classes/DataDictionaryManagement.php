@@ -132,6 +132,7 @@ class DataDictionaryManagement {
         $redcapLists = [];
         $allDataUploads = [];
         foreach ($fields as $type => $fieldsToChange) {
+            $redcapLists[$type] = "";
             if ($type == "optional") {
                 foreach ($fieldsToChange as $field) {
                     $settingName = REDCapManagement::turnOptionalFieldIntoSetting($field);
@@ -164,13 +165,13 @@ class DataDictionaryManagement {
             $isCoeusRow = self::isCoeusMetadataRow($row);
             if ((($installCoeus && $isCoeusRow) || !$isCoeusRow) && !preg_match("/___delete/", $row['field_name'])) {
                 foreach ($fields as $type => $relevantFields) {
-                    if (in_array($row['field_name'], $relevantFields) && isset($lists[$type]) && $redcapLists[$type]) {
+                    if (in_array($row['field_name'], $relevantFields) && ($type !== "") && isset($lists[$type]) && isset($redcapLists[$type])) {
                         if ($type == "optional") {
                             $settingName = REDCapManagement::turnOptionalFieldIntoSetting($row['field_name']);
                             if (isset($redcapLists[$settingName])) {
                                 $row['select_choices_or_calculations'] = $redcapLists[$settingName];
                             }
-                        } else {
+                        } else if (is_string($redcapLists[$type])) {
                             $row['select_choices_or_calculations'] = $redcapLists[$type];
                         }
                         break;

@@ -691,7 +691,7 @@ function toggleFlags(newState) {
     displayToImport();
     $.post(
         '<?= $updateLink."&flags" ?>',
-        { newState: newState },
+        { newState: newState, redcap_csrf_token: '<?= Application::generateCSRFToken() ?>' },
         (json) => {
             console.log(json);
             if (json.match(/^</)) {

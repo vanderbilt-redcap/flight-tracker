@@ -159,8 +159,8 @@ class URLManagement {
         if (is_numeric($time1) && is_numeric($time2)) {
             $timeStmt = " in ".(($time2 - $time1) / 1000)." seconds";
         }
+        Application::log("$url Response code $resp; ".strlen($data)." bytes".$timeStmt, $pid);
         if (Application::isVanderbilt()) {
-            Application::log("$url Response code $resp; ".strlen($data)." bytes".$timeStmt, $pid);
             if (strlen($data) < 1000) {
                 Application::log("Result: ".$data, $pid);
             }
@@ -216,7 +216,7 @@ class URLManagement {
             throw new \Exception("Invalid URL");
         }
         $headers = get_headers($url);
-        return (strpos($headers[0],'200')!==false);
+        return isset($headers[0]) && (strpos($headers[0],'200')!==false);
     }
 
     public static function isGoodResponse($resp) {

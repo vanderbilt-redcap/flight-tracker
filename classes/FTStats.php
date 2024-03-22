@@ -6,13 +6,16 @@ require_once(dirname(__FILE__)."/ClassLoader.php");
 
 class FTStats {
     # 3 years is arbitrary, but our data is growing; started collecting data in 2020
-    const NUM_YEARS_OF_RECORDS = 3;
+    const NUM_YEARS_OF_RECORDS = 5;
+    const SEPARATOR = "|";
+    const ONE_WEEK = 7 * 24 * 3600;
 
     public static function getItemsToBeTotaled() {
         return [
             "Number of Scholars Currently Tracked (Newman)",
             "Number of Scholars Currently Tracked (Other Vanderbilt)",
             "Number of Scholars Currently Tracked (Outside)",
+            "Number of Scholars Currently Tracked (Total)",
         ];
     }
 
@@ -46,6 +49,8 @@ class FTStats {
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+        $pid = isset($data['token']) ? Application::getPID($data['token']) : "";
+        URLManagement::applyProxyIfExists($ch, $pid);
         $output = curl_exec($ch);
         curl_close($ch);
         $results = (is_string($output) && ($output !== "")) ? json_decode($output, TRUE) : [];
@@ -138,7 +143,18 @@ class FTStats {
         return self::sendToServer($server, $dataRequest);
     }
 
-    public static function gatherStats($redcapData, $server, $ts, $includeNewman = TRUE) {
+    public static function filterDataForWeek($redcapData, $ts) {
+        $lastWeekDays = self::getLastWeekDates($ts);
+        $newREDCapData = [];
+        foreach ($redcapData as $row) {
+            if (in_array($row['date'], $lastWeekDays)) {
+                $newREDCapData[] = $row;
+            }
+        }
+        return $newREDCapData;
+    }
+
+    public static function gatherAllStats($redcapData, $server, $startTs, $endTs, $includeNewman = TRUE) {
         $uniqueCounts = [
             "Total Number of Reports" => ["record_id"],
             "Total Number of Projects Ever" => ["pid", "server"],
@@ -158,20 +174,26 @@ class FTStats {
 //    $mostRecentCounts["Number of Institutions Currently Active"] = ["institution"];
         $totalLabels = self::getItemsToBeTotaled();
 
-        $separator = "|";
-        $lastWeekDates = self::getLastWeekDates($ts);
-        $gatherHistoricalData = REDCapManagement::arraysEqual($lastWeekDates, self::getLastWeekDates(time()));
-        $values = [];
-        foreach ($uniqueCounts as $label => $fields) {
-            $values[$label] = [];
-            foreach ($redcapData as $row) {
+        $lastWeekDaysForTs = [];
+        $valuesByTs = [];
+        $allTimeValues = [];
+        for ($ts = $startTs; $ts <= $endTs; $ts += self::ONE_WEEK) {
+            $lastWeekDaysForTs[$ts] = self::getLastWeekDates($ts);
+            $valuesByTs[$ts] = [];
+        }
+        foreach (array_keys($uniqueCounts) as $label) {
+            $allTimeValues[$label] = [];
+        }
+
+        foreach ($redcapData as $i => $row) {
+            foreach ($uniqueCounts as $label => $fields) {
                 if (in_array($label, $totalLabels)) {
                     $value = self::processValueForFields($fields, $row);
                     if ($value) {
-                        $values[$label][] = $value;
+                        $allTimeValues[$label][] = $value;
                     }
                 } else {
-                    $entryValues = array();
+                    $entryValues = [];
                     foreach ($fields as $field) {
                         if ($field) {
                             if ($field == "domain") {
@@ -181,29 +203,37 @@ class FTStats {
                             }
                         }
                     }
-                    $entryValue = implode($separator, $entryValues);
-                    if (!in_array($entryValue, $values[$label])) {
-                        $values[$label][] = $entryValue;
+                    $entryValue = implode(self::SEPARATOR, $entryValues);
+                    if (!in_array($entryValue, $allTimeValues[$label])) {
+                        $allTimeValues[$label][] = $entryValue;
                     }
                 }
             }
         }
+        $previousWeeksDays = self::getLastWeekDates(time());
         foreach ($mostRecentCounts as $label => $fields) {
-            $seen = [];
-            $values[$label] = [];
-            if ($fields[0] == "newman") {
-                $newmanRecordIds = self::getRecordIds(NEWMAN_TOKEN, $server);
-                $values[$label][] = count($newmanRecordIds);
-            } else {
-                foreach ($redcapData as $row) {
-                    $id = self::makeId($row);    // de-duplicate
-                    if (in_array($row['date'], $lastWeekDates) && !in_array($id, $seen)) {
-                        $seen[] = $id;
-                        if ($gatherHistoricalData || self::isLatestRowForProject($row['record_id'], $row['pid'], $row['server'], $redcapData)) {
+            foreach (array_keys($lastWeekDaysForTs) as $ts) {
+                $valuesByTs[$ts][$label] = [];
+            }
+            if (($fields[0] == "newman") && !Application::isLocalhost()) {
+                foreach (array_keys($lastWeekDaysForTs) as $ts) {
+                    $date = date("Y-m-d", $ts);
+                    if (in_array($date, $previousWeeksDays)) {
+                        $newmanRecordIds = self::getRecordIds(NEWMAN_TOKEN, $server);
+                        $valuesByTs[$ts][$label][] = count($newmanRecordIds);
+                    }
+                }
+            }
+        }
+        foreach ($redcapData as $i => $row) {
+            foreach ($mostRecentCounts as $label => $fields) {
+                if ($fields[0] != "newman") {
+                    foreach (array_keys($lastWeekDaysForTs) as $ts) {
+                        if (in_array($row['date'], $lastWeekDaysForTs[$ts])) {
                             if (in_array($label, $totalLabels)) {
                                 $value = self::processValueForFields($fields, $row);
                                 if ($value) {
-                                    $values[$label][] = $value;
+                                    $valuesByTs[$ts][$label][] = $value;
                                 }
                             } else {
                                 $entryValues = [];
@@ -214,17 +244,59 @@ class FTStats {
                                         $entryValues[] = $row[$field];
                                     }
                                 }
-                                $entryValue = implode($separator, $entryValues);
-                                if (!in_array($entryValue, $values[$label])) {
-                                    $values[$label][] = $entryValue;
+                                $entryValue = implode(self::SEPARATOR, $entryValues);
+                                if (!in_array($entryValue, $valuesByTs[$ts][$label])) {
+                                    $valuesByTs[$ts][$label][] = $entryValue;
                                 }
                             }
+                            break;
                         }
                     }
                 }
             }
         }
-        return $values;
+        foreach (array_keys($valuesByTs) as $ts) {
+            if (self::allArraysEmpty($valuesByTs[$ts])) {
+                unset($valuesByTs[$ts]);
+            } else {
+                foreach ($allTimeValues as $label => $value) {
+                    $valuesByTs[$ts][$label] = $value;
+                }
+            }
+        }
+
+        $scholarLabelsToTotal = [
+            "Number of Scholars Currently Tracked (Newman)",
+            "Number of Scholars Currently Tracked (Other Vanderbilt)",
+            "Number of Scholars Currently Tracked (Outside)",
+        ];
+        $totalLabel = "Number of Scholars Currently Tracked (Total)";
+        foreach (array_keys($valuesByTs) as $ts) {
+            $valuesByTs[$ts][$totalLabel] = [];
+            foreach ($scholarLabelsToTotal as $label) {
+                foreach ($valuesByTs[$ts][$label] as $value) {
+                    if ($value > 0) {
+                        $valuesByTs[$ts][$totalLabel][] = $value;
+                    }
+                }
+            }
+        }
+        return $valuesByTs;
+    }
+
+    private static function allArraysEmpty($ary) {
+        foreach ($ary as $key => $value) {
+            if (!empty($value)) {
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }
+
+    public static function gatherStats($redcapData, $server, $ts, $includeNewman = TRUE) {
+        $endTs = $ts + self::ONE_WEEK - 1;
+        $allStats = self::gatherAllStats($redcapData, $server, $ts, $endTs, $includeNewman);
+        return $allStats[$ts] ?? [];
     }
 
     public static function makeId($row) {

@@ -28,6 +28,7 @@ if (isset($_GET['record'])) {
 } else {
     $highlightedRecord = FALSE;
 }
+$isDeidentifyChecked = isset($_GET['deidentify']) && ($_GET['deidentify'] == "1");
 
 $numCollabsToShow = isset($_GET['numCollabs']) ? Sanitizer::sanitize($_GET['numCollabs']) : 3;
 define('PUBYEAR_SELECT', '---pub_year---');
@@ -135,6 +136,8 @@ if ($includeHeaders) {
         echo Publications::makeLimitButton("div");
     }
     echo "<div class='centered max-width'><label for='numCollabs'>Number of Top Collaborators to Highlight</label> <input type='number' id='numCollabs' name='numCollabs' value='$numCollabsToShow' style='width: 50px;' /></div>";
+    $deidentifyChecked = $isDeidentifyChecked ? "checked" : "";
+    echo "<div class='centered max-width'><label for='deidentify'>De-identify graph?</label> <input type='checkbox' id='deidentify' name='deidentify' value='1' $deidentifyChecked /></div>";
     echo "<div class='centered max-width'><button>Go!</button></div>";
     echo "</p></form>";
 }
@@ -244,7 +247,7 @@ if ($display && !empty($records)) {
 //        }
 //    }
 
-    list($collaborations, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index, $pubs);
+    list($collaborations, $chartData, $uniqueNames) = makeEdges($matches, $indexByField, $names, $choices, $index, $pubs, $isDeidentifyChecked);
 
     if ($includeMentors) {
         $mentorCollaborations = getAvgMentorCollaborations($matches);
@@ -523,7 +526,7 @@ function makeLegendHTML($indexByField) {
     return "";
 }
 
-function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
+function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs, $isDeidentifyChecked) {
     $totalCollaborations = 0;
     if ($indexByField == PUBYEAR_SELECT) {
         $colorWheel = generateColorWheel(8, START_YEAR, date("Y"));
@@ -537,9 +540,12 @@ function makeEdges($matches, $indexByField, $names, $choices, $index, $pubs) {
     foreach (array_keys($matches) as $fromRecordId) {
         $collaborations["given"][$fromRecordId] = [];
         foreach ($matches[$fromRecordId] as $toRecordId => $fromInstances) {
-            if (isForIndividualScholars($indexByField)) {
+            if (isForIndividualScholars($indexByField) && !$isDeidentifyChecked) {
                 $from = $names[$fromRecordId] ?: "($fromRecordId)";
                 $to = $names[$toRecordId] ?: "($toRecordId)";
+            } else if (isForIndividualScholars($indexByField) && $isDeidentifyChecked) {
+                $from = $fromRecordId;
+                $to = $toRecordId;
             } else if ($choices[$indexByField]) {
                 $from = $choices[$indexByField][$index[$fromRecordId]];
                 $to = $choices[$indexByField][$index[$toRecordId]];

@@ -56,6 +56,7 @@ class WebOfScience {
                         curl_setopt($curl, CURLOPT_POST, true);
                         curl_setopt($curl, CURLOPT_POSTFIELDS, $xml);
                         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+                        URLManagement::applyProxyIfExists($ch, $this->pid);
                         $result = (string) curl_exec($curl);
                         if (curl_errno($curl)) {
                             throw new \Exception(curl_error($curl));

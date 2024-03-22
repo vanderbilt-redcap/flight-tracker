@@ -55,6 +55,7 @@ class Upload
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+        URLManagement::applyProxyIfExists($ch, $pid);
         $output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch);
@@ -81,6 +82,7 @@ class Upload
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
         curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+        URLManagement::applyProxyIfExists($ch, $pid);
         $newProjectToken = curl_exec($ch);
         curl_close($ch);
         if (REDCapManagement::isValidToken($newProjectToken)) {
@@ -284,6 +286,7 @@ class Upload
                 curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+                URLManagement::applyProxyIfExists($ch, $pid);
                 $output = (string) curl_exec($ch);
                 $feedback = json_decode($output, TRUE);
                 self::testFeedback($feedback, $output, $ch, [], $pid);
@@ -382,6 +385,7 @@ class Upload
         curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+        URLManagement::applyProxyIfExists($ch, $pid);
 		$output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch, $metadata, $pid);
@@ -539,6 +543,8 @@ class Upload
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+        $pid = isset($data['token']) ? Application::getPID($data['token']) : "";
+        URLManagement::applyProxyIfExists($ch, $pid);
         $output = (string) curl_exec($ch);
         $feedback = json_decode($output, TRUE);
         self::testFeedback($feedback, $output, $ch, $settings);
@@ -756,6 +762,7 @@ class Upload
                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+                URLManagement::applyProxyIfExists($ch, $pid);
                 $time2 = microtime(TRUE);
 				$output = (string) curl_exec($ch);
                 $feedback = json_decode($output, true);

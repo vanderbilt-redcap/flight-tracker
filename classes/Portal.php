@@ -49,7 +49,8 @@ class Portal
     }
 
     public static function isPortalPage() {
-        return preg_match("/^portal/", $_GET['page'] ?? "");
+        $page = $_GET['page'] ?? "";
+        return is_string($page) && preg_match("/^portal/", $page);
     }
 
     private function getUIDString() {

@@ -69,7 +69,7 @@ if (isset($_POST['action'])) {
         foreach ($_POST as $field => $value) {
             $value = Sanitizer::sanitizeWithoutChangingQuotes($value);
             if (
-                preg_match("/^$prefix/", $field)
+                preg_match("/^$prefix/", (string) $field)
                 && ($value !== "")
             ) {
                 $uploadRow[$field] = $value;
@@ -207,8 +207,8 @@ $honorFields = [
 ];
 $metadataFields = Download::metadataFieldsByPid($pid);
 $matchedInfo = [];
+$names = Download::namesByPid($pid);
 if (in_array("honor_imported", $metadataFields)) {
-    $names = Download::namesByPid($pid);
     foreach ($records as $recordId) {
         $redcapData = Download::fieldsForRecordsByPid($pid, HonorsAwardsActivities::OLD_HONOR_FIELDS, [$recordId]);
         foreach ($redcapData as $row) {

@@ -253,6 +253,13 @@ class DateManagement {
         return FALSE;
     }
 
+    public static function isDatetime($str) {
+        if (is_string($str)) {
+            return preg_match("/^\d\d\d\d-\d\d-\d\d\s\d\d:\d\d:\d\d/", $str);
+        }
+        return FALSE;
+    }
+
     public static function getDateFromTimestamp($str) {
         if (preg_match("/^\d\d\d\d-\d\d-\d\d/", $str, $matches)) {
             return $matches[0];

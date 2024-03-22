@@ -1322,13 +1322,20 @@ class Citation {
 		return $citation;
 	}
 
+    public static function formatImage($imgURL, $alignment, $detailsURL = "") {
+        if (!$imgURL) {
+            return "";
+        }
+        $img = "<img src='".$imgURL."' align='$alignment'  style='width: 48px; height: 48px;' alt='Altmetrics'>";
+        if ($detailsURL) {
+            return "<a href='".$detailsURL."'>$img</a>";
+        }
+        return $img;
+    }
+
 	public function getImage($alignment = "left") {
 	    if ($this->origRow["citation_altmetric_image"]) {
-	        $img = "<img src='".$this->origRow["citation_altmetric_image"]."' align='$alignment'  style='width: 48px; height: 48px;' alt='Altmetrics'>";
-	        if ($this->origRow["citation_altmetric_details_url"]) {
-	            return "<a href='".$this->origRow["citation_altmetric_details_url"]."'>$img</a>";
-            }
-	        return $img;
+	        return self::formatImage($this->origRow["citation_altmetric_image"], $alignment, $this->origRow["citation_altmetric_details_url"] ?? "");
         }
 	    return "";
     }

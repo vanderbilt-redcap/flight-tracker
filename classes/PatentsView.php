@@ -35,12 +35,12 @@ class PatentsView {
             throw new \Exception("Does not have last name in Record ".$this->recordId);
         } else {
             $vars = [];
-            $vars[] = ["inventor_last_name" => $this->lastName];
+            $vars[] = ["inventor_last_name" => urlencode($this->lastName)];
             if ($this->firstName) {
-                $vars[] = ["inventor_first_name" => $this->firstName];
+                $vars[] = ["inventor_first_name" => urlencode($this->firstName)];
             }
             if ($this->startDate) {
-                $vars[] = ["_gte" => ["patent_date" => $this->startDate]];
+                $vars[] = ["_gte" => ["patent_date" => urlencode($this->startDate)]];
             }
 
             if (count($vars) == 1) {
