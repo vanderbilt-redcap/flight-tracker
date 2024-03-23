@@ -722,7 +722,12 @@ class Download {
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-        URLManagement::applyProxyIfExists($ch, $pid);
+        if (!$pid && isset($data['token'])) {
+            $pid = Application::getPID($data['token']);
+        }
+        if ($pid) {
+            URLManagement::applyProxyIfExists($ch, $pid);
+        }
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
         $output = curl_exec($ch);
         if ($isJSON) {
