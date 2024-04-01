@@ -90,7 +90,7 @@ if (isset($_POST['request'])) {
                 foreach ($matches as $licensePlate) {
                     list($currPid, $currRecord) = explode(":", $licensePlate);
                     $currName = Download::fullNameByPid($currPid, $currRecord);
-                    $projectTitle = Download::shortProjectTitleByPid($currPid);
+                    $projectTitle = Download::shortProjectTitle($currPid);
                     $info = [
                         "pid" => $currPid,
                         "name" => $currName,

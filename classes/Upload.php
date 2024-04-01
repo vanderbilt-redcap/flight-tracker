@@ -245,7 +245,7 @@ class Upload
                     Application::log("SQL: " . $q->affected_rows . " rows affected");
                 }
             } else {
-                throw new \Exception("Could not find record!");
+                throw new \Exception("Could not find record $recordId!");
             }
         } else {
             throw new \Exception("Wrong server");

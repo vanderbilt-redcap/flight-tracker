@@ -910,6 +910,7 @@ function checkMetadata(phpTs) {
 	const url = getPageUrl("metadata.php");
 	$.post(url, { 'redcap_csrf_token': getCSRFToken(), process: "check", timestamp: phpTs }, function(html) {
 		if (html) {
+			console.log(html);
 			$('#metadataWarning').addClass("red");
 			$('#metadataWarning').html(html);
 		}

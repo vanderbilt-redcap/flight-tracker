@@ -66,10 +66,6 @@ function runMainCrons(&$manager, $token, $server) {
         if (in_array("eric", $forms)) {
             $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
         }
-        if (Application::isLocalhost()) {
-            $manager->addCron("publications/getAllPubs_func.php", "getPubs", "2024-01-10", $records, 20);
-            $manager->addCron("publications/getAllPubs_func.php", "getPubs", "2024-01-11", $records, 20);
-        }
 
     } catch(\Exception $e) {
         Application::log("ERROR in runMainCrons: ".$e->getMessage(), $pid);

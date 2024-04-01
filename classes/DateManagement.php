@@ -5,6 +5,8 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class DateManagement {
+    const SEP_REGEX = "[\/\-]";
+
     public static function getFederalFiscalYear($ts = FALSE) {
         if (!$ts) {
             $ts = time();
@@ -18,9 +20,9 @@ class DateManagement {
     }
 
     public static function getDateFragment($str) {
-        if (preg_match("/\d+[\-\/]\d+[\-\/]\d+/", $str, $matches)) {
+        if (preg_match("/\d+".self::SEP_REGEX."\d+".self::SEP_REGEX."\d+/", $str, $matches)) {
             return $matches[0];
-        } else if (preg_match("/\d+[\-\/]\d+/", $str, $matches)) {
+        } else if (preg_match("/\d+".self::SEP_REGEX."\d+/", $str, $matches)) {
             # MM/YYYY
             return $matches[0];
         } else if (preg_match("/\d{4}/", $str, $matches)) {
@@ -42,7 +44,9 @@ class DateManagement {
         if (!$ts) {
             $ts = time();
         }
-        $dayOfYear = date("z", $ts);
+        $dt = new \DateTime();
+        $dt->setTimestamp($ts);
+        $dayOfYear = $dt->format("z");
         return floor(($dayOfYear - 1) / 7) + 1;
     }
 
@@ -50,7 +54,9 @@ class DateManagement {
         if (!$ts) {
             $ts = time();
         }
-        $dayOfMonth = date("j", $ts);
+        $dt = new \DateTime();
+        $dt->setTimestamp($ts);
+        $dayOfMonth = $dt->format("j");
         return floor(($dayOfMonth - 1) / 7) + 1;
     }
 
@@ -93,7 +99,7 @@ class DateManagement {
         if (!$str) {
             return FALSE;
         }
-        $nodes = preg_split("/[\-\/]/", $str);
+        $nodes = preg_split("/".self::SEP_REGEX."/", $str);
         if (count($nodes) == 2) {
             $month = $nodes[0];
             $year = $nodes[1];
@@ -111,7 +117,7 @@ class DateManagement {
             return "";
         }
         $sep = "-";
-        $nodes = preg_split("/[\-\/]/", $my);
+        $nodes = preg_split("/".self::SEP_REGEX."/", $my);
         if (count($nodes) == 2) {
             return $nodes[1] . $sep . $nodes[0] . $sep . "01";
         } else if (count($nodes) == 3) {
@@ -120,7 +126,7 @@ class DateManagement {
         } else if (count($nodes) == 1) {
             $year = $nodes[0];
             if ($year > 1900) {
-                return $year."-01-01";
+                return $year.$sep."01".$sep."01";
             } else {
                 throw new \Exception("Invalid year: $year");
             }
@@ -130,9 +136,11 @@ class DateManagement {
     }
 
     public static function getYear($date) {
-        $ts = strtotime($date);
-        if ($ts) {
-            return date("Y", $ts);
+        try {
+            $dt = new \DateTime($date);
+            return $dt->format("Y");
+        } catch(\Throwable $e) {
+
         }
         return "";
     }
@@ -144,11 +152,11 @@ class DateManagement {
     }
 
     public static function getSecondDuration($date1, $date2) {
-        $ts1 = strtotime($date1);
-        $ts2 = strtotime($date2);
-        if ($ts1 && $ts2) {
-            return abs($ts2 - $ts1);
-        } else {
+        try {
+            $dt1 = new \DateTime($date1);
+            $dt2 = new \DateTime($date2);
+            return abs($dt1->getTimestamp() - $dt2->getTimestamp());
+        } catch (\Throwable $e) {
             throw new \Exception("Could not get timestamps from $date1 and $date2");
         }
     }
@@ -163,18 +171,23 @@ class DateManagement {
         $year = substr($redcapTs, 0, 4);
         $month = substr($redcapTs, 4, 2);
         $day = substr($redcapTs, 6, 2);
-        return strtotime("$year-$month-$day");
+        $dt = new \DateTime();
+        $dt->setDate($year, $month, $day);
+        return $dt->getTimestamp();
     }
 
     public static function PHPTsToREDCapTs($phpTs) {
-        return date("YmdHis", $phpTs);
+        $dt = new \DateTime();
+        $dt->setTimestamp($phpTs);
+        return $dt->format("YmdHis");
     }
 
     public static function getLatestDate($dates) {
         $latestTs = 0;
         $latestDate = "";
         foreach ($dates as $date) {
-            $ts = strtotime($date);
+            $dt = new \DateTime($date);
+            $ts = $dt->getTimestamp();
             if ($ts > $latestTs) {
                 $latestDate = $date;
                 $latestTs = $ts;
@@ -188,8 +201,8 @@ class DateManagement {
     }
 
     public static function isDMY($str) {
-        if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
-            $nodes = preg_split("/[\/\-]/", $str);
+        if (preg_match("/^\d+".self::SEP_REGEX."\d+".self::SEP_REGEX."\d+$/", $str)) {
+            $nodes = preg_split("/".self::SEP_REGEX."/", $str);
             $earliestYear = 1900;
             if (count($nodes) == 3) {
                 if (($nodes[0] <= 31) && ($nodes[1] <= 12) && (($nodes[2] >= $earliestYear) || ($nodes[2] < 100))) {
@@ -202,8 +215,8 @@ class DateManagement {
     }
 
     public static function isMDY($str) {
-        if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
-            $nodes = preg_split("/[\/\-]/", $str);
+        if (preg_match("/^\d+".self::SEP_REGEX."\d+".self::SEP_REGEX."\d+$/", $str)) {
+            $nodes = preg_split("/".self::SEP_REGEX."/", $str);
             $earliestYear = 1900;
             if (count($nodes) == 3) {
                 if (
@@ -223,8 +236,8 @@ class DateManagement {
     }
 
     public static function isYMD($str) {
-        if (preg_match("/^\d+[\/\-]\d+[\/\-]\d+$/", $str)) {
-            $nodes = preg_split("/[\/\-]/", $str);
+        if (preg_match("/^\d+".self::SEP_REGEX."\d+".self::SEP_REGEX."\d+$/", $str)) {
+            $nodes = preg_split("/".self::SEP_REGEX."/", $str);
             $earliestYear = 1900;
             if (count($nodes) == 3) {
                 if (
@@ -280,23 +293,25 @@ class DateManagement {
 
     public static function toYMD($date) {
         if (self::isDate($date)) {
-            $ts = strtotime($date);
-            if ($ts) {
-                return date("Y-m-d", $ts);
+            try {
+                $dt = new \DateTime($date);
+                return $dt->format("Y-m-d");
+            } catch (\Throwable $e) {
+                return $date;
             }
         }
         return $date;
     }
 
     public static function isOracleDate($d) {
-        return preg_match("/^\d\d-[A-Z]{3}-\d\d$/", $d);
+        return preg_match("/^\d\d".self::SEP_REGEX."[A-Z]{3}".self::SEP_REGEX."\d\d$/", $d);
     }
 
     public static function oracleDate2YMD($d) {
         if ($d === "") {
             return "";
         }
-        $nodes = preg_split("/\-/", $d);
+        $nodes = preg_split("/".self::SEP_REGEX."/", $d);
         if (is_numeric($nodes[0]) && is_numeric($nodes[2])) {
             $day = $nodes[0];
             $month = $nodes[1];
@@ -344,19 +359,26 @@ class DateManagement {
             $months[strtoupper(date("F", $ts))] = $month;
         }
 
-        $value = $months[$monthStr] ?? date_parse($monthStr)['month'] ?? FALSE;
-        if ($value === FALSE) {
-            throw new \Exception("Invalid month $monthStr");
+        if (isset($months[$monthStr])) {
+            return $months[$monthStr];
         }
-        return $value;
+        $date = date_parse($monthStr);
+        if (!empty($date['errors'])) {
+            throw new \Exception(implode("<br/>\n", $date['errors']));
+        }
+        if ($date['month']) {
+            return REDCapManagement::padInteger($date['month'], 2);
+        }
+        throw new \Exception("Invalid month $monthStr");
     }
 
     public static function YMD2MDY($ymd) {
-        $ts = strtotime($ymd);
-        if ($ts) {
-            return date("m-d-Y", $ts);
+        try {
+            $dt = new \DateTime($ymd);
+            return $dt->format("m-d-Y");
+        } catch (\Throwable $e) {
+            return "";
         }
-        return "";
     }
 
     public static function MDY2YMD($mdy) {
@@ -373,7 +395,7 @@ class DateManagement {
     }
 
     public static function genericDateToYMD($date, $format) {
-        $nodes = preg_split("/[\/\-]/", $date);
+        $nodes = preg_split("/".self::SEP_REGEX."/", $date);
         if ((count($nodes) == 3) && REDCapManagement::isArrayNumeric($nodes)) {
             if (in_array($format, ["DMY", "dmy"])) {
                 $day = (int) $nodes[0];
@@ -393,13 +415,15 @@ class DateManagement {
             if ($year < 100) {
                 $year = self::adjustSmallYear($year);
             }
-            return $year."-".$month."-".$day;
+            $dt = new \DateTime();
+            $dt->setDate($year, $month, $day);
+            return $dt->format("Y-m-d");
         }
         return "";
     }
 
     public static function convertExcelDate($d) {
-        if (preg_match("/^(\w{3})[-\/](\d+)$/", $d, $matches)) {
+        if (preg_match("/^(\w{3})".self::SEP_REGEX."(\d+)$/", $d, $matches)) {
             try {
                 $monthNum = self::getMonthNumber($matches[1]);
                 if (is_numeric($monthNum) && is_numeric($matches[2])) {
@@ -412,7 +436,7 @@ class DateManagement {
             } catch (\Exception $e) {
                 return FALSE;
             }
-        } else if (preg_match("/^(\d+)[-\/](\w{3})$/", $d, $matches)) {
+        } else if (preg_match("/^(\d+)".self::SEP_REGEX."(\w{3})$/", $d, $matches)) {
             try {
                 $monthNum = self::getMonthNumber($matches[2]);
                 if (is_numeric($monthNum) && is_numeric($matches[1])) {
@@ -434,35 +458,37 @@ class DateManagement {
     }
 
     public static function addMonths($date, $months) {
-        $ts = strtotime($date);
-        if ($ts) {
-            $year = date("Y", $ts);
-            $month = date("m", $ts);
-            $month += $months;
-            while ($month <= 0) {
-                $month += 12;
-                $year--;
+        try {
+            $dt = new \DateTime($date);
+            if ($months > 0) {
+                $dt->modify("+$months months");
+            } else if ($months < 0) {
+                # minus sign included in statement
+                $dt->modify("$months months");
             }
-            while ($month > 12) {
-                $month -= 12;
-                $year++;
-            }
-            $day = date("d", $ts);
-            return $year."-".$month."-".$day;
+            return $dt->format("Y-m-d");
+        } catch(\Throwable $e) {
+            return "";
         }
-        return "";
     }
 
     public static function addYears($date, $years) {
-        $ts = strtotime($date);
-        $year = date("Y", $ts);
-        $year += $years;
-        $monthDays = date("-m-d", $ts);
-        return $year.$monthDays;
+        try {
+            $dt = new \DateTime($date);
+            if ($years > 0) {
+                $dt->modify("+$years years");
+            } else if ($years < 0) {
+                # minus sign included in statement
+                $dt->modify("$years years");
+            }
+            return $dt->format("Y-m-d");
+        } catch(\Throwable $e) {
+            return "";
+        }
     }
 
     public static function stripMY($str) {
-        if (preg_match("/\d\d[\/\-]\d\d\d\d/", $str, $matches)) {
+        if (preg_match("/\d\d".self::SEP_REGEX."\d\d\d\d/", $str, $matches)) {
             return $matches[0];
         } else if (preg_match("/\d\d\d\d/", $str, $matches)) {
             return $matches[0];
@@ -471,13 +497,21 @@ class DateManagement {
     }
 
     public static function datetime2LongDateTime($datetime) {
-        $ts = strtotime($datetime);
-        return date("F j, Y, g:i a", $ts);
+        try {
+            $dt = new \DateTime($datetime);
+            return $dt->format("F j, Y, g:i a");
+        } catch(\Throwable $e) {
+            return "";
+        }
     }
 
     public static function datetime2LongDate($datetime) {
-        $ts = strtotime($datetime);
-        return date("F j, Y", $ts);
+        try {
+            $dt = new \DateTime($datetime);
+            return $dt->format("F j, Y");
+        } catch(\Throwable $e) {
+            return "";
+        }
     }
 
     public static function datetime2Date($datetime) {
@@ -495,22 +529,24 @@ class DateManagement {
     }
 
     public static function YMD2LongDate($ymd) {
-        $ts = strtotime($ymd);
-        if ($ts) {
-            return date("F j, Y", $ts);
+        try {
+            $dt = new \DateTime($ymd);
+            return $dt->format("F j, Y");
+        } catch(\Throwable $e) {
+            return "";
         }
-        return "";
     }
 
     public static function correctLeapYear(&$date) {
-        if (preg_match("/[\-\/]02[\-\/]29$/", $date)) {
-            $year = (int) preg_split("/[\-\/]/", $date)[0];
+        if (preg_match("/".self::SEP_REGEX."02".self::SEP_REGEX."29$/", $date)) {
+            $year = (int) preg_split("/".self::SEP_REGEX."/", $date)[0];
             if ($year % 4 !== 0) {
                 $date = $year."-02-28";
             }
         }
     }
 
+    # Adapted from REDCap to keep consistent
     public static function datediff($d1, $d2, $unit=null, $returnSigned=false, $returnSigned2=false)
     {
         $now = date("Y-m-d H:i:s");
@@ -650,10 +686,90 @@ class DateManagement {
     }
 
     public static function YMD2MY($ymd) {
-        $ts = strtotime($ymd);
-        if ($ts) {
-            return date("m/Y", $ts);
+        try {
+            $dt = new \DateTime($ymd);
+            return $dt->format("m/Y");
+        } catch(\Throwable $e) {
+            return $ymd;
         }
-        return $ymd;
+    }
+
+    public static function runTests() {
+        $invalidDates = [
+            "2023-02-29" => "2023-03-01",
+            "2024-02-30" => "2024-03-01",
+            "2024-13-01" => "2024-13-01",
+        ];
+        $datesToTest = [
+            "2024-02-29" => strtotime("2024-02-29"),
+            "2020-01-01" => strtotime("2020-01-01"),
+        ];
+
+        $errors = [];
+        $successes = [];
+        foreach ($invalidDates as $date => $expected) {
+            try {
+                $result = self::toYMD($date);
+                if ($result && ($result != $expected)) {
+                    $errors[] = "Invalid date $date produced $result.";
+                } else {
+                    $successes[] = "Invalid date $date succeeded.";
+                }
+            } catch (\Throwable $e) {
+                $successes[] = "Invalid date $date succeeded.";
+            }
+        }
+        foreach ($datesToTest as $date => $ts) {
+            try {
+                $ymdResult = self::toYMD($date);
+                $mdyResult = self::YMD2MDY($date);
+                $longDate = self::YMD2LongDate($date);
+                if (strtotime($ymdResult) != $ts) {
+                    $errors[] = "Invalid YMD result for $date.";
+                } else {
+                    $successes[] = "YMD result for $date succeeded.";
+                }
+                if ($mdyResult != date("m-d-Y", $ts)) {
+                    $errors[] = "Invalid MDY result $mdyResult for $date.";
+                } else {
+                    $successes[] = "MDY result for $date succeeded.";
+                }
+                if (strtotime($longDate) != $ts) {
+                    $errors[] = "Invalid long date result for $date.";
+                } else {
+                    $successes[] = "Long date result for $date succeeded.";
+                }
+
+                $numbersToCheck = [2, 5, 10, -5];
+                foreach ($numbersToCheck as $num) {
+                    $dt = new \DateTime($date);
+                    if ($num > 0) {
+                        $dt->modify("+$num years");
+                    } else if ($num < 0) {
+                        $dt->modify("$num years");
+                    }
+                    if ($dt->format("Y-m-d") != self::addYears($date, $num)) {
+                        $errors[] = "Invalid date $date add $num years: ".self::addYears($date, $num)." vs. ".$dt->format("Y-m-d");
+                    } else {
+                        $successes[] = "Add $num years to $date succeeded.";
+                    }
+                    $dt = new \DateTime($date);
+                    if ($num > 0) {
+                        $dt->modify("+$num months");
+                    } else if ($num < 0) {
+                        $dt->modify("$num months");
+                    }
+                    if ($dt->format("Y-m-d") != self::addMonths($date, $num)) {
+                        $errors[] = "Invalid date $date add $num months: ".self::addMonths($date, $num)." vs. ".$dt->format("Y-m-d");
+                    } else {
+                        $successes[] = "Add $num months to $date succeeded.";
+                    }
+                }
+            } catch(\Throwable $e) {
+                $errors[] = "Invalid for date $date: ".$e->getMessage();
+            }
+        }
+        echo count($errors)." errors and ".count($successes)." successes.\n";
+        echo implode("\n", $errors)."\n";
     }
 }

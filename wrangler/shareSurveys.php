@@ -209,8 +209,7 @@ if (!empty($additionalSurveys)) {
             $currServer = Application::getSetting("server", $currPid);
             $firstNames[$currPid] = Download::firstnames($currToken, $currServer);
             $lastNames[$currPid] = Download::lastnames($currToken, $currServer);
-            $projectTitles[$currPid] = Download::projectTitle($currToken, $currServer);
-            $projectTitles[$currPid] = preg_replace("/Flight Tracker\s*-?\s*/", "", $projectTitles[$currPid]);
+            $projectTitles[$currPid] = Download::shortProjectTitle($currPid);
             foreach ($firstNames[$pid] as $recordId => $thisFN) {
                 $thisLN = $lastNames[$pid][$recordId] ?? "";
                 foreach ($firstNames[$currPid] as $currRecordId => $currFN) {

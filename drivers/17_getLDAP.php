@@ -14,7 +14,15 @@ function getLDAPs($token, $server, $pid, $records) {
     $userids = Download::userids($token, $server);
     foreach ($records as $recordId) {
         $firstName = $firstNames[$recordId];
-        Upload::deleteForm($token, $server, $pid, "ldapds_", $recordId);
+        try {
+            Upload::deleteForm($token, $server, $pid, "ldapds_", $recordId);
+        } catch (\Throwable $e) {
+            if (!preg_match("/Could not find record/", $e->getMessage())) {
+                throw $e;
+            } else {
+                Application::log($e->getMessage(), $pid);
+            }
+        }
         $recordUserids = (isset($userids[$recordId]) && $userids[$recordId]) ? preg_split("/\s*,\s*/", $userids[$recordId]) : [];
         foreach ($recordUserids as $userid) {
             $lastName = $lastNames[$recordId];

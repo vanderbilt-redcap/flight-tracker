@@ -280,7 +280,7 @@ class Portal
                     $foundMatch = TRUE;
                 }
                 if ($foundMatch) {
-                    $projectTitles[$pid] = Download::shortProjectTitle($token, $server);
+                    $projectTitles[$pid] = Download::shortProjectTitle($pid);
                 }
                 Application::unsetPid();
             }

@@ -115,15 +115,11 @@ class Application {
     }
 
     public static function getProjectTitle($pid = NULL) {
-	    if ($pid) {
-            $token = self::getSetting("token", $pid);
-            $server = self::getSetting("server", $pid);
-        } else {
-            $token = self::getSetting("token");
-            $server = self::getSetting("server");
+	    if (!$pid) {
+            $pid = Sanitizer::sanitizePid($_GET['pid'] ?? "");
         }
-	    if ($token && $server) {
-            return Download::projectTitle($token, $server);
+	    if ($pid) {
+            return Download::projectTitle($pid);
         }
 	    return "";
     }
@@ -687,6 +683,10 @@ SELECT DISTINCT s.project_id AS pid
         return REDCapManagement::screenForFields($metadata, CareerDev::$exporterFields);
     }
 
+    public static function getServerEmail() {
+        return $_SERVER['SSL_SERVER_S_DN_Email'] ?? "";
+    }
+
     public static function isMSTP($pid = NULL) {
         if (!$pid) {
             $pid = CareerDev::getPid();
@@ -694,7 +694,7 @@ SELECT DISTINCT s.project_id AS pid
         if (Application::isVanderbilt() && ($pid == 149668)) {    // TODO For now
             return TRUE;
         }
-        if (Application::isLocalhost() && ($pid == 17)) {
+        if (Application::isLocalhost() && ($pid == 17) && (self::getServerEmail() == "scott.j.pearson@vumc.org")) {
             return TRUE;
         }
         return FALSE;

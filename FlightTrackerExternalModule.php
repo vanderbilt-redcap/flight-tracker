@@ -480,7 +480,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             if ($adminEmail && REDCapManagement::isEmailOrEmails($adminEmail)) {
                 $htmlRows = [];
                 $htmlRows[] = self::makeEmailCopyHTML($items);
-                $projectTitle = Download::projectTitle($tokens[$emailPid], $servers[$emailPid]);
+                $projectTitle = Download::projectTitle($emailPid);
                 $projectTitleHTML = Links::makeProjectHomeLink($emailPid, $projectTitle);
                 $introHTML = "<p>For $projectTitleHTML, the following Flight Tracker scholars have been matched. An email exists from the below source projects, but it is blank in yours. Do you want to change them? If so, please click the link to copy. <span style='text-decoration: underline; font-weight: bold;'>Note: A scholar might be matched to more than one possible email.</span></p>";
                 $html = $introHTML . implode("", $htmlRows);
@@ -660,7 +660,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     $sourceInfo = $copyInfo['source'];
                     $email = $copyInfo['email'];
                     $sourceName = Download::fullName($sourceInfo['token'], $sourceInfo['server'], $sourceInfo['record']);
-                    $sourceProject = Download::projectTitle($sourceInfo['token'], $sourceInfo['server']);
+                    $sourceProject = Download::projectTitle($sourceInfo['pid']);
                     $adoptLink = Application::link("copyEmail.php", $destInfo['pid'])."&sourcePid=".$sourceInfo['pid']."&sourceRecord=".$sourceInfo['record']."&destRecord=$destRecord";
                     $notAdoptLink = Application::link("copyEmail.php", $destInfo['pid'])."&skip=".urlencode($email)."&destRecord=$destRecord";
                     $itemHTML = "<div style='margin-top: 1em;'>Matched to $sourceName from $sourceProject. The proposed email is <strong>$email</strong>.</div>";
@@ -1681,6 +1681,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                 if (preg_match("/online_designer\.php/", $url)) {
                     $_SESSION['metadata'.$project_id] = [];
                     $_SESSION['lastMetadata'.$project_id] = 0;
+                } else if (PAGE == "DataEntry/record_status_dashboard.php") {
+                    include(__DIR__."/hooks/recordStatusDashboardHook.php");
+                } else if (PAGE == "DataEntry/record_home.php") {
+                    include(__DIR__."/hooks/dataFormHook.php");
                 }
             } else {
                 if ($this->canRedirectToInstall()) {

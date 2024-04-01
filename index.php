@@ -89,11 +89,8 @@ try {
         $grantNumberHeader = " - ".Grant::translateToBaseAwardNumber($grantNumber);
     }
 
-    $projectSettings = Download::getProjectSettings($token, $server);
-    $projectNotes = "";
-    if ($projectSettings['project_notes']) {
-        $projectNotes = "<p class='centered'>".$projectSettings['project_notes']."</p>";
-    }
+    $redcapNote = Download::getProjectNotes($pid);
+    $projectNotes = $redcapNote ? "<p class='centered max-width'>$redcapNote</p>" : "";
     $currVersion = CareerDev::getVersion();
     $latestVersion = CareerDev::getLatestReleaseVersion();
     $versionText = "";

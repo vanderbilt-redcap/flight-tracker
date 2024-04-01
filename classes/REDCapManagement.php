@@ -591,7 +591,47 @@ class REDCapManagement {
         return "";
     }
 
-	public static function getFieldsFromMetadata($metadata, $instrument = FALSE) {
+    # makeSummary generates a lot of logs, especially if it's run every day
+    # this function cleans up the table and keeps logs only for one week
+    # since makeSummary does not capture any new data but is really a meta-analysis of existing data,
+    # its removal poses minimal harm
+    # We're also removing the logs older than 18 months.
+    # none of these data are HIPAA relevant since Flight Tracker does not use patient data
+    # this code could be refactored to be tighter, but we may make revisions to it down the road,
+    # so being looser for future adaptation seems more in order
+    public static function cleanUpOldLogs($pid) {
+        $module = Application::getModule();
+        $numToDelete = 1000;
+        $numBatches = 0;
+
+        $minDate = DateManagement::PHPTsToREDCapTs(strtotime("-18 months"));
+        $params = [$minDate, $pid];
+        $logEventTable = \REDCap::getLogEventTable($pid);
+        $fromAndWhereClause = "FROM $logEventTable WHERE ts <= ? AND project_id = ?";
+        $deleteSql = "DELETE $fromAndWhereClause LIMIT $numToDelete";
+        $selectSql = "SELECT log_event_id $fromAndWhereClause LIMIT 1";
+        do {
+            $module->query($deleteSql, $params);
+            $result = $module->query($selectSql, $params);
+            $numBatches++;
+        } while ($result->fetch_assoc());
+
+        $minDate = DateManagement::PHPTsToREDCapTs(strtotime("-1 week"));
+        $params = [$minDate, $pid];
+        $logEventTable = \REDCap::getLogEventTable($pid);
+        $fromAndWhereClause = "FROM $logEventTable WHERE ts <= ? AND project_id = ? AND data_values LIKE '%summary_last_calculated = %'";
+        $deleteSql = "DELETE $fromAndWhereClause LIMIT $numToDelete";
+        $selectSql = "SELECT log_event_id $fromAndWhereClause LIMIT 1";
+        do {
+            $module->query($deleteSql, $params);
+            $result = $module->query($selectSql, $params);
+            $numBatches++;
+        } while ($result->fetch_assoc());
+
+        Application::log("Estimated number of event_log rows cleaned: ".($numBatches * $numToDelete), $pid);
+    }
+
+    public static function getFieldsFromMetadata($metadata, $instrument = FALSE) {
 	    return DataDictionaryManagement::getFieldsFromMetadata($metadata, $instrument);
 	}
 

@@ -125,7 +125,7 @@ function makeJobRowHTML($setting, $headers, $count, &$cachedTitles) {
     foreach ($headers as $header) {
         if ($header == "Project Name") {
             if ($row['token'] && $row['server']) {
-                $title = $cachedTitles[$row['pid']] ?? Download::projectTitle($row['token'], $row['server']);
+                $title = $cachedTitles[$row['pid']] ?? Download::projectTitle($row['pid']);
                 $cachedTitles[$row['pid']] = $title;
                 $title = str_replace("Flight Tracker - ", "", $title);
                 $title = str_replace(" - Flight Tracker", "", $title);

@@ -533,7 +533,7 @@ class CelebrationsEmail {
 
     private function makeGrantData($name, $thresholdTs) {
         $dataByName = [];
-        $currProjectName = Download::projectTitle($this->token, $this->server);
+        $currProjectName = Download::projectTitle($this->pid);
         $currResources = Download::oneFieldWithInstances($this->token, $this->server, "resources_resource");
         $currChoices = DataDictionaryManagement::getChoices($this->metadata);
         $currDepartments = Download::oneField($this->token, $this->server, "summary_primary_dept");
@@ -649,7 +649,7 @@ class CelebrationsEmail {
         }
         $this->process();
         $ftLogoBase64 = FileManagement::getBase64OfFile(__DIR__."/../img/flight_tracker_logo_medium_white_bg.png", "image/png");
-        $projectInfo = Links::makeProjectHomeLink($this->pid, Download::projectTitle($this->token, $this->server));
+        $projectInfo = Links::makeProjectHomeLink($this->pid, Download::projectTitle($this->pid));
         if (!Application::isVanderbilt() || ($this->pid !== NEWMAN_SOCIETY_PROJECT)) {
             $configureLink = Application::link("index.php", $this->pid)."#Celebrations_Email";
             $configureInfo = "<br/>".Links::makeLink($configureLink, "Configure Celebrations Email");

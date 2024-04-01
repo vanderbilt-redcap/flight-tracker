@@ -230,7 +230,7 @@ function getProjectInfo($pids, $instruments) {
                     'first' => Download::firstnames($token, $server),
                     'last' => Download::lastnames($token, $server),
                 ];
-                $allProjectTitles[$pid] = Download::projectTitle($token, $server);
+                $allProjectTitles[$pid] = Download::projectTitle($pid);
 
                 $allProjectContacts[$pid] = [];
                 $adminUserids = REDCapManagement::getDesignUseridsForProject($pid);

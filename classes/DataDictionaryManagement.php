@@ -336,6 +336,53 @@ class DataDictionaryManagement {
         return self::installMetadataForPids($pidsToRun, $files, $deletionRegEx);
     }
 
+    public static function getInstrumentDescriptions($instrument = "all") {
+        $ary = [
+            "initial_survey" => "A one-time survey completed by scholars. It is pre-filled with any prior data points and takes 20-30 minutes to complete. Use the Scholars menu &rarr; Configure an Email page to send. It contains demographic information, education history, job history, publications &amp; grants.",
+            "initial_import" => "A copy of the Initial Survey. Administrators complete this to pre-fill items for the Initial Survey.",
+            "followup" => "A regular update survey completed by scholars. It is pre-filled with any prior data points and takes 10-15 minutes to complete. This form is repeating and can be filled out more than once. Use the Scholars menu &rarr; Configure an Email page to send. It contains updates for education history, job history, publications &amp; grants (note: not demographics).",
+            "identifiers" => "Identifying information is stored here, like the scholar’s name, email, ORCID id &amp; dates in the program. Some values are automatically updated from other instruments.",
+            "manual" => "Information about scholar demographics uploaded by a spreadsheet is stored here, input by an administrator. There is some overlap with the Initial Import form. The Initial Import form is the preferred way, but inputting data in this form is also accepted.",
+            "manual_import" => "Stores information uploaded by a spreadsheet about scholar demographics, input by an administrator. There is some overlap with the Initial Import form. The Initial Import form is the preferred way, but inputting data in this form is also accepted.",
+            "manual_degree" => "A repeating instrument used to understand the scholar's degrees and compiles its results onto the Summary instrument; stores any degrees awarded not noted by scholars in the surveys.",
+            "summary" => "Contains the computer's best guess as to what's true from all the other instruments. It also tells you where it's pulling the data from. It also stores a summary of career-defining grant awards to show career progress. It is automatically overwritten weekly, so changing it directly is useless.",
+            "vfrs" => "These intake surveys for VFRS funding from Vanderbilt supply demographic information about some scholars.",
+            "coeus" => "COEUS has information about VUMC's awarded grants and all Vanderbilt awards before the split.",
+            "coeus2" => "StarBRITE supplied some historical grant information from the grants-management system, but the COEUS instrument should be preferred. These data are kept for historical completeness, but are no longer being pulled.",
+            "custom_grant" => "You can add awarded and submitted grants not captured by federal feeds and appointments to training grants here. For non-Vanderbilt projects, this instrument is the only way to capture non-federal funding-like foundation awards.",
+            "reporter" => "Captures grant data from the now-defunct Federal RePORTER. New data are no longer captured.  Data are retained for historical completeness.",
+            "exporter" => "Captured grant data from the NIH ExPORTER, which has now been replaced by the NIH RePORTER instrument. New data are no longer captured, but data are retained for historical completeness.",
+            "nih_reporter" => "Stores grant data from the NIH RePORTER's API, which includes funding awards from the NIH since the mid-1980s.",
+            "nsf" => "Stores grant data from the NSF Grants' API, which includes grants from the NSF and the Department of Defense.",
+            "ies_grant" => "Stores grant data from the Institute of Education Sciences, which includes grants from the Deparment of Education.",
+            "eric" => "Includes publication data from ERIC, the Department of Education's publications search engine.",
+            "citation" => "Includes publication data from PubMed and related bibliometrics from iCite and Altmetric.",
+            "resources" => "Stores data about scholar use of institutional resources. Preferred way is to enter the data via Flight Tracker's Resources menu.",
+            "old_honors_and_awards" => "Stores historical data about Honors and Awards, but has been replaced by the Honors Awards and Activities instrument. To convert information, visit the Wrangle menu &rarr; Convert Honors &amp; Awards page.",
+            "honors_and_awards" => "Stores historical data about Honors and Awards, but has been replaced by the Honors Awards and Activities instrument. To convert information, visit the Wrangle menu &rarr; Convert Honors &amp; Awards page.",
+            "honors_awards_and_activities" => "Stores information about Honors, Awards, and Activities. It is meant to be filled out by an administrator. Scholars can add information directly via a corresponding, identical survey.",
+            "honors_awards_and_activities_survey" => "Stores information about Honors, Awards, and Activities. It's also available via the Scholar Portal and can be sent out for scholars to fill out via the Scholars menu &rarr; Configure an Email page.",
+            "ldap" => "Stores Vanderbilt data about scholars, like email, department, and user-id, and has been replaced by the LDAP-DS instrument and is no longer receiving new data. Data are retained for historical completeness.",
+            "ldapds" => "Stores current Vanderbilt data about scholars, like email, department, and user-id.",
+            "workday" => "Stores descriptive data about VUMC employees (only) from Workday. Data not stored about those solely employed by Vanderbilt University.",
+            "coeus_submission" => "Stores information about grant submissions at VUMC and all Vanderbilt submissions before the split.",
+            "vera" => "Stores information from VERA about grant awards at Vanderbilt University after the split.",
+            "vera_submission" => "Stores information from VERA about grant submissions at Vanderbilt University after the split.",
+            "position_change" => "A repeating instrument: stores information about promotions and employment changes over time. Critically, it stores information about outside institutions that a scholar might have been a part of. Its values are also used to produce NIH Training Table 8.",
+            "exclude_lists" => "Stores information about Flight Tracker's Exclude Lists. Normally, these values are entered from data wranglers and do not need to be modified manually.",
+            "patent" => "Stores patent information from Patents View from the US Patent &amp; Trademark Office.",
+            "mentoring_agreement" => "Stores entries from the mentee &amp; mentor as they fill out mentee-mentor agreements;entered via the Mentors menu.",
+            "mentoring_agreement_evaluations" => "Stores an optional evaluation of the mentee-mentor agreement. If desired, it must be sent out via the Scholars menu &rarr; Configure an Email page.",
+            "mstp_individual_development_plan_idp" => "A survey that stores MSTP-specific IDP information that can be sent as a REDCap survey. To distribute, see the Mentors menu &rarr; Configure IDP Reviewers for Classes page.",
+            "mstp_mentee_mentor_agreement" => "Stores data for MSTP-specific mentee-mentor agreements which can be distributed via the Mentors menu.",
+        ];
+        if ($instrument == "all") {
+            return $ary;
+        } else {
+            return $ary[$instrument] ?? "";
+        }
+    }
+
     public static function installMetadataForPids($pids, $files, $deletionRegEx) {
         $returnData = [];
         foreach ($pids as $currPid) {

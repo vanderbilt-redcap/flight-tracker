@@ -189,7 +189,7 @@ if (isset($_GET['record'])) {
     $togglePage = "<p class='centered smaller'>".$prevPageLink.$spacing.$pageMssg.$spacing.$nextPageLink."</p>";
 }
 
-$programName = Download::projectTitle($token, $server);
+$programName = Download::projectTitle($pid);
 $emails = Download::emails($token, $server);
 $grants = Download::oneFieldWithInstances($token, $server, "citation_grants");
 $includes = Download::oneFieldWithInstances($token, $server, "citation_include");

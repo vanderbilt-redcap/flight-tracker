@@ -350,7 +350,7 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= "<td colspan='2' $style><h2 class='nomargin'>Step 1: Customize</h2></td>\n";
     $html .= "</tr>\n";
     $html .= "<tr>\n";
-    $html .= "<td $style class='yellow'>".Altmetric::makeClickText()."</td>\n";
+    $html .= "<td $style class='yellow'>".Altmetric::makeClickText(Application::link("publications/view.php").makeExtraURLParams(["altmetrics"]))."</td>\n";
     $html .= "<td $style class='green'>";
     $html .= "<h4>Show Pubs During Training</h4>";
     $html .= "<form action='$url' method='GET'>";

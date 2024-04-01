@@ -857,9 +857,9 @@ class CronManager {
 	    return FALSE;
     }
 
-    private static function getProjectTitle($token, $server) {
+    private static function getProjectTitle($pid) {
         try {
-            return Download::projectTitle($token, $server);
+            return Download::projectTitle($pid);
         } catch (\Exception $e) {
             if (preg_match("/You do not have permissions to use the API/", $e->getMessage())) {
                 return "[Project Title Unavailable]";
@@ -874,7 +874,7 @@ class CronManager {
         $server = $module->getProjectSetting("server", $pid);
         if ($token && $server) {
             $adminEmail = $module->getProjectSetting("admin_email", $pid);
-            $projectTitle = self::getProjectTitle($token, $server);
+            $projectTitle = self::getProjectTitle($pid);
 
             $text = "";
             $hasData = FALSE;
@@ -1090,7 +1090,7 @@ class CronManager {
             "getIES" => "ies_grant",
             "getERIC" => "eric",
         ];
-        $projectTitle = self::getProjectTitle($token, $server);
+        $projectTitle = self::getProjectTitle($pid);
 
         $html = "<style>
 p.header { background-color: #d4d4eb; padding: 10px; }
@@ -1636,8 +1636,8 @@ body { font-size: 1.2em; }
 		if (count($toRun) > 0) {
             $starts = [];
             $ends = [];
-		    $projectTitle = self::getProjectTitle($this->token, $this->server);
-            $allRecords = Download::recordIds($this->token, $this->server);
+		    $projectTitle = self::getProjectTitle($this->pid);
+            $allRecords = Download::recordIdsByPid($this->pid);
             $text = "";
 			foreach ($run as $method => $aryOfMessages) {
                 if (REDCapManagement::isAssoc($aryOfMessages)) {
@@ -1717,7 +1717,7 @@ body { font-size: 1.2em; }
 			$adminEmail .= ",".Application::getFeedbackEmail();
 		}
 
-		$projectTitle = self::getProjectTitle($this->token, $this->server);
+		$projectTitle = self::getProjectTitle($this->pid);
 		$mssg = "";
 		$mssg .= "Cron: ".$cronjob->getTitle()."<br>";
 		$mssg .= "PID: ".$this->pid."<br>";

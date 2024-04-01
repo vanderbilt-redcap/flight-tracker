@@ -45,9 +45,12 @@ $titleHTML = "<title>Flight Tracker Feedback for NIH Training Tables</title>".Ap
 
 if (isset($_POST['action']) && $token && $server && $pid) {
     $action = Sanitizer::sanitize($_POST['action']);
+    ReactNIHTables::convertJSONs($_POST);
     $data = [];
     try {
-        if ($action == "getFooter") {
+        if (isset($_GET['NOAUTH'])) {
+            $data['error'] = "NOAUTH should not appear on this page.";
+        } else if ($action == "getFooter") {
             $data['html'] = Application::getFooter();
         } else if ($action == "getTable") {
             $metadata = Download::metadata($token, $server);

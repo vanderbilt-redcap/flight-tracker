@@ -63,7 +63,7 @@ if ($action == "downloadORCIDs") {
     }
     echo json_encode($data);
     exit;
-} else if (in_array($action, ["addORCID", "removeORCID"])) {
+} else if (in_array($action, ["addORCID", "removeORCID", "excludeORCID"])) {
     $data = [];
     $recordId = Sanitizer::getSanitizedRecord($_POST['record'] ?? "", $allRecords);
     $orcid = Sanitizer::sanitize($_POST['orcid'] ?? "");
@@ -80,7 +80,9 @@ if ($action == "downloadORCIDs") {
                 $pos = array_search($orcid, $excludeORCIDs);
                 array_splice($excludeORCIDs, $pos, 1);
             }
-        } else if (in_array($orcid, $orcids)) {
+        } else if (($action == "excludeORCID") && !in_array($orcid, $excludeORCIDs)) {
+            $excludeORCIDs[] = $orcid;
+        } else if (($action == "removeORCID") && in_array($orcid, $orcids)) {
             $pos = array_search($orcid, $orcids);
             array_splice($orcids, $pos, 1);
             $excludeORCIDs[] = $orcid;
@@ -264,7 +266,15 @@ function addCustomORCID(recordId) {
     return '<input type=\"text\" id=\"custom_orcid_'+recordId+'\" placeholder=\"Add Custom ORCID\" value=\"\" style=\"width: 180px; margin-top: 12px;\" /> <button onclick=\"addORCIDToRecord(\'$thisUrl\', \''+recordId+'\', $(\'#custom_orcid_'+recordId+'\').val(), this); return false;\" class=\"smallest\">add</button>';
 }
 
+function excludeORCIDInRecord(url, recordId, orcid, buttonOb) {
+    changeORCIDList('excludeORCID', url, recordId, orcid, buttonOb);
+}
+
 function addORCIDToRecord(url, recordId, orcid, buttonOb) {
+    changeORCIDList('addORCID', url, recordId, orcid, buttonOb);
+}
+    
+function changeORCIDList(action, url, recordId, orcid, buttonOb) {    
     if (orcid === '') {
         displayORCIDError('No ORCID specified!');
     } else if (orcid.match(/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/)) {
@@ -273,7 +283,7 @@ function addORCIDToRecord(url, recordId, orcid, buttonOb) {
             redcap_csrf_token: getCSRFToken(),
             record: recordId,
             orcid: orcid,
-            action: 'addORCID'
+            action: action
         };
         let cb = (data) => { excludes[recordId] = data.recordExcludes ?? ''; const redcapIDs = data.redcapORCIDs ? data.redcapORCIDs.split(/\s*[,;]\s*/) : []; $(myRow).html(makeORCIDRow(data, recordId, redcapIDs)); }
         myRow.html('<td colspan=\"5\">'+getSmallLoadingMessage(\"Reloading\")+'</td>')
@@ -347,7 +357,7 @@ function displayORCIDLinks(orcids, redcapORCIDIDs, action, recordId) {
         if (recordExcludes.indexOf(orcid) >= 0) {
             html.push('<span class=\"strikethrough\">'+link+'</span> <button class=\"smallest\" onclick=\"addORCIDToRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\">add</button>');
         } else if ((redcapORCIDIDs.indexOf(orcid) < 0) && (action === 'add')) {
-            html.push(link+' <button class=\"smallest\" onclick=\"addORCIDToRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\">add</button>');
+            html.push(link+' <button class=\"smallest\" onclick=\"addORCIDToRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\">add</button> <button onclick=\"excludeORCIDInRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\" class=\"smallest\">exclude</button>');
         } else if (action === 'remove') {
             html.push(link+' <button class=\"smallest\" onclick=\"removeORCIDFromRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\">remove</button>');
         } else if (action === 'add') {
@@ -402,7 +412,7 @@ foreach ($lastNames as $recordId => $lastName) {
 echo "</select></p>";
 echo "<div class='loading centered'></div>";
 echo "<table id='main' class='bordered centered max-width-1000'>";
-echo "<thead><tr class='stickyGrey'><th>Name</th><th title='Institutions that you’ve added. Information for matching to right ORCID.'>Outside Institutions in REDCap</th><th style='width: 80px;' title='Block or unblock future searches for ORCID ids.'>Block All Searching?</th><th style='min-width: 275px;' title='ORCIDs that you’re currently using. You can remove these by clicking the button. Link goes to individual’s ORCID profile, which lists institutions.'>ORCIDs in REDCap</th><th style='min-width: 275px;' title='ORCIDs currently matched to this name on the ORCID website. This cell often has false positives. You can add to REDCap by clicking the button.'>ORCIDs on Website</th></tr></thead>";
+echo "<thead><tr class='stickyGrey'><th>Name</th><th title='Institutions that you’ve added. Information for matching to right ORCID.'>Outside Institutions in REDCap</th><th style='width: 80px;' title='Block or unblock future searches for ORCID ids.'>Block All Searching?</th><th style='min-width: 275px;' title='ORCIDs that you’re currently using. You can remove these by clicking the button. Link goes to individual’s ORCID profile, which lists institutions.'>ORCIDs in REDCap</th><th style='min-width: 300px;' title='ORCIDs currently matched to this name on the ORCID website. This cell often has false positives. You can add to REDCap by clicking the button.'>ORCIDs on Website</th></tr></thead>";
 echo "<tbody>";
 echo "</tbody></table>";
 echo "<div class='loading centered'></div>";

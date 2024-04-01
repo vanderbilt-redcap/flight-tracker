@@ -13,6 +13,7 @@ use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Citation;
 use \Vanderbilt\CareerDevLibrary\NIHTables;
+use \Vanderbilt\CareerDevLibrary\ReactNIHTables;
 
 if (in_array(gethostname(), ["scottjpearson", "ORIWL-KCXDJK7.local"])) {
     # Testing only - to allow to run with React server using 'npm start'
@@ -31,8 +32,8 @@ if ($entityBody) {
     $_POST = json_decode($entityBody, TRUE) ?? $_POST;
 }
 
-$errorMssg = "";
 if (!empty($_POST)) {
+    ReactNIHTables::convertJSONs($_POST);
     $table = Sanitizer::sanitize($_POST['table'] ?? "");
     $awardNo = Sanitizer::sanitize($_POST['awardNo'] ?? "");
     $dateOfSubmission = Sanitizer::sanitizeDate($_POST['dateOfSubmission'] ?? "");

@@ -80,6 +80,7 @@
 	   "emailMgmt/makeSurveyLinks",
 	   "copyProject",
 	   "reporting/tables2-4WithAuth",
+	   "reporting/tables2-4",
 	   "mstp/reviewMSTP",
 	   "reviewMSTP",
 	   "mstp/mstpDownload"

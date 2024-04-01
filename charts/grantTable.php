@@ -22,12 +22,13 @@ if (!isset($_GET['cohort']) || !$_GET['cohort']) {
 
     $cohorts = new Cohorts($token, $server, Application::getModule());
     $thisLink = Application::link("this");
-    $thisUrl = explode("?", $thisLink)[0];
+    $thisUrl = URLManagement::getPage($thisLink);
     echo "<h1>$title</h1>";
     echo "<form method='GET' action='$thisUrl'>";
     echo URLManagement::getParametersAsHiddenInputs($thisLink, ['start', 'end', 'cohort']);
     echo "<p class='centered'><label for='start'>Budget Start Date (optional):</label> <input type='date' name='start' /><br/>";
     echo "<label for='end'>Budget End Date (optional):</label> <input type='date' name='end' /></p>";
+    echo "<p class='centered'><input type='radio' name='range' id='start' value='start' checked /><label for='start'> Grant start date must be within this range</label> <input type='radio' name='range' id='within' value='within' checked /><label for='within'> Grant start <strong>and</strong> end date must be within this range</label></p>";
     echo "<p class='centered'>".$cohorts->makeCohortSelect("", "", TRUE)."</p>";
     echo "<p class='centered'><button>Configure</button></p>";
     echo "</form>";
@@ -35,17 +36,24 @@ if (!isset($_GET['cohort']) || !$_GET['cohort']) {
     exit;
 }
 
+$range = Sanitizer::sanitize($_GET['range'] ?? "");
 $oneYear = 365 * 24 * 3600;
 $startDate = Sanitizer::sanitizeDate($_GET['start']) ?: date("Y-m-d", 0);
 $endDate = Sanitizer::sanitizeDate($_GET['end']) ?: date("Y-m-d", time() + 10 * $oneYear);
 $startTs = strtotime($startDate);
 $endTs = strtotime($endDate);
 $dates = "";
+$rangeText = "";
 if ($_GET['start']) {
     if ($_GET['end']) {
         $dates = DateManagement::YMD2MDY($startDate)." - ".DateManagement::YMD2MDY($endDate);
     } else {
         $dates = "After ".DateManagement::YMD2MDY($startDate);
+    }
+    if ($range == "within") {
+        $rangeText = "(Start &amp; End Dates within Range)";
+    } else {
+        $rangeText = "(Start Date within Range)";
     }
 }
 
@@ -95,8 +103,23 @@ foreach ($records as $recordId) {
     $grantAry = $grants->getGrants($grantType);
     foreach ($grantAry as $grant) {
         $start = $grant->getVariable("start");
+        $end = $grant->getVariable("end");
         $grantTs = $start ? strtotime($start) : FALSE;
-        if ($grantTs && ($grantTs >= $startTs) && ($grantTs <= $endTs)) {
+        $grantEndTs = $end ? strtotime($end) : FALSE;
+        if (
+            $grantTs
+            && ($grantTs >= $startTs)
+            && ($grantTs <= $endTs)
+            && (
+                ($range == "start")
+                || (
+                    ($range == "within")
+                    && $grantEndTs
+                    && ($grantEndTs >= $startTs)
+                    && ($grantEndTs <= $endTs)
+                )
+            )
+        ) {
             $row = [];
             $awardNo = $grant->getNumber();
             $row[] = $names[$recordId] ?? "";
@@ -163,7 +186,7 @@ if (isset($_GET['csv'])) {
     if ($cohort) {
         echo "<h2>Cohort $cohort</h2>";
     }
-    echo $dates ? "<p class='centered'>$dates</p>" : "";
+    echo $dates ? "<p class='centered'>$dates $rangeText</p>" : "";
     echo "<p class='centered'><a href='$thisLink&csv'>Download as CSV</a><br/>";
     echo "<a href='$thisLink&json=$myToken&NOAUTH'>Access as a JSON (Dynamically Updated)</a></p>";
     echo "<p class='centered max-width'>Note: Budget dates are the dates that we have financial data for. Project dates are the prospective dates of the entire project.</p>";

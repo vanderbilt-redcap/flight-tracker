@@ -540,8 +540,8 @@ class Download {
         return Sanitizer::sanitizeArray($rows, FALSE, FALSE);
     }
 
-    public static function shortProjectTitle($token, $server) {
-        $title = self::projectTitle($token, $server);
+    public static function shortProjectTitle($pid) {
+        $title = self::projectTitle($pid);
         return self::shortenTitle($title);
     }
 
@@ -551,23 +551,24 @@ class Download {
         return str_replace(")", "]", $shortTitle);
     }
 
-    public static function shortProjectTitleByPid($pid) {
+    public static function projectTitle($pid) {
         $module = Application::getModule();
-        $sql = "SELECT app_title FROM redcap_projects WHERE project_id = ?";
+        $sql = "SELECT app_title FROM redcap_projects WHERE project_id = ? LIMIT 1";
         $result = $module->query($sql, [$pid]);
-        $title = "";
         if ($row = $result->fetch_assoc()) {
-            $title = $row['app_title'];
-        }
-        return self::shortenTitle($title);
-    }
-
-    public static function projectTitle($token, $server) {
-	    $settings = self::getProjectSettings($token, $server);
-	    if ($settings['project_title']) {
-	        return $settings['project_title'];
+            return $row['app_title'] ?? "";
         }
 	    return "";
+    }
+
+    public static function getProjectNotes($pid) {
+        $module = Application::getModule();
+        $sql = "SELECT project_note FROM redcap_projects WHERE project_id = ? LIMIT 1";
+        $result = $module->query($sql, [$pid]);
+        if ($row = $result->fetch_assoc()) {
+            return $row['project_note'] ?? "";
+        }
+        return "";
     }
 
 	public static function getProjectSettings($token, $server) {

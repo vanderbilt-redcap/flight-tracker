@@ -36,7 +36,7 @@ if ($_POST['process'] == "check") {
         }
         if ($missingField) {
             $configLink = Application::link("config.php");
-            $mssg = "You are missing a required field that is necessary to upgrade your Data Dictionary. The fields ".REDCapManagement::makeConjunction($requiredCustomFields)." are required and can be set via the <a href='$configLink'>Configure Application page</a>.";
+            $mssg = "You are missing a required field that is necessary to upgrade your Data Dictionary. The fields ".REDCapManagement::makeConjunction($requiredCustomFields)." are required and can be set via the <a href=\"$configLink\">Configure Application page</a>.";
             echo "<script>$.sweetModal({content: '$mssg', icon: $.sweetModal.ICON_ERROR});</script>";
         } else {
             $metadata = Download::metadata($token, $server);

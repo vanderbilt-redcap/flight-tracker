@@ -46,7 +46,7 @@ if ($_POST['action'] == "getMenteeHTML") {
         $currServer = Application::getSetting("server", $currPid);
         $projectLink = Application::getMenteeAgreementLink($currPid).$uidString;
         if ($currToken && $currServer && $projectLink && Application::has("mentoring_agreement", $currPid)) {
-            $projectTitle = Download::projectTitle($currToken, $currServer);
+            $projectTitle = Download::projectTitle($currPid);
             $projectTitle = preg_replace("/^Flight Tracker - /", "", $projectTitle);
             $menteeEmails = Download::emails($currToken, $currServer);
             $completes = Download::oneFieldWithInstances($currToken, $currServer, "mentoring_agreement_complete");

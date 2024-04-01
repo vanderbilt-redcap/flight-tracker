@@ -14,7 +14,7 @@ use Vanderbilt\CareerDevLibrary\Sanitizer;
 use Vanderbilt\CareerDevLibrary\Publications;
 
 # test projects
-define("LOCALHOST_TEST_PROJECT", 16);
+define("LOCALHOST_TEST_PROJECT", CareerDev::getLocalhostPluginPID());
 define("NEWMAN_SOCIETY_PROJECT", 66635);
 define("REDCAPTEST_TEST_PROJECT", 761);
 
@@ -22,8 +22,15 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.9.3";
+		return "6.10.0";
 	}
+
+    public static function getLocalhostPluginPid() {
+        if (Application::getServerEmail() == "scott.j.pearson@vumc.org") {
+            return 16;
+        }
+        return "";
+    }
 
     public static function getLatestReleaseVersion() {
         $module = self::getModule();

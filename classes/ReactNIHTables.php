@@ -546,13 +546,15 @@ table { border-collapse: collapse; }
         $data = [];
         list($firstNamesByPid, $lastNamesByPid, $emailsByPid) = NIHTables::getNamesByPid();
         foreach ($queryItems as $ary) {
-            $recordId = $ary['record'] ?? "";
-            $facultyName = $ary['name'] ?? "";
-            $recordInstance = $ary['recordInstance'];
-            $matches = NIHTables::findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
-            foreach ($matches as $match) {
-                list($pid, $matchRecordId) = explode(":", $match);
-                $this->updateDataForRecordInPid($data, $pid, $tableNum, $matchRecordId, $recordId, $recordInstance);
+            if (is_array($ary)) {
+                $recordId = $ary['record'] ?? "";
+                $facultyName = $ary['name'] ?? "";
+                $recordInstance = $ary['recordInstance'];
+                $matches = NIHTables::findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
+                foreach ($matches as $match) {
+                    list($pid, $matchRecordId) = explode(":", $match);
+                    $this->updateDataForRecordInPid($data, $pid, $tableNum, $matchRecordId, $recordId, $recordInstance);
+                }
             }
         }
         return $data;
@@ -568,10 +570,12 @@ table { border-collapse: collapse; }
         $newData = $data;
         $newData['data'] = [];
         foreach ($data['data'] as $row) {
-            if (isset($row[$col])) {
-                $row[$col] = preg_replace("/type\s*=\s*[\"']checkbox[\"']/i", "type='checkbox' disabled", $row[$col]);
+            if (is_array($row)) {
+                if (isset($row[$col])) {
+                    $row[$col] = preg_replace("/type\s*=\s*[\"']checkbox[\"']/i", "type='checkbox' disabled", $row[$col]);
+                }
+                $newData['data'][] = $row;
             }
-            $newData['data'][] = $row;
         }
         return $newData;
     }
@@ -603,16 +607,18 @@ table { border-collapse: collapse; }
                 $table = NIHTables::makeTable1_4DataIntoHTML($tableNum, $data);
             }
             foreach ($data['data'] as $row) {
-                $recordInstance = $row['recordInstance'] ?: NIHTables::getUniqueIdentifier($row, $data['headerList'], $tableNum);
-                $awardNo = "";
-                if ($tableNum == 3) {
-                    $awardNo = $row[$data['headerList'][0]] ?? "";
+                if (is_array($row)) {
+                    $recordInstance = $row['recordInstance'] ?: NIHTables::getUniqueIdentifier($row, $data['headerList'], $tableNum);
+                    $awardNo = "";
+                    if ($tableNum == 3) {
+                        $awardNo = $row[$data['headerList'][0]] ?? "";
+                    }
+                    $recordId = $row['record'] ?? "";
+                    $pid = $row['pid'] ?? "";
+                    $html .= "<input type='hidden' name='awardNo_$recordInstance' value='$awardNo' />";
+                    $html .= "<input type='hidden' name='recordId_$recordInstance' value='$recordId' />";
+                    $html .= "<input type='hidden' name='pid_$recordInstance' value='$pid' />";
                 }
-                $recordId = $row['record'] ?? "";
-                $pid = $row['pid'] ?? "";
-                $html .= "<input type='hidden' name='awardNo_$recordInstance' value='$awardNo' />";
-                $html .= "<input type='hidden' name='recordId_$recordInstance' value='$recordId' />";
-                $html .= "<input type='hidden' name='pid_$recordInstance' value='$pid' />";
             }
             $html .= $table;
             $html .= "<h4>Do you have any requested changes for this table?<br>Consider addressing any <span class='action_required'>red</span> items,<br>and make sure you click the Submit Changes button.</h4>";
@@ -644,9 +650,11 @@ table { border-collapse: collapse; }
         $newData = $data;
         $newData['data'] = [];
         foreach ($data['data'] as $row) {
-            $name = self::stripEmailAndHTML($row["Name"] ?? $row["Faculty Member"] ?? "");
-            if (in_array($name, $facultyList)) {
-                $newData['data'][] = $row;
+            if (is_array($row)) {
+                $name = self::stripEmailAndHTML($row["Name"] ?? $row["Faculty Member"] ?? "");
+                if (in_array($name, $facultyList)) {
+                    $newData['data'][] = $row;
+                }
             }
         }
         return $newData;
@@ -756,6 +764,14 @@ table { border-collapse: collapse; }
         return REDCapManagement::stripHTML($entry);
     }
 
+    public static function convertJSONs(&$post) {
+        foreach ($post as $key => $value) {
+            if (is_string($value) && REDCapManagement::isJSON($value)) {
+                $post[$key] = json_decode($value, TRUE);
+            }
+        }
+    }
+
     public function getDataForTable($post, &$nihTables) {
         $tableNum = Sanitizer::sanitize($post['tableNum']);
         $dateOfReport = Sanitizer::sanitize($post['dateOfReport']);
@@ -765,12 +781,14 @@ table { border-collapse: collapse; }
             $data = Application::getSetting(self::makeSaveTableKey($savedTableName, $tableNum), $this->pid);
             if ($data && isset($data['data'])) {
                 for ($i = 0; $i < count($data['data']); $i++) {
-                    foreach ($data['data'][$i] as $col => $value) {
-                        $data['data'][$i][$col] = str_replace("&#039;", "'", $data['data'][$i][$col]);
-                        $data['data'][$i][$col] = str_replace("&#39;", "'", $data['data'][$i][$col]);
-                        $data['data'][$i][$col] = str_replace("&quot;", "\"", $data['data'][$i][$col]);
-                        $data['data'][$i][$col] = str_replace("&#034;", "\"", $data['data'][$i][$col]);
-                        $data['data'][$i][$col] = str_replace("&#34;", "\"", $data['data'][$i][$col]);
+                    if (is_array($data['data'][$i])) {
+                        foreach ($data['data'][$i] as $col => $value) {
+                            $data['data'][$i][$col] = str_replace("&#039;", "'", $data['data'][$i][$col]);
+                            $data['data'][$i][$col] = str_replace("&#39;", "'", $data['data'][$i][$col]);
+                            $data['data'][$i][$col] = str_replace("&quot;", "\"", $data['data'][$i][$col]);
+                            $data['data'][$i][$col] = str_replace("&#034;", "\"", $data['data'][$i][$col]);
+                            $data['data'][$i][$col] = str_replace("&#34;", "\"", $data['data'][$i][$col]);
+                        }
                     }
                 }
             }
@@ -790,31 +808,41 @@ table { border-collapse: collapse; }
                     'Postdoctorates<br/>Continued in<br/>Research or<br/>Related Careers',
                 ];
                 $headers = $data['headerList'] ?? [];
+                $newDataData = [];
                 foreach ($data['data'] ?? [] as $i => $row) {
-                    if ($tableNum == 2) {
+                    if (is_string($row)) {
+                        $facultyName = "";
+                    } else if ($tableNum == 2) {
                         $facultyName = self::removeEmail($row["Name"]);
                     } else if ($tableNum == 4) {
                         $facultyName = self::removeEmail($row["Faculty Member"]);
                     } else {
                         $facultyName = "";
+                        $newDataData[] = $row;
                     }
                     if ($facultyName) {
+                        # tables 2 & 4
                         $matches = NIHTables::findMatchesInAllFlightTrackers($facultyName, $firstNamesByPid, $lastNamesByPid);
                         $otherProjectsValues = NIHTables::getFeedbackData($headers, $matches, $emailsByPid, $tableNum, $this->pid);
+                        $newDataDataRow = $data['data'][$i];
                         foreach ($headers as $header) {
                             if (in_array($header, $headersToImportData)) {
-                                $data['data'][$i][$header] = $row[$header].NIHTables::displayOtherProjectsValues($otherProjectsValues[$header], [], $row[$header]);
+                                $newDataDataRow[$header] = $row[$header].NIHTables::displayOtherProjectsValues($otherProjectsValues[$header], [], $row[$header]);
                             }
                         }
+                        $newDataData[] = $newDataDataRow;
                     }
                 }
+                $data['data'] = $newDataData;
 
                 if (in_array($tableNum, [2, 4]) && !empty($newFaculty)) {
                     $nihTables->addFaculty($newFaculty, $dateOfReport);
                     $newFacultyData = $nihTables->getData($tableNum);
                     $combinedData = self::removeOldFaculty($data, $facultyList);
                     foreach ($newFacultyData["data"] as $row) {
-                        $combinedData["data"][] = $row;
+                        if (is_array($row)) {
+                            $combinedData["data"][] = $row;
+                        }
                     }
                     $combinedData['source'] = "Combined with New Data";
                     return $combinedData;
@@ -1144,7 +1172,7 @@ table { border-collapse: collapse; }
                                 $tableAry = $this->filterNotesByTables($ary, $tableNums);
                                 if (is_array($tableAry) && !empty($tableAry)) {
                                     if (!$projectHeader) {
-                                        $projectHeader = $pid.": ".Download::projectTitle($currToken, $currServer);
+                                        $projectHeader = $pid.": ".Download::projectTitle($pid);
                                         if ($adminEmail) {
                                             $projectHeader = "<a href='mailto:$adminEmail'>$projectHeader</a>";
                                         }

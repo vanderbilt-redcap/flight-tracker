@@ -161,7 +161,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
             }
             $globalChart->setLegendTitle("Number of Collaborative Papers");
             $isVIGH = (
-                (Application::isLocalhost() && ($pid == 72))
+                (Application::isLocalhost() && ($pid == 72) && (Application::getServerEmail() == "scott.j.pearson@vumc.org"))
                 || (Application::isServer("redcap.vanderbilt.edu") && ($pid == 178505))
             );
             if ($isVIGH || (isset($_GET['minColor']) && isset($_GET['maxColor']))) {
@@ -169,7 +169,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
                 $maxColor = Sanitizer::sanitize($_GET['maxColor'] ?: "#336e8c");
                 $globalChart->setHeatColors($minColor, $maxColor);
             }
-            echo $globalChart->setShowLabels($_GET['showLabels'] ?? FALSE);
+            $globalChart->setShowLabels($_GET['showLabels'] ?? FALSE);
             echo $globalChart->getImportHTML();
             echo $globalChart->getHTML(1000, 650);
         }

@@ -310,7 +310,7 @@ class NIHTables {
                     $server = Application::getSetting("server", $pid);
                     if ($token && $server && REDCapManagement::isActiveProject($pid)) {
                         $adminEmail = Application::getSetting("admin_email", $pid);
-                        $projectTitle = $projectTitles[$pid] ?? Download::projectTitle($token, $server);
+                        $projectTitle = $projectTitles[$pid] ?? Download::projectTitle($pid);
                         $projectTitles[$pid] = $projectTitle;
                         $projectInformation = "<div><strong>$projectTitle</strong></div>";
                         $redcapInformation = "<div class='smaller'>REDCap PID $pid";
@@ -606,7 +606,7 @@ class NIHTables {
                 }
                 foreach ($savedTableKeys as $key) {
                     $data = Application::getSetting($key, $currPid) ?: [];
-                    if (isset($data['data'])) {
+                    if (isset($data['data']) && is_array($data['data'])) {
                         $otherSavedValues = $defaultValues;
                         self::parseSavedData($otherSavedValues, $data, $facultyName);
                         foreach ($otherSavedValues as $col => $value) {
@@ -639,12 +639,14 @@ class NIHTables {
         list($facultyFirst, $facultyLast) = NameMatcher::splitName($facultyName, 2);
         if (isset($savedData['data'])) {
             foreach($savedData['data'] as $row) {
-                $rowName = self::getNameFromDataColumn($row['Name']);
-                list($rowFirst, $rowLast) = NameMatcher::splitName($rowName, 2);
-                if (NameMatcher::matchName($facultyFirst, $facultyLast, $rowFirst, $rowLast)) {
-                    foreach (array_keys($values) as $col) {
-                        if (isset($row[$col]) && $row[$col]) {
-                            $values[$col] = $row[$col];
+                if (is_array($row)) {
+                    $rowName = self::getNameFromDataColumn($row['Name']);
+                    list($rowFirst, $rowLast) = NameMatcher::splitName($rowName, 2);
+                    if (NameMatcher::matchName($facultyFirst, $facultyLast, $rowFirst, $rowLast)) {
+                        foreach (array_keys($values) as $col) {
+                            if (isset($row[$col]) && $row[$col]) {
+                                $values[$col] = $row[$col];
+                            }
                         }
                     }
                 }
@@ -670,7 +672,7 @@ class NIHTables {
                 $projectInfo = "pid: $pid";
                 $contactInfo = "<a href='mailto:$adminEmail'>Email Admins</a>";
                 if ($token && $server) {
-                    $projectTitle = Download::shortProjectTitle($token, $server);
+                    $projectTitle = Download::shortProjectTitle($pid);
                     $projectInfo = "$projectTitle<br/>$projectInfo";
                 }
                 $valuesStrings = [];
