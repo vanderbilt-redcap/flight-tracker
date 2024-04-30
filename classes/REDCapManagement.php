@@ -1578,14 +1578,6 @@ class REDCapManagement {
         throw new \Exception("Could not get project-id from token!");
     }
 
-	public static function getPIDFromToken($token, $server) {
-		$projectSettings = Download::getProjectSettings($token, $server);
-		if (isset($projectSettings['project_id'])) {
-			return $projectSettings['project_id'];
-		}
-        return self::getPIDFromTokenFromDatabase($token);
-	}
-
     public static function getOptionalFieldsNumber($field) {
         if (preg_match("/person_role/", $field)) {
             return 6;
