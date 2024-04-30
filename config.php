@@ -440,7 +440,7 @@ function makeSettings($module, $pid) {
     $ary["Proxy Server (Only if Applicable)"][] = makeSetting("proxy-pass", "text", "Proxy Password");
 
     $ary["REDCap Configuration"] = [];
-    $ary["REDCap Configuration"][] = makeSetting("safe_servers", "text", "Comma-separated list of domain names (e.g., redcap.vanderbilt.edu) of other <strong>external</strong> servers that (e.g., a separate REDCap Survey Server) that can access Flight Tracker");
+    $ary["REDCap Configuration"][] = makeSetting("safe_servers", "text", "Comma-separated list of domain names (e.g., redcap.vumc.org) of other <strong>external</strong> servers that (e.g., a separate REDCap Survey Server) that can access Flight Tracker");
 
     $html = "";
 	if ($module) {

@@ -35,6 +35,7 @@ $cohortStr = isset($_GET['cohort']) ? "&cohort=".urlencode(Sanitizer::sanitizeCo
 
 echo "<h1>Table ".NIHTables::formatTableNum($tableNum)."</h1>\n";
 echo "<p class='centered'>$htmlForIncludeDOI&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href='".Application::link("reporting/index.php").$cohortStr."'>Back to All Tables</a></p>";
+echo "<p class='centered max-width'>To download this table, copy the entire table and paste into your word processor in a blank document.</p>";
 $note = "";
 if ($tableNum != "Common Metrics") {
     $note = " Its information must be re-keyed and uploaded through xTRACT.";

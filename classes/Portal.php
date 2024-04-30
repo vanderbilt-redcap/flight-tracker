@@ -612,7 +612,7 @@ class Portal
                         }
                     }
                     $this->removeDisassociations($storedData['matches']);
-                    if (Application::isVanderbilt() && Application::isServer("redcap.vanderbilt.edu")) {
+                    if (Application::isVanderbilt() && (Application::isServer("redcap.vanderbilt.edu") || Application::isServer("redcap.vumc.org"))) {
                         self::filterOutNonNewmanProject($storedData['matches']);
                     }
                     return $storedData;

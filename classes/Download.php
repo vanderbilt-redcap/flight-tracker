@@ -505,6 +505,49 @@ class Download {
         return [];
     }
 
+    # Cf. API/project/export.php getItems()
+    public static function projectSettingsByPid($pid) {
+        # keys are values from redcap_projects table; values are user-facing names
+        require_once(APP_PATH_DOCROOT."Classes/Project.php");
+        require_once(APP_PATH_DOCROOT."Config/init_functions.php");
+        $projectFields = \Project::getAttributesApiExportProjectInfo();
+        $module = Application::getModule();
+
+        $values = [];
+        # Use * for column names because of the way that \Project::getAttributesApiExportProjectInfo() gets data
+        # This is generally bad practice, agreed, but it is the best way to handle new columns in this instance
+        $sql = "SELECT * FROM redcap_projects WHERE project_id = ?";
+        $result = $module->query($sql, [$pid]);
+        if ($row = $result->fetch_assoc()) {
+            foreach ($projectFields as $dbKey => $userKey) {
+                $val = "";
+                if (isset($row[$dbKey])) {
+                    $val = $row[$dbKey];
+                    if (is_bool($val)) {
+                        $val = ($val === FALSE) ? 0 : 1;
+                    } else {
+                        # REDCap's limited set of html special chars, rather than html_entity_decode
+                        $val = \label_decode($val);
+                    }
+                }
+                $values[$userKey] = \isinteger($val) ? (int) $val : $val;
+            }
+        }
+        $values["is_longitudinal"] = 0;  // always classical
+        $values["has_repeating_instruments_or_events"] = 1;
+        $versionsByPrefix = \ExternalModules\ExternalModules::getEnabledModules($pid);
+        $values["external_modules"] = implode(",", array_keys($versionsByPrefix));
+
+        # From REDCap: Reformat the missing data codes to be pipe-separated
+        $theseMissingCodes = array();
+        foreach (\parseEnum($values['missing_data_codes'] ?? "") as $key=>$val) {
+            $theseMissingCodes[] = "$key, $val";
+        }
+        $values['missing_data_codes'] = implode(" | ", $theseMissingCodes);
+
+        return $values;
+    }
+
     public static function metadataByPid($pid, $fields = []) {
         if (isset($_GET['test']) || isset($_GET['testPSU'])) {
             Application::log("Download::metadataByPid", $pid);
@@ -1512,7 +1555,7 @@ class Download {
 		$records = array("1");
 		$fields = array("record_id");
 		$token = "C65F37B496A52AE5E044A8D79FDD2A02";
-		$server = "https://redcap.vanderbilt.edu/api/";
+		$server = "https://redcap.vumc.org/api/";
 
 		$tester->tag("fieldsForRecords");
 		$ary = Download::fieldsForRecords($token, $server, $fields, $records);
@@ -1727,10 +1770,19 @@ class Download {
 		return self::sendToServer($server, $data);
 	}
 
+    public static function recordsByPid($pid, $records = NULL) {
+		if (!isset($records)) {
+            # wrong function => re-route
+            return self::recordIdsByPid($pid);
+        }
+        $fields = NULL;
+        return self::fieldsForRecordsByPid($pid, $fields, $records);
+    }
+
 	public static function records($token, $server, $records = NULL) {
 		if (!isset($records)) {
 			# assume recordIds was meant if $records null
-			return Download::recordIds($token, $server);
+			return self::recordIds($token, $server);
 		}
 		if (isset($_GET['test'])) {
             Application::log("Download::records ".json_encode($records));

@@ -89,7 +89,7 @@ class Links {
 	}
 
 	public function makeLink_test($tester) {
-		$url = "https://redcap.vanderbilt.edu/plugins/career_dev/index.php";
+		$url = "https://redcap.vumc.org/plugins/career_dev/index.php";
 		$text = "Test Link";
 		$link = self::makeLink($url, $text);
 		$tester->assertMatch("/$text/", $link);

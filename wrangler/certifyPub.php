@@ -8,7 +8,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-Application::applySecurityHeaders();
+Application::applySecurityHeaders($_GET['pid'] ?? $_GET['project_id'] ?? NULL);
 
 require_once(dirname(__FILE__)."/../small_base.php");
 

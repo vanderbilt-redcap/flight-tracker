@@ -6,8 +6,9 @@ use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 # used every time that the summaries are recalculated 
 # 30 minute runtimes
 
-require_once(dirname(__FILE__)."/../classes/Autoload.php");
-require_once(dirname(__FILE__)."/../small_base.php");
+require_once(__DIR__."/../classes/Autoload.php");
+require_once(__DIR__."/../small_base.php");
+require_once(__DIR__."/updateInstitution.php");
 
 function getLockFile($pid) {
 	return CareerDev::getLockFile($pid);
@@ -34,6 +35,7 @@ function unlock($pid) {
 }
 
 function makeSummary($token, $server, $pid, $records, $runAllRecords = FALSE) {
+    updateInstitution($token, $server, $pid, $records);
     if (!is_array($records)) {
         $records = [$records];
         $runAllRecords = TRUE;
@@ -59,6 +61,8 @@ function makeSummary($token, $server, $pid, $records, $runAllRecords = FALSE) {
             summarizeRecord($token, $server, $pid, $recordId, $metadata);
             gc_collect_cycles();
         }
+
+        REDCapManagement::cleanUpOldLogs($pid);
 
         unlock($pid);
     }

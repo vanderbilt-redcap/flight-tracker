@@ -9,7 +9,10 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 # Reports figures like number of scholars for each project.
 
 function reportStats($token, $server, $pid, $records) {
-	$url = "https://redcap.vanderbilt.edu/plugins/career_dev/receiveStats.php";
+	$urls = [
+        "https://redcap.vumc.org/plugins/career_dev/receiveStats.php",
+        "https://redcap.vanderbilt.edu/plugins/career_dev/receiveStats.php"
+    ];
 
 	# do NOT report details of records; just report: number of records/scholars
 	$recordIds = Download::recordIds($token, $server);
@@ -29,20 +32,36 @@ function reportStats($token, $server, $pid, $records) {
         // "grants" => $numGrants,
         // "publications" => $numPubs,
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post, '', '&'));
-        $output = curl_exec($ch);
-        CareerDev::log($output);
-        curl_close($ch);
+        $url = "";
+        foreach ($urls as $u) {
+            try {
+                if (URLManagement::isGoodURL($u)) {
+                    $url = $u;
+                    break;
+                }
+            } catch (\Exception $e) {
+                # do nothing
+            }
+        }
+        if ($url) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_VERBOSE, 0);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+            curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+            curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post, '', '&'));
+            URLManagement::applyProxyIfExists($ch, $pid);
+            $output = curl_exec($ch);
+            Application::log($output, $pid);
+            curl_close($ch);
+        } else {
+            Application::log("Cannot report stats!", $pid);
+        }
     }
 }
 

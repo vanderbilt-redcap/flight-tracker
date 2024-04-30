@@ -3,7 +3,7 @@
 require_once("small_base.php");
 
 $backup_token = "DAEF83030E6CD5703582DCE8EB4E8406";
-$backup_server = "https://redcap.vanderbilt.edu/api/";
+$backup_server = "https://redcap.vumc.org/api/";
 
 echo "Download reporter fields\n";
 $data = array(

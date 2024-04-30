@@ -12,7 +12,7 @@ use \Vanderbilt\CareerDevLibrary\NameMatcher;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 define('NOAUTH', TRUE);
-Application::applySecurityHeaders();
+Application::applySecurityHeaders($_GET['pid'] ?? $_GET['project_id'] ?? NULL);
 
 require_once(dirname(__FILE__)."/../small_base.php");
 

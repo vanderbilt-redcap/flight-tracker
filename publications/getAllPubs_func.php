@@ -51,7 +51,11 @@ function getPubsGeneric($token, $server, $pid, $records, $searchWithInstitutions
                 Application::log("Uploaded $cnt blank rows for $recordId", $pid);
             }
         }
-        Publications::deleteMismatchedRows($token, $server, $pid, $recordId, $firstNames, $lastNames);
+        # 2024-04-17 - I'm removing this line because it sometimes acts incorrectly due to data irregularities in PubMed
+        # It also frustrates users who try to add back items that have such irregularities, only to have them deleted automatically
+        # The matching algorithm is better now than in the past, so I don't think this is needed.
+        # I'm leaving the code in here for now in case we want to turn it on.
+        // Publications::deleteMismatchedRows($token, $server, $pid, $recordId, $firstNames, $lastNames);
         if (hasBlankCitationField($redcapData, "citation_pmcid")) {
             Publications::updateNewPMCs($token, $server, $pid, $recordId, $redcapData);
         }

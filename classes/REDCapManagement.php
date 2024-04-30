@@ -601,8 +601,11 @@ class REDCapManagement {
     # so being looser for future adaptation seems more in order
     public static function cleanUpOldLogs($pid) {
         $module = Application::getModule();
-        $numToDelete = 1000;
+        $numToDelete = 10000;    // Changing to 10,000 from 1,000; might want to consider larger, but MySQL deletes sometimes lag when larger than 10k
         $numBatches = 0;
+        $messageFrequency = 20;
+        $secondLimit = 60 * 15;   // maximum run time
+        $startTs = time();
 
         $minDate = DateManagement::PHPTsToREDCapTs(strtotime("-18 months"));
         $params = [$minDate, $pid];
@@ -610,11 +613,12 @@ class REDCapManagement {
         $fromAndWhereClause = "FROM $logEventTable WHERE ts <= ? AND project_id = ?";
         $deleteSql = "DELETE $fromAndWhereClause LIMIT $numToDelete";
         $selectSql = "SELECT log_event_id $fromAndWhereClause LIMIT 1";
+        $startTs = time();
         do {
             $module->query($deleteSql, $params);
             $result = $module->query($selectSql, $params);
             $numBatches++;
-        } while ($result->fetch_assoc());
+        } while ($result->fetch_assoc() && (time() < $startTs + $secondLimit));
 
         $minDate = DateManagement::PHPTsToREDCapTs(strtotime("-1 week"));
         $params = [$minDate, $pid];
@@ -622,11 +626,17 @@ class REDCapManagement {
         $fromAndWhereClause = "FROM $logEventTable WHERE ts <= ? AND project_id = ? AND data_values LIKE '%summary_last_calculated = %'";
         $deleteSql = "DELETE $fromAndWhereClause LIMIT $numToDelete";
         $selectSql = "SELECT log_event_id $fromAndWhereClause LIMIT 1";
+        $batchStartTs = time();
         do {
             $module->query($deleteSql, $params);
             $result = $module->query($selectSql, $params);
             $numBatches++;
-        } while ($result->fetch_assoc());
+            if ($numBatches % $messageFrequency == 0) {
+                $batchEndTs = time();
+                Application::log("On iteration $numBatches, deleted another ".($messageFrequency * $numToDelete)." rows in ".($batchEndTs - $batchStartTs)." seconds", $pid);
+                $batchStartTs = $batchEndTs;
+            }
+        } while ($result->fetch_assoc() && (time() < $startTs + $secondLimit));
 
         Application::log("Estimated number of event_log rows cleaned: ".($numBatches * $numToDelete), $pid);
     }
@@ -1547,11 +1557,16 @@ class REDCapManagement {
         DataDictionaryManagement::setupSurveys($projectId, $surveysAndLabels);
 	}
 
-	public static function getPIDFromToken($token, $server) {
-		$projectSettings = Download::getProjectSettings($token, $server);
-		if (isset($projectSettings['project_id'])) {
-			return $projectSettings['project_id'];
-		}
+	public static function getPIDFromToken($token, $server)
+    {
+        $projectSettings = Download::getProjectSettings($token, $server);
+        if (isset($projectSettings['project_id'])) {
+            return $projectSettings['project_id'];
+        }
+        return self::getPIDFromTokenFromDatabase($token);
+    }
+
+    public static function getPIDFromTokenFromDatabase($token) {
         $module = Application::getModule();
         if ($module && self::isValidToken($token)) {
             $sql = "SELECT project_id FROM redcap_user_rights WHERE api_token = ?";
@@ -1560,7 +1575,15 @@ class REDCapManagement {
                 return $row['project_id'];
             }
         }
-		throw new \Exception("Could not get project-id from project settings: ".self::json_encode_with_spaces($projectSettings));
+        throw new \Exception("Could not get project-id from token!");
+    }
+
+	public static function getPIDFromToken($token, $server) {
+		$projectSettings = Download::getProjectSettings($token, $server);
+		if (isset($projectSettings['project_id'])) {
+			return $projectSettings['project_id'];
+		}
+        return self::getPIDFromTokenFromDatabase($token);
 	}
 
     public static function getOptionalFieldsNumber($field) {

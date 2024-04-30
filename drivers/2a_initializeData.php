@@ -20,7 +20,7 @@ if ($pid == 66635) {
 }
 
 # Token for VFRS
-$vfrs_token = 'A987974FEEBDA008EB3200B182EAD1EE';
+$vfrs_token = '';
 
 # all of the newman data
 # a prefix differentiates the data in the REDCap database
@@ -173,7 +173,7 @@ $data = array(
 	'returnFormat' => 'json'
 );
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://redcap.vanderbilt.edu/api/');
+curl_setopt($ch, CURLOPT_URL, 'https://redcap.vumc.org/api/');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_VERBOSE, 0);

@@ -162,7 +162,7 @@ if (isset($_GET['cohort']) && !empty($records)) {
             $globalChart->setLegendTitle("Number of Collaborative Papers");
             $isVIGH = (
                 (Application::isLocalhost() && ($pid == 72) && (Application::getServerEmail() == "scott.j.pearson@vumc.org"))
-                || (Application::isServer("redcap.vanderbilt.edu") && ($pid == 178505))
+                || ((Application::isServer("redcap.vanderbilt.edu") || Application::isServer("redcap.vumc.org")) && ($pid == 178505))
             );
             if ($isVIGH || (isset($_GET['minColor']) && isset($_GET['maxColor']))) {
                 $minColor = Sanitizer::sanitize($_GET['minColor'] ?: "#CCDAE2");

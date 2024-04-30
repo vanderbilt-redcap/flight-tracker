@@ -173,8 +173,8 @@ function makeDepartmentPrompt($projectId) {
 	$html .= "</style>";
 
 	if (Application::isVanderbilt()) {
-        list($respDepts, $defaultDepartments) = REDCapManagement::downloadURL("https://redcap.vanderbilt.edu/plugins/career_dev/data/departments.txt");
-        list($respResources, $defaultResources) = REDCapManagement::downloadURL("https://redcap.vanderbilt.edu/plugins/career_dev/data/resources.txt");
+        list($respDepts, $defaultDepartments) = REDCapManagement::downloadURL("https://redcap.vumc.org/plugins/career_dev/data/departments.txt");
+        list($respResources, $defaultResources) = REDCapManagement::downloadURL("https://redcap.vumc.org/plugins/career_dev/data/resources.txt");
         if (($respDepts != 200) || ($respResources != 200)) {
             $defaultDepartments = "";
             $defaultResources = "";

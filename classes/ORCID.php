@@ -142,7 +142,9 @@ class ORCID {
             if (is_array($value)) {
                 $values = array();
                 foreach ($value as $v) {
-                    $values[] = $v;
+                    if ($v) {
+                        $values[] = $v;
+                    }
                 }
                 if (count($values) > 1) {
                     $queryStrings[] = $key . ":" . "(" . implode(" OR ", $values) . ")";

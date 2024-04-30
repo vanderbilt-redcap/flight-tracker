@@ -99,7 +99,7 @@ class Definitions {
 	}
 
 	public function getCodeBookLink() {
-		return "Download the Project's CodeBook ".Links::makeLink("https://redcap.vanderbilt.edu/plugins/career_dev/docs/Codebook.docx", "here").".";
+		return "Download the Project's CodeBook ".Links::makeLink("https://redcap.vumc.org/plugins/career_dev/docs/Codebook.docx", "here").".";
 	}
 
 	public function getSubText() {

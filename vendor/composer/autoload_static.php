@@ -75,6 +75,7 @@ class ComposerStaticInit356aec8a2d35171e17e171e2b60bbfb6
             'PhpOffice\\Math\\' => 15,
             'ParagonIE\\ConstantTime\\' => 23,
             'PackageVersions\\' => 16,
+            'PHPStan\\PhpDocParser\\' => 21,
         ),
         'M' => 
         array (
@@ -93,6 +94,7 @@ class ComposerStaticInit356aec8a2d35171e17e171e2b60bbfb6
         'D' => 
         array (
             'Dompdf\\' => 7,
+            'Doctrine\\Deprecations\\' => 22,
         ),
         'C' => 
         array (
@@ -233,6 +235,10 @@ class ComposerStaticInit356aec8a2d35171e17e171e2b60bbfb6
         array (
             0 => __DIR__ . '/..' . '/composer/package-versions-deprecated/src/PackageVersions',
         ),
+        'PHPStan\\PhpDocParser\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/phpstan/phpdoc-parser/src',
+        ),
         'MyCLabs\\Enum\\' => 
         array (
             0 => __DIR__ . '/..' . '/myclabs/php-enum/src',
@@ -256,6 +262,10 @@ class ComposerStaticInit356aec8a2d35171e17e171e2b60bbfb6
         'Dompdf\\' => 
         array (
             0 => __DIR__ . '/..' . '/dompdf/dompdf/src',
+        ),
+        'Doctrine\\Deprecations\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/doctrine/deprecations/lib/Doctrine/Deprecations',
         ),
         'Composer\\XdebugHandler\\' => 
         array (

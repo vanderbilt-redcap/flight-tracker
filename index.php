@@ -130,7 +130,7 @@ $(document).ready(function() {
 
     <h1 style='margin-bottom: 0;'>Flight Tracker Central</h1>
     <h3 class='nomargin' style='background-color: transparent;'>v<?= $currVersion ?> <span style="font-size: 0.7em;" class="darkgreytext" title="Contact your REDCap administrator for any Flight Tracker upgrades"><?= $versionText ?></span></h3>
-    <h4 class='nomargin'>Watch Your Scholars Fly - <a href="https://redcap.vanderbilt.edu/flighttracker/">Flight Tracker Community Support</a></h4>
+    <h4 class='nomargin'>Watch Your Scholars Fly - <a href="https://redcap.vumc.org/flighttracker/">Flight Tracker Community Support</a></h4>
     <h5>from <img src="<?= Application::link("img/efs_small_logoonly.png") ?>" alt="Edge for Scholars" style="width: 27px; height: 20px;"> <a href='<?= $edgeLink ?>' target="_blank">Edge for Scholars</a></h5>
     <?php
         $module = CareerDev::getModule();
@@ -255,7 +255,7 @@ $(document).ready(function() {
             <h3><i class='fa fa-globe-americas'></i> Consortium</h3>
             <p class='centered'><a href='<?= CareerDev::link("community.php") ?>'>About the Consortium</a></p>
             <h4 class='nomargin'>Monthly Planning Meetings</h4>
-            <p class='centered' style='margin-top: 0px;'>Next meeting is on <?= Consortium::findNextMeeting() ?>, at 1pm CT (2pm ET, 11am PT). Email <a href='mailto:scott.j.pearson@vumc.org'>Scott Pearson</a> for an invitation. (<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'>View agenda</a>.)</p>
+            <p class='centered' style='margin-top: 0px;'>Next meeting is on <?= Consortium::findNextMeeting() ?>, at 1pm CT (2pm ET, 11am PT). Email <a href='mailto:scott.j.pearson@vumc.org'>Scott Pearson</a> for an invitation. (<a href='https://redcap.vumc.org/plugins/career_dev/consortium/'>View agenda</a>.)</p>
         </div>
 
         <?= $bottomPadding ?>

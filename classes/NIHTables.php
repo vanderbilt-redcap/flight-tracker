@@ -1112,7 +1112,7 @@ class NIHTables {
                             $newRow['pid'] = $pid;
                             $newRow['record'] = $recordId;
                             $newRow['recordInstance'] = $recordInstance;
-                            $newRow['email'] = implode(";", $emailsWithName);
+                            $newRow['email'] = implode(";", array_filter($emailsWithName));
                             for ($j = 0; $j < count($row); $j++) {
                                 $newRow[$headers[$j]] = $row[$j];
                             }
@@ -1712,7 +1712,7 @@ class NIHTables {
                 }
                 if ($dateUnderConsideration) {
                     $startTs = strtotime($dateUnderConsideration);
-                    if (!$ts || ($ts < $startTs)) {
+                    if (!$ts || ($ts > $startTs)) {
                         $ts = $startTs;
                     }
                 }
@@ -2191,6 +2191,7 @@ class NIHTables {
             $validGrantClasses = array("K", "T", "Other", "");
         }
 
+        $initialResearchTopic = $this->getInitialResearchTopic($recordId);
         if ($grantClass == "K") {
             # if K => K Title
             $fields = array_unique(array_merge(
@@ -2208,18 +2209,23 @@ class NIHTables {
                     }
                 }
             }
+            if ($initialResearchTopic) {
+                return $initialResearchTopic;
+            }
             if (!$lastValidKTitle) {
                 return $this->getCustomGrantTitle($recordId, [1, 2, 10]);
             }
             return $lastValidKTitle;
         } else if ($grantClass == "T") {
             # if T => from survey (check_degree0_topic or custom_title)
-            $topics = Download::oneField($this->token, $this->server, "check_degree0_topic");
-            if ($topics[$recordId]) {
-                return $topics[$recordId];
+            if ($initialResearchTopic) {
+                return $initialResearchTopic;
             }
             return $this->getCustomGrantTitle($recordId, self::getTrainingTypesForGrantClass());
         } else if (($grantClass == "Other") || ($grantClass == "")) {
+            if ($initialResearchTopic) {
+                return $initialResearchTopic;
+            }
             # if other => blank
             return "";
         } else if (in_array($grantClass, $validGrantClasses)) {
@@ -2227,6 +2233,18 @@ class NIHTables {
         } else {
             throw new \Exception("Your grant class ($grantClass) is invalid!");
         }
+    }
+
+    private function getInitialResearchTopic($recordId) {
+        $surveyTopic = Download::oneFieldForRecordByPid($this->pid, "check_degree0_topic", $recordId);
+        if ($surveyTopic) {
+            return $surveyTopic;
+        }
+        $importTopic = Download::oneFieldForRecordByPid($this->pid, "init_import_degree0_topic", $recordId);
+        if ($importTopic) {
+            return $importTopic;
+        }
+        return "";
     }
     
     private function getAlteredChoices() {
@@ -2731,11 +2749,14 @@ class NIHTables {
 	        foreach ($names as $recordId => $name) {
                 $currentTrainingGrants = self::getTrainingGrantsForRecord($trainingGrants, $recordId);
 
-                $startDate = self::getEarliestStartDate($currentTrainingGrants, $recordId);
-                if (!$startDate) {
+                $customGrantStartDate = self::getEarliestStartDate($currentTrainingGrants, $recordId);
+                $initSurveyStartDate = Download::oneFieldForRecordByPid($this->pid, "check_degree0_start", $recordId);
+                $initImportStartDate = Download::oneFieldForRecordByPid($this->pid, "check_degree0_start", $recordId);
+                if (!$customGrantStartDate && !$initSurveyStartDate && !$initImportStartDate) {
                     $countingStartDate = $baseLineStart;
                 } else {
-                    $countingStartDate = $startDate;
+                    $eligibleDates = REDCapManagement::removeBlanksFromAry([$customGrantStartDate, $initSurveyStartDate, $initImportStartDate]);
+                    $countingStartDate = DateManagement::getEarliestDate($eligibleDates);
     	        }
                 $startingDates[$recordId] = strtotime($countingStartDate);
             }

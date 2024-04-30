@@ -1221,7 +1221,7 @@ class DataDictionaryManagement {
     }
 
     public static function updateAlumniAssociations(&$metadata, $originalMetadata, $pid) {
-        $alumniURL = "https://redcap.vanderbilt.edu/plugins/career_dev/getAlumniAssociations.php?NOAUTH";
+        $alumniURL = "https://redcap.vumc.org/plugins/career_dev/getAlumniAssociations.php?NOAUTH";
         list($resp, $alumniJSON) = URLManagement::downloadURL($alumniURL, $pid);
         $indexedOriginalMetadata = self::indexMetadata($originalMetadata);
         $nativeAlumniAssociations = json_decode($alumniJSON ?: "[]", TRUE);

@@ -67,6 +67,21 @@ function runMainCrons(&$manager, $token, $server) {
             $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
         }
 
+        if (Application::isServer("redcap.vanderbilt.edu") || Application::isServer("redcap.vumc.org")) {
+            if (in_array('ldapds', $forms)) {
+                $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $allRecords, 10000);
+            }
+            $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
+            $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Friday", $allRecords, 500);
+            $manager->addCron("drivers/importHistoricalCOEUS.php", "importHistoricalCOEUS", "2024-03-25", $allRecords, 10000);
+            if (in_array('coeus', $forms)) {
+                # Put in Multi crons
+                // $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
+                $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
+            } else if (in_array('coeus2', $forms)) {
+                $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
+            }
+        }
     } catch(\Exception $e) {
         Application::log("ERROR in runMainCrons: ".$e->getMessage(), $pid);
     }
@@ -78,7 +93,6 @@ function runIntenseCrons(&$manager, $token, $server) {
     Application::log("loadIntenseCrons", $pid);
 
     try {
-        $forms = Download::metadataForms($token, $server);
         $metadataFields = Download::metadataFields($token, $server);
         $switches = new FeatureSwitches($token, $server, $pid);
         if (in_array("identifier_stop_collection", $metadataFields)) {
@@ -87,9 +101,6 @@ function runIntenseCrons(&$manager, $token, $server) {
             $allRecords = Download::recordIds($token, $server);
         }
         $records = $switches->downloadRecordIdsToBeProcessed($allRecords);
-        $securityTestMode = Application::getSetting("security_test_mode", $pid);
-
-        $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Saturday", $allRecords, 10000);
 
         if (!Application::getSetting("dedupResources122023", $pid)) {
             $manager->addCron("drivers/preprocess.php", "dedupResources", date("Y-m-d"));
@@ -124,22 +135,6 @@ function runIntenseCrons(&$manager, $token, $server) {
             }
         }
 
-        if (in_array('ldapds', $forms)) {
-            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $allRecords, 10000);
-        }
-        if (!Application::isLocalhost() && Application::isVanderbilt() && !Application::isServer("redcaptest.vanderbilt.edu")) {
-            # only on redcap.vanderbilt.edu
-            $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
-            $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Friday", $allRecords, 500);
-            $manager->addCron("drivers/importHistoricalCOEUS.php", "importHistoricalCOEUS", "2024-03-25", $allRecords, 10000);
-            if (in_array('coeus', $forms)) {
-                # Put in Multi crons
-                // $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
-                $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
-            } else if (in_array('coeus2', $forms)) {
-                $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
-            }
-        }
         $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $allRecords, 100000);
 
         $celebrations = new CelebrationsEmail($token, $server, $pid, []);
@@ -229,7 +224,6 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
         if (Application::isVanderbilt() && !Application::isLocalhost() && in_array("pre_screening_survey", $forms)) {
             $manager->addCron("drivers/11_vfrs.php", "updateVFRS", $date, $records, 100);
 		}
-        $manager->addCron("drivers/updateInstitution.php", "updateInstitution", "Tuesday");
         if (in_array("coeus", $forms)) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", $date, $records, 500);
         } else if (in_array("coeus2", $forms)) {
@@ -309,7 +303,7 @@ function loadMultiProjectCrons(&$manager, $pids)
         $manager->addMultiCron("drivers/19_updateNewCoeus.php", "updateAllCOEUSMulti", "Wednesday", $pids);
         $manager->addMultiCron("drivers/22_getVERA.php", "getVERAMulti", "Monday", $pids);
         $manager->addMultiCron("drivers/updateAllMetadata.php", "updateMetadataMulti", "Monday", $pids);
-        if (Application::isServer("redcap.vanderbilt.edu")) {
+        if (Application::isServer("redcap.vanderbilt.edu") || Application::isServer("redcap.vumc.org")) {
             $manager->addMultiCron("drivers/26_workday.php", "getAllWorkday", "Friday", $pids);
         }
     }
@@ -325,7 +319,7 @@ function loadMultiProjectCrons(&$manager, $pids)
 
 function loadInternalSharingCrons(&$manager, $pids) {
     $preprocessingPids = [];
-    if (Application::isVanderbilt() && Application::isServer("redcap.vanderbilt.edu")) {
+    if (Application::isVanderbilt() && (Application::isServer("redcap.vanderbilt.edu") || Application::isServer("redcap.vumc.org"))) {
         $preprocessingPids[] = NEWMAN_SOCIETY_PROJECT;
     } else if (Application::isVanderbilt() && Application::isLocalhost()) {
         $preprocessingPids[] = LOCALHOST_TEST_PROJECT;
@@ -351,7 +345,7 @@ function loadInternalSharingCrons(&$manager, $pids) {
     if (Application::isLocalhost()) {
         $manager->addMultiCron("drivers/preprocess.php", "preprocessFindSharingMatches", date("Y-m-d"), $preprocessingPids);
         $manager->addMultiCron("drivers/preprocess.php", "preprocessMissingEmails", date("Y-m-d"), $preprocessingPids);
-    } else if (Application::isServer("redcaptest.vanderbilt.edu")) {
+    } else if (Application::isServer(FlightTrackerExternalModule::VANDERBILT_TEST_SERVER)) {
         $manager->addMultiCron("drivers/preprocess.php", "preprocessFindSharingMatches", date("Y-m-d"), $preprocessingPids);
         $manager->addMultiCron("drivers/preprocess.php", "preprocessSharingMatches", date("Y-m-d"), $preprocessingPids);
     } else {

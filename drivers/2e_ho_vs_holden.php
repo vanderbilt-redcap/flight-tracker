@@ -251,7 +251,7 @@ $data = array(
 	'returnFormat' => 'json'
 );
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://redcap.vanderbilt.edu/api/');
+curl_setopt($ch, CURLOPT_URL, 'https://redcap.vumc.org/api/');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_VERBOSE, 0);

@@ -7,11 +7,30 @@ use \Vanderbilt\CareerDevLibrary\NIHTables;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\URLManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 Application::increaseProcessingMax(1);
+
+function makeMonthLink($tableNum) {
+    $thisLink = Application::link("this");
+    if (isset($_GET['cohort']) && $_GET['cohort']) {
+        $thisLink .= "&cohort=".urlencode(REDCapManagement::sanitizeCohort($_GET['cohort']));
+    }
+    $basePage = URLManagement::getPage($thisLink);
+    $hiddenHTML = URLManagement::getParametersAsHiddenInputs($thisLink);
+    $title = NIHTables::getTableHeader($tableNum);
+    return "<form action='$basePage' method='GET'>
+    $hiddenHTML
+    <p class='centered'>
+    <strong>Table $tableNum - $title</strong><br/>
+    Show Publications in Training Plus <input type='number' name='months' id='months' value='18' /><label for='months'> Months</label> for Publication Delays<br/>
+    <button>Get Table</button>
+    </p>
+</form>";
+}
 
 function makeLink($tableNum) {
     if ($tableNum == "Common Metrics") {
@@ -71,7 +90,7 @@ $cohorts = new Cohorts($token, $server, Application::getModule());
 
 <?php
 
-if (($pid == 66635) && preg_match("/redcap.vanderbilt.edu/", $server)) {
+if (($pid == 66635) && (preg_match("/redcap\.vanderbilt\.edu/", $server) || preg_match("/redcap\.vumc\.org/", $server))) {
     $currentUrl = Application::link("this");
     if (isset($_GET['appointments'])) {
         $url = preg_replace("/\&appointments/", "", $currentUrl);
@@ -113,12 +132,13 @@ if (file_exists(dirname(__FILE__)."/../customGrants.php")) {
 </table>
 
 <h2><?= makeTableHeader("5") ?></h2>
-<p class='centered max-width'><?= makeLink("5A") ?></p>
 <?php
+
+echo makeMonthLink("5A");
 if (isset($_GET['appointments'])) {
-    echo "<p class='centered max-width'>".makeLink("5B-VUMC")."</p>\n";
+    echo makeMonthLink("5B-VUMC");
 } else {
-    echo "<p class='centered max-width'>".makeLink("5B")."</p>\n";
+    echo makeMonthLink("5B");
 }
 
 if (Application::isVanderbilt() && Application::isPluginProject($pid) && !Application::isLocalhost()) {
@@ -131,8 +151,8 @@ if (Application::isVanderbilt() && Application::isPluginProject($pid) && !Applic
     }
 }
 
-$part1Message = "Only scholars whose appointments overlap with the last ".NIHTables::PART_1_YEARS." are included in this table.";
-$part3Message = "Only scholars whose appointments overlap with the last ".NIHTables::PART_3_YEARS." are included in this table.";
+$part1Message = "Only scholars whose appointments overlap with the last ".NIHTables::PART_1_YEARS." years are included in this table.";
+$part3Message = "Only scholars whose appointments overlap with the last ".NIHTables::PART_3_YEARS." years are included in this table.";
 
 ?>
 <h2><?= makeTableHeader("8") ?></h2>
@@ -168,7 +188,7 @@ if (isset($_GET['appointments'])) {
 ?>
 
 <h2>Use with xTRACT for Reporting to NIH</h2>
-<p class="centeredmax-width"><a href="https://public.era.nih.gov/commons/"><img src="<?= Application::link("img/era.png") ?>" alt="eRA Commons"> eRA Commons</a></p>
+<p class="centered max-width"><a href="https://public.era.nih.gov/commons/"><img src="<?= Application::link("img/era.png") ?>" alt="eRA Commons"> eRA Commons</a></p>
 <p class="centered max-width">The eRA Commons recently updated its interface. This change made our bookmarklet obsolete. We plan to investigate revisions in the near future. Please contact <a href="mailto:scott.j.pearson@vumc.org">scott.j.pearson@vumc.org</a> if you'd like an update.</p>
 <!--
 <h4>Step-By-Step Instructions</h4>

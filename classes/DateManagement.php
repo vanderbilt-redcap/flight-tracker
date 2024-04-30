@@ -7,6 +7,21 @@ require_once(__DIR__ . '/ClassLoader.php');
 class DateManagement {
     const SEP_REGEX = "[\/\-]";
 
+    public static function getEarliestDate($dates) {
+        if (count($dates) == 0) {
+            return "";
+        } else if (count($dates) == 1) {
+            return $dates[0];
+        }
+        $earliestDate = $dates[0];
+        for ($i = 1; $i < count($dates); $i++) {
+            $date = $dates[$i];
+            if (DateManagement::dateCompare($date, "<", $earliestDate)) {
+                $earliestDate = $date;
+            }
+        }
+        return $earliestDate;
+    }
     public static function getFederalFiscalYear($ts = FALSE) {
         if (!$ts) {
             $ts = time();
@@ -47,7 +62,7 @@ class DateManagement {
         $dt = new \DateTime();
         $dt->setTimestamp($ts);
         $dayOfYear = $dt->format("z");
-        return floor(($dayOfYear - 1) / 7) + 1;
+        return floor(((int) $dayOfYear - 1) / 7) + 1;
     }
 
     public static function getWeekNumInMonth($ts = FALSE) {
@@ -57,7 +72,7 @@ class DateManagement {
         $dt = new \DateTime();
         $dt->setTimestamp($ts);
         $dayOfMonth = $dt->format("j");
-        return floor(($dayOfMonth - 1) / 7) + 1;
+        return floor(((int) $dayOfMonth - 1) / 7) + 1;
     }
 
     public static function isYear($d) {
@@ -168,9 +183,9 @@ class DateManagement {
     }
 
     public static function REDCapTsToPHPTs($redcapTs) {
-        $year = substr($redcapTs, 0, 4);
-        $month = substr($redcapTs, 4, 2);
-        $day = substr($redcapTs, 6, 2);
+        $year = (int) substr($redcapTs, 0, 4);
+        $month = (int) substr($redcapTs, 4, 2);
+        $day = (int) substr($redcapTs, 6, 2);
         $dt = new \DateTime();
         $dt->setDate($year, $month, $day);
         return $dt->getTimestamp();

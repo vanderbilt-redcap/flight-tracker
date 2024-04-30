@@ -259,7 +259,7 @@ class CelebrationsEmail {
                             $journalHandles[] = Sanitizer::sanitizeWithoutChangingQuotes($journalRow['handle']);
                         }
                     }
-                    $journalHTML = empty($journalHandles) ? $journalHTML." (<a href='https://redcap.vanderbilt.edu/surveys/?s=D94RMNA3AT94CXTP'>add new journal handle?</a>)" : $journalHTML." (".implode(", ", $journalHandles).")";
+                    $journalHTML = empty($journalHandles) ? $journalHTML." (<a href='https://redcap.vumc.org/surveys/?s=D94RMNA3AT94CXTP'>add new journal handle?</a>)" : $journalHTML." (".implode(", ", $journalHandles).")";
                 }
                 $journalHTML .= "</div>";
                 foreach ($pmidsIdentified[$pmid] as $matchRecordId) {

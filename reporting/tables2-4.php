@@ -17,14 +17,14 @@ use \Vanderbilt\CareerDevLibrary\Grant;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-if (in_array(gethostname(), ["scottjpearson", "ORIWL-KCXDJK7.local"])) {
+if (in_array(gethostname(), ["scottjpearson", "ORIWL-KCXDJK7.local", "VICTRKCXDJK7NLJ"])) {
     # Testing only - to allow to run with React server using 'npm start'
     header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT");
     header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, X-Requested-With");
     define("NOAUTH", TRUE);
 } else {
-    Application::applySecurityHeaders();
+    Application::applySecurityHeaders($_GET['pid'] ?? $_GET['project_id'] ?? NULL);
 }
 require_once(dirname(__FILE__)."/../small_base.php");
 
@@ -35,9 +35,7 @@ if ($entityBody) {
     $_POST = json_decode($entityBody, TRUE) ?? $_POST;
 }
 
-
 Application::increaseProcessingMax(1);
-Application::keepAlive($pid);
 
 $reactHandler = new ReactNIHTables($token, $server, $pid);
 $module = Application::getModule();
@@ -48,6 +46,7 @@ if (isset($_POST['action']) && $token && $server && $pid) {
     ReactNIHTables::convertJSONs($_POST);
     $data = [];
     try {
+        Application::keepAlive($pid);
         if (isset($_GET['NOAUTH'])) {
             $data['error'] = "NOAUTH should not appear on this page.";
         } else if ($action == "getFooter") {

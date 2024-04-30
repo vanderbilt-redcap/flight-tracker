@@ -7,7 +7,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 class StarBRITE {
     static function getServer() {
         $server = "starbrite.app.vumc.org";
-        if (SERVER_NAME == "redcaptest.vanderbilt.edu") {
+        if (SERVER_NAME == "redcaptest.vumc.org") {
             $server = "starbritetest.app.vumc.org";
         }
         return $server;

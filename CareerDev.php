@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.10.0";
+		return "6.10.1";
 	}
 
     public static function getLocalhostPluginPid() {
@@ -125,7 +125,7 @@ class CareerDev {
             "PubMed Central Converter" => "www.ncbi.nlm.nih.gov",
             "iCite" => "icite.od.nih.gov",
     	    "ORCID" => "pub.orcid.org",
-            "Statistics Reporting" => "redcap.vanderbilt.edu",
+            "Statistics Reporting" => "redcap.vumc.org",
             "Altmetric" => "api.altmetric.com",
             "Patents View (US Patent Office)" => "api.patentsview.org",
             "NSF Grants" => "api.nsf.gov",
@@ -307,13 +307,28 @@ class CareerDev {
         self::$pid = NULL;
     }
 
-    private static function constructThisURL() {
+    private static function getProtocol($uri) {
         $isHTTPS = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off'));
         $serverPort = $_SERVER['SERVER_PORT'] ?? 0;
         $isSSLPort = $serverPort == 443;
-        $protocol = ($isHTTPS || $isSSLPort) ? "https://" : "http://";
-        $host = $_SERVER['HTTP_HOST'] ?? "";
+        if ($isHTTPS || $isSSLPort) {
+            return "https://";
+        } else if (isset($_GET['pid'])) {
+            $myserver = self::getSetting("server", Sanitizer::sanitizePid($_GET['pid']));
+            if (preg_match("/^https:/i", $myserver)) {
+                # assume https because the setup server requests it
+                # this facilitates unusual REDCap cloud setups where SSL is enabled for the URL
+                # but the apache server just uses http because a proxy handles the encryption
+                return "https://";
+            }
+        }
+        return "http://";
+    }
+
+    private static function constructThisURL() {
         $uri = $_SERVER['REQUEST_URI'] ?? "";
+        $protocol = self::getProtocol($uri);
+        $host = $_SERVER['HTTP_HOST'] ?? "";
         return $protocol.$host.$uri;
     }
 
@@ -446,7 +461,7 @@ class CareerDev {
 	}
 
 	public static function makeLogo() {
-		return "<a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'><img src='".self::link("img/flight_tracker_logo_medium.png")."' alt='Flight Tracker for Scholars'></a>";
+		return "<a href='https://redcap.vumc.org/plugins/career_dev/consortium/'><img src='".self::link("img/flight_tracker_logo_medium.png")."' alt='Flight Tracker for Scholars'></a>";
 	}
 
 	public static function link($relativeUrl, $pid = "", $withWebroot = FALSE) {
@@ -499,10 +514,10 @@ class CareerDev {
 
     private static function getThisPageURL($project_id, $isPortalPage) {
         if (Application::isPluginProject($project_id)) {
-            $port = $_SERVER['SERVER_PORT'] ?? "";
-            $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || ($port == 443)) ? "https://" : "http://";
+            $uri = $_SERVER['REQUEST_URI'] ?? "";
+            $protocol = self::getProtocol($uri);
             $host = $_SERVER['HTTP_HOST'] ?? "";
-            $fileLocation = explode("?", $_SERVER['REQUEST_URI'] ?? "")[0];
+            $fileLocation = explode("?", $uri)[0];
             $url = $protocol . $host . $fileLocation;
             if ($project_id) {
                 $url .= "?pid=".urlencode($project_id);
@@ -600,7 +615,7 @@ class CareerDev {
 
     private static function getREDCapSignupURL() {
         if (self::isVanderbilt()) {
-            return 'https://redcap.vanderbilt.edu/surveys/?s=L4R3NJ8XME';
+            return 'https://redcap.vumc.org/surveys/?s=L4R3NJ8XME';
         } else {
             global $homepage_contact_url, $homepage_contact_email;
             if ($homepage_contact_url) {
@@ -727,7 +742,7 @@ class CareerDev {
 				return $pid;
 			}
 		}
-		if ($localToken == $token) {
+		if ($pid && ($localToken == $token)) {
 			return $pid;
 		}
 		foreach ($info as $key => $row) {
@@ -881,10 +896,10 @@ class CareerDev {
 	public static function getSetting($field, $pid = "") {
 	    if (
             self::isVanderbilt()
-            && ((Application::isServer("redcap.vanderbilt.edu") && ($pid == NEWMAN_SOCIETY_PROJECT))
+            && ((Application::isServer("redcap.vumc.org") && ($pid == NEWMAN_SOCIETY_PROJECT))
                 || ((Application::isLocalhost() && ($pid == LOCALHOST_TEST_PROJECT))))
         ) {
-	        # TODO add redcaptest.vanderbilt.edu
+	        # TODO add redcaptest.vumc.org
 	        $module = ExternalModules::getModuleInstance("vanderbilt_plugin-settings");
             $items = [$field];
             if (!preg_match("/\/plugins\//", $_SERVER['REQUEST_URI'] ?? "")) {
@@ -1037,7 +1052,7 @@ class CareerDev {
 	    if (Application::isLocalhost()) {
 	        return TRUE;
         }
-		return preg_match("/vanderbilt.edu/", SERVER_NAME);
+		return preg_match("/vanderbilt.edu/", SERVER_NAME) || preg_match("/vumc.org/", SERVER_NAME);
 	}
 
 	public static function getRepeatingFormsAndLabels($metadata = []) {
@@ -1091,7 +1106,11 @@ class CareerDev {
     }
 
     public static function isTestGroup($pid) {
-        return (SERVER_NAME == "redcap.vanderbilt.edu") && in_array($pid, [105963, 101785]);
+        return (
+            Application::isServer("redcap.vanderbilt.edu")
+            || Application::isServer("redcap.vumc.org")
+        )
+        && in_array($pid, [105963, 101785]);
     }
 
     public static function duplicateAllSettings($srcPid, $destPid, $defaultSettings = []) {
@@ -1222,7 +1241,7 @@ class CareerDev {
             $ary["Import General Data"] = self::link("/import.php");
             $ary["Import Positions"] = self::link("/bulkImport.php") . "&positions";
             if (self::isVanderbilt() && ($pid == 145767)) {
-                $ary["LDAP Lookup"] = "https://redcap.vanderbilt.edu/plugins/career_dev/LDAP/ldapLookup.php";
+                $ary["LDAP Lookup"] = "https://redcap.vumc.org/plugins/career_dev/LDAP/ldapLookup.php";
             }
 
             return $ary;

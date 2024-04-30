@@ -28,7 +28,7 @@ function updateVFRS($token, $server, $pid, $records) {
 function updateVFRSMulti($pids) {
     Application::log("updateVFRSMulti with ".count($pids)." pids");
     $vfrs_token = CareerDev::getVFRSToken();
-    $vfrsData = Download::fields($vfrs_token, 'https://redcap.vanderbilt.edu/api/', ["participant_id", "name_first", "name_last"]);
+    $vfrsData = Download::fields($vfrs_token, 'https://redcap.vumc.org/api/', ["participant_id", "name_first", "name_last"]);
 
     foreach ($pids as $currPid) {
         $currToken = Application::getSetting("token", $currPid);

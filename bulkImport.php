@@ -154,15 +154,19 @@ if (isset($_FILES['bulk'])) {
 			}
 			echo "</div>\n";
 		} else {
-		    try {
-                $feedback = Upload::rows($upload, $token, $server);
-                if ($feedback['error'])	{
-                    echo "<p class='red padded centered max-width'>ERROR! ".$feedback['error']."</p>\n";
-                } else {
-                    echo "<p class='green padded centered max-width'>Upload successful!</p>\n";
+            if (!empty($upload)) {
+                try {
+                    $feedback = Upload::rows($upload, $token, $server);
+                    if (is_array($feedback) && $feedback['error'])	{
+                        echo "<p class='red padded centered max-width'>ERROR! ".$feedback['error']."</p>";
+                    } else {
+                        echo "<p class='green padded centered max-width'>Upload successful!</p>";
+                    }
+                } catch (\Exception $e) {
+                    echo "<p class='red padded centered max-width'>ERROR! ".$e->getMessage()."</p>";
                 }
-            } catch (\Exception $e) {
-                echo "<p class='red padded centered max-width'>ERROR! ".$e->getMessage()."</p>\n";
+            } else {
+                echo "<p class='red padded centered max-width'>ERROR! No data have been matched.</p>";
             }
 		}
 	} else {

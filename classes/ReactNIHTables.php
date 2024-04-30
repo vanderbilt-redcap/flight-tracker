@@ -222,6 +222,7 @@ table { border-collapse: collapse; }
         }
         $stringsToReplace = [
             "[Relevant Table 2 &amp; 4 Rows]",
+            "[Relevant Table 2 & 4 Rows]",
             "[Relevant Table 3 Rows]",
         ];
         $replacedTables = Sanitizer::sanitizeWithoutStrippingHTML($post['mssg'], FALSE);

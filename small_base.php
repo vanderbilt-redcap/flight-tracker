@@ -48,7 +48,7 @@ if (!Application::isWebBrowser() && CareerDev::getPid()) {
 }
 
 $pid = Sanitizer::sanitize(isset($module) ? $module->getProjectId($_GET['pid'] ?? "") : Sanitizer::sanitizePid($_GET['pid'] ?? ""));
-if (!$pid && !Application::isWebBrowser() && (count($argv) >= 2) && in_array($argv[1], Application::getPids())) {
+if (!$pid && !Application::isWebBrowser() && is_array($argv) && (count($argv) >= 2) && in_array($argv[1], Application::getPids())) {
     $pid = $argv[1];
     $_GET['pid'] = $pid;
 }
@@ -1137,6 +1137,25 @@ function cleanOutJSONs($metadata) {
 	return $metadata;
 }
 
+function resetRepeatingInstruments($srcPid, $destPid, $destMetadata) {
+    $srcEventId = REDCapManagement::getEventIdForClassical($srcPid);
+    $destEventId = REDCapManagement::getEventIdForClassical($destPid);
+    $srcRepeatingForms = DataDictionaryManagement::getRepeatingFormsAndLabelsForProject($srcEventId);
+    $destRepeatingForms = DataDictionaryManagement::getRepeatingFormsAndLabelsForProject($destEventId);
+    $destForms = DataDictionaryManagement::getFormsFromMetadata($destMetadata);
+    $newRepeatingForms = [];
+    foreach ($srcRepeatingForms as $form => $label) {
+        if (in_array($form, $destForms) && !isset($destRepeatingForms[$form])) {
+            $destRepeatingForms[$form] = $label;
+            $newRepeatingForms[] = $form;
+        }
+    }
+    if (!empty($newRepeatingForms)) {
+        DataDictionaryManagement::setupRepeatingForms($destEventId, $destRepeatingForms);
+        Application::log("Uploading repeating instruments: ".implode(", ", $newRepeatingForms), $destPid);
+    }
+}
+
 function resetRemoteRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $destMetadata) {
     $destServer = Sanitizer::sanitizeURL($destServer);
     $srcServer = Sanitizer::sanitizeURL($srcServer);
@@ -1486,52 +1505,98 @@ function getValidProjectSettingsForUpload() {
     ];
 }
 
-function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer, $restartNumbering) {
-    $metadata = Download::metadata($srcToken, $srcServer);
-
-    $allFeedback = [];
-    $destRecords = Download::recordIds($destToken, $destServer);
-    if (!empty($destRecords) && $restartNumbering) {
-        $feedback = Upload::deleteRecords($destToken, $destServer, $destRecords);
-        Application::log("Delete project: ".count($destRecords)." records: ".json_encode($feedback));
-        $allFeedback[] = $feedback;
-        $maxDestRecord = 0;
-    } else if (!empty($destRecords)) {
-        $maxDestRecord = max($destRecords);
-    } else {
-        $maxDestRecord = 0;
-    }
-
-    $projectSettings = Download::getProjectSettings($srcToken, $srcServer);
-    $validProjectSettingsForUpload = getValidProjectSettingsForUpload();
-    foreach ($projectSettings as $key => $value) {
-        if (!in_array($key, $validProjectSettingsForUpload)) {
-            unset($projectSettings[$key]);
+function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer, $restartNumbering)
+{
+    $srcPid = Application::getPID($srcToken);
+    if ($srcServer == $destServer) {
+        $destPid = REDCapManagement::getPIDFromTokenFromDatabase($destToken);
+        $destRecords = Download::recordIdsByPid($destPid);
+        if (!empty($destRecords) && $restartNumbering) {
+            Application::log("Deleting " . count($destRecords) . " Records: " . implode(", ", $destRecords), $destPid);
+            foreach ($destRecords as $recordId) {
+                \REDCap::deleteRecord($destPid, $recordId);
+            }
+            $maxDestRecord = 0;
+        } else if (!empty($destRecords)) {
+            $maxDestRecord = max($destRecords);
+        } else {
+            $maxDestRecord = 0;
         }
-    }
-    Upload::projectSettings($projectSettings, $destToken, $destServer);
-    $destProjectSettings = Download::getProjectSettings($destToken, $destServer);
-    $destPid = $destProjectSettings['project_id'];
 
-    if ($restartNumbering) {
-        $destMetadata = cleanOutJSONs($metadata);
-        $feedback = Upload::metadata($destMetadata, $destToken, $destServer);
-        Application::log("Upload metadata: ".json_encode($feedback));
+        $projectSettings = Download::projectSettingsByPid($srcPid);
+        $validProjectSettingsForUpload = getValidProjectSettingsForUpload();
+        foreach ($projectSettings as $key => $value) {
+            if (!in_array($key, $validProjectSettingsForUpload)) {
+                unset($projectSettings[$key]);
+            }
+        }
+        Upload::projectSettingsNotAPI($projectSettings, $destPid);
+
+        $metadata = Download::metadataByPid($srcPid);
+        if ($restartNumbering) {
+            $destMetadata = cleanOutJSONs($metadata);
+            $feedback = Upload::metadataNoAPI($destMetadata, $destPid);
+            Application::log("Upload metadata: " . json_encode($feedback), $destPid);
+        } else {
+            $destMetadata = Download::metadataByPid($destPid);
+        }
+        \Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcPid, $destPid, $destMetadata);
+        Application::log("Reset Repeating Instruments: Local", $destPid);
     } else {
-        Application::log("Skipping uploading metadata");
-        $destMetadata = Download::metadata($destToken, $destServer);
+        $metadata = Download::metadata($srcToken, $srcServer);
+        $destRecords = Download::recordIds($destToken, $destServer);
+        if (!empty($destRecords) && $restartNumbering) {
+            $feedback = Upload::deleteRecords($destToken, $destServer, $destRecords);
+            Application::log("Delete project: " . count($destRecords) . " records: " . json_encode($feedback));
+            $maxDestRecord = 0;
+        } else if (!empty($destRecords)) {
+            $maxDestRecord = max($destRecords);
+        } else {
+            $maxDestRecord = 0;
+        }
+
+        $projectSettings = Download::getProjectSettings($srcToken, $srcServer);
+        $validProjectSettingsForUpload = getValidProjectSettingsForUpload();
+        foreach ($projectSettings as $key => $value) {
+            if (!in_array($key, $validProjectSettingsForUpload)) {
+                unset($projectSettings[$key]);
+            }
+        }
+        Upload::projectSettings($projectSettings, $destToken, $destServer);
+        $destProjectSettings = Download::getProjectSettings($destToken, $destServer);
+        $destPid = $destProjectSettings['project_id'];
+
+        if ($restartNumbering) {
+            $destMetadata = cleanOutJSONs($metadata);
+            $feedback = Upload::metadata($destMetadata, $destToken, $destServer);
+            Application::log("Upload metadata: " . json_encode($feedback), $destPid);
+        } else {
+            Application::log("Skipping uploading metadata", $destPid);
+            $destMetadata = Download::metadata($destToken, $destServer);
+        }
+        $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRemoteRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $destMetadata);
+        Application::log("Reset Repeating Instruments Remote: " . json_encode($feedback), $destPid);
     }
-    $destMetadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+    $newRecordData = \Vanderbilt\FlightTrackerExternalModule\getProjectsREDCapDataToCopy($destMetadata, $srcPid, $maxDestRecord);
+    if (!empty($newRecordData) && ($srcServer == $destServer)) {
+        $feedback = Upload::rowsByPid($newRecordData, $destPid);
+    } else if (!empty($newRecordData)) {
+        $feedback = Upload::rows($newRecordData, $destToken, $destServer);
+    } else {
+        $feedback = [];
+    }
+    Application::log("Copy project (".count($newRecordData)." rows): " . json_encode($feedback), $destPid);
+    return $destPid;
+}
+
+function getProjectsREDCapDataToCopy($destMetadata, $srcPid, $maxDestRecord = 0) {
     $calcFields = REDCapManagement::getFieldsOfType($destMetadata, "calc");
     $timeFields = REDCapManagement::getFieldsOfType($destMetadata, "text", "datetime_ymd");
-
-    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRemoteRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $metadata);
-    Application::log("Reset Repeating Instruments: ".json_encode($feedback));
-
-    $records = Download::recordIds($srcToken, $srcServer);
-    foreach ($records as $record) {
-        $recordData = Download::records($srcToken, $srcServer, [$record]);
-        $newRecordData = [];
+    $destMetadataFields = DataDictionaryManagement::getFieldsFromMetadata($destMetadata);
+    $srcRecords = Download::recordIdsByPid($srcPid);
+    $newRecordData = [];
+    foreach ($srcRecords as $record) {
+        $recordData = Download::recordsByPid($srcPid, [$record]);
         foreach ($recordData as $row) {
             $newRow = [];
             foreach ($row as $field => $value) {
@@ -1549,7 +1614,7 @@ function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer, 
                         && !in_array($field, $timeFields)
                         && in_array($field, $destMetadataFields)
                     )
-                ){
+                ) {
                     $newRow[$field] = $value;
                 }
             }
@@ -1557,12 +1622,8 @@ function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer, 
                 $newRecordData[] = $newRow;
             }
         }
-        if (!empty($newRecordData)) {
-            $feedback = Upload::rows($newRecordData, $destToken, $destServer);
-            Application::log("Copy project: Record $record: ".json_encode($feedback));
-        }
     }
-    return $destPid;
+    return $newRecordData;
 }
 
 function getQuestionsForForm($token, $server, $form) {

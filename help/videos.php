@@ -6,7 +6,7 @@ require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
-$home = "https://redcap.vanderbilt.edu/plugins/career_dev/help/";
+$home = "https://redcap.vumc.org/plugins/career_dev/help/";
 
 echo "<h1>Training Videos</h1>\n";
 

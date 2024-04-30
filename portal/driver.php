@@ -129,10 +129,10 @@ try {
             $data['error'] = "No file found.";
         }
     } else if ($action == "stats") {
-        if (SERVER_NAME == "redcap.vanderbilt.edu") {
-            $url = "https://redcap.vanderbilt.edu/plugins/career_dev/login/figuresBehindREDCap.php";
+        if (Application::isServer("redcap.vanderbilt.edu") || Application::isServer("redcap.vumc.org")) {
+            $url = "https://redcap.vumc.org/plugins/career_dev/login/figuresBehindREDCap.php";
         } else if (Application::isVanderbilt()) {
-            $url = "https://redcap.vanderbilt.edu/plugins/career_dev/newmanFigures";
+            $url = "https://redcap.vumc.org/plugins/career_dev/newmanFigures";
         } else {
             $url = "";
         }

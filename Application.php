@@ -3,8 +3,10 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule;
 
 require_once(dirname(__FILE__)."/CareerDev.php");
+require_once(dirname(__FILE__)."/FlightTrackerExternalModule.php");
 
 class Application {
     public static function getVersion() {
@@ -68,7 +70,7 @@ class Application {
     }
 
     public static function getFlightConnectorURL() {
-        return "https://redcap.vanderbilt.edu/external_modules/?prefix=flight_connector&page=map&pid=172928&h=5986967536b44df5&NOAUTH";
+        return "https://redcap.vumc.org/external_modules/?prefix=flight_connector&page=map&pid=172928&h=5986967536b44df5&NOAUTH";
     }
 
     public static function getDataTable($pid) {
@@ -292,7 +294,7 @@ class Application {
             (self::isVanderbilt() && ($project_id == NEWMAN_SOCIETY_PROJECT))
             || (self::isVanderbilt() && $isCopiedPluginProject)
             || (self::isLocalhost() && ($project_id == LOCALHOST_TEST_PROJECT))
-            || (self::isServer("redcaptest.vanderbilt.edu") && ($project_id == REDCAPTEST_TEST_PROJECT))
+            || (self::isServer(FlightTrackerExternalModule::VANDERBILT_TEST_SERVER) && ($project_id == REDCAPTEST_TEST_PROJECT))
         );
     }
 
@@ -396,7 +398,7 @@ $horizontalScrollbar
 
         $str .= "<header class='topHeaderWrapper'>";
         $str .= "<div class='topHeader'>";
-        $str .= "<div class='topBar' style='float: left; padding-left: 5px;'><a href='https://redcap.vanderbilt.edu/plugins/career_dev/consortium/'><img alt='Flight Tracker for Scholars' src='".self::link("/img/flight_tracker_logo_small.png")."'></a></div>";
+        $str .= "<div class='topBar' style='float: left; padding-left: 5px;'><a href='https://redcap.vumc.org/plugins/career_dev/consortium/'><img alt='Flight Tracker for Scholars' src='".self::link("/img/flight_tracker_logo_small.png")."'></a></div>";
         # logged in and on a record
         if (Application::getUsername() && (isset($_GET['id']) || isset($_GET['record']))) {
             $records = Download::records($token, $server);
@@ -589,9 +591,9 @@ SELECT DISTINCT s.project_id AS pid
             }
             if (self::isLocalhost()) {
                 array_unshift($pids, LOCALHOST_TEST_PROJECT);
-            } else if (self::isServer("redcap.vanderbilt.edu")) {
+            } else if (self::isServer("redcap.vanderbilt.edu") || self::isServer("redcap.vumc.org")) {
                 array_unshift($pids, NEWMAN_SOCIETY_PROJECT);
-            } else if (self::isServer("redcaptest.vanderbilt.edu")) {
+            } else if (self::isServer(FlightTrackerExternalModule::VANDERBILT_TEST_SERVER)) {
                 # TODO Add test projects with plugin
             }
         } else {
@@ -906,8 +908,8 @@ SELECT DISTINCT s.project_id AS pid
         return self::link("portal/index.php");
     }
 
-    public static function applySecurityHeaders() {
-        $serverList = Application::getSetting("safe_servers");
+    public static function applySecurityHeaders($pid) {
+        $serverList = Application::getSetting("safe_servers", $pid);
         if (!$serverList) {
             return;
         }

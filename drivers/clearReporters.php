@@ -35,7 +35,7 @@ foreach ($redcapData as $row) {
 	if ($row['redcap_repeat_instrument'] == "reporter") {
 		echo "Deleting record {$row['record_id']} instance {$row['redcap_repeat_instance']}\n";
 		$ch = curl_init();
-		$url = "https://redcap.vanderbilt.edu/plugins/career_dev/drivers/deleteInstance.php?pid=$pid&instrument=reporter&instance=".$row['redcap_repeat_instance']."&record=".$row['record_id'];
+		$url = "https://redcap.vumc.org/plugins/career_dev/drivers/deleteInstance.php?pid=$pid&instrument=reporter&instance=".$row['redcap_repeat_instance']."&record=".$row['record_id'];
 		curl_setopt($ch, CURLOPT_URL, $url);
 		$output = "";
 		$output = curl_exec($ch);

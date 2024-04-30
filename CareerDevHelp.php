@@ -19,7 +19,7 @@ class CareerDevHelp {
 	}
 
     public static function getVideoVaultLinkHTML() {
-        $url = "https://redcap.vanderbilt.edu/plugins/career_dev/help/videos.php";
+        $url = "https://redcap.vumc.org/plugins/career_dev/help/videos.php";
         $videosHTML = Links::makeLink($url, "Flight Tracker Video Vault", TRUE);
         return "<p class='smaller nomargin centered' style='font-family: europa, Helvetica, Arial, sans-serif;'>$videosHTML</p>";
     }

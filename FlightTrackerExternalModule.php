@@ -37,6 +37,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     const OLD_LAST_NAMES = "old_last_names";
     const FIRST_NAMES = "first_names";
     const LAST_NAMES = "last_names";
+    const VANDERBILT_TEST_SERVER = "redcaptest.vumc.org";
 
 	function getPrefix() {
         return Application::getPrefix();

@@ -51,8 +51,10 @@ if ($cohort) {
 
 $instruments = ["honors_awards_and_activities", "honors_awards_and_activities_survey"];
 $counts = [TOTAL_LABEL => []];
+$indexedRedcapData = [];
 foreach ($records as $recordId) {
     $redcapData = Download::fieldsForRecordsByPid($pid, $fields, [$recordId]);
+    $indexedRedcapData[$recordId] = $redcapData;
     foreach ($redcapData as $row) {
         if (in_array($row['redcap_repeat_instrument'], $instruments)) {
             $prefix = REDCapManagement::getPrefixFromInstrument($row['redcap_repeat_instrument']);

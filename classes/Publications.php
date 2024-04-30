@@ -932,12 +932,22 @@ class Publications {
                 $foundCurrInAuthorList = FALSE;
                 $foundAnotherInAuthorList = FALSE;
                 foreach ($authors as $author) {
-                    if (
-                        NameMatcher::matchByInitials($currLastName, $currFirstName, $author['last'], $author['first'])
-                        || NameMatcher::matchByInitials($currFirstName, $currLastName, $author['last'], $author['first'])  // reverse for Asian names which sometimes put family name first
-                    ) {
-                        $foundCurrInAuthorList = TRUE;
-                        // Application::log("Found current $currFirstName $currLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance $pmid", $pid);
+                    foreach (NameMatcher::explodeLastName($currLastName) as $currLN) {
+                        foreach (NameMatcher::explodeFirstName($currFirstName) as $currFN) {
+                            if (
+                                NameMatcher::matchByInitials($currLN, $currFN, $author['last'], $author['first'])
+                                || NameMatcher::matchByInitials($currFN, $currLN, $author['last'], $author['first'])  // reverse for Asian names which sometimes put family name first
+                            ) {
+                                $foundCurrInAuthorList = TRUE;
+                                // Application::log("Found current $currFirstName $currLastName {$author['last']}, {$author['first']} in author list in $recordId:$instance $pmid", $pid);
+                                break;
+                            }
+                        }
+                        if ($foundCurrInAuthorList) {
+                            break;
+                        }
+                    }
+                    if ($foundCurrInAuthorList) {
                         break;
                     }
                 }

@@ -17,5 +17,6 @@ foreach ($descriptions as $instrument => $description) {
     echo "$('[data-mlm-name=$instrument]').on('click', () => { $('[data-mlm-name=$instrument]').next().slideDown(); });\n";
     echo "$('[data-mlm-name=$instrument]').on('mouseout', () => { $('[data-mlm-name=$instrument]').next().slideUp(); });\n";
 }
+echo "$('#center .yellow').hide();\n";   // note that project is in development status
 echo "});\n";
 echo "</script>";
