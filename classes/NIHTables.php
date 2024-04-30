@@ -2751,7 +2751,7 @@ class NIHTables {
 
                 $customGrantStartDate = self::getEarliestStartDate($currentTrainingGrants, $recordId);
                 $initSurveyStartDate = Download::oneFieldForRecordByPid($this->pid, "check_degree0_start", $recordId);
-                $initImportStartDate = Download::oneFieldForRecordByPid($this->pid, "check_degree0_start", $recordId);
+                $initImportStartDate = Download::oneFieldForRecordByPid($this->pid, "init_import_degree0_start", $recordId);
                 if (!$customGrantStartDate && !$initSurveyStartDate && !$initImportStartDate) {
                     $countingStartDate = $baseLineStart;
                 } else {
