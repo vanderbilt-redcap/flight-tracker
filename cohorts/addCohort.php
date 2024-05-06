@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Filter;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -13,8 +14,8 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 if (isset($_POST['title'])) {
 	# no CSS or JS
 
-	$name = REDCapManagement::sanitize($_POST['title']);
-	$config = $_POST['config'];
+	$name = Sanitizer::sanitize($_POST['title']);
+	$config = Sanitizer::sanitizeArray($_POST['config'], TRUE, FALSE);
 
 	if (preg_match("/['\"#&]/", $name)) {
 		echo "Invalid name. Title cannot contain single-quotes, hashtags, ampersands, or double-quotes.";

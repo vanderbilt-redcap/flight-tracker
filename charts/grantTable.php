@@ -106,6 +106,7 @@ foreach ($records as $recordId) {
         $end = $grant->getVariable("end");
         $grantTs = $start ? strtotime($start) : FALSE;
         $grantEndTs = $end ? strtotime($end) : FALSE;
+        $awardNo = $grant->getBaseNumber();
         if (
             $grantTs
             && ($grantTs >= $startTs)
@@ -118,10 +119,10 @@ foreach ($records as $recordId) {
                     && ($grantEndTs >= $startTs)
                     && ($grantEndTs <= $endTs)
                 )
+                || !$grantEndTs
             )
         ) {
             $row = [];
-            $awardNo = $grant->getNumber();
             $row[] = $names[$recordId] ?? "";
             $row[] = $awardNo;
             $row[] = Grant::getActivityCode($awardNo);

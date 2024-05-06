@@ -222,3 +222,4 @@ p.honorField { margin: 1em auto; }
 td.dataForm { width: 370px; vertical-align: top; }
 div.dataForm { background-color: #d4d4eb88; padding: 16px 10px; width: 100%; }
 .inputDataForm { background-color: #dddddd88; }
+textarea.pickDate { width: 180px; height: 44px; }

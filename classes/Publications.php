@@ -198,6 +198,7 @@ class Publications {
 
     private static function makePubMedNameClause($unexplodedFirst, $unexplodedLast, $middle = "") {
         $suffix = "%5Bau%5D";
+        $quote = "%22";
         $nameClauses = [];
         foreach (NameMatcher::explodeFirstName($unexplodedFirst) as $first) {
             foreach (NameMatcher::explodeLastName($unexplodedLast) as $last) {
@@ -205,10 +206,10 @@ class Publications {
                     $first = preg_replace("/\s+/", "+", $first);
                     $last = preg_replace("/\s+/", "+", $last);
                     if ($middle) {
-                        $nameClauses[] = $first . "+" . $middle . "+" . $last . $suffix;
+                        $nameClauses[] = $quote . $last . ",+" . $first . "+" . $middle . $quote . $suffix;
                     }
-                    $nameClauses[] = $first . "+" . $last . $suffix;
                 }
+                $nameClauses[] = $quote . $last . ",+" . $first . $quote . $suffix;
             }
         }
         if (!empty($nameClauses)) {
@@ -340,7 +341,7 @@ class Publications {
     }
 
     public static function searchPubMedForAuthorAndJournal($firstName, $lastName, $journal, $pid) {
-        $term = "%28".urlencode($firstName." ".$lastName)."%5BAuthor%5D%29+AND+%28\"".urlencode($journal)."\"%5Bjournal%5D%29";
+        $term = "%28".urlencode('"'.$lastName.", ".$firstName.'"')."%5BAuthor%5D%29+AND+%28\"".urlencode($journal)."\"%5Bjournal%5D%29";
         return self::queryPubMed($term, $pid);
     }
 

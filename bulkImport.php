@@ -188,6 +188,20 @@ $downloadFile = "downloadCSV.php";
 <p class='centered'><input type='submit' name='submit' value='Upload'></p>
 </form>
 
+<h4>Notes</h4>
+<p class="centered max-width">When brackets are specified in the spreadsheet headers, the value of each cell needs to be one of those options exactly -or- blank. A full description of the Grant Types is below.</p>
+    <ul class="left-align max-width-600">
+        <li><strong>Internal K</strong> awards are funding from your own institution that’s not a K12 or KL2.</li>
+        <li><strong>K12/KL2</strong> grants have their own class. Note that these are for trainees, and for a PI, this would count as a Mentoring/Traiing Grant Admin award.</li>
+        <li><strong>Individual K</strong> grants are career development awards by the NIH (only).</li>
+        <li><strong>K Equivalent</strong> grants are career development awards not by the NIH and not by your institution. (The VA, the American Cancer Society, and the Doris Duke Charitable Fellowship have awards that would fall into this category.)</li>
+        <li><strong>R01</strong> awards use the R01 mechanism from the NIH.</li>
+        <li><strong>R01 Equivalent</strong> awards are large awards that are basically the equivalent of an R01, but does not use the R01 mechanism. We try to use the loose definition of $250,000 per year for 3+ years because this is the current median value of an R01.</li>
+        <li><strong>Research Fellowship</strong> awards are project-based grants that are too small to be R01 Equivalents.</li>
+        <li><strong>Mentoring/Training Grant Admin</strong> grants are leadership awards for training or mentoring others.</li>
+        <li><strong>Bridge Award</strong> grants span more than one category. K99/R00 and T99/K00 awards are the primary two examples.</li>
+    </ul>
+
 <?php
 function verifyFile($fileinfo, $importFile, $expectedItems) {
 	$error = detectFirstError($fileinfo, $importFile, $expectedItems);

@@ -405,10 +405,10 @@ function editCell(ob) {
 </script>";
 
 function makeRange($recordId, $startDate = "", $endDate = "", $title = "") {
-    $startLine = "Start: <input type='date' class='startDate pickDate' value='$startDate' record='$recordId'>";
-    $endLine = "End: <input type='date' class='endDate pickDate' value='$endDate' record='$recordId'>";
-    $titleLine = "<input type='text' class='title pickDate' value='$title' record='$recordId' placeholder='Research Project Topics'>";
-    return $titleLine."<br>".$startLine."<br>".$endLine;
+    $startLine = "Start: <input type='date' class='startDate pickDate' value='$startDate' record='$recordId' />";
+    $endLine = "End: <input type='date' class='endDate pickDate' value='$endDate' record='$recordId' />";
+    $titleLine = "<textarea class='title pickDate' record='$recordId' placeholder='Research Project Topics'>$title</textarea>";
+    return $titleLine."<br />".$startLine."<br />".$endLine;
 }
 
 function makeCustomRange($row) {

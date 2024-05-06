@@ -684,7 +684,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         return count($emails);
     }
 
-    private function alertForBlankEmails($infoArray) {
+    private function alertForBlankEmails(array $infoArray) : array {
         $hasEmails = [];
         $missingEmails = [];
         foreach ($infoArray as $info) {
@@ -719,7 +719,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             }
             return $returnItems;
         } else {
-            return FALSE;
+            return [];
         }
     }
 

@@ -748,6 +748,9 @@ class DataDictionaryManagement {
             if (Application::isLocalhost()) {
                 $metadata['file'] = self::filterOutForms($metadata['file'], self::getCoeusForms());
             }
+            if (MMAHelper::canConfigureCustomAgreement($pid)) {
+                $metadata['file'] = self::filterOutForms($metadata['file'], ["mentoring_agreement"]);
+            }
 
             $choices = [];
             foreach ($metadata as $type => $md) {
@@ -1167,6 +1170,9 @@ class DataDictionaryManagement {
                 || REDCapManagement::arraysEqual($fileFields, $originalFormsAndFields[$form])
             ) {
                 self::addFields($mergedMetadata, $fileMetadata, $fileFields);
+            } else if (MMAHelper::canConfigureCustomAgreement($pid) && ($form == "mentoring_agreement")) {
+                $originalMentoringFields = self::getFieldsFromMetadata($originalMetadata, $form);
+                self::addFields($mergedMetadata, $originalMetadata, $originalMentoringFields);
             } else {
                 $originalFields = $originalFormsAndFields[$form];
                 $mergedOrderForForm = self::mergeFields($fileFields, $originalFields);

@@ -145,7 +145,9 @@ function runIntenseCrons(&$manager, $token, $server) {
             $manager->addCron("drivers/25_emailHighlights.php", "sendMonthlyEmailHighlights", date("Y-m-01"), $allRecords, 100000);
         }
 
-        $numRecordsForSummary = 15;
+        # Increasing this number from 15 to 50. These only run in off-hours, so the challenge is grabbing
+        # a cron rather than limiting the size of each one that's processing.
+        $numRecordsForSummary = 50;
         if (Application::isVanderbilt()) {
             $manager->addCron("drivers/6d_makeSummary.php", "makeSummary", "Saturday", $allRecords, $numRecordsForSummary, TRUE);
         } else {

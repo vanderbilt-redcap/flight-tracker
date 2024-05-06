@@ -1224,6 +1224,10 @@ function characteristicsPopup(entity) {
         return $html;
     }
 
+    public static function canConfigureCustomAgreement($pid) {
+        return (Application::isVanderbilt() && in_array($pid, [175974, 175975]));
+    }
+
     private static function makeStepsHTML($selectedSteps, $currStep) {
         $stepHTML = [];
         $allSections = self::getAllSections();
@@ -1325,6 +1329,9 @@ function characteristicsPopup(entity) {
                     $id = $name."___".$key;
                     $html .= "<div class='form-check'><input class='form-check-input' type='radio' onclick='doMMABranching();' name='$name' id='$id' value='$key' ".(($value == $key) ? "checked" : "")."><label class='form-check-label' for='$id'>$label</label></div>";
                 }
+                if ($row['field_note']) {
+                    $html .= "<p class='smaller'>".$row['field_note']."</p>";
+                }
                 $html .= "</td>".self::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields)."
               </tr>";
 
@@ -1342,6 +1349,9 @@ function characteristicsPopup(entity) {
                     }
 
                     $html .= "<div class='form-check'><input class='form-check-input' onclick='doMMABranching();' type='checkbox' name='$name' id='$id' $isChecked ><label class='form-check-label' for='$id'>$label</label></div>";
+                }
+                if ($row['field_note']) {
+                    $html .= "<p class='smaller'>".$row['field_note']."</p>";
                 }
                 $html .="</td>".self::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields)."
              </tr>";
@@ -1371,8 +1381,11 @@ function characteristicsPopup(entity) {
                     if ($surveyLink) {
                         $text = str_replace("[this REDCap Survey]", "<a href='$surveyLink'>this REDCap Survey</a>", $row['field_label']);
                         $html .="<tr id='$rowName' $rowCSSStyle>
-                             <td colspan='3'>$text</td>
-                         </tr>";
+                             <td colspan='3'>$text";
+                        if ($row['field_note']) {
+                            $html .= "<p class='smaller'>".$row['field_note']."</p>";
+                        }
+                        $html .= "</td></tr>";
                     }
                 } else {
                     $html .= "<tr id='$rowName' $rowCSSStyle>

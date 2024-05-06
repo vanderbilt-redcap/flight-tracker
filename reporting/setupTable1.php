@@ -24,6 +24,7 @@ $projectSetup = [
     "purpose" => 4,
     "record_autonumbering_enabled" => 0,
     "project_title" => Application::getTable1Title(),
+    "custom_record_label" => "[name]",
 ];
 if (REDCapManagement::isValidToken($table1Token)) {
     try {

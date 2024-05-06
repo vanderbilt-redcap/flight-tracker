@@ -54,12 +54,14 @@ if (Application::isVanderbilt()) {
     $newResourceChoices = [];
     $headers .= "<tr>";
     $headers .= "<td></td>";
+    $resourcesInOrder = [];
     foreach ($resourceAffiliations as $group => $resourceNames) {
         $numInGroup = 0;
         foreach ($resourceNames as $resource) {
             $idx = $reverseResourceChoices[$resource] ?? "";
             if ($idx !== "") {
                 $newResourceChoices[$idx] = $resource;
+                $resourceInOrder[] = $idx;
                 $numInGroup++;
             }
         }
@@ -80,10 +82,13 @@ if (Application::isVanderbilt()) {
     $headers .= "</tr>";
 
     $resourceChoices = $newResourceChoices;
+} else {
+    $resourcesInOrder = array_keys($resourceChoices);
 }
 $headers .= "<tr>";
 $headers .= "<td></td>";
-foreach ($resourceChoices as $idx => $label) {
+foreach ($resourcesInOrder as $idx) {
+    $label = $resourceChoices[$idx];
     $headers .= "<th class='centered light_grey blackBorder'>$label</th>";
 }
 $headers .= "</tr>";
@@ -103,7 +108,8 @@ foreach ($records as $recordId) {
     echo "<th class='light_grey blackBorder left-align'>$name</th>";
     $recordResources = $resources[$recordId] ?? [];
     $numChecks[$recordId] = 0;
-    foreach ($resourceChoices as $idx => $label) {
+    foreach ($resourcesInOrder as $idx) {
+        $label = $resourceChoices[$idx];
         $checks = [];
         foreach ($recordResources as $instance => $resourceIdx) {
             if ($idx == $resourceIdx) {

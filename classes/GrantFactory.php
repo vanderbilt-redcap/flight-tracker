@@ -290,6 +290,7 @@ class InitialGrantFactory extends GrantFactory {
                 }
 				$costs = Grant::removeCommas($row[$prefix.'_grant'.$i.'_costs']);
 				$grant->setVariable('budget', $costs);
+                $grant->setVariable('total_budget', $costs);
 				$grant->setVariable('direct_budget', $costs);
 				// $grant->setVariable('fAndA', Grants::getFAndA($awardno, $row['check_grant'.$i.'_start']));
 				$grant->setVariable('finance_type', Grants::getFinanceType($awardno));
@@ -359,6 +360,7 @@ class FollowupGrantFactory extends GrantFactory {
 				$grant->setVariable('source', "followup");
 				$costs = Grant::removeCommas($row['followup_grant'.$i.'_costs']);
 				$grant->setVariable('budget', $costs);
+                $grant->setVariable('total_budget', $costs);
 				// $grant->setVariable('fAndA', Grants::getFAndA($awardno, $row['followup_grant'.$i.'_start']));
 				$grant->setVariable('finance_type', Grants::getFinanceType($awardno));
 				$grant->setVariable('direct_budget', $costs);
@@ -437,6 +439,7 @@ class NewmanGrantFactory extends GrantFactory {
                 $grant->setVariable('start', $date1);
                 $grant->setVariable('project_start', $date1);
 				$grant->setVariable('budget', 0);
+                $grant->setVariable('total_budget', 0);
 				$grant->setVariable('direct_budget', 0);
 				$grant->setVariable('source', "data");
 				$grant->setVariable('sponsor_type', $type);
@@ -493,6 +496,7 @@ class NewmanGrantFactory extends GrantFactory {
                 $grant->setVariable('end', $endDate);
                 $grant->setVariable('project_end', $endDate);
 				$grant->setVariable('budget', 0);
+                $grant->setVariable('total_budget', 0);
 				$grant->setVariable('direct_budget', 0);
 				$grant->setVariable('sponsor_type', $type);
 				if ($type) {
@@ -521,6 +525,7 @@ class NewmanGrantFactory extends GrantFactory {
             $grant->setVariable('end', "");
             $grant->setVariable('project_end', "");
 			$grant->setVariable('budget', 0);
+            $grant->setVariable('total_budget', 0);
 			$grant->setVariable('direct_budget', 0);
 			$grant->setVariable('source', "data");
 			$grant->setVariable('url', $url);
@@ -600,6 +605,7 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setVariable('url', $url);
 				$grant->setVariable('link', Links::makeLink($url, "See Grant"));
 				$grant->setVariable('budget', 0);
+                $grant->setVariable('total_budget', 0);
 				$grant->setVariable('direct_budget', 0);
 				$grant->setVariable('sponsor_type', $type);
 
@@ -655,6 +661,7 @@ class NewmanGrantFactory extends GrantFactory {
 				$grant->setVariable('url', $url);
 				$grant->setVariable('link', Links::makeLink($url, "See Grant"));
 				$grant->setVariable('budget', 0);
+                $grant->setVariable('total_budget', 0);
 				$grant->setVariable('direct_budget', 0);
 				$grant->setVariable('pi_flag', "Y");
 				# for this, the type = the award no
@@ -689,6 +696,7 @@ class NewmanGrantFactory extends GrantFactory {
 			$grant->setVariable('url', $url);
 			$grant->setVariable('link', Links::makeLink($url, "See Grant"));
 			$grant->setVariable('budget', 0);
+            $grant->setVariable('total_budget', 0);
 			$grant->setVariable('direct_budget', 0);
 
 			$previous = $row['newman_sheet2_previous_funding'];
@@ -729,6 +737,7 @@ class NewmanGrantFactory extends GrantFactory {
 			$grant->setVariable('url', $url);
 			$grant->setVariable('link', Links::makeLink($url, "See Grant"));
 			$grant->setVariable('budget', 0);
+            $grant->setVariable('total_budget', 0);
 			$grant->setVariable('direct_budget', 0);
 			$sponsorType = $row["newman_new_current_program_funding"];
 			$grant->setVariable('sponsor_type', $sponsorType);
@@ -783,6 +792,7 @@ class NewmanGrantFactory extends GrantFactory {
 			$grant->setVariable('url', $url);
 			$grant->setVariable('link', Links::makeLink($url, "See Grant"));
 			$grant->setVariable('budget', 0);
+            $grant->setVariable('total_budget', 0);
 			$grant->setVariable('direct_budget', 0);
 			$grant->setVariable('pi_flag', "Y");
 			# for this, the type = the award no
@@ -853,6 +863,7 @@ class CoeusSubmissionGrantFactory extends GrantFactory {
         $totalBudget = $directBudget + $indirectBudget;
         $grant->setVariable('title', $row['coeussubmission_title']);
         $grant->setVariable('budget', $totalBudget);
+        $grant->setVariable('total_budget', $totalBudget);
         $grant->setVariable('direct_budget', $directBudget);
 
         $grant->setVariable('source', "coeus");
@@ -909,6 +920,7 @@ class CoeusGrantFactory extends GrantFactory {
         $grant->setVariable('subproject', $isSubproject);
 		if (preg_match("/[Kk]12/", $awardNo) && !in_array($row['coeus_pi_flag'], ["N", "0"])) {
 			$grant->setVariable('budget', '0');
+            $grant->setVariable('total_budget', '0');
 			$grant->setVariable('direct_budget', '0');
             $grant->setVariable("role", "");
 		} else {
@@ -924,6 +936,7 @@ class CoeusGrantFactory extends GrantFactory {
                 $grant->setVariable("role", self::$defaultRole);
             }
 			$grant->setVariable('budget', $row['coeus_total_cost_budget_period']);
+            $grant->setVariable('total_budget', $row['coeus_total_cost_budget_period']);
             $grant->setVariable('direct_budget', $row['coeus_direct_cost_budget_period']);
 		}
 		$grant->setVariable('title', $row['coeus_title']);
@@ -1148,6 +1161,7 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
             $grant->setVariable('end', REDCapManagement::datetime2Date($row['coeus2_current_period_end']));
             $grant->setVariable('title', $row['coeus2_title']);
             $grant->setVariable('budget', $row['coeus2_current_period_total_funding']);
+            $grant->setVariable('total_budget', $row['coeus2_current_period_total_funding']);
             $grant->setVariable('direct_budget', $row['coeus2_current_period_direct_funding']);
             $grant->setVariable('last_update', $row['coeus2_last_update']);
             $grant->setVariable('flagged', $row['coeus2_flagged'] ?? "");
@@ -1199,6 +1213,7 @@ class RePORTERGrantFactory extends GrantFactory {
 		$grant->setVariable('project_end', self::getReporterDate($row['reporter_projectenddate']));
 		$grant->setVariable('title', $row['reporter_title']);
 		$grant->setVariable('budget', $row['reporter_totalcostamount']);
+        $grant->setVariable('total_budget', $row['reporter_totalcostamount']);
 		$grant->setVariable('direct_budget', Grants::directCostsFromTotal($row['reporter_totalcostamount'], $awardNo, self::getReporterDate($row['reporter_budgetstartdate'])));
 		// $grant->setVariable('fAndA', Grants::getFAndA($awardNo, self::getReporterDate($row['reporter_budgetstartdate'])));
 		$grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
@@ -1263,7 +1278,8 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
         $grant->setVariable('start', $row['nih_budget_start'] ?: $budgetStartDate);
         $grant->setVariable('end', $row['nih_budget_end'] ?: $budgetEndDate);
         $grant->setVariable('title', $row['nih_project_title']);
-        $grant->setVariable('budget', $row['nih_direct_cost_amt'] ?: $row['nih_award_amount']);
+        $grant->setVariable('budget', $row['nih_award_amount'] ?: $row['nih_direct_cost_amt']);
+        $grant->setVariable('direct_budget', $row['nih_direct_cost_amt']);
         $grant->setVariable('total_budget', $row['nih_award_amount']);
         $grant->setVariable('sponsor', $row['nih_agency_ic_admin']);
         $grant->setVariable('sponsor_type', $row['nih_agency_ic_admin']);
@@ -1364,6 +1380,7 @@ class ExPORTERGrantFactory extends GrantFactory {
         $grant->setVariable('project_end', RePORTERGrantFactory::getReporterDate($row['exporter_project_end']));
         $grant->setVariable('title', $row['exporter_project_title']);
         $grant->setVariable('budget', $totalCosts);
+        $grant->setVariable('total_budget', $totalCosts);
         $grant->setVariable('direct_budget', $row['exporter_direct_cost_amt']);
         $grant->setVariable('sponsor', $row['exporter_ic_name']);
         $grant->setVariable('sponsor_type', $row['exporter_ic_name']);
@@ -1433,6 +1450,7 @@ class CustomGrantFactory extends GrantFactory {
         $grant->setVariable('project_end', $row['custom_end']);
 		$grant->setVariable('title', $row['custom_title']);
 		$grant->setVariable('budget', $totalCosts);
+        $grant->setVariable('total_budget', $totalCosts);
 		// $grant->setVariable('fAndA', Grants::getFAndA($awardNo, $row['custom_start']));
 		$grant->setVariable('finance_type', Grants::getFinanceType($awardNo));
 		$grant->setVariable('direct_budget', $directCosts);
@@ -1513,6 +1531,7 @@ class PriorGrantFactory extends GrantFactory {
 				$grant->setVariable('last_update', $row['summary_award_last_update_'.$i]);
 				$grant->setVariable('title', $row['summary_award_title_'.$i]);
 				$grant->setVariable('budget', $row['summary_award_total_budget_'.$i]);
+                $grant->setVariable('total_budget', $row['summary_award_total_budget_'.$i]);
 				$grant->setVariable('direct_budget', $row['summary_award_direct_budget_'.$i]);
 				$grant->setNumber($row['summary_award_sponsorno_'.$i]);
 				$grant->setVariable('source', $row['summary_award_source_'.$i]);
@@ -1564,6 +1583,7 @@ class NSFGrantFactory extends GrantFactory {
         $grant->setVariable('project_end', $row['nsf_expdate']);
         $grant->setVariable('title', $title);
         $grant->setVariable('budget', $dollars);
+        $grant->setVariable('total_budget', $dollars);
         $grant->setVariable('direct_budget', $dollars);
         $grant->setVariable('sponsor', $row['nsf_agency']);
         $grant->setVariable("institution", $row['nsf_awardeename']);
@@ -1624,6 +1644,7 @@ class IESGrantFactory extends GrantFactory {
         $grant->setVariable('project_end', $row['ies_end']);
         $grant->setVariable('title', $row['ies_title']);
         $grant->setVariable('budget', $dollars);
+        $grant->setVariable('total_budget', $dollars);
         $grant->setVariable('direct_budget', $dollars);
         $grant->setVariable('sponsor', $row['ies_centername']);
         $grant->setVariable('original_award_number', $awardNo);

@@ -397,6 +397,9 @@ class RePORTER {
     }
 
     public function searchAwards($awardNumbers) {
+        if (empty($awardNumbers)) {
+            return [];
+        }
         if ($this->isFederal()) {
             // $query = $this->server."/v1/projects/search?query=projectNumber:*".urlencode($baseAwardNo)."*";
             // $this->currData = $this->runGETQuery($query);
