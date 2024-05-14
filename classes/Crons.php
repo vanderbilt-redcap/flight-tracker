@@ -21,6 +21,7 @@ class CronManager {
     const BATCH_SYSTEM_SETTING = "batchCronJobs";
     const ERROR_SYSTEM_SETTING = "cronJobsErrors";
     const RUN_SYSTEM_SETTING = "cronJobsCompleted";
+    const UNRESTRICTED_START = "00:00:00";
 
 	public function __construct($token, $server, $pid, $module, $suffix) {
 		$this->token = $token;
@@ -536,7 +537,7 @@ class CronManager {
                 return "19:15:00";
             }
         }
-        return "00:00:00";
+        return self::UNRESTRICTED_START;
     }
 
     public static function getChangedRecords($records, $hours, $pid) {
@@ -594,6 +595,8 @@ class CronManager {
             return "Long-Running";
         } else if (in_array($suffix, [FlightTrackerExternalModule::INTENSE_BATCH_SUFFIX, "_".FlightTrackerExternalModule::INTENSE_BATCH_SUFFIX])) {
             return "Resource-Intensive";
+        } else if (in_array($suffix, [FlightTrackerExternalModule::LOCAL_BATCH_SUFFIX, "_".FlightTrackerExternalModule::LOCAL_BATCH_SUFFIX])) {
+            return "Publication &amp; Local-Resource";
         } else {
             $suffix = preg_replace("/^_/", "", $suffix);
             $suffix = str_replace("_", " ", $suffix);

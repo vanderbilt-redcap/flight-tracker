@@ -1007,7 +1007,7 @@ class REDCapManagement {
     public static function excludeAcronyms($list) {
 	    $newList = [];
 	    foreach ($list as $item) {
-	        if (!preg_match("/^[A-Z\.]+$/", $item) || (strlen($item) > 5)) {
+	        if (!preg_match("/^[A-Z\.]+$/", $item) || (is_string($item) && strlen($item) > 5)) {
 	            $newList[] = $item;
             }
         }
@@ -1853,7 +1853,7 @@ class REDCapManagement {
     }
 
     public static function isValidSupertoken($supertoken) {
-        return (strlen($supertoken) == 64);
+        return (is_string($supertoken) && strlen($supertoken) == 64);
     }
 
     public static function userHasAccess($username, $pid) {
@@ -1897,7 +1897,7 @@ class REDCapManagement {
         if (!$token) {
             return FALSE;
         }
-		return (strlen($token) == 32) && preg_match("/^[\dA-F]{32}$/", $token);
+		return (is_string($token) && strlen($token) == 32) && preg_match("/^[\dA-F]{32}$/", $token);
 	}
 
 	# checks order

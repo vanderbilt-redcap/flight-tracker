@@ -443,7 +443,7 @@ class Download {
         if (!empty($cachedMetadata)) {
             return $cachedMetadata;
         }
-        if ($pid && Application::isServer($server)) {
+        if ($pid && self::isCurrentServer($server)) {
             $metadata = self::metadataByPid($pid, $fields);
             if (isset($_GET['testPSU'])) {
                 echo "metadataByPid: ".count($metadata)." entries<br/>";
@@ -735,11 +735,21 @@ class Download {
         if (isset($data['token']) && isset($data['fields']) && !empty($data['fields'])) {
             $data['fields'] = self::replaceUseridField($data['fields'], $data['token'], $server);
         }
-		if ($pid && isset($_GET['pid']) && ($pid == $_GET['pid']) && !isset($data['forms']) && method_exists('\REDCap', 'getData')) {
+		if (
+            $pid
+            && isset($_GET['pid'])
+            && ($pid == $_GET['pid'])
+            && !isset($data['forms'])
+            && method_exists('\REDCap', 'getData')
+            && self::isCurrentServer($server)
+        ) {
             $records = $data['records'] ?? NULL;
             $fields = $data['fields'] ?? NULL;
             return self::fieldsForRecordsByPid($pid, $fields, $records);
 		} else {
+            if (self::isCurrentServer($server) && (isset($data['token']))) {
+                $pid = Application::getPID($data['token']);
+            }
             return self::callAPI($server, $data, $pid, 1, $isJSON);
         }
 	}
@@ -1242,26 +1252,31 @@ class Download {
         return $ary;
     }
 
-    private static function dataForOneFieldByPid($pid, $field) {
-        $fields = ["record_id", $field];
+    private static function dataForOneFieldByPid($pid, $field, $recordIdField = "record_id") {
+        $fields = [$recordIdField, $field];
         return self::fieldsForRecordsByPid($pid, $fields, NULL);
     }
 
     private static function dataForOneField($token, $server, $field, $recordIdField = "record_id") {
-        $data = [
-            'token' => $token,
-            'content' => 'record',
-            'format' => 'json',
-            'type' => 'flat',
-            'rawOrLabel' => 'raw',
-            'fields' => [$recordIdField, $field],
-            'rawOrLabelHeaders' => 'raw',
-            'exportCheckboxLabel' => 'false',
-            'exportSurveyFields' => 'false',
-            'exportDataAccessGroups' => 'false',
-            'returnFormat' => 'json'
-        ];
-        return self::sendToServer($server, $data);
+        $pid = Application::getPID($token);
+        if ($pid && self::isCurrentServer($server)) {
+            self::dataForOneFieldByPid($pid, $field, $recordIdField);
+        } else {
+            $data = [
+                'token' => $token,
+                'content' => 'record',
+                'format' => 'json',
+                'type' => 'flat',
+                'rawOrLabel' => 'raw',
+                'fields' => [$recordIdField, $field],
+                'rawOrLabelHeaders' => 'raw',
+                'exportCheckboxLabel' => 'false',
+                'exportSurveyFields' => 'false',
+                'exportDataAccessGroups' => 'false',
+                'returnFormat' => 'json'
+            ];
+            return self::sendToServer($server, $data);
+        }
     }
 
     public static function oneFieldWithInstancesByPid($pid, $field) {

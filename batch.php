@@ -24,6 +24,7 @@ $headers = [
 ];
 $queues = [
     "",
+    FlightTrackerExternalModule::LOCAL_BATCH_SUFFIX,
     FlightTrackerExternalModule::INTENSE_BATCH_SUFFIX,
     FlightTrackerExternalModule::LONG_RUNNING_BATCH_SUFFIX,
 ];
@@ -70,8 +71,8 @@ foreach ($queues as $suffix) {
     $restrictionEnd = CronManager::getRestrictedTime($suffix, "end");
     if (
         (
-            ($restrictionStart != "00:00:00")
-            || ($restrictionEnd != "00:00:00")
+            ($restrictionStart != CronManager::UNRESTRICTED_START)
+            || ($restrictionEnd != CronManager::UNRESTRICTED_START)
         )
         && !Application::isLocalhost()
     ) {

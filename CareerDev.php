@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.10.2";
+		return "6.10.3";
 	}
 
     public static function getLocalhostPluginPid() {

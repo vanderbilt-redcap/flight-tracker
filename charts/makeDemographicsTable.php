@@ -1082,12 +1082,14 @@ foreach ($tableData as $tableRow => $ary) {
 echo "</table>";
 
 foreach ($cohortData as $cohort => $dataForCohort) {
-	echo "<div class='centered' id='cohort_$cohort' style='display: none; padding-top: 72px; padding-bottom: 16px;'><h4>$cohort Cohort (".count($cohortData).")</h4><div class='normalfont'>";
-	$cohortStrs = [];
-	foreach ($dataForCohort as $cohortRecord => $cohortName) {
-		$cohortStrs[] = Links::makeRecordHomeLink($pid, $cohortRecord, "Record $cohortRecord - $cohortName");
-	}
-	echo implode("<br>", $cohortStrs);
-	echo "</div></div>";
+    if (is_countable($dataForCohort)) {
+        echo "<div class='centered' id='cohort_$cohort' style='display: none; padding-top: 72px; padding-bottom: 16px;'><h4>$cohort Cohort (".count($cohortData).")</h4><div class='normalfont'>";
+        $cohortStrs = [];
+        foreach ($dataForCohort as $cohortRecord => $cohortName) {
+            $cohortStrs[] = Links::makeRecordHomeLink($pid, $cohortRecord, "Record $cohortRecord - $cohortName");
+        }
+        echo implode("<br>", $cohortStrs);
+        echo "</div></div>";
+    }
 }
 

@@ -30,6 +30,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     const COMPLETE_INDICES = [2];
     const MATCHES_BATCH_SIZE = 200;
     const LONG_RUNNING_BATCH_SUFFIX = "long";
+    const LOCAL_BATCH_SUFFIX = "local";
     const INTENSE_BATCH_SUFFIX = "intense";
     const TEST_CRON = "test";
     const WEEKDAYS = [1, 2, 3, 4, 5];
@@ -67,6 +68,11 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         ) {
             $this->runBatch(self::INTENSE_BATCH_SUFFIX);
         }
+    }
+
+    # local-resource cron; runs 24/7
+    function local() {
+        $this->runBatch(self::LOCAL_BATCH_SUFFIX);
     }
 
     # Vanderbilt's REDCap traffic tends to speed up around 8am and decrease after 6pm
@@ -1473,6 +1479,9 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
                         $intenseManager = new CronManager($token, $server, $pid, $this, self::INTENSE_BATCH_SUFFIX);
                         loadIntenseCrons($intenseManager, FALSE, $token, $server);
+
+                        $localManager = new CronManager($token, $server, $pid, $this, self::LOCAL_BATCH_SUFFIX);
+                        loadLocalCrons($localManager, FALSE, $token, $server);
                     }
                     Application::log($this->getName().": $tokenName enqueued crons", $pid);
                 } catch(\Exception $e) {

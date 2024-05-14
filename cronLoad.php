@@ -35,27 +35,6 @@ function runMainCrons(&$manager, $token, $server) {
         if (!$securityTestMode) {
             $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Thursday", $allRecords, 100);
         }
-        if (in_array('citation', $forms)) {
-            $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Tuesday", $records, 20);
-            if (!Application::getSetting("fixedPMCs", $pid)) {
-                $manager->addCron("clean/updatePMCs.php", "updatePMCs", date("Y-m-d"), $records, 1000);
-                Application::saveSetting("fixedPMCs", TRUE, $pid);
-            }
-            if (!Application::getSetting("fixedPMCsBlank", $pid)) {
-                $manager->addCron("clean/updatePMCs.php", "cleanUpBlankInstances", date("Y-m-d"), $records, 1000);
-                Application::saveSetting("fixedPMCsBlank", TRUE, $pid);
-            }
-            if (Application::isVanderbilt() && !Application::getSetting("initializedLexTranslator", $pid)) {
-                $manager->addCron("drivers/initializeLexicalTranslator.php", "initialize", date("Y-m-d"), $records, 10);
-                Application::saveSetting("initializedLexTranslator", TRUE, $pid);
-            }
-            # limited group because bibliometric updates take a lot of time due to rate limiters
-            $bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
-            $bibliometricsSwitch = $switches->getValue("Update Bibliometrics Monthly");
-            if (!empty($bibliometricRecordsToUpdate) && ($bibliometricsSwitch == "On")) {
-                $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
-            }
-        }
 
         if (in_array('patent', $forms) && !$securityTestMode) {
             $manager->addCron("drivers/18_getPatents.php", "getPatents", "Thursday", $records, 100);
@@ -63,27 +42,51 @@ function runMainCrons(&$manager, $token, $server) {
         if (in_array("nsf", $forms)) {
             $manager->addCron("drivers/20_nsf.php", "getNSFGrants", "Monday", $records, 100);
         }
-        if (in_array("eric", $forms)) {
-            $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
-        }
-
-        if (Application::isServer("redcap.vanderbilt.edu") || Application::isServer("redcap.vumc.org")) {
-            if (in_array('ldapds', $forms)) {
-                $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $allRecords, 10000);
-            }
-            $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
-            $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Friday", $allRecords, 500);
-            $manager->addCron("drivers/importHistoricalCOEUS.php", "importHistoricalCOEUS", "2024-03-25", $allRecords, 10000);
-            if (in_array('coeus', $forms)) {
-                # Put in Multi crons
-                // $manager->addCron("drivers/19_updateNewCoeus.php", "updateAllCOEUS", "Wednesday", $allRecords, 1000);
-                $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
-            } else if (in_array('coeus2', $forms)) {
-                $manager->addCron("drivers/2r_updateCoeus2.php", "processCoeus2", "Thursday", $records, 100);
-            }
-        }
     } catch(\Exception $e) {
         Application::log("ERROR in runMainCrons: ".$e->getMessage(), $pid);
+    }
+}
+
+function loadLocalCrons(&$manager, $token, $server) {
+    $pid = CareerDev::getPid($token);
+    Application::log("loadIntenseCrons", $pid);
+
+    $forms = Download::metadataForms($token, $server);
+    $metadataFields = Download::metadataFields($token, $server);
+    if (in_array("identifier_stop_collection", $metadataFields)) {
+        $allRecords = Download::recordsWithDownloadActive($token, $server);
+    } else {
+        $allRecords = Download::recordIds($token, $server);
+    }
+    $switches = new FeatureSwitches($token, $server, $pid);
+    $records = $switches->downloadRecordIdsToBeProcessed($allRecords);
+
+    if (Application::isVanderbilt()) {
+        if (in_array('ldapds', $forms)) {
+            $manager->addCron("drivers/17_getLDAP.php", "getLDAPs", "Monday", $allRecords, 10000);
+        }
+        $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
+        $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Friday", $allRecords, 500);
+        if (in_array('coeus', $forms)) {
+            $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
+        }
+    }
+
+    if (in_array('citation', $forms)) {
+        $manager->addCron("publications/getAllPubs_func.php", "getPubs", "Tuesday", $records, 20);
+        if (Application::isVanderbilt() && !Application::getSetting("initializedLexTranslator", $pid)) {
+            $manager->addCron("drivers/initializeLexicalTranslator.php", "initialize", date("Y-m-d"), $records, 10);
+            Application::saveSetting("initializedLexTranslator", TRUE, $pid);
+        }
+        # limited group because bibliometric updates take a lot of time due to rate limiters
+        $bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
+        $bibliometricsSwitch = $switches->getValue("Update Bibliometrics Monthly");
+        if (!empty($bibliometricRecordsToUpdate) && ($bibliometricsSwitch == "On")) {
+            $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
+        }
+    }
+    if (in_array("eric", $forms)) {
+        $manager->addCron("drivers/23_getERIC.php", "getERIC", "Friday", $records, 100);
     }
 }
 
@@ -143,6 +146,12 @@ function runIntenseCrons(&$manager, $token, $server) {
         }
         if ($celebrations->hasEmail("monthly")) {
             $manager->addCron("drivers/25_emailHighlights.php", "sendMonthlyEmailHighlights", date("Y-m-01"), $allRecords, 100000);
+        }
+        if ($celebrations->hasEmail("quarterly")) {
+            $month = (int) date("m");
+            if (($month - 1) % 3 === 0) {
+                $manager->addCron("drivers/25_emailHighlights.php", "sendQuarterlyEmailHighlights", date("Y-m-01"), $allRecords, 100000);
+            }
         }
 
         # Increasing this number from 15 to 50. These only run in off-hours, so the challenge is grabbing

@@ -68,6 +68,13 @@
 			"method": "long_batch",
 			"cron_frequency": "60",
 			"cron_max_run_time": "3600"
+		},
+		{
+			"cron_name": "flight_tracker_local_batch",
+			"cron_description": "Flight Tracker Batch Cron for local-resource & publication-related crons; runs every minute",
+			"method": "local",
+			"cron_frequency": "60",
+			"cron_max_run_time": "3600"
 		}
 	],
 

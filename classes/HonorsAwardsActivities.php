@@ -92,7 +92,7 @@ class HonorsAwardsActivities {
         return "<p class='centered max-width'>No honors or activities have been added. $linkHTML</p>";
     }
 
-    public function getHTML() {
+    public function getHTML($divAttributes = "class='max-width-600 centered'") {
         if (empty($this->rows)) {
             return $this->makeNoDataHTML();
         }
@@ -123,7 +123,7 @@ class HonorsAwardsActivities {
         if (empty($htmlRows)) {
             return $this->makeNoDataHTML();
         }
-        return "<div class='max-width-600 centered'>".implode("<br/>", $htmlRows)."</div>";
+        return "<div $divAttributes>".implode("<br/>", $htmlRows)."</div>";
     }
 
     private function makeHonorHTML($row, $prefix) {

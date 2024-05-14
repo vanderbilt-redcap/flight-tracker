@@ -76,6 +76,12 @@ class CelebrationsEmail {
                 "scope" => "High-Impact",
                 "grants" => $grants,
             ];
+            $this->config["New Honors, Awards, and Activities"] = [
+                "who" => $scholarScope,
+                "when" => $frequency,
+                "what" => "Honors",
+                "scope" => "New",
+            ];
             $this->saveConfig();
         }
     }
@@ -105,10 +111,13 @@ class CelebrationsEmail {
 
     # return list($numDaysToHighlight, $numDaysWithoutWarning)
     private function getNumDays($frequency) {
+        # give one week lag time?
         if ($frequency == "weekly") {
             return [14, 7];
         } else if ($frequency == "monthly") {
-            return [60, 31];
+            return [38, 31];
+        } else if ($frequency == "quarterly") {
+            return [97, 90];
         }
         return [0, 0];
     }
@@ -119,6 +128,7 @@ class CelebrationsEmail {
             $fields[] = $prefix."_last_update";
             $fields[] = $prefix."_created";
         }
+        $fields = array_merge($fields, ["activityhonor_datetime", "surveyactivityhonor_datetime"]);
         $fields = array_unique($fields);
         return DataDictionaryManagement::filterOutInvalidFields($this->metadata, $fields);
     }
@@ -147,7 +157,6 @@ class CelebrationsEmail {
             $this->filterForInstitution($filteredRecords);
             $validFields = DataDictionaryManagement::filterOutInvalidFields($this->metadata, $fields);
             $redcapData = Download::fields($this->token, $this->server, $validFields);
-            $names = Download::names($this->token, $this->server);
 
             $this->allPMIDsIdentified[$name] = [];
             $this->scholarsIdentifiedForPubs[$name] = [];
@@ -207,6 +216,21 @@ class CelebrationsEmail {
                         )
                     ) {
                         $this->enrollNewInstance("grantRecordsAndInstances", $name, $recordId, $instance, $instrument);
+                    }
+                } else if (
+                    in_array($row['redcap_repeat_instrument'], ["honors_awards_and_activities", "honors_awards_and_activities_survey"])
+                    && in_array($recordId, $filteredRecords)
+                ) {
+                    $instrument = $row['redcap_repeat_instrument'];
+                    $instance = $row['redcap_repeat_instance'];
+                    if ($instrument == "honors_awards_and_activities") {
+                        $prefix = "activityhonor";
+                    } else {
+                        $prefix = "surveyactivityhonor";
+                    }
+                    $dateTimeCreated = $row[$prefix."_datetime"];
+                    if ($dateTimeCreated && (strtotime($dateTimeCreated) > $thresholdTs)) {
+                        $this->enrollNewInstance("honorRecordsAndInstances", $name, $recordId, $instance, $instrument);
                     }
                 }
             }
@@ -323,6 +347,70 @@ class CelebrationsEmail {
             }
         }
         return $htmlRows;
+    }
+
+    private function presentHonorDataInHTML($name, $longDate) {
+        $noHonorsHTML = "<p>No new honors, awards &amp; activities have been uploaded since $longDate.</p>";
+        if (empty($this->honorRecordsAndInstances[$name])) {
+            return $noHonorsHTML;
+        }
+
+        $html = "";
+        $allRequestedRecords = [];
+        foreach ($this->honorRecordsAndInstances[$name] as $instrument => $recordsAndInstances) {
+            $currRecords = array_keys($recordsAndInstances);
+            $allRequestedRecords = array_unique(array_merge($currRecords, $allRequestedRecords));
+        }
+        if (empty($allRequestedRecords)) {
+            return $noHonorsHTML;
+        }
+        $fields = array_unique(array_merge(
+            ["record_id"],
+            DataDictionaryManagement::getFieldsFromMetadata($this->metadata, "honors_awards_and_activities"),
+            DataDictionaryManagement::getFieldsFromMetadata($this->metadata, "honors_awards_and_activities_survey")
+        ));
+        $lastNames = Download::lastnames($this->token, $this->server);
+        $names = Download::namesByPid($this->pid);
+        $emails = Download::emails($this->token, $this->server);
+        $redcapData = Download::fieldsForRecordsByPid($this->pid, $fields, $allRequestedRecords);
+        $indexedRelevantData = [];
+        foreach ($this->honorRecordsAndInstances[$name] as $instrument => $recordsAndInstances) {
+            foreach ($redcapData as $row) {
+                $recordId = $row['record_id'];
+                if (
+                    isset($recordsAndInstances[$recordId])
+                    && isset($lastNames[$recordId])
+                    && ($lastNames[$recordId] !== "")
+                    && in_array($row['redcap_repeat_instance'], $recordsAndInstances[$recordId])
+                    && ($row['redcap_repeat_instrument'] == $instrument)
+                ) {
+                    if (!isset($indexedRelevantData[$recordId])) {
+                        $indexedRelevantData[$recordId] = [];
+                    }
+                    $indexedRelevantData[$recordId][] = $row;
+                }
+            }
+        }
+        if (empty($indexedRelevantData)) {
+            return $noHonorsHTML;
+        }
+
+        foreach ($indexedRelevantData as $recordId => $rows) {
+            $honors = new HonorsAwardsActivities($rows, $this->pid, $recordId);
+            $scholarName = $names[$recordId];
+            if ($emails[$recordId] ?? FALSE) {
+                $email = $emails[$recordId];
+                $formattedNameWithLink = "$scholarName <a href='mailto:$email'>$email</a>";
+            } else {
+                $formattedNameWithLink = $scholarName;
+            }
+            $numRows = count($rows);
+
+            $html .= "<h3>$formattedNameWithLink ($numRows)</h3>";
+            $html .= $honors->getHTML("style='max-width: 600px;'");
+        }
+
+        return $html;
     }
 
     private function presentGrantDataInHTML($dataByName, $longDate) {
@@ -694,6 +782,13 @@ a { color: #5764ae; }
                 } else {
                     $html .= "<p>No new grants have been downloaded since $longThresholdDate, for the following Application Types: $appTypes</p>";
                 }
+            } else if (($dataType == "Honors, Awards, and Activities") && ($dataScope == "New")) {
+                $html .= "<h2>$settingName for $scholarTitle<br/>New Items Submitted After $thresholdDateMDY</h2>";
+                if (!empty($this->honorRecordsAndInstances)) {
+                    $html .= $this->presentHonorDataInHTML($settingName, $longThresholdDate);
+                } else {
+                    $html .= "<p>No new honors, awards &amp; activities have been submitted since $longThresholdDate.</p>";
+                }
             } else if ($dataType == "Publications") {
                 if (!empty($this->scholarsIdentifiedForPubs[$settingName]) || !empty($this->citationRecordsAndInstances[$settingName])) {
                     $requestedGrants = $associatedGrants ? preg_split("/\s*[,;]\s*/", $associatedGrants) : [];
@@ -761,12 +856,14 @@ a { color: #5764ae; }
         $frequencyOptions = [
             "<option value='weekly' selected>Weekly</option>",
             "<option value='monthly'>Monthly</option>",
+            "<option value='quarterly'>Quarterly</option>",
         ];
         $contentOptions = [
             "<option value='new_grants' selected>New Grants</option>",
             "<option value='all_pubs'>All New Publications</option>",
             "<option value='first_last_author_pubs'>All First/Last Author Publications</option>",
             "<option value='high_impact_pubs'>New High-Impact Publications</option>",
+            "<option value='new_honors'>New Honors, Awards, and Activities</option>",
         ];
         $scholarScopeOptions = [
             "<option value='all' selected>All Scholars</option>",
@@ -850,6 +947,7 @@ a { color: #5764ae; }
     protected $server;
     protected $metadata;
     protected $grantRecordsAndInstances;
+    protected $honorRecordsAndInstances;
     protected $citationRecordsAndInstances;
     protected $scholarsIdentifiedForPubs;
     protected $grantInstrumentsAndPrefices;
