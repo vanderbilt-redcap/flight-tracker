@@ -1260,7 +1260,7 @@ class Download {
     private static function dataForOneField($token, $server, $field, $recordIdField = "record_id") {
         $pid = Application::getPID($token);
         if ($pid && self::isCurrentServer($server)) {
-            self::dataForOneFieldByPid($pid, $field, $recordIdField);
+            return self::dataForOneFieldByPid($pid, $field, $recordIdField);
         } else {
             $data = [
                 'token' => $token,
