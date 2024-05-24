@@ -465,7 +465,7 @@ class Download {
                 Application::log("Download::metadata $method returning " . count($rows) . " rows", $pid);
             }
             if (isset($_GET['testPSU'])) {
-                echo "metadata by API: ".count($rows)." entries<br/>";
+                echo "metadata by API (pid $pid, $server, ".SERVER_NAME."): ".count($rows)." entries<br/>";
             }
             if (empty($fields)) {
                 if (isset($_GET['testPSU'])) {
@@ -493,11 +493,11 @@ class Download {
             $fiveMinutes = 5 * 60;
             if (
                 ($currTs - $ts >= $fiveMinutes)
-                && ($currTs > $ts)
+                && ($currTs >= $ts)
                 && !empty($cachedMetadata)
             ) {
                 if (isset($_GET['test'])) {
-                    Application::log("Download::metadata returning _SESSION: ".count($cachedMetadata)." rows", $pid);
+                    Application::log("Download::getCachedMetadata returning _SESSION: ".count($cachedMetadata)." rows", $pid);
                 }
                 return $cachedMetadata;
             }

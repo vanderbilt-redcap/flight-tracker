@@ -8,8 +8,8 @@ class ConnectionStatus {
     public function __construct($server, $pid) {
         $this->server = $server;
         $method = "https";
-        if ($this->server == "api.nsf.gov") {
-            $this->url = "https://api.nsf.gov/services/v1/awards.json";
+        if ($this->server == "www.research.gov") {
+            $this->url = "https://www.research.gov/awardapi-service/v1/awards.json";
         } else {
             $this->url = $method."://".$server;
         }

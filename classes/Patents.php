@@ -18,7 +18,7 @@ class Patents {
         $this->firstName = $firstName;
         $this->lastName = $lastName;
         $this->name = "$firstName $lastName";
-        $this->institutions = array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid), $institutions));
+        $this->institutions = array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid), $institutions ?? []));
     }
 
     public static function getURLForPatent($patentNumber) {

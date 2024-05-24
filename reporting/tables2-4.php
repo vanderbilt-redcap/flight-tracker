@@ -74,7 +74,11 @@ if (isset($_POST['action']) && $token && $server && $pid) {
                 }
             }
         } else if ($action == "saveTable") {
-            $tableData = $_POST['tableData'];     // sanitizing causes double-escapes of HTML
+            $tableDataJSONs = $_POST['tableData'];     // sanitizing causes double-escapes of HTML
+            $tableData = [];
+            foreach ($tableDataJSONs as $json) {
+                $tableData[] = json_decode($json, TRUE);
+            }
             $tableNum = Sanitizer::sanitize($_POST['tableNum']);
             $name = Sanitizer::sanitize($_POST['name']);
             $dateOfReport = Sanitizer::sanitize($_POST['date']);

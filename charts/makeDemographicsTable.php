@@ -454,7 +454,10 @@ function get_internal_k($data) {
 			}
 		}
 	}
-	return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    if (!empty($people)) {
+        return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    }
+    return 0;
 }
 
 # get percentage who have an individual K/equivalent
@@ -478,7 +481,10 @@ function get_individual_k_or_equiv($data) {
 			}
 		}
 	}
-	return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    if (!empty($people)) {
+        return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    }
+    return 0;
 }
 
 # get percentage who have a K12/KL2
@@ -502,7 +508,10 @@ function get_k12_kl2($data) {
 			}
 		}
 	}
-	return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    if (!empty($people)) {
+        return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    }
+    return 0;
 }
 
 # get percentage who have a R01/equivalent
@@ -526,7 +535,10 @@ function get_r01_or_equiv($data) {
 			}
 		}
 	}
-	return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    if (!empty($people)) {
+        return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    }
+    return 0;
 }
 
 # returns the total number of publications in the database

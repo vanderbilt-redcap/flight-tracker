@@ -23,7 +23,7 @@ function getNSFGrantsGeneric($token, $server, $pid, $records, $searchWithoutInst
     $firstNames = Download::firstnames($token, $server);
     // $middleNames = Download::middlenames($token, $server);
     $lastNames = Download::lastnames($token, $server);
-    $urlBase = "https://api.nsf.gov/services/v1/awards.json";
+    $urlBase = "https://www.research.gov/awardapi-service/v1/awards.json";
     $errors = [];
     $maxTries = 4;
     $maxConsecutiveFailures = 50;

@@ -18,6 +18,7 @@ use Vanderbilt\CareerDevLibrary\Portal;
 use Vanderbilt\CareerDevLibrary\Links;
 use Vanderbilt\CareerDevLibrary\CelebrationsEmail;
 use Vanderbilt\CareerDevLibrary\MSTP;
+use Vanderbilt\CareerDevLibrary\Grant;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/cronLoad.php");
@@ -1481,7 +1482,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         loadIntenseCrons($intenseManager, FALSE, $token, $server);
 
                         $localManager = new CronManager($token, $server, $pid, $this, self::LOCAL_BATCH_SUFFIX);
-                        loadLocalCrons($localManager, FALSE, $token, $server);
+                        loadLocalCrons($localManager, $token, $server);
                     }
                     Application::log($this->getName().": $tokenName enqueued crons", $pid);
                 } catch(\Exception $e) {
@@ -1661,6 +1662,15 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	 });
 </script>";
                 }
+            } else if ($_GET['page'] == "custom_grant") {
+                $grantDescriptionHTML = Grant::getGrantTypeDescriptionHTML();
+                $grantDescriptionHTML = preg_replace("/[\n\r]/", "", $grantDescriptionHTML);
+                echo "
+<script>
+	$(document).ready(function() {
+        $('#form-title').after(\"$grantDescriptionHTML\");
+	 });
+</script>";
             }
         }
 	}

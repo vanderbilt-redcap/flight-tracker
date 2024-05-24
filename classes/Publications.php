@@ -1168,7 +1168,6 @@ class Publications {
                 }
             }
             $title = strval($article->ArticleTitle);
-            Application::log("Got $title from XML", $pid);
             $title = preg_replace("/\.$/", "", $title);
 
             $pubTypes = array();
@@ -1344,9 +1343,7 @@ class Publications {
             if (in_array($pmid, $confirmedPMIDs)) {
                 $row['citation_include'] = '1';
             }
-            Application::log("Row has ".count($row)." items before filter", $pid);
             $row = REDCapManagement::filterForREDCap($row, $metadataFields);
-            Application::log("Row has ".count($row)." items after filter", $pid);
             $upload[] = $row;
             $instance++;
         }
@@ -1412,7 +1409,6 @@ class Publications {
 
     private static function repetitivelyPullFromEFetch($pmids, $pid) {
         $output = self::pullFromEFetch($pmids, $pid);
-        Application::log("Downloaded XML with ".strlen($output)." characters", $pid);
         $xml = simplexml_load_string(utf8_encode($output));
         $tries = 0;
         $maxTries = 10;
@@ -2350,7 +2346,6 @@ class Publications {
 
 	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = [], $pid = NULL, $getBibliometricInfo = TRUE) {
         $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-        Application::log("Downloaded ".count($metadataFields)." metadata fields", $pid);
         $upload = [];
 		$instance = $startInstance;
 		$pullSize = self::getPMIDLimit();

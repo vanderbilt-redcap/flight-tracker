@@ -119,6 +119,8 @@ if (count($_POST) > 0) {
                     $value = $module->getEventId();
                 }
                 Application::saveSetting($key, $value, $pid);
+            } else if ($key == "bulletin_board_monitor") {
+                Application::saveSystemSetting($key, $value);
 			} else {
                 Application::saveSetting($key, $value, $pid);
 			}

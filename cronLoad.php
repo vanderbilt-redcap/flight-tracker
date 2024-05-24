@@ -49,7 +49,7 @@ function runMainCrons(&$manager, $token, $server) {
 
 function loadLocalCrons(&$manager, $token, $server) {
     $pid = CareerDev::getPid($token);
-    Application::log("loadIntenseCrons", $pid);
+    Application::log("loadLocalCrons", $pid);
 
     $forms = Download::metadataForms($token, $server);
     $metadataFields = Download::metadataFields($token, $server);

@@ -54,7 +54,7 @@ foreach ($queues as $suffix) {
     if (!$id) {
         $id = "main";
     }
-    $queueLinks[] = "<a href='#$id' class='orange roundedBorder smallShadow small nounderline' style='margin-right: 8px; margin-left: 8px; padding: 4px 6px;'>".ucfirst($suffixTitle)." Queue ($count)</a>";
+    $queueLinks[] = "<a href='#$id' class='orange roundedBorder smallShadow small nounderline nobreak' style='margin-right: 8px; margin-left: 8px; padding: 4px 6px;'>".ucfirst($suffixTitle)." Queue ($count)</a>";
 }
 echo "<p class='centered max-width'>This page shows the current state of Flight Tracker's batch queues. These jobs are set up daily, usually at midnight, and run until the queue has completed.<br/><strong>Last Updated</strong>: $datetime</p>";
 echo "<p class='centered max-width'>".implode("", $queueLinks)."</p>";

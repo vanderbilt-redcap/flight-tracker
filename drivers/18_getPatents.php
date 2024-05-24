@@ -25,7 +25,7 @@ function getPatents($token, $server, $pid, $records) {
             $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge(["record_id"], $patentFields)), [$recordId]);
             $previousNumbers = REDCapManagement::findAllFields($redcapData, $recordId, "patent_number");
             $maxInstance = REDCapManagement::getMaxInstance($redcapData, "patent", $recordId);
-            $myInstitutions = array_unique(array_merge($institutions[$recordId], Application::getInstitutions($pid), Application::getHelperInstitutions($pid)));
+            $myInstitutions = array_unique(array_merge($institutions[$recordId] ?? [], Application::getInstitutions($pid), Application::getHelperInstitutions($pid)));
 
             Application::log("Searching for {$firstNames[$recordId]} {$lastNames[$recordId]} at ".json_encode($myInstitutions), $pid);
             $p = new PatentsView($recordId, $pid, $startDates[$recordId] ?: "none", $metadata);

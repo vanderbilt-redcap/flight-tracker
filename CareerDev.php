@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.10.4";
+		return "6.10.5";
 	}
 
     public static function getLocalhostPluginPid() {
@@ -128,7 +128,7 @@ class CareerDev {
             "Statistics Reporting" => "redcap.vumc.org",
             "Altmetric" => "api.altmetric.com",
             "Patents View (US Patent Office)" => "api.patentsview.org",
-            "NSF Grants" => "api.nsf.gov",
+            "NSF Grants" => "www.research.gov",
             "ERIC" => "api.ies.ed.gov",
             "Dept. of Ed. Grants" => "ies.ed.gov",
             "TAGGS (HHS)" => "taggs.hhs.gov",

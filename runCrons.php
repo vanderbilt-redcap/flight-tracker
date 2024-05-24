@@ -25,6 +25,8 @@ if (isset($_GET['initial'])) {
 } else if ($suffix == FlightTrackerExternalModule::LONG_RUNNING_BATCH_SUFFIX) {
     $pids = Application::getActivePids();
     \Vanderbilt\FlightTrackerExternalModule\loadMultiProjectCrons($module->cronManager, $pids);
+} else if ($suffix == FlightTrackerExternalModule::LOCAL_BATCH_SUFFIX) {
+    \Vanderbilt\FlightTrackerExternalModule\loadLocalCrons($module->cronManager, $token, $server);
 } else if ($suffix == FlightTrackerExternalModule::INTENSE_BATCH_SUFFIX) {
     \Vanderbilt\FlightTrackerExternalModule\loadIntenseCrons($module->cronManager, $specialOnly);
 }
