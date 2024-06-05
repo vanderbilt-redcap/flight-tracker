@@ -342,7 +342,9 @@ table { border-collapse: collapse; }
             $data = Application::getSetting($key, $this->pid);
             $seenAwards = [];
             foreach ($data['data'] as $row) {
-                $seenAwards[] = $row[$field];
+                if (is_array($row)) {
+                    $seenAwards[] = $row[$field];
+                }
             }
             return $seenAwards;
         }
