@@ -250,7 +250,13 @@ class Sanitizer {
      * @psalm-taint-specialize
      */
     public static function sanitizeWithoutStrippingHTML($str, $encodeQuotes = TRUE) {
-        return filter_tags($str, TRUE, TRUE, TRUE, TRUE);
+        $final = filter_tags($str, TRUE, TRUE, TRUE, TRUE);
+        # filter_tags() puts spaces before a closing tag that is escaped; this undoes that effect
+        # this primarily affects HTML within JSONs
+        if ((strpos($final, "< \\/") !== FALSE) && (strpos($str, "< \\/") === FALSE)) {
+            $final = str_replace("< \\/", "<\\/", $final);
+        }
+        return $final;
     }
 
     /**

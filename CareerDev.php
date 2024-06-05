@@ -22,14 +22,14 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.10.5";
+		return "6.10.6";
 	}
 
     public static function getLocalhostPluginPid() {
         if (Application::getServerEmail() == "scott.j.pearson@vumc.org") {
             return 16;
         }
-        return "";
+        return 16;
     }
 
     public static function getLatestReleaseVersion() {
@@ -313,7 +313,7 @@ class CareerDev {
         $isSSLPort = $serverPort == 443;
         if ($isHTTPS || $isSSLPort) {
             return "https://";
-        } else if (isset($_GET['pid'])) {
+        } else if (isset($_GET['pid']) && $_GET['pid']) {
             $myserver = self::getSetting("server", Sanitizer::sanitizePid($_GET['pid']));
             if (preg_match("/^https:/i", $myserver)) {
                 # assume https because the setup server requests it
@@ -893,7 +893,7 @@ class CareerDev {
         return [];
     }
 
-	public static function getSetting($field, $pid = "") {
+	public static function getSetting($field, $pid = NULL) {
 	    if (
             self::isVanderbilt()
             && ((Application::isServer("redcap.vumc.org") && ($pid == NEWMAN_SOCIETY_PROJECT))

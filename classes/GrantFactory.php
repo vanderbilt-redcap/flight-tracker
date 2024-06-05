@@ -1025,13 +1025,14 @@ class VERAGrantFactory extends  GrantFactory {
             $awardNo = Grant::$noNameAssigned;
         }
 
-        $role = "";
-        if ($row['vera_personnel_role'] == "Co-Investigator") {
+        if ($row['vera_project_role'] == "Co-Investigator") {
             return;
-        } else if ($row['vera_personnel_role'] == "PD/PI") {
+        } else if ($row['vera_project_role'] == "PD/PI") {
             $role = "PI";
-        } else if ($row['vera_personnel_role'] == "Co-PD/PI") {
+        } else if ($row['vera_project_role'] == "Co-PD/PI") {
             $role = "Co-PI";
+        } else {
+            $role = $row['vera_project_role'];
         }
 
         $grant = new Grant($this->lexicalTranslator);

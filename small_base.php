@@ -53,7 +53,7 @@ if (!$pid && !Application::isWebBrowser() && is_array($argv) && (count($argv) >=
     $_GET['pid'] = $pid;
 }
 if (!$pid) {
-    if (isset($_GET['project_id'])) {
+    if (isset($_GET['project_id']) && $_GET['project_id']) {
         $pid = CareerDev::getSetting("pid", $_GET['project_id']);
     } else {
         $pid = CareerDev::getSetting("pid");

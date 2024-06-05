@@ -23,12 +23,26 @@ if (!isset($_GET['cohort']) || !$_GET['cohort']) {
     $cohorts = new Cohorts($token, $server, Application::getModule());
     $thisLink = Application::link("this");
     $thisUrl = URLManagement::getPage($thisLink);
+    $startChecked = "";
+    $withinChecked = "";
+    $activeChecked = "";
+    if ($_GET['range'] == "within") {
+        $withinChecked = "checked";
+    } else if ($_GET['range'] == "active") {
+        $activeChecked = "checked";
+    } else {
+        $startChecked = "checked";
+    }
     echo "<h1>$title</h1>";
     echo "<form method='GET' action='$thisUrl'>";
     echo URLManagement::getParametersAsHiddenInputs($thisLink, ['start', 'end', 'cohort']);
     echo "<p class='centered'><label for='start'>Budget Start Date (optional):</label> <input type='date' name='start' /><br/>";
     echo "<label for='end'>Budget End Date (optional):</label> <input type='date' name='end' /></p>";
-    echo "<p class='centered'><input type='radio' name='range' id='start' value='start' checked /><label for='start'> Grant start date must be within this range</label> <input type='radio' name='range' id='within' value='within' checked /><label for='within'> Grant start <strong>and</strong> end date must be within this range</label></p>";
+    echo "<p class='centered'>
+            <input type='radio' name='range' id='start' value='start' $startChecked /><label for='start'> Grant start date must be within this range</label><br/>
+            <input type='radio' name='range' id='within' value='within' $withinChecked /><label for='within'> Grant start <strong>and</strong> end date must be within this range</label><br/>
+            <input type='radio' name='range' id='active' value='active' $activeChecked /><label for='active'> Grants must be <strong>active</strong> within this range</label>
+          </p>";
     echo "<p class='centered'>".$cohorts->makeCohortSelect("", "", TRUE)."</p>";
     echo "<p class='centered'><button>Configure</button></p>";
     echo "</form>";
@@ -52,6 +66,8 @@ if ($_GET['start']) {
     }
     if ($range == "within") {
         $rangeText = "(Start &amp; End Dates within Range)";
+    } else if ($range == "active") {
+        $rangeText = "(Grant Active within Range)";
     } else {
         $rangeText = "(Start Date within Range)";
     }
@@ -107,20 +123,41 @@ foreach ($records as $recordId) {
         $grantTs = $start ? strtotime($start) : FALSE;
         $grantEndTs = $end ? strtotime($end) : FALSE;
         $awardNo = $grant->getBaseNumber();
-        if (
-            $grantTs
+        $validStartCondition = (
+                ($range == "start")
+                && ($grantTs >= $startTs)
+                && ($grantTs <= $endTs)
+            );
+        $noEndDateAndValidStartCondition = (
+            !$grantEndTs
             && ($grantTs >= $startTs)
             && ($grantTs <= $endTs)
+        );
+        $validWithinCondition = (
+            ($range == "within")
+            && ($grantTs >= $startTs)
+            && ($grantTs <= $endTs)
+            && $grantEndTs
+            && ($grantEndTs >= $startTs)
+            && ($grantEndTs <= $endTs)
+        );
+        $validActiveCondition = (
+            ($range == "active")
             && (
-                ($range == "start")
-                || (
-                    ($range == "within")
-                    && $grantEndTs
+                (
+                    $grantEndTs
+                    && ($grantTs <= $endTs)
                     && ($grantEndTs >= $startTs)
-                    && ($grantEndTs <= $endTs)
+                ) || (
+                    !$grantEndTs                  // no start date specified and end date within range
+                    && ($grantTs <= $endTs)
                 )
-                || !$grantEndTs
             )
+        );
+
+        if (
+            $grantTs
+            && ($validActiveCondition || $validStartCondition || $validWithinCondition || $noEndDateAndValidStartCondition)
         ) {
             $row = [];
             $row[] = $names[$recordId] ?? "";

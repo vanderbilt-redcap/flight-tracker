@@ -507,7 +507,8 @@ class Filter {
         $demographicChoicesJSON = json_encode(array_merge($blankOption, $this->getDemographicChoices()));
         $grantChoicesJSON = json_encode(array_merge($blankOption, $this->getGrantChoices()));
         $publicationChoicesJSON = json_encode(array_merge($blankOption, $this->getPublicationChoices()));
-        $workshopChoicesJSON = json_encode(array_merge($blankOption, $workshopChoices));
+        $workshopChoicesInOrder = $blankOption + $workshopChoices;
+        $workshopChoicesJSON = json_encode($workshopChoicesInOrder);
 		$html .= "<script>
 		function commit() {
 		    let title = $('#title').val();
@@ -519,7 +520,7 @@ class Filter {
 		        // config['combiner'] = $('#combination').val();
 		        config['rows'] = [];
 		        for (let i = 1; i <= ".$num."; i++) {
-		            if (($('#type'+i).val() != '') && ($('#variable'+i).val() != '')) {
+		            if (($('#type'+i).val() !== '') && ($('#variable'+i).val() !== '')) {
 		                let row = {};
 		                row['type'] = $('#type'+i).val();
 		                row['variable'] = $('#variable'+i).val();
@@ -530,9 +531,9 @@ class Filter {
 		                    row['choice'] = $('#choice'+i).val();
 		                    row['comparison'] = $('#comparison'+i).val();
 		                    config['rows'].push(row);
-		                } else if ($('#type'+i).val() == 'resources') {
+		                } else if ($('#type'+i).val() === 'resources') {
 		                    config['rows'].push(row);
-		                } else if ($('#type'+i).val() != '') {
+		                } else if ($('#type'+i).val() !== '') {
 		                    row['value'] = $('#value'+i).val();
 		                    row['comparison'] = $('#comparison'+i).val();
 		                    config['rows'].push(row);

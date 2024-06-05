@@ -1183,12 +1183,17 @@ function submitEmailAddresses() {
 	}
 }
 
-function createCohortProject(cohort, src) {
+function createCohortProject(cohort, apiKey, src) {
+	if (apiKey.length !== 32) {
+		$(src).dialog("close");
+		$.sweetModal({content: "Invalid API Key!", icon: $.sweetModal.ICON_ERROR});
+		return;
+	}
 	if (src) {
 		$(src).dialog("close");
 	}
 	presentScreen("Creating project...<br/>May take some time to set up project");
-	$.post(getPageUrl("cohorts/createCohortProject.php"), { 'redcap_csrf_token': getCSRFToken(), "cohort": cohort }, function(json) {
+	$.post(getPageUrl("cohorts/createCohortProject.php"), { 'redcap_csrf_token': getCSRFToken(), "cohort": cohort, apiKey: apiKey }, function(json) {
 		console.log(json);
 		clearScreen();
 		const data = JSON.parse(json);
@@ -2075,5 +2080,16 @@ function markHonorAsDone(url, recordId, instrument, instance, trOb) {
 				icon: $.sweetModal.ICON_ERROR,
 			});
 		}
+	});
+}
+
+function showTimeline(recordId, baseUrl) {
+	$(".timeline").hide();
+	$(".timelineCell").hide();
+	const targetId = "#timeline_"+recordId;
+	$.post(baseUrl+"&awardsOnly&record="+recordId, {redcap_csrf_token: getCSRFToken()}, (html) => {
+		$(targetId).html(html)
+			.show();
+		$(targetId).parent().show();
 	});
 }

@@ -654,7 +654,11 @@ class CronManager {
         }
 
         if ($firstBatchQueue['status'] == "WAIT") {
-            register_shutdown_function([$this, "reportCronErrors"]);
+            # Commenting this out on 05-21-2024 due to Mark McEver's request.
+            # The only time in the prior year that this method has given me an alert was from outside systems
+            # and all of those were for other modules. Thus, registering a shutdown command isn't improving the
+            # code but only creating outside noise.
+            // register_shutdown_function([$this, "reportCronErrors"]);
             $startTimestamp = self::getTimestamp();
             do {
                 $queueHasRun = FALSE;
@@ -1593,7 +1597,11 @@ body { font-size: 1.2em; }
 			}
 		}
 
-		register_shutdown_function([$this, "reportCronErrors"]);
+        # Commenting this out on 05-21-2024 due to Mark McEver's request.
+        # The only time in the prior year that this method has given me an alert was from outside systems
+        # and all of those were for other modules. Thus, registering a shutdown command isn't improving the
+        # code but only creating outside noise.
+		// register_shutdown_function([$this, "reportCronErrors"]);
 
 		Application::log("Running ".count($toRun)." crons for pid ".$this->pid." with keys ".json_encode($keys));
 		foreach ($toRun as $cronjob) {

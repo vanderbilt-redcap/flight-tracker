@@ -14,8 +14,7 @@ function copyAllCohortProjects($token, $server, $pid, $records) {
 	    $destPid = $cohorts->getReadonlyPortalValue($cohort, "pid");
 	    $destToken = $cohorts->getReadonlyPortalValue($cohort, "token");
         if (
-            $cohorts->hasReadonlyProjectsEnabled()
-            && $destPid && $destToken
+            $destPid && $destToken
             && REDCapManagement::isActiveProject($destPid)
         ) {
             CareerDev::log("Copying project to cohort $cohort. From pid $pid, to pid $destPid");

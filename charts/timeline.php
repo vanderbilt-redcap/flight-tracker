@@ -15,7 +15,7 @@ use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
 
-$classes = ["PubsCDAs", "All"];
+$classes = isset($_GET['awardsOnly']) ? ["All"] : ["PubsCDAs", "All"];
 if (Grants::areFlagsOn($pid)) {
     $classes[] = "Flagged";
 }
@@ -88,7 +88,7 @@ $switchSettings = $switches->getSwitches();
     $grants->compileGrantSubmissions();
     $id = 1;
     list($submissions, $submissionTimestamps) = makeSubmissionDots($grants->getGrants("submissions"), $id);
-    if (!empty($submissions)) {
+    if (!empty($submissions) && !isset($_GET['awardsOnly'])) {
         $classes[] = "AllWithSubmissions";
     }
 

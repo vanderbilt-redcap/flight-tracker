@@ -61,11 +61,13 @@ if (Application::isVanderbilt()) {
             $idx = $reverseResourceChoices[$resource] ?? "";
             if ($idx !== "") {
                 $newResourceChoices[$idx] = $resource;
-                $resourceInOrder[] = $idx;
+                $resourcesInOrder[] = $idx;
                 $numInGroup++;
             }
         }
-        $headers .= "<th class='blue centered blackBorder' colspan='$numInGroup'>$group</th>";
+        if ($numInGroup > 0) {
+            $headers .= "<th class='blue centered blackBorder' colspan='$numInGroup'>$group</th>";
+        }
     }
     if (count($resourceChoices) > count($newResourceChoices)) {
         $numInGroup = count($resourceChoices) - count($newResourceChoices);
@@ -73,6 +75,7 @@ if (Application::isVanderbilt()) {
         foreach ($resourceChoices as $idx => $label) {
             if (!isset($newResourceChoices[$idx])) {
                 $newResourceChoices[$idx] = $label;
+                $resourcesInOrder[] = $idx;
             }
         }
         if ($numInGroup > 0) {

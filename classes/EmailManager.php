@@ -262,7 +262,7 @@ class EmailManager {
 						if ($to) {
 							# This is a test email because a $to is specified
 							if ($type == "initial_time") {
-								$result = $this->$func($emailSetting, $name, $type, $to);
+                                $result = $this->$func($emailSetting, $name, $type, $to);
                                 $sentEmails[$name] = time();
 							}
 						} else {
@@ -485,6 +485,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 			}
 
             if (Application::isLocalhost()) {
+                Application::log("mssg: ".$mssg, $this->pid);
                 \REDCap::email("scott.j.pearson@vumc.org", $from, $to[$recordId].": ".$subjects[$recordId], $mssg);
             } else {
                 \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);

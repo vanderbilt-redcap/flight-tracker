@@ -1,7 +1,7 @@
 <?php
 
 use \Vanderbilt\CareerDevLibrary\Cohorts;
-use \Vanderbilt\CareerDevLibrary\CohortConfig;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Filter;
 use \Vanderbilt\CareerDevLibrary\Links;
@@ -108,12 +108,12 @@ if (!empty($cohortTitles)) {
 	$redcapData = Download::getIndexedRedcapData($token, $server, $allFields);
 }
 if (count($cohortTitles) > 0) {
-    echo "<div id='cohortDialog' title='Create Cohort'><p>Are you sure that you want to create a project for Cohort <span id='cohortTitle' class='bolded'></span>?</p><p><button onclick='createCohortProject($(\"#cohortTitle\").html(), \"#cohortDialog\");'>Yes</button> <button onclick='$(\"#cohortDialog\").dialog(\"close\");'>Cancel</button></p></div>";
+    echo "<input type='hidden' id='cohortAPIKey' value='' />";
+    echo "<div id='cohortDialog' title='Create Cohort'><p>Are you sure that you want to create a project for Cohort <span id='cohortTitle' class='bolded'></span>? It will delete any data in the project with the API key.</p>
+<p><button onclick='createCohortProject($(\"#cohortTitle\").html(), $(\"#cohortAPIKey\").val(), \"#cohortDialog\");'>Yes</button> <button onclick='$(\"#cohortDialog\").dialog(\"close\");'>Cancel</button></p></div>";
 	echo "<table class='centered'>";
 	echo "<tr class='paddedRow borderedRow whiteRow centeredRow'><td></td><th>Cohort Size</th><th>Delete</th><th>Rename</th>";
-	if ($cohorts->hasReadonlyProjectsEnabled()) {
-	    echo "<th>Make Cohort Project</th>";
-    }
+	echo "<th>Make Cohort Project</th>";
 	echo "</tr>";
 	$metadata = Download::metadata($token, $server);
 	foreach ($cohortTitles as $title) {
@@ -127,12 +127,12 @@ if (count($cohortTitles) > 0) {
 		echo "<td>".count($records)." Scholars</td>";
 		echo "<td><button class='red biggerButton' onclick='deleteCohort(\"$title\", \"#$htmlTitle\");' style='font-weight: bold;'>X</button></td>";
 		echo "<td><button class='biggerButton' onclick='rename(\"#$htmlTitle\", this);'>Rename</button></td>";
-        if ($cohorts->hasReadonlyProjectsEnabled()) {
-            if ($cohortPid = $cohorts->getReadonlyPortalValue($title, "pid")) {
-                echo "<td>Project Enabled (".Links::makeProjectHomeLink($cohortPid, "PID $cohortPid").")</td>";
-            } else {
-                echo "<td><button onclick='$(\"#cohortTitle\").html(\"$title\"); $(\"#cohortDialog\").dialog(\"open\"); return false;'>Create Project</button></td>";
-            }
+        if ($cohortPid = $cohorts->getReadonlyPortalValue($title, "pid")) {
+            echo "<td>Project Enabled (".Links::makeProjectHomeLink($cohortPid, "PID $cohortPid").")</td>";
+        } else {
+            $id = REDCapManagement::makeHTMLId($title);
+            echo "<td><input type='text' id='api_$id' value='' onchange='if ($(this).val().length === 32) { $(\"#button_$id\").show(); } else { $(\"#button_$id\").hide(); }' placeholder='API Key with Import/Export Rights' style='width: 270px;'/><br/>
+<button style='display: none;' id='button_$id' onclick='$(\"#cohortTitle\").html(\"$title\"); $(\"#cohortAPIKey\").val($(\"#api_$id\").val()); if ($(\"#cohortAPIKey\").val().length === 32) { $(\"#cohortDialog\").dialog(\"open\"); } else { $.sweetModal({content: \"Invalid API Key\", icon: $.sweetModal.ICON_ERROR}); } return false;'>Take Over Project</button></td>";
         }
 		echo "</tr>";
 	}

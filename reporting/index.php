@@ -15,15 +15,16 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 Application::increaseProcessingMax(1);
 
 function makeMonthLink($tableNum) {
-    $thisLink = Application::link("this");
+    $tableLink = Application::link("reporting/table.php");
     if (isset($_GET['cohort']) && $_GET['cohort']) {
-        $thisLink .= "&cohort=".urlencode(REDCapManagement::sanitizeCohort($_GET['cohort']));
+        $tableLink .= "&cohort=".urlencode(REDCapManagement::sanitizeCohort($_GET['cohort']));
     }
-    $basePage = URLManagement::getPage($thisLink);
-    $hiddenHTML = URLManagement::getParametersAsHiddenInputs($thisLink);
+    $basePage = URLManagement::getPage($tableLink);
+    $hiddenHTML = URLManagement::getParametersAsHiddenInputs($tableLink);
     $title = NIHTables::getTableHeader($tableNum);
     return "<form action='$basePage' method='GET'>
     $hiddenHTML
+    <input type='hidden' name='table' id='table' value='$tableNum' />
     <p class='centered'>
     <strong>Table $tableNum - $title</strong><br/>
     Show Publications in Training Plus <input type='number' name='months' id='months' value='18' /><label for='months'> Months</label> for Publication Delays<br/>

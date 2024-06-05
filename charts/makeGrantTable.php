@@ -204,7 +204,6 @@ function appendCitationLabel($num) {
 }
 
 ?>
-<script src='<?= CareerDev::link("/js/makeCDATable.js") ?>'></script>
 <link href='<?= CareerDev::link("/css/makeCDATable.css") ?>' rel='stylesheet' />
 <?php
 
@@ -423,8 +422,9 @@ function printRowsForRecord($recordId, $fields, $token, $server, $pid, $grantRea
     }
     $dates .= "<div class='spacer'>&nbsp;</div>";
     // $dates .= "<div class='record'>".Links::makePublicationsLink($pid, $recordId, $event_id, "View Publications")."</div>";
-    if ($showTimeline) {
-        $dates .= "<div class='record'><a href='javascript:;' onclick='showTimeline($recordId);'>Show Timeline</a></div>";
+    if ($showTimeline && !empty($arrayOfGrants)) {
+        $timelineUrl = Application::link("charts/timeline.php");
+        $dates .= "<div class='record'><a href='javascript:;' onclick='showTimeline(\"$recordId\", \"$timelineUrl\");'>Show Timeline</a></div>";
     }
     echo "<tr>";
     echo "<td class='spacer'></td>";
@@ -519,7 +519,7 @@ function printRowsForRecord($recordId, $fields, $token, $server, $pid, $grantRea
     }
     echo "</tr>";
     if ($showTimeline) {
-        echo "<tr><td class='timelineCell'><iframe class='timeline' id='timeline_$recordId' style='display: none;'></iframe></td></tr>";
+        echo "<tr><td class='timelineCell' colspan='100' style='display: none;'><div class='timeline' id='timeline_$recordId' style='display: none; width: 800px;'></iframe></td></tr>";
     }
     echo "<tr><td class='spacer'></td></tr>";
 }

@@ -1303,12 +1303,38 @@ class Download {
     }
 
     public static function oneFieldByPid($pid, $field) {
-        $redcapData = self::dataForOneFieldByPid($pid, $field);
-        $ary = [];
-        foreach ($redcapData as $row) {
-            $ary[$row["record_id"]] = $row[$field] ?? "";
+        # Numerous slow-running queries result from the REDCap class - attempt to handle via manual SQL
+        $module = Application::getModule();
+        $sql = "SELECT record, value FROM redcap_data WHERE project_id = ? AND field_name = ?";
+        $params = [$pid, $field];
+        $result = $module->query($sql, $params);
+        $unsortedValues = [];
+        $records = self::recordIdsByPid($pid);
+        while ($row = $result->fetch_assoc()) {
+            $recordId = Sanitizer::getSanitizedRecord($row['record'], $records);
+            if (isset($recordId) && ($recordId !== "")) {
+                $unsortedValues[$recordId] = Sanitizer::sanitize($row['value']);
+            }
         }
-        return $ary;
+
+        $values = [];
+        foreach ($records as $recordId) {
+            $values[$recordId] = $unsortedValues[$recordId] ?? "";
+        }
+
+        if (!empty($values)) {
+            return $values;
+        } else {
+            # ideally, this block should never be called. I'm putting it in here as a backup.
+            # if it is called, something majorly wrong has happened.
+            Application::log("Warning! Could not access values for $field directly, so using backup method. This should never happen.", $pid);
+            $redcapData = self::dataForOneFieldByPid($pid, $field);
+            $ary = [];
+            foreach ($redcapData as $row) {
+                $ary[$row["record_id"]] = $row[$field] ?? "";
+            }
+            return $ary;
+        }
     }
 
 	public static function oneField($token, $server, $field, $recordIdField = "record_id") {
