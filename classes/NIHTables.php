@@ -975,7 +975,7 @@ class NIHTables {
                                 $directBudget = "";
                                 if (isset($savedData['data'])) {
                                     foreach ($savedData['data'] as $row) {
-                                        if (preg_match("/$facultyName/", $row['Name'])) {
+                                        if (is_array($row) && preg_match("/$facultyName/", $row['Name'])) {
                                             $col = 'Current Year Direct<br/>Costs';
                                             if (isset($row[$col]) && $row[$col]) {
                                                 $directBudget = $row[$col];
@@ -1107,17 +1107,19 @@ class NIHTables {
                     if (preg_match("/:/", $match)) {
                         list($pid, $recordId) = explode(":", $match);
                         foreach ($rows as $row) {
-                            $newRow = [];
-                            $recordInstance = self::getUniqueIdentifier($row, $headers, $tableNum);
-                            $newRow['pid'] = $pid;
-                            $newRow['record'] = $recordId;
-                            $newRow['recordInstance'] = $recordInstance;
-                            $newRow['email'] = implode(";", array_filter($emailsWithName));
-                            for ($j = 0; $j < count($row); $j++) {
-                                $newRow[$headers[$j]] = $row[$j];
-                            }
-                            if (!empty($newRow)) {
-                                $newData[$recordInstance] = $newRow;
+                            if (is_array($row)) {
+                                $newRow = [];
+                                $recordInstance = self::getUniqueIdentifier($row, $headers, $tableNum);
+                                $newRow['pid'] = $pid;
+                                $newRow['record'] = $recordId;
+                                $newRow['recordInstance'] = $recordInstance;
+                                $newRow['email'] = implode(";", array_filter($emailsWithName));
+                                for ($j = 0; $j < count($row); $j++) {
+                                    $newRow[$headers[$j]] = $row[$j];
+                                }
+                                if (!empty($newRow)) {
+                                    $newData[$recordInstance] = $newRow;
+                                }
                             }
                         }
                     }      // else faculty name - no data with match
@@ -1171,15 +1173,17 @@ class NIHTables {
 	        $html .= "</tr>";
 	        $html .= "</thead><tbody>";
 	        foreach ($data as $row) {
-                $recordInstance = self::getUniqueIdentifier($row, $headers, $tableNum);
-	            $html .= "<tr>";
-	            foreach ($headers as $header) {
-	                $headerWithoutHTML = preg_replace("/<[^>]+>/", " ", $header);
-	                $id = "table_".$tableNum.$sep.$recordInstance.$sep.REDCapManagement::makeHTMLId($header);
-	                $inputHTML = in_array($headerWithoutHTML, $numericalFields) ? "<br/><input class='action_required' placeholder='Correct?' type='text' name='$id' style='width: 75px;' />" : "";
-	                $html .= "<td>".$row[$header].$inputHTML."</td>";
+                if (is_array($row)) {
+                    $recordInstance = self::getUniqueIdentifier($row, $headers, $tableNum);
+                    $html .= "<tr>";
+                    foreach ($headers as $header) {
+                        $headerWithoutHTML = preg_replace("/<[^>]+>/", " ", $header);
+                        $id = "table_".$tableNum.$sep.$recordInstance.$sep.REDCapManagement::makeHTMLId($header);
+                        $inputHTML = in_array($headerWithoutHTML, $numericalFields) ? "<br/><input class='action_required' placeholder='Correct?' type='text' name='$id' style='width: 75px;' />" : "";
+                        $html .= "<td>".$row[$header].$inputHTML."</td>";
+                    }
+                    $html .= "</tr>";
                 }
-	            $html .= "</tr>";
             }
 	        $html .= "</tbody></table>";
         }
@@ -3006,38 +3010,40 @@ class NIHTables {
 
 		$htmlRows = array();
 		foreach ($data as $row) {
-			if (empty($htmlRows)) {
-				$currRow = [];
-				foreach ($row as $field => $value) {
-                    $tooltip = self::getHeaderTooltip($field);
-                    if ($tooltip) {
-                        $currRow[] = "<th title='$tooltip'>$field</th>";
-                    } else {
-                        $currRow[] = "<th>$field</th>";
+			if (is_array($row)) {
+                if (empty($htmlRows)) {
+                    $currRow = [];
+                    foreach ($row as $field => $value) {
+                        $tooltip = self::getHeaderTooltip($field);
+                        if ($tooltip) {
+                            $currRow[] = "<th title='$tooltip'>$field</th>";
+                        } else {
+                            $currRow[] = "<th>$field</th>";
+                        }
                     }
-				}
-				$htmlRows[] = "<thead><tr>" . implode("", $currRow) . "</tr></thead>";
-                $htmlRows[] = "<tbody>";
-			}
-			$currRow = [];
-			foreach ($row as $field => $value) {
-			    $style = "";
-			    if ($field == "Publication") {
-			        if ($value == self::$blank) {
-                        $style = " class='leftAlignedCell grey'";
+                    $htmlRows[] = "<thead><tr>" . implode("", $currRow) . "</tr></thead>";
+                    $htmlRows[] = "<tbody>";
+                }
+                $currRow = [];
+                foreach ($row as $field => $value) {
+                    $style = "";
+                    if ($field == "Publication") {
+                        if ($value == self::$blank) {
+                            $style = " class='leftAlignedCell grey'";
+                        } else {
+                            $style = " class='leftAlignedCell'";
+                        }
+                    }
+                    if ($value == self::$blank) {
+                        $currRow[] = "<td" . $style . "></td>";
+                    } else if ($value) {
+                        $currRow[] = "<td" . $style . ">$value</td>";
                     } else {
-                        $style = " class='leftAlignedCell'";
+                        $currRow[] = "<td" . $style . ">" . self::$NA . "</td>";
                     }
                 }
-                if ($value == self::$blank) {
-                    $currRow[] = "<td" . $style . "></td>";
-                } else if ($value) {
-                    $currRow[] = "<td" . $style . ">$value</td>";
-                } else {
-			        $currRow[] = "<td" . $style . ">" . self::$NA . "</td>";
-                }
-			}
-			$htmlRows[] = "<tr>" . implode("", $currRow) . "</tr>";
+                $htmlRows[] = "<tr>" . implode("", $currRow) . "</tr>";
+            }
 		}
         $htmlRows[] = "</tbody>";
 

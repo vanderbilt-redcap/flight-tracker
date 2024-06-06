@@ -65,22 +65,26 @@ class ReactNIHTables {
         if (in_array($tableNumber, [2, 4])) {
             $queryItems = [];
             foreach ($data['data'] as $row) {
-                $queryItems[] = [
-                    "record" => $row['record'],
-                    "recordInstance" => $row['recordInstance'],
-                    "name" => NIHTables::parseName($row[$headers[0]]),
-                ];
+                if (is_array($row)) {
+                    $queryItems[] = [
+                        "record" => $row['record'],
+                        "recordInstance" => $row['recordInstance'],
+                        "name" => NIHTables::parseName($row[$headers[0]]),
+                    ];
+                }
             }
             $post['queryItems'] = $queryItems;
             $lookupValues = $this->lookupValuesFor2And4($post);
         } else if ($tableNumber == 3) {
             $queryItems = [];
             foreach ($data['data'] as $row) {
-                $queryItems[] = [
-                    "record" => $row['record'],
-                    "recordInstance" => $row['recordInstance'],
-                    "awardNo" => $row[$headers[1]],
-                ];
+                if (is_array($row)) {
+                    $queryItems[] = [
+                        "record" => $row['record'],
+                        "recordInstance" => $row['recordInstance'],
+                        "awardNo" => $row[$headers[1]],
+                    ];
+                }
             }
             $post['queryItems'] = $queryItems;
             $lookupValues = $this->lookupValuesFor3($post);
@@ -96,16 +100,18 @@ class ReactNIHTables {
     private function modifyTableData($data, $headers, $mods, $tableNum) {
         $newTableData = [];
         foreach ($data as $row) {
-            $modifiedRow = self::transformIntoNonAssociativeArray($row, $headers);
-            $rowTitle = NIHTables::getUniqueIdentifier($modifiedRow, $headers, $tableNum);
-            if (isset($mods[$rowTitle])) {
-                foreach ($headers as $header) {
-                    if (isset($mods[$rowTitle][$header]) && $mods[$rowTitle][$header]) {
-                        $row[$header] = $mods[$rowTitle][$header];
+            if (is_array($row)) {
+                $modifiedRow = self::transformIntoNonAssociativeArray($row, $headers);
+                $rowTitle = NIHTables::getUniqueIdentifier($modifiedRow, $headers, $tableNum);
+                if (isset($mods[$rowTitle])) {
+                    foreach ($headers as $header) {
+                        if (isset($mods[$rowTitle][$header]) && $mods[$rowTitle][$header]) {
+                            $row[$header] = $mods[$rowTitle][$header];
+                        }
                     }
                 }
+                $newTableData[] = $row;
             }
-            $newTableData[] = $row;
         }
         return $newTableData;
     }
@@ -203,15 +209,17 @@ table { border-collapse: collapse; }
                     $tableHTML .= "<tbody>";
                     $i = 0;
                     foreach ($tableData['data'] as $row) {
-                        $rowClass = ($i % 2 == 1) ? "odd" : "even";
-                        $tableHTML .= "<tr>";
-                        foreach ($headers as $header) {
-                            $rowHTML = $row[$header];
-                            $rowHTML = preg_replace("/<figure class=['\"]left-align['\"]>.+<\/figure>/", "", $rowHTML);
-                            $tableHTML .= "<td class='$rowClass'>$rowHTML</td>";
+                        if (is_array($row)) {
+                            $rowClass = ($i % 2 == 1) ? "odd" : "even";
+                            $tableHTML .= "<tr>";
+                            foreach ($headers as $header) {
+                                $rowHTML = $row[$header];
+                                $rowHTML = preg_replace("/<figure class=['\"]left-align['\"]>.+<\/figure>/", "", $rowHTML);
+                                $tableHTML .= "<td class='$rowClass'>$rowHTML</td>";
+                            }
+                            $tableHTML .= "</tr>";
+                            $i++;
                         }
-                        $tableHTML .= "</tr>";
-                        $i++;
                     }
                     $tableHTML .= "</tbody>";
                     $tableHTML .= "</table><br/><br/>";
@@ -1323,11 +1331,13 @@ table { border-collapse: collapse; }
             $awardData = $reporter->searchInstitutionsAndGrantTypes($institutions, $trainingGrantAwardTypes);
             $newData = $this->processAwardData($awardData, $reporter, $metadata, $dateOfReport, TRUE);
             foreach ($newData as $row) {
-                $awardNo = $row["Award Number"];
-                $baseAwardNumber = Grant::translateToBaseAwardNumber($awardNo);
-                if (!in_array($baseAwardNumber, $seenAwards)) {
-                    $seenAwards[] = $baseAwardNumber;
-                    $data[] = $row;
+                if (is_array($row)) {
+                    $awardNo = $row["Award Number"];
+                    $baseAwardNumber = Grant::translateToBaseAwardNumber($awardNo);
+                    if (!in_array($baseAwardNumber, $seenAwards)) {
+                        $seenAwards[] = $baseAwardNumber;
+                        $data[] = $row;
+                    }
                 }
             }
         }
