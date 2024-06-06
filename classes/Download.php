@@ -1305,7 +1305,8 @@ class Download {
     public static function oneFieldByPid($pid, $field) {
         # Numerous slow-running queries result from the REDCap class - attempt to handle via manual SQL
         $module = Application::getModule();
-        $sql = "SELECT record, value FROM redcap_data WHERE project_id = ? AND field_name = ?";
+        $dataTable = Application::getDataTable($pid);
+        $sql = "SELECT record, value FROM $dataTable WHERE project_id = ? AND field_name = ?";
         $params = [$pid, $field];
         $result = $module->query($sql, $params);
         $unsortedValues = [];
