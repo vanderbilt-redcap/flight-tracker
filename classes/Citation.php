@@ -301,6 +301,31 @@ class CitationCollection {
 	    $this->citations = $newCitations;
     }
 
+    public function filterByTitleWords($words) {
+        if (!empty($words)) {
+            $quotedWords = [];
+            foreach ($words as $word) {
+                $quotedWords[] = preg_quote($word, "/");
+            }
+
+            $filteredCitations = [];
+            foreach ($this->getCitations() as $citation) {
+                $title = $citation->getVariable("title");
+                $hasWord = FALSE;
+                foreach ($quotedWords as $word) {
+                    if (preg_match("/\b$word\b/i", $title)) {
+                        $hasWord = TRUE;
+                        break;
+                    }
+                }
+                if ($hasWord) {
+                    $filteredCitations[] = $citation;
+                }
+            }
+            $this->citations = $filteredCitations;
+        }
+    }
+
 	public function getCount() {
 		return count($this->getCitations());
 	}

@@ -1339,6 +1339,14 @@ class Download {
     }
 
 	public static function oneField($token, $server, $field, $recordIdField = "record_id") {
+        if (self::isCurrentServer($server) && ($recordIdField == "record_id")) {
+            $pid = Application::getPID($token);
+            if ($pid) {
+                # bypass \REDCap::getData() because of slow-running queries at Vanderbilt
+                # this method preferentially tries to call $module->query()
+                return self::oneFieldByPid($pid, $field);
+            }
+        }
 	    $redcapData = self::dataForOneField($token, $server, $field, $recordIdField);
 		$ary = [];
 		foreach ($redcapData as $row) {
@@ -1348,26 +1356,49 @@ class Download {
 	}
 
     public static function namesByPid($pid) {
-        $redcapData = Download::fieldsForRecordsByPid($pid, ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"], NULL);
+        # spoof making $redcapData
+        # at Vanderbilt, using querying REDCap::getData() produces a long-running query
+        # the self::oneFieldByPid() command gets the data directly from a SQL query
+        # the SQL query results in increased performance vs. REDCap::getData()
+        # I have not attempted ExtMod's queryData() command, and this stands as a possible alternative
+        $firstNames = self::oneFieldByPid($pid, "identifier_first_name");
+        $middleNames = self::oneFieldByPid($pid, "identifier_middle");
+        $lastNames = self::oneFieldByPid($pid, "identifier_last_name");
+
+        $redcapData = [];
+        foreach ($lastNames as $recordId => $ln) {
+            $redcapData[] = [
+                "record_id" => $recordId,
+                "identifier_first_name" => $firstNames[$recordId] ?? "",
+                "identifier_middle" => $middleNames[$recordId] ?? "",
+                "identifier_last_name" => $ln,
+            ];
+        }
         return self::formatNames($redcapData);
     }
 
 	public static function names($token, $server) {
-		$data = array(
-			'token' => $token,
-			'content' => 'record',
-			'format' => 'json',
-			'type' => 'flat',
-			'rawOrLabel' => 'raw',
-			'fields' => array("record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"),
-			'rawOrLabelHeaders' => 'raw',
-			'exportCheckboxLabel' => 'false',
-			'exportSurveyFields' => 'false',
-			'exportDataAccessGroups' => 'false',
-			'returnFormat' => 'json'
-		);
-		$redcapData = self::sendToServer($server, $data);
-        return self::formatNames($redcapData);
+        $pid = Application::getPID($token);
+        if ($pid) {
+            return self::namesByPid($pid);
+        } else {
+            # this should rarely happen, but tokens should be convertible into pids
+            $data = array(
+                'token' => $token,
+                'content' => 'record',
+                'format' => 'json',
+                'type' => 'flat',
+                'rawOrLabel' => 'raw',
+                'fields' => array("record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"),
+                'rawOrLabelHeaders' => 'raw',
+                'exportCheckboxLabel' => 'false',
+                'exportSurveyFields' => 'false',
+                'exportDataAccessGroups' => 'false',
+                'returnFormat' => 'json'
+            );
+            $redcapData = self::sendToServer($server, $data);
+            return self::formatNames($redcapData);
+        }
 	}
 
     private static function formatNames($redcapData) {

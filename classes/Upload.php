@@ -404,7 +404,7 @@ class Upload
 	}
 
 	private static function testFeedback($feedback, $originalText, $curlHandle, $rows = array(), $pid = NULL) {
-        if (!$feedback && is_resource($curlHandle)) {
+        if (!$feedback && ($curlHandle !== FALSE)) {
             $returnCode = curl_getinfo($curlHandle, CURLINFO_RESPONSE_CODE);
             $curlError = curl_error($curlHandle);
             if ($returnCode != 200) {

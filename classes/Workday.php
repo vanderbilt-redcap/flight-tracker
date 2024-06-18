@@ -126,6 +126,8 @@ class Workday {
     }
 
     public static function getLatestFile() {
+        $location = NULL;
+        $prefix = NULL;
         $credentialsFile = Application::getCredentialsDir()."/career_dev/workday.php";
         if (file_exists($credentialsFile)) {
             include($credentialsFile);

@@ -253,6 +253,9 @@ function totalCitationColls($citColls) {
 
 function makePublicationListHTML($citations, $names, $dates) {
     $html = "";
+    $filterWordString = Sanitizer::sanitize($_GET['title_filter'] ?? "");
+    # split by newlines and accompanying spaces; also remove any empty array elements
+    $filterWords = preg_split("/\s*[\n\r]+\s*/", $filterWordString, -1, PREG_SPLIT_NO_EMPTY);
     foreach ($citations as $header => $citColls) {
         $total = totalCitationColls($citColls);
         $html .= "<h2>$header (" . REDCapManagement::pretty($total) . ")</h2>\n";
@@ -261,6 +264,9 @@ function makePublicationListHTML($citations, $names, $dates) {
             $html .= "<p class='centered'>No citations.</p>\n";
         } else {
             foreach ($citColls as $record => $citColl) {
+                if (!empty($filterWords)) {
+                    $citColl->filterByTitleWords($filterWords);
+                }
                 $name = $names[$record];
                 $date = $dates[$record];
                 $collectionHeader = "<p class='centered'>$name (".$citColl->getCount().")";
@@ -295,10 +301,11 @@ function makePublicationListHTML($citations, $names, $dates) {
 
 function makeExtraURLParams($exclude = []) {
     $additionalParams = "";
-    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grants", "begin", "end", "cohort", "limitPubs", "author_first", "author_middle", "author_last", "sort"];
-    foreach ($_GET as $key => $value) {
-        if (isset($_GET[$key]) && in_array($key, $expected) && !in_array($key, $exclude)) {
+    $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grants", "begin", "end", "cohort", "limitPubs", "author_first", "author_middle", "author_last", "sort", "title_filter"];
+    foreach ($expected as $key) {
+        if (isset($_GET[$key]) && !in_array($key, $exclude)) {
             $key = Sanitizer::sanitize($key);
+            $value = Sanitizer::sanitize($_GET[$key] ?? "");
             if ($value === "") {
                 $additionalParams .= "&".$key;
             } else {
@@ -330,6 +337,7 @@ function makeCustomizeTable($token, $server, $metadata) {
     } else if ($_GET['sort'] == "altmetrics") {
         $altmetricsChecked = "checked";
     }
+    $filterWords = Sanitizer::sanitize($_GET['title_filter'] ?? "");
 
     $cohort = isset($_GET['cohort']) ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
     $cohorts = new Cohorts($token, $server, Application::getModule());
@@ -365,16 +373,16 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= "<td class='blue'>";
     $html .= "<form action='$url' method='GET'>";
     $html .= "<h4 style='margin-bottom: 0;'>Filter for Timespan</h4>";
-    $trainingPeriodParams = REDCapManagement::splitURL(Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs", "author_first", "author_middle", "author_last", "sort"]))[1];
+    $trainingPeriodParams = REDCapManagement::splitURL(Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays"]))[1];
     $html .= URLManagement::makeHiddenInputs($trainingPeriodParams, TRUE);
     if (isset($_GET['limitPubs'])) {
         $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
         $html .= "<input type='hidden' name='limitPubs' value='$limitYear' />";
     }
-    $html .= "<p class='centered'>Start Date: <input type='date' name='begin' style='width: 150px;' value='$begin'><br>";
+    $html .= "<p class='centered' style='margin-top: 0;'>Start Date: <input type='date' name='begin' style='width: 150px;' value='$begin'><br>";
     $html .= "End Date: <input type='date' name='end' value='$end' style='width: 150px;'><br>";
     $html .= "<h4 style='margin-bottom: 0;'>Sorting</h4>";
-    $html .= "<p class='centered'>";
+    $html .= "<p class='centered' style='margin-top: 0;'>";
     $html .= "<input type='radio' name='sort' id='sort_date' value='date' $dateChecked /> <label for='sort_date'>By Date</label>";
     $html .= "&nbsp;&nbsp;&nbsp;";
     $html .= "<input type='radio' name='sort' id='sort_rcr' value='rcr' $rcrChecked /> <label for='sort_rcr'>By RCR</label>";
@@ -382,7 +390,7 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= "<input type='radio' name='sort' id='sort_altmetrics' value='altmetrics' $altmetricsChecked /> <label for='sort_altmetrics'>By Altmetric Score</label>";
     $html .= "</p>";
     $html .= "<h4 style='margin-bottom: 0;'>Filter for Author Position</h4>";
-    $html .= "<p class='centered'>";
+    $html .= "<p class='centered' style='margin-top: 0;'>";
     $html .= "<input type='checkbox' name='author_first' id='author_first' $authorFirstChecked /> <label for='author_first'>First Author</label>";
     $html .= "&nbsp;&nbsp;&nbsp;";
     $html .= "<input type='checkbox' name='author_middle' id='author_middle' $authorMiddleChecked /> <label for='author_middle'>Middle Author</label>";
@@ -403,6 +411,9 @@ function makeCustomizeTable($token, $server, $metadata) {
     } else {
         $html .= "<p class='centered'><a href='javascript:;' onclick='downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\");'>Filter by Grants Cited</a></p>";
     }
+    $filterUrl = Application::link("publications/view.php").makeExtraURLParams(["title_filter"]);
+    $html .= "<h4 style='margin-bottom: 0;'><label for='title_filter'>Filter by Word(s) in Title</label></h4>";
+    $html .= "<div class='centered smaller'>(one per line; case-insensitive):<br/><textarea id='title_filter' name='title_filter'>$filterWords</textarea></div><p style='margin-top: 0;'><button onclick='window.location.href = \"$filterUrl&title_filter=\"+encodeURIComponent($(\"#title_filter\").val());'>Re-Configure</button></p>";
     $html .= "</div>";
     $html .= "</td>";
     $html .= "</tr>";
