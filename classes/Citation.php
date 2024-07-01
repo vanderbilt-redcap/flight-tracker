@@ -43,6 +43,14 @@ class CitationCollection {
         }
 	}
 
+    public function getInstances() {
+        $instances = [];
+        foreach ($this->citations as $citation) {
+            $instances[] = $citation->getInstance();
+        }
+        return $instances;
+    }
+
     public function getType() {
         return $this->type;
     }

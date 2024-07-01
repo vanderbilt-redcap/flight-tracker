@@ -38,8 +38,11 @@ if (isset($_GET['email'])) {
     } else {
         echo "Invalid request.";
     }
-} else if (isset($_GET['revise']) && REDCapManagement::isEmailOrEmails($_GET['revise'])) {
-    $email = Sanitizer::sanitize($_GET['revise'] ?? "No email");
+} else if (
+    (isset($_GET['revise']) && REDCapManagement::isEmailOrEmails($_GET['revise']))
+    || (isset($_GET['submit_row']) && REDCapManagement::isEmailOrEmails($_GET['submit_row']))
+) {
+    $email = Sanitizer::sanitize($_GET['revise'] ?? $_GET['submit_row'] ?? "No email");
     $requestedHash = Sanitizer::sanitize($_GET['hash']);
     $dateOfReport = Sanitizer::sanitizeDate($_GET['date'] ?? date("Y-m-d"));
     $savedName = Sanitizer::sanitize($_GET['savedName'] ?? "");
@@ -47,7 +50,11 @@ if (isset($_GET['email'])) {
     if ($reactHandler->verify($requestedHash, $email)) {
         list($tables, $emailHash) = $reactHandler->getInformation($requestedHash, $email);
         list($userids, $name) = $reactHandler->getUseridsAndNameAssociatedWithEmail($email);
-        echo $reactHandler->makeHTMLForNIHTableEdits($dateOfReport, $name, $email, $emailHash, $tables, $savedName);
+        if (isset($_GET['revise'])) {
+            echo $reactHandler->makeHTMLForNIHTableEdits($dateOfReport, $name, $email, $emailHash, $tables, $savedName);
+        } else if (isset($_GET['submit_row'])) {
+            echo $reactHandler->makeTable4NewRow($dateOfReport, $name, $email, $emailHash, $savedName);
+        }
     } else {
         echo "Invalid request.";
     }

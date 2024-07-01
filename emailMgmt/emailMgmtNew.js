@@ -5,24 +5,33 @@ function updateAll(ob, pid, post) {
 	let skip = ["survey_links"]
 	console.log("updateAll with id "+id+" and name "+name);
 	if ((id || name) && (skip.indexOf(name) < 0) && (skip.indexOf(id) < 0)) {
-		if ($(ob).attr('type') != "checkbox") {
+		if ($(ob).attr('type') !== "checkbox") {
 			// only use post variable if not a checkbox
-			if ($('[name=recipient][value=filtered_group]').is(':checked')) {
+			const isCohortGroup = $('[name=recipient][value=cohort_group]').is(':checked');
+			if ($('[name=recipient][value=filtered_group]').is(':checked') || isCohortGroup) {
 				$('#filter').show();
 				$('#checklist').hide();
-				if (($(ob).hasClass('who_to')) && (id != testField)) {
+				if (isCohortGroup) {
+					$('#cohort_filter').show();
+					$('#filter_scope').hide();
 					updateNames(pid, post);
+				} else {
+					$('#cohort_filter').hide();
+					$('#filter_scope').show();
+					if (($(ob).hasClass('who_to')) && (id !== testField)) {
+						updateNames(pid, post);
+					}
 				}
 			} else {
 				$('#filter').hide();
 				$('#checklist').show();
-				if (id != testField) {
+				if (id !== testField) {
 					updateNames(pid, post);
 				}
 			}
 		}
 
-		if (id != testField) {
+		if (id !== testField) {
 			$('#test').hide();
 			$('#enableEmail').hide();
 			$('#save').show();
@@ -31,16 +40,16 @@ function updateAll(ob, pid, post) {
 }
 
 function updateNames(pid, existingPost) {
-	var post = {};
-	var selector = "";
+	const post = {};
+	let selector = "";
 	if ($('#filter').is(':visible')) {
 		selector = '#filter';
-		if ($('[name=filter]:checked').val() == "some") {
+		if ($('[name=filter]:checked').val() === "some") {
 			$('#filterItems').slideDown();
 		} else {
 			$('#filterItems').hide();
 		}
-		if ($('[name=survey_complete]:checked').val() == "yes") {
+		if ($('[name=survey_complete]:checked').val() === "yes") {
 			post['none_complete'] = 'false';
 			$('#whenCompleted').slideDown();
 		} else {
@@ -58,14 +67,20 @@ function updateNames(pid, existingPost) {
 			$('#newRecordsSinceDisplay').hide();
 		}
 
-		post['filter'] = $('[name=filter]:checked').val();
+		if ($('#cohort_filter').is(':visible') && ($('#cohort :selected').val() === '')) {
+			post['filter'] = 'all';
+		} else if ($('#cohort_filter').is(':visible')) {
+			post['filter'] = 'cohort_group';
+		} else {
+			post['filter'] = $('[name=filter]:checked').val();
+		}
 		if ($('[name=survey_complete]').is(':visible')) {
-			if ($('[name=survey_complete]:checked').val() == 'yes') {
+			if ($('[name=survey_complete]:checked').val() === 'yes') {
 				post['none_complete'] = 'false';
 				post['last_complete'] = $('[name=last_complete_months]').val();
-			} else if ($('[name=survey_complete]:checked').val() == 'no') {
+			} else if ($('[name=survey_complete]:checked').val() === 'no') {
 				post['none_complete'] = 'true';
-			} else if ($('[name=survey_complete]:checked').val() == 'nomatter') {
+			} else if ($('[name=survey_complete]:checked').val() === 'nomatter') {
 				post['none_complete'] = 'nomatter';
 			}
 		}
@@ -77,7 +92,10 @@ function updateNames(pid, existingPost) {
 		if ($('[name=r01_or_equiv]').is(':visible')) {
 			post['converted'] = $('[name=r01_or_equiv]:checked').val();
 		}
-
+		if ($('#cohort_filter').is(':visible')) {
+			post['recipient'] = 'cohort_group';
+			post['cohort'] = $('#cohort :selected').val();
+		}
 	} else if ($('#checklist').is(':visible')) {
 		selector = '#checklist';
 		post['recipient'] = 'individuals';
@@ -87,8 +105,9 @@ function updateNames(pid, existingPost) {
 	if (selector) {
 		$(selector+' .namesCount').html("");
 		$(selector+' .namesFiltered').html("Retrieving Names...");
+		console.log(JSON.stringify(post));
 		$.post(getPageUrl("/emailMgmt/getNames.php"), post, function(html) {
-			if (html != "No names match your description.") {
+			if (html !== "No names match your description.") {
 				$(selector+' .namesCount').html(" ("+getHTMLLines(html)+")");
 			} else {
 				$(selector+' .namesCount').html("");

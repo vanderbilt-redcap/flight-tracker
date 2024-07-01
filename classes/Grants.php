@@ -1223,6 +1223,18 @@ class Grants {
         $orderedGrants = $filteredGrants;
     }
 
+    # returns FALSE if and only if both grant 1 and grant 2 has a value and they disagree
+    # otherwise returns TRUE
+    private static function hasSameGrantVariables($grant1, $grant2, $variable) {
+        $val1 = $grant1->getVariable($variable);
+        $val2 = $grant2->getVariable($variable);
+        if (($val1 === "") || ($val2 === "")) {
+            return TRUE;
+        } else {
+            return ($val1 === $val2);
+        }
+    }
+
     private function compileGrantsForConversion($includeNAs = FALSE, $startTs = FALSE, $endTs = FALSE) {
 		# Strategy: Sort by start timestamp and then look for duplicates
 
@@ -1377,7 +1389,8 @@ class Grants {
 
 		# 8. remove duplicates by starting timestamp
 		# if two grants start on the same date and have the same type
-		# => remove the grant that is of a less-preferred source
+        # check title & sponsor; if both have values and disagree, accept as different grants
+		# otherwise => remove the grant that is of a less-preferred source
 		$clean = FALSE;
         while (!$clean) {
     		foreach ($awardsByType as $type => $awardsByBaseAwardNumber) {
@@ -1386,32 +1399,38 @@ class Grants {
                 $clean = TRUE;
                 foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
                     if (self::getShowDebug()) { Application::log("8. For $type, inspecting ".$baseNumber); }
-                    if (($prevGrant) && ($prevGrant->getVariable('start') == $grant->getVariable('start')) && ($prevGrant->getVariable('type') == $grant->getVariable('type'))) {
-                        foreach (array_reverse($sourceOrder) as $source) {
-                            if ($prevGrant->getVariable("source") == $source) {
-                                if (self::getShowDebug()) { Application::log("8a. $type Removing ".$prevBaseNumber); }
-                                $clean = FALSE;
-                                self::setGrantTypeIfSelfReported($grant, $awardsByType[$type][$prevBaseNumber]);
-                                if ($grant->isSelfReported()) {
-                                    self::copyBudgetsIfBlank($grant, [$grant, $awardsByType[$type][$prevBaseNumber]]);
-                                    self::copyTitleIfBlank($grant, [$grant, $awardsByType[$type][$prevBaseNumber]]);
+                    if ($prevGrant) {
+                        $sameStart = ($grant->getVariable("start") === $prevGrant->getVariable("start"));
+                        $sameType = ($grant->getVariable("type") === $prevGrant->getVariable("type"));
+                        $sameTitle = self::hasSameGrantVariables($grant, $prevGrant, "title");
+                        $sameSponsor = self::hasSameGrantVariables($grant, $prevGrant, "sponsor");
+                        if ($sameStart && $sameType && $sameTitle && $sameSponsor) {
+                            foreach (array_reverse($sourceOrder) as $source) {
+                                if ($prevGrant->getVariable("source") == $source) {
+                                    if (self::getShowDebug()) { Application::log("8a. $type Removing ".$prevBaseNumber); }
+                                    $clean = FALSE;
+                                    self::setGrantTypeIfSelfReported($grant, $awardsByType[$type][$prevBaseNumber]);
+                                    if ($grant->isSelfReported()) {
+                                        self::copyBudgetsIfBlank($grant, [$grant, $awardsByType[$type][$prevBaseNumber]]);
+                                        self::copyTitleIfBlank($grant, [$grant, $awardsByType[$type][$prevBaseNumber]]);
+                                    }
+                                    if (self::getShowDebug()) { Application::log("8A. Removing $type because same timestamp ".$prevBaseNumber); }
+                                    unset($awardsByType[$type][$prevBaseNumber]);
+                                    $prevGrant = $grant;
+                                    $prevBaseNumber = $baseNumber;
+                                    break; // sourceOrder loop
+                                } else if ($grant->getVariable("source") == $source) {
+                                    if (self::getShowDebug()) { Application::log("8b. $type Removing ".$baseNumber); }
+                                    $clean = FALSE;
+                                    self::setGrantTypeIfSelfReported($prevGrant, $awardsByType[$type][$baseNumber]);
+                                    if ($prevGrant->isSelfReported()) {
+                                        self::copyBudgetsIfBlank($prevGrant, [$prevGrant, $awardsByType[$type][$baseNumber]]);
+                                        self::copyTitleIfBlank($prevGrant, [$prevGrant, $awardsByType[$type][$baseNumber]]);
+                                    }
+                                    if (self::getShowDebug()) { Application::log("8B. Removing $type because same timestamp ".$baseNumber); }
+                                    unset($awardsByType[$type][$baseNumber]);
+                                    break; // sourceOrder loop
                                 }
-                                if (self::getShowDebug()) { Application::log("8A. Removing $type because same timestamp ".$prevBaseNumber); }
-                                unset($awardsByType[$type][$prevBaseNumber]);
-                                $prevGrant = $grant;
-                                $prevBaseNumber = $baseNumber;
-                                break; // sourceOrder loop
-                            } else if ($grant->getVariable("source") == $source) {
-                                if (self::getShowDebug()) { Application::log("8b. $type Removing ".$baseNumber); }
-                                $clean = FALSE;
-                                self::setGrantTypeIfSelfReported($prevGrant, $awardsByType[$type][$baseNumber]);
-                                if ($prevGrant->isSelfReported()) {
-                                    self::copyBudgetsIfBlank($prevGrant, [$prevGrant, $awardsByType[$type][$baseNumber]]);
-                                    self::copyTitleIfBlank($prevGrant, [$prevGrant, $awardsByType[$type][$baseNumber]]);
-                                }
-                                if (self::getShowDebug()) { Application::log("8B. Removing $type because same timestamp ".$baseNumber); }
-                                unset($awardsByType[$type][$baseNumber]);
-                                break; // sourceOrder loop
                             }
                         }
                     } else {

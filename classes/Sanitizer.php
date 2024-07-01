@@ -30,6 +30,44 @@ class Sanitizer {
         return $data;
     }
 
+    public static function decodeSpecialHTML(&$a) {
+        if (is_array($a)) {
+            foreach (array_keys($a) as $i) {
+                # handle HTML escaping; include curly quotes
+                # Many early projects accidentally stored escaped quotes in their database and need to be decoded
+                # This should not have to be heavily used with projects after 11/2023
+                $a[$i] = str_replace("&amp;", "&", $a[$i]);
+                $a[$i] = str_replace("&quot;", "\"", $a[$i]);
+                $a[$i] = str_replace("&apos;", "'", $a[$i]);
+                $singleQuoteItems = ["#039", "#39", "#8216", "#8217"];
+                $doubleQuoteItems = ["#8220", "#8221"];
+                $replacements = [
+                    "%27" => $singleQuoteItems,
+                    "%22" => $doubleQuoteItems,
+                ];
+                foreach ($replacements as $replacement => $items) {
+                    foreach ($items as $escapedQuote) {
+                        if (preg_match("/&$escapedQuote;/", $a[$i])) {
+                            $a[$i] = str_replace("&$escapedQuote;", $replacement, $a[$i]);
+                        } else if (preg_match("/&$escapedQuote\D/", $a[$i])) {
+                            $a[$i] = str_replace("&$escapedQuote", $replacement, $a[$i]);
+                        } else if (preg_match("/$escapedQuote;/", $a[$i])) {
+                            $a[$i] = str_replace("$escapedQuote;", $replacement, $a[$i]);
+                        } else if (preg_match("/$escapedQuote\D/", $a[$i])) {
+                            $a[$i] = str_replace($escapedQuote, $replacement, $a[$i]);
+                        }
+                    }
+                }
+            }
+        } else {
+            $ary = [$a];
+            self::decodeSpecialHTML($ary);
+            if (!empty($ary)) {
+                $a = $ary[0];
+            }
+        }
+    }
+
     public static function repetitivelyDecodeHTML($entity, $depth = 1) {
         if (is_array($entity)) {
             foreach ($entity as $key => $value) {

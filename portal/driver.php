@@ -56,6 +56,8 @@ try {
         if (!empty($data['matches'] ?? []) && ($data['photo'] === "")) {
             $data['photo'] = $portal->getPhoto();
         }
+    } else if ($action == "pubs_topics") {
+        $data['html'] = $portal->getPage("charts/publicationSubjects.php", ["record" => $recordId]);
     } else if ($action == "getMatches") {
         $requestedPids = Sanitizer::sanitizeArray($_POST['pids'] ?? []);
         list($data['matches'], $data['projectTitles'], $data['photo']) = $portal->getMatchesManually($requestedPids);

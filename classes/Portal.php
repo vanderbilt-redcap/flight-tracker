@@ -106,7 +106,7 @@ class Portal
             if (!$username) {
                 echo Portal::getLogo();
                 echo "<h1>Flight Tracker Scholar Portal$spoof</h1>";
-                echo "<p class='centered max-width'>This scholar does not have a username set up. To allow her/him access and yourself to spoof them, add a valid REDCap user-id on their Identifiers form.</p>";
+                echo "<p class='centered max-width'>This scholar does not have a username set up. To allow her/him access and yourself to spoof them, add a valid REDCap user-id on their Identifiers form or on the Manual Import form on their record.</p>";
                 exit;
             }
         } else if (!in_array(Application::getUsername(), $usernames)) {
@@ -537,6 +537,10 @@ class Portal
             $menu["Your Graphs"][] = [
                 "action" => "pubs_impact",
                 "title" => "Publishing Impact",      // combined & deduped RCR graph; Altmetric summary & links
+            ];
+            $menu["Your Graphs"][] = [
+                "action" => "pubs_topics",
+                "title" => "Publishing Research Timelines",    // Research Topic Timelines
             ];
         }
         if (($settings["Publications"] != "Off") && ($settings["Grants"] != "Off")) {

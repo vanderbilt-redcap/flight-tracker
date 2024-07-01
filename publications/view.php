@@ -161,9 +161,40 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
     $dates = [];
     $lastNames = Download::lastnames($token, $server);
     $firstNames = Download::firstnames($token, $server);
-    $fields = Application::getCitationFields($metadata);
+    $focusedFields = [
+        "record_id",
+        "citation_pmid",
+        "citation_include",
+        "citation_flagged",
+        "citation_grants",
+        "citation_date",
+        "citation_authors",
+    ];
+    $allFields = [
+        "record_id",
+        "citation_pmid",
+        "citation_include",
+        "citation_flagged",
+        "citation_ts",
+        "citation_pmcid",
+        "citation_doi",
+        "citation_authors",
+        "citation_title",
+        "citation_journal",
+        "citation_volume",
+        "citation_issue",
+        "citation_year",
+        "citation_month",
+        "citation_day",
+        "citation_date",
+        "citation_pages",
+        "citation_grants",
+        "citation_pilot_grants",
+        "citation_altmetric_score",
+        "citation_altmetric_image",
+    ];
     foreach ($records as $record) {
-        $redcapData = Download::fieldsForRecords($token, $server, $fields, [$record]);
+        $redcapData = Download::fieldsForRecords($token, $server, $focusedFields, [$record]);
         $pubs = new Publications($token, $server, $metadata);
         $pubs->setRows($redcapData);
         if (isset($_GET['test'])) {
@@ -237,8 +268,18 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
             Application::log("Record $record has ".$included->getCount()." records");
         }
 
-        $citations[$confirmed][$record] = $included;
-        $citations[$notConfirmed][$record] = $notDone;
+
+        $instancesToDownload = array_unique(array_merge($included->getInstances(), $notDone->getInstances()));
+        if (!empty($instancesToDownload)) {
+            $deepData = Download::fieldsForRecordAndInstances($token, $server, $allFields, [$record], "citation", $instancesToDownload);
+            $deepPubs = new Publications($token, $server, $metadata);
+            $deepPubs->setRows($deepData);
+            $citations[$notConfirmed][$record] = $deepPubs->getCitationCollection("Not Done");
+            $citations[$confirmed][$record] = $deepPubs->getCitationCollection("Included");
+        } else {
+            $citations[$confirmed][$record] = $included;
+            $citations[$notConfirmed][$record] = $notDone;
+        }
     }
     return [$citations, $dates];
 }
@@ -269,13 +310,13 @@ function makePublicationListHTML($citations, $names, $dates) {
                 }
                 $name = $names[$record];
                 $date = $dates[$record];
-                $collectionHeader = "<p class='centered'>$name (".$citColl->getCount().")";
+                $header = "<p class='centered'>$name (".$citColl->getCount().")";
                 if ($date) {
-                    $collectionHeader .= "<br/>$date";
+                    $header .= "<br>$date";
                 }
-                $collectionHeader .= "</p>\n";
+                $header .= "</p>\n";
                 if ($citColl->getCount() > 0) {
-                    $html .= $collectionHeader;
+                    $html .= $header;
                 }
 
                 $citations = $citColl->getCitations($_GET['sort'] ?? "date");
@@ -295,7 +336,7 @@ function makePublicationListHTML($citations, $names, $dates) {
         }
         $html .= "</div>\n";
     }
-    $html .= "<br/><br/><br/>";
+    $html .= "<br><br><br>";
     return $html;
 }
 

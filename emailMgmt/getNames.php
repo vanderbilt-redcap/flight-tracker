@@ -21,15 +21,15 @@ if (empty($names)) {
 	echo "No names match your description.";
 } else {
 	if (isset($who['recipient']) && ($who['recipient'] == "individuals")) {
-		$emails = $mgr->getEmails($who);
+        $emails = $mgr->getEmails($who);
 
-		$lines = array();
-		foreach ($names as $recordId => $name) {
-			$email = $emails[$recordId];
-			$lines[] = $name . ";" . $email;
-		}
-		echo implode("<br>\n", $lines);
-	} else {
-		echo implode("<br>\n", array_values($names));
+        $lines = array();
+        foreach ($names as $recordId => $name) {
+            $email = $emails[$recordId];
+            $lines[] = $name . ";" . $email;
+        }
+        echo implode("<br>", $lines);
+    } else {
+		echo implode("<br>", array_values($names));
 	}
 }

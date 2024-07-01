@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.10.9";
+		return "6.11.0";
 	}
 
     public static function getLocalhostPluginPid() {
@@ -698,12 +698,7 @@ class CareerDev {
                     $institutions[] = $otherInst;
                 }
             }
-            foreach ($institutions as $i => $institution) {
-                $institutions[$i] = str_replace("&#039;", "'", $institution);
-                $institutions[$i] = str_replace("&#39;", "'", $institutions[$i]);
-                $institutions[$i] = str_replace("&amp;", "&", $institutions[$i]);
-                $institutions[$i] = str_replace("&quot;", "\"", $institutions[$i]);
-            }
+            Sanitizer::decodeSpecialHTML($institutions);
 
             return $institutions;
         } else {

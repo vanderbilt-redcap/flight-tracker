@@ -6,8 +6,6 @@ namespace Vanderbilt\CareerDevLibrary;
 # This class handles publication data from PubMed, the VICTR fetch routine, and surveys.
 # It also provides HTML for data-wrangling the publication data
 
-use phpDocumentor\Reflection\DocBlock\Tags\Link;
-
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Publications {
@@ -198,7 +196,7 @@ class Publications {
 
     private static function makePubMedNameClause($unexplodedFirst, $unexplodedLast, $middle = "") {
         $suffix = "%5Bau%5D";
-        $quote = "%22";
+        $quote = "";   // "%22"; turned off quoting for now because it seems PubMed no longer supports it
         $nameClauses = [];
         foreach (NameMatcher::explodeFirstName($unexplodedFirst) as $first) {
             foreach (NameMatcher::explodeLastName($unexplodedLast) as $last) {
@@ -244,6 +242,9 @@ class Publications {
 
     private static function makePubMedInstitutionClause($institutions) {
         $institutionSearchNodes = [];
+        Sanitizer::decodeSpecialHTML($institutions);
+
+        # adjust for PubMed
         foreach ($institutions as $institution) {
             # handle HTML escaping; include curly quotes
             # Many early projects accidentally stored escaped quotes in their database and need to be decoded
@@ -261,9 +262,15 @@ class Publications {
                         $institution = str_replace("&$escapedQuote;", $replacement, $institution);
                     } else if (preg_match("/&$escapedQuote\D/", $institution)) {
                         $institution = str_replace("&$escapedQuote", $replacement, $institution);
+                    } else if (preg_match("/&amp;$escapedQuote;/", $institution)) {
+                        $institution = str_replace("&amp;$escapedQuote;", $replacement, $institution);
+                    } else if (preg_match("/&amp;$escapedQuote\D/", $institution)) {
+                        $institution = str_replace("&amp;$escapedQuote", $replacement, $institution);
                     } else if (preg_match("/$escapedQuote;/", $institution)) {
                         $institution = str_replace("$escapedQuote;", $replacement, $institution);
                     } else if (preg_match("/$escapedQuote\D/", $institution)) {
+                        $institution = str_replace($escapedQuote, $replacement, $institution);
+                    } else if (preg_match("/$escapedQuote$/", $institution)) {
                         $institution = str_replace($escapedQuote, $replacement, $institution);
                     }
                 }
@@ -274,10 +281,11 @@ class Publications {
             $institution = Sanitizer::repetitivelyDecodeHTML(strtolower($institution));
             $institution = str_replace("(", "", $institution);
             $institution = str_replace(")", "", $institution);
+
             # Derivations of the word "children" as an institution are interpreted as a MeSH term (topic)
             # by PubMed; thus, they will explode into thousands of incorrect publications
             if (!in_array($institution, ["children", "children'", "children's"])) {
-                $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
+                $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML("\"".strtolower($institution)) . "\"+%5Bad%5D";
             }
         }
 

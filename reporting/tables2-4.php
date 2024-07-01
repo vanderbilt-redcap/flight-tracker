@@ -11,6 +11,7 @@ use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\CustomGrantFactory;
 use \Vanderbilt\CareerDevLibrary\GrantLexicalTranslator;
 use \Vanderbilt\CareerDevLibrary\Grant;
+use \Vanderbilt\CareerDevLibrary\DateManagement;
 
 # mostly a driver for the React tables in the tables2-4/ directory - returns a JSON
 # React transforms JSON data into HTML
@@ -75,11 +76,46 @@ if (isset($_POST['action']) && $token && $server && $pid) {
             }
         } else if ($action == "saveTable") {
             $tableDataJSONs = $_POST['tableData'];     // sanitizing causes double-escapes of HTML
-            $tableData = [];
-            foreach ($tableDataJSONs as $json) {
-                $tableData[] = json_decode($json, TRUE);
-            }
             $tableNum = Sanitizer::sanitize($_POST['tableNum']);
+            $tableData = [];
+            $rowsToRemove = [];
+            foreach ($tableDataJSONs as $json) {
+                $rowData = json_decode($json, TRUE);
+                if (isset($rowData['custom_entry']) && ($tableNum == 4)) {
+                    $fieldsToTransfer = array_merge(["Faculty Member"], array_keys(ReactNIHTables::getTable4RowFields()));
+                    $transformedRow = [];
+                    foreach ($rowData as $keyWithHTML => $value) {
+                        $key = preg_replace("/<[^>]+>/", " ", $keyWithHTML);
+                        if (in_array($key, $fieldsToTransfer)) {
+                            $transformedRow[$key] = $value;
+                        }
+                    }
+                    $period = $rowData['Project Period'];
+                    if (preg_match("/^Started on /", $period)) {
+                        $my = str_replace("Started on ", "", $period);
+                        $transformedRow["Project Period Start"] = DateManagement::MY2YM($my);
+                        $transformedRow["Project Period End"] = "";
+                    } else if (preg_match("/^Ends on /", $period)) {
+                        $my = str_replace("Ends on ", "", $period);
+                        $transformedRow["Project Period Start"] = "";
+                        $transformedRow["Project Period End"] = DateManagement::MY2YM($my);
+                    } else if (preg_match("/^[\d\/\-]+\s+-\s+[\d\/\-]+$/", $period)) {
+                        $nodes = preg_split("/\s+-\s+/", $period);
+                        if (count($nodes) == 2) {
+                            $transformedRow["Project Period Start"] = DateManagement::MY2YM($nodes[0]);
+                            $transformedRow["Project Period End"] = DateManagement::MY2YM($nodes[1]);
+                        } else {
+                            throw new \Exception("Invalid period $period! This should never happen.");
+                        }
+                    } else {
+                        $transformedRow["Project Period Start"] = "";
+                        $transformedRow["Project Period End"] = "";
+                    }
+                    $rowsToRemove[] = $transformedRow;
+                    unset($rowData['custom_entry']);
+                }
+                $tableData[] = $rowData;
+            }
             $name = Sanitizer::sanitize($_POST['name']);
             $dateOfReport = Sanitizer::sanitize($_POST['date']);
             $faculty = Sanitizer::sanitizeArray($_POST['facultyList']);
@@ -89,6 +125,12 @@ if (isset($_POST['action']) && $token && $server && $pid) {
             $metadata = Download::metadata($token, $server);
             $nihTables = new NIHTables($token, $server, $pid, $metadata);
             $data = $reactHandler->saveData($nihTables, $tableNum, $tableData, $name, $dateOfReport, $faculty, $grantTitle, $grantPI);
+            if (($tableNum == 4) && !empty($rowsToRemove)) {
+                $reactHandler->removeCustomTable4Rows($rowsToRemove, $name);
+            }
+        } else if ($action == "getCustomTable4Rows") {
+            $name = Sanitizer::sanitize($_POST['name']);
+            $data['table'] = $reactHandler->getCustomTable4Rows($name);
         } else if ($action == "getProjectInfo") {
             $name = Sanitizer::sanitize($_POST['name']);
             $data = $reactHandler->getProjectInfo($name);
@@ -255,9 +297,9 @@ if (isset($_POST['action']) && $token && $server && $pid) {
     }
     header("Content-type: application/json");
     echo json_encode($data);
-} else if (isset($_GET['revise'])) {
+} else if (isset($_GET['revise']) || isset($_GET['submit_row'])) {
     echo $titleHTML;
-    $email = Sanitizer::sanitize($_GET['revise'] ?? "No email");
+    $email = Sanitizer::sanitize($_GET['revise'] ?? $_GET['submit_row'] ?? "No email");
     $date = Sanitizer::sanitizeDate($_GET['date']);
     $requestedHash = Sanitizer::sanitize($_GET['hash']);
     $savedName = Sanitizer::sanitize($_GET['savedName'] ?? "");
@@ -269,7 +311,12 @@ if (isset($_POST['action']) && $token && $server && $pid) {
             header("Location: $newUrl");
         } else {
             echo $reactHandler->getTable1_4Header();
-            echo $reactHandler->makeHTMLForNIHTableEdits($date, $name, $email, $emailHash, $tables, $savedName);
+            if (isset($_GET['revise'])) {
+                echo $reactHandler->makeHTMLForNIHTableEdits($date, $name, $email, $emailHash, $tables, $savedName);
+            } else if (isset($_GET['submit_row'])) {
+                $post = Sanitizer::sanitizeArray($_POST, TRUE, FALSE);
+                echo $reactHandler->makeTable4NewRow($date, $name, $email, $emailHash, $savedName, $post);
+            }
         }
     } else {
         echo "Not verified.";

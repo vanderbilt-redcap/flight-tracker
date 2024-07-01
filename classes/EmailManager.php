@@ -935,9 +935,21 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
         $steps["fields 1"] = $fields;
 		$fields = REDCapManagement::filterOutInvalidFields($this->metadata, $fields);
 
+
+        if (isset($who['cohort'])) {
+            $cohort = Sanitizer::sanitizeCohort($who['cohort']);
+            if ($cohort) {
+                $records = Download::cohortRecordIds($this->token, $this->server, Application::getModule(), $cohort);
+            } else {
+                # use all records since cohort is no longer valid
+                $records = Download::recordIds($this->token, $this->server);
+            }
+        } else {
+            $records = Download::recordIds($this->token, $this->server);
+        }
 		# structure data
         $steps["fields 2"] = $fields;
-		$redcapData = Download::fields($this->token, $this->server, $fields);
+		$redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, $records);
 		$steps["redcapData"] = count($redcapData);
 		$identifiers = [];
 		$lastUpdate = [];
@@ -1015,7 +1027,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		}
 		if (!empty($fieldsToDownload)) {
 			$fieldsToDownload[] = "record_id";
-			$filterREDCapData = Download::fields($this->token, $this->server, $fieldsToDownload);
+			$filterREDCapData = Download::fieldsForRecords($this->token, $this->server, $fieldsToDownload, $records);
 			foreach ($filtersToApply as $filter) {
 				$redcapField = self::getFieldAssociatedWithFilter($filter);
 				if ($filter == "team") {
@@ -1129,7 +1141,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 			$rows = $this->collectAllEmails();
 		} else if ($who['individuals']) {
 			$rows = $this->getAllCheckedEmails($who);
-		} else if ($who['filter'] == "some") {
+        } else if (in_array($who['filter'], ["some", "cohort_group"])) {
 			$rows = $this->filterSome($who, $whenType, $when, $what);
 		} else if (empty($who)) {
 			return array();

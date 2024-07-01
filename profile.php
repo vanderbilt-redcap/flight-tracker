@@ -346,12 +346,21 @@ if (!empty($mentors)) {
     echo "<h2>Timelines</h2>";
     require_once(__DIR__."/charts/timeline.php");
     echo "<br/><br/>";
+
+    echo "<h2>Publication Research Topic Timelines</h2>";
+    echo "<div class='centered max-width-1000' style='height: 500px; overflow-y: scroll; overflow-x: hidden; background-color: white;'>";
+    $_GET['hideHeaders'] = TRUE;
+    require_once(__DIR__."/charts/publicationSubjects.php");
+    echo "</div>";
+
     echo "<h2>Reported Grant Funding (Total Dollars; PI/Co-PI only)</h2>";
     require_once(__DIR__."/charts/scholarGrantFunding.php");
     echo "<br/><br/>";
+
     echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>";
     echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".Application::link("socialNetwork/collaboration.php")."&record=$record&field=record_id&cohort=all&headers=false&mentors=on'></iframe>";
     echo "<br/><br/>";
+
     $honors = new HonorsAwardsActivities($redcapData, $pid, $record);
     echo "<h2>Recorded Honors, Awards &amp; Activities</h2>";
     echo $honors->getHTML();

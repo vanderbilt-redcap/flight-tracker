@@ -8,6 +8,7 @@ use Vanderbilt\CareerDevLibrary\Portal;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -47,6 +48,8 @@ if (count($_POST) > 0) {
 }
 
 $mgr = new EmailManager($token, $server, $pid, CareerDev::getModule(), $metadata);
+$cohorts = new Cohorts($token, $server, Application::getModule());
+$defaultCohort = Sanitizer::sanitizeCohort($_POST['cohort'] ?? "", $pid);
 
 $selectName = EmailManager::getFieldForCurrentEmailSetting();
 $messageSelectName = "message_select";
@@ -69,7 +72,7 @@ if ($currSetting['enabled']) {
 }
 
 # defaults
-$indivs = "$isDisabled"; $filteredGroup = "checked";
+$indivs = "$isDisabled"; $filteredGroup = "checked"; $cohortGroup = "$isDisabled";
 $all = "checked"; $some = "$isDisabled";
 $surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "$isDisabled"; $surveyCompleteNoMatter = "checked";
 $lastCompleteMonths = 12; $maxEmails = 5; $newRecordsSince = 6;
@@ -81,10 +84,10 @@ $traineeClassAll = "";
 
 if (isset($_POST['recipient'])) {
     if ($_POST['recipient'] == "individuals") {
-        $indivs = "checked"; $filteredGroup = "$isDisabled";
+        $indivs = "checked"; $filteredGroup = "$isDisabled"; $cohortGroup = "$isDisabled";
     } else if ($_POST['recipient'] == "filtered_group") {
         if ($_POST['filter'] == "some") {
-            $all = "$isDisabled"; $some = "checked";
+            $all = "$isDisabled"; $some = "checked"; $cohortGroup = "$isDisabled";
             if ($_POST['survey_complete'] == "yes") {
                 $surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "checked"; $surveyCompleteNoMatter = "$isDisabled";
                 if ($_POST['last_complete_months']) {
@@ -114,6 +117,8 @@ if (isset($_POST['recipient'])) {
                 $newRecordsSinceSpecified = "checked";
             }
         }
+    } else if ($_POST['recipient'] == "cohort_group") {
+        $indivs = "$isDisabled"; $filteredGroup = "$isDisabled"; $cohortGroup = "checked";
     }
 }
 
@@ -175,7 +180,7 @@ var messages = <?= json_encode($messages) ?>;
 
 $(document).ready(function() {
 	$('#<?= $selectName ?>').change(function() {
-		var val = $('#<?= $selectName ?> option:selected').val();
+		const val = $('#<?= $selectName ?> option:selected').val();
 		if (val) {
 			window.location = '<?= CareerDev::link("/emailMgmt/configure.php")."&$selectName=" ?>'+val;
 		} else {
@@ -183,11 +188,14 @@ $(document).ready(function() {
 		}
 	});
 	$('#<?= $messageSelectName ?>').change(function() {
-		var val = $('#<?= $messageSelectName ?> option:selected').val();
+		const val = $('#<?= $messageSelectName ?> option:selected').val();
 		if (val && messages[val]) {
 			$('#message .ql-editor').html(messages[val]);
 		}
 	});
+    if ($('select#cohort').length > 0) {
+        $('select#cohort').on('change', function() { updateAll(this, '<?= $pid ?>', <?= json_encode($realPost) ?>); });
+    }
 	$('input.who_to').on('change', function() { updateAll(this, '<?= $pid ?>', <?= json_encode($realPost) ?>); });
 	$("form").on("submit",function(){
 		if ($("#message .ql-editor").length > 0) {
@@ -210,7 +218,16 @@ $(document).ready(function() {
 	}
 
 ?>
-	$(".datetime").on('change', function() { var name = $(this).attr('name'); $('input[type=hidden][name='+name+']').val($(this).val()+'M'); });
+	$(".datetime").on('change', function() {
+        const name = $(this).attr('name');
+        $('input[type=hidden][name='+name+']').val($(this).val()+'M');
+        const val = $(this).val();
+        if (val !== '') {
+            $('#save').show();
+        } else {
+            $('#save').hide();
+        }
+    });
 
     $(window).on("beforeunload", (event) => {
         if (($('#is_activated').val() === "1") || ($('#button_pressed').val() === '1')) {
@@ -251,13 +268,23 @@ $(document).ready(function() {
 
 			<h3 class='green'>To (Recipients)</h3>
 			<p class='centered'>Who Do You Want to Receive Your Email?<br>
-				<span class='nowrap'><input class='who_to' type='radio' name='recipient' id='individuals' value='individuals' <?= $indivs ?>><label for='individuals'> Individual(s)</label></span><?= $spacing ?><span class='nowrap'><input type='radio' class='who_to' name='recipient' id='filtered_group' value='filtered_group' <?= $filteredGroup ?>><label for='filtered_group'> Filtered Group</label></span>
+				<span class='nowrap'><input class='who_to' type='radio' name='recipient' id='individuals' value='individuals' <?= $indivs ?>><label for='individuals'> Individual(s)</label></span>
+                <?= $spacing ?><span class='nowrap'><input type='radio' class='who_to' name='recipient' id='filtered_group' value='filtered_group' <?= $filteredGroup ?>><label for='filtered_group'> Filtered Group</label></span>
+                <?php
+                if (!empty($cohorts->getCohortNames())) {
+                    echo "$spacing<span class='nowrap'><input type='radio' class='who_to' name='recipient' id='cohort_group' value='cohort_group' $cohortGroup><label for='cohort_group'> Cohort</label></span>";
+                }
+                ?>
 			</p>
 			<div id='checklist' <?php if ($indivs != "checked") { echo "style='display: none;'"; } ?>>
 				<h4 style='margin-bottom: 0;'>List of Names<span class='namesCount'></span></h4>
 				<p class='namesFiltered'></p>
 			</div>
-			<div id='filter' <?php if ($filteredGroup != "checked") { echo "style='display: none;'"; } ?>>
+			<div id='filter' <?php if (($filteredGroup != "checked") && ($cohortGroup != "checked")) { echo "style='display: none;'"; } ?>>
+                <div id='cohort_filter' <?php if ($cohortGroup != "checked") { echo "style='display: none;'"; } ?>>
+                    <p class="centered">Which Cohort?<br/>
+                        <?= $cohorts->makeCohortSelect($defaultCohort) ?></p>
+                </div>
 				<p class='centered' id='filter_scope'>Do You Want to Email All or Some Scholars?<br>
 					<span class='nowrap'><input class='who_to' type='radio' name='filter' id='all' value='all' <?= $all ?>><label for='all'> All</label></span><?= $spacing ?><span class='nowrap'><input type='radio' class='who_to' name='filter' id='some' value='some' <?= $some ?>><label for='some'> Some</label></span>
 				</p>
@@ -369,7 +396,12 @@ $(document).ready(function() {
 			echo "<h2 class='blue'>Current Status: Not Activated</h2>";
             echo "<input type='hidden' id='is_activated' value='0' />";
 			$stageText = $intro."Stage to Test";
-			$stageStyle = "";
+            $sendTime = $currSetting['when']["initial_time"] ?? "";
+            if ($sendTime !== "") {
+                $stageStyle = "";
+            } else {
+                $stageStyle = " display: none;";
+            }
 		}
 		echo "</div>";
         echo "<input type='hidden' id='button_pressed' value='0' />";
@@ -470,9 +502,17 @@ function translatePostToEmailSetting($post) {
         if (isset($post['trainee_class'])) {
 		    $emailSetting["who"]["trainee_class"] = $post['trainee_class'];
         }
-	}
+    } else if (isset($post['recipient']) && ($post['recipient'] == "cohort_group")) {
+        $cohort = Sanitizer::sanitizeCohort($post['cohort']);
+        if ($cohort) {
+            $emailSetting["who"]["filter"] = "cohort_group";
+            $emailSetting["who"]["cohort"] = $cohort;
+        } else {
+            $emailSetting["who"]["filter"] = "all";
+        }
+    }
 	if (isset($post["from"])) {
-		$emailSetting["who"]["from"] = $post["from"];
+        $emailSetting["who"]["from"] = $post["from"];
 	} else {
 		return ["From address is not specified", "", EmailManager::getBlankSetting()];
 	}

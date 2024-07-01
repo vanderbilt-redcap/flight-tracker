@@ -1036,7 +1036,9 @@ class Download {
     }
 
 	public static function institutions($token, $server) {
-		return Download::oneField($token, $server, "identifier_institution");
+		$institutions = Download::oneField($token, $server, "identifier_institution");
+        Sanitizer::decodeSpecialHTML($institutions);
+        return $institutions;
 	}
 
 	public static function institutionsAsArray($token, $server) {
@@ -1054,6 +1056,7 @@ class Download {
 
 	public static function lastnames($token, $server) {
 		$lastNames = Download::oneField($token, $server, "identifier_last_name");
+        Sanitizer::decodeSpecialHTML($lastNames);
         return self::filterOutBlanks($lastNames);
 	}
 
@@ -1069,6 +1072,7 @@ class Download {
 
     public static function firstnames($token, $server) {
         $firstNames = Download::oneField($token, $server, "identifier_first_name");
+        Sanitizer::decodeSpecialHTML($firstNames);
         return self::filterOutBlanks($firstNames);
     }
 
@@ -1149,8 +1153,10 @@ class Download {
     }
 
     public static function middlenames($token, $server) {
-		return Download::oneField($token, $server, "identifier_middle");
+		$middleNames = Download::oneField($token, $server, "identifier_middle");
+        Sanitizer::decodeSpecialHTML($middleNames);
         # do not use self::filterOutBlanks() because nothing is keyed off of middle names
+        return $middleNames;
 	}
 
 	public static function emails($token, $server) {
@@ -1207,7 +1213,7 @@ class Download {
                             if (!isset($institutions[$row['record_id']])) {
                                 $institutions[$row['record_id']] = array();
                             }
-                            array_push($institutions[$row['record_id']], $row[$institutionField]);
+                            $institutions[$row['record_id']][] = $row[$institutionField];
                             break;
                         }
                     }
