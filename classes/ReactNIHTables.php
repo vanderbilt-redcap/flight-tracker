@@ -246,7 +246,7 @@ table { border-collapse: collapse; }
             $hash = $this->makeEmailHash($scholarEmail, $tables);
             $yesLink = $thisLink."&confirm=".urlencode($scholarEmail)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport)."&savedName=".urlencode($savedName)."&NOAUTH";
             $noLink = $thisLink."&revise=".urlencode($scholarEmail)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport)."&savedName=".urlencode($savedName)."&NOAUTH";
-            if ($scholarEmail != $email) {
+            if (($scholarEmail != $email) || ($tableNum == 3)) {
                 $noLink .= "&delegate";
                 $yesLink .= "&delegate";
             }
@@ -591,6 +591,138 @@ table { border-collapse: collapse; }
         return $newData;
     }
 
+    private static function getTable4RowKey($savedName) {
+        return "table4_submissions___".$savedName;
+    }
+
+    private function saveNewTable4Row($post, $savedName) {
+        $name = $post['faculty_member'] ?? "";
+        if (!$name) {
+            return;
+        }
+        $newRow = ["Faculty Member" => $name];
+        foreach (array_keys(self::getTable4RowFields()) as $label) {
+            $id = REDCapManagement::makeHTMLId($label);
+            if (($label == "Current Year Direct Costs") && $post[$id]) {
+                $newRow[$label] = REDCapManagement::prettyMoney($post[$id], FALSE);
+            } else {
+                $newRow[$label] = $post[$id] ?? "";
+            }
+        }
+
+        $field = self::getTable4RowKey($savedName);
+        $priorSubmissions = Application::getSetting($field, $this->pid) ?: [];
+        $priorSubmissions[] = $newRow;
+        Application::saveSetting($field, $priorSubmissions, $this->pid);
+    }
+
+    public function removeCustomTable4Rows($rows, $savedName) {
+        $field = self::getTable4RowKey($savedName);
+        $priorSubmissions = Application::getSetting($field, $this->pid) ?: [];
+        $newAry = [];
+        foreach ($priorSubmissions as $priorRow) {
+            $found = FALSE;
+            foreach ($rows as $row) {
+                unset($row["Project Period"]);
+                unset($row["pid"]);
+                unset($row["record"]);
+                unset($row["recordInstance"]);
+                if (REDCapManagement::arraysEqual($row, $priorRow)) {
+                    $found = TRUE;
+                    break;
+                }
+            }
+            if (!$found) {
+                $newAry[] = $priorRow;
+            }
+        }
+        Application::saveSetting($field, $newAry, $this->pid);
+    }
+
+    public function getCustomTable4Rows($savedName) {
+        $field = self::getTable4RowKey($savedName);
+        $priorSubmissions = Application::getSetting($field, $this->pid) ?: [];
+        $transformedArray = [];
+        foreach ($priorSubmissions as $row) {
+            $newRow = [];
+            foreach ($row as $field => $value) {
+                if (!in_array($field, ["Project Period Start", "Project Period End"])) {
+                    $newRow[$field] = $value;
+                }
+            }
+            $sep = "/";
+            if ($row["Project Period Start"] && $row["Project Period End"]) {
+                $newRow["Project Period"] = DateManagement::YM2MY($row["Project Period Start"], $sep) . " - " . DateManagement::YM2MY($row["Project Period End"], $sep);
+            } else if ($row["Project Period Start"]) {
+                $newRow["Project Period"] = "Started on ".DateManagement::YM2MY($row["Project Period Start"], $sep);
+            } else if ($row["Project Period End"]) {
+                $newRow["Project Period"] = "Ends on ".DateManagement::YM2MY($row["Project Period End"], $sep);
+            } else {
+                $newRow["Project Period"] = "";
+            }
+            $transformedArray[] = $newRow;
+        }
+        return $transformedArray;
+    }
+
+    public static function getTable4RowFields() {
+        return [
+            "Funding Source" => ["NIH", "AHRQ", "NSF", "Other Fed", "Univ", "Fdn", "None", "Other"],
+            "Grant Number" => "text",
+            "Role on Project" => ["PD/PI", "Project PI", "Project Lead (MPI)", "Other"],
+            "Grant Title" => "notes",
+            "Project Period Start" => "month",
+            "Project Period End" => "month",
+            "Current Year Direct Costs" => "number",
+        ];
+    }
+
+    public function makeTable4NewRow($dateOfReport, $name, $email, $hash, $savedName, $post) {
+        $postedPreviously = isset($post['faculty_member']);
+        if ($postedPreviously) {
+            $this->saveNewTable4Row($post, $savedName);
+        }
+
+        $thisUrl = Application::link("this", $this->pid)."&hash=".urlencode($hash)."&submit_row=".urlencode($email)."&NOAUTH&date=".$dateOfReport."&savedName=".urlencode($savedName);
+        if (isset($_GET['delegate'])) {
+            $thisUrl .= "&delegate";
+        }
+        $csrfToken = Application::generateCSRFToken();
+
+        $html = "<h1>Add a Row for Table 4: Faculty Research Support</h1>";
+        $html .= "<div class='centered max-width-800'>";
+        if ($postedPreviously) {
+            $html .= "<p class='centered'>Your prior entry has been saved. If you wish to enter another row, please do so below.</p>";
+        }
+        $html .= "<form method='POST' action='$thisUrl'>";
+        $html .= "<input type='hidden' name='faculty_member' id='faculty_member' value=\"$name\" />";
+        $html .= "<input type='hidden' name='redcap_csrf_token' id='redcap_csrf_token' value=\"$csrfToken\" />";
+        $html .= "<p>Faculty Member: $name</p>";
+        foreach (self::getTable4RowFields() as $label => $type) {
+            $id = REDCapManagement::makeHTMLId($label);
+            if ($type == "notes") {
+                $html .= "<p><label for='$id'>$label:</label><br/><textarea id='$id' name='$id' style='width: 400px; height: 75px;'></textarea></p>";
+            } else if (in_array($type, ["text", "month"])) {
+                $html .= "<p><label for='$id'>$label: </label><input type='$type' id='$id' name='$id' /></p>";
+            } else if ($type == "number") {
+                $html .= "<p><label for='$id'>$label: </label><input type='$type' id='$id' name='$id' style='width: 100px;' min='0'/></p>";
+            } else if (is_array($type)) {
+                $html .= "<p><label for='$id'>$label: </label><select id='$id' name='$id'>";
+                $html .= "<option value=''>---SELECT---</option>";
+                foreach ($type as $option) {
+                    $html .= "<option value='$option'>$option</option>";
+                }
+                $html .= "</select></p>";
+            } else {
+                throw new \Exception("Invalid type $type!");
+            }
+        }
+        $html .= "<p class='centered'><button>Add Row</button></p>";
+
+        $html .= "</div>";
+        return $html;
+    }
+
     public function makeHTMLForNIHTableEdits($dateOfReport, $name, $email, $hash, $tablesToShow, $savedName) {
         $thisUrl = Application::link("this", $this->pid)."&hash=".urlencode($hash)."&email=".urlencode($email)."&NOAUTH";
         $metadata = Download::metadata($this->token, $this->server);
@@ -600,6 +732,7 @@ table { border-collapse: collapse; }
 
         $html = "<h1>An Update for Your NIH Tables is Requested</h1>";
         $html .= "<h2>About $name for Submission on ".REDCapManagement::YMD2MDY($dateOfReport)."</h2>";
+        $html .= "<p class='centered'>Please review the values and update any new information in the red box.</p>";
         $html .= "<form method='POST' action='$thisUrl'>";
         $html .= Application::generateCSRFTokenHTML();
         $html .= "<input type='hidden' name='dateSubmitted' value='$today' />";
@@ -632,12 +765,19 @@ table { border-collapse: collapse; }
                 }
             }
             $html .= $table;
-            $html .= "<h4>Do you have any requested changes for this table?<br>Consider addressing any <span class='action_required'>red</span> items,<br>and make sure you click the Submit Changes button.</h4>";
+            if ($tableNum == 4) {
+                $link =  str_replace("&email=", "&submit_row=", $thisUrl)."&date=".$dateOfReport."&savedName=".urlencode($savedName);
+                if (isset($_GET['delegate'])) {
+                    $link .= "&delegate";
+                }
+                $html .= "<p class='centered'><a href='$link' class='redtext' target='_new'>Click to add a new row</a></p>";
+            }
+            $html .= "<h4>Any more requested changes?<br/>Click the Submit Changes button when done.</h4>";
             $html .= "<p class='centered'><textarea id='table_$tableNum' name='table_$tableNum' style='width: 600px; height: 150px;'></textarea></p>";
             $html .= "<br/><br/>";
             $fields[] = "#table_".$tableNum;
         }
-        $html .= "<p class='centered'><button>Submit Changes</button></p>";
+        $html .= "<p class='centered'><button class='biggerButton bolded red'>Submit Changes</button></p>";
         $html .= "</form>";
         $html .= REDCapManagement::autoResetTimeHTML($this->pid, $fields);
         return $html;
@@ -829,7 +969,9 @@ table { border-collapse: collapse; }
                         $facultyName = self::removeEmail($row["Faculty Member"]);
                     } else {
                         $facultyName = "";
-                        $newDataData[] = $row;
+                        if ($row) {
+                            $newDataData[] = $row;
+                        }
                     }
                     if ($facultyName) {
                         # tables 2 & 4
@@ -860,7 +1002,9 @@ table { border-collapse: collapse; }
                 } else {
                     $data['source'] = "Previously Saved";
                 }
-                return $data;
+                if (!empty($data['data'])) {
+                    return $data;
+                }
             }
         }
 
@@ -1086,7 +1230,8 @@ table { border-collapse: collapse; }
     public function getTable1_4Header() {
         $cssLink = Application::link("/css/career_dev.css", $this->pid);
         $jsLink = Application::link("/js/jquery.min.js", $this->pid);
-        return "<link href='$cssLink' rel='stylesheet' /><script src='$jsLink'></script>";
+        $csrfToken = Application::generateCSRFToken();
+        return "<link href='$cssLink' rel='stylesheet' /><script src='$jsLink'></script><script>function getCSRFToken() { return '$csrfToken'; }</script>";
     }
 
     public function makeNotesKeys($email, $tables) {
@@ -1144,7 +1289,6 @@ table { border-collapse: collapse; }
         $possibleKeysForEmail = [];
         foreach ($emails as $emailList) {
             $allEmails = $emailList ? preg_split("/\s*[,;]\s*/", strtolower($emailList)) : [];
-            $name = "";
             foreach ($allEmails as $email) {
                 if (isset($namesFromEmails[$email]) && $namesFromEmails[$email]) {
                     $name = $namesFromEmails[$email];

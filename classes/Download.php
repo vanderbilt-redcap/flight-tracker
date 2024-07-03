@@ -1320,7 +1320,7 @@ class Download {
         while ($row = $result->fetch_assoc()) {
             $recordId = Sanitizer::getSanitizedRecord($row['record'], $records);
             if (isset($recordId) && ($recordId !== "")) {
-                $unsortedValues[$recordId] = Sanitizer::sanitize($row['value']);
+                $unsortedValues[$recordId] = Sanitizer::sanitizeWithoutChangingQuotes($row['value']);
             }
         }
 
@@ -1360,6 +1360,46 @@ class Download {
 		}
 		return $ary;
 	}
+
+    public static function namesByPidDirect($pid) {
+        $redcapDataTable = Application::getDataTable($pid);
+        $module = Application::getModule();
+        $sql = "SELECT record, field_name, value FROM $redcapDataTable WHERE project_id = ? AND field_name IN (?, ?, ?)";
+        $parms = [$pid, "identifier_first_name", "identifier_middle", "identifier_last_name"];
+        $result = $module->query($sql, $parms);
+
+        $firstNames = [];
+        $middleNames = [];
+        $lastNames = [];
+        $records = [];
+        while ($row = $result->fetch_assoc()) {
+            $recordId = $row["record"];
+            $value = $row["value"];
+            if ($row['field_name'] == "identifier_first_name") {
+                $firstNames[$recordId] = $value;
+            } else if ($row['field_name'] == "identifier_middle") {
+                $middleNames[$recordId] = $value;
+            } else if ($row["field_name"] == "identifier_last_name") {
+                $lastNames[$recordId] = $value;
+            } else {
+                throw new \Exception("This should never happen! Invalid field name ".$row['field_name'].".");
+            }
+            if (!in_array($recordId, $records)) {
+                $records[] = $recordId;
+            }
+        }
+
+        $redcapData = [];
+        foreach ($records as $recordId) {
+            $redcapData[] = [
+                "record_id" => $recordId,
+                "identifier_first_name" => $firstNames[$recordId] ?? "",
+                "identifier_middle" => $middleNames[$recordId] ?? "",
+                "identifier_last_name" => $lastNames[$recordId] ?? "",
+            ];
+        }
+        return self::formatNames($redcapData);
+    }
 
     public static function namesByPid($pid) {
         # spoof making $redcapData
@@ -1407,7 +1447,7 @@ class Download {
         }
 	}
 
-    private static function formatNames($redcapData) {
+    public static function formatNames($redcapData) {
         $ordered = array();
         foreach ($redcapData as $row) {
             # case insensitive

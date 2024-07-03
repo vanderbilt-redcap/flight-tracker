@@ -121,7 +121,7 @@ li.nobullets { list-style: none; }
 table.bordered tr td,table.bordered tr th { border: 1px solid #888; }
 table.bordered { border-collapse: collapse; }
 .action_required { color: red; font-weight: bold; }
-input[type=text].action_required { color: black; font-weight: normal; font-size: 16px; background-color: rgba(255, 0, 0, 0.5); }
+input[type=text].action_required,input[type=number].action_required { color: black; font-weight: normal; font-size: 16px; background-color: rgba(255, 0, 0, 0.5); }
 td.bordered,p.bordered,div.bordered { border: 1px solid #888; }
 .roundedBorder { border: 1px solid #888; border-radius: 5px; }
 .finger { cursor: pointer; }

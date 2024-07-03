@@ -522,7 +522,7 @@ class NIHTables {
                     $facultyName.$emailHTML,
                     empty($degreeList) ? self::$NA : implode(", ", $degreeList),
                     empty($rankList) ? self::$NA : implode(", ", $rankList),
-                    implode("; ", $departmentList),
+                    empty($departmentList) ? self::$NA : implode("; ", $departmentList),
                     $presetValues['Training<br/>Role'],
                     $presetValues['Research<br/>Interest'].self::displayOtherProjectsValues($otherProjectsValues[$headers[5]], $otherProjectsSavedValues["Research<br/>Interest"] ?? []),
                     $presetValues['Pre-doctorates<br/>In Training'].self::displayOtherProjectsValues($otherProjectsValues[$headers[6]], $otherProjectsSavedValues["Pre-doctorates<br/>In Training"] ?? []),
@@ -666,7 +666,6 @@ class NIHTables {
             $savedValues = $savedValuesByPid[$pid] ?? [];
             if (!empty($values) || !empty($savedValues)) {
                 $adminEmail = Application::getSetting("admin_email", $pid);
-                $adminEmailSpaced = preg_replace("/[,;]/", ", ", $adminEmail);
                 $token = Application::getSetting("token", $pid);
                 $server = Application::getSetting("server", $pid);
                 $projectInfo = "pid: $pid";
@@ -708,7 +707,7 @@ class NIHTables {
                 }
             }
         }
-	    return empty($htmlRows) ? "" : "<figure class='left-align'><div class='smaller bolded centered'><i>Other Values</i></div>".implode("<br/>", $htmlRows)."</figure>";
+	    return empty($htmlRows) ? "" : "<figure class='left-align'><div class='smaller bolded centered'><i>Previous Values</i></div>".implode("<br/>", $htmlRows)."</figure>";
     }
 
     private function findDepartment($redcapData, $recordId, $ldapRows, $pid) {
@@ -1153,6 +1152,13 @@ class NIHTables {
 	    // $title = $allData['title'];
 	    $data = $allData['data'];
 
+        $nonNumericalFields = [
+            "Degree(s)",
+            "Rank",
+            "Primary Department or Program",
+            "Training Role",
+            "Research Interest",
+        ];
 	    $numericalFields = [
 	        "Pre-doctorates In Training",
             "Pre-doctorates Graduated",
@@ -1160,6 +1166,11 @@ class NIHTables {
             "Post-doctorates In Training",
             "Post-doctorates Completed Training",
             "Postdoctorates Continued in Research or Related Careers",
+            "Number of Predoctoral Positions",
+            "Number of Postdoctoral Positions",
+            "Number of Short-Term Positions",
+            "Number of Participating Faculty (Number Overlapping)",
+            "Current Year Direct Costs",
         ];
         $sep = self::HTML_FIELD_SEPARATOR;
 
@@ -1178,8 +1189,13 @@ class NIHTables {
                     $html .= "<tr>";
                     foreach ($headers as $header) {
                         $headerWithoutHTML = preg_replace("/<[^>]+>/", " ", $header);
-                        $id = "table_".$tableNum.$sep.$recordInstance.$sep.REDCapManagement::makeHTMLId($header);
-                        $inputHTML = in_array($headerWithoutHTML, $numericalFields) ? "<br/><input class='action_required' placeholder='Correct?' type='text' name='$id' style='width: 75px;' />" : "";
+                        if (in_array($headerWithoutHTML, $nonNumericalFields) || in_array($headerWithoutHTML, $numericalFields)) {
+                            $id = "table_".$tableNum.$sep.$recordInstance.$sep.REDCapManagement::makeHTMLId($header);
+                            $dataType = in_array($headerWithoutHTML, $numericalFields) ? "number" : "text";
+                            $inputHTML = "<br/><input class='action_required' placeholder='Updated Value' type='$dataType' name='$id' style='width: 140px;' />";
+                        } else {
+                            $inputHTML = "";
+                        }
                         $html .= "<td>".$row[$header].$inputHTML."</td>";
                     }
                     $html .= "</tr>";

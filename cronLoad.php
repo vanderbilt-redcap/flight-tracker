@@ -42,6 +42,14 @@ function runMainCrons(&$manager, $token, $server) {
         if (in_array("nsf", $forms)) {
             $manager->addCron("drivers/20_nsf.php", "getNSFGrants", "Monday", $records, 100);
         }
+        $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $allRecords, 100000);
+
+        # limited group because bibliometric updates take a lot of time due to rate limiters
+        $bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
+        $bibliometricsSwitch = $switches->getValue("Update Bibliometrics Monthly");
+        if (!empty($bibliometricRecordsToUpdate) && ($bibliometricsSwitch == "On")) {
+            $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
+        }
     } catch(\Exception $e) {
         Application::log("ERROR in runMainCrons: ".$e->getMessage(), $pid);
     }
@@ -77,12 +85,6 @@ function loadLocalCrons(&$manager, $token, $server) {
         if (Application::isVanderbilt() && !Application::getSetting("initializedLexTranslator", $pid)) {
             $manager->addCron("drivers/initializeLexicalTranslator.php", "initialize", date("Y-m-d"), $records, 10);
             Application::saveSetting("initializedLexTranslator", TRUE, $pid);
-        }
-        # limited group because bibliometric updates take a lot of time due to rate limiters
-        $bibliometricRecordsToUpdate = getRecordsToUpdateBibliometrics($token, $server, date("d"), date("t"));
-        $bibliometricsSwitch = $switches->getValue("Update Bibliometrics Monthly");
-        if (!empty($bibliometricRecordsToUpdate) && ($bibliometricsSwitch == "On")) {
-            $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
         }
     }
     if (in_array("eric", $forms)) {
@@ -137,8 +139,6 @@ function runIntenseCrons(&$manager, $token, $server) {
                 $manager->addCron("drivers/sendTable1Emails.php", "sendTable1PostdocEmails", date("Y-m-d"));
             }
         }
-
-        $manager->addCron("drivers/12_reportStats.php", "reportStats", "Friday", $allRecords, 100000);
 
         $celebrations = new CelebrationsEmail($token, $server, $pid, []);
         if ($celebrations->hasEmail("weekly")) {

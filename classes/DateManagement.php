@@ -127,6 +127,38 @@ class DateManagement {
         return FALSE;
     }
 
+    public static function YM2MY($ym, $sep = "-") {
+        if (!$ym) {
+            return "";
+        }
+        $nodes = preg_split("/".self::SEP_REGEX."/", $ym);
+        if (count($nodes) == 2) {
+            if ($nodes[0] >= 1900) {
+                return $nodes[1] . $sep . $nodes[0];
+            } else if ($nodes[1] >= 1900) {
+                # mistake
+                return $nodes[0] . $sep . $nodes[1];
+            }
+        }
+        throw new \Exception("Invalid YYYY-MM date $ym!");
+    }
+
+    public static function MY2YM($my, $sep = "-") {
+        if (!$my) {
+            return "";
+        }
+        $nodes = preg_split("/".self::SEP_REGEX."/", $my);
+        if (count($nodes) == 2) {
+            if ($nodes[1] >= 1900) {
+                return $nodes[1] . $sep . $nodes[0];
+            } else if ($nodes[0] >= 1900) {
+                # mistake
+                return $nodes[0] . $sep . $nodes[1];
+            }
+        }
+        throw new \Exception("Invalid MM-YYYY date $my!");
+    }
+
     public static function MY2YMD($my) {
         if (!$my) {
             return "";
