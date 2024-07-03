@@ -53,7 +53,8 @@ if (isset($_GET['email'])) {
         if (isset($_GET['revise'])) {
             echo $reactHandler->makeHTMLForNIHTableEdits($dateOfReport, $name, $email, $emailHash, $tables, $savedName);
         } else if (isset($_GET['submit_row'])) {
-            echo $reactHandler->makeTable4NewRow($dateOfReport, $name, $email, $emailHash, $savedName);
+            $post = Sanitizer::sanitizeArray($_POST, TRUE, FALSE);
+            echo $reactHandler->makeTable4NewRow($dateOfReport, $name, $email, $emailHash, $savedName, $post);
         }
     } else {
         echo "Invalid request.";
