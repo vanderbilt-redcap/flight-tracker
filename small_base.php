@@ -1274,6 +1274,9 @@ function setupSurveys($projectId, $surveysAndLabels) {
 }
 
 function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
+    if ($srcToken == $destToken) {
+        return ["error" => "The destination project is the same as the source project. This should never happen! Aborting."];
+    }
     $allFeedback = array();
     $destRecords = Download::recordIds($destToken, $server);
     if (!empty($destRecords)) {
@@ -1295,7 +1298,6 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
 
     $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRemoteRepeatingInstruments($srcToken, $server, $destToken, $server, $metadata);
     CareerDev::log("Reset Repeating Instruments: ".json_encode($feedback));
-    echo "Reset Repeating Instruments: ".json_encode($feedback)."<br>";
 
     $cohortRecords = Download::cohortRecordIds($srcToken, $server, CareerDev::getModule(), $cohort);
     foreach ($cohortRecords as $record) {
@@ -1313,9 +1315,14 @@ function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
             }
         }
         if (!empty($newRecordData)) {
-            $feedback = Upload::rows($newRecordData, $destToken, $server);
-            CareerDev::log("Copy project: Record $record: ".json_encode($feedback));
-            $allFeedback[] = $feedback;
+            try {
+                $feedback = Upload::rows($newRecordData, $destToken, $server);
+                CareerDev::log("Copy project: Record $record: ".json_encode($feedback));
+                $allFeedback[] = $feedback;
+            } catch (\Exception $e) {
+                # sometimes REDCap might miss some choices, so skip the record with the problem
+                $allFeedback[] = ["error" => $e->getMessage(), "record" => $record];
+            }
         }
     }
     return $allFeedback;

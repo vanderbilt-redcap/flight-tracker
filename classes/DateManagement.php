@@ -148,7 +148,7 @@ class DateManagement {
             return "";
         }
         $nodes = preg_split("/".self::SEP_REGEX."/", $my);
-        if (count($nodes) == 2) {
+        if ((count($nodes) == 2) && is_numeric($nodes[0]) && is_numeric($nodes[1])) {
             if ($nodes[1] >= 1900) {
                 return $nodes[1] . $sep . $nodes[0];
             } else if ($nodes[0] >= 1900) {

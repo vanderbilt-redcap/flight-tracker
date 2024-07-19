@@ -111,7 +111,8 @@ if (count($cohortTitles) > 0) {
     echo "<input type='hidden' id='cohortAPIKey' value='' />";
     echo "<div id='cohortDialog' title='Create Cohort'><p>Are you sure that you want to create a project for Cohort <span id='cohortTitle' class='bolded'></span>? It will delete any data in the project with the API key.</p>
 <p><button onclick='createCohortProject($(\"#cohortTitle\").html(), $(\"#cohortAPIKey\").val(), \"#cohortDialog\");'>Yes</button> <button onclick='$(\"#cohortDialog\").dialog(\"close\");'>Cancel</button></p></div>";
-	echo "<table class='centered'>";
+    echo "<p class='centered max-width'>A cohort project is a <strong>read-only</strong> project that gets completely overwritten every week with a fresh set of data from the source project. It should never be used to capture new data or configured further.</p>";
+    echo "<table class='centered'>";
 	echo "<tr class='paddedRow borderedRow whiteRow centeredRow'><td></td><th>Cohort Size</th><th>Delete</th><th>Rename</th>";
 	echo "<th>Make Cohort Project</th>";
 	echo "</tr>";

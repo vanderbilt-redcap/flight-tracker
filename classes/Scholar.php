@@ -1901,7 +1901,8 @@ class Scholar {
             "/university/i" => "univ",
             ];
         foreach ($institutions as $inst) {
-            if ($inst) {
+            # filter out stray encoded characters
+            if ($inst && !preg_match("/^&\w+;?$/", $inst)) {
                 $newInstitutions[] = $inst;
                 foreach ($replacementRegexes as $regex => $replacement) {
                     if (preg_match($regex, $inst)) {

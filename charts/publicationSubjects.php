@@ -120,9 +120,10 @@ foreach (["count", "date"] as $changeSortBy) {
         echo "<div class='centered' style='width: $width"."px;'>";
         echo "<div class='timeBar' style='grid-area: $gridArea;'>";
         echo "<div style='display: grid;'>";
-        if (count($timestamps) >= 2) {
-            $minTs = min(array_values($timestamps));
-            $maxTs = max(array_values($timestamps));
+        $timestampValues = array_values($timestamps);
+        if (count($timestampValues) >= 2) {
+            $minTs = min($timestampValues);
+            $maxTs = max($timestampValues);
             $minPos = ($minTs - $allMinTs) * $width / ($allMaxTs - $allMinTs);
             $maxPos = ($maxTs - $allMinTs) * $width / ($allMaxTs - $allMinTs);
             $intMinPos = round($minPos);
@@ -138,7 +139,13 @@ foreach (["count", "date"] as $changeSortBy) {
         echo "</div>";
         for ($year = $minDate; $year < $maxDate; $year++) {
             $string = "&nbsp;";
-            if ((($year - $minDate) % $intermediateYears == 0) && ($year != $maxDate - 1)) {
+            if (
+                ($intermediateYears == 0)
+                || (
+                    (($year - $minDate) % $intermediateYears == 0)
+                    && ($year != $maxDate - 1)
+                )
+            ) {
                 $string = "$year";
             }
             echo "<div class='smaller alignLeft' style='width: $yearSpace"."px; float: left;'>$string</div>";

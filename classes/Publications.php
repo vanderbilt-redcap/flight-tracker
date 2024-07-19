@@ -249,7 +249,6 @@ class Publications {
             # handle HTML escaping; include curly quotes
             # Many early projects accidentally stored escaped quotes in their database and need to be decoded
             # This should not have to be heavily used with projects after 11/2023
-            $institution = str_replace("&amp;", "&", $institution);
             $singleQuoteItems = ["#039", "#39", "#8216", "#8217"];
             $doubleQuoteItems = ["#8220", "#8221"];
             $replacements = [
@@ -275,12 +274,16 @@ class Publications {
                     }
                 }
             }
+            # need to run html_entity_decode after replacing curly quotes since PubMed does not accept curly quotes
+            $institution = html_entity_decode($institution);
             $institution = preg_replace("/\s*&\s*/", " ", $institution);
             $institution = preg_replace("/\s*&\s*/", " ", $institution);
-            $institution = preg_replace("/\s+/", "+", $institution);
             $institution = Sanitizer::repetitivelyDecodeHTML(strtolower($institution));
             $institution = str_replace("(", "", $institution);
             $institution = str_replace(")", "", $institution);
+            $institution = str_replace("•", "", $institution);   // sometimes on user-input fields
+            $institution = trim($institution);
+            $institution = preg_replace("/\s+/", "+", $institution);
 
             # Derivations of the word "children" as an institution are interpreted as a MeSH term (topic)
             # by PubMed; thus, they will explode into thousands of incorrect publications

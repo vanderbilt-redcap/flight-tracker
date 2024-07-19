@@ -50,6 +50,9 @@ function runMainCrons(&$manager, $token, $server) {
         if (!empty($bibliometricRecordsToUpdate) && ($bibliometricsSwitch == "On")) {
             $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
         }
+        if (Application::isVanderbilt() && !Application::isLocalhost()) {
+            $manager->addCron("openai/downloadPublicationKeywords.php", "getPublicationKeywords", "Tuesday", $allRecords, 10000);
+        }
     } catch(\Exception $e) {
         Application::log("ERROR in runMainCrons: ".$e->getMessage(), $pid);
     }
@@ -75,7 +78,11 @@ function loadLocalCrons(&$manager, $token, $server) {
         }
         $manager->addCron("drivers/grantRepositoryFetch.php", "checkGrantRepository", "Monday", $allRecords, 500);
         $manager->addCron("drivers/2p_updateStudioUse.php", "copyStudios", "Friday", $allRecords, 500);
-        if (in_array('coeus', $forms)) {
+        if (
+            in_array('coeus', $forms)
+            && !Application::isServer("redcaptest.vumc.org")
+            && !Application::isLocalhost()
+        ) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", "Friday", $allRecords, 500);
         }
     }
@@ -204,7 +211,11 @@ function loadIntenseCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
     if (!$server) { global $server; }
 
     if ($specialOnly) {
-        if (!Application::isLocalhost()) {
+        if (
+            Application::isVanderbilt()
+            && !Application::isLocalhost()
+            && !Application::isServer("redcaptest.vumc.org")
+        ) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", date("Y-m-d"));
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSGrants", date("Y-m-d"));
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", date("Y-m-d"));
@@ -244,7 +255,12 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
             $manager->addCron("drivers/19_updateNewCoeus.php", "updateCOEUSSubmissions", $date, $records, 500);
             $manager->addCron("drivers/importHistoricalCOEUS.php", "importHistoricalCOEUS", $date, $records, 500);
         }
-        if (Application::isVanderbilt() && in_array("coeus", $forms)) {
+        if (
+            Application::isVanderbilt()
+            && in_array("coeus", $forms)
+            && !Application::isServer("redcaptest.vumc.org")
+            && !Application::isLocalhost()
+        ) {
             $manager->addCron("drivers/19_updateNewCoeus.php", "sendUseridsToCOEUS", $date, $records, 500);
         }
         if (in_array("ldapds", $forms)) {
@@ -289,9 +305,22 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 function getRecordsToUpdateBibliometrics($token, $server, $dayOfMonth, $daysInMonth) {
     $records = Download::recordIds($token, $server);
     $recordsToRun = [];
-    foreach ($records as $recordId) {
-        if (($recordId - 1) % $daysInMonth == $dayOfMonth - 1) {
-            $recordsToRun[] = $recordId;
+    $dayOfMonth = (int) $dayOfMonth;
+    $daysInMonth = (int) $daysInMonth;
+    if ($daysInMonth == 0) {
+        # This should never happen.
+        return $records;
+    }
+    foreach ($records as $i => $recordId) {
+        if (is_numeric($recordId)) {
+            $numericalRecordId = (int) $recordId;
+            if (($numericalRecordId - 1) % $daysInMonth == $dayOfMonth - 1) {
+                $recordsToRun[] = $recordId;
+            }
+        } else {
+            if ($i % $daysInMonth == $dayOfMonth - 1) {
+                $recordsToRun[] = $recordId;
+            }
         }
     }
     return $recordsToRun;

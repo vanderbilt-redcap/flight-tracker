@@ -102,19 +102,19 @@ class CronManager {
             $cronjob->setFirstParameter($firstParameter);
         }
         if ($this->isDebug) {
-            Application::log("Has day of week $dayOfWeek and timestamp for ".date("Y-m-d", $dateTs));
+            Application::log("Has day of week $dayOfWeek and timestamp for ".date("Y-m-d", $dateTs), $this->pid);
         }
         if (in_array($dayOfWeek, $possibleDays)) {
             # Weekday
             if (!isset($this->crons[$dayOfWeek])) {
                 $this->crons[$dayOfWeek] = [];
                 if ($this->isDebug) {
-                    Application::log("Reset cron list for $dayOfWeek");
+                    Application::log("Reset cron list for $dayOfWeek", $this->pid);
                 }
             }
             $this->crons[$dayOfWeek][] = $cronjob;
             if ($this->isDebug) {
-                Application::log("Assigned cron for $dayOfWeek");
+                Application::log("Assigned cron for $dayOfWeek", $this->pid);
             }
         } else if ($dateTs) {
             # Y-M-D
@@ -122,16 +122,16 @@ class CronManager {
             if (!isset($this->crons[$date])) {
                 $this->crons[$date] = [];
                 if ($this->isDebug) {
-                    Application::log("Reset cron list for $date");
+                    Application::log("Reset cron list for $date", $this->pid);
                 }
             }
             $this->crons[$date][] = $cronjob;
             if ($this->isDebug) {
-                Application::log("Assigned cron for $date");
+                Application::log("Assigned cron for $date", $this->pid);
             }
         }
         if ($this->isDebug) {
-            Application::log("Added cron $method: ".$this->getNumberOfCrons()." total crons now");
+            Application::log("Added cron $method: ".$this->getNumberOfCrons()." total crons now", $this->pid);
         }
  	}
 
@@ -177,7 +177,9 @@ class CronManager {
             if (date("l") == $dayOfWeek) {
                 $this->enqueueBatchMulti($absFile, $method, $pids);
                 if ($this->isDebug) {
-                    Application::log("Assigned cron for $method on $dayOfWeek");
+                    foreach ($pids as $myPid) {
+                        Application::log("Assigned cron for $method on $dayOfWeek", $myPid);
+                    }
                 }
             }
         } else if ($dateTs) {
@@ -186,7 +188,9 @@ class CronManager {
             if ($date == date(self::getDateFormat())) {
                 $this->enqueueBatchMulti($absFile, $method, $pids, $firstParameter);
                 if ($this->isDebug) {
-                    Application::log("Assigned cron for $date");
+                    foreach ($pids as $myPid) {
+                        Application::log("Assigned cron for $date", $myPid);
+                    }
                 }
             }
         }
@@ -202,7 +206,7 @@ class CronManager {
         }
 
         if ($this->isDebug) {
-            Application::log("Has day of week $dayOfWeek and timestamp for ".date("Y-m-d", $dateTs));
+            Application::log("Has day of week $dayOfWeek and timestamp for ".date("Y-m-d", $dateTs), $this->pid);
         }
     }
 
@@ -629,7 +633,7 @@ class CronManager {
         if ($firstBatchQueue['status'] == "RUN") {
             $startTs = isset($firstBatchQueue['startTs']) && is_numeric($firstBatchQueue['startTs']) ? $firstBatchQueue['startTs'] : 0;
             $timespan = 90 * 60;   // max of 90 minutes per segment
-            Application::log("Running until ".date("Y-m-d H:i:s", $startTs + $timespan));
+            Application::log("Running until ".date("Y-m-d H:i:s", $startTs + $timespan), $firstBatchQueue['pid']);
             if (time() > $startTs + $timespan) {
                 // failed batch - probably due to syntax error to avoid shutdown function
                 $firstBatchQueue['status'] = "ERROR";
@@ -641,7 +645,7 @@ class CronManager {
         }
         if (in_array($firstBatchQueue['status'], ["DONE", "ERROR"])) {
             if ($firstBatchQueue['status'] == "ERROR") {
-                Application::log("Saving ERROR ".json_encode($firstBatchQueue));
+                Application::log("Saving ERROR ".json_encode($firstBatchQueue), $firstBatchQueue['pid']);
                 $errorJobs = $this->getErrorsFromDB();
                 $this->addErrorToDB($firstBatchQueue, $errorJobs);
             }
@@ -683,7 +687,10 @@ class CronManager {
                         } else {
                             $pidMssg = "[No pids specified]";
                         }
-                        Application::log($this->title.": Promoting ".$firstBatchQueue['method']." for $pidMssg to RUN (".count($batchQueue)." items in batch queue; ".count($firstBatchQueue['records'] ?? [])." records) at ".self::getTimestamp(), $firstBatchQueue['pid']);
+                        $pidsToRun = $firstBatchQueue["pids"] ?? [$firstBatchQueue["pid"]];
+                        foreach ($pidsToRun as $myPid) {
+                            Application::log($this->title.": Promoting ".$firstBatchQueue['method']." for $pidMssg to RUN (".count($batchQueue)." items in batch queue; ".count($firstBatchQueue['records'] ?? [])." records) at ".self::getTimestamp(), $myPid);
+                        }
                         $this->saveFirstBatchQueueItemToDB($firstBatchQueue, $batchQueue);
                         if (isset($firstBatchQueue['pids'])) {
                             $queueHasRun = TRUE;
@@ -727,7 +734,7 @@ class CronManager {
                                 && ($numRunBeforeInCron <= self::MAX_BATCHES_IN_ONE_CRON)
                             ) {
                                 sleep(1);
-                                Application::log("Flight Tracker repeating cron");
+                                Application::log("Flight Tracker repeating cron", $firstBatchQueue['pid']);
                                 $this->runBatchJobs($numRunBeforeInCron);
                             }
                         } else {
@@ -771,7 +778,10 @@ class CronManager {
             return;
         }
         $firstBatchItem = $this->getFirstBatchQueueItem($batchQueue);
-        Application::log($this->title.": Done with ".$firstBatchItem['method']." at ".self::getTimestamp());
+        $pidsToRun = $firstBatchQueue["pids"] ?? [$firstBatchItem["pid"]];
+        foreach ($pidsToRun as $myPid) {
+            Application::log($this->title.": Done with ".$firstBatchItem['method']." at ".self::getTimestamp(), $myPid);
+        }
         $firstBatchItem['status'] = "DONE";
         $firstBatchItem['endTs'] = time();
         $this->saveFirstBatchQueueItemToDB($firstBatchItem, $batchQueue);
@@ -1032,7 +1042,7 @@ class CronManager {
                 if (Application::isLocalhost()) {
                     $addlSubject = " from localhost";
                 }
-                Application::log("Sending ".Application::getProgramName()." email for pid ".$pid." to $adminEmail");
+                Application::log("Sending ".Application::getProgramName()." email for pid ".$pid." to $adminEmail", $pid);
                 $emailMssg = $this->makeEmailMessage($token, $server, $pid, $text, $additionalEmailText, $starts, $ends);
                 \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Cron Report".$addlSubject, $emailMssg);
             }
@@ -1301,6 +1311,7 @@ body { font-size: 1.2em; }
                 } else if ($row['redcap_repeat_instrument'] == "patent") {
                     $hasPatent = TRUE;
                 } else if (in_array($row['redcap_repeat_instrument'], ["nih_reporter", "coeus", "nsf"])) {
+                    $gf = NULL;
                     if (
                         ($row['redcap_repeat_instrument'] == "nih_reporter")
                         && in_array($row["nih_last_update"], $dates)
@@ -1316,15 +1327,15 @@ body { font-size: 1.2em; }
                         && in_array($row["nsf_last_update"], $dates)
                     ) {
                         $gf = new NSFGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
-                    } else {
-                        throw new \Exception("This should not happen!");
                     }
-                    $gf->processRow($row, $rows, $token);
-                    $grants = $gf->getGrants();
-                    if (!isset($newGrants[$recordId])) {
-                        $newGrants[$recordId] = [];
+                    if (isset($gf)) {
+                        $gf->processRow($row, $rows, $token);
+                        $grants = $gf->getGrants();
+                        if (!isset($newGrants[$recordId])) {
+                            $newGrants[$recordId] = [];
+                        }
+                        $newGrants[$recordId] = array_merge($newGrants[$recordId], $grants);
                     }
-                    $newGrants[$recordId] = array_merge($newGrants[$recordId], $grants);
                 }
             }
             if ($hasPatent) {
@@ -1489,8 +1500,11 @@ body { font-size: 1.2em; }
         $firstBatchItem = $this->getFirstBatchQueueItem($batchQueue);
 	    $mssg = $exception->getMessage();
 	    $trace = $exception->getTraceAsString();
-        Application::log("handleBatchError: ".json_encode($firstBatchItem));
-	    Application::log($mssg." ".$trace);
+        $pidsToUpdate = $firstBatchItem["pids"] ?? [$firstBatchItem["pid"]];
+        foreach ($pidsToUpdate as $myPid) {
+            Application::log("handleBatchError: ".json_encode($firstBatchItem), $myPid);
+            Application::log($mssg." ".$trace, $myPid);
+        }
 
         $firstBatchItem['status'] = "ERROR";
         $firstBatchItem['cause'] = "Exception";
@@ -1584,9 +1598,9 @@ body { font-size: 1.2em; }
 		$date = date(self::getDateFormat());
 		$keys = array($date, $dayOfWeek);     // in order that they will run
 
-		Application::log($this->title." CRONS RUN AT ".date("Y-m-d h:i:s")." FOR PID ".$this->pid);
-		Application::log("adminEmail ".$adminEmail);
-		Application::log("Looking in ".$this->getNumberOfCrons()." cron jobs");
+		Application::log($this->title." CRONS RUN AT ".date("Y-m-d h:i:s")." FOR PID ".$this->pid, $this->pid);
+		Application::log("adminEmail ".$adminEmail, $this->pid);
+		Application::log("Looking in ".$this->getNumberOfCrons()." cron jobs", $this->pid);
 		$run = [];
 		$toRun = [];
 		foreach ($keys as $key) {
@@ -1603,7 +1617,7 @@ body { font-size: 1.2em; }
         # code but only creating outside noise.
 		// register_shutdown_function([$this, "reportCronErrors"]);
 
-		Application::log("Running ".count($toRun)." crons for pid ".$this->pid." with keys ".json_encode($keys));
+		Application::log("Running ".count($toRun)." crons for pid ".$this->pid." with keys ".json_encode($keys), $this->pid);
 		foreach ($toRun as $cronjob) {
 		    $records = $cronjob->getRecords();
             if (empty($records)) {
@@ -1613,7 +1627,7 @@ body { font-size: 1.2em; }
                     $records = $recordsToRun;
                 }
             }
-			Application::log("Running ".$cronjob->getTitle()." with ".count($records)." records");
+			Application::log("Running ".$cronjob->getTitle()." with ".count($records)." records", $this->pid);
 			$currMethod = [
                 "text" => "Attempted",
                 "start" => self::getTimestamp(),
@@ -1704,7 +1718,7 @@ body { font-size: 1.2em; }
 			    if (Application::isLocalhost()) {
 			        $addlSubject = " from localhost";
                 }
-                Application::log("Sending ".Application::getProgramName()." email for pid ".$this->pid." to $adminEmail");
+                Application::log("Sending ".Application::getProgramName()." email for pid ".$this->pid." to $adminEmail", $this->pid);
                 $emailMessage = $this->makeEmailMessage($this->token, $this->server, $this->pid, $text, $additionalEmailText, $starts, $ends);
                 \REDCap::email($adminEmail, Application::getSetting("default_from", $this->pid), Application::getProgramName()." Cron Report".$addlSubject, $emailMessage);
             }
@@ -1736,7 +1750,7 @@ body { font-size: 1.2em; }
 		$mssg .= $e->getMessage()."<br/>Line: ".$e->getLine()." in ".$e->getFile()."<br/>".$e->getTraceAsString();
 
 		\REDCap::email($adminEmail, Application::getSetting("default_from", $this->pid), Application::getProgramName()." Cron Error", $mssg);
-		Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\nLine: ".$e->getLine()." in ".$e->getFile()."\n".$e->getTraceAsString());
+		Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\nLine: ".$e->getLine()." in ".$e->getFile()."\n".$e->getTraceAsString(), $this->pid);
 	}
 
 	private $token;

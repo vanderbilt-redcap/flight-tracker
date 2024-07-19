@@ -710,8 +710,19 @@ class Download {
         return "";
     }
 
-    public static function getDataByPid($pid, $fields, $records) {
-        if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
+    public static function getDataByPid(int $pid, ?array $fields, ?array $records) {
+        if (Application::isVanderbilt()) {
+            # for now
+            if (!isset($records)) {
+                $records = self::recordIdsByPid($pid);
+            }
+            if (!isset($fields)) {
+                $fields = self::metadataFieldsByPid($pid);
+            }
+            $module = Application::getModule();
+            $retriever = new ClassicalREDCapRetriever($module, $pid);
+            $redcapData = $retriever->getData($fields, $records);
+        } else if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
             $redcapData = \REDCap::getData($pid, "json-array", $records, $fields);
         } else {
             $json = \REDCap::getData($pid, "json", $records, $fields);
@@ -1361,7 +1372,7 @@ class Download {
 		return $ary;
 	}
 
-    public static function namesByPidDirect($pid) {
+    public static function namesByPid($pid) {
         $redcapDataTable = Application::getDataTable($pid);
         $module = Application::getModule();
         $sql = "SELECT record, field_name, value FROM $redcapDataTable WHERE project_id = ? AND field_name IN (?, ?, ?)";
@@ -1396,28 +1407,6 @@ class Download {
                 "identifier_first_name" => $firstNames[$recordId] ?? "",
                 "identifier_middle" => $middleNames[$recordId] ?? "",
                 "identifier_last_name" => $lastNames[$recordId] ?? "",
-            ];
-        }
-        return self::formatNames($redcapData);
-    }
-
-    public static function namesByPid($pid) {
-        # spoof making $redcapData
-        # at Vanderbilt, using querying REDCap::getData() produces a long-running query
-        # the self::oneFieldByPid() command gets the data directly from a SQL query
-        # the SQL query results in increased performance vs. REDCap::getData()
-        # I have not attempted ExtMod's queryData() command, and this stands as a possible alternative
-        $firstNames = self::oneFieldByPid($pid, "identifier_first_name");
-        $middleNames = self::oneFieldByPid($pid, "identifier_middle");
-        $lastNames = self::oneFieldByPid($pid, "identifier_last_name");
-
-        $redcapData = [];
-        foreach ($lastNames as $recordId => $ln) {
-            $redcapData[] = [
-                "record_id" => $recordId,
-                "identifier_first_name" => $firstNames[$recordId] ?? "",
-                "identifier_middle" => $middleNames[$recordId] ?? "",
-                "identifier_last_name" => $ln,
             ];
         }
         return self::formatNames($redcapData);

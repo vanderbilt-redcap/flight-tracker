@@ -1197,7 +1197,29 @@ function createCohortProject(cohort, apiKey, src) {
 		console.log(json);
 		clearScreen();
 		const data = JSON.parse(json);
-		if (data.error) {
+		if (Array.isArray(data)) {
+			const errors = [];
+			for (let i=0; i < data.length; i++) {
+				const row = data[i];
+				if (row.error) {
+					errors.push(row.error);
+				}
+			}
+			if (errors.length > 0) {
+				console.error(errors.join("\n"));
+				$.sweetModal({
+					content: errors.join("<br/>"),
+					icon: $.sweetModal.ICON_ERROR
+				});
+			} else {
+				const mssg = "Copied "+data.length+" records successfully.";
+				$.sweetModal({
+					content: mssg,
+					icon: $.sweetModal.ICON_SUCCESS,
+					onClose: () => { location.reload(); }
+				});
+			}
+		} else if (data.error) {
 			console.error(data.error);
 			$.sweetModal({
 				content: data.error,

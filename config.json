@@ -14,15 +14,6 @@
 	],
 
 
-	"permissions": [
-		"redcap_data_entry_form",
-		"redcap_every_page_before_render",
-		"redcap_every_page_top",
-		"redcap_save_record",
-		"redcap_survey_page",
-		"redcap_survey_acknowledgement_page"
-	],
-
 	"links": {
 		"project": [
 			{
@@ -97,15 +88,17 @@
 		"reporting/tables2-4WithAuth"
 	],
 
-	"framework-version": 8,
+	"framework-version": 12,
 
 	"compatibility": {
 		"php-version-min": "7.3.0",
 		"php-version-max": "",
-		"redcap-version-min": "11.1.1",
+		"redcap-version-min": "13.1.0",
 		"redcap-version-max": ""
 	},
 
 	"project-settings": [
-	]
+	],
+
+	"enable-no-auth-logging": true
 }
