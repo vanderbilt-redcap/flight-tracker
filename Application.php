@@ -77,6 +77,15 @@ class Application {
         return method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($pid) : "redcap_data";
     }
 
+    public static function getLogTable($pid) {
+        $module = self::getModule();
+        self::setPid($pid);
+        if ($module && method_exists($module, "getProject") && method_exists($module->getProject(), "getLogTable")) {
+            return $module->getProject()->getLogTable();
+        }
+        return "redcap_log_event";
+    }
+
 	public static function getApplicationColors($alphas = ["1.0"], $inHex = FALSE) {
         $colors = [];
         foreach ($alphas as $alpha) {
