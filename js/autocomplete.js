@@ -15,8 +15,8 @@ $( function() {
 		},
  
 		_createAutocomplete: function() {
-			var selected = this.element.children( ":selected" ),
-				value = selected.val() ? selected.text() : "";
+			const selected = this.element.children( ":selected" );
+			const value = selected.val() ? selected.text() : "";
  
 			this.input = $( "<input>" )
 				.appendTo( this.wrapper )
@@ -48,8 +48,8 @@ $( function() {
 		},
  
 		_createShowAllButton: function() {
-			var input = this.input,
-				wasOpen = false;
+			const input = this.input;
+			let wasOpen = false;
  
 			$( "<a>" )
 				.attr( "tabIndex", -1 )
@@ -81,9 +81,9 @@ $( function() {
 		},
  
 		_source: function( request, response ) {
-			var matcher = new RegExp( $.ui.autocomplete.escapeRegex(request.term), "i" );
+			const matcher = new RegExp( $.ui.autocomplete.escapeRegex(request.term), "i" );
 			response( this.element.children( "option" ).map(function() {
-				var text = $( this ).text();
+				const text = $( this ).text();
 				if ( this.value && ( !request.term || matcher.test(text) ) )
 					return {
 						label: text,
@@ -95,10 +95,10 @@ $( function() {
  
 		_removeIfInvalid: function( event, ui ) {
 			// Search for a match (case-insensitive)
-			var value = this.input.val(),
-				valueLowerCase = value.toLowerCase(),
-				valid = false;
-			var elem = this.element;
+			const value = this.input.val();
+			const valueLowerCase = value.toLowerCase();
+			let valid = false;
+			const elem = this.element;
 			elem.children( "option" ).each(function() {
 				if ( $( this ).text().toLowerCase() === valueLowerCase ) {
 					this.selected = valid = true;

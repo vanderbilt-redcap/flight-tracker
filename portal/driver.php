@@ -103,6 +103,16 @@ try {
         } else {
             $data['error'] = "<p>Post Not Deleted!</p>";
         }
+    } else if ($action == "find_collaborator") {
+        $data['html'] = $portal->findCollaboratorPage();
+    } else if ($action == "search_projects_for_collaborator") {
+        $topics = Sanitizer::sanitizeArray($_POST['topics'] ?? []);
+        if (!empty($topics)) {
+            $matches = $portal->searchForCollaborators($topics);
+            $data["html"] = $portal->formatCollaborators($matches);
+        } else {
+            $data['error'] = "<p>No topics provided!</p>";
+        }
     } else if ($action == "connect") {
         $url = Application::getFlightConnectorURL();
         $data['html'] = "<iframe src='$url' height='1100' width='1300' title='Flight Connector'></iframe>";

@@ -112,7 +112,7 @@ class Patents {
         foreach ($this->rows as $row) {
             if (in_array($row['patent_number'], $numbers)) {
                 $description = $this->redcapRowIntoHTML($row);
-                $ableToReset = ["Included", "New"];
+                $ableToReset = ["Included", "New", "Excluded"];
 
                 $number = $row['patent_number'];
                 $id = "USPO$number";
@@ -218,28 +218,35 @@ class Patents {
         $html .= "<h4 class='newHeader'>";
         if ($notDoneCount == 0) {
             $html .= "No New Patents";
-            $html .= "</h4>\n";
-            $html .= "<div id='newPatents'>\n";
+            $html .= "</h4>";
+            $html .= "<div id='newPatents'>";
         } else {
             if ($notDoneCount == 1) {
                 $html .= $notDoneCount." New Patent";
             } else {
                 $html .= $notDoneCount." New Patents";
             }
-            $html .= "</h4>\n";
-            $html .= "<div id='newPatents'>\n";
+            $html .= "</h4>";
+            $html .= "<div id='newPatents'>";
             if ($notDoneCount > 1) {
                 $html .= "<p class='centered'><a href='javascript:;' onclick='selectAllPatents(\"#newPatents\");'>Select All New Patents</a> | <a href='javascript:;' onclick='unselectAllPatents(\"#newPatents\");'>Deselect All New Patents</a></p>";
             }
             $html .= $this->dataToHTML("New");
         }
-        $html .= "</div>\n";
-        $html .= "<hr>\n";
+        $html .= "</div>";
+        $html .= "<hr/>";
 
-        $html .= "<h4>Existing Patents</h4>\n";
-        $html .= "<div id='finalPatents'>\n";
+        $html .= "<h4>Existing Patents</h4>";
+        $html .= "<div id='finalPatents'>";
         $html .= $this->dataToHTML("Included");
-        $html .= "</div>\n";
+        $html .= "</div>";
+        $html .= "<hr/>";
+
+        $html .= "<h4>Omitted Patents</h4>";
+        $html .= "<div id='omittedPatents'>";
+        $html .= $this->dataToHTML("Excluded");
+        $html .= "</div>";
+
         return $html;
     }
 

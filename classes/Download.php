@@ -1339,20 +1339,8 @@ class Download {
         foreach ($records as $recordId) {
             $values[$recordId] = $unsortedValues[$recordId] ?? "";
         }
-
-        if (!empty($values)) {
-            return $values;
-        } else {
-            # ideally, this block should never be called. I'm putting it in here as a backup.
-            # if it is called, something majorly wrong has happened.
-            Application::log("Warning! Could not access values for $field directly, so using backup method. This should never happen.", $pid);
-            $redcapData = self::dataForOneFieldByPid($pid, $field);
-            $ary = [];
-            foreach ($redcapData as $row) {
-                $ary[$row["record_id"]] = $row[$field] ?? "";
-            }
-            return $ary;
-        }
+        # I used to have a backup, but it was only tripped in blank projects. For efficiency, I removed the backup.
+        return $values;
     }
 
 	public static function oneField($token, $server, $field, $recordIdField = "record_id") {
@@ -1947,7 +1935,7 @@ class Download {
             $redcapData = self::fieldsWithConfig($token, $server, $metadataOrModule, array("record_id"), $cohortConfig);
             $records = array();
             foreach ($redcapData as $row) {
-                array_push($records, $row['record_id']);
+                $records[] = $row['record_id'];
             }
             return $records;
         }

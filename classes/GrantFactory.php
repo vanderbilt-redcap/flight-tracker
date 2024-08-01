@@ -11,6 +11,8 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 abstract class GrantFactory {
+    const ROOT = APP_PATH_WEBROOT;
+    
 	public function __construct($name, $lexicalTranslator, $metadata, $token = "", $server = "") {
 		$this->name = $name;
 		$this->lexicalTranslator = $lexicalTranslator;
@@ -275,7 +277,7 @@ class InitialGrantFactory extends GrantFactory {
                 )
                 && in_array($row[$prefix."_grant".$i."_role"], [1, 2])) {
 
-			    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=initial_survey";
+			    $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=initial_survey";
 			    $awardno = $row[$prefix.'_grant'.$i.'_number'];
 				$grant = new Grant($this->lexicalTranslator);
                 $grant->setVariable("pid", $pid);
@@ -351,7 +353,7 @@ class FollowupGrantFactory extends GrantFactory {
                 && ($row["followup_grant$i"."_notmine"] != '1')
                 && in_array($row["followup_grant$i"."_role"], [1, 2])) {
 
-			    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=followup&instance={$row['redcap_repeat_instance']}";
+			    $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=followup&instance={$row['redcap_repeat_instance']}";
 				$awardno = $row['followup_grant'.$i.'_number'];
 
 				$grant = new Grant($this->lexicalTranslator);
@@ -437,7 +439,7 @@ class NewmanGrantFactory extends GrantFactory {
 		}
 		if ($date1) {
 			foreach (self::getNewmanFirstType($row, "data_internal") as $type) {
-			    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=data";
+			    $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=data";
 				$grant = new Grant($this->lexicalTranslator);
                 $grant->setVariable("pid", $pid);
                 $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
@@ -491,7 +493,7 @@ class NewmanGrantFactory extends GrantFactory {
 		}
 		if ($date2) {
 			foreach (self::getNewmanFirstType($row, "data_individual") as $type) {
-			    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=data";
+			    $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=data";
 				$grant = new Grant($this->lexicalTranslator);
                 $grant->setVariable("pid", $pid);
                 $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
@@ -527,7 +529,7 @@ class NewmanGrantFactory extends GrantFactory {
 			$date3 = $row['newman_data_r01_start'];
 		}
 		if ($date3) {
-		    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=data";
+		    $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=data";
 			$grant = new Grant($this->lexicalTranslator);
             $grant->setVariable("pid", $pid);
             $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
@@ -611,7 +613,7 @@ class NewmanGrantFactory extends GrantFactory {
 		}
 		if ($internalKDate) {
 			foreach (self::getNewmanFirstType($row, "sheet2_internal") as $type) {
-			    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=sheet2";
+			    $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=sheet2";
 				$grant = new Grant($this->lexicalTranslator);
                 $grant->setVariable("pid", $pid);
                 $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
@@ -667,7 +669,7 @@ class NewmanGrantFactory extends GrantFactory {
 		}
 		if ($noninstDate) {
 			foreach (self::getNewmanFirstType($row, "sheet2_noninst") as $awardno) {
-				$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=sheet2";
+				$url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=sheet2";
 			    $grant = new Grant($this->lexicalTranslator);
                 $grant->setVariable("pid", $pid);
                 $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
@@ -704,7 +706,7 @@ class NewmanGrantFactory extends GrantFactory {
 			$r01Date = $row['newman_sheet2_first_r01_date'];
 		}
 		if ($r01Date) {
-		    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=sheet2";
+		    $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=sheet2";
 			$grant = new Grant($this->lexicalTranslator);
             $grant->setVariable("pid", $pid);
             $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
@@ -756,7 +758,7 @@ class NewmanGrantFactory extends GrantFactory {
             $grant->setVariable("pid", $pid);
             $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
             $grant->setVariable("instance", $row["redcap_repeat_instance"] ?: "1");
-			$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=new_2017";
+			$url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=new_2017";
 			$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
             $grant->setVariable('start', $internalKDate);
             $grant->setVariable('project_start', $internalKDate);
@@ -807,7 +809,7 @@ class NewmanGrantFactory extends GrantFactory {
 			$noninstDate = $row['newman_new_first_individual_k_award'];
 		}
 		if ($noninstDate) {
-		    $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=new_2017";
+		    $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=new_2017";
 			$grant = new Grant($this->lexicalTranslator);
             $grant->setVariable("pid", $pid);
             $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
@@ -860,7 +862,7 @@ class CoeusSubmissionGrantFactory extends GrantFactory {
 
     public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-        $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus_submission&instance={$row['redcap_repeat_instance']}";
+        $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus_submission&instance={$row['redcap_repeat_instance']}";
         $grant = new Grant($this->lexicalTranslator);
         $grant->setVariable("pid", $pid);
         $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
@@ -931,7 +933,7 @@ class CoeusGrantFactory extends GrantFactory {
 
 	public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-        $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus&instance={$row['redcap_repeat_instance']}";
+        $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus&instance={$row['redcap_repeat_instance']}";
 		$grant = new Grant($this->lexicalTranslator);
         $grant->setVariable("pid", $pid);
         $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
@@ -1019,7 +1021,7 @@ class VERAGrantFactory extends  GrantFactory {
     public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-        $url = APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=vera&instance={$row['redcap_repeat_instance']}";
+        $url = self::ROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=vera&instance={$row['redcap_repeat_instance']}";
         $awardNo = self::cleanAwardNo($row['vera_direct_sponsor_award_id']);
         if ($awardNo == "") {
             $awardNo = Grant::$noNameAssigned;
@@ -1098,7 +1100,7 @@ class VERASubmissionGrantFactory extends  GrantFactory {
     public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-        $url = APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=vera_submission&instance={$row['redcap_repeat_instance']}";
+        $url = self::ROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=vera_submission&instance={$row['redcap_repeat_instance']}";
         $awardNo = Grant::$noNameAssigned;
 
         $role = "";
@@ -1186,7 +1188,7 @@ class Coeus2GrantFactory extends CoeusGrantFactory {
         }
         if ($addGrant) {
             list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-            $url = APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus2&instance={$row['redcap_repeat_instance']}";
+            $url = self::ROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=coeus2&instance={$row['redcap_repeat_instance']}";
             $awardNo = self::cleanAwardNo($row['coeus2_agency_grant_number']);
             $choices = REDCapManagement::getChoices($this->metadata);
             $grant = new Grant($this->lexicalTranslator);
@@ -1248,7 +1250,7 @@ class RePORTERGrantFactory extends GrantFactory {
 
     public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-        $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=reporter&instance={$row['redcap_repeat_instance']}";
+        $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=reporter&instance={$row['redcap_repeat_instance']}";
 		$awardNo = self::cleanAwardNo($row['reporter_projectnumber']);
 		$grant = new Grant($this->lexicalTranslator);
         $grant->setVariable("pid", $pid);
@@ -1316,7 +1318,7 @@ class NIHRePORTERGrantFactory extends  GrantFactory {
     public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-        $url = APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=nih_reporter&instance={$row['redcap_repeat_instance']}";
+        $url = self::ROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=nih_reporter&instance={$row['redcap_repeat_instance']}";
         $awardNo = self::cleanAwardNo($row['nih_project_num']);
         $isSubproject = ($row['nih_subproject_id'] !== "");
         $grant = new Grant($this->lexicalTranslator);
@@ -1422,7 +1424,7 @@ class ExPORTERGrantFactory extends GrantFactory {
         }
         $isSubproject = ($row['exporter_subproject_id'] != "");
         list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-        $url = APP_PATH_WEBROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=exporter&instance={$row['redcap_repeat_instance']}";
+        $url = self::ROOT . "DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=exporter&instance={$row['redcap_repeat_instance']}";
         $awardNo = self::cleanAwardNo($row['exporter_full_project_num']);
         $grant = new Grant($this->lexicalTranslator);
         $grant->setVariable("pid", $pid);
@@ -1482,7 +1484,7 @@ class CustomGrantFactory extends GrantFactory {
 
     public function processRow($row, $otherRows, $token = "") {
         list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-        $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=custom_grant&instance={$row['redcap_repeat_instance']}";
+        $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=custom_grant&instance={$row['redcap_repeat_instance']}";
 		$awardNo = self::cleanAwardNo($row['custom_number']);
 		$directCosts = $row['custom_costs'];
 		if (isset($row['custom_costs_total']) && $row['custom_costs_total']) {
@@ -1584,7 +1586,7 @@ class PriorGrantFactory extends GrantFactory {
                 $grant->setVariable("pid", $pid);
                 $grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
                 $grant->setVariable("instance", $row["redcap_repeat_instance"] ?: "1");
-				$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=summary#summary_award_date_".$i;
+				$url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=summary#summary_award_date_".$i;
                 $grant->setVariable('start', $row['summary_award_date_'.$i]);
                 $grant->setVariable('end', $row['summary_award_end_date_'.$i]);
                 $grant->setVariable('project_start', $row['summary_award_date_'.$i]);
@@ -1632,7 +1634,7 @@ class NSFGrantFactory extends GrantFactory {
     public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-        $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=nsf&instance={$row['redcap_repeat_instance']}";
+        $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=nsf&instance={$row['redcap_repeat_instance']}";
         $awardNo = $row['nsf_id'];
         $dollars = $row['nsf_estimatedtotalamt'];
         $title = $row['nsf_title'];
@@ -1697,7 +1699,7 @@ class IESGrantFactory extends GrantFactory {
     public function processRow($row, $otherRows, $token = "")
     {
         list($pid, $event_id) = self::getProjectIdentifiers($token ?: $this->token);
-        $url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=nsf&instance={$row['redcap_repeat_instance']}";
+        $url = self::ROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=nsf&instance={$row['redcap_repeat_instance']}";
         $awardNo = $row['ies_awardnum'];
         $dollars = $row['ies_awardamt'];
 

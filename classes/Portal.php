@@ -16,6 +16,9 @@ class Portal
     const DATETIME_FORMAT = "Y-m-d H:i:s";
     const BOARD_PREFIX = "board_";
     const DISASSOCIATE_SUFFIX = "___disassociate";
+    const CURRENT_MESH_TERMS = "current_mesh_terms";
+    const SUPPLEMENTAL_MESH_TERMS = "supplemental_mesh_terms";
+    const MESH_SEPARATOR = "\n";
 
     public function __construct($currPid, $recordId, $name, $projectTitle, $allPids) {
         $this->pid = $currPid;
@@ -46,6 +49,7 @@ class Portal
         if (!$this->verifyRequest()) {
             throw new \Exception("Unverified Access. Your name and email/user-id must match up with a Flight Tracker record.");
         }
+        $this->usesAI = FALSE;  // changed when search is invoked
     }
 
     public static function isPortalPage() {
@@ -486,6 +490,368 @@ class Portal
         return $html;
     }
 
+    public function formatCollaborators($matches) {
+        if (empty($matches)) {
+            return "<p>No matches found. Perhaps try another topic?</p>";
+        }
+
+        $html = "";
+        $dataByName = [];
+        $splitNames = [];
+        foreach ($matches as $match) {
+            list($firstName, $lastName) = NameMatcher::splitName($match["name"], 2);
+            $foundInPrior = FALSE;
+            foreach ($splitNames as $n => $ary) {
+                list($fn, $ln) = $ary;
+                if (NameMatcher::matchName($fn, $ln, $firstName, $lastName)) {
+                    $foundInPrior = $n;
+                    break;
+                }
+            }
+            $pmid = $match["pmid"];
+            $email = strtolower($match["email"] ?? "");
+            if ($foundInPrior) {
+                if (!in_array($pmid, $dataByName[$foundInPrior]["pmids"])) {
+                    $dataByName[$foundInPrior]["pmids"][] = $pmid;
+                    $dataByName[$foundInPrior]["score"] += $match["score"];
+                }
+                if ($email && !in_array($email, $dataByName[$foundInPrior]["emails"])) {
+                    $dataByName[$foundInPrior]["emails"][] = $email;
+                }
+            } else {
+                $shorterName = NameMatcher::formatName($firstName, "", $lastName);
+                $splitNames[$shorterName] = [$firstName, $lastName];
+                $dataByName[$shorterName] = [
+                    "pmids" => [$pmid],
+                    "emails" => [],
+                    "name" => $shorterName,
+                    "pid" => $match["pid"],
+                    "record" => $match["record"],
+                    "score" => $match["score"],
+                    "terms" => $match["matched_terms"],
+                ];
+                if ($email) {
+                    $dataByName[$shorterName]["emails"][] = $email;
+                }
+            }
+        }
+        $compiledPMIDs = array_values($dataByName);
+        usort($compiledPMIDs, function ($a, $b) { return $a["score"] < $b["score"]; } );
+
+        foreach ($compiledPMIDs as $match) {
+            if (!empty($match["pmids"])) {
+                $emailLinks = [];
+                foreach ($match["emails"] as $email) {
+                    $emailLinks[] = "<a href='mailto:$email'>$email</a>";
+                }
+                # "%2C+" is the urlencoded ", "
+                $pubMedLink = "https://pubmed.ncbi.nlm.nih.gov/?term=".implode("%2C+", $match["pmids"])."&sort=pubdate";
+                if (count($match["pmids"]) == 1) {
+                    $pluralPubs = "";
+                    $pluralVerb = "es";
+                    $pronoun = "It";
+                } else {
+                    $pluralPubs = "s";
+                    $pluralVerb = "";
+                    $pronoun = "They";
+                }
+                $score = $match["score"];
+
+                $html .= "<p class='centered max-width'>Score ".REDCapManagement::pretty($score).": <strong>".$match["name"]."</strong> has ".count($match["pmids"])." publication".$pluralPubs." that match$pluralVerb this topic. <a href='$pubMedLink' target='_new'>$pronoun can be accessed via PubMed.</a>";
+                if ($this->usesAI && !empty($match["terms"])) {
+                    $terms = [];
+                    foreach ($match["terms"] as $term) {
+                        $terms[] = "\"$term\"";
+                    }
+                    $html .= "<br/>Matched terms: ".REDCapManagement::makeConjunction($terms);
+                }
+                if (empty($emailLinks)) {
+                    $html .= "<br/>No emails on file.";
+                } else {
+                    $emailPlural = (count($emailLinks) == 1) ? "" : "s";
+                    $html .= "<br/>Email$emailPlural on file: ".implode(", ", $emailLinks).".";
+                }
+                $html .= "</p>";
+                # I thought about adding a word cloud, adapted from publications/wordCloud.php into a new class.
+                # However, upon further reflection, a word cloud might obscure the results some by pulling in other topics.
+                # Plus, it never received much visible traction with anyone but me in Huddle.
+                # So I'm skipping it for now, but I'm documenting here in case it should be added at a later date.
+                # I kept pid and record in $matches so that additions can be easily made if desired.
+            }
+        }
+
+        return $html;
+    }
+
+    public function searchForCollaborators($topics) {
+        $pids = Application::getActivePids();
+        $fieldsToMatchOn = ["citation_mesh_terms" => "MeSH Terms"];
+        $alternateTopics = [];
+        if (Application::isVanderbilt()) {
+            $fieldsToMatchOn["citation_ai_keywords"] = "AI Keywords";
+            $pids = Application::getActivePids();
+
+            if (!Application::isLocalhost()) {
+                $openAI = new OpenAI($this->pid);
+                $alternateTopics = $openAI->searchForAlternateTopics($topics);
+            }
+            $this->usesAI = TRUE;
+        }
+        for ($i = 0; $i < count($topics); $i++) {
+            $topics[$i] = strtolower($topics[$i]);
+        }
+
+        $matches = [];
+        foreach ($pids as $pid) {
+            $includeValues = Download::oneFieldWithInstancesByPid($pid, "citation_include");
+            foreach ($fieldsToMatchOn as $field => $fieldLabel) {
+                $termsByRecord = Download::oneFieldWithInstancesByPid($pid, $field);
+                foreach ($termsByRecord as $recordId => $citationData) {
+                    if (($this->pid != $pid) && ($recordId != $this->recordId)) {
+                        $recordCitationPMIDs = [];
+                        $name = "";
+                        $email = "";
+                        $score = 0;
+                        foreach ($citationData as $instance => $termsString) {
+                            if (($includeValues[$recordId][$instance] ?? "") == "1") {
+                                # note: some MeSH terms have commas in them, so semicolon-delimited list
+                                $terms = preg_split("/\s*;\s*/", strtolower(trim($termsString)), -1, PREG_SPLIT_NO_EMPTY);
+                                $matchedTerms = [];
+                                foreach ($topics as $topic) {
+                                    if (in_array($topic, $terms)) {
+                                        $matchedTerms[] = $topic;
+                                        # exact match
+                                        $score += 10;
+                                    } else {
+                                        foreach ($terms as $term) {
+                                            if (
+                                                (
+                                                    (strpos($term, $topic) !== FALSE)
+                                                    || (strpos($topic, $term) !== FALSE)
+                                                )
+                                                && !in_array($topic, $matchedTerms)
+                                            ) {
+                                                # partial match
+                                                $matchedTerms[] = $term;
+                                                $score += 4;
+                                            }
+                                        }
+                                    }
+                                }
+                                foreach ($alternateTopics as $topic) {
+                                    # AI suggested match
+                                    if (in_array($topic, $terms)) {
+                                        # complete
+                                        $matchedTerms[] = $topic;
+                                        $score += 2;
+                                    } else {
+                                        # partial
+                                        foreach ($terms as $term) {
+                                            if (
+                                                (
+                                                    (strpos($term, $topic) !== FALSE)
+                                                    || (strpos($topic, $term) !== FALSE)
+                                                )
+                                                && !in_array($topic, $matchedTerms)
+                                            ) {
+                                                # partial match
+                                                $matchedTerms[] = $term;
+                                                $score += 1;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (!empty($matchedTerms)) {
+                                    if (empty($recordCitationPMIDs)) {
+                                        $recordCitationPMIDs = Download::oneFieldForRecordByPid($pid, "citation_pmid", $recordId);
+                                    }
+                                    if (!is_array($recordCitationPMIDs)) {
+                                        if ($recordCitationPMIDs === "") {
+                                            $recordCitationPMIDs = [];
+                                        } else {
+                                            $recordCitationPMIDs[$instance] = $recordCitationPMIDs;
+                                        }
+                                    }
+                                    if ($name == "") {
+                                        $name = Download::fullNameByPid($pid, $recordId);
+                                        $email = Download::oneFieldForRecordByPid($pid, "identifier_email", $recordId);
+                                    }
+                                    $pmid = $recordCitationPMIDs[$instance];
+                                    $licensePlate = "$pid:$recordId";
+                                    if (!isset($matches[$licensePlate])) {
+                                        $matches[$licensePlate] = [];
+                                    }
+                                    if (isset($matches[$licensePlate][$pmid])) {
+                                        $matches[$licensePlate][$pmid]["matched_terms"] = array_unique(array_merge($matches[$licensePlate][$pmid]["matched_terms"], $matchedTerms));
+                                        $matches[$licensePlate][$pmid]["score"] += $score;
+                                    } else {
+                                        $matches[$licensePlate][$pmid] = [
+                                            "pid" => $pid,
+                                            "record" => $recordId,
+                                            "instance" => $instance,
+                                            "project_title" => Download::shortProjectTitle($pid),
+                                            "matched_terms" => $matchedTerms,
+                                            "pmid" => $pmid,
+                                            "name" => $name,
+                                            "email" => $email,
+                                            "score" => $score,
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        $combinedMatches = [];
+        foreach ($matches as $licensePlate => $matchesByPMID) {
+            $combinedMatches = array_merge($combinedMatches, array_values($matchesByPMID));
+        }
+        return $combinedMatches;
+    }
+
+    public function findCollaboratorPage() {
+        if (Application::isVanderbilt()) {
+            $aiMessage = " and using analysis by Artificial Intelligence";
+            $aiHeader = " Using Artificial Intelligence";
+        } else {
+            $aiMessage = "";
+            $aiHeader = "";
+        }
+        $numFlightTrackers = count(Application::getActivePids());
+        $meshLink = "https://www.nlm.nih.gov/mesh/";
+        $html = "<h3>Find a Collaborator$aiHeader</h3>";
+        $html .= "<p class='centered max-width'>What topic(s) do you want to search for? Doing so will search all $numFlightTrackers Flight Trackers on this server and may take some time. It will search everyone's publications using <a href='$meshLink' target='_new'>MeSH Terms</a>$aiMessage.</p>";
+        if (Application::isVanderbilt()) {
+            $html .= "<p class='centered max-width'><label for='topics'>AI-Generated Topics to Search for (separated by semicolons):</label><br/><input type='text' id='topics' value='' /> <button onclick='portal.searchForTopics(\"{$this->driverURL}\", $(\"#topics\").val()); return false;'>Go!</button></p>";
+        }
+        $meshOptions = $this->getMeSHOptions();
+        $html .= "<p class='centered max-width'><label for='mesh_term' title='MeSH Terms are updated weekly with supplemental material.' style='border-bottom: 1px dotted #888;'>MeSH Term</label>: <select id='mesh_term' class='combobox'><option value='' selected></option>".implode("", $meshOptions)."</select> <button onclick='portal.searchForTopics(\"{$this->driverURL}\", $(\"#mesh_term option:selected\").val()); return false;' style='margin-left: 30px;'>Go!</button></p>";
+        $html .= "<p class='centered max-width' id='searchingDiv'></p>";
+        $html .= "<p class='centered max-width' id='results'></p>";
+
+        $autocompleteJSUrl = Application::link("portal/js/autocomplete.js");
+        $html .= "<script src='$autocompleteJSUrl'></script>";
+        return $html;
+    }
+
+    # https://nlmpubs.nlm.nih.gov/projects/mesh/MESH_FILES/asciimesh/
+    private function getMeSHOptions() {
+        $meshTerms = Application::getSystemSetting(self::CURRENT_MESH_TERMS);
+        if (is_array($meshTerms)) {
+            $year = $meshTerms["year"] ?? "";
+        } else {
+            $year = "";
+            $meshTerms = [];
+        }
+
+        $separator = self::MESH_SEPARATOR;
+        $currYear = date("Y");
+        if ($year != $currYear) {
+            $url = "https://nlmpubs.nlm.nih.gov/projects/mesh/MESH_FILES/asciimesh/d$currYear.bin";
+            $terms = $this->downloadAndParseMeSHURL($url);
+            if (is_array($terms)) {
+                $meshTerms = ["year" => $currYear, "terms" => implode($separator, $terms)];
+                Application::saveSystemSetting(self::CURRENT_MESH_TERMS, $meshTerms);
+            } else {
+                if (($meshTerms["terms"] ?? "") === "") {
+                    return [];
+                }
+                $terms = explode($separator, $meshTerms["terms"]);
+            }
+        } else {
+            # current year's data
+            if (($meshTerms["terms"] ?? "") === "") {
+                return [];
+            }
+            $terms = explode($separator, $meshTerms["terms"]);
+        }
+        unset($meshTerms);
+
+        $supplementalTerms = Application::getSystemSetting(self::SUPPLEMENTAL_MESH_TERMS) ?: [];
+        $supTerms = [];
+        if (isset($supplementalTerms['terms']) && ($supplementalTerms['terms'] !== "") && !is_array($supplementalTerms['terms'])) {
+            $supTerms = explode($separator, $supplementalTerms['terms']);
+        }
+        $thresholdTs = strtotime("-1 week");
+        if (empty($supplementalTerms) || ($supplementalTerms['ts'] < $thresholdTs)) {
+            $url = "https://nlmpubs.nlm.nih.gov/projects/mesh/MESH_FILES/asciimesh/c$currYear.bin";
+            $supTerms = $this->downloadAndParseMeSHURL($url);
+            $supplementalTerms = ["terms" => implode($separator, $supTerms), "ts" => time()];
+            Application::saveSystemSetting(self::SUPPLEMENTAL_MESH_TERMS, $supplementalTerms);
+        }
+        unset($supplementalTerms);
+
+        $options = [];
+        foreach (array_merge($terms, $supTerms) as $term) {
+            $encoded = htmlentities($term);
+            $options[] = "<option value=\"$term\">$encoded</option>";
+        }
+        return $options;
+    }
+
+    private function getFirstPid() {
+        if (!empty($this->allPids)) {
+            $pid = $this->allPids[0];
+            Application::setPid($pid);
+            return $pid;
+        } else {
+            return "";
+        }
+    }
+
+    private function downloadAndParseMeSHURL($url) {
+        $pid = $this->pid ?: $this->getFirstPid();
+        list($resp, $data) = URLManagement::downloadURL($url, $pid);
+        if ($resp == 200) {
+            $lines = preg_split("/[\n\r]+/", $data);
+            $terms = [];
+            foreach ($lines as $line) {
+                if (preg_match("/^MH = (.+)$/", $line, $matches)) {
+                    $term = $matches[1];
+                    if ($term) {
+                        $terms[] = $term;
+                    }
+                }
+            }
+            return $terms;
+        } else {
+            Application::log("Warning! Code: $resp when downloading $url", $this->pid);
+            return FALSE;
+        }
+    }
+
+        public static function updateSupplementalMeSHTerms($pid) {
+        $currYear = date("Y");
+        $url = "https://nlmpubs.nlm.nih.gov/projects/mesh/MESH_FILES/xmlmesh/supp$currYear.xml";
+        list($resp, $data) = URLManagement::downloadURL($url, $pid);
+        $meshTerms = Application::getSystemSetting(self::CURRENT_MESH_TERMS) ?: [];
+        $terms = $meshTerms['terms'] ?? [];
+        if ($resp == 200) {
+            $xml = simplexml_load_string(utf8_encode($data));
+            if ($xml) {
+                $supTerms = [];
+                foreach ($xml->SupplementalRecord as $supplementalRecord) {
+                    if (isset($supplementalRecord->HeadingMappedToList->HeadingMappedTo->DescriptorReferredTo->DescriptorName->String)) {
+                        foreach ($supplementalRecord->HeadingMappedToList->HeadingMappedTo->DescriptorReferredTo->DescriptorName->String as $term) {
+                            if (!in_array($term, $supTerms) && !in_array($term, $terms)) {
+                                $supTerms[] = "$term";
+                            }
+                        }
+                    }
+                }
+
+                $supplementalTerms = ["terms" => implode(self::MESH_SEPARATOR, $supTerms), "ts" => time()];
+                Application::saveSystemSetting(self::SUPPLEMENTAL_MESH_TERMS, $supplementalTerms);
+            } else {
+                Application::log("Warning! Invalid XML ".substr($xml, 0, 500), $pid);
+            }
+        } else {
+            Application::log("Warning! $resp response when downloading $url", $pid);
+        }
+    }
+
     public function getMenu() {
         $settings = $this->featureSwitches->getSwitches();
         $menu = [];
@@ -582,11 +948,17 @@ class Portal
                "action" => "connect",
                 "title" => "Connect With Colleagues",     // flight connector
             ];
-
-            // $menu["Your Network"][] = [
-            //    "action" => "resource_map",
-            //    "title" => "Resource Map",     // flight map
-            // ];
+            if (Application::isVanderbilt()) {
+                $menu["Your Network"][] = [
+                    "action" => "find_collaborator",
+                    "title" => "Find a Collaborator Using AI (Beta)",
+                ];
+            } else {
+                $menu["Your Network"][] = [
+                    "action" => "find_collaborator",
+                    "title" => "Find a Collaborator",
+                ];
+            }
 
             # Newman Society success figures: externally launch career_dev/newmanFigures
             // $menu["Your Network"][] = [
@@ -1729,4 +2101,5 @@ Examples:
     protected $token;
     protected $server;
     protected $featureSwitches;
+    protected $usesAI;
 }

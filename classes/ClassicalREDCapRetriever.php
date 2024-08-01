@@ -85,7 +85,9 @@ class ClassicalREDCapRetriever {
             foreach ($records as $recordId) {
                 $row = [$this->pk => "$recordId"];
                 foreach ($fields as $field) {
-                    $row[$field] = "";
+                    if ($field !== $this->pk) {
+                        $row[$field] = "";
+                    }
                 }
                 $rows[] = $row;
             }

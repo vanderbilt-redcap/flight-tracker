@@ -48,7 +48,6 @@ class LineBarGraph extends Chart {
     public function addNewLine($label, $cols, $color) {
         if (!empty($cols)) {
             $adjustedColor = Chart::ensureHex($color) ?: $this->lineColor;
-            error_log("Adjusted $color to $adjustedColor");
             $this->additionalLines[] = [
                 "label" => $label,
                 "data" => $cols,

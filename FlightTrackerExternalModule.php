@@ -1662,7 +1662,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	 });
 </script>";
                 }
-            } else if ($_GET['page'] == "custom_grant") {
+            } else if (in_array($_GET['page'], ["custom_grant", "summary"])) {
                 $grantDescriptionHTML = Grant::getGrantTypeDescriptionHTML();
                 $grantDescriptionHTML = preg_replace("/[\n\r]/", "", $grantDescriptionHTML);
                 echo "

@@ -115,19 +115,19 @@ class Grants {
 
 	public function getNumberOfGrants($type = "compiled") {
 		if (in_array($type, ["precompiled", "prior"])) {
-            return count($this->priorGrants);
+            return count($this->priorGrants ?: []);
 		}
 		if ($type == "compiled") {
-			return count($this->compiledGrants);
+			return count($this->compiledGrants ?: []);
 		}
         if ($type == "native") {
-            return count($this->nativeGrants);
+            return count($this->nativeGrants ?: []);
         }
         if ($type == "all") {
-            return count($this->dedupedGrants);
+            return count($this->dedupedGrants ?: []);
         }
         if ($type == "submissions") {
-            return count($this->grantSubmissions);
+            return count($this->grantSubmissions ?: []);
         }
 		return 0;
 	}
@@ -748,7 +748,7 @@ class Grants {
                     $combinedGrants = array_merge($combinedGrants, $awardsByBaseAwardNumber[$baseAwardNumber2]);
                 }
                 if (self::getShowDebug()) { Application::log("Combining equivalent grants $baseAwardNumber with ".implode(", ", $combineWith[$baseAwardNumber]), $this->pid); }
-                for ($i = 0; $i < count($combinedGrants); $i++) {
+                for ($i = 0; $i < count($combinedGrants ?: []); $i++) {
                     $combinedGrants[$i]->setVariable("project_start", self::getEarliestDate($combinedGrants, "project_start"));
                     $combinedGrants[$i]->setVariable("project_end", self::getLatestDate($combinedGrants, "project_end"));
                 }
@@ -991,7 +991,7 @@ class Grants {
                         $grants = [$awards[$awardNo]];
                     }
                     if ($unsetRemoves) {
-                        $numGrants = count($grants);
+                        $numGrants = count($grants ?: []);
                         foreach ($grants as &$grant) {
                             if ($baseNumber == $grant->getBaseNumber()) {
                                 $numGrants--;
@@ -1560,7 +1560,7 @@ class Grants {
 	# grants is an array of class Grant, not an instance of class Grants
 	# grants should have the same base award number
 	private static function combineGrants($grants) {
-		if (count($grants) == 0) {
+		if (count($grants ?: []) == 0) {
 			return NULL;
 		} else if (count($grants) == 1) {
 		    $myGrant = $grants[0];
@@ -1648,7 +1648,7 @@ class Grants {
                 self::copyBudgetsIfBlank($basisGrant, $grants);
                 self::copyTitleIfBlank($basisGrant, $grants);
             }
-            $basisGrant->setVariable("num_grants_combined", count($grants));
+            $basisGrant->setVariable("num_grants_combined", count($grants ?: []));
 
             if (self::getShowDebug()) { Application::log("Returning basisGrant ".$basisGrant->getNumber()." ".$basisGrant->getVariable("type")." ".$basisGrant->getVariable("start")." - ".$basisGrant->getVariable("end")); }
 			return $basisGrant;
@@ -1658,7 +1658,7 @@ class Grants {
 	private static function copyBudgetsIfBlank(&$basisGrant, $grants) {
         $zeros = ["", 0, "0", "$0"];
         if (in_array($basisGrant->getVariable("direct_budget"), $zeros) && in_array($basisGrant->getVariable("budget"), $zeros)) {
-            for ($i = 1; $i < count($grants); $i++) {
+            for ($i = 1; $i < count($grants ?: []); $i++) {
                 $currGrant = $grants[$i];
                 $directBudget = $currGrant->getVariable("direct_budget");
                 $totalBudget = $currGrant->getVariable("budget");
@@ -1675,7 +1675,7 @@ class Grants {
 
     private static function copyTitleIfBlank(&$basisGrant, $grants) {
         if (strlen($basisGrant->getVariable("title")) < self::$MIN_TITLE_CHARS) {
-            for ($i = 1; $i < count($grants); $i++) {
+            for ($i = 1; $i < count($grants ?: []); $i++) {
                 $currGrant = $grants[$i];
                 $title = $currGrant->getVariable("title");
                 if (strlen($title) >= self::$MIN_TITLE_CHARS) {
@@ -1901,7 +1901,7 @@ class Grants {
 
 		$grants = $this->getGrants("compiled");
 		$awardTypeConversion = Grant::getAwardTypes();
-		if ((count($grants) == 0) && !$this->getFlagStatus()) {
+		if ((count($grants ?: []) == 0) && !$this->getFlagStatus()) {
 			$grants = $this->getGrants("native");
 		}
         foreach ($grants as $grant) {
@@ -2217,8 +2217,54 @@ class Grants {
 	    return $value;
     }
 
+    # update the instances if the original data points have changed locations in REDCap
+    private function updateGrantLocationsForCalculatedVariables() {
+        $newOrder = [];
+        foreach ($this->calculate["order"] as $grantSpecs) {
+            $this->updateGrantFromNativeGrants($grantSpecs);
+            $newOrder[] = $grantSpecs;
+        }
+
+        $newListOfAwards = [];
+        foreach ($this->calculate["list_of_awards"] as $code => $grantSpecs) {
+            $this->updateGrantFromNativeGrants($grantSpecs);
+            $newListOfAwards[$code] = $grantSpecs;
+        }
+
+        $newToImport = [];
+        foreach ($this->calculate["to_import"] as $code => $ary) {
+            $action = $ary[0];
+            $grantSpecs = $ary[1];
+            $this->updateGrantFromNativeGrants($grantSpecs);
+            $newToImport[$code] = [
+                $action,
+                $grantSpecs,
+            ];
+        }
+
+        $this->calculate["order"] = $newOrder;
+        $this->calculate["list_of_awards"] = $newListOfAwards;
+        $this->calculate["to_import"] = $newToImport;
+    }
+
+    private function updateGrantFromNativeGrants(&$grantSpecs) {
+        $awardNo = $grantSpecs["sponsor_award_no"];
+        if (in_array($awardNo, ["", "000"])) {
+            return;
+        }
+        $source = $grantSpecs["source"];
+        foreach ($this->nativeGrants as $grant) {
+            if (($awardNo == $grant->getNumber()) && ($source == $grant->getVariable("source"))) {
+                $grantSpecs["instance"] = $grant->getVariable("instance");
+                $grantSpecs["url"] = $grant->getVariable("url");
+                return;
+            }
+        }
+    }
+
 	public function makeUploadRow() {
 		if ($this->token && $this->server && $this->metadata) {
+            $this->updateGrantLocationsForCalculatedVariables();
 		    $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
 			$uploadRow = array(
 						"record_id" => $this->recordId,
@@ -2418,9 +2464,9 @@ class Grants {
 	private $recordId;
 	private $name;
 	private $nativeGrants = [];
-	private $compiledGrants;
-	private $priorGrants;
-    private $dedupedGrants;
+	private $compiledGrants = [];
+	private $priorGrants = [];
+    private $dedupedGrants = [];
     private $dedupedGrantSubmissions = [];
 	private $grantSubmissions = [];
 	private $token;

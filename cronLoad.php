@@ -50,9 +50,11 @@ function runMainCrons(&$manager, $token, $server) {
         if (!empty($bibliometricRecordsToUpdate) && ($bibliometricsSwitch == "On")) {
             $manager->addCron("publications/updateBibliometrics.php", "updateBibliometrics", date("Y-m-d"), $bibliometricRecordsToUpdate);
         }
-        if (Application::isVanderbilt() && !Application::isLocalhost()) {
-            $manager->addCron("openai/downloadPublicationKeywords.php", "getPublicationKeywords", "Tuesday", $allRecords, 10000);
-        }
+        # 2024-07-22 This script was used to backfill old publications.
+        # Now, new publications get their keywords as a part of downloading from PubMed
+        // if (Application::isVanderbilt() && !Application::isLocalhost()) {
+            // $manager->addCron("openai/downloadPublicationKeywords.php", "getPublicationKeywords", "Tuesday", $allRecords, 10000);
+        // }
     } catch(\Exception $e) {
         Application::log("ERROR in runMainCrons: ".$e->getMessage(), $pid);
     }

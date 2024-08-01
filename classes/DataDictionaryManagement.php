@@ -499,6 +499,7 @@ class DataDictionaryManagement {
                 $mssg .= "<p>Flight Tracker Version: $version</p>";
                 $mssg .= "<p>Admin Email: <a href='mailto:$adminEmail'>$adminEmail</a></p>";
                 $mssg .= $e->getMessage();
+                $mssg .= "<br/><br/>".$e->getTraceAsString();
                 \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", Application::getProgramName() . " Metadata Upload Error", $mssg);
                 return $feedback;
             }

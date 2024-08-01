@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\OpenAI;
 
 require_once(__DIR__."/../small_base.php");
 require_once(__DIR__."/../classes/Autoload.php");
@@ -31,13 +32,13 @@ $citationFields = [
     "citation_mesh_terms",
 ];
 if (Application::isVanderbilt() && !Application::isLocalhost()) {
-    $citationFields[] = "citation_ai_keywords";
+    $citationFields[] = OpenAI::CITATION_KEYWORD_FIELD;
 }
 $citationData = Download::fieldsForRecordsByPid($pid, $citationFields, [$recordId]);
 
 $allTerms = [];
 $timestampsByTerm = [];
-$fieldsToMonitor = ["citation_mesh_terms", "citation_ai_keywords"];
+$fieldsToMonitor = ["citation_mesh_terms", OpenAI::CITATION_KEYWORD_FIELD];
 $numPubs = 0;
 foreach ($citationData as $row) {
     if (($row['citation_include'] == "1") && $row['citation_date']) {
@@ -46,7 +47,11 @@ foreach ($citationData as $row) {
         $numPubs++;
         foreach ($fieldsToMonitor as $field) {
             if (isset($row[$field]) && ($row[$field] != "")) {
-                $fieldTerms = preg_split("/\s*;\s*/", $row[$field]);
+                if ($field == OpenAI::CITATION_KEYWORD_FIELD) {
+                    $fieldTerms = OpenAI::explodeKeywords($field);
+                } else {
+                    $fieldTerms = preg_split("/\s*;\s*/", $row[$field], -1, PREG_SPLIT_NO_EMPTY);
+                }
                 foreach ($fieldTerms as $term) {
                     if (!in_array($term, $allTerms)) {
                         $allTerms[] = $term;

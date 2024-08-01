@@ -1149,6 +1149,19 @@ class Publications {
         return $affiliations;
     }
 
+    private static function intepretAndSplitDates($dates) {
+        $maxSource = "";
+        foreach ($dates as $source => $dateNodes) {
+            if (count($dates[$maxSource] ?? []) < count($dateNodes)) {
+                $maxSource = $source;
+            }
+        }
+        $year = $dates[$maxSource]["year"] ?? "";
+        $month = $dates[$maxSource]["month"] ?? "";
+        $day = $dates[$maxSource]["day"] ?? "";
+        return [$year, $month, $day];
+    }
+
     # An example XML document is at https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id=37635263
     private static function xml2REDCap($xml, $recordId, &$instance, $src, $confirmedPMIDs, $metadataFields, $pid) {
         $hasAbstract = in_array("citation_abstract", $metadataFields);
@@ -1205,31 +1218,36 @@ class Publications {
             $journal = strval($article->Journal->ISOAbbreviation);
             $journal = preg_replace("/\.$/", "", $journal);
 
+            # PubMed often has two dates in the XML.
+            # I prefer the one that has the most year/month/day data, in terms of number of nodes.
+            # If those two are the same, I prefer the journal's PubDate.
+            # Implemented in: method intepretAndSplitDates()
             $issue = $article->Journal->JournalIssue;    // not a strval but node!!!
-            $year = "";
-            $month = "";
-            $day = "";
-
-            if ($issue->PubDate->Year) {
-                $year = strval($issue->PubDate->Year);
+            $dates = ["journal" => [], "article" => []];
+            if ($issue) {
+                if ($issue->PubDate->Year) {
+                    $dates["journal"]["year"] = strval($issue->PubDate->Year);
+                }
+                if ($issue->PubDate->Month) {
+                    $dates["journal"]["month"] = strval($issue->PubDate->Month);
+                }
+                if ($issue->PubDate->Day) {
+                    $dates["journal"]["day"] = "{$issue->PubDate->Day}";
+                }
             }
-            if ($issue->PubDate->Month) {
-                $month = strval($issue->PubDate->Month);
-            }
-            if ($issue->PubDate->Day) {
-                $day = "{$issue->PubDate->Day}";
-            }
-            if (!$day && !$month && !$year && $article->ArticleDate) {
+            if ($article->ArticleDate) {
                 if ($article->ArticleDate->Year) {
-                    $year = strval($article->ArticleDate->Year);
+                    $dates["article"]["year"] = strval($article->ArticleDate->Year);
                 }
                 if ($article->ArticleDate->Month) {
-                    $month = strval($article->ArticleDate->Month);
+                    $dates["article"]["month"] = strval($article->ArticleDate->Month);
                 }
                 if ($article->ArticleDate->Day) {
-                    $day = "{$article->ArticleDate->Day}";
+                    $dates["article"]["day"] = "{$article->ArticleDate->Day}";
                 }
             }
+            list($year, $month, $day) = self::intepretAndSplitDates($dates);
+
             $numericMonth = DateManagement::getMonthNumber($month);
             if ($year && $numericMonth && $day) {
                 $date = "$year-$numericMonth-$day";
@@ -1349,6 +1367,19 @@ class Publications {
             }
             if ($hasAbstract) {
                 $row['citation_abstract'] = $abstract;
+                if (
+                    $abstract
+                    && Application::isVanderbilt()
+                    && !Application::isLocalhost()
+                    && in_array(OpenAI::CITATION_KEYWORD_FIELD, $metadataFields)
+                ) {
+                    $openAI = new OpenAI($pid);
+                    $allKeywords = $openAI->getPublicationKeywords([$title], [$abstract], OpenAI::NUM_KEYWORDS);
+                    $keywords = $allKeywords[0] ?? [];
+                    if (count($keywords) == OpenAI::NUM_KEYWORDS) {
+                        $row[OpenAI::CITATION_KEYWORD_FIELD] = OpenAI::implodeKeywords($keywords);
+                    }
+                }
             }
 
             if (in_array($pmid, $confirmedPMIDs)) {

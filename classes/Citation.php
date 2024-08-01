@@ -1599,7 +1599,7 @@ class Citation {
 
     public static function transformDateToTimestamp($date) {
         if ($date) {
-            $dateNodes = preg_split("/\s+/", $date);
+            $dateNodes = preg_split("/[\s\-\/]+/", $date);
             $year = $dateNodes[0];
             $months = [
                 "Jan" => "01",

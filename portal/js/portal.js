@@ -61,14 +61,39 @@ class Portal {
         this.loadingUrl = url;
     }
 
-    updateLoadingBox = function(mssg) {
-        const prev = $(this.loadingDiv).html();
+    pretty = function(x) {
+        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    searchForTopics = function(url, topicString) {
+        const trimmedTopicString = topicString.trim();
+        const topics = trimmedTopicString ? trimmedTopicString.split(/\s*[,;]\s*/) : [];
+        if (topics.length === 0) {
+            this.processError("No topics provided!");
+            return;
+        }
+
+        const postdata = {
+            action: 'search_projects_for_collaborator',
+            topics: topics
+        };
+        const specialLoadingDiv = "#searchingDiv";
+        this.updateLoadingBox("Searching for a Collaborator... This may take some time.", specialLoadingDiv)
+        this.runPost(url, postdata, (data) => {
+            this.updateLoadingBox("", specialLoadingDiv)
+            $('#results').html(data.html ?? "<p>No matches found. Perhaps try another topic?</p>");
+        });
+    }
+
+    updateLoadingBox = function(mssg, specialLoadingDiv) {
+        const div = (typeof specialLoadingDiv !== 'undefined') ? specialLoadingDiv : this.loadingDiv;
+        const prev = $(div).html();
         if (!mssg) {
-            $(this.loadingDiv).html('');
+            $(div).html('');
         } else if (prev) {
-            $(this.loadingDiv+" "+this.subHeader).html(mssg);
+            $(div+" "+this.subHeader).html(mssg);
         } else {
-            $(this.loadingDiv).html("<"+this.subHeader+" class='nomargin'>"+mssg+"</"+this.subHeader+"><p class='nomargin centered'><img src='"+this.loadingUrl+"' alt='Loading...' style='width: 48px; height: 48px;'/></p><div id='percentDone' class='centered'></div>");
+            $(div).html("<"+this.subHeader+" class='nomargin'>"+mssg+"</"+this.subHeader+"><p class='nomargin centered'><img src='"+this.loadingUrl+"' alt='Loading...' style='width: 48px; height: 48px;'/></p><div id='percentDone' class='centered'></div>");
         }
     }
 
@@ -111,13 +136,26 @@ class Portal {
         });
     }
 
+    rerouteNoDataPage = function(hash) {
+        if ((hash === "#board") || (hash === "board")) {
+            this.takeAction("board", "Bulletin Board");
+        } else if ((hash === "#find_collaborator") || (hash === "find_collaborator")) {
+            this.takeAction("find_collaborator", "Find a Collaborator");
+        }
+    }
+
+    isNoDataHash = function(hash) {
+        const noDataOptions = ["#board", "board", "#find_collaborator", "find_collaborator"];
+        return (noDataOptions.indexOf(hash) !== -1);
+    }
+
     prepareMatchesToSelect = function() {
         this.updateLoadingBox("");
         const numMatches = this.getNumMatches();
         if (numMatches === 1) {
             $('.multiProject').hide();
             this.setMatch(0);
-        } else if ((numMatches === 0) && (window.location.hash !== '#board')) {
+        } else if ((numMatches === 0) && !this.isNoDataHash(window.location.hash)) {
             $('#noDataMessage').show();
             $('.multiProject').hide();
         } else {
@@ -131,8 +169,8 @@ class Portal {
                 $('#welcomeMessage').show();
             }
         }
-        if (window.location.hash === "#board") {
-            this.takeAction("board", "Bulletin Board");
+        if (this.isNoDataHash(window.location.hash)) {
+            this.rerouteNoDataPage(window.location.hash);
         }
     }
 
@@ -252,8 +290,8 @@ class Portal {
                 if (hashAry.length === 3) {
                     const action = hashAry[0];
                     this.takeAction(action, this.getMenuTitle(action));
-                } else if (window.location.hash === '#board') {
-                    this.takeAction('board', 'Bulletin Board');
+                } else if (this.isNoDataHash(window.location.hash)) {
+                    this.rerouteNoDataPage(window.location.hash);
                 }
             } else {
                 $('#welcomeMessage').show();
@@ -376,7 +414,7 @@ class Portal {
             html += "<div class='dropdown-content'>";
             for (let i=0; i < this.stateData.menu[menuItem].length; i++) {
                 const subMenuItem = this.stateData.menu[menuItem][i];
-                const hash = (subMenuItem['action'] === "board") ? subMenuItem['action'] : subMenuItem['action']+":"+this.selectedPid+":"+this.selectedRecord;
+                const hash = this.isNoDataHash(subMenuItem['action']) ? subMenuItem['action'] : subMenuItem['action']+":"+this.selectedPid+":"+this.selectedRecord;
                 html += "<a href='#"+hash+"' onclick='portal.takeAction(\""+subMenuItem['action']+"\", \""+subMenuItem['title']+"\"); return false;'>"+subMenuItem['title']+"</a>";
             }
             html += "</div></div>";
@@ -421,8 +459,8 @@ class Portal {
         $('#welcomeMessage').hide();
         this.clearMainBox();
         this.updateLoadingBox("Loading Data About "+label+"...");
-        if (action === 'board') {
-            window.location.hash = '#board';
+        if (this.isNoDataHash(action)) {
+            window.location.hash = '#'+action;
         } else {
             window.location.hash = action+":"+this.selectedPid+":"+this.selectedRecord;
         }
@@ -436,7 +474,7 @@ class Portal {
                 }
                 break;
             }
-        } else if (action === "board") {
+        } else if (this.isNoDataHash(action)) {
             $('#noDataMessage').hide();
             const menuHTML = $(this.menuDiv).html();
             if (menuHTML === '') {
@@ -649,7 +687,7 @@ class Portal {
         console.log(JSON.stringify(postData));
         $.post(url, postData, (json) => {
             try {
-                console.log(json.substring(0, 300) + "...");
+                console.log(json.substring(0, 500) + "...");
                 const data = JSON.parse(json);
                 if (data.error) {
                     this.processError(data.error);
