@@ -711,23 +711,21 @@ class Download {
     }
 
     public static function getDataByPid(int $pid, ?array $fields, ?array $records) {
-        if (Application::isVanderbilt()) {
-            # for now
-            if (!isset($records)) {
-                $records = self::recordIdsByPid($pid);
-            }
-            if (!isset($fields)) {
-                $fields = self::metadataFieldsByPid($pid);
-            }
-            $module = Application::getModule();
-            $retriever = new ClassicalREDCapRetriever($module, $pid);
-            $redcapData = $retriever->getData($fields, $records);
-        } else if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
-            $redcapData = \REDCap::getData($pid, "json-array", $records, $fields);
-        } else {
-            $json = \REDCap::getData($pid, "json", $records, $fields);
-            $redcapData = json_decode($json, true);
+        if (!isset($records)) {
+            $records = self::recordIdsByPid($pid);
         }
+        if (!isset($fields)) {
+            $fields = self::metadataFieldsByPid($pid);
+        }
+        $module = Application::getModule();
+        $retriever = new ClassicalREDCapRetriever($module, $pid);
+        $redcapData = $retriever->getData($fields, $records);
+        // } else if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
+            // $redcapData = \REDCap::getData($pid, "json-array", $records, $fields);
+        // } else {
+            // $json = \REDCap::getData($pid, "json", $records, $fields);
+            // $redcapData = json_decode($json, true);
+        // }
         return Sanitizer::sanitizeREDCapData($redcapData);
     }
 

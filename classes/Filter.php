@@ -5,7 +5,10 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Filter {
+    # Using this variable returns an array of all the options available for a given variable
     const GET_CHOICES = "choices";
+
+    # Using this variable returns an array of all the actual values stored for a given variable
     const GET_VALUE = "values";
 
     public function __construct($token, $server, $metadata) {
@@ -79,16 +82,29 @@ class Filter {
 	}
 
 	# function used in dynamic variable
-	public function calc_award_type($type, $rows = array()) {
+	public function calc_award_type($type, $rows = []) {
 		if ($type == self::GET_CHOICES) {
-			$choicesHash = Grant::getReverseAwardTypes();
-			$calcSettings = new CalcSettings("choices");
-			$calcSettings->setChoicesHash($choicesHash);
-			return $calcSettings;
+            return self::getAwardChoicesAsCalcSettings();
 		} else if ($type == self::GET_VALUE) {
 			return $this->getAwardTypes($rows);
 		}
 	}
+
+    private static function getAwardChoicesAsCalcSettings(): CalcSettings {
+        $choicesHash = Grant::getReverseAwardTypes();
+        $calcSettings = new CalcSettings("choices");
+        $calcSettings->setChoicesHash($choicesHash);
+        return $calcSettings;
+    }
+
+    # PHP8: Return type is array|CalcSettings - unions invalid in PHP7
+    public function calc_active_award_type(string $type, array $rows = [])  {
+        if ($type == self::GET_CHOICES) {
+            return self::getAwardChoicesAsCalcSettings();
+        } else if ($type == self::GET_VALUE) {
+            return $this->getActiveAwardTypes($rows);
+        }
+    }
 
     # function used in dynamic variable
     public function calc_activity_code($type, $rows = array()) {
@@ -312,20 +328,44 @@ class Filter {
 		return $numbers;
 	}
 
-	private function getAwardTypes($rows) {
-		$types = array();
-		foreach ($rows as $row) {
-			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
-				$field = "summary_award_type_".$i;
-				if ($row[$field]) {
-					if (!in_array($row[$field], $types)) {
-						$types[] = $row[$field];
-					}
-				}	
-			}
-		}
-		return $types;
-	}
+    private function getAwardTypes(array $rows): array {
+        $types = array();
+        foreach ($rows as $row) {
+            for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
+                $field = "summary_award_type_".$i;
+                if ($row[$field]) {
+                    if (!in_array($row[$field], $types)) {
+                        $types[] = $row[$field];
+                    }
+                }
+            }
+        }
+        return $types;
+    }
+
+    private function getActiveAwardTypes(array $rows): array {
+        $types = [];
+        $today = date("Y-m-d");
+        foreach ($rows as $row) {
+            for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
+                $typeField = "summary_award_type_".$i;
+                $startField = "summary_award_date_".$i;
+                $endField = "summary_award_end_date_".$i;
+                if ($row[$typeField] && $row[$startField]) {
+                    # no end date assumes that it's still active
+                    $endsInPast = ($row[$endField] !== "") && DateManagement::dateCompare($row[$endField], "<", $today);
+                    if (
+                        !in_array($row[$typeField], $types)
+                        && !$endsInPast
+                        && DateManagement::dateCompare($row[$startField], "<=", $today)
+                    ) {
+                        $types[] = $row[$typeField];
+                    }
+                }
+            }
+        }
+        return $types;
+    }
 
     private function getInstitutes($rows) {
         $codes = $this->getCodesFromAwardNumber($rows, "getInstituteCode");
@@ -396,6 +436,7 @@ class Filter {
 		$ary = [
             "calc_award_type" => "Award Type",
             "summary_ever_last_any_k_to_r01_equiv" => "Conversion Status",
+            "calc_active_award_type" => "Active Award Type",
             "summary_award_type_1" => "First Award Type",
             "summary_award_sponsorno_1" => "First Award Sponsor Number",
             "calc_sponsorno" => "Any Award Sponsor Number",
@@ -845,99 +886,4 @@ class Filter {
 	protected $server;
 	protected $metadata;
 	protected $choices;
-}
-
-class CalcSettings {
-	public function __construct($type) {
-		$valid = self::getValidTypes();
-		if (in_array($type, $valid)) {
-			$this->type = $type;
-		} else {
-			throw new \Exception("Invalid type $type.");
-		}
-	}
-
-	public function set1DToHash($ary1D) {
-		$this->choices = array();
-		foreach ($ary1D as $item) {
-			$this->choices[$item] = $item;
-		}
-	}
-
-	public function setChoicesHash($hash) {
-		$this->choices = array();
-		foreach ($hash as $value => $label) {
-			$this->choices[$value] = $label;
-		}
-	}
-
-	public function setChoices($ary) {
-		$this->choices = array();
-		foreach ($ary as $item) {
-			$this->choices[$item] = $item;
-		}
-	}
-
-	public function getChoices() {
-		if ($this->type == "choices") {
-			if ($this->choices) {
-				return $this->choices;
-			}
-		}
-		return array();
-	}
-
-	public function getComparisons() {
-		if ($this->type == "string") {
-			return Filter::getStringComparisons();
-		} else if (($this->type == "number") || ($this->type == "date")) {
-			return CohortConfig::getComparisons();
-		}
-		return array();
-	}
-
-	public static function getValidTypes() {
-		return array("choices", "string", "number", "date");
-	}
-
-	public static function transformToInputType($calcSettingsType) {
-		switch($calcSettingsType) {
-			case "string":
-				return "text";
-			case "number":
-				return "number";
-			case "date":
-				return "date";
-		}
-		return "";
-	}
-
-	public static function getTypeFromMetadata($field, $metadata) {
-		$numberValidationTypes = array("integer", "number");
-		$choiceFieldTypes = array("radio", "checkbox", "dropdown");
-
-		foreach ($metadata as $row) {
-			if ($row['field_name'] == $field) {
-				if ($row['select_choices_or_calculations'] && in_array($row['field_type'], $choiceFieldTypes)) {
-					return "choices";
-				} else if (preg_match("/^date/", $row['text_validation_type_or_show_slider_number'])) {
-					return "date";
-				} else if (in_array($row['text_validation_type_or_show_slider_number'], $numberValidationTypes)) {
-					return "number";
-				} else {
-					# not number nor date => string
-					return "string";
-				}
-			}
-		}
-		# invalid $field
-		return "";
-	}
-
-	public function getType() {
-		return $this->type;
-	}
-
-    private $type;
-	private $choices;
 }

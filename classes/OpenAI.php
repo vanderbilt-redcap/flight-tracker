@@ -159,6 +159,18 @@ class OpenAI {
         if (!$url) {
             throw new \Exception("Invalid URL!");
         }
+        if (!isset($pid)) {
+            if (isset($_GET['pid']) && is_numeric($_GET['pid'])) {
+                $pid = (int) $_GET['pid'];
+            } else {
+                $pids = Application::getActivePids();
+                if (empty($pids)) {
+                    throw new \Exception("No active PIDs!");
+                } else {
+                    $pid = (int) $pids[0];
+                }
+            }
+        }
         $defaultOpts = self::getDefaultCURLOpts($pid);
         $time1 = microtime();
         $ch = curl_init();

@@ -364,9 +364,7 @@ class Application {
         $token = $token ?: self::getSetting("token", $pid);
         $server = $server?: self::getSetting("server", $pid);
 
-        if (!$tokenName) {
-            $tokenName = self::getSetting("tokenName", $pid);
-        }
+        $tokenName = Download::shortProjectTitle($pid);
         $module = self::getModule();
         $museoSansLink = self::link("/fonts/exljbris - MuseoSans-500.otf");
         $horizontalScrollbar = CareerDev::isREDCap() ? ":root { overflow-x: scroll; }" : "";

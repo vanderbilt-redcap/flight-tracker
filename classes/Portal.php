@@ -511,11 +511,20 @@ class Portal
             $pmid = $match["pmid"];
             $email = strtolower($match["email"] ?? "");
             if ($foundInPrior) {
-                if (!in_array($pmid, $dataByName[$foundInPrior]["pmids"])) {
+                if (!in_array($pmid, $dataByName[$foundInPrior]["pmids"] ?? [])) {
+                    if (!isset($dataByName[$foundInPrior]["pmids"])) {
+                        $dataByName[$foundInPrior]["pmids"] = [];
+                    }
+                    if (!isset($dataByName[$foundInPrior]["score"])) {
+                        $dataByName[$foundInPrior]["score"] = 0;
+                    }
                     $dataByName[$foundInPrior]["pmids"][] = $pmid;
                     $dataByName[$foundInPrior]["score"] += $match["score"];
                 }
-                if ($email && !in_array($email, $dataByName[$foundInPrior]["emails"])) {
+                if ($email && !in_array($email, $dataByName[$foundInPrior]["emails"] ?? [])) {
+                    if (!isset($dataByName[$foundInPrior]["emails"])) {
+                        $dataByName[$foundInPrior]["emails"] = [];
+                    }
                     $dataByName[$foundInPrior]["emails"][] = $email;
                 }
             } else {
@@ -536,12 +545,12 @@ class Portal
             }
         }
         $compiledPMIDs = array_values($dataByName);
-        usort($compiledPMIDs, function ($a, $b) { return $a["score"] < $b["score"]; } );
+        usort($compiledPMIDs, function ($a, $b) { return $a["score"] <=> $b["score"]; } );
 
         foreach ($compiledPMIDs as $match) {
             if (!empty($match["pmids"])) {
                 $emailLinks = [];
-                foreach ($match["emails"] as $email) {
+                foreach ($match["emails"] ?? [] as $email) {
                     $emailLinks[] = "<a href='mailto:$email'>$email</a>";
                 }
                 # "%2C+" is the urlencoded ", "
@@ -555,9 +564,10 @@ class Portal
                     $pluralVerb = "";
                     $pronoun = "They";
                 }
-                $score = $match["score"];
+                $score = $match["score"] ?? 0;
+                $name = $match["name"] ?? "Unknown Name";
 
-                $html .= "<p class='centered max-width'>Score ".REDCapManagement::pretty($score).": <strong>".$match["name"]."</strong> has ".count($match["pmids"])." publication".$pluralPubs." that match$pluralVerb this topic. <a href='$pubMedLink' target='_new'>$pronoun can be accessed via PubMed.</a>";
+                $html .= "<p class='centered max-width'>Score ".REDCapManagement::pretty($score).": <strong>$name</strong> has ".count($match["pmids"])." publication".$pluralPubs." that match$pluralVerb this topic. <a href='$pubMedLink' target='_new'>$pronoun can be accessed via PubMed.</a>";
                 if ($this->usesAI && !empty($match["terms"])) {
                     $terms = [];
                     foreach ($match["terms"] as $term) {
@@ -845,7 +855,7 @@ class Portal
                 $supplementalTerms = ["terms" => implode(self::MESH_SEPARATOR, $supTerms), "ts" => time()];
                 Application::saveSystemSetting(self::SUPPLEMENTAL_MESH_TERMS, $supplementalTerms);
             } else {
-                Application::log("Warning! Invalid XML ".substr($xml, 0, 500), $pid);
+                Application::log("Warning! Invalid XML ".substr((string) $xml, 0, 500), $pid);
             }
         } else {
             Application::log("Warning! $resp response when downloading $url", $pid);

@@ -276,7 +276,7 @@ class CohortConfig {
 	    $this->config['records'] = $records;
     }
 
-	public function getFields($metadata) {
+	public function getFields(): array {
 		$fields = array();
         $citationCalcFunctions = [
             "calc_rcr",
@@ -286,7 +286,6 @@ class CohortConfig {
             "calc_from_time",
         ];
 		foreach ($this->getRows() as $row) {
-            $newFields = [];
 			if ($row['type'] == "resources") {
                 $newFields = ["resources_resource"];
             } else if ($row['variable'] == "calc_employment") {
@@ -462,7 +461,7 @@ class CohortConfig {
 						$usesContains = TRUE;
 					} else if (($field == "variable") && isset($labels[$row[$field]])) {
 						$value = $labels[$row[$field]];
-					} else if (($field == "choice") && ($row["variable"] == "calc_award_type") && (isset($reverseAwardTypes[$row[$field]]))) {
+					} else if (($field == "choice") && in_array($row["variable"], ["calc_award_type", "calc_active_award_type"]) && (isset($reverseAwardTypes[$row[$field]]))) {
 						$value = $reverseAwardTypes[$row[$field]];
 						$usesContains = TRUE;
 					} else if ($field == "type") {

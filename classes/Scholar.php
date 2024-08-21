@@ -2,18 +2,13 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-
 require_once(__DIR__ . '/ClassLoader.php');
 
-if (!defined("SOURCETYPE_FIELD")) {
-    define("SOURCETYPE_FIELD", "additional_source_types");
-}
-if (!defined("SHOW_DEBUG_FOR_INSTITUTIONS")) {
-    define("SHOW_DEBUG_FOR_INSTITUTIONS", FALSE);
-}
-
 class Scholar {
+    
+    const SOURCETYPE_FIELD = "additional_source_types";
+    const SHOW_DEBUG_FOR_INSTITUTIONS = FALSE;
+    
 	public function __construct($token, $server, $metadata = array(), $pid = "") {
 		$this->token = $token;
 		$this->server = $server;
@@ -48,7 +43,7 @@ class Scholar {
 
 	public static function addSourceType($module, $code, $sourceType, $pid) {
 		if ($module) {
-			$data = $module->getProjectSetting(SOURCETYPE_FIELD, $pid);
+			$data = $module->getProjectSetting(self::SOURCETYPE_FIELD, $pid);
 			if (!$data) {
 				$data = array();
 			}
@@ -56,7 +51,7 @@ class Scholar {
 				$data[$sourceType] = array();
 			}
 			array_push($data[$sourceType], $code);
-			$module->setProjectSetting(SOURCETYPE_FIELD, $data, $pid);
+			$module->setProjectSetting(self::SOURCETYPE_FIELD, $data, $pid);
 			return TRUE;
 		}
 		return FALSE;
@@ -64,7 +59,7 @@ class Scholar {
 
 	public static function getAdditionalSourceTypes($module, $sourceType, $pid) {
 		if ($module) { 
-			$data = $module->getProjectSetting(SOURCETYPE_FIELD, $pid);
+			$data = $module->getProjectSetting(self::SOURCETYPE_FIELD, $pid);
 			if (!$data || !isset($data[$sourceType])) {
 				return array();
 			}
@@ -117,7 +112,7 @@ class Scholar {
 
 		# by default use identifier; if not specified, get result through default order
 		if ($row['identifier_orcid']) {
-			$result = new Result($row['identifier_orcid'], "", "", "", $this->pid);
+			$result = new ScholarResult($row['identifier_orcid'], "", "", "", $this->pid);
 		} else {
 			$vars = self::getDefaultOrder("identifier_orcid");
             $vars = $this->getOrder($vars, "identifier_orcid");
@@ -168,7 +163,7 @@ class Scholar {
         }
 
         if ($row[$field]) {
-            return new Result($row[$field], "", "", "", $this->pid);
+            return new ScholarResult($row[$field], "", "", "", $this->pid);
         }
 
         $firstName = NameMatcher::eliminateInitials($this->getName("first"));
@@ -178,15 +173,15 @@ class Scholar {
         $source = "";
         if (!empty($uids)) {
             if (count($uids) == 1) {
-                return new Result($uids[0], $source, "Computer-Generated", "", $this->pid);
+                return new ScholarResult($uids[0], $source, "Computer-Generated", "", $this->pid);
             } else if (count($uids) > 1) {
                 Application::log("Warning: Lookup $sourceName userids for $firstName $lastName generated multiple: ".implode(", ", $uids), $this->pid);
-                return new Result(implode(", ", $uids), $source, "Computer-Generated", "", $this->pid);
+                return new ScholarResult(implode(", ", $uids), $source, "Computer-Generated", "", $this->pid);
             } else {
                 Application::log("Lookup $sourceName userids for $firstName $lastName generated no results.", $this->pid);
             }
         }
-        return new Result("", "", "", "", $this->pid);
+        return new ScholarResult("", "", "", "", $this->pid);
     }
 
     public function getLinkedInHandle($rows) {
@@ -208,7 +203,7 @@ class Scholar {
             }
         }
         $finalValue = implode(", ", $handles);
-        return new Result($finalValue, "", "", "", $this->pid);
+        return new ScholarResult($finalValue, "", "", "", $this->pid);
     }
 
     public function getTwitterHandle($rows) {
@@ -236,12 +231,12 @@ class Scholar {
             }
         }
         $finalValue = implode(", ", $handles);
-        return new Result($finalValue, "", "", "", $this->pid);
+        return new ScholarResult($finalValue, "", "", "", $this->pid);
     }
 
     public function lookupPersonalEmail($rows) {
         if ($email = $this->getPersonalEmail()) {
-            return new Result($email, "", "", "", $this->pid);
+            return new ScholarResult($email, "", "", "", $this->pid);
         }
         $vars = self::getDefaultOrder("identifier_personal_email");
         $vars = $this->getOrder($vars, "identifier_personal_email");
@@ -252,7 +247,7 @@ class Scholar {
 
     public function lookupPhone($rows) {
         if ($email = $this->getPhone()) {
-            return new Result($email, "", "", "", $this->pid);
+            return new ScholarResult($email, "", "", "", $this->pid);
         }
         $vars = self::getDefaultOrder("identifier_phone");
         $vars = $this->getOrder($vars, "identifier_phone");
@@ -263,7 +258,7 @@ class Scholar {
 
     public function lookupEmail($rows) {
 	    if ($email = $this->getEmail()) {
-	        return new Result($email, "", "", "", $this->pid);
+	        return new ScholarResult($email, "", "", "", $this->pid);
         }
         $vars = self::getDefaultOrder("identifier_email");
         $vars = $this->getOrder($vars, "identifier_email");
@@ -287,6 +282,9 @@ class Scholar {
     }
 
     private function getLDAPResult($rows, $field, $priorResult, $instrument = "ldap") {
+        if (Application::isVanderbilt() || Application::isLocalhost()) {
+            return new ScholarResult("", "", "", "", $this->pid);
+        }
         $numRows = REDCapManagement::getNumberOfRows($rows, $instrument);
         if ($numRows == 1) {
             return $priorResult;
@@ -312,18 +310,18 @@ class Scholar {
             }
             $keys = array_keys($emails);
             if (count($emails) == 0) {
-                return new Result("", "", "", "", $this->pid);
+                return new ScholarResult("", "", "", "", $this->pid);
             } else if (count($emails) == 1) {
-                return new Result($keys[0], "ldap", "Computer-Generated", "", $this->pid);
+                return new ScholarResult($keys[0], "ldap", "Computer-Generated", "", $this->pid);
             } else if (count($emails) == $numExpected) {
                 if ((count($emails[$keys[0]]) == $numExpected) && (count($emails[$keys[1]]) == $numExpected)) {
                     if ($emails[$keys[0]][0] == $emails[$keys[1]][0]) {
                         if (in_array($emails[$keys[0]][1], $validLDAPDomains) && in_array($emails[$keys[1]][1], $validLDAPDomains)) {
                             # same email address; different domain; all domains in $validLDAPDomains
                             if ($emails[$keys[0]][1] == "vumc.org") {
-                                return new Result($keys[0], "ldap", "Computer-Generated", "", $this->pid);
+                                return new ScholarResult($keys[0], "ldap", "Computer-Generated", "", $this->pid);
                             } else {
-                                return new Result($keys[1], "ldap", "Computer-Generated", "", $this->pid);
+                                return new ScholarResult($keys[1], "ldap", "Computer-Generated", "", $this->pid);
                             }
                         } else {
                             throw new \Exception("Invalid domain: ".$emails[$keys[0]][1]." and ".$emails[$keys[1]][1]);
@@ -331,7 +329,7 @@ class Scholar {
                     } else {
                         # do not throw exception because this could still be a valid pull; treat as if there were 3+ results
                         Application::log("Different emails: ".$emails[$keys[0]][0]." and ".$emails[$keys[1]][0]);
-                        return new Result("", "", "", "", $this->pid);
+                        return new ScholarResult("", "", "", "", $this->pid);
                     }
                 } else {
                     throw new \Exception("For some reason, I found parts (".count($emails[$keys[0]])." and ".count($emails[$keys[1]]).") when I was expecting $numExpected!");
@@ -342,7 +340,7 @@ class Scholar {
         }
         else {      // == 0 or > 2
             # cannot differentiate between more than one row
-            return new Result("", "", "", "", $this->pid);
+            return new ScholarResult("", "", "", "", $this->pid);
         }
     }
 
@@ -469,11 +467,11 @@ class Scholar {
                 $sourceField = "mstp_gender";
                 $value = REDCapManagement::findField($rows, $this->recordId, $sourceField);
                 if ($value == "2") {
-                    return new Result("1", $source, $sourceType, "", $this->pid);
+                    return new ScholarResult("1", $source, $sourceType, "", $this->pid);
                 } else if ($value == "1") {
-                    return new Result("2", $source, $sourceType, "", $this->pid);
+                    return new ScholarResult("2", $source, $sourceType, "", $this->pid);
                 } else if ($value) {
-                    return new Result("99", $source, $sourceType, "", $this->pid);
+                    return new ScholarResult("99", $source, $sourceType, "", $this->pid);
                 }
             } else if ($field == "identifier_email") {
                 # non-Vanderbilt email preferred
@@ -497,7 +495,7 @@ class Scholar {
                                 )
                                 || ($iteration == "Vanderbilt-allowed")
                             ) {
-                                return new Result($value, $source, $sourceType, "", $this->pid);
+                                return new ScholarResult($value, $source, $sourceType, "", $this->pid);
                             }
                         }
                     }
@@ -513,12 +511,12 @@ class Scholar {
                     } else {
                         $names = NameMatcher::formatName($mentorFirst, "", $mentorLast);
                     }
-                    return new Result(trim($names), $source, $sourceType, "", $this->pid);
+                    return new ScholarResult(trim($names), $source, $sourceType, "", $this->pid);
                 }
             } else if ($field == "summary_training_start") {
                 $startYear = REDCapManagement::findField($rows, $this->recordId, "mstp_matriculation_date_vu");
                 if ($startYear) {
-                    return new Result($startYear."-07-01", $source, $sourceType, "", $this->pid);
+                    return new ScholarResult($startYear."-07-01", $source, $sourceType, "", $this->pid);
                 }
             } else if ($field == "summary_training_end") {
                 $didGraduate = REDCapManagement::findField($rows, $this->recordId, "mstp_graduated_from_program");
@@ -532,18 +530,18 @@ class Scholar {
                 }
                 if (($didGraduate == "1") && $phdGraduationYear && $mdGraduationYear) {
                     if ($phdGraduationYear > $mdGraduationYear) {
-                        return new Result($phdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
+                        return new ScholarResult($phdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
                     } else {
-                        return new Result($mdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
+                        return new ScholarResult($mdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
                     }
                 } else if (($didGraduate == "1") && $phdGraduationYear) {
-                    return new Result($phdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
+                    return new ScholarResult($phdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
                 } else if (($didGraduate == "1") && $mdGraduationYear) {
-                    return new Result($mdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
+                    return new ScholarResult($mdGraduationYear."-06-01", $source, $sourceType, "", $this->pid);
                 }
             }
         }
-        return new Result("", "", "", "", $this->pid);
+        return new ScholarResult("", "", "", "", $this->pid);
     }
 
     private function getEcommonsId($rows) {
@@ -554,7 +552,7 @@ class Scholar {
 	    $mentorUseridField = "summary_mentor_userid";
         foreach ($rows as $row) {
             if (isset($row[$mentorUseridField]) && $row[$mentorUseridField]) {
-                $r = new Result($row[$mentorUseridField], "", "", "", $this->pid);
+                $r = new ScholarResult($row[$mentorUseridField], "", "", "", $this->pid);
                 $r->setField($mentorUseridField);
                 return $r;
             }
@@ -565,7 +563,7 @@ class Scholar {
 		$mentorUseridField = $mentorField."_userid";
 		foreach ($rows as $row) {
 			if (isset($row[$mentorUseridField]) && $row[$mentorUseridField]) {
-				$r = new Result($row[$mentorUseridField], $mentorResult->getSource(), "", "", $this->pid);
+				$r = new ScholarResult($row[$mentorUseridField], $mentorResult->getSource(), "", "", $this->pid);
 				$r->setField($mentorUseridField);
 				return $r;
 			}
@@ -612,15 +610,15 @@ class Scholar {
         }
 		if (!empty($uids)) {
             if (count($uids) == 1) {
-                return new Result($uids[0], $source, "Computer-Generated", "", $this->pid);
+                return new ScholarResult($uids[0], $source, "Computer-Generated", "", $this->pid);
             } else if (count($uids) > 1) {
                 Application::log("Warning: Lookup $sourceName userids for $firstName $lastName generated multiple: ".implode(", ", $uids), $this->pid);
-                return new Result(implode(", ", $uids), $source, "Computer-Generated", "", $this->pid);
+                return new ScholarResult(implode(", ", $uids), $source, "Computer-Generated", "", $this->pid);
             } else {
                 Application::log("Lookup $sourceName userids for $firstName $lastName generated no results.", $this->pid);
             }
         }
-		return new Result("", "", "", "", $this->pid);
+		return new ScholarResult("", "", "", "", $this->pid);
 	}
 
 	public static function getREDCapUseridsForName($firstName, $lastName) {
@@ -635,7 +633,7 @@ class Scholar {
 	private function getMentorText($rows) {
         $res = $this->getGenericValueForField($rows, "summary_mentor");
         $names = NameMatcher::parseAndFormatNameList($res->getValue());
-        return new Result(implode(", ", $names), $res->getSource(), $res->getSourceType(), $res->getDate(), $this->pid);
+        return new ScholarResult(implode(", ", $names), $res->getSource(), $res->getSourceType(), $res->getDate(), $this->pid);
 	}
 
 	public function getAllMentors() {
@@ -1399,29 +1397,29 @@ class Scholar {
             }
 	        $date = date("Y-m-d", $timestamps[0]);
 	        Application::log("calculateActivity {$this->recordId}: $lastOrFirst $entity returning $date", $this->pid);
-	        return new Result($date, "", "", "", $this->pid);
+	        return new ScholarResult($date, "", "", "", $this->pid);
         }
-	    return new Result("", "", "", "", $this->pid);
+	    return new ScholarResult("", "", "", "", $this->pid);
     }
 
     private function calculateCOEUSName($rows) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "coeus") {
-				new Result($row['coeus_person_name'], "", "", "", $this->pid);
+				new ScholarResult($row['coeus_person_name'], "", "", "", $this->pid);
 			}
 		}
-		return new Result("", "", "", "", $this->pid);
+		return new ScholarResult("", "", "", "", $this->pid);
 	}
 
 	private function getSurvey($rows) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "scholars") {
 				if ($row['check_name_first'] || $row['check_name_last']) {
-					return new Result(1, "", "", "", $this->pid); // YES
+					return new ScholarResult(1, "", "", "", $this->pid); // YES
 				}
 			}
 		}
-		return new Result(0, "", "", "", $this->pid); // NO
+		return new ScholarResult(0, "", "", "", $this->pid); // NO
 	}
 
 	private static function getNormativeRow($rows) {
@@ -1437,10 +1435,10 @@ class Scholar {
 				isset($row[$variable_date]) &&
 				($row[$variable_date] != "")) {
 
-				return new Result($row[$variable_date], $type, "", "", $pid);
+				return new ScholarResult($row[$variable_date], $type, "", "", $pid);
 			}
 		}
-		return new Result("", "", "", "", $pid);
+		return new ScholarResult("", "", "", "", $pid);
 	}
 
 
@@ -1449,7 +1447,7 @@ class Scholar {
     private function getAllOtherInstitutionsAsList($rows) {
         $institutions = $this->getAllOtherInstitutions($rows);
         $institutions = REDCapManagement::dedup1DArray($institutions);
-        return new Result(implode(", ", $institutions), "", "", "", $this->pid);
+        return new ScholarResult(implode(", ", $institutions), "", "", "", $this->pid);
     }
 
     public static function getInstitutionFields($otherFields = []) {
@@ -1461,7 +1459,7 @@ class Scholar {
     }
 
     private function getAllOtherInstitutions($rows) {
-	    $showDebug = SHOW_DEBUG_FOR_INSTITUTIONS;
+	    $showDebug = self::SHOW_DEBUG_FOR_INSTITUTIONS;
         $currentProjectInstitutions = Application::getInstitutions();
         for ($i = 0; $i < count($currentProjectInstitutions); $i++) {
             $currentProjectInstitutions[$i] = trim(strtolower($currentProjectInstitutions[$i]));
@@ -1712,10 +1710,10 @@ class Scholar {
         }
 
         if ($earliestPositionChangeDate) {
-            return new Result($earliestPositionChangeDate, "manual", "", $earliestPositionChangeEntryDate, $this->pid);
+            return new ScholarResult($earliestPositionChangeDate, "manual", "", $earliestPositionChangeEntryDate, $this->pid);
         }
 
-		return new Result("", "", "", "", $this->pid);
+		return new ScholarResult("", "", "", "", $this->pid);
 	}
 
 	private function hasInstitution($institutionToCheck) {
@@ -2258,7 +2256,7 @@ class Scholar {
                 } else {
                     $newValue = 0;
                 }
-                $results[$field."___".$key] = new Result($newValue, "", "", "", $this->pid);
+                $results[$field."___".$key] = new ScholarResult($newValue, "", "", "", $this->pid);
             }
             return $results;
         }
@@ -2377,7 +2375,7 @@ class Scholar {
     private static function translateDegreesFromList($degrees, $pid) {
 	    $value = "";
         if (empty($degrees)) {
-            return new Result("", "", "", "", $pid);
+            return new ScholarResult("", "", "", "", $pid);
         } else if (in_array("mdphd", $degrees)) {
             $value = 10;  # MD/PhD
         } else if (in_array("md", $degrees) || in_array(1, $degrees) || in_array(9, $degrees) || in_array(10, $degrees) || in_array(7, $degrees) || in_array(8, $degrees) || in_array(14, $degrees) || in_array(12, $degrees)) { # MD
@@ -2438,7 +2436,7 @@ class Scholar {
         $value = self::translateDegreesFromList($degrees, $this->pid);
 
         $newValue = self::translateFirstDegree($value);
-        return new Result($newValue, "", "", "", $this->pid);
+        return new ScholarResult($newValue, "", "", "", $this->pid);
 	}
 
 	private function getPrimaryDepartment($rows) {
@@ -2468,7 +2466,7 @@ class Scholar {
                 $value = self::transferVFRSDepartment($value);
             }
             if ($value == "") {
-                return new Result("", "", "", "", $this->pid);
+                return new ScholarResult("", "", "", "", $this->pid);
             }
 
             $choices = DataDictionaryManagement::getChoices($this->metadata);
@@ -2511,7 +2509,7 @@ class Scholar {
                 $previousField = $result->getField();
             }
         } while ($proceed);
-		return new Result($value, $result->getSource(), "", "", $this->pid);
+		return new ScholarResult($value, $result->getSource(), "", "", $this->pid);
 	}
 
 	# VFRS did not use the 6-digit classification, so we must translate
@@ -2601,12 +2599,12 @@ class Scholar {
             if (in_array($value, [1,2])) {
                 if (in_array($field, $reversedFields) && ($value == 1)) {
                     # Male
-                    return new Result(2, $source, "", "", $this->pid);
+                    return new ScholarResult(2, $source, "", "", $this->pid);
                 } else if (in_array($field, $reversedFields) && ($value == 2)) {
                     # Female
-                    return new Result(1, $source, "", "", $this->pid);
+                    return new ScholarResult(1, $source, "", "", $this->pid);
                 } else {
-                    return new Result($value, $source, "", "", $this->pid);
+                    return new ScholarResult($value, $source, "", "", $this->pid);
                 }
             } else if ($choices[$field] && $choices[$field][$value]) {
 			    $label = $choices[$field][$value];
@@ -2619,12 +2617,12 @@ class Scholar {
                     $newValue = 98;
                 }
                 if ($newValue && $choices[$summaryField][$newValue]) {
-                    return new Result($newValue, $source, "", "", $this->pid);
+                    return new ScholarResult($newValue, $source, "", "", $this->pid);
                 }
             }
 			# forget others
 		}
-		return new Result("", "", "", "", $this->pid);
+		return new ScholarResult("", "", "", "", $this->pid);
 	}
 
     public function getRace($rows) {
@@ -2776,7 +2774,7 @@ class Scholar {
 			$date = self::convertToYYYYMMDD($date);
 		}
 
-		return new Result($date, $result->getSource(), "", "", $this->pid);
+		return new ScholarResult($date, $result->getSource(), "", "", $this->pid);
 	}
 
 	public function getCitizenship($rows) {
@@ -2792,10 +2790,10 @@ class Scholar {
 							$fieldValue = trim(strtolower($row[$field]));
 							if ($fieldValue == "1") {
 								# U.S. citizen, source unknown
-								return new Result('5', $fieldSource, "", "", $this->pid);
+								return new ScholarResult('5', $fieldSource, "", "", $this->pid);
 							} else if ($fieldValue) {
 								# Non U.S. citizen, status unknown
-								return new Result('6', $fieldSource, "", "", $this->pid);
+								return new ScholarResult('6', $fieldSource, "", "", $this->pid);
 							}
 						}
 					}
@@ -2813,10 +2811,10 @@ class Scholar {
 							$fieldValue = trim(strtolower($row[$field]));
 							if (in_array($fieldValue, $usValues)) {
 								# U.S. citizen, source unknown
-								return new Result('5', $fieldSource, "", "", $this->pid);
+								return new ScholarResult('5', $fieldSource, "", "", $this->pid);
 							} else if ($fieldValue) {
 								# Non U.S. citizen, status unknown
-								return new Result('6', $fieldSource, "", "", $this->pid);
+								return new ScholarResult('6', $fieldSource, "", "", $this->pid);
 							}
 						}
 					}
@@ -2849,7 +2847,7 @@ class Scholar {
 
 	# $vars is listed in order of priority; key = variable, value = data source
 	private function searchRowsForVars($rows, $vars, $byLatest = FALSE, $pid = "", $showDebug = FALSE) {
-		$result = new Result("", "", "", "", $this->pid);
+		$result = new ScholarResult("", "", "", "", $this->pid);
         $aryInstance = "";
         $latestTs = 0;
 		foreach ($vars as $var => $source) {
@@ -2916,7 +2914,7 @@ class Scholar {
                                     Application::log("$var: Setting date: ".$date." and value: ".$row[$var]);
                                 }
 								$latestTs = $currTs;
-								$result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
+								$result = new ScholarResult(self::transformIfDate($row[$var]), $source, "", $date, $pid);
 								$result->setField($var);
 								$result->setInstance($row['redcap_repeat_instance']);
 							}
@@ -2924,7 +2922,7 @@ class Scholar {
                             if ($showDebug) {
                                 Application::log("$var: Transformed Date: ".self::transformIfDate($row[$var]));
                             }
-							$result = new Result(self::transformIfDate($row[$var]), $source, "", "", $pid);
+							$result = new ScholarResult(self::transformIfDate($row[$var]), $source, "", "", $pid);
 							$result->setField($var);
 							$result->setInstance($row['redcap_repeat_instance']);
 							$latestTs = 1; // nominally low value
@@ -2936,7 +2934,7 @@ class Scholar {
                                 !$aryInstance
 								|| ($aryInstance > $row['redcap_repeat_instance'])
                             ) {
-								$result = new Result(self::transformIfDate($row[$var]), $source, "", $date, $pid);
+								$result = new ScholarResult(self::transformIfDate($row[$var]), $source, "", $date, $pid);
 								$result->setField($var);
 								$result->setInstance($row['redcap_repeat_instance']);
 								$aryInstance = $row['redcap_repeat_instance'];
@@ -2946,7 +2944,7 @@ class Scholar {
                             $equivalents = self::getEquivalents();
 						    if (count($splitVar) > 1) {
                                 $date = self::transformSplitDatesToYMD($splitVar, $row);
-                                $result = new Result($date, $source, "", $date, $pid);
+                                $result = new ScholarResult($date, $source, "", $date, $pid);
                             } else {
                                 $value = self::transformIfDate($row[$var]);
                                 if (isset($choices[$var])) {
@@ -2964,7 +2962,7 @@ class Scholar {
                                         }
                                     }
                                 }
-                                $result = new Result($value, $source, "", $date, $pid);
+                                $result = new ScholarResult($value, $source, "", $date, $pid);
                                 $result->setField($var);
                             }
                             return $result;
@@ -2985,7 +2983,7 @@ class Scholar {
         if ($showDebug) {
             Application::log("Returning blank");
         }
-		return new Result("", "", "", "", $this->pid);
+		return new ScholarResult("", "", "", "", $this->pid);
 	}
 
     private static function getEquivalents() {
@@ -3062,15 +3060,15 @@ class Scholar {
             }
             if (!empty($values)) {
                 $list = REDCapManagement::makeConjunction($values);
-                return new Result($list, "manual", "Manually Entered", "", $this->pid);
+                return new ScholarResult($list, "manual", "Manually Entered", "", $this->pid);
             }
         }
-        return new Result("", "", "", "", $this->pid);
+        return new ScholarResult("", "", "", "", $this->pid);
     }
 
 	private function getInstitution($rows) {
-	    $showDebug = SHOW_DEBUG_FOR_INSTITUTIONS;
-        $result = $this->getGenericValueForField($rows, "identifier_institution", TRUE, SHOW_DEBUG_FOR_INSTITUTIONS);
+	    $showDebug = self::SHOW_DEBUG_FOR_INSTITUTIONS;
+        $result = $this->getGenericValueForField($rows, "identifier_institution", TRUE, self::SHOW_DEBUG_FOR_INSTITUTIONS);
 		$value = $result->getValue();
 
 		if ($showDebug) {
@@ -3129,7 +3127,7 @@ class Scholar {
             if ($showDebug) {
                 Application::log("getInstitution returning blank", $this->pid);
             }
-			return new Result("", "", "", "", $this->pid);
+			return new ScholarResult("", "", "", "", $this->pid);
 		} else {
             if ($showDebug) {
                 Application::log("getInstitution returning ".$result->getValue(), $this->pid);
@@ -3146,7 +3144,7 @@ class Scholar {
 			$nodes = preg_split("/\//", $deptName);
 			if (count($nodes) == 2) {
 				$deptResult = $this->getPrimaryDepartment($rows);
-				return new Result($nodes[1], $deptResult->getSource(), "", "", $this->pid);
+				return new ScholarResult($nodes[1], $deptResult->getSource(), "", "", $this->pid);
 			}
 		}
 		return $result;
@@ -3194,7 +3192,7 @@ class Scholar {
                             $index = 8;
                             break;
                     }
-                    return new Result($index, "ldap", "Computer-Generated", "", $this->pid);
+                    return new ScholarResult($index, "ldap", "Computer-Generated", "", $this->pid);
                 }
             }
         }
@@ -3230,7 +3228,7 @@ class Scholar {
 									break;
 							}
 							if ($val) {
-								return new Result($val, $fieldSource, "", "", $this->pid);
+								return new ScholarResult($val, $fieldSource, "", "", $this->pid);
 							}
 						}
 					}
@@ -3287,7 +3285,7 @@ class Scholar {
 			foreach ($otherFields as $field => $fieldSource) {
 				foreach ($rows as $row) {
 					if (isset($row[$field]) && ($row[$field] != "")) {
-						return new Result($row[$field], $fieldSource, "", "", $this->pid);
+						return new ScholarResult($row[$field], $fieldSource, "", "", $this->pid);
 					}
 				}
 			} 
@@ -3295,10 +3293,10 @@ class Scholar {
 
 		$rankResult = $this->getCurrentRank($rows);
 		if (in_array($rankResult->getValue(), [6, 7])) {
-		    return new Result(3, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);;   // Tenured
+		    return new ScholarResult(3, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);;   // Tenured
         }
         if ($rankResult->getValue() == 4) {
-            return new Result(1, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);   // Not Tenure track
+            return new ScholarResult(1, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);   // Not Tenure track
         }
 
         $fieldsByInstrument = [
@@ -3311,9 +3309,9 @@ class Scholar {
             foreach ($fieldsByInstrument as $instrument => $field) {
                 if ($row['redcap_repeat_instrument'] == $instrument) {
                     if (in_array($row[$field], $tenured)) {
-                        return new Result(3, "ldap", "Computer-Generated", "", $this->pid);;
+                        return new ScholarResult(3, "ldap", "Computer-Generated", "", $this->pid);;
                     } else if (preg_match("/Research/", $row[$field])) {
-                        return new Result(1, "ldap", "Computer-Generated", "", $this->pid);;
+                        return new ScholarResult(1, "ldap", "Computer-Generated", "", $this->pid);;
                     }
                 }
             }
@@ -3395,7 +3393,7 @@ class Scholar {
 			if (in_array($currInstance, $instances) && $this->matchInstitutionInRow($value, $row)) {
 				foreach ($vars as $origField => $origSource) {
 					if (($source == $origSource) && $row[$origField]) {
-					    $result = new Result($row[$origField], $source, "", "", $this->pid);
+					    $result = new ScholarResult($row[$origField], $source, "", "", $this->pid);
 						$result->setField($origField);
 						$result->setInstance($currInstance);
 						return $result;
@@ -3403,7 +3401,7 @@ class Scholar {
 				}
 			}
 		}
-		return new Result("", "", "", "", $this->pid);
+		return new ScholarResult("", "", "", "", $this->pid);
 	}
 
 	public function getDemographicsArray() {
@@ -3587,10 +3585,10 @@ class Scholar {
 			$trainingRanks = array(9, 10);
 			foreach ($positionChanges as $startTs => $row) {
 				if ($row['promotion_rank'] && in_array($row['promotion_rank'], $trainingRanks) && $row['promotion_in_effect']) {
-					return new Result($row['promotion_in_effect'], "manual", "", "", $this->pid);
+					return new ScholarResult($row['promotion_in_effect'], "manual", "", "", $this->pid);
 				}
 			}
-			return new Result("", "", "", "", $this->pid);   // undecipherable
+			return new ScholarResult("", "", "", "", $this->pid);   // undecipherable
         }
 		return $result;
 	}
@@ -3637,9 +3635,9 @@ class Scholar {
     private function getMSTPMatriculationDate($rows) {
         $startYear = REDCapManagement::findField($rows, $this->recordId, "mstp_matriculation_date_vu");
         if ($startYear) {
-            return new Result("$startYear-07-01", "manual", "Manually Entered", "", $this->pid);   // undecipherable
+            return new ScholarResult("$startYear-07-01", "manual", "Manually Entered", "", $this->pid);   // undecipherable
         } else {
-            return new Result("", "", "", "", $this->pid);   // undecipherable
+            return new ScholarResult("", "", "", "", $this->pid);   // undecipherable
         }
     }
 
@@ -3648,11 +3646,11 @@ class Scholar {
         $mdYear = REDCapManagement::findField($rows, $this->recordId, "mstp_md_degree_received_date");
         if (!$phdYear || !$mdYear) {
             // current student - never graduated
-            return new Result("", "", "", "", $this->pid);   // undecipherable
+            return new ScholarResult("", "", "", "", $this->pid);   // undecipherable
         } else if ($phdYear > $mdYear) {
-            return new Result("$phdYear-06-01", "manual", "Manually Entered", "", $this->pid);   // undecipherable
+            return new ScholarResult("$phdYear-06-01", "manual", "Manually Entered", "", $this->pid);   // undecipherable
         } else {
-            return new Result("$mdYear-06-01", "manual", "Manually Entered", "", $this->pid);   // undecipherable
+            return new ScholarResult("$mdYear-06-01", "manual", "Manually Entered", "", $this->pid);   // undecipherable
         }
     }
 
@@ -3680,13 +3678,13 @@ class Scholar {
 				foreach ($positionChanges as $startTs => $row) {
 					if ($startTs == $trainingStart) {
 						if ($nextStart) {
-							return new Result($nextStart, "manual", "", "", $this->pid);
+							return new ScholarResult($nextStart, "manual", "", "", $this->pid);
 						}
 					}
 					$nextStart = $row['promotion_in_effect'];
 				}
 			}
-			return new Result("", "", "", "", $this->pid);   // undecipherable
+			return new ScholarResult("", "", "", "", $this->pid);   // undecipherable
 		}
 		return $result;
 	}
@@ -3713,11 +3711,11 @@ class Scholar {
                 list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
                 $data = json_decode($json, TRUE);
                 if ($this->checkForScopusError($data)) {
-                    return new Result("", "", "", "", $this->pid);
+                    return new ScholarResult("", "", "", "", $this->pid);
                 } else {
                     foreach ($data["author-retrieval-response"] as $authorRow) {
                         if ($authorRow['h-index']) {
-                            return new Result($authorRow['h-index'], "", "", "", $this->pid);
+                            return new ScholarResult($authorRow['h-index'], "", "", "", $this->pid);
                         }
                     }
                 }
@@ -3734,7 +3732,7 @@ class Scholar {
                             list($resp, $json) = REDCapManagement::downloadURL($url, $this->pid);
                             $data = json_decode($json, TRUE);
                             if ($this->checkForScopusError($data)) {
-                                return new Result("", "", "", "", $this->pid);
+                                return new ScholarResult("", "", "", "", $this->pid);
                             } else if ($data['search-results']) {
                                 foreach ($data['search-results']['entry'] as $authorRow) {
                                     if ($authorRow['dc:identifier']) {
@@ -3750,7 +3748,7 @@ class Scholar {
                                     $data = json_decode($json, TRUE);
                                     foreach ($data["author-retrieval-response"] as $authorRow) {
                                         if ($authorRow['h-index']) {
-                                            return new Result($authorRow['h-index'], "", "", "", $this->pid);
+                                            return new ScholarResult($authorRow['h-index'], "", "", "", $this->pid);
                                         }
                                     }
                                 }
@@ -3760,7 +3758,7 @@ class Scholar {
                 }
             }
         }
-        return new Result("", "", "", "", $this->pid);
+        return new ScholarResult("", "", "", "", $this->pid);
     }
 
     private function getWoSHIndex($rows) {
@@ -3807,9 +3805,9 @@ class Scholar {
             $avgAuthors = array_sum($numAuthors) / count($numAuthors);
             $hi = $hIndex / $avgAuthors;
             $prettyHI = REDCapManagement::pretty($hi, 3);
-            return new Result($prettyHI, "", "", "", $this->pid);
+            return new ScholarResult($prettyHI, "", "", "", $this->pid);
         }
-        return new Result("", "", "", "", $this->pid);
+        return new ScholarResult("", "", "", "", $this->pid);
     }
 
     # From Measuring and Improving Research Impact by Anne-Wil Harzing, pp. 25-29
@@ -3840,11 +3838,11 @@ class Scholar {
                 $numYears = ceil(DateManagement::getYearDuration($earliestDate, $latestDate));
                 if ($numYears > 0) {
                     $hiAnnual = $hiNorm / $numYears;
-                    return new Result(REDCapManagement::pretty($hiAnnual, 3), "", "", "", $this->pid);
+                    return new ScholarResult(REDCapManagement::pretty($hiAnnual, 3), "", "", "", $this->pid);
                 }
             }
         }
-        return new Result("", "", "", "", $this->pid);
+        return new ScholarResult("", "", "", "", $this->pid);
     }
 
     # From Measuring and Improving Research Impact by Anne-Wil Harzing, pp. 25-29
@@ -3869,9 +3867,9 @@ class Scholar {
                 # this might not be called when $g = count($timesCitedValues)
                 $g--;
             }
-            return new Result($g, "", "", "", $this->pid);
+            return new ScholarResult($g, "", "", "", $this->pid);
         }
-        return new Result("", "", "", "", $this->pid);
+        return new ScholarResult("", "", "", "", $this->pid);
     }
 
     private function getTimesCitedValues($rows, $timesCitedField) {
@@ -3902,9 +3900,9 @@ class Scholar {
                 }
             } while ($i < count($values) && ($numValid >= $i));
             $i--;
-            return new Result($i, "", "", "", $this->pid);
+            return new ScholarResult($i, "", "", "", $this->pid);
         }
-        return new Result("", "", "", "", $this->pid);
+        return new ScholarResult("", "", "", "", $this->pid);
     }
 
     public function isLGBTQ($rows) {
@@ -3954,7 +3952,7 @@ class Scholar {
 		$disabilityValue = $this->getDisabilityStatus($rows)->getValue();
 
         if (($this->pid == NEWMAN_SOCIETY_PROJECT) && $this->isLGBTQ($rows)) {
-            return new Result("1", "", "", "", $this->pid);
+            return new ScholarResult("1", "", "", "", $this->pid);
         }
 
         $field = "summary_race_ethnicity";
@@ -3965,7 +3963,7 @@ class Scholar {
             if (isset($normativeRow[$variable]) && ($normativeRow[$variable] !== "") && ($normativeRow[$variable] != 4)) {
                 $eth = $normativeRow[$variable];
                 if ($eth == 1) {      // Hispanic
-                    return new Result("1", "", "", "", $this->pid);
+                    return new ScholarResult("1", "", "", "", $this->pid);
                 }
             }
         }
@@ -3979,7 +3977,7 @@ class Scholar {
                 $value = "0";
             }
             if ($value !== "") {
-                return new Result($value, "manual", "Manually Entered", "", $this->pid);
+                return new ScholarResult($value, "manual", "Manually Entered", "", $this->pid);
             }
         }
 
@@ -4005,7 +4003,7 @@ class Scholar {
                 $value = "0";
             }
         }
-		return new Result($value, "", "", "", $this->pid);
+		return new ScholarResult($value, "", "", "", $this->pid);
 	}
 
 	private function getDisadvantagedStatus($rows) {
@@ -4443,192 +4441,3 @@ class Scholar {
     protected static $skipJobs = ["Student Expense Only", ""];
 }
 
-class Result {
-	public function __construct($value, $source, $sourceType, $date, $pid) {
-		$this->value = $value;
-		$this->source = self::translateSourceIfNeeded($source, $pid);
-		$this->sourceType = $sourceType;
-		$this->date = $date;
-		$this->pid = $pid;
-		$this->field = "";
-		$this->instance = "";
-	}
-
-    public function trimResult() {
-        $this->trimValue();
-    }
-
-    public function trimValue() {
-        $this->value = trim($this->value);
-    }
-
-    public function displayInText() {
-	    $properties = [];
-	    $properties[] = "value='".$this->value."'";
-	    if ($this->source) {
-	        $properties[] = "source=".$this->source;
-        }
-	    if ($this->sourceType) {
-	        $properties[] = "sourceType=".$this->sourceType;
-        }
-	    if ($this->date) {
-	        $properties[] = "date=".$this->date;
-        }
-	    if ($this->field) {
-	        $properties[] = "field=".$this->field;
-        }
-	    if ($this->instance) {
-	        $properties[] = "instance=".$this->instance;
-        }
-	    if ($this->pid) {
-	        $properties[] = "pid=".$this->pid;
-        }
-	    return implode("; ", $properties);
-    }
-
-	public function setInstance($instance) {
-		$this->instance = $instance;
-	}
-
-	public function getInstance() {
-		return $this->instance;
-	}
-
-	public function setField($field) {
-		$this->field = $field;
-	}
-
-	public function getField() {
-		return $this->field;
-	}
-
-	public function setValue($val) {
-		$this->value = $val;
-	}
-
-	public function getValue() {
-		return $this->value;
-	}
-
-	public function getSource() {
-		return $this->source;
-	}
-
-    public function setSource($src) {
-        $this->source = $src;
-        $this->sourceType = self::calculateSourceType($src, $this->pid);
-    }
-
-	public function getSourceType() {
-		if (!$this->sourceType) {
-			$this->sourceType = self::calculateSourceType($this->source, $this->pid);
-		}
-		return $this->sourceType;
-	}
-
-	public function getDate() {
-		return $this->date;
-	}
-
-	# returns index from source's choice array
-	protected static function translateSourceIfNeeded($source, $pid) {
-		$sourceChoices = Scholar::getSourceChoices([], $pid);
-		foreach ($sourceChoices as $index => $label) {
-			if (($label == $source) || ($index == $source)) {
-				return $index;
-			}
-		}
-		return "";
-	}
-
-	public static function calculateSourceType($source, $pid = "") {
-		$selfReported = array("scholars", "followup", "vfrs");
-		$newman = array( "data", "sheet2", "demographics", "new2017", "k12", "nonrespondents", "manual" );
-
-		if ($source == "") {
-			$sourcetype = "";
-		} else if (in_array($source, $selfReported)) {
-            $sourcetype = "1";
-        } else if ($pid && in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "1", $pid))) {
-            $sourcetype = "1";
-		} else if (in_array($source, $newman)) {
-            $sourcetype = "2";
-        } else if ($pid && in_array($source, Scholar::getAdditionalSourceTypes(Application::getModule(), "2", $pid))) {
-			$sourcetype = "2";
-		} else {
-			$sourcetype = "0";
-		}
-
-		return $sourcetype;
-	}
-
-	protected $value;
-	protected $source;
-	protected $sourceType;
-	protected $date;
-	protected $field;
-	protected $instance;
-	protected $pid;
-}
-
-class RaceEthnicityResult extends Result {
-	public function __construct($value, $raceSource, $ethnicitySource, $pid = "") {
-		$this->value = $value;
-		$this->raceSource = self::translateSourceIfNeeded($raceSource, $pid);
-		$this->ethnicitySource = self::translateSourceIfNeeded($ethnicitySource, $pid);
-		$this->pid = $pid;
-	}
-
-	public function getRaceSource() {
-		return $this->raceSource;
-	}
-
-	public function getEthnicitySource() {
-		return $this->ethnicitySource;
-	}
-
-	public function getRaceSourceType() {
-		return self::calculateSourceType($this->raceSource, $this->pid);
-	}
-
-	public function getEthnicitySourceType() {
-		return self::calculateSourceType($this->ethnicitySource, $this->pid);
-	}
-
-	private $raceSource;
-	private $ethnicitySource;
-}
-
-class Results {
-	public function __construct() {
-		$this->results = [];
-		$this->fields = [];
-	}
-
-	public function addResult($field, $result) {
-		$this->results[] = $result;
-		$this->fields[] = $field;
-	}
-
-	# precondition: count($this->results) == count($this->fields)
-	public function getNumberOfResults() {
-		return count($this->results);
-	}
-
-	public function getField($i) {
-		if ($i < $this->getNumberOfResults()) {
-			return $this->fields[$i];
-		}
-		return "";
-	}
-
-	public function getResult($i) {
-		if ($i < $this->getNumberOfResults()) {
-			return $this->results[$i];
-		}
-		return NULL;
-	}
-
-	private $results;
-	private $fields;
-}

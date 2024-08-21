@@ -168,7 +168,7 @@ class Cohorts {
 		foreach ($this->configs as $title => $configAry) {
 			$config = $this->getCohort($title);
 			if ($config) {
-				$configFields = $config->getFields($this->metadata);
+				$configFields = $config->getFields();
 				$allFields = array_unique(array_merge($allFields, $configFields));
 			} else {
 				return [];

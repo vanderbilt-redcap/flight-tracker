@@ -688,8 +688,10 @@ class CronManager {
                             $pidMssg = "[No pids specified]";
                         }
                         $pidsToRun = $firstBatchQueue["pids"] ?? [$firstBatchQueue["pid"]];
-                        foreach ($pidsToRun as $myPid) {
-                            Application::log($this->title.": Promoting ".$firstBatchQueue['method']." for $pidMssg to RUN (".count($batchQueue)." items in batch queue; ".count($firstBatchQueue['records'] ?? [])." records) at ".self::getTimestamp(), $myPid);
+                        if (is_array($pidsToRun)) {
+                            foreach ($pidsToRun as $myPid) {
+                                Application::log($this->title.": Promoting ".$firstBatchQueue['method']." for $pidMssg to RUN (".count($batchQueue)." items in batch queue; ".count($firstBatchQueue['records'] ?? [])." records) at ".self::getTimestamp(), $myPid);
+                            }
                         }
                         $this->saveFirstBatchQueueItemToDB($firstBatchQueue, $batchQueue);
                         if (isset($firstBatchQueue['pids'])) {
@@ -778,9 +780,11 @@ class CronManager {
             return;
         }
         $firstBatchItem = $this->getFirstBatchQueueItem($batchQueue);
-        $pidsToRun = $firstBatchQueue["pids"] ?? [$firstBatchItem["pid"]];
-        foreach ($pidsToRun as $myPid) {
-            Application::log($this->title.": Done with ".$firstBatchItem['method']." at ".self::getTimestamp(), $myPid);
+        $pidsToRun = $firstBatchItem["pids"] ?? [$firstBatchItem["pid"]];
+        if (is_array($pidsToRun)) {
+            foreach ($pidsToRun as $myPid) {
+                Application::log($this->title.": Done with ".$firstBatchItem['method']." at ".self::getTimestamp(), $myPid);
+            }
         }
         $firstBatchItem['status'] = "DONE";
         $firstBatchItem['endTs'] = time();

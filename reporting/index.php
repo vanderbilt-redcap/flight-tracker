@@ -115,7 +115,7 @@ if (file_exists(dirname(__FILE__)."/../customGrants.php")) {
 
 <h3>Sign Up New Scholars</h3>
 <p class="centered max-width red">To sign up scholars to these lists, fill out a Custom Grant for each scholar. <?= $note ?> Under role, sign them up to your grant as a General Trainee, Pre-Doctoral Trainee, or Post-Doctoral Trainee. Then verify that the scholar is a part of the lists below.</p>
-<h4><a href="<?= Application::link('reporting/signup.php') ?>">Quick Sign Up</a></h4>
+<h4><a href="<?= Application::link('appointScholars.php')."&input=title" ?>">Appoint a Group of Scholars</a></h4>
 
 <table class="centered max-width bordered">
     <tbody>

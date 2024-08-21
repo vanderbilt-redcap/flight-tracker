@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.12.1";
+		return "6.13.0";
 	}
 
     public static function getLocalhostPluginPid() {
@@ -1277,7 +1277,7 @@ class CareerDev {
                 "NIH Reporting Tables 5 &amp; 8" => self::link("reporting/index.php"),
                 "Upload Prior NIH Reporting Tables" => self::link("reporting/upload_react/run/index.php"),
                 "List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
-                "K2R Conversion Calculator" => self::link("/k2r/index.php"),
+                "Conversion Calculator" => self::link("/k2r/index.php"),
                 "Kaplan-Meier Conversion Success Curve" => self::link("/charts/kaplanMeierCurve.php"),
                 "Configure Application" => self::link("/config.php"),
                 "Configure Summaries" => self::link("/config.php")."&order",
