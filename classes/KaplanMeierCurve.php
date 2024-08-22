@@ -107,11 +107,11 @@ class KaplanMeierCurve {
         } else if ($parameter == "firstTime") {
             return !isset($_GET['measType']);
         } else if ($parameter == "measType") {
-            return $_GET['measType'] ?? "both";
+            return Sanitizer::sanitize($_GET['measType'] ?? "both");
         } else if ($parameter == "startDateSource") {
-            return $_GET['startDateSource'] ?? "end_last_training_grant";
+            return Sanitizer::sanitize($_GET['startDateSource'] ?? "end_last_training_grant");
         } else if ($parameter == "meas") {
-            return $_GET['measurement'] ?? "years";
+            return Sanitizer::sanitize($_GET['measurement'] ?? "years");
         } else if ($parameter == "measUnit") {
             if (isset($_GET['measurement'])) {
                 $meas = self::getParam("meas");
@@ -133,7 +133,7 @@ class KaplanMeierCurve {
                 return "";
             }
         } else if ($parameter == "graphTypes") {
-            $ids = $_GET['graphTypes'] ?? [];
+            $ids = Sanitizer::sanitizeArray($_GET['graphTypes'] ?? []);
             $conversions = self::getGraphTypes();
             $texts = [];
             foreach ($ids as $id) {
