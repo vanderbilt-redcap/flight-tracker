@@ -101,3 +101,5 @@ footer .smaller,footer .smaller a { font-size: 12px !important; }
 #newPost { width: 600px; height: 200px; }
 .max-width-400 { max-width: 400px; }
 .max-width-600 { max-width: 600px; }
+.dropScore { float: left; font-weight: bold; color: #319f48; font-size: 36px; line-height: 36px; padding-left: 8px; }
+.greentext { color: #319f48; }

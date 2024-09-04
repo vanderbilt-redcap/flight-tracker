@@ -105,24 +105,25 @@ class Publications {
         $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://".$server.$uri;
         if (isset($_GET['limitPubs'])) {
             $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
-            $status = "<span class='smaller bolded'>Currently limiting pubs to after $limitYear</span>";
+            $status = "<span class='bolded'>Currently limiting pubs to after $limitYear</span>";
             if (preg_match("/&limitPubs=\d+/", $url)) {
                 $newUrl = preg_replace("/&limitPubs=\d+/", "", $url);
             } else {
                 $newUrl = preg_replace("/limitPubs=\d+&/", "", $url);
             }
-            $buttonText = "Show All Pubs";
+            $buttonText = "Click to Show All Pubs";
             $nextLine = "";
         } else {
             $limitYear = self::DEFAULT_LIMIT_YEAR;
-            $status = "<span class='smaller bolded'>Currently showing all pubs</span>";
+            $status = "<span class='bolded'>Currently showing all pubs</span>";
             $newUrl = $url."&limitPubs=$limitYear";
-            $buttonText = "Limit Pubs to After $limitYear";
+            $buttonText = "Click to Limit Pubs to After $limitYear";
             $nextLine = "<br/><span class='smallest'>PubMed's match-quality increased after $limitYear</span>";
         }
-        $buttonClassText = "";
         if ($buttonClass) {
-            $buttonClassText = "class='$buttonClass'";
+            $buttonClassText = "class='smaller $buttonClass'";
+        } else {
+            $buttonClassText = "class='smaller'";
         }
         return "<$elementTag class='centered'>$status<br/><button $buttonClassText onclick='location.href=\"$newUrl\"; return false;'>$buttonText</button>$nextLine</$elementTag>";
     }
@@ -1314,6 +1315,7 @@ class Publications {
                                 "redcap_repeat_instance" => $pmidsWithInstances[$preprintPMID],
                                 "redcap_repeat_instrument" => "citation",
                                 "citation_include" => "0",
+                                "citation_complete" => "0",
                             ];
                         }
                     }
@@ -1321,6 +1323,11 @@ class Publications {
                 if (!empty($includeChangeRows)) {
                     Upload::rows($includeChangeRows, $token, $server);
                 }
+            }
+            if ($newPMIDIncludeStatus == "1") {
+                $newCompleteStatus = "2";
+            } else {
+                $newCompleteStatus = "1";
             }
 
             $row = [
@@ -1344,7 +1351,7 @@ class Publications {
                 "citation_affiliations" => json_encode($affiliations),
                 "citation_pages" => $pages,
                 "citation_grants" => implode("; ", $assocGrants),
-                "citation_complete" => "2",
+                "citation_complete" => $newCompleteStatus,
             ];
             $token = Application::getSetting("token", $pid);
             $server = Application::getSetting("server", $pid);
@@ -2387,7 +2394,7 @@ class Publications {
     }
 
 	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = [], $pid = NULL, $getBibliometricInfo = TRUE) {
-        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
         $upload = [];
 		$instance = $startInstance;
 		$pullSize = self::getPMIDLimit();
@@ -2424,6 +2431,12 @@ class Publications {
                                 $upload[$j]["citation_field_citation_rate"] = $iCite->getVariable($pmid, "field_citation_rate");
                                 $upload[$j]["citation_nih_percentile"] = $iCite->getVariable($pmid, "nih_percentile");
                                 $upload[$j]["citation_rcr"] = $iCite->getVariable($pmid, "relative_citation_ratio");
+                                if (in_array("citation_referencing", $metadataFields)) {
+                                    $sep = ", ";
+                                    $upload[$j]["citation_icite_cited_by_clinical"] = implode($sep, $iCite->getVariable($pmid, "cited_by_clin") ?: []);
+                                    $upload[$j]["citation_icite_cited_by"] = implode($sep, $iCite->getVariable($pmid, "cited_by") ?: []);
+                                    $upload[$j]["citation_icite_referencing"] = implode($sep, $iCite->getVariable($pmid, "references") ?: []);
+                                }
                                 if (in_array("citation_icite_last_update", $metadataFields)) {
                                     $upload[$j]["citation_icite_last_update"] = date("Y-m-d");
                                 }
@@ -2467,6 +2480,9 @@ class Publications {
             "citation_field_citation_rate",
             "citation_nih_percentile",
             "citation_rcr",
+            "citation_icite_cited_by_clinical",
+            "citation_icite_cited_by",
+            "citation_icite_referencing",
             "citation_icite_last_update",
         ];
 

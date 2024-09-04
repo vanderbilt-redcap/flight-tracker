@@ -55,7 +55,7 @@ if (isset($_POST['newUids'])) {
     $upload = [];
     $itemsToAdjudicate = [];
     foreach ($records as $recordId) {
-        if (isset($mentorNames[$recordId]) && is_countable($mentorNames[$recordId]) && is_countable($mentorUserids[$recordId])) {
+        if ($mentorNames[$recordId]) {
             $numMentorNames = count($mentorNames[$recordId]);
             $numMentorUserids = count($mentorUserids[$recordId]);
             if ($numMentorNames > $numMentorUserids) {

@@ -490,122 +490,32 @@ class Portal
         return $html;
     }
 
-    public function formatCollaborators($matches) {
-        if (empty($matches)) {
-            return "<p>No matches found. Perhaps try another topic?</p>";
-        }
-
-        $html = "";
-        $dataByName = [];
-        $splitNames = [];
-        foreach ($matches as $match) {
-            list($firstName, $lastName) = NameMatcher::splitName($match["name"], 2);
-            $foundInPrior = FALSE;
-            foreach ($splitNames as $n => $ary) {
-                list($fn, $ln) = $ary;
-                if (NameMatcher::matchName($fn, $ln, $firstName, $lastName)) {
-                    $foundInPrior = $n;
-                    break;
-                }
-            }
-            $pmid = $match["pmid"];
-            $email = strtolower($match["email"] ?? "");
-            if ($foundInPrior) {
-                if (!in_array($pmid, $dataByName[$foundInPrior]["pmids"] ?? [])) {
-                    if (!isset($dataByName[$foundInPrior]["pmids"])) {
-                        $dataByName[$foundInPrior]["pmids"] = [];
-                    }
-                    if (!isset($dataByName[$foundInPrior]["score"])) {
-                        $dataByName[$foundInPrior]["score"] = 0;
-                    }
-                    $dataByName[$foundInPrior]["pmids"][] = $pmid;
-                    $dataByName[$foundInPrior]["score"] += $match["score"];
-                }
-                if ($email && !in_array($email, $dataByName[$foundInPrior]["emails"] ?? [])) {
-                    if (!isset($dataByName[$foundInPrior]["emails"])) {
-                        $dataByName[$foundInPrior]["emails"] = [];
-                    }
-                    $dataByName[$foundInPrior]["emails"][] = $email;
-                }
-            } else {
-                $shorterName = NameMatcher::formatName($firstName, "", $lastName);
-                $splitNames[$shorterName] = [$firstName, $lastName];
-                $dataByName[$shorterName] = [
-                    "pmids" => [$pmid],
-                    "emails" => [],
-                    "name" => $shorterName,
-                    "pid" => $match["pid"],
-                    "record" => $match["record"],
-                    "score" => $match["score"],
-                    "terms" => $match["matched_terms"],
-                ];
-                if ($email) {
-                    $dataByName[$shorterName]["emails"][] = $email;
-                }
+    public function getAlternativeTopics($topics) {
+        if (Application::isVanderbilt()) {
+            $this->usesAI = TRUE;
+            if (!Application::isLocalhost()) {
+                $openAI = new OpenAI((int) $pids[0] ?? $this->pid);
+                return $openAI->searchForAlternateTopics($topics);
             }
         }
-        $compiledPMIDs = array_values($dataByName);
-        usort($compiledPMIDs, function ($a, $b) { return $a["score"] <=> $b["score"]; } );
-
-        foreach ($compiledPMIDs as $match) {
-            if (!empty($match["pmids"])) {
-                $emailLinks = [];
-                foreach ($match["emails"] ?? [] as $email) {
-                    $emailLinks[] = "<a href='mailto:$email'>$email</a>";
-                }
-                # "%2C+" is the urlencoded ", "
-                $pubMedLink = "https://pubmed.ncbi.nlm.nih.gov/?term=".implode("%2C+", $match["pmids"])."&sort=pubdate";
-                if (count($match["pmids"]) == 1) {
-                    $pluralPubs = "";
-                    $pluralVerb = "es";
-                    $pronoun = "It";
-                } else {
-                    $pluralPubs = "s";
-                    $pluralVerb = "";
-                    $pronoun = "They";
-                }
-                $score = $match["score"] ?? 0;
-                $name = $match["name"] ?? "Unknown Name";
-
-                $html .= "<p class='centered max-width'>Score ".REDCapManagement::pretty($score).": <strong>$name</strong> has ".count($match["pmids"])." publication".$pluralPubs." that match$pluralVerb this topic. <a href='$pubMedLink' target='_new'>$pronoun can be accessed via PubMed.</a>";
-                if ($this->usesAI && !empty($match["terms"])) {
-                    $terms = [];
-                    foreach ($match["terms"] as $term) {
-                        $terms[] = "\"$term\"";
-                    }
-                    $html .= "<br/>Matched terms: ".REDCapManagement::makeConjunction($terms);
-                }
-                if (empty($emailLinks)) {
-                    $html .= "<br/>No emails on file.";
-                } else {
-                    $emailPlural = (count($emailLinks) == 1) ? "" : "s";
-                    $html .= "<br/>Email$emailPlural on file: ".implode(", ", $emailLinks).".";
-                }
-                $html .= "</p>";
-                # I thought about adding a word cloud, adapted from publications/wordCloud.php into a new class.
-                # However, upon further reflection, a word cloud might obscure the results some by pulling in other topics.
-                # Plus, it never received much visible traction with anyone but me in Huddle.
-                # So I'm skipping it for now, but I'm documenting here in case it should be added at a later date.
-                # I kept pid and record in $matches so that additions can be easily made if desired.
-            }
-        }
-
-        return $html;
+        return [];
     }
 
-    public function searchForCollaborators($topics) {
-        $pids = Application::getActivePids();
-        $fieldsToMatchOn = ["citation_mesh_terms" => "MeSH Terms"];
-        $alternateTopics = [];
-        if (Application::isVanderbilt()) {
-            $fieldsToMatchOn["citation_ai_keywords"] = "AI Keywords";
-            $pids = Application::getActivePids();
-
-            if (!Application::isLocalhost()) {
-                $openAI = new OpenAI($this->pid);
-                $alternateTopics = $openAI->searchForAlternateTopics($topics);
+    private static function getNameFromListIfPossible(string $requestedName, array $priorNames): string {
+        list($requestedFirst, $requestedLast) = NameMatcher::splitName($requestedName, 2);
+        foreach ($priorNames as $priorName) {
+            list($fn, $ln) = NameMatcher::splitName($priorName, 2);
+            if (NameMatcher::matchName($fn, $ln, $requestedFirst, $requestedLast)) {
+                return $priorName;
             }
-            $this->usesAI = TRUE;
+        }
+        return NameMatcher::formatName($requestedFirst, "", $requestedLast);
+    }
+
+    public function searchForCollaborators(array $topics, array $pids, array $priorNames, array $alternativeTopics): array {
+        $fieldsToMatchOn = ["citation_mesh_terms" => "MeSH Terms"];
+        if ($this->usesAI) {
+            $fieldsToMatchOn["citation_ai_keywords"] = "AI Keywords";
         }
         for ($i = 0; $i < count($topics); $i++) {
             $topics[$i] = strtolower($topics[$i]);
@@ -648,7 +558,7 @@ class Portal
                                         }
                                     }
                                 }
-                                foreach ($alternateTopics as $topic) {
+                                foreach ($alternativeTopics as $topic) {
                                     # AI suggested match
                                     if (in_array($topic, $terms)) {
                                         # complete
@@ -683,8 +593,14 @@ class Portal
                                         }
                                     }
                                     if ($name == "") {
-                                        $name = Download::fullNameByPid($pid, $recordId);
+                                        $name = self::getNameFromListIfPossible(Download::fullNameByPid($pid, $recordId), $priorNames);
                                         $email = Download::oneFieldForRecordByPid($pid, "identifier_email", $recordId);
+                                        if (is_array($email) && !empty($email)) {
+                                            $firstKey = array_keys($email)[0];
+                                            $email = $email[$firstKey];
+                                        } else if (is_array($email)) {
+                                            $email = "";
+                                        }
                                     }
                                     $pmid = $recordCitationPMIDs[$instance];
                                     $licensePlate = "$pid:$recordId";
@@ -741,7 +657,7 @@ class Portal
         $html .= "<p class='centered max-width' id='searchingDiv'></p>";
         $html .= "<p class='centered max-width' id='results'></p>";
 
-        $autocompleteJSUrl = Application::link("portal/js/autocomplete.js");
+        $autocompleteJSUrl = Application::link("portal/js/autocomplete.js", $this->pid);
         $html .= "<script src='$autocompleteJSUrl'></script>";
         return $html;
     }

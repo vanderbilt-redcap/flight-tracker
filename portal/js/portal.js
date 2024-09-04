@@ -73,16 +73,166 @@ class Portal {
             return;
         }
 
-        const postdata = {
-            action: 'search_projects_for_collaborator',
-            topics: topics
-        };
-        const specialLoadingDiv = "#searchingDiv";
-        this.updateLoadingBox("Searching for a Collaborator... This may take some time.", specialLoadingDiv)
-        this.runPost(url, postdata, (data) => {
-            this.updateLoadingBox("", specialLoadingDiv)
-            $('#results').html(data.html ?? "<p>No matches found. Perhaps try another topic?</p>");
+        this.stateData.collaboratorMatches = {};
+        this.runPost(this.url, {action: 'getPids'}, (data) => {
+            const pids = data['pids'];
+            if (pids.length === 0) {
+                this.makeCollaboratorHTML(0);
+            } else {
+                const specialLoadingDiv = "#searchingDiv";
+                this.updateLoadingBox("Searching for a Collaborator... This may take some time.", specialLoadingDiv)
+                const pidBatches = this.batchPids(pids, 1);
+                const doneCallback = function(self) { self.updateLoadingBox("", specialLoadingDiv); };
+                const numProjectsLeft = this.getNumberOfProjectsInBatches(pidBatches, 0);
+
+                $('#results').html(this.makeCollaboratorHTML(numProjectsLeft));
+                this.iterateForCollaborators(url, topics, pidBatches, 0, null, doneCallback);
+            }
         });
+    }
+
+    processNewMatches = function(matches) {
+        const onlyUnique = function(value, index, array) { return array.indexOf(value) === index; };
+        for (let i = 0; i < matches.length; i++) {
+            const match = matches[i];
+            const name = match.name;    // names are formatted server-side to match against prior names
+            const pmid = match.pmid;
+            const email = match.email ?? "";
+            if (typeof this.stateData.collaboratorMatches[name] !== "undefined") {
+                // existing name
+                if (this.stateData.collaboratorMatches[name].pmids.indexOf(pmid) < 0) {
+                    // new PMID
+                    this.stateData.collaboratorMatches[name].pmids.push(pmid);
+                    this.stateData.collaboratorMatches[name].score += match.score;
+                    if (typeof match.matched_terms == "object") {
+                        // flatten into array - PHP passed it as an associative array
+                        const newArray = [];
+                        for (const item in match.matched_terms) {
+                            newArray.push(match.matched_terms[item]);
+                        }
+                        match.matched_terms = newArray;
+                    }
+                    this.stateData.collaboratorMatches[name].terms = this.stateData.collaboratorMatches[name].terms.concat(match.matched_terms ?? []).filter(onlyUnique);
+                }
+            } else {
+                // new name
+                this.stateData.collaboratorMatches[name] = {
+                    pmids: [pmid],
+                    emails: [],   // added below if it exists
+                    name: name,
+                    pid: match.pid,
+                    record: match.record,
+                    score: match.score,
+                    terms: match.matched_terms ?? []
+                };
+            }
+            // compile emails for all instances
+            if ((email !== '') && (this.stateData.collaboratorMatches[name].emails.indexOf(email) < 0)) {
+                this.stateData.collaboratorMatches[name].emails.push(email);
+            }
+        }
+    }
+
+    getSortedCollaboratorMatches = function() {
+        const matchValues = Object.values(this.stateData.collaboratorMatches);
+        matchValues.sort((a, b) => {
+            // highest score on top - descending by score
+            if (b.score > a.score) {
+                return 1;
+            } else if (a.score > b.score) {
+                return -1;
+            } else {
+                return 0;
+            }
+        });
+        return matchValues;
+    }
+
+    makeCollaboratorHTML = function(numProjectsLeft) {
+        const projectNoun = (numProjectsLeft === 1) ? "project" : "projects";
+        const numLeftMessage = "There are still "+numProjectsLeft+" more "+projectNoun+" to search...";
+        const numNameMatches = Object.keys(this.stateData.collaboratorMatches).length;
+        if ((numNameMatches === 0)  && (numProjectsLeft === 0)) {
+            if (numProjectsLeft === 0) {
+                return "<p>No matches found. Perhaps try another topic?</p>";
+            } else {
+                return "<p>No matches found yet. "+numLeftMessage+"</p>";
+            }
+        } else {
+            let html = '';
+            if (numProjectsLeft !== 0) {
+                const namePlural = (numNameMatches === 1) ? "" : "s";
+                html += "<p>"+this.pretty(numNameMatches)+" name"+namePlural+" have been matched. "+numLeftMessage+"</p>";
+            }
+            const sortedMatches = this.getSortedCollaboratorMatches();
+            for (let i = 0; i < sortedMatches.length; i++) {
+                const match = sortedMatches[i];
+                if (match.pmids.length > 0) {
+                    const emailLinks = [];
+                    for (let j = 0; j < match.emails.length; j++) {
+                        emailLinks.push("<a href='mailto:"+match.emails[j]+"'>"+match.emails[j]+"</a>");
+                    }
+                    const pubMedLink = "https://pubmed.ncbi.nlm.nih.gov/?term="+encodeURIComponent(match.pmids.join(","))+"&sort=pubdate";
+                    const pluralPubs = (match.pmids.length === 1) ? "" : "s";
+                    const pluralVerb = (match.pmids.length === 1) ? "es" : "";
+                    const pronoun = (match.pmids.length === 1) ? "It" : "They";
+                    const score = match.score ?? 0;
+                    const name = match.name ?? "Unknown Name";
+
+                    html += "<p class='centered max-width'><span class='dropScore'>"+this.pretty(score)+" </span><strong class='greentext'>"+name+"</strong> has "+match.pmids.length+" publication"+pluralPubs+" that match"+pluralVerb+" this topic. <a href='"+pubMedLink+"' target='_new'>"+pronoun+" can be accessed via PubMed.</a>";
+                    const numTerms = match.terms.length;
+                    if (numTerms > 0) {
+                        const termPlural = (numTerms === 1) ? "" : "s";
+                        html += "<br/><strong>"+this.pretty(numTerms)+" matched term"+termPlural+": </strong><span class='smaller'>"+match.terms.join("; ")+"</span>";
+                    }
+                    if (emailLinks.length === 0) {
+                        html += "<br/>No emails on file.";
+                    } else {
+                        const emailPlural = (emailLinks.length === 1) ? "" : "s";
+                        html += "<br/>Email"+emailPlural+" on file: "+emailLinks.join(", ")+".";
+                    }
+                    html += "</p>";
+
+                    // I thought about adding a word cloud, adapted from publications/wordCloud.php into a new class.
+                    // However, upon further reflection, a word cloud might obscure the results some by pulling in other topics.
+                    // Plus, it never received much visible traction with anyone but me in Huddle.
+                    // So I'm skipping it for now, but I'm documenting here in case it should be added at a later date.
+                    // I kept pid and record in matches so that additions can be easily made if desired.
+                }
+            }
+            return html;
+        }
+    }
+
+    iterateForCollaborators = function(url, topics, pidBatches, i, alternativeTopics, doneCallback) {
+        if (i >= pidBatches.length) {
+            doneCallback(this);
+        } else {
+            const postdata = {
+                action: 'search_projects_for_collaborator',
+                topics: topics,
+                pids: pidBatches[i],
+                priorNames: Object.keys(this.stateData.collaboratorMatches)
+            };
+            // if undefined in postdata, alternativeTopics will be accessed by Flight Tracker and passed in the next iteration
+            if (alternativeTopics !== null) {
+                postdata['alternativeTopics'] = alternativeTopics;
+            }
+            this.runPost(url, postdata, (data) => {
+                this.processNewMatches(data.matches ?? []);
+                const numProjectsLeft = this.getNumberOfProjectsInBatches(pidBatches, i+1);
+                $('#results').html(this.makeCollaboratorHTML(numProjectsLeft));
+                this.iterateForCollaborators(url, topics, pidBatches, i + 1, data.alternativeTopics ?? [], doneCallback);
+            });
+        }
+    }
+
+    getNumberOfProjectsInBatches = function (pidBatches, startI) {
+        let numProjectsLeft = 0;
+        for (let j = startI; j < pidBatches.length; j++) {
+            numProjectsLeft += pidBatches[j].length;
+        }
+        return numProjectsLeft;
     }
 
     updateLoadingBox = function(mssg, specialLoadingDiv) {
@@ -97,6 +247,20 @@ class Portal {
         }
     }
 
+    batchPids = function(pids, numPidsInBatch)  {
+        const pidBatches = [];
+        for (let i = 0; i < pids.length; i += numPidsInBatch) {
+            const batch = [];
+            for (let j = i; (j < pids.length) && (j < i + numPidsInBatch); j++) {
+                batch.push(pids[j]);
+            }
+            if (batch.length > 0) {
+                pidBatches.push(batch);
+            }
+        }
+        return pidBatches;
+    }
+
     getMatches = function(url) {
         this.url = url;
         this.updateLoadingBox("Loading Matches from Flight Tracker...");
@@ -105,17 +269,7 @@ class Portal {
             if (pids.length > 1) {
                 this.updateLoadingBox("Loading Matches from All "+pids.length+" Flight Trackers...");
             }
-            const numPidsInBatch = 3;
-            const pidBatches = [];
-            for (let i = 0; i < pids.length; i += numPidsInBatch) {
-                const batch = [];
-                for (let j = i; (j < pids.length) && (j < i + numPidsInBatch); j++) {
-                    batch.push(pids[j]);
-                }
-                if (batch.length > 0) {
-                    pidBatches.push(batch);
-                }
-            }
+            const pidBatches = this.batchPids(pids, 3);
             this.stateData.matchData = {};
             this.refreshMatches();
             $(this.percentDiv).html("0%");

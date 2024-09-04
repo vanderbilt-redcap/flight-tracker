@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.13.1";
+		return "6.14.0";
 	}
 
     public static function getLocalhostPluginPid() {
@@ -657,8 +657,7 @@ class CareerDev {
         $file = Application::getCredentialsDir()."/career_dev/vfrs.php";
         if (file_exists($file)) {
             include($file);
-            global $vfrsToken;
-            return $vfrsToken;
+            return $vfrsToken ?? "";
         }
         return "";
     }

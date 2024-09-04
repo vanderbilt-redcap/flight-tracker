@@ -6,6 +6,7 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class iCite {
     const THRESHOLD_SCORE = 8;
+    const PMID_BATCH_SIZE = 10;
 
     public function __construct($pmids, $pid) {
 		$this->pmids = $pmids;
@@ -17,11 +18,10 @@ class iCite {
 	    if (!is_array($pmids)) {
 	        $pmids = [$pmids];
         }
-	    $maxSize = 10;
 	    $queueOfQueues = [];
-	    for ($i = 0; $i < count($pmids); $i += $maxSize) {
+	    for ($i = 0; $i < count($pmids); $i += self::PMID_BATCH_SIZE) {
 	        $queue = [];
-	        for ($j = $i; ($j < count($pmids)) && ($j < $i + $maxSize); $j++) {
+	        for ($j = $i; ($j < count($pmids)) && ($j < $i + self::PMID_BATCH_SIZE); $j++) {
 	            $queue[] = $pmids[$j];
             }
 	        $queueOfQueues[] = $queue;
@@ -57,7 +57,11 @@ class iCite {
                             return "0";
                         }
                     }
-                    return strval($datum[$var]);
+                    if (is_array($datum[$var])) {
+                        return $datum[$var];
+                    } else {
+                        return strval($datum[$var]);
+                    }
                 }
             }
         }

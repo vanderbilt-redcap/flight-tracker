@@ -196,6 +196,7 @@ class Wrangler {
                 for ($i = 0; $i < count($upload); $i++) {
                     if ($upload[$i]['redcap_repeat_instrument'] == "citation") {
                         $upload[$i]['citation_include'] = '1';
+                        $upload[$i]['citation_complete'] = "2";
                     }
                 }
                 if (!empty($upload)) {

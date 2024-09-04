@@ -108,8 +108,11 @@ try {
     } else if ($action == "search_projects_for_collaborator") {
         $topics = Sanitizer::sanitizeArray($_POST['topics'] ?? []);
         if (!empty($topics)) {
-            $matches = $portal->searchForCollaborators($topics);
-            $data["html"] = $portal->formatCollaborators($matches);
+            $alternativeTopics = Sanitizer::sanitizeArray($_POST['alternativeTopics'] ?? $portal->getAlternativeTopics($topics));
+            $requestedPids = Sanitizer::sanitizeArray($_POST['pids'] ?? $allPids);
+            $priorNames = Sanitizer::sanitizeArray($_POST['priorNames'] ?? []);
+            $data['matches'] = $portal->searchForCollaborators($topics, $requestedPids, $priorNames, $alternativeTopics);
+            $data['alternativeTopics'] = $alternativeTopics;
         } else {
             $data['error'] = "<p>No topics provided!</p>";
         }

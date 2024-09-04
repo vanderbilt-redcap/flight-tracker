@@ -232,7 +232,7 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids, $allN
         ) {
             throw new \Exception("Both a first name and a last name are required! Error on line $lineNum");
         }
-		if ((count($nodes) >= 6) && $nodes[0] && $nodes[3]) {
+		if (is_array($nodes) && (count($nodes) >= 6) && $nodes[0] && $nodes[3]) {
 			$firstName = $nodes[0];
 			$middle = $nodes[2];
 			$lastName = $nodes[3];
