@@ -1505,13 +1505,13 @@ class Citation {
             foreach ($this->data as $field => $value) {
                 $row['eric_'.$field] = $value;
             }
-            $row['eric_complete'] = '2';
+            $row['eric_complete'] = Publications::getPublicationCompleteStatusFromInclude($row['eric_include'] ?? "");
         } else {
             $row['redcap_repeat_instrument'] = "citation";
             foreach ($this->data as $field => $value) {
                 $row['citation_'.$field] = $value;
             }
-            $row['citation_complete'] = '2';
+            $row['citation_complete'] = Publications::getPublicationCompleteStatusFromInclude($row['citation_include'] ?? "");
         }
         Upload::oneRow($row, $this->token, $this->server);
 	}

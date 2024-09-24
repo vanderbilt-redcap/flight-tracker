@@ -73,7 +73,8 @@ echo "<form action='$url' method='GET'>";
 echo REDCapManagement::makeHiddenInputs($params);
 $checkboxes = [];
 foreach (KaplanMeierCurve::getGraphTypes() as $id => $graphType) {
-    $checked = in_array($id, $_GET['graphTypes'] ?? $defaultGrantClass) ? "checked" : "";
+    $selectedGraphs = !empty($graphsToDraw) ? $graphsToDraw : $defaultGrantClass;
+    $checked = in_array($id, $selectedGraphs) ? "checked" : "";
     $checkboxes[] = "<input type='checkbox' name='graphTypes[]' id='graphType_$id' value='$id' $checked /><label for='graphType_$id'> $graphType</label>";
 }
 echo "<p class='centered skinnymargines'>".implode("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;", $checkboxes)."</p>";
@@ -154,14 +155,25 @@ if ($showRealGraphs) {
                 echo "<tr>";
                 echo "<td>$recordId ({$names[$recordId]})</td>";
                 echo "<td>" . REDCapManagement::pretty($serialTime, 2) . "</td>";
-                $status = $statusAtSerialTime[$graphType][$recordId] ?? "";
-                echo "<td>$status</td>";
-                if ($showAllResources) {
-                    $resources = [];
-                    foreach ($resourcesUsedIdx[$graphType][$recordId] ?? [] as $resourceIdx) {
-                        $resources[] = $groups[$graphType][$resourceIdx] ?? KaplanMeierCurve::UNKNOWN_RESOURCE;
+                if (!empty($statusAtSerialTime[$graphType]) && !empty($resourcesUsedIdx[$graphType])) {
+                    $status = $statusAtSerialTime[$graphType][$recordId] ?? "";
+                    echo "<td>$status</td>";
+                    if ($showAllResources) {
+                        $resources = [];
+                        foreach ($resourcesUsedIdx[$graphType][$recordId] ?? [] as $resourceIdx) {
+                            if (!empty($groups[$graphType])) {
+                                $resources[] = $groups[$graphType][$resourceIdx] ?? KaplanMeierCurve::UNKNOWN_RESOURCE;
+                            } else {
+                                $resources[] = KaplanMeierCurve::UNKNOWN_RESOURCE;
+                            }
+                        }
+                        echo "<td>" . implode(", ", $resources) . "</td>";
                     }
-                    echo "<td>" . implode(", ", $resources) . "</td>";
+                } else {
+                    echo "<td></td>";
+                    if ($showAllResources) {
+                        echo "<td></td>";
+                    }
                 }
                 echo "</tr>";
             }

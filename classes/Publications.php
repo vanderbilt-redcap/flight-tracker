@@ -13,6 +13,7 @@ class Publications {
     const DEFAULT_PUBMED_THROTTLE = 0.35;   // rate limit: 3 per minute
     const API_KEY_PUBMED_THROTTLE = 0.10;   // rate limit: 10 per minute
     const WAIT_SECS_UPON_FAILURE = 60;
+    const NUM_PMIDS_PER_PULL = 10;
 
 	public function __construct($token, $server, $metadata = "download") {
 		$this->token = $token;
@@ -756,15 +757,11 @@ class Publications {
 		return FALSE;
 	}
 
-	private static function getPMIDLimit() {
-		return 10;
-	}
-
 	public static function pullFromEFetch($pmids, $pid = NULL) {
 		if (!is_array($pmids)) {
 			$pmids = array($pmids);
 		}
-		$limit = self::getPMIDLimit();
+		$limit = self::NUM_PMIDS_PER_PULL;
 		if (count($pmids) > $limit) {
 			throw new \Exception("Cannot pull more than $limit PMIDs at once!");
 		}
@@ -792,7 +789,7 @@ class Publications {
     }
 
 	public static function downloadPMIDs($pmids, $pid = NULL) {
-	    $limit = self::getPMIDLimit();
+	    $limit = self::NUM_PMIDS_PER_PULL;
 	    $pmidsInGroups = [];
 	    for ($i = 0; $i < count($pmids); $i += $limit) {
 	        $pmidGroup = [];
@@ -1150,6 +1147,16 @@ class Publications {
         return $affiliations;
     }
 
+    public static function getPublicationCompleteStatusFromInclude(string $includeStatus): string {
+        if ($includeStatus === "1") {
+            return "2";
+        } else if ($includeStatus === "") {
+            return "1";
+        } else {
+            return "0";
+        }
+    }
+
     private static function intepretAndSplitDates($dates) {
         $maxSource = "";
         foreach ($dates as $source => $dateNodes) {
@@ -1159,12 +1166,16 @@ class Publications {
         }
         $year = $dates[$maxSource]["year"] ?? "";
         $month = $dates[$maxSource]["month"] ?? "";
+        if (preg_match("/[\-\/]/", $month)) {
+            # month is a span of months => use first month in group
+            $month = preg_split("/[\-\/]/", $month)[0];
+        }
         $day = $dates[$maxSource]["day"] ?? "";
         return [$year, $month, $day];
     }
 
     # An example XML document is at https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id=37635263
-    private static function xml2REDCap($xml, $recordId, &$instance, $src, $confirmedPMIDs, $metadataFields, $pid) {
+    private static function xml2REDCap($xml, $recordId, &$instance, $src, $confirmedPMIDs, $metadataFields, $pid, $fetchAI = TRUE) {
         $hasAbstract = in_array("citation_abstract", $metadataFields);
         $pmidsPulled = [];
         $upload = [];
@@ -1231,6 +1242,11 @@ class Publications {
                 }
                 if ($issue->PubDate->Month) {
                     $dates["journal"]["month"] = strval($issue->PubDate->Month);
+                } else if ($issue->PubDate->Season) {
+                    # 9/29/2024
+                    ## The <Season> tag substitutes for month. This is not documented in the XML specs.
+                    # Mainly in JAMIA articles from 2010. E.g., PMID 20190059
+                    $dates["journal"]["month"] = strval($issue->PubDate->Season);
                 }
                 if ($issue->PubDate->Day) {
                     $dates["journal"]["day"] = "{$issue->PubDate->Day}";
@@ -1242,6 +1258,11 @@ class Publications {
                 }
                 if ($article->ArticleDate->Month) {
                     $dates["article"]["month"] = strval($article->ArticleDate->Month);
+                } else if ($issue->PubDate->Season) {
+                    # 9/29/2024
+                    ## The <Season> tag substitutes for month. This is not documented in the XML specs.
+                    # Mainly in JAMIA articles from 2010. E.g., PMID 20190059
+                    $dates["article"]["month"] = strval($issue->PubDate->Season);
                 }
                 if ($article->ArticleDate->Day) {
                     $dates["article"]["day"] = "{$article->ArticleDate->Day}";
@@ -1315,7 +1336,7 @@ class Publications {
                                 "redcap_repeat_instance" => $pmidsWithInstances[$preprintPMID],
                                 "redcap_repeat_instrument" => "citation",
                                 "citation_include" => "0",
-                                "citation_complete" => "0",
+                                "citation_complete" => self::getPublicationCompleteStatusFromInclude("0"),
                             ];
                         }
                     }
@@ -1323,11 +1344,6 @@ class Publications {
                 if (!empty($includeChangeRows)) {
                     Upload::rows($includeChangeRows, $token, $server);
                 }
-            }
-            if ($newPMIDIncludeStatus == "1") {
-                $newCompleteStatus = "2";
-            } else {
-                $newCompleteStatus = "1";
             }
 
             $row = [
@@ -1351,7 +1367,7 @@ class Publications {
                 "citation_affiliations" => json_encode($affiliations),
                 "citation_pages" => $pages,
                 "citation_grants" => implode("; ", $assocGrants),
-                "citation_complete" => $newCompleteStatus,
+                "citation_complete" => self::getPublicationCompleteStatusFromInclude($newPMIDIncludeStatus),
             ];
             $token = Application::getSetting("token", $pid);
             $server = Application::getSetting("server", $pid);
@@ -1375,7 +1391,8 @@ class Publications {
             if ($hasAbstract) {
                 $row['citation_abstract'] = $abstract;
                 if (
-                    $abstract
+                    $fetchAI
+                    && $abstract
                     && Application::isVanderbilt()
                     && !Application::isLocalhost()
                     && in_array(OpenAI::CITATION_KEYWORD_FIELD, $metadataFields)
@@ -2393,11 +2410,13 @@ class Publications {
         return $coords[$country] ?? [];
     }
 
-	public static function getCitationsFromPubMed($pmids, $metadata, $src = "", $recordId = 0, $startInstance = 1, $confirmedPMIDs = [], $pid = NULL, $getBibliometricInfo = TRUE) {
+    # $startInstance is int|string - starting in PHP 8
+    # $pid is int|null - starting in PHP 8
+	public static function getCitationsFromPubMed(array $pmids, array $metadata, string $src = "", string $recordId = "0", $startInstance = 1, array $confirmedPMIDs = [], $pid = NULL, bool $getBibliometricInfo = TRUE) {
         $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
         $upload = [];
 		$instance = $startInstance;
-		$pullSize = self::getPMIDLimit();
+		$pullSize = self::NUM_PMIDS_PER_PULL;
 		for ($i0 = 0; $i0 < count($pmids); $i0 += $pullSize) {
 			$pmidsToPull = [];
 			for ($j = $i0; ($j < count($pmids)) && ($j < $i0 + $pullSize); $j++) {
@@ -2406,7 +2425,7 @@ class Publications {
             Application::log("Downloading PMIDs: ".implode(", ", $pmidsToPull), $pid);
             $xml = self::repetitivelyPullFromEFetch($pmidsToPull, $pid);
             if ($xml) {
-                list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, $recordId, $instance, $src, $confirmedPMIDs, $metadataFields, $pid);
+                list($parsedRows, $pmidsPulled) = self::xml2REDCap($xml, $recordId, $instance, $src, $confirmedPMIDs, $metadataFields, $pid, $getBibliometricInfo);
                 $upload = array_merge($upload, $parsedRows);
                 $translateFromPMIDToPMC = self::PMIDsToPMCs($pmidsPulled, $pid);
                 if ($getBibliometricInfo) {

@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.14.0";
+		return "6.15.0";
 	}
 
     public static function getLocalhostPluginPid() {
@@ -131,7 +131,6 @@ class CareerDev {
             "NSF Grants" => "www.research.gov",
             "ERIC" => "api.ies.ed.gov",
             "Dept. of Ed. Grants" => "ies.ed.gov",
-            "TAGGS (HHS)" => "taggs.hhs.gov",
         ];
         if ($all || self::isScopusEnabled()) {
             $sites["Scopus (API)"] = "api.elsevier.com";

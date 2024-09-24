@@ -20,13 +20,18 @@ function getNamePubs($token, $server, $pid, $records) {
     getPubsGeneric($token, $server, $pid, $records, FALSE);
 }
 
-function getPubsGeneric($token, $server, $pid, $records, $searchWithInstitutions) {
-    $metadata = Download::metadata($token, $server);
+function getPubsGeneric(string $token, string $server, string $pid, array $records, bool $searchWithInstitutions): void {
+    $metadata = Download::metadataByPid($pid);
     $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
-    $firstNames = Download::firstnames($token, $server);
-    $lastNames = Download::lastnames($token, $server);
+    $allRecords = Download::recordIdsByPid($pid);
     if (empty($records)) {
-        $records = Download::recordIds($token, $server);
+        $records = $allRecords;
+    }
+
+    $redoDatesSetting = "backfillDatesSetting";
+    $redoBlankDates = (Application::getSetting($redoDatesSetting, $pid) === "");
+    if ($redoBlankDates && (count($records) == count($allRecords))) {
+        Application::saveSetting($redoDatesSetting, "1", $pid);
     }
 
     if (Application::isVanderbilt() && !Application::isLocalhost()) {
@@ -44,6 +49,9 @@ function getPubsGeneric($token, $server, $pid, $records, $searchWithInstitutions
         }
         if (in_array("citation_abstract", $metadataFields) && hasBlankCitationField($redcapData, "citation_abstract")) {
             backfillAbstracts($redcapData, $pid);
+        }
+        if ($redoBlankDates) {
+            redoBlankDates($redcapData, $pid, $metadata, $recordId);
         }
         if (hasBlankCitationField($redcapData, "citation_pmid")) {
             $cnt = Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $redcapData);
@@ -285,7 +293,7 @@ function uploadPublications($upload, $pid) {
         $pmids = [];
         for ($i = 0; $i < count($upload); $i++) {
             if ($upload[$i]['redcap_repeat_instrument'] == "citation") {
-                $upload[$i]['citation_complete'] = '2';
+                $upload[$i]['citation_complete'] = Publications::getPublicationCompleteStatusFromInclude($upload[$i]["citation_include"] ?? "");
                 $pmids[$upload[$i]['citation_pmid']] = $upload[$i]['record_id'].":".$upload[$i]['redcap_repeat_instance'];
             }
         }
@@ -313,6 +321,43 @@ function makeCitationDate($row) {
         return $row['citation_year']."-".$monthNo."-".$dayNo;
     } else {
         return "";
+    }
+}
+
+# Dates were incorrectly calculated; because I accidentally added two date fields, both need to be corrected
+# The date algorithm in Publications::getCitationsFromPubMed() became more sophisticated in early 2024.
+# Therefore, all dates need to be re-uploaded.
+# This function should only be called once for each project.
+function redoBlankDates(array $redcapData, string $pid, array $metadata, string $recordId): void {
+    $allPMIDs = [];
+    $includeValues = [];
+    foreach ($redcapData as $row) {
+        $pmid = $row['citation_pmid'];
+        $includeValues[$pmid] = $row['citation_include'];
+        $allPMIDs[$pmid] = $row['redcap_repeat_instance'];
+    }
+    if (!empty($allPMIDs)) {
+        $pubmedRows = Publications::getCitationsFromPubMed(array_keys($allPMIDs), $metadata, "pubmed", $recordId, 1, [], $pid, FALSE);
+        $uploadRows = [];
+        foreach ($pubmedRows as $row) {
+            $pmid = $row['citation_pmid'];
+            $instance = $allPMIDs[$pmid];
+            $uploadRow = [
+                "record_id" => $recordId,
+                "redcap_repeat_instance" => $instance,
+                "redcap_repeat_instrument" => "citation",
+                "citation_day" => $row['citation_day'],
+                "citation_month" => $row['citation_month'],
+                "citation_year" => $row['citation_year'],
+                "citation_ts" => $row['citation_ts'],
+                "citation_date" => $row['citation_date'],
+                "citation_complete" => Publications::getPublicationCompleteStatusFromInclude($includeValues[$pmid]),
+            ];
+            $uploadRows[] = $uploadRow;
+        }
+        if (!empty($uploadRows)) {
+            Upload::rowsByPid($uploadRows, $pid);
+        }
     }
 }
 

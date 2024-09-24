@@ -392,6 +392,22 @@ class Download {
         }
     }
 
+    public static function metadataFieldsByPidOfType($pid, string $fieldType): array {
+        $module = Application::getModule();
+        $sql = "SELECT field_name FROM redcap_metadata WHERE project_id = ? AND element_type = ? ORDER BY field_order";
+        $params = [$pid, $fieldType];
+        if ($module) {
+            $q = $module->query($sql, $params);
+        } else {
+            $q = db_query($sql, $params);
+        }
+        $fields = [];
+        while ($row = $q->fetch_assoc()) {
+            $fields[] = Sanitizer::sanitize($row['field_name']);
+        }
+        return $fields;
+    }
+
     public static function metadataFieldsByPid($pid) {
         $module = Application::getModule();
         $sql = "SELECT field_name FROM redcap_metadata WHERE project_id = ? ORDER BY field_order";

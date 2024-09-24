@@ -14,7 +14,7 @@ class FeatureSwitches {
         $this->recordSwitches = ["ERIC (Education Publications)" ];     // all on/off
         $this->switchDefaults = [
             "ERIC (Education Publications)" => "Off",
-            "Update Biblometrics Monthly" => "On",
+            "Update Bibliometrics Monthly" => "On",
         ];
         $this->switches = [
             "Update Frequency" => [
@@ -33,7 +33,7 @@ class FeatureSwitches {
             "Publications" => $this->onOff,
             "Grants" => $this->onOff,
             "ERIC (Education Publications)" => $this->onOff,
-            "Update Biblometrics Monthly" => $this->onOff,
+            "Update Bibliometrics Monthly" => $this->onOff,
         ];
         $this->forms = [
             "Mentee-Mentor" => ["mentoring_agreement"],

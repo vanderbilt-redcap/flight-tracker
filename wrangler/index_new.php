@@ -557,7 +557,6 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
                 "<div class='display_data'>".$d_direct_sponsor_name.$d_direct_sponsor_type."</div>".
             "</div>";
     }
-    $awardJSON = json_encode($ary);
 
 	return "<table group='".$show_anawardno."' class='tn".$tablenum." ".$doclass." tlayer_".$show_anawardno." awardt rr".$d_original_award_number_no."' style='width: 380px; margin: 0 auto -12px auto; padding-top: 12px;'>".
 			"<tr class='".$backgroundClass."'>".
@@ -624,7 +623,7 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 
             "<tr class='$backgroundClass'><td>".
             "</td></tr>".
-            implode("</tr><tr class='$backgroundClass'>", $elems)."</tr><tr><td><div>".$tbuttons."</div><div class='centered' style='float: right; width: calc(50% - 5px); font-size: 12px; margin: 8px auto;'><a href='javascript:;' class='button setNAButton' onclick='dissociate($i, $awardJSON); return false;'>not their grant</a></div></td></tr></table><div class='at ".$doclass." at".$class_baseaward."' style='position:relative;'><div class='ftype'>".$ftype."</div></div>";
+            implode("</tr><tr class='$backgroundClass'>", $elems)."</tr><tr><td><div>".$tbuttons."</div><div class='centered' style='float: right; width: calc(50% - 5px); font-size: 12px; margin: 8px auto;'><a href='javascript:;' class='button setNAButton' onclick='dissociate($i, award_$i); return false;'>not their grant</a></div></td></tr></table><div class='at ".$doclass." at".$class_baseaward."' style='position:relative;'><div class='ftype'>".$ftype."</div></div>";
 }
 
 function findNumberOfSimilarAwards($baseAwardNo, $originalKey, $listOfAwards) {
@@ -1476,7 +1475,7 @@ $awardDescript = Grants::areFlagsOn($pid) ? "Flagged" : "Career-Defining";
                         echo "</script>\n";
                         echo transformAward($award, $i, $pid, $flaggedGrants);
 
-                        echo "<script>$(document).ready(() => {";
+                        echo "<script>$(document).ready(() => { ";
                         if (in_array($award['sponsor_award_no'], $inUse)) {
                             echo "$('#add_$i').hide();";
                         } else {
@@ -1484,7 +1483,7 @@ $awardDescript = Grants::areFlagsOn($pid) ? "Flagged" : "Career-Defining";
                         }
                         echo "$('#left_$i').hide();";
                         echo "$('#change_$i').hide();";
-                        echo "});</script>";
+                        echo " });</script>";
 
                         echo "</li>";
                     }
@@ -2280,15 +2279,14 @@ function makeStatusButtons($i, $award) {
         $award[$key] = preg_replace("/'/", "qqqqq", $value);
     }
 
-    $awardJSON = json_encode($award);
-    return "<div class='thebuttons'>".
-        "<div id='add_$i' class='add'><span class='thestatus'>[ drag right to prefer ]</span></div>".
-        "<a style='display:none;' class='tbutton addbutton' href='javascript:;' onclick='addAward(\"redcap_type_$i\", $i, $awardJSON);'>process award</a>".
-        "<div id='left_$i' class='moveleft'><span class='thestatus'>[ drag left to backtrack ]</span></div>".
-        "<div id='remove_$i' class='remove'><span class='thestatus' style='margin-left: 5px; margin-right: 5px; width: 50%;'>[ currently used ]</span><span style='width: 50%; text-align: center;'><button class='setNAButton' onclick='$(\"select#redcap_type_$i option:last-child\").attr(\"selected\", true); const award = $awardJSON; prioritizeAward($i, award); removeAward($i, award); return false;'>don't use this</button></span></div>".
-        "<a style='display:none;' class='tbutton removebutton' href='javascript:;' onclick='removeAward($i, $awardJSON);'>remove award</a>".
-        "<div id='change_$i' class='change'><span class='thestatus'>[ data changes made ]</span></div>".
-        "</div>";
+    return "<div class='thebuttons'>
+        <div id='add_$i' class='add'><span class='thestatus'>[ drag right to prefer ]</span></div>
+        <a style='display:none;' class='tbutton addbutton' href='javascript:;' onclick='addAward(\"redcap_type_$i\", $i, award_$i);'>process award</a>
+        <div id='left_$i' class='moveleft'><span class='thestatus'>[ drag left to backtrack ]</span></div>
+        <div id='remove_$i' class='remove'><span class='thestatus' style='margin-left: 5px; margin-right: 5px; width: 50%;'>[ currently used ]</span><span style='width: 50%; text-align: center;'><button class='setNAButton' onclick='$(\"select#redcap_type_$i option:last-child\").attr(\"selected\", true); prioritizeAward($i, award_$i); removeAward($i, award_$i); return false;'>don't use this</button></span></div>
+        <a style='display:none;' class='tbutton removebutton' href='javascript:;' onclick='removeAward($i, award_$i);'>remove award</a>
+        <div id='change_$i' class='change'><span class='thestatus'>[ data changes made ]</span></div>
+        </div>";
 }
 
 function isAwardInToImport($toImport, $award) {

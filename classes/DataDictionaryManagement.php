@@ -1082,7 +1082,7 @@ class DataDictionaryManagement {
                 $fields[] = $row['field_name'];
             }
         }
-        if ($instrument) {
+        if ($instrument && !empty($fields)) {
             $completeField = $instrument."_complete";
             if (!in_array($completeField, $fields)) {
                 $fields[] = $completeField;

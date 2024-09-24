@@ -494,7 +494,7 @@ class Portal
         if (Application::isVanderbilt()) {
             $this->usesAI = TRUE;
             if (!Application::isLocalhost()) {
-                $openAI = new OpenAI((int) $pids[0] ?? $this->pid);
+                $openAI = new OpenAI((int) ($this->allPids[0] ?? $this->pid));
                 return $openAI->searchForAlternateTopics($topics);
             }
         }

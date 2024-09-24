@@ -624,10 +624,25 @@ class Upload
 		return $priorFeedback;
 	}
 
+    private static function filterOutDescriptiveFields(array &$rows, $pid): void {
+        if (!$pid) {
+            return;
+        }
+        $descriptiveFields = Download::metadataFieldsByPidOfType($pid, "descriptive");
+        foreach ($rows as &$row) {
+            foreach ($row as $field => $value) {
+                if (in_array($field, $descriptiveFields)) {
+                    unset($row[$field]);
+                }
+            }
+        }
+    }
+
 	public static function rowsByPid($rows, $pid) {
         if (!self::checkRows($rows)) {
             return "";
         }
+        self::filterOutDescriptiveFields($rows, $pid);
         if (!is_numeric($pid)) {
             Application::log("Non-numeric pid $pid");
             echo "Non-numeric pid $pid\n";
@@ -676,6 +691,8 @@ class Upload
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
+        $pid = Application::getPID($token);
+        self::filterOutDescriptiveFields($rows, $pid);
         self::adaptToUTF8($rows);
 		if (isset($_GET['test'])) {
             Application::log("Upload::rows uploading ".count($rows)." rows");
@@ -699,7 +716,6 @@ class Upload
 			$rowsOfRows = array($rows);
 		}
 
-        $pid = Application::getPID($token);
         foreach (array_keys($rowsOfRows) as $i) {
             self::handleLargeJSONs($rowsOfRows[$i], $pid);
         }

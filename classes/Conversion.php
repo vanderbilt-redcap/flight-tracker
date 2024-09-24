@@ -346,7 +346,7 @@ class Conversion {
         return self::finalizeAverages($avgs, $sums);
     }
 
-    private static function isConvertedFromTF(array $redcapData, string $recordId, int $tLength, string $tfStartDate, string $searchIfLeft, string $convertedGrantType): string {
+    private static function isConvertedFromTF(array $redcapData, string $recordId, int $tLength, string $tfStartDate, bool $searchIfLeft, string $convertedGrantType): string {
         if ($convertedGrantType == "K") {
             $targetGrants = array_merge(self::INTERNALLY_GRANTED_KS, self::EXTERNALLY_GRANTED_KS);
         } else if ($convertedGrantType == "R") {

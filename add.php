@@ -464,8 +464,8 @@ function makeAdjudicationTable($lines, $mentorUids, $existingUids, $originalMent
     $html .= "<tbody>";
     for ($i = 0; $i < count($lines); $i++) {
         $currLine = $lines[$i];
-        $json = json_encode($currLine);
-        $hiddenHTML = "<input type='hidden' name='line___$i' value='$json'>";
+        $json = htmlspecialchars(json_encode($currLine));
+        $hiddenHTML = "<input type='hidden' name='line___$i' value=\"$json\">";
         $currMentorUids = $mentorUids[$i] ?? [];
         $currMentorName = "";
         if (isset($currLine[13])) {

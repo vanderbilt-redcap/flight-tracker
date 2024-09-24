@@ -46,7 +46,11 @@ final class PregMatchTypeSpecifyingExtension implements StaticMethodTypeSpecifyi
 
     public function isStaticMethodSupported(MethodReflection $methodReflection, StaticCall $node, TypeSpecifierContext $context): bool
     {
-        return in_array($methodReflection->getName(), ['match', 'isMatch', 'matchStrictGroups', 'isMatchStrictGroups'], true) && !$context->null();
+        return in_array($methodReflection->getName(), [
+                'match', 'isMatch', 'matchStrictGroups', 'isMatchStrictGroups',
+                'matchAll', 'isMatchAll', 'matchAllStrictGroups', 'isMatchAllStrictGroups'
+            ], true)
+            && !$context->null();
     }
 
     public function specifyTypes(MethodReflection $methodReflection, StaticCall $node, Scope $scope, TypeSpecifierContext $context): SpecifiedTypes
@@ -67,25 +71,20 @@ final class PregMatchTypeSpecifyingExtension implements StaticMethodTypeSpecifyi
             return new SpecifiedTypes();
         }
 
-        $matchedType = $this->regexShapeMatcher->matchExpr($patternArg->value, $flagsType, TrinaryLogic::createFromBoolean($context->true()), $scope);
+        if (stripos($methodReflection->getName(), 'matchAll') !== false) {
+            $matchedType = $this->regexShapeMatcher->matchAllExpr($patternArg->value, $flagsType, TrinaryLogic::createFromBoolean($context->true()), $scope);
+        } else {
+            $matchedType = $this->regexShapeMatcher->matchExpr($patternArg->value, $flagsType, TrinaryLogic::createFromBoolean($context->true()), $scope);
+        }
+
         if ($matchedType === null) {
             return new SpecifiedTypes();
         }
 
         if (
-            in_array($methodReflection->getName(), ['matchStrictGroups', 'isMatchStrictGroups'], true)
-            && count($matchedType->getConstantArrays()) === 1
+            in_array($methodReflection->getName(), ['matchStrictGroups', 'isMatchStrictGroups', 'matchAllStrictGroups', 'isMatchAllStrictGroups'], true)
         ) {
-            $matchedType = $matchedType->getConstantArrays()[0];
-            $matchedType = new ConstantArrayType(
-                $matchedType->getKeyTypes(),
-                array_map(static function (Type $valueType): Type {
-                    return TypeCombinator::removeNull($valueType);
-                }, $matchedType->getValueTypes()),
-                $matchedType->getNextAutoIndexes(),
-                [],
-                $matchedType->isList()
-            );
+            $matchedType = PregMatchFlags::removeNullFromMatches($matchedType);
         }
 
         $overwrite = false;

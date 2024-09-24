@@ -368,7 +368,6 @@ class KaplanMeierCurve {
             $this->datasets[$graphType] = ["survival" => [], "hazard" => []];
             $maxLife = self::getMaxLife($this->serialTimes[$graphType] ?? []);
             foreach ($linePoints[$graphType]["survival"] as $label => $linePointValues) {
-                $label = (string) $label;
                 if ($n[$graphType][$label] > 0) {
                     $colorByLabel[$graphType][$label] = $this->colors[$i % count($this->colors)];
                     $this->datasets[$graphType]["survival"][] = [

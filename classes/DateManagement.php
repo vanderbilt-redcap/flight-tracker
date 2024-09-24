@@ -399,6 +399,11 @@ class DateManagement {
             "OCT" => "10",
             "NOV" => "11",
             "DEC" => "12",
+            "SPRING" => "03",
+            "SUMMER" => "06",
+            "FALL" => "09",
+            "AUTUMN" => "09",
+            "WINTER" => "12",
         ];
         for ($i = 1; $i <= 12; $i++) {
             $month = REDCapManagement::padInteger($i, 2);

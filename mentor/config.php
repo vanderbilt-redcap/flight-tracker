@@ -166,7 +166,15 @@ $menteeProgressLink = Application::link("mentor/menteeProgress.php", $pid, TRUE)
 $redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
 $driverUrl = Application::link("this");
 
-list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($menteeCheckboxes, ceil(count($menteeCheckboxes) / 2));
+if (empty($menteeCheckboxes)) {
+    $firstHalfMenteeCheckboxes = [];
+    $secondHalfMenteeCheckboxes = [];
+} else if (count($menteeCheckboxes) == 1) {
+    $firstHalfMenteeCheckboxes = $menteeCheckboxes;
+    $secondHalfMenteeCheckboxes = [];
+} else {
+    list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($menteeCheckboxes, intval(ceil(count($menteeCheckboxes) / 2)));
+}
 
 ?>
 

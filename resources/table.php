@@ -7,6 +7,7 @@ use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 use \Vanderbilt\CareerDevLibrary\Cohorts;
 use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\BarChart;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -96,11 +97,73 @@ foreach ($resourcesInOrder as $idx) {
 }
 $headers .= "</tr>";
 
+$totalResourcesUsed = [];
+$distinctResourcesUsed = [];
+foreach ($records as $recordId) {
+    $recordResources = $resources[$recordId] ?? [];
+    $total = 0;
+    $distinct = [];
+    foreach ($resourcesInOrder as $idx) {
+        $label = $resourceChoices[$idx];
+        $dates = [];
+        foreach ($recordResources as $instance => $resourceIdx) {
+            if ($idx == $resourceIdx) {
+                $total++;
+                if (!in_array($idx, $distinct)) {
+                    $distinct[] = $idx;
+                }
+            }
+        }
+    }
+    $numDistinct = count($distinct);
+    if (!isset($totalResourcesUsed[$total])) {
+        $totalResourcesUsed[$total] = 0;
+    }
+    if (!isset($distinctResourcesUsed[$numDistinct])) {
+        $distinctResourcesUsed[$numDistinct] = 0;
+    }
+    $totalResourcesUsed[$total]++;
+    $distinctResourcesUsed[$numDistinct]++;
+}
+if (!empty($totalResourcesUsed) && !empty($distinctResourcesUsed)) {
+    for ($i = 0; $i <= max(array_keys($totalResourcesUsed)); $i++) {
+        if (!isset($totalResourcesUsed[$i])) {
+            $totalResourcesUsed[$i] = 0;
+        }
+    }
+    for ($i = 0; $i <= max(array_keys($distinctResourcesUsed)); $i++) {
+        if (!isset($distinctResourcesUsed[$i])) {
+            $distinctResourcesUsed[$i] = 0;
+        }
+    }
+}
+ksort($totalResourcesUsed, SORT_NUMERIC);
+ksort($distinctResourcesUsed, SORT_NUMERIC);
+
+$totalBarChart = new BarChart(array_values($totalResourcesUsed), array_keys($totalResourcesUsed),  "total_resources");
+$totalBarChart->showLegend(FALSE);
+$totalBarChart->setXAxisLabel("Number of Total Resources Used");
+$totalBarChart->setYAxisLabel("Number of Scholars");
+$distinctBarChart = new BarChart(array_values($distinctResourcesUsed), array_keys($distinctResourcesUsed), "distinct_resources");
+$distinctBarChart->showLegend(FALSE);
+$distinctBarChart->setXAxisLabel("Number of Distinct Resources Used");
+$distinctBarChart->setYAxisLabel("Number of Scholars");
+
+
+echo $totalBarChart->getImportHTML();
 echo "<h1>Scholar Resource Use in Career Development</h1>";
 $cohorts = new Cohorts($token, $server, Application::getModule());
 $thisLink = Application::link("this");
 echo "<p class='centered'>".$cohorts->makeCohortSelect($cohort, "location.href = \"$thisLink&cohort=\"+$(this).val();")."</p>";
 
+$width = 800;
+$height = 500;
+echo "<h2>Number of Total Resources Used by Scholars</h2>";
+echo $totalBarChart->getHTML($width, $height);
+echo "<h2>Number of Distinct Resources Used by Scholars</h2>";
+echo $distinctBarChart->getHTML($width, $height);
+
+echo "<h2>Table of Resources Used by Scholars</h2>";
 echo "<table class='centered bigShadow' style='max-width: 1200px;'>";
 echo "<thead>$headers</thead>";
 echo "<tbody>";

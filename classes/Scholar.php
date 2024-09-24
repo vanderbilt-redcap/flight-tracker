@@ -3291,27 +3291,28 @@ class Scholar {
 			} 
 		}
 
-		$rankResult = $this->getCurrentRank($rows);
-		if (in_array($rankResult->getValue(), [6, 7])) {
-		    return new ScholarResult(3, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);;   // Tenured
-        }
-        if ($rankResult->getValue() == 4) {
-            return new ScholarResult(1, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);   // Not Tenure track
-        }
-
-        $fieldsByInstrument = [
-            "workday" => "workday_jobcode_descr",
-            "ldapds" => "ldapds_title",
-            "ldap" => "ldap_vanderbiltpersonjobname",
-        ];
-        $tenured = ["Professor", "Assoc Professor"];
-        foreach ($rows as $row) {
-            foreach ($fieldsByInstrument as $instrument => $field) {
-                if ($row['redcap_repeat_instrument'] == $instrument) {
-                    if (in_array($row[$field], $tenured)) {
-                        return new ScholarResult(3, "ldap", "Computer-Generated", "", $this->pid);;
-                    } else if (preg_match("/Research/", $row[$field])) {
-                        return new ScholarResult(1, "ldap", "Computer-Generated", "", $this->pid);;
+        if (Application::isVanderbilt()) {
+            $rankResult = $this->getCurrentRank($rows);
+            if (in_array($rankResult->getValue(), [6, 7])) {
+                return new ScholarResult(3, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);;   // Tenured
+            }
+            if ($rankResult->getValue() == 4) {
+                return new ScholarResult(1, $rankResult->getSource(), $rankResult->getSourceType(), "", $this->pid);   // Not Tenure track
+            }
+            $fieldsByInstrument = [
+                "workday" => "workday_jobcode_descr",
+                "ldapds" => "ldapds_title",
+                "ldap" => "ldap_vanderbiltpersonjobname",
+            ];
+            $tenured = ["Professor", "Assoc Professor"];
+            foreach ($rows as $row) {
+                foreach ($fieldsByInstrument as $instrument => $field) {
+                    if ($row['redcap_repeat_instrument'] == $instrument) {
+                        if (in_array($row[$field], $tenured)) {
+                            return new ScholarResult(3, "ldap", "Computer-Generated", "", $this->pid);;
+                        } else if (preg_match("/Research/", $row[$field])) {
+                            return new ScholarResult(1, "ldap", "Computer-Generated", "", $this->pid);;
+                        }
                     }
                 }
             }

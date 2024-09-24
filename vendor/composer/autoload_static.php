@@ -43,10 +43,6 @@ class ComposerStaticInit356aec8a2d35171e17e171e2b60bbfb6
             'Webmozart\\PathUtil\\' => 19,
             'Webmozart\\Assert\\' => 17,
         ),
-        'T' => 
-        array (
-            'Tests\\PhpOffice\\Math\\' => 21,
-        ),
         'S' => 
         array (
             'Symfony\\Polyfill\\Php80\\' => 23,
@@ -137,10 +133,6 @@ class ComposerStaticInit356aec8a2d35171e17e171e2b60bbfb6
         'Webmozart\\Assert\\' => 
         array (
             0 => __DIR__ . '/..' . '/webmozart/assert/src',
-        ),
-        'Tests\\PhpOffice\\Math\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/phpoffice/math/tests/Math',
         ),
         'Symfony\\Polyfill\\Php80\\' => 
         array (
