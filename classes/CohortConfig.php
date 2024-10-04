@@ -113,10 +113,26 @@ class CohortConfig {
 	private static function compare($value1, $comparison, $value2) {
 		switch($comparison) {
             case "contains":
-                return (strpos($value1, $value2) !== FALSE);
+                if (is_array($value1)) {
+                    # in
+                    return in_array($value2, $value1);
+                } else if (is_array($value2)) {
+                    # in
+                    return in_array($value1, $value2);
+                } else {
+                    return (strpos($value1, $value2) !== FALSE);
+                }
                 break;
             case "not_contains":
-                return (strpos($value1, $value2) === FALSE);
+                if (is_array($value1)) {
+                    # not in
+                    return !in_array($value2, $value1);
+                } else if (is_array($value2)) {
+                    # not in
+                    return !in_array($value1, $value2);
+                } else {
+                    return (strpos($value1, $value2) === FALSE);
+                }
                 break;
 		    case "gt":
 				return ($value1 > $value2);

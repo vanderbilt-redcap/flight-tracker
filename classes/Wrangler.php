@@ -70,6 +70,7 @@ class Wrangler {
                                     "redcap_repeat_instrument" => $instrument,
                                     "redcap_repeat_instance" => $row['redcap_repeat_instance'],
                                     $verifyField => $val,
+                                    $instrument."_complete" => Publications::getPublicationCompleteStatusFromInclude($val),
                                 ];
                                 if (in_array($pilotGrantField, $allCitationFields)) {
                                     $uploadRow[$pilotGrantField] = implode(", ", $pilotGrantHash[$id] ?? []);

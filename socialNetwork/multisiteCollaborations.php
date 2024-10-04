@@ -46,6 +46,8 @@ if (($action == "international") && isset($_GET['csv']) && isset($_GET['start'])
             "citation_rcr",
             "citation_altmetric_score",
             "citation_title",
+            "citation_journal",
+            "citation_num_citations",
             "citation_full_citation",
             "citation_affiliations",
             "citation_include",
@@ -55,15 +57,17 @@ if (($action == "international") && isset($_GET['csv']) && isset($_GET['start'])
             "REDCap Instance",
             "Scholar Name",
             "PMID",
+            "Journal",
             "Title",
             "Full Citation",
             "International Affiliations",
             "Countries",
+            "Number of Citations",
             "Relative Citation Ratio",
             "Altmetric Score",
         ];
 
-        $lines = makeCSVLinesForInternationalAffiliations($records, $token, $server, $fields, $startTs, $endTs, ($_GET['oneInstitutionPerRow'] == "on"));
+        $lines = makeCSVLinesForInternationalAffiliations($records, $pid, $fields, $startTs, $endTs, ($_GET['oneInstitutionPerRow'] == "on"));
         if (empty($lines)) {
             require_once(dirname(__FILE__)."/../charts/baseWeb.php");
             echo "<p class='centered red max-width'>No international data found in the given timespan ($startDate - $endDate)</p>";
@@ -660,11 +664,11 @@ function makeSiteForm($action, $extraParams, $cohort, $cohorts, $requestedInstit
     return $html;
 }
 
-function makeCSVLinesForInternationalAffiliations($records, $token, $server, $fields, $startTs, $endTs, $oneRowPerInstitution) {
-    $names = Download::names($token, $server);
+function makeCSVLinesForInternationalAffiliations(array $records, $pid, array $fields, int $startTs, int $endTs, bool $oneRowPerInstitution): array {
+    $names = Download::namesByPid($pid);
     $lines = [];
     foreach ($records as $recordId) {
-        $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+        $redcapData = Download::fieldsForRecordsByPid($pid, $fields, [$recordId]);
         foreach ($redcapData as $row) {
             $ts = DateManagement::isDate($row['citation_ts']) ? strtotime($row['citation_ts']) : 0;
             if (
@@ -705,10 +709,12 @@ function makeCSVLine($row, $name, $internationalInstitutions) {
         $row['redcap_repeat_instance'],
         $name,
         $row['citation_pmid'],
+        $row['citation_journal'],
         $row['citation_title'],
         $row['citation_full_citation'],
         implode("; ", $shortenedInstitutions),
         implode("; ", $countries),
+        $row['citation_num_citations'],
         $row['citation_rcr'],
         $row['citation_altmetric_score'],
     ];

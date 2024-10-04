@@ -11,6 +11,7 @@ class NIHTables {
     public const HTML_FIELD_SEPARATOR = "_____";
     public const PART_1_YEARS = 15;
     public const PART_3_YEARS = 5;
+    public const UNKNOWN = "Unknown";
 
 	public function __construct($token, $server, $pid, $metadata = array()) {
 		$this->token = $token;
@@ -1103,25 +1104,29 @@ class NIHTables {
                     }
                 }
 	            foreach ($matchAry as $match) {
-                    if (preg_match("/:/", $match)) {
+                    if (strpos($match, ":") !== FALSE) {
                         list($pid, $recordId) = explode(":", $match);
-                        foreach ($rows as $row) {
-                            if (is_array($row)) {
-                                $newRow = [];
-                                $recordInstance = self::getUniqueIdentifier($row, $headers, $tableNum);
-                                $newRow['pid'] = $pid;
-                                $newRow['record'] = $recordId;
-                                $newRow['recordInstance'] = $recordInstance;
-                                $newRow['email'] = implode(";", array_filter($emailsWithName));
-                                for ($j = 0; $j < count($row); $j++) {
-                                    $newRow[$headers[$j]] = $row[$j];
-                                }
-                                if (!empty($newRow)) {
-                                    $newData[$recordInstance] = $newRow;
-                                }
+                    } else {
+                        // faculty name - no data with match
+                        $pid = self::UNKNOWN;
+                        $recordId = self::UNKNOWN;
+                    }
+                    foreach ($rows as $row) {
+                        if (is_array($row)) {
+                            $newRow = [];
+                            $recordInstance = self::getUniqueIdentifier($row, $headers, $tableNum);
+                            $newRow['pid'] = $pid;
+                            $newRow['record'] = $recordId;
+                            $newRow['recordInstance'] = $recordInstance;
+                            $newRow['email'] = implode(";", array_filter($emailsWithName));
+                            for ($j = 0; $j < count($row); $j++) {
+                                $newRow[$headers[$j]] = $row[$j];
+                            }
+                            if (!empty($newRow)) {
+                                $newData[$recordInstance] = $newRow;
                             }
                         }
-                    }      // else faculty name - no data with match
+                    }
                 }
             }
         }

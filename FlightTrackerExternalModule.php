@@ -20,8 +20,8 @@ use Vanderbilt\CareerDevLibrary\CelebrationsEmail;
 use Vanderbilt\CareerDevLibrary\MSTP;
 use Vanderbilt\CareerDevLibrary\Grant;
 
-require_once(dirname(__FILE__)."/classes/Autoload.php");
-require_once(dirname(__FILE__)."/cronLoad.php");
+require_once(__DIR__."/classes/Autoload.php");
+require_once(__DIR__."/cronLoad.php");
 require_once(APP_PATH_DOCROOT."Classes/System.php");
 
 class FlightTrackerExternalModule extends AbstractExternalModule
@@ -1487,7 +1487,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     Application::log($this->getName().": $tokenName enqueued crons", $pid);
                 } catch(\Exception $e) {
                     Application::log("Error in cron logic", $pid);
-                    \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Error in Cron", $e->getMessage());
+                    \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), Application::getProgramName()." Error in Cron with project $pid", $e->getMessage()."<br/>\n".$e->getTraceAsString());
                 }
             }
 		}
@@ -1717,7 +1717,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
     function redcap_survey_acknowledgement_page($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
         $this->setupApplication();
         if ($instrument == "mstp_individual_development_plan_idp") {
-            require_once(dirname(__FILE__) . "/hooks/mstpIDPAcknowledgementHook.php");
+            require_once(__DIR__ . "/hooks/mstpIDPAcknowledgementHook.php");
         }
     }
 
@@ -1726,17 +1726,17 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         if (Application::isTable1Project($project_id)) {
             return;
         } else if ($instrument == "summary") {
-			require_once(dirname(__FILE__)."/hooks/summaryHook.php");
+			require_once(__DIR__."/hooks/summaryHook.php");
 		} else if (in_array($instrument, ["initial_survey", "initial_short_survey"])) {
-			require_once(dirname(__FILE__)."/hooks/checkHook.php");
+			require_once(__DIR__."/hooks/checkHook.php");
         } else if ($instrument == "followup") {
-            require_once(dirname(__FILE__)."/hooks/followupHook.php");
+            require_once(__DIR__."/hooks/followupHook.php");
         } else if (in_array($instrument, ["honors_awards_and_activities", "honors_awards_and_activities_survey"])) {
-            require_once(dirname(__FILE__)."/hooks/honorHook.php");
+            require_once(__DIR__."/hooks/honorHook.php");
 		} else if ($instrument == "mstp_individual_development_plan_idp") {
-            require_once(dirname(__FILE__)."/hooks/mstpIDPFormHook.php");
+            require_once(__DIR__."/hooks/mstpIDPFormHook.php");
         }
-		require_once(dirname(__FILE__)."/hooks/setDateHook.php");
+		require_once(__DIR__."/hooks/setDateHook.php");
 	}
 
 	function redcap_save_record($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
@@ -1751,8 +1751,37 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         ];
         if (in_array($instrument, $formsToSkip)) {
             return;
+        } else if ($instrument == "sign_up") {
+            $fields = [
+                "record_id",
+                "signup_first_name",
+                "signup_middle_name",
+                "signup_last_name",
+                "signup_email",
+            ];
+            $redcapData = Download::fieldsForRecordsByPid($project_id, $fields, [$record]);
+            $normativeRow = REDCapManagement::getNormativeRow($redcapData);
+            $uploadRow = [
+                "record_id" => $record,
+                "identifier_first_name" => $normativeRow["signup_first_name"],
+                "identifier_middle" => $normativeRow["signup_middle_name"],
+                "identifier_last_name" => $normativeRow["signup_last_name"],
+                "identifier_email" => $normativeRow["signup_email"],
+                "identifiers_complete" => "2",
+            ];
+            Upload::rowsByPid([$uploadRow], $project_id);
+        } else if ($instrument == "sign_up_approval") {
+            $value = Download::oneFieldForRecordByPid($project_id, "signup_grant_access", $record);
+            if ($value === "0") {
+                $uploadRow = [
+                    "record_id" => $record,
+                    "identifier_stop_collection" => "1",
+                ];
+                Upload::rowsByPid([$uploadRow], $project_id);
+            }
+        } else {
+            require_once(__DIR__."/hooks/saveHook.php");
         }
-        require_once(dirname(__FILE__)."/hooks/saveHook.php");
 	}
 
 	function redcap_survey_page($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance) {
@@ -1761,15 +1790,17 @@ class FlightTrackerExternalModule extends AbstractExternalModule
         $token = Application::getSetting("token", $pid);
         $server = Application::getSetting("server", $pid);
         if (Application::isTable1Project($project_id)) {
-            require_once(dirname(__FILE__) . "/hooks/table1SurveyHook.php");
+            require_once(__DIR__ . "/hooks/table1SurveyHook.php");
         } else if ($instrument == "summary") {
-			require_once(dirname(__FILE__)."/hooks/summaryHook.php");
+			require_once(__DIR__."/hooks/summaryHook.php");
 		} else if (in_array($instrument, ["initial_survey", "initial_short_survey"])) {
-			require_once(dirname(__FILE__)."/hooks/checkHook.php");
+			require_once(__DIR__."/hooks/checkHook.php");
 		} else if ($instrument == "followup") {
-			require_once(dirname(__FILE__)."/hooks/followupHook.php");
+			require_once(__DIR__."/hooks/followupHook.php");
 		} else if ($instrument == "mstp_individual_development_plan_idp") {
-            require_once(dirname(__FILE__) . "/hooks/mstpIDPHook.php");
+            require_once(__DIR__ . "/hooks/mstpIDPHook.php");
+        } else if ($instrument == "sign_up") {
+            require_once(__DIR__."/hooks/surveyHook.php");
         }
 	}
 

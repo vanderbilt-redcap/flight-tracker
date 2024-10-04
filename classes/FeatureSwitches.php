@@ -256,7 +256,7 @@ class FeatureSwitches {
             $deletionRegEx = DataDictionaryManagement::getDeletionRegEx();
             $files = [];
             if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "getMetadataFiles")) {
-                $files = Application::getMetadataFiles();
+                $files = Application::getMetadataFiles($this->pid);
             }
             if (!empty($files)) {
                 DataDictionaryManagement::installMetadataFromFiles($files, $this->token, $this->server, $this->pid, $eventId, Application::getRelevantChoices(), $deletionRegEx, $formsToExclude);

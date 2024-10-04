@@ -42,8 +42,24 @@ if ($action == "localizeVariables") {
             foreach (REDCapManagement::getOptionalSettings() as $setting => $label) {
                 $lists[$setting] = trim(Sanitizer::sanitizeWithoutChangingQuotes($_POST[$setting] ?? ""));
             }
-			DataDictionaryManagement::addLists($token, $server, $pid, $lists, $installCoeus);
-			redirectToAddScholars();
+			DataDictionaryManagement::addLists($pid, $lists, $installCoeus);
+
+            $metadata = Download::metadataByPid($pid);
+            $eventId = REDCapManagement::getEventIdForClassical($pid);
+            Application::log("Downloading metadata (".count($metadata)." rows)", $pid);
+            $formsAndLabels = DataDictionaryManagement::getRepeatingFormsAndLabels($metadata);
+            DataDictionaryManagement::setupRepeatingForms($eventId, $formsAndLabels);
+            $surveysAndLabels = DataDictionaryManagement::getSurveysAndLabels($metadata, $pid);
+            Application::log("Setting up surveys ".json_encode(array_keys($surveysAndLabels)), $pid);
+            DataDictionaryManagement::setupSurveys($pid, $surveysAndLabels);
+            Application::log("Done with first steps of setup", $pid);
+
+            if (Application::getSetting("signup_project", $pid)) {
+                REDCapManagement::setupSignupAlerts($pid);
+                echo makePublicSurveyText($pid);
+            } else {
+                redirectToAddScholars();
+            }
 		} else {
 			echo "<p class='red centered'>You must supply at least one resource and one department!</p>";
 		}
@@ -100,21 +116,14 @@ if ($action == "localizeVariables") {
             'mentee_agreement_link' => $menteeAgreementLink,
             'server_class' => Sanitizer::sanitize($_POST['server_class']),
         ];
+        if ($_POST['design'] == "signup") {
+            $settingFields["signup_project"] = "1";
+            $settingFields["signup_time_lag"] = "7";
+        } else {
+            $settingFields["signup_project"] = "";
+        }
         Application::log("Setting up Module Settings", $projectId);
         \Vanderbilt\FlightTrackerExternalModule\setupModuleSettings($projectId, $settingFields);
-
-        Application::log("Downloading metadata", $projectId);
-        $metadata = Download::metadata($newToken, $newServer);
-        $formsAndLabels = DataDictionaryManagement::getRepeatingFormsAndLabels($metadata);
-        if ($_POST['coeus']) {
-            // $formsAndLabels["coeus"] = "[coeus_sponsor_award_number]";
-        }
-        DataDictionaryManagement::setupRepeatingForms($eventId, $formsAndLabels);
-
-        $surveysAndLabels = DataDictionaryManagement::getSurveysAndLabels($metadata, $projectId);
-        Application::log("Setting up surveys", $projectId);
-        DataDictionaryManagement::setupSurveys($projectId, $surveysAndLabels);
-        Application::log("Done with first steps of setup", $projectId);
 
         echo makeDepartmentPrompt($projectId);
         echo makeInstallFooter();
@@ -130,7 +139,7 @@ if ($action == "localizeVariables") {
     foreach (REDCapManagement::getOptionalSettings() as $setting => $label) {
         $lists[$setting] = Application::getSetting($setting, $pid);
     }
-    $feedback = DataDictionaryManagement::addLists($token, $server, $pid, $lists, Application::isVanderbilt() && !Application::isLocalhost());
+    $feedback = DataDictionaryManagement::addLists($pid, $lists, Application::isVanderbilt() && !Application::isLocalhost());
     redirectToHomePage();
 } else if (($action === "") && $token && $server) {
     $metadataFields = Download::metadataFields($token, $server);
@@ -147,6 +156,18 @@ if ($action == "localizeVariables") {
 	displayInstallHeaders();
 	echo makeIntroPage($pid);
 	echo makeInstallFooter();
+}
+
+function makePublicSurveyText($pid): string {
+    $homeLink = Application::link("index.php", $pid);
+    $html = Application::makePublicSignupHTML($pid);
+    $timeLag = Application::getSetting("signup_time_lag", $pid);
+    $adminEmail = Application::getSetting("admin_email", $pid);
+    $adminPlural = preg_match("/[,;]/", $adminEmail) ? "s" : "";
+    $html .= "<p class='centered max-width'>Display this link to your scholars so that they can sign up for Flight Tracker. When you approve them, they will receive a link to the Scholar Portal so that they can access their data. This link will be available anytime on Flight Tracker's Home page.</p>";
+    $html .= "<p class='centered max-width'>The email$adminPlural $adminEmail will be alerted whenever someone signs up with a link to approve or deny access. The scholar themselves will receive an email whenever access is approved or denied. If approved, the scholar will be re-notified with a link to the Scholar Portal after a lag of $timeLag days to allow their data to arrive.</p>";
+    $html .= "<p class='centered max-width'><a href='$homeLink'>Go to Flight Tracker's Home page</a></p>";
+    return $html;
 }
 
 function redirectToAddScholars() {
@@ -337,23 +358,24 @@ function changeGrantClass(name) {
 	$html .= "<td><input type='text' id='token' name='token' value='$defaultToken' /></td>";
 	$html .= "</tr>";
 
+    $searchText = "<br/><span class='smaller'>Your entry will show up on internet data searches.</span>";
 	$html .= "<tr>";
-	$html .= "<td style='text-align: right;'><label for='institution'>Full Institution Name:<br><span class='small'>(e.g., Vanderbilt University Medical Center)<br>This should match what is reported on the <a href='https://reporter.nih.gov/' target='_blank'>NIH/Federal RePORTER systems</a> or in a <a href='https://pubmed.ncbi.nlm.nih.gov/' target='_blank'>PubMed paper</a>.</span></label></td>";
+	$html .= "<td style='text-align: right;'><label for='institution'>Full Institution Name:<br><span class='small'>(e.g., Vanderbilt University Medical Center)<br>This should match what is reported on the <a href='https://reporter.nih.gov/' target='_blank'>NIH/Federal RePORTER systems</a> or in a <a href='https://pubmed.ncbi.nlm.nih.gov/' target='_blank'>PubMed paper</a>.</span>$searchText</label></td>";
 	$html .= "<td><input type='text' id='institution' name='institution' /></td>";
 	$html .= "</tr>";
 
 	$html .= "<tr>";
-	$html .= "<td style='text-align: right;'><label for='short_institution'>Short Institution Name:<br><span class='small'>(e.g., Vanderbilt)<br>This is the institution name that your scholars will be searched under in the NIH.</span></label></td>";
+	$html .= "<td style='text-align: right;'><label for='short_institution'>Short Institution Name:<br><span class='small'>(e.g., Vanderbilt)<br>This is the institution name that your scholars will be searched under in the NIH.</span>$searchText</label></td>";
 	$html .= "<td><input type='text' id='short_institution' name='short_institution' /></td>";
 	$html .= "</tr>";
 
     $html .= "<tr>";
-    $html .= "<td style='text-align: right;'><label for='other_institutions'>Other Affiliated Institutions:<br><span class='small'>(Short Names, List Separated by Commas)<br>E.g., Vanderbilt pools resources to track scholars from Meharry and Tennessee State. These names will be searched from the NIH as well.<br>Optional.</span></label></td>";
+    $html .= "<td style='text-align: right;'><label for='other_institutions'>Other Affiliated Institutions:<br><span class='small'>(Short Names, List Separated by Commas)<br>E.g., Vanderbilt pools resources to track scholars from Meharry and Tennessee State. These names will be searched from the NIH as well.<br>Optional.</span>$searchText</label></td>";
     $html .= "<td><input type='text' id='other_institutions' name='other_institutions' /></td>";
     $html .= "</tr>";
 
     $html .= "<tr>";
-    $html .= "<td style='text-align: right;'><label for='display_institutions'>'Home' Institutions that Your Scholars Belong To:<br/><span class='small'>(Short Names, List Separated by Commas)<br/>E.g., Vanderbilt, Meharry, Tennessee State.</span></label></td>";
+    $html .= "<td style='text-align: right;'><label for='display_institutions'>'Home' Institutions that Your Scholars Belong To:<br/><span class='small'>(Short Names, List Separated by Commas)<br/>E.g., Vanderbilt, Meharry, Tennessee State.</span><br/><span class='smaller'>This list will show up only on surveys.</span></label></td>";
     $html .= "<td><input type='text' id='display_institutions' name='display_institutions' /></td>";
     $html .= "</tr>";
 
@@ -365,7 +387,8 @@ function changeGrantClass(name) {
 	$grantClassName = "grant_class";
 	foreach ($grantClasses as $value => $label) {
 		$id = $grantClassName."_".$value;
-		$grantClassRadios[] = "<input type='radio' id='$id' name='$grantClassName' value='$value' onclick='changeGrantClass(\"$grantClassName\");'><label for='$id'> $label</label>";
+        $grantChecked = ($value == "Other") ? "checked" : "";
+		$grantClassRadios[] = "<input type='radio' id='$id' name='$grantClassName' value='$value' $grantChecked onclick='changeGrantClass(\"$grantClassName\");'><label for='$id'> $label</label>";
 	}
 	$html .= implode("<br>", $grantClassRadios);
 	$html .= "</td>";
@@ -375,6 +398,14 @@ function changeGrantClass(name) {
 	$html .= "<td style='text-align: right;'><label for='grant_number'>Grant Number (e.g., R01CA654321):</label></td>";
 	$html .= "<td><input type='text' id='grant_number' name='grant_number' /></td>";
 	$html .= "</tr>";
+
+    $html .= "<tr>
+    <td style='text-align: right;'>Special Project Design:</td>
+    <td>
+        <input type='radio' id='design_normal' name='design' value='normal' checked /><label for='design_normal'>Normal</label><br/>
+        <input type='radio' id='design_signup' name='design' value='signup' /><label for='design_signup'>Signup via Public Survey Link</label>
+    </td>
+    </tr>";
 
     $html .= "<tr>";
     $html .= "<td style='text-align: right;'>Class of Server:</td>";

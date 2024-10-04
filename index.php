@@ -134,10 +134,13 @@ $(document).ready(function() {
     <h5>from <img src="<?= Application::link("img/efs_small_logoonly.png") ?>" alt="Edge for Scholars" style="width: 27px; height: 20px;"> <a href='<?= $edgeLink ?>' target="_blank">Edge for Scholars</a></h5>
     <?php
         $module = CareerDev::getModule();
-        if (Portal::isLive()) {
-            $link = Portal::getLink();
-            echo "<input type='hidden' id='scholarPortalUrl' value='$link' />";
-            echo "<p class='centered nomargin smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#scholarPortalUrl\"), () => { alert(\"Copied to your clipboard!\"); });'>Click to Share the Scholar Portal Link with Your Scholars</a></p>";
+        $link = Portal::getLink();
+        echo "<input type='hidden' id='scholarPortalUrl' value='$link' />";
+        echo "<p class='centered nomargin smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#scholarPortalUrl\"), () => { alert(\"Copied to your clipboard!\"); });'>Click to Share the Scholar Portal Link with Your Scholars</a></p>";
+        if (Application::getSetting("signup_project", $pid)) {
+            $publicSurveyLink = REDCapManagement::getPublicSurveyLink($pid, "sign_up");
+            echo "<input type='hidden' id='publicSurveyUrl' value='$publicSurveyLink' />";
+            echo "<p class='centered nomargin smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#publicSurveyUrl\"), () => { alert(\"Copied to your clipboard!\"); });'>Click to Share the Public Signup Link with Your Scholars</a></p>";
         }
         if (empty($module->getPids())) {
             # enabled systemwide and not on a project-by-project basis => wrong (but unlikely use case)

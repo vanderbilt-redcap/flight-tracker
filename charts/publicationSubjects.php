@@ -95,9 +95,10 @@ $maxDate = intval(date("Y", $allMaxTs));
 $timelineBackground = Application::link("img/timelineBackground.png");
 $width = 600;
 $barHeight = 25;
-$intermediateYears = floor(($maxDate - $minDate) / 5);
+$idealNumberOfYears = 5;
+$intermediateYears = floor(($maxDate - $minDate) / $idealNumberOfYears);
 $yearSpace = $width / ($maxDate - $minDate + 1);
-echo "<style>
+echo "<style id='mainStyle'>
 .barLine { height: $barHeight"."px; position: relative; width: 2px; border-left: 2px solid black; grid-area: 1 / 1; }
 .timeBar { height: $barHeight"."px; width: 100%;  background-color: #8dc63f; background-image: url('$timelineBackground'); }
 .barTimespan { height: $barHeight"."px; position: relative; background-color: #5764ae; grid-area: 1 / 1; }
@@ -111,18 +112,20 @@ if (isset($_GET['hideHeaders'])) {
 } else {
     echo "<p class='centered max-width'>".REDCapManagement::pretty($numPubs)." Publications on ".REDCapManagement::pretty(count($timestampsByTerm))." Topics. $clickMssg</p>";
 }
+$suffix = "_timelines";
 foreach (["count", "date"] as $changeSortBy) {
     $thisSortBy = ($changeSortBy == "count") ? "Date" : "Count";
     $id = "sortBy".$thisSortBy;
     $otherId = "sortBy".ucfirst($changeSortBy);
-    echo "<div id='$id' class='container'>";
+    echo "<div id='$id' class='max-width-600 centered'>";
     echo "<p class='centered'>Currently, Sorted by $thisSortBy. <button onclick='$(\"#$id\").hide(); $(\"#$otherId\").show();' class='smaller'>Instead, Sort By ".ucfirst($changeSortBy)."</button></p>";
     $i = 1;
+    echo "<div id='$id$suffix' class='container'>";
     foreach ($timestampsByTerm as $term => $timestamps) {
         $count = REDCapManagement::pretty(count($timestamps))." Article".(count($timestamps) == 1 ? "" : "s");
         $gridArea = "$i / $i";
-        echo "<h4 style='margin-bottom: 0;'>$term ($count)</h4>";
         echo "<div class='centered' style='width: $width"."px;'>";
+        echo "<h4 style='margin-bottom: 0;'>$term ($count)</h4>";
         echo "<div class='timeBar' style='grid-area: $gridArea;'>";
         echo "<div style='display: grid;'>";
         $timestampValues = array_values($timestamps);
@@ -142,7 +145,8 @@ foreach (["count", "date"] as $changeSortBy) {
         }
         echo "</div>";
         echo "</div>";
-        for ($year = $minDate; $year < $maxDate; $year++) {
+        echo "<div class='smaller alignLeft' style='width: $yearSpace"."px; float: left;'>$minDate</div>";
+        for ($year = $minDate + 1; $year < $maxDate; $year++) {
             $string = "&nbsp;";
             if (
                 ($intermediateYears == 0)
@@ -150,14 +154,20 @@ foreach (["count", "date"] as $changeSortBy) {
                     (($year - $minDate) % $intermediateYears == 0)
                     && ($year != $maxDate - 1)
                 )
+                || (($maxDate - $minDate) <= $idealNumberOfYears + 2)    // after 2 "extra" years, start skipping
             ) {
                 $string = "$year";
             }
-            echo "<div class='smaller alignLeft' style='width: $yearSpace"."px; float: left;'>$string</div>";
+            echo "<div class='smaller centered' style='width: $yearSpace"."px; float: left;'>$string</div>";
         }
         echo "<div class='smaller alignright' style='width: $yearSpace"."px; float: left;'>$maxDate</div>";
         echo "</div>";
         $i++;
+    }
+    echo "</div>";
+    if (!empty($timestampsByTerm)) {
+        echo "<div class='alignright'><button onclick='downloadAsHTML(\"publication_timelines.html\", document.getElementById(\"mainStyle\").outerHTML, document.getElementById(\"$id$suffix\").outerHTML); return false;' class='smallest'>Save as HTML</button></div>";
+
     }
     echo "</div>";
     sortByEarliestDate($timestampsByTerm);
@@ -170,7 +180,25 @@ $(document).ready(() => {
         $('.barLine').removeClass('barHighlight');
         $('.barLine[data-pmid='+pmid+']').addClass('barHighlight');
     });
+    $('#sortByCount').hide();
 });
+
+function downloadAsHTML(filename, styleBlock, bodyBlock) {
+    const fontStyleBlock = '<style>'+
+        'body { font-family: Arial, Helvetica, sans-serif; }'+
+        '.container { background-color: white; }'+
+        '.alignright { text-align: right; }'+
+        '.alignLeft { text-align: left !important; }'+
+        '.centered { text-align: center; }'+
+        '.smaller { font-size: 13px; }'+
+        'h4 { text-align: center; }'+
+    '</style>';
+    const html = '<html><head>'+fontStyleBlock+styleBlock+'</head><body>'+bodyBlock+'</body></html>';
+    const a = document.body.appendChild(document.createElement('a'));
+    a.download = filename;
+    a.href = 'data:text/html,'+escape(html);
+    a.click();
+}
 </script>";
 
 function sortByEarliestDate(&$timestampsByTerms) {

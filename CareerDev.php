@@ -22,7 +22,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.15.0";
+		return "6.16.0";
 	}
 
     public static function getLocalhostPluginPid() {
@@ -306,7 +306,7 @@ class CareerDev {
         self::$pid = NULL;
     }
 
-    private static function getProtocol($uri) {
+    private static function getProtocol() {
         $isHTTPS = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off'));
         $serverPort = $_SERVER['SERVER_PORT'] ?? 0;
         $isSSLPort = $serverPort == 443;
@@ -325,9 +325,24 @@ class CareerDev {
     }
 
     private static function constructThisURL() {
+        if (defined("SERVER_NAME") && defined("APP_PATH_WEBROOT_FULL")) {
+            # UC-Denver has an unusual 3-server setup where a separate app-server runs the PHP and then
+            # feeds the HTML to a separate web server. Thus for them SERVER_NAME != $_SERVER['HTTP_HOST']
+            # Therefore, I'm using SERVER_NAME from REDCap if it exists; if not, HTTP_HOST will be used as a backup
+            $host = SERVER_NAME;
+            $fullWebroot = APP_PATH_WEBROOT_FULL;
+            if (preg_match("/^https:/i", $fullWebroot)) {
+                $protocol = "https://";
+            } else if (preg_match("/^http:/i", $fullWebroot)) {
+                $protocol = "http://";
+            } else {
+                $protocol = self::getProtocol();
+            }
+        } else {
+            $host = $_SERVER['HTTP_HOST'] ?? "";
+            $protocol = self::getProtocol();
+        }
         $uri = $_SERVER['REQUEST_URI'] ?? "";
-        $protocol = self::getProtocol($uri);
-        $host = $_SERVER['HTTP_HOST'] ?? "";
         return $protocol.$host.$uri;
     }
 
@@ -514,7 +529,7 @@ class CareerDev {
     private static function getThisPageURL($project_id, $isPortalPage) {
         if (Application::isPluginProject($project_id)) {
             $uri = $_SERVER['REQUEST_URI'] ?? "";
-            $protocol = self::getProtocol($uri);
+            $protocol = self::getProtocol();
             $host = $_SERVER['HTTP_HOST'] ?? "";
             $fileLocation = explode("?", $uri)[0];
             $url = $protocol . $host . $fileLocation;

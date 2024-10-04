@@ -243,11 +243,7 @@ function copyRow(trOb) {
             }
         }
     });
-    let html = '<table><thead><th>'+headers.join('</th><th>')+'</th></thead><tbody><tr>';
-    $(trOb).children('td').each((idx, tdOb) => {
-        html += copyTDsForRow(trOb);
-    });
-    html += '</tr></tbody></table>';
+    const html = '<table><thead><th>'+headers.join('</th><th>')+'</th></thead><tbody><tr>' + copyTDsForRow(trOb) + '</tr></tbody></table>';
     copyHTML(html);
 }
 </script>";

@@ -1516,6 +1516,10 @@ class Download {
 
 	public static function recordIds($token, $server, $recordIdField = "record_id")
     {
+        $pid = Application::getPID($token);
+        if ($pid) {
+            return self::recordIdsByPid($pid);
+        }
         if (isset($_GET['test'])) {
             Application::log("Download::recordIds");
         }

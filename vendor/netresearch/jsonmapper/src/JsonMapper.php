@@ -26,7 +26,7 @@ class JsonMapper
      * PSR-3 compatible logger object
      *
      * @link http://www.php-fig.org/psr/psr-3/
-     * @var  object
+     * @var  \Psr\Log\LoggerInterface|null
      * @see  setLogger()
      */
     protected $logger;
@@ -142,7 +142,12 @@ class JsonMapper
      * @param object|class-string $object Object to map $json data into
      *
      * @return mixed Mapped object is returned.
-     * @see    mapArray()
+     *
+     * @template       T
+     * @phpstan-param  class-string<T>|T $object
+     * @phpstan-return T
+     *
+     * @see mapArray()
      */
     public function map($json, $object)
     {
@@ -355,10 +360,10 @@ class JsonMapper
     /**
      * Convert a type name to a fully namespaced type name.
      *
-     * @param string $type  Type name (simple type or class name)
-     * @param string $strNs Base namespace that gets prepended to the type name
+     * @param string|null $type  Type name (simple type or class name)
+     * @param string      $strNs Base namespace that gets prepended to the type name
      *
-     * @return string Fully-qualified type name with namespace
+     * @return string|null Fully-qualified type name with namespace
      */
     protected function getFullNamespace($type, $strNs)
     {
@@ -377,8 +382,8 @@ class JsonMapper
     /**
      * Check required properties exist in json
      *
-     * @param array  $providedProperties array with json properties
-     * @param object $rc                 Reflection class to check
+     * @param array           $providedProperties array with json properties
+     * @param ReflectionClass $rc                 Reflection class to check
      *
      * @throws JsonMapper_Exception
      *
@@ -720,10 +725,12 @@ class JsonMapper
      * Get the mapped class/type name for this class.
      * Returns the incoming classname if not mapped.
      *
-     * @param string $type   Type name to map
-     * @param mixed  $jvalue Constructor parameter (the json value)
+     * Lets you override class names via the $classMap property.
      *
-     * @return string The mapped type/class name
+     * @param string|null $type   Type name to map
+     * @param mixed       $jvalue Constructor parameter (the json value)
+     *
+     * @return string|null The mapped type/class name
      */
     protected function getMappedType($type, $jvalue = null)
     {
@@ -817,7 +824,7 @@ class JsonMapper
 
     /**
      * Returns true if accessor is a method and has only one parameter
-     * which is variadic.
+     * which is variadic ("...$args").
      *
      * @param ReflectionMethod|ReflectionProperty|null $accessor accessor
      *                                                           to set value
@@ -850,15 +857,16 @@ class JsonMapper
      */
     protected function isNullable($type)
     {
-        return stripos('|' . $type . '|', '|null|') !== false;
+        return stripos('|' . $type . '|', '|null|') !== false
+            || strpos('|' . $type, '|?') !== false;
     }
 
     /**
      * Remove the 'null' section of a type
      *
-     * @param string $type type name from the phpdoc param
+     * @param string|null $type type name from the phpdoc param
      *
-     * @return string The new type value
+     * @return string|null The new type value
      */
     protected function removeNullable($type)
     {
@@ -866,7 +874,7 @@ class JsonMapper
             return null;
         }
         return substr(
-            str_ireplace('|null|', '|', '|' . $type . '|'),
+            str_ireplace(['|null|', '|?'], '|', '|' . $type . '|'),
             1, -1
         );
     }
@@ -931,7 +939,7 @@ class JsonMapper
      * @param string $message Text to log
      * @param array  $context Additional information
      *
-     * @return null
+     * @return void
      */
     protected function log($level, $message, array $context = array())
     {
@@ -943,9 +951,9 @@ class JsonMapper
     /**
      * Sets a logger instance on the object
      *
-     * @param LoggerInterface $logger PSR-3 compatible logger object
+     * @param \Psr\Log\LoggerInterface $logger PSR-3 compatible logger object
      *
-     * @return null
+     * @return void
      */
     public function setLogger($logger)
     {

@@ -1269,10 +1269,6 @@ function setupModuleSettings($projectId, $fields) {
     }
 }
 
-function setupSurveys($projectId, $surveysAndLabels) {
-    REDCapManagement::setupSurveys($projectId, $surveysAndLabels);
-}
-
 function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
     if ($srcToken == $destToken) {
         return ["error" => "The destination project is the same as the source project. This should never happen! Aborting."];

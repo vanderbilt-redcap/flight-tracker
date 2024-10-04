@@ -52,11 +52,14 @@ class Application {
         return CareerDev::getRelevantChoices();
     }
 
-    public static function getMetadataFiles() {
+    public static function getMetadataFiles($pid): array {
         $files = [];
-        $files[] = dirname(__FILE__)."/metadata.json";
+        if (Application::getSetting("signup_project", $pid)) {
+            $files[] = __DIR__."/metadata.signup.json";
+        }
+        $files[] = __DIR__."/metadata.json";
         if (CareerDev::isVanderbilt()) {
-            $files[] = dirname(__FILE__)."/metadata.vanderbilt.json";
+            $files[] = __DIR__."/metadata.vanderbilt.json";
         }
         return $files;
     }
@@ -563,6 +566,15 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
             return REDCapManagement::getPublicSurveyLink($pid, "table_1_rows");
         }
         return "";
+    }
+
+    public static function makePublicSignupHTML($pid, $additionalClasses = ""): string {
+        $surveyLink = REDCapManagement::getPublicSurveyLink($pid, "sign_up");
+        return "<p class='centered max-width $additionalClasses'>
+            <label for='signupUrl'>Public Signup Link: </label>
+            <input id='signupUrl' value='$surveyLink' onclick='this.select();' readonly='readonly' style='width: 90%; max-width: 450px; margin-right: 5px; margin-left: 5px;' />
+            <span class='smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#signupUrl\"));'>Copy</a></span>
+        </p>";
     }
 
     public static function getPids() {

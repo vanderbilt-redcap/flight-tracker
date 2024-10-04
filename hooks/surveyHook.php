@@ -27,8 +27,8 @@ switch($instrument) {
 		break;
 }
 
-$metadata = Download::metadata($token, $server, Application::$citationFields);
-$recordData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($record));
+$metadata = Download::metadataByPid($pid, Application::$citationFields);
+$recordData = Download::fieldsForRecordsByPid($pid, Application::getCitationFields($metadata), array($record));
 $pubs = new Publications($token, $server, $metadata);
 $pubs->setRows($recordData);
 $finalized = $pubs->getCitationCollection("Final");
@@ -103,9 +103,9 @@ $(document).ready(function() {
 	$('#publications_wrangler').html(html);
 	$('#publications_wrangler').show();
 	if ($('#surveyinstructions').length > 0) {
-		$('#surveyinstructions').prepend('<img align="right" src="<?= Application::getBase64("img/flight_tracker_logo_small.png") ?>">');
+		$('#surveyinstructions').prepend('<img align="right" src="<?= Application::getBase64("img/flight_tracker_logo_small.png") ?>"><br/>');
 	} else {
-		$('#surveytitlelogo').append('<img src="<?= Application::getBase64("img/flight_tracker_logo_small.png") ?>"><br>');
+		$('#surveytitlelogo').append('<img src="<?= Application::getBase64("img/flight_tracker_logo_small.png") ?>"><br/>');
 	}
 });
 </script>

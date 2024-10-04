@@ -419,7 +419,7 @@ function parsePublications($publicationText, $traineeName, $facultyName, &$warni
     list($traineeFirst, $traineeMiddle, $traineeLast) = NameMatcher::splitName($traineeName, 3);
     $pmidsForAuthor = Publications::searchPubMedForName($traineeFirst, $traineeMiddle, $traineeLast, $pid);
     try {
-        $publicationREDCap = Publications::getCitationsFromPubMed($pmidsForAuthor, $metadata, "manual", 1, 1, [], $pid, FALSE);
+        $publicationREDCap = Publications::getCitationsFromPubMed($pmidsForAuthor, $metadata, "manual", "1", 1, [], $pid, FALSE);
     } catch (\Exception $e) {
         $publicationREDCap = [];
     }

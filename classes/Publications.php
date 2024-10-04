@@ -196,20 +196,23 @@ class Publications {
 	    return $newRows;
     }
 
+    # https://pubmed.ncbi.nlm.nih.gov/help/#:~:text=Initials%20and%20suffixes%20are%20not,the%20middle%20initial%20or%20suffix.
     private static function makePubMedNameClause($unexplodedFirst, $unexplodedLast, $middle = "") {
         $suffix = "%5Bau%5D";
-        $quote = "";   // "%22"; turned off quoting for now because it seems PubMed no longer supports it
         $nameClauses = [];
         foreach (NameMatcher::explodeFirstName($unexplodedFirst) as $first) {
             foreach (NameMatcher::explodeLastName($unexplodedLast) as $last) {
                 if ($first && $last) {
+                    # quote around entire name is turned off quoting for now because it seems PubMed no longer supports it
                     $first = preg_replace("/\s+/", "+", $first);
                     $last = preg_replace("/\s+/", "+", $last);
-                    if ($middle) {
-                        $nameClauses[] = $quote . $last . ",+" . $first . "+" . $middle . $quote . $suffix;
+                    if ($middle !== "") {
+                        # In the documentation PubMed only requests a middle initial not a full middle name
+                        $middleInitial = $middle[0];
+                        $nameClauses[] = "$first+$middleInitial+$last$suffix";
                     }
+                    $nameClauses[] = "$first+$last+$suffix";
                 }
-                $nameClauses[] = $quote . $last . ",+" . $first . $quote . $suffix;
             }
         }
         if (!empty($nameClauses)) {
@@ -290,7 +293,7 @@ class Publications {
             # Derivations of the word "children" as an institution are interpreted as a MeSH term (topic)
             # by PubMed; thus, they will explode into thousands of incorrect publications
             if (!in_array($institution, ["children", "children'", "children's"])) {
-                $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML("\"".strtolower($institution)) . "\"+%5Bad%5D";
+                $institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
             }
         }
 

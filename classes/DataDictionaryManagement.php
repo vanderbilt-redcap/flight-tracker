@@ -81,7 +81,7 @@ class DataDictionaryManagement {
         return [];
     }
 
-    public static function addLists($token, $server, $pid, $lists, $installCoeus = FALSE, $metadata = FALSE) {
+    public static function addLists($pid, array $lists, bool $installCoeus = FALSE, $metadata = FALSE) {
         if (trim($lists['departments']) == "") {
             $lists['departments'] = "Department";
         }
@@ -106,14 +106,19 @@ class DataDictionaryManagement {
             "person_role" => self::OPTION_OTHER_VALUE,
         ];
 
-        $files = Application::getMetadataFiles();
+        $files = Application::getMetadataFiles($pid);
         if (!$metadata) {
-            $metadata = Download::metadata($token, $server);
+            $metadata = Download::metadataByPid($pid);
             if (count($metadata) < 5) {
                 $metadata = [];
                 foreach ($files as $file) {
                     $newLines = self::readMetadataFile($file);
                     if ($newLines !== NULL) {
+                        $firstRow = $newLines[0];
+                        if (!empty($metadata) && ($firstRow['field_name'] == "record_id")) {
+                            // Do not repeat record_id as index if it already exists
+                            array_shift($newLines);
+                        }
                         $metadata = array_merge($metadata, $newLines);
                     } else {
                         throw new \Exception("Could not unpack json in $file: ".json_last_error_msg());
@@ -188,7 +193,7 @@ class DataDictionaryManagement {
         }
         self::alterInstitutionFields($newMetadata, $pid);
         $upload = self::alterOptionalFields($newMetadata, $pid);
-        $feedback = Upload::metadata($newMetadata, $token, $server);
+        $feedback = Upload::metadataNoAPI($newMetadata, $pid);
         if (!empty($upload)) {
             Upload::rowsByPid($upload, $pid);
         }
@@ -318,13 +323,13 @@ class DataDictionaryManagement {
     }
 
     public static function installAllMetadataForNecessaryPids($pids) {
-        $files = Application::getMetadataFiles();
         $deletionRegEx = self::getDeletionRegEx();
         $pidsToRun = [];
         foreach (REDCapManagement::getActiveProjects($pids) as $requestedPid) {
             $requestedToken = Application::getSetting("token", $requestedPid);
             $requestedServer = Application::getSetting("server", $requestedPid);
             if ($requestedToken && $requestedServer) {
+                $files = Application::getMetadataFiles($requestedPid);
                 $requestedMetadata = Download::metadata($requestedToken, $requestedServer);
                 $switches = new FeatureSwitches($requestedToken, $requestedServer, $requestedPid);
                 list ($missing, $additions, $changed) = self::findChangedFieldsInMetadata($requestedMetadata, $files, $deletionRegEx, CareerDev::getRelevantChoices(), $switches->getFormsToExclude(), $requestedPid);
@@ -333,7 +338,7 @@ class DataDictionaryManagement {
                 }
             }
         }
-        return self::installMetadataForPids($pidsToRun, $files, $deletionRegEx);
+        return self::installMetadataForPids($pidsToRun, $deletionRegEx);
     }
 
     public static function getInstrumentDescriptions($instrument = "all") {
@@ -383,13 +388,14 @@ class DataDictionaryManagement {
         }
     }
 
-    public static function installMetadataForPids($pids, $files, $deletionRegEx) {
+    public static function installMetadataForPids($pids, $deletionRegEx) {
         $returnData = [];
         foreach ($pids as $currPid) {
             $pidToken = Application::getSetting("token", $currPid);
             $pidServer = Application::getSetting("server", $currPid);
             $switches = new FeatureSwitches($pidToken, $pidServer, $currPid);
             $pidEventId = Application::getSetting("event_id", $currPid);
+            $files = Application::getMetadataFiles($currPid);
             if ($pidToken && $pidServer && $pidEventId) {
                 Application::log("Installing metadata", $currPid);
                 $returnData[$currPid] = DataDictionaryManagement::installMetadataFromFiles($files, $pidToken, $pidServer, $currPid, $pidEventId, CareerDev::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
@@ -398,40 +404,20 @@ class DataDictionaryManagement {
         return $returnData;
     }
 
-    private static function isNewMetadataMergeLive() {
-        return REDCapManagement::versionGreaterThanOrEqualTo(Application::getVersion(), "5.12.2");
-    }
-
     public static function installMetadataFromFiles($files, $token, $server, $pid, $eventId, $newSourceChoices, $deletionRegEx, $excludeForms) {
         $metadata = [];
         $metadata['REDCap'] = Download::metadata($token, $server);
         $metadata['REDCap'] = self::filterOutForms($metadata['REDCap'], $excludeForms);
 
-        if (!self::isNewMetadataMergeLive()) {
-            if (isset($_POST['fields'])) {
-                $postedFields = Sanitizer::sanitizeArray($_POST['fields']);
-            } else {
-                list ($missing, $additions, $changed) = self::findChangedFieldsInMetadata($metadata['REDCap'], $files, $deletionRegEx, $newSourceChoices, $excludeForms, $pid);
-                $postedFields = $missing;
-            }
-            if (empty($postedFields)) {
-                return ["error" => "Nothing to update"];
-            }
-        } else {
-            $postedFields = [];
-        }
-
         $metadata['file'] = [];
         foreach ($files as $filename) {
-            $fp = fopen($filename, "r");
-            $json = "";
-            while ($line = fgets($fp)) {
-                $json .= $line;
-            }
-            fclose($fp);
-
-            $fileData = json_decode($json, TRUE);
+            $fileData = self::readMetadataFile($filename);
             if ($fileData) {
+                $firstRow = $fileData[0];
+                if (!empty($metadata['file']) && ($firstRow['field_name'] == "record_id")) {
+                    // Do not repeat record_id as index if it already exists
+                    array_shift($fileData);
+                }
                 $fileData = self::filterOutForms($fileData, $excludeForms);
                 $metadata['file'] = array_merge($metadata['file'], $fileData);
             } else {
@@ -448,11 +434,6 @@ class DataDictionaryManagement {
                 $fieldsForMentorLabel = ["check_primary_mentor", "followup_primary_mentor",];
                 foreach ($fieldsForMentorLabel as $field) {
                     $metadata['file'] = self::changeFieldLabel($field, $mentorLabel, $metadata['file']);
-                    $fileValue = $fieldLabels['file'][$field] ?? "";
-                    $redcapValue = $fieldLabels['REDCap'][$field] ?? "";
-                    if (($fileValue != $redcapValue) && !self::isNewMetadataMergeLive()) {
-                        $postedFields[] = $field;
-                    }
                 }
 
                 $redcapChoices = self::getChoices($metadata["REDCap"]);
@@ -475,12 +456,7 @@ class DataDictionaryManagement {
                     }
                 }
 
-                if (self::isNewMetadataMergeLive()) {
-                    $feedback = self::mergeMetadataAndUploadNew($metadata['REDCap'], $metadata['file'], $token, $server, $pid, $deletionRegEx);
-                } else {
-                    $metadata["REDCap"] = self::reverseMetadataOrder("initial_import", "init_import_ecommons_id", $metadata["REDCap"] ?? []);
-                    $feedback = self::mergeMetadataAndUploadOld($metadata['REDCap'], $metadata['file'], $token, $server, $postedFields, $deletionRegEx);
-                }
+                $feedback = self::mergeMetadataAndUploadNew($metadata['REDCap'], $metadata['file'], $token, $server, $pid, $deletionRegEx);
                 $newMetadata = Download::metadata($token, $server);
                 $formsAndLabels = self::getRepeatingFormsAndLabels($newMetadata, $token);
                 $surveysAndLabels = self::getSurveysAndLabels($newMetadata, $pid);
@@ -880,6 +856,9 @@ class DataDictionaryManagement {
         ];
         if (Application::isMSTP($pid)) {
             $defaultSurveys["mstp_individual_development_plan_idp"] = "MSTP Individual Development Plan IDP";
+        }
+        if (Application::getSetting("signup_project", $pid)) {
+            $defaultSurveys["sign_up"] = "Sign Up for Flight Tracker";
         }
         return $defaultSurveys;
     }
@@ -1432,7 +1411,7 @@ class DataDictionaryManagement {
                 $pid = Application::getPID($token);
                 $eventId = Application::getSetting("event_id", $pid);
                 $switches = new FeatureSwitches($token, $server, $pid);
-                return self::installMetadataFromFiles(Application::getMetadataFiles(), $token, $server, $pid, $eventId, Application::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
+                return self::installMetadataFromFiles(Application::getMetadataFiles($pid), $token, $server, $pid, $eventId, Application::getRelevantChoices(), $deletionRegEx, $switches->getFormsToExclude());
             } else {
                 self::sortByForms($metadata);
                 $pid = Application::getPID($token);
@@ -1586,8 +1565,8 @@ class DataDictionaryManagement {
         }
     }
 
-    private static function insertNewOptionalRow(&$metadata, $field) {
-        $files = Application::getMetadataFiles();
+    private static function insertNewOptionalRow(array &$metadata, string $field, $pid): void {
+        $files = Application::getMetadataFiles($pid);
         foreach ($files as $file) {
             $fileMetadata = self::readMetadataFile($file);
             $indexedFileMetadata = self::indexMetadata($fileMetadata);
@@ -1629,7 +1608,7 @@ class DataDictionaryManagement {
                     $allUpload = array_merge($allUpload, $upload);
                     Application::log("Using optional field $field $choiceStr", $pid);
                     if (!in_array($field, $metadataFields)) {
-                        self::insertNewOptionalRow($metadata, $field);
+                        self::insertNewOptionalRow($metadata, $field, $pid);
                     }
                     self::setSelectStringForFields($metadata, $choiceStr, [$field]);
                 } else if (in_array($field, $metadataFields)) {

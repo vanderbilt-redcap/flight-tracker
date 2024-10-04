@@ -2,18 +2,15 @@
 
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
-use \Vanderbilt\CareerDevLibrary\URLManagement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
-$files = Application::getMetadataFiles();
 $lastCheckField = "prior_metadata_ts";
 $deletionRegEx = DataDictionaryManagement::getDeletionRegEx();
 
@@ -39,8 +36,9 @@ if ($_POST['process'] == "check") {
             $mssg = "You are missing a required field that is necessary to upgrade your Data Dictionary. The fields ".REDCapManagement::makeConjunction($requiredCustomFields)." are required and can be set via the <a href=\"$configLink\">Configure Application page</a>.";
             echo "<script>$.sweetModal({content: '$mssg', icon: $.sweetModal.ICON_ERROR});</script>";
         } else {
-            $metadata = Download::metadata($token, $server);
+            $metadata = Download::metadataByPid($pid);
             $switches = new FeatureSwitches($token, $server, $pid);
+            $files = Application::getMetadataFiles($pid);
             list ($missing, $additions, $changed) = DataDictionaryManagement::findChangedFieldsInMetadata($metadata, $files, $deletionRegEx, CareerDev::getRelevantChoices(), $switches->getFormsToExclude(), $pid);
             CareerDev::setSetting($lastCheckField, time(), $pid);
             if (count($additions) + count($changed) > 0) {
@@ -75,7 +73,7 @@ if ($_POST['process'] == "check") {
     } else {
         $pidsToRun = [$pid];
     }
-    $returnData = DataDictionaryManagement::installMetadataForPids($pidsToRun, $files, $deletionRegEx);
+    $returnData = DataDictionaryManagement::installMetadataForPids($pidsToRun, $deletionRegEx);
     if (time() < strtotime("2023-11-30")) {
         $module = Application::getModule();
         foreach ($pidsToRun as $currPid) {
@@ -100,5 +98,5 @@ if ($_POST['process'] == "check") {
         "person_role" => $personRoleText,
         "program_roles" => $programRoleText,
     ];
-    DataDictionaryManagement::addLists($token, $server, $pid, $lists, Application::isVanderbilt() && !Application::isLocalhost());
+    DataDictionaryManagement::addLists($pid, $lists, Application::isVanderbilt() && !Application::isLocalhost());
 }

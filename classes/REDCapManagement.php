@@ -67,6 +67,81 @@ class REDCapManagement {
 	    return DataDictionaryManagement::getFormsFromMetadata($metadata);
     }
 
+    public static function setupSignupAlerts($pid): void {
+        $adminEmail = Application::getSetting("admin_email", $pid);
+        $adminEmails = preg_split("/\s*[;,]\s*/", $adminEmail);
+        $firstAdminEmail = $adminEmails[0];
+        $scholarPortalLink = Application::getScholarPortalLink();
+        $timeLag = Application::getSetting("signup_time_lag", $pid);
+
+        if (Application::isVanderbilt()) {
+            $efsLogo = FileManagement::getBase64OfFile(__DIR__."/../img/efs_small.png", "image/png");
+            $footer = "<p>Thanks!<br/><strong><span style='color: #4eb851;'><a style='color: #4eb851;' href='https://edgeforscholars.vumc.org'>The Edge for Scholars Team</a></span></strong></p>
+<p><img src='$efsLogo' alt='Edge for Scholars' width='200' height='124'></p>";
+        } else {
+            $flightTrackerLogo = FileManagement::getBase64OfFile(__DIR__."/../img/flight_tracker_logo_medium_white_bg.png", "image/png");
+            $footer = "<p>Thanks!<br/><strong><a href='https://redcap.link/flight_tracker/'>Your Flight Tracker Team</a></strong></p>
+<p><img src='$flightTrackerLogo' alt='Flight Tracker for Scholars' width='196' height='95'></p>";
+        }
+        $mssg = [
+            "Sign Up" => "<p>Someone requested a signup to the custom Flight Tracker project.</p>
+<p>Name: [signup_first_name] [signup_middle_name] [signup_last_name]<br/>Email: [signup_email]</p>
+<p>Please review here: [form-url:sign_up_approval]</p>",
+            "Scholar Portal" => "<p>Your name has been added to Flight Tracker. You can view your record on the Scholar Portal with this link:<br><a href='$scholarPortalLink'>$scholarPortalLink</a></p>$footer",
+            "Access Denied" => "<p>Your application for Flight Tracker has been denied. If you feel this denial is incorrect, please reply to this email with your case.</p>$footer",
+            "Access Granted" => "<p>Your name has been added to Flight Tracker. You will receive a follow-up email in one week with a link to access your data after it has downloaded.</p>$footer",
+        ];
+
+        $i = 1;
+        self::addImmediateAlert($pid, "Signup Alert", "sign_up", NULL, FALSE, FALSE, TRUE, $firstAdminEmail, $adminEmail, "Flight Tracker Signup", $mssg["Sign Up"], 0, FALSE, FALSE, 0, "DAYS", $i);
+        $i++;
+        self::addImmediateAlert($pid, "Scholar Portal", "sign_up_approval", "[signup_grant_access] = '1'", FALSE, TRUE, TRUE, $firstAdminEmail, "[signup_email]", "Access the Flight Tracker Scholar Portal", $mssg["Scholar Portal"], $timeLag, FALSE, FALSE, 0, "DAYS", $i);
+        $i++;
+        self::addImmediateAlert($pid, "Signup Rejection", "sign_up_approval", "[signup_grant_access] = '0'", FALSE, TRUE, TRUE, $firstAdminEmail, "[signup_email]", "Flight Tracker Access Denied", $mssg["Access Denied"], 0, FALSE, FALSE, 0, "DAYS", $i);
+        $i++;
+        self::addImmediateAlert($pid, "Access Granted", "sign_up_approval", "[signup_grant_access] = '1'", FALSE, TRUE, TRUE, $firstAdminEmail, "[signup_email]", "Flight Tracker Access Granted", $mssg["Access Granted"], 0, FALSE, FALSE, 0, "DAYS", $i);
+    }
+
+    private static function addImmediateAlert($pid, string $alertTitle, string $instrument, $alertCondition, bool $ensureLogicTrue, bool $preventPiping, bool $sendIfIncomplete, string $from, string $to, string $subject, string $mssg, $timeLag, bool $isRepetitive, bool $isRepetitiveIfChanged, float $repeatFor, string $repeatForUnits, int $alertOrder): void {
+        $eventId = self::getEventIdForClassical($pid);
+        $timeLagHours = NULL;
+        $timeLagMinutes = NULL;
+        $emailOn = "now";
+        if (is_numeric($timeLag) && ($timeLag > 0)) {
+            $emailOn = "time_lag";
+            $timeLagMinutes = 0;
+            $timeLagHours = 0;
+        }
+        $params = [
+            $pid,
+            $alertTitle,
+            $instrument,
+            $eventId,
+            $alertCondition,
+            $ensureLogicTrue ? "1" : "0",
+            $preventPiping ? "1" : "0",
+            $sendIfIncomplete ? "1" : "0",
+            $from,
+            $to,
+            $subject,
+            $mssg,
+            $emailOn,
+            $timeLag,
+            $timeLagHours,
+            $timeLagMinutes,
+            $isRepetitive ? "1" : "0",
+            $isRepetitiveIfChanged ? "1" : "0",
+            $repeatFor,
+            $repeatForUnits,
+            $alertOrder,
+        ];
+        $module = Application::getModule();
+        $sql = "INSERT INTO redcap_alerts
+            (project_id, alert_title, alert_type, alert_stop_type, email_deleted, form_name, form_name_event, alert_condition, ensure_logic_still_true, prevent_piping_identifiers, email_incomplete, email_from, email_from_display, email_to, email_subject, alert_message, cron_send_email_on, cron_send_email_on_time_lag_days, cron_send_email_on_time_lag_hours, cron_send_email_on_time_lag_minutes, email_repetitive, email_repetitive_change, cron_repeat_for, cron_repeat_for_units, alert_order, sendgrid_template_data, sendgrid_mail_send_configuration)
+            VALUES(?, ?, 'EMAIL', 'RECORD', 0, ?, ?, ?, ?, ?, ?, ?, 'Flight Tracker', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', '{}')";
+        $module->query($sql, $params);
+    }
+
     public static function getWeekNumInYear($ts = FALSE) {
 	    return DateManagement::getWeekNumInYear($ts);
     }
@@ -1551,10 +1626,6 @@ class REDCapManagement {
 			return $row['external_module_id'];
 		}
 		throw new \Exception("The external_module_id is not defined. (This should never happen.)");
-	}
-
-	public static function setupSurveys($projectId, $surveysAndLabels) {
-        DataDictionaryManagement::setupSurveys($projectId, $surveysAndLabels);
 	}
 
 	public static function getPIDFromToken($token, $server)

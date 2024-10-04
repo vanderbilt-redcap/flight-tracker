@@ -1507,14 +1507,16 @@ $awardDescript = Grants::areFlagsOn($pid) ? "Flagged" : "Career-Defining";
             foreach ($toImport as $index => $ary) {
                 $action = $ary[0];
                 $award = $ary[1];
+                $awardJSON = json_encode($award);
                 $awardno = $award['sponsor_award_no'] ?? $award['original_award_number'] ?? JS_UNDEFINED;
                 echo "<li class='list-group-item'>".transformAward($award, $i, $pid, $flaggedGrants)."</li>";
-                echo "<script>$(document).ready(() => {";
-                echo "$('#add_$i').hide();";
-                echo "$('#remove_$i').hide();";
-                echo "$('#left_$i').show();";
-                echo "$('#change_$i').hide();";
-                echo "});</script>";
+                echo "<script>$(document).ready(() => {
+                    $('#add_$i').hide();
+                    $('#remove_$i').hide();
+                    $('#left_$i').show();
+                    $('#change_$i').hide();
+                    const award_$i = $awardJSON;
+                });</script>";
                 $i++;
             }
             echo "</ul>";

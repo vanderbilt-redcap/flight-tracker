@@ -3,7 +3,7 @@
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\PatentsView;
-use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
@@ -37,12 +37,13 @@ if (
 			foreach ($redcapData as $row) {
 				if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "patent")) {
 					if ($number == $row['patent_number']) {
-						$uploadRow = array(
-									"record_id" => $recordId,
-									"redcap_repeat_instrument" => "patent",
-									"redcap_repeat_instance" => $row['redcap_repeat_instance'],
-									"patent_include" => $val,
-									);
+                        $uploadRow = [
+                            "record_id" => $recordId,
+                            "redcap_repeat_instrument" => "patent",
+                            "redcap_repeat_instance" => $row['redcap_repeat_instance'],
+                            "patent_include" => $val,
+                            "patent_complete" => Publications::getPublicationCompleteStatusFromInclude(strval($val)),
+                        ];
 						$priorNumbers[] = $number;
 						$upload[] = $uploadRow;
 						$matched = TRUE;
