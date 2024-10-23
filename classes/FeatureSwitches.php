@@ -5,7 +5,10 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class FeatureSwitches {
-    public function __construct($token, $server, $pid) {
+    
+    const ON_OFF = ["On" => "On", "Off" => "Off",];
+
+    public function __construct(string $token, string $server, $pid) {
         $this->token = $token;
         $this->server = $server;
         $this->pid = $pid;
@@ -15,6 +18,7 @@ class FeatureSwitches {
         $this->switchDefaults = [
             "ERIC (Education Publications)" => "Off",
             "Update Bibliometrics Monthly" => "On",
+            "Full ORCID Profiles" => "Off",
         ];
         $this->switches = [
             "Update Frequency" => [
@@ -28,23 +32,42 @@ class FeatureSwitches {
                 "3 Days" => 3,
                 "5 Days" => 5,
             ],
-            "Mentee-Mentor" => $this->onOff,
-            "Patents" => $this->onOff,
-            "Publications" => $this->onOff,
-            "Grants" => $this->onOff,
-            "ERIC (Education Publications)" => $this->onOff,
-            "Update Bibliometrics Monthly" => $this->onOff,
+            "Mentee-Mentor" => self::ON_OFF,
+            "Patents" => self::ON_OFF,
+            "Publications" => self::ON_OFF,
+            "Grants" => self::ON_OFF,
+            "ERIC (Education Publications)" => self::ON_OFF,
+            "Update Bibliometrics Monthly" => self::ON_OFF,
+            "Full ORCID Profiles" => self::ON_OFF,
         ];
         $this->forms = [
             "Mentee-Mentor" => ["mentoring_agreement"],
             "Patents" => ["patent"],
             "Publications" => ["citation"],
             "ERIC (Education Publications)" => ["eric"],
-            "Grants" => ["coeus", "custom_grant", "reporter", "exporter", "coeus2", "nih_reporter", "coeus_submission", "vera", "vera_submission", "ies_grant", "nsf"],
+            "Grants" => [
+                "coeus",
+                "custom_grant",
+                "reporter",
+                "exporter",
+                "coeus2",
+                "nih_reporter",
+                "coeus_submission",
+                "vera",
+                "vera_submission",
+                "ies_grant",
+                "nsf",
+            ],
+            "Full ORCID Profiles" => [
+                # filled in below
+            ],
         ];
+        foreach (ORCID::ORCID_ENDPOINTS as $endpoint) {
+            $this->forms["Full ORCID Profiles"][] = ORCID::PROFILE_PREFIX.ORCID::encodeKey($endpoint);
+        }
     }
 
-    public function getRecordsTurnedOn($setting) {
+    public function getRecordsTurnedOn(string $setting): array {
         $settings = Application::getSetting($this->recordListName, $this->pid) ?: [];
         if (isset($settings[$setting])) {
             return $settings[$setting];
@@ -52,7 +75,7 @@ class FeatureSwitches {
         return [];
     }
 
-    public function addRecordForSetting($setting, $recordId) {
+    public function addRecordForSetting(string $setting, string $recordId): void {
         $settings = Application::getSetting($this->recordListName, $this->pid) ?: [];
         if (isset($settings[$setting])) {
             if (!in_array($recordId, $settings[$setting])) {
@@ -64,7 +87,7 @@ class FeatureSwitches {
         Application::saveSetting($this->recordListName, $settings, $this->pid);
     }
 
-    public function removeRecordForSetting($setting, $recordId) {
+    public function removeRecordForSetting(string $setting, string $recordId): void {
         $settings = Application::getSetting($this->recordListName, $this->pid) ?: [];
         if (isset($settings[$setting]) && in_array($recordId, $settings[$setting])) {
             $idx = array_search($recordId, $settings[$setting]);
@@ -73,7 +96,7 @@ class FeatureSwitches {
         }
     }
 
-    public function downloadRecordIdsToBeProcessed($records = []) {
+    public function downloadRecordIdsToBeProcessed(array $records = []): array {
         if (empty($records)) {
             $records = Download::recordIds($this->token, $this->server);
         }
@@ -102,27 +125,27 @@ class FeatureSwitches {
         return $recordsToProcess;
     }
 
-    public function getValue($category, $switchType = "project") {
+    public function getValue(string $category, string $switchType = "project"): string {
         $allSwitches = $this->getSwitches($switchType);
         if (isset($allSwitches[$category])) {
-            return $allSwitches[$category];
+            return strval($allSwitches[$category]);
         } else if (isset($this->switches[$category])) {
             if (isset($this->switchDefaults[$category])) {
-                return $this->switchDefaults[$category];
+                return strval($this->switchDefaults[$category]);
             }
             foreach ($this->switches[$category] as $label => $idx) {
-                return $idx;
+                return strval($idx);
             }
         }
         return "";
     }
 
-    public function isOnForProject($category) {
+    public function isOnForProject(string $category): bool {
         $allSwitches = $this->getSwitches("project");
         return (isset($allSwitches[$category]) && ($allSwitches[$category] == "On"));
     }
 
-    public function getSwitches($switchType = "project") {
+    public function getSwitches(string $switchType = "project"): array {
         if ($switchType == "project") {
             $settingName = $this->settingName;
         } else if ($switchType == "record") {
@@ -168,7 +191,7 @@ class FeatureSwitches {
         return $allSwitches;
     }
 
-    public function savePost($post) {
+    public function savePost(array $post): array {
         $changed = FALSE;
         $recordId = $post['record_id'] ?? NULL;
         if ($recordId) {
@@ -212,7 +235,7 @@ class FeatureSwitches {
         }
     }
 
-    public function getFormsToExclude($allSwitches = []) {
+    public function getFormsToExclude(array $allSwitches = []): array {
         if (empty($allSwitches)) {
             $allSwitches = $this->getSwitches();
         }
@@ -227,9 +250,9 @@ class FeatureSwitches {
         return $formsToExclude;
     }
 
-    public function haveNewSwitchesChanged($newSwitches) {
+    public function haveNewSwitchesChanged(array $newSwitches): bool {
         $oldSwitches = $this->getSwitches();
-        $onOffOptions = array_keys($this->onOff);
+        $onOffOptions = array_keys(self::ON_OFF);
         foreach ($newSwitches as $title => $newValue) {
             if (isset($oldSwitches[$title])) {
                 $oldValue = $oldSwitches[$title];
@@ -248,7 +271,7 @@ class FeatureSwitches {
         return FALSE;
     }
 
-    public function saveSwitches($allSwitches, $switchType = "project") {
+    public function saveSwitches(array $allSwitches, string $switchType = "project"): void {
         $formsToExclude = $this->getFormsToExclude($allSwitches);
 
         if ($this->haveNewSwitchesChanged($allSwitches)) {
@@ -272,7 +295,7 @@ class FeatureSwitches {
         Application::saveSetting($settingName, $allSwitches, $this->pid);
     }
 
-    public function makeHTML($switchType = "project", $recordId = NULL) {
+    public function makeHTML(string $switchType = "project", ?string $recordId = NULL): string {
         if ($switchType == "project") {
             $allSwitches = $this->getSwitches();
             return $this->makeAllSwitches($allSwitches, $this->switches);
@@ -281,7 +304,7 @@ class FeatureSwitches {
             $allRecordSwitches = [];
             $switchConfigs = [];
             foreach ($allRecordSwitchList as $category => $records) {
-                $switchConfigs[$category] = $this->onOff;
+                $switchConfigs[$category] = self::ON_OFF;
                 $allRecordSwitches[$category] = in_array($recordId, $records) ? "On" : "Off";
             }
             return $this->makeAllSwitches($allRecordSwitches, $switchConfigs, $recordId);
@@ -290,7 +313,7 @@ class FeatureSwitches {
         }
     }
 
-    public function makeAllSwitches($switches, $switchConfigs, $recordId = NULL) {
+    public function makeAllSwitches(array $switches, array $switchConfigs, ?string $recordId = NULL): string {
         $thisUrl = Application::link("this", $this->pid);
         $origParams = explode("?", $thisUrl)[1];
         foreach ($_GET as $key => $value) {
@@ -308,7 +331,7 @@ class FeatureSwitches {
         }
         foreach ($switchConfigs as $title => $options) {
             $size = "size".count($options);
-            if (REDCapManagement::arraysEqual($options, $this->onOff)) {
+            if (REDCapManagement::arraysEqual($options, self::ON_OFF)) {
                 $short = "short";
                 if (count($switchConfigs) == 1) {
                     $width = "100%";
@@ -370,7 +393,7 @@ function makeSwitchPostData() {
         return $html;
     }
 
-    public function makeSwitchHTML($title, $allSwitches) {
+    public function makeSwitchHTML(string $title, array $allSwitches): string {
         if (!isset($this->switches[$title])) {
             throw new \Exception("Invalid switch $title.");
         }
@@ -396,7 +419,6 @@ function makeSwitchPostData() {
 
     protected $settingName;
     protected $recordListName;
-    protected $onOff = ["On" => "On", "Off" => "Off",];
     protected $token;
     protected $server;
     protected $pid;

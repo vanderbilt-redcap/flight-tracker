@@ -107,6 +107,27 @@ class Scholar {
 		return Links::makeLink("https://orcid.org/".$orcid, $orcid);
 	}
 
+    public function getORCIDDetails($rows) {
+        $row = self::getNormativeRow($rows);
+
+		if ($row['orcid_last_update']) {
+			$result = new Result($row['orcid_last_update'], "", "", "", $this->pid);
+		} else {
+			$vars = self::getDefaultOrder("orcid_last_update");
+            $vars = $this->getOrder($vars, "orcid_last_update");
+			$result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
+		}
+        
+		$value = $result->getValue();
+
+        $searchTerm = "/^https:\/\/orcid.org\//";
+		if (preg_match($searchTerm, $value)) {
+			# they provided URL instead of number
+			$result->setValue(preg_replace($searchTerm, "", $value));
+		}
+		return $result;
+    }
+
 	public function getORCIDResult($rows) {
 		$row = self::getNormativeRow($rows);
 
@@ -3519,6 +3540,7 @@ class Scholar {
             "identifier_left_job_category" => "getJobCategory",
             "identifier_left_department" => "getNewDepartment",
             "identifier_orcid" => "getORCIDResult",
+            "orcid_last_update" => "getORCIDDetails",
             "identifier_email" => "lookupEmail",
             "identifier_personal_email" => "lookupPersonalEmail",
             "identifier_phone" => "lookupPhone",

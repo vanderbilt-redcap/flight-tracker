@@ -1192,6 +1192,10 @@ class DataDictionaryManagement {
             }
         }
 
+        $currentForms = self::getFormsFromMetadata($mergedMetadata);
+        $newFormOrder = self::makeNewFormOrder(array_keys($originalFormsAndFields), $currentForms, $pid);
+        $mergedMetadata = self::reorganizeByForm($mergedMetadata, $newFormOrder);
+
         self::preserveSectionHeaders($mergedMetadata, $originalMetadata);
         $upload = self::alterOptionalFields($mergedMetadata, $pid);
         self::alterResourcesFields($mergedMetadata, $pid);
@@ -1204,6 +1208,78 @@ class DataDictionaryManagement {
             Upload::rowsByPid($upload, $pid);
         }
         return $feedback;
+    }
+
+    # strategy: use original forms as much as possible
+    private static function makeNewFormOrder(array $originalForms, array $currentForms, $pid): array {
+        $validFirstForms = ["identifiers", "sign_up"];
+        $firstForm = $originalForms[0] ?? "";
+        if (!in_array($firstForm, $validFirstForms)) {
+            if (Application::getSetting("signup_project", $pid)) {
+                $forms = ["sign_up"];
+            } else {
+                # most cases
+                $forms = ["identifiers"];
+            }
+            foreach ($originalForms as $form) {
+                if (!in_array($form, $forms)) {
+                    $forms[] = $form;
+                }
+            }
+        } else {
+            $forms = $originalForms;
+        }
+
+        foreach ($currentForms as $i => $form) {
+            if (!in_array($form, $forms)) {
+                # Strategy: Put $form in front of the next item in $currentForms that is also in $forms
+                # first, we must find the next form that's in $forms: place in $nextCurrentFormInForms
+                $nextCurrentFormInForms = "";
+                for ($j = $i + 1; $j < count($currentForms); $j++) {
+                    $formJ = $currentForms[$j];
+                    if (in_array($formJ, $forms)) {
+                        $nextCurrentFormInForms = $formJ;
+                        break;
+                    }
+                }
+                if ($nextCurrentFormInForms) {
+                    $indexOfNextCurrentFormInForms = array_search($nextCurrentFormInForms, $forms);
+                    if ($indexOfNextCurrentFormInForms !== FALSE) {
+                        # Success: insert before $nextCurrentFormInForms
+                        array_splice($forms, $indexOfNextCurrentFormInForms, 0, [$form]);
+                    } else {
+                        # place at end - this should never happen
+                        # I don't want to throw an Exception because it would interrupt the process
+                        # That is, I prefer having it at the end to throwing an Exception so that
+                        #            the user can continue on with their life...
+                        $forms[] = $form;
+                    }
+                } else {
+                    # place at end
+                    $forms[] = $form;
+                }
+            }
+        }
+        return $forms;
+    }
+
+    private static function reorganizeByForm(array $originalMetadata, array $formOrder): array {
+        $newMetadata = [];
+        foreach ($formOrder as $form) {
+            $rows = self::getRowsForForm($originalMetadata, $form);
+            $newMetadata = array_merge($newMetadata, $rows);
+        }
+        return $newMetadata;
+    }
+
+    private static function getRowsForForm(array $metadata, string $form): array {
+        $rows = [];
+        foreach ($metadata as $row) {
+            if ($row['form_name'] == $form) {
+                $rows[] = $row;
+            }
+        }
+        return $rows;
     }
 
     public static function updateAlumniAssociations(&$metadata, $originalMetadata, $pid) {

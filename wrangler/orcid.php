@@ -11,6 +11,7 @@ use Vanderbilt\CareerDevLibrary\Upload;
 require_once(__DIR__."/../small_base.php");
 require_once(__DIR__."/../classes/Autoload.php");
 
+$relevantORCIDEndpoints = ['employments', 'person', 'memberships', 'address'];
 $allRecords = Download::recordIdsByPid($pid);
 $records = $allRecords;
 if (isset($_GET['record']) && ($_GET['record'] !== "all")) {
@@ -30,7 +31,17 @@ if ($action == "downloadORCIDs") {
         $institutionList = Sanitizer::sanitize($_POST['institutionList'] ?? "");
         list($orcid, $mssg) = ORCID::downloadORCID($recordId, $firstName, $middleName, $lastName, $institutionList, $pid);
         if ($orcid) {
-            $data['orcids'] = [$orcid];
+            if (is_array($orcid)) {
+                $orcids = $orcid;
+                $data['orcids'] = [];
+                foreach ($orcids as $orcid) {
+                    $addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
+                    $data['orcids'][$orcid] = $addtlOrcidDetails;
+                }
+            } else {
+                $addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
+                $data['orcids'] = [$orcid => $addtlOrcidDetails];
+            }
             $data['message'] = "";
         } else {
             $data['orcids'] = [];
@@ -112,8 +123,17 @@ if ($action == "downloadORCIDs") {
         $lastName = Download::oneFieldForRecordByPid($pid, "identifier_last_name", $recordId);
         $institutionList = Download::oneFieldForRecordByPid($pid, "identifier_institution", $recordId);
         list($orcid, $mssg) = ORCID::downloadORCID($recordId, $firstName, $middleName, $lastName, $institutionList, $pid);
-        if ($orcid) {
-            $data['orcids'] = [$orcid];
+        if (is_array($orcid) && !empty($orcid)) {
+            $orcids = $orcid;
+            $data['orcids'] = [];
+            foreach ($orcids as $orcid) {
+                $addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
+                $data['orcids'][$orcid] = $addtlOrcidDetails;
+            }
+            $data['message'] = '';
+        } else if ($orcid) {
+            $addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
+            $data['orcids'][$orcid] = $addtlOrcidDetails;
             $data['message'] = "";
         } else {
             $data['orcids'] = [];
@@ -153,7 +173,13 @@ foreach ($allRecords as $recordId) {
     $namesWithLinks[$recordId] = $nameWithLink;
 }
 
-echo "<script>
+echo "
+<style>
+ul.list { padding-left: 4px; margin: 0; }
+ul.list li { padding: 0; }
+tr.subtableHeader th { width: 210px; padding: 2px; }
+</style>
+<script>
 function downloadORCIDInfo(url, loadingSel, i) {
     if (i < records.length) {
         const recordId = records[i];
@@ -182,7 +208,7 @@ function downloadORCIDInfo(url, loadingSel, i) {
                     displayORCIDError(data.error);
                 } else {
                     const rowClass = (i % 2 === 0) ? 'even' : 'odd';
-                    $('table#main tbody').append('<tr class=\"'+rowClass+'\">'+makeORCIDRow(data, recordId, redcapORCIDs[recordId])+'</tr>');
+                    $('#mainBody').append('<tr class=\"'+rowClass+' mainRow\">'+makeORCIDRow(data, recordId, redcapORCIDs[recordId])+'</tr>');
                     downloadORCIDInfo(url, loadingSel, i+1);
                 }
             } catch (e) {
@@ -203,16 +229,59 @@ function makeORCIDRow(data, recordId, redcapIDs) {
     const nameWithLink = recordId+': '+(namesWithLinks[recordId] ?? firstName+' '+middleName+' '+lastName);
     const institutionList = institutionLists[recordId] ?? '';
     const institutionAry = institutionList ? institutionList.split(/\s*[,;]\s*/) : [];
-    const institutionHTML = (institutionAry.length > 0) ? institutionAry.join('<br/>') : '[none listed]';
-    const orcids = data.orcids ?? [];
+    const institutionHTML = (institutionAry.length > 0) ? '<ul class=\"list\"><li>'+institutionAry.join('</li><li>')+'</li></ul>' : '[none listed]';
+    const orcidProfiles = data.orcids ?? {};
     const message = data.message ?? '';
-    const fullWebInfo = (orcids.length > 0) ? displayORCIDLinks(orcids, redcapIDs, 'add', recordId) : parseORCIDMessage(message, redcapIDs, recordId);
+    const numORCIDs = Object.keys(orcidProfiles).length;
+    
+    const blockButton = blocking[recordId] ? makeTurnOffCell(recordId) : makeTurnOnCell(recordId);
+    const frontHTML = '<th>'+nameWithLink+'</th><td class=\"smaller alignLeft\">'+institutionHTML+'</td><td>'+blockButton+'</td><td>'+displayORCIDLinks(redcapIDs, redcapIDs, 'remove', recordId)+'<br/>'+addCustomORCID(recordId)+'</td>'
+    const subTableHeaders = '<tr class=\"subtableHeader\"><th>ORCIDs</th><th>Profile</th></tr>';
+
+    if (numORCIDs === 0) {
+        return frontHTML+'<td>'+parseORCIDMessage(message, redcapIDs, recordId)+'</td>';
+    } else if (numORCIDs === 1) {
+        const orcid = Object.keys(orcidProfiles)[0];
+        const profile = orcidProfiles[orcid];
+        const row = makeProfileRow(orcid, profile, redcapIDs, recordId);
+        const orcidHTML = '<td><table>'+subTableHeaders+row+'</table></td>';
+        return frontHTML+orcidHTML;
+    } else {
+        const tableRows = [];
+        for (const orcid in orcidProfiles) {
+            const profile = orcidProfiles[orcid];
+            tableRows.push(makeProfileRow(orcid, profile, redcapIDs, recordId));
+        }
+        const tableHTML = '<table>'+subTableHeaders+tableRows.join('')+'</table>';
+        return frontHTML+'<td>'+tableHTML+'</td>';
+    }
+}
+
+function makeProfileRow(orcid, profile, redcapIDs, recordId) {
+    const employmentHtml = getEndpointData(profile, 'employments');
+    const personHtml = getEndpointData(profile, 'person');
+    const membershipHtml = getEndpointData(profile, 'memberships');
+    const addressHtml = getEndpointData(profile, 'address');
+    const fullWebInfo =  displayORCIDLinks([orcid], redcapIDs, 'add', recordId);
     if (fullWebInfo.match(/Could not contact/)) {
         console.error(fullWebInfo);
     }
     const webInfo = fullWebInfo.match(/Could not contact/) ? 'Could not contact ORCID. Please try again.' : fullWebInfo;
-    const blockButton = blocking[recordId] ? makeTurnOffCell(recordId) : makeTurnOnCell(recordId);
-    return '<th>'+nameWithLink+'</th><td>'+institutionHTML+'</td><td>'+blockButton+'</td><td>'+displayORCIDLinks(redcapIDs, redcapIDs, 'remove', recordId)+'<br/>'+addCustomORCID(recordId)+'</td><td>'+webInfo+'</td>';
+    const profileRows = [];
+    if (employmentHtml) {
+        profileRows.push('<strong>Employments</strong>:'+employmentHtml);
+    }
+    if (addressHtml) {
+        profileRows.push('<strong>Addresses</strong>:'+addressHtml);
+    }
+    if (personHtml) {
+        profileRows.push('<strong>Personal</strong>:'+personHtml);
+    }
+    if (membershipHtml) {
+        profileRows.push('<strong>Memberships</strong>:'+membershipHtml);
+    }
+    const profileHtml = (profileRows.length > 0) ? profileRows.join('</br>') : 'No profile information';
+    return '<tr><td class=\"smaller\">'+webInfo+'</td><td class=\"smallest alignLeft\">'+profileHtml+'</td></tr>';
 }
 
 function makeTurnOnCell(recordId) {
@@ -278,30 +347,162 @@ function changeORCIDList(action, url, recordId, orcid, buttonOb) {
     if (orcid === '') {
         displayORCIDError('No ORCID specified!');
     } else if (orcid.match(/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/)) {
-        const myRow = $(buttonOb).closest('tr');
+        const myRow = $(buttonOb).closest('tr.mainRow');
         const postdata = {
             redcap_csrf_token: getCSRFToken(),
             record: recordId,
             orcid: orcid,
             action: action
         };
-        let cb = (data) => { excludes[recordId] = data.recordExcludes ?? ''; const redcapIDs = data.redcapORCIDs ? data.redcapORCIDs.split(/\s*[,;]\s*/) : []; $(myRow).html(makeORCIDRow(data, recordId, redcapIDs)); }
-        myRow.html('<td colspan=\"5\">'+getSmallLoadingMessage(\"Reloading\")+'</td>')
+        const cb = (data) => {
+            excludes[recordId] = data.recordExcludes ?? '';
+            const redcapIDs = data.redcapORCIDs ? data.redcapORCIDs.split(/\s*[,;]\s*/) : [];
+            $(myRow).html(makeORCIDRow(data, recordId, redcapIDs));
+        }
+        myRow.html('<td colspan=\"5\">'+getSmallLoadingMessage(\"Reloading\")+'</td>');
         runORCIDPOST(url, postdata, cb);
     } else {
         displayORCIDError('Improper <a href=\"https://support.orcid.org/hc/en-us/articles/360006897674-Structure-of-the-ORCID-Identifier\" target=\"_new\">ORCID format</a>!')
     }
 }
 
+const endpointConfig = {
+    employments: {
+        dataKey: 'employments',
+        fields: ['department_name', 'role_title', 'organization_name'],
+        labels: ['Department', 'Role', 'Organization'],
+        separator: ' - '
+    },
+    educations: {
+        dataKey: 'educations',
+        fields: ['department', 'role', 'organization'],
+        labels: ['Department', 'Degree', 'Institution'],
+        separator: ' - '
+    },
+    person: {
+        dataKey: 'person',
+        fields: ['given_names', 'family_name', 'credit_name'],
+        labels: ['Given Name', 'Family Name', 'Credit Name'],
+        separator: ' '
+    },
+    fundings: {
+        dataKey: 'fundings',
+        fields: ['funding_title', 'funding_organization_name', 'funding_start_year', 'funding_end_year'],
+        labels: ['Title', 'Organization', 'Start Year', 'End Year'],
+        separator: ' | '
+    },
+    qualifications: {
+        dataKey: 'qualifications',
+        fields: ['department_name', 'role_title', 'role_organization_name'],
+        labels: ['Department', 'Qualification', 'Organization'],
+        separator: ' - '
+    },
+    memberships: {
+        dataKey: 'memberships',
+        fields: ['role_title', 'membership_organization_name'],
+        labels: ['Role', 'Organization'],
+        separator: ' at '
+    },
+    address: {
+        dataKey: 'addresses',
+        fields: ['country'],
+        labels: ['Country'],
+        separator: ', '
+    },
+    'research-resources': {
+        dataKey: 'researchResources',
+        fields: ['title', 'host_organization_name', 'start_date_year', 'end_date_year'],
+        labels: ['Title', 'Host Organization', 'Start Year', 'End Year'],
+        separator: ' | '
+    },
+    services: {
+        dataKey: 'services',
+        fields: ['department_name', 'organization_name', 'start_year'],
+        labels: ['Department', 'Organization', 'Start Year'],
+        separator: ' - '
+    },
+    distinctions: {
+        dataKey: 'distinctions',
+        fields: ['department_name', 'organization_name', 'start_year'],
+        labels: ['Department', 'Organization', 'Year'],
+        separator: ' - '
+    },
+    email: {
+        dataKey: 'emails',
+        fields: ['email'],
+        labels: ['Email'],
+        separator: ', '
+    },
+    works: {
+        dataKey: 'works',
+        fields: ['title', 'type', 'publication_year'],
+        labels: ['Title', 'Type', 'Year'],
+        separator: ' | '
+    },
+    keywords: {
+        dataKey: 'keywords',
+        fields: ['content'],
+        labels: ['Keyword'],
+        separator: ', '
+    },
+    'other-names': {
+        dataKey: 'otherNames',
+        fields: ['other_names'],
+        labels: ['Other Name'],
+        separator: ', '
+    },
+    'researcher-urls': {
+        dataKey: 'researcherUrls',
+        fields: ['url_name', 'url'],
+        labels: ['Name', 'URL'],
+        separator: ': '
+    }
+};
+
+function getEndpointData(details, endpoint) {
+    if (!details || (Object.keys(details).length === 0) || !endpointConfig[endpoint]) {
+        return \"\";
+    }
+
+    console.log(JSON.stringify(details));
+    const config = endpointConfig[endpoint];
+
+    if (!details[config.dataKey] || !Array.isArray(details[config.dataKey])) {
+        return \"\";
+    }
+
+    const html = details[config.dataKey].map(item => {
+        const values = [];
+        for (let index = 0; index < config.fields.length; index++) {
+            const field = config.fields[index];
+            const value = (item[field] ?? '').replace('/', ' / ');     // break up for long departments/divisions
+            if (value) {
+                values.push(config.labels[index]+': '+value);
+            }
+        }
+        return '<li>'+values.join('</li><li>')+'</li>';
+    });
+
+    if (html.length === 0) {
+        return '';
+    }
+    return '<ul class=\"list\">'+html.join('</ul><ul class=\"list\">')+'</ul>';
+}
+
 function removeORCIDFromRecord(url, recordId, orcid, buttonOb) {
-    const myRow = $(buttonOb).closest('tr');
+    const myRow = $(buttonOb).closest('tr.mainRow');
     const postdata = {
         redcap_csrf_token: getCSRFToken(),
         record: recordId,
         orcid: orcid,
         action: 'removeORCID'
     };
-    let cb = (data) => { excludes[recordId] = data.recordExcludes ?? ''; const redcapIDs = data.redcapORCIDs ? data.redcapORCIDs.split(/\s*[,;]\s*/) : []; $(myRow).html(makeORCIDRow(data, recordId, redcapIDs)); }
+    let cb = (data) => {
+        console.log('callback 1');
+        excludes[recordId] = data.recordExcludes ?? '';
+        const redcapIDs = data.redcapORCIDs ? data.redcapORCIDs.split(/\s*[,;]\s*/) : [];
+        $(myRow).html(makeORCIDRow(data, recordId, redcapIDs));
+    }
     myRow.html('<td colspan=\"5\">'+getSmallLoadingMessage(\"Reloading\")+'</td>')
     runORCIDPOST(url, postdata, cb);
 }
@@ -357,11 +558,11 @@ function displayORCIDLinks(orcids, redcapORCIDIDs, action, recordId) {
         if (recordExcludes.indexOf(orcid) >= 0) {
             html.push('<span class=\"strikethrough\">'+link+'</span> <button class=\"smallest\" onclick=\"addORCIDToRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\">add</button>');
         } else if ((redcapORCIDIDs.indexOf(orcid) < 0) && (action === 'add')) {
-            html.push(link+' <button class=\"smallest\" onclick=\"addORCIDToRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\">add</button> <button onclick=\"excludeORCIDInRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\" class=\"smallest\">exclude</button>');
+            html.push(link+'<br/><button class=\"smallest\" onclick=\"addORCIDToRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\">add</button> <button onclick=\"excludeORCIDInRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\" class=\"smallest\">exclude</button>');
         } else if (action === 'remove') {
             html.push(link+' <button class=\"smallest\" onclick=\"removeORCIDFromRecord(\'$thisUrl\', \''+recordId+'\', \''+orcid+'\', this); return false;\">remove</button>');
         } else if (action === 'add') {
-            html.push(link+ ' <span class=\"smallest darkgreentext\">[in REDCap]</span>');
+            html.push(link+ '<br/><span class=\"smallest darkgreentext\">[in REDCap]</span>');
         } else {
             html.push(link);
         }
@@ -412,7 +613,7 @@ foreach ($lastNames as $recordId => $lastName) {
 echo "</select></p>";
 echo "<div class='loading centered'></div>";
 echo "<table id='main' class='bordered centered max-width-1000'>";
-echo "<thead><tr class='stickyGrey'><th>Name</th><th title='Institutions that you’ve added. Information for matching to right ORCID.'>Outside Institutions in REDCap</th><th style='width: 80px;' title='Block or unblock future searches for ORCID ids.'>Block All Searching?</th><th style='min-width: 275px;' title='ORCIDs that you’re currently using. You can remove these by clicking the button. Link goes to individual’s ORCID profile, which lists institutions.'>ORCIDs in REDCap</th><th style='min-width: 300px;' title='ORCIDs currently matched to this name on the ORCID website. This cell often has false positives. You can add to REDCap by clicking the button.'>ORCIDs on Website</th></tr></thead>";
-echo "<tbody>";
+echo "<thead><tr class='stickyGrey'><th>Name</th><th title='Institutions that you’ve added. Information for matching to right ORCID.'>Outside Institutions in REDCap</th><th style='width: 80px;' title='Block or unblock future searches for ORCID ids.'>Block All Searching?</th><th style='min-width: 275px;' title='ORCIDs that you’re currently using. You can remove these by clicking the button. Link goes to individual’s ORCID profile, which lists institutions.'>ORCIDs in REDCap</th><th style='width: 450px;' title='ORCIDs currently matched to this name on the ORCID website. This cell often has false positives. You can add to REDCap by clicking the button.'>ORCID Profile</th></tr></thead>";
+echo "<tbody id='mainBody'>";
 echo "</tbody></table>";
 echo "<div class='loading centered'></div>";

@@ -425,6 +425,9 @@ class DateManagement {
     }
 
     public static function YMD2MDY($ymd) {
+        if ($ymd == "") {
+            return "";
+        }
         try {
             $dt = new \DateTime($ymd);
             return $dt->format("m-d-Y");
@@ -447,6 +450,9 @@ class DateManagement {
     }
 
     public static function genericDateToYMD($date, $format) {
+        if ($date == "") {
+            return "";
+        }
         $nodes = preg_split("/".self::SEP_REGEX."/", $date);
         if ((count($nodes) == 3) && REDCapManagement::isArrayNumeric($nodes)) {
             if (in_array($format, ["DMY", "dmy"])) {

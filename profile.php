@@ -151,11 +151,11 @@ foreach (REDCapManagement::getOptionalFields() as $field) {
     $numSettings = REDCapManagement::getOptionalFieldsNumber($field);
     for ($i = 1; $i <= $numSettings; $i++) {
         $field = REDCapManagement::getOptionalFieldSetting($field, $i);
-        if (in_array($field, $metadataFields)) {
+        if ($field && in_array($field, $metadataFields)) {
             $setting = REDCapManagement::turnOptionalFieldIntoSetting($field);
             $label = $optionalSettings[$setting] ?? $metadataLabels[$field] ?? $field;
             $value = REDCapManagement::findField($redcapData, $record, $field);
-            if (isset($choices[$field]) && isset($choices[$field][$value])) {
+            if (!is_array($value) && ($value || ($value === "0")) && isset($choices[$field][$value])) {
                 $value = $choices[$field][$value];
             }
             if ($label && $value) {

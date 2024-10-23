@@ -219,6 +219,13 @@ class CronManager {
                 $records = Download::recordIds($this->token, $this->server);
             }
         }
+        $index = array_search("", $records, TRUE);
+        if ($index !== FALSE) {
+            array_splice($records, $index, 1);
+        }
+        if (empty($records)) {
+            return;
+        }
 
         $dateTs = strtotime($dayOfWeek);
         $absFile = dirname(__FILE__)."/../".$file;

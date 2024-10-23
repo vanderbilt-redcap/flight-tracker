@@ -1188,12 +1188,20 @@ class Download {
 		return Download::oneField($token, $server, "identifier_email");
 	}
 
-	public static function resources($token, $server, $records = array()) {
-		if (empty($records)) {
-			return Download::fields($token, $server, array("record_id", "resources_date", "resources_resource"));
-		} else {
-			return Download::fieldsForRecords($token, $server, array("record_id", "resources_date", "resources_resource"), $records);
-		}
+	public static function resources(string $token, string $server, array $records = []): array {
+        $fields = ["record_id", "resources_date", "resources_resource"];
+        $pid = Application::getPID($token);
+        if ($pid) {
+            if (empty($records)) {
+                $records = Download::recordIdsByPid($pid);
+            }
+            return Download::fieldsForRecordsByPid($pid, $fields, $records);
+        } else {
+            if (empty($records)) {
+                $records = Download::recordIds($token, $server);
+            }
+            return Download::fieldsForRecords($token, $server, $fields, $records);
+        }
 	}
 
 	public static function excludeList($token, $server, $field, $metadataFields) {
@@ -1508,7 +1516,10 @@ class Download {
 
         $records = [];
         while ($row = $recordResult->fetch_assoc()) {
-            $records[] = Sanitizer::sanitize($row['record']);
+            $recordId = Sanitizer::sanitize($row['record']);
+            if ($recordId !== "") {
+                $records[] = $recordId;
+            }
         }
         sort($records, SORT_NUMERIC);
         return $records;
@@ -1826,6 +1837,9 @@ class Download {
                 $numFields = json_encode($fields);
             }
             Application::log("fieldsForRecordsByPid: ".$pid." REDCap::getData $numFields fields $numRecords records", $pid);
+        }
+        if (!is_array($records) && isset($records)) {
+            $records = [$records];
         }
         $redcapData = self::getDataByPid($pid, $fields, $records);
         if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {

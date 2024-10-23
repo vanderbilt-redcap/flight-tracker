@@ -1478,6 +1478,31 @@ class Publications {
 
     private static function repetitivelyPullFromEFetch($pmids, $pid) {
         $output = self::pullFromEFetch($pmids, $pid);
+        $hangMessage = "Bytes read: 0 Status: Timeout";
+        if (strpos($output, $hangMessage) !== FALSE) {
+            # likely due to one bad PMID => try searching until you can identify the one
+            # that way, we can still keep working with the other PMIDs
+            $indexToSkip = 0;
+            $badPMIDArray = [];
+            while (($indexToSkip < count($pmids)) && strpos($output, $hangMessage) !== FALSE) {
+                $pmidsWithOneMissing = $pmids;
+                $badPMIDArray = array_splice($pmidsWithOneMissing, $indexToSkip, 1);
+                self::throttleDown(self::WAIT_SECS_UPON_FAILURE);
+                $output = self::pullFromEFetch($pmidsWithOneMissing, $pid);
+                $indexToSkip++;
+            }
+            if (!empty($badPMIDArray) && ($indexToSkip < count($pmids))) {
+                self::throttleDown(self::WAIT_SECS_UPON_FAILURE);
+                $output2 = self::pullFromEFetch($badPMIDArray, $pid);
+                if (strpos($output2, $hangMessage) === FALSE) {
+                    # we got good results from downloading them separately
+                    # ==> combine the XML text manually
+                    $output = preg_replace("/<\s*\/PubmedArticleSet>.+<\s*PubmedArticleSet>/", "", $output.$output2);
+                } else {
+                    Application::log("Could not pull these PMIDs because of a PubMed timeout: ".implode(", ", $badPMIDArray), $pid);
+                }
+            }
+        }
         $xml = simplexml_load_string(utf8_encode($output));
         $tries = 0;
         $maxTries = 10;
@@ -2968,7 +2993,7 @@ $(document).ready(() => {
 		if (!$citation) {
 			return 0;
 		}
-		if (get_class($citation) == "Citation") {
+		if (preg_match("/Citation$/", get_class($citation))) {
 			$cit = $citation;
 		} else {
 			return Citation::getTimestampFromText($citation, $recordId);

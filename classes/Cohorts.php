@@ -75,6 +75,14 @@ class Cohorts {
 	        return [];
         }
 	    $readonlySettings = $this->module->getProjectSetting($this->readonlySettingName, $this->pid);
+        foreach ($readonlySettings as $settingName => $values) {
+            if (isset($values["pid"]) && ($values["pid"] == $this->pid)) {
+                # the project is attempting to copy to itself ==> the readonly settings were improperly copied over
+                # this project is a child project, not a parent ==> reset & return empty array
+                $this->module->setProjectSetting($this->readonlySettingName, [], $this->pid);
+                return [];
+            }
+        }
 	    if (!$readonlySettings) {
 	        return [];
         }
