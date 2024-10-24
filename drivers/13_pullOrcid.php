@@ -79,7 +79,7 @@ function pullORCIDs(string $token, string $server, $pid, array $recordIds): void
 
     if (!empty($upload)) {
         Application::log("ORCID Upload: ".count($upload)." new rows");
-        // Upload::rows($upload, $token, $server);
+        Upload::rowsByPid($upload, $pid);
     }
     CareerDev::saveCurrentDate("Last ORCID Download", $pid);
     if (!empty($noMatches)) {
@@ -108,10 +108,7 @@ function updateORCIDProfileData($pid, string $recordId, string $recordORCIDs, ar
         $upload[$i] = REDCapManagement::filterForREDCap($row, $metadataFields);
     }
     if(!empty($upload)) {
-        foreach ($upload as $row) {
-            echo "To upload for $recordId: ".REDCapManagement::json_encode_with_spaces($row)."<br/>";   // TODO
-        }
-        // TODO Upload::rowsByPid($upload, $pid);
+        Upload::rowsByPid($upload, $pid);
     }
 }
 

@@ -923,6 +923,18 @@ class DataDictionaryManagement {
             "honors_awards_and_activities_survey" => "[surveyactivityhonor_name]: [surveyactivityhonor_datetime]",
             "manual_degree" => "[imported_degree]",
             "nih_reporter" => "[nih_project_num]",
+            "orcid_educations" => "[orcid_educations_id]",
+            "orcid_person" => "[orcid_person_id]",
+            "orcid_employments" => "[orcid_employments_id]",
+            "orcid_fundings" => "[orcid_fundings_id]",
+            "orcid_qualifications" => "[orcid_qualifications_id]",
+            "orcid_memberships" => "[orcid_memberships_id]",
+            "orcid_address" => "[orcid_address_id]",
+            "orcid_services" => "[orcid_services_id]",
+            "orcid_works" => "[orcid_works_id]",
+            "orcid_keywords" => "[orcid_keywords_id]",
+            "orcid_other_names" => "[orcid_other_names_id]",
+            "orcid_researcher_urls" => "[orcid_researcher_urls_id]",
         ];
 
         if (empty($metadata)) {
