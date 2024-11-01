@@ -411,12 +411,13 @@ function makeMentorJS($scholarJSON, $mentorJSON) {
     const mentorNames = $mentorJSON;
 
     function changeMentor(recordId) {
-        const radiosOb = $('[name=chooseMentor]');
+        const radiosOb = $('input[name=chooseMentor]:checked');
         let mentorUid = '';
         let mentorName = '';
         if (radiosOb.length > 0) {
             mentorUid = radiosOb.val();
-            mentorName = radiosOb.text();
+            const radioId = radiosOb.attr('id');
+            mentorName = $('label[for=' + radioId + ']').text();
         } else {
             const yesNoOb = $('[name=verifyMentor]');
             if (yesNoOb.val() === '0') {

@@ -150,7 +150,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                         $adminEmail = $this->getProjectSetting("admin_email", $pid);
                         $cronStatus = $this->getProjectSetting("send_cron_status", $pid);
                         if ($cronStatus && (time() <= $cronStatus + $oneHour)) {
-                            $this->cronManager = new CronManager($token, $server, $pid, $this, self::TEST_CRON);
+                            // module must be NULL to run once immediately
+                            $this->cronManager = new CronManager($token, $server, $pid, NULL, self::TEST_CRON);
                             loadTestingCrons($this->cronManager);
                             $this->cronManager->run($adminEmail, $tokenName);
                         }

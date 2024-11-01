@@ -44,8 +44,8 @@ class Portal
         if ($this->pid) {
             $this->token = Application::getSetting("token", $this->pid);
             $this->server = Application::getSetting("server", $this->pid);
+            $this->featureSwitches = new FeatureSwitches($this->token, $this->server, $this->pid);
         }
-        $this->featureSwitches = new FeatureSwitches($this->token, $this->server, $this->pid);
         if (!$this->verifyRequest()) {
             throw new \Exception("Unverified Access. Your name and email/user-id must match up with a Flight Tracker record.");
         }

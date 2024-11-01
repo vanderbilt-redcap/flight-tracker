@@ -107,27 +107,6 @@ class Scholar {
 		return Links::makeLink("https://orcid.org/".$orcid, $orcid);
 	}
 
-    public function getORCIDDetails($rows) {
-        $row = self::getNormativeRow($rows);
-
-		if ($row['orcid_last_update']) {
-			$result = new Result($row['orcid_last_update'], "", "", "", $this->pid);
-		} else {
-			$vars = self::getDefaultOrder("orcid_last_update");
-            $vars = $this->getOrder($vars, "orcid_last_update");
-			$result = $this->searchRowsForVars($rows, $vars, FALSE, $this->pid);
-		}
-        
-		$value = $result->getValue();
-
-        $searchTerm = "/^https:\/\/orcid.org\//";
-		if (preg_match($searchTerm, $value)) {
-			# they provided URL instead of number
-			$result->setValue(preg_replace($searchTerm, "", $value));
-		}
-		return $result;
-    }
-
 	public function getORCIDResult($rows) {
 		$row = self::getNormativeRow($rows);
 
@@ -2393,10 +2372,9 @@ class Scholar {
         return "";
     }
 
-    private static function translateDegreesFromList($degrees, $pid) {
-	    $value = "";
+    private static function translateDegreesFromList(array $degrees): string {
         if (empty($degrees)) {
-            return new ScholarResult("", "", "", "", $pid);
+            $value = "";
         } else if (in_array("mdphd", $degrees)) {
             $value = 10;  # MD/PhD
         } else if (in_array("md", $degrees) || in_array(1, $degrees) || in_array(9, $degrees) || in_array(10, $degrees) || in_array(7, $degrees) || in_array(8, $degrees) || in_array(14, $degrees) || in_array(12, $degrees)) { # MD
@@ -2449,12 +2427,12 @@ class Scholar {
             Application::log("Unidentified degrees ".REDCapManagement::json_encode_with_spaces($degrees).". Assigning other.");
             $value = 6;
         }
-	    return $value;
+	    return strval($value);
     }
 
 	private function getDegrees($rows) {
 	    $degrees = $this->findAllDegrees($rows);
-        $value = self::translateDegreesFromList($degrees, $this->pid);
+        $value = self::translateDegreesFromList($degrees);
 
         $newValue = self::translateFirstDegree($value);
         return new ScholarResult($newValue, "", "", "", $this->pid);
@@ -3540,7 +3518,6 @@ class Scholar {
             "identifier_left_job_category" => "getJobCategory",
             "identifier_left_department" => "getNewDepartment",
             "identifier_orcid" => "getORCIDResult",
-            "orcid_last_update" => "getORCIDDetails",
             "identifier_email" => "lookupEmail",
             "identifier_personal_email" => "lookupPersonalEmail",
             "identifier_phone" => "lookupPhone",

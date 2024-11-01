@@ -127,6 +127,12 @@ foreach ($instrumentsToFields as $instrument => $fields) {
 echo "</tr>";
 echo "</thead>";
 echo "<tbody>";
+$counts = [];
+foreach (array_keys($instrumentsToFields) as $instrument) {
+    if ($instrument) {
+        $counts[$instrument] = ["Total People" => 0, "Total Surveys" => 0];
+    }
+}
 foreach ($names as $recordId => $name) {
     $classicalFieldValues = $classical[$recordId] ?? [];
     $repeatingFieldValues = $repeating[$recordId] ?? [];
@@ -174,14 +180,20 @@ foreach ($names as $recordId => $name) {
                 if ($instance && !isset($valueHTML[$instance])) {
                     $valueHTML[$instance] = [];
                 }
-                if ($value) {
+                if ($value !== "") {
+                    $counts[$instrument]["Total People"]++;
+                    $counts[$instrument]["Total Surveys"]++;
                     $valueHTML[$instance][] = $value;
                 }
             }
-            $tableOfValues = "";
+            $valueWithTooltip = "";
             if (!empty($valueTable)) {
                 $tableOfValues = "<table class='centered bordered'>";
+                $counts[$instrument]["Total People"]++;
                 foreach ($valueTable as $instance => $fieldValues) {
+                    if (!REDCapManagement::isArrayBlank($fieldValues)) {
+                        $counts[$instrument]["Total Surveys"]++;
+                    }
                     $tableOfValues .= "<tr>";
                     foreach ($fields as $field) {
                         if (isset($fieldValues[$field])) {
@@ -208,6 +220,17 @@ foreach ($names as $recordId => $name) {
     }
     echo "</tr>";
 }
+echo "<tr><th class='odd'>Totals</th>";
+foreach (array_keys($instrumentsToFields) as $instrument) {
+    if ($instrument) {
+        $items = [];
+        foreach ($counts[$instrument] as $header => $value) {
+            $items[] = "$header: $value";
+        }
+        echo "<td class='smaller odd'>".implode("<br/>", $items)."</td>";
+    }
+}
+echo "</tr>";
 echo "</tbody>";
 echo "</table>";
 

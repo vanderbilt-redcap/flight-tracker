@@ -129,7 +129,25 @@ class Stats
         return $this->arr;
     }
 
-    public function getQuartile($quartile) {
+    public function getPercentile(int $percentile): float {
+        $total = count($this->arr);
+        $arr = $this->arr;
+        sort($arr, SORT_NUMERIC);
+        if ($percentile == 100) {
+            return $arr[count($arr) - 1];
+        }
+        $iFrac = $percentile * $total / 100;
+        $i1 = (int) floor($iFrac);
+        if ($i1 == count($arr) - 1) {
+            return $arr[$i1];
+        }
+        $i2 = (int) floor($iFrac + 1);
+        $frac1 = 1 - ($iFrac - $i1);
+        $frac2 = 1 - $frac1;
+        return $arr[$i1] * $frac1 + $arr[$i2] * $frac2;
+    }
+
+        public function getQuartile($quartile) {
         if (!is_int($quartile)) {
             return FALSE;
         }

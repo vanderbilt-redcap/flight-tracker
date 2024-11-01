@@ -217,9 +217,9 @@ class EmailManager {
                     # turns away older crons who are just reappearing
                     $minsSinceEpochCurr = floor($currTime / 60);
                     $minsSinceEpochLastRun = floor($lastRunTs / 60);
-                    $oneHourInMinutes = 60;
-                    if ($minsSinceEpochCurr - $minsSinceEpochLastRun > $oneHourInMinutes) {
-                        $minsSinceEpochLastRun = $minsSinceEpochCurr - $oneHourInMinutes;
+                    $threeHoursInMinutes = 3 * 60;
+                    if ($minsSinceEpochCurr - $minsSinceEpochLastRun > $threeHoursInMinutes) {
+                        $minsSinceEpochLastRun = $minsSinceEpochCurr - $threeHoursInMinutes;
                     }
                     for ($mins = $minsSinceEpochCurr; $mins > $minsSinceEpochLastRun; $mins--) {
                         $currTimes[] = $mins * 60;
