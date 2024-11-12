@@ -738,12 +738,8 @@ class CelebrationsEmail {
         $this->process();
         $ftLogoBase64 = FileManagement::getBase64OfFile(__DIR__."/../img/flight_tracker_logo_medium_white_bg.png", "image/png");
         $projectInfo = Links::makeProjectHomeLink($this->pid, Download::projectTitle($this->pid));
-        if (!Application::isVanderbilt() || ($this->pid !== NEWMAN_SOCIETY_PROJECT)) {
-            $configureLink = Application::link("index.php", $this->pid)."#Celebrations_Email";
-            $configureInfo = "<br/>".Links::makeLink($configureLink, "Configure Celebrations Email");
-        } else {
-            $configureInfo = "";
-        }
+        $configureLink = Application::link("index.php", $this->pid)."#Celebrations_Email";
+        $configureInfo = "<br/>".Links::makeLink($configureLink, "Configure Celebrations Email");
 
         $html = "<style>
 .redtext { color: #f0565d; }

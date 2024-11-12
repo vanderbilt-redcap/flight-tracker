@@ -175,7 +175,7 @@ class ORCID {
             $xpath = self::initializeXPath($output);
             $parsedData = self::parseEndpointData($xpath, $endpoint);
             return [TRUE, $parsedData];
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             Application::log("Error parsing XML for $endpoint: " . $e->getMessage(), $pid);
             return [FALSE, []];
         }
@@ -403,26 +403,29 @@ class ORCID {
                 ];
                 break;
             default:
-                throw new Exception("Unsupported endpoint: $endpoint");
+                throw new \Exception("Unsupported endpoint: $endpoint");
         }
         return self::genericParseData($xpath, $relativeUrl, $fields);
     }
 
     private static function genericParseData(\DOMXPath $xpath, string $relativeUrl, array $fields): array {
         $results = [];
-        $nodes = $xpath->query($relativeUrl);
+        $nodeList = $xpath->query($relativeUrl);
 
-        foreach ($nodes as $node) {
-            $orcidPath = $node->getAttribute('path');
+        for ($i = 0; $i < $nodeList->count(); $i++) {
+            $node = $nodeList->item($i);
+            if (method_exists($node, 'getAttribute')) {
+                $orcidPath = $node->getAttribute('path');
 
-            $orcidParts = explode('/', ltrim($orcidPath, '/'));
-            $orcidId = $orcidParts[0];
+                $orcidParts = explode('/', ltrim($orcidPath, '/'));
+                $orcidId = $orcidParts[0];
 
-            $resultRow = ['id' => $orcidId];
-            foreach ($fields as $field => $query) {
-                $resultRow[$field] = self::getNodeValue($xpath, $query, $node);
+                $resultRow = ['id' => $orcidId];
+                foreach ($fields as $field => $query) {
+                    $resultRow[$field] = self::getNodeValue($xpath, $query, $node);
+                }
+                $results[] = $resultRow;
             }
-            $results[] = $resultRow;
         }
 
         return $results;

@@ -128,7 +128,8 @@ if (isset($_GET['grantCounts'])) {
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
-$metadata = Download::metadata($token, $server);
+Application::increaseProcessingMax(1); // some people run long/large queries
+$metadata = Download::metadataByPid($pid);
 $link = Application::link("publications/view.php")."&download".makeExtraURLParams();
 echo "<h1>View Publications</h1>\n";
 if (Application::hasComposer() && CareerDev::isVanderbilt()) {
@@ -346,11 +347,17 @@ function makeExtraURLParams($exclude = []) {
     foreach ($expected as $key) {
         if (isset($_GET[$key]) && !in_array($key, $exclude)) {
             $key = Sanitizer::sanitize($key);
-            $value = Sanitizer::sanitize($_GET[$key] ?? "");
-            if ($value === "") {
-                $additionalParams .= "&".$key;
+            if (is_array($_GET[$key])) {
+                foreach (Sanitizer::sanitizeArray($_GET[$key]) as $value) {
+                    $additionalParams .= "&".urlencode($key."[]")."=".urlencode($value);
+                }
             } else {
-                $additionalParams .= "&$key=".urlencode(Sanitizer::sanitize($value));
+                $value = Sanitizer::sanitize($_GET[$key] ?? "");
+                if ($value === "") {
+                    $additionalParams .= "&".$key;
+                } else {
+                    $additionalParams .= "&$key=".urlencode(Sanitizer::sanitize($value));
+                }
             }
         }
     }

@@ -15,6 +15,20 @@ class DataDictionaryManagement {
     const NONE = "NONE";
     const ALUMNI_OTHER_VALUE = "999999";
     const HONORACTIVITY_OTHER_VALUE = '999999';
+    const CUSTOM_SECTION_HEADER_SETTING = "custom_survey_text";
+    const CUSTOM_SECTION_HEADER_FIELDS = [
+        "check_d1",
+        "check_residency1",
+        "check_fellowship",
+        "check_d15a",
+        "followup_d0",
+        "followup_d15a",
+    ];
+    const FUNDING_SECTION_HEADER_SETTING = "custom_funding_text";
+    const FUNDING_SECTION_HEADER_FIELDS = [
+        "check_grant1_d",
+        "followup_grant1_d",
+    ];
     const HONORACTIVITY_SPECIAL_FIELDS = [
         "activityhonor_committee_name_other" => [
             "activityhonor_committee_name",
@@ -728,6 +742,7 @@ class DataDictionaryManagement {
             if (MMAHelper::canConfigureCustomAgreement($pid)) {
                 $metadata['file'] = self::filterOutForms($metadata['file'], ["mentoring_agreement"]);
             }
+            self::alterSectionHeaders($metadata['file'], $pid);
 
             $choices = [];
             foreach ($metadata as $type => $md) {
@@ -1213,13 +1228,36 @@ class DataDictionaryManagement {
         self::alterResourcesFields($mergedMetadata, $pid);
         self::alterInstitutionFields($mergedMetadata, $pid);
         self::alterDepartmentsFields($mergedMetadata, $pid);
+        self::alterSectionHeaders($mergedMetadata, $pid);
         self::updateAlumniAssociations($mergedMetadata, $originalMetadata, $pid);
         unset($_SESSION['metadata'.$pid]);
-        $feedback = Upload::metadata($mergedMetadata, $token, $server);
+        $feedback = Upload::metadataNoAPI($mergedMetadata, $pid);
         if (!empty($upload)) {
             Upload::rowsByPid($upload, $pid);
         }
         return $feedback;
+    }
+
+    private static function alterSectionHeaders(&$metadata, $pid) {
+        $customSurveyText = Application::getSetting(self::CUSTOM_SECTION_HEADER_SETTING, $pid);
+        $customFundingText = Application::getSetting(self::FUNDING_SECTION_HEADER_SETTING, $pid);
+        if ($customSurveyText || $customFundingText) {
+            foreach ($metadata as $i => $row) {
+                if (
+                    $customSurveyText
+                    && in_array($row['field_name'], self::CUSTOM_SECTION_HEADER_FIELDS)
+                    && (strpos($row['section_header'], $customSurveyText) !== FALSE)
+                ) {
+                    $metadata[$i]["section_header"] .= "<p><i>$customSurveyText</i></p>";
+                } else if (
+                    $customFundingText
+                    && in_array($row['field_name'], self::FUNDING_SECTION_HEADER_FIELDS)
+                    && (strpos($row['section_header'], $customFundingText) !== FALSE)
+                ) {
+                    $metadata[$i]["section_header"] .= "<p><i>$customFundingText</i></p>";
+                }
+            }
+        }
     }
 
     # strategy: use original forms as much as possible
@@ -1247,7 +1285,7 @@ class DataDictionaryManagement {
                 # Strategy: Put $form in front of the next item in $currentForms that is also in $forms
                 # first, we must find the next form that's in $forms: place in $nextCurrentFormInForms
                 $nextCurrentFormInForms = "";
-                for ($j = $i + 1; $j < count($currentForms); $j++) {
+                for ($j = (int) $i + 1; $j < count($currentForms); $j++) {
                     $formJ = $currentForms[$j];
                     if (in_array($formJ, $forms)) {
                         $nextCurrentFormInForms = $formJ;

@@ -13,16 +13,11 @@ use Vanderbilt\CareerDevLibrary\Cohorts;
 use Vanderbilt\CareerDevLibrary\Sanitizer;
 use Vanderbilt\CareerDevLibrary\Publications;
 
-# test projects
-define("LOCALHOST_TEST_PROJECT", CareerDev::getLocalhostPluginPID());
-define("NEWMAN_SOCIETY_PROJECT", 66635);
-define("REDCAPTEST_TEST_PROJECT", 761);
-
 class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.17.2";
+		return "6.17.3";
 	}
 
     public static function getLocalhostPluginPid() {
@@ -902,36 +897,6 @@ class CareerDev {
     }
 
 	public static function getSetting($field, $pid = NULL) {
-	    if (
-            self::isVanderbilt()
-            && ((Application::isServer("redcap.vumc.org") && ($pid == NEWMAN_SOCIETY_PROJECT))
-                || ((Application::isLocalhost() && ($pid == LOCALHOST_TEST_PROJECT))))
-        ) {
-	        # TODO add redcaptest.vumc.org
-	        $module = ExternalModules::getModuleInstance("vanderbilt_plugin-settings");
-            $items = [$field];
-            if (!preg_match("/\/plugins\//", $_SERVER['REQUEST_URI'] ?? "")) {
-                $items[] = "career_dev_".$field;
-            }
-            foreach ($items as $item) {
-                $value = $module->getProjectSetting($item, $pid);
-                if ($value) {
-                    return $value;
-                }
-            }
-            if (file_exists(self::getCredentialsFile())) {
-                include(self::getCredentialsFile());
-                if (isset($info['prod'][$field]) && ($pid == NEWMAN_SOCIETY_PROJECT)) {
-                    return $info['prod'][$field];
-                } else if (isset($info['localhost'][$field]) && ($pid == LOCALHOST_TEST_PROJECT)) {
-                    return $info['localhost'][$field];
-                }
-            }
-            if (($field == "admin_email") || ($field == "adminEmail")) {
-                return "scott.j.pearson@vumc.org";
-            }
-            return "";
-        }
         if (($field == "pubmed_api_key") && Application::isVanderbilt() && file_exists(self::getCredentialsFile())) {
             include(self::getCredentialsFile());
             if (isset($pubmedAPIKey) && $pubmedAPIKey) {
@@ -1089,17 +1054,6 @@ class CareerDev {
                 "ldap" => "University Directory",
                 "vera" => "VERA (online database)",
             ]);
-	        if (self::getPid() == NEWMAN_SOCIETY_PROJECT) {
-                $itemChoices = array_merge($itemChoices, [
-                    "data" => "Newman Data (spreadsheet)",
-                    "sheet2" => "Newman Sheet2 (spreadsheet)",
-                    "demographics" => "Newman Demographics (spreadsheet)",
-                    "expertise" => "Expertise Survey (self-survey)",
-                    "new2017" => "2017 New Scholars (spreadsheet)",
-                    "k12", "K12 List (spreadsheet)",
-                    "nonrespondents" => "Nonrespondents (spreadsheet)",
-                ]);
-            }
         } else {
             $itemChoices = array_merge($itemChoices, [
                 "local_gms" => "Institutional Grants Management System",
@@ -1248,7 +1202,8 @@ class CareerDev {
             $ary["Who Has Responded to Surveys?"] = self::link("/emailMgmt/surveySubmissions.php");
             $ary["Import General Data"] = self::link("/import.php");
             $ary["Import Positions"] = self::link("/bulkImport.php") . "&positions";
-            if (self::isVanderbilt() && ($pid == 145767)) {
+            if (self::isVanderbilt() && in_array($pid,[145767, 66635])) {
+                # special EFS projects
                 $ary["LDAP Lookup"] = "https://redcap.vumc.org/plugins/career_dev/LDAP/ldapLookup.php";
             }
 

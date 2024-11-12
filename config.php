@@ -415,7 +415,8 @@ function makeSettings($module, $pid) {
     }
     $ary["Administrative Setup"][] = makeCheckboxes("shared_forms", FlightTrackerExternalModule::getConfigurableForms(), "In Flight Tracker's data-sharing on the same server, in addition to surveys, what data should be shared among the following forms?");
     $ary["Administrative Setup"][] = makeAssociativeArray(Wrangler::PILOT_GRANT_SETTING, "Options for <strong>Pilot Grants</strong><br/>Enter a unique code (left) and a label (right) to set up pilot grants to be associated during data wrangling.");
-
+    $ary["Administrative Setup"][] = makeSetting(DataDictionaryManagement::CUSTOM_SECTION_HEADER_SETTING, "short_textarea", "Custom Instructions to Put in Certain Section Headers on the Initial Survey and the Followup Survey. HTML welcomed.");
+    $ary["Administrative Setup"][] = makeSetting(DataDictionaryManagement::FUNDING_SECTION_HEADER_SETTING, "short_textarea", "Custom Instructions to Put in the Funding Section Headers on the Initial Survey and the Followup Survey. HTML welcomed.");
 
 	$ary["Emails"] = [];
     $ary["Emails"][] = makeSetting("admin_email", "text", "Administrative Email(s) for Flight Tracker Project; comma-separated");

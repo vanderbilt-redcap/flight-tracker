@@ -13,10 +13,6 @@ function sendMonthlyEmailHighlights($token, $server, $pid, $records) {
     sendEmailHighlights($token, $server, $pid, "monthly");
 }
 
-function sendQuarterlyEmailHighlights($token, $server, $pid, $records) {
-    sendEmailHighlights($token, $server, $pid, "quarterly");
-}
-
 function sendEmailHighlights($token, $server, $pid, $frequency) {
     $metadata = Download::metadata($token, $server);
     $highlights = new CelebrationsEmail($token, $server, $pid, $metadata);

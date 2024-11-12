@@ -1444,9 +1444,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $activePids = [Sanitizer::sanitizePid($_GET['pid'])];
         } else {
             $activePids = $this->framework->getProjectsWithModuleEnabled();
-            if (Application::isVanderbilt() && Application::isServer("redcap.vanderbilt.edu")) {
-                $activePids[] = NEWMAN_SOCIETY_PROJECT;
-            }
         }
 		Application::log($this->getName()." running for pids ".json_encode($activePids));
         foreach ($activePids as $pid) {

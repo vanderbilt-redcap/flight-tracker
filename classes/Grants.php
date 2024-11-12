@@ -537,7 +537,6 @@ class Grants {
 
 	public function setRows($rows) {
 		if ($rows) {
-            $newmanSources = ($this->pid == NEWMAN_SOCIETY_PROJECT) ? self::getNewmanSources() : [];
             $thresholdTs = strtotime("2023-05-10 00:00:00");
 			$this->rows = $rows;
 			$this->recordId = 0;
@@ -594,25 +593,14 @@ class Grants {
 
                         foreach ($gs as $g) {
                             # combine all grants into one unordered list
-                            if (
-                                empty($newmanSources)
-                                || (
-                                    ($this->pid == NEWMAN_SOCIETY_PROJECT)
-                                    && (!in_array($g->getVariable("source"), $newmanSources)
-                                        || !preg_match("/VCTRS/", $g->getNumber())
-                                    )
-                                )
-                                || (time() < $thresholdTs)
-                            ) {
-                                if (self::getShowDebug()) { Application::log("Prospective grant ".json_encode($g->toArray())); }
-                                $this->setupAbstracts($g);
-                                if ($variable == "nativeGrants") {
-                                    $this->nativeGrants[] = $g;
-                                } else if ($variable == "grantSubmissions") {
-                                    $this->grantSubmissions[] = $g;
-                                } else {
-                                    throw new \Exception("Invalid variable $variable");
-                                }
+                            if (self::getShowDebug()) { Application::log("Prospective grant ".json_encode($g->toArray())); }
+                            $this->setupAbstracts($g);
+                            if ($variable == "nativeGrants") {
+                                $this->nativeGrants[] = $g;
+                            } else if ($variable == "grantSubmissions") {
+                                $this->grantSubmissions[] = $g;
+                            } else {
+                                throw new \Exception("Invalid variable $variable");
                             }
                         }
                     }

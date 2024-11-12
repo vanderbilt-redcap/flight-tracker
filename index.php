@@ -18,7 +18,7 @@ try {
     require_once(dirname(__FILE__)."/classes/Autoload.php");
 
     if (!empty($_POST)) {
-        $switches = new FeatureSwitches($token, $server, $pid);
+        $switches = new FeatureSwitches($token, $server ?? "", $pid);
         $data = $switches->savePost($_POST);
         echo json_encode($data);
         exit;
@@ -41,7 +41,7 @@ try {
     require_once(dirname(__FILE__)."/charts/baseWeb.php");
 
     $celebrationsHandler = new CelebrationsEmail($token, $server, $pid, []);
-    $switches = new FeatureSwitches($token, $server, $pid);
+    $switches = new FeatureSwitches($token, $server ?? "", $pid);
     $numDaysPerWeek = $switches->getValue("Days per Week to Build Summaries");
     $scheduledCrons = [];
     if (Application::isVanderbilt()) {
@@ -184,7 +184,7 @@ $(document).ready(function() {
 
     <div style='float: left; width: 50%;'>
         <?php
-        $switches = new FeatureSwitches($token, $server, $pid);
+        $switches = new FeatureSwitches($token, $server ?? "", $pid);
 
         echo "<table style='margin: 0px auto 0px auto; border-radius: 10px; max-width: 90%;' class='blue'>";
         $settings = \Vanderbilt\FlightTrackerExternalModule\getAllSettings();

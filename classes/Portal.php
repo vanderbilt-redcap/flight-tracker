@@ -955,7 +955,7 @@ class Portal
     # Regardless, Newman data will be the cleanest, and the user does not need to be confused
     private static function filterOutNonNewmanProject(&$matches) {
         $nonNewmanProjectPid = 145767;
-        if (isset($matches[NEWMAN_SOCIETY_PROJECT]) && isset($matches[$nonNewmanProjectPid])) {
+        if (isset($matches[$nonNewmanProjectPid])) {
             unset($matches[$nonNewmanProjectPid]);
         }
     }

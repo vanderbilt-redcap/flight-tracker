@@ -1927,9 +1927,6 @@ class Scholar {
             array("init_import_degree1" => "manual", "init_import_degree2" => "manual", "init_import_degree3" => "manual", "init_import_degree4" => "manual", "init_import_degree5" => "manual"),
             array("vfrs_graduate_degree" => "vfrs", "vfrs_degree2" => "vfrs", "vfrs_degree3" => "vfrs", "vfrs_degree4" => "vfrs", "vfrs_degree5" => "vfrs"),
             array("newman_new_degree1" => "new2017", "newman_new_degree2" => "new2017", "newman_new_degree3" => "new2017"),
-            array("newman_data_degree1" => "data", "newman_data_degree2" => "data", "newman_data_degree3" => "data"),
-            array("newman_demographics_degrees" => "demographics"),
-            array("newman_sheet2_degree1" => "sheet2", "newman_sheet2_degree2" => "sheet2", "newman_sheet2_degree3" => "sheet2"),
         );
         $orders["identifier_orcid"] = array(
             "check_orcid_id" => "scholars",
@@ -1990,10 +1987,6 @@ class Scholar {
             "ldap_vanderbiltpersonhrdeptnumber" => "ldap",
             "ldap_vanderbiltpersonhrdeptname" => "ldap",
             "ldap_departmentnumber" => "ldap",
-            "newman_new_department" => "new2017",
-            "newman_demographics_department1" => "demographics",
-            "newman_data_department1" => "data",
-            "newman_sheet2_department1" => "sheet2",
         );
         $orders["summary_gender"] = [
             "override_gender" => "manual",
@@ -2003,10 +1996,6 @@ class Scholar {
             "vfrs_gender_identity" => "vfrs",
             "imported_gender" => "manual",
             "init_import_gender" => "manual",
-            "newman_new_gender" => "new2017",
-            "newman_demographics_gender" => "demographics",
-            "newman_data_gender" => "data",
-            "newman_nonrespondents_gender" => "nonrespondents",
         ];
         $orders["summary_transgender"] = [
             "check_transgender" => "scholars",
@@ -2027,10 +2016,6 @@ class Scholar {
             "vfrs_race" => "vfrs",
             "imported_race" => "manual",
             "init_import_race" => "manual",
-            "newman_new_race" => "new2017",
-            "newman_demographics_race" => "demographics",
-            "newman_data_race" => "data",
-            "newman_nonrespondents_race" => "nonrespondents",
         ];
         $orders["summary_race_ethnicity"]["ethnicity"] = [
             "override_ethnicity" => "manual",
@@ -2038,10 +2023,6 @@ class Scholar {
             "vfrs_ethnicity" => "vfrs",
             "imported_ethnicity" => "manual",
             "init_import_ethnicity" => "manual",
-            "newman_new_ethnicity" => "new2017",
-            "newman_demographics_ethnicity" => "demographics",
-            "newman_data_ethnicity" => "data",
-            "newman_nonrespondents_ethnicity" => "nonrespondents",
         ];
         $orders["summary_dob"] = [
             "check_date_of_birth" => "scholars",
@@ -2049,10 +2030,6 @@ class Scholar {
             "override_dob" => "manual",
             "imported_dob" => "manual",
             "init_import_date_of_birth" => "manual",
-            "newman_new_date_of_birth" => "new2017",
-            "newman_demographics_date_of_birth" => "demographics",
-            "newman_data_date_of_birth" => "data",
-            "newman_nonrespondents_date_of_birth" => "nonrespondents",
         ];
         $orders["summary_citizenship"] = [
             "followup_citizenship" => "followup",
@@ -2108,8 +2085,6 @@ class Scholar {
             "workday_jobcode_descr" => "ldap",
             "ldapds_title" => "ldap",
             "ldap_vanderbiltpersonjobname" => "ldap",
-            "newman_new_rank" => "new2017",
-            "newman_demographics_academic_rank" => "demographics",
         );
         $orders["summary_current_start"] = array(
             "promotion_in_effect" => "manual",
@@ -2589,10 +2564,6 @@ class Scholar {
 			$value = $result->getValue();
 			$field = $result->getField();
             $reversedFields = [
-                "newman_demographics_gender",
-                "newman_data_gender",
-                "newman_nonrespondents_gender",
-                "newman_new_gender",
                 "vfrs_gender",
             ];
             if (in_array($value, [1,2])) {
@@ -2788,27 +2759,6 @@ class Scholar {
 						if (isset($row[$field]) && ($row[$field])) {
 							$fieldValue = trim(strtolower($row[$field]));
 							if ($fieldValue == "1") {
-								# U.S. citizen, source unknown
-								return new ScholarResult('5', $fieldSource, "", "", $this->pid);
-							} else if ($fieldValue) {
-								# Non U.S. citizen, status unknown
-								return new ScholarResult('6', $fieldSource, "", "", $this->pid);
-							}
-						}
-					}
-				}
-			}
-
-			$usValues = array("us", "u.s.", "united states", "usa", "u.s.a.");    // lower case
-			$textSources = array(
-						"newman_demographics_citizenship" => "demographics",
-						);
-			foreach ($textSources as $field => $fieldSource) {
-				if ($fieldSource == "demographics") {
-					foreach ($rows as $row) {
-						if (isset($row[$field]) && ($row[$field])) {
-							$fieldValue = trim(strtolower($row[$field]));
-							if (in_array($fieldValue, $usValues)) {
 								# U.S. citizen, source unknown
 								return new ScholarResult('5', $fieldSource, "", "", $this->pid);
 							} else if ($fieldValue) {
@@ -3149,7 +3099,7 @@ class Scholar {
 		return $result;
 	}
 
-	private function getCurrentRank($rows) {
+	public function getCurrentRank(array $rows): ScholarResult {
 		$vars = self::getDefaultOrder("summary_current_rank");
         if (Application::isVanderbilt()) {
             $preferredField = "ldapds_title";
@@ -3538,6 +3488,7 @@ class Scholar {
             "summary_current_start" => "getCurrentAppointmentStart",
             "summary_current_tenure" => "getTenureStatus",
             "summary_urm" => "getURMStatus",
+            "summary_urm_lgbtq" => "getURMStatusPlusLGBTQ",
             "summary_wos_h_index" => "getWoSHIndex",
             "summary_icite_h_index" => "getiCiteHIndex",
             "summary_scopus_h_index" => "getScopusHIndex",
@@ -3946,14 +3897,17 @@ class Scholar {
         return FALSE;
     }
 
+    private function getURMStatusPlusLGBTQ($rows) {
+        if ($this->isLGBTQ($rows)) {
+            return new ScholarResult("1", "", "", "", $this->pid);
+        }
+        return $this->getURMStatus($rows);
+    }
+
 	private function getURMStatus($rows) {
 		$raceEthnicityValue = $this->getRaceEthnicity($rows)->getValue();
 		$disadvValue = $this->getDisadvantagedStatus($rows)->getValue();
 		$disabilityValue = $this->getDisabilityStatus($rows)->getValue();
-
-        if (($this->pid == NEWMAN_SOCIETY_PROJECT) && $this->isLGBTQ($rows)) {
-            return new ScholarResult("1", "", "", "", $this->pid);
-        }
 
         $field = "summary_race_ethnicity";
         $order = self::getDefaultOrder($field);

@@ -556,11 +556,6 @@ class NIHTables {
             $countKey = self::makeCountKey($table, $recordId, $pid);
             $countKeyOld = str_replace("$pid:", "", $countKey);
             $possibleKeys = [$countKey, $countKeyOld];
-            if (in_array($pid, [LOCALHOST_TEST_PROJECT, NEWMAN_SOCIETY_PROJECT])) {
-                $prefix = "career_dev_";
-                $possibleKeys[] = $prefix.$countKey;
-                $possibleKeys[] = $prefix.$countKeyOld;
-            }
             foreach ($possibleKeys as $myKey) {
                 $settingsFromSavePid = Application::getSetting($myKey, $savePid) ?: [];
                 $settingsFromPid = Application::getSetting($myKey, $pid) ?: [];
@@ -1788,21 +1783,6 @@ class NIHTables {
                     } else if ($field == "vfrs_graduate_degree") {
                         if ($year) { $ary[] = "vfrs_degree1_year"; }
                         if ($institution) { $ary[] = "vfrs_degree1_institution"; }
-                        $fields[$field] = $ary;
-                    } else if (preg_match("/^newman_new_degree/", $field)) {
-                        $fields[$field] = $ary;
-                    } else if (preg_match("/^newman_data_degree/", $field)) {
-                        $fields[$field] = $ary;
-                    } else if (preg_match("/^newman_sheet2_degree/", $field)) {
-                        $fields[$field] = $ary;
-                    } else if ($field == "newman_demographics_degrees") {
-                        if ($year) {
-                            $ary[] = "newman_demographics_last_degree_year";
-                            $ary[] = "newman_demographics_degrees_years";
-                        }
-                        if ($institution) {
-                            $ary[] = "newman_demographics_last_degree_institution";
-                        }
                         $fields[$field] = $ary;
                     }
                 }

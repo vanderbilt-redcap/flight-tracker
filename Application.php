@@ -284,30 +284,8 @@ class Application {
         return REDCapManagement::filterOutInvalidFields($metadata, $possibleFields);
     }
 
-    public static function isPluginProject($project_id = "") {
-        if (!$project_id) {
-            $project_id = CareerDev::getPID();
-        }
-        $isCopiedPluginProject = FALSE;
-        global $info;
-        if (isset($info)) {
-            foreach (array_values($info) as $row) {
-                if ($project_id == $row['pid']) {
-                    if (isset($row['copied'])) {
-                        if ($row['copied']) {
-                            $isCopiedPluginProject = TRUE;
-                        }
-                    }
-                }
-            }
-        }
-
-        return (
-            (self::isVanderbilt() && ($project_id == NEWMAN_SOCIETY_PROJECT))
-            || (self::isVanderbilt() && $isCopiedPluginProject)
-            || (self::isLocalhost() && ($project_id == LOCALHOST_TEST_PROJECT))
-            || (self::isServer(FlightTrackerExternalModule::VANDERBILT_TEST_SERVER) && ($project_id == REDCAPTEST_TEST_PROJECT))
-        );
+    public static function isPluginProject() {
+        return FALSE;
     }
 
     public static function log($mssg, $pid = FALSE) {
@@ -535,15 +513,7 @@ footer { z-index: 1000000; position: fixed; left: 0; bottom: 0; width: 100%; bac
 
     # gets the project-id for NIH Training Table 1
     public static function getTable1PID() {
-        if (
-            isset($_GET['pid'])
-            && self::isVanderbilt()
-            && self::isPluginProject($_GET['pid'])
-        ) {
-            $table1Pid = self::getSetting("table1Pid", self::isLocalhost() ? LOCALHOST_TEST_PROJECT : NEWMAN_SOCIETY_PROJECT);
-        } else {
-            $table1Pid = self::getSystemSetting("table1Pid");
-        }
+        $table1Pid = self::getSystemSetting("table1Pid");
         if ($table1Pid && REDCapManagement::isActiveProject($table1Pid)) {
             return $table1Pid;
         } else {
@@ -607,13 +577,6 @@ SELECT DISTINCT s.project_id AS pid
                         $pids[] = $row['pid'];
                     }
                 }
-            }
-            if (self::isLocalhost()) {
-                array_unshift($pids, LOCALHOST_TEST_PROJECT);
-            } else if (self::isServer("redcap.vanderbilt.edu") || self::isServer("redcap.vumc.org")) {
-                array_unshift($pids, NEWMAN_SOCIETY_PROJECT);
-            } else if (self::isServer(FlightTrackerExternalModule::VANDERBILT_TEST_SERVER)) {
-                # TODO Add test projects with plugin
             }
         } else {
             $module = self::getModule();

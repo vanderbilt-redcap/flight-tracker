@@ -33,11 +33,7 @@ if (isset($_GET['skip'])) {
     }
 } else if (isset($_GET['sourcePid'])) {
     $sourcePid = Sanitizer::sanitizePid($_GET['sourcePid'] ?? "");
-    if (Application::isVanderbilt()) {
-        $allPids = array_unique(array_merge([NEWMAN_SOCIETY_PROJECT], $module->getPids()));
-    } else {
-        $allPids = $module->getPids();
-    }
+    $allPids = $module->getPids();
     if ($sourcePid && in_array($sourcePid, $allPids)) {
         $sourceToken = Application::getSetting("token", $sourcePid);
         $sourceServer = Application::getSetting("server", $sourcePid);
