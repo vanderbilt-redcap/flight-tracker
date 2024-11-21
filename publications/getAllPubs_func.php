@@ -475,7 +475,7 @@ function updatePubMedKeywords($pid, array $records): void {
             $pubmedMatches = Publications::downloadPMIDs($pmidsToDownload, $pid);  // an array of PubmedMatch objects
             foreach ($pubmedMatches as $pubmedMatch) {
                 # an element of pubmedMatches returns NULL if a PMID is not found - rare, but it happens
-                $keywords = ($pubmedMatch === NULL) ? [] : $pubmedMatch->getVariable("Keywords") ?: [];
+                $keywords = ($pubmedMatch === NULL) ? [] : ($pubmedMatch->getVariable("Keywords") ?: []);
                 if (!empty($keywords)) {
                     # not every PMID has keywords
                     $pmid = $pubmedMatch->getPMID();
