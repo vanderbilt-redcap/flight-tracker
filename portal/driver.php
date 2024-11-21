@@ -111,7 +111,8 @@ try {
             $alternativeTopics = Sanitizer::sanitizeArray($_POST['alternativeTopics'] ?? $portal->getAlternativeTopics($topics));
             $requestedPids = Sanitizer::sanitizeArray($_POST['pids'] ?? $allPids);
             $priorNames = Sanitizer::sanitizeArray($_POST['priorNames'] ?? []);
-            $data['matches'] = $portal->searchForCollaborators($topics, $requestedPids, $priorNames, $alternativeTopics);
+            $field = Sanitizer::sanitize($_POST['field'] ?? "");
+            $data['matches'] = $portal->searchForCollaborators($topics, $field, $requestedPids, $priorNames, $alternativeTopics);
             $data['alternativeTopics'] = $alternativeTopics;
         } else {
             $data['error'] = "<p>No topics provided!</p>";
@@ -164,7 +165,7 @@ try {
         $data['html'] = $headerHTML.$descriptionHTML.$pageHTML;
     } else if ($action == "timelines") {
         $filename = "charts/timeline.php";
-        $pageHTML = $portal->getPage($filename, ["record" => $recordId, 'noCDA' => '1']);
+        $pageHTML = $portal->getPage($filename, ["record" => $recordId]);
         $headerHTML = "<h3>Your Grant &amp; Publishing Timelines in $projectTitle</h3>";
         $descriptionHTML = "<p class='portalDescription'>Each Flight Tracker project produces two timelines, one for publications and one for grants. If you find inaccuracies in your data, please update them under Your Info &rarr; Update. $coeusDisclaimer</p>";
         $timelineFooterHTML = Application::isVanderbilt() ? "<p class='centered max-width'>Note: This information includes data from COEUS (for the last 5 years) and VERA.</p>" : "";

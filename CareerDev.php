@@ -17,7 +17,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.17.3";
+		return "6.18.0";
 	}
 
     public static function getLocalhostPluginPid() {
@@ -637,6 +637,9 @@ class CareerDev {
 
     public static function getLink($relativeUrl, $pid = "", $withWebroot = FALSE) {
         $relativeUrl = preg_replace("/^\//", "", $relativeUrl);
+        if ($relativeUrl == "js/jquery.min.js") {
+            return Application::getJQueryURL();
+        }
         $isMentorAgreementPage = (
             (
                 preg_match("/^mentor\//", $relativeUrl)

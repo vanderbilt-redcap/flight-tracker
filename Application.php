@@ -52,6 +52,19 @@ class Application {
         return CareerDev::getRelevantChoices();
     }
 
+    public static function getJQueryURL(): string {
+        $fileOrder = [
+            APP_PATH_DOCROOT."Resources/webpack/js/bundle.js" => APP_PATH_WEBROOT."Resources/webpack/js/bundle.js",
+            __DIR__."/js/jquery.min.js" => self::link("js/jquery.min.js"),
+        ];
+        foreach ($fileOrder as $file => $url) {
+            if (file_exists($file)) {
+                return $url;
+            }
+        }
+        return "";
+    }
+
     public static function getMetadataFiles($pid): array {
         $files = [];
         if (Application::getSetting("signup_project", $pid)) {
@@ -1168,6 +1181,7 @@ SELECT DISTINCT s.project_id AS pid
         "citation_title",
         "citation_pub_types",
         "citation_mesh_terms",
+        "citation_pubmed_keywords",
         "citation_journal",
         "citation_volume",
         "citation_issue",

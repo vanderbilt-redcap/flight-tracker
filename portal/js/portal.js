@@ -36,6 +36,19 @@ class Portal {
         });
     }
 
+    compileMeSHTerms = function(numTerms) {
+        const prefix = 'mesh_term_';
+        const terms = [];
+        for (let i=1; i <= numTerms; i++) {
+            const field = prefix + i.toString();
+            const term = $('#'+field+' option:selected').val();
+            if (term !== "") {
+                terms.push(term);
+            }
+        }
+        return terms.join("; ");
+    }
+
     addORCID = function(url, orcidSel, recordId, pid) {
         const orcid = $(orcidSel).val();
         if (orcid === '') {
@@ -65,11 +78,17 @@ class Portal {
         return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
-    searchForTopics = function(url, topicString) {
+    searchForTopics = function(url, topicString, field) {
         const trimmedTopicString = topicString.trim();
         const topics = trimmedTopicString ? trimmedTopicString.split(/\s*[,;]\s*/) : [];
         if (topics.length === 0) {
             this.processError("No topics provided!");
+            return;
+        }
+
+        const specialLoadingDiv = "#searchingDiv";
+        if (this.isLoading(specialLoadingDiv)) {
+            this.processError("Please wait until your first search has completed!");
             return;
         }
 
@@ -79,14 +98,13 @@ class Portal {
             if (pids.length === 0) {
                 this.makeCollaboratorHTML(0);
             } else {
-                const specialLoadingDiv = "#searchingDiv";
                 this.updateLoadingBox("Searching for a Collaborator... This may take some time.", specialLoadingDiv)
                 const pidBatches = this.batchPids(pids, 1);
                 const doneCallback = function(self) { self.updateLoadingBox("", specialLoadingDiv); };
                 const numProjectsLeft = this.getNumberOfProjectsInBatches(pidBatches, 0);
 
                 $('#results').html(this.makeCollaboratorHTML(numProjectsLeft));
-                this.iterateForCollaborators(url, topics, pidBatches, 0, null, doneCallback);
+                this.iterateForCollaborators(url, topics, field, pidBatches, 0, null, doneCallback);
             }
         });
     }
@@ -127,8 +145,8 @@ class Portal {
                 };
             }
             // compile emails for all instances
-            if ((email !== '') && (this.stateData.collaboratorMatches[name].emails.indexOf(email) < 0)) {
-                this.stateData.collaboratorMatches[name].emails.push(email);
+            if ((email !== '') && (this.stateData.collaboratorMatches[name].emails.indexOf(email.toLowerCase()) < 0)) {
+                this.stateData.collaboratorMatches[name].emails.push(email.toLowerCase());
             }
         }
     }
@@ -175,11 +193,11 @@ class Portal {
                     const pubMedLink = "https://pubmed.ncbi.nlm.nih.gov/?term="+encodeURIComponent(match.pmids.join(","))+"&sort=pubdate";
                     const pluralPubs = (match.pmids.length === 1) ? "" : "s";
                     const pluralVerb = (match.pmids.length === 1) ? "es" : "";
-                    const pronoun = (match.pmids.length === 1) ? "It" : "They";
+                    const noun = (match.pmids.length === 1) ? "The paper" : "The papers";
                     const score = match.score ?? 0;
                     const name = match.name ?? "Unknown Name";
 
-                    html += "<p class='centered max-width'><span class='dropScore'>"+this.pretty(score)+" </span><strong class='greentext'>"+name+"</strong> has "+match.pmids.length+" publication"+pluralPubs+" that match"+pluralVerb+" this topic. <a href='"+pubMedLink+"' target='_new'>"+pronoun+" can be accessed via PubMed.</a>";
+                    html += "<p class='centered max-width'><strong class='greentext'>"+name+"</strong> has "+match.pmids.length+" publication"+pluralPubs+" that match"+pluralVerb+" this topic [score: "+this.pretty(score)+"].<br/><a href='"+pubMedLink+"' target='_new'>"+noun+" can be accessed via PubMed.</a>";
                     const numTerms = match.terms.length;
                     if (numTerms > 0) {
                         const termPlural = (numTerms === 1) ? "" : "s";
@@ -204,13 +222,14 @@ class Portal {
         }
     }
 
-    iterateForCollaborators = function(url, topics, pidBatches, i, alternativeTopics, doneCallback) {
+    iterateForCollaborators = function(url, topics, field, pidBatches, i, alternativeTopics, doneCallback) {
         if (i >= pidBatches.length) {
             doneCallback(this);
         } else {
             const postdata = {
                 action: 'search_projects_for_collaborator',
                 topics: topics,
+                field: field,
                 pids: pidBatches[i],
                 priorNames: Object.keys(this.stateData.collaboratorMatches)
             };
@@ -222,7 +241,7 @@ class Portal {
                 this.processNewMatches(data.matches ?? []);
                 const numProjectsLeft = this.getNumberOfProjectsInBatches(pidBatches, i+1);
                 $('#results').html(this.makeCollaboratorHTML(numProjectsLeft));
-                this.iterateForCollaborators(url, topics, pidBatches, i + 1, data.alternativeTopics ?? [], doneCallback);
+                this.iterateForCollaborators(url, topics, field, pidBatches, i + 1, data.alternativeTopics ?? [], doneCallback);
             });
         }
     }
@@ -233,6 +252,11 @@ class Portal {
             numProjectsLeft += pidBatches[j].length;
         }
         return numProjectsLeft;
+    }
+
+    isLoading = function(specialLoadingDiv) {
+        const div = (typeof specialLoadingDiv !== 'undefined') ? specialLoadingDiv : this.loadingDiv;
+        return ($(div).html() !== "");
     }
 
     updateLoadingBox = function(mssg, specialLoadingDiv) {

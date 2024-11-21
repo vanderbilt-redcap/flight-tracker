@@ -23,136 +23,135 @@ $submissionClasses = ["Unfunded", "Pending", "Awarded"];   // correlated with CS
 $switches = new FeatureSwitches($token, $server, $pid);
 $switchSettings = $switches->getSwitches();
 
-?>
-
-<?php
-
-	$records = Download::recordIds($token, $server);
-	$recordId = isset($_GET['record']) ? REDCapManagement::getSanitizedRecord($_GET['record'], $records) : $records[0];
-    $nextRecord = $records[0];
-	for ($i = 0; $i < count($records); $i++) {
-		if (($records[$i] == $recordId) && ($i + 1 < count($records))) {
-		    $nextRecord = $records[$i + 1];
-		    break;
-		}
-	}
-    if (isset($redcapData)) {
-        # this page is included via a require_once, so this variable might have already been downloaded
-        $rows = $redcapData;
-    } else {
-        $metadataFields = Download::metadataFields($token, $server);
-        $validPrefixes = [];
-        $grantPrefixes = [
-            "coeus_",
-            "coeussubmission_",
-            "vera_",
-            "verasubmission_",
-            "summary_",
-            "nih_",
-            "reporter_",
-            "custom_",
-        ];
-        $pubPrefixes = [
-            "citation_",
-            "eric_",
-        ];
-        if (($switchSettings["Grants"] != "Off") && !isset($_GET['noCDA'])) {
-            $validPrefixes = array_merge($validPrefixes, $grantPrefixes);
-        }
-        if ($switchSettings["Publications"] != "Off") {
-            $validPrefixes = array_merge($validPrefixes, $pubPrefixes);
-        }
-        $fieldsToDownload = ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"];
-        foreach ($validPrefixes as $prefix) {
-            $prefixFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $prefix);
-            $fieldsToDownload = array_unique(array_merge($fieldsToDownload, $prefixFields));
-        }
-        $rows = Download::fieldsForRecords($token, $server, $fieldsToDownload, [$recordId]);
+$records = Download::recordIds($token, $server);
+$recordId = isset($_GET['record']) ? REDCapManagement::getSanitizedRecord($_GET['record'], $records) : $records[0];
+$nextRecord = $records[0];
+for ($i = 0; $i < count($records); $i++) {
+    if (($records[$i] == $recordId) && ($i + 1 < count($records))) {
+        $nextRecord = $records[$i + 1];
+        break;
     }
-
-    $name = "";
-    foreach ($rows as $row) {
-        if ($row['redcap_repeat_instrument'] == "") {
-            $name = $row['identifier_first_name']." ".$row['identifier_last_name'];
-            break;
-        }
+}
+if (isset($redcapData)) {
+    # this page is included via a require_once, so this variable might have already been downloaded
+    $rows = $redcapData;
+} else {
+    $metadataFields = Download::metadataFields($token, $server);
+    $validPrefixes = [];
+    $grantPrefixes = [
+        "coeus_",
+        "coeussubmission_",
+        "vera_",
+        "verasubmission_",
+        "summary_",
+        "nih_",
+        "reporter_",
+        "custom_",
+    ];
+    $pubPrefixes = [
+        "citation_",
+        "eric_",
+    ];
+    if (($switchSettings["Grants"] != "Off") && !isset($_GET['noCDA'])) {
+        $validPrefixes = array_merge($validPrefixes, $grantPrefixes);
     }
-
-    $grantsAndPubs = [];
-    $maxTs = [];
-	$minTs = [];
-
-    $grants = new Grants($token, $server, "empty");
-    $grants->setRows($rows);
-    $grants->compileGrants();
-    $grants->compileGrantSubmissions();
-    $id = 1;
-    list($submissions, $submissionTimestamps) = makeSubmissionDots($grants->getGrants("submissions"), $id);
-    if (!empty($submissions) && !isset($_GET['awardsOnly'])) {
-        $classes[] = "AllWithSubmissions";
+    if ($switchSettings["Publications"] != "Off") {
+        $validPrefixes = array_merge($validPrefixes, $pubPrefixes);
     }
+    $fieldsToDownload = ["record_id", "identifier_first_name", "identifier_middle", "identifier_last_name"];
+    foreach ($validPrefixes as $prefix) {
+        $prefixFields = DataDictionaryManagement::filterFieldsForPrefix($metadataFields, $prefix);
+        $fieldsToDownload = array_unique(array_merge($fieldsToDownload, $prefixFields));
+    }
+    $rows = Download::fieldsForRecords($token, $server, $fieldsToDownload, [$recordId]);
+}
 
-    foreach ($classes as $c) {
-        $maxTs[$c] = 0;
-        $minTs[$c] = time();
-        $grantsAndPubs[$c] = [];
+$name = "";
+foreach ($rows as $row) {
+    if ($row['redcap_repeat_instrument'] == "") {
+        $name = $row['identifier_first_name']." ".$row['identifier_last_name'];
+        break;
+    }
+}
 
-        if ($c == "AllWithSubmissions") {
-            $allTimestamps = $submissionTimestamps;
-            $grantsAndPubs[$c] = $submissions;
+$grantsAndPubs = [];
+$maxTs = [];
+$minTs = [];
 
-            foreach ($allTimestamps as $submissionTs) {
-                if ($submissionTs) {
-                    if ($maxTs[$c] < $submissionTs) {
-                        $maxTs[$c] = $submissionTs;
-                    }
-                    if ($minTs[$c] > $submissionTs) {
-                        $minTs[$c] = $submissionTs;
-                    }
+$grants = new Grants($token, $server, "empty");
+$grants->setRows($rows);
+$grants->compileGrants();
+$grants->compileGrantSubmissions();
+$id = 1;
+list($submissions, $submissionTimestamps) = makeSubmissionDots($grants->getGrants("submissions"), $id);
+if (!empty($submissions) && !isset($_GET['awardsOnly'])) {
+    $classes[] = "AllWithSubmissions";
+}
+
+foreach ($classes as $c) {
+    $maxTs[$c] = 0;
+    $minTs[$c] = time();
+    $grantsAndPubs[$c] = [];
+
+    if ($c == "AllWithSubmissions") {
+        $allTimestamps = $submissionTimestamps;
+        $grantsAndPubs[$c] = $submissions;
+
+        foreach ($allTimestamps as $submissionTs) {
+            if ($submissionTs) {
+                if ($maxTs[$c] < $submissionTs) {
+                    $maxTs[$c] = $submissionTs;
+                }
+                if ($minTs[$c] > $submissionTs) {
+                    $minTs[$c] = $submissionTs;
                 }
             }
         }
-
-        $grantClass = CareerDev::getSetting("grant_class", $pid);
-        $grantAry = makeTrainingDatesBar($rows, $id, $minTs[$c], $maxTs[$c], ($grantClass == "T"));
-        if ($grantAry) {
-            $grantsAndPubs[$c][] = $grantAry;
-        }
-        if ($switchSettings["Grants"] == "Off") {
-            $grantType = "NONE";
-        } else if (in_array($c, ["All", "AllWithSubmissions"])) {
-            $grantType = "all";
-        } else if (($c == "PubsCDAs") && !isset($_GET['noCDA'])) {
-            $grantType = "prior";
-        } else if (($c == "PubsCDAs") && isset($_GET['noCDA'])) {
-            $grantType = "NONE";
-        } else if ($c == "Flagged") {
-            $grantType = "flagged";
-        } else {
-            throw new \Exception("Class is not set up $c");
-        }
-        if (($grantType !== "NONE") && ($grants->getCount($grantType) > 0)) {
-            if (isset($_GET['test'])) {
-                echo "grants->$grantType has ".$grants->getCount($grantType)." items<br>";
-            }
-            $grantBars = makeGrantBars($grants->getGrants($grantType), $id, $minTs[$c], $maxTs[$c]);
-            $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $grantBars);
-        }
-
-        if (($c == "PubsCDAs") && ($switchSettings["Publications"] != "Off")) {
-            $pubDots = makePubDots($rows, $token, $server, $id, $minTs[$c], $maxTs[$c]);
-            $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $pubDots);
-        }
-
-        $currTs = time();
-        if ($maxTs[$c] < $currTs) {
-            $maxTs[$c] = $currTs;
-        }
-
-        $spacing = ($maxTs[$c] + 90 * 24 * 3600 - $minTs[$c]) / 6;
-        $maxTs[$c] += $spacing;
-        $minTs[$c] -= $spacing;
     }
+
+    $grantClass = CareerDev::getSetting("grant_class", $pid);
+    $grantAry = makeTrainingDatesBar($rows, $id, $minTs[$c], $maxTs[$c], ($grantClass == "T"));
+    if ($grantAry) {
+        $grantsAndPubs[$c][] = $grantAry;
+    }
+    if ($switchSettings["Grants"] == "Off") {
+        $grantType = "NONE";
+    } else if (in_array($c, ["All", "AllWithSubmissions"])) {
+        $grantType = "all";
+    } else if (($c == "PubsCDAs") && !isset($_GET['noCDA'])) {
+        $grantType = "prior";
+    } else if (($c == "PubsCDAs") && isset($_GET['noCDA'])) {
+        $grantType = "NONE";
+    } else if ($c == "Flagged") {
+        $grantType = "flagged";
+    } else {
+        throw new \Exception("Class is not set up $c");
+    }
+    if (isset($_GET['test'])) {
+        echo "$c has grantType $grantType and ".$grants->getCount($grantType)." grants<br>";
+    }
+    if (($grantType !== "NONE") && ($grants->getCount($grantType) > 0)) {
+        if (isset($_GET['test'])) {
+            echo "grants->$grantType has ".$grants->getCount($grantType)." items<br>";
+        }
+        $grantBars = makeGrantBars($grants->getGrants($grantType), $id, $minTs[$c], $maxTs[$c]);
+        $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $grantBars);
+    }
+
+    if (($c == "PubsCDAs") && ($switchSettings["Publications"] != "Off")) {
+        $pubDots = makePubDots($rows, $token, $server, $id, $minTs[$c], $maxTs[$c]);
+        $grantsAndPubs[$c] = array_merge($grantsAndPubs[$c], $pubDots);
+    }
+
+    $currTs = time();
+    if ($maxTs[$c] < $currTs) {
+        $maxTs[$c] = $currTs;
+    }
+
+    $spacing = ($maxTs[$c] + 90 * 24 * 3600 - $minTs[$c]) / 6;
+    $maxTs[$c] += $spacing;
+    $minTs[$c] -= $spacing;
+}
 
 ?>
     <script src="<?= Application::link("/charts/vis.min.js") ?>"></script>

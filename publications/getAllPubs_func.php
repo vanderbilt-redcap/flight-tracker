@@ -1,6 +1,7 @@
 <?php
 
 namespace Vanderbilt\CareerDevLibrary;
+
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -13,6 +14,17 @@ function cleanEmptySources($token, $server, $pid, $records) {
 }
 
 function getPubs($token, $server, $pid, $records) {
+    $backfilledRecords = Application::getSetting("backfill_pubmed_keywords", $pid) ?: [];
+    $intersect = array_intersect($records, $backfilledRecords);
+    if (count($intersect) === 0) {
+        $metadataFields = Download::metadataFieldsByPid($pid);
+        if (in_array("citation_pubmed_keywords", $metadataFields)) {
+            # this just needs to be called once to backfill the citation_pubmed_keywords field
+            updatePubMedKeywords($pid, $records);
+            Application::saveSetting("backfill_pubmed_keywords", array_merge($backfilledRecords, $records), $pid);
+        }
+    }
+
     getPubsGeneric($token, $server, $pid, $records, TRUE);
 }
 
@@ -450,5 +462,35 @@ function backfillDatesAndAffiliations($redcapData, $metadataFields, $pid) {
     }
     if (!empty($uploadUpdates)) {
         Upload::rowsByPid($uploadUpdates, $pid);
+    }
+}
+
+# one-time backfill script for citation_pubmed_keywords
+function updatePubMedKeywords($pid, array $records): void {
+    $pmidsToUpdate = Download::oneFieldWithInstancesByPid($pid, "citation_pmid");
+    $upload = [];
+    foreach ($records as $recordId) {
+        if (!empty($pmidsToUpdate[$recordId] ?? [])) {
+            $pmidsToDownload = array_values($pmidsToUpdate[$recordId]);
+            $pubmedMatches = Publications::downloadPMIDs($pmidsToDownload, $pid);  // an array of PubmedMatch objects
+            foreach ($pubmedMatches as $pubmedMatch) {
+                # an element of pubmedMatches returns NULL if a PMID is not found - rare, but it happens
+                $keywords = ($pubmedMatch === NULL) ? [] : $pubmedMatch->getVariable("Keywords") ?: [];
+                if (!empty($keywords)) {
+                    # not every PMID has keywords
+                    $pmid = $pubmedMatch->getPMID();
+                    $instance = array_search($pmid, $pmidsToUpdate[$recordId]);
+                    $upload[] = [
+                        "record_id" => $recordId,
+                        "redcap_repeat_instrument" => "citation",
+                        "redcap_repeat_instance" => $instance,
+                        "citation_pubmed_keywords" => implode(Publications::LIST_SEPARATOR." ", $keywords),
+                    ];
+                }
+            }
+        }
+    }
+    if (!empty($upload)) {
+        Upload::rowsByPid($upload, $pid);
     }
 }

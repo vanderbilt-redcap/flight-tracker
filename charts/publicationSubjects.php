@@ -48,7 +48,7 @@ foreach ($citationData as $row) {
         foreach ($fieldsToMonitor as $field) {
             if (isset($row[$field]) && ($row[$field] != "")) {
                 if ($field == OpenAI::CITATION_KEYWORD_FIELD) {
-                    $fieldTerms = OpenAI::explodeKeywords($field);
+                    $fieldTerms = OpenAI::explodeKeywords($row[$field]);
                 } else {
                     $fieldTerms = preg_split("/\s*;\s*/", $row[$field], -1, PREG_SPLIT_NO_EMPTY);
                 }

@@ -40,11 +40,10 @@ if (isset($_FILES['bulk'])) {
 		$errors = [];
 		list($headers, $lines, $startIdx) = readCSV($_FILES['bulk'], $title);
 
-		$metadata = Download::metadata($token, $server);
-		$records = Download::recordIds($token, $server);
+		$metadata = Download::formMetadata($token, $server, ["position_change", "custom_grant"]);
+		$records = Download::recordIdsByPid($pid);
 		$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 		$choices = REDCapManagement::getChoices($metadata);
-		$matchedIndices = [0];
 		$unmatchedLines = [];
 		$maxInstances = [];
 		$i = 0;
@@ -204,7 +203,7 @@ function verifyFile($fileinfo, $importFile, $expectedItems) {
 	}
 }
 
-function detectFirstError($fileinfo, $importFile, $expected) {
+function detectFirstError(array $fileinfo, string $importFile, int $expected): string {
 	if (!$fileinfo) {
 		return "No file supplied!";
 	}
@@ -221,10 +220,12 @@ function detectFirstError($fileinfo, $importFile, $expected) {
 	$fp = fopen($filename, "r");
     $firstLine = fgetcsv($fp);
 
+    $decrement = 0;
     if ($firstLine[0] == "Record ID") {
         array_shift($headers);
         $headers[0] = "Record ID";
-        $expected--;
+        $decrement = 1;
+        $expected -= $decrement;
     }
 
     # sometimes Excel puts a unicode hidden character before the first element
@@ -254,11 +255,11 @@ function detectFirstError($fileinfo, $importFile, $expected) {
 			return "Line $i has ".count($line)." items! ($expected items expected.)";
 		}
 		if (preg_match("/import\.csv/", $importFile)) {
-            if (!inDateFormat($line[8])) {
-                return "The start date {$line[8]} is not in YYYY-MM-DD or MM-DD-YYYY format!";
+            if (!inDateFormat($line[8 - $decrement])) {
+                return "The start date {$line[8 - $decrement]} is not in YYYY-MM-DD or MM-DD-YYYY format!";
             }
-            if (!inDateFormat($line[9])) {
-                return "The end date {$line[9]} is not in YYYY-MM-DD or MM-DD-YYYY format!";
+            if (!inDateFormat($line[9- $decrement])) {
+                return "The end date {$line[9 - $decrement]} is not in YYYY-MM-DD or MM-DD-YYYY format!";
             }
         }
 		$i++;
@@ -328,7 +329,7 @@ function readCSV($fileinfo, $validationType) {
                 $line[$startIdx + 8] = REDCapManagement::removeMoneyFormatting($line[$startIdx + 8]);
                 $line[$startIdx + 9] = REDCapManagement::removeMoneyFormatting($line[$startIdx + 9]);
             }
-			array_push($lines, $line);
+			$lines[] = $line;
 		}
 		fclose($fp);
 		return [$headers, $lines, $startIdx];
@@ -390,7 +391,7 @@ function getRecordsFromREDCapData($redcapData) {
 	$records = array();
 	foreach ($redcapData as $row) {
 		if (!in_array($row['record_id'], $records)) {
-			array_push($records, $row['record_id']);
+			$records[] = $row['record_id'];
 		}
 	}
 	return $records;
